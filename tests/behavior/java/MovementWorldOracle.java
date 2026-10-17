@@ -236,6 +236,8 @@ class MovementWorldOracle extends MovementLivingOracle {
         var renderer = (net.minecraft.client.renderer.GameRenderer) unsafe.allocateInstance(
             net.minecraft.client.renderer.GameRenderer.class);
         setField(renderer, "mainCamera", camera);
+        setField(renderer, "bossOverlayWorldDarkeningO", Oracle.f32(row, "boss_darkening_old"));
+        setField(renderer, "bossOverlayWorldDarkening", Oracle.f32(row, "boss_darkening"));
         var extractor = new net.minecraft.client.renderer.LightmapRenderStateExtractor(renderer, minecraft);
         extractor.tick();
         var state = new net.minecraft.client.renderer.state.LightmapRenderState();
@@ -250,6 +252,7 @@ class MovementWorldOracle extends MovementLivingOracle {
             Math.max(state.ambientColor.z(), state.nightVisionColor.z() * nightFactor)));
         entry.add("brightness", fogBits(state.brightness));
         entry.add("darkness", fogBits(state.darknessEffectScale));
+        entry.add("boss_darkening", fogBits(state.bossOverlayWorldDarkening));
         return entry;
     }
 
@@ -273,7 +276,14 @@ class MovementWorldOracle extends MovementLivingOracle {
         setField(scene.minecraft(), "level", level);
         var hud = getField(getField(scene.minecraft(), "gui"), "hud");
         setField(hud, "bossOverlay", unsafe.allocateInstance(net.minecraft.client.gui.components.BossHealthOverlay.class));
-        setField(getField(hud, "bossOverlay"), "events", new java.util.LinkedHashMap<>());
+        var bossEvents = new java.util.LinkedHashMap<java.util.UUID, net.minecraft.client.gui.components.LerpingBossEvent>();
+        if (row.get("boss_fog").getAsBoolean()) {
+            var id = java.util.UUID.randomUUID();
+            bossEvents.put(id, new net.minecraft.client.gui.components.LerpingBossEvent(id,
+                net.minecraft.network.chat.Component.empty(), 1.0F, net.minecraft.world.BossEvent.BossBarColor.PURPLE,
+                net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS, false, false, true));
+        }
+        setField(getField(hud, "bossOverlay"), "events", bossEvents);
         var effects = fogEffects(row);
         net.minecraft.world.entity.Entity entity;
         if (row.get("local").getAsBoolean()) {

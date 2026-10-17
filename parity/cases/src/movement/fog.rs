@@ -16,6 +16,8 @@ struct Fog<'a> {
     render_distance: i64,
     water_vision_time: i64,
     darken_world: f64,
+    /// A boss bar that makes world fog.
+    boss_fog: bool,
     sun_angle: f64,
     forward_x: f64,
 }
@@ -32,6 +34,7 @@ impl<'a> Fog<'a> {
             render_distance: 12,
             water_vision_time: 0,
             darken_world: 0.0,
+            boss_fog: false,
             sun_angle: 40.0,
             forward_x: 0.5,
         }
@@ -47,7 +50,7 @@ impl<'a> Fog<'a> {
             "label": self.label, "blocks": [], "chunk_radius": 1, "fog_type": self.fog_type, "local": self.local,
             "spectator": self.spectator, "effects": self.effects, "x": f64_bits(8.5), "y": f64_bits(self.y), "z": f64_bits(8.5),
             "render_distance": self.render_distance, "water_vision_time": self.water_vision_time,
-            "darken_world": f32_bits(self.darken_world), "forward_x": f32_bits(self.forward_x), "partial": f32_bits(0.4),
+            "darken_world": f32_bits(self.darken_world), "boss_fog": self.boss_fog, "forward_x": f32_bits(self.forward_x), "partial": f32_bits(0.4),
             "attributes": {
                 "fog_color": 0xFFC0_D8FF_u32 as i32, "sunrise": 0xB3FF_8040_u32 as i32, "sky_color": 0xFF78_A7FF_u32 as i32,
                 "water_color": 0xFF3F_76E4_u32 as i32, "sun_angle": f32_bits(self.sun_angle),
@@ -150,6 +153,18 @@ fn world_rows(rows: &mut Vec<Value>) {
         fog.darken_world = amount;
         rows.push(fog.row());
     }
+    // A boss bar's world fog pulls the fog in; in water or lava it is not the atmosphere.
+    for (label, fog_type, amount) in [
+        ("boss fog", "atmospheric", 0.0),
+        ("boss fog and darkened", "atmospheric", 0.6),
+        ("boss fog in water", "water", 0.0),
+        ("boss fog in lava", "lava", 0.0),
+    ] {
+        let mut fog = Fog::new(label, fog_type);
+        fog.boss_fog = true;
+        fog.darken_world = amount;
+        rows.push(fog.row());
+    }
 }
 
 pub fn fog_data() -> Value {
@@ -169,6 +184,16 @@ fn lightmap_row(
     eyes_in_water: bool,
     water_vision_time: i64,
 ) -> Value {
+    lightmap_row_with_boss(label, effects, (tick_count, eyes_in_water, water_vision_time), (0.0, 0.0))
+}
+
+/// `lightmap_row` with the boss bars' darkening, a tick ago and now.
+fn lightmap_row_with_boss(
+    label: &str,
+    effects: &[(&str, i64, bool, i64)],
+    (tick_count, eyes_in_water, water_vision_time): (i64, bool, i64),
+    (boss_old, boss_now): (f64, f64),
+) -> Value {
     let effects: Vec<Value> = effects
         .iter()
         .map(|(name, duration, blend, ticks)| json!({"name": name, "duration": duration, "blend": blend, "ticks": ticks}))
@@ -176,6 +201,7 @@ fn lightmap_row(
     json!({
         "label": label, "effects": effects, "tick_count": tick_count, "eyes_in_water": eyes_in_water,
         "water_vision_time": water_vision_time, "partial": f32_bits(0.4),
+        "boss_darkening_old": f32_bits(boss_old), "boss_darkening": f32_bits(boss_now),
         "attributes": {
             "block_light_tint": -10_100, "sky_light_factor": f32_bits(0.24), "sky_light_color": 0xFF4D_5E99_u32 as i32,
             "ambient_light_color": 0xFF0A_0A14_u32 as i32, "night_vision_color": -6_710_887,
@@ -208,5 +234,22 @@ pub fn lightmap_data() -> Value {
         ),
         lightmap_row("water vision without conduit power", &[], 100, true, 600),
     ];
+    let boss = |label, old, now| lightmap_row_with_boss(label, &[], (100, false, 0), (old, now));
+    let rows = [
+        rows,
+        vec![
+            boss("boss darkening steady", 1.0, 1.0),
+            boss("boss darkening rising", 0.25, 0.3),
+            boss("boss darkening fading", 0.6, 0.5875),
+            boss("boss darkening past zero", 0.01, -0.0025),
+            lightmap_row_with_boss(
+                "boss darkening and darkness",
+                &[(dark, 400, true, 30)],
+                (57, false, 0),
+                (0.4, 0.45),
+            ),
+        ],
+    ]
+    .concat();
     case("movement/lightmap-data", "movement", "lightmap_data", json!({"rows": rows}))
 }

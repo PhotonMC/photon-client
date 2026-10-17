@@ -7,4 +7,6 @@ layout(push_constant) uniform Push {
     vec4 camera;
     vec4 fog_colour;
     vec4 fog_distances;
+    // The boss bars' darkening of the world (x), after the run-specific values at 160.
+    layout(offset = 176) vec4 boss;
 } push;

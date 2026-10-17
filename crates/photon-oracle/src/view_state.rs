@@ -166,7 +166,7 @@ fn fog_view(row: &Value, partial: f32) -> Result<photon_render::sky::FogView, St
         darken_world: float_of(row, "darken_world")?,
         // The overworld's, in a level that is not flat.
         void_darkness: (32.0, -64, height),
-        boss_fog: false,
+        boss_fog: row["boss_fog"].as_bool().ok_or("boss_fog")?,
     };
     add_effects(&mut view, row, partial)?;
     if row["local"].as_bool().ok_or("local")? {
@@ -338,6 +338,11 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
             darkness_blend: view.darkness.unwrap_or(0.0),
             tick_count: i32_field(row, "tick_count")?,
             night_vision: intensity,
+            boss_darkening: photon_render::camera::BossDarkening {
+                old: float_of(row, "boss_darkening_old")?,
+                now: float_of(row, "boss_darkening")?,
+            }
+            .at(partial),
         },
         partial,
     );
@@ -348,6 +353,7 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
         "ambient": bits(&effects.base),
         "brightness": bits(&[effects.brightness]),
         "darkness": bits(&[effects.darkness]),
+        "boss_darkening": bits(&[effects.boss_darkening]),
     }))
 }
 

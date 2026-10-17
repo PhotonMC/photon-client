@@ -774,7 +774,7 @@
 "crates/photon-oracle/src/gui/result/chat.rs::suggestions_case" = 63
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 169
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 102
-"crates/photon-oracle/src/gui/result/hud.rs::hud_hotbar_case" = 64
+"crates/photon-oracle/src/gui/result/hud.rs::hud_hotbar_case" = 63
 "crates/photon-oracle/src/gui/result/hud.rs::hud_status_case" = 73
 "crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98

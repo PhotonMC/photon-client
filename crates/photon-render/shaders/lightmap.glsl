@@ -12,6 +12,7 @@ vec3 lightmap_texel(int block, int sky) {
     colour += push.sky_colour_factor.rgb * sky_brightness;
     float parabola = (2.0 * block_level - 1.0) * (2.0 * block_level - 1.0);
     colour += mix(push.block_tint_factor.rgb, vec3(1.0), 0.9 * parabola) * block_brightness;
+    colour = mix(colour, colour * vec3(0.7, 0.6, 0.6), push.boss.x);
     colour -= vec3(push.camera.w);
     colour = clamp(colour, 0.0, 1.0);
     float top = max(max(colour.x, colour.y), colour.z);

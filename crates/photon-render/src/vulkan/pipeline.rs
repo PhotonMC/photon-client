@@ -333,7 +333,7 @@ impl VulkanBackend {
                 } else {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
-                        .size(176)
+                        .size(192)
                 },
                 vk::PushConstantRange::default()
                     .stage_flags(vk::ShaderStageFlags::FRAGMENT)

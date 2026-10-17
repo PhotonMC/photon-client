@@ -83,10 +83,12 @@ pub struct FogView {
 }
 
 impl FogView {
-    /// Whether the sky is left undrawn (`LevelRenderer.addSkyPass`): in lava or powder snow, and
-    /// for an entity that has blindness or darkness.
+    /// Whether the sky is left undrawn (`LevelRenderer.addSkyPass`): in lava or powder snow, for an
+    /// entity that has blindness or darkness, and under a boss bar's world fog.
     pub fn hides_sky(&self) -> bool {
-        matches!(self.fog_type, FogType::Lava | FogType::PowderSnow)
+        // A boss bar's world fog leaves the sky out too (`shouldRenderSky`).
+        self.boss_fog
+            || matches!(self.fog_type, FogType::Lava | FogType::PowderSnow)
             || self.blindness.is_some()
             || self.darkness.is_some()
     }

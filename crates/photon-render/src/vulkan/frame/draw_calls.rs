@@ -123,7 +123,7 @@ impl VulkanBackend {
     ///
     /// `command_buffer` must be recording inside the scene's rendering scope, and `scene` must be
     /// the live scene.
-    pub(super) unsafe fn draw_run(&self, scene: &SceneResources, run: Run, base: &[f32; 40]) {
+    pub(super) unsafe fn draw_run(&self, scene: &SceneResources, run: Run, base: &[f32; 45]) {
         let (Some(buffer), first, count) = self.run_range(run) else {
             return;
         };
@@ -132,24 +132,25 @@ impl VulkanBackend {
         if sampled != Sampled::Unbound && set.is_none() {
             return;
         }
-        let mut push = [0.0_f32; 44];
-        push[..40].copy_from_slice(base);
+        let mut push = [0.0_f32; 45];
+        push[..40].copy_from_slice(&base[..40]);
+        push[44] = base[44];
         let bytes = match run {
             Run::Ground | Run::Held | Run::BlockParticle => {
                 push[40] = 1.0;
-                164
+                180
             }
             Run::Dissolve => {
                 push[40..42].copy_from_slice(&self.dissolve_mask_offset);
-                176
+                180
             }
             Run::Outline => {
                 let extent = self.description.extent;
                 push[16] = extent.width as f32;
                 push[17] = extent.height as f32;
-                160
+                180
             }
-            _ => 160,
+            _ => 180,
         };
         // SAFETY: recording (see `# Safety`); the pipeline, set and buffer belong to `scene` and
         // `self`, and the push constants are a prefix of `push`.
@@ -177,7 +178,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// `command_buffer` must be recording inside the scene's rendering scope.
-    pub(super) unsafe fn draw_portal(&self, base: &[f32; 40]) {
+    pub(super) unsafe fn draw_portal(&self, base: &[f32; 45]) {
         let Some(buffer) = self.portal.buffer.as_ref() else {
             return;
         };
@@ -188,9 +189,10 @@ impl VulkanBackend {
         if count == 0 {
             return;
         }
-        let mut push = [0.0_f32; 41];
-        push[..40].copy_from_slice(base);
+        let mut push = [0.0_f32; 45];
+        push[..40].copy_from_slice(&base[..40]);
         push[40] = self.portal_time;
+        push[44] = base[44];
         let (pipeline, sets) = (&portal.pipeline, portal.sets);
         // SAFETY: recording (see `# Safety`); the pipeline, both sets and the buffer are live, and
         // the push constants fill a prefix of the range the pipeline's layout has.
@@ -213,7 +215,7 @@ impl VulkanBackend {
                 pipeline.layout,
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
-                &as_bytes(&push)[..164],
+                &as_bytes(&push)[..180],
             );
             self.device
                 .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);

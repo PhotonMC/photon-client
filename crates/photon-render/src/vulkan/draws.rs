@@ -74,6 +74,7 @@ impl VulkanBackend {
             base_b,
             effects.brightness,
             effects.darkness,
+            effects.boss_darkening,
         ];
     }
 

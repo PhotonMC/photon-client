@@ -78,7 +78,7 @@ impl Play {
             render_distance,
             fog: crate::world::fog::fog_view(
                 &self.session,
-                (fluid, camera.y),
+                (fluid, camera.y, self.boss_fog(partial as f32)),
                 render_distance,
                 partial as f32,
             ),
@@ -97,6 +97,14 @@ impl Play {
 }
 
 impl Play {
+    /// The boss bars' darkening of the world between two ticks, and whether one makes world fog.
+    fn boss_fog(&self, partial: f32) -> (f32, bool) {
+        (
+            self.camera.boss.at(partial),
+            self.gui.boss_bars.creates_fog(),
+        )
+    }
+
     /// What the view is moved by, then turned by nausea's spin.
     fn view_motion(
         &self,
@@ -140,6 +148,7 @@ pub(super) fn tick_view(
     session: &photon_net::connection::PlaySession,
     sky: &crate::world::sky::Sky,
 ) {
+    camera.boss.tick(gui.boss_bars.darkens_screen());
     let eyes = session.player().map(|player| {
         camera.tick(player, crate::world::fog::nausea_blend(session, 1.0));
         let at = player.position();

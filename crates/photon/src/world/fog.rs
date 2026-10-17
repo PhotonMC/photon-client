@@ -25,7 +25,7 @@ pub fn nausea_blend(session: &PlaySession, partial: f32) -> f32 {
 /// The fog's view of the camera, in `fluid`, at `camera_y`, between two ticks.
 pub fn fog_view(
     session: &PlaySession,
-    (fluid, camera_y): (FogType, f64),
+    (fluid, camera_y, (darken_world, boss_fog)): (FogType, f64, (f32, bool)),
     render_distance: i32,
     partial: f32,
 ) -> FogView {
@@ -45,20 +45,19 @@ pub fn fog_view(
             .map(|state| state.night_vision_scale(partial)),
         water_vision: player.map(|player| player.water_vision()),
         render_distance,
-        // The boss bars' darkening and fog are not kept.
-        darken_world: 0.0,
+        darken_world,
         void_darkness: (
             if flat { 1.0 } else { 32.0 },
             world.dimension().min_y,
             camera_y,
         ),
-        boss_fog: false,
+        boss_fog,
     }
 }
 
 /// What the lightmap reads of the local player (`LightmapRenderStateExtractor.extract`): the
 /// darkness effect, the tick count, and the night vision the effect or the conduit gives.
-pub fn lightmap_view(session: &PlaySession, partial: f32) -> LightmapView {
+pub fn lightmap_view(session: &PlaySession, partial: f32, boss_darkening: f32) -> LightmapView {
     let local = session.world().local_player();
     let effects = local.map_or(&[][..], |local| local.effects());
     let water_vision = session.player().map_or(0.0, |player| player.water_vision());
@@ -72,5 +71,6 @@ pub fn lightmap_view(session: &PlaySession, partial: f32) -> LightmapView {
             .map_or(0.0, |state| state.blend_factor(partial)),
         tick_count: local.map_or(0, |local| local.tick_count()),
         night_vision,
+        boss_darkening,
     }
 }

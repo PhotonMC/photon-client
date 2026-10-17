@@ -172,7 +172,7 @@ impl Sky {
             &self.sprites,
             self.environment.skybox(),
         );
-        self.set_lightmap(backend, session, partial);
+        self.set_lightmap(backend, session, (partial, camera.fog.darken_world));
         self.clouds.draw(
             backend,
             &sky,
@@ -193,9 +193,15 @@ impl Sky {
 
     /// The lightmap's inputs, extracted once per tick from the probe's values at the end of the
     /// tick rather than blended within it, and what the player's effects make of them.
-    fn set_lightmap(&self, backend: &mut VulkanBackend, session: &PlaySession, partial: f32) {
+    fn set_lightmap(
+        &self,
+        backend: &mut VulkanBackend,
+        session: &PlaySession,
+        (partial, boss_darkening): (f32, f32),
+    ) {
         let lightmap = self.next.lightmap();
-        let effects = lightmap.effects(&super::fog::lightmap_view(session, partial), partial);
+        let view = super::fog::lightmap_view(session, partial, boss_darkening);
+        let effects = lightmap.effects(&view, partial);
         backend.set_lightmap(&lightmap, 1.4 + self.flicker.value(), &effects);
     }
 }

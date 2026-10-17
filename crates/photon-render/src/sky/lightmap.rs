@@ -48,6 +48,8 @@ pub struct LightmapView {
     /// `nightVisionEffectIntensity`: the night vision scale, the water vision under conduit
     /// power, or zero.
     pub night_vision: f32,
+    /// How far the boss bars have darkened the world, between two ticks.
+    pub boss_darkening: f32,
 }
 
 /// The inputs the lightmap shader takes besides the attributes' own.
@@ -59,6 +61,8 @@ pub struct LightmapEffects {
     pub darkness: f32,
     /// `renderState.brightness`, the mix towards the lifted colour.
     pub brightness: f32,
+    /// `renderState.bossOverlayWorldDarkening`: the sum's mix towards a redder dusk.
+    pub boss_darkening: f32,
 }
 
 /// `nightVisionEffectIntensity`: the night vision's scale, else the water vision with conduit
@@ -86,6 +90,7 @@ impl LightmapInputs {
             base: std::array::from_fn(|i| self.ambient[i].max(night[i])),
             darkness: pulse.max(0.0) * DARKNESS_EFFECT_SCALE,
             brightness: (GAMMA - modifier).max(0.0),
+            boss_darkening: view.boss_darkening,
         }
     }
 }

@@ -18,6 +18,8 @@ pub struct Camera {
     /// The nausea blend and the portal intensity the last tick ended with.
     nausea: f32,
     portal: f32,
+    /// `GameRenderer.bossOverlayWorldDarkening`.
+    pub boss: BossDarkening,
     /// `ScreenEffectRenderer`'s totem animation.
     pub activation: crate::item_activation::ItemActivation,
 }
@@ -32,6 +34,7 @@ impl Camera {
             spinning: Spinning::default(),
             nausea: 0.0,
             portal: 0.0,
+            boss: BossDarkening::default(),
             activation: crate::item_activation::ItemActivation::default(),
         }
     }
@@ -179,6 +182,35 @@ pub fn view_bob(walked: f32, bob: f32) -> [[f32; 4]; 4] {
     crate::scene::multiply(crate::scene::multiply(translate, around_z), around_x)
 }
 
+/// `GameRenderer.bossOverlayWorldDarkening`: how far the boss bars have darkened the world, now and
+/// a tick ago.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct BossDarkening {
+    pub old: f32,
+    pub now: f32,
+}
+
+impl BossDarkening {
+    /// One client tick (`GameRenderer.tick`): up by a twentieth while a bar darkens the world,
+    /// capped at one, and down by an eightieth otherwise, with no floor but the stop at zero.
+    pub fn tick(&mut self, darkens: bool) {
+        self.old = self.now;
+        if darkens {
+            self.now += 0.05;
+            if self.now > 1.0 {
+                self.now = 1.0;
+            }
+        } else if self.now > 0.0 {
+            self.now -= 0.0125;
+        }
+    }
+
+    /// `bossOverlayWorldDarkening(partial)`.
+    pub fn at(&self, partial_tick: f32) -> f32 {
+        photon_core::math::mth_lerp_f32(partial_tick, self.old, self.now)
+    }
+}
+
 /// `GameRenderer`'s spinning effect: the time and speed of the turn a portal
 /// or nausea puts on the view.
 #[derive(Debug, Clone, Copy, Default)]
@@ -262,6 +294,28 @@ fn rotation(angle: f32, [x, y, z]: [f32; 3]) -> [[f32; 4]; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A bar that darkens the world ramps it up by a twentieth a tick to one; once none does it
+    /// fades by an eightieth and stops at the first value that is not above zero, which may be a
+    /// little below it.
+    #[test]
+    fn the_boss_darkening_ramps_up_and_fades_out() {
+        let mut darkening = BossDarkening::default();
+        for _ in 0..30 {
+            darkening.tick(true);
+        }
+        assert_eq!(darkening.now, 1.0);
+        assert_eq!(darkening.old, 1.0);
+        darkening.tick(false);
+        assert_eq!((darkening.old, darkening.now), (1.0, 0.9875));
+        darkening.now = 0.01;
+        darkening.tick(false);
+        assert!(darkening.now < 0.0);
+        let stopped = darkening.now;
+        darkening.tick(false);
+        assert_eq!(darkening.now, stopped);
+        assert!((darkening.at(0.5) - stopped).abs() < 1e-6);
+    }
 
     /// JOML's matrices for the same inputs, built as `GameRenderer.bobView`
     /// builds them, printed column by column.
