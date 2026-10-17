@@ -353,23 +353,13 @@ impl ParticleEngine {
         self.local_body = body;
     }
 
-    /// Whether the id is the local player's.
-    pub fn is_local(&self, id: EntityId) -> bool {
-        self.local_body.is_some_and(|(local, _)| local == id)
-    }
-
-    /// Where an entity is and how big it is, if it is in the level.
-    pub fn body_of(&self, world: &ClientWorld, id: EntityId) -> Option<super::EntityBody> {
+    fn body_of(&self, world: &ClientWorld, id: EntityId) -> Option<super::EntityBody> {
         match self.local_body {
             Some((local, body)) if local == id => Some(body),
-            _ => world.entities().at(id).map(|entity| {
-                let dimensions = entity.dimensions();
-                super::EntityBody {
-                    position: entity.position(),
-                    width: dimensions.width(),
-                    height: dimensions.height(),
-                }
-            }),
+            _ => world
+                .entities()
+                .at(id)
+                .map(crate::ClientEntity::tracking_body),
         }
     }
 
@@ -391,13 +381,11 @@ impl ParticleEngine {
         &mut self,
         world: &ClientWorld,
         (entity, type_id, life_time): (EntityId, i32, i32),
+        body: super::EntityBody,
         view: &AddView,
         level_random: &mut RandomSource,
         mut particle_random: impl FnMut() -> RandomSource,
     ) {
-        let Some(body) = self.body_of(world, entity) else {
-            return;
-        };
         let (emitter, emitted) =
             super::TrackingEmitter::new(entity, type_id, life_time, particle_random(), body);
         for request in emitted {

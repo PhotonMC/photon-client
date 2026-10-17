@@ -430,23 +430,6 @@ impl PlaySession {
         Ok(())
     }
 
-    fn queue_emitter(
-        &mut self,
-        entity: EntityId,
-        particle: &'static str,
-        life_time: i32,
-        sound: Option<&'static str>,
-    ) {
-        self.effects
-            .tracking_emitters
-            .push(photon_world::particles::TrackingRequest {
-                entity,
-                particle,
-                life_time,
-                sound,
-            });
-    }
-
     fn on_entity_event(&mut self, (id, event): (EntityId, i8)) -> Result<(), ConnectionError> {
         // `LocalPlayer.handleEntityEvent`: 24 to 28 set the level.
         if self.local.player_id == Some(id) && (24..=28).contains(&event) {

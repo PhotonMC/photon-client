@@ -16,6 +16,16 @@ use photon_core::math::{Vec3, floor_f64};
 use crate::{ClientEntity, ClientEntityDimensions, ClientWorld};
 
 impl ClientEntity {
+    /// Where the entity is and how big (`getBbWidth`, `getBbHeight`), for what follows it.
+    pub fn tracking_body(&self) -> crate::particles::EntityBody {
+        let dimensions = self.dimensions();
+        crate::particles::EntityBody {
+            position: self.position(),
+            width: dimensions.width(),
+            height: dimensions.height(),
+        }
+    }
+
     /// `Entity.isPickable` of the entity as it stands: the type's answer,
     /// and a player who only watches is not aimed at.
     pub fn is_pickable(&self) -> bool {

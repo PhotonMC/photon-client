@@ -7,6 +7,7 @@ mod blocks;
 mod chat;
 mod connection;
 mod containers;
+mod emitters;
 mod entity;
 mod player;
 mod recipes;

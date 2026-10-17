@@ -22,6 +22,10 @@ pub struct TrackingRequest {
     pub life_time: i32,
     /// A sound played where the entity is, after the emitter is made.
     pub sound: Option<&'static str>,
+    /// Where the entity was when the packet was handled.
+    pub body: EntityBody,
+    /// Whether the entity is a player (a sound's source).
+    pub is_player: bool,
 }
 
 /// One emitter, spraying the particles of `type_id` about `entity`.
@@ -32,6 +36,9 @@ pub struct TrackingEmitter {
     life: i32,
     life_time: i32,
     random: RandomSource,
+    /// The entity's last known body: the game holds the entity itself, and a removed one stays
+    /// where it was.
+    body: EntityBody,
 }
 
 impl TrackingEmitter {
@@ -50,6 +57,7 @@ impl TrackingEmitter {
             life: 0,
             life_time,
             random,
+            body,
         };
         let sprayed = emitter.tick(Some(body));
         (emitter, sprayed)
@@ -60,9 +68,11 @@ impl TrackingEmitter {
     }
 
     /// `TrackingEmitter.tick`: sixteen tries at a point in the cube about the entity's middle, each
-    /// kept if it falls in the ball inside it. An entity gone from the level sprays nothing and its
-    /// emitter still runs out its time.
+    /// kept if it falls in the ball inside it. An entity gone from the level leaves the emitter
+    /// where it was last, and it sprays on there till its time is out.
     pub fn tick(&mut self, body: Option<EntityBody>) -> Vec<Emitted> {
+        self.body = body.unwrap_or(self.body);
+        let body = self.body;
         let mut sprayed = Vec::new();
         for _ in 0..16 {
             let xa = f64::from(self.random.next_float() * 2.0 - 1.0);
@@ -71,7 +81,6 @@ impl TrackingEmitter {
             if xa * xa + ya * ya + za * za > 1.0 {
                 continue;
             }
-            let Some(body) = body else { continue };
             let (x, y, z) = body.position;
             let width = f64::from(body.width);
             let height = f64::from(body.height);
@@ -138,13 +147,13 @@ mod tests {
         assert!(seen > 16);
     }
 
-    /// An emitter runs out its time, one tick of it spent in the constructor, and sprays nothing
-    /// for an entity that is gone.
+    /// An emitter runs out its time, one tick of it spent in the constructor, and sprays on where
+    /// an entity that is gone was last.
     #[test]
     fn an_emitter_dies_when_its_time_is_out() {
         let (mut emitter, _) = emitter(3);
         assert!(emitter.is_alive());
-        assert!(emitter.tick(None).is_empty());
+        assert!(!emitter.tick(None).is_empty());
         assert!(emitter.is_alive());
         emitter.tick(Some(body()));
         assert!(!emitter.is_alive());

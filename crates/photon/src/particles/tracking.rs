@@ -46,29 +46,28 @@ impl Particles {
             self.engine.create_tracking_emitter(
                 world,
                 (request.entity, type_id, request.life_time),
+                request.body,
                 &view,
                 &mut self.level_random,
                 || RandomSource::create(unique_seed(&mut uniquifier)),
             );
             self.uniquifier = uniquifier;
-            let (Some(event), Some(body)) =
-                (request.sound, self.engine.body_of(world, request.entity))
-            else {
+            let Some(event) = request.sound else {
                 continue;
             };
             // `playLocalSound`'s seed.
             self.level_random.next_long();
-            let source = if self.engine.is_local(request.entity)
-                || world
-                    .entities()
-                    .at(request.entity)
-                    .is_some_and(|entity| entity.is_player())
-            {
+            let source = if request.is_player {
                 LocalSoundSource::Players
             } else {
                 LocalSoundSource::Neutral
             };
-            sounds.push(LocalSound::at(event, source, (1.0, 1.0), body.position));
+            sounds.push(LocalSound::at(
+                event,
+                source,
+                (1.0, 1.0),
+                request.body.position,
+            ));
         }
         sounds
     }
