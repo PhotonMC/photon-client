@@ -11,7 +11,7 @@
 "crates/photon-oracle/src/math_cases/player.rs" = 538
 "crates/photon-oracle/src/model.rs" = 503
 "crates/photon-oracle/src/movement.rs" = 572
-"crates/photon-oracle/src/particles.rs" = 551
+"crates/photon-oracle/src/particles.rs" = 533
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
@@ -516,7 +516,7 @@
 "crates/photon-world/src/particles/particle.rs::Particle::tick" = 28
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 35
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 12
-"crates/photon-world/src/particles/resources.rs::provider_of" = 53
+"crates/photon-world/src/particles/resources.rs::provider_of" = 49
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 19
 "crates/photon-world/src/pick.rs::ClientWorld::entity_hit_result" = 11
 "crates/photon-world/src/region_copy.rs::ClientWorld::clip_with" = 16
@@ -999,7 +999,7 @@
 "crates/photon-world/src/particles/particle.rs::Particle::tick" = 90
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 85
-"crates/photon-world/src/particles/resources.rs::provider_of" = 75
+"crates/photon-world/src/particles/resources.rs::provider_of" = 73
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 91
 "crates/photon-world/src/player/motion.rs::ClientPlayerState::new" = 67
 "crates/photon-world/src/region_copy.rs::ClientWorld::clip_with" = 68
