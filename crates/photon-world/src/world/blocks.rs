@@ -48,6 +48,7 @@ impl ClientWorld {
         let ticks = type_name == "minecraft:end_gateway"
             || type_name == "minecraft:enchanting_table"
             || type_name == "minecraft:beacon"
+            || type_name == "minecraft:conduit"
             || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
@@ -315,9 +316,12 @@ impl ClientWorld {
     /// animation, and the potent sulfur block that is not dry.
     fn has_ticker(&self, type_id: i32, (x, y, z): (i32, i32, i32)) -> bool {
         match photon_data::block_entity_type::name(type_id) {
-            Some("minecraft:end_gateway" | "minecraft:enchanting_table" | "minecraft:beacon") => {
-                true
-            }
+            Some(
+                "minecraft:end_gateway"
+                | "minecraft:enchanting_table"
+                | "minecraft:beacon"
+                | "minecraft:conduit",
+            ) => true,
             Some("minecraft:potent_sulfur") => {
                 super::has_sulfur_ticker(self.block_state_or_air(x, y, z))
             }

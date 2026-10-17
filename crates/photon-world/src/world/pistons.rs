@@ -351,6 +351,8 @@ impl ClientWorld {
                 self.tick_enchanting_table(pos);
             } else if self.is_beacon_at(pos) {
                 self.tick_beacon(pos);
+            } else if self.is_conduit_at(pos) {
+                self.tick_conduit(pos);
             } else {
                 self.tick_end_gateway(pos);
             }

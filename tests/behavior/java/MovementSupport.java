@@ -554,6 +554,9 @@ class MovementSupport {
                 }
                 held = "beacon," + getField(beacon, "levels") + "," + getField(beacon, "lastCheckY") + ","
                     + String.join(";", sections);
+            } else if (entity instanceof net.minecraft.world.level.block.entity.ConduitBlockEntity conduit) {
+                held = "conduit," + conduit.tickCount + "," + Oracle.bits((float) getField(conduit, "activeRotation"))
+                    + "," + conduit.isActive() + "," + conduit.isHunting();
             } else if (entity instanceof net.minecraft.world.level.block.entity.EnchantingTableBlockEntity book) {
                 held = "book," + book.time + "," + String.join(",",
                     Oracle.bits(book.flip), Oracle.bits(book.oFlip), Oracle.bits(book.flipT),

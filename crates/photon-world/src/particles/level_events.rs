@@ -188,6 +188,14 @@ impl ParticleEngine {
                 self.level_add(context, "noxious_gas_cloud", at, (0.0, 0.0, 0.0));
                 Vec::new()
             }
+            LevelEvent::ConduitSpecks {
+                pos,
+                tick_count,
+                frame,
+            } => {
+                self.conduit_specks(context, (pos, tick_count), &frame);
+                Vec::new()
+            }
             LevelEvent::Geyser { at, water_blocks } => {
                 self.add_geyser(context, at, water_blocks);
                 Vec::new()
@@ -206,6 +214,36 @@ impl ParticleEngine {
                 context.level_random.next_float();
                 Vec::new()
             }
+        }
+    }
+
+    /// `ConduitBlockEntity.animationTick` with no target: a speck now and then from each frame
+    /// block, flying to the conduit's eye.
+    fn conduit_specks<F: FnMut() -> RandomSource>(
+        &mut self,
+        context: &mut LevelEventContext<'_, F>,
+        ((x, y, z), tick_count): ((i32, i32, i32), i32),
+        frame: &[(i32, i32, i32)],
+    ) {
+        let height = photon_core::math::mth_sin_f64(f64::from((tick_count + 35) as f32 * 0.1_f32))
+            / 2.0_f32
+            + 0.5_f32;
+        let height = f64::from(height);
+        let height = (height * height + height) * f64::from(0.3_f32);
+        let end = (
+            f64::from(x) + 0.5,
+            f64::from(y) + 1.5 + height,
+            f64::from(z) + 0.5,
+        );
+        for (fx, fy, fz) in frame {
+            if context.level_random.next_int_bound(50) != Ok(0) {
+                continue;
+            }
+            let dx = -0.5_f32 + context.level_random.next_float() + (fx - x) as f32;
+            let dy = -2.0_f32 + context.level_random.next_float() + (fy - y) as f32;
+            let dz = -0.5_f32 + context.level_random.next_float() + (fz - z) as f32;
+            let push = (f64::from(dx), f64::from(dy), f64::from(dz));
+            self.level_add(context, "nautilus", end, push);
         }
     }
 

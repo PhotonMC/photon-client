@@ -240,6 +240,7 @@ fn entity_type_of(block_name: &str) -> Option<&'static str> {
         "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
         "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
         "minecraft:beacon" => Some("minecraft:beacon"),
+        "minecraft:conduit" => Some("minecraft:conduit"),
         _ => None,
     }
 }
@@ -304,6 +305,16 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
         }
         "minecraft:enchanting_table" => book_line(&events.book),
         "minecraft:beacon" => beacon_line(&events.beacon),
+        "minecraft:conduit" => {
+            let conduit = &events.conduit;
+            format!(
+                "conduit,{},{:08x},{},{}",
+                conduit.tick_count,
+                (conduit.rotation as f32).to_bits(),
+                conduit.active,
+                conduit.hunting
+            )
+        }
         _ => format!("sulfur,{}", events.eruption_tick),
     }
 }

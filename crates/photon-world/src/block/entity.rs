@@ -162,6 +162,21 @@ impl BeaconState {
     }
 }
 
+/// A conduit's client state (`ConduitBlockEntity`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ConduitState {
+    /// `tickCount`.
+    pub tick_count: i32,
+    /// `activeRotation`, which only ever counts up by one.
+    pub rotation: i32,
+    /// `isActive`.
+    pub active: bool,
+    /// `isHunting`.
+    pub hunting: bool,
+    /// `effectBlocks`: the frame blocks the last look found.
+    pub frame: Vec<(i32, i32, i32)>,
+}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -181,6 +196,8 @@ pub struct BlockEntityEvents {
     pub book: BookState,
     /// A beacon's beam.
     pub beacon: BeaconState,
+    /// A conduit's shell.
+    pub conduit: ConduitState,
 }
 
 impl Default for BlockEntityEvents {
@@ -193,6 +210,7 @@ impl Default for BlockEntityEvents {
             moving: None,
             book: BookState::default(),
             beacon: BeaconState::default(),
+            conduit: ConduitState::default(),
         }
     }
 }

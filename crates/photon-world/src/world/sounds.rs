@@ -309,6 +309,13 @@ pub enum LevelEvent {
     PistonSound,
     /// A potent sulfur block's ticker adds a cloud of its gas (`addParticle`) at a place.
     NoxiousGasCloud { at: (f64, f64, f64) },
+    /// A conduit's tick (`ConduitBlockEntity.animationTick`): its frame sends nautilus specks
+    /// up to it.
+    ConduitSpecks {
+        pos: (i32, i32, i32),
+        tick_count: i32,
+        frame: Vec<(i32, i32, i32)>,
+    },
     /// An erupting potent sulfur block sends its geyser up through the water above it.
     Geyser {
         at: (f64, f64, f64),
