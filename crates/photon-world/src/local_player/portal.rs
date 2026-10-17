@@ -97,6 +97,19 @@ impl LocalPlayer {
         }
     }
 
+    /// What a respawn carries over to the new player (`handleRespawn`): the intensity a tick ago
+    /// and now. The process does not travel.
+    pub fn portal_carry(&self) -> (f32, f32) {
+        (self.portal.old_intensity, self.portal.intensity)
+    }
+
+    /// The new player after a respawn: the old one's intensity, and the cooldown the packet gives.
+    pub fn restore_portal(&mut self, (old, now): (f32, f32), cooldown: i32) {
+        self.portal.old_intensity = old;
+        self.portal.intensity = now;
+        self.portal.cooldown = cooldown;
+    }
+
     /// The portal effect's intensity between the last tick and this one.
     pub fn portal_effect_intensity(&self, partial_tick: f32) -> f32 {
         photon_core::math::mth_lerp_f32(
@@ -109,5 +122,39 @@ impl LocalPlayer {
     /// The portal effect's intensity as of the last tick (`GameRenderer.tick` reads this one).
     pub fn portal_effect_intensity_now(&self) -> f32 {
         self.portal.intensity
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn player() -> LocalPlayer {
+        LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            Vec3::ZERO,
+            0.0,
+            0.0,
+            ClientPlayerGameMode::Survival,
+            true,
+        )
+    }
+
+    /// A respawn keeps the effect's two intensities and takes the packet's cooldown, so a trip
+    /// through a portal goes on spinning and does not play the trigger sound again.
+    #[test]
+    fn a_respawn_carries_the_intensity_over() {
+        let mut old = player();
+        old.restore_portal((0.9, 1.0), 0);
+        let mut new = player();
+        new.restore_portal(old.portal_carry(), 40);
+        assert_eq!(new.portal_effect_intensity_now(), 1.0);
+        assert_eq!(new.portal_effect_intensity(0.0), 0.9);
+        assert_eq!(new.portal.cooldown, 40);
+        // Inside a portal block the new player starts no new effect: the intensity is not zero.
+        new.portal.cooldown = 0;
+        new.set_as_inside_portal(PortalKind::Nether);
+        new.tick_portal();
+        assert!(new.pending_sounds.is_empty());
     }
 }

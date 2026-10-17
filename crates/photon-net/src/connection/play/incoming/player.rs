@@ -185,7 +185,12 @@ impl PlaySession {
         self.world.recreate_local_player(data_to_keep);
         self.level_info.dimension_type_id = spawn_info.dimension_type_id;
         self.level_info.hashed_seed = spawn_info.seed;
-        // A respawn makes a new player that waits for its position.
+        // A respawn makes a new player that waits for its position; the portal effect goes with it.
+        self.local.respawn_portal = self
+            .local
+            .player
+            .as_ref()
+            .map(|player| (player.portal_carry(), spawn_info.portal_cooldown));
         self.local.player = None;
         self.local.permission_level = 0;
         self.local.loaded = false;

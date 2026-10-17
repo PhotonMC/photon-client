@@ -41,6 +41,8 @@ pub(super) struct LocalState {
     pub(super) win_game: bool,
     /// Whether a health update has arrived since the player last respawned.
     pub(super) health_received: bool,
+    /// The portal effect's intensities and the cooldown a respawn gives the player to come.
+    pub(super) respawn_portal: Option<((f32, f32), i32)>,
     /// The entity the crosshair last landed on (`Minecraft.hitResult`).
     pub(super) aimed_entity: Option<EntityId>,
     /// The hotbar slot the server was last told about.
@@ -186,6 +188,7 @@ impl Default for LocalState {
             death: None,
             win_game: false,
             health_received: false,
+            respawn_portal: None,
             aimed_entity: None,
             sent_slot: 0,
             game_mode_state: photon_game::game_mode::GameMode::default(),

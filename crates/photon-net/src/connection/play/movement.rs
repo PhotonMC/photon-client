@@ -195,6 +195,9 @@ impl PlaySession {
             if let Some(health) = known_health {
                 player.hurt_to(health);
             }
+            if let Some((carry, cooldown)) = self.local.respawn_portal.take() {
+                player.restore_portal(carry, cooldown);
+            }
             player
         });
         if let Some(abilities) = self.local.abilities {
