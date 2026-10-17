@@ -10,8 +10,29 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "view_scales" => view_scales_result(request),
         "camera_spin" => camera_spin_result(request),
         "item_activation_pose" => item_activation_pose_result(request),
+        "end_sky_buffer" => Ok(end_sky_buffer_result()),
         _ => return None,
     })
+}
+
+/// `end_sky_buffer`: the End sky's twenty-four corners, quad by quad, as the vertex buffer holds
+/// them (the first, second, third and last corner of each quad, in the triangles' order).
+fn end_sky_buffer_result() -> Value {
+    let vertices = photon_render::sky::end_sky_vertices();
+    // Each quad's triangles are 0 1 2 and 0 2 3: its corners are the first three vertices and the
+    // last of the six.
+    let rows: Vec<Value> = vertices
+        .chunks(6)
+        .flat_map(|quad| [quad[0], quad[1], quad[2], quad[5]])
+        .map(|vertex| {
+            json!({
+                "position": vertex.position.map(|value| format!("{:08x}", value.to_bits())),
+                "uv": vertex.uv.map(|value| format!("{:08x}", value.to_bits())),
+                "colour": vertex.colour.map(|channel| (channel * 255.0).round() as i64),
+            })
+        })
+        .collect();
+    json!({"rows": rows})
 }
 
 /// `item_activation_pose`: the pose the totem's animation draws the item at.

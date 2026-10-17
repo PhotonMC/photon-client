@@ -154,7 +154,7 @@ impl Sky {
         backend.set_world_border(&border_vertices)?;
         let (y_rot, x_rot) = camera.rotation;
         let look = Vec3::direction_from_rotation_components(x_rot, y_rot);
-        let sky = photon_render::sky::build_frame(
+        let sky = photon_render::sky::build_sky_frame(
             &attributes,
             &photon_render::sky::SkyView {
                 forward: [look.x as f32, look.y as f32, look.z as f32],

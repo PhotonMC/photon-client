@@ -112,6 +112,7 @@ const ORDER: &[Cases] = &[
     player::camera_hurt,
     player::camera_spin,
     player::item_activation_pose,
+    player::end_sky_buffer,
     objects::chest_cases,
     objects::shulker_box,
     objects::bell,

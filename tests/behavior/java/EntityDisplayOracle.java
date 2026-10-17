@@ -605,6 +605,69 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /**
+     * `SkyRenderer.buildEndSky`: its loop and `switch` on real JOML matrices and the real
+     * `BufferBuilder`, whose bytes are read back (the method itself ends in a GPU buffer).
+     */
+    static JsonObject endSkyBuffer(final JsonObject request) throws Exception {
+        var format = com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR;
+        var rows = new JsonArray();
+        try (var byteBufferBuilder = com.mojang.blaze3d.vertex.ByteBufferBuilder.exactlySized(24 * format.getVertexSize())) {
+            var bufferBuilder = new com.mojang.blaze3d.vertex.BufferBuilder(
+                byteBufferBuilder, com.mojang.blaze3d.PrimitiveTopology.QUADS, format);
+            for (int i = 0; i < 6; i++) {
+                var pose = new org.joml.Matrix4f();
+                switch (i) {
+                    case 1:
+                        pose.rotationX((float) (Math.PI / 2));
+                        break;
+                    case 2:
+                        pose.rotationX((float) (-Math.PI / 2));
+                        break;
+                    case 3:
+                        pose.rotationX((float) Math.PI);
+                        break;
+                    case 4:
+                        pose.rotationZ((float) (Math.PI / 2));
+                        break;
+                    case 5:
+                        pose.rotationZ((float) (-Math.PI / 2));
+                }
+                bufferBuilder.addVertex(pose, -100.0F, -100.0F, -100.0F).setUv(0.0F, 0.0F).setColor(-14145496);
+                bufferBuilder.addVertex(pose, -100.0F, -100.0F, 100.0F).setUv(0.0F, 16.0F).setColor(-14145496);
+                bufferBuilder.addVertex(pose, 100.0F, -100.0F, 100.0F).setUv(16.0F, 16.0F).setColor(-14145496);
+                bufferBuilder.addVertex(pose, 100.0F, -100.0F, -100.0F).setUv(16.0F, 0.0F).setColor(-14145496);
+            }
+            try (var meshData = bufferBuilder.buildOrThrow()) {
+                var bytes = meshData.vertexBuffer().order(java.nio.ByteOrder.nativeOrder());
+                int size = format.getVertexSize();
+                for (int vertex = 0; vertex < 24; vertex++) {
+                    int at = bytes.position() + vertex * size;
+                    var row = new JsonObject();
+                    var position = new JsonArray();
+                    for (int k = 0; k < 3; k++) {
+                        position.add(Oracle.bits(bytes.getFloat(at + 4 * k)));
+                    }
+                    row.add("position", position);
+                    var uv = new JsonArray();
+                    for (int k = 0; k < 2; k++) {
+                        uv.add(Oracle.bits(bytes.getFloat(at + 12 + 4 * k)));
+                    }
+                    row.add("uv", uv);
+                    var colour = new JsonArray();
+                    for (int k = 0; k < 4; k++) {
+                        colour.add(bytes.get(at + 20 + k) & 255);
+                    }
+                    row.add("colour", colour);
+                    rows.add(row);
+                }
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();

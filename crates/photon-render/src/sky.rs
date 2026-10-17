@@ -31,6 +31,8 @@ mod ambience;
 pub use ambience::SkyAmbience;
 mod attribute;
 pub use attribute::*;
+mod end_sky;
+pub use end_sky::{build_sky_frame, end_sky_vertices};
 mod environment;
 pub use environment::*;
 mod fog;

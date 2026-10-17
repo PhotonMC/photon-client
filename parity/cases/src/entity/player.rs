@@ -84,6 +84,12 @@ pub fn item_activation_pose() -> Vec<Value> {
     vec![entity("item-activation-pose", "item_activation_pose", rows)]
 }
 
+/// The End sky's cube of quads: where their corners are after the turns, the texture's repeat
+/// and the tint, read back from the game's own vertex builder.
+pub fn end_sky_buffer() -> Vec<Value> {
+    vec![entity("end-sky-buffer", "end_sky_buffer", vec![json!({"label": "all"})])]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

@@ -10,7 +10,10 @@ void main() {
     if (in_uv.x >= 0.0) {
         // Celestial sprites are sampled at the nearest texel of the top level.
         ivec2 size = textureSize(atlas, 0);
-        vec4 texel = texelFetch(atlas, clamp(ivec2(floor(in_uv * vec2(size))), ivec2(0), size - 1), 0);
+        ivec2 at = ivec2(floor(in_uv * vec2(size)));
+        // The End sky's cube repeats its texture (marked by -2 in the fog's second distance).
+        at = in_fog.y <= -2.0 ? ((at % size) + size) % size : clamp(at, ivec2(0), size - 1);
+        vec4 texel = texelFetch(atlas, at, 0);
         if (texel.a == 0.0) { discard; }
         colour *= texel;
     }

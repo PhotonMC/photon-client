@@ -20,6 +20,8 @@ pub enum SkyBlend {
     Translucent,
     /// Source times its alpha added to the destination.
     Overlay,
+    /// The End sky's cube, sampling the End sky texture repeated and drawn without fog.
+    EndSky,
 }
 
 /// Everything one frame of sky needs.
@@ -76,8 +78,8 @@ pub fn moon_sprites() -> impl Iterator<Item = String> {
         .map(|phase| format!("minecraft:environment/celestial/moon/{phase}"))
 }
 
-/// Whether the sky's shapes are drawn: the overworld's, unless the camera is where the sky is not
-/// seen.
+/// Whether the overworld's sky shapes are drawn, unless the camera is where the sky is not seen
+/// (`LevelRenderer.addSkyPass`).
 fn draws_sky(skybox: Skybox, view: &SkyView) -> bool {
     skybox == Skybox::Overworld && !view.fog.hides_sky()
 }

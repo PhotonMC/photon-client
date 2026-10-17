@@ -165,19 +165,31 @@ impl VulkanBackend {
             ),
         ];
         for &(blend, first, count) in &sky.batches {
-            let pipeline = match blend {
-                crate::sky::SkyBlend::Translucent => &scene.sky_pipeline,
-                crate::sky::SkyBlend::Overlay => &scene.sky_overlay_pipeline,
+            let Some((pipeline, set)) = self.sky_batch(scene, blend) else {
+                continue;
             };
             // SAFETY: recording (see `# Safety`); the pipeline, set and buffer are live.
             unsafe {
-                self.draw_vertices(
-                    pipeline,
-                    (Some(scene.descriptor_set), &push),
-                    buffer,
-                    (first, count),
-                );
+                self.draw_vertices(pipeline, (Some(set), &push), buffer, (first, count));
             }
+        }
+    }
+
+    /// The pipeline and the sampled set of a run of sky: the block atlas, or for the End's cube
+    /// the End sky texture the end portal's layers also use (none until it is loaded).
+    fn sky_batch<'a>(
+        &'a self,
+        scene: &'a SceneResources,
+        blend: crate::sky::SkyBlend,
+    ) -> Option<(&'a Pipeline, vk::DescriptorSet)> {
+        let atlas = scene.descriptor_set;
+        match blend {
+            crate::sky::SkyBlend::Translucent => Some((&scene.sky_pipeline, atlas)),
+            crate::sky::SkyBlend::Overlay => Some((&scene.sky_overlay_pipeline, atlas)),
+            crate::sky::SkyBlend::EndSky => self
+                .portal_scene
+                .as_ref()
+                .map(|portal| (&scene.sky_pipeline, portal.sets[0])),
         }
     }
 
