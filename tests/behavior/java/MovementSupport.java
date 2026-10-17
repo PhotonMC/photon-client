@@ -495,6 +495,20 @@ class MovementSupport {
                     described.get("z").getAsInt()));
             }
         }
+        if (row.has("conduit_targets")) {
+            // The mob a conduit's update tag names, one of the row's parrots by its number.
+            for (var element : row.getAsJsonArray("conduit_targets")) {
+                var described = element.getAsJsonObject();
+                var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                    described.get("z").getAsInt());
+                var tag = new net.minecraft.nbt.CompoundTag();
+                tag.put("Target", new net.minecraft.nbt.IntArrayTag(net.minecraft.core.UUIDUtil.uuidToIntArray(
+                    vaultUuid(described.getAsJsonArray("uuid")))));
+                level.getBlockEntity(pos).loadWithComponents(
+                    net.minecraft.world.level.storage.TagValueInput.create(
+                        net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+            }
+        }
         if (row.has("vaults")) {
             for (var element : row.getAsJsonArray("vaults")) {
                 var described = element.getAsJsonObject();

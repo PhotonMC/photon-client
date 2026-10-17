@@ -175,6 +175,8 @@ pub struct ConduitState {
     pub hunting: bool,
     /// `effectBlocks`: the frame blocks the last look found.
     pub frame: Vec<(i32, i32, i32)>,
+    /// `destroyTarget`: the mob the update tag says the conduit is attacking.
+    pub target: Option<photon_core::binary::Uuid>,
 }
 
 /// A vault's display item's spin (`VaultClientData`), in whole degrees: it starts at none and
@@ -239,6 +241,10 @@ impl ClientBlockEntity {
         let spawner_state = parse_spawner_state(type_id, tag.as_deref());
         let events = BlockEntityEvents {
             age: parse_gateway_age(type_id, tag.as_deref()),
+            conduit: ConduitState {
+                target: parse_conduit_target(type_id, tag.as_deref()),
+                ..ConduitState::default()
+            },
             ..BlockEntityEvents::default()
         };
         Self {
@@ -271,6 +277,17 @@ impl ClientBlockEntity {
     pub fn spawner_state(&self) -> Option<&ClientSpawnerState> {
         self.spawner_state.as_ref()
     }
+}
+
+/// `ConduitBlockEntity.loadAdditional`'s `Target`: the mob it attacks, none if the tag names none.
+fn parse_conduit_target(type_id: i32, tag: Option<&[u8]>) -> Option<photon_core::binary::Uuid> {
+    if photon_data::block_entity_type::name(type_id) != Some("minecraft:conduit") {
+        return None;
+    }
+    let mut input = tag?;
+    let fields = photon_core::nbt::read_nbt(&mut input).ok()??;
+    let target = fields.iter().find(|field| field.key == "Target")?;
+    crate::particles::uuid_of_tag(&target.value)
 }
 
 /// `TheEndGatewayBlockEntity.loadAdditional`'s `Age`: none is none.

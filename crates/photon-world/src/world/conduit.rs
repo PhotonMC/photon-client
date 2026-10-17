@@ -114,12 +114,14 @@ impl ClientWorld {
         if conduit.active {
             conduit.rotation += 1;
         }
-        let (tick_count, frame) = (conduit.tick_count, conduit.frame.clone());
-        if !frame.is_empty() {
+        let (tick_count, frame, target) =
+            (conduit.tick_count, conduit.frame.clone(), conduit.target);
+        if !frame.is_empty() || target.is_some() {
             self.level_events.0.push(LevelEvent::ConduitSpecks {
                 pos,
                 tick_count,
                 frame,
+                target,
             });
         }
     }

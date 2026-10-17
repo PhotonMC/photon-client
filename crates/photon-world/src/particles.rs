@@ -65,6 +65,7 @@ pub use level_events::LevelEventContext;
 pub use level_events_dripstone::DripstoneAttributes;
 pub use level_events_vault::PlayerSpot;
 pub(crate) use level_events_vault::shared_data as vault_shared_data;
+pub(crate) use level_events_vault::uuid_of as uuid_of_tag;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;

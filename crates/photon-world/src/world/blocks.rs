@@ -213,9 +213,11 @@ impl ClientWorld {
             .get(&key)
             .filter(|old| old.type_id == entity.type_id)
         {
-            let age = updated.events.age;
+            // What `loadAdditional` reads comes from the new tag, the rest stays.
+            let (age, target) = (updated.events.age, updated.events.conduit.target);
             updated.events = old.events.clone();
             updated.events.age = age;
+            updated.events.conduit.target = target;
         }
         chunk.block_entities.insert(key, updated);
         if !existed && self.has_ticker(entity.type_id, key) {

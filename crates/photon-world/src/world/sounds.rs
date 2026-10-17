@@ -318,6 +318,8 @@ pub enum LevelEvent {
         pos: (i32, i32, i32),
         tick_count: i32,
         frame: Vec<(i32, i32, i32)>,
+        /// The mob it attacks, if the update tag names one.
+        target: Option<photon_core::binary::Uuid>,
     },
     /// An erupting potent sulfur block sends its geyser up through the water above it.
     Geyser {

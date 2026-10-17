@@ -4,6 +4,7 @@
 use serde_json::{Value, json};
 
 use super::engine::*;
+use crate::bits::f64_bits;
 use crate::movement::world::{put, put_with};
 
 /// The places of a conduit's frame, as offsets from it: two blocks out along some axis and in line
@@ -44,6 +45,7 @@ fn columns() -> (Vec<Value>, Vec<Value>) {
     conduit(9, true, 42, Some("air"));
     conduit(16, false, 0, None);
     conduit(23, true, 42, Some("stone"));
+
     (blocks, places)
 }
 
@@ -54,6 +56,23 @@ fn conduit_row(label: &str, game_time: u64) -> Value {
         .blocks(blocks)
         .set("block_entities", json!(places))
         .set("watch", json!(watch))
+        // Two players, and the conduits told to attack them: a hunting one, an idle one with a frame
+        // too small, and one told to attack a player the level does not have.
+        .set(
+            "players",
+            json!([
+                {"uuid": [1, 2, 3, 4], "x": f64_bits(-11.5), "y": f64_bits(66.0), "z": f64_bits(3.5)},
+                {"uuid": [5, 6, 7, 8], "x": f64_bits(23.5), "y": f64_bits(66.0), "z": f64_bits(4.5)},
+            ]),
+        )
+        .set(
+            "conduit_targets",
+            json!([
+                {"x": -12, "y": 64, "z": 0, "uuid": [1, 2, 3, 4]},
+                {"x": 23, "y": 64, "z": 0, "uuid": [5, 6, 7, 8]},
+                {"x": 2, "y": 64, "z": 0, "uuid": [9, 9, 9, 9]},
+            ]),
+        )
         .set("game_time", json!(game_time))
         .set("tick_block_entities", json!(true))
         .ticks(100)

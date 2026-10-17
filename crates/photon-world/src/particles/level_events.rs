@@ -182,8 +182,9 @@ impl ParticleEngine {
                 pos,
                 tick_count,
                 frame,
+                target,
             } => {
-                self.conduit_specks(context, (pos, tick_count), &frame);
+                self.conduit_specks(context, (pos, tick_count), (&frame, target));
                 Vec::new()
             }
             LevelEvent::VaultTick { pos } => {
@@ -244,7 +245,7 @@ impl ParticleEngine {
         &mut self,
         context: &mut LevelEventContext<'_, F>,
         ((x, y, z), tick_count): ((i32, i32, i32), i32),
-        frame: &[(i32, i32, i32)],
+        (frame, target): (&[(i32, i32, i32)], Option<photon_core::binary::Uuid>),
     ) {
         let height = photon_core::math::mth_sin_f64(f64::from((tick_count + 35) as f32 * 0.1_f32))
             / 2.0_f32
@@ -265,6 +266,31 @@ impl ParticleEngine {
             let dz = -0.5_f32 + context.level_random.next_float() + (fz - z) as f32;
             let push = (f64::from(dx), f64::from(dy), f64::from(dz));
             self.level_add(context, "nautilus", end, push);
+        }
+        // `ConduitBlockEntity.animationTick`'s target: a speck from the mob's eyes to the conduit,
+        // spread by its size; the target is a living entity the level knows by its UUID.
+        let found = target.and_then(|uuid| {
+            context
+                .world
+                .entities()
+                .values()
+                .find(|entity| entity.is_living_entity() && entity.uuid == uuid)
+                .map(|entity| {
+                    let (x, y, z) = entity.position();
+                    let size = entity.dimensions();
+                    (
+                        (x, y + f64::from(size.eye_height()), z),
+                        (size.width(), size.height()),
+                    )
+                })
+        });
+        if let Some((at, (width, height))) = found {
+            let random = &mut *context.level_random;
+            let x = (-0.5_f32 + random.next_float()) * (3.0_f32 + width);
+            let y = -1.0_f32 + random.next_float() * height;
+            let z = (-0.5_f32 + random.next_float()) * (3.0_f32 + width);
+            let push = (f64::from(x), f64::from(y), f64::from(z));
+            self.level_add(context, "nautilus", at, push);
         }
     }
 

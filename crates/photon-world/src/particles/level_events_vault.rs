@@ -70,7 +70,7 @@ pub(crate) fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultSha
 }
 
 /// `UUIDUtil.CODEC`: four ints, the high half first.
-fn uuid_of(value: &FieldValue) -> Option<Uuid> {
+pub(crate) fn uuid_of(value: &FieldValue) -> Option<Uuid> {
     let FieldValue::IntArray(ints) = value else {
         return None;
     };

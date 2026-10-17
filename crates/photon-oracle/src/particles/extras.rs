@@ -75,6 +75,7 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
         world.seed_book_random(seed);
     }
     place_block_entities(world, row)?;
+    place_conduit_targets(world, row)?;
     Ok(())
 }
 
@@ -101,6 +102,33 @@ fn put_entity(
     } else {
         Err(format!("a {kind} was rejected"))
     }
+}
+
+/// The mob each conduit of a row's `conduit_targets` is told to attack, by its update tag.
+fn place_conduit_targets(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    let conduit_type =
+        photon_data::block_entity_type::id("minecraft:conduit").ok_or("no conduit entity")?;
+    for target in row["conduit_targets"].as_array().into_iter().flatten() {
+        let tag = [Field {
+            key: "Target".into(),
+            value: FieldValue::IntArray(uuid_of(&target["uuid"])?.1.to_vec()),
+        }];
+        let mut bytes = Vec::new();
+        photon_core::nbt::write_nbt(Some(&tag), &mut bytes);
+        let (x, y, z) = (
+            i32_field(target, "x")?,
+            i32_field(target, "y")?,
+            i32_field(target, "z")?,
+        );
+        world.apply_block_entity_update(BlockEntityInput {
+            x,
+            y,
+            z,
+            type_id: conduit_type,
+            tag: Some(&bytes),
+        });
+    }
+    Ok(())
 }
 
 /// An end gateway's block entity as the chunk packet carries it: with its age.
