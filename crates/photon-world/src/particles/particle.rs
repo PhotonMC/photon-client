@@ -90,6 +90,8 @@ pub(super) enum Kind {
     /// `TerrainParticle`: a flake of a block, showing a quarter of the block's picture at a
     /// place (`uo`, `vo`, in quarters of it) it draws at random.
     Terrain { uo: f32, vo: f32 },
+    /// `BlockMarker`: the whole picture of a block, at a fixed size.
+    BlockMarker,
 }
 
 /// Which atlas a particle's picture is in.

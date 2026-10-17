@@ -2,6 +2,7 @@
 //! level's random) and show what they show (by their own random): a torch's flame and smoke, a
 //! lit redstone torch's dust, lava's pops, water's specks, and the drips under a fluid.
 
+use photon_core::ids::BlockStateId;
 use photon_core::random::RandomSource;
 use photon_data::block::definition::Fluid;
 
@@ -46,6 +47,23 @@ impl ParticleEngine {
         let z = zt + pick(context.level_random);
         let state = context.world.block_state_or_air(x, y, z);
         self.block_animate_tick(state, (x, y, z), animate_random, (context, sounds));
+        self.fluid_animate_tick(state, (x, y, z), animate_random, (context, sounds));
+        // `markerParticleTarget`: a creative player holding a barrier or a light sees where they are.
+        let block = usize::from(crate::block::state_or_air(state).block);
+        if self.marker_block == Some(block) {
+            let at = (f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5);
+            self.level_add_data(context, "block_marker", ParticleData::Block(state), at);
+        }
+    }
+
+    /// The fluid's `animateTick` of the block picked, and a fluid's drip below it one time in ten.
+    fn fluid_animate_tick<F: FnMut() -> RandomSource>(
+        &mut self,
+        state: BlockStateId,
+        (x, y, z): (i32, i32, i32),
+        animate_random: &mut RandomSource,
+        (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
+    ) {
         let Some(info) = crate::block::state(state) else {
             return;
         };

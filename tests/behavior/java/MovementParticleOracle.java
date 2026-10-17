@@ -150,6 +150,10 @@ class MovementParticleOracle extends MovementMenuOracle {
                     return i;
                 }
             }
+            if (sprite instanceof BlankSprite) {
+                // A block's own picture (a marker): the engine counts it as its first.
+                return 0;
+            }
             throw new IllegalStateException("a sprite not of the set");
         }
     }
@@ -528,6 +532,14 @@ class MovementParticleOracle extends MovementMenuOracle {
                     }
                 });
         seedSpellRandom(row.has("spell_seed") ? row.get("spell_seed").getAsLong() : 0L);
+        if (row.has("marker_block")) {
+            // A marker takes its picture from the block's model: here the one blank sprite.
+            BlankModels.sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
+                unsafe.allocateInstance(BlankSprite.class);
+            BlankModelManager.models = (net.minecraft.client.renderer.block.BlockStateModelSet)
+                unsafe.allocateInstance(BlankModels.class);
+            setField(minecraft, "modelManager", unsafe.allocateInstance(BlankModelManager.class));
+        }
         var engine = new SeededEngine(level, resources);
         setField(engine, "random", net.minecraft.util.RandomSource.create(row.get("engine_seed").getAsLong()));
         long base = row.get("particle_seed_base").getAsLong();
@@ -575,9 +587,13 @@ class MovementParticleOracle extends MovementMenuOracle {
                     int x = event.get("x").getAsInt();
                     int y = event.get("y").getAsInt();
                     int z = event.get("z").getAsInt();
+                    net.minecraft.world.level.block.Block marker = row.has("marker_block")
+                        ? net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(
+                            net.minecraft.resources.Identifier.parse(row.get("marker_block").getAsString()))
+                        : null;
                     for (int i = 0; i < event.get("count").getAsInt(); i++) {
-                        level.doAnimateTick(x, y, z, 16, animateRandom, null, cursor);
-                        level.doAnimateTick(x, y, z, 32, animateRandom, null, cursor);
+                        level.doAnimateTick(x, y, z, 16, animateRandom, marker, cursor);
+                        level.doAnimateTick(x, y, z, 32, animateRandom, marker, cursor);
                     }
                     continue;
                 }

@@ -232,7 +232,7 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
             row["spell_seed"].as_i64().unwrap_or(0),
         ));
         let engine_random = RandomSource::create(seed_of("engine_seed")?);
-        let mut engine = events::engine_with_songs(engine_random, resources);
+        let mut engine = events::engine_with_songs(engine_random, resources, row);
         let mut level_random = RandomSource::create(seed_of("level_seed")?);
         let mut listener_random = RandomSource::create(seed_of("listener_seed")?);
         let base = seed_of("particle_seed_base")?;

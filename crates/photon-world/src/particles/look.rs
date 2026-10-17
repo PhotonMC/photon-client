@@ -38,6 +38,8 @@ impl Particle {
                 let s = (self.age as f32 + partial) / self.lifetime as f32 * 0.75;
                 self.quad_size * clamp_f32(s, 0.0, 1.0)
             }
+            // `BlockMarker.getQuadSize`.
+            Kind::BlockMarker => 0.5,
             _ => self.quad_size,
         }
     }
@@ -114,7 +116,7 @@ impl Particle {
     /// The atlas the picture is in.
     pub fn atlas(&self) -> ParticleAtlas {
         match self.kind {
-            Kind::Terrain { .. } => ParticleAtlas::Blocks,
+            Kind::Terrain { .. } | Kind::BlockMarker => ParticleAtlas::Blocks,
             _ => ParticleAtlas::Particles,
         }
     }

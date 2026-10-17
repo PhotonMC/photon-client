@@ -92,6 +92,22 @@ impl Particle {
         particle
     }
 
+    /// `BlockMarker`: a still square of the block's own picture, half a block across, for four
+    /// seconds.
+    pub fn block_marker(
+        random: RandomSource,
+        at: (f64, f64, f64),
+        state: BlockStateId,
+        materials: &dyn TerrainMaterials,
+    ) -> Self {
+        let sprites = Arc::new(SpriteSet::new(vec![materials.particle_texture(state)]));
+        let mut particle = Self::at(random, at, (&sprites, 0), Kind::BlockMarker).quad();
+        particle.gravity = 0.0;
+        particle.lifetime = 80;
+        particle.has_physics = false;
+        particle
+    }
+
     /// `TerrainParticle.Provider`: nothing for air, a piston in motion or a block with no flakes.
     pub fn terrain_provider(
         random: RandomSource,

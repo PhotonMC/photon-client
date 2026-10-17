@@ -167,10 +167,16 @@ fn vanilla_registries() -> &'static photon_game::registries::Registries {
 pub(super) fn engine_with_songs(
     random: RandomSource,
     resources: photon_world::particles::ParticleResources,
+    row: &Value,
 ) -> photon_world::particles::ParticleEngine {
     let mut engine = photon_world::particles::ParticleEngine::new(random, resources);
     let songs = vanilla_registries().jukebox_songs.iter();
     engine.set_jukebox_songs(songs.map(|song| song.sound_event.clone()).collect());
+    // The block a creative player's marker item stands for, when the row has one.
+    let marker = row["marker_block"]
+        .as_str()
+        .and_then(photon_data::block::registry::block_index);
+    engine.set_marker_block(marker);
     engine
 }
 

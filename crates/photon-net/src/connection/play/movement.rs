@@ -245,6 +245,23 @@ impl PlaySession {
         )
     }
 
+    /// `ClientLevel.getMarkerParticleTarget`: the block a creative player's barrier or light in
+    /// the main hand stands for, which the level shows markers on.
+    pub fn marker_particle_block(&self) -> Option<usize> {
+        if self.game_mode() != photon_world::ClientPlayerGameMode::Creative {
+            return None;
+        }
+        let held = self
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot((36 + self.local.status.selected_slot) as i16))
+            .map(|stack| stack.item_registry_id())?;
+        let item = photon_world::block::rules::item(held)?;
+        matches!(item.name, "minecraft:barrier" | "minecraft:light")
+            .then(|| photon_data::block::registry::block_index(item.name))
+            .flatten()
+    }
+
     /// The registry id of what the off hand holds (air when empty).
     pub(super) fn off_hand_item(&self) -> ItemId {
         self.world

@@ -55,6 +55,7 @@ enum Provider {
     Suspended,
     SuspendedTown,
     Terrain,
+    BlockMarker,
     Crumbling,
     DustPillar,
     Mark(super::hit::Mark),
@@ -113,10 +114,6 @@ fn provider_of(name: &str) -> Option<Provider> {
         "mycelium" | "happy_villager" | "egg_crack" | "composter" | "dolphin" => {
             Provider::SuspendedTown
         }
-        "block" => Provider::Terrain,
-        "block_crumble" => Provider::Crumbling,
-        "dust_pillar" => Provider::DustPillar,
-        "falling_dust" => Provider::FallingDust,
         "end_rod" => Provider::EndRod,
         "vibration" => Provider::Vibration,
         "trail" => Provider::Trail,
@@ -140,7 +137,21 @@ fn provider_of(name: &str) -> Option<Provider> {
         {
             Provider::Drip
         }
-        _ => Provider::Mark(super::hit::Mark::of(name)?),
+        _ => {
+            block_provider_of(name).or_else(|| Some(Provider::Mark(super::hit::Mark::of(name)?)))?
+        }
+    })
+}
+
+/// The providers of the particles made of a block.
+fn block_provider_of(name: &str) -> Option<Provider> {
+    Some(match name {
+        "block" => Provider::Terrain,
+        "block_marker" => Provider::BlockMarker,
+        "block_crumble" => Provider::Crumbling,
+        "dust_pillar" => Provider::DustPillar,
+        "falling_dust" => Provider::FallingDust,
+        _ => return None,
     })
 }
 
@@ -223,7 +234,7 @@ impl ParticleResources {
         let provider = provider_of(name)?;
         if matches!(
             provider,
-            Provider::Terrain | Provider::Crumbling | Provider::DustPillar
+            Provider::Terrain | Provider::BlockMarker | Provider::Crumbling | Provider::DustPillar
         ) {
             return self.create_terrain(
                 world,
@@ -418,6 +429,9 @@ impl ParticleResources {
     ) -> Option<Particle> {
         let materials = self.terrain.as_deref()?;
         let state = data.block_state()?;
+        if provider == Provider::BlockMarker {
+            return Some(Particle::block_marker(random(), at, state, materials));
+        }
         if !super::terrain::makes_terrain_particles(state) {
             return None;
         }

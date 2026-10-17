@@ -160,6 +160,8 @@ pub struct ParticleEngine {
     /// alive or waiting.
     spore_blossoms: i32,
     pub(super) jukeboxes: super::jukebox::Jukeboxes,
+    /// The block a creative player's marker item stands for (`markerParticleTarget`).
+    pub(super) marker_block: Option<usize>,
 }
 
 /// `ParticleLimit.SPORE_BLOSSOM`.
@@ -182,7 +184,14 @@ impl ParticleEngine {
             resources,
             spore_blossoms: 0,
             jukeboxes: super::jukebox::Jukeboxes::default(),
+            marker_block: None,
         }
+    }
+
+    /// The block the marker particles show (`ClientLevel.getMarkerParticleTarget`): a barrier or a
+    /// light in the hand of a creative player.
+    pub fn set_marker_block(&mut self, block: Option<usize>) {
+        self.marker_block = block;
     }
 
     /// A new level: no record plays (`LevelEventHandler.playingJukeboxSongs` is the level's own).

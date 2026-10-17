@@ -196,6 +196,25 @@ fn rain_plane() -> Vec<Value> {
     blocks
 }
 
+/// Barriers and lights among stone and torches.
+fn marker_plane() -> Vec<Value> {
+    let kinds: [(&str, &[(&str, &str)]); 5] = [
+        ("minecraft:barrier", &[("waterlogged", "false")]),
+        ("minecraft:light", &[("level", "7"), ("waterlogged", "false")]),
+        ("minecraft:stone", &[]),
+        ("minecraft:torch", &[]),
+        ("minecraft:barrier", &[("waterlogged", "true")]),
+    ];
+    let mut blocks = Vec::new();
+    for x in -15_i64..16 {
+        for z in -15_i64..16 {
+            let (block, properties) = kinds[(x * 3 + z * 5).rem_euclid(kinds.len() as i64) as usize];
+            blocks.push(at((x, 64, z), block, properties));
+        }
+    }
+    blocks
+}
+
 pub fn rows() -> Vec<Value> {
     let seeds = |tick: i64| 400 + tick;
     vec![
@@ -227,6 +246,17 @@ pub fn rows() -> Vec<Value> {
         .set("weather", json!([f32_bits(1.0), f32_bits(0.0)]))
         .set("light", json!(true))
         .ticks(6)
+        .seeds(4000)
+        .describe(10)
+        .row(),
+        // A creative player holding a barrier sees markers on barriers (and a light on lights).
+        engine_row(
+            "animate-markers",
+            (0..4).map(|tick| animate_tick(tick, (0, 64, 0), 400, seeds(tick) + 80)).collect::<Vec<_>>(),
+        )
+        .blocks(marker_plane())
+        .set("marker_block", json!("minecraft:barrier"))
+        .ticks(4)
         .seeds(4000)
         .describe(10)
         .row(),

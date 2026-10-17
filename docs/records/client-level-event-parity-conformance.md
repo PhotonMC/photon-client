@@ -120,3 +120,6 @@ rastgelesiyle işler.
   nothing that stops motion is over it, and its biome is warm enough (the client asks the biome
   tints for it; the oracle's scene is the plains). The oracle lights the chunks of a row that
   asks for it the way the server's first light goes.
+- Block markers (#45): a creative player holding a barrier or a light sees a square of that
+  block's picture, half a block across, for four seconds on each such block the level picks. The
+  block is told to the engine each tick from the player's game mode and main hand.

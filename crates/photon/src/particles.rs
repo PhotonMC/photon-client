@@ -196,6 +196,8 @@ impl Particles {
     /// What the level's particles need to know of where they are made: what the dimension says
     /// about dripstone, and the local player.
     fn look_about(&mut self, session: &photon_net::connection::PlaySession) {
+        self.engine
+            .set_marker_block(session.marker_particle_block());
         let dimension = session.dimension_type().unwrap_or("minecraft:overworld");
         self.dripstone = photon_world::particles::DripstoneAttributes::of_dimension_type(dimension);
         self.local_player = session
