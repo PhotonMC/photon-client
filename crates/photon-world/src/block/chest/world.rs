@@ -138,6 +138,25 @@ impl ClientWorld {
         })
     }
 
+    /// `BrushableBlockRenderer.extractRenderState`: the item a suspicious block holds, and the face
+    /// brushed, once it has been brushed.
+    pub fn brushable_view(&self, pos: (i32, i32, i32)) -> Option<BrushableView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_brushable_state(state) {
+            return None;
+        }
+        let dusted = crate::local_player::property(Some(state), "dusted")?
+            .parse()
+            .ok()?;
+        let tag = self.block_entity_at(pos.0, pos.1, pos.2)?.tag.as_deref()?;
+        let (hit_direction, item) = brushable_tag(tag)?;
+        Some(BrushableView {
+            hit_direction,
+            dusted,
+            item,
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

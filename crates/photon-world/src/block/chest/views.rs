@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::ids::BlockStateId;
+use photon_core::ids::{BlockStateId, ItemId};
 
 /// The dyes, in `DyeColor.getId` order.
 pub const DYES: [&str; 16] = [
@@ -177,6 +177,59 @@ pub(crate) fn is_drawn_state(state_id: BlockStateId) -> bool {
         || is_lectern_state(state_id)
         || is_decorated_pot_state(state_id)
         || is_sign_state(state_id)
+        || is_brushable_state(state_id)
+}
+
+/// Whether a block state is a suspicious block's.
+pub(crate) fn is_brushable_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::BrushableBlock], &BLOCKS)
+}
+
+/// What a suspicious block holds, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BrushableView {
+    /// The face that was brushed (`BrushableBlockEntity.getHitDirection`).
+    pub hit_direction: Direction,
+    /// `BlockStateProperties.DUSTED`.
+    pub dusted: i32,
+    /// The item buried in it and how many (`BrushableBlockEntity.getItem`).
+    pub item: (ItemId, i32),
+}
+
+/// A block entity's `item`: an item stack's id and count, which its components are left out of.
+fn tag_stack(items: &[photon_core::nbt::Field]) -> Option<(ItemId, i32)> {
+    use photon_core::nbt::FieldValue;
+    let FieldValue::Compound(fields) = &items.iter().find(|field| field.key == "item")?.value
+    else {
+        return None;
+    };
+    let FieldValue::Str(name) = &fields.iter().find(|field| field.key == "id")?.value else {
+        return None;
+    };
+    let count = fields
+        .iter()
+        .find(|field| field.key == "count")
+        .and_then(|field| crate::block::entity::numeric_nbt_value(&field.value))
+        .unwrap_or(1);
+    let index = photon_data::item::items::ITEMS
+        .iter()
+        .position(|item| item.name == name)?;
+    Some((ItemId(index as i32), count)).filter(|(_, count)| *count > 0)
+}
+
+/// `BrushableBlockEntity.loadAdditional` as the client's update tag has it: the item and the face
+/// brushed, if it holds an item.
+pub(super) fn brushable_tag(tag: &[u8]) -> Option<(Direction, (ItemId, i32))> {
+    use photon_core::nbt::FieldValue;
+    let mut input = tag;
+    let fields = photon_core::nbt::read_nbt(&mut input).ok()??;
+    let item = tag_stack(&fields)?;
+    let hit = fields.iter().find(|field| field.key == "hit_direction")?;
+    let FieldValue::Byte(hit) = hit.value else {
+        return None;
+    };
+    Some((Direction::from_3d_data_value(i32::from(hit)), item))
 }
 
 /// The chest blocks of a chunk's sections.

@@ -3,6 +3,7 @@
 pub mod banner;
 pub mod beacon;
 pub mod bell;
+pub mod brushable;
 pub mod chest;
 pub mod decorated_pot;
 pub mod enchant_table;

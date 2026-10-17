@@ -1,6 +1,7 @@
 //! Entities that are not mobs: projectiles, vehicles, hanging and falling things.
 
 pub(crate) mod arrows;
+pub(crate) mod block_entity_items;
 pub(crate) mod boats;
 pub(crate) mod bullets;
 pub(crate) mod charges;

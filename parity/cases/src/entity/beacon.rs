@@ -45,3 +45,16 @@ pub fn gateway_beam() -> Vec<Value> {
     ];
     vec![entity("gateway-beam", "gateway_beam", rows)]
 }
+
+/// The real `BrushableBlockRenderer` for an item against each face, at each stage of the dust.
+pub fn brushable_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for direction in ["down", "up", "north", "south", "west", "east"] {
+        for dusted in 0..4 {
+            rows.push(
+                json!({"label": format!("{direction} dusted {dusted}"), "direction": direction, "dusted": dusted}),
+            );
+        }
+    }
+    vec![entity("brushable-pose", "brushable_pose", rows)]
+}

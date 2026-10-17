@@ -587,6 +587,50 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `BrushableBlockRenderer.submit` does with the item of a suspicious block that
+     * has been brushed some way on some face: whether it draws one, and the pose its item layer is
+     * submitted from. The item's own model is a bare layer.
+     */
+    static JsonObject brushablePose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.BrushableBlockRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.BrushableBlockRenderer.class);
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = renderer.createRenderState();
+            state.hitDirection = net.minecraft.core.Direction.valueOf(row.get("direction").getAsString().toUpperCase());
+            state.dustProgress = row.get("dusted").getAsInt();
+            state.itemState.newLayer();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var drawn = new boolean[1];
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        drawn[0] = true;
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.addProperty("drawn", drawn[0]);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the
      * order it is drawn with its picture and its quads. The render state is made as the renderer's

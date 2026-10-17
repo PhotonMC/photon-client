@@ -23,6 +23,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
     match operation {
         "beacon_beam" => Some(beacon_beam_result(request)),
         "gateway_beam" => Some(gateway_beam_result(request)),
+        "brushable_pose" => Some(brushable_pose_result(request)),
         _ => None,
     }
 }
@@ -262,4 +263,29 @@ fn layer_json(layer: &photon_render::block_entity::beacon::BeamLayer) -> Value {
         })
         .collect();
     json!({"translucent": layer.translucent, "quads": quads})
+}
+
+/// `brushable_pose`: whether a brushed block's item is drawn, and the pose it is drawn from.
+fn brushable_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::brushable::item_pose;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let direction = photon_core::direction::Direction::from_name(string(row, "direction")?)
+            .ok_or("direction")?;
+        let dusted = i32_field(row, "dusted")?;
+        if dusted <= 0 {
+            rows.push(json!({"label": row["label"], "drawn": false}));
+            continue;
+        }
+        let mut placed = item_pose(&Pose::default(), direction, dusted);
+        // The layer's own transform, which a bare layer has none of but the half block.
+        placed.translate(-0.5, -0.5, -0.5);
+        rows.push(json!({
+            "label": row["label"],
+            "drawn": true,
+            "matrix": super::strider::matrix_bits(&placed),
+        }));
+    }
+    Ok(json!({"rows": rows}))
 }

@@ -169,6 +169,13 @@ pub fn world_items(
         view,
         items,
     );
+    super::block_entity_items::brushable_items(
+        session,
+        &mut layers.frames.layers,
+        (renderer, tints),
+        view,
+        items,
+    );
     displays::displays(
         session,
         &mut layers.displays,
