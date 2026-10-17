@@ -188,7 +188,7 @@ pub(crate) fn is_brushable_state(state_id: BlockStateId) -> bool {
 
 /// Whether a block state is one that shows the items it holds: a suspicious block or a shelf.
 fn is_item_holder_state(state_id: BlockStateId) -> bool {
-    is_brushable_state(state_id) || is_shelf_state(state_id)
+    is_brushable_state(state_id) || is_shelf_state(state_id) || is_campfire_state(state_id)
 }
 
 /// Whether a block state is a shelf's.
@@ -208,10 +208,64 @@ pub struct ShelfView {
     pub items: [Option<(ItemId, i32)>; 3],
 }
 
+/// `ContainerHelper.loadAllItems`: the stacks of a tag's `Items`, each in its `Slot`, in an array
+/// of any length; a slot the tag does not name, or names past the end, is left as it is.
+fn fill_slots(fields: &[photon_core::nbt::Field], items: &mut [Option<(ItemId, i32)>]) {
+    use photon_core::nbt::FieldValue;
+    let Some(FieldValue::List(held)) = fields
+        .iter()
+        .find(|field| field.key == "Items")
+        .map(|field| &field.value)
+    else {
+        return;
+    };
+    for entry in held {
+        let FieldValue::Compound(stack) = entry else {
+            continue;
+        };
+        let slot = stack
+            .iter()
+            .find(|field| field.key == "Slot")
+            .and_then(|field| crate::block::entity::numeric_nbt_value(&field.value))
+            .unwrap_or(0);
+        if let Some(place) = usize::try_from(slot)
+            .ok()
+            .and_then(|slot| items.get_mut(slot))
+        {
+            *place = tag_stack(stack);
+        }
+    }
+}
+
+/// `CampfireBlockEntity.loadAdditional` as the client's update tag has it: what cooks in each of
+/// its four slots.
+pub(super) fn campfire_tag(tag: &[u8]) -> [Option<(ItemId, i32)>; 4] {
+    let mut input = tag;
+    let mut items = [None; 4];
+    if let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) {
+        fill_slots(&fields, &mut items);
+    }
+    items
+}
+
+/// What a campfire holds, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CampfireView {
+    /// `CampfireBlock.FACING`.
+    pub facing: Direction,
+    /// What cooks in each slot and how many.
+    pub items: [Option<(ItemId, i32)>; 4],
+}
+
+/// Whether a block state is a campfire's (soul campfires are the same class).
+pub(crate) fn is_campfire_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::CampfireBlock], &BLOCKS)
+}
+
 /// `ShelfBlockEntity.loadAdditional` as the client's update tag has it: the items by slot, and
 /// whether they stand on the shelf.
 pub(super) fn shelf_tag(tag: &[u8]) -> (bool, [Option<(ItemId, i32)>; 3]) {
-    use photon_core::nbt::FieldValue;
     let mut input = tag;
     let mut items = [None; 3];
     let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) else {
@@ -222,28 +276,7 @@ pub(super) fn shelf_tag(tag: &[u8]) -> (bool, [Option<(ItemId, i32)>; 3]) {
         .find(|field| field.key == "align_items_to_bottom")
         .and_then(|field| crate::block::entity::numeric_nbt_value(&field.value))
         .is_some_and(|value| value != 0);
-    if let Some(FieldValue::List(held)) = fields
-        .iter()
-        .find(|field| field.key == "Items")
-        .map(|field| &field.value)
-    {
-        for entry in held {
-            let FieldValue::Compound(stack) = entry else {
-                continue;
-            };
-            let slot = stack
-                .iter()
-                .find(|field| field.key == "Slot")
-                .and_then(|field| crate::block::entity::numeric_nbt_value(&field.value))
-                .unwrap_or(0);
-            if let Some(place) = usize::try_from(slot)
-                .ok()
-                .and_then(|slot| items.get_mut(slot))
-            {
-                *place = tag_stack(stack);
-            }
-        }
-    }
+    fill_slots(&fields, &mut items);
     (align, items)
 }
 

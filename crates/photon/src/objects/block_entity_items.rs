@@ -6,7 +6,7 @@ use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::block::world_mesh::ConduitMeshes;
-use photon_render::block_entity::{brushable, conduit, shelf};
+use photon_render::block_entity::{brushable, campfire, conduit, shelf};
 use photon_render::entity::name_tag::camera_orientation;
 use photon_render::joml::Pose;
 use photon_render::objects::item::{entity_block_vertices, item_layer_vertices, model_extent};
@@ -19,6 +19,36 @@ use crate::overlays::{FrameView, packed_light};
 /// How far from the camera, in chunks, block entities are drawn.
 const RADIUS_CHUNKS: i32 = 8;
 
+/// `BlockEntityRenderer.getViewDistance`'s default: how far from the camera, in blocks, a block
+/// entity is drawn.
+const VIEW_DISTANCE: f64 = 64.0;
+
+/// Whether the centre of a block is closer to the camera than the view distance (`Vec3.closerThan`).
+fn within_view((x, y, z): (i32, i32, i32), view: FrameView) -> bool {
+    let centre = [x, y, z].map(|axis| f64::from(axis) + 0.5);
+    let distance: f64 = (0..3)
+        .map(|axis| {
+            let camera = f64::from(view.origin[axis]) + f64::from(view.camera[axis]);
+            (centre[axis] - camera).powi(2)
+        })
+        .sum();
+    distance < VIEW_DISTANCE * VIEW_DISTANCE
+}
+
+/// The block entities the renderers of items draw: those in the chunks around the camera that are
+/// within the view distance.
+fn in_view(world: &photon_world::ClientWorld, view: FrameView) -> Vec<(i32, i32, i32)> {
+    let centre = (
+        (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
+        (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
+    );
+    world
+        .chest_positions_near(centre, RADIUS_CHUNKS)
+        .into_iter()
+        .filter(|pos| within_view(*pos, view))
+        .collect()
+}
+
 /// The triangles of the items suspicious blocks hold, once they have been brushed, in `fixed`'s
 /// display context.
 pub fn brushable_items(
@@ -29,11 +59,7 @@ pub fn brushable_items(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let centre = (
-        (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
-        (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
-    );
-    for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
+    for (x, y, z) in in_view(world, view) {
         let Some(brushable) = world.brushable_view((x, y, z)) else {
             continue;
         };
@@ -72,11 +98,7 @@ pub fn shelf_items(
     vertices: &mut Vec<Vertex>,
 ) {
     let world = session.world();
-    let centre = (
-        (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
-        (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
-    );
-    for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
+    for (x, y, z) in in_view(world, view) {
         let Some(shelf) = world.shelf_view((x, y, z)) else {
             continue;
         };
@@ -100,10 +122,6 @@ pub fn shelf_items(
     }
 }
 
-/// `BlockEntityRenderer.getViewDistance`'s default: how far from the camera, in blocks, a
-/// conduit is drawn.
-const CONDUIT_VIEW_DISTANCE: f64 = 64.0;
-
 /// The triangles of the conduits' shells, from the sprites of the block atlas.
 pub fn conduits(
     session: &PlaySession,
@@ -114,15 +132,9 @@ pub fn conduits(
     let world = session.world();
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
-    let camera = [0, 1, 2].map(|axis| f64::from(view.origin[axis]) + f64::from(view.camera[axis]));
     for held in world.conduit_views() {
         let (x, y, z) = held.position;
-        let centre = [x, y, z].map(|axis| f64::from(axis) + 0.5);
-        // `Vec3.closerThan` the block's centre.
-        let distance: f64 = (0..3)
-            .map(|axis| (centre[axis] - camera[axis]).powi(2))
-            .sum();
-        if distance >= CONDUIT_VIEW_DISTANCE * CONDUIT_VIEW_DISTANCE {
+        if !within_view(held.position, view) {
             continue;
         }
         let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
@@ -142,6 +154,42 @@ pub fn conduits(
             if let Some(layer) = meshes.get(piece) {
                 vertices.extend(entity_block_vertices(layer, &pose, (light, 0.0)));
             }
+        }
+    }
+}
+
+/// The triangles of the food cooking on campfires, in `fixed`'s display context.
+pub fn campfire_items(
+    session: &PlaySession,
+    fixed: &mut ItemLayerCache,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    for (x, y, z) in in_view(world, view) {
+        let Some(fire) = world.campfire_view((x, y, z)) else {
+            continue;
+        };
+        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let mut base = Pose::default();
+        base.translate(
+            (x - view.origin[0]) as f32,
+            (y - view.origin[1]) as f32,
+            (z - view.origin[2]) as f32,
+        );
+        for (slot, item) in fire.items.iter().enumerate() {
+            let Some((item, count)) = item else {
+                continue;
+            };
+            let stack = ClientItemStackState::new(*count, *item);
+            let pose = campfire::item_pose(&base, fire.facing, slot);
+            vertices.extend(item_layer_vertices(
+                fixed.get(&stack, renderer, tints),
+                &[pose],
+                light,
+                false,
+            ));
         }
     }
 }

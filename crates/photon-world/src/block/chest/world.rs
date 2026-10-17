@@ -173,6 +173,20 @@ impl ClientWorld {
         })
     }
 
+    /// `CampfireRenderer.extractRenderState`: the way a campfire faces and what cooks on it.
+    pub fn campfire_view(&self, pos: (i32, i32, i32)) -> Option<CampfireView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_campfire_state(state) {
+            return None;
+        }
+        let facing = Direction::from_name(crate::local_player::property(Some(state), "facing")?)?;
+        let tag = self.block_entity_at(pos.0, pos.1, pos.2)?.tag.as_deref()?;
+        Some(CampfireView {
+            facing,
+            items: campfire_tag(tag),
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

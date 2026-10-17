@@ -59,8 +59,8 @@ mod ride;
 mod shadow;
 
 pub use block::chest::{
-    BannerView, BrushableView, ChestView, DYES, PotView, ShelfView, ShulkerBoxView, SignView,
-    SkullBlockView,
+    BannerView, BrushableView, CampfireView, ChestView, DYES, PotView, ShelfView, ShulkerBoxView,
+    SignView, SkullBlockView,
 };
 pub use block::entity::MovingPiston;
 pub use block::entity::*;

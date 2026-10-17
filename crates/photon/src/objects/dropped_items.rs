@@ -180,6 +180,13 @@ pub fn world_items(
         view,
         items,
     );
+    super::block_entity_items::campfire_items(
+        session,
+        &mut layers.frames.layers,
+        (renderer, tints),
+        view,
+        items,
+    );
     super::block_entity_items::shelf_items(
         session,
         &mut layers.on_shelf,

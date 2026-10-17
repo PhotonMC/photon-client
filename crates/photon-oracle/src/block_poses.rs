@@ -26,6 +26,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "brushable_pose" => Some(brushable_pose_result(request)),
         "shelf_pose" => Some(shelf_pose_result(request)),
         "conduit_pose" => Some(conduit_pose_result(request)),
+        "campfire_pose" => Some(campfire_pose_result(request)),
         _ => None,
     }
 }
@@ -388,6 +389,29 @@ fn conduit_pose_result(request: &Value) -> Result<Value, String> {
             }));
         }
         rows.push(json!({"label": row["label"], "parts": parts}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `campfire_pose`: the pose each filled slot of a campfire's item is drawn from.
+fn campfire_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::campfire::item_pose;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing =
+            photon_core::direction::Direction::from_name(string(row, "facing")?).ok_or("facing")?;
+        let mut poses = Vec::new();
+        for (slot, gap) in row["gaps"].as_array().ok_or("gaps")?.iter().enumerate() {
+            if gap.as_bool().ok_or("gaps")? {
+                continue;
+            }
+            let mut placed = item_pose(&Pose::default(), facing, slot);
+            // The bare layer's own half block.
+            placed.translate(-0.5, -0.5, -0.5);
+            poses.push(super::strider::matrix_bits(&placed));
+        }
+        rows.push(json!({"label": row["label"], "poses": poses}));
     }
     Ok(json!({"rows": rows}))
 }

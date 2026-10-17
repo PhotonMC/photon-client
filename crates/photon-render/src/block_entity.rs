@@ -4,6 +4,7 @@ pub mod banner;
 pub mod beacon;
 pub mod bell;
 pub mod brushable;
+pub mod campfire;
 pub mod chest;
 pub mod conduit;
 pub mod decorated_pot;

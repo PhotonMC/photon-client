@@ -121,3 +121,16 @@ pub fn conduit_pose() -> Vec<Value> {
     }
     vec![entity("conduit-pose", "conduit_pose", rows)]
 }
+
+/// The real `CampfireRenderer` for food on a campfire facing each way, in every slot and with gaps.
+pub fn campfire_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for facing in ["north", "south", "west", "east"] {
+        rows.push(json!({"label": format!("{facing} full"), "facing": facing, "gaps": [false, false, false, false]}));
+        rows.push(
+            json!({"label": format!("{facing} with gaps"), "facing": facing, "gaps": [true, false, true, false]}),
+        );
+    }
+    rows.push(json!({"label": "one in the last slot", "facing": "west", "gaps": [true, true, true, false]}));
+    vec![entity("campfire-pose", "campfire_pose", rows)]
+}
