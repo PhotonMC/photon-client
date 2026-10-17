@@ -25,9 +25,10 @@ pub fn beacon_beams(
         return;
     };
     let camera = [0, 1, 2].map(|axis| f64::from(view.origin[axis]) + f64::from(view.camera[axis]));
+    let scoping = session.player().is_some_and(|player| player.is_scoping());
     for beacon in session.world().beacon_views(view.partial as f32) {
         if !beacon.sections.is_empty() {
-            one_beam(&beacon, (rect, camera), view, vertices);
+            one_beam(&beacon, (rect, camera), (view, scoping), vertices);
         }
     }
 }
@@ -36,7 +37,7 @@ pub fn beacon_beams(
 fn one_beam(
     beacon: &BeaconView,
     (rect, camera): (TextureRect, [f64; 3]),
-    view: FrameView,
+    (view, scoping): (FrameView, bool),
     vertices: &mut Vec<Vertex>,
 ) {
     let reach = f64::from(view.render_distance) * 16.0;
@@ -51,7 +52,11 @@ fn one_beam(
         return;
     }
     // `BeaconRenderer.extract`: the beam is fatter the farther off it is.
-    let scale = ((near.sqrt() as f32) / 96.0).max(1.0);
+    let scale = if scoping {
+        1.0
+    } else {
+        ((near.sqrt() as f32) / 96.0).max(1.0)
+    };
     let mut base = Pose::default();
     base.translate(
         (x - view.origin[0]) as f32,
