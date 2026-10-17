@@ -127,3 +127,18 @@ rastgelesiyle işler.
   gets a ticker in the packet's order; each tick it ages and its cooldown runs down. The block
   shows a portal speck for each of its faces that shows. The oracle sets the gateways up in the
   order of the row and compares age and cooldown after each tick.
+- Potent sulfur (#45): a block that is not dry has a client ticker, bound again (in its list slot,
+  or dropped and set up at the end) each time its state changes, and a block update makes the
+  entity when there is none. Wet and dormant blocks send a cloud of gas up once a second from the
+  cell above the water (water four blocks deep at most); the cloud asks the level, every other
+  tick, for a place within three blocks that the gas reaches (a passable cell over water, seen from
+  the source's floor along a ray that hits no collision shape), and the gas there is a white smoke
+  that thins out. Erupting and continuous blocks send up the geyser (spray, plume and poofs) every
+  second counted from the last eruption, with its sound every two. Every non-dry block
+  also animates bubbles through the water above it. The ticks of block entities skip the ones
+  outside the world border, whichever the entity. What the level's own tick queues is played in
+  the same client tick, before the particles tick. Not carried: geysers launching entities, the
+  server's nausea, and collision shapes that depend on who asks (scaffolding, powder snow, and the
+  interaction shapes of cauldrons and hoppers that the reference's clip also reads). The oracle's
+  rows list the sulfur block entities to set up in order (`sulfurs`), and a `game_time` event
+  moves the clock on during a row.

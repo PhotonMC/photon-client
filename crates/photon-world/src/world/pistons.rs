@@ -339,6 +339,10 @@ impl ClientWorld {
         self.block_tickers.begin_pass();
         let mut index = 0;
         while let Some(pos) = self.block_tickers.next_to_tick(&mut index) {
+            // `LevelChunk.isTicking`: not outside the world border, whichever the entity.
+            if !self.border_holds(pos) {
+                continue;
+            }
             if self.moving_piston_at(pos).is_some() {
                 self.tick_moving_piston(pos);
             } else if self.is_potent_sulfur_at(pos) {
@@ -359,7 +363,7 @@ impl ClientWorld {
             self.block_tickers.unregister(pos);
             return;
         };
-        if here.block != id::MOVING_PISTON as u16 || !self.border_holds(pos) {
+        if here.block != id::MOVING_PISTON as u16 {
             return;
         }
         moving.progress_old = moving.progress;

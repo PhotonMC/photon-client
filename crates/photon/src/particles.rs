@@ -29,7 +29,7 @@ const UNIQUIFIER_START: i64 = 8_682_522_807_148_012;
 const UNIQUIFIER_STEP: i64 = 1_181_783_497_276_652_981;
 
 /// Where the local player is for a tick: its block, and the place a pickup heads for.
-type PlayerPlace = (Option<(i32, i32, i32)>, Option<(f64, f64, f64)>);
+pub(crate) type PlayerPlace = (Option<(i32, i32, i32)>, Option<(f64, f64, f64)>);
 
 pub(crate) struct Particles {
     engine: ParticleEngine,

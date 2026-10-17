@@ -499,21 +499,15 @@ impl Play {
             self.ambient.tick(session, sound);
         }
         self.animated_atlas.tick();
+        // What the level's own tick queued (a sulfur block's gas) joins the particles in this tick.
+        super::effects::route_level_events(
+            session,
+            (&mut self.particles, &mut self.gui, self.sound.as_mut()),
+        );
         let breaking = session.take_breaking_effects();
         self.particles.breaking(session.world(), breaking);
-        let local = session.player().map(|player| {
-            let at = player.position();
-            photon_world::particles::pickup_target((at.x, at.y, at.z), player.eye_height())
-        });
-        let block = session.player().map(|player| {
-            let at = player.position();
-            (
-                at.x.floor() as i32,
-                at.y.floor() as i32,
-                at.z.floor() as i32,
-            )
-        });
-        let block_sounds = self.particles.tick(session, (block, local));
+        let place = player_place(session);
+        let block_sounds = self.particles.tick(session, place);
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(block_sounds);
         }
@@ -539,4 +533,22 @@ impl Play {
         self.ticks += 1;
         Ok(())
     }
+}
+
+/// Where the local player is for the particles: the block they stand in, and the place the
+/// pickups of items head for.
+fn player_place(session: &PlaySession) -> crate::particles::PlayerPlace {
+    let local = session.player().map(|player| {
+        let at = player.position();
+        photon_world::particles::pickup_target((at.x, at.y, at.z), player.eye_height())
+    });
+    let block = session.player().map(|player| {
+        let at = player.position();
+        (
+            at.x.floor() as i32,
+            at.y.floor() as i32,
+            at.z.floor() as i32,
+        )
+    });
+    (block, local)
 }
