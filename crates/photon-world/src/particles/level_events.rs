@@ -167,6 +167,46 @@ fn spread_pitch(pitch: Pitch, random: &mut RandomSource) -> f32 {
 }
 
 impl ParticleEngine {
+    /// The events a block entity's ticker asks for: what they add and the sounds they make.
+    fn block_entity_level_event<F: FnMut() -> RandomSource>(
+        &mut self,
+        level_event: LevelEvent,
+        context: &mut LevelEventContext<'_, F>,
+    ) -> Vec<LocalSound> {
+        match level_event {
+            LevelEvent::NoxiousGasCloud { at } => {
+                self.level_add(context, "noxious_gas_cloud", at, (0.0, 0.0, 0.0));
+                Vec::new()
+            }
+            LevelEvent::ConduitSpecks {
+                pos,
+                tick_count,
+                frame,
+            } => {
+                self.conduit_specks(context, (pos, tick_count), &frame);
+                Vec::new()
+            }
+            LevelEvent::VaultTick { pos } => {
+                let mut sounds = Vec::new();
+                self.vault_tick(pos, context, &mut sounds);
+                sounds
+            }
+            LevelEvent::Geyser { at, water_blocks } => {
+                self.add_geyser(context, at, water_blocks);
+                Vec::new()
+            }
+            LevelEvent::GeyserSound { at, sound } => {
+                vec![super::animate::local_sound(
+                    (sound, LocalSoundSource::Blocks),
+                    (1.0, 1.0),
+                    at,
+                    context,
+                )]
+            }
+            _ => Vec::new(),
+        }
+    }
+
     /// An event other than a plain level event is played at once: the sounds it makes.
     fn other_level_event<F: FnMut() -> RandomSource>(
         &mut self,
@@ -184,30 +224,11 @@ impl ParticleEngine {
                 self.create_fireworks(*launch, context);
                 Vec::new()
             }
-            LevelEvent::NoxiousGasCloud { at } => {
-                self.level_add(context, "noxious_gas_cloud", at, (0.0, 0.0, 0.0));
-                Vec::new()
-            }
-            LevelEvent::ConduitSpecks {
-                pos,
-                tick_count,
-                frame,
-            } => {
-                self.conduit_specks(context, (pos, tick_count), &frame);
-                Vec::new()
-            }
-            LevelEvent::Geyser { at, water_blocks } => {
-                self.add_geyser(context, at, water_blocks);
-                Vec::new()
-            }
-            LevelEvent::GeyserSound { at, sound } => {
-                vec![super::animate::local_sound(
-                    (sound, LocalSoundSource::Blocks),
-                    (1.0, 1.0),
-                    at,
-                    context,
-                )]
-            }
+            LevelEvent::NoxiousGasCloud { .. }
+            | LevelEvent::ConduitSpecks { .. }
+            | LevelEvent::VaultTick { .. }
+            | LevelEvent::Geyser { .. }
+            | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
             LevelEvent::PistonSound => {
                 // `PistonBaseBlock.triggerEvent`: the pitch is asked of the level's random source
                 // whether or not the client plays the sound (the server does that for the player).

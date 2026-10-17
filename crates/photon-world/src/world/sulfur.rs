@@ -132,10 +132,6 @@ impl ClientWorld {
     }
 
     /// Whether the block at a place is a potent sulfur block.
-    pub(super) fn is_potent_sulfur_at(&self, (x, y, z): Pos) -> bool {
-        block::state_or_air(self.block_state_or_air(x, y, z)).block == id::POTENT_SULFUR as u16
-    }
-
     /// What a potent sulfur block's ticker does this tick, by its state.
     pub(super) fn tick_potent_sulfur(&mut self, pos: Pos) {
         let state = self.block_state_or_air(pos.0, pos.1, pos.2);

@@ -8,7 +8,7 @@ use photon_core::random::RandomSource;
 use photon_data::block::classes::BlockClass;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
-use super::animate::delayed_sound;
+use super::animate::{delayed_sound, local_sound};
 use super::engine::ParticleEngine;
 use super::level_events::LevelEventContext;
 use crate::ClientWorld;
@@ -28,6 +28,8 @@ pub struct PlayerSpot {
 struct VaultShared {
     connected_players: Vec<Uuid>,
     connected_particles_range: f64,
+    /// `VaultSharedData.hasDisplayItem`.
+    has_display_item: bool,
 }
 
 fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
@@ -43,6 +45,7 @@ fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultShared {
     let mut shared = VaultShared {
         connected_players: Vec::new(),
         connected_particles_range: DEFAULT_CONNECTION_RANGE,
+        has_display_item: false,
     };
     let Some(fields) = world
         .block_entity_at(pos.0, pos.1, pos.2)
@@ -56,6 +59,9 @@ fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultShared {
     };
     if let Some(FieldValue::List(players)) = field(data, "connected_players") {
         shared.connected_players = players.iter().filter_map(uuid_of).collect();
+    }
+    if let Some(FieldValue::Compound(held)) = field(data, "display_item") {
+        shared.has_display_item = crate::block::chest::tag_stack(held).is_some();
     }
     if let Some(FieldValue::Double(range)) = field(data, "connected_particles_range") {
         shared.connected_particles_range = *range;
@@ -110,6 +116,49 @@ impl ParticleEngine {
             self.vault_activate(pos, data, context, sounds);
         } else {
             self.vault_deactivate(pos, data, context, sounds);
+        }
+    }
+
+    /// `VaultBlockEntity.Client.tick`, as far as the level's random goes: every twenty ticks the
+    /// connection particles, then each tick a half chance of smoke (and flame, with a display item
+    /// to show) in the cage, and a rare ambient sound.
+    pub(super) fn vault_tick<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+        sounds: &mut Vec<LocalSound>,
+    ) {
+        let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
+        if context.world.game_time().is_multiple_of(20) {
+            self.vault_connection_particles(pos, state, context);
+        }
+        let shows = shared_data(context.world, pos).has_display_item;
+        let ominous = crate::block::rules::property(state, "ominous") == Some("true");
+        let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        if context.level_random.next_float() <= 0.5 {
+            let random = &mut *context.level_random;
+            let at = (
+                x + mth_next_double(random, 0.1, 0.9),
+                y + mth_next_double(random, 0.25, 0.75),
+                z + mth_next_double(random, 0.1, 0.9),
+            );
+            self.level_add(context, "smoke", at, (0.0, 0.0, 0.0));
+            if shows {
+                let flame = if ominous {
+                    "soul_fire_flame"
+                } else {
+                    "small_flame"
+                };
+                self.level_add(context, flame, at, (0.0, 0.0, 0.0));
+            }
+        }
+        if shows && context.level_random.next_float() <= 0.02 {
+            let random = &mut *context.level_random;
+            let volume = random.next_float() * 0.25 + 0.75;
+            let pitch = random.next_float() + 0.5;
+            let centre = (x + 0.5, y + 0.5, z + 0.5);
+            let event = ("minecraft:block.vault.ambient", LocalSoundSource::Blocks);
+            sounds.push(local_sound(event, (volume, pitch), centre, context));
         }
     }
 

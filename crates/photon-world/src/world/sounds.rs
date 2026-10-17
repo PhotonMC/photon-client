@@ -309,6 +309,9 @@ pub enum LevelEvent {
     PistonSound,
     /// A potent sulfur block's ticker adds a cloud of its gas (`addParticle`) at a place.
     NoxiousGasCloud { at: (f64, f64, f64) },
+    /// A vault's tick (`VaultBlockEntity.Client.tick`), less its spin: the connection particles,
+    /// the idle smoke and flame and the idle sound.
+    VaultTick { pos: (i32, i32, i32) },
     /// A conduit's tick (`ConduitBlockEntity.animationTick`): its frame sends nautilus specks
     /// up to it.
     ConduitSpecks {

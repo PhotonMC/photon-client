@@ -292,7 +292,7 @@ pub struct BrushableView {
 }
 
 /// An item stack's id and count in a block entity's tag, which its components are left out of.
-fn tag_stack(fields: &[photon_core::nbt::Field]) -> Option<(ItemId, i32)> {
+pub(crate) fn tag_stack(fields: &[photon_core::nbt::Field]) -> Option<(ItemId, i32)> {
     use photon_core::nbt::FieldValue;
     let FieldValue::Str(name) = &fields.iter().find(|field| field.key == "id")?.value else {
         return None;

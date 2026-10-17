@@ -316,5 +316,6 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::book_rows::rows());
     rows.extend(super::beacon_rows::rows());
     rows.extend(super::conduit_rows::rows());
+    rows.extend(super::vault_rows::rows());
     rows
 }

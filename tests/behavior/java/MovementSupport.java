@@ -510,6 +510,12 @@ class MovementSupport {
                 if (described.has("range")) {
                     shared.putDouble("connected_particles_range", Oracle.f64(described, "range"));
                 }
+                if (described.has("item")) {
+                    var item = new net.minecraft.nbt.CompoundTag();
+                    item.putString("id", described.get("item").getAsString());
+                    item.putInt("count", 1);
+                    shared.put("display_item", item);
+                }
                 var tag = new net.minecraft.nbt.CompoundTag();
                 tag.put("shared_data", shared);
                 level.getBlockEntity(pos).loadWithComponents(
@@ -554,6 +560,8 @@ class MovementSupport {
                 }
                 held = "beacon," + getField(beacon, "levels") + "," + getField(beacon, "lastCheckY") + ","
                     + String.join(";", sections);
+            } else if (entity instanceof net.minecraft.world.level.block.entity.vault.VaultBlockEntity vault) {
+                held = "vault," + (int) vault.getClientData().previousSpin() + "," + (int) vault.getClientData().currentSpin();
             } else if (entity instanceof net.minecraft.world.level.block.entity.ConduitBlockEntity conduit) {
                 held = "conduit," + conduit.tickCount + "," + Oracle.bits((float) getField(conduit, "activeRotation"))
                     + "," + conduit.isActive() + "," + conduit.isHunting();

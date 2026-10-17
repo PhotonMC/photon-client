@@ -49,6 +49,7 @@ impl ClientWorld {
             || type_name == "minecraft:enchanting_table"
             || type_name == "minecraft:beacon"
             || type_name == "minecraft:conduit"
+            || type_name == "minecraft:vault"
             || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
@@ -321,7 +322,8 @@ impl ClientWorld {
                 "minecraft:end_gateway"
                 | "minecraft:enchanting_table"
                 | "minecraft:beacon"
-                | "minecraft:conduit",
+                | "minecraft:conduit"
+                | "minecraft:vault",
             ) => true,
             Some("minecraft:potent_sulfur") => {
                 super::has_sulfur_ticker(self.block_state_or_air(x, y, z))

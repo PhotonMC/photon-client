@@ -171,6 +171,21 @@ fn share_vault(world: &mut ClientWorld, vault: &Value) -> Result<(), String> {
             value: FieldValue::Double(parsed64(vault, "range")?),
         });
     }
+    if let Some(item) = vault["item"].as_str() {
+        shared.push(Field {
+            key: "display_item".into(),
+            value: FieldValue::Compound(vec![
+                Field {
+                    key: "id".into(),
+                    value: FieldValue::Str(item.to_owned()),
+                },
+                Field {
+                    key: "count".into(),
+                    value: FieldValue::Int(1),
+                },
+            ]),
+        });
+    }
     let tag = [Field {
         key: "shared_data".into(),
         value: FieldValue::Compound(shared),
@@ -241,6 +256,7 @@ fn entity_type_of(block_name: &str) -> Option<&'static str> {
         "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
         "minecraft:beacon" => Some("minecraft:beacon"),
         "minecraft:conduit" => Some("minecraft:conduit"),
+        "minecraft:vault" => Some("minecraft:vault"),
         _ => None,
     }
 }
@@ -305,6 +321,7 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
         }
         "minecraft:enchanting_table" => book_line(&events.book),
         "minecraft:beacon" => beacon_line(&events.beacon),
+        "minecraft:vault" => format!("vault,{},{}", events.vault.previous, events.vault.current),
         "minecraft:conduit" => {
             let conduit = &events.conduit;
             format!(

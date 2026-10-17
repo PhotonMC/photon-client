@@ -335,7 +335,7 @@ impl ClientWorld {
 
     /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
     /// up. The moving pistons, the end gateways, the potent sulfur blocks, the enchanting tables, the
-    /// beacons and the conduits tick.
+    /// beacons, the conduits and the vaults tick.
     pub fn tick_block_entities(&mut self) {
         self.block_tickers.begin_pass();
         let mut index = 0;
@@ -344,21 +344,27 @@ impl ClientWorld {
             if !self.border_holds(pos) {
                 continue;
             }
-            if self.moving_piston_at(pos).is_some() {
-                self.tick_moving_piston(pos);
-            } else if self.is_potent_sulfur_at(pos) {
-                self.tick_potent_sulfur(pos);
-            } else if self.is_enchanting_table_at(pos) {
-                self.tick_enchanting_table(pos);
-            } else if self.is_beacon_at(pos) {
-                self.tick_beacon(pos);
-            } else if self.is_conduit_at(pos) {
-                self.tick_conduit(pos);
-            } else {
-                self.tick_end_gateway(pos);
-            }
+            self.tick_block_entity(pos);
         }
         self.block_tickers.end_pass();
+    }
+
+    /// One block entity's ticker, by the block it belongs to.
+    fn tick_block_entity(&mut self, pos: Pos) {
+        if self.moving_piston_at(pos).is_some() {
+            self.tick_moving_piston(pos);
+            return;
+        }
+        let block =
+            usize::from(block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2)).block);
+        match block {
+            id::POTENT_SULFUR => self.tick_potent_sulfur(pos),
+            id::ENCHANTING_TABLE => self.tick_enchanting_table(pos),
+            id::BEACON => self.tick_beacon(pos),
+            id::CONDUIT => self.tick_conduit(pos),
+            id::VAULT => self.tick_vault(pos),
+            _ => self.tick_end_gateway(pos),
+        }
     }
 
     /// `PistonMovingBlockEntity.tick`: a block on its way moves half the way on each tick; one that

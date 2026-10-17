@@ -21,6 +21,7 @@ mod scene;
 mod sulfur_rows;
 mod terrain;
 mod ticks;
+mod vault_rows;
 
 use serde_json::{Value, json};
 

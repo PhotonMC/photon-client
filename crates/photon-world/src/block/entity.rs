@@ -177,6 +177,14 @@ pub struct ConduitState {
     pub frame: Vec<(i32, i32, i32)>,
 }
 
+/// A vault's display item's spin (`VaultClientData`), in whole degrees: it starts at none and
+/// turns ten at a time, wrapped to a half turn either way, so it is never fractional.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct VaultSpin {
+    pub previous: i32,
+    pub current: i32,
+}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -198,6 +206,8 @@ pub struct BlockEntityEvents {
     pub beacon: BeaconState,
     /// A conduit's shell.
     pub conduit: ConduitState,
+    /// A vault's display item.
+    pub vault: VaultSpin,
 }
 
 impl Default for BlockEntityEvents {
@@ -211,6 +221,7 @@ impl Default for BlockEntityEvents {
             book: BookState::default(),
             beacon: BeaconState::default(),
             conduit: ConduitState::default(),
+            vault: VaultSpin::default(),
         }
     }
 }
