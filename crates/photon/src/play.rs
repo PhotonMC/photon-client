@@ -424,10 +424,15 @@ pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
         }
     }
     // Let the chunks around the player arrive before the first mesh.
+    // A wait ends early when a packet arrives, so the ticks keep to their own 50 ms pace.
     let settle = std::time::Instant::now();
+    let mut next_tick = settle;
     while settle.elapsed() < Duration::from_millis(2000) {
         session.wait(Duration::from_millis(50))?;
-        session.tick(photon_world::input::Input::EMPTY)?;
+        if std::time::Instant::now() >= next_tick {
+            session.tick(photon_world::input::Input::EMPTY)?;
+            next_tick = std::time::Instant::now() + Duration::from_millis(50);
+        }
     }
     Ok(session)
 }
