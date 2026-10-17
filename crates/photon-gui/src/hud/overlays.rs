@@ -19,6 +19,16 @@ impl Hud {
                 alpha,
             );
         }
+        if let Some((intensity, uv)) = input.portal {
+            // `extractPortalOverlay`: the alpha is lifted to the fourth power below one.
+            let mut alpha = intensity;
+            if alpha < 1.0 {
+                alpha *= alpha;
+                alpha *= alpha;
+                alpha = alpha * 0.8 + 0.2;
+            }
+            frame.block_sprite_overlay(uv, (0, 0, width, height), alpha);
+        }
         self.crosshair(frame, atlas, width, height, input);
     }
 }

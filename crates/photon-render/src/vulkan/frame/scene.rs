@@ -429,7 +429,11 @@ impl VulkanBackend {
         let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..16])];
         for &(blend, first, count) in &self.gui_batches {
             let (pipeline, set, vertices) = match blend {
-                crate::gui::GuiBlend::Translucent => (&scene.gui_pipeline, set, buffer),
+                crate::gui::GuiBlend::Translucent | crate::gui::GuiBlend::BlockSprite => (
+                    &scene.gui_pipeline,
+                    translucent_set(blend, set, scene),
+                    buffer,
+                ),
                 crate::gui::GuiBlend::Invert => (&scene.gui_invert_pipeline, set, buffer),
                 crate::gui::GuiBlend::Highlight => (&scene.gui_highlight_pipeline, set, buffer),
                 crate::gui::GuiBlend::Vignette => (&scene.gui_vignette_pipeline, set, buffer),
@@ -458,5 +462,19 @@ impl VulkanBackend {
                 self.draw_vertices(pipeline, (Some(set), &push), vertices, (first, count));
             }
         }
+    }
+}
+
+/// The descriptor set a translucent GUI batch samples: the GUI atlas, or for a sprite of the block
+/// atlas that atlas (the pipeline's layout is the same for both).
+fn translucent_set(
+    blend: crate::gui::GuiBlend,
+    gui: vk::DescriptorSet,
+    scene: &SceneResources,
+) -> vk::DescriptorSet {
+    if blend == crate::gui::GuiBlend::BlockSprite {
+        scene.descriptor_set
+    } else {
+        gui
     }
 }

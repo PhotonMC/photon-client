@@ -65,6 +65,42 @@ fn crosshair_target_is_living(
     })
 }
 
+/// The locator bar's input, when the server tracks any waypoints.
+fn locator_input(
+    session: &PlaySession,
+    camera: LocatorCamera,
+    player: Option<&photon_world::local_player::LocalPlayer>,
+) -> Option<LocatorInput> {
+    session.waypoints().has_waypoints().then(|| LocatorInput {
+        waypoints: session.waypoints().clone(),
+        camera,
+        viewer: Viewer {
+            uuid: session
+                .profile_id()
+                .map_or(0, |id| u128::from(id.most) << 64 | u128::from(id.least)),
+            position: player.map_or([0.0; 3], |player| {
+                let at = player.position();
+                [at.x, at.y, at.z]
+            }),
+        },
+    })
+}
+
+/// `Hud.extractCameraOverlays`' portal overlay: the effect's intensity between two ticks while it
+/// is above zero, and where the nether portal's sprite is in the block atlas.
+pub fn portal_overlay(
+    session: &PlaySession,
+    renderer: &photon_render::block::world_mesh::BlockRenderer,
+    partial: f32,
+) -> Option<(f32, [f32; 4])> {
+    let intensity = session.player()?.portal_effect_intensity(partial);
+    let state = photon_data::block::registry::default_state_named("minecraft:nether_portal");
+    let uv = renderer
+        .particle_sprite(state)
+        .and_then(|name| renderer.sprite_rect(name))?;
+    (intensity > 0.0).then_some((intensity, uv))
+}
+
 /// Everything the HUD draws from, the camera in first person or not.
 pub fn hud_input(
     session: &PlaySession,
@@ -112,19 +148,8 @@ pub fn hud_input(
         // `willPrioritizeExperienceInfo`.
         experience_prioritised: status.experience_display_start_tick.wrapping_add(100)
             > player.map_or(0, |player| player.tick_count()),
-        locator: session.waypoints().has_waypoints().then(|| LocatorInput {
-            waypoints: session.waypoints().clone(),
-            camera,
-            viewer: Viewer {
-                uuid: session
-                    .profile_id()
-                    .map_or(0, |id| u128::from(id.most) << 64 | u128::from(id.least)),
-                position: player.map_or([0.0; 3], |player| {
-                    let at = player.position();
-                    [at.x, at.y, at.z]
-                }),
-            },
-        }),
+        locator: locator_input(session, camera, player),
+        portal: None,
         powder_snow: local
             .filter(|state| state.is_freezing())
             .map(ClientPlayerState::percent_frozen),

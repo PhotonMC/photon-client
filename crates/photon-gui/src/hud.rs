@@ -95,6 +95,9 @@ pub struct HudInput {
     pub experience_prioritised: bool,
     /// The waypoints the server tracks, when it tracks any.
     pub locator: Option<LocatorInput>,
+    /// The portal effect's intensity and the portal sprite's place in the block atlas, while it
+    /// is above zero.
+    pub portal: Option<(f32, [f32; 4])>,
     /// The powder snow frame's alpha while the player has ticks frozen (`getPercentFrozen`).
     pub powder_snow: Option<f32>,
     /// `getAttackStrengthScale(0)`.

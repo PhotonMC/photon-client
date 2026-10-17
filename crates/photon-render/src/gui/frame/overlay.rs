@@ -82,4 +82,43 @@ impl GuiFrame {
             rect,
         );
     }
+
+    /// `Hud.extractPortalOverlay`'s blit: a sprite of the block atlas, as `[u0, v0, u1, v1]`
+    /// there, stretched over `rect` and white at `alpha`.
+    pub fn block_sprite_overlay(
+        &mut self,
+        uv: [f32; 4],
+        (x, y, w, h): (i32, i32, i32, i32),
+        alpha: f32,
+    ) {
+        // `ARGB.as8BitChannel`.
+        let channel = (alpha * 255.0).floor() as i32;
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Sprite {
+                name: "block_atlas".to_owned(),
+                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
+                colour: (channel as u32) << 24 | 0x00FF_FFFF,
+            });
+        }
+        let [u0, v0, u1, v1] = uv;
+        let corner = |px: i32, py: i32, uv: [f32; 2]| GuiVertex {
+            position: [px as f32, py as f32],
+            uv,
+            colour: [1.0, 1.0, 1.0, channel as f32 / 255.0],
+        };
+        let corners = [
+            corner(x, y, [u0, v0]),
+            corner(x, y + h, [u0, v1]),
+            corner(x + w, y + h, [u1, v1]),
+            corner(x + w, y, [u1, v0]),
+        ];
+        let first = self.vertices.len() as u32;
+        for index in [0, 1, 2, 0, 2, 3] {
+            self.vertices.push(corners[index]);
+        }
+        match self.batches.last_mut() {
+            Some((last, _, count)) if *last == GuiBlend::BlockSprite => *count += 6,
+            _ => self.batches.push((GuiBlend::BlockSprite, first, 6)),
+        }
+    }
 }

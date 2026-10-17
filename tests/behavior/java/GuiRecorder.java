@@ -223,6 +223,10 @@ class GuiRecorder extends GuiFonts {
                 if (view.equals("textures/atlas/gui.png")) {
                     op.addProperty("op", "sprite");
                     op.addProperty("name", SPRITE_NAMES.get(blit.u0()));
+                } else if (view.equals("textures/atlas/blocks.png")) {
+                    // A sprite of the block atlas, which is laid out differently here: named, not placed.
+                    op.addProperty("op", "sprite");
+                    op.addProperty("name", "block_atlas");
                 } else {
                     // A whole texture, a part of it: where in it, as fractions.
                     op.addProperty("op", "texture");

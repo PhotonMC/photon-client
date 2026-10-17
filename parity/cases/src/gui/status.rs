@@ -18,6 +18,8 @@ struct Hotbar {
     slot: i64,
     /// Ticks frozen, which also draws the camera overlays; none leaves them out.
     frozen: Option<i64>,
+    /// The portal effect's intensity, which also draws the camera overlays.
+    portal: Option<f64>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -30,6 +32,7 @@ const HOTBAR: Hotbar = Hotbar {
     third_person: false,
     slot: 0,
     frozen: None,
+    portal: None,
 };
 
 fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
@@ -40,6 +43,9 @@ fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     });
     if let Some(frozen) = hotbar.frozen {
         row["frozen_ticks"] = json!(frozen);
+    }
+    if let Some(portal) = hotbar.portal {
+        row["portal"] = json!(portal);
     }
     row
 }
@@ -86,6 +92,11 @@ pub fn hud_hotbar() -> Value {
     for frozen in [0, 1, 20, 70, 139, 140, 300] {
         rows.push(hotbar_row(&format!("frozen-{frozen}"), Hotbar { frozen: Some(frozen), ..HOTBAR }));
     }
+    // The portal overlay: its alpha is lifted to the fourth power below a full effect.
+    for portal in [0.0125, 0.25, 0.5, 0.75, 0.9999, 1.0] {
+        rows.push(hotbar_row(&format!("portal-{portal}"), Hotbar { portal: Some(portal), ..HOTBAR }));
+    }
+    rows.push(hotbar_row("portal-and-frozen", Hotbar { portal: Some(0.5), frozen: Some(70), ..HOTBAR }));
     rows.extend([
         hotbar_row("frozen-third-person", Hotbar { frozen: Some(70), third_person: true, ..HOTBAR }),
         hotbar_row("frozen-small", Hotbar { frozen: Some(35), size: (320, 240), ..HOTBAR }),

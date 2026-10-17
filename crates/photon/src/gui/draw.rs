@@ -161,11 +161,11 @@ impl Gui {
             };
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;
+        let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
         let hud_input = photon_gui::HudInput {
             // `getGameTimeDeltaPartialTick(true)`.
-            cooldowns: session
-                .item_cooldowns()
-                .percents((self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0)),
+            cooldowns: session.item_cooldowns().percents(partial),
+            portal: crate::hud_input::portal_overlay(session, renderer, partial),
             ..hud_input(
                 session,
                 controls.camera_type == CameraType::FirstPerson,

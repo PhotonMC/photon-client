@@ -184,6 +184,30 @@ class GuiHudOracle extends GuiCommandOracle {
         return new HudScene(minecraft, level, local, screen);
     }
 
+    /**
+     * The block atlas sprite the portal overlay is drawn with: a model manager whose every block
+     * has one particle sprite, in the atlas the recorder names `textures/atlas/blocks.png`.
+     */
+    static void stubPortalSprite(net.minecraft.client.Minecraft minecraft) throws Exception {
+        var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) GuiRecorder.unsafe
+            .allocateInstance(net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+        MovementOracle.setField(sprite, "atlasLocation",
+            net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/blocks.png"));
+        MovementOracle.setField(sprite, "u0", 0.25F);
+        MovementOracle.setField(sprite, "u1", 0.5F);
+        MovementOracle.setField(sprite, "v0", 0.0F);
+        MovementOracle.setField(sprite, "v1", 0.25F);
+        var baked = new net.minecraft.client.resources.model.sprite.Material.Baked(sprite, false);
+        var model = (net.minecraft.client.renderer.block.dispatch.BlockStateModel) java.lang.reflect.Proxy
+            .newProxyInstance(GuiHudOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.block.dispatch.BlockStateModel.class},
+                (proxy, method, arguments) -> baked);
+        var models = new net.minecraft.client.renderer.block.BlockStateModelSet(java.util.Map.of(), model);
+        var manager = GuiRecorder.unsafe.allocateInstance(net.minecraft.client.resources.model.ModelManager.class);
+        MovementOracle.setField(manager, "blockStateModelSet", models);
+        MovementOracle.setField(minecraft, "modelManager", manager);
+    }
+
     /** A private method of the `Hud`, by name. */
     static java.lang.reflect.Method hudMethod(String name, Class<?>... types) throws Exception {
         var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name, types);
@@ -236,9 +260,16 @@ class GuiHudOracle extends GuiCommandOracle {
             var graphics = scene.screen().graphics();
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
-            if (row.has("frozen_ticks")) {
+            if (row.has("frozen_ticks") || row.has("portal")) {
                 // The camera overlays, less the vignette, which is its own slice.
-                local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                if (row.has("frozen_ticks")) {
+                    local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                }
+                if (row.has("portal")) {
+                    stubPortalSprite(minecraft);
+                    local.portalEffectIntensity = (float) row.get("portal").getAsDouble();
+                    local.oPortalEffectIntensity = local.portalEffectIntensity;
+                }
                 options.vignette().set(false);
                 hudMethod("extractCameraOverlays", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
                     .invoke(hud, graphics, tracker);

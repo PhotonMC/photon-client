@@ -2,6 +2,7 @@ use super::*;
 use photon_game::options::AttackIndicator;
 use photon_gui::HeartType;
 use photon_gui::hud::{Hud, HudInput};
+use photon_world::local_player::attack_strength_delay;
 
 pub(super) fn titles_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let font = &ctx.font;
@@ -81,6 +82,12 @@ pub(super) fn sidebar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
     }))
 }
 
+/// The portal overlay of a row: its intensity, drawn from a sprite in the first corner of the atlas.
+fn portal_overlay(row: &Value) -> Option<(f32, [f32; 4])> {
+    let intensity = row["portal"].as_f64().filter(|portal| *portal > 0.0)?;
+    Some((intensity as f32, [0.0, 0.0, 1.0, 1.0]))
+}
+
 /// `getPercentFrozen` as the powder snow frame's alpha: the ticks over the 140 it takes to
 /// freeze, at most one, and no frame at zero.
 fn frozen_alpha(row: &Value) -> Option<f32> {
@@ -97,8 +104,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         ..GuiFrame::default()
     };
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
-    let speed = row["attack_speed"].as_f64().unwrap_or(4.0);
-    let delay = photon_world::local_player::attack_strength_delay(speed);
+    let delay = attack_strength_delay(row["attack_speed"].as_f64().unwrap_or(4.0));
     let ticks = row["attack_ticks"].as_i64().unwrap_or(0) as f32;
     let attack_indicator = AttackIndicator::ALL[int("attack_indicator") as usize];
     let input = HudInput {
@@ -127,6 +133,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         experience_prioritised: false,
         locator: None,
         powder_snow: frozen_alpha(row),
+        portal: portal_overlay(row),
         attack_strength: (ticks / delay).clamp(0.0, 1.0),
         attack_delay: delay,
         attack_indicator,
@@ -171,8 +178,7 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             .map_err(|error| error.to_string())
     };
     let mut hud = Hud::default();
-    let mut ticks = 0;
-    let mut frames = Vec::new();
+    let (mut ticks, mut frames) = (0, Vec::new());
     for step in row["frames"].as_array().ok_or("frames")? {
         let tick = step["tick"].as_i64().unwrap_or(0);
         while ticks < tick {
@@ -210,6 +216,7 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             experience_prioritised: false,
             locator: None,
             powder_snow: None,
+            portal: None,
             attack_strength: 1.0,
             attack_delay: 5.0,
             attack_indicator: photon_game::options::AttackIndicator::Off,

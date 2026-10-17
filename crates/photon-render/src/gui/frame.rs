@@ -29,6 +29,8 @@ pub enum GuiBlend {
     Highlight,
     /// The credits' vignette: what is behind it darkened by its colour.
     Vignette,
+    /// A sprite of the block atlas, which the portal overlay is.
+    BlockSprite,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
     /// The player's model in a screen, whose run counts in
