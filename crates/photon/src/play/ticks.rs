@@ -1,5 +1,4 @@
 use super::*;
-use crate::world::fog::nausea_blend;
 use photon_game::menus::container::EnchantmentTraits;
 
 impl Play {
@@ -511,10 +510,7 @@ impl Play {
             (&mut self.particles, &self.sky),
             self.sound.as_mut(),
         );
-        if let Some(player) = session.player() {
-            self.camera.tick(player, nausea_blend(session, 1.0));
-        }
-        self.gui.tick();
+        super::camera::tick_view((&mut self.camera, &mut self.gui), session, &self.sky);
         if let Some(death) = self.controls.death.as_mut() {
             death.tick();
         }

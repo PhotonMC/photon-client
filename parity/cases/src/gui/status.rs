@@ -20,6 +20,8 @@ struct Hotbar {
     frozen: Option<i64>,
     /// The portal effect's intensity, which also draws the camera overlays.
     portal: Option<f64>,
+    /// The vignette's brightness and border, which also draw the camera overlays.
+    vignette: Option<Vignette>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -33,7 +35,22 @@ const HOTBAR: Hotbar = Hotbar {
     slot: 0,
     frozen: None,
     portal: None,
+    vignette: None,
 };
+
+/// The vignette's input: the brightness, the camera's place and a border of a size (moving to a
+/// size over some ticks if it is given) with its warning blocks and time.
+#[derive(Clone, Copy)]
+struct Vignette {
+    brightness: f64,
+    at: (f64, f64),
+    border: (f64, i64, i64),
+    moving: Option<(f64, i64)>,
+}
+
+fn vignette(brightness: f64, at: (f64, f64), border: (f64, i64, i64), moving: Option<(f64, i64)>) -> Option<Vignette> {
+    Some(Vignette { brightness, at, border, moving })
+}
 
 fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     let mut row = json!({
@@ -46,6 +63,13 @@ fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     }
     if let Some(portal) = hotbar.portal {
         row["portal"] = json!(portal);
+    }
+    if let Some(v) = hotbar.vignette {
+        row["vignette"] = json!({
+            "brightness": f32_bits(v.brightness), "x": v.at.0, "z": v.at.1,
+            "size": v.border.0, "warning_blocks": v.border.1, "warning_time": v.border.2,
+            "to": v.moving.map(|(to, _)| to), "ticks": v.moving.map(|(_, ticks)| ticks),
+        });
     }
     row
 }
@@ -88,6 +112,18 @@ pub fn hud_hotbar() -> Value {
         hotbar_row("fast-speed", Hotbar { speed: 20.0, ticks: 0, ..HOTBAR }),
         hotbar_row("hotbar-slow-speed", Hotbar { indicator: 2, speed: 0.5, ticks: 20, ..HOTBAR }),
     ]);
+    rows.extend(overlay_rows());
+    gui("hud-hotbar", "hud_hotbar", rows)
+}
+
+fn frame(tick: i64, ms: i64, health: f64, invulnerable: i64) -> Value {
+    json!({"tick": tick, "ms": ms, "health": f32_bits(health), "invulnerable": invulnerable})
+}
+
+/// The camera overlays drawn before the crosshair: the powder snow frame, the portal and the vignette
+/// with its border warning, alone and together.
+fn overlay_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
     // The powder snow frame: its alpha grows with the ticks frozen up to a full one.
     for frozen in [0, 1, 20, 70, 139, 140, 300] {
         rows.push(hotbar_row(&format!("frozen-{frozen}"), Hotbar { frozen: Some(frozen), ..HOTBAR }));
@@ -97,16 +133,39 @@ pub fn hud_hotbar() -> Value {
         rows.push(hotbar_row(&format!("portal-{portal}"), Hotbar { portal: Some(portal), ..HOTBAR }));
     }
     rows.push(hotbar_row("portal-and-frozen", Hotbar { portal: Some(0.5), frozen: Some(70), ..HOTBAR }));
+    // The vignette: the light's brightness tints it, and a border warns by turning it red.
+    let far = (5.9999968E7, 5, 15);
+    for brightness in [1.0, 0.75, 0.5, 0.123, 0.0] {
+        let label = format!("vignette-{brightness}");
+        rows.push(hotbar_row(&label, Hotbar { vignette: vignette(brightness, (0.5, 0.5), far, None), ..HOTBAR }));
+    }
+    for (label, at, border, moving) in [
+        ("border-far", (0.5, 0.5), (20.0, 5, 15), None),
+        ("border-near", (8.0, 0.5), (20.0, 5, 15), None),
+        ("border-edge", (9.9, 3.0), (20.0, 5, 15), None),
+        ("border-outside", (14.0, 0.5), (20.0, 5, 15), None),
+        ("border-wide-warning", (2.0, 2.0), (20.0, 12, 15), None),
+        ("border-shrinking", (30.0, 0.5), (100.0, 5, 15), Some((20.0, 200))),
+        ("border-fast-shrinking", (12.0, 0.5), (100.0, 5, 30), Some((10.0, 40))),
+        ("border-growing", (9.0, 0.5), (20.0, 5, 15), Some((60.0, 100))),
+    ] {
+        rows.push(hotbar_row(label, Hotbar { vignette: vignette(0.6, at, border, moving), ..HOTBAR }));
+    }
+    rows.push(hotbar_row(
+        "vignette-and-frozen",
+        Hotbar {
+            vignette: vignette(0.3, (8.0, 0.5), (20.0, 5, 15), None),
+            frozen: Some(70),
+            portal: Some(0.5),
+            ..HOTBAR
+        },
+    ));
     rows.extend([
         hotbar_row("frozen-third-person", Hotbar { frozen: Some(70), third_person: true, ..HOTBAR }),
         hotbar_row("frozen-small", Hotbar { frozen: Some(35), size: (320, 240), ..HOTBAR }),
         hotbar_row("frozen-odd", Hotbar { frozen: Some(100), size: (641, 361), ..HOTBAR }),
     ]);
-    gui("hud-hotbar", "hud_hotbar", rows)
-}
-
-fn frame(tick: i64, ms: i64, health: f64, invulnerable: i64) -> Value {
-    json!({"tick": tick, "ms": ms, "health": f32_bits(health), "invulnerable": invulnerable})
+    rows
 }
 
 /// One status scenario.

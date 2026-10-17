@@ -191,6 +191,33 @@ impl ClientWorldBorder {
         min(min(min(from_west, from_east), from_north), from_south)
     }
 
+    /// `WorldBorder.getLerpSpeed`: blocks of size a tick while it moves.
+    fn lerp_speed(&self) -> f64 {
+        match self.extent {
+            ClientWorldBorderExtent::Static { .. } => 0.0,
+            ClientWorldBorderExtent::Moving {
+                from, to, duration, ..
+            } => (from.get() - to.get()).abs() / duration as f64,
+        }
+    }
+
+    /// How strongly `Hud.extractVignette` warns of the border at a point: nothing farther from it
+    /// than the warning distance (the warning blocks, or how far a moving border goes in the
+    /// warning time, if that is more), and up to one at the edge.
+    pub fn warning_strength(&self, x: f64, z: f64) -> f32 {
+        let distance = self.distance_to_border(x, z) as f32;
+        let moving = crate::java_math::min(
+            self.lerp_speed() * f64::from(self.warning_time),
+            (self.lerp_target() - self.size()).abs(),
+        );
+        let warning = crate::java_math::max(f64::from(self.warning_blocks), moving);
+        if f64::from(distance) < warning {
+            1.0 - (f64::from(distance) / warning) as f32
+        } else {
+            0.0
+        }
+    }
+
     pub fn collision_shape(&self) -> VoxelShape {
         world_border_collision_shape(
             self.center_x(),

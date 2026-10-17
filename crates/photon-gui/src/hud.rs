@@ -5,6 +5,7 @@
 pub mod boss_bar;
 pub mod locator;
 mod overlays;
+pub use overlays::{CameraOverlays, vignette_colour};
 pub mod sidebar;
 pub mod tab_list;
 pub mod titles;
@@ -95,11 +96,8 @@ pub struct HudInput {
     pub experience_prioritised: bool,
     /// The waypoints the server tracks, when it tracks any.
     pub locator: Option<LocatorInput>,
-    /// The portal effect's intensity and the portal sprite's place in the block atlas, while it
-    /// is above zero.
-    pub portal: Option<(f32, [f32; 4])>,
-    /// The powder snow frame's alpha while the player has ticks frozen (`getPercentFrozen`).
-    pub powder_snow: Option<f32>,
+    /// What the camera overlays are drawn from.
+    pub overlays: CameraOverlays,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
     /// `getCurrentItemAttackStrengthDelay`, in ticks.
@@ -125,6 +123,8 @@ pub struct Hud {
     health_blink_time: i64,
     random: RandomSource,
     waypoint_styles: WaypointStyles,
+    /// `Hud.vignetteBrightness`: it starts at one, and eases to what the light says.
+    vignette_brightness: f32,
 }
 
 impl Default for Hud {
@@ -137,6 +137,7 @@ impl Default for Hud {
             health_blink_time: 0,
             random: RandomSource::create(0),
             waypoint_styles: WaypointStyles::default(),
+            vignette_brightness: 1.0,
         }
     }
 }

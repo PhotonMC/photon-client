@@ -62,9 +62,9 @@ fn brightness(ambient_light: f32, level: i32) -> f32 {
 
 impl ClientWorld {
     /// How bright the light at a point looks (`Lightmap.getBrightness` of
-    /// `getMaxLocalRawBrightness` at the block the point is in), for what is laid over the view.
-    /// The sky's dimming (`gameplay/sky_light_level`) is not carried.
-    pub fn eye_brightness(&self, point: [f64; 3]) -> f32 {
+    /// `getMaxLocalRawBrightness` at the block the point is in, the sky dimmed by `sky_darken`),
+    /// for what is laid over the view.
+    pub fn eye_brightness(&self, point: [f64; 3], sky_darken: i32) -> f32 {
         let at = (
             floor_f64(point[0]),
             floor_f64(point[1]),
@@ -72,7 +72,7 @@ impl ClientWorld {
         );
         brightness(
             self.dimension_environment().ambient_light(),
-            self.max_local_raw_brightness(at, 0),
+            self.max_local_raw_brightness(at, sky_darken),
         )
     }
 

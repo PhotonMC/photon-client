@@ -131,3 +131,20 @@ fn player_motion(player: &photon_world::local_player::LocalPlayer, partial: f32)
     });
     photon_render::scene::multiply(hurt, bob)
 }
+
+/// One tick of what follows the player's eyes: the camera, and the HUD with the brightness of the
+/// light there (`getMaxLocalRawBrightness` with the sky's dimming, through the dimension's ambient
+/// light).
+pub(super) fn tick_view(
+    (camera, gui): (&mut photon_render::camera::Camera, &mut crate::gui::Gui),
+    session: &photon_net::connection::PlaySession,
+    sky: &crate::world::sky::Sky,
+) {
+    let eyes = session.player().map(|player| {
+        camera.tick(player, crate::world::fog::nausea_blend(session, 1.0));
+        let at = player.position();
+        [at.x, at.y + f64::from(player.eye_height()), at.z]
+    });
+    let darken = photon_world::particles::Ambience::sky_darken(&sky.ambience(session));
+    gui.tick(eyes.map(|point| session.world().eye_brightness(point, darken)));
+}

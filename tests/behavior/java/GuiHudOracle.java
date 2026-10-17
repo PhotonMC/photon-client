@@ -260,8 +260,9 @@ class GuiHudOracle extends GuiCommandOracle {
             var graphics = scene.screen().graphics();
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
-            if (row.has("frozen_ticks") || row.has("portal")) {
-                // The camera overlays, less the vignette, which is its own slice.
+            boolean vignette = row.has("vignette");
+            if (row.has("frozen_ticks") || row.has("portal") || vignette) {
+                // The camera overlays; the vignette only where the row asks for it.
                 if (row.has("frozen_ticks")) {
                     local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
                 }
@@ -270,7 +271,21 @@ class GuiHudOracle extends GuiCommandOracle {
                     local.portalEffectIntensity = (float) row.get("portal").getAsDouble();
                     local.oPortalEffectIntensity = local.portalEffectIntensity;
                 }
-                options.vignette().set(false);
+                options.vignette().set(vignette);
+                if (vignette) {
+                    var setting = row.getAsJsonObject("vignette");
+                    MovementOracle.setField(minecraft, "level", level);
+                    ((net.minecraft.client.gui.Hud) hud).vignetteBrightness = Oracle.f32(setting, "brightness");
+                    local.setPos(setting.get("x").getAsDouble(), 64.0, setting.get("z").getAsDouble());
+                    var border = level.getWorldBorder();
+                    border.setSize(setting.get("size").getAsDouble());
+                    border.setWarningBlocks(setting.get("warning_blocks").getAsInt());
+                    border.setWarningTime(setting.get("warning_time").getAsInt());
+                    if (!setting.get("to").isJsonNull()) {
+                        border.lerpSizeBetween(setting.get("size").getAsDouble(), setting.get("to").getAsDouble(),
+                            setting.get("ticks").getAsLong(), 0L);
+                    }
+                }
                 hudMethod("extractCameraOverlays", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
                     .invoke(hud, graphics, tracker);
             }

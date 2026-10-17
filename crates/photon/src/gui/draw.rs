@@ -165,7 +165,7 @@ impl Gui {
         let hud_input = photon_gui::HudInput {
             // `getGameTimeDeltaPartialTick(true)`.
             cooldowns: session.item_cooldowns().percents(partial),
-            portal: crate::hud_input::portal_overlay(session, renderer, partial),
+            overlays: crate::hud_input::camera_overlays(session, renderer, partial),
             ..hud_input(
                 session,
                 controls.camera_type == CameraType::FirstPerson,

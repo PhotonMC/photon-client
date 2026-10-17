@@ -579,7 +579,6 @@
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 18
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
-"crates/photon/src/play/ticks.rs::Play::tick" = 11
 "crates/photon/src/screens.rs::run_actions" = 16
 "crates/photon/src/script.rs::HeldKeys::parse" = 28
 "xtask/src/lint.rs::Rule::hint" = 12
@@ -776,7 +775,7 @@
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 169
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 102
 "crates/photon-oracle/src/gui/result/hud.rs::hud_hotbar_case" = 64
-"crates/photon-oracle/src/gui/result/hud.rs::hud_status_case" = 74
+"crates/photon-oracle/src/gui/result/hud.rs::hud_status_case" = 73
 "crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/screens.rs::confirm_screen_case" = 97
@@ -1019,7 +1018,6 @@
 "crates/photon/src/equipment/held_items.rs::Hands::collect" = 64
 "crates/photon/src/gui/chat.rs::Gui::receive_chat" = 77
 "crates/photon/src/gui/draw.rs::Gui::draw" = 324
-"crates/photon/src/hud_input.rs::hud_input" = 71
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75
@@ -1059,7 +1057,7 @@
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
-"crates/photon/src/play/ticks.rs::Play::tick" = 82
+"crates/photon/src/play/ticks.rs::Play::tick" = 79
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/script.rs::HeldKeys::parse" = 77
 "crates/photon/src/window_probe/version.rs::model_scene" = 74

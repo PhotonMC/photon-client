@@ -86,19 +86,37 @@ fn locator_input(
     })
 }
 
-/// `Hud.extractCameraOverlays`' portal overlay: the effect's intensity between two ticks while it
-/// is above zero, and where the nether portal's sprite is in the block atlas.
-pub fn portal_overlay(
+/// `Hud.extractCameraOverlays`: the vignette (its option is on) and how strongly the border warns
+/// at the camera's feet, the powder snow frame, and the portal overlay with where the nether
+/// portal's sprite is in the block atlas, as the partial tick between two ticks has them.
+pub fn camera_overlays(
     session: &PlaySession,
     renderer: &photon_render::block::world_mesh::BlockRenderer,
     partial: f32,
-) -> Option<(f32, [f32; 4])> {
-    let intensity = session.player()?.portal_effect_intensity(partial);
+) -> photon_gui::hud::CameraOverlays {
+    let Some(player) = session.player() else {
+        return photon_gui::hud::CameraOverlays::default();
+    };
+    let feet = player.position();
+    let intensity = player.portal_effect_intensity(partial);
     let state = photon_data::block::registry::default_state_named("minecraft:nether_portal");
-    let uv = renderer
+    let sprite = renderer
         .particle_sprite(state)
-        .and_then(|name| renderer.sprite_rect(name))?;
-    (intensity > 0.0).then_some((intensity, uv))
+        .and_then(|name| renderer.sprite_rect(name));
+    photon_gui::hud::CameraOverlays {
+        vignette: Some(
+            session
+                .world()
+                .world_border()
+                .warning_strength(feet.x, feet.z),
+        ),
+        powder_snow: session
+            .world()
+            .local_player()
+            .filter(|state| state.is_freezing())
+            .map(ClientPlayerState::percent_frozen),
+        portal: sprite.filter(|_| intensity > 0.0).map(|uv| (intensity, uv)),
+    }
 }
 
 /// Everything the HUD draws from, the camera in first person or not.
@@ -149,10 +167,7 @@ pub fn hud_input(
         experience_prioritised: status.experience_display_start_tick.wrapping_add(100)
             > player.map_or(0, |player| player.tick_count()),
         locator: locator_input(session, camera, player),
-        portal: None,
-        powder_snow: local
-            .filter(|state| state.is_freezing())
-            .map(ClientPlayerState::percent_frozen),
+        overlays: Default::default(),
         attack_strength: player.map_or(1.0, |player| {
             player.attack_strength_scale(0.0, attack_speed(local))
         }),

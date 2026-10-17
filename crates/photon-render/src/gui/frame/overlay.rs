@@ -3,6 +3,26 @@
 use super::*;
 
 impl GuiFrame {
+    /// `blit` through the `VIGNETTE` pipeline with a tint, as `Hud.extractVignette` does.
+    pub fn vignette_tinted(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        rect: (i32, i32, i32, i32),
+        colour: u32,
+    ) {
+        self.blit_stretched_with(atlas, GuiBlend::Vignette, name, (1, 1), (0, 0, 1, 1), rect);
+        if let Some(DrawOp::Texture { colour: tint, .. }) =
+            self.log.as_mut().and_then(|log| log.last_mut())
+        {
+            *tint = colour;
+        }
+        let [alpha, red, green, blue] = colour.to_be_bytes().map(|byte| f32::from(byte) / 255.0);
+        for vertex in self.vertices.iter_mut().rev().take(6) {
+            vertex.colour = [red, green, blue, alpha];
+        }
+    }
+
     /// `Hud.extractTextureOverlay`: a whole texture stretched over `rect`, white at `alpha`
     /// (`ARGB.white`).
     pub fn texture_overlay(

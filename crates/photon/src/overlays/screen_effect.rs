@@ -67,7 +67,7 @@ pub fn screen_effects(
         let (y_rot, x_rot) = player.rotation();
         let eyes = player.position();
         let brightness =
-            world.eye_brightness([eyes.x, eyes.y + f64::from(player.eye_height()), eyes.z]);
+            world.eye_brightness([eyes.x, eyes.y + f64::from(player.eye_height()), eyes.z], 0);
         effects.water = triangles(&water_quad(y_rot, x_rot, brightness));
     }
     let burning = world

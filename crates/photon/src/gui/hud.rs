@@ -1,8 +1,12 @@
 use super::*;
 
 impl Gui {
-    pub fn tick(&mut self) {
+    /// A tick of the HUD, with the brightness of the light at the camera's eyes while there is a camera.
+    pub fn tick(&mut self, camera_light: Option<f32>) {
         self.hud.tick();
+        if let Some(light) = camera_light {
+            self.hud.update_vignette(light);
+        }
         self.titles.tick();
         self.gui_ticks += 1;
         self.last_tick = std::time::Instant::now();

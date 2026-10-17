@@ -1,6 +1,7 @@
 use super::*;
 use photon_game::options::AttackIndicator;
 use photon_gui::HeartType;
+use photon_gui::hud::CameraOverlays;
 use photon_gui::hud::{Hud, HudInput};
 use photon_world::local_player::attack_strength_delay;
 
@@ -82,6 +83,39 @@ pub(super) fn sidebar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
     }))
 }
 
+/// The camera overlays of a row: the vignette, the powder snow frame and the portal.
+fn camera_overlays(row: &Value) -> CameraOverlays {
+    CameraOverlays {
+        vignette: vignette_warning(row),
+        powder_snow: frozen_alpha(row),
+        portal: portal_overlay(row),
+    }
+}
+
+/// The HUD of a row: its vignette starts at the brightness the row sets.
+fn hud_of(row: &Value) -> Result<Hud, String> {
+    let mut hud = Hud::default();
+    if let Some(bits) = row["vignette"]["brightness"].as_str() {
+        let brightness = u32::from_str_radix(bits, 16).map_err(|error| error.to_string())?;
+        hud.set_vignette_brightness(f32::from_bits(brightness));
+    }
+    Ok(hud)
+}
+
+/// The vignette of a row: how strongly its border warns where the camera stands, or none when the
+/// row leaves the vignette option off.
+fn vignette_warning(row: &Value) -> Option<f32> {
+    let setting = row.get("vignette")?;
+    let mut border =
+        photon_world::ClientWorldBorder::new(0.0, 0.0, 29_999_984, setting["size"].as_f64()?);
+    border.set_warning_blocks(setting["warning_blocks"].as_i64()? as i32);
+    border.set_warning_time(setting["warning_time"].as_i64()? as i32);
+    if let Some(to) = setting["to"].as_f64() {
+        border.lerp_size_between(setting["size"].as_f64()?, to, setting["ticks"].as_i64()?);
+    }
+    Some(border.warning_strength(setting["x"].as_f64()?, setting["z"].as_f64()?))
+}
+
 /// The portal overlay of a row: its intensity, drawn from a sprite in the first corner of the atlas.
 fn portal_overlay(row: &Value) -> Option<(f32, [f32; 4])> {
     let intensity = row["portal"].as_f64().filter(|portal| *portal > 0.0)?;
@@ -132,8 +166,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         experience_level: 0,
         experience_prioritised: false,
         locator: None,
-        powder_snow: frozen_alpha(row),
-        portal: portal_overlay(row),
+        overlays: camera_overlays(row),
         attack_strength: (ticks / delay).clamp(0.0, 1.0),
         attack_delay: delay,
         attack_indicator,
@@ -145,7 +178,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
                          _: f32,
                          _: f32,
                          _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
-    Hud::default().draw(
+    hud_of(row)?.draw(
         &mut frame,
         atlas,
         font,
@@ -215,8 +248,7 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             experience_level: int("xp_level"),
             experience_prioritised: false,
             locator: None,
-            powder_snow: None,
-            portal: None,
+            overlays: Default::default(),
             attack_strength: 1.0,
             attack_delay: 5.0,
             attack_indicator: photon_game::options::AttackIndicator::Off,
