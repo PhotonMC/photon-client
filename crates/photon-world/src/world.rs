@@ -16,5 +16,7 @@ mod pickup;
 mod pistons;
 mod recipes;
 mod sounds;
+mod sulfur;
 pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};
+pub(crate) use sulfur::{SulfurState, has_sulfur_ticker};
 mod weather;

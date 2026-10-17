@@ -311,5 +311,6 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::engine_rows_late::rows());
     rows.extend(super::piston_rows::rows());
     rows.extend(super::ambient_rows::rows());
+    rows.extend(super::sulfur_rows::rows());
     rows
 }

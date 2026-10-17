@@ -48,6 +48,9 @@ impl ParticleGroup {
             if let Some(sound) = particle.take_sound() {
                 spawns.push(Emitted::Sound(sound));
             }
+            if let Some(cell) = particle.take_gas_probe() {
+                spawns.push(Emitted::GasProbe(cell));
+            }
             let alive = particle.is_alive();
             if !alive && particle.is_limited() {
                 limited_gone += 1;

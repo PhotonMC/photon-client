@@ -181,6 +181,10 @@ impl ParticleEngine {
                 self.create_fireworks(*launch, context);
                 Vec::new()
             }
+            LevelEvent::NoxiousGasCloud { at } => {
+                self.level_add(context, "noxious_gas_cloud", at, (0.0, 0.0, 0.0));
+                Vec::new()
+            }
             LevelEvent::PistonSound => {
                 // `PistonBaseBlock.triggerEvent`: the pitch is asked of the level's random source
                 // whether or not the client plays the sound (the server does that for the player).

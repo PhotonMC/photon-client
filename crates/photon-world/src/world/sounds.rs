@@ -307,6 +307,8 @@ pub enum LevelEvent {
     /// The sound a piston asks the level for when it moves: the server plays it to the player, and
     /// the client only draws the pitch from its random source.
     PistonSound,
+    /// A potent sulfur block's ticker adds a cloud of its gas (`addParticle`) at a place.
+    NoxiousGasCloud { at: (f64, f64, f64) },
 }
 
 impl LevelEvent {

@@ -14,6 +14,7 @@ mod pickup;
 mod piston_rows;
 mod quads;
 mod scene;
+mod sulfur_rows;
 mod terrain;
 mod ticks;
 

@@ -58,6 +58,11 @@ impl Engine {
         Self { describe, ..self }
     }
 
+    /// Where the camera is (the limiter reads the distance to it).
+    pub fn camera(self, camera: (f64, f64, f64)) -> Self {
+        Self { camera, ..self }
+    }
+
     pub fn blocks(self, blocks: Vec<Value>) -> Self {
         Self { blocks, ..self }
     }

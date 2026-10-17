@@ -194,6 +194,24 @@ fn song_name_key(song: usize) -> String {
     }
 }
 
+/// The level events the world queued, played in the order they came: what they sounded.
+pub(super) fn play_queued<F: FnMut() -> RandomSource>(
+    (engine, world): (
+        &mut photon_world::particles::ParticleEngine,
+        &mut photon_world::ClientWorld,
+    ),
+    view: &AddView,
+    (level_random, particle_random): (&mut RandomSource, &mut F),
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    for queued in world.take_level_events() {
+        let mut context = LevelEventContext::new(world, view, level_random, &mut *particle_random);
+        let played = engine.level_event(queued, &mut context);
+        lines.extend(heard(&played, (engine, world)));
+    }
+    lines
+}
+
 /// What an event played, as the reference's sound manager and hud are asked for it: the sounds,
 /// then the songs jukeboxes started and stopped.
 pub(super) fn heard(

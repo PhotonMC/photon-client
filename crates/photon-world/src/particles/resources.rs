@@ -9,12 +9,13 @@ use photon_data::particle_type;
 
 use super::super::ClientWorld;
 use super::particle::Particle;
+use super::resources_make::{attract, coloured, trail};
 use super::sprites::SpriteSet;
 use super::terrain::TerrainMaterials;
 
 /// The class a type's provider makes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Provider {
+pub(super) enum Provider {
     Smoke,
     LargeSmoke,
     WhiteSmoke,
@@ -66,6 +67,9 @@ enum Provider {
     BreakingItem,
     Vibration,
     Trail,
+    GasCloud,
+    NoxiousGas,
+    SulfurBubbles,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -143,7 +147,24 @@ fn provider_of(name: &str) -> Option<Provider> {
     })
 }
 
-/// The providers of the particles made of a block.
+/// Whether the provider makes its particle from the level or the options rather than from a
+/// sprite set alone.
+fn makes_its_own(provider: Provider) -> bool {
+    matches!(
+        provider,
+        Provider::GasCloud
+            | Provider::NoxiousGas
+            | Provider::SulfurBubbles
+            | Provider::FallingDust
+            | Provider::Drip
+            | Provider::Mark(_)
+            | Provider::FallingLeaves
+            | Provider::BreakingItem
+            | Provider::Vibration
+    )
+}
+
+/// The providers of the particles made of a block, and of a potent sulfur block's.
 fn block_provider_of(name: &str) -> Option<Provider> {
     Some(match name {
         "block" => Provider::Terrain,
@@ -151,6 +172,9 @@ fn block_provider_of(name: &str) -> Option<Provider> {
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
+        "noxious_gas_cloud" => Provider::GasCloud,
+        "noxious_gas" => Provider::NoxiousGas,
+        "sulfur_bubbles" => Provider::SulfurBubbles,
         _ => return None,
     })
 }
@@ -244,16 +268,8 @@ impl ParticleResources {
                 engine_random,
             );
         }
-        if matches!(
-            provider,
-            Provider::FallingDust
-                | Provider::Drip
-                | Provider::Mark(_)
-                | Provider::FallingLeaves
-                | Provider::BreakingItem
-                | Provider::Vibration
-        ) {
-            return self.create_own(
+        if makes_its_own(provider) {
+            return self.create_special(
                 provider,
                 world,
                 (name, data),
@@ -325,6 +341,41 @@ impl ParticleResources {
             ),
             _ => Particle::small_flame(random, at, push, sprites, engine_random),
         })
+    }
+
+    /// The providers of a potent sulfur block's particles; the rest of those that make their own
+    /// are in `create_own`.
+    fn create_special(
+        &self,
+        provider: Provider,
+        world: &ClientWorld,
+        (name, data): (&str, super::engine::ParticleData),
+        (at, push): ((f64, f64, f64), (f64, f64, f64)),
+        random: impl FnOnce() -> RandomSource,
+        engine_random: &mut RandomSource,
+    ) -> Option<Particle> {
+        let sprites = self.sprite_sets.get(name);
+        match (provider, sprites) {
+            (Provider::GasCloud, _) => Some(Particle::gas_cloud(random(), at)),
+            (Provider::NoxiousGas, Some(sprites)) => {
+                Some(Particle::noxious_gas(random(), at, push, sprites))
+            }
+            (Provider::SulfurBubbles, Some(sprites)) => Some(Particle::sulfur_bubble(
+                random(),
+                (at, push),
+                sprites,
+                engine_random,
+            )),
+            (Provider::NoxiousGas | Provider::SulfurBubbles, None) => None,
+            _ => self.create_own(
+                provider,
+                world,
+                (name, data),
+                (at, push),
+                random,
+                engine_random,
+            ),
+        }
     }
 
     /// The providers that make their own particle from the level or the options: falling dust,
@@ -445,93 +496,4 @@ impl ParticleResources {
             _ => Particle::dust_pillar_provider(random, (at, push), state, env, engine_random),
         }
     }
-}
-
-/// The providers of the particles drawn to a place or hung in the air (`attract.rs`).
-fn attract(
-    (provider, name): (Provider, &str),
-    random: RandomSource,
-    motion: ((f64, f64, f64), (f64, f64, f64)),
-    sprites: &Arc<SpriteSet>,
-    (engine_random, level_random): (&mut RandomSource, &mut RandomSource),
-) -> Particle {
-    match provider {
-        Provider::Portal => Particle::portal(random, motion, sprites, engine_random, false),
-        Provider::ReversePortal => Particle::portal(random, motion, sprites, engine_random, true),
-        Provider::FlyTowards => {
-            Particle::fly_towards_provider(random, motion, sprites, engine_random, false)
-        }
-        Provider::VaultConnection => {
-            Particle::fly_towards_provider(random, motion, sprites, engine_random, true)
-        }
-        Provider::OminousSpawning => {
-            Particle::ominous_spawning(random, motion, sprites, (engine_random, level_random))
-        }
-        Provider::Suspended => Particle::suspended(name, random, motion.0, sprites, engine_random),
-        // `Provider::SuspendedTown`.
-        _ => Particle::suspended_town(name, random, motion, sprites, (engine_random, level_random)),
-    }
-}
-
-/// `TrailParticle.Provider`: nothing for options of another kind.
-fn trail(
-    data: super::engine::ParticleData,
-    random: RandomSource,
-    motion: ((f64, f64, f64), (f64, f64, f64)),
-    (sprites, engine_random): (&Arc<SpriteSet>, &mut RandomSource),
-) -> Option<Particle> {
-    let super::engine::ParticleData::Trail {
-        target,
-        color,
-        duration,
-    } = data
-    else {
-        return None;
-    };
-    let sprite = sprites.from_random(engine_random);
-    Some(Particle::trail(
-        random,
-        motion,
-        target,
-        color,
-        duration,
-        (sprites, sprite),
-    ))
-}
-
-/// The providers that read the colours their options carry: nothing for options of another kind.
-fn coloured(
-    provider: Provider,
-    data: super::engine::ParticleData,
-    random: RandomSource,
-    motion: ((f64, f64, f64), (f64, f64, f64)),
-    (sprites, spell_random): (&Arc<SpriteSet>, &mut RandomSource),
-) -> Option<Particle> {
-    Some(match provider {
-        Provider::Dust => {
-            let super::engine::ParticleData::Dust { color, scale } = data else {
-                return None;
-            };
-            Particle::dust(random, motion, sprites, (color, scale))
-        }
-        Provider::DustTransition => {
-            let super::engine::ParticleData::DustTransition { from, to, scale } = data else {
-                return None;
-            };
-            Particle::dust_transition(random, motion, sprites, (from, to, scale))
-        }
-        Provider::InstantSpell => {
-            let super::engine::ParticleData::Spell { color, power } = data else {
-                return None;
-            };
-            Particle::instant_spell(random, motion, sprites, spell_random, (color, power))
-        }
-        Provider::MobEffect => {
-            let super::engine::ParticleData::Color(color) = data else {
-                return None;
-            };
-            Particle::mob_effect(random, motion, sprites, spell_random, color)
-        }
-        _ => return None,
-    })
 }

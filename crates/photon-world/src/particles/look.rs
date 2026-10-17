@@ -12,6 +12,7 @@ impl Particle {
         let s = (self.age as f32 + partial) / self.lifetime as f32;
         match self.kind {
             Kind::AshSmoke { .. }
+            | Kind::NoxiousGas { .. }
             | Kind::PlayerCloud
             | Kind::DragonBreath { .. }
             | Kind::TrialDetection
@@ -104,6 +105,7 @@ impl Particle {
                 | Kind::SculkCharge
                 | Kind::FireworkSpark(_)
                 | Kind::Flash
+                | Kind::NoxiousGas { .. }
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }
 

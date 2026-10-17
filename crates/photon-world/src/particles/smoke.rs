@@ -11,7 +11,7 @@ impl Particle {
     /// `BaseAshSmokeParticle(..)`: a particle that rises, darkens at random and follows
     /// its sprite set as it ages.
     #[allow(clippy::too_many_arguments)]
-    fn ash_smoke(
+    pub(super) fn ash_smoke(
         random: RandomSource,
         at: (f64, f64, f64),
         direction: (f32, f32, f32),

@@ -458,6 +458,14 @@ class MovementSupport {
                         net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         }
+        if (row.has("sulfurs")) {
+            // Potent sulfur blocks' entities, made (and set to tick) in the order of the row.
+            for (var element : row.getAsJsonArray("sulfurs")) {
+                var described = element.getAsJsonObject();
+                level.getBlockEntity(new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                    described.get("z").getAsInt()));
+            }
+        }
         if (row.has("vaults")) {
             for (var element : row.getAsJsonArray("vaults")) {
                 var described = element.getAsJsonObject();

@@ -43,7 +43,9 @@ impl ClientWorld {
     ) -> Option<&mut ClientBlockEntity> {
         let type_id = photon_data::block_entity_type::id(type_name)?;
         let time = self.game_time() as i64;
-        let ticks = type_name == "minecraft:end_gateway";
+        let state = self.block_state_or_air(x, y, z);
+        let ticks = type_name == "minecraft:end_gateway"
+            || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
         }
@@ -119,6 +121,7 @@ impl ClientWorld {
             }
             self.light.check_block((x, y, z));
         }
+        self.rebind_sulfur_ticker((x, y, z), state_id);
         true
     }
 
@@ -175,14 +178,14 @@ impl ClientWorld {
                 ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
                     .made_at(time),
             );
-            if has_ticker(entity.type_id) {
-                ticking.push(key);
-            }
+            ticking.push((key, entity.type_id));
             applied += 1;
         }
         // `LevelChunk.addAndRegisterBlockEntity`: a ticker for each, in the order they came.
-        for key in ticking {
-            self.block_tickers.register(key);
+        for (key, type_id) in ticking {
+            if self.has_ticker(type_id, key) {
+                self.block_tickers.register(key);
+            }
         }
         applied
     }
@@ -209,7 +212,7 @@ impl ClientWorld {
             updated.events.age = age;
         }
         chunk.block_entities.insert(key, updated);
-        if !existed && has_ticker(entity.type_id) {
+        if !existed && self.has_ticker(entity.type_id, key) {
             self.block_tickers.register(key);
         }
         true
@@ -303,7 +306,16 @@ impl ClientWorld {
     }
 }
 
-/// Whether the client ticks block entities of a type: the end gateway's beam animation.
-fn has_ticker(type_id: i32) -> bool {
-    photon_data::block_entity_type::name(type_id) == Some("minecraft:end_gateway")
+impl ClientWorld {
+    /// Whether the client ticks the block entity of a type at a place: the end gateway's beam
+    /// animation, and the potent sulfur block that is not dry.
+    fn has_ticker(&self, type_id: i32, (x, y, z): (i32, i32, i32)) -> bool {
+        match photon_data::block_entity_type::name(type_id) {
+            Some("minecraft:end_gateway") => true,
+            Some("minecraft:potent_sulfur") => {
+                super::has_sulfur_ticker(self.block_state_or_air(x, y, z))
+            }
+            _ => false,
+        }
+    }
 }

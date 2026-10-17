@@ -71,6 +71,7 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
     for vault in row["vaults"].as_array().into_iter().flatten() {
         share_vault(world, vault)?;
     }
+    place_sulfur(world, row)?;
     Ok(())
 }
 
@@ -122,6 +123,29 @@ fn place_gateway(world: &mut ClientWorld, gateway: &Value) -> Result<(), String>
         tag: Some(&bytes),
     };
     world.apply_block_entities(x.div_euclid(16), z.div_euclid(16), [input]);
+    Ok(())
+}
+
+/// The potent sulfur block entities of a row, set up in the order it lists them (the level makes
+/// one the first time something asks for the entity at the block).
+fn place_sulfur(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    let type_id = photon_data::block_entity_type::id("minecraft:potent_sulfur")
+        .ok_or("no potent sulfur block entity")?;
+    for sulfur in row["sulfurs"].as_array().into_iter().flatten() {
+        let (x, y, z) = (
+            i32_field(sulfur, "x")?,
+            i32_field(sulfur, "y")?,
+            i32_field(sulfur, "z")?,
+        );
+        let input = BlockEntityInput {
+            x,
+            y,
+            z,
+            type_id,
+            tag: None,
+        };
+        world.apply_block_entities(x.div_euclid(16), z.div_euclid(16), [input]);
+    }
     Ok(())
 }
 

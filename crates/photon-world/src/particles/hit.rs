@@ -90,6 +90,8 @@ pub(super) enum Emitter {
     Explosion,
     /// `GustSeedParticle`: three gusts every so many ticks, within a spread.
     Gust { scale: f64, delay: i32 },
+    /// `NoxiousGasCloudParticle`: a place for gas every other tick, which the level picks.
+    GasCloud,
 }
 
 impl Particle {
@@ -414,6 +416,7 @@ impl Particle {
     /// about it this tick, through the level.
     pub(super) fn emitter_tick(&mut self, emitter: Emitter) -> Vec<Spawn> {
         let (name, count, scale, emits) = match emitter {
+            Emitter::GasCloud => return Vec::new(),
             Emitter::Explosion => ("explosion", 6, 4.0, true),
             Emitter::Gust { scale, delay } => ("gust", 3, scale, self.age % (delay + 1) == 0),
         };
@@ -438,7 +441,7 @@ impl Particle {
         let age = self.age;
         self.age += 1;
         let end = match emitter {
-            Emitter::Explosion => self.age,
+            Emitter::Explosion | Emitter::GasCloud => self.age,
             Emitter::Gust { .. } => age,
         };
         if end == self.lifetime {

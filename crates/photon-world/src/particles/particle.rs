@@ -92,6 +92,10 @@ pub(super) enum Kind {
     Terrain { uo: f32, vo: f32 },
     /// `BlockMarker`: the whole picture of a block, at a fixed size.
     BlockMarker,
+    /// `NoxiousGasParticle`: smoke that fades out once past `fade_start`.
+    NoxiousGas { fade_start: f32 },
+    /// `SulfurBubbleParticle`: rises through the water above a sulfur block.
+    SulfurBubble(super::sulfur::SulfurBubble),
 }
 
 /// Which atlas a particle's picture is in.
@@ -144,6 +148,8 @@ pub struct Particle {
     pub(super) limited: bool,
     /// The sound its last tick asked the level to play (a drop landing).
     pub(super) sound: Option<super::super::local_player::LocalSound>,
+    /// The cell a gas cloud asks the level to send gas near, once.
+    pub(super) gas_probe: Option<[i32; 3]>,
 }
 
 impl Particle {
@@ -190,6 +196,7 @@ impl Particle {
             kind,
             limited: false,
             sound: None,
+            gas_probe: None,
         };
         particle.set_size(0.2, 0.2);
         particle.set_pos(x, y, z);
@@ -287,65 +294,86 @@ impl Particle {
     /// `Particle.tick`, with what the class does before and after it; a particle that leaves
     /// another (lava its smoke) asks for it.
     pub fn tick(&mut self, world: &ClientWorld) -> Vec<super::engine::Spawn> {
+        if let Some(spawns) = self.own_tick(world).or_else(|| self.own_tick_more(world)) {
+            return spawns;
+        }
+        if matches!(self.kind, Kind::AshSmoke { decays: true }) {
+            self.gravity *= 0.88;
+            self.friction *= 0.92;
+        }
+        self.base_tick(world);
+        self.after_base_tick();
         match self.kind {
-            Kind::CampfireSmoke => {
-                self.campfire_tick(world);
-                return Vec::new();
+            Kind::FireworkSpark(spark) => {
+                self.set_sprite_from_age();
+                self.firework_spark_tick(spark)
             }
-            Kind::Water(water) => {
-                self.water_tick(world, water);
-                return Vec::new();
+            Kind::Lava if !self.removed => self.lava_smoke().into_iter().collect(),
+            Kind::PlayerCloud if !self.removed => {
+                self.settle_to_player(world);
+                Vec::new()
             }
-            Kind::Attract(attract) => {
-                self.attract_tick(attract);
-                return Vec::new();
-            }
-            Kind::Vibration(vibration) => {
-                self.vibration_tick(world, vibration);
-                return Vec::new();
-            }
-            Kind::Trail { target } => {
-                self.trail_tick(target);
-                return Vec::new();
-            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The kinds whose tick is all their own: nothing is asked of the level.
+    fn own_tick(&mut self, world: &ClientWorld) -> Option<Vec<super::engine::Spawn>> {
+        match self.kind {
+            Kind::CampfireSmoke => self.campfire_tick(world),
+            Kind::Water(water) => self.water_tick(world, water),
+            Kind::Attract(attract) => self.attract_tick(attract),
+            Kind::Vibration(vibration) => self.vibration_tick(world, vibration),
+            Kind::Trail { target } => self.trail_tick(target),
             Kind::Shriek { delay } if delay > 0 => {
                 self.kind = Kind::Shriek { delay: delay - 1 };
-                return Vec::new();
             }
-            Kind::Burst => {
-                self.burst_tick();
-                return Vec::new();
+            Kind::Burst => self.burst_tick(),
+            Kind::DragonBreath { has_hit_ground } => self.dragon_breath_tick(world, has_hit_ground),
+            _ => return None,
+        }
+        Some(Vec::new())
+    }
+
+    /// More of them, the ones that make others or sit in a group of their own.
+    fn own_tick_more(&mut self, world: &ClientWorld) -> Option<Vec<super::engine::Spawn>> {
+        Some(match self.kind {
+            Kind::Emitter(super::hit::Emitter::GasCloud) => {
+                self.gas_cloud_tick();
+                Vec::new()
             }
-            Kind::Emitter(emitter) => return self.emitter_tick(emitter),
-            Kind::FireworkStarter(_) => return Vec::new(),
-            Kind::DragonBreath { has_hit_ground } => {
-                self.dragon_breath_tick(world, has_hit_ground);
-                return Vec::new();
+            Kind::Emitter(emitter) => self.emitter_tick(emitter),
+            Kind::SulfurBubble(bubble) => {
+                self.sulfur_bubble_tick(world, bubble);
+                Vec::new()
             }
-            Kind::Drip(drip) => return self.drip_tick(world, drip),
+            Kind::FireworkStarter(_) => Vec::new(),
+            Kind::Drip(drip) => self.drip_tick(world, drip),
             Kind::FallingLeaves(leaf) => {
                 self.falling_leaves_tick(world, leaf);
-                return Vec::new();
+                Vec::new()
             }
             Kind::FallingDust { rot_speed } => {
                 self.falling_dust_tick(world, rot_speed);
-                return Vec::new();
+                Vec::new()
             }
-            Kind::AshSmoke { decays: true } => {
-                self.gravity *= 0.88;
-                self.friction *= 0.92;
-            }
-            _ => {}
-        }
-        self.base_tick(world);
+            _ => return None,
+        })
+    }
+
+    /// What a class does after `Particle.tick`: follows its pictures, or fades.
+    fn after_base_tick(&mut self) {
         match self.kind {
             Kind::AshSmoke { .. }
             | Kind::Soul { .. }
             | Kind::Dust { .. }
             | Kind::Glow
             | Kind::Poof
-            | Kind::SculkCharge => {
+            | Kind::SculkCharge
+            | Kind::TrialDetection => self.set_sprite_from_age(),
+            Kind::NoxiousGas { fade_start } => {
                 self.set_sprite_from_age();
+                self.noxious_gas_fade(fade_start);
             }
             Kind::Crit => {
                 self.g_col *= 0.96;
@@ -357,26 +385,21 @@ impl Particle {
                 self.alpha += 0.05 * (original_alpha - self.alpha);
             }
             Kind::Totem => self.animated_fade(),
-            Kind::TrialDetection => self.set_sprite_from_age(),
-            Kind::FireworkSpark(spark) => {
-                self.set_sprite_from_age();
-                return self.firework_spark_tick(spark);
-            }
-            Kind::EndRod => {
-                self.animated_fade();
-                if self.age > self.lifetime / 2 {
-                    // `setFadeColor(15916745)`, closed on by a fifth each tick.
-                    let [r, g, b] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
-                    self.r_col += (r - self.r_col) * 0.2;
-                    self.g_col += (g - self.g_col) * 0.2;
-                    self.b_col += (b - self.b_col) * 0.2;
-                }
-            }
-            Kind::PlayerCloud if !self.removed => self.settle_to_player(world),
-            Kind::Lava if !self.removed => return self.lava_smoke().into_iter().collect(),
+            Kind::EndRod => self.end_rod_fade(),
             _ => {}
         }
-        Vec::new()
+    }
+
+    /// `EndRodParticle.tick` after the fade: past half its life it closes on a pale colour.
+    fn end_rod_fade(&mut self) {
+        self.animated_fade();
+        if self.age > self.lifetime / 2 {
+            // `setFadeColor(15916745)`, closed on by a fifth each tick.
+            let [r, g, b] = [242.0 / 255.0, 222.0 / 255.0, 201.0 / 255.0];
+            self.r_col += (r - self.r_col) * 0.2;
+            self.g_col += (g - self.g_col) * 0.2;
+            self.b_col += (b - self.b_col) * 0.2;
+        }
     }
 
     /// `Particle.tick`.
@@ -454,6 +477,11 @@ impl Particle {
     pub(super) fn bounding_box_move(&mut self, xa: f64, ya: f64, za: f64) {
         self.bounding_box = self.bounding_box.move_by(xa, ya, za);
         self.set_location_from_bounding_box();
+    }
+
+    /// The cell its last tick asked the level to send gas near, once.
+    pub fn take_gas_probe(&mut self) -> Option<[i32; 3]> {
+        self.gas_probe.take()
     }
 
     /// The sound its last tick asked for, once.

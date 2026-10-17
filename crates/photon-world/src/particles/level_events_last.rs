@@ -135,7 +135,7 @@ impl ParticleEngine {
 
     /// `Level.addParticle` of a plain type with the limiter's and the option's say (`override`,
     /// `always shown`).
-    fn level_add_flags<F: FnMut() -> RandomSource>(
+    pub(super) fn level_add_flags<F: FnMut() -> RandomSource>(
         &mut self,
         context: &mut LevelEventContext<'_, F>,
         name: &str,

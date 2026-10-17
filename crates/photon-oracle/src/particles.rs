@@ -4,9 +4,11 @@ use super::*;
 use std::sync::Arc;
 mod factory;
 use factory::*;
+mod digest;
 mod events;
 mod extras;
 mod terrain;
+use digest::digest_group;
 use terrain::OracleTerrain;
 mod pickup;
 use photon_world::particles::{
@@ -200,11 +202,6 @@ fn status_of(name: &str) -> Result<ParticleStatus, String> {
     }
 }
 
-/// The fold the oracle digests a group with: FNV-1a over 64-bit words.
-fn fold(hash: u64, value: u64) -> u64 {
-    (hash ^ value).wrapping_mul(0x0000_0100_0000_01b3)
-}
-
 /// `particle_engine`: the engine asked for particles by the level and by the packet.
 pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
@@ -272,16 +269,12 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
                 // A level or block event goes through the level as the world queues it.
                 if events::queues(event, &mut world)? {
-                    for queued in world.take_level_events() {
-                        let mut context = LevelEventContext::new(
-                            &world,
-                            &view,
-                            &mut level_random,
-                            &mut particle_random,
-                        );
-                        let played = engine.level_event(queued, &mut context);
-                        sounds.extend(events::heard(&played, (&mut engine, &mut world)));
-                    }
+                    let randoms = (&mut level_random, &mut particle_random);
+                    sounds.extend(events::play_queued(
+                        (&mut engine, &mut world),
+                        &view,
+                        randoms,
+                    ));
                     continue;
                 }
                 let name = string(event, "particle")?;
@@ -345,6 +338,13 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
                 }
             }
             let pending = events::tick_block_entities(&mut world, row, &engine);
+            // What the block entities asked of the level as they ticked.
+            let randoms = (&mut level_random, &mut particle_random);
+            sounds.extend(events::play_queued(
+                (&mut engine, &mut world),
+                &view,
+                randoms,
+            ));
             let mut context =
                 LevelEventContext::new(&world, &view, &mut level_random, &mut particle_random);
             engine.tick_explosions(&mut context);
@@ -359,27 +359,12 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         }
         let limit =
             usize::try_from(i32_field(row, "describe")?).map_err(|error| error.to_string())?;
-        let mut digest = 0xcbf2_9ce4_8422_2325_u64;
-        let mut first = Vec::new();
-        for particle in engine.particles() {
-            let (position, delta) = (particle.position(), particle.delta());
-            for value in [
-                position.x, position.y, position.z, delta.x, delta.y, delta.z,
-            ] {
-                digest = fold(digest, value.to_bits());
-            }
-            digest = fold(digest, i64::from(particle.age()) as u64);
-            digest = fold(digest, i64::from(particle.lifetime()) as u64);
-            digest = fold(digest, particle.sprite() as u64);
-            if first.len() < limit {
-                first.push(describe(particle, &world, &partials));
-            }
-        }
+        let (digest, first) = digest_group(&engine, (&world, &partials), limit);
         out.push(json!({
             "label": string(row, "label")?,
             "ticks": ticks,
             "first": first,
-            "digest": format!("{digest:x}"),
+            "digest": digest,
         }));
     }
     Ok(json!({"rows": out}))

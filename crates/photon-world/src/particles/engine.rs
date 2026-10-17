@@ -124,6 +124,8 @@ pub struct Spawn {
 pub enum Emitted {
     Particle(Spawn),
     Sound(crate::local_player::LocalSound),
+    /// A gas cloud asks the level for a place near the cell it hangs in to send gas to.
+    GasProbe([i32; 3]),
 }
 
 /// `ClientboundLevelParticlesPacket`, of a type that is only its id or a block state.
@@ -311,6 +313,9 @@ impl ParticleEngine {
                     // `playLocalSound`'s seed.
                     level_random.next_long();
                     sounds.push(sound);
+                }
+                Emitted::GasProbe(cell) => {
+                    self.send_gas(world, cell, view, level_random, &mut particle_random);
                 }
             }
         }
