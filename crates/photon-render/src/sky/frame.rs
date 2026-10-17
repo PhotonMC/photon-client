@@ -57,7 +57,8 @@ pub struct SkyView {
     pub forward: [f32; 3],
     /// The camera's eye height above the horizon (sea level on a normal world).
     pub eye_above_horizon: f64,
-    pub eye_in_water: bool,
+    /// What the camera is in and what its entity has, for the fog.
+    pub fog: FogView,
     /// The effective render distance in chunks.
     pub render_distance: i32,
     /// The cloud range option, in chunks.
@@ -90,13 +91,9 @@ pub fn build_frame(
     let star_angle = attributes.get(Attribute::StarAngle).float() * std::f32::consts::PI / 180.0;
     let star_brightness = attributes.get(Attribute::StarBrightness).float();
     let moon_phase = usize::from(attributes.get(Attribute::MoonPhase).phase()).min(7);
-    let render_blocks = (view.render_distance * 16) as f32;
 
-    // AtmosphericFogEnvironment.getBaseColor, then the fog renderer's scaling;
-    // under water the water fog colour takes its place.
-    let fog = if view.eye_in_water {
-        attributes.get(Attribute::WaterFogColor).color()
-    } else {
+    // FogRenderer.setupFog: the environment the camera is in, the colour it gives and the distances.
+    let atmosphere = AtmosphericFog::of(
         super::fog::atmospheric_colour(
             &super::fog::AtmosphereAttributes {
                 fog_colour: attributes.get(Attribute::FogColor).color(),
@@ -107,41 +104,28 @@ pub fn build_frame(
             },
             (view.forward[0], view.render_distance),
             (view.weather.rain, view.weather.thunder),
-        )
-    };
-    let fog_colour = {
-        let [r, g, b, _] = unpack(fog);
-        [r, g, b, 1.0]
-    };
-    // FogRenderer.setupFog: the water or atmospheric environment's
-    // distances, then the render distance's own band. The player's water
-    // vision is taken as zero, so under water the end is its lowest quarter.
-    let (environmental_start, environmental_end, sky_fog_end, cloud_fog_end) = if view.eye_in_water
-    {
-        let end = attributes.get(Attribute::WaterFogEndDistance).float() * 0.25;
+        ),
         (
-            attributes.get(Attribute::WaterFogStartDistance).float(),
-            end,
-            end,
-            end,
-        )
-    } else {
-        let end = attributes.get(Attribute::FogEndDistance).float();
-        (
-            attributes.get(Attribute::FogStartDistance).float() - 160.0 * view.rain_fog,
-            end.min(96.0).max(end - 256.0 * view.rain_fog),
-            render_blocks.min(attributes.get(Attribute::SkyFogEndDistance).float()),
-            ((view.cloud_range * 16) as f32)
-                .min(attributes.get(Attribute::CloudFogEndDistance).float()),
-        )
+            attributes.get(Attribute::FogStartDistance).float(),
+            attributes.get(Attribute::FogEndDistance).float(),
+            attributes.get(Attribute::SkyFogEndDistance).float(),
+            attributes.get(Attribute::CloudFogEndDistance).float(),
+        ),
+        (view.rain_fog, view.render_distance, view.cloud_range),
+    );
+    let water = WaterFog {
+        colour: attributes.get(Attribute::WaterFogColor).color(),
+        start: attributes.get(Attribute::WaterFogStartDistance).float(),
+        end: attributes.get(Attribute::WaterFogEndDistance).float(),
     };
+    let fog = fog_data(&view.fog, &atmosphere, &water);
+    let (fog_colour, sky_fog_end, cloud_fog_end) = (fog.colour, fog.sky_end, fog.cloud_end);
     let cloud_colour = unpack(attributes.get(Attribute::CloudColor).color());
-    let render_fog_span = (render_blocks / 10.0).clamp(4.0, 64.0);
     let terrain_fog = [
-        environmental_start,
-        environmental_end,
-        render_blocks - render_fog_span,
-        render_blocks,
+        fog.environmental_start,
+        fog.environmental_end,
+        fog.render_distance_start,
+        fog.render_distance_end,
     ];
 
     let mut frame = SkyFrame {
@@ -305,7 +289,7 @@ pub fn build_frame(
         push_batch(&mut frame, SkyBlend::Overlay, vertices);
     }
 
-    if view.eye_above_horizon < 0.0 && !view.eye_in_water {
+    if view.eye_above_horizon < 0.0 && view.fog.fog_type != FogType::Water {
         // The dark disc sits lifted by twelve, but its fog is measured from
         // where it was built.
         push_batch(

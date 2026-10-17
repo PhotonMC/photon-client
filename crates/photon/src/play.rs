@@ -205,7 +205,8 @@ struct FrameCamera {
     view_projection: [[f32; 4]; 4],
     sky_view_projection: [[f32; 4]; 4],
     render_distance: i32,
-    eye_in_water: bool,
+    /// What the camera is in (`Camera.getFluidInCamera`), and what the fog reads of the player.
+    fog: photon_render::sky::FogView,
     /// `Camera.getCullFrustum`.
     frustum: photon_render::visibility::Frustum,
     /// What the locator bar reads of the camera.
@@ -497,6 +498,7 @@ fn set_moving_blocks(
     Ok(())
 }
 
+mod camera;
 mod cull;
 mod draw;
 mod effects;

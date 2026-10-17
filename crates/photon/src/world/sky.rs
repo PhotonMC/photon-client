@@ -21,7 +21,8 @@ pub struct SkyCamera {
     /// the clouds are drawn with.
     pub view_projection: [[f32; 4]; 4],
     pub render_distance: i32,
-    pub eye_in_water: bool,
+    /// What the camera is in and what the player has, for the fog.
+    pub fog: photon_render::sky::FogView,
     /// How far between ticks.
     pub partial: f64,
     /// How many ticks the frame took.
@@ -143,7 +144,7 @@ impl Sky {
             &photon_render::sky::SkyView {
                 forward: [look.x as f32, look.y as f32, look.z as f32],
                 eye_above_horizon: camera.eye.y - 63.0,
-                eye_in_water: camera.eye_in_water,
+                fog: camera.fog,
                 render_distance: camera.render_distance,
                 cloud_range: CLOUD_RANGE,
                 weather: photon_render::sky::Weather {

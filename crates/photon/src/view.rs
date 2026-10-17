@@ -151,6 +151,94 @@ pub fn camera_vectors(rotation: (f32, f32)) -> ([f32; 3], [f32; 3], [f32; 3]) {
     )
 }
 
+/// `FluidState.getHeight`: how high a block's fluid stands, a whole block if the same fluid is over it.
+fn fluid_height(
+    world: &photon_world::ClientWorld,
+    (x, y, z): (i32, i32, i32),
+) -> (photon_world::block::FluidState, f32) {
+    let at = |x: i32, y: i32, z: i32| {
+        photon_world::block::state_or_air(world.block_state_or_air(x, y, z)).fluid
+    };
+    let fluid = at(x, y, z);
+    let above = at(x, y + 1, z);
+    let height = if !above.is_empty() && fluid.is_same(above.fluid) {
+        1.0
+    } else {
+        fluid.own_height()
+    };
+    (fluid, height)
+}
+
+/// `Camera.NearPlane`: the point straight ahead on the near plane and its four corners, as offsets
+/// from the camera.
+fn near_plane_points(rotation: (f32, f32), (option_fov, aspect): (i32, f64)) -> [[f64; 3]; 5] {
+    let (forward, left, up) = camera_vectors(rotation);
+    let z_near = 0.05_f32;
+    let plane_height = (f64::from(option_fov as f32 * (std::f64::consts::PI / 180.0) as f32) / 2.0)
+        .tan()
+        * f64::from(z_near);
+    let plane_width = plane_height * aspect;
+    let scaled = |vector: [f32; 3], by: f64| vector.map(|axis| f64::from(axis) * by);
+    let (forward, left, up) = (
+        scaled(forward, f64::from(z_near)),
+        scaled(left, plane_width),
+        scaled(up, plane_height),
+    );
+    let corner = |up_sign: f64, left_sign: f64| {
+        [0, 1, 2].map(|axis| forward[axis] + up_sign * up[axis] + left_sign * left[axis])
+    };
+    [
+        forward,
+        corner(1.0, 1.0),
+        corner(1.0, -1.0),
+        corner(-1.0, 1.0),
+        corner(-1.0, -1.0),
+    ]
+}
+
+/// `Camera.getFluidInCamera`: water if the camera is under the surface of the water in its block,
+/// else lava or powder snow if any of the five points of the near plane is in it.
+pub fn camera_fluid(
+    world: &photon_world::ClientWorld,
+    camera: photon_core::math::Vec3,
+    rotation: (f32, f32),
+    (option_fov, aspect): (i32, f64),
+) -> photon_render::sky::FogType {
+    use photon_data::block::definition::Fluid;
+    use photon_render::sky::FogType;
+    let block = [camera.x, camera.y, camera.z].map(photon_core::math::floor_f64);
+    let (fluid, height) = fluid_height(world, (block[0], block[1], block[2]));
+    if fluid.is_same(Fluid::Water)
+        && !fluid.is_empty()
+        && camera.y < f64::from(block[1]) + f64::from(height)
+    {
+        return FogType::Water;
+    }
+    for point in near_plane_points(rotation, (option_fov, aspect)) {
+        let at = [
+            camera.x + point[0],
+            camera.y + point[1],
+            camera.z + point[2],
+        ];
+        let pos = at.map(photon_core::math::floor_f64);
+        let (fluid, height) = fluid_height(world, (pos[0], pos[1], pos[2]));
+        if fluid.is_same(Fluid::Lava) && !fluid.is_empty() {
+            if at[1] <= f64::from(height) + f64::from(pos[1]) {
+                return FogType::Lava;
+            }
+        } else if photon_world::block::state_or_air(
+            world.block_state_or_air(pos[0], pos[1], pos[2]),
+        )
+        .block()
+        .name
+            == "minecraft:powder_snow"
+        {
+            return FogType::PowderSnow;
+        }
+    }
+    FogType::Atmospheric
+}
+
 #[cfg(test)]
 mod culling_tests {
     use photon_render::visibility::{Frustum, culling_projection};

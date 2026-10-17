@@ -14,6 +14,13 @@ pub enum FogType {
     PowderSnow,
 }
 
+impl FogType {
+    /// Whether being in it narrows the field of view (`Camera.getFov`): water and lava do.
+    pub fn narrows_view(self) -> bool {
+        matches!(self, Self::Water | Self::Lava)
+    }
+}
+
 /// What the atmospheric environment makes of the sky's attributes: its colour and distances.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AtmosphericFog {

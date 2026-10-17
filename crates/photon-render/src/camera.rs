@@ -53,17 +53,12 @@ impl Camera {
         self.eye_height_old + partial_tick * (self.eye_height - self.eye_height_old)
     }
 
-    /// The vertical field of view in degrees, from the option's, narrowed
-    /// under water.
-    pub fn fov(&self, option_fov: i32, partial_tick: f32, eye_in_water: bool) -> f32 {
+    /// The vertical field of view in degrees, from the option's, narrowed in water and in lava.
+    pub fn fov(&self, option_fov: i32, partial_tick: f32, in_fluid: bool) -> f32 {
         let modifier =
             self.old_fov_modifier + partial_tick * (self.fov_modifier - self.old_fov_modifier);
         let fov = option_fov as f32 * modifier;
-        if eye_in_water {
-            fov * 0.857_142_87
-        } else {
-            fov
-        }
+        if in_fluid { fov * 0.857_142_87 } else { fov }
     }
 }
 

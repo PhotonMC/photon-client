@@ -417,7 +417,7 @@
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 13
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 23
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 25
-"crates/photon-render/src/sky/frame.rs::build_frame" = 14
+"crates/photon-render/src/sky/frame.rs::build_frame" = 12
 "crates/photon-render/src/sky/lerp.rs::weather_modifier" = 12
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 14
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 13
@@ -925,7 +925,7 @@
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 119
 "crates/photon-render/src/sky/environment.rs::Environment::load" = 71
-"crates/photon-render/src/sky/frame.rs::build_frame" = 222
+"crates/photon-render/src/sky/frame.rs::build_frame" = 209
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 74
 "crates/photon-render/src/sky/weather.rs::build" = 125
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75
@@ -1056,10 +1056,10 @@
 "crates/photon/src/overlays/wear.rs::name_tags" = 65
 "crates/photon/src/overlays/wear.rs::remote_players" = 104
 "crates/photon/src/particles.rs::Particles::vertices" = 78
+"crates/photon/src/play/camera.rs::Play::frame_camera" = 73
 "crates/photon/src/play/draw.rs::Play::draw" = 96
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::draw_overlays" = 78
-"crates/photon/src/play/draw.rs::Play::frame_camera" = 79
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
 "crates/photon/src/play/ticks.rs::Play::tick" = 82
