@@ -46,6 +46,13 @@ pub struct Sky {
 }
 
 impl Sky {
+    /// What the dimension's data says at this tick for the blocks that animate.
+    pub fn ambience<'a>(&'a self, session: &PlaySession) -> photon_render::sky::SkyAmbience<'a> {
+        photon_render::sky::SkyAmbience::new(&self.environment, |clock| {
+            session.clock_ticks(clock).unwrap_or(0)
+        })
+    }
+
     /// The dimension's sky data from the data pack, the probe's first
     /// values at the player's eyes, and the clouds texture.
     pub fn load(

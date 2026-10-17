@@ -140,42 +140,68 @@ pub(super) fn wrap_degrees(value: f32) -> f32 {
 }
 
 pub(super) fn apply(kind: Kind, operation: Operation, subject: Value, argument: Value) -> Value {
-    match (kind, operation) {
-        (_, Operation::Override) => argument,
-        (Kind::Rgb | Kind::Argb, Operation::Multiply) => {
-            Value::Color(multiply(subject.color(), argument.color()))
-        }
-        (Kind::Rgb | Kind::Argb, Operation::Add) => {
-            let (s, a) = (subject.color(), argument.color());
-            Value::Color(argb(
-                channel(s, 24),
-                (channel(s, 16) + channel(a, 16)).min(255),
-                (channel(s, 8) + channel(a, 8)).min(255),
-                (channel(s, 0) + channel(a, 0)).min(255),
-            ))
-        }
-        (Kind::Rgb | Kind::Argb, Operation::Subtract) => {
-            let (s, a) = (subject.color(), argument.color());
-            Value::Color(argb(
-                channel(s, 24),
-                (channel(s, 16) - channel(a, 16)).max(0),
-                (channel(s, 8) - channel(a, 8)).max(0),
-                (channel(s, 0) - channel(a, 0)).max(0),
-            ))
-        }
-        (Kind::Float | Kind::Angle, operation) => {
-            let (s, a) = (subject.float(), argument.float());
-            Value::Float(match operation {
-                Operation::Multiply => s * a,
-                Operation::Add => s + a,
-                Operation::Subtract => s - a,
-                Operation::Minimum => s.min(a),
-                Operation::Maximum => s.max(a),
-                Operation::Override => a,
-            })
-        }
-        _ => subject,
+    if operation == Operation::Override {
+        return argument;
     }
+    match kind {
+        Kind::Rgb | Kind::Argb => apply_colour(operation, subject.color(), argument.color()),
+        Kind::Float | Kind::Angle => apply_float(operation, subject.float(), argument.float()),
+        Kind::Bool => Value::Bool(apply_bool(operation, subject.bool(), argument.bool())),
+        Kind::Phase => subject,
+    }
+}
+
+/// The modifiers of a colour: each channel on its own, the alpha kept (`ColorModifier`).
+fn apply_colour(operation: Operation, s: u32, a: u32) -> Value {
+    let sum = |sign: i32, floor: i32, ceiling: i32| {
+        let channel_of =
+            |shift: u32| (channel(s, shift) + sign * channel(a, shift)).clamp(floor, ceiling);
+        Value::Color(argb(
+            channel(s, 24),
+            channel_of(16),
+            channel_of(8),
+            channel_of(0),
+        ))
+    };
+    match operation {
+        Operation::Multiply => Value::Color(multiply(s, a)),
+        Operation::Add => sum(1, 0, 255),
+        Operation::Subtract => sum(-1, 0, 255),
+        _ => Value::Color(s),
+    }
+}
+
+/// The modifiers of a number (`FloatModifier`).
+fn apply_float(operation: Operation, s: f32, a: f32) -> Value {
+    Value::Float(match operation {
+        Operation::Multiply => s * a,
+        Operation::Add => s + a,
+        Operation::Subtract => s - a,
+        Operation::Minimum => s.min(a),
+        Operation::Maximum => s.max(a),
+        _ => s,
+    })
+}
+
+/// `BooleanModifier`, as what each makes of the subject and the argument: the answers for
+/// (false, false), (false, true), (true, false) and (true, true).
+const BOOL_TABLES: [(Operation, [bool; 4]); 6] = [
+    (Operation::And, [false, false, false, true]),
+    (Operation::Nand, [true, true, true, false]),
+    (Operation::Or, [false, true, true, true]),
+    (Operation::Nor, [true, false, false, false]),
+    (Operation::Xor, [false, true, true, false]),
+    (Operation::Xnor, [true, false, false, true]),
+];
+
+/// The modifiers of a flag (`BooleanModifier`).
+fn apply_bool(operation: Operation, subject: bool, argument: bool) -> bool {
+    BOOL_TABLES
+        .iter()
+        .find(|(candidate, _)| *candidate == operation)
+        .map_or(subject, |(_, table)| {
+            table[usize::from(subject) * 2 + usize::from(argument)]
+        })
 }
 
 /// The lerp a keyframe track and a biome blend use.
@@ -184,7 +210,7 @@ pub(super) fn lerp(kind: Kind, alpha: f32, from: Value, to: Value) -> Value {
         Kind::Rgb | Kind::Argb => Value::Color(srgb_lerp(alpha, from.color(), to.color())),
         Kind::Float | Kind::Angle => Value::Float(lerp_f32(alpha, from.float(), to.float())),
         // Not interpolated: a keyframe switches when its segment ends.
-        Kind::Phase => {
+        Kind::Phase | Kind::Bool => {
             if alpha >= 1.0 {
                 to
             } else {
@@ -206,7 +232,7 @@ pub(super) fn partial_tick_lerp(kind: Kind, alpha: f32, from: Value, to: Value) 
                 from + alpha * delta
             })
         }
-        Kind::Phase => to,
+        Kind::Phase | Kind::Bool => to,
         _ => lerp(kind, alpha, from, to),
     }
 }

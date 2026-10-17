@@ -1,16 +1,27 @@
 use super::*;
 
+/// The names modifiers go by in the data files.
+const OPERATIONS: [(&str, Operation); 12] = [
+    ("override", Operation::Override),
+    ("multiply", Operation::Multiply),
+    ("add", Operation::Add),
+    ("subtract", Operation::Subtract),
+    ("minimum", Operation::Minimum),
+    ("maximum", Operation::Maximum),
+    ("and", Operation::And),
+    ("nand", Operation::Nand),
+    ("or", Operation::Or),
+    ("nor", Operation::Nor),
+    ("xor", Operation::Xor),
+    ("xnor", Operation::Xnor),
+];
+
 impl Operation {
     pub(super) fn parse(name: &str) -> Option<Self> {
-        Some(match name {
-            "override" => Self::Override,
-            "multiply" => Self::Multiply,
-            "add" => Self::Add,
-            "subtract" => Self::Subtract,
-            "minimum" => Self::Minimum,
-            "maximum" => Self::Maximum,
-            _ => return None,
-        })
+        OPERATIONS
+            .iter()
+            .find(|(candidate, _)| *candidate == name)
+            .map(|(_, operation)| *operation)
     }
 }
 
@@ -107,6 +118,10 @@ pub(super) fn parse_value(kind: Kind, value: &JsonValue) -> Option<Value> {
             other => Some(Value::Color(other.as_i64()? as u32)),
         },
         Kind::Float | Kind::Angle => Some(Value::Float(value.as_f32()?)),
+        Kind::Bool => match value {
+            JsonValue::Bool(flag) => Some(Value::Bool(*flag)),
+            _ => None,
+        },
         Kind::Phase => match value {
             JsonValue::String(text) => {
                 let text = String::from_utf16(text).ok()?;
@@ -179,4 +194,29 @@ pub(super) fn expand_tag(root: &Path, kind: &str, name: &str, out: &mut Vec<Stri
             out.push(entry);
         }
     }
+}
+
+/// A biome's `AMBIENT_PARTICLES`: each particle (its type, as a name or an object) and the chance
+/// each pick makes one.
+pub(super) fn parse_ambient_particles(biome: Option<&JsonObject>) -> Vec<AmbientParticle> {
+    let list = biome
+        .and_then(|biome| biome.object("attributes"))
+        .and_then(|attributes| attributes.array("minecraft:visual/ambient_particles"));
+    list.unwrap_or(&[])
+        .iter()
+        .filter_map(|value| {
+            let JsonValue::Object(entry) = value else {
+                return None;
+            };
+            let particle = match entry.get_str("particle")? {
+                JsonValue::String(name) => String::from_utf16(name).ok()?,
+                JsonValue::Object(options) => options.text("type")?,
+                _ => return None,
+            };
+            Some(AmbientParticle {
+                particle,
+                probability: entry.get_str("probability")?.as_f32()?,
+            })
+        })
+        .collect()
 }

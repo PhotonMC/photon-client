@@ -29,8 +29,7 @@ impl ParticleEngine {
     }
 
     /// `ClientLevel.doAnimateTick`: one block picked, then its block's and its fluid's
-    /// `animateTick`, and a fluid's drip below it one time in ten. The biome's ambient particles
-    /// (`AMBIENT_PARTICLES`) are not carried.
+    /// `animateTick`, a fluid's drip below it one time in ten, and the biome's ambient particles.
     fn do_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
         (xt, yt, zt): (i32, i32, i32),
@@ -54,6 +53,7 @@ impl ParticleEngine {
             let at = (f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5);
             self.level_add_data(context, "block_marker", ParticleData::Block(state), at);
         }
+        self.ambient_particles(state, (x, y, z), context);
     }
 
     /// The fluid's `animateTick` of the block picked, and a fluid's drip below it one time in ten.

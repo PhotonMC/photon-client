@@ -132,6 +132,8 @@ pub struct LevelEventContext<'a, F: FnMut() -> RandomSource> {
     pub dripstone: DripstoneAttributes,
     /// The local player, whom the level knows as one of its players.
     pub local_player: Option<PlayerSpot>,
+    /// What the environment attributes say (the clock's flags, the biomes' ambient particles).
+    pub ambience: &'a dyn super::Ambience,
 }
 
 impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
@@ -149,6 +151,7 @@ impl<'a, F: FnMut() -> RandomSource> LevelEventContext<'a, F> {
             particle_random,
             dripstone: DripstoneAttributes::default(),
             local_player: None,
+            ambience: &super::NoAmbience,
         }
     }
 }

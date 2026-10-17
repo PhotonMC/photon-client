@@ -38,6 +38,7 @@ impl ParticleEngine {
     ) -> bool {
         self.ambient_particles_tick((state, block), pos, random, (context, sounds))
             || self.sulfur_animate_tick((state, block), pos, random, (context, sounds))
+            || self.environment_animate_tick((state, block), pos, random, (context, sounds))
             || self.ambient_sounds_tick((state, block), pos, random, (context, sounds))
     }
 

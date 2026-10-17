@@ -5,9 +5,11 @@
 //! reference's `Particle` makes its random source when it is built, seeded from the clock. Here
 //! the source is handed in.
 
+mod ambience;
 mod animate;
 mod animate_ambient;
 mod animate_blocks;
+mod animate_environment;
 mod animate_falling;
 mod animate_misc;
 mod animate_redstone;
@@ -47,6 +49,7 @@ mod terrain;
 mod vibration;
 mod water;
 
+pub use ambience::{Ambience, AmbientParticle, NoAmbience};
 pub use elder_guardian::ElderGuardian;
 pub use engine::{
     AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, PositionSource,

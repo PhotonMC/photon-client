@@ -11,7 +11,7 @@
 "crates/photon-oracle/src/math_cases/player.rs" = 538
 "crates/photon-oracle/src/model.rs" = 503
 "crates/photon-oracle/src/movement.rs" = 572
-"crates/photon-oracle/src/particles.rs" = 519
+"crates/photon-oracle/src/particles.rs" = 518
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
@@ -416,13 +416,9 @@
 "crates/photon-render/src/objects/xp_orb.rs::icon" = 11
 "crates/photon-render/src/resolve.rs::ModelCache::prefetch" = 12
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 13
-"crates/photon-render/src/sky/attribute.rs::Attribute::default_value" = 14
-"crates/photon-render/src/sky/attribute.rs::Attribute::name" = 21
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 23
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 25
-"crates/photon-render/src/sky/environment.rs::Environment::load" = 19
 "crates/photon-render/src/sky/frame.rs::build_frame" = 22
-"crates/photon-render/src/sky/lerp.rs::apply" = 11
 "crates/photon-render/src/sky/lerp.rs::weather_modifier" = 12
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 14
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 13
@@ -586,7 +582,7 @@
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 18
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
-"crates/photon/src/play/ticks.rs::Play::tick" = 12
+"crates/photon/src/play/ticks.rs::Play::tick" = 11
 "crates/photon/src/screens.rs::run_actions" = 16
 "crates/photon/src/script.rs::HeldKeys::parse" = 28
 "crates/photon/src/world/block_entities.rs::block_entities" = 12
@@ -820,7 +816,7 @@
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
 "crates/photon-oracle/src/movement.rs::movement_result" = 571
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
-"crates/photon-oracle/src/particles.rs::particle_engine_result" = 163
+"crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
 "crates/photon-oracle/src/particles/factory.rs::particle_of" = 287
@@ -930,7 +926,7 @@
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 93
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 119
-"crates/photon-render/src/sky/environment.rs::Environment::load" = 104
+"crates/photon-render/src/sky/environment.rs::Environment::load" = 71
 "crates/photon-render/src/sky/frame.rs::build_frame" = 255
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 74
 "crates/photon-render/src/sky/weather.rs::build" = 125

@@ -142,3 +142,13 @@ rastgelesiyle işler.
   interaction shapes of cauldrons and hoppers that the reference's clip also reads). The oracle's
   rows list the sulfur block entities to set up in order (`sulfurs`), and a `game_time` event
   moves the clock on during a row.
+- Environment attributes in `animateTick` (#45): the level asks the environment (the dimension's
+  data and the overworld's clock) through a trait the particle engine owns, not the render side's
+  evaluation. A creaking heart that is not uprooted, with logs of the pale oak kinds on all six
+  sides, plays its idle sound one pick in sixteen while the clock's flag is up (from tick 12600 of
+  the day to the tick before 23401, wrapping each 24000); and every pick of a block that is not a
+  full cube may leave one of its biome's ambient particles, by their chances, drawn from the level's
+  random. The oracle sets the scene's biome (`biome`) and the clock (`clock` events) on both sides;
+  the Java scene's particles give back a try's gaussian pair as well as its seeds, since a pair
+  that is half used made two runs differ. Not carried yet: the firefly bush (its light gate and
+  heightmap).

@@ -22,6 +22,8 @@ pub struct Environment {
     pub(super) weather: bool,
     /// Whether each biome has precipitation, by its network number.
     pub(super) precipitation: Vec<bool>,
+    /// The particles each biome lets drift, by its network registry number.
+    pub(super) ambient_particles: Vec<Vec<AmbientParticle>>,
 }
 
 /// How hard it rains and thunders, each 0 to 1, thunder already scaled by
@@ -30,6 +32,56 @@ pub struct Environment {
 pub struct Weather {
     pub rain: f32,
     pub thunder: f32,
+}
+
+/// The names of the timelines a dimension lists, a tag expanded to the timelines it holds.
+fn timeline_names(data_root: &Path, dimension: &JsonObject) -> Option<Vec<String>> {
+    let mut timeline_names = Vec::new();
+    match dimension.get_str("timelines") {
+        Some(JsonValue::String(text)) => {
+            let text = String::from_utf16(text).ok()?;
+            match text.strip_prefix('#') {
+                Some(tag) => expand_tag(data_root, "timeline", tag, &mut timeline_names),
+                None => timeline_names.push(text),
+            }
+        }
+        Some(JsonValue::Array(list)) => {
+            for value in list {
+                if let JsonValue::String(text) = value {
+                    timeline_names.push(String::from_utf16(text).ok()?);
+                }
+            }
+        }
+        _ => {}
+    }
+    Some(timeline_names)
+}
+
+/// The timelines a dimension runs, each with the clock it reads and its tracks.
+fn load_timelines(data_root: &Path, dimension: &JsonObject) -> Option<Vec<Timeline>> {
+    let timeline_names = timeline_names(data_root, dimension)?;
+    let mut timelines = Vec::new();
+    for name in timeline_names {
+        let Some(timeline) =
+            photon_core::json::read_object(&data_path(data_root, "timeline", &name, ".json"))
+        else {
+            continue;
+        };
+        let clock = timeline.text("clock").unwrap_or_default();
+        let period = timeline.i32("period_ticks").map(i64::from);
+        let mut tracks = Vec::new();
+        if let Some(object) = timeline.object("tracks") {
+            for attribute in ATTRIBUTES {
+                if let Some(JsonValue::Object(track)) = object.get_str(attribute.name())
+                    && let Some(track) = Track::parse(attribute, period, track)
+                {
+                    tracks.push(track);
+                }
+            }
+        }
+        timelines.push(Timeline { clock, tracks });
+    }
+    Some(timelines)
 }
 
 impl Environment {
@@ -77,6 +129,10 @@ impl Environment {
                 parse_attribute_map(biome.as_ref().and_then(|biome| biome.object("attributes")))
             })
             .collect();
+        let ambient_particles = biome_files
+            .iter()
+            .map(|biome| parse_ambient_particles(biome.as_ref()))
+            .collect();
         let plains = biome_names
             .iter()
             .position(|name| name == "minecraft:plains")
@@ -89,45 +145,7 @@ impl Environment {
                 }
             }
         }
-        let mut timeline_names = Vec::new();
-        match dimension.get_str("timelines") {
-            Some(JsonValue::String(text)) => {
-                let text = String::from_utf16(text).ok()?;
-                match text.strip_prefix('#') {
-                    Some(tag) => expand_tag(data_root, "timeline", tag, &mut timeline_names),
-                    None => timeline_names.push(text),
-                }
-            }
-            Some(JsonValue::Array(list)) => {
-                for value in list {
-                    if let JsonValue::String(text) = value {
-                        timeline_names.push(String::from_utf16(text).ok()?);
-                    }
-                }
-            }
-            _ => {}
-        }
-        let mut timelines = Vec::new();
-        for name in timeline_names {
-            let Some(timeline) =
-                photon_core::json::read_object(&data_path(data_root, "timeline", &name, ".json"))
-            else {
-                continue;
-            };
-            let clock = timeline.text("clock").unwrap_or_default();
-            let period = timeline.i32("period_ticks").map(i64::from);
-            let mut tracks = Vec::new();
-            if let Some(object) = timeline.object("tracks") {
-                for attribute in ATTRIBUTES {
-                    if let Some(JsonValue::Object(track)) = object.get_str(attribute.name())
-                        && let Some(track) = Track::parse(attribute, period, track)
-                    {
-                        tracks.push(track);
-                    }
-                }
-            }
-            timelines.push(Timeline { clock, tracks });
-        }
+        let timelines = load_timelines(data_root, &dimension)?;
         Some(Self {
             skybox,
             dimension: dimension_map,
@@ -137,6 +155,7 @@ impl Environment {
             timelines,
             weather,
             precipitation,
+            ambient_particles,
         })
     }
 
@@ -148,6 +167,69 @@ impl Environment {
             .filter(|id| *id < self.precipitation.len())
             .unwrap_or(self.plains);
         self.precipitation.get(biome).copied().unwrap_or(false)
+    }
+
+    /// `AMBIENT_PARTICLES` of the biome with this network number; an unknown number reads as plains.
+    pub fn ambient_particles(&self, biome: Option<i32>) -> &[AmbientParticle] {
+        let biome = biome
+            .and_then(|id| usize::try_from(id).ok())
+            .filter(|id| *id < self.ambient_particles.len())
+            .unwrap_or(self.plains);
+        self.ambient_particles.get(biome).map_or(&[], Vec::as_slice)
+    }
+
+    /// One attribute of the dimension, whatever the place (`getDimensionValue`): the default, the
+    /// dimension's value, then each timeline's at the clocks' current ticks.
+    pub fn dimension_value(
+        &self,
+        attribute: Attribute,
+        clock_ticks: impl Fn(&str) -> i64,
+    ) -> Value {
+        self.layered(attribute, None, clock_ticks)
+    }
+
+    /// One attribute at a place the biome with this network number is at (`getValue` without a
+    /// biome interpolator): the biome's value comes between the dimension's and the timelines'.
+    pub fn value_at(
+        &self,
+        attribute: Attribute,
+        biome: Option<i32>,
+        clock_ticks: impl Fn(&str) -> i64,
+    ) -> Value {
+        let biome = biome
+            .and_then(|id| usize::try_from(id).ok())
+            .filter(|id| *id < self.biomes.len())
+            .unwrap_or(self.plains);
+        self.layered(attribute, Some(biome), clock_ticks)
+    }
+
+    /// The layers in the reference's order, but the weather's and the level's own.
+    fn layered(
+        &self,
+        attribute: Attribute,
+        biome: Option<usize>,
+        clock_ticks: impl Fn(&str) -> i64,
+    ) -> Value {
+        let kind = attribute.kind();
+        let mut value = attribute.default_value();
+        if let Some(entry) = self.dimension.get(&attribute) {
+            value = apply(kind, entry.operation, value, entry.argument);
+        }
+        let from_biome = biome.and_then(|biome| self.biomes.get(biome)?.get(&attribute));
+        if let Some(entry) = from_biome {
+            value = apply(kind, entry.operation, value, entry.argument);
+        }
+        for timeline in &self.timelines {
+            for track in timeline
+                .tracks
+                .iter()
+                .filter(|track| track.attribute == attribute)
+            {
+                let argument = track.sample(clock_ticks(&timeline.clock));
+                value = apply(kind, track.operation, value, argument);
+            }
+        }
+        attribute.sanitize(value)
     }
 
     pub fn skybox(&self) -> Skybox {

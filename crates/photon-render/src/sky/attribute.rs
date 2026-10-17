@@ -24,9 +24,11 @@ pub enum Attribute {
     SkyLightFactor,
     BlockLightTint,
     AmbientLightColor,
+    FireflyBushSounds,
+    CreakingActive,
 }
 
-pub(super) const ATTRIBUTES: [Attribute; 21] = [
+pub(super) const ATTRIBUTES: [Attribute; 23] = [
     Attribute::SkyColor,
     Attribute::FogColor,
     Attribute::SunriseSunsetColor,
@@ -48,6 +50,8 @@ pub(super) const ATTRIBUTES: [Attribute; 21] = [
     Attribute::SkyLightFactor,
     Attribute::BlockLightTint,
     Attribute::AmbientLightColor,
+    Attribute::FireflyBushSounds,
+    Attribute::CreakingActive,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -57,6 +61,7 @@ pub(super) enum Kind {
     Float,
     Angle,
     Phase,
+    Bool,
 }
 
 /// One attribute value.
@@ -65,6 +70,7 @@ pub enum Value {
     Color(u32),
     Float(f32),
     Phase(u8),
+    Bool(bool),
 }
 
 pub(super) const MOON_PHASES: [&str; 8] = [
@@ -88,6 +94,12 @@ pub(super) enum Operation {
     Subtract,
     Minimum,
     Maximum,
+    And,
+    Nand,
+    Or,
+    Nor,
+    Xor,
+    Xnor,
 }
 
 /// `ARGB.color(204, 204, 255)`, what a lightning flash lerps the sky colour towards.
@@ -141,75 +153,135 @@ pub struct Attributes {
     pub(super) values: BTreeMap<Attribute, Value>,
 }
 
+/// What one attribute is: its name, the type of its values and what it is without any layer.
+struct Definition {
+    name: &'static str,
+    kind: Kind,
+    default: Value,
+}
+
+const fn definition(name: &'static str, kind: Kind, default: Value) -> Definition {
+    Definition {
+        name,
+        kind,
+        default,
+    }
+}
+
+/// `EnvironmentAttributes`, for the attributes carried, in the order of `Attribute`.
+const DEFINITIONS: [Definition; 23] = [
+    definition("minecraft:visual/sky_color", Kind::Rgb, Value::Color(0)),
+    definition("minecraft:visual/fog_color", Kind::Rgb, Value::Color(0)),
+    definition(
+        "minecraft:visual/sunrise_sunset_color",
+        Kind::Argb,
+        Value::Color(0),
+    ),
+    definition("minecraft:visual/sun_angle", Kind::Angle, Value::Float(0.0)),
+    definition(
+        "minecraft:visual/moon_angle",
+        Kind::Angle,
+        Value::Float(0.0),
+    ),
+    definition(
+        "minecraft:visual/star_angle",
+        Kind::Angle,
+        Value::Float(0.0),
+    ),
+    definition(
+        "minecraft:visual/star_brightness",
+        Kind::Float,
+        Value::Float(0.0),
+    ),
+    definition("minecraft:visual/moon_phase", Kind::Phase, Value::Phase(0)),
+    definition(
+        "minecraft:visual/sky_fog_end_distance",
+        Kind::Float,
+        Value::Float(512.0),
+    ),
+    definition(
+        "minecraft:visual/fog_start_distance",
+        Kind::Float,
+        Value::Float(0.0),
+    ),
+    definition(
+        "minecraft:visual/fog_end_distance",
+        Kind::Float,
+        Value::Float(1024.0),
+    ),
+    definition(
+        "minecraft:visual/water_fog_color",
+        Kind::Rgb,
+        Value::Color(-16_448_205_i32 as u32),
+    ),
+    definition(
+        "minecraft:visual/water_fog_start_distance",
+        Kind::Float,
+        Value::Float(-8.0),
+    ),
+    definition(
+        "minecraft:visual/water_fog_end_distance",
+        Kind::Float,
+        Value::Float(96.0),
+    ),
+    definition("minecraft:visual/cloud_color", Kind::Argb, Value::Color(0)),
+    definition(
+        "minecraft:visual/cloud_height",
+        Kind::Float,
+        Value::Float(192.33),
+    ),
+    definition(
+        "minecraft:visual/cloud_fog_end_distance",
+        Kind::Float,
+        Value::Float(2048.0),
+    ),
+    definition(
+        "minecraft:visual/sky_light_color",
+        Kind::Rgb,
+        Value::Color(0xFFFF_FFFF),
+    ),
+    definition(
+        "minecraft:visual/sky_light_factor",
+        Kind::Float,
+        Value::Float(1.0),
+    ),
+    definition(
+        "minecraft:visual/block_light_tint",
+        Kind::Rgb,
+        Value::Color(-10_100_i32 as u32),
+    ),
+    definition(
+        "minecraft:visual/ambient_light_color",
+        Kind::Rgb,
+        Value::Color(0xFF00_0000),
+    ),
+    definition(
+        "minecraft:audio/firefly_bush_sounds",
+        Kind::Bool,
+        Value::Bool(false),
+    ),
+    definition(
+        "minecraft:gameplay/creaking_active",
+        Kind::Bool,
+        Value::Bool(false),
+    ),
+];
+
 impl Attribute {
+    fn definition(self) -> &'static Definition {
+        &DEFINITIONS[self as usize]
+    }
+
     pub(super) fn name(self) -> &'static str {
-        match self {
-            Self::SkyColor => "minecraft:visual/sky_color",
-            Self::FogColor => "minecraft:visual/fog_color",
-            Self::SunriseSunsetColor => "minecraft:visual/sunrise_sunset_color",
-            Self::SunAngle => "minecraft:visual/sun_angle",
-            Self::MoonAngle => "minecraft:visual/moon_angle",
-            Self::StarAngle => "minecraft:visual/star_angle",
-            Self::StarBrightness => "minecraft:visual/star_brightness",
-            Self::MoonPhase => "minecraft:visual/moon_phase",
-            Self::SkyFogEndDistance => "minecraft:visual/sky_fog_end_distance",
-            Self::WaterFogColor => "minecraft:visual/water_fog_color",
-            Self::FogStartDistance => "minecraft:visual/fog_start_distance",
-            Self::FogEndDistance => "minecraft:visual/fog_end_distance",
-            Self::WaterFogStartDistance => "minecraft:visual/water_fog_start_distance",
-            Self::WaterFogEndDistance => "minecraft:visual/water_fog_end_distance",
-            Self::CloudColor => "minecraft:visual/cloud_color",
-            Self::CloudHeight => "minecraft:visual/cloud_height",
-            Self::CloudFogEndDistance => "minecraft:visual/cloud_fog_end_distance",
-            Self::SkyLightColor => "minecraft:visual/sky_light_color",
-            Self::SkyLightFactor => "minecraft:visual/sky_light_factor",
-            Self::BlockLightTint => "minecraft:visual/block_light_tint",
-            Self::AmbientLightColor => "minecraft:visual/ambient_light_color",
-        }
+        self.definition().name
     }
 
     pub(super) fn kind(self) -> Kind {
-        match self {
-            Self::SkyColor
-            | Self::FogColor
-            | Self::WaterFogColor
-            | Self::SkyLightColor
-            | Self::BlockLightTint
-            | Self::AmbientLightColor => Kind::Rgb,
-            Self::SkyLightFactor => Kind::Float,
-            Self::SunriseSunsetColor | Self::CloudColor => Kind::Argb,
-            Self::SunAngle | Self::MoonAngle | Self::StarAngle => Kind::Angle,
-            Self::StarBrightness
-            | Self::SkyFogEndDistance
-            | Self::FogStartDistance
-            | Self::FogEndDistance
-            | Self::WaterFogStartDistance
-            | Self::WaterFogEndDistance
-            | Self::CloudHeight
-            | Self::CloudFogEndDistance => Kind::Float,
-            Self::MoonPhase => Kind::Phase,
-        }
+        self.definition().kind
     }
 
     pub(super) fn default_value(self) -> Value {
-        match self {
-            Self::SkyFogEndDistance => Value::Float(512.0),
-            Self::FogEndDistance => Value::Float(1024.0),
-            Self::WaterFogStartDistance => Value::Float(-8.0),
-            Self::WaterFogEndDistance => Value::Float(96.0),
-            Self::CloudHeight => Value::Float(192.33),
-            Self::CloudFogEndDistance => Value::Float(2048.0),
-            Self::WaterFogColor => Value::Color(-16_448_205_i32 as u32),
-            Self::MoonPhase => Value::Phase(0),
-            Self::SkyLightColor => Value::Color(0xFFFF_FFFF),
-            Self::SkyLightFactor => Value::Float(1.0),
-            Self::BlockLightTint => Value::Color(-10_100_i32 as u32),
-            Self::AmbientLightColor => Value::Color(0xFF00_0000),
-            _ => match self.kind() {
-                Kind::Rgb | Kind::Argb => Value::Color(0),
-                _ => Value::Float(0.0),
-            },
-        }
+        self.definition().default
     }
 
     pub(super) fn sanitize(self, value: Value) -> Value {
@@ -242,6 +314,10 @@ impl Value {
             Self::Float(value) => value,
             _ => 0.0,
         }
+    }
+
+    pub fn bool(self) -> bool {
+        matches!(self, Self::Bool(true))
     }
 
     pub(super) fn phase(self) -> u8 {

@@ -53,3 +53,37 @@ pub(super) fn route_level_events(
         sound.handle_level_events(event_sounds, songs);
     }
 }
+
+/// Where the local player is for the particles: the block they stand in, and the place the
+/// pickups of items head for.
+pub(super) fn player_place(
+    session: &photon_net::connection::PlaySession,
+) -> crate::particles::PlayerPlace {
+    let local = session.player().map(|player| {
+        let at = player.position();
+        photon_world::particles::pickup_target((at.x, at.y, at.z), player.eye_height())
+    });
+    let block = session.player().map(|player| {
+        let at = player.position();
+        (
+            at.x.floor() as i32,
+            at.y.floor() as i32,
+            at.z.floor() as i32,
+        )
+    });
+    (block, local)
+}
+
+/// The blocks about the player animate, and the particles tick; the sounds the blocks played.
+pub(super) fn tick_blocks(
+    session: &photon_net::connection::PlaySession,
+    (particles, sky): (&mut crate::particles::Particles, &crate::world::sky::Sky),
+    sound: Option<&mut crate::sound::SoundSystem>,
+) {
+    let place = player_place(session);
+    let ambience = sky.ambience(session);
+    let block_sounds = particles.tick(session, place, &ambience);
+    if let Some(sound) = sound {
+        sound.handle_local(block_sounds);
+    }
+}

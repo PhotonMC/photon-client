@@ -377,6 +377,23 @@ class MovementSupport {
                     var section = new net.minecraft.world.level.chunk.LevelChunkSection(
                         level.palettedContainerFactory());
                     int sectionMinY = level.getMinY() + index * 16;
+                    if (row.has("biome")) {
+                        // The whole scene is one biome (it is the plains where a row says nothing).
+                        var biome = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME)
+                            .getOrThrow(net.minecraft.resources.ResourceKey.create(
+                                net.minecraft.core.registries.Registries.BIOME,
+                                net.minecraft.resources.Identifier.parse(row.get("biome").getAsString())));
+                        @SuppressWarnings("unchecked")
+                        var biomes = (net.minecraft.world.level.chunk.PalettedContainer<
+                            net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>) section.getBiomes();
+                        for (int x = 0; x < 4; x++) {
+                            for (int y = 0; y < 4; y++) {
+                                for (int z = 0; z < 4; z++) {
+                                    biomes.set(x, y, z, biome);
+                                }
+                            }
+                        }
+                    }
                     for (int x = 0; x < 16; x++) {
                         for (int y = 0; y < 16; y++) {
                             for (int z = 0; z < 16; z++) {

@@ -23,9 +23,12 @@ use std::path::{Path, PathBuf};
 use photon_core::json::{JsonObject, JsonValue};
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_core::random::RandomSource;
+use photon_world::particles::AmbientParticle;
 
 use crate::block::tint::{argb, multiply};
 
+mod ambience;
+pub use ambience::SkyAmbience;
 mod attribute;
 pub use attribute::*;
 mod environment;
@@ -86,5 +89,93 @@ mod tests {
         );
         assert_eq!(phase.sample(23999), Value::Phase(0));
         assert_eq!(phase.sample(24000), Value::Phase(1));
+    }
+    #[test]
+    fn a_flag_track_switches_at_its_keyframes_and_wraps_the_day() {
+        let flag = track(
+            Attribute::CreakingActive,
+            Some(24000),
+            r#"{"modifier": "or", "keyframes": [{"ticks": 12600, "value": true}, {"ticks": 23401, "value": false}]}"#,
+        );
+        assert_eq!(flag.sample(12599), Value::Bool(false));
+        assert_eq!(flag.sample(12600), Value::Bool(true));
+        assert_eq!(flag.sample(23400), Value::Bool(true));
+        assert_eq!(flag.sample(23401), Value::Bool(false));
+        assert_eq!(flag.sample(24000 + 12600), Value::Bool(true));
+        // `or` over a false base keeps the track's flag, over a true base keeps true.
+        let applied = |base| {
+            apply(
+                Kind::Bool,
+                flag.operation,
+                Value::Bool(base),
+                Value::Bool(false),
+            )
+        };
+        assert_eq!(applied(false), Value::Bool(false));
+        assert_eq!(applied(true), Value::Bool(true));
+    }
+
+    #[test]
+    fn the_attributes_are_named_in_the_order_of_their_table() {
+        let names: Vec<&str> = ATTRIBUTES
+            .iter()
+            .map(|attribute| attribute.name())
+            .collect();
+        let mut unique = names.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.len(), ATTRIBUTES.len());
+        assert_eq!(Attribute::SkyColor.name(), "minecraft:visual/sky_color");
+        assert_eq!(
+            Attribute::AmbientLightColor.name(),
+            "minecraft:visual/ambient_light_color"
+        );
+        assert_eq!(
+            Attribute::FireflyBushSounds.name(),
+            "minecraft:audio/firefly_bush_sounds"
+        );
+        assert_eq!(
+            Attribute::CreakingActive.name(),
+            "minecraft:gameplay/creaking_active"
+        );
+        assert_eq!(
+            Attribute::WaterFogColor.default_value(),
+            Value::Color(0xFF05_0533)
+        );
+        assert_eq!(
+            Attribute::CreakingActive.default_value(),
+            Value::Bool(false)
+        );
+    }
+    #[test]
+    fn the_flag_modifiers_follow_the_references_formulas() {
+        type Formula = fn(bool, bool) -> bool;
+        let formulas: [(Operation, Formula); 6] = [
+            (Operation::And, |subject, argument| argument && subject),
+            (Operation::Nand, |subject, argument| !argument || !subject),
+            (Operation::Or, |subject, argument| argument || subject),
+            (Operation::Nor, |subject, argument| !argument && !subject),
+            (Operation::Xor, |subject, argument| argument ^ subject),
+            (Operation::Xnor, |subject, argument| argument == subject),
+        ];
+        for (operation, formula) in formulas {
+            for subject in [false, true] {
+                for argument in [false, true] {
+                    let applied = apply(
+                        Kind::Bool,
+                        operation,
+                        Value::Bool(subject),
+                        Value::Bool(argument),
+                    );
+                    assert_eq!(
+                        applied,
+                        Value::Bool(formula(subject, argument)),
+                        "{operation:?}"
+                    );
+                }
+            }
+        }
+        assert_eq!(Operation::parse("xnor"), Some(Operation::Xnor));
+        assert_eq!(Operation::parse("nothing"), None);
     }
 }

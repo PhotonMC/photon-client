@@ -4,6 +4,7 @@ use super::*;
 use std::sync::Arc;
 mod factory;
 use factory::*;
+mod ambience;
 mod digest;
 mod events;
 mod extras;
@@ -11,6 +12,7 @@ mod terrain;
 use digest::digest_group;
 use terrain::OracleTerrain;
 mod pickup;
+pub(crate) use ambience::biome_id;
 use photon_world::particles::{
     AddView, LevelEventContext, LevelParticles, Particle, ParticleEngine, ParticleResources,
     ParticleStatus, Spawn, SpriteSet, TerrainMaterials,
@@ -251,20 +253,17 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         let partials = f32_bits(&row["partials"])?;
         let events = row["events"].as_array().ok_or("events must be an array")?;
         let mut ticks = Vec::new();
+        let mut environments = ambience::Environments::load(row)?;
         for tick in 0..i32_field(row, "tick_count")? {
             let mut sounds = Vec::new();
             for event in events {
                 if i32_field(event, "tick")? != tick {
                     continue;
                 }
-                if string(event, "type")? == "animate_tick" {
-                    let mut context = LevelEventContext::new(
-                        &world,
-                        &view,
-                        &mut level_random,
-                        &mut particle_random,
-                    );
-                    sounds.extend(events::animate_tick(event, &mut engine, &mut context)?);
+                let mut randoms = (&mut level_random, &mut particle_random);
+                let ran = environments.run(event, (&mut engine, &world, &view), &mut randoms)?;
+                if let Some(heard) = ran {
+                    sounds.extend(heard);
                     continue;
                 }
                 // A level or block event goes through the level as the world queues it.

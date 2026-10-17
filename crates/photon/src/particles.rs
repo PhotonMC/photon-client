@@ -231,6 +231,7 @@ impl Particles {
             particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
             dripstone: self.dripstone,
             local_player: self.local_player,
+            ambience: &photon_world::particles::NoAmbience,
         };
         let mut sounds = Vec::new();
         for event in events {
@@ -361,6 +362,7 @@ impl Particles {
         &mut self,
         world: &ClientWorld,
         center: (i32, i32, i32),
+        ambience: &dyn photon_world::particles::Ambience,
     ) -> Vec<photon_world::local_player::LocalSound> {
         let view = AddView {
             camera: self.camera,
@@ -374,6 +376,7 @@ impl Particles {
             particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
             dripstone: self.dripstone,
             local_player: self.local_player,
+            ambience,
         };
         let sounds =
             self.engine
@@ -389,6 +392,7 @@ impl Particles {
         &mut self,
         session: &photon_net::connection::PlaySession,
         (player, local): PlayerPlace,
+        ambience: &dyn photon_world::particles::Ambience,
     ) -> Vec<photon_world::local_player::LocalSound> {
         self.look_about(session);
         let world = session.world();
@@ -407,12 +411,13 @@ impl Particles {
                 particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
                 dripstone: self.dripstone,
                 local_player: self.local_player,
+                ambience,
             };
             self.engine.tick_explosions(&mut context);
             self.uniquifier = uniquifier;
         }
         if let Some(center) = player {
-            sounds = self.animate_blocks(world, center);
+            sounds = self.animate_blocks(world, center, ambience);
         }
         self.engine.tick_pickups(|target| match target {
             None => local,

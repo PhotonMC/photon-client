@@ -367,6 +367,8 @@ class MovementParticleOracle extends MovementMenuOracle {
                 engineSeedField.setAccessible(true);
                 var engineSeed = (java.util.concurrent.atomic.AtomicLong) engineSeedField.get(getField(this, "random"));
                 long engineSeedBefore = engineSeed.get();
+                // A try's gaussians are given back too: the pair a polar draw makes is half used.
+                var engineGaussian = gaussianState(getField(this, "random"));
                 var spell = spellSeed();
                 long spellSeedBefore = spell.get();
                 // And what it drew from the level's random (a composter's life).
@@ -375,10 +377,13 @@ class MovementParticleOracle extends MovementMenuOracle {
                 levelSeedField.setAccessible(true);
                 var levelSeed = (java.util.concurrent.atomic.AtomicLong) levelSeedField.get(levelRandom);
                 long levelSeedBefore = levelSeed.get();
+                var levelGaussian = gaussianState(levelRandom);
                 var particle = seededParticle(seeds.isEmpty() ? 0L : seeds.peekFirst(), () -> {
                     engineSeed.set(engineSeedBefore);
                     spell.set(spellSeedBefore);
                     levelSeed.set(levelSeedBefore);
+                    engineGaussian.run();
+                    levelGaussian.run();
                     var made = super.createParticle(options, x, y, z, xa, ya, za);
                     if (made != null && !seededWith(made, seeds.isEmpty() ? 0L : seeds.peekFirst())
                         && queue.remove(made)) {
@@ -396,6 +401,30 @@ class MovementParticleOracle extends MovementMenuOracle {
                 throw new IllegalStateException(error);
             }
         }
+    }
+
+    /**
+     * What the random source keeps of a gaussian drawn in pairs (`MarsagliaPolarGaussian`), as a
+     * task that puts it back as it was.
+     */
+    static Runnable gaussianState(Object random) throws Exception {
+        var sourceField = random.getClass().getDeclaredField("gaussianSource");
+        sourceField.setAccessible(true);
+        var source = sourceField.get(random);
+        var next = source.getClass().getDeclaredField("nextNextGaussian");
+        next.setAccessible(true);
+        var have = source.getClass().getDeclaredField("haveNextNextGaussian");
+        have.setAccessible(true);
+        double nextValue = next.getDouble(source);
+        boolean haveValue = have.getBoolean(source);
+        return () -> {
+            try {
+                next.setDouble(source, nextValue);
+                have.setBoolean(source, haveValue);
+            } catch (IllegalAccessException error) {
+                throw new IllegalStateException(error);
+            }
+        };
     }
 
     /** `SpellParticle.RANDOM`, the class's own random source, seeded for a row. */
@@ -602,6 +631,16 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt());
                     level.blockEvent(at, level.getBlockState(at).getBlock(), event.get("b0").getAsInt(),
                         event.get("b1").getAsInt());
+                    continue;
+                }
+                if (event.get("type").getAsString().equals("clock")) {
+                    // The overworld's clock told to the level, and the attributes it feeds read afresh.
+                    var clock = level.registryAccess()
+                        .lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_CLOCK)
+                        .getOrThrow(net.minecraft.world.clock.WorldClocks.OVERWORLD);
+                    level.clockManager().handleUpdates(level.getGameTime(), java.util.Map.of(clock,
+                        new net.minecraft.world.clock.ClockNetworkState(event.get("ticks").getAsLong(), 0.0F, 1.0F)));
+                    level.environmentAttributes().invalidateTickCache();
                     continue;
                 }
                 if (event.get("type").getAsString().equals("game_time")) {

@@ -37,7 +37,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     }
     let mut world = ClientWorld::new(dimension);
     let radius = i32_field(row, "chunk_radius")?;
-    let biomes = vec![0_i32; 64];
+    let biomes = vec![particles::biome_id(row)?; 64];
     for chunk_x in -radius..=radius {
         for chunk_z in -radius..=radius {
             let mut sections = Vec::new();

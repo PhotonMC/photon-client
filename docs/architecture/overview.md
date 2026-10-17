@@ -29,6 +29,10 @@ world  -> render   (render knows no game rules)
 game + render -> gui -> photon
 ```
 
+### Reading what the render side owns
+
+`photon-render` evaluates the dimension's environment attributes (sky, fog, light and the clocks' flags) from the data pack, and `photon-world` may not depend on it. Where the world's own code needs one of them (the particle engine asks whether the creaking is about, and what a biome lets drift), `photon-world` defines a trait (`particles::Ambience`, like `TerrainMaterials` before it), the client builds the implementation (`SkyAmbience`) each tick from the sky data and the session's clocks, and the oracle builds the same one. The evaluation itself stays in `photon-render/src/sky`; a block's own reading of a position goes through the trait, not through a copy of the evaluation.
+
 ### Known layering debts
 
 - `photon-dev` holds the probes as they were: one 2,200-line function (`probe/mode.rs`) and 121 examples under `crates/photon-dev/examples/` whose size and naming violations are still in the lint baseline. Target: stages and scenario-driven binaries that meet the limits.
