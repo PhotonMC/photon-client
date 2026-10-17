@@ -23,13 +23,14 @@ pub enum Attribute {
     SkyLightColor,
     SkyLightFactor,
     BlockLightTint,
+    NightVisionColor,
     AmbientLightColor,
     FireflyBushSounds,
     CreakingActive,
     SkyLightLevel,
 }
 
-pub(super) const ATTRIBUTES: [Attribute; 24] = [
+pub(super) const ATTRIBUTES: [Attribute; 25] = [
     Attribute::SkyColor,
     Attribute::FogColor,
     Attribute::SunriseSunsetColor,
@@ -50,6 +51,7 @@ pub(super) const ATTRIBUTES: [Attribute; 24] = [
     Attribute::SkyLightColor,
     Attribute::SkyLightFactor,
     Attribute::BlockLightTint,
+    Attribute::NightVisionColor,
     Attribute::AmbientLightColor,
     Attribute::FireflyBushSounds,
     Attribute::CreakingActive,
@@ -171,7 +173,7 @@ const fn definition(name: &'static str, kind: Kind, default: Value) -> Definitio
 }
 
 /// `EnvironmentAttributes`, for the attributes carried, in the order of `Attribute`.
-const DEFINITIONS: [Definition; 24] = [
+const DEFINITIONS: [Definition; 25] = [
     definition("minecraft:visual/sky_color", Kind::Rgb, Value::Color(0)),
     definition("minecraft:visual/fog_color", Kind::Rgb, Value::Color(0)),
     definition(
@@ -251,6 +253,11 @@ const DEFINITIONS: [Definition; 24] = [
         "minecraft:visual/block_light_tint",
         Kind::Rgb,
         Value::Color(-10_100_i32 as u32),
+    ),
+    definition(
+        "minecraft:visual/night_vision_color",
+        Kind::Rgb,
+        Value::Color(0xFF99_9999),
     ),
     definition(
         "minecraft:visual/ambient_light_color",

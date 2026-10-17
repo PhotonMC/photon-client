@@ -7,6 +7,8 @@ pub struct LightmapInputs {
     pub sky_factor: f32,
     pub block_tint: [f32; 3],
     pub ambient: [f32; 3],
+    /// `NIGHT_VISION_COLOR`.
+    pub night_vision_colour: [f32; 3],
 }
 
 impl Attributes {
@@ -26,6 +28,7 @@ impl Attributes {
             sky_factor: self.get(Attribute::SkyLightFactor).float(),
             block_tint: rgb(Attribute::BlockLightTint),
             ambient: rgb(Attribute::AmbientLightColor),
+            night_vision_colour: rgb(Attribute::NightVisionColor),
         }
     }
 }
