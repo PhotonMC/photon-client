@@ -10,9 +10,6 @@ use photon_render::scene::Vertex;
 
 use crate::overlays::{FrameView, packed_light};
 
-/// How far from the camera, in chunks, sign text is drawn (as the other block entities).
-const RADIUS_CHUNKS: i32 = 8;
-
 /// The sign being written on: its block, whether its front, and its lines as they stand.
 pub type SignEditing<'a> = Option<((i32, i32, i32), bool, &'a [String; 4])>;
 
@@ -31,13 +28,9 @@ pub fn sign_texts(
 ) -> Vec<Vertex> {
     let world = session.world();
     let player = session.player();
-    let centre = (
-        (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
-        (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
-    );
     let scoping = first_person && player.is_some_and(|player| player.is_scoping());
     let mut vertices = Vec::new();
-    for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
+    for (x, y, z) in crate::objects::block_entity_items::in_view(world, view) {
         let Some(sign) = world.sign_view((x, y, z)) else {
             continue;
         };

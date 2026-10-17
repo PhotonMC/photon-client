@@ -19,9 +19,6 @@ use photon_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
 
-/// How far from the camera, in chunks, block entities are drawn.
-const RADIUS_CHUNKS: i32 = 8;
-
 /// `ChestRenderer.getChestMaterial` from the block's name.
 fn material_of(name: &str) -> ChestMaterial {
     match name {
@@ -60,11 +57,7 @@ pub fn block_entities(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    let centre = (
-        (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
-        (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
-    );
-    for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
+    for (x, y, z) in crate::objects::block_entity_items::in_view(world, view) {
         let Some(chest) = world.chest_view(x, y, z) else {
             other_block_entity(session, models, textures, view, (x, y, z), vertices);
             continue;

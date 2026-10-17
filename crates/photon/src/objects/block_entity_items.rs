@@ -24,7 +24,7 @@ const RADIUS_CHUNKS: i32 = 8;
 const VIEW_DISTANCE: f64 = 64.0;
 
 /// Whether the centre of a block is closer to the camera than the view distance (`Vec3.closerThan`).
-fn within_view((x, y, z): (i32, i32, i32), view: FrameView) -> bool {
+pub(crate) fn within_view((x, y, z): (i32, i32, i32), view: FrameView) -> bool {
     let centre = [x, y, z].map(|axis| f64::from(axis) + 0.5);
     let distance: f64 = (0..3)
         .map(|axis| {
@@ -37,7 +37,7 @@ fn within_view((x, y, z): (i32, i32, i32), view: FrameView) -> bool {
 
 /// The block entities the renderers of items draw: those in the chunks around the camera that are
 /// within the view distance.
-fn in_view(world: &photon_world::ClientWorld, view: FrameView) -> Vec<(i32, i32, i32)> {
+pub(crate) fn in_view(world: &photon_world::ClientWorld, view: FrameView) -> Vec<(i32, i32, i32)> {
     let centre = (
         (view.origin[0] + view.camera[0].floor() as i32).div_euclid(16),
         (view.origin[2] + view.camera[2].floor() as i32).div_euclid(16),
