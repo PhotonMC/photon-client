@@ -100,7 +100,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(sniffers::textures())
         .chain(ender_dragons::textures())
         .chain(end_crystals::textures())
-        .chain(block_entities::textures())
+        .chain(crate::world::block_entity_textures::textures())
         .chain(minecarts::textures())
         .chain(arrows::textures())
         .chain(charges::textures())

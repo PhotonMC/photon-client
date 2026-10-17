@@ -191,6 +191,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("bell_pose")) {
             return bellPose(request);
         }
+        if (operation.equals("decorated_pot_pose")) {
+            return decoratedPotPose(request);
+        }
         if (operation.equals("lectern_pose")) {
             return lecternPose(request);
         }

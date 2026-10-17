@@ -65,6 +65,38 @@ pub(crate) fn is_enchanting_table_state(state_id: BlockStateId) -> bool {
     is_of_classes(state_id, &[BlockClass::EnchantingTableBlock], &BLOCKS)
 }
 
+/// Whether a block state is a decorated pot's.
+pub(crate) fn is_decorated_pot_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::DecoratedPotBlock], &BLOCKS)
+}
+
+/// `PotDecorations.CODEC` of a pot's `sherds`: the items set in its back, left, right and front
+/// (a brick is no decoration); none for a tag that has no list of items.
+pub(super) fn pot_sherds(tag: &[u8]) -> [Option<String>; 4] {
+    use photon_core::nbt::FieldValue;
+    let mut input = tag;
+    let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) else {
+        return Default::default();
+    };
+    let Some(FieldValue::List(items)) = fields
+        .iter()
+        .find(|field| field.key == "sherds")
+        .map(|field| &field.value)
+    else {
+        return Default::default();
+    };
+    let mut sherds: [Option<String>; 4] = Default::default();
+    for (slot, item) in sherds.iter_mut().zip(items) {
+        if let FieldValue::Str(name) = item
+            && name != "minecraft:brick"
+        {
+            *slot = Some(name.clone());
+        }
+    }
+    sherds
+}
+
 /// Whether a block state is a lectern's.
 pub(crate) fn is_lectern_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
@@ -143,6 +175,7 @@ pub(crate) fn is_drawn_state(state_id: BlockStateId) -> bool {
         || is_banner_state(state_id)
         || is_enchanting_table_state(state_id)
         || is_lectern_state(state_id)
+        || is_decorated_pot_state(state_id)
         || is_sign_state(state_id)
 }
 
@@ -188,6 +221,17 @@ pub struct ShulkerBoxView {
     /// The dye of the box (`red`), none for the undyed one.
     pub color: Option<&'static str>,
     pub facing: Direction,
+}
+
+/// What a decorated pot is, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PotView {
+    /// The way the pot faces (`DecoratedPotBlock.HORIZONTAL_FACING`).
+    pub facing: Direction,
+    /// The items set in its back, left, right and front, none for a side of plain clay.
+    pub sherds: [Option<String>; 4],
+    /// How far through its wobble it is, a value past 0 to 1 once the wobble is over.
+    pub wobble: f32,
 }
 
 /// What a banner block is, for drawing it.

@@ -439,6 +439,62 @@ pub fn enchant_table() -> Vec<Value> {
     vec![entity("enchant-table-pose", "enchant_table_pose", rows)]
 }
 
+/// The real `DecoratedPotRenderer` for a pot facing each way, with each kind of sherd in each
+/// side, and wobbling at several points of its swing.
+pub fn decorated_pot() -> Vec<Value> {
+    let pot = |label: String, facing: &str, wobble: f64, sherds: [Option<&str>; 4]| {
+        json!({
+            "label": label, "facing": facing, "wobble": f32_bits(wobble), "sherds": sherds,
+            "light": DIM_LIGHT,
+        })
+    };
+    let mut rows = Vec::new();
+    for facing in ["north", "south", "west", "east"] {
+        rows.push(pot(format!("{facing} plain"), facing, 0.0, [None; 4]));
+    }
+    for wobble in [-0.25, 0.1, 0.5, 0.9, 1.0, 1.4] {
+        rows.push(pot(format!("wobble {}", float_text(wobble)), "north", wobble, [None; 4]));
+    }
+    let sherds = [
+        "minecraft:angler_pottery_sherd",
+        "minecraft:archer_pottery_sherd",
+        "minecraft:arms_up_pottery_sherd",
+        "minecraft:blade_pottery_sherd",
+        "minecraft:brewer_pottery_sherd",
+        "minecraft:burn_pottery_sherd",
+        "minecraft:danger_pottery_sherd",
+        "minecraft:explorer_pottery_sherd",
+        "minecraft:flow_pottery_sherd",
+        "minecraft:friend_pottery_sherd",
+        "minecraft:guster_pottery_sherd",
+        "minecraft:heart_pottery_sherd",
+        "minecraft:heartbreak_pottery_sherd",
+        "minecraft:howl_pottery_sherd",
+        "minecraft:miner_pottery_sherd",
+        "minecraft:mourner_pottery_sherd",
+        "minecraft:plenty_pottery_sherd",
+        "minecraft:prize_pottery_sherd",
+        "minecraft:scrape_pottery_sherd",
+        "minecraft:sheaf_pottery_sherd",
+        "minecraft:shelter_pottery_sherd",
+        "minecraft:skull_pottery_sherd",
+        "minecraft:snort_pottery_sherd",
+    ];
+    for (index, window) in sherds.windows(4).enumerate() {
+        let facing = ["north", "east", "south", "west"][index % 4];
+        let items = [Some(window[0]), Some(window[1]), Some(window[2]), Some(window[3])];
+        rows.push(pot(format!("sherds from {index}"), facing, 0.0, items));
+    }
+    // A brick and an item that is no sherd leave a side plain.
+    rows.push(pot(
+        "bricks".to_owned(),
+        "south",
+        0.3,
+        [Some("minecraft:brick"), None, Some("minecraft:stone"), Some("minecraft:diamond")],
+    ));
+    vec![entity("decorated-pot-pose", "decorated_pot_pose", rows)]
+}
+
 /// The real `LecternRenderer` for a lectern facing each way, with a book and without.
 pub fn lectern() -> Vec<Value> {
     let mut rows = Vec::new();

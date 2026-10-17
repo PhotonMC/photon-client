@@ -419,6 +419,102 @@ class EntityBlockOracle extends EntityAquaticOracle {
         return result;
     }
 
+    /** The quads of one part, sorted, as the part renderer writes them. */
+    static JsonArray partQuads(final net.minecraft.client.model.geom.ModelPart part) {
+        var capture = new Capture();
+        part.render(new com.mojang.blaze3d.vertex.PoseStack(), capture, 0, 0);
+        var quads = new java.util.ArrayList<String>();
+        for (int i = 0; i < capture.vertices.size(); i += 4) {
+            quads.add(String.join("", capture.vertices.subList(i, i + 4)));
+        }
+        java.util.Collections.sort(quads);
+        var array = new JsonArray();
+        quads.forEach(array::add);
+        return array;
+    }
+
+    /**
+     * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
+     * wobbling some way through, with some items set in its sides: the pose, and each part in the
+     * order it is drawn with its picture and its quads. The render state is made as the renderer's
+     * extraction leaves it, which never records the wobble's style.
+     */
+    static JsonObject decoratedPotPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
+        var byId = new java.util.HashMap<net.minecraft.client.resources.model.sprite.SpriteId,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite>();
+        net.minecraft.client.resources.model.sprite.SpriteGetter sprites = id -> byId.computeIfAbsent(id, key -> {
+            try {
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                made.put(sprite, key);
+                return sprite;
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(error);
+            }
+        });
+        var renderer = new net.minecraft.client.renderer.blockentity.DecoratedPotRenderer(
+            net.minecraft.client.model.geom.EntityModelSet.vanilla(), sprites);
+        var names = new java.util.IdentityHashMap<Object, String>();
+        for (var name : new String[] {"neck", "top", "bottom"}) {
+            var field = net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class.getDeclaredField(name);
+            field.setAccessible(true);
+            names.put(field.get(renderer), name);
+        }
+        for (var name : new String[] {"front", "back", "left", "right"}) {
+            var field = net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class.getDeclaredField(name + "Side");
+            field.setAccessible(true);
+            names.put(field.get(renderer), name);
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.DecoratedPotRenderState();
+            state.direction = net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase());
+            state.wobbleProgress = Oracle.f32(row, "wobble");
+            state.lightCoords = row.get("light").getAsInt();
+            var items = new java.util.ArrayList<java.util.Optional<net.minecraft.world.item.Item>>();
+            for (var sherd : row.getAsJsonArray("sherds")) {
+                items.add(sherd.isJsonNull() ? java.util.Optional.empty() : java.util.Optional.of(
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                        net.minecraft.resources.Identifier.parse(sherd.getAsString()))));
+            }
+            state.decorations = new net.minecraft.world.level.block.entity.PotDecorations(
+                items.get(0), items.get(1), items.get(2), items.get(3));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var parts = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModelPart")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[1]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var drawn = new JsonObject();
+                        drawn.addProperty("part", names.get(args[0]));
+                        drawn.addProperty("light", (Integer) args[3]);
+                        drawn.addProperty("texture", made.get(args[5]).texture().getPath());
+                        drawn.add("quads", partQuads((net.minecraft.client.model.geom.ModelPart) args[0]));
+                        parts.add(drawn);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("parts", parts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * What the real `LecternRenderer` hands the collector for a lectern facing some way, with a book
      * or none: the turn it takes from the facing, the pose, the model's state and the model set up

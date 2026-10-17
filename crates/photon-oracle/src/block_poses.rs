@@ -10,6 +10,7 @@ pub(super) fn block_pose_result(operation: &str, request: &Value) -> Option<Resu
         "bell_pose" => bell_pose_result(request),
         "enchant_table_pose" => enchant_table_pose_result(request),
         "lectern_pose" => lectern_pose_result(request),
+        "decorated_pot_pose" => decorated_pot_pose_result(request),
         "banner_pose" => banner_pose_result(request),
         "skull_block_pose" => skull_block_pose_result(request),
         "shulker_box_pose" => shulker_box_pose_result(request),
@@ -104,6 +105,60 @@ fn lectern_pose_result(request: &Value) -> Result<Value, String> {
             "book": bits(&[book.openness, book.pages.0, book.pages.1]),
             "texture": TEXTURE,
             "quads": posed_quads(&model),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `decorated_pot_pose`: the pose a pot is drawn from, and each part in the order it is drawn with
+/// its picture and its quads.
+fn decorated_pot_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::decorated_pot::{
+        BASE_LAYER, BASE_PARTS, BASE_TEXTURE, SIDE_PARTS, SIDES_LAYER, pot_pose, side_texture,
+    };
+    use photon_render::entity::mob_model::MobModel;
+    use photon_render::joml::Pose;
+    let base_layer = photon_data::entity_model::layer(BASE_LAYER).ok_or("no layer")?;
+    let sides_layer = photon_data::entity_model::layer(SIDES_LAYER).ok_or("no layer")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing =
+            photon_core::direction::Direction::from_name(string(row, "facing")?).ok_or("facing")?;
+        let wobble =
+            u32::from_str_radix(string(row, "wobble")?, 16).map_err(|error| error.to_string())?;
+        let pose = pot_pose(&Pose::default(), facing, f32::from_bits(wobble));
+        let sherds: Vec<Option<&str>> = row["sherds"]
+            .as_array()
+            .ok_or("sherds")?
+            .iter()
+            .map(Value::as_str)
+            .collect();
+        let sherd_of = |part: &str| match part {
+            "back" => sherds[0],
+            "left" => sherds[1],
+            "right" => sherds[2],
+            _ => sherds[3],
+        };
+        let mut base = MobModel::bake(base_layer);
+        let mut sides = MobModel::bake(sides_layer);
+        let mut parts = Vec::new();
+        for part in BASE_PARTS {
+            base.show_only(&BASE_PARTS, part);
+            parts.push(json!({
+                "part": part, "light": row["light"], "texture": BASE_TEXTURE, "quads": posed_quads(&base),
+            }));
+        }
+        for part in SIDE_PARTS {
+            sides.show_only(&SIDE_PARTS, part);
+            parts.push(json!({
+                "part": part, "light": row["light"], "texture": side_texture(sherd_of(part)),
+                "quads": posed_quads(&sides),
+            }));
+        }
+        rows.push(json!({
+            "label": row["label"],
+            "matrix": super::strider::matrix_bits(&pose),
+            "parts": parts,
         }));
     }
     Ok(json!({"rows": rows}))

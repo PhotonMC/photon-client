@@ -157,6 +157,16 @@ impl MobModel {
         }
     }
 
+    /// Only one of the named parts of the root is drawn (`ModelPart.visible`), as a renderer that
+    /// draws each part in its own texture has it.
+    pub fn show_only(&mut self, parts: &[&str], shown: &str) {
+        for name in parts {
+            if let Some(part) = self.root.child_mut(name) {
+                part.visible = *name == shown;
+            }
+        }
+    }
+
     /// `BookModel.setupAnim`: the lids open to `openness`, the pages follow and the two loose
     /// pages turn between them by how far each has been flipped.
     pub fn setup_book(&mut self, openness: f32, (flip1, flip2): (f32, f32)) {

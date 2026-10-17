@@ -110,6 +110,34 @@ impl ClientWorld {
         Some(facing.clockwise_y().ok()?.to_y_rot())
     }
 
+    /// `DecoratedPotRenderer.extractRenderState`: a pot's facing, its sherds and how far through a
+    /// wobble it is at a partial tick.
+    pub fn pot_view(&self, pos: (i32, i32, i32), partial: f32) -> Option<PotView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_decorated_pot_state(state) {
+            return None;
+        }
+        let facing = Direction::from_name(crate::local_player::property(Some(state), "facing")?)?;
+        let entity = self.block_entity_at(pos.0, pos.1, pos.2);
+        let sherds = entity
+            .and_then(|entity| entity.tag.as_deref())
+            .map(pot_sherds)
+            .unwrap_or_default();
+        // `WobbleStyle.duration`: seven ticks for the first style, ten for the second.
+        let wobble = match entity.and_then(|entity| entity.events().wobble) {
+            Some((start, style)) => {
+                let duration = if style == 0 { 7.0 } else { 10.0 };
+                ((self.game_time() as i64 - start) as f32 + partial) / duration
+            }
+            None => 0.0,
+        };
+        Some(PotView {
+            facing,
+            sherds,
+            wobble,
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

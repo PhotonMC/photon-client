@@ -22,103 +22,6 @@ use crate::overlays::{FrameView, packed_light};
 /// How far from the camera, in chunks, block entities are drawn.
 const RADIUS_CHUNKS: i32 = 8;
 
-/// The paths (under `textures/`) of every chest and shulker box texture.
-const TEXTURES: [&str; 38] = [
-    "entity/chest/normal",
-    "entity/chest/normal_left",
-    "entity/chest/normal_right",
-    "entity/chest/trapped",
-    "entity/chest/trapped_left",
-    "entity/chest/trapped_right",
-    "entity/chest/copper",
-    "entity/chest/copper_left",
-    "entity/chest/copper_right",
-    "entity/chest/copper_exposed",
-    "entity/chest/copper_exposed_left",
-    "entity/chest/copper_exposed_right",
-    "entity/chest/copper_weathered",
-    "entity/chest/copper_weathered_left",
-    "entity/chest/copper_weathered_right",
-    "entity/chest/copper_oxidized",
-    "entity/chest/copper_oxidized_left",
-    "entity/chest/copper_oxidized_right",
-    "entity/chest/ender",
-    "entity/bell/bell_body",
-    "entity/enchantment/enchanting_table_book",
-    "entity/shulker/shulker",
-    "entity/shulker/shulker_white",
-    "entity/shulker/shulker_orange",
-    "entity/shulker/shulker_magenta",
-    "entity/shulker/shulker_light_blue",
-    "entity/shulker/shulker_yellow",
-    "entity/shulker/shulker_lime",
-    "entity/shulker/shulker_pink",
-    "entity/shulker/shulker_gray",
-    "entity/shulker/shulker_light_gray",
-    "entity/shulker/shulker_cyan",
-    "entity/shulker/shulker_purple",
-    "entity/shulker/shulker_blue",
-    "entity/shulker/shulker_brown",
-    "entity/shulker/shulker_green",
-    "entity/shulker/shulker_red",
-    "entity/shulker/shulker_black",
-];
-
-/// The banner textures: the cloth and each pattern's mask.
-const BANNER_TEXTURES: [&str; 44] = [
-    "entity/banner/banner_base",
-    "entity/banner/base",
-    "entity/banner/border",
-    "entity/banner/bricks",
-    "entity/banner/circle",
-    "entity/banner/creeper",
-    "entity/banner/cross",
-    "entity/banner/curly_border",
-    "entity/banner/diagonal_left",
-    "entity/banner/diagonal_right",
-    "entity/banner/diagonal_up_left",
-    "entity/banner/diagonal_up_right",
-    "entity/banner/flow",
-    "entity/banner/flower",
-    "entity/banner/globe",
-    "entity/banner/gradient",
-    "entity/banner/gradient_up",
-    "entity/banner/guster",
-    "entity/banner/half_horizontal",
-    "entity/banner/half_horizontal_bottom",
-    "entity/banner/half_vertical",
-    "entity/banner/half_vertical_right",
-    "entity/banner/mojang",
-    "entity/banner/piglin",
-    "entity/banner/rhombus",
-    "entity/banner/skull",
-    "entity/banner/small_stripes",
-    "entity/banner/square_bottom_left",
-    "entity/banner/square_bottom_right",
-    "entity/banner/square_top_left",
-    "entity/banner/square_top_right",
-    "entity/banner/straight_cross",
-    "entity/banner/stripe_bottom",
-    "entity/banner/stripe_center",
-    "entity/banner/stripe_downleft",
-    "entity/banner/stripe_downright",
-    "entity/banner/stripe_left",
-    "entity/banner/stripe_middle",
-    "entity/banner/stripe_right",
-    "entity/banner/stripe_top",
-    "entity/banner/triangle_bottom",
-    "entity/banner/triangle_top",
-    "entity/banner/triangles_bottom",
-    "entity/banner/triangles_top",
-];
-
-pub fn textures() -> impl Iterator<Item = &'static str> {
-    TEXTURES
-        .into_iter()
-        .chain(SkullKind::ALL.into_iter().map(SkullKind::texture))
-        .chain(BANNER_TEXTURES)
-}
-
 /// `ChestRenderer.getChestMaterial` from the block's name.
 fn material_of(name: &str) -> ChestMaterial {
     match name {
@@ -246,6 +149,8 @@ fn bell_or_book(
         vertices.extend(book_vertices(session, models, textures, view, at, table));
     } else if let Some(turn) = world.lectern_book_turn(at) {
         vertices.extend(lectern_vertices(session, models, textures, view, at, turn));
+    } else if let Some(pot) = world.pot_view(at, partial) {
+        vertices.extend(pot_vertices(session, models, textures, view, at, &pot));
     }
 }
 
@@ -311,6 +216,67 @@ fn lectern_vertices(
     );
     let pose = lectern::lectern_pose(&base, turn);
     mob_vertices_posed(model, &pose, rect, (light, false))
+}
+
+/// One decorated pot: its neck and planes, and each side in the picture of the sherd set in it,
+/// turned to its facing and wobbling as far as its event has it.
+fn pot_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    pot: &photon_world::PotView,
+) -> Vec<Vertex> {
+    use photon_render::block_entity::decorated_pot as decorated;
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let pose = decorated::pot_pose(&base, pot.facing, pot.wobble);
+    let mut vertices = Vec::new();
+    // The order the reference draws them in; the sherds are held back, left, right, front.
+    let parts = decorated::BASE_PARTS
+        .into_iter()
+        .map(|part| {
+            (
+                decorated::BASE_LAYER,
+                part,
+                decorated::BASE_TEXTURE.to_owned(),
+            )
+        })
+        .chain(decorated::SIDE_PARTS.into_iter().map(|part| {
+            let sherd = match part {
+                "back" => &pot.sherds[0],
+                "left" => &pot.sherds[1],
+                "right" => &pot.sherds[2],
+                _ => &pot.sherds[3],
+            };
+            (
+                decorated::SIDES_LAYER,
+                part,
+                decorated::side_texture(sherd.as_deref()),
+            )
+        }));
+    for (layer, part, texture) in parts {
+        let (Some(rect), Some(model)) = (textures.rect(&texture), models.model(layer)) else {
+            continue;
+        };
+        let all = if layer == decorated::BASE_LAYER {
+            &decorated::BASE_PARTS[..]
+        } else {
+            &decorated::SIDE_PARTS[..]
+        };
+        model.show_only(all, part);
+        vertices.extend(mob_vertices_posed(model, &pose, rect, (light, false)));
+    }
+    vertices
 }
 
 /// One shulker box, its lid as far up and turned as its progress says.

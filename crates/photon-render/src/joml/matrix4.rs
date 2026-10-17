@@ -136,6 +136,11 @@ impl Matrix4 {
     /// `Matrix4f.rotateAround(quat, ox, oy, oz)` for an affine matrix
     /// (`rotateAroundAffine`): the rotation about the point `(ox, oy, oz)`.
     pub fn rotate_around(&mut self, quat: &Quaternion, (ox, oy, oz): (f32, f32, f32)) {
+        if self.properties & IDENTITY != 0 {
+            // The identity turned about a point is that turn, as a matrix of its own.
+            *self = Self::rotation_around(quat, (ox, oy, oz));
+            return;
+        }
         assert!(
             self.properties & AFFINE != 0 && self.properties & IDENTITY == 0,
             "only affine matrices are rotated about a point"

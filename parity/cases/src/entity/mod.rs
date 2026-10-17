@@ -113,6 +113,7 @@ const ORDER: &[Cases] = &[
     objects::bell,
     objects::enchant_table,
     objects::lectern,
+    objects::decorated_pot,
     objects::skull_block,
     objects::elder_guardian_particle,
     banner::banner_cases,
