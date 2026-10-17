@@ -954,6 +954,99 @@ class EntityBlockOracle extends EntityAquaticOracle {
         return result;
     }
 
+    /** A vertex consumer that notes each vertex's place alone, as the end portal's cubes give them. */
+    static final class PositionRecorder implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final java.util.List<String> vertices = new java.util.ArrayList<>();
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.vertices.add(Oracle.bits(x) + Oracle.bits(y) + Oracle.bits(z));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float nx, final float ny, final float nz) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            return this;
+        }
+    }
+
+    /**
+     * What the real `TheEndPortalRenderer` and `TheEndGatewayRenderer` hand the collector for a
+     * cube showing some of its faces: the render type's name and the corners written, in order.
+     */
+    static JsonObject endPortalCube(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var gateway = row.get("gateway").getAsBoolean();
+            var shown = new java.util.ArrayList<net.minecraft.core.Direction>();
+            for (var name : row.getAsJsonArray("faces")) {
+                shown.add(net.minecraft.core.Direction.valueOf(name.getAsString().toUpperCase()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var corners = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var recorder = new PositionRecorder();
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
+                        recorder.vertices.forEach(corners::add);
+                    }
+                    return null;
+                });
+            var stack = new com.mojang.blaze3d.vertex.PoseStack();
+            if (gateway) {
+                var state = new net.minecraft.client.renderer.blockentity.state.EndGatewayRenderState();
+                state.facesToShow.addAll(shown);
+                new net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer().submit(state, stack, collector, null);
+            } else {
+                var state = new net.minecraft.client.renderer.blockentity.state.EndPortalRenderState();
+                state.facesToShow.addAll(shown);
+                new net.minecraft.client.renderer.blockentity.TheEndPortalRenderer().submit(state, stack, collector, null);
+            }
+            out.add("corners", corners);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the

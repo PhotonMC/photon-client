@@ -10,6 +10,7 @@ pub mod conduit;
 pub mod copper_golem_statue;
 pub mod decorated_pot;
 pub mod enchant_table;
+pub mod end_portal;
 pub mod lectern;
 pub mod shelf;
 pub mod shulker_box;

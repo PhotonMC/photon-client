@@ -221,6 +221,36 @@ impl ClientWorld {
         })
     }
 
+    /// `AbstractEndPortalRenderer.extractRenderState`: which faces of an end portal or end gateway
+    /// block are drawn. The portal shows its top and bottom; the gateway shows those a neighbour
+    /// does not hide (`Block.shouldRenderFace`).
+    pub fn portal_view(&self, pos: (i32, i32, i32)) -> Option<PortalView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_portal_state(state) {
+            return None;
+        }
+        let gateway = crate::block::state_or_air(state)
+            .block()
+            .class
+            .is(photon_data::block::classes::BlockClass::EndGatewayBlock);
+        let faces = Direction::stream()
+            .filter(|direction| {
+                if !gateway {
+                    return matches!(direction, Direction::Up | Direction::Down);
+                }
+                let (dx, dy, dz) = direction.step();
+                let next = self.block_state_at(pos.0 + dx, pos.1 + dy, pos.2 + dz);
+                crate::block::should_render_face(
+                    state,
+                    next,
+                    *direction,
+                    self.block_state_registry().tags(),
+                )
+            })
+            .collect();
+        Some(PortalView { gateway, faces })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

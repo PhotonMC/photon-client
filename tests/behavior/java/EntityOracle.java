@@ -197,6 +197,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("brushable_pose")) {
             return brushablePose(request);
         }
+        if (operation.equals("end_portal_cube")) {
+            return endPortalCube(request);
+        }
         if (operation.equals("copper_statue_pose")) {
             return copperStatuePose(request);
         }

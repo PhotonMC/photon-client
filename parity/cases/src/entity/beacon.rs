@@ -170,3 +170,21 @@ pub fn copper_statue_pose() -> Vec<Value> {
     }
     vec![entity("copper-statue-pose", "copper_statue_pose", rows)]
 }
+
+/// The real end portal and end gateway renderers: the corners of a cube showing every face, some, or none.
+pub fn end_portal_cube() -> Vec<Value> {
+    let sets: [(&str, Vec<&str>); 4] = [
+        ("all", vec!["down", "up", "north", "south", "west", "east"]),
+        ("top and bottom", vec!["down", "up"]),
+        ("a few, out of order", vec!["east", "up", "north"]),
+        ("none", vec![]),
+    ];
+    let mut rows = Vec::new();
+    for gateway in [false, true] {
+        for (name, faces) in &sets {
+            let kind = if gateway { "gateway" } else { "portal" };
+            rows.push(json!({"label": format!("{kind}, {name}"), "gateway": gateway, "faces": faces}));
+        }
+    }
+    vec![entity("end-portal-cube", "end_portal_cube", rows)]
+}

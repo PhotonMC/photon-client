@@ -539,6 +539,17 @@ class MovementSupport {
         }
     }
 
+    /** Which faces an end portal block entity draws, a bit to each direction in the enum's order. */
+    static int faceMask(final net.minecraft.world.level.block.entity.TheEndPortalBlockEntity entity) {
+        int mask = 0;
+        for (var direction : net.minecraft.core.Direction.values()) {
+            if (entity.shouldRenderFace(direction)) {
+                mask |= 1 << direction.ordinal();
+            }
+        }
+        return mask;
+    }
+
     /**
      * `be,x,y,z,...` for each place a row watches: what its block entity holds of what block
      * events set. A place with no block entity reads as `none`.
@@ -561,7 +572,10 @@ class MovementSupport {
                 held = "pot," + pot.wobbleStartedAtTick + ","
                     + (pot.lastWobbleStyle == null ? -1 : pot.lastWobbleStyle.ordinal());
             } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity gateway) {
-                held = "gateway," + getField(gateway, "teleportCooldown") + "," + getField(gateway, "age");
+                held = "gateway," + getField(gateway, "teleportCooldown") + "," + getField(gateway, "age") + ","
+                    + faceMask(gateway);
+            } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndPortalBlockEntity portal) {
+                held = "portal," + faceMask(portal);
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
                 held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
             } else if (entity instanceof net.minecraft.world.level.block.entity.BeaconBlockEntity beacon) {

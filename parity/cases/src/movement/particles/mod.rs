@@ -16,6 +16,7 @@ mod fireworks;
 mod layouts;
 mod pickup;
 mod piston_rows;
+mod portal_rows;
 mod quads;
 mod scene;
 mod sulfur_rows;

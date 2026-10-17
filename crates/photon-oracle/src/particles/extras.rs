@@ -285,6 +285,7 @@ fn entity_type_of(block_name: &str) -> Option<&'static str> {
         "minecraft:beacon" => Some("minecraft:beacon"),
         "minecraft:conduit" => Some("minecraft:conduit"),
         "minecraft:vault" => Some("minecraft:vault"),
+        "minecraft:end_portal" => Some("minecraft:end_portal"),
         _ => None,
     }
 }
@@ -325,6 +326,17 @@ fn book_line(book: &photon_world::BookState) -> String {
     format!("book,{},{}", book.time, bits.join(","))
 }
 
+/// Which faces of an end portal or end gateway block are drawn, one bit to a direction in the
+/// enum's order (`shouldRenderFace`).
+fn face_mask(world: &ClientWorld, at: (i32, i32, i32)) -> u32 {
+    world.portal_view(at).map_or(0, |view| {
+        photon_core::direction::Direction::stream()
+            .enumerate()
+            .filter(|(_, direction)| view.faces.contains(direction))
+            .fold(0, |mask, (index, _)| mask | 1 << index)
+    })
+}
+
 /// What the block entity at a place holds, as the reference reads it: one it has not made yet is
 /// made as it is asked for, with the defaults.
 fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
@@ -342,7 +354,13 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
             let (start, style) = events.wobble.unwrap_or((0, -1));
             format!("pot,{start},{style}")
         }
-        "minecraft:end_gateway" => format!("gateway,{},{}", events.teleport_cooldown, events.age),
+        "minecraft:end_gateway" => format!(
+            "gateway,{},{},{}",
+            events.teleport_cooldown,
+            events.age,
+            face_mask(world, (x, y, z))
+        ),
+        "minecraft:end_portal" => format!("portal,{}", face_mask(world, (x, y, z))),
         "minecraft:mob_spawner" => {
             let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
             format!("spawner,{delay}")

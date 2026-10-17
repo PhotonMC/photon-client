@@ -29,6 +29,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "campfire_pose" => Some(campfire_pose_result(request)),
         "vault_pose" => Some(vault_pose_result(request)),
         "copper_statue_pose" => Some(copper_statue_pose_result(request)),
+        "end_portal_cube" => Some(end_portal_cube_result(request)),
         _ => None,
     }
 }
@@ -490,6 +491,40 @@ fn copper_statue_pose_result(request: &Value) -> Result<Value, String> {
             "texture": texture(weathering),
             "quads": posed_quads(&model),
         }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `end_portal_cube`: the corners an end portal or end gateway cube writes for the faces it shows.
+fn end_portal_cube_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::end_portal::{cube_corners, portal_pose};
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let faces: Vec<photon_core::direction::Direction> = row["faces"]
+            .as_array()
+            .ok_or("faces")?
+            .iter()
+            .map(|name| {
+                photon_core::direction::Direction::from_name(name.as_str().unwrap_or_default())
+                    .ok_or("face")
+            })
+            .collect::<Result<_, _>>()?;
+        let pose = if row["gateway"].as_bool().ok_or("gateway")? {
+            Pose::default()
+        } else {
+            portal_pose(&Pose::default())
+        };
+        let corners: Vec<String> = cube_corners(&pose, &faces)
+            .iter()
+            .map(|corner| {
+                corner
+                    .iter()
+                    .map(|value| format!("{:08x}", value.to_bits()))
+                    .collect()
+            })
+            .collect();
+        rows.push(json!({"label": row["label"], "corners": corners}));
     }
     Ok(json!({"rows": rows}))
 }

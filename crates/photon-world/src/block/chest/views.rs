@@ -177,7 +177,7 @@ pub(crate) fn is_drawn_state(state_id: BlockStateId) -> bool {
         || is_lectern_state(state_id)
         || is_decorated_pot_state(state_id)
         || is_sign_state(state_id)
-        || is_item_holder_state(state_id)
+        || is_other_drawn_state(state_id)
 }
 
 /// Whether a block state is a suspicious block's.
@@ -186,13 +186,35 @@ pub(crate) fn is_brushable_state(state_id: BlockStateId) -> bool {
     is_of_classes(state_id, &[BlockClass::BrushableBlock], &BLOCKS)
 }
 
-/// Whether a block state is one that shows the items it holds: a suspicious block or a shelf.
-fn is_item_holder_state(state_id: BlockStateId) -> bool {
+/// Whether a block state is one of the block entities that draw what the model renderers do not:
+/// the items some hold, the copper golem statues and the end portal surfaces.
+fn is_other_drawn_state(state_id: BlockStateId) -> bool {
     is_brushable_state(state_id)
         || is_shelf_state(state_id)
         || is_campfire_state(state_id)
         || is_vault_state(state_id)
         || is_copper_statue_state(state_id)
+        || is_portal_state(state_id)
+}
+
+/// Whether a block state is an end portal's or an end gateway's.
+pub(crate) fn is_portal_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(
+        state_id,
+        &[BlockClass::EndPortalBlock, BlockClass::EndGatewayBlock],
+        &BLOCKS,
+    )
+}
+
+/// What an end portal or end gateway block shows (`AbstractEndPortalRenderer`): the faces of its
+/// cube that are drawn.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PortalView {
+    /// Whether it is a gateway, which is drawn out to a longer distance and with its whole cube.
+    pub gateway: bool,
+    /// The faces `shouldRenderFace` lets through.
+    pub faces: Vec<Direction>,
 }
 
 /// Whether a block state is a copper golem statue's, waxed or weathered.

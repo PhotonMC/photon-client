@@ -123,6 +123,7 @@ const ORDER: &[Cases] = &[
     beacon::campfire_pose,
     beacon::vault_pose,
     beacon::copper_statue_pose,
+    beacon::end_portal_cube,
     objects::skull_block,
     objects::elder_guardian_particle,
     banner::banner_cases,
