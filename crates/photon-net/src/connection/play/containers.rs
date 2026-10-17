@@ -251,6 +251,15 @@ impl PlaySession {
         Ok(())
     }
 
+    /// Whether the player stood in a nether portal since the last call, which closes the screens
+    /// that are not allowed in one.
+    pub fn take_portal_screen_close(&mut self) -> bool {
+        self.local
+            .player
+            .as_mut()
+            .is_some_and(photon_world::local_player::LocalPlayer::take_portal_screen_close)
+    }
+
     /// The hands whose stack a use spent since the last call.
     pub fn take_items_used(&mut self) -> Vec<u8> {
         self.local.game_mode_state.take_items_used()

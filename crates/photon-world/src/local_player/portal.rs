@@ -25,6 +25,9 @@ pub(crate) struct State {
     cooldown: i32,
     intensity: f32,
     old_intensity: f32,
+    /// A tick found the player inside a nether portal: a screen that is not allowed in one is
+    /// to close.
+    close_screen: bool,
 }
 
 /// `Entity.getDimensionChangingDelay`.
@@ -74,6 +77,7 @@ impl LocalPlayer {
             .filter(|process| process.kind == PortalKind::Nether && process.inside_this_tick);
         if let Some(process) = confusing {
             process.inside_this_tick = false;
+            portal.close_screen = true;
             if portal.intensity == 0.0 {
                 let pitch = self.random.next_float() * 0.4 + 0.8;
                 self.pending_sounds.push(LocalSound {
@@ -108,6 +112,12 @@ impl LocalPlayer {
         self.portal.old_intensity = old;
         self.portal.intensity = now;
         self.portal.cooldown = cooldown;
+    }
+
+    /// Whether a tick since the last call found the player inside a nether portal, where only the
+    /// chat, the death screen and the credits stay open (`Screen.isAllowedInPortal`).
+    pub fn take_portal_screen_close(&mut self) -> bool {
+        std::mem::take(&mut self.portal.close_screen)
     }
 
     /// The portal effect's intensity between the last tick and this one.
@@ -156,5 +166,19 @@ mod tests {
         new.set_as_inside_portal(PortalKind::Nether);
         new.tick_portal();
         assert!(new.pending_sounds.is_empty());
+    }
+
+    /// Inside a nether portal each tick asks for the screens that are not allowed there to
+    /// close; an end portal does not, and the ask is made once.
+    #[test]
+    fn a_nether_portal_asks_for_the_screen_to_close() {
+        let mut player = player();
+        player.set_as_inside_portal(PortalKind::End);
+        player.tick_portal();
+        assert!(!player.take_portal_screen_close());
+        player.set_as_inside_portal(PortalKind::Nether);
+        player.tick_portal();
+        assert!(player.take_portal_screen_close());
+        assert!(!player.take_portal_screen_close());
     }
 }

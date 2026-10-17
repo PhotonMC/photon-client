@@ -88,10 +88,12 @@ impl Play {
             );
             held.extend(activation);
             self.backend.set_hand(&hand, &held, hand_projection)?;
+            let darken =
+                photon_world::particles::Ambience::sky_darken(&self.sky.ambience(&self.session));
             let effects = overlays::screen_effect::screen_effects(
                 &self.session,
                 player,
-                &self.block_renderer,
+                (&self.block_renderer, darken),
             );
             self.backend.set_screen_effects(
                 (&effects.block, &effects.water, &effects.fire),

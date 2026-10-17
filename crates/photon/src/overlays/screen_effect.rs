@@ -46,7 +46,7 @@ fn corners(renderer: &BlockRenderer, name: &str) -> Option<[f32; 4]> {
 pub fn screen_effects(
     session: &PlaySession,
     player: &LocalPlayer,
-    renderer: &BlockRenderer,
+    (renderer, sky_darken): (&BlockRenderer, i32),
 ) -> ScreenEffects {
     let mut effects = ScreenEffects::default();
     if player.pose() == ClientEntityPose::Sleeping {
@@ -66,8 +66,10 @@ pub fn screen_effects(
     if player.is_eye_in_water() {
         let (y_rot, x_rot) = player.rotation();
         let eyes = player.position();
-        let brightness =
-            world.eye_brightness([eyes.x, eyes.y + f64::from(player.eye_height()), eyes.z], 0);
+        let brightness = world.eye_brightness(
+            [eyes.x, eyes.y + f64::from(player.eye_height()), eyes.z],
+            sky_darken,
+        );
         effects.water = triangles(&water_quad(y_rot, x_rot, brightness));
     }
     let burning = world

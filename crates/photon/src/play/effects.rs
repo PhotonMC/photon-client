@@ -42,6 +42,20 @@ impl Play {
             let offsets = (random.next_float(), random.next_float());
             self.camera.activation.display(stack, offsets);
         }
+        // `handlePortalTransitionEffect`: a screen closes in a portal, but the chat and the death
+        // screen, which are not among these.
+        if self.session.take_portal_screen_close() && self.controls.screen.is_some() {
+            let creative_tab = &mut self.controls.creative_tab;
+            let closed = crate::screens::close_inventory(
+                &mut self.session,
+                &mut self.surface,
+                &mut self.controls.screen,
+                creative_tab,
+            );
+            if closed.is_err() {
+                self.controls.screen = None;
+            }
+        }
         let tracked = self.session.take_tracking_emitters();
         let tracked_sounds = self.particles.tracking(&self.session, tracked);
         if let Some(sound) = self.sound.as_mut() {
