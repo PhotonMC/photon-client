@@ -33,6 +33,11 @@ mod attribute;
 pub use attribute::*;
 mod environment;
 pub use environment::*;
+mod fog;
+pub use fog::{
+    AtmosphereAttributes, AtmosphericFog, FogData, FogType, FogView, WaterFog, atmospheric_colour,
+    fog_data,
+};
 mod frame;
 pub use frame::*;
 mod lerp;

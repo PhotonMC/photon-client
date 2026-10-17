@@ -112,8 +112,8 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "entity_pick_table" {
         return Ok(entity_pick_table_result(request));
     }
-    if string(request, "operation")? == "sky_flash" {
-        return sky_flash_result(request);
+    if let Some(result) = sky_result(string(request, "operation")?, request) {
+        return result;
     }
     if string(request, "operation")? == "elytra_state" {
         return elytra_state_result(request);

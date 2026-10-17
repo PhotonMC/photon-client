@@ -97,51 +97,17 @@ pub fn build_frame(
     let fog = if view.eye_in_water {
         attributes.get(Attribute::WaterFogColor).color()
     } else {
-        let mut fog = attributes.get(Attribute::FogColor).color();
-        if view.render_distance >= 4 {
-            let sun_x = if mth_sin_f64(f64::from(sun_angle)) > 0.0 {
-                -1.0
-            } else {
-                1.0
-            };
-            let looking = view.forward[0] * sun_x;
-            if looking > 0.0 {
-                let alpha = channel(sunrise, 24) as f32 / 255.0;
-                if alpha > 0.0 {
-                    fog = srgb_lerp(looking * alpha, fog, sunrise | 0xFF00_0000);
-                }
-            }
-        }
-        let sky_fog_end = (attributes.get(Attribute::SkyFogEndDistance).float() / 16.0)
-            .min(view.render_distance as f32);
-        let delta = sky_fog_end / 32.0;
-        let mix = if delta < 0.0 {
-            0.25
-        } else if delta > 1.0 {
-            1.0
-        } else {
-            0.25 + delta * 0.75
-        };
-        let mix = 1.0 - (f64::from(mix)).powf(0.25) as f32;
-        // The sky colour the fog blends towards is darkened by the weather.
-        let scale = |colour: u32, red: f32, green: f32, blue: f32| {
-            argb(
-                channel(colour, 24),
-                ((channel(colour, 16) as f32 * red) as i32).clamp(0, 255),
-                ((channel(colour, 8) as f32 * green) as i32).clamp(0, 255),
-                ((channel(colour, 0) as f32 * blue) as i32).clamp(0, 255),
-            )
-        };
-        let mut darkened = sky_colour;
-        if view.weather.rain > 0.0 {
-            let modifier = 1.0 - view.weather.rain * 0.5;
-            darkened = scale(darkened, modifier, modifier, 1.0 - view.weather.rain * 0.4);
-        }
-        if view.weather.thunder > 0.0 {
-            let modifier = 1.0 - view.weather.thunder * 0.5;
-            darkened = scale(darkened, modifier, modifier, modifier);
-        }
-        srgb_lerp(mix, fog, darkened)
+        super::fog::atmospheric_colour(
+            &super::fog::AtmosphereAttributes {
+                fog_colour: attributes.get(Attribute::FogColor).color(),
+                sunrise,
+                sky_colour,
+                sun_angle: attributes.get(Attribute::SunAngle).float(),
+                sky_fog_end: attributes.get(Attribute::SkyFogEndDistance).float(),
+            },
+            (view.forward[0], view.render_distance),
+            (view.weather.rain, view.weather.thunder),
+        )
     };
     let fog_colour = {
         let [r, g, b, _] = unpack(fog);

@@ -71,3 +71,155 @@ fn view_scales_result(request: &Value) -> Result<Value, String> {
     }
     Ok(json!({"rows": rows}))
 }
+
+/// A float of a row, written as its bits.
+fn float_of(value: &Value, key: &str) -> Result<f32, String> {
+    let text = value[key].as_str().ok_or_else(|| key.to_owned())?;
+    u32::from_str_radix(text, 16)
+        .map(f32::from_bits)
+        .map_err(|error| error.to_string())
+}
+
+/// What the fog reads of the camera and its entity, for a row.
+fn fog_view(row: &Value, partial: f32) -> Result<photon_render::sky::FogView, String> {
+    use photon_render::sky::{FogType, FogView};
+    let fog_type = match string(row, "fog_type")? {
+        "water" => FogType::Water,
+        "lava" => FogType::Lava,
+        "powder_snow" => FogType::PowderSnow,
+        _ => FogType::Atmospheric,
+    };
+    let height = u64::from_str_radix(string(row, "y")?, 16)
+        .map(f64::from_bits)
+        .map_err(|error| error.to_string())?;
+    let mut view = FogView {
+        fog_type,
+        spectator: row["spectator"].as_bool().ok_or("spectator")?,
+        fire_resistance: false,
+        blindness: None,
+        darkness: None,
+        night_vision: None,
+        water_vision: None,
+        render_distance: i32_field(row, "render_distance")?,
+        darken_world: float_of(row, "darken_world")?,
+        // The overworld's, in a level that is not flat.
+        void_darkness: (32.0, -64, height),
+        boss_fog: false,
+    };
+    add_effects(&mut view, row, partial)?;
+    if row["local"].as_bool().ok_or("local")? {
+        view.water_vision = Some(photon_world::local_player::water_vision(
+            i32_field(row, "water_vision_time")?,
+            fog_type == FogType::Water,
+        ));
+    }
+    Ok(view)
+}
+
+/// What the atmospheric and the water environments make of a row's attributes.
+fn fog_environments(
+    row: &Value,
+) -> Result<
+    (
+        photon_render::sky::AtmosphericFog,
+        photon_render::sky::WaterFog,
+    ),
+    String,
+> {
+    use photon_render::sky::{AtmosphereAttributes, AtmosphericFog, WaterFog, atmospheric_colour};
+    let attributes = &row["attributes"];
+    let colour_of = |key: &str| i32_field(attributes, key).map(|colour| colour as u32);
+    let render_distance = i32_field(row, "render_distance")?;
+    let colour = atmospheric_colour(
+        &AtmosphereAttributes {
+            fog_colour: colour_of("fog_color")?,
+            sunrise: colour_of("sunrise")?,
+            sky_colour: colour_of("sky_color")?,
+            sun_angle: float_of(attributes, "sun_angle")?,
+            sky_fog_end: float_of(attributes, "sky_fog_end")?,
+        },
+        (float_of(row, "forward_x")?, render_distance),
+        (0.0, 0.0),
+    );
+    // The options' cloud range is 128 chunks.
+    let atmosphere = AtmosphericFog::of(
+        colour,
+        (
+            float_of(attributes, "fog_start")?,
+            float_of(attributes, "fog_end")?,
+            float_of(attributes, "sky_fog_end")?,
+            float_of(attributes, "cloud_fog_end")?,
+        ),
+        (0.0, render_distance, 128),
+    );
+    let water = WaterFog {
+        colour: colour_of("water_color")?,
+        start: float_of(attributes, "water_start")?,
+        end: float_of(attributes, "water_end")?,
+    };
+    Ok((atmosphere, water))
+}
+
+/// `fog_data`: the colour and distances the fog is drawn with, for a camera in a fluid or the air
+/// with some effects, in the overworld with no weather and the options' defaults.
+pub(super) fn fog_data_result(request: &Value) -> Result<Value, String> {
+    let bits = |values: &[f32]| -> Vec<String> {
+        values
+            .iter()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect()
+    };
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let view = fog_view(row, float_of(row, "partial")?)?;
+        let (atmosphere, water) = fog_environments(row)?;
+        let fog = photon_render::sky::fog_data(&view, &atmosphere, &water);
+        rows.push(json!({
+            "label": row["label"],
+            "colour": bits(&fog.colour),
+            "distances": bits(&[
+                fog.environmental_start,
+                fog.environmental_end,
+                fog.render_distance_start,
+                fog.render_distance_end,
+                fog.sky_end,
+                fog.cloud_end,
+            ]),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// The effects of a fog row, ticked as a client does, as what the fog reads of them.
+fn add_effects(
+    view: &mut photon_render::sky::FogView,
+    row: &Value,
+    partial: f32,
+) -> Result<(), String> {
+    for described in row["effects"].as_array().ok_or("effects")? {
+        let name = string(described, "name")?;
+        let id = photon_data::item::mob_effects::MOB_EFFECTS
+            .iter()
+            .position(|effect| effect.name == name)
+            .ok_or("no such effect")?;
+        let mut effect = photon_world::ClientMobEffectState::new(
+            id as i32,
+            0,
+            i32_field(described, "duration")?,
+            described["blend"].as_bool().ok_or("blend")?,
+        );
+        for _ in 0..i32_field(described, "ticks")? {
+            effect.tick_client();
+        }
+        match name {
+            "minecraft:fire_resistance" => view.fire_resistance = true,
+            "minecraft:blindness" => view.blindness = Some(effect.duration_ticks()),
+            "minecraft:darkness" => view.darkness = Some(effect.blend_factor(partial)),
+            "minecraft:night_vision" => {
+                view.night_vision = Some(effect.night_vision_scale(partial));
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}

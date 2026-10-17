@@ -417,7 +417,7 @@
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 13
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 23
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 25
-"crates/photon-render/src/sky/frame.rs::build_frame" = 22
+"crates/photon-render/src/sky/frame.rs::build_frame" = 14
 "crates/photon-render/src/sky/lerp.rs::weather_modifier" = 12
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 14
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 13
@@ -925,7 +925,7 @@
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 119
 "crates/photon-render/src/sky/environment.rs::Environment::load" = 71
-"crates/photon-render/src/sky/frame.rs::build_frame" = 255
+"crates/photon-render/src/sky/frame.rs::build_frame" = 222
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 74
 "crates/photon-render/src/sky/weather.rs::build" = 125
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75

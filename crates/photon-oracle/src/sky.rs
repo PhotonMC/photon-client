@@ -144,3 +144,12 @@ pub(super) fn sky_flash_result(request: &Value) -> Result<Value, String> {
     }
     Ok(json!({"rows": rows}))
 }
+
+/// The sky operations of the movement family, by name; none for another kind.
+pub(super) fn sky_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
+    match operation {
+        "sky_flash" => Some(sky_flash_result(request)),
+        "fog_data" => Some(super::view_state::fog_data_result(request)),
+        _ => None,
+    }
+}

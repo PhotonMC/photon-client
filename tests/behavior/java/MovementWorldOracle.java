@@ -28,6 +28,246 @@ class MovementWorldOracle extends MovementLivingOracle {
         return entry;
     }
 
+    static com.google.gson.JsonArray fogBits(final float... values) {
+        var array = new com.google.gson.JsonArray();
+        for (float value : values) {
+            array.add(Oracle.bits(value));
+        }
+        return array;
+    }
+
+    /** The effects a fog fixture's entity has, by effect. */
+    interface FogFixture {
+        java.util.Map<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance> effects();
+
+        boolean spectator();
+    }
+
+    static final class FogLocal extends net.minecraft.client.player.LocalPlayer implements FogFixture {
+        java.util.Map<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance> fx = new java.util.HashMap<>();
+        boolean spectatorMode;
+        boolean eyesInWater;
+
+        FogLocal() {
+            super(null, null, null, null, null, net.minecraft.world.entity.player.Input.EMPTY, false, null);
+        }
+
+        public java.util.Map<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance> effects() {
+            return this.fx;
+        }
+
+        public boolean spectator() {
+            return this.spectatorMode;
+        }
+
+        @Override
+        public net.minecraft.world.effect.MobEffectInstance getEffect(
+            final net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+            return this.fx.get(effect);
+        }
+
+        @Override
+        public boolean hasEffect(final net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+            return this.fx.containsKey(effect);
+        }
+
+        @Override
+        public boolean isSpectator() {
+            return this.spectatorMode;
+        }
+
+        @Override
+        public boolean isEyeInFluid(final net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid> fluid) {
+            return this.eyesInWater;
+        }
+    }
+
+    static final class FogRemote extends net.minecraft.client.player.RemotePlayer implements FogFixture {
+        java.util.Map<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance> fx = new java.util.HashMap<>();
+        boolean spectatorMode;
+
+        FogRemote() {
+            super(null, null);
+        }
+
+        public java.util.Map<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance> effects() {
+            return this.fx;
+        }
+
+        public boolean spectator() {
+            return this.spectatorMode;
+        }
+
+        @Override
+        public net.minecraft.world.effect.MobEffectInstance getEffect(
+            final net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+            return this.fx.get(effect);
+        }
+
+        @Override
+        public boolean hasEffect(final net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+            return this.fx.containsKey(effect);
+        }
+
+        @Override
+        public boolean isSpectator() {
+            return this.spectatorMode;
+        }
+    }
+
+    /** The attributes the fog reads, as the row gives them. */
+    static final class FogProbe extends net.minecraft.world.attribute.EnvironmentAttributeProbe {
+        java.util.Map<Object, Object> values;
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <Value> Value getValue(final net.minecraft.world.attribute.EnvironmentAttribute<Value> attribute,
+                                       final float partialTicks) {
+            return (Value) this.values.get(attribute);
+        }
+    }
+
+    /** A camera that is where a row says, in what it says, as its entity. */
+    static final class FogCamera extends net.minecraft.client.Camera {
+        net.minecraft.world.entity.Entity cameraEntity;
+        net.minecraft.world.phys.Vec3 where;
+        FogProbe probe;
+        net.minecraft.world.level.material.FogType fluid;
+        org.joml.Vector3f forwards;
+
+        @Override
+        public net.minecraft.world.entity.Entity entity() {
+            return this.cameraEntity;
+        }
+
+        @Override
+        public net.minecraft.world.phys.Vec3 position() {
+            return this.where;
+        }
+
+        @Override
+        public net.minecraft.core.BlockPos blockPosition() {
+            return net.minecraft.core.BlockPos.containing(this.where);
+        }
+
+        @Override
+        public net.minecraft.world.attribute.EnvironmentAttributeProbe attributeProbe() {
+            return this.probe;
+        }
+
+        @Override
+        public net.minecraft.world.level.material.FogType getFluidInCamera() {
+            return this.fluid;
+        }
+
+        @Override
+        public boolean isPanoramicMode() {
+            return false;
+        }
+
+        @Override
+        public org.joml.Vector3fc forwardVector() {
+            return this.forwards;
+        }
+    }
+
+    /**
+     * The real `FogRenderer.setupFog` for a camera in a fluid or the air, in a level, with some
+     * effects: the colour and the six distances it hands back. The attributes are the row's.
+     */
+    static JsonObject fogData(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        setField(scene.minecraft(), "level", level);
+        var hud = getField(getField(scene.minecraft(), "gui"), "hud");
+        setField(hud, "bossOverlay", unsafe.allocateInstance(net.minecraft.client.gui.components.BossHealthOverlay.class));
+        setField(getField(hud, "bossOverlay"), "events", new java.util.LinkedHashMap<>());
+        var effects = new java.util.HashMap<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+            net.minecraft.world.effect.MobEffectInstance>();
+        var table = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT;
+        for (var effect : row.getAsJsonArray("effects")) {
+            var described = effect.getAsJsonObject();
+            var holder = table.get(net.minecraft.resources.Identifier.parse(described.get("name").getAsString())).orElseThrow();
+            var instance = new net.minecraft.world.effect.MobEffectInstance(holder, described.get("duration").getAsInt());
+            if (!described.get("blend").getAsBoolean()) {
+                instance.skipBlending();
+            }
+            for (int tick = 0; tick < described.get("ticks").getAsInt(); tick++) {
+                instance.tickClient();
+            }
+            effects.put(holder, instance);
+        }
+        net.minecraft.world.entity.Entity entity;
+        if (row.get("local").getAsBoolean()) {
+            var player = (FogLocal) unsafe.allocateInstance(FogLocal.class);
+            player.fx = effects;
+            player.spectatorMode = row.get("spectator").getAsBoolean();
+            player.eyesInWater = row.get("fog_type").getAsString().equals("water");
+            var time = net.minecraft.client.player.LocalPlayer.class.getDeclaredField("waterVisionTime");
+            time.setAccessible(true);
+            time.setInt(player, row.get("water_vision_time").getAsInt());
+            entity = player;
+        } else {
+            var player = (FogRemote) unsafe.allocateInstance(FogRemote.class);
+            player.fx = effects;
+            player.spectatorMode = row.get("spectator").getAsBoolean();
+            entity = player;
+        }
+        var probe = (FogProbe) unsafe.allocateInstance(FogProbe.class);
+        probe.values = new java.util.HashMap<>();
+        var attributes = row.getAsJsonObject("attributes");
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_COLOR, attributes.get("fog_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SUNRISE_SUNSET_COLOR, attributes.get("sunrise").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_COLOR, attributes.get("sky_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_COLOR, attributes.get("water_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SUN_ANGLE, Oracle.f32(attributes, "sun_angle"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_START_DISTANCE, Oracle.f32(attributes, "fog_start"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.FOG_END_DISTANCE, Oracle.f32(attributes, "fog_end"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_FOG_END_DISTANCE, Oracle.f32(attributes, "sky_fog_end"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.CLOUD_FOG_END_DISTANCE, Oracle.f32(attributes, "cloud_fog_end"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_START_DISTANCE, Oracle.f32(attributes, "water_start"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.WATER_FOG_END_DISTANCE, Oracle.f32(attributes, "water_end"));
+        var camera = (FogCamera) unsafe.allocateInstance(FogCamera.class);
+        camera.cameraEntity = entity;
+        camera.where = new net.minecraft.world.phys.Vec3(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"));
+        camera.probe = probe;
+        camera.fluid = switch (row.get("fog_type").getAsString()) {
+            case "water" -> net.minecraft.world.level.material.FogType.WATER;
+            case "lava" -> net.minecraft.world.level.material.FogType.LAVA;
+            case "powder_snow" -> net.minecraft.world.level.material.FogType.POWDER_SNOW;
+            default -> net.minecraft.world.level.material.FogType.NONE;
+        };
+        camera.forwards = new org.joml.Vector3f(Oracle.f32(row, "forward_x"), 0.0F, 1.0F);
+        var renderer = (net.minecraft.client.renderer.fog.FogRenderer) unsafe.allocateInstance(
+            net.minecraft.client.renderer.fog.FogRenderer.class);
+        float partial = Oracle.f32(row, "partial");
+        net.minecraft.client.DeltaTracker tracker = new net.minecraft.client.DeltaTracker() {
+            public float getGameTimeDeltaTicks() {
+                return 1.0F;
+            }
+
+            public float getGameTimeDeltaPartialTick(final boolean ignoreFrozenGame) {
+                return partial;
+            }
+
+            public float getRealtimeDeltaTicks() {
+                return 1.0F;
+            }
+        };
+        var fog = renderer.setupFog(camera, row.get("render_distance").getAsInt(), tracker, Oracle.f32(row, "darken_world"), level);
+        entry.add("colour", fogBits(fog.color.x(), fog.color.y(), fog.color.z(), fog.color.w()));
+        entry.add("distances", fogBits(fog.environmentalStart, fog.environmentalEnd, fog.renderDistanceStart,
+            fog.renderDistanceEnd, fog.skyEnd, fog.cloudEnd));
+        return entry;
+    }
+
     /**
      * The real `ElytraAnimationState` of a real remote player ticked through a scenario: whether it
      * glides, its motion and whether it sneaks each tick, and the spread of the wings after each.
