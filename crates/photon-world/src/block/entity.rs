@@ -94,6 +94,48 @@ impl MovingPiston {
     }
 }
 
+/// What an enchanting table's book keeps of its animation (`EnchantingTableBlockEntity`'s
+/// `time`, `flip`, `oFlip`, `flipT`, `flipA`, `open`, `oOpen`, `rot`, `oRot` and `tRot`).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BookState {
+    pub time: i32,
+    pub flip: f32,
+    pub o_flip: f32,
+    pub flip_t: f32,
+    pub flip_a: f32,
+    pub open: f32,
+    pub o_open: f32,
+    pub rot: f32,
+    pub o_rot: f32,
+    pub t_rot: f32,
+}
+
+impl BookState {
+    /// Every number as the bits it is held in: two states are the same only if all of them are.
+    fn bits(&self) -> ([u32; 9], i32) {
+        let floats = [
+            self.flip,
+            self.o_flip,
+            self.flip_t,
+            self.flip_a,
+            self.open,
+            self.o_open,
+            self.rot,
+            self.o_rot,
+            self.t_rot,
+        ];
+        (floats.map(f32::to_bits), self.time)
+    }
+}
+
+impl PartialEq for BookState {
+    fn eq(&self, other: &Self) -> bool {
+        self.bits() == other.bits()
+    }
+}
+
+impl Eq for BookState {}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +151,8 @@ pub struct BlockEntityEvents {
     pub eruption_tick: i64,
     /// The move a moving piston block is in the middle of.
     pub moving: Option<MovingPiston>,
+    /// An enchanting table's book.
+    pub book: BookState,
 }
 
 impl Default for BlockEntityEvents {
@@ -119,6 +163,7 @@ impl Default for BlockEntityEvents {
             age: 0,
             eruption_tick: -1,
             moving: None,
+            book: BookState::default(),
         }
     }
 }

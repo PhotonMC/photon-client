@@ -409,6 +409,36 @@ pub fn bell() -> Vec<Value> {
     vec![entity("bell-pose", "bell_pose", rows)]
 }
 
+/// The real `EnchantTableRenderer` for a table whose book is at several numbers: its flip either
+/// side of the clamps on the two loose pages, shut, half open and open, a turn that wraps at the
+/// edge of the circle, and several partial ticks.
+pub fn enchant_table() -> Vec<Value> {
+    let book = |label: String, [time, flip, o_flip, open, o_open, rot, o_rot, partial]: [f64; 8]| {
+        json!({
+            "label": label, "time": time as i64, "flip": f32_bits(flip), "o_flip": f32_bits(o_flip),
+            "open": f32_bits(open), "o_open": f32_bits(o_open), "rot": f32_bits(rot), "o_rot": f32_bits(o_rot),
+            "partial": f32_bits(partial),
+        })
+    };
+    let mut rows = Vec::new();
+    for flip in [-1.3, 0.0, 0.1, 0.3, 0.55, 0.9, 2.45, 7.8] {
+        rows.push(book(format!("flip {}", float_text(flip)), [17.0, flip, flip - 0.2, 0.7, 0.6, 0.4, 0.3, 0.37]));
+    }
+    for open in [0.0, 0.25, 0.5, 1.0] {
+        rows.push(book(format!("open {}", float_text(open)), [1000.0, 1.7, 1.5, open, open - 0.1, -1.2, -1.0, 0.8]));
+    }
+    for (rot, o_rot) in [(3.1, -3.1), (-3.1, 3.1), (3.0, 3.1), (-0.2, 0.2), (2.0, -2.5)] {
+        for partial in [0.0, 0.5, 1.0] {
+            let label = format!("turn {} from {} at {}", float_text(rot), float_text(o_rot), float_text(partial));
+            rows.push(book(label, [0.0, 0.0, 0.0, 1.0, 1.0, rot, o_rot, partial]));
+        }
+    }
+    for time in [0.0, 5.0, 31.0, 157.0, 4000.0] {
+        rows.push(book(format!("time {}", float_text(time)), [time, 0.45, 0.4, 0.9, 0.8, 1.0, 0.9, 0.25]));
+    }
+    vec![entity("enchant-table-pose", "enchant_table_pose", rows)]
+}
+
 /// The real `SkullBlockRenderer` for each skull standing at each of the
 /// sixteen turns and hanging on each wall, with the jaw and ears at several
 /// animation times.

@@ -350,6 +350,75 @@ class EntityBlockOracle extends EntityAquaticOracle {
         return result;
     }
 
+    /** The bits of some floats, as an array. */
+    static JsonArray floatBits(final float... values) {
+        var array = new JsonArray();
+        for (float value : values) {
+            array.add(Oracle.bits(value));
+        }
+        return array;
+    }
+
+    /**
+     * What the real `EnchantTableRenderer` hands the collector for an enchanting table whose book
+     * is at some numbers, at a partial tick: what the render state takes from the entity, the pose,
+     * the model's state and the model set up with it.
+     */
+    static JsonObject enchantTablePose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.EnchantTableRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class);
+        var modelField = net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class.getDeclaredField("bookModel");
+        modelField.setAccessible(true);
+        modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var entity = new net.minecraft.world.level.block.entity.EnchantingTableBlockEntity(
+                net.minecraft.core.BlockPos.ZERO, net.minecraft.world.level.block.Blocks.ENCHANTING_TABLE.defaultBlockState());
+            entity.time = row.get("time").getAsInt();
+            entity.flip = Oracle.f32(row, "flip");
+            entity.oFlip = Oracle.f32(row, "o_flip");
+            entity.open = Oracle.f32(row, "open");
+            entity.oOpen = Oracle.f32(row, "o_open");
+            entity.rot = Oracle.f32(row, "rot");
+            entity.oRot = Oracle.f32(row, "o_rot");
+            var state = renderer.createRenderState();
+            renderer.extractRenderState(entity, state, Oracle.f32(row, "partial"), net.minecraft.world.phys.Vec3.ZERO, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("view", floatBits(state.flip, state.open, state.time, state.yRot));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var book = (net.minecraft.client.model.object.book.BookModel.State) args[1];
+                        out.add("book", floatBits(book.openness(), book.pageFlip1(), book.pageFlip2()));
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(book);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * What the real `ShulkerBoxRenderer.submit` hands the collector: the pose, the light, the sprite
      * and the model with its lid set for the progress, for a colour, facing and progress.

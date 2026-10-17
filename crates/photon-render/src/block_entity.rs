@@ -3,6 +3,7 @@
 pub mod banner;
 pub mod bell;
 pub mod chest;
+pub mod enchant_table;
 pub mod shulker_box;
 pub mod sign;
 pub mod skull;

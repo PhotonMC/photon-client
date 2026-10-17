@@ -52,13 +52,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "item_equippable" => item_equippable_result(request),
         "glint_layers" => glint_layers_result(request),
         "camera_hurt" => camera_hurt_result(request),
-        "chest_model" => chest_model_result(request),
-        "chest_pose" => chest_pose_result(request),
-        "bell_pose" => bell_pose_result(request),
-        "banner_pose" => banner_pose_result(request),
-        "skull_block_pose" => skull_block_pose_result(request),
         "elder_guardian_particle_pose" => elder_guardian_particle_pose_result(request),
-        "shulker_box_pose" => shulker_box_pose_result(request),
         "display_light" => display_light_result(request),
         "arrow_pose" => arrow_pose_result(request),
         "thrown_item_pose" => thrown_item_pose_result(request),
@@ -123,6 +117,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "entity_data_serializers" => entity_data_serializers_case(),
         "entity_types" => entity_types_case(),
         "player_model" => player_model_case(request),
-        _ => Err("unknown entity operation".into()),
+        other => block_pose_result(other, request)
+            .unwrap_or_else(|| Err("unknown entity operation".into())),
     }
 }

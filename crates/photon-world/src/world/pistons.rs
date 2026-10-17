@@ -334,7 +334,7 @@ impl ClientWorld {
     }
 
     /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
-    /// up. The moving pistons, the end gateways and the potent sulfur blocks tick.
+    /// up. The moving pistons, the end gateways, the potent sulfur blocks and the enchanting tables tick.
     pub fn tick_block_entities(&mut self) {
         self.block_tickers.begin_pass();
         let mut index = 0;
@@ -347,6 +347,8 @@ impl ClientWorld {
                 self.tick_moving_piston(pos);
             } else if self.is_potent_sulfur_at(pos) {
                 self.tick_potent_sulfur(pos);
+            } else if self.is_enchanting_table_at(pos) {
+                self.tick_enchanting_table(pos);
             } else {
                 self.tick_end_gateway(pos);
             }

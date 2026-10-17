@@ -102,7 +102,7 @@ impl LocalPlayer {
         }
     }
 
-    pub(super) fn is_spectator(&self) -> bool {
+    pub fn is_spectator(&self) -> bool {
         self.game_mode.is_spectator()
     }
 

@@ -140,7 +140,7 @@ rastgelesiyle işler.
   the same client tick, before the particles tick. Not carried: geysers launching entities, the
   server's nausea, and collision shapes that depend on who asks (scaffolding, powder snow, and the
   interaction shapes of cauldrons and hoppers that the reference's clip also reads). The oracle's
-  rows list the sulfur block entities to set up in order (`sulfurs`), and a `game_time` event
+  rows list the block entities to set up in order (`block_entities`, each with its type), and a `game_time` event
   moves the clock on during a row.
 - Environment attributes in `animateTick` (#45): the level asks the environment (the dimension's
   data and the overworld's clock) through a trait the particle engine owns, not the render side's

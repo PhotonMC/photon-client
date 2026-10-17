@@ -23,7 +23,7 @@ use crate::overlays::{FrameView, packed_light};
 const RADIUS_CHUNKS: i32 = 8;
 
 /// The paths (under `textures/`) of every chest and shulker box texture.
-const TEXTURES: [&str; 37] = [
+const TEXTURES: [&str; 38] = [
     "entity/chest/normal",
     "entity/chest/normal_left",
     "entity/chest/normal_right",
@@ -44,6 +44,7 @@ const TEXTURES: [&str; 37] = [
     "entity/chest/copper_oxidized_right",
     "entity/chest/ender",
     "entity/bell/bell_body",
+    "entity/enchantment/enchanting_table_book",
     "entity/shulker/shulker",
     "entity/shulker/shulker_white",
     "entity/shulker/shulker_orange",
@@ -162,44 +163,7 @@ pub fn block_entities(
     );
     for (x, y, z) in world.chest_positions_near(centre, RADIUS_CHUNKS) {
         let Some(chest) = world.chest_view(x, y, z) else {
-            if let Some(shulker) = world.shulker_box_view(x, y, z) {
-                vertices.extend(shulker_box_vertices(
-                    session,
-                    models,
-                    textures,
-                    view,
-                    (x, y, z),
-                    shulker,
-                ));
-            } else if let Some(banner) = world.banner_view((x, y, z)) {
-                banner_vertices(
-                    session,
-                    models,
-                    textures,
-                    view,
-                    (x, y, z),
-                    &banner,
-                    vertices,
-                );
-            } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
-                vertices.extend(skull_vertices(
-                    session,
-                    models,
-                    textures,
-                    view,
-                    (x, y, z),
-                    skull,
-                ));
-            } else if let Some(shake) = world.bell_shake((x, y, z), partial) {
-                vertices.extend(bell_vertices(
-                    session,
-                    models,
-                    textures,
-                    view,
-                    (x, y, z),
-                    shake,
-                ));
-            }
+            other_block_entity(session, models, textures, view, (x, y, z), vertices);
             continue;
         };
         let kind = match chest.kind {
@@ -238,6 +202,99 @@ pub fn block_entities(
         let pose = chest_pose(&base, facing);
         vertices.extend(mob_vertices_posed(model, &pose, rect, (light, false)));
     }
+}
+
+/// A block entity that is no chest: a shulker box, a banner, a head, a bell or an enchanting
+/// table's book.
+fn other_block_entity(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    let partial = view.partial as f32;
+    if let Some(shulker) = world.shulker_box_view(x, y, z) {
+        vertices.extend(shulker_box_vertices(
+            session,
+            models,
+            textures,
+            view,
+            (x, y, z),
+            shulker,
+        ));
+    } else if let Some(banner) = world.banner_view((x, y, z)) {
+        banner_vertices(
+            session,
+            models,
+            textures,
+            view,
+            (x, y, z),
+            &banner,
+            vertices,
+        );
+    } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
+        vertices.extend(skull_vertices(
+            session,
+            models,
+            textures,
+            view,
+            (x, y, z),
+            skull,
+        ));
+    } else if let Some(shake) = world.bell_shake((x, y, z), partial) {
+        vertices.extend(bell_vertices(
+            session,
+            models,
+            textures,
+            view,
+            (x, y, z),
+            shake,
+        ));
+    } else if let Some(table) = world.enchant_table_view((x, y, z), partial) {
+        vertices.extend(book_vertices(
+            session,
+            models,
+            textures,
+            view,
+            (x, y, z),
+            table,
+        ));
+    }
+}
+
+/// One enchanting table's book, floating over it, open to the player near it.
+fn book_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    table: photon_world::EnchantTableView,
+) -> Vec<Vertex> {
+    use photon_render::block_entity::enchant_table;
+    let (Some(rect), Some(model)) = (
+        textures.rect(enchant_table::TEXTURE),
+        models.model(enchant_table::LAYER),
+    ) else {
+        return Vec::new();
+    };
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    let book = enchant_table::book_pose(table.time, table.flip, table.open);
+    model.setup_book(book.openness, book.pages);
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let pose = enchant_table::table_pose(&base, table.time, table.y_rot);
+    mob_vertices_posed(model, &pose, rect, (light, false))
 }
 
 /// One shulker box, its lid as far up and turned as its progress says.

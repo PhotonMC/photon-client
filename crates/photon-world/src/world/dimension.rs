@@ -33,6 +33,7 @@ impl ClientWorld {
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
             block_tickers: crate::world::BlockTickers::default(),
+            tables: crate::world::Tables::default(),
         }
     }
 

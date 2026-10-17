@@ -5,6 +5,7 @@
 mod ambience_rows;
 mod ambient_rows;
 mod animating;
+mod book_rows;
 mod engine;
 mod engine_rows;
 mod engine_rows_late;

@@ -427,7 +427,7 @@ class MovementSupport {
      * The players a row puts in the level, and the players each vault block entity shares as
      * connected to it (its `shared_data`, as the server's update tag carries it).
      */
-    static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+    static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) throws Exception {
         if (row.has("light") && row.get("light").getAsBoolean()) {
             lightTheChunks(row, level);
         }
@@ -446,6 +446,9 @@ class MovementSupport {
                 var uuid = vaultUuid(described.getAsJsonArray("uuid"));
                 var remote = new net.minecraft.client.player.RemotePlayer(
                     level, new com.mojang.authlib.GameProfile(uuid, "Player" + id));
+                // What `isSpectator` asks the player list of: the player is listed, in the default mode.
+                setField(remote, "playerInfo", new net.minecraft.client.multiplayer.PlayerInfo(
+                    new com.mojang.authlib.GameProfile(uuid, "Player" + id), false));
                 remote.setId(id++);
                 remote.snapTo(Oracle.f64(described, "x"), Oracle.f64(described, "y"),
                     Oracle.f64(described, "z"), 0.0F, 0.0F);
@@ -476,9 +479,17 @@ class MovementSupport {
                         net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         }
-        if (row.has("sulfurs")) {
-            // Potent sulfur blocks' entities, made (and set to tick) in the order of the row.
-            for (var element : row.getAsJsonArray("sulfurs")) {
+        if (row.has("book_seed")) {
+            // The enchanting tables' class-wide random source, seeded for the row.
+            Class.forName("net.minecraft.world.level.block.entity.EnchantingTableBlockEntity", true,
+                net.minecraft.world.level.block.entity.EnchantingTableBlockEntity.class.getClassLoader());
+            var random = net.minecraft.world.level.block.entity.EnchantingTableBlockEntity.class.getDeclaredField("RANDOM");
+            random.setAccessible(true);
+            ((net.minecraft.util.RandomSource) random.get(null)).setSeed(row.get("book_seed").getAsLong());
+        }
+        if (row.has("block_entities")) {
+            // The block entities of blocks that tick, made (and set to tick) in the order of the row.
+            for (var element : row.getAsJsonArray("block_entities")) {
                 var described = element.getAsJsonObject();
                 level.getBlockEntity(new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
                     described.get("z").getAsInt()));
@@ -533,6 +544,11 @@ class MovementSupport {
                 held = "gateway," + getField(gateway, "teleportCooldown") + "," + getField(gateway, "age");
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
                 held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
+            } else if (entity instanceof net.minecraft.world.level.block.entity.EnchantingTableBlockEntity book) {
+                held = "book," + book.time + "," + String.join(",",
+                    Oracle.bits(book.flip), Oracle.bits(book.oFlip), Oracle.bits(book.flipT),
+                    Oracle.bits(book.flipA), Oracle.bits(book.open), Oracle.bits(book.oOpen),
+                    Oracle.bits(book.rot), Oracle.bits(book.oRot), Oracle.bits(book.tRot));
             } else if (entity instanceof net.minecraft.world.level.block.entity.PotentSulfurBlockEntity sulfur) {
                 held = "sulfur," + sulfur.eruptionTick;
             } else {

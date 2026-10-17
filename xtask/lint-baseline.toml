@@ -293,7 +293,7 @@
 "crates/photon-gui/src/widgets/text_field.rs::word_position" = 11
 "crates/photon-net/src/connection/open.rs::configure_connection" = 24
 "crates/photon-net/src/connection/play/incoming/player.rs::PlaySession::on_game_event" = 11
-"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 17
+"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 16
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 12
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 19
@@ -307,7 +307,7 @@
 "crates/photon-oracle/src/command.rs::respond" = 27
 "crates/photon-oracle/src/container.rs::container_clicks_result" = 22
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 11
-"crates/photon-oracle/src/entity.rs::entity_result" = 117
+"crates/photon-oracle/src/entity.rs::entity_result" = 111
 "crates/photon-oracle/src/error.rs::common_packet_result" = 12
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 36
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 33
@@ -585,7 +585,6 @@
 "crates/photon/src/play/ticks.rs::Play::tick" = 11
 "crates/photon/src/screens.rs::run_actions" = 16
 "crates/photon/src/script.rs::HeldKeys::parse" = 28
-"crates/photon/src/world/block_entities.rs::block_entities" = 12
 "xtask/src/lint.rs::Rule::hint" = 12
 "xtask/src/lint.rs::Rule::name" = 12
 "xtask/src/lint/names.rs::name_problem" = 11
@@ -730,7 +729,7 @@
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
 "crates/photon-net/src/connection/open.rs::configure_connection" = 198
 "crates/photon-net/src/connection/open.rs::log_in" = 94
-"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 75
+"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 72
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
 "crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 61
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
@@ -755,7 +754,7 @@
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 95
 "crates/photon-oracle/src/declarations.rs::vanilla_tags_of" = 76
 "crates/photon-oracle/src/display.rs::text_display_submit_result" = 82
-"crates/photon-oracle/src/entity.rs::entity_result" = 121
+"crates/photon-oracle/src/entity.rs::entity_result" = 116
 "crates/photon-oracle/src/entity/tables.rs::entity_variant_fields_case" = 413
 "crates/photon-oracle/src/entity_motion.rs::client_world_entity_player_head_rotation_result" = 70
 "crates/photon-oracle/src/entity_motion.rs::client_world_entity_player_interpolation_result" = 86
@@ -1070,7 +1069,6 @@
 "crates/photon/src/window_probe/version.rs::model_scene" = 74
 "crates/photon/src/window_probe/version.rs::run_window" = 61
 "crates/photon/src/window_probe/world.rs::load_world" = 93
-"crates/photon/src/world/block_entities.rs::block_entities" = 91
 "crates/photon/src/world/sections.rs::SectionMeshes::visible" = 62
 "crates/photon/src/world/signs.rs::sign_texts" = 73
 "crates/photon/src/world/sky.rs::Sky::draw" = 72

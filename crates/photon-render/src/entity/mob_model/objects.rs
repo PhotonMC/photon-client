@@ -157,6 +157,32 @@ impl MobModel {
         }
     }
 
+    /// `BookModel.setupAnim`: the lids open to `openness`, the pages follow and the two loose
+    /// pages turn between them by how far each has been flipped.
+    pub fn setup_book(&mut self, openness: f32, (flip1, flip2): (f32, f32)) {
+        self.root.reset();
+        let pi = std::f64::consts::PI as f32;
+        let turns = [
+            ("left_lid", pi + openness),
+            ("right_lid", -openness),
+            ("left_pages", openness),
+            ("right_pages", -openness),
+            ("flip_page1", openness - openness * 2.0 * flip1),
+            ("flip_page2", openness - openness * 2.0 * flip2),
+        ];
+        for (name, y_rot) in turns {
+            if let Some(part) = self.root.child_mut(name) {
+                part.y_rot = y_rot;
+            }
+        }
+        let x = mth_sin_f64(f64::from(openness));
+        for name in ["left_pages", "right_pages", "flip_page1", "flip_page2"] {
+            if let Some(part) = self.root.child_mut(name) {
+                part.x = x;
+            }
+        }
+    }
+
     /// `BannerFlagModel.setupAnim`: the flag tips by the phase of its wave.
     pub fn setup_banner_flag(&mut self, phase: f32) {
         self.root.reset();

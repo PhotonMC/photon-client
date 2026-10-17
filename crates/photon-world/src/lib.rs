@@ -82,7 +82,7 @@ pub use recipes::{
 };
 pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
-pub use world::{Entities, LevelEvent, block_sound_of};
+pub use world::{EnchantTableView, Entities, LevelEvent, block_sound_of};
 
 /// The client-side copy of the currently loaded world.
 #[derive(Debug)]
@@ -130,6 +130,8 @@ pub struct ClientWorld {
     destroying_blocks: BTreeMap<EntityId, DestroyProgress>,
     /// The block entities the level ticks, in the order they were set up.
     block_tickers: world::BlockTickers,
+    /// What the enchanting tables' ticks read of the level.
+    tables: world::Tables,
 }
 
 impl Default for ClientWorld {

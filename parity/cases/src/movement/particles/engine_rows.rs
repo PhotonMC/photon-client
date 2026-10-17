@@ -313,5 +313,6 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::ambient_rows::rows());
     rows.extend(super::sulfur_rows::rows());
     rows.extend(super::ambience_rows::rows());
+    rows.extend(super::book_rows::rows());
     rows
 }

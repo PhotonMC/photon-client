@@ -45,6 +45,7 @@ impl ClientWorld {
         let time = self.game_time() as i64;
         let state = self.block_state_or_air(x, y, z);
         let ticks = type_name == "minecraft:end_gateway"
+            || type_name == "minecraft:enchanting_table"
             || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
@@ -121,7 +122,7 @@ impl ClientWorld {
             }
             self.light.check_block((x, y, z));
         }
-        self.rebind_sulfur_ticker((x, y, z), state_id);
+        self.rebind_ticker((x, y, z), state_id);
         true
     }
 
@@ -311,7 +312,7 @@ impl ClientWorld {
     /// animation, and the potent sulfur block that is not dry.
     fn has_ticker(&self, type_id: i32, (x, y, z): (i32, i32, i32)) -> bool {
         match photon_data::block_entity_type::name(type_id) {
-            Some("minecraft:end_gateway") => true,
+            Some("minecraft:end_gateway" | "minecraft:enchanting_table") => true,
             Some("minecraft:potent_sulfur") => {
                 super::has_sulfur_ticker(self.block_state_or_air(x, y, z))
             }

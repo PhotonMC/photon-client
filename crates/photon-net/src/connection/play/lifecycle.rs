@@ -120,10 +120,7 @@ impl PlaySession {
             }
         }
         // `ClientLevel.tickEntities`: the entities the server added move on.
-        if let Some(player) = self.local.player.as_ref() {
-            let position = player.position();
-            self.world.set_local_player_chunk(position.x, position.z);
-        }
+        self.tell_world_where_the_player_is();
         if ridden.is_none() {
             self.world.tick_entities();
         }
@@ -131,6 +128,18 @@ impl PlaySession {
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// Where the client's own player stands after it moved this tick, for what the world's own
+    /// ticks measure from it.
+    fn tell_world_where_the_player_is(&mut self) {
+        let Some(player) = self.local.player.as_ref() else {
+            return;
+        };
+        let position = player.position();
+        self.world.set_local_player_chunk(position.x, position.z);
+        self.world
+            .set_local_player_spot((position.x, position.y, position.z), player.is_spectator());
     }
 
     pub(super) fn send<F>(&mut self, id: i32, body: F) -> Result<(), ConnectionError>

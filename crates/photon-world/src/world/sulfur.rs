@@ -136,25 +136,6 @@ impl ClientWorld {
         block::state_or_air(self.block_state_or_air(x, y, z)).block == id::POTENT_SULFUR as u16
     }
 
-    /// `LevelChunk.updateBlockEntityTicker` for a potent sulfur block whose state was set: the
-    /// block has an entity of its own (made when it has none), and a ticker unless it is dry.
-    pub(super) fn rebind_sulfur_ticker(&mut self, pos: Pos, state: BlockStateId) {
-        if !self.is_potent_sulfur_at(pos) {
-            return;
-        }
-        if self
-            .block_entity_or_new(pos, "minecraft:potent_sulfur")
-            .is_none()
-        {
-            return;
-        }
-        if has_sulfur_ticker(state) {
-            self.block_tickers.register(pos);
-        } else {
-            self.block_tickers.unregister(pos);
-        }
-    }
-
     /// What a potent sulfur block's ticker does this tick, by its state.
     pub(super) fn tick_potent_sulfur(&mut self, pos: Pos) {
         let state = self.block_state_or_air(pos.0, pos.1, pos.2);

@@ -36,7 +36,7 @@ fn pool(state: &str, depth: i64, extra: Vec<(Cell, Value)>) -> Vec<Value> {
 fn gas_row(label: &str, blocks: Vec<Value>, game_time: u64) -> Engine {
     engine_row(label, vec![])
         .blocks(blocks)
-        .set("sulfurs", json!([{"x": 0, "y": 64, "z": 0}]))
+        .set("block_entities", json!([{"x": 0, "y": 64, "z": 0, "type": "minecraft:potent_sulfur"}]))
         .set("game_time", json!(game_time))
         .set("tick_block_entities", json!(true))
         .ticks(30)
@@ -102,7 +102,7 @@ fn geyser_row(label: &str, blocks: Vec<Value>, extra: Vec<Value>) -> Engine {
     let events = (0..46).map(|tick| game_time(tick, 100 + tick)).chain(extra).collect::<Vec<_>>();
     engine_row(label, events)
         .blocks(blocks)
-        .set("sulfurs", json!([{"x": 0, "y": 64, "z": 0}]))
+        .set("block_entities", json!([{"x": 0, "y": 64, "z": 0, "type": "minecraft:potent_sulfur"}]))
         .set("game_time", json!(100))
         .set("tick_block_entities", json!(true))
         .ticks(46)
