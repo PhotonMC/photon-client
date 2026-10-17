@@ -6,6 +6,7 @@
 //! the source is handed in.
 
 mod animate;
+mod animate_ambient;
 mod animate_blocks;
 mod animate_falling;
 mod animate_misc;

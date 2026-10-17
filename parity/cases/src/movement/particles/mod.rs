@@ -2,6 +2,7 @@
 //! smoke and flame providers) ticked in a scene, with the random seed they
 //! are made with fixed; and the registry of particle types they are named by.
 
+mod ambient_rows;
 mod animating;
 mod engine;
 mod engine_rows;

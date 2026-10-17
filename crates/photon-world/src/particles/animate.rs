@@ -260,7 +260,7 @@ impl ParticleEngine {
 }
 
 /// `Level.playLocalSound` of an ambient sound at a place: its seed drawn from the level's random.
-fn ambient<F: FnMut() -> RandomSource>(
+pub(super) fn ambient<F: FnMut() -> RandomSource>(
     event: &'static str,
     (volume, pitch): (f32, f32),
     position: (f64, f64, f64),

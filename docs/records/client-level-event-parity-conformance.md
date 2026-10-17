@@ -100,3 +100,11 @@ rastgelesiyle işler.
   retracting arm leaves behind, lit and tinted as a falling block is. No parity row compares the
   drawing; a live run against the vanilla server showed a sticky piston and a normal one in
   the middle of a push.
+- Blocks that animate by themselves (#45): the wither rose's and the end portal's smoke, the dried
+  ghast's wisps (and in water its happy specks), an enchanting table's glyphs towards each
+  bookshelf with a clear way to it (the offsets go as `BlockPos.betweenClosed` does, x fastest then
+  y then z), honey dripping from a hive of honey level five or more (the bound of its loop is
+  asked again on every pass), dust under suspicious sand and gravel, and the idle sounds of
+  pale moss, open eyeblossoms, dead bushes and dry grass. The oracle's sound manager leaves the
+  ambient sounds out, so they show only through the draws they make; dry grass's sound is the
+  player's own and draws only where the client has a player (the oracle has none).

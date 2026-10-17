@@ -11,7 +11,7 @@ use super::engine::{ParticleData, ParticleEngine};
 use super::level_events::LevelEventContext;
 
 /// `FallingBlock.isFree`: air, fire, a fluid, or a block that gives way.
-fn is_free(world: &ClientWorld, state: BlockStateId) -> bool {
+pub(super) fn is_free(world: &ClientWorld, state: BlockStateId) -> bool {
     let info = crate::block::state_or_air(state);
     let block = info.block();
     block.air
@@ -24,11 +24,11 @@ fn is_free(world: &ClientWorld, state: BlockStateId) -> bool {
 }
 
 /// The state at a block, air where nothing is loaded.
-fn state_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> BlockStateId {
+pub(super) fn state_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> BlockStateId {
     world.block_state_or_air(x, y, z)
 }
 
-fn in_tag(world: &ClientWorld, state: BlockStateId, tag: &str) -> bool {
+pub(super) fn in_tag(world: &ClientWorld, state: BlockStateId, tag: &str) -> bool {
     let info = crate::block::state_or_air(state);
     world
         .block_state_registry
@@ -37,7 +37,7 @@ fn in_tag(world: &ClientWorld, state: BlockStateId, tag: &str) -> bool {
 }
 
 /// `Heightmap.Types.WORLD_SURFACE`: one above the highest block that is not air in the column.
-fn world_surface(world: &ClientWorld, x: i32, z: i32) -> i32 {
+pub(super) fn world_surface(world: &ClientWorld, x: i32, z: i32) -> i32 {
     let bounds = world.dimension();
     let top = bounds.min_y + bounds.height - 1;
     (bounds.min_y..=top)

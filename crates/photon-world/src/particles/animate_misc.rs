@@ -63,7 +63,10 @@ impl ParticleEngine {
                 self.level_add(context, "reverse_portal", at, (0.0, rise, 0.0));
             }
             "end_rod" => self.end_rod(state, pos, random, context),
-            _ => return false,
+            _ => {
+                let block = crate::block::state_or_air(state).block();
+                return self.ambient_animate_tick((state, block), pos, random, (context, sounds));
+            }
         }
         true
     }
