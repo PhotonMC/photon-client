@@ -284,6 +284,7 @@ impl PlaySession {
     pub(super) fn tick_clocks(&mut self, game_time: i64) {
         let delta = game_time - self.level_info.game_time;
         self.level_info.game_time = game_time;
+        self.world.set_game_time(game_time as u64);
         for state in self.level_info.clocks.values_mut() {
             let ticks = f64::from(state.partial_tick) + delta as f64 * f64::from(state.rate);
             let whole = ticks.floor();
