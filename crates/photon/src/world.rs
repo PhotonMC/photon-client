@@ -2,6 +2,7 @@
 
 pub(crate) mod animated_atlas;
 pub(crate) mod atmosphere;
+pub(crate) mod beacon_beams;
 pub(crate) mod block_entities;
 pub(crate) mod block_entity_textures;
 mod flood;

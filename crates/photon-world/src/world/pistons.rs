@@ -349,6 +349,8 @@ impl ClientWorld {
                 self.tick_potent_sulfur(pos);
             } else if self.is_enchanting_table_at(pos) {
                 self.tick_enchanting_table(pos);
+            } else if self.is_beacon_at(pos) {
+                self.tick_beacon(pos);
             } else {
                 self.tick_end_gateway(pos);
             }

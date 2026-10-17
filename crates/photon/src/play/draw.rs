@@ -94,6 +94,14 @@ impl Play {
         }
     }
 
+    /// The listener of the sounds goes where the camera is.
+    fn place_listener(&self, frame: &FrameCamera) {
+        if let Some(sound) = &self.sound {
+            let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
+            sound.set_listener(frame.camera, forward, up);
+        }
+    }
+
     /// What is drawn over the blocks from the player's side: the hands in
     /// first person unless the player only watches, the aimed block's
     /// outline, the cracks, and the player's own model once the camera
@@ -101,6 +109,7 @@ impl Play {
     pub(super) fn draw_overlays(&mut self, frame: &FrameCamera) -> Result<()> {
         let player = self.session.player().ok_or("no local player")?;
         let view = FrameView {
+            render_distance: frame.render_distance,
             partial: frame.partial,
             light: packed_light(self.session.world(), frame.eye),
             origin: self.origin,
@@ -108,10 +117,7 @@ impl Play {
             rotation: frame.rotation,
             skin: self.skin_rect,
         };
-        if let Some(sound) = &self.sound {
-            let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
-            sound.set_listener(frame.camera, forward, up);
-        }
+        self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         if first_person && !player.spectating() {
             let (hand, held) = hands(

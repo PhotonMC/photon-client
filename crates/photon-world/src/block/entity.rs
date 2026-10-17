@@ -136,6 +136,32 @@ impl PartialEq for BookState {
 
 impl Eq for BookState {}
 
+/// One stretch of a beacon's beam (`BeaconBeamOwner.Section`): its colour (ARGB) and how many
+/// blocks tall.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BeamSection {
+    pub color: u32,
+    pub height: i32,
+}
+
+/// What a beacon keeps of its beam (`BeaconBlockEntity`'s `beamSections`, the ones it is working
+/// out, and how high up the column it has looked).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BeaconState {
+    pub sections: Vec<BeamSection>,
+    /// `BeaconBlockEntity.levels`: how many layers of the pyramid under it the client has seen.
+    pub levels: i32,
+    pub(crate) checking: Vec<BeamSection>,
+    pub(crate) last_check_y: i32,
+}
+
+impl BeaconState {
+    /// How high up the column the scan has looked (`lastCheckY`).
+    pub fn last_check_y(&self) -> i32 {
+        self.last_check_y
+    }
+}
+
 /// What block events set in a block entity of the client's own (`BlockEntity.triggerEvent`),
 /// for the renderers and tickers that read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,6 +179,8 @@ pub struct BlockEntityEvents {
     pub moving: Option<MovingPiston>,
     /// An enchanting table's book.
     pub book: BookState,
+    /// A beacon's beam.
+    pub beacon: BeaconState,
 }
 
 impl Default for BlockEntityEvents {
@@ -164,6 +192,7 @@ impl Default for BlockEntityEvents {
             eruption_tick: -1,
             moving: None,
             book: BookState::default(),
+            beacon: BeaconState::default(),
         }
     }
 }
@@ -191,13 +220,16 @@ impl ClientBlockEntity {
         }
     }
 
-    /// The block entity as the level makes it (`BlockEntity.setLevel`): a potent sulfur block
-    /// notes the game time as when it last erupted.
-    pub fn made_at(mut self, game_time: i64) -> Self {
-        if photon_data::block_entity_type::name(self.type_id) == Some("minecraft:potent_sulfur")
-            && self.events.eruption_tick == -1
-        {
-            self.events.eruption_tick = game_time;
+    /// The block entity as the level makes it (`BlockEntity.setLevel`) in a level whose lowest
+    /// block is `min_y`: a potent sulfur block notes the game time as when it last erupted, and a
+    /// beacon begins its scan from the bottom of the world.
+    pub fn made_at(mut self, game_time: i64, min_y: i32) -> Self {
+        match photon_data::block_entity_type::name(self.type_id) {
+            Some("minecraft:potent_sulfur") if self.events.eruption_tick == -1 => {
+                self.events.eruption_tick = game_time;
+            }
+            Some("minecraft:beacon") => self.events.beacon.last_check_y = min_y - 1,
+            _ => {}
         }
         self
     }

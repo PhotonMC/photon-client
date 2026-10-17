@@ -13,6 +13,7 @@ fn ticking_entity_of(block_name: &str) -> Option<&'static str> {
     match block_name {
         "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
         "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
+        "minecraft:beacon" => Some("minecraft:beacon"),
         _ => None,
     }
 }

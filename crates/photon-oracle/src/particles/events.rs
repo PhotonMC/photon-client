@@ -37,6 +37,15 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);
         }
         "block_event" => queue_block_event(event, world)?,
+        "set_block" => {
+            let state = super::state_of(&json!({"state": event["state"]}))?;
+            world.update_block_state(
+                i32_field(event, "x")?,
+                i32_field(event, "y")?,
+                i32_field(event, "z")?,
+                state,
+            );
+        }
         "game_time" => world.set_game_time(
             event["time"]
                 .as_u64()

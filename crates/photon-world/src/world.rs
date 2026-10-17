@@ -2,6 +2,8 @@
 
 mod block_tickers;
 pub(crate) use block_tickers::BlockTickers;
+mod beacon;
+pub use beacon::BeaconView;
 mod blocks;
 mod border;
 mod chunks;

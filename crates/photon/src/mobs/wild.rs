@@ -276,6 +276,7 @@ pub(super) fn remote_wild_animals(
     ender_dragons::remote_ender_dragons(session, models, textures, view, vertices);
     end_crystals::remote_end_crystals(session, models, textures, view, vertices);
     block_entities::block_entities(session, models, textures, view, vertices);
+    crate::world::beacon_beams::beacon_beams(session, textures, view, vertices);
 }
 
 /// The arrows, wind charges, paintings and minecarts the server added.

@@ -1,6 +1,7 @@
 //! What is drawn of the blocks that carry an entity: banners, bells, chests, shulker boxes and heads.
 
 pub mod banner;
+pub mod beacon;
 pub mod bell;
 pub mod chest;
 pub mod decorated_pot;

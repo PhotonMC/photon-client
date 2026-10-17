@@ -43,19 +43,20 @@ impl ClientWorld {
     ) -> Option<&mut ClientBlockEntity> {
         let type_id = photon_data::block_entity_type::id(type_name)?;
         let time = self.game_time() as i64;
+        let min_y = self.dimension().min_y;
         let state = self.block_state_or_air(x, y, z);
         let ticks = type_name == "minecraft:end_gateway"
             || type_name == "minecraft:enchanting_table"
+            || type_name == "minecraft:beacon"
             || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
         }
         let chunk = self.chunk_for_update(x.div_euclid(16), z.div_euclid(16))?;
         Some(
-            chunk
-                .block_entities
-                .entry((x, y, z))
-                .or_insert_with(|| ClientBlockEntity::from_wire(type_id, None).made_at(time)),
+            chunk.block_entities.entry((x, y, z)).or_insert_with(|| {
+                ClientBlockEntity::from_wire(type_id, None).made_at(time, min_y)
+            }),
         )
     }
 
@@ -164,6 +165,7 @@ impl ClientWorld {
         I: IntoIterator<Item = BlockEntityInput<'a>>,
     {
         let time = self.game_time() as i64;
+        let min_y = self.dimension().min_y;
         let Some(chunk) = self.chunk_for_update(chunk_x, chunk_z) else {
             return 0;
         };
@@ -177,7 +179,7 @@ impl ClientWorld {
             chunk.block_entities.insert(
                 key,
                 ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
-                    .made_at(time),
+                    .made_at(time, min_y),
             );
             ticking.push((key, entity.type_id));
             applied += 1;
@@ -194,13 +196,14 @@ impl ClientWorld {
     pub fn apply_block_entity_update(&mut self, entity: BlockEntityInput<'_>) -> bool {
         let chunk_key = (entity.x.div_euclid(16), entity.z.div_euclid(16));
         let time = self.game_time() as i64;
+        let min_y = self.dimension().min_y;
         let Some(chunk) = self.chunk_for_update(chunk_key.0, chunk_key.1) else {
             return false;
         };
         let key = (entity.x, entity.y, entity.z);
         let mut updated =
             ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
-                .made_at(time);
+                .made_at(time, min_y);
         // `handleBlockEntityData` loads into the entity that is there: what events set stays.
         let existed = chunk.block_entities.contains_key(&key);
         if let Some(old) = chunk
@@ -312,7 +315,9 @@ impl ClientWorld {
     /// animation, and the potent sulfur block that is not dry.
     fn has_ticker(&self, type_id: i32, (x, y, z): (i32, i32, i32)) -> bool {
         match photon_data::block_entity_type::name(type_id) {
-            Some("minecraft:end_gateway" | "minecraft:enchanting_table") => true,
+            Some("minecraft:end_gateway" | "minecraft:enchanting_table" | "minecraft:beacon") => {
+                true
+            }
             Some("minecraft:potent_sulfur") => {
                 super::has_sulfur_ticker(self.block_state_or_air(x, y, z))
             }

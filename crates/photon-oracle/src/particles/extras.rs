@@ -239,8 +239,25 @@ fn entity_type_of(block_name: &str) -> Option<&'static str> {
         "minecraft:spawner" => Some("minecraft:mob_spawner"),
         "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
         "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
+        "minecraft:beacon" => Some("minecraft:beacon"),
         _ => None,
     }
+}
+
+/// A beacon's beam: its levels, how high up its column it has looked, and each stretch of the beam
+/// it holds, as its colour and height.
+fn beacon_line(beacon: &photon_world::BeaconState) -> String {
+    let sections: Vec<String> = beacon
+        .sections
+        .iter()
+        .map(|section| format!("{:08x}:{}", section.color, section.height))
+        .collect();
+    format!(
+        "beacon,{},{},{}",
+        beacon.levels,
+        beacon.last_check_y(),
+        sections.join(";")
+    )
 }
 
 /// An enchanting table's book, the numbers of its animation as bits.
@@ -271,8 +288,8 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
         return "none".to_owned();
     };
     let type_id = photon_data::block_entity_type::id(kind).unwrap_or_default();
-    let made =
-        photon_world::ClientBlockEntity::from_wire(type_id, None).made_at(world.game_time() as i64);
+    let made = photon_world::ClientBlockEntity::from_wire(type_id, None)
+        .made_at(world.game_time() as i64, world.dimension().min_y);
     let entity = world.block_entity_at(x, y, z).unwrap_or(&made);
     let events = entity.events();
     match kind {
@@ -286,6 +303,7 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
             format!("spawner,{delay}")
         }
         "minecraft:enchanting_table" => book_line(&events.book),
+        "minecraft:beacon" => beacon_line(&events.beacon),
         _ => format!("sulfur,{}", events.eruption_tick),
     }
 }

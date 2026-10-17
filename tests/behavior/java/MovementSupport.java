@@ -544,6 +544,16 @@ class MovementSupport {
                 held = "gateway," + getField(gateway, "teleportCooldown") + "," + getField(gateway, "age");
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
                 held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
+            } else if (entity instanceof net.minecraft.world.level.block.entity.BeaconBlockEntity beacon) {
+                var sections = new java.util.ArrayList<String>();
+                @SuppressWarnings("unchecked")
+                var raw = (java.util.List<net.minecraft.world.level.block.entity.BeaconBeamOwner.Section>)
+                    getField(beacon, "beamSections");
+                for (var section : raw) {
+                    sections.add(String.format(java.util.Locale.ROOT, "%08x:%d", section.getColor(), section.getHeight()));
+                }
+                held = "beacon," + getField(beacon, "levels") + "," + getField(beacon, "lastCheckY") + ","
+                    + String.join(";", sections);
             } else if (entity instanceof net.minecraft.world.level.block.entity.EnchantingTableBlockEntity book) {
                 held = "book," + book.time + "," + String.join(",",
                     Oracle.bits(book.flip), Oracle.bits(book.oFlip), Oracle.bits(book.flipT),

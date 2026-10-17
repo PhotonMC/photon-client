@@ -1059,7 +1059,7 @@
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/draw.rs::Play::draw" = 96
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
-"crates/photon/src/play/draw.rs::Play::draw_overlays" = 80
+"crates/photon/src/play/draw.rs::Play::draw_overlays" = 78
 "crates/photon/src/play/draw.rs::Play::frame_camera" = 79
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 193

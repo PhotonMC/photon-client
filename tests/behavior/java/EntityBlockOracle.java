@@ -433,6 +433,122 @@ class EntityBlockOracle extends EntityAquaticOracle {
         return array;
     }
 
+    /** A vertex consumer that notes each vertex whole: its place, picture, colour, light and normal. */
+    static final class VertexRecorder implements com.mojang.blaze3d.vertex.VertexConsumer {
+        final java.util.List<String> vertices = new java.util.ArrayList<>();
+        private float x;
+        private float y;
+        private float z;
+        private float u;
+        private float v;
+        private int color;
+        private int light;
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(final float x, final float y, final float z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int r, final int g, final int b, final int a) {
+            this.color = (a & 255) << 24 | (r & 255) << 16 | (g & 255) << 8 | b & 255;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(final int color) {
+            this.color = color;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(final float u, final float v) {
+            this.u = u;
+            this.v = v;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(final int u, final int v) {
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(final int u, final int v) {
+            this.light = u | v << 16;
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(final float nx, final float ny, final float nz) {
+            this.vertices.add(Oracle.bits(this.x) + Oracle.bits(this.y) + Oracle.bits(this.z) + Oracle.bits(this.u)
+                + Oracle.bits(this.v) + String.format(java.util.Locale.ROOT, "%08x%08x", this.color, this.light)
+                + Oracle.bits(nx) + Oracle.bits(ny) + Oracle.bits(nz));
+            return this;
+        }
+
+        @Override
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(final float width) {
+            return this;
+        }
+    }
+
+    /**
+     * What the real `BeaconRenderer.submit` hands the collector for a beam of some stretches, at
+     * some time of the beam's clock and some scale of its radius: each layer submitted, whether it
+     * is the translucent glow, and the quads it writes.
+     */
+    static JsonObject beaconBeam(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = new net.minecraft.client.renderer.blockentity.BeaconRenderer<
+            net.minecraft.world.level.block.entity.BeaconBlockEntity>();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.BeaconRenderState();
+            state.animationTime = Oracle.f32(row, "animation_time");
+            state.beamRadiusScale = Oracle.f32(row, "radius_scale");
+            for (var section : row.getAsJsonArray("sections")) {
+                var described = section.getAsJsonObject();
+                state.sections.add(new net.minecraft.client.renderer.blockentity.state.BeaconRenderState.Section(
+                    described.get("color").getAsInt(), described.get("height").getAsInt()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var layers = new JsonArray();
+            var translucentType = net.minecraft.client.renderer.rendertype.RenderTypes.beaconBeam(
+                net.minecraft.client.renderer.blockentity.BeaconRenderer.BEAM_LOCATION, true);
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitCustomGeometry")) {
+                        var recorder = new VertexRecorder();
+                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
+                        var layer = new JsonObject();
+                        layer.addProperty("translucent", args[1] == translucentType);
+                        var quads = new JsonArray();
+                        for (int i = 0; i < recorder.vertices.size(); i += 4) {
+                            quads.add(String.join("|", recorder.vertices.subList(i, i + 4)));
+                        }
+                        layer.add("quads", quads);
+                        layers.add(layer);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("layers", layers);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the

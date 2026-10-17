@@ -3,6 +3,7 @@
 
 mod aquatic;
 mod banner;
+mod beacon;
 mod bosses;
 mod effects;
 mod farm;
@@ -114,6 +115,7 @@ const ORDER: &[Cases] = &[
     objects::enchant_table,
     objects::lectern,
     objects::decorated_pot,
+    beacon::beacon_beam,
     objects::skull_block,
     objects::elder_guardian_particle,
     banner::banner_cases,

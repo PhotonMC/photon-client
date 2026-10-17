@@ -14,8 +14,13 @@ pub(super) fn block_pose_result(operation: &str, request: &Value) -> Option<Resu
         "banner_pose" => banner_pose_result(request),
         "skull_block_pose" => skull_block_pose_result(request),
         "shulker_box_pose" => shulker_box_pose_result(request),
-        _ => return None,
+        _ => return beam_pose_result(operation, request),
     })
+}
+
+/// The block entity pose operations of the beam renderers.
+fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
+    (operation == "beacon_beam").then(|| beacon_beam_result(request))
 }
 
 /// `enchant_table_pose`: what an enchanting table's numbers come to at a partial tick, and the pose
@@ -162,4 +167,70 @@ fn decorated_pot_pose_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": rows}))
+}
+
+/// `beacon_beam`: each layer of a beam, in the order it is submitted, with the quads it writes.
+fn beacon_beam_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::beacon::beam_layers;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+            u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let sections: Vec<(u32, i32)> = row["sections"]
+            .as_array()
+            .ok_or("sections")?
+            .iter()
+            .map(|section| {
+                Ok((
+                    section["color"].as_i64().ok_or("color")? as u32,
+                    i32_field(section, "height")?,
+                ))
+            })
+            .collect::<Result<_, String>>()?;
+        let layers = beam_layers(
+            &Pose::default(),
+            &sections,
+            (float("animation_time")?, float("radius_scale")?),
+            2048,
+        );
+        let layers: Vec<Value> = layers.iter().map(layer_json).collect();
+        rows.push(json!({"label": row["label"], "layers": layers}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// One layer of a beam: whether it is translucent and the bits of every vertex of its quads.
+fn layer_json(layer: &photon_render::block_entity::beacon::BeamLayer) -> Value {
+    use photon_render::block_entity::beacon::FULL_LIGHT;
+    let bits = |values: &[f32]| -> String {
+        values
+            .iter()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect()
+    };
+    let quads: Vec<String> = layer
+        .quads
+        .iter()
+        .map(|quad| {
+            quad.iter()
+                .map(|vertex| {
+                    format!(
+                        "{}{}{:08x}{:08x}{}",
+                        bits(&vertex.position),
+                        bits(&vertex.uv),
+                        vertex.color,
+                        FULL_LIGHT,
+                        bits(&vertex.normal)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .collect();
+    json!({"translucent": layer.translucent, "quads": quads})
 }

@@ -30,6 +30,8 @@ use photon_game::input::pick::pick;
 #[derive(Clone, Copy)]
 pub struct FrameView {
     pub partial: f64,
+    /// `Options.getEffectiveRenderDistance`, in chunks.
+    pub render_distance: i32,
     pub light: i32,
     pub origin: [i32; 3],
     /// Where the camera is, from that origin.

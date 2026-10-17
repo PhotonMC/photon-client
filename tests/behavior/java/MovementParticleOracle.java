@@ -633,6 +633,12 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("b1").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("set_block")) {
+                    level.setBlock(new net.minecraft.core.BlockPos(event.get("x").getAsInt(),
+                        event.get("y").getAsInt(), event.get("z").getAsInt()),
+                        MovementSupport.state(event.getAsJsonObject("state")), 3);
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("clock")) {
                     // The overworld's clock told to the level, and the attributes it feeds read afresh.
                     var clock = level.registryAccess()
@@ -704,7 +710,11 @@ class MovementParticleOracle extends MovementMenuOracle {
             counted.addProperty("pending", pending.size());
             // The level's block entities tick after its entities, before the level's own tick.
             if (row.has("tick_block_entities") && row.get("tick_block_entities").getAsBoolean()) {
+                // A sound the server plays to everyone but one player is not played to the client's
+                // own: the client has a player (here a dummy), which is who "no one" is not.
+                setField(minecraft, "player", unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class));
                 level.tickBlockEntities();
+                setField(minecraft, "player", null);
             }
             // `ClientLevel.tick`'s explosion tracker, before the engine.
             var tracker = getField(level, "explosionTracker");
