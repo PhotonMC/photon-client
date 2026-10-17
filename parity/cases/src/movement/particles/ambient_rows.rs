@@ -215,6 +215,45 @@ fn marker_plane() -> Vec<Value> {
     blocks
 }
 
+/// End gateways in a plane of stone: with ages, a cooldown begun by a block event, and what is
+/// beside them to hide their faces; they tick, and their portal specks show.
+fn gateway_plane() -> (Vec<Value>, Vec<Value>, Vec<Value>) {
+    let mut blocks = Vec::new();
+    let mut gateways = Vec::new();
+    let mut watch = Vec::new();
+    for (index, (x, z)) in
+        [(-9_i64, -9_i64), (-3, -9), (3, -9), (9, -9), (-9, 0), (-3, 0), (3, 0), (9, 0)].into_iter().enumerate()
+    {
+        blocks.push(at((x, 64, z), "minecraft:end_gateway", &[]));
+        blocks.push(at((x, 63, z), "minecraft:bedrock", &[]));
+        if index % 2 == 1 {
+            blocks.push(at((x + 1, 64, z), "minecraft:bedrock", &[]));
+            blocks.push(at((x, 65, z), "minecraft:bedrock", &[]));
+        }
+        gateways.push(json!({"x": x, "y": 64, "z": z, "age": 190 + index as i64 * 3}));
+        watch.push(json!({"x": x, "y": 64, "z": z}));
+    }
+    (blocks, gateways, watch)
+}
+
+/// The gateways of the plane, picked at random over eight ticks, two of them sent a cooldown.
+fn gateway_row(seeds: impl Fn(i64) -> i64) -> Value {
+    let (blocks, gateways, watch) = gateway_plane();
+    let events = (0..8)
+        .map(|tick| animate_tick(tick, (0, 64, 0), 900, seeds(tick) + 100))
+        .chain([block_event(1, (-9, 64, -9), 1, 0), block_event(2, (3, 64, 0), 1, 0)])
+        .collect::<Vec<_>>();
+    engine_row("animate-end-gateways", events)
+        .blocks(blocks)
+        .set("gateways", json!(gateways))
+        .set("watch", json!(watch))
+        .set("tick_block_entities", json!(true))
+        .ticks(8)
+        .seeds(4000)
+        .describe(10)
+        .row()
+}
+
 pub fn rows() -> Vec<Value> {
     let seeds = |tick: i64| 400 + tick;
     vec![
@@ -260,6 +299,7 @@ pub fn rows() -> Vec<Value> {
         .seeds(4000)
         .describe(10)
         .row(),
+        gateway_row(seeds),
         engine_row(
             "animate-enchanting-table",
             (0..4).map(|tick| animate_tick(tick, (0, 64, 0), 600, seeds(tick) + 20)).collect::<Vec<_>>(),

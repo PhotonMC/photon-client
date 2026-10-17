@@ -65,6 +65,9 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
             parrot,
         )?;
     }
+    for gateway in row["gateways"].as_array().into_iter().flatten() {
+        place_gateway(world, gateway)?;
+    }
     for vault in row["vaults"].as_array().into_iter().flatten() {
         share_vault(world, vault)?;
     }
@@ -94,6 +97,32 @@ fn put_entity(
     } else {
         Err(format!("a {kind} was rejected"))
     }
+}
+
+/// An end gateway's block entity as the chunk packet carries it: with its age.
+fn place_gateway(world: &mut ClientWorld, gateway: &Value) -> Result<(), String> {
+    let type_id = photon_data::block_entity_type::id("minecraft:end_gateway")
+        .ok_or("no end gateway block entity")?;
+    let tag = [Field {
+        key: "Age".into(),
+        value: FieldValue::Long(gateway["age"].as_i64().ok_or("a gateway has an age")?),
+    }];
+    let mut bytes = Vec::new();
+    photon_core::nbt::write_nbt(Some(&tag), &mut bytes);
+    let (x, y, z) = (
+        i32_field(gateway, "x")?,
+        i32_field(gateway, "y")?,
+        i32_field(gateway, "z")?,
+    );
+    let input = BlockEntityInput {
+        x,
+        y,
+        z,
+        type_id,
+        tag: Some(&bytes),
+    };
+    world.apply_block_entities(x.div_euclid(16), z.div_euclid(16), [input]);
+    Ok(())
 }
 
 /// The shared data of a vault: the players connected to it and, if the row says, its reach.
@@ -202,7 +231,7 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
             let (start, style) = events.wobble.unwrap_or((0, -1));
             format!("pot,{start},{style}")
         }
-        "minecraft:end_gateway" => format!("gateway,{}", events.teleport_cooldown),
+        "minecraft:end_gateway" => format!("gateway,{},{}", events.teleport_cooldown, events.age),
         "minecraft:mob_spawner" => {
             let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
             format!("spawner,{delay}")

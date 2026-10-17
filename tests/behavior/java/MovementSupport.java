@@ -445,6 +445,19 @@ class MovementSupport {
                 level.addEntity(parrot);
             }
         }
+        if (row.has("gateways")) {
+            // End gateways with the age the server sent, set up in the order of the row.
+            for (var element : row.getAsJsonArray("gateways")) {
+                var described = element.getAsJsonObject();
+                var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                    described.get("z").getAsInt());
+                var tag = new net.minecraft.nbt.CompoundTag();
+                tag.putLong("Age", described.get("age").getAsLong());
+                level.getBlockEntity(pos).loadWithComponents(
+                    net.minecraft.world.level.storage.TagValueInput.create(
+                        net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+            }
+        }
         if (row.has("vaults")) {
             for (var element : row.getAsJsonArray("vaults")) {
                 var described = element.getAsJsonObject();
@@ -491,7 +504,7 @@ class MovementSupport {
                 held = "pot," + pot.wobbleStartedAtTick + ","
                     + (pot.lastWobbleStyle == null ? -1 : pot.lastWobbleStyle.ordinal());
             } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity gateway) {
-                held = "gateway," + getField(gateway, "teleportCooldown");
+                held = "gateway," + getField(gateway, "teleportCooldown") + "," + getField(gateway, "age");
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
                 held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
             } else if (entity instanceof net.minecraft.world.level.block.entity.PotentSulfurBlockEntity sulfur) {

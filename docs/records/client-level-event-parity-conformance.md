@@ -123,3 +123,7 @@ rastgelesiyle işler.
 - Block markers (#45): a creative player holding a barrier or a light sees a square of that
   block's picture, half a block across, for four seconds on each such block the level picks. The
   block is told to the engine each tick from the player's game mode and main hand.
+- End gateways tick (#45, #48): a gateway block entity the chunk packet carries (with its `Age`)
+  gets a ticker in the packet's order; each tick it ages and its cooldown runs down. The block
+  shows a portal speck for each of its faces that shows. The oracle sets the gateways up in the
+  order of the row and compares age and cooldown after each tick.

@@ -43,6 +43,10 @@ impl ClientWorld {
     ) -> Option<&mut ClientBlockEntity> {
         let type_id = photon_data::block_entity_type::id(type_name)?;
         let time = self.game_time() as i64;
+        let ticks = type_name == "minecraft:end_gateway";
+        if ticks && self.block_entity_at(x, y, z).is_none() {
+            self.block_tickers.register((x, y, z));
+        }
         let chunk = self.chunk_for_update(x.div_euclid(16), z.div_euclid(16))?;
         Some(
             chunk
@@ -160,16 +164,25 @@ impl ClientWorld {
             return 0;
         };
         let mut applied = 0;
+        let mut ticking = Vec::new();
         for entity in entities {
             if entity.x.div_euclid(16) != chunk_x || entity.z.div_euclid(16) != chunk_z {
                 continue;
             }
+            let key = (entity.x, entity.y, entity.z);
             chunk.block_entities.insert(
-                (entity.x, entity.y, entity.z),
+                key,
                 ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
                     .made_at(time),
             );
+            if has_ticker(entity.type_id) {
+                ticking.push(key);
+            }
             applied += 1;
+        }
+        // `LevelChunk.addAndRegisterBlockEntity`: a ticker for each, in the order they came.
+        for key in ticking {
+            self.block_tickers.register(key);
         }
         applied
     }
@@ -185,14 +198,20 @@ impl ClientWorld {
             ClientBlockEntity::from_wire(entity.type_id, entity.tag.map(<[u8]>::to_vec))
                 .made_at(time);
         // `handleBlockEntityData` loads into the entity that is there: what events set stays.
+        let existed = chunk.block_entities.contains_key(&key);
         if let Some(old) = chunk
             .block_entities
             .get(&key)
             .filter(|old| old.type_id == entity.type_id)
         {
+            let age = updated.events.age;
             updated.events = old.events.clone();
+            updated.events.age = age;
         }
         chunk.block_entities.insert(key, updated);
+        if !existed && has_ticker(entity.type_id) {
+            self.block_tickers.register(key);
+        }
         true
     }
 
@@ -282,4 +301,9 @@ impl ClientWorld {
         let index = local_y * 256 + local_z * 16 + local_x;
         section.block_states.get(index)
     }
+}
+
+/// Whether the client ticks block entities of a type: the end gateway's beam animation.
+fn has_ticker(type_id: i32) -> bool {
+    photon_data::block_entity_type::name(type_id) == Some("minecraft:end_gateway")
 }

@@ -66,6 +66,8 @@ impl ParticleEngine {
             self.brushable_block(state, pos, random, context);
         } else if class.is(BlockClass::BeehiveBlock) {
             self.beehive(state, pos, random, context);
+        } else if class.is(BlockClass::EndGatewayBlock) {
+            self.end_gateway(state, pos, random, context);
         } else if class.is(BlockClass::PointedDripstoneBlock) {
             self.dripstone_animate_tick(state, pos, random, context);
         } else if class.is(BlockClass::LightningRodBlock) {
@@ -74,6 +76,49 @@ impl ParticleEngine {
             return false;
         }
         true
+    }
+
+    /// `EndGatewayBlock.animateTick`: portal specks for each of its faces that shows.
+    fn end_gateway<F: FnMut() -> RandomSource>(
+        &mut self,
+        state: BlockStateId,
+        (px, py, pz): Pos,
+        random: &mut RandomSource,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let count = Direction::stream()
+            .filter(|direction| {
+                let (dx, dy, dz) = direction.step();
+                let next = context.world.block_state_at(px + dx, py + dy, pz + dz);
+                crate::block::should_render_face(
+                    state,
+                    next,
+                    *direction,
+                    context.world.block_state_registry().tags(),
+                )
+            })
+            .count();
+        for _ in 0..count {
+            let mut at = (
+                f64::from(px) + random.next_double(),
+                f64::from(py) + random.next_double(),
+                f64::from(pz) + random.next_double(),
+            );
+            let mut push = (
+                (random.next_double() - 0.5) * 0.5,
+                (random.next_double() - 0.5) * 0.5,
+                (random.next_double() - 0.5) * 0.5,
+            );
+            let flip = random.next_int_bound(2).unwrap_or(0) * 2 - 1;
+            if random.next_boolean() {
+                at.2 = f64::from(pz) + 0.5 + 0.25 * f64::from(flip);
+                push.2 = f64::from(random.next_float() * 2.0 * flip as f32);
+            } else {
+                at.0 = f64::from(px) + 0.5 + 0.25 * f64::from(flip);
+                push.0 = f64::from(random.next_float() * 2.0 * flip as f32);
+            }
+            self.level_add(context, "portal", at, push);
+        }
     }
 
     /// `LightningRodBlock.animateTick`: in a thunderstorm, sparks along a rod that stands at the

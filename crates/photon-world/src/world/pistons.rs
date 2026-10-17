@@ -339,7 +339,11 @@ impl ClientWorld {
         self.block_tickers.begin_pass();
         let mut index = 0;
         while let Some(pos) = self.block_tickers.next_to_tick(&mut index) {
-            self.tick_moving_piston(pos);
+            if self.moving_piston_at(pos).is_some() {
+                self.tick_moving_piston(pos);
+            } else {
+                self.tick_end_gateway(pos);
+            }
         }
         self.block_tickers.end_pass();
     }
@@ -367,6 +371,23 @@ impl ClientWorld {
         } else {
             moving.progress = (moving.progress + 0.5).min(1.0);
             self.store_moving_piston(pos, moving);
+        }
+    }
+
+    /// `TheEndGatewayBlockEntity.beamAnimationTick`: the entity grows older, and its cooldown runs
+    /// down. A ticker whose entity is gone goes with it.
+    fn tick_end_gateway(&mut self, pos: Pos) {
+        let here = block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2));
+        let Some(entity) = self.block_entity_mut_at(pos) else {
+            self.block_tickers.unregister(pos);
+            return;
+        };
+        if here.block != id::END_GATEWAY as u16 {
+            return;
+        }
+        entity.events.age += 1;
+        if entity.events.teleport_cooldown > 0 {
+            entity.events.teleport_cooldown -= 1;
         }
     }
 

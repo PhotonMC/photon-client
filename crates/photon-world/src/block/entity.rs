@@ -103,6 +103,8 @@ pub struct BlockEntityEvents {
     pub wobble: Option<(i64, i32)>,
     /// `TheEndGatewayBlockEntity.teleportCooldown`.
     pub teleport_cooldown: i32,
+    /// `TheEndGatewayBlockEntity.age`, in ticks.
+    pub age: i64,
     /// `PotentSulfurBlockEntity.eruptionTick`: -1 until an eruption.
     pub eruption_tick: i64,
     /// The move a moving piston block is in the middle of.
@@ -114,6 +116,7 @@ impl Default for BlockEntityEvents {
         Self {
             wobble: None,
             teleport_cooldown: 0,
+            age: 0,
             eruption_tick: -1,
             moving: None,
         }
@@ -131,11 +134,15 @@ pub struct ClientBlockEntity {
 impl ClientBlockEntity {
     pub fn from_wire(type_id: i32, tag: Option<Vec<u8>>) -> Self {
         let spawner_state = parse_spawner_state(type_id, tag.as_deref());
+        let events = BlockEntityEvents {
+            age: parse_gateway_age(type_id, tag.as_deref()),
+            ..BlockEntityEvents::default()
+        };
         Self {
             type_id,
             tag,
             spawner_state,
-            events: BlockEntityEvents::default(),
+            events,
         }
     }
 
@@ -158,6 +165,25 @@ impl ClientBlockEntity {
     pub fn spawner_state(&self) -> Option<&ClientSpawnerState> {
         self.spawner_state.as_ref()
     }
+}
+
+/// `TheEndGatewayBlockEntity.loadAdditional`'s `Age`: none is none.
+fn parse_gateway_age(type_id: i32, tag: Option<&[u8]>) -> i64 {
+    if photon_data::block_entity_type::name(type_id) != Some("minecraft:end_gateway") {
+        return 0;
+    }
+    let Some(mut input) = tag else { return 0 };
+    let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) else {
+        return 0;
+    };
+    fields
+        .iter()
+        .find(|field| field.key == "Age")
+        .and_then(|field| match field.value {
+            photon_core::nbt::FieldValue::Long(age) => Some(age),
+            _ => None,
+        })
+        .unwrap_or(0)
 }
 
 pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<ClientSpawnerState> {
