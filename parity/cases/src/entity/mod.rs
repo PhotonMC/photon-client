@@ -110,6 +110,7 @@ const ORDER: &[Cases] = &[
     projectiles::map_render,
     items::equippable_cases,
     player::camera_hurt,
+    player::camera_spin,
     objects::chest_cases,
     objects::shulker_box,
     objects::bell,

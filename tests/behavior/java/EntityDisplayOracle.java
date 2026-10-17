@@ -510,6 +510,57 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /**
+     * `GameRenderer.renderLevel`'s spinning effect: the lines that turn the projection, run on JOML's
+     * own matrix. The tick that sums time and speed is the one `GameRenderer.tick` runs.
+     */
+    static JsonObject cameraSpin(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            float time = 0.0F;
+            float speed = 0.0F;
+            for (var tick : row.get("ticks").getAsJsonArray()) {
+                float portalIntensity = Oracle.f32(tick.getAsJsonObject(), "portal");
+                float nauseaIntensity = Oracle.f32(tick.getAsJsonObject(), "nausea");
+                if (!(portalIntensity > 0.0F) && !(nauseaIntensity > 0.0F)) {
+                    speed = 0.0F;
+                } else {
+                    speed = (portalIntensity * 20.0F + nauseaIntensity * 7.0F) / (portalIntensity + nauseaIntensity);
+                    time = time + speed;
+                }
+            }
+            float portalIntensity = Oracle.f32(row, "portal");
+            float nauseaIntensity = Oracle.f32(row, "nausea");
+            float screenEffectScale = Oracle.f32(row, "scale");
+            float worldPartialTicks = Oracle.f32(row, "partial");
+            float spinningEffectIntensity = Math.max(portalIntensity, nauseaIntensity) * (screenEffectScale * screenEffectScale);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var described = new JsonArray();
+            var projectionMatrix = new org.joml.Matrix4f();
+            if (spinningEffectIntensity > 0.0F) {
+                float skew = 5.0F / (spinningEffectIntensity * spinningEffectIntensity + 5.0F) - spinningEffectIntensity * 0.04F;
+                skew *= skew;
+                var axis = new org.joml.Vector3f(0.0F, net.minecraft.util.Mth.SQRT_OF_TWO / 2.0F, net.minecraft.util.Mth.SQRT_OF_TWO / 2.0F);
+                float angle = (time + worldPartialTicks * speed) * (float) (Math.PI / 180.0);
+                projectionMatrix.rotate(angle, axis);
+                projectionMatrix.scale(1.0F / skew, 1.0F, 1.0F);
+                projectionMatrix.rotate(-angle, axis);
+                var matrix = new float[16];
+                projectionMatrix.get(matrix);
+                for (float value : matrix) {
+                    described.add(Oracle.bits(value));
+                }
+            }
+            out.add("matrix", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();

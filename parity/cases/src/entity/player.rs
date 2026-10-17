@@ -35,6 +35,31 @@ pub fn camera_hurt() -> Vec<Value> {
     vec![entity("camera-hurt", "camera_hurt", rows)]
 }
 
+/// The spinning effect's matrix: nothing spinning, nausea and portal alone, both at once, after
+/// different tick counts, at different partial ticks and with the screen effect option lowered.
+pub fn camera_spin() -> Vec<Value> {
+    let tick = |portal: f64, nausea: f64| json!({"portal": f32_bits(portal), "nausea": f32_bits(nausea)});
+    let spin = |label: &str, ticks: Vec<Value>, portal: f64, nausea: f64, scale: f64, partial: f64| {
+        json!({
+            "label": label, "ticks": ticks,
+            "portal": f32_bits(portal), "nausea": f32_bits(nausea),
+            "scale": f32_bits(scale), "partial": f32_bits(partial),
+        })
+    };
+    let rows = vec![
+        spin("idle", vec![tick(0.0, 0.0); 3], 0.0, 0.0, 1.0, 0.5),
+        spin("nausea start", vec![tick(0.0, 0.1)], 0.0, 0.1, 1.0, 0.0),
+        spin("nausea ramped", vec![tick(0.0, 0.5); 10], 0.0, 0.7, 1.0, 0.35),
+        spin("nausea full", vec![tick(0.0, 1.0); 40], 0.0, 1.0, 1.0, 0.99),
+        spin("portal", vec![tick(0.3, 0.0); 17], 0.35, 0.0, 1.0, 0.6),
+        spin("both", (0..25).map(|i| tick(f64::from(i) * 0.04, 0.9)).collect(), 0.8, 0.9, 1.0, 0.25),
+        spin("stopped after spinning", vec![tick(0.0, 0.8), tick(0.0, 0.8), tick(0.0, 0.0)], 0.0, 0.2, 1.0, 0.75),
+        spin("reduced scale", vec![tick(0.0, 0.8); 12], 0.0, 0.8, 0.5, 0.4),
+        spin("no scale", vec![tick(0.0, 0.8); 12], 0.0, 0.8, 0.0, 0.4),
+    ];
+    vec![entity("camera-spin", "camera_spin", rows)]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

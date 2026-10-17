@@ -8,8 +8,41 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
     Some(match operation {
         "mob_effect_blend" => mob_effect_blend_result(request),
         "view_scales" => view_scales_result(request),
+        "camera_spin" => camera_spin_result(request),
         _ => return None,
     })
+}
+
+/// `camera_spin`: the matrix the spinning effect multiplies onto the projection, after the ticks
+/// that sum its time and speed.
+fn camera_spin_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |value: &Value, key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(value[key].as_str().ok_or(key.to_owned())?, 16)
+                    .map_err(|error| error.to_string())?,
+            ))
+        };
+        let mut spinning = photon_render::camera::Spinning::default();
+        for tick in row["ticks"].as_array().ok_or("ticks")? {
+            spinning.tick(float(tick, "portal")?, float(tick, "nausea")?);
+        }
+        let matrix: Vec<String> = spinning
+            .matrix(
+                float(row, "portal")?,
+                float(row, "nausea")?,
+                float(row, "scale")?,
+                float(row, "partial")?,
+            )
+            .iter()
+            .flatten()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({"label": row["label"], "matrix": matrix}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `mob_effect_blend`: the duration and the blend's two factors after each tick of an effect.

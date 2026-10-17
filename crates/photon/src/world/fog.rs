@@ -15,6 +15,13 @@ fn effect<'a>(effects: &'a [ClientMobEffectState], name: &str) -> Option<&'a Cli
         .find(|state| usize::try_from(state.effect_id()) == Ok(id))
 }
 
+/// `getEffectBlendFactor(NAUSEA)` of the local player between two ticks.
+pub fn nausea_blend(session: &PlaySession, partial: f32) -> f32 {
+    let local = session.world().local_player();
+    let effects = local.map_or(&[][..], |local| local.effects());
+    effect(effects, "minecraft:nausea").map_or(0.0, |state| state.blend_factor(partial))
+}
+
 /// The fog's view of the camera, in `fluid`, at `camera_y`, between two ticks.
 pub fn fog_view(
     session: &PlaySession,

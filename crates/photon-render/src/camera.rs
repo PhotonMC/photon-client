@@ -14,6 +14,7 @@ pub struct Camera {
     eye_height_old: f32,
     fov_modifier: f32,
     old_fov_modifier: f32,
+    spinning: Spinning,
 }
 
 impl Camera {
@@ -23,11 +24,14 @@ impl Camera {
             eye_height_old: 0.0,
             fov_modifier: 1.0,
             old_fov_modifier: 1.0,
+            spinning: Spinning::default(),
         }
     }
 
     /// One client tick, after the player's.
-    pub fn tick(&mut self, player: &LocalPlayer) {
+    pub fn tick(&mut self, player: &LocalPlayer, nausea: f32) {
+        // The portal's intensity waits for portal state.
+        self.spinning.tick(0.0, nausea);
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
 
@@ -46,6 +50,12 @@ impl Camera {
         self.old_fov_modifier = self.fov_modifier;
         self.fov_modifier += (target - self.fov_modifier) * 0.5;
         self.fov_modifier = self.fov_modifier.clamp(0.1, 1.5);
+    }
+
+    /// The spinning effect's matrix for the projection, if nausea turns the view.
+    pub fn spin(&self, nausea: f32, partial_tick: f32) -> Option<[[f32; 4]; 4]> {
+        // `screenEffectScale`'s default is one: the option is not kept.
+        self.spinning.matrix(0.0, nausea, 1.0, partial_tick)
     }
 
     /// The eye height between the last two ticks.
@@ -156,6 +166,86 @@ pub fn view_bob(walked: f32, bob: f32) -> [[f32; 4]; 4] {
         [0.0, 0.0, 0.0, 1.0],
     ];
     crate::scene::multiply(crate::scene::multiply(translate, around_z), around_x)
+}
+
+/// `GameRenderer`'s spinning effect: the time and speed of the turn a portal
+/// or nausea puts on the view.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Spinning {
+    time: f32,
+    speed: f32,
+}
+
+impl Spinning {
+    /// One client tick (`GameRenderer.tick`): the speed is the two intensities' weighted mean of
+    /// twenty and seven degrees a tick, and the time runs on at it.
+    pub fn tick(&mut self, portal: f32, nausea: f32) {
+        if portal <= 0.0 && nausea <= 0.0 {
+            self.speed = 0.0;
+        } else {
+            self.speed = (portal * 20.0 + nausea * 7.0) / (portal + nausea);
+            self.time += self.speed;
+        }
+    }
+
+    /// What `GameRenderer.renderLevel` multiplies onto the projection after the view bob: a turn
+    /// about a slanted axis, a squeeze across it and the turn back. `None` while nothing spins.
+    pub fn matrix(
+        &self,
+        portal: f32,
+        nausea: f32,
+        screen_effect_scale: f32,
+        partial_tick: f32,
+    ) -> Option<[[f32; 4]; 4]> {
+        let intensity = portal.max(nausea) * (screen_effect_scale * screen_effect_scale);
+        if intensity <= 0.0 {
+            return None;
+        }
+        let mut skew = 5.0 / (intensity * intensity + 5.0) - intensity * 0.04;
+        skew *= skew;
+        let axis = (
+            std::f32::consts::SQRT_2 / 2.0,
+            std::f32::consts::SQRT_2 / 2.0,
+        );
+        let angle = (self.time + partial_tick * self.speed) * (std::f64::consts::PI / 180.0) as f32;
+        let turn = |angle: f32| rotation(angle, [0.0, axis.0, axis.1]);
+        let squeeze = [
+            [1.0 / skew, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ];
+        let multiply = crate::scene::multiply;
+        Some(multiply(multiply(turn(angle), squeeze), turn(-angle)))
+    }
+}
+
+/// `Matrix4f.rotation(angle, axis)` for a unit axis, column by column.
+fn rotation(angle: f32, [x, y, z]: [f32; 3]) -> [[f32; 4]; 4] {
+    let sin = crate::joml::sin(angle);
+    let cos = crate::joml::cos_from_sin(sin, angle);
+    let c = 1.0 - cos;
+    [
+        [
+            x * x * c + cos,
+            x * y * c + z * sin,
+            x * z * c - y * sin,
+            0.0,
+        ],
+        [
+            x * y * c - z * sin,
+            y * y * c + cos,
+            y * z * c + x * sin,
+            0.0,
+        ],
+        [
+            x * z * c + y * sin,
+            y * z * c - x * sin,
+            z * z * c + cos,
+            0.0,
+        ],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
 }
 
 #[cfg(test)]

@@ -56,7 +56,7 @@ impl Play {
         // cloud range if that is farther.
         let render_distance = self.effective_render_distance();
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
-        let bob = view_motion(player, partial as f32);
+        let bob = self.view_motion(player, partial as f32);
         let locator = photon_gui::hud::locator::LocatorCamera {
             y_rot,
             x_rot,
@@ -96,9 +96,25 @@ impl Play {
     }
 }
 
+impl Play {
+    /// What the view is moved by, then turned by nausea's spin.
+    fn view_motion(
+        &self,
+        player: &photon_world::local_player::LocalPlayer,
+        partial: f32,
+    ) -> [[f32; 4]; 4] {
+        let motion = player_motion(player, partial);
+        let nausea = crate::world::fog::nausea_blend(&self.session, partial);
+        match self.camera.spin(nausea, partial) {
+            Some(spin) => photon_render::scene::multiply(motion, spin),
+            None => motion,
+        }
+    }
+}
+
 /// What the view is moved by: `GameRenderer.bobHurt` first, then `bobView`, the view tilting away
 /// from a blow and swaying as the player walks.
-fn view_motion(player: &photon_world::local_player::LocalPlayer, partial: f32) -> [[f32; 4]; 4] {
+fn player_motion(player: &photon_world::local_player::LocalPlayer, partial: f32) -> [[f32; 4]; 4] {
     // The view bob option's default is on.
     let (walked, bob) = player.view_bob(partial);
     let bob = photon_render::camera::view_bob(walked, bob);
