@@ -28,8 +28,14 @@ impl Values {
                 },
                 |item| crate::item::default_components::defaults(item, registries),
             );
+        let own = usize::try_from(item.0)
+            .ok()
+            .and_then(|index| photon_data::item::component_sets::DEFAULT_COMPONENT_SETS.get(index))
+            .copied()
+            .unwrap_or(0);
         Self {
             defaults,
+            own,
             patch: item_components::read_patch(&mut input).ok(),
         }
     }

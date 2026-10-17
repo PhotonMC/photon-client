@@ -15,6 +15,9 @@ use photon_core::ids::ItemId;
 pub struct Values {
     /// The item's default components, in the wire's form.
     defaults: Patch,
+    /// The type ids of every default component, as a set (`DEFAULT_COMPONENT_SETS`), also those
+    /// whose value is not kept in `defaults`.
+    own: u128,
     patch: Option<Patch>,
 }
 
@@ -98,8 +101,20 @@ impl Values {
         self.text(ids::ITEM_NAME)
     }
 
+    /// `ItemStack.has`: the patch adds it, or the item has it and the patch does not remove it.
     pub fn has(&self, component: i32) -> bool {
-        self.raw(component).is_some()
+        if self.raw(component).is_some() {
+            return true;
+        }
+        let removed = self
+            .patch
+            .as_ref()
+            .is_some_and(|patch| patch.removed.contains(&component));
+        let own = u32::try_from(component)
+            .ok()
+            .and_then(|id| 1_u128.checked_shl(id))
+            .is_some_and(|bit| self.own & bit != 0);
+        own && !removed
     }
 
     /// `BookViewScreen.BookAccess.fromItem`: the pages of a written book, or of a book and quill
@@ -474,6 +489,14 @@ mod tests {
 
     fn item(name: &str) -> ItemId {
         crate::item::id_of(name).expect("an item")
+    }
+
+    /// `findTotem` looks for the death protection component, which a totem has by default.
+    #[test]
+    fn a_totem_protects_from_death_by_default() {
+        let component = photon_data::item::component_types::DEATH_PROTECTION;
+        assert!(Values::new(item("minecraft:totem_of_undying"), &[]).has(component));
+        assert!(!Values::new(item("minecraft:stick"), &[]).has(component));
     }
 
     #[test]

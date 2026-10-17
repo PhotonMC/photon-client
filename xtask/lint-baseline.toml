@@ -1059,7 +1059,6 @@
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 73
 "crates/photon/src/play/draw.rs::Play::draw" = 96
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
-"crates/photon/src/play/draw.rs::Play::draw_overlays" = 78
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
 "crates/photon/src/play/ticks.rs::Play::tick" = 82
