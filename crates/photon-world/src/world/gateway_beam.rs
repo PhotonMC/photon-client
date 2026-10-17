@@ -1,7 +1,7 @@
 //! `TheEndGatewayRenderer.extractRenderState`: the beam a gateway shines while it spawns, and
 //! while its cooldown runs.
 
-use photon_core::math::{floor_f32, mth_sin_f64};
+use photon_core::math::{floor_f64, mth_sin_f64};
 use photon_data::block::blocks::id;
 
 use crate::block::piston::Pos;
@@ -75,7 +75,7 @@ impl ClientWorld {
                     COOLDOWN_BEAM_DISTANCE
                 };
                 let scale = mth_sin_f64(f64::from(percent * std::f32::consts::PI));
-                let height = floor_f32((f64::from(scale) * distance) as f32);
+                let height = floor_f64(f64::from(scale) * distance);
                 Some(GatewayBeamView {
                     position: pos,
                     scale,

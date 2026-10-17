@@ -313,7 +313,8 @@ impl ClientWorld {
 
 impl ClientWorld {
     /// Whether the client ticks the block entity of a type at a place: the end gateway's beam
-    /// animation, and the potent sulfur block that is not dry.
+    /// animation, the enchanting table's book, the beacon's scan, the conduit's shell, and the
+    /// potent sulfur block that is not dry.
     fn has_ticker(&self, type_id: i32, (x, y, z): (i32, i32, i32)) -> bool {
         match photon_data::block_entity_type::name(type_id) {
             Some(
