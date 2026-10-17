@@ -115,8 +115,9 @@ pub(super) struct Descriptors {
 }
 
 /// How many sets the scene's pool hands out: the atlas's, the rain's and the snow's, the skin's,
-/// the GUI's, the cracks', the maps' and the panorama's.
-const SET_COUNT: u32 = 8;
+/// the GUI's, the cracks', the maps', the panorama's, the world border's, the water's over the view
+/// and the end portal's two.
+const SET_COUNT: u32 = 16;
 
 impl Descriptors {
     /// A layout of one combined image sampler for the fragment stage, and a pool for the

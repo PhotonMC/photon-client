@@ -55,12 +55,14 @@ mod owned;
 mod panorama;
 mod pipeline;
 mod pipeline_cache;
+mod portal;
 mod scene;
 mod sections;
 mod shaders;
 mod swapchain;
 mod texture;
 mod validation;
+mod vertex_attributes;
 
 use bytes::as_bytes;
 pub use draws::DrawKind;

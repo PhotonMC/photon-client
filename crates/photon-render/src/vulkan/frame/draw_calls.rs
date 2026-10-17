@@ -170,6 +170,58 @@ impl VulkanBackend {
         }
     }
 
+    /// Draw the end portal and gateway surfaces: the end sky in the first set and the portal's
+    /// picture in the second, with how far through the day the game is after the frame's push
+    /// constants.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording inside the scene's rendering scope.
+    pub(super) unsafe fn draw_portal(&self, base: &[f32; 40]) {
+        let Some(buffer) = self.portal.buffer.as_ref() else {
+            return;
+        };
+        let (first, count) = (0, self.portal.count);
+        let Some(portal) = self.portal_scene.as_ref() else {
+            return;
+        };
+        if count == 0 {
+            return;
+        }
+        let mut push = [0.0_f32; 41];
+        push[..40].copy_from_slice(base);
+        push[40] = self.portal_time;
+        let (pipeline, sets) = (&portal.pipeline, portal.sets);
+        // SAFETY: recording (see `# Safety`); the pipeline, both sets and the buffer are live, and
+        // the push constants fill a prefix of the range the pipeline's layout has.
+        unsafe {
+            self.device.cmd_bind_pipeline(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                pipeline.handle,
+            );
+            self.device.cmd_bind_descriptor_sets(
+                self.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                pipeline.layout,
+                0,
+                &sets,
+                &[],
+            );
+            self.device.cmd_push_constants(
+                self.command_buffer,
+                pipeline.layout,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                &as_bytes(&push)[..164],
+            );
+            self.device
+                .cmd_bind_vertex_buffers(self.command_buffer, 0, &[buffer.buffer], &[0]);
+            self.device
+                .cmd_draw(self.command_buffer, count, 1, first, 0);
+        }
+    }
+
     /// The buffer a run's vertices are in, and which of them it draws.
     fn run_range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
         fn list(list: &DrawList) -> (Option<&HostBuffer>, u32, u32) {

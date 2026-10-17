@@ -1,6 +1,7 @@
 //! Building a graphics pipeline.
 
 use super::shaders::*;
+use super::vertex_attributes::*;
 use super::*;
 
 impl VulkanBackend {
@@ -26,6 +27,7 @@ impl VulkanBackend {
         let weather = kind == PipelineKind::Weather;
         let dissolve = kind == PipelineKind::Dissolve;
         let rays = kind == PipelineKind::Rays;
+        let portal = kind == PipelineKind::Portal;
         let world_border = kind == PipelineKind::WorldBorder;
         let entity = kind == PipelineKind::Entity || dissolve;
         let shadow = kind == PipelineKind::Shadow;
@@ -59,6 +61,8 @@ impl VulkanBackend {
                 (ENTITY_VERTEX_SHADER, DISSOLVE_FRAGMENT_SHADER)
             } else if rays {
                 (RAYS_VERTEX_SHADER, RAYS_FRAGMENT_SHADER)
+            } else if portal {
+                (PORTAL_VERTEX_SHADER, PORTAL_FRAGMENT_SHADER)
             } else if world_border {
                 (WORLD_BORDER_VERTEX_SHADER, WORLD_BORDER_FRAGMENT_SHADER)
             } else if entity {
@@ -129,145 +133,13 @@ impl VulkanBackend {
                 .binding(0)
                 .stride(stride as u32)
                 .input_rate(vk::VertexInputRate::VERTEX)];
-            let sky_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(12),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32A32_SFLOAT)
-                    .offset(20),
-                vk::VertexInputAttributeDescription::default()
-                    .location(3)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(36),
-            ];
-            let terrain_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(4)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(40),
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(12),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R32_SFLOAT)
-                    .offset(20),
-                vk::VertexInputAttributeDescription::default()
-                    .location(3)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32A32_SFLOAT)
-                    .offset(24),
-            ];
-            let section_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(12),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R8G8B8A8_UNORM)
-                    .offset(20),
-                vk::VertexInputAttributeDescription::default()
-                    .location(3)
-                    .binding(0)
-                    .format(vk::Format::R8G8_UINT)
-                    .offset(24),
-            ];
-            let cloud_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32_SFLOAT)
-                    .offset(12),
-            ];
-            let gui_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(8),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32A32_SFLOAT)
-                    .offset(16),
-            ];
-            let line_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32A32_SFLOAT)
-                    .offset(12),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(28),
-                vk::VertexInputAttributeDescription::default()
-                    .location(3)
-                    .binding(0)
-                    .format(vk::Format::R32_SFLOAT)
-                    .offset(40),
-            ];
-            let gui_item_attributes = [
-                vk::VertexInputAttributeDescription::default()
-                    .location(0)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32_SFLOAT)
-                    .offset(0),
-                vk::VertexInputAttributeDescription::default()
-                    .location(1)
-                    .binding(0)
-                    .format(vk::Format::R32G32_SFLOAT)
-                    .offset(12),
-                vk::VertexInputAttributeDescription::default()
-                    .location(2)
-                    .binding(0)
-                    .format(vk::Format::R32G32B32A32_SFLOAT)
-                    .offset(20),
-            ];
+            let sky_attributes = sky_attributes();
+            let terrain_attributes = terrain_attributes();
+            let section_attributes = section_attributes();
+            let cloud_attributes = cloud_attributes();
+            let gui_attributes = gui_attributes();
+            let line_attributes = line_attributes();
+            let gui_item_attributes = gui_item_attributes();
             let attributes: &[vk::VertexInputAttributeDescription] = if sky {
                 &sky_attributes
             } else if gui_item {
@@ -298,25 +170,7 @@ impl VulkanBackend {
             let raster = vk::PipelineRasterizationStateCreateInfo::default()
                 .polygon_mode(vk::PolygonMode::FILL)
                 // The sky's fans are built in either winding.
-                .cull_mode(
-                    if sky
-                        || weather
-                        || entity
-                        || swirl
-                        || glint
-                        || rays
-                        || world_border
-                        || text
-                        || text_see_through
-                        || gui
-                        || gui_item
-                        || lines
-                    {
-                        vk::CullModeFlags::NONE
-                    } else {
-                        vk::CullModeFlags::BACK
-                    },
-                )
+                .cull_mode(cull_mode(kind))
                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
                 .line_width(1.0)
                 // The crack is pulled towards the camera so it wins over the
@@ -355,6 +209,7 @@ impl VulkanBackend {
                         | PipelineKind::Entity
                         | PipelineKind::Dissolve
                         | PipelineKind::Rays
+                        | PipelineKind::Portal
                         | PipelineKind::Swirl
                         | PipelineKind::Text
                         | PipelineKind::Lines
@@ -490,12 +345,14 @@ impl VulkanBackend {
             } else {
                 &push_ranges[..1]
             };
-            let set_layouts = [descriptor_layout];
+            // The portal samples two textures, each in a set of the one layout.
+            let both = [descriptor_layout, descriptor_layout];
+            let set_layouts = if portal { &both[..] } else { &both[..1] };
             let pipeline_layout = self
                 .device
                 .create_pipeline_layout(
                     &vk::PipelineLayoutCreateInfo::default()
-                        .set_layouts(&set_layouts)
+                        .set_layouts(set_layouts)
                         .push_constant_ranges(push_ranges),
                     None,
                 )

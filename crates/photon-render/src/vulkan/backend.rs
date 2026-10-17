@@ -95,6 +95,11 @@ pub struct VulkanBackend {
     pub(super) dissolve_mask_offset: [f32; 2],
     /// The dying dragon's rays.
     pub(super) rays: DrawList,
+    /// The end portal and gateway surfaces, and how far through the day the game is.
+    pub(super) portal: DrawList,
+    /// The portal's pipeline and the two textures it layers, once loaded.
+    pub(super) portal_scene: Option<super::portal::PortalScene>,
+    pub(super) portal_time: f32,
     pub(super) name_tag: DrawList,
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.

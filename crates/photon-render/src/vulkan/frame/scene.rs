@@ -44,6 +44,9 @@ impl VulkanBackend {
                     Pass::Sky => self.record_sky(scene),
                     Pass::Terrain => self.record_terrain(scene, &terrain_push, now),
                     Pass::Entities => {
+                        // The portals are opaque and write the depth, so the entities that stand
+                        // before them are drawn over them.
+                        self.draw_portal(&terrain_push);
                         for run in ENTITY_RUNS {
                             self.draw_run(scene, run, &terrain_push);
                         }

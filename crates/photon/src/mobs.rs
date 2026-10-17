@@ -276,6 +276,10 @@ pub struct MobModels {
     pub(crate) dissolve_mask_offset: [f32; 2],
     /// A dying dragon's rays this frame.
     pub(crate) rays: Vec<Vertex>,
+    /// The end portal and gateway surfaces this frame, and the game time and partial tick they
+    /// slide by.
+    pub(crate) portals: Vec<Vertex>,
+    pub(crate) portal_time: (u64, f32),
     /// What shakes a creepy enderman: the renderer's own random source, which
     /// the reference does not seed.
     pub(crate) shake: photon_core::random::RandomSource,
@@ -298,6 +302,8 @@ impl MobModels {
             dissolve: Vec::new(),
             dissolve_mask_offset: [0.0; 2],
             rays: Vec::new(),
+            portals: Vec::new(),
+            portal_time: (0, 0.0),
             shake: photon_core::random::RandomSource::create(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)

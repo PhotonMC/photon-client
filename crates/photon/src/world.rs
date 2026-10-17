@@ -5,6 +5,7 @@ pub(crate) mod atmosphere;
 pub(crate) mod beacon_beams;
 pub(crate) mod block_entities;
 pub(crate) mod block_entity_textures;
+pub(crate) mod end_portals;
 mod flood;
 pub(crate) mod sections;
 pub(crate) mod signs;

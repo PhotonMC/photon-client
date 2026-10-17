@@ -78,6 +78,10 @@ pub(super) enum PipelineKind {
     /// A screen effect (`BLOCK_SCREEN_EFFECT`, `FIRE_SCREEN_EFFECT`): the hand's shaders, blended
     /// and tested against nothing.
     ScreenEffect,
+    /// The end portal and end gateway surfaces (`END_PORTAL`, `END_GATEWAY`): the end sky and the
+    /// portal's picture layered over where the surface is on the screen, opaque. Two sets are
+    /// bound, one a texture each.
+    Portal,
 }
 
 /// Instance API version the reference asks for.

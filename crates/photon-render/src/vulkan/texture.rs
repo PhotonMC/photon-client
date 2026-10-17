@@ -300,7 +300,7 @@ impl VulkanBackend {
     }
 
     /// A plain resource texture in a set of its own, sampled at the nearest texel and repeating.
-    fn upload_repeating_texture(
+    pub(super) fn upload_repeating_texture(
         &mut self,
         image: &DecodedImage,
     ) -> Result<Option<(Texture, vk::DescriptorSet)>, VulkanError> {

@@ -62,8 +62,7 @@ impl Play {
             &texture(&root, "environment/snow", "snow")?,
         )?;
         backend.load_crack_texture(&destroy_stages(&root)?)?;
-        backend.load_world_border_texture(&texture(&root, "misc/forcefield", "forcefield")?)?;
-        backend.load_underwater_texture(&texture(&root, "misc/underwater", "underwater")?)?;
+        load_overlay_textures(&mut backend, &root)?;
         // The player's default skin, picked by its profile id as the
         // reference picks one when the profile has no skin of its own; the
         // others the server adds draw in theirs, and the mobs in their own
@@ -533,4 +532,16 @@ impl Play {
         self.ticks += 1;
         Ok(())
     }
+}
+
+/// The textures drawn over the world rather than in it: the world border's forcefield, the water
+/// over the view, and the end portal's sky and picture.
+fn load_overlay_textures(backend: &mut photon_render::VulkanBackend, root: &str) -> Result<()> {
+    backend.load_world_border_texture(&texture(root, "misc/forcefield", "forcefield")?)?;
+    backend.load_underwater_texture(&texture(root, "misc/underwater", "underwater")?)?;
+    backend.load_end_portal_textures((
+        &texture(root, "environment/end_sky", "end_sky")?,
+        &texture(root, "entity/end_portal/end_portal", "end_portal")?,
+    ))?;
+    Ok(())
 }

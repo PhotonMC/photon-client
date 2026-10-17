@@ -155,6 +155,11 @@ pub fn hand_layers(
     backend.set_draw(
         photon_render::vulkan::DrawKind::DragonRays,
         &std::mem::take(&mut models.rays),
+    )?;
+    backend.set_portal_time(models.portal_time.0, models.portal_time.1);
+    backend.set_draw(
+        photon_render::vulkan::DrawKind::EndPortal,
+        &std::mem::take(&mut models.portals),
     )
 }
 
@@ -276,6 +281,7 @@ pub(super) fn remote_wild_animals(
     ender_dragons::remote_ender_dragons(session, models, textures, view, vertices);
     end_crystals::remote_end_crystals(session, models, textures, view, vertices);
     block_entities::block_entities(session, models, textures, view, vertices);
+    crate::world::end_portals::end_portals(session, models, view);
     crate::world::beacon_beams::beacon_beams(session, textures, view, vertices);
 }
 

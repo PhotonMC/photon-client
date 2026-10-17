@@ -16,7 +16,6 @@
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-render/src/gui/frame/texture.rs" = 513
-"crates/photon-render/src/vulkan/pipeline.rs" = 501
 "crates/photon-world/src/local_player/ticking.rs" = 501
 "crates/photon-world/src/particles/firework.rs" = 540
 "crates/photon/src/menu.rs" = 644
@@ -435,7 +434,7 @@
 "crates/photon-render/src/vulkan/frame/passes.rs::Run::pipeline" = 12
 "crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 21
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 13
-"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 76
+"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 66
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 11
 "crates/photon-world/src/block/culling.rs::skip_rendering" = 12
 "crates/photon-world/src/block/fluid.rs::fluid_state" = 11
@@ -932,7 +931,7 @@
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75
 "crates/photon-render/src/texture/mipmap.rs::generate_mip_levels_with" = 81
 "crates/photon-render/src/texture/png.rs::decode_rgba" = 73
-"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 144
+"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 139
 "crates/photon-render/src/vulkan/device/instance.rs::create_instance" = 64
 "crates/photon-render/src/vulkan/device/logical.rs::create_logical_device" = 69
 "crates/photon-render/src/vulkan/device/presentation.rs::create_presentation" = 88
@@ -942,7 +941,7 @@
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 95
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::load_panorama" = 61
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
-"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 497
+"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 352
 "crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 135
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::create_depth_target" = 63
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 103
@@ -1062,7 +1061,7 @@
 "crates/photon/src/play/draw.rs::Play::draw_overlays" = 78
 "crates/photon/src/play/draw.rs::Play::frame_camera" = 79
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 193
+"crates/photon/src/play/ticks.rs::Play::start" = 192
 "crates/photon/src/play/ticks.rs::Play::tick" = 82
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/script.rs::HeldKeys::parse" = 77

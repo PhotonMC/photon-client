@@ -9,10 +9,17 @@ use photon_core::direction::Direction;
 /// by `pose`. The faces are a set of the enum, so they are written in the enum's order whatever
 /// order they are given in.
 pub fn cube_corners(pose: &Pose, faces: &[Direction]) -> Vec<[f32; 3]> {
+    cube_quads(pose, faces).into_iter().flatten().collect()
+}
+
+/// The same corners, a quad (four corners) to each face.
+pub fn cube_quads(pose: &Pose, faces: &[Direction]) -> Vec<[[f32; 3]; 4]> {
     Direction::stream()
         .filter(|face| faces.contains(face))
-        .flat_map(|face| face_vertices([0.0; 3], [16.0; 3], face))
-        .map(|[x, y, z]| pose.pose.transform_position(x, y, z))
+        .map(|face| {
+            face_vertices([0.0; 3], [16.0; 3], face)
+                .map(|[x, y, z]| pose.pose.transform_position(x, y, z))
+        })
         .collect()
 }
 

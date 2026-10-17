@@ -21,6 +21,9 @@ pub enum DrawKind {
     EntityGlint,
     /// The next frame's dragon rays: each vertex's tint its colour.
     DragonRays,
+    /// The next frame's end portal and end gateway surfaces: each vertex's first tint component is
+    /// how many layers of the surface its block shows (fifteen for a portal, sixteen for a gateway).
+    EndPortal,
     /// The next frame's dropped items: triangles placed like the
     /// terrain's, each with its shade and colour, sampling the block atlas.
     GroundItems,
@@ -39,6 +42,12 @@ pub enum DrawKind {
 }
 
 impl VulkanBackend {
+    /// How far through the day the game is (`GlobalSettingsUniform`'s game time), which the end
+    /// portal's layers slide by.
+    pub fn set_portal_time(&mut self, game_time: u64, partial: f32) {
+        self.portal_time = ((game_time % 24_000) as f32 + partial) / 24_000.0;
+    }
+
     /// Set the lightmap's inputs for the frames that follow: the sky light
     /// colour and factor, the block light tint and factor, and the ambient
     /// colour and brightness option.
@@ -134,11 +143,22 @@ impl VulkanBackend {
             DrawKind::EntitySwirl => &mut self.swirl,
             DrawKind::EntityGlint => &mut self.glint,
             DrawKind::DragonRays => &mut self.rays,
+            DrawKind::EndPortal => &mut self.portal,
             DrawKind::GroundItems => &mut self.ground,
+            DrawKind::Shadows
+            | DrawKind::ExperienceOrbs
+            | DrawKind::Particles
+            | DrawKind::BlockParticles => self.flat_list_mut(kind),
+        }
+    }
+
+    /// The lists of the shapes drawn flat over the entity textures and the block atlas.
+    fn flat_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
+        match kind {
             DrawKind::Shadows => &mut self.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
             DrawKind::Particles => &mut self.particle,
-            DrawKind::BlockParticles => &mut self.block_particle,
+            _ => &mut self.block_particle,
         }
     }
 

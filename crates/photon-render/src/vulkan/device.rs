@@ -9,6 +9,7 @@ impl Drop for VulkanBackend {
         // since `Drop` runs once.
         unsafe {
             let _ = self.device.device_wait_idle();
+            self.portal_scene = None;
             self.destroy_scene();
             // The host buffers free themselves; they go here, while the device is live.
             self.cloud_buffer = None;
@@ -28,6 +29,7 @@ impl Drop for VulkanBackend {
             self.map_decoration.buffer.clear();
             self.dissolve.buffer.clear();
             self.rays.buffer.clear();
+            self.portal.buffer.clear();
             self.name_tag.buffer.clear();
             self.hand.buffer.clear();
             self.outline.buffer.clear();

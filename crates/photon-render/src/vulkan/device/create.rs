@@ -52,18 +52,10 @@ impl VulkanBackend {
                 timestamps,
             } = sync;
             let command_buffer = frames[0].command_buffer;
-            let device_name = CStr::from_ptr(properties.device_name.as_ptr())
-                .to_string_lossy()
-                .into_owned();
-            let description = BackendDescription {
-                device_name,
-                discrete: properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU,
-                api_version: properties.api_version,
-                surface_format,
-                image_count: images.len() as u32,
-                present_mode,
-                extent,
-            };
+            let description = describe(
+                &properties,
+                (surface_format, images.len(), present_mode, extent),
+            );
 
             Ok(Self {
                 _entry: entry,
@@ -116,6 +108,9 @@ impl VulkanBackend {
                 dissolve: DrawList::default(),
                 dissolve_mask_offset: [0.0; 2],
                 rays: DrawList::default(),
+                portal: DrawList::default(),
+                portal_scene: None,
+                portal_time: 0.0,
                 name_tag: DrawList::default(),
                 hand: DrawList::default(),
                 held_count: 0,
@@ -202,5 +197,30 @@ impl VulkanBackend {
                 .free_command_buffers(self.command_pool, &buffers);
             Ok(())
         }
+    }
+}
+
+/// What the backend tells of the device it chose and the surface it draws to.
+fn describe(
+    properties: &vk::PhysicalDeviceProperties,
+    (surface_format, image_count, present_mode, extent): (
+        vk::Format,
+        usize,
+        vk::PresentModeKHR,
+        vk::Extent2D,
+    ),
+) -> BackendDescription {
+    // SAFETY: the driver fills the name with a terminated string.
+    let device_name = unsafe { CStr::from_ptr(properties.device_name.as_ptr()) }
+        .to_string_lossy()
+        .into_owned();
+    BackendDescription {
+        device_name,
+        discrete: properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU,
+        api_version: properties.api_version,
+        surface_format,
+        image_count: image_count as u32,
+        present_mode,
+        extent,
     }
 }
