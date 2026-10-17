@@ -414,7 +414,8 @@ class MovementSupport {
                 net.minecraft.world.level.levelgen.Heightmap.primeHeightmaps(
                     level.getChunk(chunkX, chunkZ), java.util.EnumSet.of(
                         net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING));
+                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
+                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES));
             }
         }
 

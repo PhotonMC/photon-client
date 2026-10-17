@@ -26,9 +26,10 @@ pub enum Attribute {
     AmbientLightColor,
     FireflyBushSounds,
     CreakingActive,
+    SkyLightLevel,
 }
 
-pub(super) const ATTRIBUTES: [Attribute; 23] = [
+pub(super) const ATTRIBUTES: [Attribute; 24] = [
     Attribute::SkyColor,
     Attribute::FogColor,
     Attribute::SunriseSunsetColor,
@@ -52,6 +53,7 @@ pub(super) const ATTRIBUTES: [Attribute; 23] = [
     Attribute::AmbientLightColor,
     Attribute::FireflyBushSounds,
     Attribute::CreakingActive,
+    Attribute::SkyLightLevel,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -169,7 +171,7 @@ const fn definition(name: &'static str, kind: Kind, default: Value) -> Definitio
 }
 
 /// `EnvironmentAttributes`, for the attributes carried, in the order of `Attribute`.
-const DEFINITIONS: [Definition; 23] = [
+const DEFINITIONS: [Definition; 24] = [
     definition("minecraft:visual/sky_color", Kind::Rgb, Value::Color(0)),
     definition("minecraft:visual/fog_color", Kind::Rgb, Value::Color(0)),
     definition(
@@ -265,6 +267,11 @@ const DEFINITIONS: [Definition; 23] = [
         Kind::Bool,
         Value::Bool(false),
     ),
+    definition(
+        "minecraft:gameplay/sky_light_level",
+        Kind::Float,
+        Value::Float(15.0),
+    ),
 ];
 
 impl Attribute {
@@ -289,6 +296,7 @@ impl Attribute {
             (Self::StarBrightness | Self::SkyLightFactor, Value::Float(v)) => {
                 Value::Float(v.clamp(0.0, 1.0))
             }
+            (Self::SkyLightLevel, Value::Float(v)) => Value::Float(v.clamp(0.0, 15.0)),
             (
                 Self::SkyFogEndDistance
                 | Self::FogEndDistance
@@ -309,7 +317,7 @@ impl Value {
         }
     }
 
-    pub(super) fn float(self) -> f32 {
+    pub fn float(self) -> f32 {
         match self {
             Self::Float(value) => value,
             _ => 0.0,

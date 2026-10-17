@@ -77,7 +77,7 @@ impl ClientWorld {
     }
 
     /// `getMaxLocalRawBrightness(pos, skyDarken)`.
-    fn max_local_raw_brightness(&self, (x, y, z): (i32, i32, i32), sky_darken: i32) -> i32 {
+    pub fn max_local_raw_brightness(&self, (x, y, z): (i32, i32, i32), sky_darken: i32) -> i32 {
         if !(-30_000_000..30_000_000).contains(&x) || !(-30_000_000..30_000_000).contains(&z) {
             return 15;
         }

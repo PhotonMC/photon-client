@@ -73,6 +73,7 @@ pub(super) enum Provider {
     Geyser,
     GeyserBase,
     GeyserPlume,
+    Firefly,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -161,6 +162,7 @@ fn makes_its_own(provider: Provider) -> bool {
             | Provider::Geyser
             | Provider::GeyserBase
             | Provider::GeyserPlume
+            | Provider::Firefly
             | Provider::FallingDust
             | Provider::Drip
             | Provider::Mark(_)
@@ -178,12 +180,13 @@ fn block_provider_of(name: &str) -> Option<Provider> {
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
-        _ => return sulfur_provider_of(name),
+        _ => return environment_provider_of(name),
     })
 }
 
-/// The providers of a potent sulfur block's particles: its gas and bubbles, and its geyser.
-fn sulfur_provider_of(name: &str) -> Option<Provider> {
+/// The providers of the particles the environment brings: a potent sulfur block's gas, bubbles
+/// and geyser, and the firefly bush's fireflies.
+fn environment_provider_of(name: &str) -> Option<Provider> {
     Some(match name {
         "noxious_gas_cloud" => Provider::GasCloud,
         "noxious_gas" => Provider::NoxiousGas,
@@ -191,6 +194,7 @@ fn sulfur_provider_of(name: &str) -> Option<Provider> {
         "geyser" => Provider::Geyser,
         "geyser_base" | "geyser_poof" => Provider::GeyserBase,
         "geyser_plume" => Provider::GeyserPlume,
+        "firefly" => Provider::Firefly,
         _ => return None,
     })
 }
@@ -382,7 +386,13 @@ impl ParticleResources {
                 sprites,
                 engine_random,
             )),
-            (Provider::NoxiousGas | Provider::SulfurBubbles, None) => None,
+            (Provider::Firefly, Some(sprites)) => Some(Particle::firefly(
+                random(),
+                (at, push),
+                sprites,
+                engine_random,
+            )),
+            (Provider::NoxiousGas | Provider::SulfurBubbles | Provider::Firefly, None) => None,
             (Provider::Geyser | Provider::GeyserBase | Provider::GeyserPlume, _) => geyser(
                 (provider, data),
                 (at, push),

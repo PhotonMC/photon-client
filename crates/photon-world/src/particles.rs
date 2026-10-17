@@ -22,6 +22,7 @@ mod elder_guardian;
 mod engine;
 mod explosion;
 mod falling_dust;
+mod firefly;
 mod firework;
 mod flame;
 mod geyser;

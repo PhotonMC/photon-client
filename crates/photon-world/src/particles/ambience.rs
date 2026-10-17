@@ -23,6 +23,11 @@ pub trait Ambience: std::fmt::Debug {
         false
     }
 
+    /// `Level.getSkyDarken`: how much the sky's light is dimmed (`15 - SKY_LIGHT_LEVEL`).
+    fn sky_darken(&self) -> i32 {
+        0
+    }
+
     /// `EnvironmentAttributes.AMBIENT_PARTICLES` at a block: the particles the biome there lets
     /// drift.
     fn ambient_particles(

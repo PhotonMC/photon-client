@@ -12,6 +12,7 @@ pub struct SkyAmbience<'a> {
     environment: &'a Environment,
     creaking_active: bool,
     firefly_bush_sounds: bool,
+    sky_darken: i32,
 }
 
 impl<'a> SkyAmbience<'a> {
@@ -22,6 +23,11 @@ impl<'a> SkyAmbience<'a> {
             environment,
             creaking_active: flag(Attribute::CreakingActive),
             firefly_bush_sounds: flag(Attribute::FireflyBushSounds),
+            // `Level.updateSkyBrightness`.
+            sky_darken: (15.0
+                - environment
+                    .dimension_value(Attribute::SkyLightLevel, &clock_ticks)
+                    .float()) as i32,
         }
     }
 }
@@ -33,6 +39,10 @@ impl Ambience for SkyAmbience<'_> {
 
     fn firefly_bush_sounds(&self) -> bool {
         self.firefly_bush_sounds
+    }
+
+    fn sky_darken(&self) -> i32 {
+        self.sky_darken
     }
 
     fn ambient_particles(

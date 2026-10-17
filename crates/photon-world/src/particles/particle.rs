@@ -98,6 +98,8 @@ pub(super) enum Kind {
     SulfurBubble(super::sulfur::SulfurBubble),
     /// `GeyserPlumeParticle`: shoots up through the water of a geyser.
     GeyserPlume(super::geyser::Plume),
+    /// `FireflyParticle`: a speck of light about a firefly bush.
+    Firefly,
 }
 
 /// Which atlas a particle's picture is in.
@@ -296,7 +298,11 @@ impl Particle {
     /// `Particle.tick`, with what the class does before and after it; a particle that leaves
     /// another (lava its smoke) asks for it.
     pub fn tick(&mut self, world: &ClientWorld) -> Vec<super::engine::Spawn> {
-        if let Some(spawns) = self.own_tick(world).or_else(|| self.own_tick_more(world)) {
+        if let Some(spawns) = self
+            .own_tick(world)
+            .or_else(|| self.own_tick_more(world))
+            .or_else(|| self.own_tick_rest(world))
+        {
             return spawns;
         }
         if matches!(self.kind, Kind::AshSmoke { decays: true }) {
@@ -358,16 +364,19 @@ impl Particle {
             }
             Kind::FireworkStarter(_) => Vec::new(),
             Kind::Drip(drip) => self.drip_tick(world, drip),
-            Kind::FallingLeaves(leaf) => {
-                self.falling_leaves_tick(world, leaf);
-                Vec::new()
-            }
-            Kind::FallingDust { rot_speed } => {
-                self.falling_dust_tick(world, rot_speed);
-                Vec::new()
-            }
             _ => return None,
         })
+    }
+
+    /// The rest of them: the ones that fall or drift on their own.
+    fn own_tick_rest(&mut self, world: &ClientWorld) -> Option<Vec<super::engine::Spawn>> {
+        match self.kind {
+            Kind::FallingLeaves(leaf) => self.falling_leaves_tick(world, leaf),
+            Kind::FallingDust { rot_speed } => self.falling_dust_tick(world, rot_speed),
+            Kind::Firefly => self.firefly_tick(world),
+            _ => return None,
+        }
+        Some(Vec::new())
     }
 
     /// What a class does after `Particle.tick`: follows its pictures, or fades.

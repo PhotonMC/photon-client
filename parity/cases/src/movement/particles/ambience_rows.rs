@@ -90,9 +90,60 @@ fn drifting_row(label: &str, biome: &str, seed: i64) -> Value {
         .row()
 }
 
+/// Firefly bushes over a floor, some in the open, some under a roof of stone and some under
+/// leaves, some beside a torch: where the sky lets light in, where it does not, and where a block
+/// lights it.
+fn firefly_scene() -> Vec<Value> {
+    let mut blocks = Vec::new();
+    for x in -8..=8_i64 {
+        for z in -8..=8_i64 {
+            blocks.push(put(x, 63, z, "minecraft:stone"));
+            if (x + z).rem_euclid(3) == 0 && (x * 5 + z * 3).rem_euclid(4) != 0 {
+                blocks.push(put(x, 64, z, "minecraft:firefly_bush"));
+            }
+            if x < -2 && z < 3 {
+                blocks.push(put(x, 70, z, "minecraft:stone"));
+            } else if x > 2 && z > -3 {
+                blocks.push(put_with(
+                    x,
+                    70,
+                    z,
+                    "minecraft:oak_leaves",
+                    &[("persistent", "true"), ("distance", "1"), ("waterlogged", "false")],
+                ));
+            }
+            if (x * 7 + z * 11).rem_euclid(13) == 0 {
+                blocks.push(put_with(x, 65, z, "minecraft:torch", &[]));
+            }
+        }
+    }
+    blocks
+}
+
+/// The bushes picked at random over a day: noon, the evening the clock's flag comes up in, the
+/// middle of the night and the morning it goes down.
+fn firefly_row() -> Value {
+    let clocks = [6000, 11_867, 12_000, 12_150, 12_300, 12_600, 13_000, 18_000, 22_000, 23_401, 36_000];
+    let mut events = Vec::new();
+    for (tick, ticks) in clocks.into_iter().enumerate() {
+        let tick = tick as i64;
+        events.push(clock(tick, ticks));
+        events.push(animate_tick(tick, (0, 64, 0), 4000, 3100 + tick));
+    }
+    engine_row("animate-firefly-bush", events)
+        .blocks(firefly_scene())
+        .set("clock", json!(0))
+        .set("light", json!(true))
+        .ticks(clocks.len() as i64)
+        .seeds(20000)
+        .describe(8)
+        .row()
+}
+
 pub fn rows() -> Vec<Value> {
     vec![
         creaking_row(),
+        firefly_row(),
         drifting_row("animate-biome-crimson-forest", "minecraft:crimson_forest", 2100),
         drifting_row("animate-biome-warped-forest", "minecraft:warped_forest", 2200),
         drifting_row("animate-biome-soul-sand-valley", "minecraft:soul_sand_valley", 2300),

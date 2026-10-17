@@ -150,5 +150,9 @@ rastgelesiyle işler.
   full cube may leave one of its biome's ambient particles, by their chances, drawn from the level's
   random. The oracle sets the scene's biome (`biome`) and the clock (`clock` events) on both sides;
   the Java scene's particles give back a try's gaussian pair as well as its seeds, since a pair
-  that is half used made two runs differ. Not carried yet: the firefly bush (its light gate and
-  heightmap).
+  that is half used made two runs differ. The firefly bush plays its idle sound (only under the open
+  sky, by the heightmap that leaves do not count in, while the clock's flag is up), and where the
+  light there is 13 or less, once the sky's dimming (`gameplay/sky_light_level`, worked out each
+  tick as `15 - level`) is taken off the sky, makes a firefly now and then within five blocks. The
+  oracle's chunks carry the third client heightmap as well, and `clock` events work the sky's
+  dimming out afresh.

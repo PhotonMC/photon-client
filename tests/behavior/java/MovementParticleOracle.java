@@ -641,6 +641,8 @@ class MovementParticleOracle extends MovementMenuOracle {
                     level.clockManager().handleUpdates(level.getGameTime(), java.util.Map.of(clock,
                         new net.minecraft.world.clock.ClockNetworkState(event.get("ticks").getAsLong(), 0.0F, 1.0F)));
                     level.environmentAttributes().invalidateTickCache();
+                    // `ClientLevel.tick` works the sky's dimming out afresh each tick.
+                    level.updateSkyBrightness();
                     continue;
                 }
                 if (event.get("type").getAsString().equals("game_time")) {

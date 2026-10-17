@@ -49,6 +49,7 @@ impl Particle {
     pub fn light_coords_at(&self, world: &ClientWorld, partial: f32) -> i32 {
         let light = particle_light(world, self.x, self.y, self.z);
         match self.kind {
+            Kind::Firefly => self.firefly_light(partial),
             Kind::Flame | Kind::Glow => {
                 add_smooth_block_emission(light, (self.age as f32 + partial) / self.lifetime as f32)
             }
@@ -106,6 +107,7 @@ impl Particle {
                 | Kind::FireworkSpark(_)
                 | Kind::Flash
                 | Kind::NoxiousGas { .. }
+                | Kind::Firefly
         ) || matches!(self.kind, Kind::Attract(super::attract::Attract::FlyTowards { alpha, .. }) if alpha[0] < 1.0 || alpha[1] < 1.0)
     }
 
