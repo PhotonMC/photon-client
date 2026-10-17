@@ -15,6 +15,8 @@ pub struct Camera {
     fov_modifier: f32,
     old_fov_modifier: f32,
     spinning: Spinning,
+    /// The nausea blend the last tick ended with.
+    nausea: f32,
 }
 
 impl Camera {
@@ -25,13 +27,16 @@ impl Camera {
             fov_modifier: 1.0,
             old_fov_modifier: 1.0,
             spinning: Spinning::default(),
+            nausea: 0.0,
         }
     }
 
     /// One client tick, after the player's.
     pub fn tick(&mut self, player: &LocalPlayer, nausea: f32) {
-        // The portal's intensity waits for portal state.
-        self.spinning.tick(0.0, nausea);
+        // `GameRenderer.tick` runs before the player's, so it reads the blend the last tick ended
+        // with. The portal's intensity waits for portal state.
+        let seen = std::mem::replace(&mut self.nausea, nausea);
+        self.spinning.tick(0.0, seen);
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
 
