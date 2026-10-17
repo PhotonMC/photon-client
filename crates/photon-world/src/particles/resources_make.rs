@@ -97,3 +97,31 @@ pub(super) fn coloured(
         _ => return None,
     })
 }
+
+/// The providers of a geyser's particles: nothing for options of another kind.
+pub(super) fn geyser(
+    (provider, data): (Provider, super::engine::ParticleData),
+    motion: ((f64, f64, f64), (f64, f64, f64)),
+    sprites: Option<&Arc<SpriteSet>>,
+    random: impl FnOnce() -> RandomSource,
+    randoms: (&mut RandomSource, &mut RandomSource),
+) -> Option<Particle> {
+    use super::engine::ParticleData::{Geyser, GeyserBase};
+    Some(match (provider, data, sprites) {
+        (Provider::Geyser, Geyser { water_blocks }, _) => {
+            Particle::geyser_eruption(random(), motion, water_blocks)
+        }
+        (
+            Provider::GeyserBase,
+            GeyserBase {
+                water_blocks,
+                burst,
+            },
+            Some(sprites),
+        ) => Particle::geyser_base(random(), motion, (water_blocks, burst), sprites, randoms),
+        (Provider::GeyserPlume, Geyser { water_blocks }, Some(sprites)) => {
+            Particle::geyser_plume(random(), motion, water_blocks, sprites, randoms)
+        }
+        _ => return None,
+    })
+}

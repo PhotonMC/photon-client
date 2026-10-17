@@ -32,102 +32,114 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
             pos()?,
             i32_field(event, "data")?,
         ),
-        "explode" => {
-            let float = |key: &str| -> Result<f32, String> {
-                u32::from_str_radix(string(event, key)?, 16)
-                    .map(f32::from_bits)
-                    .map_err(|error| format!("{key}: {error}"))
-            };
-            let kind = |name: &str| {
-                photon_data::particle_type::id(name).ok_or(format!("unknown particle {name}"))
-            };
-            let mut block_particles = Vec::new();
-            for info in event["kinds"].as_array().ok_or("kinds must be an array")? {
-                let float = |key: &str| -> Result<f32, String> {
-                    u32::from_str_radix(string(info, key)?, 16)
-                        .map(f32::from_bits)
-                        .map_err(|error| format!("{key}: {error}"))
-                };
-                block_particles.push(photon_world::particles::ExplosionParticle {
-                    type_id: kind(string(info, "particle")?)?,
-                    data: photon_world::particles::ParticleData::Plain,
-                    scaling: float("scaling")?,
-                    speed: float("speed")?,
-                    weight: i32_field(info, "weight")?,
-                });
-            }
-            world.apply_explosion(photon_world::particles::Explosion {
-                center: (
-                    parsed64(event, "x")?,
-                    parsed64(event, "y")?,
-                    parsed64(event, "z")?,
-                ),
-                radius: float("radius")?,
-                block_count: i32_field(event, "block_count")?,
-                particle: (
-                    kind(string(event, "particle")?)?,
-                    photon_world::particles::ParticleData::Plain,
-                ),
-                sound: Some("minecraft:entity.generic.explode"),
-                block_particles,
-            });
-        }
+        "explode" => queue_explosion(event, world)?,
         "global_level_event" => {
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);
         }
         "block_event" => queue_block_event(event, world)?,
-        "fireworks" => {
-            use photon_world::particles::{FireworkExplosion, FireworkLaunch, FireworkShape};
-            let colors = |list: &Value| -> Result<Vec<i32>, String> {
-                list.as_array()
-                    .ok_or("colors must be an array")?
-                    .iter()
-                    .map(|color| {
-                        color
-                            .as_i64()
-                            .and_then(|color| i32::try_from(color).ok())
-                            .ok_or_else(|| "a colour".to_owned())
-                    })
-                    .collect()
-            };
-            let mut explosions = Vec::new();
-            for info in event["explosions"]
-                .as_array()
-                .ok_or("explosions must be an array")?
-            {
-                let shape = match string(info, "shape")? {
-                    "SMALL_BALL" => FireworkShape::SmallBall,
-                    "LARGE_BALL" => FireworkShape::LargeBall,
-                    "STAR" => FireworkShape::Star,
-                    "CREEPER" => FireworkShape::Creeper,
-                    "BURST" => FireworkShape::Burst,
-                    other => return Err(format!("unknown shape {other}")),
-                };
-                explosions.push(FireworkExplosion {
-                    shape,
-                    colors: colors(&info["colors"])?,
-                    fade_colors: colors(&info["fades"])?,
-                    trail: info["trail"].as_bool().ok_or("trail")?,
-                    twinkle: info["twinkle"].as_bool().ok_or("twinkle")?,
-                });
-            }
-            world.create_fireworks(FireworkLaunch {
-                at: (
-                    parsed64(event, "x")?,
-                    parsed64(event, "y")?,
-                    parsed64(event, "z")?,
-                ),
-                motion: (
-                    parsed64(event, "xd")?,
-                    parsed64(event, "yd")?,
-                    parsed64(event, "zd")?,
-                ),
-                explosions,
-            });
-        }
+        "game_time" => world.set_game_time(
+            event["time"]
+                .as_u64()
+                .ok_or("the game time must be a number")?,
+        ),
+        "fireworks" => queue_fireworks(event, world)?,
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+/// An `explode` event: the explosion the server reports, queued in the world.
+fn queue_explosion(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    let float = |key: &str| -> Result<f32, String> {
+        u32::from_str_radix(string(event, key)?, 16)
+            .map(f32::from_bits)
+            .map_err(|error| format!("{key}: {error}"))
+    };
+    let kind =
+        |name: &str| photon_data::particle_type::id(name).ok_or(format!("unknown particle {name}"));
+    let mut block_particles = Vec::new();
+    for info in event["kinds"].as_array().ok_or("kinds must be an array")? {
+        let float = |key: &str| -> Result<f32, String> {
+            u32::from_str_radix(string(info, key)?, 16)
+                .map(f32::from_bits)
+                .map_err(|error| format!("{key}: {error}"))
+        };
+        block_particles.push(photon_world::particles::ExplosionParticle {
+            type_id: kind(string(info, "particle")?)?,
+            data: photon_world::particles::ParticleData::Plain,
+            scaling: float("scaling")?,
+            speed: float("speed")?,
+            weight: i32_field(info, "weight")?,
+        });
+    }
+    world.apply_explosion(photon_world::particles::Explosion {
+        center: (
+            parsed64(event, "x")?,
+            parsed64(event, "y")?,
+            parsed64(event, "z")?,
+        ),
+        radius: float("radius")?,
+        block_count: i32_field(event, "block_count")?,
+        particle: (
+            kind(string(event, "particle")?)?,
+            photon_world::particles::ParticleData::Plain,
+        ),
+        sound: Some("minecraft:entity.generic.explode"),
+        block_particles,
+    });
+    Ok(())
+}
+
+/// A `fireworks` event: a rocket that went off, queued in the world.
+fn queue_fireworks(event: &Value, world: &mut ClientWorld) -> Result<(), String> {
+    use photon_world::particles::{FireworkExplosion, FireworkLaunch, FireworkShape};
+    let colors = |list: &Value| -> Result<Vec<i32>, String> {
+        list.as_array()
+            .ok_or("colors must be an array")?
+            .iter()
+            .map(|color| {
+                color
+                    .as_i64()
+                    .and_then(|color| i32::try_from(color).ok())
+                    .ok_or_else(|| "a colour".to_owned())
+            })
+            .collect()
+    };
+    let mut explosions = Vec::new();
+    for info in event["explosions"]
+        .as_array()
+        .ok_or("explosions must be an array")?
+    {
+        let shape = match string(info, "shape")? {
+            "SMALL_BALL" => FireworkShape::SmallBall,
+            "LARGE_BALL" => FireworkShape::LargeBall,
+            "STAR" => FireworkShape::Star,
+            "CREEPER" => FireworkShape::Creeper,
+            "BURST" => FireworkShape::Burst,
+            other => return Err(format!("unknown shape {other}")),
+        };
+        explosions.push(FireworkExplosion {
+            shape,
+            colors: colors(&info["colors"])?,
+            fade_colors: colors(&info["fades"])?,
+            trail: info["trail"].as_bool().ok_or("trail")?,
+            twinkle: info["twinkle"].as_bool().ok_or("twinkle")?,
+        });
+    }
+    world.create_fireworks(FireworkLaunch {
+        at: (
+            parsed64(event, "x")?,
+            parsed64(event, "y")?,
+            parsed64(event, "z")?,
+        ),
+        motion: (
+            parsed64(event, "xd")?,
+            parsed64(event, "yd")?,
+            parsed64(event, "zd")?,
+        ),
+        explosions,
+    });
+    Ok(())
 }
 
 /// A sound as the reference's silent sound manager writes it: the sound, its kind's name, then

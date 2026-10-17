@@ -68,6 +68,10 @@ pub enum ParticleData {
     FireworkSpark(super::firework::SparkOptions),
     /// `PowerParticleOption`: how hard it is thrown.
     Power(f32),
+    /// `GeyserParticleOptions`: how many blocks of water the geyser rises through.
+    Geyser { water_blocks: i32 },
+    /// `GeyserBaseParticleOptions`: the same, and how hard the spray at its foot is thrown.
+    GeyserBase { water_blocks: i32, burst: f32 },
 }
 
 /// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity

@@ -604,6 +604,10 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("b1").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("game_time")) {
+                    level.setTimeFromServer(event.get("time").getAsLong());
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("global_level_event")) {
                     level.globalLevelEvent(event.get("event").getAsInt(), new net.minecraft.core.BlockPos(
                         event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt()),

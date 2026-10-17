@@ -44,6 +44,11 @@ pub(crate) fn has_sulfur_ticker(state: BlockStateId) -> bool {
 const ALLOWED_WATER_BLOCKS_ABOVE: i32 = 4;
 /// `PotentSulfurBlockEntity.PARTICLE_FREQUENCY_TICKS`.
 const PARTICLE_FREQUENCY_TICKS: u64 = 20;
+/// `PotentSulfurBlockEntity.SOUND_FREQUENCY_TICKS`.
+const SOUND_FREQUENCY_TICKS: i64 = 40;
+/// `SoundEvents.GEYSER_ERUPTION_ACTIVE` and `GEYSER_CONTINUOUS_ACTIVE`.
+const ERUPTION_SOUND: &str = "minecraft:block.potent_sulfur.geyser_eruption_active";
+const CONTINUOUS_SOUND: &str = "minecraft:block.potent_sulfur.geyser_continuous_eruption_active";
 
 impl ClientWorld {
     /// `getFluidState(pos).isSourceOfType(Fluids.WATER)`.
@@ -159,7 +164,42 @@ impl ClientWorld {
         }
         match SulfurState::of(state) {
             SulfurState::Wet | SulfurState::Dormant => self.tick_noxious_gas(pos),
-            SulfurState::Dry | SulfurState::Erupting | SulfurState::Continuous => {}
+            SulfurState::Erupting => self.tick_geyser_plume(pos, ERUPTION_SOUND),
+            SulfurState::Continuous => self.tick_geyser_plume(pos, CONTINUOUS_SOUND),
+            SulfurState::Dry => {}
+        }
+    }
+
+    /// `PotentSulfurBlockEntity.CLIENT_GEYSER_PLUME_TICKER`: every second since it erupted, the
+    /// geyser goes up from the cell the gas rises into; every two, its sound plays there.
+    fn tick_geyser_plume(&mut self, pos: Pos, sound: &'static str) {
+        let Some(source) = self.noxious_gas_source(pos) else {
+            return;
+        };
+        let Some(erupted) = self
+            .block_entity_at(pos.0, pos.1, pos.2)
+            .map(|entity| entity.events().eruption_tick)
+        else {
+            return;
+        };
+        let time = self.game_time() as i64 - erupted;
+        let (x, y, z) = (
+            f64::from(source.0) + 0.5,
+            f64::from(source.1),
+            f64::from(source.2) + 0.5,
+        );
+        if time % PARTICLE_FREQUENCY_TICKS as i64 == 0 {
+            let water_blocks = source.1 - pos.1 - 1;
+            self.level_events.0.push(LevelEvent::Geyser {
+                at: (x, y, z),
+                water_blocks,
+            });
+        }
+        if time % SOUND_FREQUENCY_TICKS == 0 {
+            let at = (x, y + 0.5, z);
+            self.level_events
+                .0
+                .push(LevelEvent::GeyserSound { at, sound });
         }
     }
 }

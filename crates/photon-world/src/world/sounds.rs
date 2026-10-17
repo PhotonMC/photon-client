@@ -309,6 +309,16 @@ pub enum LevelEvent {
     PistonSound,
     /// A potent sulfur block's ticker adds a cloud of its gas (`addParticle`) at a place.
     NoxiousGasCloud { at: (f64, f64, f64) },
+    /// An erupting potent sulfur block sends its geyser up through the water above it.
+    Geyser {
+        at: (f64, f64, f64),
+        water_blocks: i32,
+    },
+    /// A sound the geyser makes at a place (`Level.playLocalSound` of the blocks' kind).
+    GeyserSound {
+        at: (f64, f64, f64),
+        sound: &'static str,
+    },
 }
 
 impl LevelEvent {

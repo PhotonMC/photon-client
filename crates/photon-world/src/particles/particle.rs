@@ -96,6 +96,8 @@ pub(super) enum Kind {
     NoxiousGas { fade_start: f32 },
     /// `SulfurBubbleParticle`: rises through the water above a sulfur block.
     SulfurBubble(super::sulfur::SulfurBubble),
+    /// `GeyserPlumeParticle`: shoots up through the water of a geyser.
+    GeyserPlume(super::geyser::Plume),
 }
 
 /// Which atlas a particle's picture is in.
@@ -342,7 +344,14 @@ impl Particle {
                 self.gas_cloud_tick();
                 Vec::new()
             }
+            Kind::Emitter(super::hit::Emitter::Geyser { water_blocks, push }) => {
+                self.geyser_tick(water_blocks, push)
+            }
             Kind::Emitter(emitter) => self.emitter_tick(emitter),
+            Kind::GeyserPlume(plume) => {
+                self.geyser_plume_tick(world, plume);
+                Vec::new()
+            }
             Kind::SulfurBubble(bubble) => {
                 self.sulfur_bubble_tick(world, bubble);
                 Vec::new()

@@ -191,3 +191,32 @@ impl super::engine::ParticleEngine {
         self.add_particle(world, &spawn, view, level_random, particle_random);
     }
 }
+
+impl super::engine::ParticleEngine {
+    /// `Level.addParticle(new GeyserParticleOptions(GEYSER, waterBlocks), ..)`.
+    pub(super) fn add_geyser<F: FnMut() -> RandomSource>(
+        &mut self,
+        context: &mut super::level_events::LevelEventContext<'_, F>,
+        at: (f64, f64, f64),
+        water_blocks: i32,
+    ) {
+        let Some(type_id) = photon_data::particle_type::id("geyser") else {
+            return;
+        };
+        let spawn = super::engine::Spawn {
+            type_id,
+            data: super::engine::ParticleData::Geyser { water_blocks },
+            override_limiter: photon_data::particle_type::overrides_limiter(type_id),
+            always_show: false,
+            at,
+            push: (0.0, 0.0, 0.0),
+        };
+        self.add_particle(
+            context.world,
+            &spawn,
+            context.view,
+            context.level_random,
+            &mut context.particle_random,
+        );
+    }
+}

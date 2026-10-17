@@ -9,7 +9,7 @@ use photon_data::particle_type;
 
 use super::super::ClientWorld;
 use super::particle::Particle;
-use super::resources_make::{attract, coloured, trail};
+use super::resources_make::{attract, coloured, geyser, trail};
 use super::sprites::SpriteSet;
 use super::terrain::TerrainMaterials;
 
@@ -70,6 +70,9 @@ pub(super) enum Provider {
     GasCloud,
     NoxiousGas,
     SulfurBubbles,
+    Geyser,
+    GeyserBase,
+    GeyserPlume,
 }
 
 /// `ParticleResources.registerProviders`, for the types whose particles are carried.
@@ -155,6 +158,9 @@ fn makes_its_own(provider: Provider) -> bool {
         Provider::GasCloud
             | Provider::NoxiousGas
             | Provider::SulfurBubbles
+            | Provider::Geyser
+            | Provider::GeyserBase
+            | Provider::GeyserPlume
             | Provider::FallingDust
             | Provider::Drip
             | Provider::Mark(_)
@@ -164,7 +170,7 @@ fn makes_its_own(provider: Provider) -> bool {
     )
 }
 
-/// The providers of the particles made of a block, and of a potent sulfur block's.
+/// The providers of the particles made of a block.
 fn block_provider_of(name: &str) -> Option<Provider> {
     Some(match name {
         "block" => Provider::Terrain,
@@ -172,9 +178,19 @@ fn block_provider_of(name: &str) -> Option<Provider> {
         "block_crumble" => Provider::Crumbling,
         "dust_pillar" => Provider::DustPillar,
         "falling_dust" => Provider::FallingDust,
+        _ => return sulfur_provider_of(name),
+    })
+}
+
+/// The providers of a potent sulfur block's particles: its gas and bubbles, and its geyser.
+fn sulfur_provider_of(name: &str) -> Option<Provider> {
+    Some(match name {
         "noxious_gas_cloud" => Provider::GasCloud,
         "noxious_gas" => Provider::NoxiousGas,
         "sulfur_bubbles" => Provider::SulfurBubbles,
+        "geyser" => Provider::Geyser,
+        "geyser_base" | "geyser_poof" => Provider::GeyserBase,
+        "geyser_plume" => Provider::GeyserPlume,
         _ => return None,
     })
 }
@@ -275,7 +291,7 @@ impl ParticleResources {
                 (name, data),
                 (at, push),
                 random,
-                engine_random,
+                (engine_random, level_random),
             );
         }
         let sprites = self.sprite_sets.get(name)?;
@@ -352,7 +368,7 @@ impl ParticleResources {
         (name, data): (&str, super::engine::ParticleData),
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
         random: impl FnOnce() -> RandomSource,
-        engine_random: &mut RandomSource,
+        (engine_random, level_random): (&mut RandomSource, &mut RandomSource),
     ) -> Option<Particle> {
         let sprites = self.sprite_sets.get(name);
         match (provider, sprites) {
@@ -367,6 +383,13 @@ impl ParticleResources {
                 engine_random,
             )),
             (Provider::NoxiousGas | Provider::SulfurBubbles, None) => None,
+            (Provider::Geyser | Provider::GeyserBase | Provider::GeyserPlume, _) => geyser(
+                (provider, data),
+                (at, push),
+                sprites,
+                random,
+                (engine_random, level_random),
+            ),
             _ => self.create_own(
                 provider,
                 world,

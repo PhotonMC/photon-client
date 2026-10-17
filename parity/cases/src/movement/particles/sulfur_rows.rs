@@ -96,6 +96,44 @@ fn far_row() -> Value {
     gas_row("sulfur-gas-far", pool("wet", 2, vec![]), 40).camera((40.0, 64.0, 0.0)).row()
 }
 
+/// A pool whose sulfur block erupts for forty-six ticks, the server's clock running on a tick at a
+/// time from the hundred it began at, so that the geyser's pace shows.
+fn geyser_row(label: &str, blocks: Vec<Value>, extra: Vec<Value>) -> Engine {
+    let events = (0..46).map(|tick| game_time(tick, 100 + tick)).chain(extra).collect::<Vec<_>>();
+    engine_row(label, events)
+        .blocks(blocks)
+        .set("sulfurs", json!([{"x": 0, "y": 64, "z": 0}]))
+        .set("game_time", json!(100))
+        .set("tick_block_entities", json!(true))
+        .ticks(46)
+        .seeds(4000)
+        .describe(12)
+}
+
+/// Geysers over water of each depth, erupting and continuous, one reset by a block event, and one
+/// far from the camera (the limiter lets its particles in all the same).
+fn geyser_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for depth in 0..=4 {
+        let label = format!("sulfur-geyser-erupting-{depth}");
+        rows.push(geyser_row(&label, pool("erupting", depth, vec![]), vec![]).row());
+    }
+    rows.push(geyser_row("sulfur-geyser-continuous", pool("continuous", 2, vec![]), vec![]).row());
+    rows.push(
+        geyser_row("sulfur-geyser-reset", pool("erupting", 3, vec![]), vec![block_event(7, (0, 64, 0), 0, 0)]).row(),
+    );
+    rows.push(geyser_row("sulfur-geyser-far", pool("erupting", 2, vec![]), vec![]).camera((40.0, 64.0, 0.0)).row());
+    rows.push(
+        geyser_row(
+            "sulfur-geyser-capped",
+            pool("erupting", 2, vec![((0, 67, 0), put(0, 67, 0, "minecraft:stone"))]),
+            vec![],
+        )
+        .row(),
+    );
+    rows
+}
+
 /// Sulfur blocks in every state, with water above and without, picked at random over a few ticks.
 fn bubble_row() -> Value {
     let states = ["dry", "wet", "dormant", "erupting", "continuous", "wet", "wet", "erupting"];
@@ -140,6 +178,7 @@ pub fn rows() -> Vec<Value> {
     let mut rows = depth_rows();
     rows.extend(cover_rows());
     rows.push(far_row());
+    rows.extend(geyser_rows());
     rows.push(bubble_row());
     rows
 }

@@ -185,6 +185,18 @@ impl ParticleEngine {
                 self.level_add(context, "noxious_gas_cloud", at, (0.0, 0.0, 0.0));
                 Vec::new()
             }
+            LevelEvent::Geyser { at, water_blocks } => {
+                self.add_geyser(context, at, water_blocks);
+                Vec::new()
+            }
+            LevelEvent::GeyserSound { at, sound } => {
+                vec![super::animate::local_sound(
+                    (sound, LocalSoundSource::Blocks),
+                    (1.0, 1.0),
+                    at,
+                    context,
+                )]
+            }
             LevelEvent::PistonSound => {
                 // `PistonBaseBlock.triggerEvent`: the pitch is asked of the level's random source
                 // whether or not the client plays the sound (the server does that for the player).

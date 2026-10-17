@@ -112,6 +112,11 @@ pub fn block_event(tick: i64, pos: Block, b0: i64, b1: i64) -> Value {
     json!({"tick": tick, "type": "block_event", "x": pos.0, "y": pos.1, "z": pos.2, "b0": b0, "b1": b1})
 }
 
+/// The server's clock told to the level.
+pub fn game_time(tick: i64, time: i64) -> Value {
+    json!({"tick": tick, "type": "game_time", "time": time})
+}
+
 pub fn animate_tick(tick: i64, center: Block, count: i64, seed: i64) -> Value {
     json!({"tick": tick, "type": "animate_tick", "x": center.0, "y": center.1, "z": center.2, "count": count, "seed": seed})
 }

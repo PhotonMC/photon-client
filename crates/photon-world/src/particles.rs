@@ -22,6 +22,7 @@ mod explosion;
 mod falling_dust;
 mod firework;
 mod flame;
+mod geyser;
 mod group;
 mod hit;
 mod jukebox;
