@@ -15,6 +15,7 @@ pub fn cases() -> Vec<Value> {
     cases.extend(entities::cases());
     cases.push(sky::sky_flash());
     cases.push(fog::fog_data());
+    cases.push(fog::lightmap_data());
     cases.push(elytra::elytra_state());
     cases.extend(particles::cases());
     cases

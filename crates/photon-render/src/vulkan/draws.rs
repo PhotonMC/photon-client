@@ -48,31 +48,32 @@ impl VulkanBackend {
         self.portal_time = ((game_time % 24_000) as f32 + partial) / 24_000.0;
     }
 
-    /// Set the lightmap's inputs for the frames that follow: the sky light
-    /// colour and factor, the block light tint and factor, and the ambient
-    /// colour and brightness option.
+    /// Set the lightmap's inputs for the frames that follow: the attributes' own, the block
+    /// light's factor, and what the player's effects make of the ambient colour, the brightness
+    /// and the darkness.
     pub fn set_lightmap(
         &mut self,
-        sky_colour: [f32; 3],
-        sky_factor: f32,
-        block_tint: [f32; 3],
+        inputs: &crate::sky::LightmapInputs,
         block_factor: f32,
-        ambient: [f32; 3],
-        brightness: f32,
+        effects: &crate::sky::LightmapEffects,
     ) {
+        let [sky_r, sky_g, sky_b] = inputs.sky_colour;
+        let [tint_r, tint_g, tint_b] = inputs.block_tint;
+        let [base_r, base_g, base_b] = effects.base;
         self.lightmap = [
-            sky_colour[0],
-            sky_colour[1],
-            sky_colour[2],
-            sky_factor,
-            block_tint[0],
-            block_tint[1],
-            block_tint[2],
+            sky_r,
+            sky_g,
+            sky_b,
+            inputs.sky_factor,
+            tint_r,
+            tint_g,
+            tint_b,
             block_factor,
-            ambient[0],
-            ambient[1],
-            ambient[2],
-            brightness,
+            base_r,
+            base_g,
+            base_b,
+            effects.brightness,
+            effects.darkness,
         ];
     }
 

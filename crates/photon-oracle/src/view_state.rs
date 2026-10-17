@@ -223,3 +223,85 @@ fn add_effects(
     }
     Ok(())
 }
+
+/// `lightmap_data`: the lightmap extractor's night vision, darkness and brightness for the local
+/// player with some effects, in the options' defaults.
+pub(super) fn lightmap_data_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("rows")?
+        .iter()
+        .map(lightmap_row)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(json!({"rows": rows}))
+}
+
+/// One row of `lightmap_data`.
+fn lightmap_row(row: &Value) -> Result<Value, String> {
+    let bits = |values: &[f32]| -> Vec<String> {
+        values
+            .iter()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect()
+    };
+    let colour = |key: &str| -> Result<[f32; 3], String> {
+        let packed = row["attributes"][key]
+            .as_i64()
+            .ok_or_else(|| key.to_owned())? as u32;
+        Ok([16, 8, 0].map(|shift| ((packed >> shift) & 255) as f32 / 255.0))
+    };
+    let partial = float_of(row, "partial")?;
+    let mut view = effects_only_fog_view();
+    add_effects(&mut view, row, partial)?;
+    let water_vision = photon_world::local_player::water_vision(
+        i32_field(row, "water_vision_time")?,
+        row["eyes_in_water"].as_bool().ok_or("eyes")?,
+    );
+    let conduit = row["effects"]
+        .as_array()
+        .ok_or("effects")?
+        .iter()
+        .any(|effect| effect["name"] == "minecraft:conduit_power");
+    let intensity =
+        photon_render::sky::night_vision_intensity(view.night_vision, conduit, water_vision);
+    let inputs = photon_render::sky::LightmapInputs {
+        sky_colour: colour("sky_light_color")?,
+        sky_factor: 0.0,
+        block_tint: colour("block_light_tint")?,
+        ambient: colour("ambient_light_color")?,
+        night_vision_colour: colour("night_vision_color")?,
+    };
+    let effects = inputs.effects(
+        &photon_render::sky::LightmapView {
+            darkness_blend: view.darkness.unwrap_or(0.0),
+            tick_count: i32_field(row, "tick_count")?,
+            night_vision: intensity,
+        },
+        partial,
+    );
+    Ok(json!({
+        "label": row["label"],
+        "night_vision_intensity": bits(&[intensity]),
+        "night_vision_colour": bits(&inputs.night_vision_colour),
+        "ambient": bits(&effects.base),
+        "brightness": bits(&[effects.brightness]),
+        "darkness": bits(&[effects.darkness]),
+    }))
+}
+
+/// A fog view that holds only the effects a row adds, for a camera in the air.
+fn effects_only_fog_view() -> photon_render::sky::FogView {
+    photon_render::sky::FogView {
+        fog_type: photon_render::sky::FogType::Atmospheric,
+        spectator: false,
+        fire_resistance: false,
+        blindness: None,
+        darkness: None,
+        night_vision: None,
+        water_vision: None,
+        render_distance: 12,
+        darken_world: 0.0,
+        void_darkness: (32.0, -64, 80.0),
+        boss_fog: false,
+    }
+}

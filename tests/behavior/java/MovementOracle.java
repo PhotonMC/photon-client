@@ -30,6 +30,7 @@ public final class MovementOracle extends MovementFireOracle {
                 case "sky_flash" -> rows.add(skyFlash(element.getAsJsonObject()));
                 case "elytra_state" -> rows.add(elytraState(element.getAsJsonObject()));
                 case "fog_data" -> rows.add(fogData(element.getAsJsonObject()));
+                case "lightmap_data" -> rows.add(lightmapData(element.getAsJsonObject()));
                 case "container_clicks" -> rows.add(containerClicks(element.getAsJsonObject()));
                 case "component_hashes" -> rows.add(componentHashes(element.getAsJsonObject()));
                 case "particle_types" -> rows.add(particleTypes(element.getAsJsonObject()));

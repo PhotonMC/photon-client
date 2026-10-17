@@ -5,6 +5,20 @@ const BOTH_STAGES: vk::ShaderStageFlags = vk::ShaderStageFlags::from_raw(
 );
 
 impl VulkanBackend {
+    /// The terrain shaders also take the lightmap's inputs, the camera and the fog; most runs
+    /// push the same.
+    fn terrain_push(&self, view_projection: [[f32; 4]; 4]) -> [f32; 40] {
+        let mut push = [0.0_f32; 40];
+        push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
+            view_projection[i / 4][i % 4]
+        }));
+        push[16..28].copy_from_slice(&self.lightmap[..12]);
+        push[28..31].copy_from_slice(&self.sort_origin);
+        push[31] = self.lightmap[12];
+        push[32..].copy_from_slice(&self.fog);
+        push
+    }
+
     /// Record the scene's draws for one swapchain image.
     ///
     /// # Safety
@@ -28,14 +42,7 @@ impl VulkanBackend {
                 self.record_blurred_panorama(scene);
             }
             self.begin_rendering(self.image_views[index], depth.view);
-            // The terrain shaders also take the lightmap's inputs, the camera and the fog; most
-            // runs push the same.
-            let mut terrain_push = [0.0_f32; 40];
-            let matrix: [f32; 16] = std::array::from_fn(|i| view_projection[i / 4][i % 4]);
-            terrain_push[..16].copy_from_slice(&matrix);
-            terrain_push[16..28].copy_from_slice(&self.lightmap);
-            terrain_push[28..31].copy_from_slice(&self.sort_origin);
-            terrain_push[32..].copy_from_slice(&self.fog);
+            let terrain_push = self.terrain_push(view_projection);
             for pass in PASSES {
                 if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui) {
                     continue;

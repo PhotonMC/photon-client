@@ -157,18 +157,7 @@ impl Sky {
             &self.sprites,
             self.environment.skybox(),
         );
-        // The lightmap is extracted once per tick, from the probe's values
-        // at the end of the tick rather than blended within it.
-        let lightmap = self.next.lightmap();
-        backend.set_lightmap(
-            lightmap.sky_colour,
-            lightmap.sky_factor,
-            lightmap.block_tint,
-            1.4 + self.flicker.value(),
-            lightmap.ambient,
-            // The brightness option's default.
-            0.5,
-        );
+        self.set_lightmap(backend, session, partial);
         self.clouds.draw(
             backend,
             &sky,
@@ -185,6 +174,14 @@ impl Sky {
             sky.sky_fog_end,
         )?;
         Ok(sky.clear_colour)
+    }
+
+    /// The lightmap's inputs, extracted once per tick from the probe's values at the end of the
+    /// tick rather than blended within it, and what the player's effects make of them.
+    fn set_lightmap(&self, backend: &mut VulkanBackend, session: &PlaySession, partial: f32) {
+        let lightmap = self.next.lightmap();
+        let effects = lightmap.effects(&super::fog::lightmap_view(session, partial), partial);
+        backend.set_lightmap(&lightmap, 1.4 + self.flicker.value(), &effects);
     }
 }
 

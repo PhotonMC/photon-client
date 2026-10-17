@@ -150,6 +150,7 @@ pub(super) fn sky_result(operation: &str, request: &Value) -> Option<Result<Valu
     match operation {
         "sky_flash" => Some(sky_flash_result(request)),
         "fog_data" => Some(super::view_state::fog_data_result(request)),
+        "lightmap_data" => Some(super::view_state::lightmap_data_result(request)),
         _ => None,
     }
 }

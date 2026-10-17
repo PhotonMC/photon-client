@@ -134,7 +134,9 @@ pub struct VulkanBackend {
     /// it is done with them.
     pub(super) retired: Vec<(u64, SectionBuffers)>,
     pub(super) sort_origin: [f32; 3],
-    pub(super) lightmap: [f32; 12],
+    /// The lightmap's inputs, and last the darkness effect's subtraction, which the push
+    /// constants carry in the camera's `w`.
+    pub(super) lightmap: [f32; 13],
     /// The terrain fog's colour and its four distances.
     pub(super) fog: [f32; 8],
     pub(super) render_finished: Vec<vk::Semaphore>,

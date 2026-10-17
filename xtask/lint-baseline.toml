@@ -1070,7 +1070,7 @@
 "crates/photon/src/window_probe/world.rs::load_world" = 93
 "crates/photon/src/world/sections.rs::SectionMeshes::visible" = 62
 "crates/photon/src/world/signs.rs::sign_texts" = 69
-"crates/photon/src/world/sky.rs::Sky::draw" = 72
+"crates/photon/src/world/sky.rs::Sky::draw" = 64
 
 [fn-nesting]
 "crates/photon-core/src/binary/traversal.rs::BlockPos::breadth_first_traversal" = 5

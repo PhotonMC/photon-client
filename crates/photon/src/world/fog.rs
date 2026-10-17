@@ -2,7 +2,7 @@
 //! what the camera is in, the effects the player has and how well they see under water.
 
 use photon_net::connection::PlaySession;
-use photon_render::sky::{FogType, FogView};
+use photon_render::sky::{FogType, FogView, LightmapView, night_vision_intensity};
 use photon_world::ClientMobEffectState;
 
 /// The effect of a name the local player has, if they have it.
@@ -46,5 +46,24 @@ pub fn fog_view(
             camera_y,
         ),
         boss_fog: false,
+    }
+}
+
+/// What the lightmap reads of the local player (`LightmapRenderStateExtractor.extract`): the
+/// darkness effect, the tick count, and the night vision the effect or the conduit gives.
+pub fn lightmap_view(session: &PlaySession, partial: f32) -> LightmapView {
+    let local = session.world().local_player();
+    let effects = local.map_or(&[][..], |local| local.effects());
+    let water_vision = session.player().map_or(0.0, |player| player.water_vision());
+    let night_vision = night_vision_intensity(
+        effect(effects, "minecraft:night_vision").map(|state| state.night_vision_scale(partial)),
+        effect(effects, "minecraft:conduit_power").is_some(),
+        water_vision,
+    );
+    LightmapView {
+        darkness_blend: effect(effects, "minecraft:darkness")
+            .map_or(0.0, |state| state.blend_factor(partial)),
+        tick_count: local.map_or(0, |local| local.tick_count()),
+        night_vision,
     }
 }

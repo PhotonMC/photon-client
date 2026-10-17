@@ -6,8 +6,8 @@ pub(super) const NO_FOG: [f32; 8] = [0.0, 0.0, 0.0, 1.0, f32::MAX, f32::MAX, f32
 
 /// Lightmap inputs with nothing dimming them: white sky light at full
 /// factor, the default block light tint at the reference's base factor, no
-/// ambient light, and the default brightness option.
-pub(super) const DEFAULT_LIGHTMAP: [f32; 12] = [
+/// ambient light, the default brightness option, and no darkness effect.
+pub(super) const DEFAULT_LIGHTMAP: [f32; 13] = [
     1.0,
     1.0,
     1.0,
@@ -20,6 +20,7 @@ pub(super) const DEFAULT_LIGHTMAP: [f32; 12] = [
     0.0,
     0.0,
     0.5,
+    0.0,
 ];
 
 /// Which of the drawing pipelines to build.

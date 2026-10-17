@@ -176,19 +176,9 @@ class MovementWorldOracle extends MovementLivingOracle {
         }
     }
 
-    /**
-     * The real `FogRenderer.setupFog` for a camera in a fluid or the air, in a level, with some
-     * effects: the colour and the six distances it hands back. The attributes are the row's.
-     */
-    static JsonObject fogData(JsonObject row) throws Exception {
-        var entry = new JsonObject();
-        entry.addProperty("label", row.get("label").getAsString());
-        var scene = buildScene(row);
-        var level = scene.level();
-        setField(scene.minecraft(), "level", level);
-        var hud = getField(getField(scene.minecraft(), "gui"), "hud");
-        setField(hud, "bossOverlay", unsafe.allocateInstance(net.minecraft.client.gui.components.BossHealthOverlay.class));
-        setField(getField(hud, "bossOverlay"), "events", new java.util.LinkedHashMap<>());
+    /** The effects a fixture's row gives its entity, each ticked as a client ticks it. */
+    static java.util.HashMap<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
+        net.minecraft.world.effect.MobEffectInstance> fogEffects(final JsonObject row) {
         var effects = new java.util.HashMap<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>,
             net.minecraft.world.effect.MobEffectInstance>();
         var table = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT;
@@ -204,6 +194,87 @@ class MovementWorldOracle extends MovementLivingOracle {
             }
             effects.put(holder, instance);
         }
+        return effects;
+    }
+
+    /**
+     * The real `LightmapRenderStateExtractor.extract` for a local player with some effects, in a
+     * level with the row's attributes: the values it fills in, as the lightmap shader takes them.
+     */
+    static JsonObject lightmapData(final JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var empty = new JsonObject();
+        empty.add("blocks", new JsonArray());
+        empty.addProperty("chunk_radius", 0);
+        var scene = buildScene(empty);
+        var minecraft = scene.minecraft();
+        setField(minecraft, "level", scene.level());
+        var player = (FogLocal) unsafe.allocateInstance(FogLocal.class);
+        player.fx = fogEffects(row);
+        player.eyesInWater = row.get("eyes_in_water").getAsBoolean();
+        player.tickCount = row.get("tick_count").getAsInt();
+        var time = net.minecraft.client.player.LocalPlayer.class.getDeclaredField("waterVisionTime");
+        time.setAccessible(true);
+        time.setInt(player, row.get("water_vision_time").getAsInt());
+        setField(minecraft, "player", player);
+        var options = (net.minecraft.client.Options) unsafe.allocateInstance(net.minecraft.client.Options.class);
+        setField(options, "gamma", optionValue(0.5));
+        setField(options, "darknessEffectScale", optionValue(1.0));
+        setField(options, "hideLightningFlash", optionValue(false));
+        setField(minecraft, "options", options);
+        var probe = (FogProbe) unsafe.allocateInstance(FogProbe.class);
+        probe.values = new java.util.HashMap<>();
+        var attributes = row.getAsJsonObject("attributes");
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.BLOCK_LIGHT_TINT, attributes.get("block_light_tint").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_FACTOR, Oracle.f32(attributes, "sky_light_factor"));
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.SKY_LIGHT_COLOR, attributes.get("sky_light_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.AMBIENT_LIGHT_COLOR, attributes.get("ambient_light_color").getAsInt());
+        probe.values.put(net.minecraft.world.attribute.EnvironmentAttributes.NIGHT_VISION_COLOR, attributes.get("night_vision_color").getAsInt());
+        var camera = (FogCamera) unsafe.allocateInstance(FogCamera.class);
+        camera.probe = probe;
+        var renderer = (net.minecraft.client.renderer.GameRenderer) unsafe.allocateInstance(
+            net.minecraft.client.renderer.GameRenderer.class);
+        setField(renderer, "mainCamera", camera);
+        var extractor = new net.minecraft.client.renderer.LightmapRenderStateExtractor(renderer, minecraft);
+        extractor.tick();
+        var state = new net.minecraft.client.renderer.state.LightmapRenderState();
+        extractor.extract(state, Oracle.f32(row, "partial"));
+        entry.add("night_vision_intensity", fogBits(state.nightVisionEffectIntensity));
+        entry.add("night_vision_colour", fogBits(state.nightVisionColor.x(), state.nightVisionColor.y(), state.nightVisionColor.z()));
+        // The shader starts the sum from the larger of the ambient and the night vision's colour.
+        float nightFactor = state.nightVisionEffectIntensity;
+        entry.add("ambient", fogBits(
+            Math.max(state.ambientColor.x(), state.nightVisionColor.x() * nightFactor),
+            Math.max(state.ambientColor.y(), state.nightVisionColor.y() * nightFactor),
+            Math.max(state.ambientColor.z(), state.nightVisionColor.z() * nightFactor)));
+        entry.add("brightness", fogBits(state.brightness));
+        entry.add("darkness", fogBits(state.darknessEffectScale));
+        return entry;
+    }
+
+    /** A real option instance that holds `value`. */
+    static <T> net.minecraft.client.OptionInstance<T> optionValue(final T value) throws Exception {
+        @SuppressWarnings("unchecked")
+        var option = (net.minecraft.client.OptionInstance<T>) unsafe.allocateInstance(net.minecraft.client.OptionInstance.class);
+        setField(option, "value", value);
+        return option;
+    }
+
+    /**
+     * The real `FogRenderer.setupFog` for a camera in a fluid or the air, in a level, with some
+     * effects: the colour and the six distances it hands back. The attributes are the row's.
+     */
+    static JsonObject fogData(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = buildScene(row);
+        var level = scene.level();
+        setField(scene.minecraft(), "level", level);
+        var hud = getField(getField(scene.minecraft(), "gui"), "hud");
+        setField(hud, "bossOverlay", unsafe.allocateInstance(net.minecraft.client.gui.components.BossHealthOverlay.class));
+        setField(getField(hud, "bossOverlay"), "events", new java.util.LinkedHashMap<>());
+        var effects = fogEffects(row);
         net.minecraft.world.entity.Entity entity;
         if (row.get("local").getAsBoolean()) {
             var player = (FogLocal) unsafe.allocateInstance(FogLocal.class);

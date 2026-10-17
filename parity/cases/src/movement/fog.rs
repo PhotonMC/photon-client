@@ -159,3 +159,54 @@ pub fn fog_data() -> Value {
     world_rows(&mut rows);
     case("movement/fog-data", "movement", "fog_data", json!({"rows": rows}))
 }
+
+/// A lightmap row: the local player with some effects, at a tick, in the overworld's lightmap
+/// attributes at night.
+fn lightmap_row(
+    label: &str,
+    effects: &[(&str, i64, bool, i64)],
+    tick_count: i64,
+    eyes_in_water: bool,
+    water_vision_time: i64,
+) -> Value {
+    let effects: Vec<Value> = effects
+        .iter()
+        .map(|(name, duration, blend, ticks)| json!({"name": name, "duration": duration, "blend": blend, "ticks": ticks}))
+        .collect();
+    json!({
+        "label": label, "effects": effects, "tick_count": tick_count, "eyes_in_water": eyes_in_water,
+        "water_vision_time": water_vision_time, "partial": f32_bits(0.4),
+        "attributes": {
+            "block_light_tint": -10_100, "sky_light_factor": f32_bits(0.24), "sky_light_color": 0xFF4D_5E99_u32 as i32,
+            "ambient_light_color": 0xFF0A_0A14_u32 as i32, "night_vision_color": -6_710_887,
+        },
+    })
+}
+
+/// `lightmap_data`: what the lightmap extractor makes of the player's darkness and night vision.
+pub fn lightmap_data() -> Value {
+    let night = "minecraft:night_vision";
+    let dark = "minecraft:darkness";
+    let rows = vec![
+        lightmap_row("no effects", &[], 100, false, 0),
+        lightmap_row("night vision steady", &[(night, 2000, false, 0)], 100, false, 0),
+        lightmap_row("night vision flickering", &[(night, 150, false, 0)], 100, false, 0),
+        lightmap_row("night vision about to end", &[(night, 7, false, 3)], 100, false, 0),
+        lightmap_row("darkness fading in", &[(dark, 400, true, 30)], 57, false, 0),
+        lightmap_row("darkness at full", &[(dark, 400, true, 100)], 123, false, 0),
+        lightmap_row("darkness fading out", &[(dark, 40, true, 60)], 77, false, 0),
+        lightmap_row("darkness without end", &[(dark, -1, true, 40)], 31, false, 0),
+        lightmap_row("night vision and darkness", &[(night, 100, false, 0), (dark, 400, true, 30)], 200, false, 0),
+        lightmap_row("conduit power under water", &[("minecraft:conduit_power", 600, false, 0)], 100, true, 300),
+        lightmap_row("conduit power out of water", &[("minecraft:conduit_power", 600, false, 0)], 100, false, 300),
+        lightmap_row(
+            "conduit power and night vision",
+            &[("minecraft:conduit_power", 600, false, 0), (night, 150, false, 0)],
+            100,
+            true,
+            300,
+        ),
+        lightmap_row("water vision without conduit power", &[], 100, true, 600),
+    ];
+    case("movement/lightmap-data", "movement", "lightmap_data", json!({"rows": rows}))
+}
