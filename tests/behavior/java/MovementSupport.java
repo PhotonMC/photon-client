@@ -516,7 +516,7 @@ class MovementSupport {
             }
         }
         if (row.has("conduit_targets")) {
-            // The mob a conduit's update tag names, one of the row's parrots by its number.
+            // The mob a conduit's update tag names, by its UUID: one of the row's players.
             for (var element : row.getAsJsonArray("conduit_targets")) {
                 var described = element.getAsJsonObject();
                 var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
