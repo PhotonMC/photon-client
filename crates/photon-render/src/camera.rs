@@ -8,7 +8,7 @@
 
 use photon_world::local_player::LocalPlayer;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Camera {
     eye_height: f32,
     eye_height_old: f32,
@@ -17,6 +17,8 @@ pub struct Camera {
     spinning: Spinning,
     /// The nausea blend the last tick ended with.
     nausea: f32,
+    /// `ScreenEffectRenderer`'s totem animation.
+    pub activation: crate::item_activation::ItemActivation,
 }
 
 impl Camera {
@@ -28,6 +30,7 @@ impl Camera {
             old_fov_modifier: 1.0,
             spinning: Spinning::default(),
             nausea: 0.0,
+            activation: crate::item_activation::ItemActivation::default(),
         }
     }
 
@@ -37,6 +40,7 @@ impl Camera {
         // with. The portal's intensity waits for portal state.
         let seen = std::mem::replace(&mut self.nausea, nausea);
         self.spinning.tick(0.0, seen);
+        self.activation.tick();
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
 

@@ -561,6 +561,50 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /**
+     * `ScreenEffectRenderer.renderItemActivationAnimation`'s pose: its lines on a real `PoseStack`
+     * and `Axis`. The method itself needs the game's renderers, so the lines are transcribed.
+     */
+    static JsonObject itemActivationPose(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            int itemActivationTicks = row.get("ticks").getAsInt();
+            float partialTicks = Oracle.f32(row, "partial");
+            float aspectRatio = Oracle.f32(row, "aspect");
+            float itemActivationOffX = Oracle.f32(row, "off_x");
+            float itemActivationOffY = Oracle.f32(row, "off_y");
+            var poseStack = new com.mojang.blaze3d.vertex.PoseStack();
+            int tick = 40 - itemActivationTicks;
+            float scale = (tick + partialTicks) / 40.0F;
+            float ts = scale * scale;
+            float tc = scale * ts;
+            float smoothScale = 10.25F * tc * ts - 24.95F * ts * ts + 25.5F * tc - 13.8F * ts + 4.0F * scale;
+            float piScale = smoothScale * (float) Math.PI;
+            float offX = itemActivationOffX * 0.3F * aspectRatio;
+            float offY = itemActivationOffY * 0.3F;
+            poseStack.pushPose();
+            poseStack.translate(offX * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale * 2.0F)), offY * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale * 2.0F)), -10.0F + 9.0F * net.minecraft.util.Mth.sin(piScale));
+            poseStack.scale(0.8F, 0.8F, 0.8F);
+            poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(900.0F * net.minecraft.util.Mth.abs(net.minecraft.util.Mth.sin(piScale))));
+            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(6.0F * net.minecraft.util.Mth.cos(scale * 8.0F)));
+            poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(6.0F * net.minecraft.util.Mth.cos(scale * 8.0F)));
+            var matrix = new float[16];
+            poseStack.last().pose().get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("matrix", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();

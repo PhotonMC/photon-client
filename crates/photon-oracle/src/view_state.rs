@@ -9,8 +9,37 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "mob_effect_blend" => mob_effect_blend_result(request),
         "view_scales" => view_scales_result(request),
         "camera_spin" => camera_spin_result(request),
+        "item_activation_pose" => item_activation_pose_result(request),
         _ => return None,
     })
+}
+
+/// `item_activation_pose`: the pose the totem's animation draws the item at.
+fn item_activation_pose_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(row[key].as_str().ok_or(key.to_owned())?, 16)
+                    .map_err(|error| error.to_string())?,
+            ))
+        };
+        let pose = photon_render::item_activation::activation_pose(
+            i32_field(row, "ticks")?,
+            float("partial")?,
+            float("aspect")?,
+            (float("off_x")?, float("off_y")?),
+        );
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({"label": row["label"], "matrix": matrix}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `camera_spin`: the matrix the spinning effect multiplies onto the projection, after the ticks

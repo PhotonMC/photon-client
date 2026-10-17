@@ -9,6 +9,7 @@ pub mod camera;
 pub mod entity;
 pub mod frame_timing;
 pub mod gui;
+pub mod item_activation;
 pub mod item_model;
 pub mod joml;
 pub mod model;

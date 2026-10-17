@@ -60,6 +60,30 @@ pub fn camera_spin() -> Vec<Value> {
     vec![entity("camera-spin", "camera_spin", rows)]
 }
 
+/// The totem animation's pose: at its start and end, across the forty ticks and between them,
+/// at two window shapes and with the drift to different corners.
+pub fn item_activation_pose() -> Vec<Value> {
+    let pose = |label: String, ticks: i32, partial: f64, aspect: f64, (x, y): (f64, f64)| {
+        json!({
+            "label": label, "ticks": ticks,
+            "partial": f32_bits(partial), "aspect": f32_bits(aspect),
+            "off_x": f32_bits(x), "off_y": f32_bits(y),
+        })
+    };
+    let mut rows = Vec::new();
+    for ticks in [40, 39, 33, 27, 20, 14, 9, 3, 1] {
+        for partial in [0.0, 0.5, 0.97] {
+            rows.push(pose(format!("{ticks} left, {partial}"), ticks, partial, 1.7777778, (0.35, -0.8)));
+        }
+    }
+    rows.extend([
+        pose("square window".into(), 25, 0.3, 1.0, (-0.6, 0.9)),
+        pose("tall window".into(), 25, 0.3, 0.5, (0.9, 0.9)),
+        pose("no drift".into(), 22, 0.6, 1.5, (0.0, 0.0)),
+    ]);
+    vec![entity("item-activation-pose", "item_activation_pose", rows)]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

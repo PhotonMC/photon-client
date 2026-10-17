@@ -438,6 +438,9 @@ impl PlaySession {
         // `ClientPacketListener.handleEntityEvent`: 35 is a totem saving its holder.
         if event == 35 {
             self.queue_emitter(id, "totem_of_undying", 30, Some("minecraft:item.totem.use"));
+            if self.local.player_id == Some(id) {
+                self.queue_item_activation();
+            }
         }
         // `LivingEntity.handleEntityEvent`: 3 is a death.
         if event == 3 {

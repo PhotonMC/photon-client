@@ -106,6 +106,21 @@ impl FrameState {
         }
     }
 
+    /// A stack in the `FIXED` context at a pose, fully lit (the totem's animation).
+    pub fn fixed_item(
+        &mut self,
+        stack: &photon_world::ClientItemStackState,
+        pose: Pose,
+        (renderer, tints): (&BlockRenderer, &BiomeTints),
+    ) -> Vec<Vertex> {
+        item_layer_vertices(
+            self.layers.get(stack, renderer, tints),
+            &[pose],
+            FULL_LIGHT,
+            false,
+        )
+    }
+
     /// Hand the maps' image (if it changed) and this frame's quads to the renderer.
     pub fn hand_over(
         &mut self,
@@ -122,6 +137,9 @@ impl FrameState {
 }
 
 /// The paths (under `textures/`) of the decoration sprites.
+/// `LightCoordsUtil.FULL_BRIGHT`.
+const FULL_LIGHT: i32 = 15_728_880;
+
 pub fn textures() -> impl Iterator<Item = &'static str> {
     photon_data::map::decoration_types()
         .iter()

@@ -125,6 +125,16 @@ pub struct WorldItemLayers {
 }
 
 impl WorldItemLayers {
+    /// The triangles of the totem's animation: the stack in the `FIXED` context at a pose.
+    pub fn activation(
+        &mut self,
+        stack: &photon_world::ClientItemStackState,
+        pose: photon_render::joml::Pose,
+        materials: (&BlockRenderer, &BiomeTints),
+    ) -> Vec<Vertex> {
+        self.frames.fixed_item(stack, pose, materials)
+    }
+
     pub fn new() -> Self {
         Self {
             ground: ItemLayerCache::new(photon_render::model::DisplayContext::Ground),

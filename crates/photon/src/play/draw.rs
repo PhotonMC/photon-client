@@ -17,7 +17,6 @@ impl Play {
     /// outline, the cracks, and the player's own model once the camera
     /// leaves its eyes.
     pub(super) fn draw_overlays(&mut self, frame: &FrameCamera) -> Result<()> {
-        let player = self.session.player().ok_or("no local player")?;
         let view = FrameView {
             render_distance: frame.render_distance,
             partial: frame.partial,
@@ -29,36 +28,8 @@ impl Play {
         };
         self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
-        if first_person && !player.spectating() {
-            let (hand, held) = hands(
-                player,
-                &self.item_in_hand,
-                &mut self.held_item_layers,
-                (&self.block_renderer, &self.biome_tints),
-                &mut self.player_model,
-                view,
-            );
-            let hand_projection = photon_render::scene::perspective(
-                hud_fov(player).to_radians(),
-                self.aspect,
-                0.05,
-                100.0,
-            );
-            self.backend.set_hand(&hand, &held, hand_projection)?;
-            let effects = overlays::screen_effect::screen_effects(
-                &self.session,
-                player,
-                &self.block_renderer,
-            );
-            self.backend.set_screen_effects(
-                (&effects.block, &effects.water, &effects.fire),
-                hand_projection,
-            )?;
-        } else {
-            self.backend.set_hand(&[], &[], [[0.0; 4]; 4])?;
-            self.backend
-                .set_screen_effects((&[], &[], &[]), [[0.0; 4]; 4])?;
-        }
+        self.set_hands(view, first_person)?;
+        let player = self.session.player().ok_or("no local player")?;
         let line_width =
             photon_render::block::outline::appropriate_line_width(self.backend.extent().0);
         let (hook_sprites, hook_lines) = self.fishing_hooks(player, view, line_width);
@@ -93,6 +64,51 @@ impl Play {
         self.item_layers
             .hand_over(&mut self.backend, &self.item_vertices)?;
         set_moving_blocks(&mut self.backend, &self.session, tints, view)
+    }
+
+    /// The hands in first person unless the player only watches, the screen effects, and the
+    /// totem animation in any view, all drawn in the hand pass.
+    fn set_hands(&mut self, view: FrameView, first_person: bool) -> Result<()> {
+        let activation = self.activation_vertices();
+        let player = self.session.player().ok_or("no local player")?;
+        if first_person && !player.spectating() {
+            let (hand, mut held) = hands(
+                player,
+                &self.item_in_hand,
+                &mut self.held_item_layers,
+                (&self.block_renderer, &self.biome_tints),
+                &mut self.player_model,
+                view,
+            );
+            let hand_projection = photon_render::scene::perspective(
+                hud_fov(player).to_radians(),
+                self.aspect,
+                0.05,
+                100.0,
+            );
+            held.extend(activation);
+            self.backend.set_hand(&hand, &held, hand_projection)?;
+            let effects = overlays::screen_effect::screen_effects(
+                &self.session,
+                player,
+                &self.block_renderer,
+            );
+            self.backend.set_screen_effects(
+                (&effects.block, &effects.water, &effects.fire),
+                hand_projection,
+            )?;
+        } else {
+            let hand_projection = photon_render::scene::perspective(
+                hud_fov(player).to_radians(),
+                self.aspect,
+                0.05,
+                100.0,
+            );
+            self.backend.set_hand(&[], &activation, hand_projection)?;
+            self.backend
+                .set_screen_effects((&[], &[], &[]), [[0.0; 4]; 4])?;
+        }
+        Ok(())
     }
 
     /// The other players, the mobs and the objects the server added, the

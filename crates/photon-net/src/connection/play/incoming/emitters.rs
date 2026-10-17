@@ -42,4 +42,28 @@ impl PlaySession {
                 is_player,
             });
     }
+
+    /// `ClientPacketListener.findTotem`: the stack in a hand that protects from death, the main
+    /// hand first, or a plain totem when neither holds one. Read as the packet is handled.
+    pub(super) fn queue_item_activation(&mut self) {
+        let held = |slot: i16| {
+            self.world
+                .local_player()
+                .and_then(|state| state.inventory_slot(slot))
+                .filter(|stack| stack.item_count() > 0)
+        };
+        let main = 36 + self.local.status.selected_slot as i16;
+        let protects = |stack: &&photon_world::ClientItemStackState| {
+            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+                .has(photon_data::item::component_types::DEATH_PROTECTION)
+        };
+        let found = held(main)
+            .filter(protects)
+            .or_else(|| held(45).filter(protects))
+            .cloned();
+        self.effects.item_activation = found.or_else(|| {
+            photon_game::item::id_of("minecraft:totem_of_undying")
+                .map(|totem| photon_world::ClientItemStackState::new(1, totem))
+        });
+    }
 }

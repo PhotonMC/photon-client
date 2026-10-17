@@ -4,6 +4,20 @@ use super::*;
 use photon_world::particles::JukeboxChange;
 
 impl Play {
+    /// The totem animation's triangles, in the hand pass's space, while it shows
+    /// (`ScreenEffectRenderer.submit`, hidden with the HUD).
+    pub(super) fn activation_vertices(&mut self) -> Vec<photon_render::scene::Vertex> {
+        let partial = (self.accumulated.as_secs_f64() / TICK_LENGTH.as_secs_f64()) as f32;
+        let shown = self.camera.activation.shown(partial, self.aspect);
+        match shown {
+            Some((stack, pose)) if !self.controls.hud_hidden => {
+                self.item_layers
+                    .activation(stack, pose, (&self.block_renderer, &self.biome_tints))
+            }
+            _ => Vec::new(),
+        }
+    }
+
     /// The level's particles, events and sounds the packets brought since the last frame.
     pub(super) fn route_effects(&mut self) {
         // The particles option is not kept yet: all of them.
@@ -19,6 +33,15 @@ impl Play {
             self.session.world(),
             photon_world::particles::ParticleStatus::All,
         );
+        if let Some(stack) = self.session.take_item_activation() {
+            // `GameRenderer.random`: unseeded.
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| elapsed.as_nanos() as i64);
+            let mut random = photon_core::random::RandomSource::create(nanos);
+            let offsets = (random.next_float(), random.next_float());
+            self.camera.activation.display(stack, offsets);
+        }
         let tracked = self.session.take_tracking_emitters();
         let tracked_sounds = self.particles.tracking(&self.session, tracked);
         if let Some(sound) = self.sound.as_mut() {

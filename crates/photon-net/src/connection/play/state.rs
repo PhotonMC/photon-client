@@ -26,6 +26,11 @@ impl PlaySession {
         std::mem::take(&mut self.effects.tracking_emitters)
     }
 
+    /// The stack a totem's animation is to show, if one was asked for since the last call.
+    pub fn take_item_activation(&mut self) -> Option<photon_world::ClientItemStackState> {
+        self.effects.item_activation.take()
+    }
+
     /// The entities taken since the last call, each flying to whoever took it.
     pub fn take_item_pickups(&mut self) -> Vec<photon_world::particles::ItemPickup> {
         std::mem::take(&mut self.effects.item_pickups)
