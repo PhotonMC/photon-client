@@ -1,7 +1,7 @@
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-class EntityBossOracle extends EntityBlockOracle {
+class EntityBossOracle extends EntityFogOracle {
     /** The beam of an end crystal, as the reference's own `submitCrystalBeams` builds it. */
     static JsonObject crystalBeam(final JsonObject request) throws Exception {
         var rows = new JsonArray();

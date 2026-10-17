@@ -165,6 +165,7 @@ mod display;
 use display::*;
 mod block_poses;
 mod guardian;
+mod view_state;
 use block_poses::*;
 use guardian::*;
 mod screen_effect;

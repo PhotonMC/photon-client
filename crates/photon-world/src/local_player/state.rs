@@ -101,7 +101,7 @@ impl LocalPlayer {
             next_step: 1.0,
             pending_sounds: Vec::new(),
             was_touching_water: false,
-            was_eye_in_water: false,
+            eyes: EyeHistory::default(),
             water: FluidTracker::default(),
             lava: FluidTracker::default(),
             sprinting: false,

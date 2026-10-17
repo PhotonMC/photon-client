@@ -21,6 +21,7 @@ pub(crate) mod pose;
 mod projectiles;
 mod shaking;
 mod spear;
+mod view_state;
 
 use serde_json::Value;
 
@@ -124,6 +125,8 @@ const ORDER: &[Cases] = &[
     beacon::vault_pose,
     beacon::copper_statue_pose,
     beacon::end_portal_cube,
+    view_state::mob_effect_blend,
+    view_state::view_scales,
     objects::skull_block,
     objects::elder_guardian_particle,
     banner::banner_cases,

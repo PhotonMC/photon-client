@@ -155,7 +155,7 @@ impl LocalPlayer {
         self.y_head_rot_old = self.y_head_rot;
         self.y_body_rot_old = self.y_body_rot;
         // Entity.baseTick, as the living base tick runs it.
-        self.was_eye_in_water = self.water.eyes_inside;
+        self.eyes.was_in_water = self.water.eyes_inside;
         self.update_fluid_interaction(level)?;
         self.update_swimming(level);
         if self.is_in_lava() {

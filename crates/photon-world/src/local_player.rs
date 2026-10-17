@@ -170,7 +170,7 @@ pub struct LocalPlayer {
     pub(super) next_step: f32,
     pub(super) pending_sounds: Vec<LocalSound>,
     pub(super) was_touching_water: bool,
-    pub(super) was_eye_in_water: bool,
+    pub(super) eyes: EyeHistory,
     pub(super) water: FluidTracker,
     pub(super) lava: FluidTracker,
     pub(super) sprinting: bool,

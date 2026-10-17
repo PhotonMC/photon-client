@@ -226,17 +226,25 @@ impl ClientWorld {
         else {
             return false;
         };
-        let effect = ClientMobEffectState {
+        let mut effect = ClientMobEffectState {
             effect_id,
             amplifier,
             duration_ticks,
             flags,
+            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
         };
+        // `ClientPacketListener.handleUpdateMobEffect`: unless the packet asks for it to blend,
+        // the effect starts as faded in as it will be.
+        if flags & 0b1000 == 0 {
+            effect.skip_blending();
+        }
         if let Some(existing) = player
             .effects
             .iter_mut()
             .find(|existing| existing.effect_id == effect_id)
         {
+            // `forceAddEffect`: an effect that replaces another carries its blend on.
+            effect.blend = existing.blend;
             *existing = effect;
         } else {
             player.effects.push(effect);

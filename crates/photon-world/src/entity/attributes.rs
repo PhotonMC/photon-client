@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::java_float::JavaF64;
+use photon_core::java_float::{JavaF32, JavaF64};
 
 impl ClientEntity {
     /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
@@ -56,6 +56,8 @@ pub struct ClientMobEffectState {
     pub(crate) amplifier: i32,
     pub(crate) duration_ticks: i32,
     pub(crate) flags: u8,
+    /// `MobEffectInstance.BlendState`: how far the effect has faded in, this tick and the last.
+    pub(crate) blend: (JavaF32, JavaF32),
 }
 
 impl ClientAttributeModifierState {
@@ -105,10 +107,96 @@ impl ClientMobEffectState {
         self.flags
     }
 
-    pub(crate) fn tick_client(&mut self) {
+    /// An effect as a client first has it from a packet that does (`blends`) or does not ask for it
+    /// to fade in.
+    pub fn new(effect_id: i32, amplifier: i32, duration_ticks: i32, blends: bool) -> Self {
+        let mut effect = Self {
+            effect_id,
+            amplifier,
+            duration_ticks,
+            flags: if blends { 0b1000 } else { 0 },
+            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
+        };
+        if !blends {
+            effect.skip_blending();
+        }
+        effect
+    }
+
+    /// `GameRenderer.nightVisionScale` of a night vision effect: full, then a flicker over its last
+    /// ten seconds.
+    pub fn night_vision_scale(&self, partial: f32) -> f32 {
+        if !self.ends_within(200) {
+            return 1.0;
+        }
+        let angle = (self.duration_ticks as f32 - partial) * std::f32::consts::PI * 0.2;
+        0.7 + photon_core::math::mth_sin_f64(f64::from(angle)) * 0.3
+    }
+
+    /// `MobEffectInstance.tickClient`: the duration counts down, and the blend moves a step.
+    pub fn tick_client(&mut self) {
         if self.has_remaining_duration() && self.duration_ticks != -1 {
             self.duration_ticks -= 1;
         }
+        self.tick_blend();
+    }
+
+    /// `MobEffectInstance.endsWithin`: not infinite, and no more than `ticks` left.
+    pub fn ends_within(&self, ticks: i32) -> bool {
+        self.duration_ticks != -1 && self.duration_ticks <= ticks
+    }
+
+    /// `MobEffect.setBlendDuration`: how many ticks the effect fades in and out over, and how
+    /// many ticks before its end it starts to fade out. Only nausea and darkness blend.
+    fn blend_durations(&self) -> (i32, i32, i32) {
+        match photon_data::item::mob_effects::MOB_EFFECTS
+            .get(usize::try_from(self.effect_id).unwrap_or(usize::MAX))
+            .map(|effect| effect.name)
+        {
+            Some("minecraft:nausea") => (150, 20, 60),
+            Some("minecraft:darkness") => (22, 22, 22),
+            _ => (0, 0, 0),
+        }
+    }
+
+    /// `MobEffectInstance.BlendState.hasEffect`.
+    fn blends_in(&self) -> bool {
+        !self.ends_within(self.blend_durations().2)
+    }
+
+    /// `MobEffectInstance.skipBlending`: the effect is as faded in as it will be at once.
+    pub(crate) fn skip_blending(&mut self) {
+        let factor = JavaF32::new(if self.blends_in() { 1.0 } else { 0.0 });
+        self.blend = (factor, factor);
+    }
+
+    /// `MobEffectInstance.BlendState.tick`.
+    fn tick_blend(&mut self) {
+        let (factor, _) = self.blend;
+        let (fade_in, fade_out, _) = self.blend_durations();
+        let has_effect = self.blends_in();
+        let target = if has_effect { 1.0_f32 } else { 0.0_f32 };
+        let mut next = factor.get();
+        if next != target {
+            let duration = if has_effect { fade_in } else { fade_out };
+            if duration == 0 {
+                next = target;
+            } else {
+                let step = 1.0_f32 / duration as f32;
+                next += (target - next).clamp(-step, step);
+            }
+        }
+        self.blend = (JavaF32::new(next), factor);
+    }
+
+    /// The blend's factor this tick and the last.
+    pub fn blend_state(&self) -> (f32, f32) {
+        (self.blend.0.get(), self.blend.1.get())
+    }
+
+    /// `MobEffectInstance.getBlendFactor`: between the last tick's and this one's.
+    pub fn blend_factor(&self, partial: f32) -> f32 {
+        photon_core::math::mth_lerp_f32(partial, self.blend.1.get(), self.blend.0.get())
     }
 }
 

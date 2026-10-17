@@ -40,6 +40,22 @@ impl LocalPlayer {
         self.dimensions.height()
     }
 
+    /// `LocalPlayer.aiStep`'s count of how long the eyes have been under water: up by one a tick
+    /// (ten for a spectator) while they are, down by ten while they are not.
+    pub(super) fn update_water_vision(&mut self) {
+        if self.water.eyes_inside {
+            let speed = if self.is_spectator() { 10 } else { 1 };
+            self.eyes.water_vision_time = (self.eyes.water_vision_time + speed).clamp(0, 600);
+        } else if self.eyes.water_vision_time > 0 {
+            self.eyes.water_vision_time = (self.eyes.water_vision_time - 10).clamp(0, 600);
+        }
+    }
+
+    /// `LocalPlayer.getWaterVision`: how well the player sees under water, from none to all.
+    pub fn water_vision(&self) -> f32 {
+        water_vision(self.eyes.water_vision_time, self.water.eyes_inside)
+    }
+
     /// Whether the eyes are inside water, as the last fluid update found.
     pub fn is_eye_in_water(&self) -> bool {
         self.water.eyes_inside
@@ -115,7 +131,7 @@ impl LocalPlayer {
     }
 
     pub fn is_under_water(&self) -> bool {
-        self.was_eye_in_water && self.is_in_water()
+        self.eyes.was_in_water && self.is_in_water()
     }
 
     pub(super) fn is_affected_by_fluids(&self) -> bool {
@@ -156,4 +172,30 @@ pub struct ModelPose {
     pub swim_amount: f32,
     pub crouching: bool,
     pub pose: ClientEntityPose,
+}
+
+/// `LocalPlayer.getWaterVision` for a time under water, none if the eyes are not in water now.
+pub fn water_vision(water_vision_time: i32, eyes_in_water: bool) -> f32 {
+    if !eyes_in_water {
+        return 0.0;
+    }
+    if water_vision_time >= 600 {
+        return 1.0;
+    }
+    let time = water_vision_time as f32;
+    let a = (time / 100.0).clamp(0.0, 1.0);
+    let b = if water_vision_time < 100 {
+        0.0
+    } else {
+        ((time - 100.0) / 500.0).clamp(0.0, 1.0)
+    };
+    a * 0.6 + b * 0.399_999_98
+}
+
+/// What the eyes did in the ticks before: whether they were in water, and for how long they have
+/// been under it (`LocalPlayer.waterVisionTime`, up to 600 ticks).
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct EyeHistory {
+    pub(crate) was_in_water: bool,
+    pub(crate) water_vision_time: i32,
 }

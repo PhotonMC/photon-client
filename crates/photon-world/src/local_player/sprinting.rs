@@ -131,6 +131,7 @@ impl LocalPlayer {
     }
 
     pub(super) fn update_swimming(&mut self, level: &Level<'_>) {
+        self.update_water_vision();
         if self.abilities.flying {
             self.swimming = false;
         } else if self.is_swimming() {

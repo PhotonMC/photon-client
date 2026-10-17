@@ -530,6 +530,7 @@
       "extra_sources": [
         "EntityAquaticOracle.java",
         "EntityBlockOracle.java",
+        "EntityFogOracle.java",
         "EntityBossOracle.java",
         "EntityDataOracle.java",
         "EntityDisplayOracle.java",
