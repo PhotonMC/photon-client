@@ -204,8 +204,7 @@ pub fn block_entities(
     }
 }
 
-/// A block entity that is no chest: a shulker box, a banner, a head, a bell or an enchanting
-/// table's book.
+/// A block entity that is no chest: a shulker box, a banner, a head, a bell or a book.
 fn other_block_entity(
     session: &PlaySession,
     models: &mut MobModels,
@@ -216,52 +215,37 @@ fn other_block_entity(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
+    let at = (x, y, z);
     if let Some(shulker) = world.shulker_box_view(x, y, z) {
         vertices.extend(shulker_box_vertices(
-            session,
-            models,
-            textures,
-            view,
-            (x, y, z),
-            shulker,
+            session, models, textures, view, at, shulker,
         ));
-    } else if let Some(banner) = world.banner_view((x, y, z)) {
-        banner_vertices(
-            session,
-            models,
-            textures,
-            view,
-            (x, y, z),
-            &banner,
-            vertices,
-        );
-    } else if let Some(skull) = world.skull_block_view((x, y, z), partial) {
-        vertices.extend(skull_vertices(
-            session,
-            models,
-            textures,
-            view,
-            (x, y, z),
-            skull,
-        ));
-    } else if let Some(shake) = world.bell_shake((x, y, z), partial) {
-        vertices.extend(bell_vertices(
-            session,
-            models,
-            textures,
-            view,
-            (x, y, z),
-            shake,
-        ));
-    } else if let Some(table) = world.enchant_table_view((x, y, z), partial) {
-        vertices.extend(book_vertices(
-            session,
-            models,
-            textures,
-            view,
-            (x, y, z),
-            table,
-        ));
+    } else if let Some(banner) = world.banner_view(at) {
+        banner_vertices(session, models, textures, view, at, &banner, vertices);
+    } else if let Some(skull) = world.skull_block_view(at, partial) {
+        vertices.extend(skull_vertices(session, models, textures, view, at, skull));
+    } else {
+        bell_or_book(session, models, textures, view, at, vertices);
+    }
+}
+
+/// A bell, an enchanting table's book or a lectern's.
+fn bell_or_book(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    at: (i32, i32, i32),
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    let partial = view.partial as f32;
+    if let Some(shake) = world.bell_shake(at, partial) {
+        vertices.extend(bell_vertices(session, models, textures, view, at, shake));
+    } else if let Some(table) = world.enchant_table_view(at, partial) {
+        vertices.extend(book_vertices(session, models, textures, view, at, table));
+    } else if let Some(turn) = world.lectern_book_turn(at) {
+        vertices.extend(lectern_vertices(session, models, textures, view, at, turn));
     }
 }
 
@@ -294,6 +278,38 @@ fn book_vertices(
         (z - view.origin[2]) as f32,
     );
     let pose = enchant_table::table_pose(&base, table.time, table.y_rot);
+    mob_vertices_posed(model, &pose, rect, (light, false))
+}
+
+/// The book on one lectern, held open on the slope, turned to face along it.
+fn lectern_vertices(
+    session: &PlaySession,
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    view: FrameView,
+    (x, y, z): (i32, i32, i32),
+    turn: f32,
+) -> Vec<Vertex> {
+    use photon_render::block_entity::{enchant_table, lectern};
+    let (Some(rect), Some(model)) = (
+        textures.rect(enchant_table::TEXTURE),
+        models.model(enchant_table::LAYER),
+    ) else {
+        return Vec::new();
+    };
+    let light = packed_light(
+        session.world(),
+        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
+    );
+    let book = lectern::lectern_book();
+    model.setup_book(book.openness, book.pages);
+    let mut base = Pose::default();
+    base.translate(
+        (x - view.origin[0]) as f32,
+        (y - view.origin[1]) as f32,
+        (z - view.origin[2]) as f32,
+    );
+    let pose = lectern::lectern_pose(&base, turn);
     mob_vertices_posed(model, &pose, rect, (light, false))
 }
 

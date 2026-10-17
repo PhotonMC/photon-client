@@ -95,6 +95,21 @@ impl ClientWorld {
     }
 
     /// The banner at a block.
+    /// `LecternRenderer.extractRenderState`: how far the book on a lectern is turned about the
+    /// vertical, in degrees; none where it holds no book.
+    pub fn lectern_book_turn(&self, pos: (i32, i32, i32)) -> Option<f32> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_lectern_state(state) {
+            return None;
+        }
+        let property = |key| crate::local_player::property(Some(state), key);
+        if property("has_book") != Some("true") {
+            return None;
+        }
+        let facing = property("facing").and_then(Direction::from_name)?;
+        Some(facing.clockwise_y().ok()?.to_y_rot())
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

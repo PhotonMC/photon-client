@@ -439,6 +439,18 @@ pub fn enchant_table() -> Vec<Value> {
     vec![entity("enchant-table-pose", "enchant_table_pose", rows)]
 }
 
+/// The real `LecternRenderer` for a lectern facing each way, with a book and without.
+pub fn lectern() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for facing in ["north", "south", "west", "east"] {
+        for has_book in [true, false] {
+            let label = format!("{facing} {}", if has_book { "book" } else { "no book" });
+            rows.push(json!({"label": label, "facing": facing, "has_book": has_book}));
+        }
+    }
+    vec![entity("lectern-pose", "lectern_pose", rows)]
+}
+
 /// The real `SkullBlockRenderer` for each skull standing at each of the
 /// sixteen turns and hanging on each wall, with the jaw and ears at several
 /// animation times.

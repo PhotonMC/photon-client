@@ -420,6 +420,63 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `LecternRenderer` hands the collector for a lectern facing some way, with a book
+     * or none: the turn it takes from the facing, the pose, the model's state and the model set up
+     * with it.
+     */
+    static JsonObject lecternPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.LecternRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.LecternRenderer.class);
+        var modelField = net.minecraft.client.renderer.blockentity.LecternRenderer.class.getDeclaredField("bookModel");
+        modelField.setAccessible(true);
+        modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var lectern = net.minecraft.world.level.block.Blocks.LECTERN.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LecternBlock.FACING,
+                    net.minecraft.core.Direction.valueOf(row.get("facing").getAsString().toUpperCase()))
+                .setValue(net.minecraft.world.level.block.LecternBlock.HAS_BOOK, row.get("has_book").getAsBoolean());
+            var entity = new net.minecraft.world.level.block.entity.LecternBlockEntity(net.minecraft.core.BlockPos.ZERO, lectern);
+            var state = renderer.createRenderState();
+            renderer.extractRenderState(entity, state, 0.0F, net.minecraft.world.phys.Vec3.ZERO, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("has_book", state.hasBook);
+            out.addProperty("turn", Oracle.bits(state.yRot));
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModel")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[2]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        out.add("matrix", described);
+                        var book = (net.minecraft.client.model.object.book.BookModel.State) args[1];
+                        out.add("book", floatBits(book.openness(), book.pageFlip1(), book.pageFlip2()));
+                        out.addProperty("texture", ((net.minecraft.client.resources.model.sprite.SpriteId) args[6])
+                            .texture().getPath());
+                        @SuppressWarnings("unchecked")
+                        var model = (net.minecraft.client.model.Model<Object>) args[0];
+                        model.setupAnim(book);
+                        out.add("quads", posedQuads("", model).get("quads"));
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `ShulkerBoxRenderer.submit` hands the collector: the pose, the light, the sprite
      * and the model with its lid set for the progress, for a colour, facing and progress.
      */

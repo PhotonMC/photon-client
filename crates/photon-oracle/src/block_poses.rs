@@ -9,6 +9,7 @@ pub(super) fn block_pose_result(operation: &str, request: &Value) -> Option<Resu
         "chest_pose" => chest_pose_result(request),
         "bell_pose" => bell_pose_result(request),
         "enchant_table_pose" => enchant_table_pose_result(request),
+        "lectern_pose" => lectern_pose_result(request),
         "banner_pose" => banner_pose_result(request),
         "skull_block_pose" => skull_block_pose_result(request),
         "shulker_box_pose" => shulker_box_pose_result(request),
@@ -58,6 +59,49 @@ pub(super) fn enchant_table_pose_result(request: &Value) -> Result<Value, String
             "view": bits(&[view.flip, view.open, view.time, view.y_rot]),
             "matrix": super::strider::matrix_bits(&placed),
             "book": bits(&[pose.openness, pose.pages.0, pose.pages.1]),
+            "texture": TEXTURE,
+            "quads": posed_quads(&model),
+        }));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `lectern_pose`: whether a lectern shows a book, the turn its facing gives it, and the pose and
+/// model the book is drawn with.
+fn lectern_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::enchant_table::{LAYER, TEXTURE};
+    use photon_render::block_entity::lectern::{lectern_book, lectern_pose};
+    use photon_render::entity::mob_model::MobModel;
+    use photon_render::joml::Pose;
+    let layer = photon_data::entity_model::layer(LAYER).ok_or("no layer")?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing =
+            photon_core::direction::Direction::from_name(string(row, "facing")?).ok_or("facing")?;
+        let has_book = row["has_book"].as_bool().ok_or("has_book")?;
+        let turn = facing.clockwise_y().map_err(|_| "facing")?.to_y_rot();
+        let turn_bits = format!("{:08x}", turn.to_bits());
+        if !has_book {
+            // No book: nothing is drawn.
+            rows.push(json!({"label": row["label"], "has_book": false, "turn": turn_bits}));
+            continue;
+        }
+        let book = lectern_book();
+        let mut model = MobModel::bake(layer);
+        model.setup_book(book.openness, book.pages);
+        let placed = lectern_pose(&Pose::default(), turn);
+        let bits = |values: &[f32]| -> Vec<String> {
+            values
+                .iter()
+                .map(|value| format!("{:08x}", value.to_bits()))
+                .collect()
+        };
+        rows.push(json!({
+            "label": row["label"],
+            "has_book": has_book,
+            "turn": turn_bits,
+            "matrix": super::strider::matrix_bits(&placed),
+            "book": bits(&[book.openness, book.pages.0, book.pages.1]),
             "texture": TEXTURE,
             "quads": posed_quads(&model),
         }));

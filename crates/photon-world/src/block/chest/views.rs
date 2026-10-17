@@ -65,6 +65,12 @@ pub(crate) fn is_enchanting_table_state(state_id: BlockStateId) -> bool {
     is_of_classes(state_id, &[BlockClass::EnchantingTableBlock], &BLOCKS)
 }
 
+/// Whether a block state is a lectern's.
+pub(crate) fn is_lectern_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::LecternBlock], &BLOCKS)
+}
+
 /// Whether a block state is a skull's or a head's.
 pub(crate) fn is_skull_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
@@ -136,6 +142,7 @@ pub(crate) fn is_drawn_state(state_id: BlockStateId) -> bool {
         || is_skull_state(state_id)
         || is_banner_state(state_id)
         || is_enchanting_table_state(state_id)
+        || is_lectern_state(state_id)
         || is_sign_state(state_id)
 }
 
