@@ -55,6 +55,8 @@ pub enum DrawOp {
         name: String,
         rect: (f32, f32, f32, f32),
         uv: (f32, f32, f32, f32),
+        /// The tint, as ARGB.
+        colour: u32,
     },
     Text {
         /// Where the text starts, after any pose a caller applied, and the
@@ -296,6 +298,7 @@ pub(crate) fn glyph_quads(
     quads
 }
 
+mod overlay;
 mod text;
 mod texture;
 

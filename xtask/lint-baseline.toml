@@ -15,7 +15,6 @@
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
-"crates/photon-render/src/gui/frame/texture.rs" = 513
 "crates/photon-world/src/local_player/ticking.rs" = 501
 "crates/photon-world/src/particles/firework.rs" = 540
 "crates/photon/src/menu.rs" = 644
@@ -1021,7 +1020,7 @@
 "crates/photon/src/equipment/held_items.rs::Hands::collect" = 64
 "crates/photon/src/gui/chat.rs::Gui::receive_chat" = 77
 "crates/photon/src/gui/draw.rs::Gui::draw" = 324
-"crates/photon/src/hud_input.rs::hud_input" = 79
+"crates/photon/src/hud_input.rs::hud_input" = 71
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75

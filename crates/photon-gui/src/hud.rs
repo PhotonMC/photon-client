@@ -4,6 +4,7 @@
 //! drawn at the size the HUD asks for.
 pub mod boss_bar;
 pub mod locator;
+mod overlays;
 pub mod sidebar;
 pub mod tab_list;
 pub mod titles;
@@ -94,6 +95,8 @@ pub struct HudInput {
     pub experience_prioritised: bool,
     /// The waypoints the server tracks, when it tracks any.
     pub locator: Option<LocatorInput>,
+    /// The powder snow frame's alpha while the player has ticks frozen (`getPercentFrozen`).
+    pub powder_snow: Option<f32>,
     /// `getAttackStrengthScale(0)`.
     pub attack_strength: f32,
     /// `getCurrentItemAttackStrengthDelay`, in ticks.
@@ -163,7 +166,7 @@ impl Hud {
         now_millis: u128,
         draw_item: &mut ItemDrawer<'_>,
     ) {
-        self.crosshair(frame, atlas, width, height, input);
+        self.camera_overlays_and_crosshair(frame, atlas, (width, height), input);
         let t = GuiBlend::Translucent;
         let centre = width / 2;
         // `extractItemHotbar`; a spectator's hotbar is its own menu.

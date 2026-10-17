@@ -90,9 +90,9 @@ pub(super) fn gui_ops(ops: &[photon_render::gui::DrawOp]) -> Vec<Value> {
                 "x1": num(rect.2), "y1": num(rect.3),
                 "color": *colour as i32,
             }),
-            DrawOp::Texture { name, rect, uv } => json!({
+            DrawOp::Texture { name, rect, uv, colour } => json!({
                 "op": "texture", "name": name, "x0": num(rect.0), "y0": num(rect.1),
-                "x1": num(rect.2), "y1": num(rect.3), "color": -1,
+                "x1": num(rect.2), "y1": num(rect.3), "color": *colour as i32,
                 "u0": f64::from(uv.0), "u1": f64::from(uv.1), "v0": f64::from(uv.2), "v1": f64::from(uv.3),
             }),
             DrawOp::Sprite { name, rect, colour } => json!({

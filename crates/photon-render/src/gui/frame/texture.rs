@@ -253,6 +253,7 @@ impl GuiFrame {
                     v as f32 / th,
                     v as f32 / th + h as f32 / th,
                 ),
+                colour: 0xFFFF_FFFF,
             });
         }
         let mut top = 0;
@@ -296,6 +297,7 @@ impl GuiFrame {
                 name: name.to_owned(),
                 rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
                 uv: (0.0 / tw, (0.0 + w as f32) / tw, v / th, (v + h as f32) / th),
+                colour: 0xFFFF_FFFF,
             });
         }
         let first = v.rem_euclid(tile.1 as f32);
@@ -412,6 +414,7 @@ impl GuiFrame {
                     uv.1 as f32 / th,
                     uv.1 as f32 / th + h as f32 / th,
                 ),
+                colour: 0xFFFF_FFFF,
             });
         }
         self.blit_part(
@@ -441,55 +444,6 @@ impl GuiFrame {
             atlas,
             GuiBlend::Translucent,
             name,
-            texture_size,
-            region,
-            rect,
-        );
-    }
-
-    /// `blit` through the `VIGNETTE` pipeline: the whole texture over `rect`.
-    pub fn vignette(
-        &mut self,
-        atlas: &GuiAtlas,
-        name: &str,
-        texture_size: (i32, i32),
-        rect: (i32, i32, i32, i32),
-    ) {
-        let region = (0, 0, texture_size.0, texture_size.1);
-        self.blit_stretched_with(atlas, GuiBlend::Vignette, name, texture_size, region, rect);
-    }
-
-    fn blit_stretched_with(
-        &mut self,
-        atlas: &GuiAtlas,
-        blend: GuiBlend,
-        name: &str,
-        texture_size: (i32, i32),
-        region: (i32, i32, i32, i32),
-        rect: (i32, i32, i32, i32),
-    ) {
-        if let Some(log) = &mut self.log {
-            let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
-            log.push(DrawOp::Texture {
-                name: name.to_owned(),
-                rect: (
-                    rect.0 as f32,
-                    rect.1 as f32,
-                    (rect.0 + rect.2) as f32,
-                    (rect.1 + rect.3) as f32,
-                ),
-                uv: (
-                    region.0 as f32 / tw,
-                    (region.0 + region.2) as f32 / tw,
-                    region.1 as f32 / th,
-                    (region.1 + region.3) as f32 / th,
-                ),
-            });
-        }
-        self.blit_region(
-            atlas,
-            blend,
-            &format!("texture/{name}"),
             texture_size,
             region,
             rect,

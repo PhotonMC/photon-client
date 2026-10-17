@@ -46,6 +46,25 @@ fn has_effect(local: Option<&ClientPlayerState>, id: i32) -> bool {
     })
 }
 
+/// `Minecraft.crosshairPickEntity`: a living entity the crosshair is on that has not died.
+fn crosshair_target_is_living(
+    session: &PlaySession,
+    player: Option<&photon_world::local_player::LocalPlayer>,
+) -> bool {
+    player.is_some_and(|player| {
+        let Aim::Entity { id, .. } = pick(session.world(), player, eye_position(player, 1.0))
+        else {
+            return false;
+        };
+        session
+            .world()
+            .entities()
+            .all()
+            .find(|entity| entity.id() == id)
+            .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
+    })
+}
+
 /// Everything the HUD draws from, the camera in first person or not.
 pub fn hud_input(
     session: &PlaySession,
@@ -63,19 +82,7 @@ pub fn hud_input(
             .filter(|stack| stack.item_count() > 0 && stack.item_registry_id() != AIR_ITEM)
             .cloned()
     };
-    // `Minecraft.crosshairPickEntity`: a living entity the crosshair is on that has not died.
-    let target_is_living = player.is_some_and(|player| {
-        let Aim::Entity { id, .. } = pick(session.world(), player, eye_position(player, 1.0))
-        else {
-            return false;
-        };
-        session
-            .world()
-            .entities()
-            .all()
-            .find(|entity| entity.id() == id)
-            .is_some_and(|entity| entity.is_living_entity() && !entity.is_dead_or_dying())
-    });
+    let target_is_living = crosshair_target_is_living(session, player);
     photon_gui::HudInput {
         cooldowns: Vec::new(),
         first_person,
@@ -118,6 +125,9 @@ pub fn hud_input(
                 }),
             },
         }),
+        powder_snow: local
+            .filter(|state| state.is_freezing())
+            .map(ClientPlayerState::percent_frozen),
         attack_strength: player.map_or(1.0, |player| {
             player.attack_strength_scale(0.0, attack_speed(local))
         }),

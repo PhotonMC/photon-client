@@ -236,6 +236,13 @@ class GuiHudOracle extends GuiCommandOracle {
             var graphics = scene.screen().graphics();
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
+            if (row.has("frozen_ticks")) {
+                // The camera overlays, less the vignette, which is its own slice.
+                local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                options.vignette().set(false);
+                hudMethod("extractCameraOverlays", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
+                    .invoke(hud, graphics, tracker);
+            }
             hudMethod("extractCrosshair", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
                 .invoke(hud, graphics, tracker);
             if (!spectator) {

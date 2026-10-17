@@ -1,4 +1,7 @@
 use super::*;
+use photon_game::options::AttackIndicator;
+use photon_gui::HeartType;
+use photon_gui::hud::{Hud, HudInput};
 
 pub(super) fn titles_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let font = &ctx.font;
@@ -78,6 +81,13 @@ pub(super) fn sidebar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
     }))
 }
 
+/// `getPercentFrozen` as the powder snow frame's alpha: the ticks over the 140 it takes to
+/// freeze, at most one, and no frame at zero.
+fn frozen_alpha(row: &Value) -> Option<f32> {
+    let frozen = row["frozen_ticks"].as_i64().filter(|frozen| *frozen > 0)?;
+    Some(frozen.min(140) as f32 / 140.0)
+}
+
 pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let font = &ctx.font;
     let atlas = &ctx.atlas;
@@ -86,13 +96,11 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::hud::{Hud, HudInput};
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let speed = row["attack_speed"].as_f64().unwrap_or(4.0);
     let delay = photon_world::local_player::attack_strength_delay(speed);
     let ticks = row["attack_ticks"].as_i64().unwrap_or(0) as f32;
-    let attack_indicator =
-        photon_game::options::AttackIndicator::ALL[int("attack_indicator") as usize];
+    let attack_indicator = AttackIndicator::ALL[int("attack_indicator") as usize];
     let input = HudInput {
         cooldowns: Vec::new(),
         first_person: !flag("third_person"),
@@ -118,6 +126,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         experience_level: 0,
         experience_prioritised: false,
         locator: None,
+        powder_snow: frozen_alpha(row),
         attack_strength: (ticks / delay).clamp(0.0, 1.0),
         attack_delay: delay,
         attack_indicator,
@@ -150,8 +159,6 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let font = &ctx.font;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_gui::HeartType;
-    use photon_gui::hud::{Hud, HudInput};
     let number = |key: &str| row[key].as_f64().unwrap_or(0.0);
     let has = |name: &str| {
         row["effects"]
@@ -202,6 +209,7 @@ pub(super) fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             experience_level: int("xp_level"),
             experience_prioritised: false,
             locator: None,
+            powder_snow: None,
             attack_strength: 1.0,
             attack_delay: 5.0,
             attack_indicator: photon_game::options::AttackIndicator::Off,

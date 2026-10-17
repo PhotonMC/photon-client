@@ -16,6 +16,8 @@ struct Hotbar {
     spectator: bool,
     third_person: bool,
     slot: i64,
+    /// Ticks frozen, which also draws the camera overlays; none leaves them out.
+    frozen: Option<i64>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -27,14 +29,19 @@ const HOTBAR: Hotbar = Hotbar {
     spectator: false,
     third_person: false,
     slot: 0,
+    frozen: None,
 };
 
 fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
-    json!({
+    let mut row = json!({
         "label": label, "width": hotbar.size.0, "height": hotbar.size.1, "attack_indicator": hotbar.indicator,
         "attack_ticks": hotbar.ticks, "attack_speed": hotbar.speed, "target": hotbar.target,
         "spectator": hotbar.spectator, "third_person": hotbar.third_person, "selected_slot": hotbar.slot,
-    })
+    });
+    if let Some(frozen) = hotbar.frozen {
+        row["frozen_ticks"] = json!(frozen);
+    }
+    row
 }
 
 /// The crosshair, the attack indicator under it or beside the hotbar, and
@@ -74,6 +81,15 @@ pub fn hud_hotbar() -> Value {
         hotbar_row("slow-speed", Hotbar { speed: 0.5, ticks: 20, ..HOTBAR }),
         hotbar_row("fast-speed", Hotbar { speed: 20.0, ticks: 0, ..HOTBAR }),
         hotbar_row("hotbar-slow-speed", Hotbar { indicator: 2, speed: 0.5, ticks: 20, ..HOTBAR }),
+    ]);
+    // The powder snow frame: its alpha grows with the ticks frozen up to a full one.
+    for frozen in [0, 1, 20, 70, 139, 140, 300] {
+        rows.push(hotbar_row(&format!("frozen-{frozen}"), Hotbar { frozen: Some(frozen), ..HOTBAR }));
+    }
+    rows.extend([
+        hotbar_row("frozen-third-person", Hotbar { frozen: Some(70), third_person: true, ..HOTBAR }),
+        hotbar_row("frozen-small", Hotbar { frozen: Some(35), size: (320, 240), ..HOTBAR }),
+        hotbar_row("frozen-odd", Hotbar { frozen: Some(100), size: (641, 361), ..HOTBAR }),
     ]);
     gui("hud-hotbar", "hud_hotbar", rows)
 }
