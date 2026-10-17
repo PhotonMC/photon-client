@@ -83,6 +83,14 @@ impl TerrainMaterials for BlockMaterials {
         self.renderer.item_particle_sprites(item)
     }
 
+    fn rains_at(&self, world: &ClientWorld, pos: BlockPos) -> bool {
+        let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);
+        let precipitation =
+            self.tints
+                .precipitation_at([pos.x, pos.y, pos.z], &noise_biome, world.sea_level());
+        precipitation == photon_render::block::biome_tint::Precipitation::Rain
+    }
+
     fn tint(&self, world: &ClientWorld, state: BlockStateId, pos: BlockPos) -> Option<i32> {
         // `BiomeColors.getAverage...Color`: the biome colours blended around the block.
         let noise_biome = |x: i32, y: i32, z: i32| world.noise_biome(x, y, z);

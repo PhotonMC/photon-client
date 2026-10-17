@@ -115,3 +115,8 @@ rastgelesiyle işler.
   dripstone's dimension is now the one the session is in on every tick, not only on a level
   event. The oracle's chunks carry the world surface and motion blocking heightmaps (the server
   sends them with the chunk; the reference's client otherwise reads zeros).
+- Leaves in the rain (#45): leaves with no sturdy block below let a drop fall one time in fifteen
+  where it rains on the block above them: it rains, the place has light fifteen from the sky,
+  nothing that stops motion is over it, and its biome is warm enough (the client asks the biome
+  tints for it; the oracle's scene is the plains). The oracle lights the chunks of a row that
+  asks for it the way the server's first light goes.

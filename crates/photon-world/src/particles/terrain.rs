@@ -23,6 +23,12 @@ pub trait TerrainMaterials: std::fmt::Debug {
     /// `BlockTintSource.colorAsTerrainParticle` of the state's first tint source, if it has one.
     fn tint(&self, world: &ClientWorld, state: BlockStateId, pos: BlockPos) -> Option<i32>;
 
+    /// `Biome.getPrecipitationAt(pos, seaLevel) == RAIN`: whether rain, not snow or nothing, falls
+    /// from the sky at a place, by its biome and its height.
+    fn rains_at(&self, _world: &ClientWorld, _pos: BlockPos) -> bool {
+        false
+    }
+
     /// The particle textures of an item's model layers as it lies on the ground
     /// (`ItemStackRenderState` layers' `particleMaterial`), in layer order.
     fn item_particle_textures(&self, _item: ItemId) -> Vec<String> {

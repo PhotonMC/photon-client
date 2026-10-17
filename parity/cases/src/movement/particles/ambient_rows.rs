@@ -172,6 +172,30 @@ fn storm_plane() -> Vec<Value> {
     blocks
 }
 
+/// Leaves in the rain: over air, over stone, over a slab, under a block, under more leaves.
+const RAIN_COLUMNS: [Column; 6] = [
+    &[(64, "minecraft:oak_leaves", &[])],
+    &[(64, "minecraft:oak_leaves", &[]), (63, "minecraft:stone", &[])],
+    &[(64, "minecraft:oak_leaves", &[]), (63, "minecraft:oak_slab", &[("type", "bottom")])],
+    &[(64, "minecraft:oak_leaves", &[]), (65, "minecraft:stone", &[])],
+    &[(64, "minecraft:oak_leaves", &[]), (65, "minecraft:oak_leaves", &[]), (63, "minecraft:stone", &[])],
+    &[(64, "minecraft:torch", &[]), (63, "minecraft:stone", &[])],
+];
+
+/// A plane of those columns.
+fn rain_plane() -> Vec<Value> {
+    let mut blocks = Vec::new();
+    for x in -15_i64..16 {
+        for z in -15_i64..16 {
+            let index = (x * 5 + z * 7).rem_euclid(RAIN_COLUMNS.len() as i64) as usize;
+            for (y, block, properties) in RAIN_COLUMNS[index] {
+                blocks.push(at((x, *y, z), block, properties));
+            }
+        }
+    }
+    blocks
+}
+
 pub fn rows() -> Vec<Value> {
     let seeds = |tick: i64| 400 + tick;
     vec![
@@ -191,6 +215,17 @@ pub fn rows() -> Vec<Value> {
         .blocks(storm_plane())
         .set("weather", json!([f32_bits(1.0), f32_bits(1.0)]))
         .set("game_time", json!(4321))
+        .ticks(6)
+        .seeds(4000)
+        .describe(10)
+        .row(),
+        engine_row(
+            "animate-leaves-in-rain",
+            (0..6).map(|tick| animate_tick(tick, (0, 64, 0), 500, seeds(tick) + 60)).collect::<Vec<_>>(),
+        )
+        .blocks(rain_plane())
+        .set("weather", json!([f32_bits(1.0), f32_bits(0.0)]))
+        .set("light", json!(true))
         .ticks(6)
         .seeds(4000)
         .describe(10)

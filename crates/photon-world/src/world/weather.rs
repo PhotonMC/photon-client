@@ -13,14 +13,24 @@ impl ClientWorld {
         self.weather.thunder_level = JavaF32::new(thunder_level);
     }
 
+    /// `Level.canHaveWeather`: a sky to rain from, and no ceiling or end of the world over it.
+    fn can_have_weather(&self) -> bool {
+        let environment = &self.level.dimension_environment;
+        environment.has_skylight
+            && !environment.has_ceiling
+            && self.level.dimension_key != "minecraft:the_end"
+    }
+
+    /// `Level.isRaining`: the level can have weather and its rain is above a fifth.
+    pub fn is_raining(&self) -> bool {
+        self.can_have_weather() && self.weather.rain_level.get() > 0.2
+    }
+
     /// `Level.isThundering`: the level can have weather and the thunder,
     /// scaled by the rain, is above nine tenths.
     pub fn is_thundering(&self) -> bool {
-        let environment = &self.level.dimension_environment;
-        let can_have_weather = environment.has_skylight
-            && !environment.has_ceiling
-            && self.level.dimension_key != "minecraft:the_end";
-        can_have_weather && self.weather.thunder_level.get() * self.weather.rain_level.get() > 0.9
+        self.can_have_weather()
+            && self.weather.thunder_level.get() * self.weather.rain_level.get() > 0.9
     }
 
     /// `ClientLevel.setTimeFromServer`: the game time the server sent.

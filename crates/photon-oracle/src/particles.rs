@@ -6,6 +6,8 @@ mod factory;
 use factory::*;
 mod events;
 mod extras;
+mod terrain;
+use terrain::OracleTerrain;
 mod pickup;
 use photon_world::particles::{
     AddView, LevelEventContext, LevelParticles, Particle, ParticleEngine, ParticleResources,
@@ -381,32 +383,6 @@ pub(super) fn particle_engine_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
-}
-
-/// What the oracle's flakes are made with: one texture, and the tints the scenarios ask for.
-#[derive(Debug)]
-struct OracleTerrain;
-
-impl TerrainMaterials for OracleTerrain {
-    fn particle_texture(&self, _state: BlockStateId) -> String {
-        "block/stone".into()
-    }
-
-    fn tint(
-        &self,
-        _world: &ClientWorld,
-        state: BlockStateId,
-        _pos: photon_core::binary::BlockPos,
-    ) -> Option<i32> {
-        // The tint sources of these blocks do not read the biome (`BlockColors`).
-        match photon_world::block::state_or_air(state).block().name {
-            "minecraft:spruce_leaves" => Some(-10_380_959),
-            "minecraft:birch_leaves" => Some(-8_345_771),
-            // `grassBlock().colorAsTerrainParticle`: none.
-            "minecraft:grass_block" => Some(-1),
-            _ => None,
-        }
-    }
 }
 
 fn state_of(row: &Value) -> Result<BlockStateId, String> {

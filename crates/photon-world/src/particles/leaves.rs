@@ -152,9 +152,64 @@ impl Particle {
     }
 }
 
+/// `Level.isRainingAt`: it rains, the place has the sky above it (light fifteen, and nothing that
+/// stops motion over it), and rain falls there rather than snow.
+fn raining_at(
+    world: &ClientWorld,
+    materials: Option<&dyn TerrainMaterials>,
+    (x, y, z): (i32, i32, i32),
+) -> bool {
+    world.is_raining()
+        && world.sky_brightness(x, y, z) >= 15
+        && motion_blocking_height(world, x, z) <= y
+        && materials.is_some_and(|materials| {
+            materials.rains_at(world, photon_core::binary::BlockPos::new(x, y, z))
+        })
+}
+
+/// `Heightmap.Types.MOTION_BLOCKING`: one above the highest block that stops motion or holds a
+/// fluid in the column.
+fn motion_blocking_height(world: &ClientWorld, x: i32, z: i32) -> i32 {
+    let bounds = world.dimension();
+    let top = bounds.min_y + bounds.height - 1;
+    (bounds.min_y..=top)
+        .rev()
+        .find(|&y| {
+            let info = crate::block::state_or_air(world.block_state_or_air(x, y, z));
+            info.blocks_motion || !info.fluid.is_empty()
+        })
+        .map_or(bounds.min_y, |y| y + 1)
+}
+
 impl ParticleEngine {
-    /// `LeavesBlock.animateTick`: a leaf falls by the block's chance where the block below has no
-    /// full top. (A drip in the rain, `isRainingAt`, is not carried.)
+    /// `LeavesBlock.makeDrippingWaterParticles`: in the rain, one time in fifteen a drop falls from
+    /// leaves with nothing sturdy below.
+    fn leaves_drip<F: FnMut() -> RandomSource>(
+        &mut self,
+        (x, y, z): (i32, i32, i32),
+        random: &mut RandomSource,
+        (context, materials): (&mut LevelEventContext<'_, F>, Option<&dyn TerrainMaterials>),
+    ) {
+        if !raining_at(context.world, materials, (x, y + 1, z))
+            || random.next_int_bound(15) != Ok(1)
+        {
+            return;
+        }
+        let below = crate::block::state_or_air(context.world.block_state_or_air(x, y - 1, z));
+        if below.can_occlude && below.is_face_sturdy(photon_core::direction::Direction::Up) {
+            return;
+        }
+        // `ParticleUtils.spawnParticleBelow`.
+        let at = (
+            f64::from(x) + random.next_double(),
+            f64::from(y) - 0.05,
+            f64::from(z) + random.next_double(),
+        );
+        self.level_add(context, "dripping_water", at, (0.0, 0.0, 0.0));
+    }
+
+    /// `LeavesBlock.animateTick`: a drop in the rain where nothing sturdy is below, then a leaf by the
+    /// block's chance where the block below has no full top.
     pub(super) fn leaves_animate_tick<F: FnMut() -> RandomSource>(
         &mut self,
         (state, name): (BlockStateId, &str),
@@ -165,10 +220,11 @@ impl ParticleEngine {
         let Some((chance, particle, colour)) = photon_data::leaves::of(name) else {
             return;
         };
+        let world = context.world;
+        self.leaves_drip((x, y, z), random, (context, materials));
         if random.next_float() >= chance {
             return;
         }
-        let world = context.world;
         let below = world.block_state_or_air(x, y - 1, z);
         let shape = crate::block::registry::collision_shape_at(below, [x, y - 1, z]);
         let top = shape.face_shape(photon_core::direction::Direction::Up);

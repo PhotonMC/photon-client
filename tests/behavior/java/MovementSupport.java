@@ -322,7 +322,8 @@ class MovementSupport {
             net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
 
         // A block that changes tells the renderer which section to rebuild; nothing draws here.
-        setField(level, "levelExtractor", unsafe.allocateInstance(NoRebuilds.class));
+        var rebuilds = unsafe.allocateInstance(NoRebuilds.class);
+        setField(level, "levelExtractor", rebuilds);
 
         if (row.has("border")) {
             // The world border the server set, as the packets leave it.
@@ -352,6 +353,7 @@ class MovementSupport {
         setField(window, "handle", 1L);
         setField(minecraft, "window", window);
         setField(minecraft, "tutorial", new net.minecraft.client.tutorial.Tutorial(minecraft, options));
+        setField(minecraft, "levelExtractor", rebuilds);
         setField(minecraft, "soundManager", unsafe.allocateInstance(SilentSoundManager.class));
         // A block entity the level makes asks the dispatcher for its renderer: none draws.
         var dispatcher = unsafe.allocateInstance(
@@ -408,6 +410,9 @@ class MovementSupport {
      * connected to it (its `shared_data`, as the server's update tag carries it).
      */
     static void placeVaultConnections(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+        if (row.has("light") && row.get("light").getAsBoolean()) {
+            lightTheChunks(row, level);
+        }
         if (row.has("weather")) {
             var weather = row.getAsJsonArray("weather");
             level.setRainLevel(Float.intBitsToFloat(Integer.parseUnsignedInt(weather.get(0).getAsString(), 16)));
@@ -497,6 +502,33 @@ class MovementSupport {
             lines.add("be," + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + held);
         }
         return lines;
+    }
+
+    /**
+     * The level's light the way the server first lights a chunk: every section with blocks is
+     * known, light is switched on in each chunk, and the sources spread.
+     */
+    static void lightTheChunks(JsonObject row, net.minecraft.client.multiplayer.ClientLevel level) {
+        var engine = level.getChunkSource().getLightEngine();
+        int radius = row.get("chunk_radius").getAsInt();
+        var chunks = new java.util.ArrayList<net.minecraft.world.level.ChunkPos>();
+        for (int chunkX = -radius; chunkX <= radius; chunkX++) {
+            for (int chunkZ = -radius; chunkZ <= radius; chunkZ++) {
+                chunks.add(new net.minecraft.world.level.ChunkPos(chunkX, chunkZ));
+            }
+        }
+        for (var chunkPos : chunks) {
+            var sections = level.getChunk(chunkPos.x(), chunkPos.z()).getSections();
+            for (int index = 0; index < sections.length; index++) {
+                if (!sections[index].hasOnlyAir()) {
+                    engine.updateSectionStatus(net.minecraft.core.SectionPos.of(
+                        chunkPos, level.getSectionYFromSectionIndex(index)), false);
+                }
+            }
+        }
+        chunks.forEach(chunkPos -> engine.setLightEnabled(chunkPos, true));
+        chunks.forEach(engine::propagateLightSources);
+        engine.runLightUpdates();
     }
 
     /**
