@@ -287,9 +287,7 @@ impl LocalPlayer {
     }
 
     pub(super) fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
-        if self.sprint_trigger_time > 0 {
-            self.sprint_trigger_time -= 1;
-        }
+        self.tick_start_timers();
 
         let was_jumping = self.input.key_presses.jump;
         let was_shift_key_down = self.input.key_presses.shift;

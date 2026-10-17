@@ -15,8 +15,9 @@ pub struct Camera {
     fov_modifier: f32,
     old_fov_modifier: f32,
     spinning: Spinning,
-    /// The nausea blend the last tick ended with.
+    /// The nausea blend and the portal intensity the last tick ended with.
     nausea: f32,
+    portal: f32,
     /// `ScreenEffectRenderer`'s totem animation.
     pub activation: crate::item_activation::ItemActivation,
 }
@@ -30,16 +31,17 @@ impl Camera {
             old_fov_modifier: 1.0,
             spinning: Spinning::default(),
             nausea: 0.0,
+            portal: 0.0,
             activation: crate::item_activation::ItemActivation::default(),
         }
     }
 
     /// One client tick, after the player's.
     pub fn tick(&mut self, player: &LocalPlayer, nausea: f32) {
-        // `GameRenderer.tick` runs before the player's, so it reads the blend the last tick ended
-        // with. The portal's intensity waits for portal state.
+        // `GameRenderer.tick` runs before the player's, so it reads what the last tick ended with.
         let seen = std::mem::replace(&mut self.nausea, nausea);
-        self.spinning.tick(0.0, seen);
+        let portal = std::mem::replace(&mut self.portal, player.portal_effect_intensity_now());
+        self.spinning.tick(portal, seen);
         self.activation.tick();
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
@@ -62,9 +64,9 @@ impl Camera {
     }
 
     /// The spinning effect's matrix for the projection, if nausea turns the view.
-    pub fn spin(&self, nausea: f32, partial_tick: f32) -> Option<[[f32; 4]; 4]> {
+    pub fn spin(&self, (portal, nausea): (f32, f32), partial_tick: f32) -> Option<[[f32; 4]; 4]> {
         // `screenEffectScale`'s default is one: the option is not kept.
-        self.spinning.matrix(0.0, nausea, 1.0, partial_tick)
+        self.spinning.matrix(portal, nausea, 1.0, partial_tick)
     }
 
     /// The eye height between the last two ticks.

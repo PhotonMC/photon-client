@@ -407,6 +407,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("flying", player.getAbilities().flying);
         // What the view bob reads, half way through the next frame.
         var avatar = player.avatarState();
+        // The portal effect that spins the view, now and a tick ago.
+        tick.addProperty("portal_effect", Oracle.bits(player.portalEffectIntensity));
+        tick.addProperty("portal_effect_old", Oracle.bits(player.oPortalEffectIntensity));
         tick.addProperty("bob_walk", Oracle.bits(avatar.getBackwardsInterpolatedWalkDistance(0.5F)));
         tick.addProperty("bob", Oracle.bits(avatar.getInterpolatedBob(0.5F)));
         // What the player model is posed from, half way through the frame.

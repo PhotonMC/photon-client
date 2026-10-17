@@ -367,3 +367,14 @@ fn effects_only_fog_view() -> photon_render::sky::FogView {
         boss_fog: false,
     }
 }
+
+/// The sounds whose pitch comes from a random source the scene does not seed in Java, so that
+/// only their volume is compared: a player's swim, splash, hurt and death, and the portal's
+/// trigger.
+pub(crate) fn has_random_pitch(event: &str) -> bool {
+    event == "minecraft:entity.player.swim"
+        || event.starts_with("minecraft:entity.player.splash")
+        || event.starts_with("minecraft:entity.player.hurt")
+        || event == "minecraft:entity.player.death"
+        || event == "minecraft:block.portal.trigger"
+}

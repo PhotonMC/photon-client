@@ -32,8 +32,7 @@ impl LocalPlayer {
         game_mode: ClientPlayerGameMode,
         auto_jump_option: bool,
     ) -> Self {
-        let pose = ClientEntityPose::Standing;
-        let dimensions = pose.player_dimensions();
+        let dimensions = ClientEntityPose::Standing.player_dimensions();
         Self {
             entity_id,
             position,
@@ -42,7 +41,7 @@ impl LocalPlayer {
             y_rot,
             x_rot,
             bounding_box: dimensions.make_bounding_box(position),
-            pose,
+            pose: ClientEntityPose::Standing,
             dimensions,
             on_ground: false,
             horizontal_collision: false,
@@ -97,6 +96,7 @@ impl LocalPlayer {
             tick_count: 0,
             random: photon_core::random::RandomSource::create(i64::from(entity_id.0)),
             underwater: Default::default(),
+            portal: Default::default(),
             move_dist: 0.0,
             next_step: 1.0,
             pending_sounds: Vec::new(),

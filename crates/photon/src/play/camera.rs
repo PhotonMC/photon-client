@@ -105,7 +105,8 @@ impl Play {
     ) -> [[f32; 4]; 4] {
         let motion = player_motion(player, partial);
         let nausea = crate::world::fog::nausea_blend(&self.session, partial);
-        match self.camera.spin(nausea, partial) {
+        let portal = player.portal_effect_intensity(partial);
+        match self.camera.spin((portal, nausea), partial) {
             Some(spin) => photon_render::scene::multiply(motion, spin),
             None => motion,
         }

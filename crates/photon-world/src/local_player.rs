@@ -42,8 +42,10 @@ use photon_data::block::registry;
 /// The tags and classes movement tests of a block.
 mod sounds;
 pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
+mod portal;
 mod screen_effect;
 mod underwater;
+pub use portal::PortalKind;
 pub use underwater::UnderwaterSound;
 
 pub(crate) mod flag {
@@ -163,6 +165,8 @@ pub struct LocalPlayer {
     /// `LocalPlayer.wasUnderwater`, the ticks until the next addition may sound
     /// (`UnderwaterAmbientSoundHandler.tickDelay`) and the under-water sounds waiting for the engine.
     pub(super) underwater: underwater::State,
+    /// `Entity.portalProcess` and the effect it builds.
+    pub(super) portal: portal::State,
     /// `LivingEntity.elytraAnimationState`: the local player never glides in this port.
     pub(super) elytra: crate::elytra::ElytraState,
     /// `Entity.moveDist` and `nextStep`: how far the player has walked, and where the next step sounds.

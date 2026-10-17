@@ -477,11 +477,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 .map(|sound| {
                     let source = sound.source.name();
                     // The swim, splash, hurt and death sounds' pitch is random in Java and is compared by volume only.
-                    let pitch = if sound.event == "minecraft:entity.player.swim"
-                        || sound.event.starts_with("minecraft:entity.player.splash")
-                        || sound.event.starts_with("minecraft:entity.player.hurt")
-                        || sound.event == "minecraft:entity.player.death"
-                    {
+                    let pitch = if crate::view_state::has_random_pitch(sound.event) {
                         0.0_f32
                     } else {
                         sound.pitch
@@ -520,6 +516,8 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 "fall_distance": format!("{:016x}", player.fall_distance().to_bits()),
                 "water_vision": format!("{:08x}", player.water_vision().to_bits()),
                 "flying": player.is_flying(),
+                "portal_effect": format!("{:08x}", player.portal_effect_intensity_now().to_bits()),
+                "portal_effect_old": format!("{:08x}", player.portal_effect_intensity(0.0).to_bits()),
                 "bob_walk": format!("{:08x}", player.view_bob(0.5).0.to_bits()),
                 "bob": format!("{:08x}", player.view_bob(0.5).1.to_bits()),
                 "body_rot": format!("{:08x}", player.model_pose(0.5).body_rot.to_bits()),

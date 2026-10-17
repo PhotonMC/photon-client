@@ -68,14 +68,17 @@ class MovementSupport {
                 || instance.getIdentifier().toString().equals("minecraft:ambient.underwater.exit");
             // (The portal travel sound of a level event is drawn from the level's seeded random: kept.)
             boolean portalTravel = instance.getIdentifier().toString().equals("minecraft:block.portal.travel");
-            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && !fireworkSound && !waterChange && !portalTravel || chanceSlide) {
+            // (The portal's trigger sound is certain when the effect starts; its pitch is the player's own random.)
+            boolean portalTrigger = instance.getIdentifier().toString().equals("minecraft:block.portal.trigger");
+            if (instance.getSource() == net.minecraft.sounds.SoundSource.AMBIENT && !fireworkSound && !waterChange && !portalTravel && !portalTrigger || chanceSlide) {
                 return net.minecraft.client.sounds.SoundEngine.PlayResult.NOT_STARTED;
             }
             // The swim, splash, hurt and death sounds' pitch is drawn from the entity's own random source, which the scene
             // does not seed: it is compared by volume and place only.
             String played = instance.getIdentifier().toString();
             if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")
-                || played.startsWith("minecraft:entity.player.hurt") || played.equals("minecraft:entity.player.death")) {
+                || played.startsWith("minecraft:entity.player.hurt") || played.equals("minecraft:entity.player.death")
+                || played.equals("minecraft:block.portal.trigger")) {
                 pitch = 0.0F;
             }
             PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","

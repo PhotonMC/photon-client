@@ -330,9 +330,43 @@ fn border_rows() -> Vec<Value> {
     rows
 }
 
+/// A nether portal's effect builds while the player stands in it and fades once they leave; an end
+/// portal builds none.
+fn portal_rows() -> Vec<Value> {
+    let nether = |x: i64, z: i64| put_with(x, 64, z, "minecraft:nether_portal", &[("axis", "x")]);
+    let strip: Vec<Value> = (2..5).map(|z| nether(0, z)).collect();
+    vec![
+        Scene::new("stand-in-nether-portal", cat![floor(), vec![nether(0, 0)]], keys(40, &[]))
+            .start(0.5, 64.0, 0.5)
+            .row(),
+        Scene::new("walk-through-nether-portal", cat![floor(), strip], keys(30, &["forward"]))
+            .start(0.5, 64.0, 0.5)
+            .y_rot(0.0)
+            .row(),
+        Scene::new(
+            "leave-nether-portal",
+            cat![floor(), vec![nether(0, 0)]],
+            [keys(16, &[]), keys(30, &["backward"])].concat(),
+        )
+        .start(0.5, 64.0, 0.5)
+        .row(),
+        Scene::new("stand-in-end-portal", cat![floor(), vec![put(0, 64, 0, "minecraft:end_portal")]], keys(20, &[]))
+            .start(0.5, 64.0, 0.5)
+            .row(),
+    ]
+}
+
 pub fn local_player_ticks() -> Value {
-    let rows =
-        [walking_rows(), stepping_rows(), climbing_rows(), obstacle_rows(), landing_rows(), held_back(), border_rows()]
-            .concat();
+    let rows = [
+        walking_rows(),
+        stepping_rows(),
+        climbing_rows(),
+        obstacle_rows(),
+        landing_rows(),
+        held_back(),
+        border_rows(),
+        portal_rows(),
+    ]
+    .concat();
     case("movement/local-player-ticks", "movement", "local_player_ticks", json!({"rows": rows}))
 }

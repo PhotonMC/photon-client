@@ -53,6 +53,16 @@ impl LocalPlayer {
     /// What a block the player is inside does to it (see [`living_inside_effect`]).
     pub(super) fn inside_block_effect(&mut self, level: &Level<'_>, visit: &InsideVisit) {
         let block_pos = self.block_position();
+        // `NetherPortalBlock.entityInside` and `EndPortalBlock.entityInside`, which on a client
+        // only mark the player as inside (the gateway is the server's).
+        let portal = match visit.info.name {
+            "minecraft:nether_portal" => Some(PortalKind::Nether),
+            "minecraft:end_portal" => Some(PortalKind::End),
+            _ => None,
+        };
+        if let Some(kind) = portal.filter(|_| self.can_use_portal()) {
+            self.set_as_inside_portal(kind);
+        }
         living_inside_effect(
             level,
             visit,
