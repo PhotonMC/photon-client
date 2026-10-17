@@ -5,9 +5,11 @@ use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
-use photon_render::block_entity::{brushable, shelf};
+use photon_render::block::world_mesh::ConduitMeshes;
+use photon_render::block_entity::{brushable, conduit, shelf};
+use photon_render::entity::name_tag::camera_orientation;
 use photon_render::joml::Pose;
-use photon_render::objects::item::{item_layer_vertices, model_extent};
+use photon_render::objects::item::{entity_block_vertices, item_layer_vertices, model_extent};
 use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
@@ -94,6 +96,52 @@ pub fn shelf_items(
             let layers = on_shelf.get(&stack, renderer, tints);
             let pose = shelf::item_pose(&base, slot, turn, model_extent(layers));
             vertices.extend(item_layer_vertices(layers, &[pose], light, false));
+        }
+    }
+}
+
+/// `BlockEntityRenderer.getViewDistance`'s default: how far from the camera, in blocks, a
+/// conduit is drawn.
+const CONDUIT_VIEW_DISTANCE: f64 = 64.0;
+
+/// The triangles of the conduits' shells, from the sprites of the block atlas.
+pub fn conduits(
+    session: &PlaySession,
+    meshes: &ConduitMeshes,
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    let partial = view.partial as f32;
+    let orientation = camera_orientation(view.rotation.0, view.rotation.1);
+    let camera = [0, 1, 2].map(|axis| f64::from(view.origin[axis]) + f64::from(view.camera[axis]));
+    for held in world.conduit_views() {
+        let (x, y, z) = held.position;
+        let centre = [x, y, z].map(|axis| f64::from(axis) + 0.5);
+        // `Vec3.closerThan` the block's centre.
+        let distance: f64 = (0..3)
+            .map(|axis| (centre[axis] - camera[axis]).powi(2))
+            .sum();
+        if distance >= CONDUIT_VIEW_DISTANCE * CONDUIT_VIEW_DISTANCE {
+            continue;
+        }
+        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let mut base = Pose::default();
+        base.translate(
+            (x - view.origin[0]) as f32,
+            (y - view.origin[1]) as f32,
+            (z - view.origin[2]) as f32,
+        );
+        let frame = conduit::ConduitFrame::of(
+            held.active,
+            held.hunting,
+            (held.tick_count, held.rotation),
+            partial,
+        );
+        for (piece, pose) in conduit::pieces(&base, &frame, &orientation) {
+            if let Some(layer) = meshes.get(piece) {
+                vertices.extend(entity_block_vertices(layer, &pose, (light, 0.0)));
+            }
         }
     }
 }

@@ -685,6 +685,108 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `ConduitRenderer` does: for a "state" row the numbers its extraction takes from
+     * a conduit that has counted some ticks and turns, and for a "pose" row each part it submits
+     * for a render state, in order, with its sprite, its pose and its quads. The sprites are
+     * recorded by the path they are asked for; the camera turns as given.
+     */
+    static JsonObject conduitPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var rendererClass = net.minecraft.client.renderer.blockentity.ConduitRenderer.class;
+        var renderer = (net.minecraft.client.renderer.blockentity.ConduitRenderer) UNSAFE.allocateInstance(rendererClass);
+        var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
+        var byId = new java.util.HashMap<net.minecraft.client.resources.model.sprite.SpriteId,
+            net.minecraft.client.renderer.texture.TextureAtlasSprite>();
+        net.minecraft.client.resources.model.sprite.SpriteGetter sprites = id -> byId.computeIfAbsent(id, key -> {
+            try {
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                made.put(sprite, key);
+                return sprite;
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(error);
+            }
+        });
+        var names = new java.util.IdentityHashMap<Object, String>();
+        var spritesField = rendererClass.getDeclaredField("sprites");
+        spritesField.setAccessible(true);
+        spritesField.set(renderer, sprites);
+        for (var name : new String[] {"eye", "wind", "shell", "cage"}) {
+            var field = rendererClass.getDeclaredField(name);
+            field.setAccessible(true);
+            var part = bakedLayer("minecraft:conduit#" + name);
+            field.set(renderer, part);
+            names.put(part, name);
+        }
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.get("kind").getAsString().equals("state")) {
+                var entity = new net.minecraft.world.level.block.entity.ConduitBlockEntity(
+                    net.minecraft.core.BlockPos.ZERO, net.minecraft.world.level.block.Blocks.CONDUIT.defaultBlockState());
+                entity.tickCount = row.get("tick_count").getAsInt();
+                for (var field : new String[] {"activeRotation", "isActive", "isHunting"}) {
+                    var reflected = net.minecraft.world.level.block.entity.ConduitBlockEntity.class.getDeclaredField(field);
+                    reflected.setAccessible(true);
+                    if (field.equals("activeRotation")) {
+                        reflected.setFloat(entity, (float) row.get("rotation").getAsInt());
+                    } else {
+                        reflected.setBoolean(entity, row.get(field.equals("isActive") ? "active" : "hunting").getAsBoolean());
+                    }
+                }
+                var state = renderer.createRenderState();
+                renderer.extractRenderState(entity, state, Oracle.f32(row, "partial"), net.minecraft.world.phys.Vec3.ZERO, null);
+                out.addProperty("active", state.isActive);
+                out.addProperty("hunting", state.isHunting);
+                out.addProperty("active_rotation", Oracle.bits(state.activeRotation));
+                out.addProperty("anim_time", Oracle.bits(state.animTime));
+                out.addProperty("phase", state.animationPhase);
+                rows.add(out);
+                continue;
+            }
+            var state = renderer.createRenderState();
+            state.isActive = row.get("active").getAsBoolean();
+            state.isHunting = row.get("hunting").getAsBoolean();
+            state.activeRotation = Oracle.f32(row, "active_rotation");
+            state.animTime = Oracle.f32(row, "anim_time");
+            state.animationPhase = row.get("phase").getAsInt();
+            var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            float degrees = (float) (Math.PI / 180.0);
+            camera.orientation.rotationYXZ((float) Math.PI - Oracle.f32(row, "yaw") * degrees,
+                -Oracle.f32(row, "pitch") * degrees, 0.0F);
+            var parts = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitModelPart")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[1]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        var drawn = new JsonObject();
+                        drawn.addProperty("part", names.get(args[0]));
+                        drawn.addProperty("texture", made.get(args[5]).texture().getPath());
+                        drawn.add("matrix", described);
+                        drawn.add("quads", partQuads((net.minecraft.client.model.geom.ModelPart) args[0]));
+                        parts.add(drawn);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, camera);
+            out.add("parts", parts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the
      * order it is drawn with its picture and its quads. The render state is made as the renderer's

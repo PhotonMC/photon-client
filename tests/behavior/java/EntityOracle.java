@@ -197,6 +197,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("brushable_pose")) {
             return brushablePose(request);
         }
+        if (operation.equals("conduit_pose")) {
+            return conduitPose(request);
+        }
         if (operation.equals("shelf_pose")) {
             return shelfPose(request);
         }

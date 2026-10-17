@@ -37,6 +37,8 @@ pub struct BlockRenderer {
     pub skipped: Vec<(String, String)>,
 }
 
+mod conduit;
+pub use conduit::ConduitMeshes;
 mod fluid;
 use fluid::*;
 mod item_frame;

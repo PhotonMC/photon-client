@@ -8,6 +8,18 @@ use crate::block::piston::Pos;
 use crate::block::{self};
 use crate::*;
 
+/// What a conduit is drawn from (`ConduitBlockEntity`'s fields the renderer reads).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConduitView {
+    pub position: Pos,
+    pub active: bool,
+    pub hunting: bool,
+    /// `tickCount`.
+    pub tick_count: i32,
+    /// `activeRotation`, a count of ticks.
+    pub rotation: i32,
+}
+
 /// `ConduitBlockEntity.VALID_BLOCKS`.
 const FRAME_BLOCKS: [usize; 4] = [
     id::PRISMARINE,
@@ -59,6 +71,24 @@ impl ClientWorld {
                 FRAME_BLOCKS
                     .iter()
                     .any(|frame| state.block == *frame as u16)
+            })
+            .collect()
+    }
+
+    /// The conduits the level ticks.
+    pub fn conduit_views(&self) -> Vec<ConduitView> {
+        self.block_tickers
+            .positions()
+            .filter(|pos| self.is_conduit_at(*pos))
+            .filter_map(|pos| {
+                let conduit = &self.block_entity_at(pos.0, pos.1, pos.2)?.events().conduit;
+                Some(ConduitView {
+                    position: pos,
+                    active: conduit.active,
+                    hunting: conduit.hunting,
+                    tick_count: conduit.tick_count,
+                    rotation: conduit.rotation,
+                })
             })
             .collect()
     }

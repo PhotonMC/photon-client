@@ -80,3 +80,44 @@ pub fn shelf_pose() -> Vec<Value> {
     }));
     vec![entity("shelf-pose", "shelf_pose", rows)]
 }
+
+/// The real `ConduitRenderer`: what its extraction makes of a conduit's ticks and turns, and the
+/// parts it draws for a waking one in each phase of the wind and for a sleeping one.
+pub fn conduit_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (active, hunting) in [(false, false), (true, false), (true, true)] {
+        for (tick_count, rotation, partial) in
+            [(0, 0, 0.0), (65, 12, 0.5), (66, 40, 0.25), (140, 7, 0.75), (133, 100, 0.0)]
+        {
+            rows.push(json!({
+                "kind": "state", "label": format!("state {active} {hunting} at {tick_count}/{rotation}"),
+                "active": active, "hunting": hunting, "tick_count": tick_count, "rotation": rotation,
+                "partial": f32_bits(partial),
+            }));
+        }
+    }
+    let pose = |label: String,
+                active: bool,
+                hunting: bool,
+                (rotation, time, phase): (f64, f64, i64),
+                (yaw, pitch): (f64, f64)| {
+        json!({
+            "kind": "pose", "label": label, "active": active, "hunting": hunting,
+            "active_rotation": f32_bits(rotation), "anim_time": f32_bits(time), "phase": phase,
+            "yaw": f32_bits(yaw), "pitch": f32_bits(pitch),
+        })
+    };
+    rows.push(pose("asleep".to_owned(), false, false, (-0.45, 3.5, 0), (0.0, 0.0)));
+    rows.push(pose("asleep turned".to_owned(), false, false, (-31.2, 70.25, 1), (10.0, 5.0)));
+    for phase in 0..3 {
+        rows.push(pose(
+            format!("awake phase {phase}"),
+            true,
+            false,
+            (-3.4, 12.5 + phase as f64 * 66.0, phase),
+            (35.0, -20.0),
+        ));
+        rows.push(pose(format!("hunting phase {phase}"), true, true, (-12.75, 140.25, phase), (-120.0, 45.0)));
+    }
+    vec![entity("conduit-pose", "conduit_pose", rows)]
+}

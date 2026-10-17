@@ -882,7 +882,7 @@
 "crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 74
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 81
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 137
-"crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 87
+"crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 80
 "crates/photon-render/src/block/world_mesh/states.rs::bake_states" = 75
 "crates/photon-render/src/border.rs::quads" = 82
 "crates/photon-render/src/entity/mob_model/bears.rs::MobModel::setup_panda" = 95

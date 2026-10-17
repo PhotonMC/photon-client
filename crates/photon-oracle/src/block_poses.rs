@@ -25,6 +25,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "gateway_beam" => Some(gateway_beam_result(request)),
         "brushable_pose" => Some(brushable_pose_result(request)),
         "shelf_pose" => Some(shelf_pose_result(request)),
+        "conduit_pose" => Some(conduit_pose_result(request)),
         _ => None,
     }
 }
@@ -324,6 +325,69 @@ fn shelf_pose_result(request: &Value) -> Result<Value, String> {
             poses.push(super::strider::matrix_bits(&placed));
         }
         rows.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `conduit_pose`: the numbers a conduit's extraction makes of its fields, and the parts a render
+/// state has drawn with their sprites, poses and quads.
+fn conduit_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::conduit::{ConduitFrame, Piece, pieces};
+    use photon_render::entity::mob_model::MobModel;
+    use photon_render::entity::name_tag::camera_orientation;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+            u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let flag = |key: &str| row[key].as_bool().ok_or_else(|| key.to_owned());
+        if string(row, "kind")? == "state" {
+            let frame = ConduitFrame::of(
+                flag("active")?,
+                flag("hunting")?,
+                (i32_field(row, "tick_count")?, i32_field(row, "rotation")?),
+                float("partial")?,
+            );
+            rows.push(json!({
+                "label": row["label"],
+                "active": frame.active,
+                "hunting": frame.hunting,
+                "active_rotation": format!("{:08x}", frame.active_rotation.to_bits()),
+                "anim_time": format!("{:08x}", frame.anim_time.to_bits()),
+                "phase": frame.phase,
+            }));
+            continue;
+        }
+        let frame = ConduitFrame {
+            active: flag("active")?,
+            hunting: flag("hunting")?,
+            active_rotation: float("active_rotation")?,
+            anim_time: float("anim_time")?,
+            phase: i32_field(row, "phase")?,
+        };
+        let orientation = camera_orientation(float("yaw")?, float("pitch")?);
+        let mut parts = Vec::new();
+        for (piece, pose) in pieces(&Pose::default(), &frame, &orientation) {
+            let layer = photon_data::entity_model::layer(piece.layer()).ok_or("no layer")?;
+            let model = MobModel::bake(layer);
+            let part = match piece {
+                Piece::Shell => "shell",
+                Piece::Cage => "cage",
+                Piece::Wind { .. } => "wind",
+                Piece::Eye { .. } => "eye",
+            };
+            parts.push(json!({
+                "part": part,
+                "texture": piece.sprite(),
+                "matrix": super::strider::matrix_bits(&pose),
+                "quads": posed_quads(&model),
+            }));
+        }
+        rows.push(json!({"label": row["label"], "parts": parts}));
     }
     Ok(json!({"rows": rows}))
 }

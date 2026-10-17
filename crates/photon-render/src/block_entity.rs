@@ -5,6 +5,7 @@ pub mod beacon;
 pub mod bell;
 pub mod brushable;
 pub mod chest;
+pub mod conduit;
 pub mod decorated_pot;
 pub mod enchant_table;
 pub mod lectern;

@@ -120,6 +120,7 @@ pub struct WorldItemLayers {
     ground: ItemLayerCache,
     frames: item_frames::FrameState,
     on_shelf: ItemLayerCache,
+    conduit: Option<Option<photon_render::block::world_mesh::ConduitMeshes>>,
     displays: displays::DisplayLayers,
 }
 
@@ -129,6 +130,7 @@ impl WorldItemLayers {
             ground: ItemLayerCache::new(photon_render::model::DisplayContext::Ground),
             frames: item_frames::FrameState::new(),
             on_shelf: ItemLayerCache::new(photon_render::model::DisplayContext::OnShelf),
+            conduit: None,
             displays: displays::DisplayLayers::new(),
         }
     }
@@ -185,6 +187,12 @@ pub fn world_items(
         view,
         items,
     );
+    if let Some(meshes) = layers
+        .conduit
+        .get_or_insert_with(|| renderer.conduit_meshes())
+    {
+        super::block_entity_items::conduits(session, meshes, view, items);
+    }
     displays::displays(
         session,
         &mut layers.displays,

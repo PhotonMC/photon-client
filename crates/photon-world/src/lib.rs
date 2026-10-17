@@ -86,7 +86,8 @@ pub use recipes::{
 pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
 pub use world::{
-    BeaconView, EnchantTableView, Entities, GatewayBeamView, LevelEvent, block_sound_of,
+    BeaconView, ConduitView, EnchantTableView, Entities, GatewayBeamView, LevelEvent,
+    block_sound_of,
 };
 
 /// The client-side copy of the currently loaded world.

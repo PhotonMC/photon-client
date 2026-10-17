@@ -5,6 +5,7 @@ pub(crate) use block_tickers::BlockTickers;
 mod beacon;
 pub use beacon::BeaconView;
 mod conduit;
+pub use conduit::ConduitView;
 mod gateway_beam;
 pub use gateway_beam::GatewayBeamView;
 mod blocks;

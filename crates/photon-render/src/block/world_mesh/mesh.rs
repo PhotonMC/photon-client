@@ -69,16 +69,7 @@ impl BlockRenderer {
         let (items, layer_alpha, layer_sprites) =
             item_models(source, &mut model_cache, &mut models);
         let ordered: Vec<&ResolvedModel> = models.values().collect();
-        // The fluid renderer's sprites and the sky's sun and moon phases are
-        // named by no block model, so they are asked for by name.
-        let extra: Vec<Identifier> = FLUID_SPRITES
-            .iter()
-            .map(|name| (*name).to_owned())
-            .chain(std::iter::once(crate::sky::SUN_SPRITE.to_owned()))
-            .chain(crate::sky::moon_sprites())
-            .map(|name| Identifier::parse(&name).expect("fixed sprite names are valid"))
-            .chain(layer_sprites)
-            .collect();
+        let extra = extra_sprites(layer_sprites);
         let atlas = crate::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
         let (baked, states) = bake_states(&models, &atlas, pending, &air);
         let particle_sprites = particle_sprites(&blockstates, &models);
@@ -501,4 +492,22 @@ pub(super) fn add_face(
         mesh.translucent_indices
             .extend([base, base + 3, base + 2, base, base + 2, base + 1]);
     }
+}
+
+/// The sprites named by no block model, so they are asked for by name: the fluid renderer's, the
+/// sky's sun and moon phases, the conduit's, and those the item models ask for.
+fn extra_sprites(layer_sprites: impl IntoIterator<Item = Identifier>) -> Vec<Identifier> {
+    FLUID_SPRITES
+        .iter()
+        .map(|name| (*name).to_owned())
+        .chain(std::iter::once(crate::sky::SUN_SPRITE.to_owned()))
+        .chain(crate::sky::moon_sprites())
+        .chain(
+            crate::block_entity::conduit::SPRITES
+                .iter()
+                .map(|name| (*name).to_owned()),
+        )
+        .map(|name| Identifier::parse(&name).expect("fixed sprite names are valid"))
+        .chain(layer_sprites)
+        .collect()
 }
