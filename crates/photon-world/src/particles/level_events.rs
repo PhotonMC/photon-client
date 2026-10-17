@@ -187,6 +187,10 @@ impl ParticleEngine {
                 self.conduit_specks(context, (pos, tick_count), (&frame, target));
                 Vec::new()
             }
+            LevelEvent::ParrotImitation { id } => {
+                self.parrot_imitation(id, context);
+                Vec::new()
+            }
             LevelEvent::VaultTick { pos } => {
                 let mut sounds = Vec::new();
                 self.vault_tick(pos, context, &mut sounds);
@@ -228,6 +232,7 @@ impl ParticleEngine {
             LevelEvent::NoxiousGasCloud { .. }
             | LevelEvent::ConduitSpecks { .. }
             | LevelEvent::VaultTick { .. }
+            | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
             LevelEvent::PistonSound => {

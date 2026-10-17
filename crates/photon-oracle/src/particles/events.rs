@@ -271,6 +271,9 @@ pub(super) fn tick_block_entities(
     row: &Value,
     engine: &photon_world::particles::ParticleEngine,
 ) -> usize {
+    if row["tick_entities"].as_bool() == Some(true) {
+        world.tick_entities();
+    }
     if row["tick_block_entities"].as_bool() == Some(true) {
         world.tick_block_entities();
     }

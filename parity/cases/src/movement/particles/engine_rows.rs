@@ -318,5 +318,6 @@ pub fn rows() -> Vec<Value> {
     rows.extend(super::conduit_rows::rows());
     rows.extend(super::vault_rows::rows());
     rows.extend(super::portal_rows::rows());
+    rows.extend(super::parrot_rows::rows());
     rows
 }

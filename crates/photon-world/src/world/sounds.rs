@@ -309,6 +309,8 @@ pub enum LevelEvent {
     PistonSound,
     /// A potent sulfur block's ticker adds a cloud of its gas (`addParticle`) at a place.
     NoxiousGasCloud { at: (f64, f64, f64) },
+    /// A parrot's tick (`Parrot.aiStep`): the draw that decides whether it imitates a mob nearby.
+    ParrotImitation { id: photon_core::ids::EntityId },
     /// A vault's tick (`VaultBlockEntity.Client.tick`), less its spin: the connection particles,
     /// the idle smoke and flame and the idle sound.
     VaultTick { pos: (i32, i32, i32) },

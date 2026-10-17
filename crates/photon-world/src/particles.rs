@@ -38,6 +38,7 @@ mod level_events_trial;
 mod level_events_vault;
 mod light;
 mod look;
+mod parrots;
 mod particle;
 mod pickup;
 mod resources;

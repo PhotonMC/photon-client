@@ -708,6 +708,9 @@ class MovementParticleOracle extends MovementMenuOracle {
             }
             var counted = new JsonObject();
             counted.addProperty("pending", pending.size());
+            if (row.has("tick_entities") && row.get("tick_entities").getAsBoolean()) {
+                level.tickEntities();
+            }
             // The level's block entities tick after its entities, before the level's own tick.
             if (row.has("tick_block_entities") && row.get("tick_block_entities").getAsBoolean()) {
                 // A sound the server plays to everyone but one player is not played to the client's

@@ -65,6 +65,10 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
             parrot,
         )?;
     }
+    for (index, mob) in row["mobs"].as_array().into_iter().flatten().enumerate() {
+        let uuid = Uuid::new(8, 300 + index as u64);
+        put_entity(world, (string(mob, "type")?, 300 + index as i32, uuid), mob)?;
+    }
     for gateway in row["gateways"].as_array().into_iter().flatten() {
         place_gateway(world, gateway)?;
     }
@@ -97,11 +101,14 @@ fn put_entity(
         rotation: (0.0, 0.0, 0.0),
         data: 0,
     });
-    if placed {
-        Ok(())
-    } else {
-        Err(format!("a {kind} was rejected"))
+    if !placed {
+        return Err(format!("a {kind} was rejected"));
     }
+    if at["silent"].as_bool() == Some(true) {
+        // The entity data the server sends for a silent one: the flag's slot, a boolean, true.
+        world.apply_entity_metadata(EntityId(id), &[4, 8, 1, 0xFF]);
+    }
+    Ok(())
 }
 
 /// The mob each conduit of a row's `conduit_targets` is told to attack, by its update tag.

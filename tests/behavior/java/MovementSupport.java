@@ -461,9 +461,29 @@ class MovementSupport {
                 var described = element.getAsJsonObject();
                 var parrot = new net.minecraft.world.entity.animal.parrot.Parrot(
                     net.minecraft.world.entity.EntityTypes.PARROT, level);
+                parrot.setSilent(described.has("silent") && described.get("silent").getAsBoolean());
                 parrot.setId(id++);
                 parrot.setPos(Oracle.f64(described, "x"), Oracle.f64(described, "y"), Oracle.f64(described, "z"));
                 level.addEntity(parrot);
+            }
+        }
+        if (row.has("mobs")) {
+            // Other mobs, by their type's name, numbered from 300.
+            int id = 300;
+            for (var element : row.getAsJsonArray("mobs")) {
+                var described = element.getAsJsonObject();
+                // Built directly, as the parrots are: the level has no features for a type to need.
+                net.minecraft.world.entity.Entity mob = switch (described.get("type").getAsString()) {
+                    case "minecraft:creeper" -> new net.minecraft.world.entity.monster.Creeper(
+                        net.minecraft.world.entity.EntityTypes.CREEPER, level);
+                    case "minecraft:zombie" -> new net.minecraft.world.entity.monster.zombie.Zombie(
+                        net.minecraft.world.entity.EntityTypes.ZOMBIE, level);
+                    default -> throw new IllegalArgumentException("no such mob in a row");
+                };
+                mob.setSilent(described.has("silent") && described.get("silent").getAsBoolean());
+                mob.setId(id++);
+                mob.setPos(Oracle.f64(described, "x"), Oracle.f64(described, "y"), Oracle.f64(described, "z"));
+                level.addEntity(mob);
             }
         }
         if (row.has("gateways")) {

@@ -140,9 +140,7 @@ impl ClientWorld {
                 tick_projectile(entity, kind, projectile_path_is_open);
             }
         }
-        if ridden {
-            self.tick_ridden_boat(entity_id);
-        }
+        self.tick_after_species(entity_id, ridden);
         if self.discard_spent_entity(entity_id) {
             return;
         }
@@ -154,6 +152,23 @@ impl ClientWorld {
             .position();
         self.update_entity_section(entity_id, previous_position, position);
         self.update_ticking_flag(entity_id, position);
+    }
+
+    /// What follows an entity's own tick: a parrot draws from the level's random source
+    /// (`Parrot.aiStep`, of which the particle engine holds the source), and the boat it rides moves.
+    fn tick_after_species(&mut self, entity_id: EntityId, ridden: bool) {
+        if self
+            .entities
+            .get(&entity_id)
+            .is_some_and(ClientEntity::is_parrot)
+        {
+            self.level_events
+                .0
+                .push(LevelEvent::ParrotImitation { id: entity_id });
+        }
+        if ridden {
+            self.tick_ridden_boat(entity_id);
+        }
     }
 
     /// A living entity that eased into a chunk that is not loaded stops
