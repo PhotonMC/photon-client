@@ -122,6 +122,14 @@ impl ClientPlayerState {
         &self.effects
     }
 
+    /// The tick count moves on and each effect ticks, as `LivingEntity.tickEffects` does on a client.
+    pub(crate) fn tick_effects(&mut self) {
+        self.tick_count = self.tick_count.wrapping_add(1);
+        for effect in &mut self.effects {
+            effect.tick_client();
+        }
+    }
+
     pub fn health(&self) -> f32 {
         self.health.get()
     }

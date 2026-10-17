@@ -119,15 +119,21 @@ impl PlaySession {
                 }
             }
         }
-        // `ClientLevel.tickEntities`: the entities the server added move on.
         self.tell_world_where_the_player_is();
-        if ridden.is_none() {
-            self.world.tick_entities();
-        }
+        self.tick_level_entities(ridden.is_none());
         self.world.tick_after_entities();
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// `ClientLevel.tickEntities`: the entities the server added move on. The player's effects
+    /// tick with it unless it rides a vehicle, which ticks the player as its passenger.
+    fn tick_level_entities(&mut self, player_ticks_itself: bool) {
+        if player_ticks_itself {
+            self.world.tick_local_player_effects();
+            self.world.tick_entities();
+        }
     }
 
     /// Where the client's own player stands after it moved this tick, for what the world's own

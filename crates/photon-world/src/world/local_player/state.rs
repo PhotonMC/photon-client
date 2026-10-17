@@ -289,6 +289,14 @@ impl ClientWorld {
         true
     }
 
+    /// `LivingEntity.tickEffects` on the client, for the local player: its tick count moves on and
+    /// each effect ticks (its duration counts down, its blend moves a step).
+    pub fn tick_local_player_effects(&mut self) {
+        if let Some(player) = self.local_player.as_mut() {
+            player.tick_effects();
+        }
+    }
+
     pub(crate) fn tick_local_player(&mut self, vehicle_id: Option<EntityId>) {
         let passenger_ids = {
             let Some(player) = self.local_player.as_mut() else {
@@ -301,10 +309,7 @@ impl ClientWorld {
             }
             player.capture_old_transform();
             player.tick_head_rotation();
-            player.tick_count = player.tick_count.wrapping_add(1);
-            for effect in &mut player.effects {
-                effect.tick_client();
-            }
+            player.tick_effects();
             player.passenger_ids.clone()
         };
         let Some(player_id) = self.local_player.as_ref().map(|player| player.id) else {
