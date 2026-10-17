@@ -60,7 +60,7 @@ mod shadow;
 
 pub use block::chest::{
     BannerView, BrushableView, CampfireView, ChestView, DYES, PotView, ShelfView, ShulkerBoxView,
-    SignView, SkullBlockView,
+    SignView, SkullBlockView, VaultView,
 };
 pub use block::entity::MovingPiston;
 pub use block::entity::*;

@@ -6,7 +6,7 @@ use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::block::world_mesh::ConduitMeshes;
-use photon_render::block_entity::{brushable, campfire, conduit, shelf};
+use photon_render::block_entity::{brushable, campfire, conduit, shelf, vault};
 use photon_render::entity::name_tag::camera_orientation;
 use photon_render::joml::Pose;
 use photon_render::objects::item::{entity_block_vertices, item_layer_vertices, model_extent};
@@ -191,5 +191,35 @@ pub fn campfire_items(
                 false,
             ));
         }
+    }
+}
+
+/// The triangles of the items vaults show, in `ground`'s display context, turning as far as the
+/// last two ticks have them at the frame's partial tick.
+pub fn vault_items(
+    session: &PlaySession,
+    ground: &mut ItemLayerCache,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    for (x, y, z) in in_view(world, view) {
+        let Some(shown) = world.vault_view((x, y, z)) else {
+            continue;
+        };
+        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let mut base = Pose::default();
+        base.translate(
+            (x - view.origin[0]) as f32,
+            (y - view.origin[1]) as f32,
+            (z - view.origin[2]) as f32,
+        );
+        let (item, count) = shown.display_item;
+        let stack = ClientItemStackState::new(count, item);
+        let layers = ground.get(&stack, renderer, tints);
+        let spin = vault::spin(view.partial as f32, shown.spin);
+        let poses = vault::item_poses(&base, spin, shown.display_item, model_extent(layers));
+        vertices.extend(item_layer_vertices(layers, &poses, light, false));
     }
 }

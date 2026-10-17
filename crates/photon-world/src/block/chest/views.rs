@@ -188,7 +188,25 @@ pub(crate) fn is_brushable_state(state_id: BlockStateId) -> bool {
 
 /// Whether a block state is one that shows the items it holds: a suspicious block or a shelf.
 fn is_item_holder_state(state_id: BlockStateId) -> bool {
-    is_brushable_state(state_id) || is_shelf_state(state_id) || is_campfire_state(state_id)
+    is_brushable_state(state_id)
+        || is_shelf_state(state_id)
+        || is_campfire_state(state_id)
+        || is_vault_state(state_id)
+}
+
+/// Whether a block state is a vault's.
+pub(crate) fn is_vault_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::VaultBlock], &BLOCKS)
+}
+
+/// What a vault shows, for drawing it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct VaultView {
+    /// The item on show and how many (`VaultSharedData.getDisplayItem`).
+    pub display_item: (ItemId, i32),
+    /// `VaultClientData.previousSpin` and `currentSpin`, in degrees.
+    pub spin: (i32, i32),
 }
 
 /// Whether a block state is a shelf's.

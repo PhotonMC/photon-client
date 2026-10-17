@@ -836,6 +836,65 @@ class EntityBlockOracle extends EntityAquaticOracle {
     }
 
     /**
+     * What the real `VaultRenderer.submit` does with the item a vault shows: the pose each copy of
+     * its layer is submitted from, for a stack of an item and a count turned some way. The item's
+     * model is a bare layer with two points for its extent (`depth` apart in z); the spin is worked
+     * out as the renderer's extraction works it, from the last two ticks'.
+     */
+    static JsonObject vaultPose(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = (net.minecraft.client.renderer.blockentity.VaultRenderer) UNSAFE.allocateInstance(
+            net.minecraft.client.renderer.blockentity.VaultRenderer.class);
+        var randomField = net.minecraft.client.renderer.blockentity.VaultRenderer.class.getDeclaredField("random");
+        randomField.setAccessible(true);
+        randomField.set(renderer, net.minecraft.util.RandomSource.create());
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var stack = new net.minecraft.world.item.ItemStack(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(row.get("item").getAsString())),
+                row.get("count").getAsInt());
+            var state = new net.minecraft.client.renderer.blockentity.state.VaultRenderState();
+            state.displayItem = new net.minecraft.client.renderer.entity.state.ItemClusterRenderState();
+            state.displayItem.count = net.minecraft.client.renderer.entity.state.ItemClusterRenderState.getRenderedAmount(stack.getCount());
+            state.displayItem.seed = net.minecraft.client.renderer.entity.state.ItemClusterRenderState.getSeedForItemStack(stack);
+            state.spin = net.minecraft.util.Mth.rotLerp(Oracle.f32(row, "partial"),
+                (float) row.get("previous").getAsInt(), (float) row.get("current").getAsInt());
+            var low = Oracle.f32(row, "min_y");
+            var high = Oracle.f32(row, "max_y");
+            var depth = Oracle.f32(row, "depth");
+            state.displayItem.item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {
+                new org.joml.Vector3f(0.0F, low, 0.0F), new org.joml.Vector3f(0.0F, high, depth)});
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("spin", Oracle.bits(state.spin));
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var matrix = new float[16];
+                        ((com.mojang.blaze3d.vertex.PoseStack) args[0]).last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * What the real `DecoratedPotRenderer.submit` hands the collector for a pot facing some way,
      * wobbling some way through, with some items set in its sides: the pose, and each part in the
      * order it is drawn with its picture and its quads. The render state is made as the renderer's

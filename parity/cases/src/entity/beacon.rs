@@ -134,3 +134,27 @@ pub fn campfire_pose() -> Vec<Value> {
     rows.push(json!({"label": "one in the last slot", "facing": "west", "gaps": [true, true, true, false]}));
     vec![entity("campfire-pose", "campfire_pose", rows)]
 }
+
+/// The real `VaultRenderer` for the item a vault shows: stacks of several sizes, thin and thick
+/// models, and spins between ticks, the wrap included.
+pub fn vault_pose() -> Vec<Value> {
+    let row = |label: String,
+               item: &str,
+               count: i64,
+               (min_y, max_y, depth): (f64, f64, f64),
+               (previous, current, partial): (i64, i64, f64)| {
+        json!({
+            "label": label, "item": item, "count": count, "min_y": f32_bits(min_y), "max_y": f32_bits(max_y),
+            "depth": f32_bits(depth), "previous": previous, "current": current, "partial": f32_bits(partial),
+        })
+    };
+    let mut rows = Vec::new();
+    for count in [1, 2, 16, 17, 33, 49, 64] {
+        rows.push(row(format!("thin item, {count}"), "minecraft:diamond", count, (0.0, 1.0, 0.03125), (50, 60, 0.25)));
+        rows.push(row(format!("thick block, {count}"), "minecraft:stone", count, (0.0, 1.0, 0.5), (50, 60, 0.75)));
+    }
+    rows.push(row("wrap".to_owned(), "minecraft:emerald", 3, (0.125, 0.875, 0.0625), (170, -180, 0.5)));
+    rows.push(row("wrap back".to_owned(), "minecraft:emerald", 3, (0.125, 0.875, 0.0625), (-10, 0, 0.9)));
+    rows.push(row("at rest".to_owned(), "minecraft:apple", 5, (0.0, 1.0, 0.125), (0, 0, 0.0)));
+    vec![entity("vault-pose", "vault_pose", rows)]
+}

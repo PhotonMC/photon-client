@@ -59,6 +59,12 @@ pub fn item_entity_poses(
     let bob = mth_sin_f64(f64::from(age_in_ticks / 10.0 + bob_offset)) * 0.1 + 0.1;
     base.translate(0.0, bob + min_offset_y, 0.0);
     base.rotate(&Quaternion::rotation_y(spin(age_in_ticks, bob_offset)));
+    cluster_poses(base, count, seed, extent)
+}
+
+/// `ItemEntityRenderer.submitMultipleFromCount`: the pose of each copy of a stack of `count`
+/// items, from `base`, in the order they are submitted. The offsets are drawn from `seed`.
+pub fn cluster_poses(mut base: Pose, count: i32, seed: i32, extent: ModelExtent) -> Vec<Pose> {
     let mut poses = Vec::new();
     if count == 0 {
         return poses;

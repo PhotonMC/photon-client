@@ -25,11 +25,11 @@ pub struct PlayerSpot {
 }
 
 /// What a vault shares with the clients that see it (`VaultSharedData`), less its display item.
-struct VaultShared {
+pub(crate) struct VaultShared {
     connected_players: Vec<Uuid>,
     connected_particles_range: f64,
-    /// `VaultSharedData.hasDisplayItem`.
-    has_display_item: bool,
+    /// `VaultSharedData.getDisplayItem`: what it shows and how many, if it shows any.
+    pub(crate) display_item: Option<(photon_core::ids::ItemId, i32)>,
 }
 
 fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
@@ -41,11 +41,11 @@ fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
 
 /// `VaultSharedData.CODEC` read from the block entity's tag: the players in the order the server
 /// wrote them, the range the connection particles reach.
-fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultShared {
+pub(crate) fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultShared {
     let mut shared = VaultShared {
         connected_players: Vec::new(),
         connected_particles_range: DEFAULT_CONNECTION_RANGE,
-        has_display_item: false,
+        display_item: None,
     };
     let Some(fields) = world
         .block_entity_at(pos.0, pos.1, pos.2)
@@ -61,7 +61,7 @@ fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultShared {
         shared.connected_players = players.iter().filter_map(uuid_of).collect();
     }
     if let Some(FieldValue::Compound(held)) = field(data, "display_item") {
-        shared.has_display_item = crate::block::chest::tag_stack(held).is_some();
+        shared.display_item = crate::block::chest::tag_stack(held);
     }
     if let Some(FieldValue::Double(range)) = field(data, "connected_particles_range") {
         shared.connected_particles_range = *range;
@@ -132,7 +132,7 @@ impl ParticleEngine {
         if context.world.game_time().is_multiple_of(20) {
             self.vault_connection_particles(pos, state, context);
         }
-        let shows = shared_data(context.world, pos).has_display_item;
+        let shows = shared_data(context.world, pos).display_item.is_some();
         let ominous = crate::block::rules::property(state, "ominous") == Some("true");
         let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         if context.level_random.next_float() <= 0.5 {

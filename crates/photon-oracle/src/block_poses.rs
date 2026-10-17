@@ -27,6 +27,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "shelf_pose" => Some(shelf_pose_result(request)),
         "conduit_pose" => Some(conduit_pose_result(request)),
         "campfire_pose" => Some(campfire_pose_result(request)),
+        "vault_pose" => Some(vault_pose_result(request)),
         _ => None,
     }
 }
@@ -412,6 +413,58 @@ fn campfire_pose_result(request: &Value) -> Result<Value, String> {
             poses.push(super::strider::matrix_bits(&placed));
         }
         rows.push(json!({"label": row["label"], "poses": poses}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// `vault_pose`: the spin of a vault's item between two ticks and the pose of each copy of it.
+fn vault_pose_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::vault::{item_poses, spin};
+    use photon_render::joml::Pose;
+    use photon_render::objects::item::ModelExtent;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+            u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let name = string(row, "item")?;
+        let index = photon_data::item::items::ITEMS
+            .iter()
+            .position(|item| item.name == name)
+            .ok_or("no such item")?;
+        // The extent's points as the bare layer's half block moves them.
+        let moved = |value: f32| f64::from(value + -0.5_f32);
+        let extent = ModelExtent {
+            min_y: moved(float("min_y")?),
+            max_y: moved(float("max_y")?),
+            depth: moved(float("depth")?) - moved(0.0),
+        };
+        let turned = spin(
+            float("partial")?,
+            (i32_field(row, "previous")?, i32_field(row, "current")?),
+        );
+        let mut poses = Vec::new();
+        let drawn = item_poses(
+            &Pose::default(),
+            turned,
+            (
+                photon_core::ids::ItemId(index as i32),
+                i32_field(row, "count")?,
+            ),
+            extent,
+        );
+        for mut pose in drawn {
+            pose.translate(-0.5, -0.5, -0.5);
+            poses.push(super::strider::matrix_bits(&pose));
+        }
+        rows.push(json!({
+            "label": row["label"],
+            "spin": format!("{:08x}", turned.to_bits()),
+            "poses": poses,
+        }));
     }
     Ok(json!({"rows": rows}))
 }

@@ -187,6 +187,20 @@ impl ClientWorld {
         })
     }
 
+    /// `VaultRenderer.extractRenderState`: the item a vault shows, once it has one.
+    pub fn vault_view(&self, pos: (i32, i32, i32)) -> Option<VaultView> {
+        let state = self.block_state_at(pos.0, pos.1, pos.2)?;
+        if !is_vault_state(state) {
+            return None;
+        }
+        let display_item = crate::particles::vault_shared_data(self, pos).display_item?;
+        let spin = self.block_entity_at(pos.0, pos.1, pos.2)?.events().vault;
+        Some(VaultView {
+            display_item,
+            spin: (spin.previous, spin.current),
+        })
+    }
+
     pub fn banner_view(&self, pos: (i32, i32, i32)) -> Option<BannerView> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         if !is_banner_state(state) {

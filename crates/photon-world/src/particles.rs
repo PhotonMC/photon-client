@@ -64,6 +64,7 @@ pub use jukebox::JukeboxChange;
 pub use level_events::LevelEventContext;
 pub use level_events_dripstone::DripstoneAttributes;
 pub use level_events_vault::PlayerSpot;
+pub(crate) use level_events_vault::shared_data as vault_shared_data;
 pub use particle::{Particle, ParticleAtlas};
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;

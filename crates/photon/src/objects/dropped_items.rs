@@ -173,9 +173,35 @@ pub fn world_items(
         view,
         items,
     );
+    block_entity_items(session, layers, (renderer, tints), view, items);
+    displays::displays(
+        session,
+        &mut layers.displays,
+        (renderer, tints),
+        view,
+        items,
+    );
+}
+
+/// The items block entities show: what suspicious blocks, vaults, campfires and shelves hold, and
+/// the conduits' shells.
+fn block_entity_items(
+    session: &PlaySession,
+    layers: &mut WorldItemLayers,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    items: &mut Vec<Vertex>,
+) {
     super::block_entity_items::brushable_items(
         session,
         &mut layers.frames.layers,
+        (renderer, tints),
+        view,
+        items,
+    );
+    super::block_entity_items::vault_items(
+        session,
+        &mut layers.ground,
         (renderer, tints),
         view,
         items,
@@ -200,11 +226,4 @@ pub fn world_items(
     {
         super::block_entity_items::conduits(session, meshes, view, items);
     }
-    displays::displays(
-        session,
-        &mut layers.displays,
-        (renderer, tints),
-        view,
-        items,
-    );
 }

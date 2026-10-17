@@ -14,3 +14,4 @@ pub mod shelf;
 pub mod shulker_box;
 pub mod sign;
 pub mod skull;
+pub mod vault;
