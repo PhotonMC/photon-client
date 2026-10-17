@@ -28,3 +28,20 @@ pub fn beacon_beam() -> Vec<Value> {
     }
     vec![entity("beacon-beam", "beacon_beam", rows)]
 }
+
+/// The real `TheEndGatewayRenderer` for a beam of several heights, colours, scales and times of
+/// its clock.
+pub fn gateway_beam() -> Vec<Value> {
+    let magenta = 0xFFC7_4EBD_u32 as i32 as i64;
+    let purple = 0xFF89_32B8_u32 as i32 as i64;
+    let beam = |label: &str, (scale, time): (f64, f64), height: i64, color: i64| json!({"label": label, "scale": f32_bits(scale), "animation_time": f32_bits(time), "height": height, "color": color});
+    let rows = vec![
+        beam("spawning, just begun", (0.0157, 0.0), 4, magenta),
+        beam("spawning, high", (0.9511, 17.25), 301, magenta),
+        beam("spawning, full", (1.0, 39.5), 319, magenta),
+        beam("cooling, rising", (0.5, 3.75), 25, purple),
+        beam("cooling, nearly done", (0.1564, 28.0), 7, purple),
+        beam("cooling, tall", (0.9877, 12.5), 49, purple),
+    ];
+    vec![entity("gateway-beam", "gateway_beam", rows)]
+}

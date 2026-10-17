@@ -20,7 +20,36 @@ pub(super) fn block_pose_result(operation: &str, request: &Value) -> Option<Resu
 
 /// The block entity pose operations of the beam renderers.
 fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
-    (operation == "beacon_beam").then(|| beacon_beam_result(request))
+    match operation {
+        "beacon_beam" => Some(beacon_beam_result(request)),
+        "gateway_beam" => Some(gateway_beam_result(request)),
+        _ => None,
+    }
+}
+
+/// `gateway_beam`: each layer of a gateway's beam, in the order it is submitted, with the quads it
+/// writes.
+fn gateway_beam_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block_entity::beacon::gateway_beam_layers;
+    use photon_render::joml::Pose;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let float = |key: &str| -> Result<f32, String> {
+            let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+            u32::from_str_radix(text, 16)
+                .map(f32::from_bits)
+                .map_err(|error| error.to_string())
+        };
+        let layers = gateway_beam_layers(
+            &Pose::default(),
+            (float("scale")?, float("animation_time")?),
+            i32_field(row, "height")?,
+            row["color"].as_i64().ok_or("color")? as u32,
+        );
+        let layers: Vec<Value> = layers.iter().map(layer_json).collect();
+        rows.push(json!({"label": row["label"], "layers": layers}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `enchant_table_pose`: what an enchanting table's numbers come to at a partial tick, and the pose

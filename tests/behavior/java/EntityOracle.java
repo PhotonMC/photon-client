@@ -194,6 +194,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("beacon_beam")) {
             return beaconBeam(request);
         }
+        if (operation.equals("gateway_beam")) {
+            return gatewayBeam(request);
+        }
         if (operation.equals("decorated_pot_pose")) {
             return decoratedPotPose(request);
         }

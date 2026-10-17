@@ -58,7 +58,7 @@ pub fn beam_layers(
         };
         layers.extend(beacon_beam(
             base,
-            animation_time,
+            (animation_time, 1.0),
             (start, height),
             (
                 *color,
@@ -74,10 +74,30 @@ pub fn beam_layers(
     layers
 }
 
-/// `BeaconRenderer.submitBeaconBeam` with the texture's own scale of one.
+/// The texture under `textures/` of the end gateway's beam (`TheEndGatewayRenderer.BEAM_LOCATION`).
+pub const GATEWAY_TEXTURE: &str = "entity/end_portal/end_gateway_beam";
+
+/// `TheEndGatewayRenderer.submit`: the beam of a gateway, from `height` below the block to `height`
+/// above it, its `color` (ARGB) and the `scale` of its texture along it as the renderer's state
+/// holds them.
+pub fn gateway_beam_layers(
+    base: &Pose,
+    (scale, animation_time): (f32, f32),
+    height: i32,
+    color: u32,
+) -> [BeamLayer; 2] {
+    beacon_beam(
+        base,
+        (animation_time, scale),
+        (-height, height * 2),
+        (color, 0.15, 0.175),
+    )
+}
+
+/// `BeaconRenderer.submitBeaconBeam`.
 fn beacon_beam(
     base: &Pose,
-    animation_time: f32,
+    (animation_time, texture_scale): (f32, f32),
     (start, height): (i32, i32),
     (color, solid_radius, glow_radius): (u32, f32, f32),
 ) -> [BeamLayer; 2] {
@@ -97,7 +117,7 @@ fn beacon_beam(
     )));
     let r = solid_radius;
     let v2 = -1.0 + v_offset;
-    let v1 = height as f32 * 1.0 * (0.5 / r) + v2;
+    let v1 = height as f32 * texture_scale * (0.5 / r) + v2;
     let solid = BeamLayer {
         translucent: false,
         quads: part(
@@ -109,7 +129,7 @@ fn beacon_beam(
         ),
     };
     let g = glow_radius;
-    let v1 = height as f32 * 1.0 + v2;
+    let v1 = height as f32 * texture_scale + v2;
     let glow = BeamLayer {
         translucent: true,
         quads: part(

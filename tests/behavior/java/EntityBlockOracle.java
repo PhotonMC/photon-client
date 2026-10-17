@@ -518,29 +518,66 @@ class EntityBlockOracle extends EntityAquaticOracle {
             }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            var layers = new JsonArray();
             var translucentType = net.minecraft.client.renderer.rendertype.RenderTypes.beaconBeam(
                 net.minecraft.client.renderer.blockentity.BeaconRenderer.BEAM_LOCATION, true);
-            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
-                EntityOracle.class.getClassLoader(),
-                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
-                (proxy, method, args) -> {
-                    if (method.getName().equals("submitCustomGeometry")) {
-                        var recorder = new VertexRecorder();
-                        ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
-                            .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
-                        var layer = new JsonObject();
-                        layer.addProperty("translucent", args[1] == translucentType);
-                        var quads = new JsonArray();
-                        for (int i = 0; i < recorder.vertices.size(); i += 4) {
-                            quads.add(String.join("|", recorder.vertices.subList(i, i + 4)));
-                        }
-                        layer.add("quads", quads);
-                        layers.add(layer);
-                    }
-                    return null;
-                });
+            var layers = new JsonArray();
+            var collector = beamCollector(translucentType, layers);
             renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            out.add("layers", layers);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** A collector that records each beam layer it is handed: whether it is the glow, and its quads. */
+    private static net.minecraft.client.renderer.SubmitNodeCollector beamCollector(
+        final Object translucentType, final JsonArray layers) {
+        return (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+            EntityOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+            (proxy, method, args) -> {
+                if (method.getName().equals("submitCustomGeometry")) {
+                    var recorder = new VertexRecorder();
+                    ((net.minecraft.client.renderer.SubmitNodeCollector.CustomGeometryRenderer) args[2])
+                        .render(((com.mojang.blaze3d.vertex.PoseStack) args[0]).last(), recorder);
+                    var layer = new JsonObject();
+                    layer.addProperty("translucent", args[1] == translucentType);
+                    var quads = new JsonArray();
+                    for (int i = 0; i < recorder.vertices.size(); i += 4) {
+                        quads.add(String.join("|", recorder.vertices.subList(i, i + 4)));
+                    }
+                    layer.add("quads", quads);
+                    layers.add(layer);
+                }
+                return null;
+            });
+    }
+
+    /**
+     * What the real `TheEndGatewayRenderer.submit` hands the collector for a beam of some height
+     * and colour, at some scale and time of the beam's clock: each layer submitted, whether it is
+     * the translucent glow, and the quads it writes. No face of the cube is shown.
+     */
+    static JsonObject gatewayBeam(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var renderer = new net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer();
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.blockentity.state.EndGatewayRenderState();
+            state.animationTime = Oracle.f32(row, "animation_time");
+            state.scale = Oracle.f32(row, "scale");
+            state.height = row.get("height").getAsInt();
+            state.color = row.get("color").getAsInt();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var layers = new JsonArray();
+            var translucentType = net.minecraft.client.renderer.rendertype.RenderTypes.beaconBeam(
+                net.minecraft.resources.Identifier.withDefaultNamespace("textures/entity/end_portal/end_gateway_beam.png"),
+                true);
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), beamCollector(translucentType, layers), null);
             out.add("layers", layers);
             rows.add(out);
         }
