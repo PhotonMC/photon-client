@@ -76,6 +76,12 @@ pub fn moon_sprites() -> impl Iterator<Item = String> {
         .map(|phase| format!("minecraft:environment/celestial/moon/{phase}"))
 }
 
+/// Whether the sky's shapes are drawn: the overworld's, unless the camera is where the sky is not
+/// seen.
+fn draws_sky(skybox: Skybox, view: &SkyView) -> bool {
+    skybox == Skybox::Overworld && !view.fog.hides_sky()
+}
+
 /// Build one frame of sky from the blended attributes.
 pub fn build_frame(
     attributes: &Attributes,
@@ -139,7 +145,7 @@ pub fn build_frame(
         vertices: Vec::new(),
         batches: Vec::new(),
     };
-    if skybox != Skybox::Overworld {
+    if !draws_sky(skybox, view) {
         return frame;
     }
 

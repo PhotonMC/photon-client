@@ -499,9 +499,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 .collect();
             sounds.sort();
             // The fall of a vehicle that lands is passed on to its passenger, which is not ported.
-            if ridden.is_some() {
-                sounds.clear();
-            }
+            sounds.retain(|_| ridden.is_none());
             let mut described = json!({
                 "sounds": sounds,
                 "x": format!("{:016x}", position.x.to_bits()),
@@ -520,6 +518,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 "shift_key_down": player.is_shift_key_down(),
                 "pose": player.pose().java_name(),
                 "fall_distance": format!("{:016x}", player.fall_distance().to_bits()),
+                "water_vision": format!("{:08x}", player.water_vision().to_bits()),
                 "flying": player.is_flying(),
                 "bob_walk": format!("{:08x}", player.view_bob(0.5).0.to_bits()),
                 "bob": format!("{:08x}", player.view_bob(0.5).1.to_bits()),

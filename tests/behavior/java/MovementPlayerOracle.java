@@ -403,6 +403,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("shift_key_down", player.isShiftKeyDown());
         tick.addProperty("pose", player.getPose().name());
         tick.addProperty("fall_distance", Oracle.bits(player.fallDistance));
+        tick.addProperty("water_vision", Oracle.bits(player.getWaterVision()));
         tick.addProperty("flying", player.getAbilities().flying);
         // What the view bob reads, half way through the next frame.
         var avatar = player.avatarState();
