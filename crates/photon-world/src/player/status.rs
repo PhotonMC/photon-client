@@ -114,6 +114,11 @@ impl ClientPlayerState {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 
+    /// `LivingEntity.getAttributeValue` of the local player.
+    pub fn attribute_value(&self, attribute: &str) -> Option<f64> {
+        crate::effective_attribute(&self.attributes, "minecraft:player", attribute)
+    }
+
     pub fn attributes(&self) -> &[ClientAttributeState] {
         &self.attributes
     }

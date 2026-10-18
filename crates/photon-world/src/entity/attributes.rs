@@ -7,20 +7,11 @@ impl ClientEntity {
     /// the base, the modifiers in their order, kept in the attribute's range).
     /// Nothing for an attribute the type does not have.
     pub fn attribute_value(&self, attribute: &str) -> Option<f64> {
-        let (id, range) = photon_data::entity_type::attribute(attribute)?;
-        let default = photon_data::entity_type::default_attribute(
+        effective_attribute(
+            &self.attributes,
             photon_data::entity_type::name(self.type_id)?,
             attribute,
-        )?;
-        let (low, high) = range.range.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
-        let changed = self
-            .attributes
-            .iter()
-            .find(|state| usize::try_from(state.attribute_id) == Ok(id));
-        Some(changed.map_or_else(
-            || ClientAttributeState::new(0, default, Vec::new()).effective_value(low, high),
-            |state| state.effective_value(low, high),
-        ))
+        )
     }
 
     /// `LivingEntity.getMaxHealth`.
@@ -34,6 +25,25 @@ impl ClientEntity {
         self.attribute_value("minecraft:scale")
             .map_or(1.0, |value| value as f32)
     }
+}
+
+/// `AttributeMap.getValue` of an entity of type `type_name` that the server has changed
+/// `changed` of: the type's base value or the changed one with its modifiers, kept in range.
+pub(crate) fn effective_attribute(
+    changed: &[ClientAttributeState],
+    type_name: &str,
+    attribute: &str,
+) -> Option<f64> {
+    let (id, range) = photon_data::entity_type::attribute(attribute)?;
+    let default = photon_data::entity_type::default_attribute(type_name, attribute)?;
+    let (low, high) = range.range.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
+    let state = changed
+        .iter()
+        .find(|state| usize::try_from(state.attribute_id) == Ok(id));
+    Some(state.map_or_else(
+        || ClientAttributeState::new(0, default, Vec::new()).effective_value(low, high),
+        |state| state.effective_value(low, high),
+    ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

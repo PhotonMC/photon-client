@@ -130,12 +130,36 @@ pub fn camera_position(
         return eye;
     }
     let forwards = photon_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
-    let zoom = max_camera_zoom(world, eye, forwards, 4.0);
+    let zoom = max_camera_zoom(world, eye, forwards, camera_distance(world));
     photon_core::math::Vec3::new(
         eye.x - forwards.x * f64::from(zoom),
         eye.y - forwards.y * f64::from(zoom),
         eye.z - forwards.z * f64::from(zoom),
     )
+}
+
+/// How far behind the eyes a detached camera sits before a block is in the way
+/// (`Camera.alignWithEntity`): the player's scale times its camera distance, or the mount's if
+/// that is more, for a mount that is alive.
+fn camera_distance(world: &photon_world::ClientWorld) -> f32 {
+    let Some(player) = world.local_player() else {
+        return 4.0;
+    };
+    let scale = player
+        .attribute_value("minecraft:scale")
+        .map_or(1.0, |value| value as f32);
+    let distance = player
+        .attribute_value("minecraft:camera_distance")
+        .map_or(4.0, |value| value as f32);
+    let mount = player
+        .vehicle_id()
+        .and_then(|id| world.entities().at(id))
+        .and_then(|mount| {
+            let distance = mount.attribute_value("minecraft:camera_distance")?;
+            Some((mount.scale(), distance as f32))
+        });
+    let (mount_scale, mount_distance) = mount.unwrap_or((scale, distance));
+    (scale * distance).max(mount_scale * mount_distance)
 }
 
 /// The three vectors the camera looks along (`Camera.setRotation`): forwards, left and up.
