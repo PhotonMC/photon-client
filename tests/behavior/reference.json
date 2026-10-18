@@ -610,7 +610,9 @@
         "MovementFireOracle.java",
         "MovementPlayerOracle.java",
         "MovementSupport.java",
-        "MovementWorldOracle.java"
+        "MovementWorldOracle.java",
+        "com/mojang/blaze3d/audio/Listener.java",
+        "com/mojang/blaze3d/audio/ListenerTransform.java"
       ]
     },
     "sound": {
