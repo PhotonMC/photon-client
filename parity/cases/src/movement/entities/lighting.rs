@@ -179,3 +179,22 @@ pub fn gate_rows() -> Vec<Value> {
         })
         .collect()
 }
+
+/// What a dimension type's `cardinal_light` field decodes to: each preset, the
+/// field left out, and values the codec has no preset for.
+pub fn dimension_rows() -> Vec<Value> {
+    let rows = [
+        ("absent", json!({"kind": "absent"})),
+        ("default", json!({"kind": "string", "value": "default"})),
+        ("nether", json!({"kind": "string", "value": "nether"})),
+        ("unknown-name", json!({"kind": "string", "value": "end"})),
+        ("capitalised", json!({"kind": "string", "value": "Nether"})),
+        ("empty-name", json!({"kind": "string", "value": ""})),
+        ("namespaced", json!({"kind": "string", "value": "minecraft:nether"})),
+        ("int", json!({"kind": "int", "value": 1})),
+        ("byte", json!({"kind": "byte", "value": 1})),
+        ("list", json!({"kind": "list"})),
+        ("compound", json!({"kind": "compound"})),
+    ];
+    rows.into_iter().map(|(label, cardinal)| json!({"label": label, "cardinal": cardinal})).collect()
+}

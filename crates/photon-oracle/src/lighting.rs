@@ -15,6 +15,7 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
     match operation {
         "block_lighting" => Some(block_lighting_result(request)),
         "block_smooth_gate" => Some(block_smooth_gate_result(request)),
+        "dimension_cardinal_light" => Some(dimension_cardinal_light_result(request)),
         "entity_shadows" => Some(entity_shadows_result(request)),
         _ => None,
     }
@@ -100,6 +101,62 @@ pub(super) fn block_smooth_gate_result(request: &Value) -> Result<Value, String>
             parts.iter().map(|part| part.as_bool().unwrap_or(false)),
         );
         out.push(json!({"label": row["label"], "smooth": smooth}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `dimension_cardinal_light`: the cardinal-light preset a serialized
+/// dimension type decodes to, or that it does not decode. The row's
+/// `cardinal` says what the field holds (`kind`, `value`) or that it is absent.
+pub(super) fn dimension_cardinal_light_result(request: &Value) -> Result<Value, String> {
+    let field = |key: &str, value: FieldValue| Field {
+        key: key.to_owned(),
+        value,
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let mut fields = vec![
+            field("has_skylight", FieldValue::Byte(1)),
+            field("has_ceiling", FieldValue::Byte(0)),
+            field("has_ender_dragon_fight", FieldValue::Byte(0)),
+            field("coordinate_scale", FieldValue::Double(1.0)),
+            field("min_y", FieldValue::Int(-64)),
+            field("height", FieldValue::Int(384)),
+            field("logical_height", FieldValue::Int(384)),
+            field("ambient_light", FieldValue::Float(0.0)),
+        ];
+        let cardinal = &row["cardinal"];
+        match string(cardinal, "kind")? {
+            "absent" => {}
+            "string" => fields.push(field(
+                "cardinal_light",
+                FieldValue::Str(string(cardinal, "value")?.to_owned()),
+            )),
+            "int" => fields.push(field(
+                "cardinal_light",
+                FieldValue::Int(i32_field(cardinal, "value")?),
+            )),
+            "byte" => fields.push(field(
+                "cardinal_light",
+                FieldValue::Byte(
+                    i8::try_from(i32_field(cardinal, "value")?).map_err(|e| e.to_string())?,
+                ),
+            )),
+            "list" => fields.push(field("cardinal_light", FieldValue::List(Vec::new()))),
+            "compound" => fields.push(field("cardinal_light", FieldValue::Compound(Vec::new()))),
+            other => return Err(format!("unknown cardinal kind {other}")),
+        }
+        let entry = PackedRegistryEntry::new(
+            Identifier::parse("photon:probe").map_err(|_| "identifier")?,
+            Some(FieldValue::Compound(fields)),
+        );
+        let decoded = match entry.dimension_type_environment() {
+            Ok(Some(environment)) => {
+                json!({"decoded": true, "cardinal": environment.cardinal_light_type().as_str()})
+            }
+            _ => json!({"decoded": false}),
+        };
+        out.push(json!({"label": row["label"], "result": decoded}));
     }
     Ok(json!({"rows": out}))
 }

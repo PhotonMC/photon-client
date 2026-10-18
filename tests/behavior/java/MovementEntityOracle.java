@@ -305,6 +305,51 @@ class MovementEntityOracle extends MovementSupport {
         return Float.intBitsToFloat(Integer.parseUnsignedInt(value.getAsString(), 16));
     }
 
+    /**
+     * The cardinal light a serialized dimension type decodes to through the
+     * codec the client reads the registry with (`DimensionType.NETWORK_CODEC`
+     * over NBT), or that it fails to decode: the row's field is absent, a
+     * string, or another tag type.
+     */
+    static JsonObject dimensionCardinalLight(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var tag = new net.minecraft.nbt.CompoundTag();
+        tag.putBoolean("has_skylight", true);
+        tag.putBoolean("has_ceiling", false);
+        tag.putBoolean("has_ender_dragon_fight", false);
+        tag.putDouble("coordinate_scale", 1.0);
+        tag.putInt("min_y", -64);
+        tag.putInt("height", 384);
+        tag.putInt("logical_height", 384);
+        tag.putString("infiniburn", "#minecraft:infiniburn_overworld");
+        tag.putFloat("ambient_light", 0.0F);
+        tag.putInt("monster_spawn_light_level", 0);
+        tag.putInt("monster_spawn_block_light_limit", 0);
+        var cardinal = row.getAsJsonObject("cardinal");
+        switch (cardinal.get("kind").getAsString()) {
+            case "absent" -> { }
+            case "string" -> tag.putString("cardinal_light", cardinal.get("value").getAsString());
+            case "int" -> tag.putInt("cardinal_light", cardinal.get("value").getAsInt());
+            case "byte" -> tag.putByte("cardinal_light", cardinal.get("value").getAsByte());
+            case "list" -> tag.put("cardinal_light", new net.minecraft.nbt.ListTag());
+            case "compound" -> tag.put("cardinal_light", new net.minecraft.nbt.CompoundTag());
+            default -> throw new IllegalArgumentException("unknown cardinal kind");
+        }
+        var ops = net.minecraft.resources.RegistryOps.create(
+            net.minecraft.nbt.NbtOps.INSTANCE, Oracle.vanillaRegistries());
+        var parsed = net.minecraft.world.level.dimension.DimensionType.NETWORK_CODEC.parse(ops, tag);
+        var result = new JsonObject();
+        if (parsed.result().isPresent()) {
+            result.addProperty("decoded", true);
+            result.addProperty("cardinal", parsed.result().get().cardinalLightType().getSerializedName());
+        } else {
+            result.addProperty("decoded", false);
+        }
+        entry.add("result", result);
+        return entry;
+    }
+
     /** `BlockModelLighter` on quads the row describes, in the level the row builds. */
     static JsonObject blockLighting(JsonObject row) throws Exception {
         var entry = new JsonObject();
