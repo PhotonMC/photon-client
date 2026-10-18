@@ -186,6 +186,22 @@ pub(super) fn default_components(
 }
 
 /// `item_declarations`: the declarations as the oracle describes them.
+/// An item's `equippable` component as the declarations case writes it.
+fn describe_equippable(equip: &photon_data::item::definition::Equip) -> Value {
+    let mut described = json!({
+        "slot": equip.slot,
+        "player": equip.player,
+        "swappable": equip.swappable,
+    });
+    if let Some(asset) = equip.asset {
+        described["asset"] = json!(asset);
+    }
+    if let Some(overlay) = equip.camera_overlay {
+        described["camera_overlay"] = json!(overlay);
+    }
+    described
+}
+
 pub(super) fn item_declarations(label: &str) -> Value {
     use photon_data::item::classes::ItemClass;
     use photon_data::item::definition::RuleBlocks;
@@ -223,14 +239,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
                 "kinetic_weapon": item.kinetic_weapon,
             });
             if let Some(equip) = &item.equippable {
-                described["equippable"] = json!({
-                    "slot": equip.slot,
-                    "player": equip.player,
-                    "swappable": equip.swappable,
-                });
-                if let Some(asset) = equip.asset {
-                    described["equippable"]["asset"] = json!(asset);
-                }
+                described["equippable"] = describe_equippable(equip);
             }
             if let Some(remainder) = &item.crafting_remainder {
                 described["crafting_remainder"] =

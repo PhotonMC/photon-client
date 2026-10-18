@@ -90,6 +90,7 @@ fn camera_overlays(row: &Value) -> CameraOverlays {
         powder_snow: frozen_alpha(row),
         portal: portal_overlay(row),
         nausea: nausea_overlay(row),
+        worn: worn_overlays(row),
     }
 }
 
@@ -119,6 +120,22 @@ fn nausea_overlay(row: &Value) -> Option<(f32, f32)> {
         effect.tick_client();
     }
     Some((effect.blend_factor(0.0), nausea["scale"].as_f64()? as f32))
+}
+
+/// The textures the items of a row's equipment lay over the view, in the order the slots are looked
+/// at (the main hand, the off hand, the feet, the legs, the chest, the head).
+fn worn_overlays(row: &Value) -> Vec<String> {
+    let Some(equipment) = row.get("equipment") else {
+        return Vec::new();
+    };
+    let items: Vec<_> = ["mainhand", "offhand", "feet", "legs", "chest", "head"]
+        .into_iter()
+        .filter_map(|slot| {
+            let item = photon_game::item::id_of(equipment[slot].as_str()?)?;
+            Some((slot, item, &[][..]))
+        })
+        .collect();
+    photon_game::item::values::camera_overlay_textures(&items)
 }
 
 /// The vignette of a row: how strongly its border warns where the camera stands, or none when the

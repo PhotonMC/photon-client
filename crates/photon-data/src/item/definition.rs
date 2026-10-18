@@ -41,6 +41,8 @@ pub struct Equip {
     /// The equipment asset it is worn as (`Equippable.assetId`): which
     /// layers and textures draw it on a wearer.
     pub asset: Option<&'static str>,
+    /// The texture laid over the wearer's view (`Equippable.cameraOverlay`).
+    pub camera_overlay: Option<&'static str>,
 }
 
 /// The item crafting leaves behind, and how many.

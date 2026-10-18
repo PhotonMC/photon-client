@@ -24,6 +24,8 @@ struct Hotbar {
     vignette: Option<Vignette>,
     /// The nausea effect (duration, ticks it has run) and the screen effect scale option.
     nausea: Option<(i64, i64, f64)>,
+    /// Items in the equipment slots, which also draw the camera overlays: slot and item.
+    equipment: Option<(&'static str, &'static str)>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -39,6 +41,7 @@ const HOTBAR: Hotbar = Hotbar {
     portal: None,
     vignette: None,
     nausea: None,
+    equipment: None,
 };
 
 /// The vignette's input: the brightness, the camera's place and a border of a size (moving to a
@@ -66,6 +69,9 @@ fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     }
     if let Some(portal) = hotbar.portal {
         row["portal"] = json!(portal);
+    }
+    if let Some((slot, item)) = hotbar.equipment {
+        row["equipment"] = json!({ slot: item });
     }
     if let Some((duration, ticks, scale)) = hotbar.nausea {
         row["nausea"] = json!({"duration": duration, "ticks": ticks, "scale": scale});
@@ -119,11 +125,29 @@ pub fn hud_hotbar() -> Value {
         hotbar_row("hotbar-slow-speed", Hotbar { indicator: 2, speed: 0.5, ticks: 20, ..HOTBAR }),
     ]);
     rows.extend(overlay_rows());
+    rows.extend(worn_rows());
     gui("hud-hotbar", "hud_hotbar", rows)
 }
 
 fn frame(tick: i64, ms: i64, health: f64, invulnerable: i64) -> Value {
     json!({"tick": tick, "ms": ms, "health": f32_bits(health), "invulnerable": invulnerable})
+}
+
+/// The items worn or held that lay a texture over the view: a pumpkin on the head draws its blur in
+/// first person only, on the chest it draws nothing (in the hand it would be drawn in the hotbar, which the stub game cannot), and the order among the overlays.
+fn worn_rows() -> Vec<Value> {
+    let pumpkin = |slot| Some((slot, "minecraft:carved_pumpkin"));
+    vec![
+        hotbar_row("pumpkin-head", Hotbar { equipment: pumpkin("head"), ..HOTBAR }),
+        hotbar_row("pumpkin-head-third-person", Hotbar { equipment: pumpkin("head"), third_person: true, ..HOTBAR }),
+        hotbar_row("pumpkin-chest", Hotbar { equipment: pumpkin("chest"), ..HOTBAR }),
+        hotbar_row("stone-head", Hotbar { equipment: Some(("head", "minecraft:stone")), ..HOTBAR }),
+        hotbar_row(
+            "pumpkin-and-snow-and-portal",
+            Hotbar { equipment: pumpkin("head"), frozen: Some(70), portal: Some(0.5), ..HOTBAR },
+        ),
+        hotbar_row("pumpkin-small", Hotbar { equipment: pumpkin("head"), size: (320, 240), ..HOTBAR }),
+    ]
 }
 
 /// The camera overlays drawn before the crosshair: the powder snow frame, the portal and the vignette

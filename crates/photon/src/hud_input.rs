@@ -86,6 +86,33 @@ fn locator_input(
     })
 }
 
+/// The textures the worn and held items lay over the view (`Equippable.cameraOverlay` of an item
+/// in the slot it names), in the order of `EquipmentSlot.values()`. Only the game's own textures
+/// are known to the GUI atlas.
+fn worn_overlays(session: &PlaySession) -> Vec<String> {
+    let selected = 36 + i16::from(session.status().selected_slot as i8);
+    // The slot's name and where the player's menu keeps it.
+    let slots = [
+        ("mainhand", selected),
+        ("offhand", 45),
+        ("feet", 8),
+        ("legs", 7),
+        ("chest", 6),
+        ("head", 5),
+    ];
+    let local = session.world().local_player();
+    let stacks: Vec<_> = slots
+        .into_iter()
+        .filter_map(|(name, index)| {
+            let stack = local?
+                .inventory_slot(index)
+                .filter(|stack| stack.item_count() > 0)?;
+            Some((name, stack.item_registry_id(), stack.patch_bytes()))
+        })
+        .collect();
+    photon_game::item::values::camera_overlay_textures(&stacks)
+}
+
 /// `Hud.extractCameraOverlays`: the vignette (its option is on) and how strongly the border warns
 /// at the camera's feet, the powder snow frame, and the portal overlay with where the nether
 /// portal's sprite is in the block atlas, as the partial tick between two ticks has them.
@@ -110,6 +137,7 @@ pub fn camera_overlays(
                 .world_border()
                 .warning_strength(feet.x, feet.z),
         ),
+        worn: worn_overlays(session),
         powder_snow: session
             .world()
             .local_player()

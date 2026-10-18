@@ -213,9 +213,9 @@
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 15
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 22
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 22
-"crates/photon-game/src/options/file.rs::Options::read" = 37
+"crates/photon-game/src/options/file.rs::Options::read" = 31
 "crates/photon-game/src/options/file.rs::Options::read_sound" = 13
-"crates/photon-game/src/options/file.rs::Options::write" = 31
+"crates/photon-game/src/options/file.rs::Options::write" = 24
 "crates/photon-game/src/sounds.rs::SoundSource::name" = 11
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 18
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 15

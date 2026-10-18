@@ -348,6 +348,7 @@ class BlockDeclarationOracle extends BlockItemOracle {
                 equip.addProperty("player", equippable.canBeEquippedBy(playerType));
                 equip.addProperty("swappable", equippable.swappable());
                 equippable.assetId().ifPresent(asset -> equip.addProperty("asset", asset.identifier().toString()));
+                equippable.cameraOverlay().ifPresent(overlay -> equip.addProperty("camera_overlay", overlay.toString()));
                 described.add("equippable", equip);
             }
             var remainder = item.getCraftingRemainder();

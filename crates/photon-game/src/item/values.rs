@@ -229,21 +229,10 @@ impl Values {
             cursor.identifier().ok()?;
             cursor.optional(Cursor::float).ok()?;
         }
-        let asset = if cursor.boolean().ok()? {
-            let length = cursor.count().ok()?;
-            let name = cursor.data.get(..length)?;
-            let name = String::from_utf8_lossy(name).into_owned();
-            cursor.skip(length).ok()?;
-            Some(name)
-        } else {
-            None
-        };
+        let asset = optional_string(&mut cursor)?;
         // The camera overlay, then the entities that may wear it: a holder
         // set, which is a tag's name or a count plus one and the types.
-        if cursor.boolean().ok()? {
-            let length = cursor.count().ok()?;
-            cursor.skip(length).ok()?;
-        }
+        let camera_overlay = optional_string(&mut cursor)?;
         let allowed_entities = if cursor.boolean().ok()? {
             match cursor.count().ok()? {
                 0 => {
@@ -266,6 +255,7 @@ impl Values {
         Some(Equippable {
             slot,
             asset,
+            camera_overlay,
             allowed_entities,
         })
     }
@@ -487,6 +477,39 @@ mod color;
 mod tests {
     use super::*;
 
+    /// A patch that adds an `equippable` component for the main hand with a camera overlay.
+    fn overlay_patch(overlay: &str) -> Vec<u8> {
+        let mut patch = vec![1, 0, photon_data::item::component_types::EQUIPPABLE as u8];
+        // Slot (main hand), the equip sound's registry id plus one, no asset, the overlay, no
+        // allowed entities, then dispensable, swappable, damage on hurt, equip on interact,
+        // can be sheared and the shearing sound.
+        patch.extend([0, 1, 0, 1, overlay.len() as u8]);
+        patch.extend(overlay.bytes());
+        patch.extend([0, 1, 1, 1, 0, 0, 1]);
+        patch
+    }
+
+    /// The carved pumpkin lays its blur over the head's view, and only there; a stack that a
+    /// patch makes equippable in the hand does it from the hand, and only from a game namespace.
+    #[test]
+    fn camera_overlays_come_from_the_slot_an_item_names() {
+        let pumpkin = item("minecraft:carved_pumpkin");
+        let stick = item("minecraft:stick");
+        let patch = overlay_patch("minecraft:misc/pumpkinblur");
+        assert_eq!(
+            camera_overlay_textures(&[("head", pumpkin, &[])]),
+            ["textures/misc/pumpkinblur"]
+        );
+        assert!(camera_overlay_textures(&[("mainhand", pumpkin, &[])]).is_empty());
+        assert!(camera_overlay_textures(&[("chest", stick, &[])]).is_empty());
+        assert_eq!(
+            camera_overlay_textures(&[("mainhand", stick, &patch), ("head", stick, &patch)]),
+            ["textures/misc/pumpkinblur"]
+        );
+        let foreign = overlay_patch("pack:misc/blur");
+        assert!(camera_overlay_textures(&[("mainhand", stick, &foreign)]).is_empty());
+    }
+
     fn item(name: &str) -> ItemId {
         crate::item::id_of(name).expect("an item")
     }
@@ -536,8 +559,40 @@ mod tests {
 pub struct Equippable {
     pub slot: &'static str,
     pub asset: Option<String>,
+    /// `cameraOverlay`: a texture laid over the wearer's view, as an identifier.
+    pub camera_overlay: Option<String>,
     /// `allowedEntities`; none lets every entity wear it.
     pub allowed_entities: Option<Allowed>,
+}
+
+/// An optional string of an item component (a flag, then a length and the text), or none for the
+/// reader running out.
+fn optional_string(cursor: &mut Cursor<'_>) -> Option<Option<String>> {
+    if !cursor.boolean().ok()? {
+        return Some(None);
+    }
+    let length = cursor.count().ok()?;
+    let name = String::from_utf8_lossy(cursor.data.get(..length)?).into_owned();
+    cursor.skip(length).ok()?;
+    Some(Some(name))
+}
+
+/// The textures that the items in the equipment slots lay over the view (`Equippable.cameraOverlay`
+/// of an item in the slot it names), for slots given as `(name, item, patch)` in the order they are
+/// looked at. Only the game's own namespace is known to the GUI, which draws `textures/<path>`.
+pub fn camera_overlay_textures(slots: &[(&str, ItemId, &[u8])]) -> Vec<String> {
+    slots
+        .iter()
+        .filter_map(|&(name, item, patch)| {
+            let equippable = equippable_of(item, patch)?;
+            let overlay = equippable
+                .camera_overlay
+                .filter(|_| equippable.slot == name)?;
+            overlay
+                .strip_prefix("minecraft:")
+                .map(|path| format!("textures/{path}"))
+        })
+        .collect()
 }
 
 /// `ItemStack.get(DataComponents.EQUIPPABLE)`: the stack's patch over the item's own.
@@ -556,6 +611,7 @@ pub fn equippable_of(item: ItemId, patch: &[u8]) -> Option<Equippable> {
     Some(Equippable {
         slot: equip.slot,
         asset: equip.asset.map(str::to_owned),
+        camera_overlay: equip.camera_overlay.map(str::to_owned),
         allowed_entities: super::equippable_allowed::allowed_entities(item.name),
     })
 }

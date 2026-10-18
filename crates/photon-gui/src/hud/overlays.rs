@@ -7,6 +7,9 @@ use super::*;
 pub struct CameraOverlays {
     /// The vignette's border warning, from nothing to one, while the vignette option is on.
     pub vignette: Option<f32>,
+    /// The textures the worn and held items lay over the view (`Equippable.cameraOverlay`), in
+    /// the order of the equipment slots, drawn in first person.
+    pub worn: Vec<String>,
     /// The powder snow frame's alpha while the player has ticks frozen (`getPercentFrozen`).
     pub powder_snow: Option<f32>,
     /// The portal effect's intensity and the portal sprite's place in the block atlas, while it
@@ -68,6 +71,11 @@ impl Hud {
                 (0, 0, width, height),
                 vignette_colour(self.vignette_brightness, warning),
             );
+        }
+        if input.first_person {
+            for texture in &overlays.worn {
+                frame.texture_overlay(atlas, texture, (0, 0, width, height), 1.0);
+            }
         }
         if let Some(alpha) = overlays.powder_snow {
             frame.texture_overlay(

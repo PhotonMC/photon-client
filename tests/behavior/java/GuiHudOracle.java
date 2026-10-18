@@ -261,10 +261,18 @@ class GuiHudOracle extends GuiCommandOracle {
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
             boolean vignette = row.has("vignette");
-            if (row.has("frozen_ticks") || row.has("portal") || row.has("nausea") || vignette) {
+            if (row.has("frozen_ticks") || row.has("portal") || row.has("nausea") || row.has("equipment") || vignette) {
                 // The camera overlays; the vignette only where the row asks for it.
                 if (row.has("frozen_ticks")) {
                     local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                }
+                if (row.has("equipment")) {
+                    for (var slot : row.getAsJsonObject("equipment").entrySet()) {
+                        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                            .get(net.minecraft.resources.Identifier.parse(slot.getValue().getAsString())).orElseThrow().value();
+                        local.setItemSlot(net.minecraft.world.entity.EquipmentSlot.byName(slot.getKey()),
+                            new net.minecraft.world.item.ItemStack(item));
+                    }
                 }
                 if (row.has("nausea")) {
                     var nausea = row.getAsJsonObject("nausea");
