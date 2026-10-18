@@ -180,6 +180,11 @@ impl VulkanBackend {
         let due: Vec<(i32, i32, i32)> = self
             .sections
             .iter()
+            .filter(|(key, _)| {
+                self.visible_sections
+                    .as_ref()
+                    .is_none_or(|seen| seen.contains(key))
+            })
             .filter_map(|(key, section)| {
                 let sort = section.sort.as_ref()?;
                 let view = point_of_view(origin, section.centre);
