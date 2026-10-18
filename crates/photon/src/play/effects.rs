@@ -4,9 +4,10 @@ use super::*;
 use photon_world::particles::JukeboxChange;
 
 impl Play {
-    /// `handlePortalTransitionEffect`: a screen that is not allowed in a portal (any but the chat,
-    /// the death screen and the credits) closes, a container with its close packet. The menus
-    /// that carry packets of their own when they close (signs, books, dialogs) are not closed yet.
+    /// `handlePortalTransitionEffect`: a screen that is not allowed in a portal (a pause
+    /// screen is, as are the chat, the death screen and the credits) closes, a container with its
+    /// close packet. The screens that carry packets of their own when they close (signs, books,
+    /// dialogs that do not pause) are not closed yet.
     fn close_screens_in_portal(&mut self) {
         if !self.session.take_portal_screen_close() {
             return;

@@ -342,20 +342,12 @@ mod book;
 pub use book::BookEdit;
 
 impl Controls {
-    /// `setScreen(null)` for the pause menu and the settings screens above it, the social
-    /// interactions screen and the game mode switcher; whether any was open.
+    /// `setScreen(null)` for the screens a nether portal does not allow (`Screen.isAllowedInPortal`
+    /// is `isPauseScreen` unless overridden): the social interactions screen and the game mode
+    /// switcher. The pause menu and the settings screens are pause screens and stay open.
+    /// Whether any was open.
     pub fn close_menus(&mut self) -> bool {
         let closed = [
-            self.pause.take().is_some(),
-            self.options_screen.take().is_some(),
-            self.video_screen.take().is_some(),
-            self.chat_options_screen.take().is_some(),
-            self.skin_screen.take().is_some(),
-            self.sound_screen.take().is_some(),
-            self.controls_screen.take().is_some(),
-            self.language_screen.take().is_some(),
-            self.mouse_screen.take().is_some(),
-            self.key_binds_screen.take().is_some(),
             self.social.take().is_some(),
             self.game_mode_switcher.take().is_some(),
         ];

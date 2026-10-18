@@ -114,8 +114,9 @@ impl LocalPlayer {
         self.portal.cooldown = cooldown;
     }
 
-    /// Whether a tick since the last call found the player inside a nether portal, where only the
-    /// chat, the death screen and the credits stay open (`Screen.isAllowedInPortal`).
+    /// Whether a tick since the last call found the player inside a nether portal, where
+    /// the screens that are not pause screens close, except the chat, the death screen and the
+    /// credits (`Screen.isAllowedInPortal`).
     pub fn take_portal_screen_close(&mut self) -> bool {
         std::mem::take(&mut self.portal.close_screen)
     }
