@@ -444,8 +444,13 @@ pub(super) fn push_block_quad(
             crate::block::light::light_uv(lit.light[corner]),
         ));
     }
-    mesh.indices
-        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+    // A translucent face is drawn after the rest, blended.
+    let indices = if quad.layer == crate::texture::sprite_alpha::Layer::Translucent {
+        &mut mesh.translucent_indices
+    } else {
+        &mut mesh.indices
+    };
+    indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
 }
 
 /// Read a box of the world and build one mesh for everything in it, with
@@ -527,4 +532,51 @@ fn extra_sprites(layer_sprites: impl IntoIterator<Item = Identifier>) -> Vec<Ide
         .map(|name| Identifier::parse(&name).expect("fixed sprite names are valid"))
         .chain(layer_sprites)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::texture::sprite_alpha::Layer;
+
+    fn quad(layer: Layer) -> crate::block::bake::BakedQuad {
+        crate::block::bake::BakedQuad {
+            corners: [[0.0; 3], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0, 0.0]],
+            uvs: [[0.0; 2]; 4],
+            direction: Direction::North,
+            cull: None,
+            tint_index: -1,
+            shade: true,
+            layer,
+        }
+    }
+
+    #[test]
+    fn a_block_quad_goes_to_the_pass_of_its_layer() {
+        let lit = crate::block::light::QuadLight {
+            smooth: false,
+            shade: [1.0; 4],
+            light: [0; 4],
+        };
+        for (layer, translucent) in [
+            (Layer::Solid, false),
+            (Layer::Cutout, false),
+            (Layer::Translucent, true),
+        ] {
+            let mut mesh = Mesh::default();
+            push_block_quad(
+                &mut mesh,
+                &quad(layer),
+                &lit,
+                0xFFFF_FFFF,
+                [0.0; 3],
+                photon_world::CardinalLightType::Default,
+            );
+            assert_eq!(
+                mesh.translucent_indices.len(),
+                if translucent { 6 } else { 0 }
+            );
+            assert_eq!(mesh.indices.len(), if translucent { 0 } else { 6 });
+        }
+    }
 }
