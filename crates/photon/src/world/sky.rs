@@ -49,6 +49,30 @@ pub struct Sky {
     end_flash: Option<photon_world::end_flash::EndFlashState>,
     /// The option that hides the lightning flashes, as the last tick saw it.
     hide_flashes: bool,
+    /// The angles of a flash that started, until its sound is asked for.
+    flash_start: Option<(f32, f32)>,
+}
+
+/// The world border's wall for the frame, animated by the clock's milliseconds.
+fn set_world_border(
+    backend: &mut VulkanBackend,
+    session: &PlaySession,
+    camera: &SkyCamera,
+    partial: f32,
+) -> Result<(), photon_render::VulkanError> {
+    let time_millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_millis() as i64);
+    let border_vertices = world_border(
+        session,
+        camera.eye,
+        camera.origin,
+        partial,
+        camera.render_distance,
+        CLOUD_RANGE,
+        time_millis,
+    );
+    backend.set_world_border(&border_vertices)
 }
 
 /// The End's flashes, in a dimension that has them.
@@ -59,6 +83,18 @@ fn end_flash_of(environment: &Environment) -> Option<photon_world::end_flash::En
 impl Sky {
     /// `ClientLevel.tick`'s `endFlashState.tick(getDefaultClockTime())`: the dimension's own clock,
     /// zero when it has none.
+    /// What the sky quad of the End's flash is drawn from: the intensity between two ticks and
+    /// the angles.
+    fn flash_view(&self, partial: f32) -> Option<(f32, f32, f32)> {
+        let flash = self.end_flash.as_ref()?;
+        Some((flash.intensity(partial), flash.x_angle(), flash.y_angle()))
+    }
+
+    /// The angles of a flash that started since the last call, for its sound.
+    pub fn take_flash_start(&mut self) -> Option<(f32, f32)> {
+        self.flash_start.take()
+    }
+
     fn tick_end_flash(&mut self, session: &PlaySession) {
         let clock = self
             .environment
@@ -67,6 +103,9 @@ impl Sky {
             .unwrap_or(0);
         if let Some(flash) = self.end_flash.as_mut() {
             flash.tick(clock);
+            if flash.flash_started_this_tick() {
+                self.flash_start = Some((flash.x_angle(), flash.y_angle()));
+            }
         }
     }
 
@@ -111,6 +150,7 @@ impl Sky {
             )),
             end_flash,
             hide_flashes: false,
+            flash_start: None,
         })
     }
 
@@ -167,19 +207,7 @@ impl Sky {
         self.rain_fog += (target - self.rain_fog) * camera.frame_ticks * 0.2;
         let weather = weather(session, tints, camera.eye, camera.origin, partial);
         backend.set_weather(&weather.rain, &weather.snow)?;
-        let time_millis = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |elapsed| elapsed.as_millis() as i64);
-        let border_vertices = world_border(
-            session,
-            camera.eye,
-            camera.origin,
-            partial,
-            camera.render_distance,
-            CLOUD_RANGE,
-            time_millis,
-        );
-        backend.set_world_border(&border_vertices)?;
+        set_world_border(backend, session, camera, partial)?;
         let (y_rot, x_rot) = camera.rotation;
         let look = Vec3::direction_from_rotation_components(x_rot, y_rot);
         let sky = photon_render::sky::build_sky_frame(
@@ -189,6 +217,7 @@ impl Sky {
                 eye_above_horizon: camera.eye.y - 63.0,
                 fog: camera.fog,
                 render_distance: camera.render_distance,
+                end_flash: self.flash_view(partial),
                 cloud_range: CLOUD_RANGE,
                 weather: photon_render::sky::Weather {
                     rain: session.rain_level(),

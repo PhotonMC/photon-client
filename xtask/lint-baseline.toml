@@ -920,7 +920,7 @@
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 93
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 119
-"crates/photon-render/src/sky/environment.rs::Environment::load" = 71
+"crates/photon-render/src/sky/environment.rs::Environment::load" = 68
 "crates/photon-render/src/sky/frame.rs::build_frame" = 209
 "crates/photon-render/src/sky/parse.rs::Track::parse" = 74
 "crates/photon-render/src/sky/weather.rs::build" = 125

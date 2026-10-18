@@ -124,6 +124,22 @@ pub fn end_flash_script() -> Vec<Value> {
     vec![entity("end-flash-script", "end_flash_script", rows)]
 }
 
+/// The End flash quad's matrix at the angles the flashes of several intervals hang at, and at the
+/// ends of their ranges.
+pub fn end_flash_pose() -> Vec<Value> {
+    let angles = [
+        ("middle", -25.0, 0.0),
+        ("lowest", -60.0, -180.0),
+        ("highest", 10.0, 180.0),
+        ("odd", -41.37, 123.456),
+        ("east", -12.5, 90.0),
+        ("west", -50.0, -90.0),
+    ];
+    let rows =
+        angles.into_iter().map(|(label, x, y)| json!({"label": label, "x": f32_bits(x), "y": f32_bits(y)})).collect();
+    vec![entity("end-flash-pose", "end_flash_pose", rows)]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

@@ -13,8 +13,26 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "end_sky_buffer" => Ok(end_sky_buffer_result()),
         "tick_rate_script" => tick_rate_script_result(request),
         "end_flash_script" => end_flash_script_result(request),
+        "end_flash_pose" => end_flash_pose_result(request),
         _ => return None,
     })
+}
+
+/// `end_flash_pose`: the matrix the End flash's quad is drawn through, for angles.
+fn end_flash_pose_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let pose = photon_render::sky::end_flash_pose(float_of(row, "x")?, float_of(row, "y")?);
+        let matrix: Vec<String> = pose
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|value| format!("{:08x}", value.to_bits()))
+            .collect();
+        rows.push(json!({"label": row["label"], "matrix": matrix}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `end_flash_script`: an `EndFlashState` ticked through clock times, described after each tick.

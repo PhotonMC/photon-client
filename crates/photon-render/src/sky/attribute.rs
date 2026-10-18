@@ -89,6 +89,8 @@ pub(super) const MOON_PHASES: [&str; 8] = [
 ];
 
 pub const SUN_SPRITE: &str = "minecraft:environment/celestial/sun";
+/// The End flash's sprite in the celestials atlas.
+pub const END_FLASH_SPRITE: &str = "minecraft:environment/celestial/end_flash";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) enum Operation {

@@ -2,6 +2,7 @@
 //! the End sky texture repeated sixteen times over each.
 
 use super::{Attributes, SkyBlend, SkyFrame, SkySprites, SkyVertex, SkyView, Skybox};
+use crate::joml::{Pose, Quaternion};
 use crate::joml::{cos_from_sin, sin};
 
 /// Where the tint and the repeat are marked: the texture repeats, and there is no fog.
@@ -60,6 +61,45 @@ pub fn end_sky_vertices() -> Vec<SkyVertex> {
     vertices
 }
 
+/// The pose of the End flash's quad: turned about the vertical by `180 - y_angle` degrees and about
+/// the side by `-90 - x_angle`, lifted a hundred blocks and stretched sixty wide.
+pub fn end_flash_pose(x_angle: f32, y_angle: f32) -> Pose {
+    let radians = Quaternion::degrees_to_radians;
+    let mut pose = Pose::default();
+    pose.rotate(&Quaternion::rotation_y(radians(180.0 - y_angle)));
+    pose.rotate(&Quaternion::rotation_x(radians(-90.0 - x_angle)));
+    pose.translate(0.0, 100.0, 0.0);
+    pose.scale(60.0, 1.0, 60.0);
+    pose
+}
+
+/// The End flash's quad (`SkyRenderer.buildCelestialQuad` of its sprite, `[u0, v0, u1, v1]`) as two
+/// triangles, white at the flash's intensity in every channel and the alpha.
+pub fn end_flash_vertices(
+    (intensity, x_angle, y_angle): (f32, f32, f32),
+    [u0, v0, u1, v1]: [f32; 4],
+) -> Vec<SkyVertex> {
+    let pose = end_flash_pose(x_angle, y_angle);
+    let corners = [
+        ([-1.0, 0.0, -1.0], [u0, v0]),
+        ([1.0, 0.0, -1.0], [u1, v0]),
+        ([1.0, 0.0, 1.0], [u1, v1]),
+        ([-1.0, 0.0, 1.0], [u0, v1]),
+    ];
+    let vertex = |(corner, uv): ([f32; 3], [f32; 2])| SkyVertex {
+        position: std::array::from_fn(|row| {
+            let m = &pose.pose.m;
+            m[0][row] * corner[0] + (m[1][row] * corner[1] + (m[2][row] * corner[2] + m[3][row]))
+        }),
+        uv,
+        colour: [intensity; 4],
+        fog_distance: [-1.0, -1.0],
+    };
+    [0, 1, 2, 0, 2, 3]
+        .map(|index| vertex(corners[index]))
+        .to_vec()
+}
+
 /// One frame of the dimension's sky: the overworld's shapes, or the End's cube, none where the
 /// camera is out of the sky's sight (`LevelRenderer.addSkyPass`).
 pub fn build_sky_frame(
@@ -72,7 +112,17 @@ pub fn build_sky_frame(
     let mut frame = super::build_frame(attributes, view, stars, sprites, skybox);
     if skybox == Skybox::End && !view.fog.hides_sky() {
         frame.vertices = end_sky_vertices();
-        frame.batches = vec![(SkyBlend::EndSky, 0, frame.vertices.len() as u32)];
+        let cube = frame.vertices.len() as u32;
+        frame.batches = vec![(SkyBlend::EndSky, 0, cube)];
+        // `SkyRenderer.renderEndFlash`: after the cube, while the flash is lit.
+        if let Some((intensity, x_angle, y_angle)) = view.end_flash.filter(|flash| flash.0 > 1.0e-5)
+        {
+            let flash = end_flash_vertices((intensity, x_angle, y_angle), sprites.end_flash);
+            frame
+                .batches
+                .push((SkyBlend::Overlay, cube, flash.len() as u32));
+            frame.vertices.extend(flash);
+        }
     }
     frame
 }

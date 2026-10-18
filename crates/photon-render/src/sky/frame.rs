@@ -50,6 +50,7 @@ pub struct SkyFrame {
 /// Where the sky's sprites sit on the atlas.
 pub struct SkySprites {
     pub sun: [f32; 4],
+    pub end_flash: [f32; 4],
     pub moon: [[f32; 4]; 8],
 }
 
@@ -63,6 +64,8 @@ pub struct SkyView {
     pub fog: FogView,
     /// The effective render distance in chunks.
     pub render_distance: i32,
+    /// The End's flash: its intensity and the two angles it hangs at, in a dimension that has them.
+    pub end_flash: Option<(f32, f32, f32)>,
     /// The cloud range option, in chunks.
     pub cloud_range: i32,
     /// The level's rain and thunder at this frame.

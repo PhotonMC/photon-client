@@ -501,6 +501,7 @@ fn extra_sprites(layer_sprites: impl IntoIterator<Item = Identifier>) -> Vec<Ide
         .iter()
         .map(|name| (*name).to_owned())
         .chain(std::iter::once(crate::sky::SUN_SPRITE.to_owned()))
+        .chain(std::iter::once(crate::sky::END_FLASH_SPRITE.to_owned()))
         .chain(crate::sky::moon_sprites())
         .chain(
             crate::block_entity::conduit::SPRITES

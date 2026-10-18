@@ -70,6 +70,8 @@ pub struct SoundSystem {
     mixer: Arc<Mutex<photon_audio::mixer::Mixer>>,
     _output: Output,
     followed: Followed,
+    /// Where the listener is, which the sounds that hang at an angle from it follow.
+    camera: Arc<Mutex<Vec3>>,
     local_sounds: u32,
     /// The song the music manager has playing.
     music: Option<photon_game::sounds::engine::InstanceId>,
@@ -118,6 +120,7 @@ impl SoundSystem {
             mixer: Arc::clone(&output.mixer),
             _output: output,
             followed: Arc::new(Mutex::new(HashMap::new())),
+            camera: Arc::new(Mutex::new(Vec3::ZERO)),
             local_sounds: 0,
             music: None,
             jukeboxes: HashMap::new(),
@@ -414,6 +417,9 @@ impl SoundSystem {
 
     /// `SoundEngine.updateSource`: the listener is where the camera is, facing where it faces.
     pub fn set_listener(&self, position: Vec3, forward: [f32; 3], up: [f32; 3]) {
+        if let Ok(mut camera) = self.camera.lock() {
+            *camera = position;
+        }
         if let Ok(mut mixer) = self.mixer.lock() {
             mixer.set_listener(ListenerTransform {
                 position: [position.x, position.y, position.z],
@@ -425,3 +431,5 @@ impl SoundSystem {
 }
 
 use photon_core::math::Vec3;
+
+mod flash;

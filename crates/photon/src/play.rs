@@ -388,6 +388,7 @@ fn sky_sprites(block_renderer: &BlockRenderer) -> photon_render::sky::SkySprites
     let moon_names: Vec<String> = photon_render::sky::moon_sprites().collect();
     photon_render::sky::SkySprites {
         sun: sprite(photon_render::sky::SUN_SPRITE),
+        end_flash: sprite(photon_render::sky::END_FLASH_SPRITE),
         moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
     }
 }

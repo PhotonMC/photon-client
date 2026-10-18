@@ -66,6 +66,13 @@ impl Play {
             self.camera.activation.display(stack, offsets);
         }
         self.close_screens_in_portal();
+        // `ClientLevel.tick`: the End's flash sounds, but not over the credits.
+        if let Some(angles) = self.sky.take_flash_start()
+            && self.controls.credits.is_none()
+            && let Some(sound) = self.sound.as_mut()
+        {
+            sound.play_end_flash(angles);
+        }
         let tracked = self.session.take_tracking_emitters();
         let tracked_sounds = self.particles.tracking(&self.session, tracked);
         if let Some(sound) = self.sound.as_mut() {

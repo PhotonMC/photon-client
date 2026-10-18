@@ -730,6 +730,41 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /**
+     * `SkyRenderer.renderEndFlash`'s matrix: the pose stack's two turns, then the model view
+     * stack's translate and scale, which the GPU multiplies the unit quad by (the method itself
+     * draws, so its lines are transcribed).
+     */
+    static JsonObject endFlashPose(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            float xAngle = Oracle.f32(row, "x");
+            float yAngle = Oracle.f32(row, "y");
+            var poseStack = new com.mojang.blaze3d.vertex.PoseStack();
+            poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180.0F - yAngle));
+            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-90.0F - xAngle));
+            var modelViewStack = new org.joml.Matrix4fStack(4);
+            modelViewStack.pushMatrix();
+            modelViewStack.mul(poseStack.last().pose());
+            modelViewStack.translate(0.0F, 100.0F, 0.0F);
+            modelViewStack.scale(60.0F, 1.0F, 60.0F);
+            var matrix = new float[16];
+            new org.joml.Matrix4f(modelViewStack).get(matrix);
+            var described = new JsonArray();
+            for (float value : matrix) {
+                described.add(Oracle.bits(value));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("matrix", described);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
