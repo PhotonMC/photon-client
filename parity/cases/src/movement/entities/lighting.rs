@@ -205,14 +205,16 @@ pub fn dimension_rows() -> Vec<Value> {
 pub fn fluid_rows() -> Vec<Value> {
     let at = [2, 64, 3];
     let ceiling = (1..=3).flat_map(|x| (2..=4).map(move |z| put(x, 65, z, "minecraft:stone"))).collect::<Vec<_>>();
+    let glass = (1..=3).flat_map(|x| (2..=4).map(move |z| put(x, 65, z, "minecraft:glass"))).collect::<Vec<_>>();
     let mut rows = Vec::new();
     for fluid in ["lava", "water"] {
         let id = format!("minecraft:{fluid}");
         let source = || put(2, 64, 3, &id);
-        let scenes: [(&str, Vec<Value>); 5] = [
+        let scenes: [(&str, Vec<Value>); 6] = [
             ("open", vec![source()]),
             ("covered", vec![source(), put(2, 65, 3, "minecraft:stone")]),
             ("ceiled", cat![vec![source()], ceiling.clone()]),
+            ("glass-ceiled", cat![vec![source()], glass.clone()]),
             (
                 "walled",
                 vec![source(), put(3, 64, 3, "minecraft:stone"), put(2, 64, 2, "minecraft:stone"), put(2, 64, 4, &id)],

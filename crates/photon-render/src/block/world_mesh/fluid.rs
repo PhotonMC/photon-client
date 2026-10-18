@@ -74,6 +74,14 @@ where
     /// A neighbour's height for the corner average: the fluid's own height,
     /// a full block under the same fluid, nothing for an open neighbour and
     /// a negative mark for a solid one.
+    /// `BlockState.isSolidRender`: a block whose occlusion shape is the whole
+    /// block, which glass and leaves are not despite their full collision.
+    fn solid_render(&self, x: i32, y: i32, z: i32) -> bool {
+        (self.read)(x, y, z)
+            .and_then(photon_world::block::state)
+            .is_some_and(|state| state.solid_render)
+    }
+
     /// `FluidState.shouldRenderBackwardUpFace`: the surface is drawn again
     /// from below when any column around the block above it holds something
     /// that is neither this fluid nor solid.
@@ -81,7 +89,7 @@ where
         (-1..=1).any(|offset_x| {
             (-1..=1).any(|offset_z| {
                 let (x, z) = (x + offset_x, z + offset_z);
-                !self.same(water, x, y + 1, z) && !self.solid(x, y + 1, z)
+                !self.same(water, x, y + 1, z) && !self.solid_render(x, y + 1, z)
             })
         })
     }
