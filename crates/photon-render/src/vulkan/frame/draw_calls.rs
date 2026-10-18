@@ -226,6 +226,17 @@ impl VulkanBackend {
         }
     }
 
+    /// The items the hand holds follow the arm in its buffer, and their glints follow the items.
+    fn hand_range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
+        let [items, glints] = self.held_counts;
+        let arm = self.hand.count;
+        let buffer = self.hand.buffer.as_ref();
+        match run {
+            Run::HandGlint => (buffer, arm + items, glints),
+            _ => (buffer, arm, items),
+        }
+    }
+
     /// The buffer a run's vertices are in, and which of them it draws.
     fn run_range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
         fn list(list: &DrawList) -> (Option<&HostBuffer>, u32, u32) {
@@ -251,7 +262,7 @@ impl VulkanBackend {
             Run::Cracks => list(&self.breaking),
             Run::Hand => list(&self.hand),
             // The items follow the arm in the hand's buffer.
-            Run::Held => (self.hand.buffer.as_ref(), self.hand.count, self.held_count),
+            Run::Held | Run::HandGlint => self.hand_range(run),
         }
     }
 

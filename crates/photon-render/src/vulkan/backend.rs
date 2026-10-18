@@ -104,8 +104,9 @@ pub struct VulkanBackend {
     /// The first-person hand's triangles, in view space, and the projection
     /// they are drawn with over a cleared depth.
     pub(super) hand: DrawList,
-    /// The held items' triangles, after the arm's in the hand buffer.
-    pub(super) held_count: u32,
+    /// The held items' triangles and then their glints' (counts), after the arm's in the hand
+    /// buffer.
+    pub(super) held_counts: [u32; 2],
     /// The aimed block's outline strips for the next frame.
     pub(super) outline: DrawList,
     /// The breaking overlay's triangles for the next frame.

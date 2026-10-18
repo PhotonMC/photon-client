@@ -227,19 +227,19 @@ impl VulkanBackend {
     }
 
     /// Hand over the next frame's first-person hand: triangles in view
-    /// space, and the projection they are drawn with.
+    /// space, the items they hold with their glints, and the projection they are drawn with.
     pub fn set_hand(
         &mut self,
         vertices: &[Vertex],
-        held: &[Vertex],
+        (held, glint): (&[Vertex], &[Vertex]),
         projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
         let mut buffer = std::mem::take(&mut self.hand.buffer);
-        let all: Vec<Vertex> = vertices.iter().chain(held).copied().collect();
+        let all: Vec<Vertex> = vertices.iter().chain(held).chain(glint).copied().collect();
         self.fill_vertex_buffer(&mut buffer, &all)?;
         self.hand.buffer = buffer;
         self.hand.count = vertices.len() as u32;
-        self.held_count = held.len() as u32;
+        self.held_counts = [held.len() as u32, glint.len() as u32];
         self.hand_projection = projection;
         Ok(())
     }

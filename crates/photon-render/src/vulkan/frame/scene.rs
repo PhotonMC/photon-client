@@ -373,7 +373,7 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
     unsafe fn record_hand(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
-        if self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_count != 0 {
+        if self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_counts[0] != 0 {
             let mut hand_push = *terrain_push;
             hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
                 self.hand_projection[i / 4][i % 4]
@@ -384,6 +384,7 @@ impl VulkanBackend {
                 self.clear_depth();
                 self.draw_run(scene, Run::Hand, &hand_push);
                 self.draw_run(scene, Run::Held, &hand_push);
+                self.draw_run(scene, Run::HandGlint, &hand_push);
             }
         }
         // SAFETY: recording (see `# Safety`).

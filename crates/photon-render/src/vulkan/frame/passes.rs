@@ -102,6 +102,8 @@ pub(super) enum Run {
     Hand,
     /// The items the hand holds, from the block atlas, after the arm.
     Held,
+    /// The enchantment glint of what the hand holds, over the depth the items wrote.
+    HandGlint,
 }
 
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
@@ -161,7 +163,7 @@ impl Run {
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
             Self::Swirl => &scene.swirl_pipeline,
-            Self::Glint => &scene.glint_pipeline,
+            Self::Glint | Self::HandGlint => &scene.glint_pipeline,
             Self::Rays => &scene.rays_pipeline,
             Self::Orb | Self::MapDecoration => &scene.text_translucent_pipeline,
             Self::Map | Self::NameTag => &scene.text_pipeline,
@@ -189,7 +191,8 @@ impl Run {
             | Self::Orb
             | Self::Particle
             | Self::MapDecoration
-            | Self::Hand => Sampled::Entity,
+            | Self::Hand
+            | Self::HandGlint => Sampled::Entity,
         }
     }
 }

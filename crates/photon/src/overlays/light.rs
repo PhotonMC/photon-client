@@ -45,37 +45,12 @@ pub fn hands(
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     model: &mut PlayerModel,
     view: FrameView,
-) -> (Vec<Vertex>, Vec<Vertex>) {
+) -> HandVertices {
     let partial = view.partial as f32;
-    let (walked, bob) = player.view_bob(partial);
-    let (x_bob, y_bob) = player.hand_bob(partial);
-    let (view_y_rot, view_x_rot) = player.rotation();
     let swap = |item: ItemId| renderer.item_swap(item);
     let main_height = item_in_hand.inverse_arm_height(MAIN_HAND, partial, &swap);
     let off_height = item_in_hand.inverse_arm_height(OFF_HAND, partial, &swap);
-    let hand_view = HandView {
-        bob_walked: walked,
-        bob,
-        view_x_rot,
-        view_y_rot,
-        x_bob,
-        y_bob,
-        inverse_arm_height: main_height,
-        attack: player.attack_anim(partial),
-        light: view.light,
-        skin: view.skin,
-        hurt: {
-            let (hurt_time, hurt_duration, hurt_dir, dying, death_time) = player.hurt_view(partial);
-            photon_render::camera::HurtView {
-                hurt_time,
-                hurt_duration,
-                hurt_dir,
-                dying,
-                death_time,
-                tilt_strength: 1.0,
-            }
-        },
-    };
+    let hand_view = hand_view(player, view, main_height);
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);
     let hand = if main_item.is_none() {
@@ -92,11 +67,54 @@ pub fn hands(
             continue;
         };
         let layers = held_layers[usize::from(!right)].get(stack, renderer, tints);
-        held.extend(photon_render::entity::player_renderer::held_item_vertices(
+        let drawn = photon_render::entity::player_renderer::held_item_vertices(
             &hand_view, layers, right, attack, height,
-        ));
+        );
+        held_layers[usize::from(!right)].extend_with_glint(stack, drawn, &mut held);
     }
-    (hand, held)
+    let glint = held_layers
+        .iter_mut()
+        .flat_map(|cache| cache.take_glint())
+        .collect();
+    HandVertices { hand, held, glint }
+}
+
+/// The first-person view's triangles: the bare arm, the held items, and the items' glints.
+pub struct HandVertices {
+    pub hand: Vec<Vertex>,
+    pub held: Vec<Vertex>,
+    pub glint: Vec<Vertex>,
+}
+
+/// The pose inputs of the first-person view this frame.
+fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> HandView {
+    let partial = view.partial as f32;
+    let (walked, bob) = player.view_bob(partial);
+    let (x_bob, y_bob) = player.hand_bob(partial);
+    let (view_y_rot, view_x_rot) = player.rotation();
+    HandView {
+        bob_walked: walked,
+        bob,
+        view_x_rot,
+        view_y_rot,
+        x_bob,
+        y_bob,
+        inverse_arm_height,
+        attack: player.attack_anim(partial),
+        light: view.light,
+        skin: view.skin,
+        hurt: {
+            let (hurt_time, hurt_duration, hurt_dir, dying, death_time) = player.hurt_view(partial);
+            photon_render::camera::HurtView {
+                hurt_time,
+                hurt_duration,
+                hurt_dir,
+                dying,
+                death_time,
+                tilt_strength: 1.0,
+            }
+        },
+    }
 }
 
 /// `Camera.calculateHudFov`: the hand's field of view is the default,

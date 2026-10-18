@@ -80,9 +80,18 @@ impl Play {
     /// totem animation in any view, all drawn in the hand pass.
     fn set_hands(&mut self, view: FrameView, first_person: bool) -> Result<()> {
         let activation = self.activation_vertices();
+        let matrix = self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE);
+        let texture = self.entity_textures.rect(ITEM_GLINT_TEXTURE);
+        for cache in &mut self.held_item_layers {
+            cache.set_glint(matrix, texture);
+        }
         let player = self.session.player().ok_or("no local player")?;
         if first_person && !player.spectating() {
-            let (hand, mut held) = hands(
+            let overlays::HandVertices {
+                hand,
+                mut held,
+                glint,
+            } = hands(
                 player,
                 &self.item_in_hand,
                 &mut self.held_item_layers,
@@ -97,7 +106,8 @@ impl Play {
                 100.0,
             );
             held.extend(activation);
-            self.backend.set_hand(&hand, &held, hand_projection)?;
+            self.backend
+                .set_hand(&hand, (&held, &glint), hand_projection)?;
             let darken =
                 photon_world::particles::Ambience::sky_darken(&self.sky.ambience(&self.session));
             let effects = overlays::screen_effect::screen_effects(
@@ -116,7 +126,8 @@ impl Play {
                 0.05,
                 100.0,
             );
-            self.backend.set_hand(&[], &activation, hand_projection)?;
+            self.backend
+                .set_hand(&[], (&activation, &[]), hand_projection)?;
             self.backend
                 .set_screen_effects((&[], &[], &[]), [[0.0; 4]; 4])?;
         }
