@@ -417,6 +417,56 @@ class MovementEntityOracle extends MovementSupport {
         return entry;
     }
 
+    /**
+     * The order translucent faces are drawn in (`VertexSorting.byDistance`
+     * over the faces' middles), and which neighbour of a section the camera
+     * stands in (`TranslucencyPointOfView`).
+     */
+    static JsonObject translucentOrder(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var camera = row.getAsJsonArray("camera");
+        var centroids = row.getAsJsonArray("centroids");
+        var points = new com.mojang.blaze3d.vertex.CompactVectorArray(centroids.size());
+        for (int index = 0; index < centroids.size(); index++) {
+            var at = centroids.get(index).getAsJsonArray();
+            points.set(index, bits(at.get(0)), bits(at.get(1)), bits(at.get(2)));
+        }
+        var order = com.mojang.blaze3d.vertex.VertexSorting
+            .byDistance(bits(camera.get(0)), bits(camera.get(1)), bits(camera.get(2))).sort(points);
+        var sorted = new com.google.gson.JsonArray();
+        for (int index : order) {
+            sorted.add(index);
+        }
+        entry.add("order", sorted);
+        return entry;
+    }
+
+    static JsonObject translucentView(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var camera = row.getAsJsonArray("camera");
+        var section = row.getAsJsonArray("section");
+        var view = net.minecraft.client.renderer.chunk.TranslucencyPointOfView.of(
+            new net.minecraft.world.phys.Vec3(camera.get(0).getAsDouble(), camera.get(1).getAsDouble(),
+                camera.get(2).getAsDouble()),
+            net.minecraft.core.SectionPos.asLong(section.get(0).getAsInt(), section.get(1).getAsInt(),
+                section.get(2).getAsInt()));
+        var fields = new com.google.gson.JsonArray();
+        for (var name : new String[] {"x", "y", "z"}) {
+            try {
+                var field = view.getClass().getDeclaredField(name);
+                field.setAccessible(true);
+                fields.add(field.getInt(view));
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(error);
+            }
+        }
+        entry.add("view", fields);
+        entry.addProperty("aligned", view.isAxisAligned());
+        return entry;
+    }
+
     /** A sprite over real contents, which is what a face bakes its layer from. */
     static final class ContentSprite extends net.minecraft.client.renderer.texture.TextureAtlasSprite {
         ContentSprite(net.minecraft.client.renderer.texture.SpriteContents contents) {

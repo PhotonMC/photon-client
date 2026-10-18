@@ -17,6 +17,8 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
         "block_smooth_gate" => Some(block_smooth_gate_result(request)),
         "fluid_mesh" => Some(fluid_mesh_result(request)),
         "face_layer" => Some(face_layer_result(request)),
+        "translucent_order" => Some(translucent_order_result(request)),
+        "translucent_view" => Some(translucent_view_result(request)),
         "dimension_cardinal_light" => Some(dimension_cardinal_light_result(request)),
         "entity_shadows" => Some(entity_shadows_result(request)),
         _ => None,
@@ -342,6 +344,57 @@ pub(super) fn face_layer_result(request: &Value) -> Result<Value, String> {
             }),
             None => json!({"label": row["label"], "outcome": "error"}),
         });
+    }
+    Ok(json!({"rows": out}))
+}
+
+fn bits_triple(value: &Value) -> Result<[f32; 3], String> {
+    let parts = value.as_array().ok_or("a point must be an array")?;
+    let mut out = [0.0_f32; 3];
+    for (slot, part) in parts.iter().enumerate().take(3) {
+        out[slot] = bits32(part)?;
+    }
+    Ok(out)
+}
+
+/// `translucent_order`: the order faces with the given middles are drawn in,
+/// from a camera.
+pub(super) fn translucent_order_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let centroids = row["centroids"]
+            .as_array()
+            .ok_or("centroids must be an array")?
+            .iter()
+            .map(bits_triple)
+            .collect::<Result<Vec<_>, _>>()?;
+        let order = photon_render::translucent::order(bits_triple(&row["camera"])?, &centroids);
+        out.push(json!({"label": row["label"], "order": order}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `translucent_view`: which neighbour of a section the camera stands in.
+pub(super) fn translucent_view_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let camera: Vec<f32> = row["camera"]
+            .as_array()
+            .ok_or("camera must be an array")?
+            .iter()
+            .map(|part| part.as_f64().unwrap_or_default() as f32)
+            .collect();
+        let section: Vec<f32> = row["section"]
+            .as_array()
+            .ok_or("section must be an array")?
+            .iter()
+            .map(|part| part.as_i64().unwrap_or_default() as f32 * 16.0 + 8.0)
+            .collect();
+        let view = photon_render::translucent::point_of_view(
+            [camera[0], camera[1], camera[2]],
+            [section[0], section[1], section[2]],
+        );
+        out.push(json!({"label": row["label"], "view": view, "aligned": view.contains(&0)}));
     }
     Ok(json!({"rows": out}))
 }

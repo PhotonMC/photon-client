@@ -132,7 +132,7 @@ pub struct VulkanBackend {
     pub(super) staged: Vec<StagedCopy>,
     /// Section meshes replaced since the frame in flight began; freed once
     /// it is done with them.
-    pub(super) retired: Vec<(u64, SectionBuffers)>,
+    pub(super) retired: Vec<(u64, Retired)>,
     pub(super) sort_origin: [f32; 3],
     /// The lightmap's inputs, then the darkness effect's subtraction, which the push constants
     /// carry in the camera's `w`, and the boss bars' darkening of the world.

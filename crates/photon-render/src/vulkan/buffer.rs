@@ -275,6 +275,15 @@ pub(super) struct CloudBuffer {
     pub(super) visible: bool,
 }
 
+/// What the arena gives back once the frames that may read it are done.
+pub(super) enum Retired {
+    /// A section mesh that was replaced.
+    Section(SectionBuffers),
+    /// The index range a section left when its translucent faces were
+    /// ordered again.
+    Indices(ArenaSlice),
+}
+
 /// One mesh's buffers: the opaque indices, then the translucent ones.
 pub(super) struct SectionBuffers {
     pub(super) vertices: ArenaSlice,
@@ -285,6 +294,23 @@ pub(super) struct SectionBuffers {
     pub(super) centre: [f32; 3],
     /// When the section first showed and how long it takes to fade in.
     pub(super) fade: SectionFade,
+    /// What ordering its translucent faces again needs.
+    pub(super) sort: Option<Box<TranslucentSort>>,
+}
+
+/// A section's translucent faces kept to be ordered again as the camera
+/// moves (`MeshData.SortState`).
+pub(super) struct TranslucentSort {
+    /// The indices as uploaded: the opaque ones, then the translucent.
+    pub(super) indices: Vec<u32>,
+    /// How many of them are opaque.
+    pub(super) opaque: usize,
+    /// The middle of each translucent face, which sits on one or two
+    /// sextets of indices.
+    pub(super) centroids: Vec<[f32; 3]>,
+    /// Where the camera stood among the section's neighbours when it was
+    /// last ordered (`TranslucencyPointOfView`).
+    pub(super) point_of_view: [i32; 3],
 }
 
 /// A section's fade in from the fog colour, as the reference's section

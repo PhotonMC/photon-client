@@ -43,12 +43,24 @@ impl VulkanBackend {
             .into_iter()
             .partition(|(stamp, _)| *stamp <= completed);
         self.retired = waiting;
-        for (_, section) in done {
-            // A copy into a mesh nobody will draw has nowhere safe to go: its range is free now.
-            self.staged
-                .retain(|copy| copy.target != section.vertices && copy.target != section.indices);
-            // SAFETY: the section's last frame has finished (see `# Safety`).
-            unsafe { self.destroy_section(section) };
+        for (_, retired) in done {
+            match retired {
+                Retired::Section(section) => {
+                    // A copy into a mesh nobody will draw has nowhere safe to go: its range is
+                    // free now.
+                    self.staged.retain(|copy| {
+                        copy.target != section.vertices && copy.target != section.indices
+                    });
+                    // SAFETY: the section's last frame has finished (see `# Safety`).
+                    unsafe { self.destroy_section(section) };
+                }
+                Retired::Indices(slice) => {
+                    self.staged.retain(|copy| copy.target != slice);
+                    self.arena_free(slice);
+                    // SAFETY: the range's last frame has finished (see `# Safety`).
+                    unsafe { self.trim_arena() };
+                }
+            }
         }
     }
 

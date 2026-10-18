@@ -24,6 +24,7 @@ pub mod screen_effect;
 pub mod section_workers;
 pub mod sky;
 pub mod texture;
+pub mod translucent;
 pub mod visibility;
 pub mod vulkan;
 pub mod window;

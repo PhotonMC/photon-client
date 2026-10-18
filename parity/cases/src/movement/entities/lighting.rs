@@ -353,3 +353,65 @@ pub fn face_layer_rows() -> Vec<Value> {
         })
         .collect()
 }
+
+fn point(at: [f32; 3]) -> Value {
+    json!(at.map(f32_bits))
+}
+
+/// The order translucent faces are drawn in: the farthest first, ties as they
+/// were, near-equal distances and a camera among the faces.
+pub fn translucent_order_rows() -> Vec<Value> {
+    let row = |label: &str, camera: [f32; 3], centroids: &[[f32; 3]]| {
+        json!({"label": label, "camera": point(camera),
+               "centroids": centroids.iter().map(|at| point(*at)).collect::<Vec<_>>()})
+    };
+    let spread: Vec<[f32; 3]> = (0..24_u32)
+        .map(|index| {
+            let mix = |salt: u32| {
+                ((index.wrapping_mul(2_654_435_761).wrapping_add(salt * 40_503) >> 7) & 0x3FF) as f32 / 64.0
+            };
+            [mix(1), mix(2), mix(3)]
+        })
+        .collect();
+    let ties: Vec<[f32; 3]> = (0..64_u32).map(|index| [(index % 4) as f32, 0.0, 0.0]).collect();
+    vec![
+        row("many-ties", [0.0; 3], &ties),
+        row("distinct", [0.0; 3], &[[1.0, 0.0, 0.0], [5.0, 0.0, 0.0], [-1.5, 0.0, 0.0], [3.0, 0.0, 0.0]]),
+        row("ties", [0.0; 3], &[[2.0, 0.0, 0.0], [-2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, -2.0]]),
+        row(
+            "back-faces-repeat-a-middle",
+            [4.0, 4.0, 4.0],
+            &[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [9.0, 9.0, 9.0], [9.0, 9.0, 9.0]],
+        ),
+        row(
+            "near-equal",
+            [0.0; 3],
+            &[[1.000_000_1, 0.0, 0.0], [1.0, 0.0, 0.0], [1.000_000_2, 0.0, 0.0], [0.999_999_9, 0.0, 0.0]],
+        ),
+        row("camera-inside", [8.0, 8.0, 8.0], &[[8.0, 8.0, 8.0], [8.5, 8.0, 8.0], [7.0, 8.0, 8.0], [8.0, 12.0, 8.0]]),
+        row("negative-zero", [0.0; 3], &[[-0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+        row("spread", [8.0, 8.0, 8.0], &spread),
+        row("spread-far", [-30.0, 40.0, 3.5], &spread),
+        row("none", [0.0; 3], &[]),
+    ]
+}
+
+/// Which neighbour of a section the camera stands in, and whether it is level
+/// with the section on an axis.
+pub fn translucent_view_rows() -> Vec<Value> {
+    let rows: [(&str, [f64; 3], [i64; 3]); 10] = [
+        ("inside", [8.5, 72.0, 8.5], [0, 4, 0]),
+        ("next-door", [20.5, 72.0, 8.5], [0, 4, 0]),
+        ("far", [200.5, 12.0, -90.5], [0, 4, 0]),
+        ("below", [8.5, 3.0, 8.5], [0, 4, 0]),
+        ("diagonal", [24.0, 90.0, 24.0], [0, 4, 0]),
+        ("negative-edge", [-0.5, 64.0, -0.5], [0, 4, 0]),
+        ("boundary", [16.0, 80.0, 0.0], [0, 4, 0]),
+        ("just-before-boundary", [15.5, 79.5, 15.5], [0, 4, 0]),
+        ("negative-section", [-20.0, 10.0, -20.0], [-2, 0, -2]),
+        ("aligned-on-x", [8.0, 200.0, 200.0], [0, 4, 0]),
+    ];
+    rows.into_iter()
+        .map(|(label, camera, section)| json!({"label": label, "camera": camera, "section": section}))
+        .collect()
+}

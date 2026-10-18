@@ -212,8 +212,8 @@ impl VulkanBackend {
             for section in std::mem::take(&mut self.moving_sections) {
                 self.destroy_section(section);
             }
-            for (_, section) in std::mem::take(&mut self.retired) {
-                self.destroy_section(section);
+            for (_, retired) in std::mem::take(&mut self.retired) {
+                self.destroy_retired(retired);
             }
             // Their copies have nowhere to go now.
             self.staged.clear();
