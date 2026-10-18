@@ -316,17 +316,11 @@ pub(super) fn face_layer_result(request: &Value) -> Result<Value, String> {
             height,
             rgba,
         };
-        // An animation of one frame is a still sprite to the reference.
-        let mut frames: Vec<u32> = Vec::new();
+        let mut playback: Vec<u32> = Vec::new();
         for index in row["playback"].as_array().into_iter().flatten() {
-            let index = index.as_u64().ok_or("frame index")? as u32;
-            if !frames.contains(&index) {
-                frames.push(index);
-            }
+            playback.push(index.as_u64().ok_or("frame index")? as u32);
         }
-        let played = row["playback"].as_array().map_or(0, Vec::len);
-        let alpha =
-            SpriteAlpha::measure(&image, frame, if played > 1 { frames } else { Vec::new() });
+        let alpha = SpriteAlpha::measure(&image, frame, &playback);
         let mut uvs = [0.0_f32; 4];
         for (slot, uv) in row["uvs"]
             .as_array()

@@ -141,15 +141,10 @@ fn sprite_alpha((image, _, animated): &DecodedSprite) -> crate::texture::sprite_
     let frame = (image.width, image.height);
     match animated {
         Some((strip, playback, _)) => {
-            let mut frames: Vec<u32> = Vec::new();
-            for &(index, _) in playback {
-                if !frames.contains(&(index as u32)) {
-                    frames.push(index as u32);
-                }
-            }
-            crate::texture::sprite_alpha::SpriteAlpha::measure(strip, frame, frames)
+            let played: Vec<u32> = playback.iter().map(|&(index, _)| index as u32).collect();
+            crate::texture::sprite_alpha::SpriteAlpha::measure(strip, frame, &played)
         }
-        None => crate::texture::sprite_alpha::SpriteAlpha::measure(image, frame, Vec::new()),
+        None => crate::texture::sprite_alpha::SpriteAlpha::measure(image, frame, &[]),
     }
 }
 

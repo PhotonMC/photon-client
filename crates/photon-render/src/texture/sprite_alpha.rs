@@ -62,15 +62,26 @@ impl SpriteAlpha {
     }
 
     /// Measure a sprite: its image (the whole strip when animated), the size
-    /// of one frame and the distinct frames its animation plays.
-    pub fn measure(image: &DecodedImage, frame: (u32, u32), frames: Vec<u32>) -> Self {
+    /// of one frame and the frames its animation plays in order. An animation
+    /// of a single frame is a still sprite to the reference.
+    pub fn measure(image: &DecodedImage, frame: (u32, u32), playback: &[u32]) -> Self {
         let transparency = compute_transparency(image);
+        let mut frames: Vec<u32> = Vec::new();
+        for &index in playback {
+            if !frames.contains(&index) {
+                frames.push(index);
+            }
+        }
         Self {
             transparency,
             pixels: (!transparency.is_opaque()).then(|| Pixels {
                 image: image.clone(),
                 frame,
-                frames,
+                frames: if playback.len() > 1 {
+                    frames
+                } else {
+                    Vec::new()
+                },
             }),
         }
     }
