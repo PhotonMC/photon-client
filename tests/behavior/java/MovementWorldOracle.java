@@ -221,8 +221,26 @@ class MovementWorldOracle extends MovementLivingOracle {
         var options = (net.minecraft.client.Options) unsafe.allocateInstance(net.minecraft.client.Options.class);
         setField(options, "gamma", optionValue(0.5));
         setField(options, "darknessEffectScale", optionValue(1.0));
-        setField(options, "hideLightningFlash", optionValue(false));
+        setField(options, "hideLightningFlash", optionValue(row.get("hide_flash").getAsBoolean()));
         setField(minecraft, "options", options);
+        // The End's flash, ticked through the row's clock times, and a boss bar with world fog.
+        if (row.has("flash_clocks")) {
+            var flash = new net.minecraft.client.renderer.EndFlashState();
+            for (var clock : row.getAsJsonArray("flash_clocks")) {
+                flash.tick(clock.getAsLong());
+            }
+            setField(scene.level(), "endFlashState", flash);
+        }
+        var hud = getField(getField(minecraft, "gui"), "hud");
+        setField(hud, "bossOverlay", unsafe.allocateInstance(net.minecraft.client.gui.components.BossHealthOverlay.class));
+        var bossEvents = new java.util.LinkedHashMap<java.util.UUID, net.minecraft.client.gui.components.LerpingBossEvent>();
+        if (row.get("boss_fog").getAsBoolean()) {
+            var id = java.util.UUID.randomUUID();
+            bossEvents.put(id, new net.minecraft.client.gui.components.LerpingBossEvent(id,
+                net.minecraft.network.chat.Component.empty(), 1.0F, net.minecraft.world.BossEvent.BossBarColor.PURPLE,
+                net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS, false, false, true));
+        }
+        setField(getField(hud, "bossOverlay"), "events", bossEvents);
         var probe = (FogProbe) unsafe.allocateInstance(FogProbe.class);
         probe.values = new java.util.HashMap<>();
         var attributes = row.getAsJsonObject("attributes");
@@ -253,6 +271,7 @@ class MovementWorldOracle extends MovementLivingOracle {
         entry.add("brightness", fogBits(state.brightness));
         entry.add("darkness", fogBits(state.darknessEffectScale));
         entry.add("boss_darkening", fogBits(state.bossOverlayWorldDarkening));
+        entry.add("sky_factor", fogBits(state.skyFactor));
         return entry;
     }
 

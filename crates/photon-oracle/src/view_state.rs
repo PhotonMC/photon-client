@@ -12,8 +12,32 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "item_activation_pose" => item_activation_pose_result(request),
         "end_sky_buffer" => Ok(end_sky_buffer_result()),
         "tick_rate_script" => tick_rate_script_result(request),
+        "end_flash_script" => end_flash_script_result(request),
         _ => return None,
     })
+}
+
+/// `end_flash_script`: an `EndFlashState` ticked through clock times, described after each tick.
+fn end_flash_script_result(request: &Value) -> Result<Value, String> {
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let partial = float_of(row, "partial")?;
+        let mut state = photon_world::end_flash::EndFlashState::default();
+        let mut states = Vec::new();
+        for clock in row["clocks"].as_array().ok_or("clocks")? {
+            state.tick(clock.as_i64().ok_or("clock")?);
+            states.push(json!({
+                "intensity": bits(state.intensity(partial)),
+                "intensity_now": bits(state.intensity(1.0)),
+                "intensity_old": bits(state.intensity(0.0)),
+                "x": bits(state.x_angle()), "y": bits(state.y_angle()),
+                "started": state.flash_started_this_tick(),
+            }));
+        }
+        rows.push(json!({"label": row["label"], "states": states}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `tick_rate_script`: a `TickRateManager` taken through a script of calls, its state after each.
@@ -380,7 +404,7 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
         photon_render::sky::night_vision_intensity(view.night_vision, conduit, water_vision);
     let inputs = photon_render::sky::LightmapInputs {
         sky_colour: colour("sky_light_color")?,
-        sky_factor: 0.0,
+        sky_factor: float_of(&row["attributes"], "sky_light_factor")?,
         block_tint: colour("block_light_tint")?,
         ambient: colour("ambient_light_color")?,
         night_vision_colour: colour("night_vision_color")?,
@@ -395,6 +419,7 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
                 now: float_of(row, "boss_darkening")?,
             }
             .at(partial),
+            end_flash_boost: end_flash_boost_of(row, partial)?,
         },
         partial,
     );
@@ -406,7 +431,28 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
         "brightness": bits(&[effects.brightness]),
         "darkness": bits(&[effects.darkness]),
         "boss_darkening": bits(&[effects.boss_darkening]),
+        "sky_factor": bits(&[effects.sky_factor]),
     }))
+}
+
+/// What the End's flash adds to a lightmap row's sky factor: the state ticked through the row's
+/// clock times, if it has any, and the options the row sets.
+fn end_flash_boost_of(row: &Value, partial: f32) -> Result<f32, String> {
+    let intensity = match row.get("flash_clocks").and_then(Value::as_array) {
+        Some(clocks) => {
+            let mut state = photon_world::end_flash::EndFlashState::default();
+            for clock in clocks {
+                state.tick(clock.as_i64().ok_or("clock")?);
+            }
+            Some(state.intensity(partial))
+        }
+        None => None,
+    };
+    Ok(photon_render::sky::end_flash_boost(
+        intensity,
+        row["hide_flash"].as_bool().ok_or("hide_flash")?,
+        row["boss_fog"].as_bool().ok_or("boss_fog")?,
+    ))
 }
 
 /// A fog view that holds only the effects a row adds, for a camera in the air.

@@ -64,7 +64,7 @@ impl VulkanBackend {
             sky_r,
             sky_g,
             sky_b,
-            inputs.sky_factor,
+            effects.sky_factor,
             tint_r,
             tint_g,
             tint_b,

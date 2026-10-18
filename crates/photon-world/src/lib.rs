@@ -34,6 +34,7 @@ mod constants;
 mod container;
 mod dimension;
 pub mod elytra;
+pub mod end_flash;
 mod entity;
 pub(crate) mod entity_kind;
 mod entity_random;

@@ -701,6 +701,35 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /** The real `EndFlashState` ticked through a script of clock times, described after each tick. */
+    static JsonObject endFlashScript(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var state = new net.minecraft.client.renderer.EndFlashState();
+            float partial = Oracle.f32(row, "partial");
+            var states = new JsonArray();
+            for (var clock : row.get("clocks").getAsJsonArray()) {
+                state.tick(clock.getAsLong());
+                var out = new JsonObject();
+                out.addProperty("intensity", Oracle.bits(state.getIntensity(partial)));
+                out.addProperty("intensity_now", Oracle.bits(state.getIntensity(1.0F)));
+                out.addProperty("intensity_old", Oracle.bits(state.getIntensity(0.0F)));
+                out.addProperty("x", Oracle.bits(state.getXAngle()));
+                out.addProperty("y", Oracle.bits(state.getYAngle()));
+                out.addProperty("started", state.flashStartedThisTick());
+                states.add(out);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("states", states);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();

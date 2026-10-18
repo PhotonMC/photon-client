@@ -57,7 +57,11 @@ pub fn fog_view(
 
 /// What the lightmap reads of the local player (`LightmapRenderStateExtractor.extract`): the
 /// darkness effect, the tick count, and the night vision the effect or the conduit gives.
-pub fn lightmap_view(session: &PlaySession, partial: f32, boss_darkening: f32) -> LightmapView {
+pub fn lightmap_view(
+    session: &PlaySession,
+    partial: f32,
+    (boss_darkening, end_flash_boost): (f32, f32),
+) -> LightmapView {
     let local = session.world().local_player();
     let effects = local.map_or(&[][..], |local| local.effects());
     let water_vision = session.player().map_or(0.0, |player| player.water_vision());
@@ -72,5 +76,6 @@ pub fn lightmap_view(session: &PlaySession, partial: f32, boss_darkening: f32) -
         tick_count: local.map_or(0, |local| local.tick_count()),
         night_vision,
         boss_darkening,
+        end_flash_boost,
     }
 }

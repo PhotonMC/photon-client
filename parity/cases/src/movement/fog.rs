@@ -202,6 +202,7 @@ fn lightmap_row_with_boss(
         "label": label, "effects": effects, "tick_count": tick_count, "eyes_in_water": eyes_in_water,
         "water_vision_time": water_vision_time, "partial": f32_bits(0.4),
         "boss_darkening_old": f32_bits(boss_old), "boss_darkening": f32_bits(boss_now),
+        "hide_flash": false, "boss_fog": false,
         "attributes": {
             "block_light_tint": -10_100, "sky_light_factor": f32_bits(0.24), "sky_light_color": 0xFF4D_5E99_u32 as i32,
             "ambient_light_color": 0xFF0A_0A14_u32 as i32, "night_vision_color": -6_710_887,
@@ -234,10 +235,28 @@ pub fn lightmap_data() -> Value {
         ),
         lightmap_row("water vision without conduit power", &[], 100, true, 600),
     ];
+    let flash = |label: &str, clocks: Vec<i64>, hide: bool, boss_fog: bool| {
+        let mut row = lightmap_row(label, &[], 100, false, 0);
+        row["flash_clocks"] = json!(clocks);
+        row["hide_flash"] = json!(hide);
+        row["boss_fog"] = json!(boss_fog);
+        row
+    };
     let boss = |label, old, now| lightmap_row_with_boss(label, &[], (100, false, 0), (old, now));
     let rows = [
         rows,
         vec![
+            // The End's flash: before it, rising, at its middle and ending, hidden by the option, and
+            // a third of it under a boss bar's world fog.
+            flash("end flash not yet", (3000..3050).collect(), false, false),
+            flash("end flash rising", (3000..3120).collect(), false, false),
+            flash("end flash peak", (3000..3176).collect(), false, false),
+            flash("end flash ending", (3000..3260).collect(), false, false),
+            flash("end flash over", (3000..3500).collect(), false, false),
+            flash("end flash hidden", (3000..3176).collect(), true, false),
+            flash("end flash under boss fog", (3000..3176).collect(), false, true),
+            flash("end flash hidden under boss fog", (3000..3176).collect(), true, true),
+            flash("end flash next interval", (2900..3200).collect(), false, false),
             boss("boss darkening steady", 1.0, 1.0),
             boss("boss darkening rising", 0.25, 0.3),
             boss("boss darkening fading", 0.6, 0.5875),

@@ -45,9 +45,31 @@ pub struct Sky {
     rain_fog: f32,
     flicker: Flicker,
     clouds: Clouds,
+    /// `ClientLevel.endFlashState`: the End's flashes (`DimensionType.hasEndFlashes`).
+    end_flash: Option<photon_world::end_flash::EndFlashState>,
+    /// The option that hides the lightning flashes, as the last tick saw it.
+    hide_flashes: bool,
+}
+
+/// The End's flashes, in a dimension that has them.
+fn end_flash_of(environment: &Environment) -> Option<photon_world::end_flash::EndFlashState> {
+    (environment.skybox() == photon_render::sky::Skybox::End).then(Default::default)
 }
 
 impl Sky {
+    /// `ClientLevel.tick`'s `endFlashState.tick(getDefaultClockTime())`: the dimension's own clock,
+    /// zero when it has none.
+    fn tick_end_flash(&mut self, session: &PlaySession) {
+        let clock = self
+            .environment
+            .default_clock()
+            .and_then(|name| session.clock_ticks(name))
+            .unwrap_or(0);
+        if let Some(flash) = self.end_flash.as_mut() {
+            flash.tick(clock);
+        }
+    }
+
     /// What the dimension's data says at this tick for the blocks that animate.
     pub fn ambience<'a>(&'a self, session: &PlaySession) -> photon_render::sky::SkyAmbience<'a> {
         photon_render::sky::SkyAmbience::new(&self.environment, |clock| {
@@ -73,6 +95,7 @@ impl Sky {
         let dimension = session.world().dimension();
         let first = probe(&environment, dimension, session, false);
         let cloud_image = crate::play::texture(root, "environment/clouds", "clouds")?;
+        let end_flash = end_flash_of(&environment);
         Ok(Self {
             data_root: data_root.to_path_buf(),
             environment,
@@ -86,6 +109,8 @@ impl Sky {
             clouds: Clouds::new(photon_render::sky::clouds::CloudCells::from_image(
                 &cloud_image,
             )),
+            end_flash,
+            hide_flashes: false,
         })
     }
 
@@ -100,6 +125,7 @@ impl Sky {
         if let Some(environment) = loaded {
             self.environment = environment;
         }
+        self.end_flash = end_flash_of(&self.environment);
         self.dimension = session.world().dimension();
         let first = probe(&self.environment, self.dimension, session, false);
         self.last = first.clone();
@@ -111,6 +137,8 @@ impl Sky {
     /// probe while there is a player.
     pub fn tick(&mut self, session: &PlaySession, hide_lightning_flashes: bool) {
         self.flicker.tick();
+        self.hide_flashes = hide_lightning_flashes;
+        self.tick_end_flash(session);
         if session.player().is_some() {
             let next = probe(
                 &self.environment,
@@ -172,7 +200,7 @@ impl Sky {
             &self.sprites,
             self.environment.skybox(),
         );
-        self.set_lightmap(backend, session, (partial, camera.fog.darken_world));
+        self.set_lightmap(backend, session, (partial, &camera.fog));
         self.clouds.draw(
             backend,
             &sky,
@@ -197,10 +225,17 @@ impl Sky {
         &self,
         backend: &mut VulkanBackend,
         session: &PlaySession,
-        (partial, boss_darkening): (f32, f32),
+        (partial, fog): (f32, &photon_render::sky::FogView),
     ) {
         let lightmap = self.next.lightmap();
-        let view = super::fog::lightmap_view(session, partial, boss_darkening);
+        let flash = photon_render::sky::end_flash_boost(
+            self.end_flash
+                .as_ref()
+                .map(|flash| flash.intensity(partial)),
+            self.hide_flashes,
+            fog.boss_fog,
+        );
+        let view = super::fog::lightmap_view(session, partial, (fog.darken_world, flash));
         let effects = lightmap.effects(&view, partial);
         backend.set_lightmap(&lightmap, 1.4 + self.flicker.value(), &effects);
     }

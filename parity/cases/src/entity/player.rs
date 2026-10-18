@@ -108,6 +108,22 @@ pub fn tick_rate_script() -> Vec<Value> {
     vec![entity("tick-rate-script", "tick_rate_script", rows)]
 }
 
+/// The End's flashes: clock times through a whole day of intervals (a flash rises, peaks and ends,
+/// the seed changes at each six hundredth tick), a jump back in time, clock zero and a single tick.
+pub fn end_flash_script() -> Vec<Value> {
+    let row = |label: &str, clocks: Vec<i64>, partial: f64| json!({"label": label, "clocks": clocks, "partial": f32_bits(partial)});
+    let rows = vec![
+        row("clock zero", vec![0, 1, 2], 0.5),
+        row("first intervals", (0..1300).collect(), 0.3),
+        row("a later day", (48_000..49_300).collect(), 0.75),
+        row("far on", (1_234_000..1_235_300).step_by(1).collect(), 0.5),
+        row("back in time", vec![700, 701, 702, 100, 101, 5000, 5001, 600, 601], 0.25),
+        row("every sixth hundred", (0..40).map(|i| i * 600 + i % 7).collect(), 0.6),
+        row("single", vec![123_456], 0.0),
+    ];
+    vec![entity("end-flash-script", "end_flash_script", rows)]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

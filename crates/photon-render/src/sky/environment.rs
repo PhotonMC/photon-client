@@ -12,6 +12,8 @@ pub enum Skybox {
 #[derive(Clone, Debug)]
 pub struct Environment {
     pub(super) skybox: Skybox,
+    /// The clock the dimension's own time is read from (`DimensionType.defaultClock`).
+    pub(super) default_clock: Option<String>,
     pub(super) dimension: AttributeMap,
     /// Each biome's map, by its network registry number.
     pub(super) biomes: Vec<AttributeMap>,
@@ -84,6 +86,15 @@ fn load_timelines(data_root: &Path, dimension: &JsonObject) -> Option<Vec<Timeli
     Some(timelines)
 }
 
+/// The skybox a dimension type names.
+fn skybox_of(dimension: &JsonObject) -> Skybox {
+    match dimension.text("skybox").as_deref() {
+        Some("end") => Skybox::End,
+        Some("none") => Skybox::None,
+        _ => Skybox::Overworld,
+    }
+}
+
 impl Environment {
     /// Read a dimension's sky data from a data pack folder (the one holding
     /// `minecraft/`), with the biomes numbered as the server numbered them.
@@ -94,11 +105,7 @@ impl Environment {
             dimension_type,
             ".json",
         ))?;
-        let skybox = match dimension.text("skybox").as_deref() {
-            Some("end") => Skybox::End,
-            Some("none") => Skybox::None,
-            _ => Skybox::Overworld,
-        };
+        let skybox = skybox_of(&dimension);
         let dimension_map = parse_attribute_map(dimension.object("attributes"));
         let weather = dimension.bool("has_skylight").unwrap_or(false)
             && !dimension.bool("has_ceiling").unwrap_or(false)
@@ -148,6 +155,7 @@ impl Environment {
         let timelines = load_timelines(data_root, &dimension)?;
         Some(Self {
             skybox,
+            default_clock: dimension.text("default_clock"),
             dimension: dimension_map,
             biomes,
             plains,
@@ -234,6 +242,11 @@ impl Environment {
 
     pub fn skybox(&self) -> Skybox {
         self.skybox
+    }
+
+    /// The clock of the dimension's own time (`Level.getDefaultClockTime`).
+    pub fn default_clock(&self) -> Option<&str> {
+        self.default_clock.as_deref()
     }
 
     /// Every attribute at a camera position and the clocks' current ticks.

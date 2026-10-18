@@ -50,6 +50,19 @@ pub struct LightmapView {
     pub night_vision: f32,
     /// How far the boss bars have darkened the world, between two ticks.
     pub boss_darkening: f32,
+    /// What the End's flash adds to the sky light's factor (see [`end_flash_boost`]).
+    pub end_flash_boost: f32,
+}
+
+/// What `LightmapRenderStateExtractor` adds to the sky light's factor for the End's flash: its
+/// intensity, a third of it under a boss bar's world fog, nothing in a dimension without flashes
+/// or with the option that hides them on.
+pub fn end_flash_boost(intensity: Option<f32>, hidden: bool, boss_fog: bool) -> f32 {
+    match intensity {
+        Some(intensity) if !hidden && boss_fog => intensity / 3.0,
+        Some(intensity) if !hidden => intensity,
+        _ => 0.0,
+    }
 }
 
 /// The inputs the lightmap shader takes besides the attributes' own.
@@ -63,6 +76,8 @@ pub struct LightmapEffects {
     pub brightness: f32,
     /// `renderState.bossOverlayWorldDarkening`: the sum's mix towards a redder dusk.
     pub boss_darkening: f32,
+    /// `renderState.skyFactor`: the attribute's value and the End's flash.
+    pub sky_factor: f32,
 }
 
 /// `nightVisionEffectIntensity`: the night vision's scale, else the water vision with conduit
@@ -91,6 +106,7 @@ impl LightmapInputs {
             darkness: pulse.max(0.0) * DARKNESS_EFFECT_SCALE,
             brightness: (GAMMA - modifier).max(0.0),
             boss_darkening: view.boss_darkening,
+            sky_factor: self.sky_factor + view.end_flash_boost,
         }
     }
 }
