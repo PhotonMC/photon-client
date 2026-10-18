@@ -219,12 +219,9 @@ pub fn item_frames(
             frame_map(state, (&poses.map, data), (slot, map_light), textures);
         } else if let Some(stack) = stack {
             let item_light = if glowing { GLOW_ITEM_LIGHT } else { light };
-            vertices.extend(item_layer_vertices(
-                state.layers.get(stack, renderer, tints),
-                &[poses.item],
-                item_light,
-                false,
-            ));
+            let layers = state.layers.get(stack, renderer, tints);
+            let drawn = item_layer_vertices(layers, &[poses.item], item_light, false);
+            state.layers.extend_with_glint(stack, drawn, vertices);
         }
     }
 }

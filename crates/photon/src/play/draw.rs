@@ -51,9 +51,9 @@ impl Play {
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
         let with_textures = (tints.0, tints.1, &self.entity_textures);
-        self.item_layers.set_glint(
-            self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE),
-            self.entity_textures.rect(ITEM_GLINT_TEXTURE),
+        set_item_glints(
+            (&self.armor, &self.entity_textures),
+            (&mut self.item_layers, &mut self.worn_layers),
         );
         let items = &mut self.item_vertices;
         items.clear();
@@ -66,8 +66,10 @@ impl Play {
             items,
         );
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
-        // The items' glints are drawn with the armor's, over the depth the items wrote.
-        self.armor.glint.extend(self.item_layers.take_glint());
+        take_item_glints(
+            &mut self.armor,
+            (&mut self.item_layers, &mut self.worn_layers),
+        );
         mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
         self.item_layers
             .hand_over(&mut self.backend, &self.item_vertices)?;
@@ -471,5 +473,29 @@ impl Play {
             println!("captured_frame={path}");
         }
         Ok(Flow::Stop)
+    }
+}
+
+/// Set how this frame's item glints move and where their texture is.
+fn set_item_glints(
+    (armor, textures): (&Armor, &photon_render::entity::textures::EntityTextures),
+    (world, worn): (&mut WorldItemLayers, &mut [ItemLayerCache; 4]),
+) {
+    let matrix = armor.glint_matrix_scaled(ITEM_GLINT_SCALE);
+    let texture = textures.rect(ITEM_GLINT_TEXTURE);
+    world.set_glint(matrix, texture);
+    for cache in worn {
+        cache.set_glint(matrix, texture);
+    }
+}
+
+/// The items' glints are drawn with the armor's, over the depth the items wrote.
+fn take_item_glints(
+    armor: &mut Armor,
+    (world, worn): (&mut WorldItemLayers, &mut [ItemLayerCache; 4]),
+) {
+    armor.glint.extend(world.take_glint());
+    for cache in worn {
+        armor.glint.extend(cache.take_glint());
     }
 }

@@ -42,6 +42,23 @@ impl DisplayLayers {
     }
 }
 
+impl DisplayLayers {
+    /// Set how the frame's glints move and where their texture is, in every context.
+    pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
+        for cache in &mut self.contexts {
+            cache.set_glint(matrix, texture);
+        }
+    }
+
+    /// The glints of the displays' items drawn this frame.
+    pub fn take_glint(&mut self) -> Vec<Vertex> {
+        self.contexts
+            .iter_mut()
+            .flat_map(ItemLayerCache::take_glint)
+            .collect()
+    }
+}
+
 /// `ItemDisplayContext.BY_ID`'s order, with an id out of range the first.
 fn context_index(id: u8) -> usize {
     usize::from(id).min(9) * usize::from(id <= 9)
@@ -105,12 +122,9 @@ pub fn displays(
             && let Some(stack) = entity.item_stack().filter(|stack| stack.item_count() > 0)
         {
             let cache = &mut layers.contexts[context_index(context)];
-            vertices.extend(item_layer_vertices(
-                cache.get(stack, renderer, tints),
-                &[item_display_pose(&pose)],
-                light,
-                false,
-            ));
+            let layers = cache.get(stack, renderer, tints);
+            let drawn = item_layer_vertices(layers, &[item_display_pose(&pose)], light, false);
+            cache.extend_with_glint(stack, drawn, vertices);
         }
     }
 }

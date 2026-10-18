@@ -240,12 +240,13 @@ pub fn held_item_vertices(
             }
         };
         let item_layers = cache.get(stack, renderer, tints);
-        vertices.extend(item_layer_vertices(
+        let drawn = item_layer_vertices(
             item_layers,
             &[item.pose],
             item.light,
             item.place == Place::Left,
-        ));
+        );
+        cache.extend_with_glint(stack, drawn, &mut vertices);
     }
     vertices
 }

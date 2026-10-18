@@ -59,6 +59,7 @@ pub fn thrown_items(
             light = full_block_light(light);
         }
         let item_layers = layers.get(stack, renderer, tints);
-        vertices.extend(item_entity_vertices(item_layers, &[pose], light));
+        let drawn = item_entity_vertices(item_layers, &[pose], light);
+        layers.extend_with_glint(stack, drawn, vertices);
     }
 }

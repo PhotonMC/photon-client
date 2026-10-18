@@ -61,6 +61,17 @@ impl ItemLayerCache {
         }
     }
 
+    /// Add what a stack drew to `out`, with its glint kept for the glint pass.
+    pub fn extend_with_glint(
+        &mut self,
+        stack: &ClientItemStackState,
+        drawn: Vec<Vertex>,
+        out: &mut Vec<Vertex>,
+    ) {
+        self.add_glint(stack, &drawn);
+        out.extend(drawn);
+    }
+
     /// The glints added since the last call.
     pub fn take_glint(&mut self) -> Vec<Vertex> {
         std::mem::take(&mut self.glint.vertices)

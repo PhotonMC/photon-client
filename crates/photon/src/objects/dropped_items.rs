@@ -113,8 +113,7 @@ fn draw_item(
         model_extent(item_layers),
     );
     let drawn = item_entity_vertices(item_layers, &poses, light);
-    layers.add_glint(stack, &drawn);
-    vertices.extend(drawn);
+    layers.extend_with_glint(stack, drawn, vertices);
 }
 
 /// The layers of the items in the world, by the display context they are drawn in.
@@ -139,12 +138,28 @@ impl WorldItemLayers {
 
     /// Set how the frame's item glints move and where their texture is.
     pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
-        self.ground.set_glint(matrix, texture);
+        for cache in [
+            &mut self.ground,
+            &mut self.frames.layers,
+            &mut self.on_shelf,
+        ] {
+            cache.set_glint(matrix, texture);
+        }
+        self.displays.set_glint(matrix, texture);
     }
 
     /// The glints of the enchanted items drawn this frame.
     pub fn take_glint(&mut self) -> Vec<Vertex> {
-        self.ground.take_glint()
+        let mut glint = Vec::new();
+        for cache in [
+            &mut self.ground,
+            &mut self.frames.layers,
+            &mut self.on_shelf,
+        ] {
+            glint.extend(cache.take_glint());
+        }
+        glint.extend(self.displays.take_glint());
+        glint
     }
 
     pub fn new() -> Self {

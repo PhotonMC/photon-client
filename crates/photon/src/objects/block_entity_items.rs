@@ -80,12 +80,8 @@ pub fn brushable_items(
         );
         let pose = brushable::item_pose(&base, brushable.hit_direction, brushable.dusted);
         let stack = ClientItemStackState::new(brushable.item.1, brushable.item.0);
-        vertices.extend(item_layer_vertices(
-            fixed.get(&stack, renderer, tints),
-            &[pose],
-            light,
-            false,
-        ));
+        let drawn = item_layer_vertices(fixed.get(&stack, renderer, tints), &[pose], light, false);
+        fixed.extend_with_glint(&stack, drawn, vertices);
     }
 }
 
@@ -117,7 +113,8 @@ pub fn shelf_items(
             let stack = ClientItemStackState::new(*count, *item);
             let layers = on_shelf.get(&stack, renderer, tints);
             let pose = shelf::item_pose(&base, slot, turn, model_extent(layers));
-            vertices.extend(item_layer_vertices(layers, &[pose], light, false));
+            let drawn = item_layer_vertices(layers, &[pose], light, false);
+            on_shelf.extend_with_glint(&stack, drawn, vertices);
         }
     }
 }
@@ -184,12 +181,9 @@ pub fn campfire_items(
             };
             let stack = ClientItemStackState::new(*count, *item);
             let pose = campfire::item_pose(&base, fire.facing, slot);
-            vertices.extend(item_layer_vertices(
-                fixed.get(&stack, renderer, tints),
-                &[pose],
-                light,
-                false,
-            ));
+            let drawn =
+                item_layer_vertices(fixed.get(&stack, renderer, tints), &[pose], light, false);
+            fixed.extend_with_glint(&stack, drawn, vertices);
         }
     }
 }
@@ -220,6 +214,7 @@ pub fn vault_items(
         let layers = ground.get(&stack, renderer, tints);
         let spin = vault::spin(view.partial as f32, shown.spin);
         let poses = vault::item_poses(&base, spin, shown.display_item, model_extent(layers));
-        vertices.extend(item_layer_vertices(layers, &poses, light, false));
+        let drawn = item_layer_vertices(layers, &poses, light, false);
+        ground.extend_with_glint(&stack, drawn, vertices);
     }
 }
