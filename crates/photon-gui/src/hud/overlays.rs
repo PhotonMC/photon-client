@@ -12,6 +12,9 @@ pub struct CameraOverlays {
     /// The portal effect's intensity and the portal sprite's place in the block atlas, while it
     /// is above zero.
     pub portal: Option<(f32, [f32; 4])>,
+    /// The nausea effect's intensity and the screen effect scale option, which draw the confusion
+    /// overlay where the portal's does not and the option is below one.
+    pub nausea: Option<(f32, f32)>,
 }
 
 /// `ARGB.as8BitChannel`.
@@ -83,6 +86,15 @@ impl Hud {
                 alpha = alpha * 0.8 + 0.2;
             }
             frame.block_sprite_overlay(uv, (0, 0, width, height), alpha);
+        } else if let Some((nausea, scale)) = overlays.nausea.filter(|(nausea, _)| *nausea > 0.0)
+            && scale < 1.0
+        {
+            frame.confusion_overlay(
+                atlas,
+                "textures/misc/nausea",
+                (width, height),
+                nausea * (1.0 - scale),
+            );
         }
         self.crosshair(frame, atlas, width, height, input);
     }

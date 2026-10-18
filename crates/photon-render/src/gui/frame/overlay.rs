@@ -141,4 +141,58 @@ impl GuiFrame {
             _ => self.batches.push((GuiBlend::BlockSprite, first, 6)),
         }
     }
+
+    /// `Hud.extractConfusionOverlay`: the nausea texture over the whole screen, grown about its
+    /// middle from twice the screen's size to its own as `strength` rises to one, added to what is
+    /// behind it in a green tint that grows with the strength.
+    pub fn confusion_overlay(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        (width, height): (i32, i32),
+        strength: f32,
+    ) {
+        let (w, h) = (width as f32, height as f32);
+        let size = photon_core::math::mth_lerp_f32(strength, 2.0, 1.0);
+        // `pushMatrix`, `translate`, `scale`, `translate` of a `Matrix3x2f`, then the corners.
+        let (centre_x, centre_y) = (w / 2.0, h / 2.0);
+        let m20 = size * -centre_x + (0.0 * -centre_y + centre_x);
+        let m21 = 0.0 * -centre_x + (size * -centre_y + centre_y);
+        let rect = (m20, m21, size * w + 0.0 * h + m20, 0.0 * w + size * h + m21);
+        // `ARGB.colorFromFloat(1, 0.2s, 0.4s, 0.2s)`.
+        let channel = |value: f32| (value * 255.0).floor() as u32;
+        let colour = 0xFF00_0000
+            | channel(0.2 * strength) << 16
+            | channel(0.4 * strength) << 8
+            | channel(0.2 * strength);
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Texture {
+                name: name.to_owned(),
+                rect,
+                uv: (0.0, 1.0, 0.0, 1.0),
+                colour,
+            });
+        }
+        let [u0, v0, u1, v1] = atlas.sprite(&format!("texture/{name}"));
+        let tint = colour.to_be_bytes().map(|byte| f32::from(byte) / 255.0);
+        let corner = |x: f32, y: f32, uv: [f32; 2]| GuiVertex {
+            position: [x, y],
+            uv,
+            colour: [tint[1], tint[2], tint[3], tint[0]],
+        };
+        let corners = [
+            corner(rect.0, rect.1, [u0, v0]),
+            corner(rect.0, rect.3, [u0, v1]),
+            corner(rect.2, rect.3, [u1, v1]),
+            corner(rect.2, rect.1, [u1, v0]),
+        ];
+        let first = self.vertices.len() as u32;
+        for index in [0, 1, 2, 0, 2, 3] {
+            self.vertices.push(corners[index]);
+        }
+        match self.batches.last_mut() {
+            Some((last, _, count)) if *last == GuiBlend::Highlight => *count += 6,
+            _ => self.batches.push((GuiBlend::Highlight, first, 6)),
+        }
+    }
 }

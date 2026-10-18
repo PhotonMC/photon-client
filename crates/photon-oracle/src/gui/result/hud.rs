@@ -89,6 +89,7 @@ fn camera_overlays(row: &Value) -> CameraOverlays {
         vignette: vignette_warning(row),
         powder_snow: frozen_alpha(row),
         portal: portal_overlay(row),
+        nausea: nausea_overlay(row),
     }
 }
 
@@ -100,6 +101,24 @@ fn hud_of(row: &Value) -> Result<Hud, String> {
         hud.set_vignette_brightness(f32::from_bits(brightness));
     }
     Ok(hud)
+}
+
+/// The nausea of a row (its blend factor with no partial tick) and the screen effect scale.
+fn nausea_overlay(row: &Value) -> Option<(f32, f32)> {
+    let nausea = row.get("nausea")?;
+    let id = photon_data::item::mob_effects::MOB_EFFECTS
+        .iter()
+        .position(|effect| effect.name == "minecraft:nausea")?;
+    let mut effect = photon_world::ClientMobEffectState::new(
+        id as i32,
+        0,
+        nausea["duration"].as_i64()? as i32,
+        true,
+    );
+    for _ in 0..nausea["ticks"].as_i64()? {
+        effect.tick_client();
+    }
+    Some((effect.blend_factor(0.0), nausea["scale"].as_f64()? as f32))
 }
 
 /// The vignette of a row: how strongly its border warns where the camera stands, or none when the

@@ -261,10 +261,22 @@ class GuiHudOracle extends GuiCommandOracle {
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
             boolean vignette = row.has("vignette");
-            if (row.has("frozen_ticks") || row.has("portal") || vignette) {
+            if (row.has("frozen_ticks") || row.has("portal") || row.has("nausea") || vignette) {
                 // The camera overlays; the vignette only where the row asks for it.
                 if (row.has("frozen_ticks")) {
                     local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                }
+                if (row.has("nausea")) {
+                    var nausea = row.getAsJsonObject("nausea");
+                    options.screenEffectScale().set(nausea.get("scale").getAsDouble());
+                    var holder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT
+                        .get(net.minecraft.resources.Identifier.parse("minecraft:nausea")).orElseThrow();
+                    var instance = new net.minecraft.world.effect.MobEffectInstance(holder, nausea.get("duration").getAsInt());
+                    for (int tick = 0; tick < nausea.get("ticks").getAsInt(); tick++) {
+                        instance.tickClient();
+                    }
+                    var active = (java.util.Map) MovementOracle.getField(local, "activeEffects");
+                    active.put(holder, instance);
                 }
                 if (row.has("portal")) {
                     stubPortalSprite(minecraft);

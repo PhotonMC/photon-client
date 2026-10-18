@@ -92,7 +92,7 @@ fn locator_input(
 pub fn camera_overlays(
     session: &PlaySession,
     renderer: &photon_render::block::world_mesh::BlockRenderer,
-    partial: f32,
+    (partial, options): (f32, &photon_game::options::Options),
 ) -> photon_gui::hud::CameraOverlays {
     let Some(player) = session.player() else {
         return photon_gui::hud::CameraOverlays::default();
@@ -116,6 +116,10 @@ pub fn camera_overlays(
             .filter(|state| state.is_freezing())
             .map(ClientPlayerState::percent_frozen),
         portal: sprite.filter(|_| intensity > 0.0).map(|uv| (intensity, uv)),
+        nausea: Some((
+            crate::world::fog::nausea_blend(session, partial),
+            options.screen_effect_scale as f32,
+        )),
     }
 }
 

@@ -5,7 +5,7 @@ use super::*;
 pub(super) const DATA_VERSION: i32 = 4903;
 
 /// An option of the file, in the order `processOptions` goes through them.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Key {
     EnableVsync,
     Fov,
@@ -20,6 +20,7 @@ pub(super) enum Key {
     LastServer,
     ChatVisibility,
     ChatOpacity,
+    ScreenEffectScale,
     ChatLineSpacing,
     TextBackgroundOpacity,
     ChatHeightFocused,
@@ -41,7 +42,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 47] = [
+pub(super) const KEYS: [(&str, Key); 48] = [
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),
@@ -67,6 +68,7 @@ pub(super) const KEYS: [(&str, Key); 47] = [
     ("attackIndicator", Key::AttackIndicator),
     ("hideLightningFlashes", Key::HideLightningFlashes),
     ("soundDevice", Key::SoundDevice),
+    ("screenEffectScale", Key::ScreenEffectScale),
     ("showSubtitles", Key::ShowSubtitles),
     ("directionalAudio", Key::DirectionalAudio),
     ("musicToast", Key::MusicToast),

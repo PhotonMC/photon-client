@@ -22,6 +22,8 @@ struct Hotbar {
     portal: Option<f64>,
     /// The vignette's brightness and border, which also draw the camera overlays.
     vignette: Option<Vignette>,
+    /// The nausea effect (duration, ticks it has run) and the screen effect scale option.
+    nausea: Option<(i64, i64, f64)>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -36,6 +38,7 @@ const HOTBAR: Hotbar = Hotbar {
     frozen: None,
     portal: None,
     vignette: None,
+    nausea: None,
 };
 
 /// The vignette's input: the brightness, the camera's place and a border of a size (moving to a
@@ -63,6 +66,9 @@ fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     }
     if let Some(portal) = hotbar.portal {
         row["portal"] = json!(portal);
+    }
+    if let Some((duration, ticks, scale)) = hotbar.nausea {
+        row["nausea"] = json!({"duration": duration, "ticks": ticks, "scale": scale});
     }
     if let Some(v) = hotbar.vignette {
         row["vignette"] = json!({
@@ -160,6 +166,18 @@ fn overlay_rows() -> Vec<Value> {
             ..HOTBAR
         },
     ));
+    // The confusion overlay: only below a full screen effect scale, and not under the portal's.
+    for (ticks, scale) in [(3, 0.0), (10, 0.5), (40, 0.5), (40, 0.9), (40, 1.0), (12, 0.25)] {
+        rows.push(hotbar_row(
+            &format!("nausea-{ticks}-{scale}"),
+            Hotbar { nausea: Some((400, ticks, scale)), ..HOTBAR },
+        ));
+    }
+    rows.extend([
+        hotbar_row("nausea-fading", Hotbar { nausea: Some((20, 18, 0.3)), ..HOTBAR }),
+        hotbar_row("nausea-odd", Hotbar { nausea: Some((400, 40, 0.5)), size: (641, 361), ..HOTBAR }),
+        hotbar_row("nausea-and-portal", Hotbar { nausea: Some((400, 40, 0.5)), portal: Some(0.5), ..HOTBAR }),
+    ]);
     rows.extend([
         hotbar_row("frozen-third-person", Hotbar { frozen: Some(70), third_person: true, ..HOTBAR }),
         hotbar_row("frozen-small", Hotbar { frozen: Some(35), size: (320, 240), ..HOTBAR }),

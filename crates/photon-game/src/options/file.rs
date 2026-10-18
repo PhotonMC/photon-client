@@ -75,6 +75,39 @@ impl Options {
 
     /// `option.codec().parse` and `set`: a value its codec refuses leaves
     /// the option as it was; one its value set refuses falls to the default.
+    /// The options that are a number from zero to one, with the field each is kept in.
+    fn unit_slots(&mut self) -> [(Key, &mut f64); 9] {
+        [
+            (Key::MouseSensitivity, &mut self.sensitivity),
+            (Key::ChatOpacity, &mut self.chat_opacity),
+            (Key::ScreenEffectScale, &mut self.screen_effect_scale),
+            (Key::ChatLineSpacing, &mut self.chat_line_spacing),
+            (
+                Key::TextBackgroundOpacity,
+                &mut self.text_background_opacity,
+            ),
+            (Key::ChatHeightFocused, &mut self.chat_height_focused),
+            (Key::ChatHeightUnfocused, &mut self.chat_height_unfocused),
+            (Key::ChatScale, &mut self.chat_scale),
+            (Key::ChatWidth, &mut self.chat_width),
+        ]
+    }
+
+    /// [`Self::unit_slots`]'s values.
+    fn unit_values(&self) -> [(Key, f64); 9] {
+        [
+            (Key::MouseSensitivity, self.sensitivity),
+            (Key::ChatOpacity, self.chat_opacity),
+            (Key::ScreenEffectScale, self.screen_effect_scale),
+            (Key::ChatLineSpacing, self.chat_line_spacing),
+            (Key::TextBackgroundOpacity, self.text_background_opacity),
+            (Key::ChatHeightFocused, self.chat_height_focused),
+            (Key::ChatHeightUnfocused, self.chat_height_unfocused),
+            (Key::ChatScale, self.chat_scale),
+            (Key::ChatWidth, self.chat_width),
+        ]
+    }
+
     pub(super) fn read(&mut self, key: Key, text: &str) {
         let json = parse_json(text);
         let unit = || match json {
@@ -143,7 +176,6 @@ impl Options {
             | Key::MusicFrequency
             | Key::MusicToast
             | Key::SoundCategory(_) => self.read_sound(key, &json),
-            Key::MouseSensitivity => self.sensitivity = unit().unwrap_or(self.sensitivity),
             Key::Lang => text.clone_into(&mut self.language_code),
             Key::LastServer => text.clone_into(&mut self.last_server),
             Key::ChatVisibility => {
@@ -154,21 +186,22 @@ impl Options {
                         ChatVisibility::from_id(id).unwrap_or(self.chat_visibility);
                 }
             }
-            Key::ChatOpacity => self.chat_opacity = unit().unwrap_or(self.chat_opacity),
-            Key::ChatLineSpacing => {
-                self.chat_line_spacing = unit().unwrap_or(self.chat_line_spacing);
+            Key::MouseSensitivity
+            | Key::ChatOpacity
+            | Key::ScreenEffectScale
+            | Key::ChatLineSpacing
+            | Key::TextBackgroundOpacity
+            | Key::ChatHeightFocused
+            | Key::ChatHeightUnfocused
+            | Key::ChatScale
+            | Key::ChatWidth => {
+                if let (Some(value), Some((_, slot))) = (
+                    unit(),
+                    self.unit_slots().into_iter().find(|(own, _)| *own == key),
+                ) {
+                    *slot = value;
+                }
             }
-            Key::TextBackgroundOpacity => {
-                self.text_background_opacity = unit().unwrap_or(self.text_background_opacity);
-            }
-            Key::ChatHeightFocused => {
-                self.chat_height_focused = unit().unwrap_or(self.chat_height_focused);
-            }
-            Key::ChatHeightUnfocused => {
-                self.chat_height_unfocused = unit().unwrap_or(self.chat_height_unfocused);
-            }
-            Key::ChatScale => self.chat_scale = unit().unwrap_or(self.chat_scale),
-            Key::ChatWidth => self.chat_width = unit().unwrap_or(self.chat_width),
             Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
             Key::MouseWheelSensitivity => {
                 if let Json::Number(number) = json {
@@ -208,17 +241,21 @@ impl Options {
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
             Key::SaveChatDrafts => self.save_chat_drafts.to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
-            Key::MouseSensitivity => java_double(self.sensitivity),
             Key::Lang => self.language_code.clone(),
             Key::LastServer => self.last_server.clone(),
             Key::ChatVisibility => self.chat_visibility.id().to_string(),
-            Key::ChatOpacity => java_double(self.chat_opacity),
-            Key::ChatLineSpacing => java_double(self.chat_line_spacing),
-            Key::TextBackgroundOpacity => java_double(self.text_background_opacity),
-            Key::ChatHeightFocused => java_double(self.chat_height_focused),
-            Key::ChatHeightUnfocused => java_double(self.chat_height_unfocused),
-            Key::ChatScale => java_double(self.chat_scale),
-            Key::ChatWidth => java_double(self.chat_width),
+            Key::MouseSensitivity
+            | Key::ChatOpacity
+            | Key::ScreenEffectScale
+            | Key::ChatLineSpacing
+            | Key::TextBackgroundOpacity
+            | Key::ChatHeightFocused
+            | Key::ChatHeightUnfocused
+            | Key::ChatScale
+            | Key::ChatWidth => {
+                let value = self.unit_values().into_iter().find(|(own, _)| *own == key);
+                java_double(value.map_or(0.0, |(_, value)| value))
+            }
             Key::MainHand => write_string(self.main_hand.serialized()),
             Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
             Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
@@ -369,6 +406,8 @@ mod tests {
         assert_eq!(loaded("mouseSensitivity:true").sensitivity, 1.0);
         assert_eq!(loaded("chatOpacity:false").chat_opacity, 0.0);
         assert_eq!(loaded("chatOpacity:nonsense").chat_opacity, 1.0);
+        assert_eq!(loaded("screenEffectScale:0.25").screen_effect_scale, 0.25);
+        assert_eq!(loaded("screenEffectScale:2.0").screen_effect_scale, 1.0);
     }
 
     #[test]

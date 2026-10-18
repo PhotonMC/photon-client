@@ -114,7 +114,8 @@ impl Play {
         let motion = player_motion(player, partial);
         let nausea = crate::world::fog::nausea_blend(&self.session, partial);
         let portal = player.portal_effect_intensity(partial);
-        match self.camera.spin((portal, nausea), partial) {
+        let scale = self.controls.options.screen_effect_scale as f32;
+        match self.camera.spin((portal, nausea), (scale, partial)) {
             Some(spin) => photon_render::scene::multiply(motion, spin),
             None => motion,
         }

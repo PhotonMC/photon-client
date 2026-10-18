@@ -66,9 +66,12 @@ impl Camera {
     }
 
     /// The spinning effect's matrix for the projection, if nausea turns the view.
-    pub fn spin(&self, (portal, nausea): (f32, f32), partial_tick: f32) -> Option<[[f32; 4]; 4]> {
-        // `screenEffectScale`'s default is one: the option is not kept.
-        self.spinning.matrix(portal, nausea, 1.0, partial_tick)
+    pub fn spin(
+        &self,
+        (portal, nausea): (f32, f32),
+        (scale, partial_tick): (f32, f32),
+    ) -> Option<[[f32; 4]; 4]> {
+        self.spinning.matrix(portal, nausea, scale, partial_tick)
     }
 
     /// The eye height between the last two ticks.

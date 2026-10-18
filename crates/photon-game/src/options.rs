@@ -45,6 +45,8 @@ pub struct Options {
     pub last_server: String,
     pub chat_visibility: ChatVisibility,
     pub chat_opacity: f64,
+    /// `screenEffectScale`, 0 to 1: how far nausea and portals distort the view.
+    pub screen_effect_scale: f64,
     pub chat_line_spacing: f64,
     pub text_background_opacity: f64,
     pub chat_height_focused: f64,
@@ -89,6 +91,7 @@ impl Default for Options {
             last_server: String::new(),
             chat_visibility: ChatVisibility::Full,
             chat_opacity: 1.0,
+            screen_effect_scale: 1.0,
             chat_line_spacing: 0.0,
             text_background_opacity: 0.5,
             chat_height_focused: 1.0,
