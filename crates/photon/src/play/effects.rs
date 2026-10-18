@@ -34,7 +34,7 @@ impl Play {
     /// (`ScreenEffectRenderer.submit`, hidden with the HUD), and its glint's.
     pub(super) fn activation_vertices(
         &mut self,
-        glint: ([f32; 16], Option<[f32; 4]>),
+        glint: &crate::equipment::item_layers::GlintFrame,
     ) -> (
         Vec<photon_render::scene::Vertex>,
         Vec<photon_render::scene::Vertex>,

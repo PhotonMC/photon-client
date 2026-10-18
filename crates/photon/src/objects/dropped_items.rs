@@ -13,7 +13,7 @@ use photon_render::objects::item::{
 use photon_render::scene::Vertex;
 use photon_world::particles::{ItemPickup, PickedUp};
 
-use crate::equipment::item_layers::ItemLayerCache;
+use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
 use crate::objects::displays;
 use crate::objects::item_frames;
 use crate::objects::thrown_items;
@@ -133,22 +133,22 @@ impl WorldItemLayers {
         stack: &photon_world::ClientItemStackState,
         pose: photon_render::joml::Pose,
         materials: (&BlockRenderer, &BiomeTints),
-        glint: ([f32; 16], Option<[f32; 4]>),
+        glint: &GlintFrame,
     ) -> (Vec<Vertex>, Vec<Vertex>) {
-        self.frames.layers.set_glint(glint.0, glint.1);
+        self.frames.layers.set_glint(glint);
         self.frames.fixed_item(stack, pose, materials)
     }
 
     /// Set how the frame's item glints move and where their texture is.
-    pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
+    pub fn set_glint(&mut self, frame: &GlintFrame) {
         for cache in [
             &mut self.ground,
             &mut self.frames.layers,
             &mut self.on_shelf,
         ] {
-            cache.set_glint(matrix, texture);
+            cache.set_glint(frame);
         }
-        self.displays.set_glint(matrix, texture);
+        self.displays.set_glint(frame);
     }
 
     /// The glints of the enchanted items drawn this frame.

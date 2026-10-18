@@ -1,8 +1,8 @@
+use super::glints::{set_item_glints, take_item_glints};
 use super::*;
 use crate::objects::displays;
 use crate::objects::leashes;
 use crate::world::sections;
-use photon_render::render_types::{ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE};
 
 impl Play {
     /// The listener of the sounds goes where the camera is.
@@ -52,7 +52,7 @@ impl Play {
         let tints = (&*self.block_renderer, &*self.biome_tints);
         let with_textures = (tints.0, tints.1, &self.entity_textures);
         set_item_glints(
-            (&self.armor, &self.entity_textures),
+            &self.glint_frame(),
             (&mut self.item_layers, &mut self.worn_layers),
             &mut self.gui.items,
         );
@@ -100,11 +100,10 @@ impl Play {
     /// The hands in first person unless the player only watches, the screen effects, and the
     /// totem animation in any view, all drawn in the hand pass.
     fn set_hands(&mut self, view: FrameView, first_person: bool) -> Result<()> {
-        let matrix = self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE);
-        let texture = self.entity_textures.rect(ITEM_GLINT_TEXTURE);
-        let (activation, activation_glint) = self.activation_vertices((matrix, texture));
+        let glint = self.glint_frame();
+        let (activation, activation_glint) = self.activation_vertices(&glint);
         for cache in &mut self.held_item_layers {
-            cache.set_glint(matrix, texture);
+            cache.set_glint(&glint);
         }
         let sleeping = self
             .session
@@ -511,31 +510,5 @@ impl Play {
             println!("captured_frame={path}");
         }
         Ok(Flow::Stop)
-    }
-}
-
-/// Set how this frame's item glints move and where their texture is.
-fn set_item_glints(
-    (armor, textures): (&Armor, &photon_render::entity::textures::EntityTextures),
-    (world, worn): (&mut WorldItemLayers, &mut [ItemLayerCache; 4]),
-    gui: &mut ItemLayerCache,
-) {
-    let matrix = armor.glint_matrix_scaled(ITEM_GLINT_SCALE);
-    let texture = textures.rect(ITEM_GLINT_TEXTURE);
-    world.set_glint(matrix, texture);
-    gui.set_glint(matrix, texture);
-    for cache in worn {
-        cache.set_glint(matrix, texture);
-    }
-}
-
-/// The items' glints are drawn with the armor's, over the depth the items wrote.
-fn take_item_glints(
-    armor: &mut Armor,
-    (world, worn): (&mut WorldItemLayers, &mut [ItemLayerCache; 4]),
-) {
-    armor.glint.extend(world.take_glint());
-    for cache in worn {
-        armor.glint.extend(cache.take_glint());
     }
 }

@@ -508,5 +508,6 @@ mod camera;
 mod cull;
 mod draw;
 mod effects;
+mod glints;
 mod schedule;
 mod ticks;

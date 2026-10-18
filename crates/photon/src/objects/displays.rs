@@ -14,7 +14,7 @@ use photon_render::objects::display::{
 use photon_render::objects::item::{entity_block_vertices, item_layer_vertices};
 use photon_render::scene::Vertex;
 
-use crate::equipment::item_layers::ItemLayerCache;
+use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
 use crate::overlays::{FrameView, packed_light};
 
 /// The layers of the items the displays show, by the `ItemDisplayContext` each names (by its id).
@@ -44,9 +44,9 @@ impl DisplayLayers {
 
 impl DisplayLayers {
     /// Set how the frame's glints move and where their texture is, in every context.
-    pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
+    pub fn set_glint(&mut self, frame: &GlintFrame) {
         for cache in &mut self.contexts {
-            cache.set_glint(matrix, texture);
+            cache.set_glint(frame);
         }
     }
 

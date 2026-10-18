@@ -27,24 +27,29 @@ struct Glint {
     /// The special foil's coordinates of the stack [`ItemLayerCache::get`] gave last, if it has
     /// that foil: a compass or a clock.
     decal: Option<Vec<[f32; 2]>>,
+    tags: Option<std::sync::Arc<photon_world::block::tags::ItemTags>>,
 }
 
-/// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the items whose foil is the decal one. The
-/// compasses tag is the vanilla one here; the server's version of it is not read.
-fn has_special_foil(item: photon_core::ids::ItemId) -> bool {
-    static SPECIAL: std::sync::OnceLock<Vec<photon_core::ids::ItemId>> = std::sync::OnceLock::new();
-    SPECIAL
-        .get_or_init(|| {
-            [
-                "minecraft:compass",
-                "minecraft:recovery_compass",
-                "minecraft:clock",
-            ]
-            .into_iter()
-            .filter_map(photon_game::item::id_of)
-            .collect()
-        })
-        .contains(&item)
+/// How the frame's item glints move, where their texture is and which items have the special
+/// foil.
+#[derive(Clone)]
+pub struct GlintFrame {
+    pub matrix: [f32; 16],
+    pub texture: Option<[f32; 4]>,
+    /// The item tags the server sent: `minecraft:compasses` is one of them.
+    pub tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
+}
+
+/// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the clock and the items of the compasses
+/// tag the server sent.
+fn has_special_foil(
+    item: photon_core::ids::ItemId,
+    tags: Option<&photon_world::block::tags::ItemTags>,
+) -> bool {
+    static CLOCK: std::sync::OnceLock<Option<photon_core::ids::ItemId>> =
+        std::sync::OnceLock::new();
+    let clock = CLOCK.get_or_init(|| photon_game::item::id_of("minecraft:clock"));
+    *clock == Some(item) || tags.is_some_and(|tags| tags.contains(item.0, "minecraft:compasses"))
 }
 
 /// `ItemFeatureRenderer.computeFoilDecalPose`: how much the display context scales the pose the
@@ -72,8 +77,9 @@ impl ItemLayerCache {
 
     /// Set how the glints of the frame move (`TextureTransform.GLINT_TEXTURING`) and where their
     /// texture is; without it no glint is drawn.
-    pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
-        self.glint.moving = texture.map(|texture| (matrix, texture));
+    pub fn set_glint(&mut self, frame: &GlintFrame) {
+        self.glint.moving = frame.texture.map(|texture| (frame.matrix, texture));
+        self.glint.tags = Some(frame.tags.clone());
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
@@ -181,7 +187,7 @@ impl ItemLayerCache {
         };
         let layers = &variants[index].1;
         self.glint.decal = (self.glint.moving.is_some()
-            && has_special_foil(stack.item_registry_id()))
+            && has_special_foil(stack.item_registry_id(), self.glint.tags.as_deref()))
         .then(|| photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context)))
         .filter(|corners| !corners.is_empty());
         layers
@@ -206,5 +212,38 @@ impl photon_render::item_model::ItemTints for StackTints {
 
     fn firework_colors(&self) -> Vec<i32> {
         self.0.firework_colors()
+    }
+}
+
+#[cfg(test)]
+mod special_foil_tests {
+    use super::*;
+    use photon_core::identifier::Identifier;
+    use photon_core::tags::{RegistryTags, TagEntry};
+
+    fn tags_with_compasses(items: Vec<i32>) -> photon_world::block::tags::ItemTags {
+        let id = |text: &str| Identifier::parse(text).expect("an identifier");
+        photon_world::block::tags::ItemTags::from_registries(&[RegistryTags::new(
+            id("minecraft:item"),
+            vec![TagEntry::new(id("minecraft:compasses"), items)],
+        )])
+        .expect("the item registry")
+    }
+
+    #[test]
+    fn the_special_foil_follows_the_compasses_tag_the_server_sent_and_the_clock() {
+        let compass = photon_game::item::id_of("minecraft:compass").expect("a compass");
+        let stick = photon_game::item::id_of("minecraft:stick").expect("a stick");
+        let clock = photon_game::item::id_of("minecraft:clock").expect("a clock");
+        let tags = tags_with_compasses(vec![compass.0, stick.0]);
+        assert!(has_special_foil(compass, Some(&tags)));
+        assert!(has_special_foil(stick, Some(&tags)));
+        // A tag without the compass leaves it with the standard foil.
+        let without = tags_with_compasses(vec![stick.0]);
+        assert!(!has_special_foil(compass, Some(&without)));
+        // The clock is the one item named in the code; nothing is special before any tags came.
+        assert!(has_special_foil(clock, Some(&without)));
+        assert!(has_special_foil(clock, None));
+        assert!(!has_special_foil(compass, None));
     }
 }
