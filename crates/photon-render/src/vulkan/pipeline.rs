@@ -402,3 +402,4 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::WorldBorder
     )
 }
+            | PipelineKind::Held
