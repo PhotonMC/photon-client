@@ -169,12 +169,7 @@ impl BlockRenderer {
                     base + 2,
                     base + 3,
                 ]);
-                mesh.quads.push(crate::scene::QuadInfo {
-                    direction: quad.direction,
-                    cull: None,
-                    shade: quad.shade,
-                    tint_index: quad.tint_index,
-                });
+                mesh.quads.push(quad.uncullable_info());
             }
         });
         // A fake state is of air: it gives off no light.

@@ -7,7 +7,6 @@
 //! pinning them needs the reference's resource-manager machinery; they are
 //! noted as such in the record.
 
-use crate::Transparency;
 use std::collections::BTreeMap;
 
 use crate::block::geometry::{default_face_uv, face_vertex_uv, face_vertices};
@@ -241,8 +240,8 @@ pub struct BuiltAtlas {
     pub levels: Vec<DecodedImage>,
     /// Where each sprite landed, in normalised coordinates.
     pub sprites: BTreeMap<String, [f32; 4]>,
-    /// What each sprite's alpha holds, which picks a fluid's draw layer.
-    pub transparency: BTreeMap<String, Transparency>,
+    /// What each sprite's alpha holds, which picks the layer a face is drawn in.
+    pub alpha: BTreeMap<String, crate::texture::sprite_alpha::SpriteAlpha>,
     /// The animated sprites, each able to draw its current frame into the
     /// levels.
     pub animations: Vec<SpriteAnimation>,

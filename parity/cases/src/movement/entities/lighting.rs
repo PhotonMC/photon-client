@@ -272,3 +272,84 @@ pub fn fluid_layer_rows() -> Vec<Value> {
         })
         .collect()
 }
+
+/// A named sprite: sizes, base alpha, patch rectangle and patch alpha.
+type ProbeSprite = (&'static str, [i64; 4], i64, [i64; 4], i64);
+
+/// The sprites the `face_layer` rows name: size, size of one frame, the alpha
+/// of every pixel but those in a rectangle (`x0, x1, y0, y1`), and the alpha
+/// inside it.
+const PROBE_SPRITES: [ProbeSprite; 9] = [
+    ("opaque", [16, 16, 16, 16], 255, [0, 0, 0, 0], 255),
+    ("translucent", [16, 16, 16, 16], 128, [0, 0, 0, 0], 128),
+    ("ring", [16, 16, 16, 16], 100, [4, 12, 4, 12], 255),
+    ("column-7", [16, 16, 16, 16], 255, [7, 8, 0, 16], 100),
+    ("column-8", [16, 16, 16, 16], 255, [8, 9, 0, 16], 100),
+    ("hole", [16, 16, 16, 16], 255, [0, 1, 0, 1], 0),
+    ("strip", [16, 48, 16, 16], 255, [4, 8, 36, 40], 100),
+    ("side-by-side", [32, 16, 16, 16], 255, [16, 32, 0, 16], 100),
+    ("wide", [32, 32, 32, 32], 255, [20, 24, 20, 24], 100),
+];
+
+/// One `face_layer` row: label, sprite, frames played, the face's rectangle in
+/// sixteenths and whether the material forces translucency.
+type FaceProbe = (&'static str, &'static str, &'static [i64], [f32; 4], bool);
+
+/// A sprite's pixels (width, height, one alpha each) and the size of one
+/// frame, by the name the `face_layer` rows give.
+fn probe_sprite(kind: &str) -> ((i64, i64, Vec<i64>), (i64, i64)) {
+    let Some(&(_, [width, height, frame_width, frame_height], base, [x0, x1, y0, y1], patch)) =
+        PROBE_SPRITES.iter().find(|sprite| sprite.0 == kind)
+    else {
+        panic!("no probe sprite {kind}");
+    };
+    let inside = |x: i64, y: i64| (x0..x1).contains(&x) && (y0..y1).contains(&y);
+    let pixels = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
+    let alphas = pixels.map(|(x, y)| if inside(x, y) { patch } else { base }).collect();
+    ((width, height, alphas), (frame_width, frame_height))
+}
+
+/// The layer a face bakes to: the whole sprite's alpha, or just the part of
+/// it the face shows, over every frame an animation plays.
+pub fn face_layer_rows() -> Vec<Value> {
+    let full = [0.0, 0.0, 16.0, 16.0];
+    let probes: [FaceProbe; 22] = [
+        ("opaque", "opaque", &[], full, false),
+        ("translucent", "translucent", &[], full, false),
+        ("ring-centre-solid", "ring", &[], [4.0, 4.0, 12.0, 12.0], false),
+        ("ring-edge-translucent", "ring", &[], [3.0, 3.0, 12.0, 12.0], false),
+        ("ring-full-translucent", "ring", &[], full, false),
+        ("ring-reversed-solid", "ring", &[], [12.0, 12.0, 4.0, 4.0], false),
+        ("half-texel-floor-low", "column-7", &[], [7.5, 0.0, 16.0, 16.0], false),
+        ("half-texel-low-clear", "column-7", &[], [8.0, 0.0, 16.0, 16.0], false),
+        ("half-texel-ceil-high", "column-8", &[], [0.0, 0.0, 8.5, 16.0], false),
+        ("half-texel-high-clear", "column-8", &[], [0.0, 0.0, 8.0, 16.0], false),
+        ("force-translucent", "opaque", &[], full, true),
+        ("hole-cutout", "hole", &[], full, false),
+        ("hole-missed-solid", "hole", &[], [1.0, 1.0, 16.0, 16.0], false),
+        ("strip-later-frame-translucent", "strip", &[0, 1, 2, 2, 0], [4.0, 4.0, 8.0, 8.0], false),
+        ("strip-other-part-solid", "strip", &[0, 1, 2], [8.0, 8.0, 16.0, 16.0], false),
+        ("strip-unused-frame-solid", "strip", &[0, 1], [4.0, 4.0, 8.0, 8.0], false),
+        ("strip-unused-frame-full-translucent", "strip", &[0, 1], full, false),
+        ("strip-one-frame-solid", "strip", &[0], [4.0, 4.0, 8.0, 8.0], false),
+        ("strip-across-translucent", "side-by-side", &[0, 1], [1.0, 1.0, 15.0, 15.0], false),
+        ("wide-sprite-translucent", "wide", &[], [8.0, 8.0, 12.0, 12.0], false),
+        ("wide-sprite-solid", "wide", &[], [0.0, 0.0, 8.0, 8.0], false),
+        ("out-of-bounds", "column-7", &[], [0.0, 0.0, 20.0, 16.0], false),
+    ];
+    probes
+        .into_iter()
+        .map(|(label, kind, playback, uvs, force)| {
+            let ((width, height, alphas), (frame_width, frame_height)) = probe_sprite(kind);
+            let mut row = json!({
+                "label": label, "width": width, "height": height, "alphas": alphas,
+                "frame_width": frame_width, "frame_height": frame_height,
+                "uvs": uvs.map(f32_bits), "force_translucent": force,
+            });
+            if !playback.is_empty() {
+                row["playback"] = json!(playback);
+            }
+            row
+        })
+        .collect()
+}

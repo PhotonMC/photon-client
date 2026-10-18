@@ -30,6 +30,7 @@ pub fn cases() -> Vec<Value> {
         ticks("movement/block-lighting", "block_lighting", lighting::rows()),
         ticks("movement/block-smooth-gate", "block_smooth_gate", lighting::gate_rows()),
         ticks("movement/fluid-mesh", "fluid_mesh", lighting::fluid_rows()),
+        ticks("movement/face-layer", "face_layer", lighting::face_layer_rows()),
         ticks("movement/fluid-layer", "fluid_mesh", lighting::fluid_layer_rows()),
         ticks("movement/dimension-cardinal-light", "dimension_cardinal_light", lighting::dimension_rows()),
     ]

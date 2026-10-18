@@ -33,6 +33,8 @@ pub(super) fn model_mesh(
             cull: None,
             shade: true,
             tint_index: -1,
+            // An entity model draws through its own render type.
+            layer: crate::texture::sprite_alpha::Layer::Solid,
         });
         mesh.indices
             .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);

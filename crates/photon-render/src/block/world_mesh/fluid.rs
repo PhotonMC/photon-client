@@ -227,9 +227,9 @@ where
         };
         sprites.iter().any(|name| {
             self.atlas
-                .transparency
+                .alpha
                 .get(*name)
-                .is_some_and(|transparency| transparency.has_translucent)
+                .is_some_and(|alpha| alpha.transparency.has_translucent)
         })
     }
 

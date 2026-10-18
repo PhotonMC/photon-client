@@ -417,6 +417,74 @@ class MovementEntityOracle extends MovementSupport {
         return entry;
     }
 
+    /** A sprite over real contents, which is what a face bakes its layer from. */
+    static final class ContentSprite extends net.minecraft.client.renderer.texture.TextureAtlasSprite {
+        ContentSprite(net.minecraft.client.renderer.texture.SpriteContents contents) {
+            super(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS, contents, 16, 16, 0, 0, 0);
+        }
+    }
+
+    /**
+     * The layer a face bakes to (`FaceBakery.computeMaterialTransparency` into
+     * `MaterialInfo.of`), over a sprite whose pixels the row gives as alphas:
+     * a still image, or a strip of frames played in the row's order.
+     */
+    static JsonObject faceLayer(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        int width = row.get("width").getAsInt();
+        int height = row.get("height").getAsInt();
+        int frameWidth = row.get("frame_width").getAsInt();
+        int frameHeight = row.get("frame_height").getAsInt();
+        var alphas = row.getAsJsonArray("alphas");
+        var image = new com.mojang.blaze3d.platform.NativeImage(width, height, true);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                image.setPixel(x, y, alphas.get(y * width + x).getAsInt() << 24 | 0x336699);
+            }
+        }
+        java.util.Optional<net.minecraft.client.resources.metadata.animation.AnimationMetadataSection> animation =
+            java.util.Optional.empty();
+        if (row.has("playback")) {
+            var frames = new java.util.ArrayList<net.minecraft.client.resources.metadata.animation.AnimationFrame>();
+            for (var index : row.getAsJsonArray("playback")) {
+                frames.add(new net.minecraft.client.resources.metadata.animation.AnimationFrame(
+                    index.getAsInt(), java.util.Optional.empty()));
+            }
+            animation = java.util.Optional.of(
+                new net.minecraft.client.resources.metadata.animation.AnimationMetadataSection(
+                    java.util.Optional.of(frames), java.util.Optional.of(frameWidth),
+                    java.util.Optional.of(frameHeight), 1, false));
+        }
+        var contents = new net.minecraft.client.renderer.texture.SpriteContents(
+            net.minecraft.resources.Identifier.parse("minecraft:probe"),
+            new net.minecraft.client.resources.metadata.animation.FrameSize(frameWidth, frameHeight),
+            image, animation, java.util.List.of(), java.util.Optional.empty());
+        try {
+            var material = new net.minecraft.client.resources.model.sprite.Material.Baked(
+                new ContentSprite(contents), row.get("force_translucent").getAsBoolean());
+            var uvs = row.getAsJsonArray("uvs");
+            var method = net.minecraft.client.resources.model.cuboid.FaceBakery.class.getDeclaredMethod(
+                "computeMaterialTransparency",
+                net.minecraft.client.resources.model.sprite.Material.Baked.class,
+                net.minecraft.client.resources.model.cuboid.CuboidFace.UVs.class);
+            method.setAccessible(true);
+            try {
+                var transparency = (com.mojang.blaze3d.platform.Transparency) method.invoke(null, material,
+                    new net.minecraft.client.resources.model.cuboid.CuboidFace.UVs(
+                        bits(uvs.get(0)), bits(uvs.get(1)), bits(uvs.get(2)), bits(uvs.get(3))));
+                entry.addProperty("outcome", "layer");
+                entry.addProperty("layer", net.minecraft.client.renderer.chunk.ChunkSectionLayer
+                    .byTransparency(transparency).name().toLowerCase(java.util.Locale.ROOT));
+            } catch (java.lang.reflect.InvocationTargetException failure) {
+                entry.addProperty("outcome", "error");
+            }
+        } finally {
+            contents.close();
+        }
+        return entry;
+    }
+
     /** A sprite that says how much of it is see-through, whatever its size. */
     static final class AlphaSprite extends net.minecraft.client.renderer.texture.TextureAtlasSprite {
         com.mojang.blaze3d.platform.Transparency transparency;

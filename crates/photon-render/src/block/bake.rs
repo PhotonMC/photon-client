@@ -21,6 +21,21 @@ pub struct BakedQuad {
     pub tint_index: i32,
     /// Whether the quad takes the per-side shade.
     pub shade: bool,
+    /// The layer the quad bakes to.
+    pub layer: crate::texture::sprite_alpha::Layer,
+}
+
+impl BakedQuad {
+    /// The quad as a mesh entry that hides behind no side.
+    pub fn uncullable_info(&self) -> crate::scene::QuadInfo {
+        crate::scene::QuadInfo {
+            direction: self.direction,
+            cull: None,
+            shade: self.shade,
+            tint_index: self.tint_index,
+            layer: self.layer,
+        }
+    }
 }
 
 /// A variant's model, baked.
@@ -85,6 +100,7 @@ pub fn bake(model: &ResolvedModel, atlas: &BuiltAtlas, key: &BakeKey) -> Option<
                 cull: info.cull,
                 tint_index: info.tint_index,
                 shade: info.shade,
+                layer: info.layer,
             }
         })
         .collect();

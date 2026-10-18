@@ -16,6 +16,7 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
         "block_lighting" => Some(block_lighting_result(request)),
         "block_smooth_gate" => Some(block_smooth_gate_result(request)),
         "fluid_mesh" => Some(fluid_mesh_result(request)),
+        "face_layer" => Some(face_layer_result(request)),
         "dimension_cardinal_light" => Some(dimension_cardinal_light_result(request)),
         "entity_shadows" => Some(entity_shadows_result(request)),
         _ => None,
@@ -240,9 +241,14 @@ fn fluid_atlas(row: &Value) -> photon_render::BuiltAtlas {
         "minecraft:block/lava_flow",
     ];
     photon_render::BuiltAtlas {
-        transparency: names
+        alpha: names
             .iter()
-            .map(|name| ((*name).to_owned(), alpha(name)))
+            .map(|name| {
+                (
+                    (*name).to_owned(),
+                    photon_render::SpriteAlpha::uniform(alpha(name)),
+                )
+            })
             .collect(),
         width: 1,
         height: 1,
@@ -284,4 +290,64 @@ fn distinct_vertices(
             (key, described)
         })
         .collect()
+}
+
+/// `face_layer`: the layer a face bakes to over a sprite whose pixels the row
+/// gives as alphas (a strip of frames played in the row's order when it
+/// names a `playback`), or that the face's rectangle falls outside them.
+pub(super) fn face_layer_result(request: &Value) -> Result<Value, String> {
+    use photon_render::{DecodedImage, Layer, SpriteAlpha};
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let (width, height) = (
+            i32_field(row, "width")? as u32,
+            i32_field(row, "height")? as u32,
+        );
+        let frame = (
+            i32_field(row, "frame_width")? as u32,
+            i32_field(row, "frame_height")? as u32,
+        );
+        let mut rgba = Vec::new();
+        for alpha in row["alphas"].as_array().ok_or("alphas must be an array")? {
+            rgba.extend_from_slice(&[0x33, 0x66, 0x99, alpha.as_u64().ok_or("alpha")? as u8]);
+        }
+        let image = DecodedImage {
+            width,
+            height,
+            rgba,
+        };
+        // An animation of one frame is a still sprite to the reference.
+        let mut frames: Vec<u32> = Vec::new();
+        for index in row["playback"].as_array().into_iter().flatten() {
+            let index = index.as_u64().ok_or("frame index")? as u32;
+            if !frames.contains(&index) {
+                frames.push(index);
+            }
+        }
+        let played = row["playback"].as_array().map_or(0, Vec::len);
+        let alpha =
+            SpriteAlpha::measure(&image, frame, if played > 1 { frames } else { Vec::new() });
+        let mut uvs = [0.0_f32; 4];
+        for (slot, uv) in row["uvs"]
+            .as_array()
+            .ok_or("uvs must be an array")?
+            .iter()
+            .enumerate()
+            .take(4)
+        {
+            uvs[slot] = bits32(uv)?;
+        }
+        let force = row["force_translucent"]
+            .as_bool()
+            .ok_or("force_translucent")?;
+        out.push(match alpha.face(force, uvs) {
+            Some(transparency) => json!({
+                "label": row["label"],
+                "outcome": "layer",
+                "layer": Layer::of(transparency).as_str(),
+            }),
+            None => json!({"label": row["label"], "outcome": "error"}),
+        });
+    }
+    Ok(json!({"rows": out}))
 }

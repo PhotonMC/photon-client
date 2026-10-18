@@ -137,8 +137,20 @@ fn wanted_materials(
 
 /// What a sprite's alpha holds: of the whole image, the strip for an
 /// animated sprite, as the reference reads it.
-fn sprite_transparency((image, _, animated): &DecodedSprite) -> Transparency {
-    compute_transparency(animated.as_ref().map_or(image, |(strip, ..)| strip))
+fn sprite_alpha((image, _, animated): &DecodedSprite) -> crate::texture::sprite_alpha::SpriteAlpha {
+    let frame = (image.width, image.height);
+    match animated {
+        Some((strip, playback, _)) => {
+            let mut frames: Vec<u32> = Vec::new();
+            for &(index, _) in playback {
+                if !frames.contains(&(index as u32)) {
+                    frames.push(index as u32);
+                }
+            }
+            crate::texture::sprite_alpha::SpriteAlpha::measure(strip, frame, frames)
+        }
+        None => crate::texture::sprite_alpha::SpriteAlpha::measure(image, frame, Vec::new()),
+    }
 }
 
 /// Pack a set of models' textures together with sprites no model names,
@@ -193,7 +205,7 @@ pub fn build_atlas_with(
     // level N.
     let level_count = mip_level.max(0) as u32;
     let mut sprites = BTreeMap::new();
-    let mut transparency = BTreeMap::new();
+    let mut alpha_by_sprite = BTreeMap::new();
     let mut animations = Vec::new();
     let mut levels: Vec<DecodedImage> = (0..=level_count)
         .map(|level| {
@@ -216,7 +228,7 @@ pub fn build_atlas_with(
             .filter_map(|placement| {
                 let key = placement.name.as_string();
                 let entry = decoded.get(&key)?;
-                let alpha = sprite_transparency(entry);
+                let alpha = sprite_alpha(entry);
                 let built = sprite_levels(&placement, key, entry, level_count, width, height);
                 Some((built, alpha))
             })
@@ -235,7 +247,7 @@ pub fn build_atlas_with(
             );
         }
         animations.extend(built.animation);
-        transparency.insert(built.key.clone(), alpha);
+        alpha_by_sprite.insert(built.key.clone(), alpha);
         sprites.insert(built.key, built.rect);
     }
     Ok(BuiltAtlas {
@@ -243,7 +255,7 @@ pub fn build_atlas_with(
         height,
         levels,
         sprites,
-        transparency,
+        alpha: alpha_by_sprite,
         animations,
     })
 }

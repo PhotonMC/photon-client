@@ -61,4 +61,5 @@ pub use texture::mipmap::{
     generate_mip_levels_with,
 };
 pub use texture::png::{DecodedImage, PngError, decode_rgba};
+pub use texture::sprite_alpha::{Layer, SpriteAlpha};
 pub use vulkan::{CapturedFrame, SectionMemory, VulkanBackend, VulkanError, validation_findings};

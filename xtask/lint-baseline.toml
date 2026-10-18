@@ -410,7 +410,7 @@
 "crates/photon-render/src/model/parse.rs::parse_rotation" = 13
 "crates/photon-render/src/objects/xp_orb.rs::icon" = 11
 "crates/photon-render/src/resolve.rs::ModelCache::prefetch" = 12
-"crates/photon-render/src/resolve/tint.rs::build_mesh" = 13
+"crates/photon-render/src/resolve/tint.rs::build_mesh" = 11
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 23
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 25
 "crates/photon-render/src/sky/frame.rs::build_frame" = 12
@@ -916,7 +916,7 @@
 "crates/photon-render/src/objects/painting.rs::painting_vertices" = 104
 "crates/photon-render/src/resolve/sprite.rs::build_atlas_with" = 93
 "crates/photon-render/src/resolve/sprite.rs::sprite_levels" = 81
-"crates/photon-render/src/resolve/tint.rs::build_mesh" = 93
+"crates/photon-render/src/resolve/tint.rs::build_mesh" = 84
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 119
 "crates/photon-render/src/sky/environment.rs::Environment::load" = 68

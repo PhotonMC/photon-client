@@ -4,3 +4,4 @@ pub mod atlas;
 pub mod metadata;
 pub mod mipmap;
 pub mod png;
+pub mod sprite_alpha;

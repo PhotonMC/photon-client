@@ -46,6 +46,7 @@ pub fn build_mesh(
                 .uvs
                 .unwrap_or_else(|| default_face_uv(element.from, element.to, *facing));
 
+            let layer = face_layer(atlas, &key, material.force_translucent, uvs);
             let tint = face_tint(tints, face.tint_index);
             let face_uv = uv_transform(*facing);
             let base = mesh.vertices.len() as u32;
@@ -71,22 +72,8 @@ pub fn build_mesh(
                 let (u, v) = crate::block::rotation::transform_face_uv(&face_uv, u, v);
                 packed_uvs[slot] = (u64::from(u.to_bits()) << 32) | u64::from(v.to_bits());
             }
-            // FaceBakery: the quad faces whichever side its normal is closest
-            // to, and without an element rotation its corners are put back in
-            // that side's order.
-            let direction = crate::block::geometry::closest_direction(
-                crate::block::geometry::triangle_normal(positions[0], positions[1], positions[2]),
-            );
-            if element.rotation.is_none()
-                && let Some(direction) = direction
-            {
-                let _ = crate::block::geometry::recalculate_winding(
-                    &mut positions,
-                    &mut packed_uvs,
-                    direction,
-                );
-            }
-            let direction = direction.unwrap_or(photon_core::direction::Direction::Up);
+            let direction =
+                settle_direction(element.rotation.is_none(), &mut positions, &mut packed_uvs);
             for (position, packed) in positions.into_iter().zip(packed_uvs) {
                 let u = f32::from_bits((packed >> 32) as u32);
                 let v = f32::from_bits(packed as u32);
@@ -108,6 +95,7 @@ pub fn build_mesh(
                 }),
                 shade: element.shade,
                 tint_index: face.tint_index,
+                layer,
             });
             mesh.indices
                 .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
@@ -160,4 +148,41 @@ pub(super) fn first_animation_frame(
         height: frame_height as u32,
         rgba,
     })
+}
+
+/// `FaceBakery`: the quad faces whichever side its normal is closest to, and
+/// without an element rotation its corners are put back in that side's order.
+fn settle_direction(
+    unrotated: bool,
+    positions: &mut [[f32; 3]; 4],
+    packed_uvs: &mut [u64; 4],
+) -> photon_core::direction::Direction {
+    let direction = crate::block::geometry::closest_direction(
+        crate::block::geometry::triangle_normal(positions[0], positions[1], positions[2]),
+    );
+    if unrotated && let Some(direction) = direction {
+        let _ = crate::block::geometry::recalculate_winding(positions, packed_uvs, direction);
+    }
+    direction.unwrap_or(photon_core::direction::Direction::Up)
+}
+
+/// The layer a face bakes to over its sprite. A face that reaches outside its
+/// sprite is one the reference refuses to bake; it stays in the solid layer.
+fn face_layer(
+    atlas: &BuiltAtlas,
+    sprite: &str,
+    force_translucent: bool,
+    uvs: crate::block::geometry::FaceUvs,
+) -> crate::texture::sprite_alpha::Layer {
+    use crate::texture::sprite_alpha::Layer;
+    atlas
+        .alpha
+        .get(sprite)
+        .and_then(|alpha| {
+            alpha.face(
+                force_translucent,
+                [uvs.min_u, uvs.min_v, uvs.max_u, uvs.max_v],
+            )
+        })
+        .map_or(Layer::Solid, Layer::of)
 }

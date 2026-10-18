@@ -95,6 +95,9 @@ pub struct QuadInfo {
     pub shade: bool,
     /// The tint slot the face takes its colour from; negative for none.
     pub tint_index: i32,
+    /// The layer the face bakes to, from the alpha of the part of the sprite
+    /// it shows.
+    pub layer: crate::texture::sprite_alpha::Layer,
 }
 
 /// Vertices and indices for one cube.
