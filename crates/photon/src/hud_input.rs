@@ -138,6 +138,7 @@ pub fn camera_overlays(
                 .warning_strength(feet.x, feet.z),
         ),
         worn: worn_overlays(session),
+        scoping: player.is_scoping(),
         powder_snow: session
             .world()
             .local_player()

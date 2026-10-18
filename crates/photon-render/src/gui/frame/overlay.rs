@@ -195,4 +195,29 @@ impl GuiFrame {
             _ => self.batches.push((GuiBlend::Highlight, first, 6)),
         }
     }
+
+    /// `Hud.extractSpyglassOverlay`: the scope's texture, as big as a square of the screen's
+    /// shorter side scaled by `scale`, in the middle, and black over the rest of the screen.
+    pub fn spyglass_overlay(&mut self, atlas: &GuiAtlas, (width, height): (i32, i32), scale: f32) {
+        let source = width.min(height) as f32;
+        let ratio = (width as f32 / source).min(height as f32 / source) * scale;
+        let size = (source * ratio).floor() as i32;
+        let (left, top) = ((width - size) / 2, (height - size) / 2);
+        let (right, bottom) = (left + size, top + size);
+        self.blit_texture(
+            atlas,
+            "textures/misc/spyglass_scope",
+            (size, size),
+            (0, 0),
+            left,
+            top,
+            size,
+            size,
+        );
+        let black = 0xFF00_0000;
+        self.fill(atlas, (0, bottom, width, height), black);
+        self.fill(atlas, (0, 0, width, top), black);
+        self.fill(atlas, (0, top, left, bottom), black);
+        self.fill(atlas, (right, top, width, bottom), black);
+    }
 }

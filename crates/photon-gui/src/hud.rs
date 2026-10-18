@@ -125,6 +125,9 @@ pub struct Hud {
     waypoint_styles: WaypointStyles,
     /// `Hud.vignetteBrightness`: it starts at one, and eases to what the light says.
     vignette_brightness: f32,
+    /// `Hud.scopeScale`, and the time of the last frame it was eased at.
+    scope_scale: f32,
+    last_frame_millis: Option<u128>,
 }
 
 impl Default for Hud {
@@ -138,6 +141,8 @@ impl Default for Hud {
             random: RandomSource::create(0),
             waypoint_styles: WaypointStyles::default(),
             vignette_brightness: 1.0,
+            scope_scale: 0.0,
+            last_frame_millis: None,
         }
     }
 }
@@ -170,7 +175,7 @@ impl Hud {
         now_millis: u128,
         draw_item: &mut ItemDrawer<'_>,
     ) {
-        self.camera_overlays_and_crosshair(frame, atlas, (width, height), input);
+        self.camera_overlays_and_crosshair(frame, atlas, (width, height), (input, now_millis));
         let t = GuiBlend::Translucent;
         let centre = width / 2;
         // `extractItemHotbar`; a spectator's hotbar is its own menu.

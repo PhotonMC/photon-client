@@ -26,6 +26,9 @@ struct Hotbar {
     nausea: Option<(i64, i64, f64)>,
     /// Items in the equipment slots, which also draw the camera overlays: slot and item.
     equipment: Option<(&'static str, &'static str)>,
+    /// Looking through a spyglass or not, the scope's size before the frame and the time the frame
+    /// took in milliseconds.
+    scope: Option<(bool, f64, i64)>,
 }
 
 const HOTBAR: Hotbar = Hotbar {
@@ -42,6 +45,7 @@ const HOTBAR: Hotbar = Hotbar {
     vignette: None,
     nausea: None,
     equipment: None,
+    scope: None,
 };
 
 /// The vignette's input: the brightness, the camera's place and a border of a size (moving to a
@@ -69,6 +73,9 @@ fn hotbar_row(label: &str, hotbar: Hotbar) -> Value {
     }
     if let Some(portal) = hotbar.portal {
         row["portal"] = json!(portal);
+    }
+    if let Some((scoping, start, millis)) = hotbar.scope {
+        row["scope"] = json!({"scoping": scoping, "start": f32_bits(start), "millis": millis});
     }
     if let Some((slot, item)) = hotbar.equipment {
         row["equipment"] = json!({ slot: item });
@@ -126,6 +133,7 @@ pub fn hud_hotbar() -> Value {
     ]);
     rows.extend(overlay_rows());
     rows.extend(worn_rows());
+    rows.extend(scope_rows());
     gui("hud-hotbar", "hud_hotbar", rows)
 }
 
@@ -147,6 +155,36 @@ fn worn_rows() -> Vec<Value> {
             Hotbar { equipment: pumpkin("head"), frozen: Some(70), portal: Some(0.5), ..HOTBAR },
         ),
         hotbar_row("pumpkin-small", Hotbar { equipment: pumpkin("head"), size: (320, 240), ..HOTBAR }),
+    ]
+}
+
+/// The spyglass' scope: its size eases a half step of the frame's game time towards 1.125, goes back
+/// to half the size when the spyglass is lowered, and shows in first person only.
+fn scope_rows() -> Vec<Value> {
+    let scope = |scoping, start, millis| Some((scoping, start, millis));
+    vec![
+        hotbar_row("scope-half", Hotbar { scope: scope(true, 0.5, 50), ..HOTBAR }),
+        hotbar_row("scope-near-full", Hotbar { scope: scope(true, 1.0, 100), ..HOTBAR }),
+        hotbar_row("scope-full", Hotbar { scope: scope(true, 1.125, 50), ..HOTBAR }),
+        hotbar_row("scope-still", Hotbar { scope: scope(true, 0.5, 0), ..HOTBAR }),
+        hotbar_row("scope-slow-frame", Hotbar { scope: scope(true, 0.5, 250), ..HOTBAR }),
+        hotbar_row("scope-wide", Hotbar { scope: scope(true, 0.8, 50), size: (1000, 500), ..HOTBAR }),
+        hotbar_row("scope-odd", Hotbar { scope: scope(true, 0.8, 50), size: (641, 361), ..HOTBAR }),
+        hotbar_row("scope-third-person", Hotbar { scope: scope(true, 0.8, 50), third_person: true, ..HOTBAR }),
+        hotbar_row("scope-lowered", Hotbar { scope: scope(false, 0.9, 50), ..HOTBAR }),
+        hotbar_row(
+            "scope-lowered-pumpkin",
+            Hotbar { scope: scope(false, 0.9, 50), equipment: Some(("head", "minecraft:carved_pumpkin")), ..HOTBAR },
+        ),
+        hotbar_row(
+            "scope-and-pumpkin",
+            Hotbar {
+                scope: scope(true, 0.7, 50),
+                equipment: Some(("head", "minecraft:carved_pumpkin")),
+                frozen: Some(70),
+                ..HOTBAR
+            },
+        ),
     ]
 }
 

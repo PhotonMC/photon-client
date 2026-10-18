@@ -261,10 +261,23 @@ class GuiHudOracle extends GuiCommandOracle {
             var hud = scene.screen().hud();
             var tracker = net.minecraft.client.DeltaTracker.ZERO;
             boolean vignette = row.has("vignette");
-            if (row.has("frozen_ticks") || row.has("portal") || row.has("nausea") || row.has("equipment") || vignette) {
+            if (row.has("frozen_ticks") || row.has("portal") || row.has("nausea") || row.has("equipment") || row.has("scope") || vignette) {
                 // The camera overlays; the vignette only where the row asks for it.
                 if (row.has("frozen_ticks")) {
                     local.setTicksFrozen(row.get("frozen_ticks").getAsInt());
+                }
+                if (row.has("scope")) {
+                    var scope = row.getAsJsonObject("scope");
+                    MovementOracle.setField(hud, "scopeScale", Oracle.f32(scope, "start"));
+                    final float delta = scope.get("millis").getAsInt() / 50.0F;
+                    tracker = (net.minecraft.client.DeltaTracker) java.lang.reflect.Proxy.newProxyInstance(
+                        GuiHudOracle.class.getClassLoader(), new Class<?>[] {net.minecraft.client.DeltaTracker.class},
+                        (proxy, method, arguments) -> method.getName().equals("getGameTimeDeltaTicks") ? (Object) delta : (Object) 0.0F);
+                    if (scope.get("scoping").getAsBoolean()) {
+                        MovementOracle.setField(local, "useItem",
+                            new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SPYGLASS));
+                        MovementOracle.setField(local, "startedUsingItem", true);
+                    }
                 }
                 if (row.has("equipment")) {
                     for (var slot : row.getAsJsonObject("equipment").entrySet()) {

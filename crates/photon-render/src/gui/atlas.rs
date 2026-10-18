@@ -27,7 +27,7 @@ const SPRITE_FOLDERS: [&str; 12] = [
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 45] = [
+const WHOLE_TEXTURES: [&str; 46] = [
     "menu_background",
     "inworld_menu_background",
     "menu_list_background",
@@ -73,6 +73,7 @@ const WHOLE_TEXTURES: [&str; 45] = [
     "textures/misc/vignette",
     "textures/misc/nausea",
     "textures/misc/pumpkinblur",
+    "textures/misc/spyglass_scope",
 ];
 
 /// The names of the PNG textures in a folder (`creeper` of the banner patterns), sorted.

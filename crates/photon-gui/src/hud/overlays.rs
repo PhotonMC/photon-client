@@ -10,6 +10,8 @@ pub struct CameraOverlays {
     /// The textures the worn and held items lay over the view (`Equippable.cameraOverlay`), in
     /// the order of the equipment slots, drawn in first person.
     pub worn: Vec<String>,
+    /// The player looks through a spyglass.
+    pub scoping: bool,
     /// The powder snow frame's alpha while the player has ticks frozen (`getPercentFrozen`).
     pub powder_snow: Option<f32>,
     /// The portal effect's intensity and the portal sprite's place in the block atlas, while it
@@ -47,6 +49,12 @@ impl Hud {
         self.vignette_brightness = brightness;
     }
 
+    /// The scope's size and the time of the last frame, as a frame left them.
+    pub fn set_scope_state(&mut self, scale: f32, last_frame_millis: Option<u128>) {
+        self.scope_scale = scale;
+        self.last_frame_millis = last_frame_millis;
+    }
+
     /// `Hud.updateVignetteBrightness`, once a tick: the brightness of the light at the camera's
     /// eyes, inverted, is eased towards a hundredth of the way a tick.
     pub fn update_vignette(&mut self, level_brightness: f32) {
@@ -54,16 +62,23 @@ impl Hud {
         self.vignette_brightness += (target - self.vignette_brightness) * 0.01;
     }
 
-    /// `extractCameraOverlays` (the vignette, the powder snow frame and the portal) and then the
-    /// crosshair.
+    /// `extractCameraOverlays` (the vignette, the spyglass or what is worn, the powder snow frame,
+    /// the portal or the confusion) and then the crosshair. The scope's size eases towards
+    /// 1.125 each frame by the frames' game time (`now_millis` over fifty).
     pub(super) fn camera_overlays_and_crosshair(
-        &self,
+        &mut self,
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         (width, height): (i32, i32),
-        input: &HudInput,
+        (input, now_millis): (&HudInput, u128),
     ) {
         let overlays = &input.overlays;
+        let delta_ticks = self
+            .last_frame_millis
+            .map_or(0.0, |last| now_millis.saturating_sub(last) as f32 / 50.0);
+        self.last_frame_millis = Some(now_millis);
+        self.scope_scale =
+            photon_core::math::mth_lerp_f32(0.5 * delta_ticks, self.scope_scale, 1.125);
         if let Some(warning) = overlays.vignette {
             frame.vignette_tinted(
                 atlas,
@@ -73,9 +88,7 @@ impl Hud {
             );
         }
         if input.first_person {
-            for texture in &overlays.worn {
-                frame.texture_overlay(atlas, texture, (0, 0, width, height), 1.0);
-            }
+            self.scope_or_worn(frame, atlas, (width, height), overlays);
         }
         if let Some(alpha) = overlays.powder_snow {
             frame.texture_overlay(
@@ -85,26 +98,55 @@ impl Hud {
                 alpha,
             );
         }
-        if let Some((intensity, uv)) = overlays.portal {
-            // `extractPortalOverlay`: the alpha is lifted to the fourth power below one.
-            let mut alpha = intensity;
-            if alpha < 1.0 {
-                alpha *= alpha;
-                alpha *= alpha;
-                alpha = alpha * 0.8 + 0.2;
-            }
-            frame.block_sprite_overlay(uv, (0, 0, width, height), alpha);
-        } else if let Some((nausea, scale)) = overlays.nausea.filter(|(nausea, _)| *nausea > 0.0)
-            && scale < 1.0
-        {
-            frame.confusion_overlay(
-                atlas,
-                "textures/misc/nausea",
-                (width, height),
-                nausea * (1.0 - scale),
-            );
-        }
+        portal_or_confusion(frame, atlas, (width, height), overlays);
         self.crosshair(frame, atlas, width, height, input);
+    }
+
+    /// The first-person overlays: the spyglass' scope while one is looked through, else (the scope
+    /// back at half its size) the textures the worn and held items lay over the view.
+    fn scope_or_worn(
+        &mut self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        (width, height): (i32, i32),
+        overlays: &CameraOverlays,
+    ) {
+        if overlays.scoping {
+            frame.spyglass_overlay(atlas, (width, height), self.scope_scale);
+            return;
+        }
+        self.scope_scale = 0.5;
+        for texture in &overlays.worn {
+            frame.texture_overlay(atlas, texture, (0, 0, width, height), 1.0);
+        }
+    }
+}
+
+/// The portal's overlay, or where it is not drawn the nausea's confusion overlay.
+fn portal_or_confusion(
+    frame: &mut GuiFrame,
+    atlas: &GuiAtlas,
+    (width, height): (i32, i32),
+    overlays: &CameraOverlays,
+) {
+    if let Some((intensity, uv)) = overlays.portal {
+        // `extractPortalOverlay`: the alpha is lifted to the fourth power below one.
+        let mut alpha = intensity;
+        if alpha < 1.0 {
+            alpha *= alpha;
+            alpha *= alpha;
+            alpha = alpha * 0.8 + 0.2;
+        }
+        frame.block_sprite_overlay(uv, (0, 0, width, height), alpha);
+    } else if let Some((nausea, scale)) = overlays.nausea.filter(|(nausea, _)| *nausea > 0.0)
+        && scale < 1.0
+    {
+        frame.confusion_overlay(
+            atlas,
+            "textures/misc/nausea",
+            (width, height),
+            nausea * (1.0 - scale),
+        );
     }
 }
 

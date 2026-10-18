@@ -191,7 +191,7 @@
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 53
 "crates/photon-game/src/item/default_components.rs::encode" = 24
 "crates/photon-game/src/item/default_components.rs::slot" = 11
-"crates/photon-game/src/item/values.rs::Values::patched_equippable" = 14
+"crates/photon-game/src/item/values.rs::Values::patched_equippable" = 12
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 40
 "crates/photon-game/src/menus/container/bundle.rs::ContainerMenu::bundle_click" = 17
 "crates/photon-game/src/menus/container/clicks.rs::ContainerMenu::do_click" = 102
@@ -356,7 +356,6 @@
 "crates/photon-oracle/src/timer.rs::binary_result" = 32
 "crates/photon-oracle/src/timer.rs::nbt_type_name" = 12
 "crates/photon-oracle/src/tooltip.rs::component_json" = 18
-"crates/photon-oracle/src/tooltip.rs::item_declarations" = 11
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 11
 "crates/photon-oracle/src/travel.rs::aabb_result" = 49
 "crates/photon-oracle/src/vanilla.rs::image_result" = 17
@@ -853,7 +852,7 @@
 "crates/photon-oracle/src/ticks.rs::movement_world" = 84
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
 "crates/photon-oracle/src/tooltip.rs::component_json" = 80
-"crates/photon-oracle/src/tooltip.rs::item_declarations" = 100
+"crates/photon-oracle/src/tooltip.rs::item_declarations" = 93
 "crates/photon-oracle/src/tooltip.rs::tooltip_registries" = 89
 "crates/photon-oracle/src/transform.rs::client_world_entity_tick_result" = 78
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 107

@@ -91,6 +91,7 @@ fn camera_overlays(row: &Value) -> CameraOverlays {
         portal: portal_overlay(row),
         nausea: nausea_overlay(row),
         worn: worn_overlays(row),
+        scoping: row["scope"]["scoping"].as_bool().unwrap_or(false),
     }
 }
 
@@ -100,6 +101,11 @@ fn hud_of(row: &Value) -> Result<Hud, String> {
     if let Some(bits) = row["vignette"]["brightness"].as_str() {
         let brightness = u32::from_str_radix(bits, 16).map_err(|error| error.to_string())?;
         hud.set_vignette_brightness(f32::from_bits(brightness));
+    }
+    if let Some(scope) = row.get("scope") {
+        let bits = u32::from_str_radix(scope["start"].as_str().ok_or("start")?, 16)
+            .map_err(|error| error.to_string())?;
+        hud.set_scope_state(f32::from_bits(bits), Some(0));
     }
     Ok(hud)
 }
@@ -221,7 +227,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         int("width"),
         int("height"),
         &input,
-        0,
+        row["scope"]["millis"].as_u64().unwrap_or(0).into(),
         &mut draw_item,
     );
 
