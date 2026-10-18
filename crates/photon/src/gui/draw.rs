@@ -96,37 +96,56 @@ impl Gui {
         true
     }
 
-    /// The boss bars and the titles, which the hidden interface does not show.
+    /// The titles, which the hidden interface does not show.
     fn draw_announcements(
-        (boss_bars, titles): (&mut BossBars, &mut Titles),
+        titles: &mut Titles,
         (atlas, font): (&GuiAtlas, &Font),
         frame: &mut photon_render::gui::GuiFrame,
-        (hidden, gui_size, now, partial): (bool, (i32, i32), u64, f32),
+        (hidden, gui_size, partial): (bool, (i32, i32), f32),
     ) {
         if !hidden {
-            boss_bars.draw(frame, atlas, font, gui_size, now);
             titles.draw(frame, atlas, font, gui_size, partial);
         }
     }
 
-    /// The frame's clock, and the sleep veil over the HUD (`Hud.extractSleepOverlay`, also drawn
-    /// with the interface hidden).
+    /// The frame's clock, the boss bars (unless the interface is hidden) and the sleep veil over
+    /// the HUD: `Hud.extractRenderState` draws the bars, then the veil, which the sidebar, the
+    /// overlay message, the titles and the chat come over.
     fn finish_hud_frame(
         frame: &mut photon_render::gui::GuiFrame,
-        (atlas, started_at): (&GuiAtlas, std::time::Instant),
-        session: &PlaySession,
-        size: &photon_render::window::scale::WindowScale,
+        (atlas, font, boss_bars): (&GuiAtlas, &Font, &mut BossBars),
+        (started_at, hidden): (std::time::Instant, bool),
+        (session, size): (&PlaySession, &photon_render::window::scale::WindowScale),
     ) {
+        let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
         frame.millis = started_at.elapsed().as_millis() as u64;
-        photon_gui::hud::sleep::draw(
-            frame,
-            atlas,
-            (size.gui_scaled_width(), size.gui_scaled_height()),
-            session
-                .world()
-                .local_player()
-                .map_or(0, |player| player.sleep_timer()),
-        );
+        if !hidden {
+            boss_bars.draw(frame, atlas, font, gui_size, frame.millis);
+        }
+        let timer = session
+            .world()
+            .local_player()
+            .map_or(0, |player| player.sleep_timer());
+        photon_gui::hud::sleep::draw(frame, atlas, gui_size, timer);
+    }
+
+    /// The scoreboard sidebar's title and lines, in the language's runs.
+    fn sidebar_lines(
+        &self,
+        session: &PlaySession,
+    ) -> Option<(Vec<photon_game::text::Run>, Vec<SidebarLine>)> {
+        let (name, objective) = session
+            .scoreboard()
+            .sidebar_objective(session.local_name())?;
+        let runs =
+            |component: &photon_game::text::Component| self.lang.runs(component, &Style::default());
+        let lines: Vec<SidebarLine> = session
+            .scoreboard()
+            .sidebar_lines(name)
+            .iter()
+            .map(|(name, score)| (runs(name), runs(score)))
+            .collect();
+        Some((runs(&objective.display_name), lines))
     }
 
     /// The HUD, then the open screen over it, with the player in the screen
@@ -159,21 +178,7 @@ impl Gui {
         if !controls.tab_held {
             self.tab_health.clear();
         }
-        let sidebar = session
-            .scoreboard()
-            .sidebar_objective(session.local_name())
-            .map(|(name, objective)| {
-                let runs = |component: &photon_game::text::Component| {
-                    self.lang.runs(component, &Style::default())
-                };
-                let lines: Vec<SidebarLine> = session
-                    .scoreboard()
-                    .sidebar_lines(name)
-                    .iter()
-                    .map(|(name, score)| (runs(name), runs(score)))
-                    .collect();
-                (runs(&objective.display_name), lines)
-            });
+        let sidebar = self.sidebar_lines(session);
         let items = &mut self.items;
         let mut draw_item =
             |stack: &ClientItemStackState, x: f32, y: f32, out: &mut Vec<GuiItemVertex>| {
@@ -209,7 +214,12 @@ impl Gui {
                 &mut draw_item,
             )
         };
-        Self::finish_hud_frame(&mut frame, (&self.atlas, self.started_at), session, &size);
+        Self::finish_hud_frame(
+            &mut frame,
+            (&self.atlas, &self.font, &mut self.boss_bars),
+            (self.started_at, hidden),
+            (session, &size),
+        );
         if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
             sidebar::draw(
                 &mut frame,
@@ -253,10 +263,10 @@ impl Gui {
         let now = self.started_at.elapsed().as_millis() as u64;
         let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
         Self::draw_announcements(
-            (&mut self.boss_bars, &mut self.titles),
+            &mut self.titles,
             (&self.atlas, &self.font),
             &mut frame,
-            (hidden, gui_size, now, partial),
+            (hidden, gui_size, partial),
         );
         if Self::draw_server_dialog(
             (&self.atlas, &self.font, &self.lang),
