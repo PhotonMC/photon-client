@@ -506,14 +506,19 @@ impl GuiFrame {
         y: i32,
     ) {
         let first = self.items.len() as u32;
-        draw(stack, x as f32, y as f32, &mut self.items);
+        let drawn = draw(stack, x as f32, y as f32, &mut self.items) as u32;
         let added = self.items.len() as u32 - first;
         if added == 0 {
             return;
         }
         match self.batches.last_mut() {
-            Some((GuiBlend::Items, _, count)) => *count += added,
-            _ => self.batches.push((GuiBlend::Items, first, added)),
+            Some((GuiBlend::Items, _, count)) => *count += drawn,
+            _ => self.batches.push((GuiBlend::Items, first, drawn)),
+        }
+        // The glint is drawn right after its item, before the next item's depth is cleared.
+        if added > drawn {
+            self.batches
+                .push((GuiBlend::ItemGlint, first + drawn, added - drawn));
         }
     }
 
@@ -537,5 +542,45 @@ impl GuiFrame {
     ) {
         let edges = (border, border, border, border);
         self.nine_slice_edges(atlas, name, tex, edges, stretch_inner, (x, y, w, h));
+    }
+}
+
+#[cfg(test)]
+mod item_batch_tests {
+    use super::*;
+
+    fn vertex() -> crate::gui::items::GuiItemVertex {
+        crate::gui::items::GuiItemVertex {
+            position: [0.0; 3],
+            uv: [0.0; 2],
+            colour: [1.0; 4],
+        }
+    }
+
+    #[test]
+    fn a_glint_is_drawn_right_after_its_item() {
+        let stack = photon_world::ClientItemStackState::new(1, photon_core::ids::ItemId(1));
+        let mut frame = GuiFrame::default();
+        // Item A has a glint (3 vertices, then 3 of its glint), B and C have none.
+        let mut draws = [(3, 3), (3, 0), (3, 0)].into_iter();
+        let mut draw = |_: &photon_world::ClientItemStackState,
+                        _: f32,
+                        _: f32,
+                        out: &mut Vec<crate::gui::items::GuiItemVertex>| {
+            let (item, glint) = draws.next().expect("one draw per item");
+            out.extend(std::iter::repeat_n(vertex(), item + glint));
+            item
+        };
+        for x in 0..3 {
+            frame.item(&mut draw, &stack, x * 18, 0);
+        }
+        assert_eq!(
+            frame.batches,
+            vec![
+                (GuiBlend::Items, 0, 3),
+                (GuiBlend::ItemGlint, 3, 3),
+                (GuiBlend::Items, 6, 6),
+            ]
+        );
     }
 }

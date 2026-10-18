@@ -37,6 +37,9 @@ pub enum GuiBlend {
     BlockSprite,
     /// Items in slots, whose run counts in `GuiFrame::items`.
     Items,
+    /// The glints of the items before it, over the depth they wrote; its run counts in
+    /// `GuiFrame::items` and samples the glint texture.
+    ItemGlint,
     /// The player's model in a screen, whose run counts in
     /// `GuiFrame::items` and which samples the player's skin.
     Entity,
@@ -183,8 +186,14 @@ pub struct GuiFrame {
     pub cooldowns: Vec<(String, f32)>,
 }
 
-/// Draws an item's triangles into the 16 by 16 slot at a GUI position.
-pub type ItemDrawer<'a> = dyn FnMut(&photon_world::ClientItemStackState, f32, f32, &mut Vec<crate::gui::items::GuiItemVertex>)
+/// Draws an item's triangles into the 16 by 16 slot at a GUI position, followed by its glint's if
+/// it has one; the count it gives back is how many of the vertices it added are the item's.
+pub type ItemDrawer<'a> = dyn FnMut(
+        &photon_world::ClientItemStackState,
+        f32,
+        f32,
+        &mut Vec<crate::gui::items::GuiItemVertex>,
+    ) -> usize
     + 'a;
 
 /// The runs as the reference's character sequence yields them: neighbours in

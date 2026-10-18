@@ -2,14 +2,6 @@
 
 use super::*;
 
-/// The pipelines the GUI draws its special blends with.
-struct GuiPipelines {
-    invert: Pipeline,
-    highlight: Pipeline,
-    vignette: Pipeline,
-    item: Pipeline,
-}
-
 impl VulkanBackend {
     /// # Safety
     ///
@@ -25,6 +17,7 @@ impl VulkanBackend {
                 highlight: self.create_pipeline(layout, PipelineKind::GuiHighlight)?,
                 vignette: self.create_pipeline(layout, PipelineKind::GuiVignette)?,
                 item: self.create_pipeline(layout, PipelineKind::GuiItem)?,
+                glint: self.create_pipeline(layout, PipelineKind::GuiGlint)?,
             })
         }
     }
@@ -176,11 +169,8 @@ impl VulkanBackend {
                 entity_texture: None,
                 entity_set: None,
                 gui_pipeline,
-                gui_invert_pipeline: gui.invert,
-                gui_highlight_pipeline: gui.highlight,
+                gui_pipelines: gui,
                 panorama: None,
-                gui_vignette_pipeline: gui.vignette,
-                gui_item_pipeline: gui.item,
                 gui_texture: None,
                 gui_set: None,
                 gui_blur: None,

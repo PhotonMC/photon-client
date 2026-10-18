@@ -61,6 +61,29 @@ impl ItemLayerCache {
         }
     }
 
+    /// A stack drawn in the GUI slot at `(x, y)`: its triangles, then its glint's if it has one
+    /// (`ItemStack.hasFoil`). Gives back how many of the vertices added are the stack's own.
+    pub fn gui_vertices(
+        &mut self,
+        stack: &ClientItemStackState,
+        (renderer, tints): (&BlockRenderer, &BiomeTints),
+        (x, y): (f32, f32),
+        out: &mut Vec<photon_render::gui::GuiItemVertex>,
+    ) -> usize {
+        let first = out.len();
+        let layers = self.get(stack, renderer, tints);
+        photon_render::gui::items::item_vertices(layers, x, y, out);
+        let drawn = out.len() - first;
+        let foil =
+            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+                .has_foil();
+        if let (true, Some((matrix, texture))) = (foil, self.glint.moving) {
+            let glint = photon_render::gui::items::glint_vertices(&out[first..], &matrix, texture);
+            out.extend(glint);
+        }
+        drawn
+    }
+
     /// Add what a stack drew to `out`, with its glint kept for the glint pass.
     pub fn extend_with_glint(
         &mut self,

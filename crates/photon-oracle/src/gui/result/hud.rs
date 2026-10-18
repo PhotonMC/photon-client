@@ -216,10 +216,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         hotbar: Default::default(),
         offhand: None,
     };
-    let mut draw_item = |_: &photon_world::ClientItemStackState,
-                         _: f32,
-                         _: f32,
-                         _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut draw_item = no_items;
     hud_of(row)?.draw(
         &mut frame,
         atlas,

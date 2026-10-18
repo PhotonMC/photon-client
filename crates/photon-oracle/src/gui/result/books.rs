@@ -184,10 +184,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    let mut item = |_: &photon_world::ClientItemStackState,
-                    _: f32,
-                    _: f32,
-                    _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut item = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };

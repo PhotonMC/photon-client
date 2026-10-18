@@ -116,11 +116,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             .flatten()
             .filter_map(|k| k.as_str().map(str::to_owned)),
     );
-    let mut item_drawer =
-        |_: &photon_world::ClientItemStackState,
-         _: f32,
-         _: f32,
-         _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut item_drawer = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
@@ -243,10 +239,7 @@ pub(super) fn game_mode_switcher_case(ctx: &mut GuiContext, row: &Value) -> Resu
         GameModeSwitcherScreen::default_selected(previous, current),
         size,
     );
-    let mut item = |_: &photon_world::ClientItemStackState,
-                    _: f32,
-                    _: f32,
-                    _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut item = no_items;
     let mut steps = Vec::new();
     for step in row["steps"].as_array().into_iter().flatten() {
         if step.get("key").is_some() {

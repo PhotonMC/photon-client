@@ -430,7 +430,7 @@
 "crates/photon-render/src/vulkan/frame/passes.rs::Run::pipeline" = 12
 "crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 21
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 13
-"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 66
+"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 50
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 11
 "crates/photon-world/src/block/culling.rs::skip_rendering" = 12
 "crates/photon-world/src/block/fluid.rs::fluid_state" = 11
@@ -766,13 +766,12 @@
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 76
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 84
-"crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 84
+"crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 81
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 119
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 82
 "crates/photon-oracle/src/gui/result/chat.rs::suggestions_case" = 63
-"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 169
-"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 102
-"crates/photon-oracle/src/gui/result/hud.rs::hud_hotbar_case" = 63
+"crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 165
+"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 98
 "crates/photon-oracle/src/gui/result/hud.rs::hud_status_case" = 73
 "crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
@@ -936,8 +935,8 @@
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 95
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::load_panorama" = 61
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
-"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 339
-"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 129
+"crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 299
+"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 126
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::create_depth_target" = 63
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 103
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::update_atlas" = 69
@@ -1015,7 +1014,7 @@
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
 "crates/photon/src/equipment/held_items.rs::Hands::collect" = 64
 "crates/photon/src/gui/chat.rs::Gui::receive_chat" = 77
-"crates/photon/src/gui/draw.rs::Gui::draw" = 324
+"crates/photon/src/gui/draw.rs::Gui::draw" = 323
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75

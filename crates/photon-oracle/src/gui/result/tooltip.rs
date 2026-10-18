@@ -68,10 +68,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let layout =
         photon_gui::screen::container::ContainerLayout::new(int("width"), int("height"), (0, 0));
-    let mut item = |_: &photon_world::ClientItemStackState,
-                    _: f32,
-                    _: f32,
-                    _: &mut Vec<photon_render::gui::GuiItemVertex>| {};
+    let mut item = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };

@@ -54,6 +54,7 @@ impl Play {
         set_item_glints(
             (&self.armor, &self.entity_textures),
             (&mut self.item_layers, &mut self.worn_layers),
+            &mut self.gui.items,
         );
         let items = &mut self.item_vertices;
         items.clear();
@@ -491,10 +492,12 @@ impl Play {
 fn set_item_glints(
     (armor, textures): (&Armor, &photon_render::entity::textures::EntityTextures),
     (world, worn): (&mut WorldItemLayers, &mut [ItemLayerCache; 4]),
+    gui: &mut ItemLayerCache,
 ) {
     let matrix = armor.glint_matrix_scaled(ITEM_GLINT_SCALE);
     let texture = textures.rect(ITEM_GLINT_TEXTURE);
     world.set_glint(matrix, texture);
+    gui.set_glint(matrix, texture);
     for cache in worn {
         cache.set_glint(matrix, texture);
     }

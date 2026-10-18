@@ -176,6 +176,36 @@ impl VulkanBackend {
         }
     }
 
+    /// The pipeline, sampled set and vertices of a run of items in slots, their glints, or the
+    /// player's model; none until what it samples is loaded.
+    ///
+    /// Items are drawn over a cleared depth (each in its own slot of the reference's item atlas,
+    /// which never overlap, so one clear serves a run); a glint is drawn over the depth its item
+    /// wrote and so is not cleared.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope.
+    unsafe fn gui_item_run<'a>(
+        &'a self,
+        scene: &'a SceneResources,
+        blend: crate::gui::GuiBlend,
+    ) -> Option<(&'a Pipeline, vk::DescriptorSet, &'a HostBuffer)> {
+        let items = self.gui_item_buffer.as_ref()?;
+        if blend == crate::gui::GuiBlend::ItemGlint {
+            return Some((&scene.gui_pipelines.glint, scene.entity_set?, items));
+        }
+        // The player's model samples the skin; the items sample the block atlas.
+        let samples = if blend == crate::gui::GuiBlend::Entity {
+            scene.entity_set?
+        } else {
+            scene.descriptor_set
+        };
+        // SAFETY: recording (see `# Safety`).
+        unsafe { self.clear_depth() };
+        Some((&scene.gui_pipelines.item, samples, items))
+    }
+
     /// The pipeline and the sampled set of a run of sky: the block atlas, or for the End's cube
     /// the End sky texture the end portal's layers also use (none until it is loaded).
     fn sky_batch<'a>(
@@ -453,31 +483,21 @@ impl VulkanBackend {
                     translucent_set(blend, set, scene),
                     buffer,
                 ),
-                crate::gui::GuiBlend::Invert => (&scene.gui_invert_pipeline, set, buffer),
-                crate::gui::GuiBlend::Highlight => (&scene.gui_highlight_pipeline, set, buffer),
+                crate::gui::GuiBlend::Invert => (&scene.gui_pipelines.invert, set, buffer),
+                crate::gui::GuiBlend::Highlight => (&scene.gui_pipelines.highlight, set, buffer),
                 crate::gui::GuiBlend::Vignette | crate::gui::GuiBlend::VignetteBlur => (
-                    &scene.gui_vignette_pipeline,
+                    &scene.gui_pipelines.vignette,
                     translucent_set(blend, set, scene),
                     buffer,
                 ),
-                crate::gui::GuiBlend::Items | crate::gui::GuiBlend::Entity => {
-                    let Some(items) = self.gui_item_buffer.as_ref() else {
+                crate::gui::GuiBlend::ItemGlint
+                | crate::gui::GuiBlend::Items
+                | crate::gui::GuiBlend::Entity => {
+                    // SAFETY: recording (see `# Safety`).
+                    let Some(run) = (unsafe { self.gui_item_run(scene, blend) }) else {
                         continue;
                     };
-                    // The player's model samples the skin; the items sample the block atlas.
-                    let samples = if blend == crate::gui::GuiBlend::Entity {
-                        let Some(skin) = scene.entity_set else {
-                            continue;
-                        };
-                        skin
-                    } else {
-                        scene.descriptor_set
-                    };
-                    // Each item is drawn over its own cleared depth in the reference's item
-                    // atlas; the slots never overlap, so one clear serves them all.
-                    // SAFETY: recording (see `# Safety`).
-                    unsafe { self.clear_depth() };
-                    (&scene.gui_item_pipeline, samples, items)
+                    run
                 }
             };
             // SAFETY: recording (see `# Safety`); the pipeline, set and buffer are live.

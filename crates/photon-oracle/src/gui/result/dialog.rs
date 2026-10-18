@@ -135,11 +135,7 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
     );
     let mut events: Vec<String> = Vec::new();
     // The reference records no items: the screen's draw asks for none.
-    let mut no_items =
-        |_: &photon_world::ClientItemStackState,
-         _: f32,
-         _: f32,
-         _: &mut Vec<photon_render::gui::items::GuiItemVertex>| {};
+    let mut no_items = no_items;
     let shown = &row["dialog"];
     if shown["kind"] == "waiting" {
         let mut screen = WaitingScreen::new(font, &lang, size, in_world);

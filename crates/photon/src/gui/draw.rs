@@ -157,8 +157,7 @@ impl Gui {
         let items = &mut self.items;
         let mut draw_item =
             |stack: &ClientItemStackState, x: f32, y: f32, out: &mut Vec<GuiItemVertex>| {
-                let layers = items.get(stack, renderer, tints);
-                photon_render::gui::items::item_vertices(layers, x, y, out);
+                items.gui_vertices(stack, (renderer, tints), (x, y), out)
             };
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;

@@ -80,6 +80,28 @@ fn mix_light(lights: [[f32; 3]; 2], normal: [f32; 3]) -> f32 {
     ((dot(lights[0]) + dot(lights[1])) * 0.6 + 0.4).min(1.0)
 }
 
+/// `ItemFeatureRenderer.prepareFoilSubmit` for an item in a GUI slot: the same triangles again,
+/// their atlas coordinate moved by the glint's matrix into the glint texture at `glint`
+/// (`[u0, v0, u1, v1]` in the packed image), which the colour slot carries as its rectangle.
+pub fn glint_vertices(
+    drawn: &[GuiItemVertex],
+    matrix: &[f32; 16],
+    glint: [f32; 4],
+) -> Vec<GuiItemVertex> {
+    let size = [glint[2] - glint[0], glint[3] - glint[1]];
+    drawn
+        .iter()
+        .map(|vertex| {
+            let moved = crate::render_types::glint_uv(matrix, vertex.uv);
+            GuiItemVertex {
+                position: vertex.position,
+                uv: [glint[0] + moved[0] * size[0], glint[1] + moved[1] * size[1]],
+                colour: [glint[0], glint[1], size[0], size[1]],
+            }
+        })
+        .collect()
+}
+
 /// The vertices of an item drawn in the 16 by 16 slot whose corner is
 /// `(x, y)` in GUI units.
 pub fn item_vertices(layers: &[ItemLayer], x: f32, y: f32, out: &mut Vec<GuiItemVertex>) {
@@ -156,5 +178,24 @@ pub fn item_vertices(layers: &[ItemLayer], x: f32, y: f32, out: &mut Vec<GuiItem
             };
             out.extend([0, 1, 2, 2, 3, 0].map(vertex));
         }
+    }
+}
+
+#[cfg(test)]
+mod glint_tests {
+    use super::*;
+
+    #[test]
+    fn a_glint_keeps_the_positions_and_carries_its_rectangle() {
+        let drawn = [GuiItemVertex {
+            position: [3.0, 4.0, 5.0],
+            uv: [0.25, 0.5],
+            colour: [1.0; 4],
+        }];
+        let identity = crate::render_types::glint_texture_matrix(0, 0.0, 1.0);
+        let rect = [0.5, 0.25, 0.75, 0.5];
+        let glint = glint_vertices(&drawn, &identity, rect);
+        assert_eq!(glint[0].position, drawn[0].position);
+        assert_eq!(glint[0].colour, [0.5, 0.25, 0.25, 0.25]);
     }
 }

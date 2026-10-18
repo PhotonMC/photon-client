@@ -44,6 +44,8 @@ pub(super) enum PipelineKind {
     GuiVignette,
     /// Items in GUI slots, over a cleared depth.
     GuiItem,
+    /// The glint over an item in a GUI slot, over the depth the item wrote.
+    GuiGlint,
     /// The aimed block's outline.
     Lines,
     /// The crack over a block being broken.
@@ -183,6 +185,15 @@ pub(super) struct TimestampQueries {
     pub(super) last: Option<GpuTimings>,
 }
 
+/// The pipelines the GUI draws its special blends with.
+pub(super) struct GuiPipelines {
+    pub(super) invert: Pipeline,
+    pub(super) highlight: Pipeline,
+    pub(super) vignette: Pipeline,
+    pub(super) item: Pipeline,
+    pub(super) glint: Pipeline,
+}
+
 /// Everything needed to draw one textured mesh.
 pub(super) struct SceneResources {
     pub(super) texture: Texture,
@@ -224,10 +235,7 @@ pub(super) struct SceneResources {
     pub(super) entity_texture: Option<Texture>,
     pub(super) entity_set: Option<vk::DescriptorSet>,
     pub(super) gui_pipeline: Pipeline,
-    pub(super) gui_invert_pipeline: Pipeline,
-    pub(super) gui_highlight_pipeline: Pipeline,
-    pub(super) gui_vignette_pipeline: Pipeline,
-    pub(super) gui_item_pipeline: Pipeline,
+    pub(super) gui_pipelines: GuiPipelines,
     /// The GUI sprites' atlas.
     pub(super) gui_texture: Option<Texture>,
     pub(super) gui_set: Option<vk::DescriptorSet>,
