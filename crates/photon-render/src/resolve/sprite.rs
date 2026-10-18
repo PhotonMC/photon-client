@@ -105,15 +105,12 @@ pub fn build_atlas_for(
     build_atlas_with(source, models, &[], max_size, mip_level)
 }
 
-/// Pack a set of models' textures together with sprites no model names,
-/// such as the fluid sprites the fluid renderer draws with.
-pub fn build_atlas_with(
-    source: &impl AssetSource,
+/// The materials to pack, by sprite: those no model names and those the
+/// models' faces do.
+fn wanted_materials(
     models: &[&ResolvedModel],
     extra: &[Identifier],
-    max_size: i32,
-    mip_level: i32,
-) -> Result<BuiltAtlas, ResolveError> {
+) -> Result<BTreeMap<String, Material>, ResolveError> {
     let mut wanted: BTreeMap<String, Material> = BTreeMap::new();
     for sprite in extra {
         wanted.insert(
@@ -135,6 +132,25 @@ pub fn build_atlas_with(
             }
         }
     }
+    Ok(wanted)
+}
+
+/// What a sprite's alpha holds: of the whole image, the strip for an
+/// animated sprite, as the reference reads it.
+fn sprite_transparency((image, _, animated): &DecodedSprite) -> Transparency {
+    compute_transparency(animated.as_ref().map_or(image, |(strip, ..)| strip))
+}
+
+/// Pack a set of models' textures together with sprites no model names,
+/// such as the fluid sprites the fluid renderer draws with.
+pub fn build_atlas_with(
+    source: &impl AssetSource,
+    models: &[&ResolvedModel],
+    extra: &[Identifier],
+    max_size: i32,
+    mip_level: i32,
+) -> Result<BuiltAtlas, ResolveError> {
+    let wanted = wanted_materials(models, extra)?;
 
     // Every sprite read and decoded in parallel; the first failure in the
     // sprites' order is the one reported.
@@ -177,6 +193,7 @@ pub fn build_atlas_with(
     // level N.
     let level_count = mip_level.max(0) as u32;
     let mut sprites = BTreeMap::new();
+    let mut transparency = BTreeMap::new();
     let mut animations = Vec::new();
     let mut levels: Vec<DecodedImage> = (0..=level_count)
         .map(|level| {
@@ -199,18 +216,13 @@ pub fn build_atlas_with(
             .filter_map(|placement| {
                 let key = placement.name.as_string();
                 let entry = decoded.get(&key)?;
-                Some(sprite_levels(
-                    &placement,
-                    key,
-                    entry,
-                    level_count,
-                    width,
-                    height,
-                ))
+                let alpha = sprite_transparency(entry);
+                let built = sprite_levels(&placement, key, entry, level_count, width, height);
+                Some((built, alpha))
             })
             .collect()
     };
-    for built in built {
+    for (built, alpha) in built {
         let placement = &built.placement;
         for (level, mip) in built.mips.iter().enumerate() {
             let shift = level as u32;
@@ -223,6 +235,7 @@ pub fn build_atlas_with(
             );
         }
         animations.extend(built.animation);
+        transparency.insert(built.key.clone(), alpha);
         sprites.insert(built.key, built.rect);
     }
     Ok(BuiltAtlas {
@@ -230,6 +243,7 @@ pub fn build_atlas_with(
         height,
         levels,
         sprites,
+        transparency,
         animations,
     })
 }

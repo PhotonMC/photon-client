@@ -382,19 +382,11 @@ class MovementEntityOracle extends MovementSupport {
         var scene = litScene(row);
         var level = scene.level();
         useCardinal(level, row);
-        var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
-            unsafe.allocateInstance(BlankSprite.class);
-        var material = new net.minecraft.client.resources.model.sprite.Material.Baked(sprite, false);
-        var layer = net.minecraft.client.renderer.chunk.ChunkSectionLayer.SOLID;
-        var lava = new net.minecraft.client.renderer.block.FluidModel(layer, material, material, null, null);
-        var water = new net.minecraft.client.renderer.block.FluidModel(
-            layer, material, material, material, net.minecraft.client.color.block.BlockTintSources.water());
-        var models = new java.util.HashMap<net.minecraft.world.level.material.Fluid,
-            net.minecraft.client.renderer.block.FluidModel>();
-        models.put(net.minecraft.world.level.material.Fluids.LAVA, lava);
-        models.put(net.minecraft.world.level.material.Fluids.FLOWING_LAVA, lava);
-        models.put(net.minecraft.world.level.material.Fluids.WATER, water);
-        models.put(net.minecraft.world.level.material.Fluids.FLOWING_WATER, water);
+        // The models the game bakes, over sprites that report the alpha the row
+        // gives them (an opaque one when it says nothing).
+        var baker = new SpriteBaker(row.has("sprites") ? row.getAsJsonObject("sprites") : new JsonObject());
+        var models = net.minecraft.client.renderer.block.FluidStateModelSet.bake(baker);
+        var lava = models.get(net.minecraft.world.level.material.Fluids.LAVA);
         var renderer = new net.minecraft.client.renderer.block.FluidRenderer(
             new net.minecraft.client.renderer.block.FluidStateModelSet(models, lava));
         var pos = new net.minecraft.core.BlockPos(
@@ -402,7 +394,14 @@ class MovementEntityOracle extends MovementSupport {
         var state = level.getBlockState(pos);
         var vertices = new com.google.gson.JsonArray();
         var builder = new RecordingVertices(vertices);
-        renderer.tesselate(level, pos, ignored -> builder, state, state.getFluidState());
+        var layers = new java.util.TreeSet<String>();
+        renderer.tesselate(level, pos, layer -> {
+            // Cutout shares the opaque pass here.
+            layers.add(layer == net.minecraft.client.renderer.chunk.ChunkSectionLayer.TRANSLUCENT
+                ? "translucent" : "opaque");
+            return builder;
+        }, state, state.getFluidState());
+        entry.addProperty("layer", String.join(",", layers));
         // Which vertices there are, not in what order or how often: the
         // surface seen from below is a second quad here, shared vertices there.
         entry.addProperty("quads", vertices.size() / 4);
@@ -416,6 +415,49 @@ class MovementEntityOracle extends MovementSupport {
         distinct.values().forEach(sorted::add);
         entry.add("vertices", sorted);
         return entry;
+    }
+
+    /** A sprite that says how much of it is see-through, whatever its size. */
+    static final class AlphaSprite extends net.minecraft.client.renderer.texture.TextureAtlasSprite {
+        com.mojang.blaze3d.platform.Transparency transparency;
+
+        AlphaSprite() {
+            super(null, null, 1, 1, 0, 0, 0);
+        }
+
+        @Override
+        public com.mojang.blaze3d.platform.Transparency transparency() {
+            return transparency;
+        }
+    }
+
+    /**
+     * Bakes each material to an `AlphaSprite` whose alpha the row names by the
+     * sprite's last path part (`translucent` or `transparent`).
+     */
+    static final class SpriteBaker extends net.minecraft.client.resources.model.sprite.MaterialBaker {
+        private final JsonObject alphas;
+
+        SpriteBaker(JsonObject alphas) {
+            super(null);
+            this.alphas = alphas;
+        }
+
+        @Override
+        protected net.minecraft.client.resources.model.sprite.Material.Baked bake(
+            net.minecraft.client.resources.model.sprite.Material material) {
+            try {
+                var sprite = (AlphaSprite) unsafe.allocateInstance(AlphaSprite.class);
+                var name = material.sprite().getPath().substring("block/".length());
+                var alpha = alphas.has(name) ? alphas.get(name).getAsString() : "opaque";
+                sprite.transparency = new com.mojang.blaze3d.platform.Transparency(
+                    alpha.equals("transparent"), alpha.equals("translucent"));
+                return new net.minecraft.client.resources.model.sprite.Material.Baked(
+                    sprite, material.forceTranslucent());
+            } catch (InstantiationException error) {
+                throw new IllegalStateException(error);
+            }
+        }
     }
 
     /** Collects each vertex a renderer adds: position bits, colour and packed light. */

@@ -216,6 +216,36 @@ where
         self.atlas.sprites[name]
     }
 
+    /// Whether a fluid's faces go to the translucent layer: any of its sprites
+    /// (the overlay too, for water) has a texel that is partly transparent
+    /// (`FluidModel.Unbaked.bake`). The other layers share the opaque pass.
+    fn translucent(&self, water: bool) -> bool {
+        let sprites: &[&str] = if water {
+            &[FLUID_SPRITES[0], FLUID_SPRITES[1], FLUID_SPRITES[2]]
+        } else {
+            &[FLUID_SPRITES[3], FLUID_SPRITES[4]]
+        };
+        sprites.iter().any(|name| {
+            self.atlas
+                .transparency
+                .get(*name)
+                .is_some_and(|transparency| transparency.has_translucent)
+        })
+    }
+
+    /// The block's faces, in the pass its sprites' alpha asks for.
+    pub(super) fn tesselate_in_layer(&self, pos: [i32; 3], mesh: &mut Mesh) {
+        let before = mesh.translucent_indices.len();
+        self.tesselate(pos, mesh);
+        let Some(fluid) = self.fluid(pos[0], pos[1], pos[2]) else {
+            return;
+        };
+        if !self.translucent(fluid.water) {
+            let opaque = mesh.translucent_indices.split_off(before);
+            mesh.indices.extend(opaque);
+        }
+    }
+
     pub(super) fn tesselate(&self, pos: [i32; 3], mesh: &mut Mesh) {
         let [x, y, z] = pos;
         let Some(fluid) = self.fluid(x, y, z) else {
@@ -450,6 +480,6 @@ where
         cardinal: view.cardinal,
     };
     let mut mesh = Mesh::default();
-    mesher.tesselate(pos, &mut mesh);
+    mesher.tesselate_in_layer(pos, &mut mesh);
     mesh
 }

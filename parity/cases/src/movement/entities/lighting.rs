@@ -228,6 +228,7 @@ pub fn fluid_rows() -> Vec<Value> {
                     "blocks": cat![floor(), blocks.clone()],
                     "chunk_radius": 1,
                     "x": at[0], "y": at[1], "z": at[2],
+                    "sprites": if fluid == "water" { water_alpha() } else { json!({}) },
                 });
                 if let Some(kind) = cardinal {
                     row["cardinal"] = json!(kind);
@@ -237,4 +238,37 @@ pub fn fluid_rows() -> Vec<Value> {
         }
     }
     rows
+}
+
+/// Water's sprites as the game ships them: every one has partly transparent texels.
+fn water_alpha() -> Value {
+    json!({"water_still": "translucent", "water_flow": "translucent", "water_overlay": "translucent"})
+}
+
+/// The layer a fluid is drawn in, from how much of its sprites is see-through:
+/// the still, the flowing and (for water) the overlay sprite each decide.
+pub fn fluid_layer_rows() -> Vec<Value> {
+    let alphas: [(&str, &str, &str); 9] = [
+        ("lava-opaque", "lava", "{}"),
+        ("lava-still-translucent", "lava", r#"{"lava_still": "translucent"}"#),
+        ("lava-flow-translucent", "lava", r#"{"lava_flow": "translucent"}"#),
+        ("lava-still-transparent", "lava", r#"{"lava_still": "transparent"}"#),
+        ("lava-water-sprite-translucent", "lava", r#"{"water_overlay": "translucent", "water_still": "translucent"}"#),
+        ("water-opaque", "water", "{}"),
+        ("water-still-translucent", "water", r#"{"water_still": "translucent"}"#),
+        ("water-flow-translucent", "water", r#"{"water_flow": "translucent"}"#),
+        ("water-overlay-translucent", "water", r#"{"water_overlay": "translucent"}"#),
+    ];
+    alphas
+        .into_iter()
+        .map(|(label, fluid, sprites)| {
+            json!({
+                "label": label,
+                "blocks": cat![floor(), vec![put(2, 64, 3, &format!("minecraft:{fluid}"))]],
+                "chunk_radius": 1,
+                "x": 2, "y": 64, "z": 3,
+                "sprites": serde_json::from_str::<Value>(sprites).unwrap_or_default(),
+            })
+        })
+        .collect()
 }

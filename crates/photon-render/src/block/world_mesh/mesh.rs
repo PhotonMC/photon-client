@@ -384,7 +384,7 @@ impl BlockRenderer {
         for offset_x in 0..fluid_size[0] {
             for offset_y in 0..fluid_size[1] {
                 for offset_z in 0..fluid_size[2] {
-                    fluids.tesselate(
+                    fluids.tesselate_in_layer(
                         [
                             origin[0] + offset_x,
                             origin[1] + offset_y,

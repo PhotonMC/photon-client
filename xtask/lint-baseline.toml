@@ -914,7 +914,7 @@
 "crates/photon-render/src/model/parse.rs::parse_model" = 73
 "crates/photon-render/src/objects/guardian_beam.rs::guardian_beam" = 80
 "crates/photon-render/src/objects/painting.rs::painting_vertices" = 104
-"crates/photon-render/src/resolve/sprite.rs::build_atlas_with" = 115
+"crates/photon-render/src/resolve/sprite.rs::build_atlas_with" = 93
 "crates/photon-render/src/resolve/sprite.rs::sprite_levels" = 81
 "crates/photon-render/src/resolve/tint.rs::build_mesh" = 93
 "crates/photon-render/src/sky/clouds.rs::CloudCells::build" = 66

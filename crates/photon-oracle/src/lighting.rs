@@ -188,7 +188,7 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
             Some("nether") => photon_world::CardinalLightType::Nether,
             _ => photon_world::CardinalLightType::Default,
         };
-        let atlas = fluid_atlas();
+        let atlas = fluid_atlas(row);
         let at = [
             i32_field(row, "x")?,
             i32_field(row, "y")?,
@@ -207,7 +207,8 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
         out.push(json!({
             "label": row["label"],
             // Each face once, and once more where it is drawn again from behind.
-            "quads": mesh.translucent_indices.len() / 6,
+            "quads": (mesh.indices.len() + mesh.translucent_indices.len()) / 6,
+            "layer": if mesh.translucent_indices.is_empty() { "opaque" } else { "translucent" },
             "vertices": distinct.into_values().collect::<Vec<_>>(),
         }));
     }
@@ -215,9 +216,34 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
 }
 
 /// An atlas that knows where the fluid sprites are, which the renderer asks
-/// for by name; their coordinates are not compared.
-fn fluid_atlas() -> photon_render::BuiltAtlas {
+/// for by name; their coordinates are not compared. The row says which of
+/// them hold `translucent` or `transparent` texels (the last part of the
+/// sprite's name is the key); the rest are opaque.
+fn fluid_atlas(row: &Value) -> photon_render::BuiltAtlas {
+    let alpha =
+        |name: &str| match row["sprites"][name.trim_start_matches("minecraft:block/")].as_str() {
+            Some("translucent") => photon_render::Transparency {
+                has_transparent: false,
+                has_translucent: true,
+            },
+            Some("transparent") => photon_render::Transparency {
+                has_transparent: true,
+                has_translucent: false,
+            },
+            _ => photon_render::Transparency::default(),
+        };
+    let names = [
+        "minecraft:block/water_still",
+        "minecraft:block/water_flow",
+        "minecraft:block/water_overlay",
+        "minecraft:block/lava_still",
+        "minecraft:block/lava_flow",
+    ];
     photon_render::BuiltAtlas {
+        transparency: names
+            .iter()
+            .map(|name| ((*name).to_owned(), alpha(name)))
+            .collect(),
         width: 1,
         height: 1,
         levels: Vec::new(),
