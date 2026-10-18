@@ -235,11 +235,17 @@ impl BlockRenderer {
             .mesh
     }
 
-    /// Smooth lighting, the reference's default, unless the block glows or the
+    /// Smooth lighting (the `ao` option), unless the block glows or the
     /// model opts out of ambient occlusion; the first part decides for every
     /// part of the block.
-    fn smooth_lighting(&self, light_emission: u8, picked: &[Option<u32>]) -> bool {
-        light_emission == 0
+    fn smooth_lighting(
+        &self,
+        enabled: bool,
+        info: &photon_world::block::StateInfo,
+        picked: &[Option<u32>],
+    ) -> bool {
+        enabled
+            && info.light_emission == 0
             && picked
                 .iter()
                 .flatten()
@@ -330,7 +336,7 @@ impl BlockRenderer {
                     // moves to where the block sits, measured from the box's
                     // near corner.
                     let shift = block_shift(position, mesh_origin, nudge);
-                    let smooth = self.smooth_lighting(info.light_emission, &picked);
+                    let smooth = self.smooth_lighting(world.ambient_occlusion, info, &picked);
                     for model in picked.into_iter().flatten() {
                         let model = &self.baked[model as usize];
                         for quad in &model.quads {
@@ -475,6 +481,7 @@ pub fn build_world_mesh(
         biome_tint: &biome_tint,
         tags: &tags,
         cardinal: photon_world::CardinalLightType::Default,
+        ambient_occlusion: true,
     };
     let region = renderer.mesh_region(&world, origin, size, origin);
     let model_count = renderer.model_count();

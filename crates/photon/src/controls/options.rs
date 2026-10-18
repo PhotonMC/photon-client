@@ -60,11 +60,7 @@ impl Controls {
             _ => {}
         }
         let shown = video.values(Self::video_values(&self.options));
-        self.options.attack_indicator = shown.attack_indicator;
-        self.options.framerate_limit = shown.framerate_limit;
-        self.options.enable_vsync = shown.vsync;
-        self.options.inactivity_fps_limit = shown.inactivity_fps_limit;
-        self.options.render_distance = shown.render_distance;
+        self.take_video_values(shown);
         if done {
             self.close_video();
         }
@@ -183,12 +179,23 @@ impl Controls {
         ));
     }
 
+    /// The options the video screen handed back.
+    fn take_video_values(&mut self, shown: VideoValues) {
+        self.options.attack_indicator = shown.attack_indicator;
+        self.options.framerate_limit = shown.framerate_limit;
+        self.options.ambient_occlusion = shown.ambient_occlusion;
+        self.options.enable_vsync = shown.vsync;
+        self.options.inactivity_fps_limit = shown.inactivity_fps_limit;
+        self.options.render_distance = shown.render_distance;
+    }
+
     /// The options the video screen shows, as the options hold them.
     pub(super) fn video_values(options: &photon_game::options::Options) -> VideoValues {
         VideoValues {
             attack_indicator: options.attack_indicator,
             framerate_limit: options.framerate_limit,
             vsync: options.enable_vsync,
+            ambient_occlusion: options.ambient_occlusion,
             inactivity_fps_limit: options.inactivity_fps_limit,
             render_distance: options.render_distance,
         }

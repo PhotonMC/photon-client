@@ -1009,7 +1009,7 @@
 "crates/photon/src/controls/events.rs::Controls::handle" = 83
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 80
 "crates/photon/src/controls/options.rs::Controls::language_event" = 63
-"crates/photon/src/controls/options.rs::Controls::video_event" = 65
+"crates/photon/src/controls/options.rs::Controls::video_event" = 61
 "crates/photon/src/controls/scripted.rs::Controls::script_step" = 102
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80

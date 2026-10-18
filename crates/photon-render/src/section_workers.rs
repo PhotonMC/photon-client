@@ -27,6 +27,7 @@ struct Job {
     copy: RegionCopy,
     origin: [i32; 3],
     cardinal: photon_world::CardinalLightType,
+    ambient_occlusion: bool,
 }
 
 /// A finished section mesh.
@@ -97,6 +98,7 @@ impl SectionWorkers {
         copy: RegionCopy,
         origin: [i32; 3],
         cardinal: photon_world::CardinalLightType,
+        ambient_occlusion: bool,
     ) {
         let job = Job {
             key,
@@ -104,6 +106,7 @@ impl SectionWorkers {
             copy,
             origin,
             cardinal,
+            ambient_occlusion,
         };
         let renderer = Arc::clone(&self.renderer);
         let tints = Arc::clone(&self.tints);
@@ -149,6 +152,7 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
             biome_tint: &tint,
             tags: copy.tags(),
             cardinal: job.cardinal,
+            ambient_occlusion: job.ambient_occlusion,
         },
         corner,
         [16, 16, 16],

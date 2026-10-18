@@ -7,6 +7,7 @@ pub(super) const DATA_VERSION: i32 = 4903;
 /// An option of the file, in the order `processOptions` goes through them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Key {
+    AmbientOcclusion,
     EnableVsync,
     Fov,
     GuiScale,
@@ -42,7 +43,8 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 48] = [
+pub(super) const KEYS: [(&str, Key); 49] = [
+    ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
     ("guiScale", Key::GuiScale),

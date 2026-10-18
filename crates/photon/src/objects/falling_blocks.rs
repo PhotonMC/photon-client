@@ -19,6 +19,7 @@ pub(crate) fn moving_block_mesh(
     world: &photon_world::ClientWorld,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     (state, block, seed_position): (BlockStateId, [i32; 3], [i32; 3]),
+    ambient_occlusion: bool,
 ) -> Mesh {
     let read = |px: i32, py: i32, pz: i32| {
         Some(if [px, py, pz] == block {
@@ -44,6 +45,7 @@ pub(crate) fn moving_block_mesh(
             biome_tint: &tint,
             tags: world.block_state_registry().tags(),
             cardinal: world.dimension_environment().cardinal_light_type(),
+            ambient_occlusion,
         },
         block,
         seed_position,
@@ -92,6 +94,7 @@ pub fn falling_blocks(
             world,
             (renderer, tints),
             (state, block, [start.0, start.1, start.2]),
+            view.ambient_occlusion,
         );
         // The entity's place, the block's corner half a block back.
         let (sx, sy, sz) = snapshot.position;

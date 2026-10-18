@@ -21,6 +21,7 @@ impl Play {
             render_distance: frame.render_distance,
             partial: frame.partial,
             light: packed_light(self.session.world(), frame.eye),
+            ambient_occlusion: self.controls.options.ambient_occlusion,
             origin: self.origin,
             camera: frame.relative,
             rotation: frame.rotation,

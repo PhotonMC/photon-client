@@ -33,6 +33,7 @@ const FRAMERATE_LIMIT: u8 = 6;
 const VSYNC: u8 = 7;
 const INACTIVITY_FPS_LIMIT: u8 = 8;
 const RENDER_DISTANCE: u8 = CUSTOMISING | 3;
+const AMBIENT_OCCLUSION: u8 = CUSTOMISING | 4;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -106,6 +107,8 @@ pub struct VideoValues {
     pub attack_indicator: AttackIndicator,
     pub framerate_limit: i32,
     pub vsync: bool,
+    /// `ao`.
+    pub ambient_occlusion: bool,
     pub inactivity_fps_limit: InactivityFpsLimit,
     /// `renderDistance`, in chunks.
     pub render_distance: i32,
@@ -117,6 +120,7 @@ impl Default for VideoValues {
             attack_indicator: AttackIndicator::Crosshair,
             framerate_limit: FRAMERATE_LIMIT_DEFAULT,
             vsync: true,
+            ambient_occlusion: true,
             inactivity_fps_limit: InactivityFpsLimit::Afk,
             render_distance: 12,
         }
@@ -271,8 +275,14 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
     ]
 }
 
+/// `ao`, which builds every section again when it changes.
+fn ambient_occlusion(display: &VideoValues) -> (u8, Build) {
+    let initial = display.ambient_occlusion;
+    (AMBIENT_OCCLUSION, boolean("options.ao", initial))
+}
+
 /// `qualityOptions`, the first nine.
-fn quality_options_first(render_distance: i32) -> Vec<(u8, Build)> {
+fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
             CUSTOMISING,
@@ -289,7 +299,7 @@ fn quality_options_first(render_distance: i32) -> Vec<(u8, Build)> {
                 "options.renderDistance",
                 IntRange::with_apply_value_immediately(2, 32, false),
                 chunks,
-                render_distance,
+                display.render_distance,
             ),
         ),
         (
@@ -313,7 +323,7 @@ fn quality_options_first(render_distance: i32) -> Vec<(u8, Build)> {
                 12,
             ),
         ),
-        (CUSTOMISING, boolean("options.ao", true)),
+        ambient_occlusion(display),
         (
             CUSTOMISING,
             named(
@@ -425,8 +435,8 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
 }
 
 /// `qualityOptions`.
-fn quality_options(render_distance: i32) -> Vec<(u8, Build)> {
-    let mut options = quality_options_first(render_distance);
+fn quality_options(display: &VideoValues) -> Vec<(u8, Build)> {
+    let mut options = quality_options_first(display);
     options.extend(quality_options_rest());
     options
 }

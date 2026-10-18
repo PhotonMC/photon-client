@@ -400,6 +400,8 @@ impl Play {
     /// A resized or fullscreen window gets a swapchain of its new size.
     pub(super) fn fit_swapchain(&mut self) -> Result<()> {
         self.backend.set_vsync(self.controls.options.enable_vsync);
+        self.sections
+            .set_ambient_occlusion(self.controls.options.ambient_occlusion);
         if resize_to_window(&self.surface, &mut self.backend, &mut self.sized_for)? {
             let (width, height) = self.backend.extent();
             self.aspect = width as f32 / height as f32;

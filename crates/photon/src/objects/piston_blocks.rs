@@ -91,7 +91,12 @@ pub fn piston_blocks(
         ];
         for (state, at, by) in drawn {
             let Some(state) = state else { continue };
-            let mut mesh = moving_block_mesh(world, (renderer, tints), (state, at, at));
+            let mut mesh = moving_block_mesh(
+                world,
+                (renderer, tints),
+                (state, at, at),
+                view.ambient_occlusion,
+            );
             let shift = [
                 (pos.0 - view.origin[0]) as f32 + by[0],
                 (pos.1 - view.origin[1]) as f32 + by[1],

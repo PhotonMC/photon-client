@@ -94,6 +94,8 @@ pub struct SectionMeshes {
     /// The dimension's sections, bottom to top.
     sections: Range<i32>,
     stats: MeshStats,
+    /// The `ao` option.
+    ambient_occlusion: bool,
 }
 
 impl SectionMeshes {
@@ -137,6 +139,16 @@ impl SectionMeshes {
             culling: std::env::var("PHOTON_CULLING").map_or(true, |value| value != "0"),
             sections: low..low + dimension.height / 16,
             stats: MeshStats::default(),
+            ambient_occlusion: true,
+        }
+    }
+
+    /// The `ao` option: a change builds every built section again
+    /// (`LevelExtractor.allChanged`).
+    pub fn set_ambient_occlusion(&mut self, value: bool) {
+        if self.ambient_occlusion != value {
+            self.ambient_occlusion = value;
+            self.pending.extend(self.compiled.keys().copied());
         }
     }
 
@@ -415,8 +427,14 @@ impl SectionMeshes {
             self.next_generation += 1;
             self.latest.insert(key, self.next_generation);
             let cardinal = world.dimension_environment().cardinal_light_type();
-            self.workers
-                .submit(key, self.next_generation, copy, origin, cardinal);
+            self.workers.submit(
+                key,
+                self.next_generation,
+                copy,
+                origin,
+                cardinal,
+                self.ambient_occlusion,
+            );
         }
     }
 

@@ -33,6 +33,8 @@ pub struct FrameView {
     /// `Options.getEffectiveRenderDistance`, in chunks.
     pub render_distance: i32,
     pub light: i32,
+    /// The `ao` option.
+    pub ambient_occlusion: bool,
     pub origin: [i32; 3],
     /// Where the camera is, from that origin.
     pub camera: [f32; 3],

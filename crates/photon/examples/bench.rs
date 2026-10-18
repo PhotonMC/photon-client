@@ -181,6 +181,7 @@ fn main() {
                     biome_tint: &tint,
                     tags: copy.tags(),
                     cardinal: photon_world::CardinalLightType::Default,
+                    ambient_occlusion: true,
                 },
                 [key.0 * 16, key.1 * 16, key.2 * 16],
                 [16, 16, 16],

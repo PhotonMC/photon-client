@@ -86,4 +86,6 @@ pub struct MeshWorld<'a, R, L, T> {
     pub tags: &'a photon_world::block::tags::BlockTags,
     /// The dimension type's side shades.
     pub cardinal: photon_world::CardinalLightType,
+    /// The `ao` option: smooth lighting of block faces.
+    pub ambient_occlusion: bool,
 }

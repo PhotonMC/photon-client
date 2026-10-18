@@ -20,6 +20,8 @@ pub const RENDER_DISTANCE_MAX: i32 = 32;
 pub struct Options {
     /// `fov`: 30 to 110 degrees.
     pub fov: i32,
+    /// `ao`: smooth lighting of block faces.
+    pub ambient_occlusion: bool,
     /// `enableVsync`: wait for the display to refresh before showing a frame.
     pub enable_vsync: bool,
     /// `framerateLimit` (`maxFps`): 10 to 260, from 260 on no limit.
@@ -77,6 +79,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             fov: FOV_DEFAULT,
+            ambient_occlusion: true,
             enable_vsync: true,
             framerate_limit: FRAMERATE_LIMIT_DEFAULT,
             inactivity_fps_limit: InactivityFpsLimit::Afk,

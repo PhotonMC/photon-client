@@ -136,7 +136,7 @@ impl Options {
                     }
                 }
             }
-            Key::EnableVsync => self.enable_vsync = boolean().unwrap_or(self.enable_vsync),
+            Key::AmbientOcclusion | Key::EnableVsync => self.read_switch(key, boolean()),
             // `Codec.intRange(10, 260)`.
             Key::MaxFps => {
                 self.framerate_limit =
@@ -229,10 +229,29 @@ impl Options {
         }
     }
 
+    /// A display switch the file holds; anything but a boolean leaves it.
+    fn read_switch(&mut self, key: Key, value: Option<bool>) {
+        let switch = if key == Key::AmbientOcclusion {
+            &mut self.ambient_occlusion
+        } else {
+            &mut self.enable_vsync
+        };
+        *switch = value.unwrap_or(*switch);
+    }
+
+    fn write_switch(&self, key: Key) -> String {
+        if key == Key::AmbientOcclusion {
+            self.ambient_occlusion
+        } else {
+            self.enable_vsync
+        }
+        .to_string()
+    }
+
     /// The value the file holds for an option.
     pub(super) fn write(&self, key: Key) -> String {
         match key {
-            Key::EnableVsync => self.enable_vsync.to_string(),
+            Key::AmbientOcclusion | Key::EnableVsync => self.write_switch(key),
             Key::MaxFps => self.framerate_limit.to_string(),
             Key::RenderDistance => self.render_distance.to_string(),
             Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
@@ -556,5 +575,14 @@ mod tests {
         assert!(text.contains("enableVsync:false\n"));
         assert!(text.contains("maxFps:260\n"));
         assert!(text.contains("inactivityFpsLimit:\"minimized\"\n"));
+    }
+
+    #[test]
+    fn ambient_occlusion_is_on_unless_the_file_turns_it_off() {
+        assert!(loaded("").ambient_occlusion);
+        let mut options = loaded("ao:false");
+        assert!(!options.ambient_occlusion);
+        options.ambient_occlusion = true;
+        assert_eq!(options.write(Key::AmbientOcclusion), "true");
     }
 }

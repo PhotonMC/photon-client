@@ -43,7 +43,7 @@ impl VideoSettingsScreen {
                     constant_tip("options.graphics.preset.tooltip"),
                 ),
             );
-            list.add_small(lang, quality_options(values.render_distance));
+            list.add_small(lang, quality_options(&values));
             list.add_header(font, lang, "options.video.preferences.header");
             list.add_small(lang, preference_options(values.attack_indicator));
         });
@@ -122,6 +122,10 @@ impl VideoSettingsScreen {
                 .find(VSYNC)
                 .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
                 .map_or(fallback.vsync, |button| *button.value()),
+            ambient_occlusion: list
+                .find(AMBIENT_OCCLUSION)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                .map_or(fallback.ambient_occlusion, |button| *button.value()),
             inactivity_fps_limit: list
                 .find(INACTIVITY_FPS_LIMIT)
                 .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
