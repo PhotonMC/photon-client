@@ -106,19 +106,22 @@ impl FrameState {
         }
     }
 
-    /// A stack in the `FIXED` context at a pose, fully lit (the totem's animation).
+    /// A stack in the `FIXED` context at a pose, fully lit (the totem's animation): its
+    /// triangles, and its glint's if it has one.
     pub fn fixed_item(
         &mut self,
         stack: &photon_world::ClientItemStackState,
         pose: Pose,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-    ) -> Vec<Vertex> {
-        item_layer_vertices(
+    ) -> (Vec<Vertex>, Vec<Vertex>) {
+        let drawn = item_layer_vertices(
             self.layers.get(stack, renderer, tints),
             &[pose],
             FULL_LIGHT,
             false,
-        )
+        );
+        self.layers.add_glint(stack, &drawn);
+        (drawn, self.layers.take_glint())
     }
 
     /// Hand the maps' image (if it changed) and this frame's quads to the renderer.

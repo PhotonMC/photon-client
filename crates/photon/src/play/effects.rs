@@ -31,16 +31,24 @@ impl Play {
         }
     }
     /// The totem animation's triangles, in the hand pass's space, while it shows
-    /// (`ScreenEffectRenderer.submit`, hidden with the HUD).
-    pub(super) fn activation_vertices(&mut self) -> Vec<photon_render::scene::Vertex> {
+    /// (`ScreenEffectRenderer.submit`, hidden with the HUD), and its glint's.
+    pub(super) fn activation_vertices(
+        &mut self,
+        glint: ([f32; 16], Option<[f32; 4]>),
+    ) -> (
+        Vec<photon_render::scene::Vertex>,
+        Vec<photon_render::scene::Vertex>,
+    ) {
         let partial = (self.accumulated.as_secs_f64() / TICK_LENGTH.as_secs_f64()) as f32;
         let shown = self.camera.activation.shown(partial, self.aspect);
         match shown {
-            Some((stack, pose)) if !self.controls.hud_hidden => {
-                self.item_layers
-                    .activation(stack, pose, (&self.block_renderer, &self.biome_tints))
-            }
-            _ => Vec::new(),
+            Some((stack, pose)) if !self.controls.hud_hidden => self.item_layers.activation(
+                stack,
+                pose,
+                (&self.block_renderer, &self.biome_tints),
+                glint,
+            ),
+            _ => (Vec::new(), Vec::new()),
         }
     }
 

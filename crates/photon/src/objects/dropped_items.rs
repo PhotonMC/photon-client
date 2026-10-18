@@ -126,13 +126,16 @@ pub struct WorldItemLayers {
 }
 
 impl WorldItemLayers {
-    /// The triangles of the totem's animation: the stack in the `FIXED` context at a pose.
+    /// The triangles of the totem's animation, and its glint's: the stack in the `FIXED` context
+    /// at a pose, with the glint moving as the frame's `glint` says.
     pub fn activation(
         &mut self,
         stack: &photon_world::ClientItemStackState,
         pose: photon_render::joml::Pose,
         materials: (&BlockRenderer, &BiomeTints),
-    ) -> Vec<Vertex> {
+        glint: ([f32; 16], Option<[f32; 4]>),
+    ) -> (Vec<Vertex>, Vec<Vertex>) {
+        self.frames.layers.set_glint(glint.0, glint.1);
         self.frames.fixed_item(stack, pose, materials)
     }
 
