@@ -79,6 +79,8 @@ pub struct SoundSystem {
     jukeboxes: HashMap<(i32, i32, i32), photon_game::sounds::engine::InstanceId>,
     /// Whether the local player is under water, for the sounds that end when the water is left.
     underwater: Arc<AtomicBool>,
+    /// The listener as last placed: where it is, which way it looks and which way is up.
+    listener: Mutex<(Vec3, [f64; 3], [f64; 3])>,
 }
 
 impl SoundSystem {
@@ -125,6 +127,7 @@ impl SoundSystem {
             music: None,
             jukeboxes: HashMap::new(),
             underwater: Arc::new(AtomicBool::new(false)),
+            listener: Mutex::new((Vec3::ZERO, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0])),
         })
     }
 
@@ -415,8 +418,30 @@ impl SoundSystem {
         self.engine.tick(paused);
     }
 
+    /// Whether the subtitles listen (`SoundEngine.addEventListener`).
+    pub fn set_listening(&mut self, listening: bool) {
+        self.engine.set_listening(listening);
+    }
+
+    /// The sounds that started since the subtitles last asked.
+    pub fn take_heard(&mut self) -> Vec<photon_game::sounds::engine::Heard> {
+        self.engine.take_heard()
+    }
+
+    /// Where the listener is, which way it looks and which way is up
+    /// (`SoundManager.getListenerTransform`).
+    pub fn listener_view(&self) -> (Vec3, [f64; 3], [f64; 3]) {
+        self.listener.lock().map_or_else(
+            |_| (Vec3::ZERO, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]),
+            |view| *view,
+        )
+    }
+
     /// `SoundEngine.updateSource`: the listener is where the camera is, facing where it faces.
     pub fn set_listener(&self, position: Vec3, forward: [f32; 3], up: [f32; 3]) {
+        if let Ok(mut view) = self.listener.lock() {
+            *view = (position, forward.map(f64::from), up.map(f64::from));
+        }
         if let Ok(mut camera) = self.camera.lock() {
             *camera = position;
         }

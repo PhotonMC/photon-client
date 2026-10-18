@@ -225,6 +225,20 @@ pub struct SoundEngine<S: ChannelSource> {
     queued: Vec<(InstanceId, i32)>,
     delete_time: HashMap<InstanceId, i32>,
     queued_ticking: Vec<InstanceId>,
+    /// `SoundEngine.listeners`: whether something listens to the sounds that start (the subtitles),
+    /// and what it has heard since it last took it.
+    listening: bool,
+    heard: Vec<Heard>,
+}
+
+/// What a `SoundEventListener.onPlaySound` is told: the sound event's subtitle (its translation
+/// key, if it has one), where the sound is and how far it carries (infinite for a sound that
+/// does not fade with distance).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Heard {
+    pub subtitle: Option<String>,
+    pub position: (f64, f64, f64),
+    pub range: f32,
 }
 
 mod volume;

@@ -7,6 +7,66 @@ import com.google.gson.JsonObject;
 
 /** Boss bars, the locator bar and the hotbar and status HUD. */
 class GuiHudOracle extends GuiCommandOracle {
+    /**
+     * The subtitle overlay (`SubtitleOverlay`): the sounds heard at their times (the game's clock
+     * pinned to them), then the overlay drawn at a later time from a listener's place.
+     */
+    static JsonObject subtitles(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var minecraft = screen.minecraft();
+            // The sound manager only answers where the listener is.
+            var listener = unsafe.allocateInstance(com.mojang.blaze3d.audio.Listener.class);
+            var vec = (java.util.function.Function<com.google.gson.JsonArray, net.minecraft.world.phys.Vec3>) array ->
+                new net.minecraft.world.phys.Vec3(array.get(0).getAsDouble(), array.get(1).getAsDouble(),
+                    array.get(2).getAsDouble());
+            set(listener, "transform", new com.mojang.blaze3d.audio.ListenerTransform(
+                vec.apply(row.getAsJsonArray("position")), vec.apply(row.getAsJsonArray("forward")),
+                vec.apply(row.getAsJsonArray("up"))));
+            var engine = unsafe.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
+            set(engine, "listener", listener);
+            var manager = unsafe.allocateInstance(net.minecraft.client.sounds.SoundManager.class);
+            set(manager, "soundEngine", engine);
+            set(minecraft, "soundManager", manager);
+            minecraft.options.showSubtitles().set(true);
+            minecraft.options.notificationDisplayTime().set(row.get("display_time").getAsDouble());
+            var overlay = new net.minecraft.client.gui.components.SubtitleOverlay(minecraft);
+            set(overlay, "isListening", true);
+            for (var heardElement : row.getAsJsonArray("heard")) {
+                var heard = heardElement.getAsJsonObject();
+                long at = heard.get("at").getAsLong();
+                net.minecraft.util.Util.setTimeSource(() -> at * 1_000_000L);
+                var place = vec.apply(heard.getAsJsonArray("position"));
+                var sound = (net.minecraft.client.resources.sounds.SoundInstance) java.lang.reflect.Proxy.newProxyInstance(
+                    Oracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.resources.sounds.SoundInstance.class},
+                    (proxy, method, args) -> switch (method.getName()) {
+                        case "getX" -> place.x;
+                        case "getY" -> place.y;
+                        case "getZ" -> place.z;
+                        default -> null;
+                    });
+                var events = new net.minecraft.client.sounds.WeighedSoundEvents(
+                    net.minecraft.resources.Identifier.withDefaultNamespace("oracle"), heard.get("key").getAsString());
+                float range = heard.get("infinite").getAsBoolean() ? Float.POSITIVE_INFINITY : heard.get("range").getAsFloat();
+                overlay.onPlaySound(sound, events, range);
+            }
+            long now = row.get("now").getAsLong();
+            net.minecraft.util.Util.setTimeSource(() -> now * 1_000_000L);
+            overlay.extractRenderState(screen.graphics());
+            net.minecraft.util.Util.setTimeSource(System::nanoTime);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The boss bars: each event as the packet adds it, drawn by the overlay. */
     static JsonObject bossBar(JsonObject request) throws Exception {
         var rows = new JsonArray();

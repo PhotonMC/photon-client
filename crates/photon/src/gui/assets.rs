@@ -35,6 +35,8 @@ impl Gui {
             started_at: std::time::Instant::now(),
             assets_root: root.to_path_buf(),
             last_frame_ms: 0,
+            subtitles: photon_gui::hud::subtitles::Subtitles::default(),
+            listener: None,
         };
         gui.hud
             .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load(root));

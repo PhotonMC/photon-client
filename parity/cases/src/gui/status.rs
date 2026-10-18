@@ -467,3 +467,67 @@ pub fn hud_sleep() -> Value {
     }
     gui("hud-sleep", "hud_sleep", rows)
 }
+
+/// The subtitle overlay: where a sound is heard from (in front, to the right, to the left, behind,
+/// above), whether it is within reach, a text heard twice or at two places, two texts, the time
+/// since it was heard, and two window sizes.
+pub fn subtitles() -> Value {
+    let heard = |key: &str, at: (f64, f64, f64), (range, infinite): (f64, bool), when: u64| json!({"key": key, "position": [at.0, at.1, at.2], "range": range, "infinite": infinite, "at": when});
+    let row = |label: &str, heard: Vec<Value>, now: u64, (width, height): (i64, i64), display_time: f64| {
+        json!({
+            "label": label, "width": width, "height": height, "now": now, "display_time": display_time,
+            "position": [10.0, 64.0, 10.0], "forward": [0.0, 0.0, 1.0], "up": [0.0, 1.0, 0.0],
+            "heard": heard,
+        })
+    };
+    let step = "subtitles.block.generic.footsteps";
+    let door = "subtitles.block.door.toggle";
+    let size = (427, 240);
+    let near = (16.0, false);
+    let mut rows = Vec::new();
+    for (name, at) in [
+        ("front", (10.0, 64.0, 14.0)),
+        ("right", (6.0, 64.0, 10.0)),
+        ("left", (14.0, 64.0, 10.0)),
+        ("behind", (10.0, 64.0, 6.0)),
+        ("above", (10.0, 70.0, 10.5)),
+        ("front-left", (12.0, 64.0, 12.0)),
+    ] {
+        rows.push(row(&format!("heard-{name}"), vec![heard(step, at, near, 1000)], 1000, size, 1.0));
+    }
+    rows.push(row("out-of-reach", vec![heard(step, (10.0, 64.0, 40.0), near, 1000)], 1000, size, 1.0));
+    rows.push(row("infinite-range", vec![heard(step, (10.0, 64.0, 400.0), (0.0, true), 1000)], 1000, size, 1.0));
+    rows.push(row(
+        "two-texts",
+        vec![heard(step, (6.0, 64.0, 10.0), near, 900), heard(door, (10.0, 64.0, 14.0), near, 1000)],
+        1000,
+        size,
+        1.0,
+    ));
+    rows.push(row(
+        "one-text-two-places",
+        vec![heard(step, (6.0, 64.0, 10.0), near, 900), heard(step, (10.0, 64.0, 16.0), near, 1000)],
+        1000,
+        size,
+        1.0,
+    ));
+    rows.push(row(
+        "heard-again-at-the-same-place",
+        vec![heard(step, (6.0, 64.0, 10.0), near, 100), heard(step, (6.0, 64.0, 10.0), near, 2000)],
+        2500,
+        size,
+        1.0,
+    ));
+    for elapsed in [0u64, 1, 1500, 2999, 3000, 3001] {
+        rows.push(row(
+            &format!("elapsed-{elapsed}"),
+            vec![heard(step, (6.0, 64.0, 10.0), near, 1000)],
+            1000 + elapsed,
+            size,
+            1.0,
+        ));
+    }
+    rows.push(row("display-time-doubled", vec![heard(step, (6.0, 64.0, 10.0), near, 1000)], 5000, size, 2.0));
+    rows.push(row("small-window", vec![heard(step, (6.0, 64.0, 10.0), near, 1000)], 1000, (200, 120), 1.0));
+    gui("subtitles", "subtitles", rows)
+}

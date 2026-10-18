@@ -155,8 +155,8 @@ impl Options {
                 }
             }
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
-            Key::SaveChatDrafts => {
-                self.save_chat_drafts = boolean().unwrap_or(self.save_chat_drafts);
+            Key::SaveChatDrafts | Key::BackgroundForChatOnly => {
+                self.read_chat_flag(key, boolean());
             }
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::AttackIndicator => {
@@ -203,14 +203,8 @@ impl Options {
                 }
             }
             Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
-            Key::MouseWheelSensitivity => {
-                if let Json::Number(number) = json {
-                    let value = double_value(number);
-                    if (log_mouse(-200)..=log_mouse(100)).contains(&value) {
-                        self.mouse_wheel_sensitivity =
-                            mouse_wheel_step(value).unwrap_or(log_mouse(0));
-                    }
-                }
+            Key::MouseWheelSensitivity | Key::NotificationDisplayTime => {
+                self.read_range(key, &json);
             }
         }
     }
@@ -230,6 +224,49 @@ impl Options {
     }
 
     /// A display switch the file holds; anything but a boolean leaves it.
+    /// The two switches of the chat: saving drafts, and the text background being the chat's alone.
+    fn read_chat_flag(&mut self, key: Key, value: Option<bool>) {
+        let flag = if key == Key::SaveChatDrafts {
+            &mut self.save_chat_drafts
+        } else {
+            &mut self.background_for_chat_only
+        };
+        *flag = value.unwrap_or(*flag);
+    }
+
+    fn chat_flag(&self, key: Key) -> bool {
+        if key == Key::SaveChatDrafts {
+            self.save_chat_drafts
+        } else {
+            self.background_for_chat_only
+        }
+    }
+
+    fn range_value(&self, key: Key) -> f64 {
+        if key == Key::NotificationDisplayTime {
+            self.notification_display_time
+        } else {
+            self.mouse_wheel_sensitivity
+        }
+    }
+
+    /// The options of a range: the mouse wheel's (`Codec.doubleRange` of its log scale, in steps)
+    /// and the notification time's (`Codec.doubleRange(0.5, 10.0)`); a value out of its range
+    /// leaves the option as it was.
+    fn read_range(&mut self, key: Key, json: &Json<'_>) {
+        let Json::Number(number) = json else {
+            return;
+        };
+        let value = double_value(number);
+        if key == Key::NotificationDisplayTime {
+            if (0.5..=10.0).contains(&value) {
+                self.notification_display_time = value;
+            }
+        } else if (log_mouse(-200)..=log_mouse(100)).contains(&value) {
+            self.mouse_wheel_sensitivity = mouse_wheel_step(value).unwrap_or(log_mouse(0));
+        }
+    }
+
     fn read_switch(&mut self, key: Key, value: Option<bool>) {
         let switch = if key == Key::AmbientOcclusion {
             &mut self.ambient_occlusion
@@ -258,7 +295,7 @@ impl Options {
             Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
-            Key::SaveChatDrafts => self.save_chat_drafts.to_string(),
+            Key::SaveChatDrafts | Key::BackgroundForChatOnly => self.chat_flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
             Key::LastServer => self.last_server.clone(),
@@ -277,7 +314,9 @@ impl Options {
             }
             Key::MainHand => write_string(self.main_hand.serialized()),
             Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
-            Key::MouseWheelSensitivity => java_double(self.mouse_wheel_sensitivity),
+            Key::MouseWheelSensitivity | Key::NotificationDisplayTime => {
+                java_double(self.range_value(key))
+            }
             Key::AttackIndicator => self.attack_indicator.id().to_string(),
             Key::ShowSubtitles => self.show_subtitles.to_string(),
             Key::HideLightningFlashes => self.hide_lightning_flashes.to_string(),

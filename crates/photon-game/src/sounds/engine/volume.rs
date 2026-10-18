@@ -16,7 +16,19 @@ impl<S: ChannelSource> SoundEngine<S> {
             queued: Vec::new(),
             delete_time: HashMap::new(),
             queued_ticking: Vec::new(),
+            listening: false,
+            heard: Vec::new(),
         }
+    }
+
+    /// `addEventListener` and `removeEventListener` for the one listener there is.
+    pub fn set_listening(&mut self, listening: bool) {
+        self.listening = listening;
+    }
+
+    /// What the listener was told since it last asked.
+    pub fn take_heard(&mut self) -> Vec<Heard> {
+        std::mem::take(&mut self.heard)
     }
 
     /// Take an instance in, to be played, queued or delayed.
@@ -58,6 +70,28 @@ impl<S: ChannelSource> SoundEngine<S> {
         instance.delay > 0
     }
 
+    /// What `SoundEngine.play` tells the listeners (`onPlaySound`) of a sound about to start.
+    fn tell_listeners(&mut self, id: InstanceId, attenuation_distance: f32) {
+        let Some(instance) = self.instances.get(&id).filter(|_| self.listening) else {
+            return;
+        };
+        let range = if !instance.relative && instance.attenuation != Attenuation::None {
+            attenuation_distance
+        } else {
+            f32::INFINITY
+        };
+        let subtitle = self
+            .registry
+            .event(&instance.event)
+            .and_then(|event| event.subtitle.clone());
+        let position = instance.position;
+        self.heard.push(Heard {
+            subtitle,
+            position,
+            range,
+        });
+    }
+
     /// `SoundEngine.play`.
     pub fn play(&mut self, id: InstanceId) -> PlayResult {
         let Some(instance) = self.instances.get_mut(&id) else {
@@ -81,6 +115,7 @@ impl<S: ChannelSource> SoundEngine<S> {
         let source = instance.source;
         let volume = self.calculate_volume(instance_volume, source);
         let pitch = self.instance_pitch(id);
+        self.tell_listeners(id, attenuation_distance);
         let instance = self.instances.get(&id).expect("added");
         let (attenuation, relative, position) =
             (instance.attenuation, instance.relative, instance.position);
@@ -93,11 +128,7 @@ impl<S: ChannelSource> SoundEngine<S> {
         }
         let is_looping = instance.looping && !Self::requires_manual_looping(instance);
         let is_streaming = sound.stream;
-        let pool = if is_streaming {
-            Pool::Streaming
-        } else {
-            Pool::Static
-        };
+        let pool = [Pool::Static, Pool::Streaming][usize::from(is_streaming)];
         let Some(mut channel) = self.channels.acquire(pool) else {
             return PlayResult::NotStarted;
         };

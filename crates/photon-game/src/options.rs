@@ -51,6 +51,10 @@ pub struct Options {
     pub screen_effect_scale: f64,
     pub chat_line_spacing: f64,
     pub text_background_opacity: f64,
+    /// `backgroundForChatOnly`: the text background opacity applies to the chat alone.
+    pub background_for_chat_only: bool,
+    /// `notificationDisplayTime`: how long the subtitles and toasts stay, as a multiplier.
+    pub notification_display_time: f64,
     pub chat_height_focused: f64,
     pub chat_height_unfocused: f64,
     pub chat_scale: f64,
@@ -97,6 +101,8 @@ impl Default for Options {
             screen_effect_scale: 1.0,
             chat_line_spacing: 0.0,
             text_background_opacity: 0.5,
+            background_for_chat_only: true,
+            notification_display_time: 1.0,
             chat_height_focused: 1.0,
             // `ChatComponent.defaultUnfocusedPct`.
             chat_height_unfocused: 70.0 / CHAT_HEIGHT_SPAN,

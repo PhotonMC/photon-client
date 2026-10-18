@@ -5,12 +5,15 @@ use crate::objects::leashes;
 use crate::world::sections;
 
 impl Play {
-    /// The listener of the sounds goes where the camera is.
-    fn place_listener(&self, frame: &FrameCamera) {
+    /// The listener of the sounds goes where the camera is, and what the sounds told since the
+    /// last frame goes to the subtitles.
+    fn place_listener(&mut self, frame: &FrameCamera) {
         if let Some(sound) = &self.sound {
             let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
             sound.set_listener(frame.camera, forward, up);
         }
+        self.gui
+            .hear_sounds(self.sound.as_mut(), &self.controls.options);
     }
 
     /// What is drawn over the blocks from the player's side: the hands in

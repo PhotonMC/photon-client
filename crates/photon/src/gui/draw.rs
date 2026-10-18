@@ -337,22 +337,19 @@ impl Gui {
             &mut frame,
             gui_size,
         );
-        if let Some((entries, objective)) = tab_entries.filter(|_| !hidden) {
-            tab_list::draw(
-                &mut frame,
-                &self.atlas,
-                &self.font,
-                gui_size.0,
-                &entries,
-                (&self.tab_header, &self.tab_footer),
-                TabScores {
-                    objective,
-                    health: &mut self.tab_health,
-                    gui_ticks: self.gui_ticks,
-                    lang: &self.lang,
-                },
-            );
-        }
+        Self::draw_tab_and_subtitles(
+            &mut frame,
+            (&self.atlas, &self.font, &self.lang),
+            (tab_entries.filter(|_| !hidden), gui_size.0),
+            (
+                (&mut self.tab_health, &self.tab_header, &self.tab_footer),
+                self.gui_ticks,
+            ),
+            (
+                (&mut self.subtitles, self.listener, self.started_at),
+                (controls, &size),
+            ),
+        );
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let mut draw_player =
                 |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {

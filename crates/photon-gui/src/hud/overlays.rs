@@ -2,6 +2,8 @@
 
 use super::*;
 
+pub mod sleep;
+
 /// What the camera overlays are made of this frame.
 #[derive(Debug, Clone, Default)]
 pub struct CameraOverlays {

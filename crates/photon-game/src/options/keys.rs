@@ -24,10 +24,12 @@ pub(super) enum Key {
     ScreenEffectScale,
     ChatLineSpacing,
     TextBackgroundOpacity,
+    BackgroundForChatOnly,
     ChatHeightFocused,
     ChatHeightUnfocused,
     ChatScale,
     ChatWidth,
+    NotificationDisplayTime,
     MainHand,
     MouseWheelSensitivity,
     SaveChatDrafts,
@@ -43,7 +45,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 49] = [
+pub(super) const KEYS: [(&str, Key); 51] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -60,10 +62,12 @@ pub(super) const KEYS: [(&str, Key); 49] = [
     ("chatOpacity", Key::ChatOpacity),
     ("chatLineSpacing", Key::ChatLineSpacing),
     ("textBackgroundOpacity", Key::TextBackgroundOpacity),
+    ("backgroundForChatOnly", Key::BackgroundForChatOnly),
     ("chatHeightFocused", Key::ChatHeightFocused),
     ("chatHeightUnfocused", Key::ChatHeightUnfocused),
     ("chatScale", Key::ChatScale),
     ("chatWidth", Key::ChatWidth),
+    ("notificationDisplayTime", Key::NotificationDisplayTime),
     ("mainHand", Key::MainHand),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("saveChatDrafts", Key::SaveChatDrafts),

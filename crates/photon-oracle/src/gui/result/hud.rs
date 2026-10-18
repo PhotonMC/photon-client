@@ -234,16 +234,16 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     }))
 }
 
-/// The status bars of a row, or for `hud_sleep` the sleep veil.
-pub(super) fn hud_status_or_sleep_case(
+/// The status bars of a row, or for `hud_sleep` the sleep veil, or for `subtitles` the subtitles.
+pub(super) fn hud_case(
     ctx: &mut GuiContext,
     row: &Value,
     operation: &str,
 ) -> Result<Value, String> {
-    if operation == "hud_sleep" {
-        hud_sleep_case(ctx, row)
-    } else {
-        hud_status_case(ctx, row)
+    match operation {
+        "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
+        "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
+        _ => hud_status_case(ctx, row),
     }
 }
 
@@ -466,25 +466,6 @@ pub(super) fn tab_list_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
         },
     );
 
-    Ok(json!({
-        "label": row["label"],
-        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
-    }))
-}
-
-/// `hud_sleep`: the veil over the view for a sleep timer.
-fn hud_sleep_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    photon_gui::hud::sleep::draw(
-        &mut frame,
-        &ctx.atlas,
-        (int("width"), int("height")),
-        int("timer"),
-    );
     Ok(json!({
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
