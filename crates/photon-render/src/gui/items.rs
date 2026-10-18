@@ -87,12 +87,21 @@ pub fn glint_vertices(
     drawn: &[GuiItemVertex],
     matrix: &[f32; 16],
     glint: [f32; 4],
+    decal: Option<&[[f32; 2]]>,
 ) -> Vec<GuiItemVertex> {
     let size = [glint[2] - glint[0], glint[3] - glint[1]];
     drawn
         .iter()
-        .map(|vertex| {
-            let moved = crate::render_types::glint_uv(matrix, vertex.uv);
+        .enumerate()
+        .map(|(index, vertex)| {
+            let uv = decal.map_or(vertex.uv, |corners| {
+                corners[crate::objects::item::foil_decal_index(
+                    index,
+                    [0, 1, 2, 2, 3, 0],
+                    corners.len(),
+                )]
+            });
+            let moved = crate::render_types::glint_uv(matrix, uv);
             GuiItemVertex {
                 position: vertex.position,
                 uv: [glint[0] + moved[0] * size[0], glint[1] + moved[1] * size[1]],
@@ -194,7 +203,7 @@ mod glint_tests {
         }];
         let identity = crate::render_types::glint_texture_matrix(0, 0.0, 1.0);
         let rect = [0.5, 0.25, 0.75, 0.5];
-        let glint = glint_vertices(&drawn, &identity, rect);
+        let glint = glint_vertices(&drawn, &identity, rect, None);
         assert_eq!(glint[0].position, drawn[0].position);
         assert_eq!(glint[0].colour, [0.5, 0.25, 0.25, 0.25]);
     }

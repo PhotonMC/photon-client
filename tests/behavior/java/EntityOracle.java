@@ -164,6 +164,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("text_display_submit")) {
             return textDisplaySubmit(request);
         }
+        if (operation.equals("foil_decal_uv")) {
+            return foilDecalUv(request);
+        }
         if (operation.equals("item_foil")) {
             return itemFoil(request);
         }

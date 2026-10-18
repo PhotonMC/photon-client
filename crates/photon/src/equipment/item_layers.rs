@@ -24,6 +24,37 @@ struct Glint {
     /// The glint's texture matrix now and the texture's place in the packed image.
     moving: Option<([f32; 16], [f32; 4])>,
     vertices: Vec<Vertex>,
+    /// The special foil's coordinates of the stack [`ItemLayerCache::get`] gave last, if it has
+    /// that foil: a compass or a clock.
+    decal: Option<Vec<[f32; 2]>>,
+}
+
+/// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the items whose foil is the decal one. The
+/// compasses tag is the vanilla one here; the server's version of it is not read.
+fn has_special_foil(item: photon_core::ids::ItemId) -> bool {
+    static SPECIAL: std::sync::OnceLock<Vec<photon_core::ids::ItemId>> = std::sync::OnceLock::new();
+    SPECIAL
+        .get_or_init(|| {
+            [
+                "minecraft:compass",
+                "minecraft:recovery_compass",
+                "minecraft:clock",
+            ]
+            .into_iter()
+            .filter_map(photon_game::item::id_of)
+            .collect()
+        })
+        .contains(&item)
+}
+
+/// `ItemFeatureRenderer.computeFoilDecalPose`: how much the display context scales the pose the
+/// decal is made from.
+fn foil_pose_scale(context: DisplayContext) -> f32 {
+    match context {
+        DisplayContext::Gui => 0.5,
+        DisplayContext::FirstPersonLeftHand | DisplayContext::FirstPersonRightHand => 0.75,
+        _ => 1.0,
+    }
 }
 
 /// The layers of an item with one component patch.
@@ -55,9 +86,12 @@ impl ItemLayerCache {
             photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
                 .has_foil();
         if foil {
-            self.glint
-                .vertices
-                .extend(item_glint_vertices(drawn, &matrix, texture));
+            self.glint.vertices.extend(item_glint_vertices(
+                drawn,
+                &matrix,
+                texture,
+                self.glint.decal.as_deref(),
+            ));
         }
     }
 
@@ -78,7 +112,12 @@ impl ItemLayerCache {
             photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
                 .has_foil();
         if let (true, Some((matrix, texture))) = (foil, self.glint.moving) {
-            let glint = photon_render::gui::items::glint_vertices(&out[first..], &matrix, texture);
+            let glint = photon_render::gui::items::glint_vertices(
+                &out[first..],
+                &matrix,
+                texture,
+                self.glint.decal.as_deref(),
+            );
             out.extend(glint);
         }
         drawn
@@ -140,7 +179,13 @@ impl ItemLayerCache {
             variants.push((stack.patch_bytes().to_vec(), layers));
             variants.len() - 1
         };
-        &variants[index].1
+        let layers = &variants[index].1;
+        self.glint.decal = (self.glint.moving.is_some()
+            && has_special_foil(stack.item_registry_id()))
+        .then(|| {
+            photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context))
+        });
+        layers
     }
 }
 

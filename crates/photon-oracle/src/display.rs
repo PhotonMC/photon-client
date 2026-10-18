@@ -267,8 +267,41 @@ pub(super) fn map_render_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// The operations about the enchantment glint.
+pub(super) fn foil_result(request: &Value) -> Result<Value, String> {
+    match string(request, "operation")? {
+        "foil_decal_uv" => foil_decal_uv_result(request),
+        _ => item_foil_result(request),
+    }
+}
+
+/// `foil_decal_uv`: the special foil's texture coordinate of a corner, rounded to a 4096th.
+fn foil_decal_uv_result(request: &Value) -> Result<Value, String> {
+    let float = |row: &Value, key: &str| -> Result<f32, String> {
+        let text = row[key].as_str().ok_or_else(|| key.to_owned())?;
+        u32::from_str_radix(text, 16)
+            .map(f32::from_bits)
+            .map_err(|error| error.to_string())
+    };
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let facing = photon_core::direction::Direction::from_name(string(row, "direction")?)
+            .ok_or("direction")?;
+        let corner = [float(row, "x")?, float(row, "y")?, float(row, "z")?];
+        let uv =
+            photon_render::block::breaking::foil_decal_uv(corner, facing, float(row, "factor")?);
+        // `Math.round`: half up.
+        let round = |value: f32| {
+            (value * 4096.0).floor() as i64
+                + i64::from(value * 4096.0 - (value * 4096.0).floor() >= 0.5)
+        };
+        out.push(json!({"label": row["label"], "u": round(uv[0]), "v": round(uv[1])}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 /// `item_foil`: whether a stack has the enchantment glint, from the component patch it carries.
-pub(super) fn item_foil_result(request: &Value) -> Result<Value, String> {
+fn item_foil_result(request: &Value) -> Result<Value, String> {
     use photon_game::item::values::Values;
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {

@@ -46,7 +46,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "minecart_pose" => minecart_pose_result(request),
         "item_frame_pose" => item_frame_pose_result(request),
         "display_pose" => display_pose_result(request),
-        "item_foil" => item_foil_result(request),
+        "item_foil" | "foil_decal_uv" => foil_result(request),
         "map_render" => map_render_result(request),
         "text_display_submit" => text_display_submit_result(request),
         "item_equippable" => item_equippable_result(request),

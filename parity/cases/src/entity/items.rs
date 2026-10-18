@@ -180,7 +180,37 @@ pub fn glint() -> Vec<Value> {
     .collect::<Vec<Value>>();
     let mut items = entity("item-glint-layers", "glint_layers", matrices.clone());
     items["render_type"] = json!("item");
-    vec![entity("item-foil", "item_foil", rows), entity("glint-layers", "glint_layers", matrices), items]
+    vec![
+        entity("item-foil", "item_foil", rows),
+        entity("glint-layers", "glint_layers", matrices),
+        items,
+        entity("foil-decal-uv", "foil_decal_uv", foil_decal_rows()),
+    ]
+}
+
+/// The special foil's texture coordinates: every facing at corners of the unit cube, through
+/// poses with a turn, a shift and a scale, at the three pose scales of the display contexts.
+fn foil_decal_rows() -> Vec<Value> {
+    let poses =
+        [(0.0, 0.0, 1.0, [0.0, 0.0, 0.0]), (35.0, -20.0, 1.0, [0.4, 0.2, -0.9]), (140.0, 60.0, 0.68, [-3.0, 1.5, 7.0])];
+    let corners = [[0.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.25, 0.875, 0.5], [1.0, 1.0, 0.0]];
+    let mut rows = Vec::new();
+    for (index, (yaw, pitch, scale, shift)) in poses.iter().enumerate() {
+        for factor in [1.0, 0.5, 0.75] {
+            for direction in ["down", "up", "north", "south", "west", "east"] {
+                for (at, corner) in corners.iter().enumerate() {
+                    rows.push(json!({
+                        "label": format!("pose{index}-{factor}-{direction}-{at}"),
+                        "yaw": f32_bits(*yaw), "pitch": f32_bits(*pitch), "scale": f32_bits(*scale),
+                        "tx": f32_bits(shift[0]), "ty": f32_bits(shift[1]), "tz": f32_bits(shift[2]),
+                        "factor": f32_bits(factor), "direction": direction,
+                        "x": f32_bits(corner[0]), "y": f32_bits(corner[1]), "z": f32_bits(corner[2]),
+                    }));
+                }
+            }
+        }
+    }
+    rows
 }
 
 fn name(text: &str) -> String {

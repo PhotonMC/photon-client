@@ -264,6 +264,55 @@ class EntityDisplayOracle extends EntityDataOracle {
     }
 
     /**
+     * The texture coordinates the special foil's decal generator gives a corner of a quad drawn
+     * through a pose that the display context scales (`ItemFeatureRenderer.computeFoilDecalPose`
+     * and `SheetedDecalTextureGenerator`). They are rounded to a 4096th: the game gets the corner
+     * back by inverting the pose, which only the rounding of its floats differs from.
+     */
+    static JsonObject foilDecalUv(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var poseStack = new com.mojang.blaze3d.vertex.PoseStack();
+            poseStack.translate(Oracle.f32(row, "tx"), Oracle.f32(row, "ty"), Oracle.f32(row, "tz"));
+            poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(Oracle.f32(row, "yaw")));
+            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(Oracle.f32(row, "pitch")));
+            float scale = Oracle.f32(row, "scale");
+            poseStack.scale(scale, scale, scale);
+            poseStack.translate(-0.5F, -0.5F, -0.5F);
+            var pose = poseStack.last();
+            var decalPose = pose.copy();
+            com.mojang.math.MatrixUtil.mulComponentWise(decalPose.pose(), Oracle.f32(row, "factor"));
+            var direction = net.minecraft.core.Direction.byName(row.get("direction").getAsString());
+            var uv = new float[2];
+            var sink = (com.mojang.blaze3d.vertex.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {com.mojang.blaze3d.vertex.VertexConsumer.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("setUv")) {
+                        uv[0] = (Float) args[0];
+                        uv[1] = (Float) args[1];
+                    }
+                    return method.getReturnType() == com.mojang.blaze3d.vertex.VertexConsumer.class ? proxy : null;
+                });
+            var generator = new com.mojang.blaze3d.vertex.SheetedDecalTextureGenerator(sink, decalPose, 0.0078125F);
+            var at = pose.pose().transformPosition(
+                Oracle.f32(row, "x"), Oracle.f32(row, "y"), Oracle.f32(row, "z"), new org.joml.Vector3f());
+            var normal = pose.transformNormal(direction.getUnitVec3f(), new org.joml.Vector3f());
+            generator.addVertex(at.x(), at.y(), at.z());
+            generator.setNormal(normal.x(), normal.y(), normal.z());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("u", Math.round(uv[0] * 4096.0F));
+            out.addProperty("v", Math.round(uv[1] * 4096.0F));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * `ItemStack.hasFoil` of real stacks (every item's default, then stacks with a component patch
      * of enchantments and glint overrides set or removed over the item's own).
      */

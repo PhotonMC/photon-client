@@ -98,6 +98,32 @@ pub fn cluster_poses(mut base: Pose, count: i32, seed: i32, extent: ModelExtent)
     poses
 }
 
+/// The special foil's texture coordinate of each corner of each quad of `layers` (four per quad,
+/// layer after layer), for an item drawn where the pose is scaled by `pose_scale`.
+pub fn foil_decal_corners(layers: &[ItemLayer], pose_scale: f32) -> Vec<[f32; 2]> {
+    let mut corners = Vec::new();
+    for layer in layers {
+        for (quad, info) in layer.mesh.quads.iter().enumerate() {
+            for corner in 0..4 {
+                let source = &layer.mesh.vertices[quad * 4 + corner];
+                corners.push(crate::block::breaking::foil_decal_uv(
+                    source.position,
+                    info.direction,
+                    pose_scale,
+                ));
+            }
+        }
+    }
+    corners
+}
+
+/// The index into [`foil_decal_corners`] of the `index`th vertex drawn, for quads drawn as the
+/// triangles `order` names the corners of, the copies of the stack one after another.
+pub fn foil_decal_index(index: usize, order: [usize; 6], corners: usize) -> usize {
+    let quad = (index / 6) % (corners / 4);
+    quad * 4 + order[index % 6]
+}
+
 /// `ItemStackRenderState.getModelBoundingBox`: the extent of the layers'
 /// vertices after each layer's display transform.
 pub fn model_extent(layers: &[ItemLayer]) -> ModelExtent {
@@ -233,17 +259,23 @@ fn push_layer(vertices: &mut Vec<Vertex>, layer: &ItemLayer, pose: &Pose, light:
 
 /// `ItemFeatureRenderer.prepareFoilSubmit` for a standard foil: the same triangles again, their
 /// texture coordinate (of the block atlas, in 0 to 1) moved by the glint's matrix into the glint
-/// texture, which sits at `glint` (`[u0, v0, u1, v1]`) in the packed image and repeats.
+/// texture, which sits at `glint` (`[u0, v0, u1, v1]`) in the packed image and repeats. A special
+/// foil takes `decal` (the [`foil_decal_corners`] of the layers) for the coordinate instead.
 pub fn item_glint_vertices(
     triangles: &[Vertex],
     matrix: &[f32; 16],
     glint: [f32; 4],
+    decal: Option<&[[f32; 2]]>,
 ) -> Vec<Vertex> {
     let size = [glint[2] - glint[0], glint[3] - glint[1]];
     triangles
         .iter()
-        .map(|vertex| {
-            let moved = crate::render_types::glint_uv(matrix, vertex.uv);
+        .enumerate()
+        .map(|(index, vertex)| {
+            let uv = decal.map_or(vertex.uv, |corners| {
+                corners[foil_decal_index(index, [0, 1, 2, 0, 2, 3], corners.len())]
+            });
+            let moved = crate::render_types::glint_uv(matrix, uv);
             Vertex {
                 position: vertex.position,
                 uv: [glint[0] + moved[0] * size[0], glint[1] + moved[1] * size[1]],
@@ -278,7 +310,7 @@ mod tests {
             light: [240.0; 2],
         };
         let matrix = crate::render_types::glint_texture_matrix(0, 0.5, 8.0);
-        let glint = item_glint_vertices(&[vertex], &matrix, [0.5, 0.25, 0.625, 0.375]);
+        let glint = item_glint_vertices(&[vertex], &matrix, [0.5, 0.25, 0.625, 0.375], None);
         let moved = crate::render_types::glint_uv(&matrix, [0.25, 0.5]);
         assert_eq!(glint[0].position, vertex.position);
         assert_eq!(
@@ -286,5 +318,37 @@ mod tests {
             [0.5 + moved[0] * 0.125, 0.25 + moved[1] * 0.125]
         );
         assert_eq!(glint[0].tint, [0.5, 0.25, 0.125, 0.125]);
+    }
+
+    #[test]
+    fn a_special_foil_takes_the_decal_coordinate_of_each_corner_drawn() {
+        // Two quads' corners, and three vertices of the second quad's first triangle then of
+        // the first quad's again for a second copy of the stack.
+        let corners: Vec<[f32; 2]> = (0..8).map(|index| [index as f32, 0.0]).collect();
+        let world: Vec<f32> = (0..18)
+            .map(|index| corners[foil_decal_index(index, [0, 1, 2, 0, 2, 3], 8)][0])
+            .collect();
+        assert_eq!(
+            world,
+            [
+                0.0, 1.0, 2.0, 0.0, 2.0, 3.0, 4.0, 5.0, 6.0, 4.0, 6.0, 7.0, 0.0, 1.0, 2.0, 0.0,
+                2.0, 3.0
+            ]
+        );
+        let vertex = Vertex {
+            position: [0.0; 3],
+            uv: [9.0, 9.0],
+            shade: 1.0,
+            tint: [1.0; 4],
+            light: [240.0; 2],
+        };
+        let matrix = crate::render_types::glint_texture_matrix(0, 0.5, 8.0);
+        let rect = [0.5, 0.25, 0.625, 0.375];
+        let decal = item_glint_vertices(&[vertex; 3], &matrix, rect, Some(&corners));
+        let moved = crate::render_types::glint_uv(&matrix, [1.0, 0.0]);
+        assert_eq!(
+            decal[1].uv,
+            [0.5 + moved[0] * 0.125, 0.25 + moved[1] * 0.125]
+        );
     }
 }

@@ -28,6 +28,18 @@ pub fn decal_uv(corner: [f32; 3], facing: Direction) -> [f32; 2] {
     [-turned[0], -turned[1]]
 }
 
+/// `SheetedDecalTextureGenerator` as the special foil of `ItemFeatureRenderer` uses it, at texture
+/// scale `1/128`: the generator inverts the item's pose after `computeFoilDecalPose` multiplied
+/// every component by `pose_scale` (one outside the GUI and first person, `0.5` and `0.75` there),
+/// which hands it the corner `pose_scale` times closer to the origin.
+pub fn foil_decal_uv(corner: [f32; 3], facing: Direction, pose_scale: f32) -> [f32; 2] {
+    let local = corner.map(|value| value / pose_scale);
+    decal_uv(local, facing).map(|value| value * FOIL_TEXTURE_SCALE)
+}
+
+/// `ItemFeatureRenderer.SPECIAL_FOIL_TEXTURE_SCALE`.
+const FOIL_TEXTURE_SCALE: f32 = 0.007_812_5;
+
 /// The overlay for one block: its quads (in the model's unit cube, with the
 /// block's offset) placed at `block` in mesh units, at a crack stage from 0
 /// to 9.
