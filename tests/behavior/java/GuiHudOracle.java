@@ -216,6 +216,28 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
+     * The game's own sleep veil (`Hud.extractSleepOverlay`) for a real local player whose sleep
+     * counter is set.
+     */
+    static JsonObject hudSleep(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
+            MovementOracle.setField(scene.local(), "sleepCounter", row.get("timer").getAsInt());
+            hudMethod("extractSleepOverlay", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
+                .invoke(scene.screen().hud(), scene.screen().graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The game's own crosshair and hotbar (`Hud.extractCrosshair`, then `extractItemHotbar` for
      * a player who is not spectating) for a real local player: its attack strength, the attack
      * indicator option, the game mode, the camera and what the crosshair is on.

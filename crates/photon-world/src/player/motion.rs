@@ -257,7 +257,7 @@ impl ClientPlayerState {
             stinger_count: 0,
             effect_ambience: false,
             effect_particle_type_ids: Vec::new(),
-            sleeping_pos: None,
+            sleep: Sleep::default(),
             air_supply: DEFAULT_AIR_SUPPLY,
             custom_name_present: false,
             custom_name_visible: false,

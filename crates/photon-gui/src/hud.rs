@@ -5,6 +5,7 @@
 pub mod boss_bar;
 pub mod locator;
 mod overlays;
+pub mod sleep;
 pub use overlays::{CameraOverlays, vignette_colour};
 pub mod sidebar;
 pub mod tab_list;

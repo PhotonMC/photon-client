@@ -168,7 +168,7 @@ impl ClientWorld {
             player.stinger_count = previous.stinger_count;
             player.effect_ambience = previous.effect_ambience;
             player.effect_particle_type_ids = previous.effect_particle_type_ids;
-            player.sleeping_pos = previous.sleeping_pos;
+            player.sleep.pos = previous.sleep.pos;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
             player.custom_name_visible = previous.custom_name_visible;
@@ -294,6 +294,13 @@ impl ClientWorld {
     pub fn tick_local_player_effects(&mut self) {
         if let Some(player) = self.local_player.as_mut() {
             player.tick_effects();
+        }
+    }
+
+    /// `ClientPacketListener.handleAnimate`'s wake-up (action 2) for the local player.
+    pub fn wake_local_player(&mut self) {
+        if let Some(player) = self.local_player.as_mut() {
+            player.stop_sleep_in_bed(false);
         }
     }
 

@@ -68,6 +68,7 @@ const ORDER: &[Generator] = &[
     panels::mouse_and_controls,
     || vec![panels::sound_options_screen()],
     || vec![status::hud_hotbar()],
+    || vec![status::hud_sleep()],
     || vec![status::hud_status()],
     language::language_cases,
     || vec![locator::locator_bar()],

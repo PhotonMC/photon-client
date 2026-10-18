@@ -127,8 +127,10 @@ impl ClientPlayerState {
         &self.effects
     }
 
-    /// The tick count moves on and each effect ticks, as `LivingEntity.tickEffects` does on a client.
+    /// The tick count moves on and each effect ticks, as `LivingEntity.tickEffects` does on a
+    /// client, and the sleep counter with them (`Player.tick`).
     pub(crate) fn tick_effects(&mut self) {
+        self.tick_sleep_timer();
         self.tick_count = self.tick_count.wrapping_add(1);
         for effect in &mut self.effects {
             effect.tick_client();
@@ -156,10 +158,62 @@ impl ClientPlayerState {
     }
 
     pub fn sleeping_pos(&self) -> Option<photon_core::binary::BlockPos> {
-        self.sleeping_pos
+        self.sleep.pos
     }
 
     pub fn is_sleeping(&self) -> bool {
-        self.sleeping_pos.is_some()
+        self.sleep.pos.is_some()
+    }
+
+    /// `Player.getSleepTimer`.
+    pub fn sleep_timer(&self) -> i32 {
+        self.sleep.timer
+    }
+
+    /// The sleep counter's part of `Player.tick`: it counts up to a hundred while asleep, and on
+    /// from there to a hundred and ten after waking, then starts over.
+    pub(crate) fn tick_sleep_timer(&mut self) {
+        if self.is_sleeping() {
+            self.sleep.timer = (self.sleep.timer + 1).min(100);
+        } else if self.sleep.timer > 0 {
+            self.sleep.timer += 1;
+            if self.sleep.timer >= 110 {
+                self.sleep.timer = 0;
+            }
+        }
+    }
+
+    /// `Player.stopSleepInBed` as the client runs it: the entity data's sleeping position is
+    /// emptied and the counter goes to a hundred, or to zero for a forceful wake-up.
+    pub fn stop_sleep_in_bed(&mut self, forceful: bool) {
+        self.sleep.pos = None;
+        self.sleep.timer = if forceful { 0 } else { 100 };
+    }
+}
+
+#[cfg(test)]
+mod sleep_timer_tests {
+    use super::*;
+
+    #[test]
+    fn the_sleep_timer_climbs_to_a_hundred_then_runs_out_in_ten_ticks_after_waking() {
+        let mut player = ClientPlayerState::new(photon_core::ids::EntityId(1));
+        player.sleep.pos = Some(photon_core::binary::BlockPos { x: 0, y: 64, z: 0 });
+        for _ in 0..130 {
+            player.tick_sleep_timer();
+        }
+        assert_eq!(player.sleep_timer(), 100);
+        player.stop_sleep_in_bed(false);
+        assert_eq!(player.sleep_timer(), 100);
+        let mut seen = Vec::new();
+        for _ in 0..11 {
+            player.tick_sleep_timer();
+            seen.push(player.sleep_timer());
+        }
+        assert_eq!(seen, [101, 102, 103, 104, 105, 106, 107, 108, 109, 0, 0]);
+        player.sleep.pos = Some(photon_core::binary::BlockPos { x: 0, y: 64, z: 0 });
+        player.tick_sleep_timer();
+        player.stop_sleep_in_bed(true);
+        assert_eq!(player.sleep_timer(), 0);
     }
 }

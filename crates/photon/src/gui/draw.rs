@@ -109,6 +109,26 @@ impl Gui {
         }
     }
 
+    /// The frame's clock, and the sleep veil over the HUD (`Hud.extractSleepOverlay`, also drawn
+    /// with the interface hidden).
+    fn finish_hud_frame(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, started_at): (&GuiAtlas, std::time::Instant),
+        session: &PlaySession,
+        size: &photon_render::window::scale::WindowScale,
+    ) {
+        frame.millis = started_at.elapsed().as_millis() as u64;
+        photon_gui::hud::sleep::draw(
+            frame,
+            atlas,
+            (size.gui_scaled_width(), size.gui_scaled_height()),
+            session
+                .world()
+                .local_player()
+                .map_or(0, |player| player.sleep_timer()),
+        );
+    }
+
     /// The HUD, then the open screen over it, with the player in the screen
     /// posed as the entity stands now.
     pub fn draw(
@@ -189,7 +209,7 @@ impl Gui {
                 &mut draw_item,
             )
         };
-        frame.millis = self.started_at.elapsed().as_millis() as u64;
+        Self::finish_hud_frame(&mut frame, (&self.atlas, self.started_at), session, &size);
         if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
             sidebar::draw(
                 &mut frame,

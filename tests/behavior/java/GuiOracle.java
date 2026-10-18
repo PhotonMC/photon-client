@@ -56,6 +56,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "book_view" -> bookView(request);
                 case "hud_hotbar" -> hudHotbar(request);
                 case "hud_status" -> hudStatus(request);
+                case "hud_sleep" -> hudSleep(request);
                 case "confirm_screen" -> confirmScreen(request);
                 case "dialog_screen" -> dialogScreen(request);
                 case "widgets" -> widgets(request);

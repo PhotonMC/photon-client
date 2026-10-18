@@ -453,3 +453,17 @@ fn timed_rows() -> Vec<Value> {
 pub fn hud_status() -> Value {
     gui("hud-status", "hud_status", [health_rows(), food_and_air_rows(), effect_rows(), timed_rows()].concat())
 }
+
+/// The sleep veil: the timer at the start, through the fade in, at its full and through the ten
+/// ticks of the fade out, at two window shapes.
+pub fn hud_sleep() -> Value {
+    let mut rows = Vec::new();
+    for timer in [0, 1, 2, 37, 50, 99, 100, 101, 102, 105, 108, 109] {
+        for (width, height) in [(427, 240), (320, 180)] {
+            rows.push(
+                json!({"label": format!("sleep-{timer}-{width}"), "width": width, "height": height, "timer": timer}),
+            );
+        }
+    }
+    gui("hud-sleep", "hud_sleep", rows)
+}

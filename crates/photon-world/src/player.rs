@@ -27,6 +27,14 @@ use photon_core::math::{
     Vec2, Vec3, clamp_f32, floor_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
 };
 
+/// What the local player's sleep is: where its bed is (the sleeping position of its entity data)
+/// and `Player.sleepCounter`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Sleep {
+    pub(crate) pos: Option<photon_core::binary::BlockPos>,
+    pub(crate) timer: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientPlayerState {
     pub(crate) id: EntityId,
@@ -70,7 +78,7 @@ pub struct ClientPlayerState {
     pub(crate) stinger_count: i32,
     pub(crate) effect_ambience: bool,
     pub(crate) effect_particle_type_ids: Vec<i32>,
-    pub(crate) sleeping_pos: Option<photon_core::binary::BlockPos>,
+    pub(crate) sleep: Sleep,
     pub(crate) air_supply: i32,
     pub(crate) custom_name_present: bool,
     pub(crate) custom_name_visible: bool,

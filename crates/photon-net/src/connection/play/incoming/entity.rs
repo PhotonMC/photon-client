@@ -426,6 +426,9 @@ impl PlaySession {
         if let Some(particle) = hit {
             self.queue_emitter(id, particle, 3, None);
         }
+        if action == 2 && self.local.player_id == Some(id) {
+            self.world.wake_local_player();
+        }
         self.world.entities_mut().apply_animate(id, action);
         Ok(())
     }

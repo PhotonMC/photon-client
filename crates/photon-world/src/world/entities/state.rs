@@ -228,7 +228,7 @@ impl ClientWorld {
                 player.effect_particle_type_ids = effect_particle_type_ids.clone();
             }
             if let Some(sleeping_pos) = sleeping_pos {
-                player.sleeping_pos = sleeping_pos;
+                player.sleep.pos = sleeping_pos;
             }
             if let Some(custom_name_present) = custom_name_present {
                 player.custom_name_present = custom_name_present;
