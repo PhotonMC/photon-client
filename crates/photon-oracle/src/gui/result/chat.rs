@@ -193,6 +193,31 @@ pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
     Ok(json!({"label": row["label"], "steps": steps}))
 }
 
+/// The box an `open` event makes: its method's draft restored, and the leave-bed button for a
+/// `bed` event.
+fn open_draft_screen(
+    event: &Value,
+    drafts: &mut photon_gui::chat::ChatDrafts,
+    font: &std::sync::Arc<Font>,
+    size: (i32, i32),
+    root: &std::path::Path,
+) -> photon_gui::chat::ChatScreen {
+    use photon_gui::chat::{ChatMethod, ChatScreen};
+    let method = if event["method"] == "command" {
+        ChatMethod::Command
+    } else {
+        ChatMethod::Message
+    };
+    let (initial, draft) = drafts.open(method);
+    let opened = ChatScreen::new(font.clone(), size, &initial, Vec::new()).without_key();
+    let opened = if event["bed"].as_bool().unwrap_or(false) {
+        opened.in_bed(&photon_game::text::Lang::load(root))
+    } else {
+        opened
+    };
+    if draft { opened.as_draft() } else { opened }
+}
+
 pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let atlas = &ctx.atlas;
@@ -208,15 +233,8 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         let mut entry = json!({"do": event["do"]});
         match event["do"].as_str().unwrap_or_default() {
             "open" => {
-                let method = if event["method"] == "command" {
-                    ChatMethod::Command
-                } else {
-                    ChatMethod::Message
-                };
-                let (initial, draft) = drafts.open(method);
-                let opened = ChatScreen::new(font.clone(), (width, height), &initial, Vec::new())
-                    .without_key();
-                screen = Some(if draft { opened.as_draft() } else { opened });
+                let opened = open_draft_screen(event, &mut drafts, &font, (width, height), root);
+                screen = Some(opened);
             }
             "type" => {
                 for character in event["text"].as_str().unwrap_or_default().chars() {

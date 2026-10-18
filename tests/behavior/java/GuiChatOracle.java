@@ -311,7 +311,9 @@ class GuiChatOracle extends GuiLanguageOracle {
                         var method = event.get("method").getAsString().equals("command")
                             ? net.minecraft.client.gui.components.ChatComponent.ChatMethod.COMMAND
                             : net.minecraft.client.gui.components.ChatComponent.ChatMethod.MESSAGE;
-                        current = chat.createScreen(method, net.minecraft.client.gui.screens.ChatScreen::new);
+                        current = event.has("bed")
+                            ? chat.createScreen(method, net.minecraft.client.gui.screens.InBedChatScreen::new)
+                            : chat.createScreen(method, net.minecraft.client.gui.screens.ChatScreen::new);
                         current.init(width, height);
                     }
                     case "type" -> {
@@ -358,6 +360,10 @@ class GuiChatOracle extends GuiLanguageOracle {
                             drawn.minecraft().options.getBackgroundColor(Integer.MIN_VALUE));
                         set(input, "focusedTime", net.minecraft.util.Util.getMillis());
                         input.extractRenderState(drawn.graphics(), 0, 0, 0.0F);
+                        if (current instanceof net.minecraft.client.gui.screens.InBedChatScreen) {
+                            ((net.minecraft.client.gui.components.Button) get(current, "leaveBedButton"))
+                                .extractRenderState(drawn.graphics(), 0, 0, 0.0F);
+                        }
                         suggestions.extractRenderState(drawn.graphics(), 0, 0);
                         out.add("ops", record(drawn.state()));
                     }

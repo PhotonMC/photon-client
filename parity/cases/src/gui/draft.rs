@@ -50,6 +50,13 @@ fn message() -> Value {
     open("message")
 }
 
+/// `InBedChatScreen`: the box with the leave-bed button.
+fn in_bed() -> Value {
+    let mut event = open("message");
+    event["bed"] = json!(true);
+    event
+}
+
 fn typed(text: &str) -> Value {
     json!({"do": "type", "text": text})
 }
@@ -141,6 +148,8 @@ fn drawing_rows() -> Vec<Value> {
     let long = "a long draft that goes on ".repeat(6);
     vec![
         draft("draw-empty", vec![message(), draw()], false),
+        draft("draw-in-bed", vec![in_bed(), draw()], false),
+        draft("draw-in-bed-typed", vec![in_bed(), typed("hello"), draw()], false),
         draft("draw-own-text", vec![message(), typed("hello"), draw()], false),
         draft("draw-draft", kept(vec![message(), draw()]), false),
         draft("draw-draft-edited", kept(vec![message(), typed("!"), draw()]), false),

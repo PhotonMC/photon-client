@@ -88,6 +88,9 @@ impl ChatScreen {
     }
 
     pub fn resize(&mut self, size: (i32, i32)) {
+        if self.size == size {
+            return;
+        }
         self.size = size;
         if let Some((buttons, label)) = self.bed.take() {
             self.bed = Some((leave_bed_buttons(size, label.clone()), label));

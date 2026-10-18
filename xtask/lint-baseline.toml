@@ -310,7 +310,7 @@
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 45
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 22
-"crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 22
+"crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 20
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 13
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 20
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 17
@@ -528,7 +528,7 @@
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 14
-"crates/photon/src/controls/chat.rs::Controls::chat_event" = 14
+"crates/photon/src/controls/chat.rs::Controls::chat_event" = 11
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 16
 "crates/photon/src/controls/events.rs::Controls::handle" = 32
 "crates/photon/src/controls/events.rs::Controls::mapped_input" = 40
@@ -768,7 +768,7 @@
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 84
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 81
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 119
-"crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 82
+"crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 75
 "crates/photon-oracle/src/gui/result/chat.rs::suggestions_case" = 63
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 165
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 98
@@ -1002,7 +1002,7 @@
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 100
 "crates/photon/src/controls/book.rs::Controls::book_event" = 67
-"crates/photon/src/controls/chat.rs::Controls::chat_event" = 79
+"crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 64
 "crates/photon/src/controls/events.rs::Controls::handle" = 83
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 80

@@ -39,6 +39,7 @@ impl Controls {
             self.death.is_some(),
             self.credits.is_some(),
             self.social.is_some(),
+            self.game_mode_switcher.is_some(),
             self.sign_edit.is_some(),
             self.book_edit.is_some(),
             self.confirm.is_some(),
@@ -67,9 +68,11 @@ impl Controls {
         if let Some(chat) = self.chat.as_ref().filter(|chat| chat.is_in_bed()) {
             if !sleeping {
                 let (text, draft) = (chat.value(), chat.is_draft());
-                self.close_chat(surface, ExitReason::Interrupted);
                 if !draft && !text.is_empty() {
+                    self.close_chat(surface, ExitReason::Done);
                     self.open_chat_with(&text, surface, assets);
+                } else {
+                    self.close_chat(surface, ExitReason::Interrupted);
                 }
             }
         } else if !self.any_screen_open() && sleeping {
@@ -198,13 +201,14 @@ impl Controls {
     fn bed_chat_key(&mut self, key: ChatKey, session: &mut PlaySession) -> Result {
         match key {
             ChatKey::Close => session.send_stop_sleeping()?,
-            ChatKey::Done => self.chat_log.reset_scroll(),
-            ChatKey::Send(text) => {
+            ChatKey::Done | ChatKey::Send(_) => {
                 if let Some(chat) = self.chat.as_mut() {
                     chat.clear();
                 }
-                Self::send_chat(session, &text)?;
-                self.remember_command(&text);
+                if let ChatKey::Send(text) = key {
+                    Self::send_chat(session, &text)?;
+                    self.remember_command(&text);
+                }
                 self.chat_log.reset_scroll();
             }
             ChatKey::Page(direction) => self.page_chat(direction),
@@ -217,6 +221,34 @@ impl Controls {
     fn page_chat(&mut self, direction: i32) {
         let page = self.chat_log.lines_per_page(true) as i32 - 1;
         self.chat_log.scroll_by(direction * page, true);
+    }
+
+    /// `ChatScreen.mouseClicked`: the list of matches first, then the style of the text under the
+    /// mouse, then the widgets (the leave-bed button).
+    fn chat_pressed(
+        &mut self,
+        modifiers: glfw::Modifiers,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+        let Some(chat) = self.chat.as_mut() else {
+            return Ok(());
+        };
+        if chat.mouse_clicked(mouse) {
+            return Ok(());
+        }
+        let size = surface.scale();
+        let shift = modifiers.contains(glfw::Modifiers::Shift);
+        let gui = (size.gui_scaled_width(), size.gui_scaled_height());
+        let bed = chat.leave_bed_clicked(mouse);
+        if let Some(style) = self.chat_log.clicked_style(&chat.font(), gui, mouse, shift) {
+            self.style_clicked(&style, shift, session, surface, assets)?;
+        } else if bed {
+            session.send_stop_sleeping()?;
+        }
+        Ok(())
     }
 
     /// An event for the open chat box.
@@ -285,19 +317,7 @@ impl Controls {
                 glfw::Action::Press,
                 modifiers,
             ) => {
-                let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-                // `ChatScreen.mouseClicked`: the list of matches first, then
-                // the style of the text under the mouse.
-                if chat.leave_bed_clicked(mouse) {
-                    session.send_stop_sleeping()?;
-                } else if !chat.mouse_clicked(mouse) {
-                    let shift = modifiers.contains(glfw::Modifiers::Shift);
-                    let gui = (size.gui_scaled_width(), size.gui_scaled_height());
-                    let font = chat.font();
-                    if let Some(style) = self.chat_log.clicked_style(&font, gui, mouse, shift) {
-                        self.style_clicked(&style, shift, session, surface, assets)?;
-                    }
-                }
+                self.chat_pressed(modifiers, session, surface, assets)?;
             }
             _ => {}
         }
