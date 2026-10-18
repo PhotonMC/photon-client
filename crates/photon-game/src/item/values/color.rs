@@ -34,6 +34,7 @@ impl Values {
             .copied()
             .unwrap_or(0);
         Self {
+            item,
             defaults,
             own,
             patch: item_components::read_patch(&mut input).ok(),

@@ -156,6 +156,10 @@ pub fn glint() -> Vec<Value> {
         foil("foil-overridden-on", "minecraft:leather_boots", "01001501"),
         foil("foil-removed-override", "minecraft:enchanted_golden_apple", "000115"),
         foil("foil-no-enchantments", "minecraft:iron_helmet", "01000d00"),
+        foil("foil-plain-compass", "minecraft:compass", "0000"),
+        foil("foil-lodestone-compass", "minecraft:compass", "0100430001"),
+        foil("foil-lodestone-compass-overridden-off", "minecraft:compass", "02004300011500"),
+        foil("foil-lodestone-recovery-compass", "minecraft:recovery_compass", "0100430001"),
         foil("foil-enchanted-book-overridden-off", "minecraft:enchanted_book", "01001500"),
     ];
     let matrices = [

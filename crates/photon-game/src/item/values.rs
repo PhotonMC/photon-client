@@ -13,6 +13,7 @@ use photon_core::ids::ItemId;
 
 /// The components of a stack: `ItemStack.get`.
 pub struct Values {
+    item: ItemId,
     /// The item's default components, in the wire's form.
     defaults: Patch,
     /// The type ids of every default component, as a set (`DEFAULT_COMPONENT_SETS`), also those
@@ -261,11 +262,15 @@ impl Values {
     }
 
     /// `ItemStack.hasFoil`: the glint override if the stack has one, else whether it has any
-    /// enchantment (`Item.isFoil`).
+    /// enchantment, or is a compass tracking a lodestone (`Item.isFoil`, `CompassItem.isFoil`).
     pub fn has_foil(&self) -> bool {
         match self.raw(ids::ENCHANTMENT_GLINT_OVERRIDE) {
             Some(raw) => raw.first().is_some_and(|value| *value != 0),
-            None => !self.enchantments(ids::ENCHANTMENTS).is_empty(),
+            None => {
+                !self.enchantments(ids::ENCHANTMENTS).is_empty()
+                    || (crate::item::id_of("minecraft:compass") == Some(self.item)
+                        && self.has(ids::LODESTONE_TRACKER))
+            }
         }
     }
 
