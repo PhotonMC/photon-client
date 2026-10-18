@@ -235,6 +235,18 @@ impl BlockRenderer {
             .mesh
     }
 
+    /// Smooth lighting, the reference's default, unless the block glows or the
+    /// model opts out of ambient occlusion; the first part decides for every
+    /// part of the block.
+    fn smooth_lighting(&self, light_emission: u8, picked: &[Option<u32>]) -> bool {
+        light_emission == 0
+            && picked
+                .iter()
+                .flatten()
+                .next()
+                .is_some_and(|&first| self.baked[first as usize].ambient_occlusion)
+    }
+
     /// [`Self::mesh_region`] and [`Self::mesh_moving_block`]: with a seed position, the
     /// blocks are those of a moving block (no fluids, variants picked from that position).
     pub(super) fn mesh_blocks<R, L, T>(
@@ -318,11 +330,9 @@ impl BlockRenderer {
                     // moves to where the block sits, measured from the box's
                     // near corner.
                     let shift = block_shift(position, mesh_origin, nudge);
+                    let smooth = self.smooth_lighting(info.light_emission, &picked);
                     for model in picked.into_iter().flatten() {
                         let model = &self.baked[model as usize];
-                        // Smooth lighting, the reference's default, unless the
-                        // block glows or the model opts out of ambient occlusion.
-                        let smooth = info.light_emission == 0 && model.ambient_occlusion;
                         for quad in &model.quads {
                             if quad.cull.is_some_and(&mut is_hidden) {
                                 continue;
