@@ -1,6 +1,6 @@
 //! The video settings screen (`VideoSettingsScreen`): the display, quality
 //! and preference options in a scrolling list. The GUI scale, the frame limits,
-//! vsync, the attack indicator and the render distance do something; the others
+//! vsync, the attack indicator, the render distance and ambient occlusion do something; the others
 //! hold a value on their widget and nothing follows.
 
 use photon_game::options::values::{IntRange, MappedIntRange, SliderableEnum};

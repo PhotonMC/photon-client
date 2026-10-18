@@ -143,13 +143,26 @@ impl SectionMeshes {
         }
     }
 
-    /// The `ao` option: a change builds every built section again
-    /// (`LevelExtractor.allChanged`).
-    pub fn set_ambient_occlusion(&mut self, value: bool) {
-        if self.ambient_occlusion != value {
-            self.ambient_occlusion = value;
-            self.pending.extend(self.compiled.keys().copied());
+    /// The `ao` option: a change drops every section and builds them again
+    /// (`LevelExtractor.allChanged`, `invalidateCompiledGeometry`).
+    pub fn set_ambient_occlusion(
+        &mut self,
+        value: bool,
+        backend: &mut VulkanBackend,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if self.ambient_occlusion == value {
+            return Ok(());
         }
+        self.ambient_occlusion = value;
+        // Built, in flight and waiting: the sections that held something.
+        let mut again: Vec<SectionKey> = self.compiled.keys().copied().collect();
+        again.extend(self.latest.keys().copied());
+        again.extend(self.pending.iter().copied());
+        backend.clear_sections()?;
+        self.clear();
+        self.unchecked.extend(again.iter().copied());
+        self.pending.extend(again);
+        Ok(())
     }
 
     /// A respawn or a change of dimension: nothing of the old level stays.
