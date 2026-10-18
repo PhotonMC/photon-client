@@ -31,8 +31,10 @@ impl Gui {
 
     /// `Hud.extractSubtitleOverlay`: the subtitles over the HUD, or with it hidden only over a
     /// screen that is part of the game's own interface (the chat, the containers, the signs and
-    /// the books).
-    fn draw_subtitles(
+    /// the books). Java draws them in the screen's background, after its darkening and under its
+    /// panel; here a container, sign or book screen has them drawn once it is (`over_screen`),
+    /// any other time they come before the screens.
+    pub(super) fn draw_subtitles(
         frame: &mut photon_render::gui::GuiFrame,
         (subtitles, listener, started_at): (
             &mut photon_gui::hud::subtitles::Subtitles,
@@ -41,16 +43,17 @@ impl Gui {
         ),
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (controls, size): (&Controls, &photon_render::window::scale::WindowScale),
+        over_screen: bool,
     ) {
         let options = &controls.options;
-        let in_game_ui = controls.screen.is_some()
-            || controls.chat.is_some()
+        let drawn_over_screen = controls.screen.is_some()
             || controls.sign_edit.is_some()
             || controls.book_edit.is_some();
+        let in_game_ui = drawn_over_screen || controls.chat.is_some();
         let Some(listener) = listener.filter(|_| options.show_subtitles) else {
             return;
         };
-        if controls.hud_hidden && !in_game_ui {
+        if over_screen != drawn_over_screen || (controls.hud_hidden && !in_game_ui) {
             return;
         }
         // `Options.getBackgroundColor(0.8F)`.
@@ -115,6 +118,12 @@ impl Gui {
                 },
             );
         }
-        Self::draw_subtitles(frame, subtitles, (atlas, font, lang), (controls, size));
+        Self::draw_subtitles(
+            frame,
+            subtitles,
+            (atlas, font, lang),
+            (controls, size),
+            false,
+        );
     }
 }

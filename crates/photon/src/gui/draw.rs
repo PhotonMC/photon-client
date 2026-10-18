@@ -266,6 +266,21 @@ impl Gui {
                 gui_size,
             );
         }
+        // `Hud.extractRenderState`: the tab list and the subtitles come after the chat, before the
+        // screens and dialogs over the HUD.
+        Self::draw_tab_and_subtitles(
+            &mut frame,
+            (&self.atlas, &self.font, &self.lang),
+            (tab_entries.filter(|_| !hidden), gui_size.0),
+            (
+                (&mut self.tab_health, &self.tab_header, &self.tab_footer),
+                self.gui_ticks,
+            ),
+            (
+                (&mut self.subtitles, self.listener, self.started_at),
+                (controls, &size),
+            ),
+        );
         let now = self.started_at.elapsed().as_millis() as u64;
         let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
         if Self::draw_server_dialog(
@@ -337,46 +352,16 @@ impl Gui {
             &mut frame,
             gui_size,
         );
-        Self::draw_tab_and_subtitles(
-            &mut frame,
-            (&self.atlas, &self.font, &self.lang),
-            (tab_entries.filter(|_| !hidden), gui_size.0),
-            (
-                (&mut self.tab_health, &self.tab_header, &self.tab_footer),
-                self.gui_ticks,
-            ),
-            (
-                (&mut self.subtitles, self.listener, self.started_at),
-                (controls, &size),
-            ),
-        );
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
-            let mut draw_player =
-                |area: (i32, i32, i32, i32), size: f32, offset_y: f32, mouse: (f32, f32)| {
-                    let Some(player) = hud_player else {
-                        return Vec::new();
-                    };
-                    let pose = player.model_pose(1.0);
-                    let state = PlayerRenderState {
-                        walk_position: pose.walk_position,
-                        walk_speed: pose.walk_speed,
-                        age_in_ticks: player.tick_count() as f32 + 1.0,
-                        swim_amount: pose.swim_amount,
-                        crouching: pose.crouching,
-                        spectator: player.spectating(),
-                        attack_time: player.attack_anim(1.0),
-                        ..Default::default()
-                    };
-                    photon_render::entity::player_renderer::gui_player_vertices(
-                        player_model,
-                        &state,
-                        area,
-                        size,
-                        offset_y,
-                        mouse,
-                        self.player_skin,
-                    )
-                };
+            let skin = self.player_skin;
+            let mut draw_player = |area, size, offset_y, mouse| {
+                player_preview(
+                    hud_player,
+                    player_model,
+                    skin,
+                    (area, size, offset_y, mouse),
+                )
+            };
             // A mount in the box of its screen, between two ticks as it stands now.
             let world = session.world();
             let mut draw_entity = |id: EntityId,
@@ -458,6 +443,13 @@ impl Gui {
             };
             screen.build(&mut draw, &menu, controls.gui_mouse);
         }
+        Self::draw_subtitles(
+            &mut frame,
+            (&mut self.subtitles, self.listener, self.started_at),
+            (&self.atlas, &self.font, &self.lang),
+            (controls, &size),
+            true,
+        );
         let scale = size.gui_scale() as f32;
         backend.set_gui(
             &frame,
@@ -468,4 +460,40 @@ impl Gui {
         )?;
         Ok(())
     }
+}
+
+/// Where the model of a screen goes: its box, its size and offset, and the mouse it looks at.
+type PreviewBox = ((i32, i32, i32, i32), f32, f32, (f32, f32));
+
+/// The local player in the box of its screen (`InventoryScreen.extractEntityInInventoryFollowsMouse`):
+/// its model as it stands now, turned to look at the mouse.
+fn player_preview(
+    player: Option<&photon_world::local_player::LocalPlayer>,
+    player_model: &mut PlayerModel,
+    skin: photon_render::entity::textures::TextureRect,
+    (area, size, offset_y, mouse): PreviewBox,
+) -> Vec<GuiItemVertex> {
+    let Some(player) = player else {
+        return Vec::new();
+    };
+    let pose = player.model_pose(1.0);
+    let state = PlayerRenderState {
+        walk_position: pose.walk_position,
+        walk_speed: pose.walk_speed,
+        age_in_ticks: player.tick_count() as f32 + 1.0,
+        swim_amount: pose.swim_amount,
+        crouching: pose.crouching,
+        spectator: player.spectating(),
+        attack_time: player.attack_anim(1.0),
+        ..Default::default()
+    };
+    photon_render::entity::player_renderer::gui_player_vertices(
+        player_model,
+        &state,
+        area,
+        size,
+        offset_y,
+        mouse,
+        skin,
+    )
 }
