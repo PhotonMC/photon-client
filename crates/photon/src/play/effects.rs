@@ -4,6 +4,29 @@ use super::*;
 use photon_world::particles::JukeboxChange;
 
 impl Play {
+    /// `handlePortalTransitionEffect`: a screen that is not allowed in a portal (any but the chat,
+    /// the death screen and the credits) closes, a container with its close packet. The menus
+    /// that carry packets of their own when they close (signs, books, dialogs) are not closed yet.
+    fn close_screens_in_portal(&mut self) {
+        if !self.session.take_portal_screen_close() {
+            return;
+        }
+        if self.controls.screen.is_some() {
+            let creative_tab = &mut self.controls.creative_tab;
+            let closed = crate::screens::close_inventory(
+                &mut self.session,
+                &mut self.surface,
+                &mut self.controls.screen,
+                creative_tab,
+            );
+            if closed.is_err() {
+                self.controls.screen = None;
+            }
+        }
+        if self.controls.close_menus() {
+            self.surface.set_cursor_captured(true);
+        }
+    }
     /// The totem animation's triangles, in the hand pass's space, while it shows
     /// (`ScreenEffectRenderer.submit`, hidden with the HUD).
     pub(super) fn activation_vertices(&mut self) -> Vec<photon_render::scene::Vertex> {
@@ -42,20 +65,7 @@ impl Play {
             let offsets = (random.next_float(), random.next_float());
             self.camera.activation.display(stack, offsets);
         }
-        // `handlePortalTransitionEffect`: a screen closes in a portal, but the chat and the death
-        // screen, which are not among these.
-        if self.session.take_portal_screen_close() && self.controls.screen.is_some() {
-            let creative_tab = &mut self.controls.creative_tab;
-            let closed = crate::screens::close_inventory(
-                &mut self.session,
-                &mut self.surface,
-                &mut self.controls.screen,
-                creative_tab,
-            );
-            if closed.is_err() {
-                self.controls.screen = None;
-            }
-        }
+        self.close_screens_in_portal();
         let tracked = self.session.take_tracking_emitters();
         let tracked_sounds = self.particles.tracking(&self.session, tracked);
         if let Some(sound) = self.sound.as_mut() {
