@@ -60,7 +60,7 @@ impl VulkanBackend {
         let [sky_r, sky_g, sky_b] = inputs.sky_colour;
         let [tint_r, tint_g, tint_b] = inputs.block_tint;
         let [base_r, base_g, base_b] = effects.base;
-        self.lightmap = [
+        self.lightmap[..14].copy_from_slice(&[
             sky_r,
             sky_g,
             sky_b,
@@ -75,7 +75,14 @@ impl VulkanBackend {
             effects.brightness,
             effects.darkness,
             effects.boss_darkening,
-        ];
+        ]);
+    }
+
+    /// Choose the level's diffuse lights for the frames that follow
+    /// (`Lighting.updateLevel`).
+    pub fn set_level_lighting(&mut self, kind: photon_world::CardinalLightType) {
+        crate::diffuse::set_level(kind);
+        self.lightmap[14] = f32::from(kind == photon_world::CardinalLightType::Nether);
     }
 
     /// Set the terrain fog for the frames that follow: its colour, and the

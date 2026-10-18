@@ -7,8 +7,8 @@ const BOTH_STAGES: vk::ShaderStageFlags = vk::ShaderStageFlags::from_raw(
 impl VulkanBackend {
     /// The terrain shaders also take the lightmap's inputs, the camera and the fog; most runs
     /// push the same.
-    fn terrain_push(&self, view_projection: [[f32; 4]; 4]) -> [f32; 45] {
-        let mut push = [0.0_f32; 45];
+    fn terrain_push(&self, view_projection: [[f32; 4]; 4]) -> [f32; 46] {
+        let mut push = [0.0_f32; 46];
         push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
             view_projection[i / 4][i % 4]
         }));
@@ -17,6 +17,7 @@ impl VulkanBackend {
         push[31] = self.lightmap[12];
         push[32..40].copy_from_slice(&self.fog);
         push[44] = self.lightmap[13];
+        push[45] = self.lightmap[14];
         push
     }
 
@@ -201,7 +202,7 @@ impl VulkanBackend {
     unsafe fn record_terrain(
         &self,
         scene: &SceneResources,
-        terrain_push: &[f32; 45],
+        terrain_push: &[f32; 46],
         now: std::time::Instant,
     ) {
         let sections: Vec<(&SectionBuffers, u32, u32)> = self
@@ -222,7 +223,7 @@ impl VulkanBackend {
     unsafe fn record_translucent(
         &self,
         scene: &SceneResources,
-        terrain_push: &[f32; 45],
+        terrain_push: &[f32; 46],
         now: std::time::Instant,
     ) {
         let distance = |section: &SectionBuffers| {
@@ -266,7 +267,7 @@ impl VulkanBackend {
         &self,
         pipeline: &Pipeline,
         scene: &SceneResources,
-        terrain_push: &[f32; 45],
+        terrain_push: &[f32; 46],
         sections: &[(&SectionBuffers, u32, u32)],
         now: std::time::Instant,
     ) {
@@ -278,7 +279,7 @@ impl VulkanBackend {
             self.bind_state(
                 pipeline,
                 Some(scene.descriptor_set),
-                &[(BOTH_STAGES, 0, &as_bytes(terrain_push)[..180])],
+                &[(BOTH_STAGES, 0, &as_bytes(terrain_push)[..184])],
             );
             for &(section, first, count) in sections {
                 self.bind_section(section, pipeline.layout, now);
@@ -313,7 +314,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
-    unsafe fn record_weather(&self, scene: &SceneResources, terrain_push: &[f32; 45]) {
+    unsafe fn record_weather(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
         let Some(buffer) = self.weather_buffer.as_ref() else {
             return;
         };
@@ -344,7 +345,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
-    unsafe fn record_world_border(&self, scene: &SceneResources, terrain_push: &[f32; 45]) {
+    unsafe fn record_world_border(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
         let (Some(buffer), Some(set)) = (self.world_border_buffer.as_ref(), scene.world_border_set)
         else {
             return;
@@ -371,7 +372,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
-    unsafe fn record_hand(&self, scene: &SceneResources, terrain_push: &[f32; 45]) {
+    unsafe fn record_hand(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
         if self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_count != 0 {
             let mut hand_push = *terrain_push;
             hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
@@ -395,7 +396,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
-    unsafe fn record_screen_effects(&self, scene: &SceneResources, terrain_push: &[f32; 45]) {
+    unsafe fn record_screen_effects(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
         let Some(buffer) = self.screen_effect_buffer.as_ref() else {
             return;
         };
@@ -403,9 +404,10 @@ impl VulkanBackend {
         if blocks + water + fire == 0 {
             return;
         }
-        let mut push = [0.0_f32; 45];
+        let mut push = [0.0_f32; 46];
         push[..40].copy_from_slice(&terrain_push[..40]);
         push[44] = terrain_push[44];
+        push[45] = terrain_push[45];
         push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
             self.screen_effect_projection[i / 4][i % 4]
         }));
@@ -413,7 +415,7 @@ impl VulkanBackend {
         // No fog: the fog colour's alpha is how much of it there is.
         push[35] = 0.0;
         push[40] = 1.0;
-        let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..180])];
+        let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..184])];
         let runs = [
             (Some(scene.descriptor_set), (0, blocks)),
             (scene.underwater_set, (blocks, water)),

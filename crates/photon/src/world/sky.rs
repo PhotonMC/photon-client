@@ -266,6 +266,12 @@ impl Sky {
         );
         let view = super::fog::lightmap_view(session, partial, (fog.darken_world, flash));
         let effects = lightmap.effects(&view, partial);
+        backend.set_level_lighting(
+            session
+                .world()
+                .dimension_environment()
+                .cardinal_light_type(),
+        );
         backend.set_lightmap(&lightmap, 1.4 + self.flicker.value(), &effects);
     }
 }

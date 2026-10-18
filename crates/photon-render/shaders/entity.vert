@@ -17,7 +17,8 @@ layout(location = 6) out vec3 out_colour;
 layout(location = 7) out float out_alpha;
 // The level's two diffuse lights.
 const vec3 LIGHT0 = normalize(vec3(0.2, 1.0, -0.7));
-const vec3 LIGHT1 = normalize(vec3(-0.2, 1.0, 0.7));
+const vec3 LIGHT1_DEFAULT = normalize(vec3(-0.2, 1.0, 0.7));
+const vec3 LIGHT1_NETHER = normalize(vec3(-0.2, -1.0, 0.7));
 float mix_light(vec2 light) {
     vec2 value = max(vec2(0.0), light);
     return min(1.0, (value.x + value.y) * 0.6 + 0.4);
@@ -26,6 +27,7 @@ invariant gl_Position;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;
+    vec3 LIGHT1 = push.boss.y > 0.5 ? LIGHT1_NETHER : LIGHT1_DEFAULT;
     vec2 light = vec2(dot(LIGHT0, in_tint.xyz), dot(LIGHT1, in_tint.xyz));
     // A vertex with no normal is not shaded by face (`NO_CARDINAL_LIGHTING`),
     // and one with a negative light is not lit by the lightmap (`EMISSIVE`).

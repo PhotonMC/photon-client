@@ -136,7 +136,7 @@ pub struct VulkanBackend {
     pub(super) sort_origin: [f32; 3],
     /// The lightmap's inputs, then the darkness effect's subtraction, which the push constants
     /// carry in the camera's `w`, and the boss bars' darkening of the world.
-    pub(super) lightmap: [f32; 14],
+    pub(super) lightmap: [f32; 15],
     /// The terrain fog's colour and its four distances.
     pub(super) fog: [f32; 8],
     pub(super) render_finished: Vec<vk::Semaphore>,

@@ -81,8 +81,9 @@ fn diffuse_light(normal: [f32; 3]) -> f32 {
         [x / length, y / length, z / length]
     };
     let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-    let first = dot(direction(0.2, 1.0, -0.7), normal).max(0.0);
-    let second = dot(direction(-0.2, 1.0, 0.7), normal).max(0.0);
+    let [first, second] = crate::diffuse::level_directions();
+    let first = dot(direction(first[0], first[1], first[2]), normal).max(0.0);
+    let second = dot(direction(second[0], second[1], second[2]), normal).max(0.0);
     ((first + second) * 0.6 + 0.4).min(1.0)
 }
 

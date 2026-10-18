@@ -163,7 +163,8 @@ fn entity_light(normal: [f32; 3]) -> f32 {
         let direction = normalize(direction);
         (direction[0] * normal[0] + direction[1] * normal[1] + direction[2] * normal[2]).max(0.0)
     };
-    ((light([0.2, 1.0, -0.7]) + light([-0.2, 1.0, 0.7])) * 0.6 + 0.4).min(1.0)
+    let [first, second] = crate::diffuse::level_directions();
+    ((light(first) + light(second)) * 0.6 + 0.4).min(1.0)
 }
 
 /// A stack's dropped item, drawn: each copy (`poses`) with each layer's

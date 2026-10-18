@@ -6,6 +6,7 @@ pub mod block;
 pub mod block_entity;
 pub mod border;
 pub mod camera;
+pub mod diffuse;
 pub mod entity;
 pub mod frame_timing;
 pub mod gui;
