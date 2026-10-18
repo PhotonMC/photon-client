@@ -71,6 +71,12 @@ impl PlaySession {
             .count()
     }
 
+    /// `ClientLevel.tickRateManager().runsNormally()`: the game's elements tick (the level is not
+    /// frozen, or is stepping).
+    pub fn runs_normally(&self) -> bool {
+        self.level_info.tick_rate.runs_normally()
+    }
+
     /// How many entities the world holds besides the player.
     pub fn entity_count(&self) -> usize {
         self.world.entities().all().count()

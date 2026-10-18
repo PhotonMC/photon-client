@@ -90,6 +90,24 @@ pub fn end_sky_buffer() -> Vec<Value> {
     vec![entity("end-sky-buffer", "end_sky_buffer", vec![json!({"label": "all"})])]
 }
 
+/// The tick rate manager through scripts of the calls the packets and the game's tick make:
+/// freezing, stepping, stepping without a freeze, a rate below the least, and unfreezing mid-step.
+pub fn tick_rate_script() -> Vec<Value> {
+    let call = |name: &str, value: i64| json!({"call": name, "value": value});
+    let tick = || json!({"call": "tick", "value": 0});
+    let rate = |value: f64| json!({"call": "rate", "value": f32_bits(value)});
+    let rows = vec![
+        json!({"label": "untouched", "steps": [tick(), tick()]}),
+        json!({"label": "freeze", "steps": [call("frozen", 1), tick(), tick()]}),
+        json!({"label": "freeze and step three", "steps": [call("frozen", 1), tick(), call("steps", 3), tick(), tick(), tick(), tick(), tick()]}),
+        json!({"label": "step while running", "steps": [call("steps", 2), tick(), tick(), tick()]}),
+        json!({"label": "unfreeze mid-step", "steps": [call("frozen", 1), call("steps", 4), tick(), tick(), call("frozen", 0), tick(), tick()]}),
+        json!({"label": "rate", "steps": [rate(10.0), rate(0.25), rate(-3.0), rate(2000.0)]}),
+        json!({"label": "freeze twice", "steps": [call("frozen", 1), tick(), call("frozen", 1), call("steps", 1), tick(), tick()]}),
+    ];
+    vec![entity("tick-rate-script", "tick_rate_script", rows)]
+}
+
 /// The elytra's models (grown and baby) posed by the real
 /// `ElytraModel.setupAnim` from the wings' spread, standing and sneaking.
 pub fn elytra() -> Vec<Value> {

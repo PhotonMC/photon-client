@@ -113,6 +113,7 @@ const ORDER: &[Cases] = &[
     player::camera_spin,
     player::item_activation_pose,
     player::end_sky_buffer,
+    player::tick_rate_script,
     objects::chest_cases,
     objects::shulker_box,
     objects::bell,

@@ -170,6 +170,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("glint_layers")) {
             return glintLayers(request);
         }
+        if (operation.equals("tick_rate_script")) {
+            return tickRateScript(request);
+        }
         if (operation.equals("end_sky_buffer")) {
             return endSkyBuffer(request);
         }

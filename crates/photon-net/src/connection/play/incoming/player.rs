@@ -18,6 +18,14 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID,
         typed::<SetHeldSlot>,
     ),
+    (
+        PLAY_CLIENTBOUND_TICKING_STATE_PACKET_ID,
+        typed::<TickingState>,
+    ),
+    (
+        PLAY_CLIENTBOUND_TICKING_STEP_PACKET_ID,
+        typed::<TickingStep>,
+    ),
     (PLAY_CLIENTBOUND_GAME_EVENT_PACKET_ID, typed::<GameEvent>),
     (
         PLAY_CLIENTBOUND_PLAYER_ABILITIES_PACKET_ID,
@@ -76,6 +84,23 @@ impl ClientboundPacket for SetExperience {
 impl ClientboundPacket for SetHeldSlot {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.on_set_held_slot(self.0)
+    }
+}
+
+/// `handleTickingState`.
+impl ClientboundPacket for TickingState {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.level_info.tick_rate.set_tick_rate(self.tick_rate);
+        session.level_info.tick_rate.set_frozen(self.frozen);
+        Ok(())
+    }
+}
+
+/// `handleTickingStep`.
+impl ClientboundPacket for TickingStep {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.level_info.tick_rate.set_frozen_ticks_to_run(self.0);
+        Ok(())
     }
 }
 
@@ -160,6 +185,8 @@ impl PlaySession {
     ) -> Result<(), ConnectionError> {
         // A new level starts dry; the server repeats its weather.
         self.level_info.rain_level = 0.0;
+        // The new level has a manager of its own.
+        self.level_info.tick_rate = Default::default();
         self.level_info.thunder_level = 0.0;
         self.world.set_weather(0.0, 0.0);
         let bounds = self.state.dimension_bounds(&spawn_info);

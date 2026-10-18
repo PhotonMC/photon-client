@@ -668,6 +668,39 @@ class EntityDisplayOracle extends EntityDataOracle {
         return result;
     }
 
+    /** The real `TickRateManager` run through a script of calls, its state described after each. */
+    static JsonObject tickRateScript(final JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var manager = new net.minecraft.world.TickRateManager();
+            var states = new JsonArray();
+            for (var step : row.get("steps").getAsJsonArray()) {
+                var call = step.getAsJsonObject();
+                switch (call.get("call").getAsString()) {
+                    case "rate" -> manager.setTickRate(Oracle.f32(call, "value"));
+                    case "frozen" -> manager.setFrozen(call.get("value").getAsInt() != 0);
+                    case "steps" -> manager.setFrozenTicksToRun(call.get("value").getAsInt());
+                    case "tick" -> manager.tick();
+                    default -> throw new IllegalArgumentException(call.get("call").getAsString());
+                }
+                var state = new JsonObject();
+                state.addProperty("runs", manager.runsNormally());
+                state.addProperty("frozen", manager.isFrozen());
+                state.addProperty("steps", manager.frozenTicksToRun());
+                state.addProperty("rate", Oracle.bits(manager.tickrate()));
+                states.add(state);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("states", states);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
         var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();

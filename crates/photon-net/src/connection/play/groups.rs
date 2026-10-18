@@ -142,6 +142,8 @@ pub(super) struct LevelInfo {
     pub(super) game_time: i64,
     pub(super) rain_level: f32,
     pub(super) thunder_level: f32,
+    /// `ClientLevel.tickRateManager`.
+    pub(super) tick_rate: photon_world::tick_rate::TickRateManager,
     pub(super) clocks: std::collections::BTreeMap<i32, ClockState>,
     /// Set when the server moved the player to a new level.
     pub(super) level_reset: bool,

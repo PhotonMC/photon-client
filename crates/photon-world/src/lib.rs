@@ -57,6 +57,7 @@ mod recipes;
 mod region_copy;
 mod ride;
 mod shadow;
+pub mod tick_rate;
 
 pub use block::chest::{
     BannerView, BrushableView, CampfireView, ChestView, CopperStatueView, DYES, PortalView,

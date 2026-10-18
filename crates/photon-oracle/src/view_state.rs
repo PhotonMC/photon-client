@@ -11,8 +11,39 @@ pub(super) fn view_state_result(operation: &str, request: &Value) -> Option<Resu
         "camera_spin" => camera_spin_result(request),
         "item_activation_pose" => item_activation_pose_result(request),
         "end_sky_buffer" => Ok(end_sky_buffer_result()),
+        "tick_rate_script" => tick_rate_script_result(request),
         _ => return None,
     })
+}
+
+/// `tick_rate_script`: a `TickRateManager` taken through a script of calls, its state after each.
+fn tick_rate_script_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut manager = photon_world::tick_rate::TickRateManager::default();
+        let mut states = Vec::new();
+        for step in row["steps"].as_array().ok_or("steps")? {
+            let value = || step["value"].as_str().ok_or("value");
+            match step["call"].as_str().ok_or("call")? {
+                "rate" => manager.set_tick_rate(f32::from_bits(
+                    u32::from_str_radix(value()?, 16).map_err(|error| error.to_string())?,
+                )),
+                "frozen" => manager.set_frozen(step["value"].as_i64() != Some(0)),
+                "steps" => {
+                    manager.set_frozen_ticks_to_run(step["value"].as_i64().ok_or("value")? as i32);
+                }
+                "tick" => manager.tick(),
+                other => return Err(format!("unknown call {other}")),
+            }
+            states.push(json!({
+                "runs": manager.runs_normally(), "frozen": manager.is_frozen(),
+                "steps": manager.frozen_ticks_to_run(),
+                "rate": format!("{:08x}", manager.tick_rate().to_bits()),
+            }));
+        }
+        rows.push(json!({"label": row["label"], "states": states}));
+    }
+    Ok(json!({"rows": rows}))
 }
 
 /// `end_sky_buffer`: the End sky's twenty-four corners, quad by quad, as the vertex buffer holds

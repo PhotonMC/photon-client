@@ -148,7 +148,11 @@ pub(super) fn tick_view(
     session: &photon_net::connection::PlaySession,
     sky: &crate::world::sky::Sky,
 ) {
-    camera.boss.tick(gui.boss_bars.darkens_screen());
+    // `GameRenderer.tick`: the boss darkening and the totem run only while the level does.
+    if session.runs_normally() {
+        camera.boss.tick(gui.boss_bars.darkens_screen());
+        camera.activation.tick();
+    }
     let eyes = session.player().map(|player| {
         camera.tick(player, crate::world::fog::nausea_blend(session, 1.0));
         let at = player.position();

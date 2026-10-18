@@ -358,3 +358,29 @@ impl Decode for SetHeldSlot {
         read_varint(&mut input, "held slot").map(Self)
     }
 }
+
+/// `ClientboundTickingStatePacket`: the tick rate and whether the level is frozen.
+pub struct TickingState {
+    pub tick_rate: f32,
+    pub frozen: bool,
+}
+
+impl Decode for TickingState {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        Ok(Self {
+            tick_rate: read_f32(&mut input, "tick rate")?,
+            frozen: read_bool(&mut input, "frozen")?,
+        })
+    }
+}
+
+/// `ClientboundTickingStepPacket`: how many frozen ticks to run.
+pub struct TickingStep(pub i32);
+
+impl Decode for TickingStep {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        read_varint(&mut input, "tick steps").map(Self)
+    }
+}

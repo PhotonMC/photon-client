@@ -49,18 +49,24 @@ pub(super) fn spawn_reader(
 }
 
 impl PlaySession {
+    /// The registry id of the stack in the main hand (air when empty).
+    fn main_hand_item(&self) -> photon_core::ids::ItemId {
+        self.world
+            .local_player()
+            .and_then(|state| state.inventory_slot((36 + self.local.status.selected_slot) as i16))
+            .map_or(AIR_ITEM, |stack| stack.item_registry_id())
+    }
+
     /// One client tick: the local player, its packets, then the tick end.
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
+        // `Minecraft.tick`: the level's tick rate manager first.
+        self.level_info.tick_rate.tick();
         // The game mode's tick runs before the player moves.
         self.ensure_has_sent_carried_item()?;
         if self.local.loaded {
             self.local.drop_spam = (self.local.drop_spam - 1).max(0);
         }
-        let main_hand = self
-            .world
-            .local_player()
-            .and_then(|state| state.inventory_slot((36 + self.local.status.selected_slot) as i16))
-            .map_or(AIR_ITEM, |stack| stack.item_registry_id());
+        let main_hand = self.main_hand_item();
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
         // What the rider steers with: its input, its look, and the stick in its hands.

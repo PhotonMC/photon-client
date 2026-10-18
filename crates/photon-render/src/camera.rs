@@ -45,7 +45,6 @@ impl Camera {
         let seen = std::mem::replace(&mut self.nausea, nausea);
         let portal = std::mem::replace(&mut self.portal, player.portal_effect_intensity_now());
         self.spinning.tick(portal, seen);
-        self.activation.tick();
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
 
