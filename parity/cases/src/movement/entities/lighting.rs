@@ -203,9 +203,11 @@ pub fn dimension_rows() -> Vec<Value> {
 /// light: open, under a solid block, beside a wall and flowing.
 pub fn fluid_rows() -> Vec<Value> {
     let at = [2, 64, 3];
-    let scenes: [(&str, Vec<Value>); 4] = [
+    let ceiling = (1..=3).flat_map(|x| (2..=4).map(move |z| put(x, 65, z, "minecraft:stone"))).collect::<Vec<_>>();
+    let scenes: [(&str, Vec<Value>); 5] = [
         ("open", vec![put(2, 64, 3, "minecraft:lava")]),
         ("covered", vec![put(2, 64, 3, "minecraft:lava"), put(2, 65, 3, "minecraft:stone")]),
+        ("ceiled", cat![vec![put(2, 64, 3, "minecraft:lava")], ceiling]),
         (
             "walled",
             vec![

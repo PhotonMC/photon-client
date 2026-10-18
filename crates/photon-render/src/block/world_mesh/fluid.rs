@@ -74,6 +74,18 @@ where
     /// A neighbour's height for the corner average: the fluid's own height,
     /// a full block under the same fluid, nothing for an open neighbour and
     /// a negative mark for a solid one.
+    /// `FluidState.shouldRenderBackwardUpFace`: the surface is drawn again
+    /// from below when any column around the block above it holds something
+    /// that is neither this fluid nor solid.
+    fn shows_backward_up_face(&self, water: bool, x: i32, y: i32, z: i32) -> bool {
+        (-1..=1).any(|offset_x| {
+            (-1..=1).any(|offset_z| {
+                let (x, z) = (x + offset_x, z + offset_z);
+                !self.same(water, x, y + 1, z) && !self.solid(x, y + 1, z)
+            })
+        })
+    }
+
     pub(super) fn height(&self, water: bool, x: i32, y: i32, z: i32) -> f32 {
         match self.fluid(x, y, z) {
             Some(fluid) if fluid.water == water => {
@@ -276,8 +288,7 @@ where
                 [lx + 1.0, ly + south_east, lz + 1.0],
                 [lx + 1.0, ly + north_east, lz],
             ];
-            // Seen from below, the surface is drawn again facing down, unless
-            // the block above is solid enough to hide it.
+            // Seen from below, the surface is drawn again facing down.
             let light = self.fluid_light(x, y, z);
             add_face(
                 mesh,
@@ -286,7 +297,7 @@ where
                 1.0,
                 scaled_tint(tint, self.shade(Direction::Up)),
                 light,
-                !self.solid(x, y + 1, z),
+                self.shows_backward_up_face(water, x, y, z),
             );
         }
 
@@ -408,7 +419,7 @@ pub fn fluid_vertices<R, S, L>(
     cardinal: photon_world::CardinalLightType,
     origin: [i32; 3],
     pos: [i32; 3],
-) -> Vec<crate::scene::BlockVertex>
+) -> Mesh
 where
     R: Fn(i32, i32, i32) -> Option<BlockStateId>,
     S: Fn([i32; 3]) -> Option<BlockStateId>,
@@ -425,5 +436,5 @@ where
     };
     let mut mesh = Mesh::default();
     mesher.tesselate(pos, &mut mesh);
-    mesh.vertices
+    mesh
 }

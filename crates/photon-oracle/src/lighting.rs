@@ -190,7 +190,7 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
             i32_field(row, "y")?,
             i32_field(row, "z")?,
         ];
-        let vertices = photon_render::block::world_mesh::fluid_vertices(
+        let mesh = photon_render::block::world_mesh::fluid_vertices(
             &|x, y, z| world.block_state_at(x, y, z),
             &lighter,
             &atlas,
@@ -198,9 +198,11 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
             [at[0] & !15, at[1] & !15, at[2] & !15],
             at,
         );
-        let distinct = distinct_vertices(&vertices);
+        let distinct = distinct_vertices(&mesh.vertices);
         out.push(json!({
             "label": row["label"],
+            // Each face once, and once more where it is drawn again from behind.
+            "quads": mesh.translucent_indices.len() / 6,
             "vertices": distinct.into_values().collect::<Vec<_>>(),
         }));
     }

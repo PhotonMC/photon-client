@@ -401,6 +401,7 @@ class MovementEntityOracle extends MovementSupport {
         renderer.tesselate(level, pos, layer -> builder, state, state.getFluidState());
         // Which vertices there are, not in what order or how often: the
         // surface seen from below is a second quad here, shared vertices there.
+        entry.addProperty("quads", vertices.size() / 4);
         var distinct = new java.util.TreeMap<String, com.google.gson.JsonElement>();
         for (var vertex : vertices) {
             var described = vertex.getAsJsonObject();
