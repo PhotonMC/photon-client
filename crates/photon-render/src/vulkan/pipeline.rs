@@ -196,26 +196,15 @@ impl VulkanBackend {
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default()
                 // The sky is behind everything and tests nothing. Translucent
-                // faces are tested against the opaque depth but leave it
-                // alone, so what is behind them still shows. Depth is
+                // terrain writes depth, as the reference's does, its faces
+                // being ordered farthest first so that what is behind them
+                // still shows, while what is drawn after them (particles,
+                // clouds, weather) stays behind them. Depth is
                 // reversed and equal depth passes, as in the reference, so
                 // a model's later face over an earlier one at the same place
                 // (the grass side overlay) is the one seen.
                 .depth_test_enable(!sky && !gui && !text_see_through && !screen_effect)
-                .depth_write_enable(matches!(
-                    kind,
-                    PipelineKind::Terrain
-                        | PipelineKind::Clouds
-                        | PipelineKind::Entity
-                        | PipelineKind::Dissolve
-                        | PipelineKind::Rays
-                        | PipelineKind::Portal
-                        | PipelineKind::Swirl
-                        | PipelineKind::Text
-                        | PipelineKind::Lines
-                        | PipelineKind::GuiItem
-                        | PipelineKind::WorldBorder
-                ))
+                .depth_write_enable(writes_depth(kind))
                 .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
             let blends = [if crumbling {
                 // Source times destination, twice: darkens and lightens.
@@ -393,4 +382,23 @@ impl VulkanBackend {
             }
         }
     }
+}
+
+/// Whether a pipeline's draws write the depth buffer.
+fn writes_depth(kind: PipelineKind) -> bool {
+    matches!(
+        kind,
+        PipelineKind::Terrain
+            | PipelineKind::Translucent
+            | PipelineKind::Clouds
+            | PipelineKind::Entity
+            | PipelineKind::Dissolve
+            | PipelineKind::Rays
+            | PipelineKind::Portal
+            | PipelineKind::Swirl
+            | PipelineKind::Text
+            | PipelineKind::Lines
+            | PipelineKind::GuiItem
+            | PipelineKind::WorldBorder
+    )
 }
