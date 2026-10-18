@@ -24,7 +24,7 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
 /// the blocks around it (`BlockModelLighter`), over a level lit as the
 /// client lights it.
 pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
-    use photon_render::block::light::{Lighter, cardinal, grey};
+    use photon_render::block::light::{Lighter, face_shade, grey};
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows must be an array")? {
         let mut world = movement_world(row)?;
@@ -69,11 +69,11 @@ pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
             }
             let smooth = quad["smooth"].as_bool().ok_or("smooth must be a bool")?;
             let lit = lighter.light_quad(state, at, &corners, face, cull, smooth);
-            let side = if quad["shade"].as_bool().ok_or("shade must be a bool")? {
-                cardinal(face, kind)
-            } else {
-                cardinal(Direction::Up, kind)
-            };
+            let side = face_shade(
+                face,
+                quad["shade"].as_bool().ok_or("shade must be a bool")?,
+                kind,
+            );
             let vertices: Vec<Value> = (0..4)
                 .map(|corner| json!({"grey": grey(&lit, corner, side), "light": lit.light[corner]}))
                 .collect();

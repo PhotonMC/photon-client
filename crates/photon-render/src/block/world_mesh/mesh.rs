@@ -424,11 +424,7 @@ pub(super) fn push_block_quad(
     shift: [f32; 3],
     cardinal: photon_world::CardinalLightType,
 ) {
-    let side = if quad.shade {
-        crate::block::light::cardinal(quad.direction, cardinal)
-    } else {
-        crate::block::light::cardinal(Direction::Up, cardinal)
-    };
+    let side = crate::block::light::face_shade(quad.direction, quad.shade, cardinal);
     let tint = [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as i32);
     let white = tint == [255, 255, 255, 255];
     let base = mesh.vertices.len() as u32;
