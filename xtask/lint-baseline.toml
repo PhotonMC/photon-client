@@ -872,7 +872,7 @@
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::load" = 76
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 136
 "crates/photon-render/src/block/light.rs::adjacency" = 99
-"crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 186
+"crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 180
 "crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 74
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 81
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 134

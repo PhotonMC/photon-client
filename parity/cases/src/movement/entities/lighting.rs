@@ -198,3 +198,39 @@ pub fn dimension_rows() -> Vec<Value> {
     ];
     rows.into_iter().map(|(label, cardinal)| json!({"label": label, "cardinal": cardinal})).collect()
 }
+
+/// The vertices of a lava block, with the default and the Nether's cardinal
+/// light: open, under a solid block, beside a wall and flowing.
+pub fn fluid_rows() -> Vec<Value> {
+    let at = [2, 64, 3];
+    let scenes: [(&str, Vec<Value>); 4] = [
+        ("open", vec![put(2, 64, 3, "minecraft:lava")]),
+        ("covered", vec![put(2, 64, 3, "minecraft:lava"), put(2, 65, 3, "minecraft:stone")]),
+        (
+            "walled",
+            vec![
+                put(2, 64, 3, "minecraft:lava"),
+                put(3, 64, 3, "minecraft:stone"),
+                put(2, 64, 2, "minecraft:stone"),
+                put(2, 64, 4, "minecraft:lava"),
+            ],
+        ),
+        ("flowing", vec![put_with(2, 64, 3, "minecraft:lava", &[("level", "3")])]),
+    ];
+    let mut rows = Vec::new();
+    for cardinal in [None, Some("nether")] {
+        for (label, blocks) in &scenes {
+            let mut row = json!({
+                "label": format!("{}{label}", if cardinal.is_some() { "nether-" } else { "" }),
+                "blocks": cat![floor(), blocks.clone()],
+                "chunk_radius": 1,
+                "x": at[0], "y": at[1], "z": at[2],
+            });
+            if let Some(kind) = cardinal {
+                row["cardinal"] = json!(kind);
+            }
+            rows.push(row);
+        }
+    }
+    rows
+}

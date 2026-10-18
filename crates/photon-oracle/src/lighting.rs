@@ -15,6 +15,7 @@ pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result
     match operation {
         "block_lighting" => Some(block_lighting_result(request)),
         "block_smooth_gate" => Some(block_smooth_gate_result(request)),
+        "fluid_mesh" => Some(fluid_mesh_result(request)),
         "dimension_cardinal_light" => Some(dimension_cardinal_light_result(request)),
         "entity_shadows" => Some(entity_shadows_result(request)),
         _ => None,
@@ -159,4 +160,95 @@ pub(super) fn dimension_cardinal_light_result(request: &Value) -> Result<Value, 
         out.push(json!({"label": row["label"], "result": decoded}));
     }
     Ok(json!({"rows": out}))
+}
+
+/// `fluid_mesh`: the vertices of the fluid block at the row's position, as
+/// `FluidRenderer` adds them, over a level lit as the client lights it.
+pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
+    use photon_render::block::light::Lighter;
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let mut world = movement_world(row)?;
+        world.light_from_sources();
+        world.run_light_updates();
+        let lighter = Lighter {
+            state: |p: [i32; 3]| world.block_state_at(p[0], p[1], p[2]),
+            light: |p: [i32; 3]| {
+                (
+                    world.block_brightness(p[0], p[1], p[2]),
+                    world.sky_brightness(p[0], p[1], p[2]),
+                )
+            },
+        };
+        let kind = match row["cardinal"].as_str() {
+            Some("nether") => photon_world::CardinalLightType::Nether,
+            _ => photon_world::CardinalLightType::Default,
+        };
+        let atlas = fluid_atlas();
+        let at = [
+            i32_field(row, "x")?,
+            i32_field(row, "y")?,
+            i32_field(row, "z")?,
+        ];
+        let vertices = photon_render::block::world_mesh::fluid_vertices(
+            &|x, y, z| world.block_state_at(x, y, z),
+            &lighter,
+            &atlas,
+            kind,
+            [at[0] & !15, at[1] & !15, at[2] & !15],
+            at,
+        );
+        let distinct = distinct_vertices(&vertices);
+        out.push(json!({
+            "label": row["label"],
+            "vertices": distinct.into_values().collect::<Vec<_>>(),
+        }));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// An atlas that knows where the fluid sprites are, which the renderer asks
+/// for by name; their coordinates are not compared.
+fn fluid_atlas() -> photon_render::BuiltAtlas {
+    photon_render::BuiltAtlas {
+        width: 1,
+        height: 1,
+        levels: Vec::new(),
+        sprites: [
+            "minecraft:block/water_still",
+            "minecraft:block/water_flow",
+            "minecraft:block/water_overlay",
+            "minecraft:block/lava_still",
+            "minecraft:block/lava_flow",
+        ]
+        .into_iter()
+        .map(|name| (name.to_owned(), [0.0; 4]))
+        .collect(),
+        animations: Vec::new(),
+    }
+}
+
+/// The distinct vertices, each as place bits, colour and light, ordered by
+/// those.
+fn distinct_vertices(
+    vertices: &[photon_render::scene::BlockVertex],
+) -> std::collections::BTreeMap<String, Value> {
+    vertices
+        .iter()
+        .map(|vertex| {
+            let [r, g, b, a] = vertex.colour;
+            let [block, sky] = vertex.light_levels();
+            let described = json!({
+                "position": vertex.position.map(|part| format!("{:x}", part.to_bits())),
+                "color": (u32::from(a) << 24) | (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b),
+                "block_light": block as i64,
+                "sky_light": sky as i64,
+            });
+            let key = format!(
+                "{}:{}:{}:{}",
+                described["position"], described["color"], described["block_light"], described["sky_light"],
+            );
+            (key, described)
+        })
+        .collect()
 }

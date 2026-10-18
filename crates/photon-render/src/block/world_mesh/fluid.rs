@@ -122,10 +122,6 @@ where
         weighted[0] / weighted[1]
     }
 
-    /// Whether the neighbour hides the fluid's face towards it, from the
-    /// neighbour's face occlusion shape. A whole-block shape hides every face
-    /// but a surface below full height; a partial one is treated as hiding
-    /// nothing, which is where this still differs from the reference.
     /// `FluidRenderer`'s shade of the top and bottom faces.
     fn shade(&self, direction: Direction) -> f32 {
         crate::block::light::cardinal(direction, self.cardinal)
@@ -136,6 +132,10 @@ where
         self.shade(Direction::Up) * self.shade(direction)
     }
 
+    /// Whether the neighbour hides the fluid's face towards it, from the
+    /// neighbour's face occlusion shape. A whole-block shape hides every face
+    /// but a surface below full height; a partial one is treated as hiding
+    /// nothing, which is where this still differs from the reference.
     pub(super) fn occluded(
         &self,
         direction: Direction,
@@ -240,12 +240,6 @@ where
         } else {
             0xFFFFFF
         };
-        let tint = [
-            ((tint >> 16) & 0xff) as f32 / 255.0,
-            ((tint >> 8) & 0xff) as f32 / 255.0,
-            (tint & 0xff) as f32 / 255.0,
-            1.0,
-        ];
         let lx = (x - self.origin[0]) as f32;
         let ly = (y - self.origin[1]) as f32;
         let lz = (z - self.origin[2]) as f32;
@@ -289,8 +283,8 @@ where
                 mesh,
                 corners,
                 uv,
-                self.shade(Direction::Up),
-                tint,
+                1.0,
+                scaled_tint(tint, self.shade(Direction::Up)),
                 light,
                 !self.solid(x, y + 1, z),
             );
@@ -307,8 +301,8 @@ where
                     [lx, ly + bottom, lz + 1.0],
                 ],
                 [[u0, v0], [u1, v0], [u1, v1], [u0, v1]],
-                self.shade(Direction::Down),
-                tint,
+                1.0,
+                scaled_tint(tint, self.shade(Direction::Down)),
                 self.fluid_light(x, y - 1, z),
                 false,
             );
@@ -384,11 +378,52 @@ where
                     [u(0.5), v(0.5)],
                     [u(0.0), v(0.5)],
                 ],
-                shade,
-                tint,
+                1.0,
+                scaled_tint(tint, shade),
                 self.fluid_light(x, y, z),
                 !overlay,
             );
         }
     }
+}
+
+/// The tint with the shade applied the way `ARGB.scaleRGB` applies it: each
+/// channel scaled, then truncated to a whole number, where a face's own
+/// shading would round it. Meant for `add_face` with a shade of one.
+fn scaled_tint(tint: u32, shade: f32) -> [f32; 4] {
+    let scaled = |shift: u32| {
+        let channel = ((tint >> shift) & 0xff) as f32;
+        (channel * shade).clamp(0.0, 255.0).trunc() / 255.0
+    };
+    [scaled(16), scaled(8), scaled(0), 1.0]
+}
+
+/// The fluid block at `pos` meshed on its own, for a scene the caller lights
+/// and reads: the vertices `FluidRenderer` would add, placed relative to
+/// `origin`.
+pub fn fluid_vertices<R, S, L>(
+    read: &R,
+    lighter: &crate::block::light::Lighter<S, L>,
+    atlas: &BuiltAtlas,
+    cardinal: photon_world::CardinalLightType,
+    origin: [i32; 3],
+    pos: [i32; 3],
+) -> Vec<crate::scene::BlockVertex>
+where
+    R: Fn(i32, i32, i32) -> Option<BlockStateId>,
+    S: Fn([i32; 3]) -> Option<BlockStateId>,
+    L: Fn([i32; 3]) -> (u8, u8),
+{
+    let untinted = |_: crate::block::biome_tint::TintKind, _: [i32; 3]| 0xFF_FFFF;
+    let mesher = FluidMesher {
+        biome_tint: &untinted,
+        read,
+        lighter,
+        atlas,
+        origin,
+        cardinal,
+    };
+    let mut mesh = Mesh::default();
+    mesher.tesselate(pos, &mut mesh);
+    mesh.vertices
 }

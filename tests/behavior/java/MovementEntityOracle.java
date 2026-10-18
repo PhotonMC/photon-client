@@ -350,17 +350,14 @@ class MovementEntityOracle extends MovementSupport {
         return entry;
     }
 
-    /** `BlockModelLighter` on quads the row describes, in the level the row builds. */
-    static JsonObject blockLighting(JsonObject row) throws Exception {
-        var entry = new JsonObject();
-        entry.addProperty("label", row.get("label").getAsString());
-        var scene = litScene(row);
-        var level = scene.level();
+    /**
+     * Gives the level the nether's cardinal light when the row asks for it.
+     * Only the face shade comes from the dimension type, which is what
+     * `ClientLevel.cardinalLighting` reads. The overworld's type with the
+     * nether's cardinal light keeps the level's height and lighting as built.
+     */
+    static void useCardinal(net.minecraft.client.multiplayer.ClientLevel level, JsonObject row) throws Exception {
         if (row.has("cardinal") && row.get("cardinal").getAsString().equals("nether")) {
-            // Only the face shade comes from the dimension type, which is what
-            // `ClientLevel.cardinalLighting` reads. The overworld's type with
-            // the nether's cardinal light keeps the level's height and lighting
-            // as built.
             var base = level.dimensionType();
             var changed = new net.minecraft.world.level.dimension.DimensionType(
                 base.hasFixedTime(), base.hasSkyLight(), base.hasCeiling(),
@@ -372,6 +369,109 @@ class MovementEntityOracle extends MovementSupport {
             setField(level, "dimensionTypeRegistration",
                 net.minecraft.core.Holder.direct(changed));
         }
+    }
+
+    /**
+     * What `FluidRenderer` emits for the fluid block at the row's position:
+     * every vertex's place, colour and light, the sprite's own coordinates
+     * left out (a blank sprite stands in for the atlas).
+     */
+    static JsonObject fluidMesh(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = litScene(row);
+        var level = scene.level();
+        useCardinal(level, row);
+        var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
+            unsafe.allocateInstance(BlankSprite.class);
+        var material = new net.minecraft.client.resources.model.sprite.Material.Baked(sprite, false);
+        var lava = new net.minecraft.client.renderer.block.FluidModel(
+            net.minecraft.client.renderer.chunk.ChunkSectionLayer.SOLID, material, material, null, null);
+        var models = new java.util.HashMap<net.minecraft.world.level.material.Fluid,
+            net.minecraft.client.renderer.block.FluidModel>();
+        models.put(net.minecraft.world.level.material.Fluids.LAVA, lava);
+        models.put(net.minecraft.world.level.material.Fluids.FLOWING_LAVA, lava);
+        var renderer = new net.minecraft.client.renderer.block.FluidRenderer(
+            new net.minecraft.client.renderer.block.FluidStateModelSet(models, lava));
+        var pos = new net.minecraft.core.BlockPos(
+            row.get("x").getAsInt(), row.get("y").getAsInt(), row.get("z").getAsInt());
+        var state = level.getBlockState(pos);
+        var vertices = new com.google.gson.JsonArray();
+        var builder = new RecordingVertices(vertices);
+        renderer.tesselate(level, pos, layer -> builder, state, state.getFluidState());
+        // Which vertices there are, not in what order or how often: the
+        // surface seen from below is a second quad here, shared vertices there.
+        var distinct = new java.util.TreeMap<String, com.google.gson.JsonElement>();
+        for (var vertex : vertices) {
+            var described = vertex.getAsJsonObject();
+            distinct.put(described.get("position") + ":" + described.get("color") + ":"
+                + described.get("block_light") + ":" + described.get("sky_light"), vertex);
+        }
+        var sorted = new com.google.gson.JsonArray();
+        distinct.values().forEach(sorted::add);
+        entry.add("vertices", sorted);
+        return entry;
+    }
+
+    /** Collects each vertex a renderer adds: position bits, colour and packed light. */
+    static final class RecordingVertices implements com.mojang.blaze3d.vertex.VertexConsumer {
+        private final com.google.gson.JsonArray out;
+        private JsonObject vertex;
+
+        RecordingVertices(com.google.gson.JsonArray out) {
+            this.out = out;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer addVertex(float x, float y, float z) {
+            vertex = new JsonObject();
+            var position = new com.google.gson.JsonArray();
+            for (float part : new float[] {x, y, z}) {
+                position.add(Integer.toHexString(Float.floatToRawIntBits(part)));
+            }
+            vertex.add("position", position);
+            out.add(vertex);
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(int r, int g, int b, int a) {
+            return setColor(a << 24 | r << 16 | g << 8 | b);
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setColor(int color) {
+            vertex.addProperty("color", Integer.toUnsignedLong(color));
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv(float u, float v) {
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv1(int u, int v) {
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setUv2(int u, int v) {
+            vertex.addProperty("block_light", u);
+            vertex.addProperty("sky_light", v);
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setNormal(float x, float y, float z) {
+            return this;
+        }
+
+        public com.mojang.blaze3d.vertex.VertexConsumer setLineWidth(float width) {
+            return this;
+        }
+    }
+
+    /** `BlockModelLighter` on quads the row describes, in the level the row builds. */
+    static JsonObject blockLighting(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = litScene(row);
+        var level = scene.level();
+        useCardinal(level, row);
         var lighter = new net.minecraft.client.renderer.block.BlockModelLighter();
         var quads = new JsonArray();
         for (var element : row.getAsJsonArray("quads")) {
