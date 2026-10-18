@@ -6,8 +6,10 @@ use photon_world::particles::JukeboxChange;
 impl Play {
     /// `handlePortalTransitionEffect`: a screen that is not allowed in a portal (a pause
     /// screen is, as are the chat, the death screen and the credits) closes, a container with its
-    /// close packet. The screens that carry packets of their own when they close (signs, books,
-    /// dialogs that do not pause) are not closed yet.
+    /// close packet. The non-pause screens that carry packets of their own when they close (signs,
+    /// lectern, structure and test blocks, dialogs that do not pause) are not closed yet; the
+    /// book screens are pause screens and stay open. The social and mode switcher screens only
+    /// open from gameplay, so nothing sits under them.
     fn close_screens_in_portal(&mut self) {
         if !self.session.take_portal_screen_close() {
             return;
