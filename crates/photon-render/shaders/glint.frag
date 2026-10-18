@@ -14,10 +14,23 @@ float linear_fog(float distance, float start, float end) {
     if (distance >= end) { return 1.0; }
     return (distance - start) / (end - start);
 }
+vec4 glint_texel(vec2 origin, vec2 size, vec2 at) {
+    vec2 wrapped = mod(at, size);
+    return texelFetch(skin, ivec2(origin + wrapped), 0);
+}
 void main() {
-    vec2 local = (in_uv - in_rect.xy) / in_rect.zw;
-    vec2 wrapped = in_rect.xy + fract(local) * in_rect.zw;
-    vec4 colour = texture(skin, wrapped);
+    // The glint textures say `blur: true`: linear filtering, repeating at the
+    // texture's own edge, which the atlas cannot do for a rect inside it.
+    vec2 atlas = vec2(textureSize(skin, 0));
+    vec2 origin = round(in_rect.xy * atlas);
+    vec2 size = round(in_rect.zw * atlas);
+    vec2 texel = ((in_uv - in_rect.xy) / in_rect.zw) * size - 0.5;
+    vec2 base = floor(texel);
+    vec2 weight = texel - base;
+    vec4 colour = mix(
+        mix(glint_texel(origin, size, base), glint_texel(origin, size, base + vec2(1.0, 0.0)), weight.x),
+        mix(glint_texel(origin, size, base + vec2(0.0, 1.0)), glint_texel(origin, size, base + vec2(1.0)), weight.x),
+        weight.y);
     if (colour.a < 0.1) { discard; }
     float fog = max(
         linear_fog(in_fog.x, push.fog_distances.x, push.fog_distances.y),
