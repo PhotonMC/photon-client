@@ -40,8 +40,8 @@ pub struct BlockRenderer {
 mod conduit;
 pub use conduit::ConduitMeshes;
 mod fluid;
-pub use fluid::fluid_vertices;
 use fluid::*;
+pub use fluid::{FluidView, fluid_vertices};
 mod item_frame;
 pub use item_frame::*;
 mod mesh;

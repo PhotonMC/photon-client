@@ -385,12 +385,16 @@ class MovementEntityOracle extends MovementSupport {
         var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
             unsafe.allocateInstance(BlankSprite.class);
         var material = new net.minecraft.client.resources.model.sprite.Material.Baked(sprite, false);
-        var lava = new net.minecraft.client.renderer.block.FluidModel(
-            net.minecraft.client.renderer.chunk.ChunkSectionLayer.SOLID, material, material, null, null);
+        var layer = net.minecraft.client.renderer.chunk.ChunkSectionLayer.SOLID;
+        var lava = new net.minecraft.client.renderer.block.FluidModel(layer, material, material, null, null);
+        var water = new net.minecraft.client.renderer.block.FluidModel(
+            layer, material, material, material, net.minecraft.client.color.block.BlockTintSources.water());
         var models = new java.util.HashMap<net.minecraft.world.level.material.Fluid,
             net.minecraft.client.renderer.block.FluidModel>();
         models.put(net.minecraft.world.level.material.Fluids.LAVA, lava);
         models.put(net.minecraft.world.level.material.Fluids.FLOWING_LAVA, lava);
+        models.put(net.minecraft.world.level.material.Fluids.WATER, water);
+        models.put(net.minecraft.world.level.material.Fluids.FLOWING_WATER, water);
         var renderer = new net.minecraft.client.renderer.block.FluidRenderer(
             new net.minecraft.client.renderer.block.FluidStateModelSet(models, lava));
         var pos = new net.minecraft.core.BlockPos(
@@ -398,7 +402,7 @@ class MovementEntityOracle extends MovementSupport {
         var state = level.getBlockState(pos);
         var vertices = new com.google.gson.JsonArray();
         var builder = new RecordingVertices(vertices);
-        renderer.tesselate(level, pos, layer -> builder, state, state.getFluidState());
+        renderer.tesselate(level, pos, ignored -> builder, state, state.getFluidState());
         // Which vertices there are, not in what order or how often: the
         // surface seen from below is a second quad here, shared vertices there.
         entry.addProperty("quads", vertices.size() / 4);

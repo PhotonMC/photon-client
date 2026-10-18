@@ -409,30 +409,37 @@ fn scaled_tint(tint: u32, shade: f32) -> [f32; 4] {
     [scaled(16), scaled(8), scaled(0), 1.0]
 }
 
+/// What a fluid block is meshed in: the level to read and light, the atlas,
+/// the dimension's cardinal light and the water tint every position takes.
+pub struct FluidView<'a, R, S, L> {
+    pub read: &'a R,
+    pub lighter: &'a crate::block::light::Lighter<S, L>,
+    pub atlas: &'a BuiltAtlas,
+    pub cardinal: photon_world::CardinalLightType,
+    pub origin: [i32; 3],
+    pub water_tint: u32,
+}
+
 /// The fluid block at `pos` meshed on its own, for a scene the caller lights
-/// and reads: the vertices `FluidRenderer` would add, placed relative to
-/// `origin`.
-pub fn fluid_vertices<R, S, L>(
-    read: &R,
-    lighter: &crate::block::light::Lighter<S, L>,
-    atlas: &BuiltAtlas,
-    cardinal: photon_world::CardinalLightType,
-    origin: [i32; 3],
-    pos: [i32; 3],
-) -> Mesh
+/// and reads: what `FluidRenderer` would add, placed relative to the view's
+/// origin.
+pub fn fluid_vertices<R, S, L>(view: &FluidView<'_, R, S, L>, pos: [i32; 3]) -> Mesh
 where
     R: Fn(i32, i32, i32) -> Option<BlockStateId>,
     S: Fn([i32; 3]) -> Option<BlockStateId>,
     L: Fn([i32; 3]) -> (u8, u8),
 {
-    let untinted = |_: crate::block::biome_tint::TintKind, _: [i32; 3]| 0xFF_FFFF;
+    let tint = |kind: crate::block::biome_tint::TintKind, _: [i32; 3]| match kind {
+        crate::block::biome_tint::TintKind::Water => view.water_tint,
+        _ => 0xFF_FFFF,
+    };
     let mesher = FluidMesher {
-        biome_tint: &untinted,
-        read,
-        lighter,
-        atlas,
-        origin,
-        cardinal,
+        biome_tint: &tint,
+        read: view.read,
+        lighter: view.lighter,
+        atlas: view.atlas,
+        origin: view.origin,
+        cardinal: view.cardinal,
     };
     let mut mesh = Mesh::default();
     mesher.tesselate(pos, &mut mesh);

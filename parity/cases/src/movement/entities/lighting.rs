@@ -199,39 +199,39 @@ pub fn dimension_rows() -> Vec<Value> {
     rows.into_iter().map(|(label, cardinal)| json!({"label": label, "cardinal": cardinal})).collect()
 }
 
-/// The vertices of a lava block, with the default and the Nether's cardinal
-/// light: open, under a solid block, beside a wall and flowing.
+/// The vertices of a lava or water block, with the default and the Nether's
+/// cardinal light: open, under a solid block, under a ceiling, beside a wall
+/// and flowing.
 pub fn fluid_rows() -> Vec<Value> {
     let at = [2, 64, 3];
     let ceiling = (1..=3).flat_map(|x| (2..=4).map(move |z| put(x, 65, z, "minecraft:stone"))).collect::<Vec<_>>();
-    let scenes: [(&str, Vec<Value>); 5] = [
-        ("open", vec![put(2, 64, 3, "minecraft:lava")]),
-        ("covered", vec![put(2, 64, 3, "minecraft:lava"), put(2, 65, 3, "minecraft:stone")]),
-        ("ceiled", cat![vec![put(2, 64, 3, "minecraft:lava")], ceiling]),
-        (
-            "walled",
-            vec![
-                put(2, 64, 3, "minecraft:lava"),
-                put(3, 64, 3, "minecraft:stone"),
-                put(2, 64, 2, "minecraft:stone"),
-                put(2, 64, 4, "minecraft:lava"),
-            ],
-        ),
-        ("flowing", vec![put_with(2, 64, 3, "minecraft:lava", &[("level", "3")])]),
-    ];
     let mut rows = Vec::new();
-    for cardinal in [None, Some("nether")] {
-        for (label, blocks) in &scenes {
-            let mut row = json!({
-                "label": format!("{}{label}", if cardinal.is_some() { "nether-" } else { "" }),
-                "blocks": cat![floor(), blocks.clone()],
-                "chunk_radius": 1,
-                "x": at[0], "y": at[1], "z": at[2],
-            });
-            if let Some(kind) = cardinal {
-                row["cardinal"] = json!(kind);
+    for fluid in ["lava", "water"] {
+        let id = format!("minecraft:{fluid}");
+        let source = || put(2, 64, 3, &id);
+        let scenes: [(&str, Vec<Value>); 5] = [
+            ("open", vec![source()]),
+            ("covered", vec![source(), put(2, 65, 3, "minecraft:stone")]),
+            ("ceiled", cat![vec![source()], ceiling.clone()]),
+            (
+                "walled",
+                vec![source(), put(3, 64, 3, "minecraft:stone"), put(2, 64, 2, "minecraft:stone"), put(2, 64, 4, &id)],
+            ),
+            ("flowing", vec![put_with(2, 64, 3, &id, &[("level", "3")])]),
+        ];
+        for cardinal in [None, Some("nether")] {
+            for (label, blocks) in &scenes {
+                let mut row = json!({
+                    "label": format!("{fluid}-{}{label}", if cardinal.is_some() { "nether-" } else { "" }),
+                    "blocks": cat![floor(), blocks.clone()],
+                    "chunk_radius": 1,
+                    "x": at[0], "y": at[1], "z": at[2],
+                });
+                if let Some(kind) = cardinal {
+                    row["cardinal"] = json!(kind);
+                }
+                rows.push(row);
             }
-            rows.push(row);
         }
     }
     rows

@@ -162,6 +162,10 @@ pub(super) fn dimension_cardinal_light_result(request: &Value) -> Result<Value, 
     Ok(json!({"rows": out}))
 }
 
+/// The water colour of the scenes' biome, which `getAverageWaterColor` blends
+/// to itself where the biome is the same all around.
+const WATER_TINT: u32 = 0x3F_76E4;
+
 /// `fluid_mesh`: the vertices of the fluid block at the row's position, as
 /// `FluidRenderer` adds them, over a level lit as the client lights it.
 pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
@@ -190,14 +194,15 @@ pub(super) fn fluid_mesh_result(request: &Value) -> Result<Value, String> {
             i32_field(row, "y")?,
             i32_field(row, "z")?,
         ];
-        let mesh = photon_render::block::world_mesh::fluid_vertices(
-            &|x, y, z| world.block_state_at(x, y, z),
-            &lighter,
-            &atlas,
-            kind,
-            [at[0] & !15, at[1] & !15, at[2] & !15],
-            at,
-        );
+        let view = photon_render::block::world_mesh::FluidView {
+            read: &|x, y, z| world.block_state_at(x, y, z),
+            lighter: &lighter,
+            atlas: &atlas,
+            cardinal: kind,
+            origin: [at[0] & !15, at[1] & !15, at[2] & !15],
+            water_tint: WATER_TINT,
+        };
+        let mesh = photon_render::block::world_mesh::fluid_vertices(&view, at);
         let distinct = distinct_vertices(&mesh.vertices);
         out.push(json!({
             "label": row["label"],
