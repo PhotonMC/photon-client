@@ -14,6 +14,7 @@ impl Gui {
         let (atlas, texture) =
             GuiAtlas::load(root, &[&font, &alt_font]).ok_or("the HUD sprites could not be read")?;
         backend.load_gui_texture(&texture)?;
+        let started_at = std::time::Instant::now();
         let mut gui = Self {
             font,
             alt_font,
@@ -32,11 +33,10 @@ impl Gui {
             tab_footer: Vec::new(),
             last_tick: std::time::Instant::now(),
             items: ItemLayerCache::new(photon_render::model::DisplayContext::Gui),
-            started_at: std::time::Instant::now(),
+            started_at,
             assets_root: root.to_path_buf(),
             last_frame_ms: 0,
-            subtitles: photon_gui::hud::subtitles::Subtitles::default(),
-            listener: None,
+            layers: super::layers::Layers::new(started_at),
         };
         gui.hud
             .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load(root));

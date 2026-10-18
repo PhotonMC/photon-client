@@ -26,6 +26,13 @@ impl<S: ChannelSource> SoundEngine<S> {
         self.listening = listening;
     }
 
+    /// The sound an instance was picked to be (`SoundInstance.getSound`), once it has been played.
+    pub fn picked_sound(&self, id: InstanceId) -> Option<&Sound> {
+        self.instances
+            .get(&id)
+            .and_then(|instance| instance.sound.as_ref())
+    }
+
     /// What the listener was told since it last asked.
     pub fn take_heard(&mut self) -> Vec<Heard> {
         std::mem::take(&mut self.heard)

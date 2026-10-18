@@ -80,6 +80,10 @@ pub trait MusicHost {
     fn stop(&mut self, event: &str);
     /// `SoundManager.updateCategoryVolume(MUSIC, gain)`.
     fn update_music_volume(&mut self, gain: f32);
+    /// `ToastManager.showNowPlayingToast`.
+    fn show_now_playing_toast(&mut self) {}
+    /// `ToastManager.hideNowPlayingToast`.
+    fn hide_now_playing_toast(&mut self) {}
 }
 
 pub struct MusicManager {
@@ -89,6 +93,8 @@ pub struct MusicManager {
     frequency: MusicFrequency,
     current_gain: f32,
     next_song_delay: i32,
+    /// Whether the now-playing toast was shown for the song (`toastShown`).
+    toast_shown: bool,
 }
 
 /// `MusicFrequency.maxFrequency`, in ticks.
@@ -117,6 +123,7 @@ impl MusicManager {
             frequency,
             current_gain: 1.0,
             next_song_delay: STARTING_DELAY,
+            toast_shown: false,
         }
     }
 
@@ -193,14 +200,31 @@ impl MusicManager {
     /// `startPlaying`.
     pub fn start_playing(&mut self, music: &Music, host: &mut impl MusicHost) {
         self.current = Some(music.sound.clone());
-        host.play(music);
+        match host.play(music) {
+            Started::Yes => {
+                host.show_now_playing_toast();
+                self.toast_shown = true;
+            }
+            Started::Silently => self.toast_shown = false,
+            Started::No => {}
+        }
         self.next_song_delay = i32::MAX;
+    }
+
+    /// `showNowPlayingToastIfNeeded`: the toast of a song that began silently, shown once the music
+    /// is heard.
+    pub fn show_now_playing_toast_if_needed(&mut self, host: &mut impl MusicHost) {
+        if !self.toast_shown {
+            host.show_now_playing_toast();
+            self.toast_shown = true;
+        }
     }
 
     /// `stopPlaying()`.
     pub fn stop_playing(&mut self, host: &mut impl MusicHost) {
         if let Some(current) = self.current.take() {
             host.stop(&current);
+            host.hide_now_playing_toast();
         }
         let music = host.situational_music();
         self.next_song_delay = self.next_delay(music.as_ref()) + 100;
@@ -239,6 +263,9 @@ mod tests {
         active: bool,
         played: Vec<String>,
         stops: i32,
+        started: Started,
+        /// The toast's shows (true) and hides (false), in order.
+        toast: Vec<bool>,
     }
 
     impl MusicHost for Host {
@@ -257,13 +284,19 @@ mod tests {
         fn play(&mut self, music: &Music) -> Started {
             self.played.push(music.sound.clone());
             self.active = true;
-            Started::Yes
+            self.started
         }
         fn stop(&mut self, _: &str) {
             self.stops += 1;
             self.active = false;
         }
         fn update_music_volume(&mut self, _: f32) {}
+        fn show_now_playing_toast(&mut self) {
+            self.toast.push(true);
+        }
+        fn hide_now_playing_toast(&mut self) {
+            self.toast.push(false);
+        }
     }
 
     #[test]
@@ -273,6 +306,8 @@ mod tests {
             active: false,
             played: Vec::new(),
             stops: 0,
+            started: Started::Yes,
+            toast: Vec::new(),
         };
         let mut manager = MusicManager::new(RandomSource::create(1), MusicFrequency::Default);
         for _ in 0..99 {
@@ -294,6 +329,8 @@ mod tests {
             active: false,
             played: Vec::new(),
             stops: 0,
+            started: Started::Yes,
+            toast: Vec::new(),
         };
         let mut manager = MusicManager::new(RandomSource::create(1), MusicFrequency::Constant);
         for _ in 0..100 {
@@ -302,5 +339,33 @@ mod tests {
         host.music = Some(Music::new("minecraft:music.end", 600, 1200, true));
         manager.tick(&mut host);
         assert_eq!(host.stops, 1);
+    }
+
+    #[test]
+    fn the_now_playing_toast_follows_the_song_and_waits_for_the_music_to_be_heard() {
+        let mut host = Host {
+            music: Some(Music::new("minecraft:music.game", 600, 1200, false)),
+            active: false,
+            played: Vec::new(),
+            stops: 0,
+            started: Started::Silently,
+            toast: Vec::new(),
+        };
+        let mut manager = MusicManager::new(RandomSource::create(1), MusicFrequency::Constant);
+        for _ in 0..100 {
+            manager.tick(&mut host);
+        }
+        // A song that begins silently shows nothing until the music is heard.
+        assert!(host.toast.is_empty());
+        manager.show_now_playing_toast_if_needed(&mut host);
+        manager.show_now_playing_toast_if_needed(&mut host);
+        assert_eq!(host.toast, [true]);
+        manager.stop_playing(&mut host);
+        assert_eq!(host.toast, [true, false]);
+        // A song heard from the start shows at once.
+        host.started = Started::Yes;
+        let music = Music::new("minecraft:music.game", 600, 1200, false);
+        manager.start_playing(&music, &mut host);
+        assert_eq!(host.toast, [true, false, true]);
     }
 }

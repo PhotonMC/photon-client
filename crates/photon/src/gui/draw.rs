@@ -276,10 +276,7 @@ impl Gui {
                 (&mut self.tab_health, &self.tab_header, &self.tab_footer),
                 self.gui_ticks,
             ),
-            (
-                (&mut self.subtitles, self.listener, self.started_at),
-                (controls, &size),
-            ),
+            (&mut self.layers, (controls, &size)),
         );
         let now = self.started_at.elapsed().as_millis() as u64;
         let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
@@ -443,12 +440,11 @@ impl Gui {
             };
             screen.build(&mut draw, &menu, controls.gui_mouse);
         }
-        Self::draw_subtitles(
+        Self::draw_late_layers(
             &mut frame,
-            (&mut self.subtitles, self.listener, self.started_at),
             (&self.atlas, &self.font, &self.lang),
+            &mut self.layers,
             (controls, &size),
-            true,
         );
         let scale = size.gui_scale() as f32;
         backend.set_gui(

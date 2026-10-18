@@ -6,6 +6,7 @@ use std::path::Path;
 use photon_core::json::JsonObject;
 use photon_core::random::RandomSource;
 use photon_game::options::MusicFrequency;
+use photon_game::sounds::SoundSource;
 use photon_game::sounds::music::{BackgroundMusic, Music, MusicHost, MusicManager, Started};
 use photon_net::connection::PlaySession;
 
@@ -62,6 +63,9 @@ pub struct GameMusic {
     dimension: Attributes,
     /// Each biome's, by its network number.
     biomes: Vec<Attributes>,
+    /// The master and music sliders as they were last tick (`Options.createSoundSliderOptionInstance`
+    /// reacts when one changes).
+    sliders: Option<(f64, f64)>,
 }
 
 /// What the manager asks of the game, for one tick.
@@ -69,6 +73,8 @@ struct Host<'a> {
     sound: &'a mut SoundSystem,
     situation: Option<Music>,
     volume: f32,
+    /// What the manager asked of the now-playing toast: shown (true) or hidden.
+    toast: Vec<bool>,
 }
 
 impl MusicHost for Host<'_> {
@@ -93,6 +99,12 @@ impl MusicHost for Host<'_> {
     fn update_music_volume(&mut self, gain: f32) {
         self.sound.update_music_volume(gain);
     }
+    fn show_now_playing_toast(&mut self) {
+        self.toast.push(true);
+    }
+    fn hide_now_playing_toast(&mut self) {
+        self.toast.push(false);
+    }
 }
 
 impl GameMusic {
@@ -114,6 +126,7 @@ impl GameMusic {
                 .iter()
                 .map(|name| read_attributes(data_file(data_root, "worldgen/biome", name).as_ref()))
                 .collect(),
+            sliders: None,
         }
     }
 
@@ -146,20 +159,43 @@ impl GameMusic {
         (selected.cloned(), volume)
     }
 
-    /// One client tick of music.
+    /// One client tick of music; what the manager asks of the now-playing toast goes to the GUI.
     pub fn tick(
         &mut self,
-        session: &PlaySession,
-        sound: &mut SoundSystem,
-        frequency: MusicFrequency,
+        (session, sound): (&PlaySession, &mut SoundSystem),
+        options: &photon_game::options::Options,
+        gui: &mut crate::gui::Gui,
     ) {
+        let frequency = options.music_frequency;
         let (situation, volume) = self.situation(session);
         let mut host = Host {
             sound,
             situation,
             volume,
+            toast: Vec::new(),
         };
         self.manager.set_frequency_if_changed(frequency, &host);
+        // A change of the master or music slider that leaves the music audible shows the toast of
+        // a song that began silently.
+        let sliders = (
+            options.sound_category_volume(SoundSource::Master),
+            options.sound_category_volume(SoundSource::Music),
+        );
+        let changed = self
+            .sliders
+            .replace(sliders)
+            .is_some_and(|before| before != sliders);
+        if changed && sliders.0 * sliders.1 > 0.0 {
+            self.manager.show_now_playing_toast_if_needed(&mut host);
+        }
         self.manager.tick(&mut host);
+        gui.music_toast_requests(host.toast, options.notification_display_time);
+    }
+
+    /// `MusicManager.getCurrentMusicTranslationKey`: the song the manager has playing, as its
+    /// language key.
+    pub fn current_song(&self, sound: &SoundSystem) -> Option<String> {
+        self.manager.current()?;
+        sound.music_song_key()
     }
 }

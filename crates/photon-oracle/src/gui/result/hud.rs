@@ -234,16 +234,14 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     }))
 }
 
-/// The status bars of a row, or for `hud_sleep` the sleep veil, or for `subtitles` the subtitles.
-pub(super) fn hud_case(
-    ctx: &mut GuiContext,
-    row: &Value,
-    operation: &str,
-) -> Result<Value, String> {
+/// The HUD's other operations: the status bars, the sleep veil, the subtitles and the toasts.
+pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
     match operation {
+        "hud_status" => hud_status_case(ctx, row),
         "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
         "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
-        _ => hud_status_case(ctx, row),
+        "toasts" => super::hud_overlays::toasts_case(ctx, row),
+        _ => Err("unknown gui operation".into()),
     }
 }
 

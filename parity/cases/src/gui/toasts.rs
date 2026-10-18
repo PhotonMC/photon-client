@@ -1,0 +1,159 @@
+//! The `toasts` case: the toast manager through scripts of events.
+
+use serde_json::{Value, json};
+
+use super::gui;
+
+fn system(id: &str, title: &str, message: Option<&str>) -> Value {
+    json!({"do": "system", "id": id, "title": title, "message": message})
+}
+
+fn system_update(id: &str, title: &str, message: Option<&str>) -> Value {
+    json!({"do": "system_update", "id": id, "title": title, "message": message})
+}
+
+fn update(at: i64) -> Value {
+    json!({"do": "update", "at": at})
+}
+
+fn draw() -> Value {
+    json!({"do": "draw"})
+}
+
+/// An update at each time, each followed by a draw.
+fn run(times: &[i64]) -> Vec<Value> {
+    times.iter().flat_map(|time| [update(*time), draw()]).collect()
+}
+
+struct Setup {
+    music_toast: &'static str,
+    display_time: f64,
+    hud_hidden: bool,
+    pause_screen: bool,
+    song: Option<&'static str>,
+    width: i64,
+}
+
+const SETUP: Setup = Setup {
+    music_toast: "PAUSE_AND_TOAST",
+    display_time: 1.0,
+    hud_hidden: false,
+    pause_screen: false,
+    song: None,
+    width: 427,
+};
+
+fn row(label: &str, setup: &Setup, events: Vec<Value>) -> Value {
+    let mut row = json!({
+        "label": label, "width": setup.width, "height": 240,
+        "music_toast": setup.music_toast, "display_time": setup.display_time,
+        "hud_hidden": setup.hud_hidden, "pause_screen": setup.pause_screen,
+        "events": events,
+    });
+    if let Some(song) = setup.song {
+        row["song"] = json!(song);
+    }
+    row
+}
+
+/// A toast across its slide in, its wait and its slide out; six at once, so some wait for room; a
+/// toast of two rows; a toast changed while shown and while waiting; one hidden by force; the
+/// display time option; the music toast shown, hidden and left out by its option and by the pause
+/// screen; the interface hidden; and the colours of the music notes by tick.
+pub fn toasts() -> Value {
+    let mut rows = system_rows();
+    rows.extend(changed_rows());
+    rows.extend(music_rows());
+    let ticks: Vec<f64> = (0..400).map(|tick| f64::from(tick) + [0.0, 0.25, 0.5, 0.99][tick as usize % 4]).collect();
+    rows.push(row("music-note-colours", &SETUP, vec![json!({"do": "note_colours", "ticks": ticks})]));
+    gui("toasts", "toasts", rows)
+}
+
+/// System toasts alone: across their life, six at once, a tall one, in a narrow window.
+fn system_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let lifetime = [1000, 1100, 1300, 1599, 1600, 1601, 3000, 6599, 6600, 6601, 6900, 7200, 7201, 7202];
+    let mut events = vec![system("PERIODIC_NOTIFICATION", "Hello", Some("A message of the system"))];
+    events.extend(run(&lifetime));
+    rows.push(row("one-toast", &SETUP, events));
+    let mut events = vec![system("WORLD_BACKUP", "Only a title", None)];
+    events.extend(run(&[0, 300, 600, 601, 9000]));
+    rows.push(row("title-only", &SETUP, events));
+    let mut events: Vec<Value> = (0..6)
+        .map(|index| system("PERIODIC_NOTIFICATION", &format!("Toast {index}"), Some("waits for room")))
+        .collect();
+    events.extend(run(&[0, 700, 1300, 6000, 6700, 7300, 7400, 8000, 12_000]));
+    rows.push(row("six-toasts", &SETUP, events));
+    let long = "A message long enough to be broken into several lines at the width of a toast";
+    let mut events = vec![
+        system("CHUNK_LOAD_FAILURE", "A title that is long enough to need more than one line to be shown", Some(long)),
+        system("WORLD_BACKUP", "Next", Some("small")),
+        system("PACK_COPY_FAILURE", "Third", None),
+    ];
+    events.extend(run(&[0, 700, 1300, 6000, 7300]));
+    rows.push(row("tall-toast", &SETUP, events));
+    let mut events = vec![system("PERIODIC_NOTIFICATION", "Narrow", Some("window"))];
+    events.extend(run(&[0, 700, 1300]));
+    rows.push(row("small-window", &Setup { width: 200, ..SETUP }, events));
+    rows
+}
+
+/// Toasts changed while shown and while waiting, hidden by force, and kept by the display time.
+fn changed_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let mut events = vec![system("PERIODIC_NOTIFICATION", "First", Some("text"))];
+    events.extend(run(&[0, 700, 4000]));
+    events.push(system_update("PERIODIC_NOTIFICATION", "Second", Some("changed")));
+    events.extend(run(&[4100, 8500, 9100, 9200, 9800, 10_400, 11_000]));
+    rows.push(row("updated-while-shown", &SETUP, events));
+    let mut events: Vec<Value> =
+        (0..5).map(|_| system("PERIODIC_NOTIFICATION", "Fills the slots", Some("x"))).collect();
+    events.push(system("FILE_DROP_FAILURE", "Waiting", Some("old words")));
+    events.extend(run(&[0, 700]));
+    events.push(system_update("FILE_DROP_FAILURE", "Waiting", Some("new words")));
+    events.extend(run(&[1300, 6000, 7300, 7400, 8000, 13_000]));
+    rows.push(row("updated-while-waiting", &SETUP, events));
+    let mut events = vec![system("WORLD_BACKUP", "Sent away", Some("early"))];
+    events.extend(run(&[0, 700, 1300]));
+    events.push(json!({"do": "force_hide", "id": "WORLD_BACKUP"}));
+    events.extend(run(&[1400, 1700, 2000, 2100, 2500]));
+    rows.push(row("force-hidden", &SETUP, events));
+    for (name, time) in [("doubled", 2.0), ("least", 0.5), ("tenfold", 10.0)] {
+        let setup = Setup { display_time: time, ..SETUP };
+        let mut events = vec![system("LOW_DISK_SPACE", "Kept", Some("by the option"))];
+        events.extend(run(&[0, 700, 2900, 3100, 6000, 6700, 12_000, 12_700, 13_300, 70_000, 110_000]));
+        rows.push(row(&format!("display-time-{name}"), &setup, events));
+    }
+    let mut events = vec![system("PERIODIC_NOTIFICATION", "Hidden with the interface", Some("x"))];
+    events.extend(run(&[0, 700, 1300]));
+    rows.push(row("hud-hidden", &Setup { hud_hidden: true, ..SETUP }, events));
+    rows
+}
+
+/// The music toast: shown and hidden, and left out by its option, by the pause screen and by the
+/// interface being hidden.
+fn music_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let mut events = vec![json!({"do": "show_now_playing"})];
+    events.extend(run(&[0, 300, 600, 601, 3000, 5599, 5600, 5601, 6000, 6200, 6201, 6202]));
+    events.push(json!({"do": "hide_now_playing"}));
+    events.extend(run(&[6300, 6600, 6900, 7200, 7201]));
+    rows.push(row("now-playing", &song_setup(), events));
+    for (name, setup) in [
+        ("now-playing-pause-only", Setup { music_toast: "PAUSE", ..song_setup() }),
+        ("now-playing-never", Setup { music_toast: "NEVER", ..song_setup() }),
+        ("now-playing-pause-screen", Setup { pause_screen: true, ..song_setup() }),
+        ("now-playing-hud-hidden", Setup { hud_hidden: true, ..song_setup() }),
+        ("now-playing-no-song", Setup { song: None, ..song_setup() }),
+        ("now-playing-display-time", Setup { display_time: 2.0, ..song_setup() }),
+    ] {
+        let mut events = vec![json!({"do": "show_now_playing"})];
+        events.extend(run(&[0, 700, 5000, 9000, 11_000, 12_000]));
+        rows.push(row(name, &setup, events));
+    }
+    rows
+}
+
+fn song_setup() -> Setup {
+    Setup { song: Some("minecraft:music/game/aerie"), ..SETUP }
+}

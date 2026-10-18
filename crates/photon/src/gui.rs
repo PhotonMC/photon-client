@@ -62,9 +62,8 @@ pub struct Gui {
     /// drawn: the credits roll by the time between frames.
     pub(super) assets_root: std::path::PathBuf,
     pub(super) last_frame_ms: u64,
-    /// The subtitles of the sounds heard, and where the listener is that hears them.
-    pub(super) subtitles: photon_gui::hud::subtitles::Subtitles,
-    pub(super) listener: Option<photon_gui::hud::subtitles::Listener>,
+    /// The subtitles, the toasts and what they keep between frames.
+    pub(super) layers: layers::Layers,
 }
 
 /// `FilterMask.applyWithFormatting`: the text with the hidden characters

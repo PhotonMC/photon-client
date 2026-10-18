@@ -468,14 +468,23 @@ impl Play {
         Ok(())
     }
 
+    /// The sound engine and the music manager for one tick.
+    fn tick_sound(&mut self) {
+        let Some(sound) = self.sound.as_mut() else {
+            return;
+        };
+        sound.apply_volumes(&self.controls.options);
+        sound.tick(self.session.world(), false);
+        self.music.tick(
+            (&self.session, sound),
+            &self.controls.options,
+            &mut self.gui,
+        );
+    }
+
     /// One client tick.
     pub(super) fn tick(&mut self, held: HeldKeys) -> Result<()> {
-        if let Some(sound) = self.sound.as_mut() {
-            sound.apply_volumes(&self.controls.options);
-            sound.tick(self.session.world(), false);
-            self.music
-                .tick(&self.session, sound, self.controls.options.music_frequency);
-        }
+        self.tick_sound();
         if let Some(screen) = self.controls.screen.as_mut() {
             screen.tick(self.session.active_menu());
         }

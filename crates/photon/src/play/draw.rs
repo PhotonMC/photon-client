@@ -12,8 +12,12 @@ impl Play {
             let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
             sound.set_listener(frame.camera, forward, up);
         }
+        let song = self
+            .sound
+            .as_ref()
+            .and_then(|sound| self.music.current_song(sound));
         self.gui
-            .hear_sounds(self.sound.as_mut(), &self.controls.options);
+            .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }
 
     /// What is drawn over the blocks from the player's side: the hands in

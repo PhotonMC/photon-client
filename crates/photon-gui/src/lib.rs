@@ -10,6 +10,7 @@ pub mod runs;
 pub mod screen;
 pub mod sign_text;
 pub mod text_hit;
+pub mod toasts;
 pub mod tooltip;
 pub mod widgets;
 

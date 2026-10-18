@@ -390,6 +390,31 @@ impl SoundSystem {
         }
     }
 
+    /// `MusicManager.getCurrentMusicTranslationKey`: the language key of the song that plays, its
+    /// file's name without the `minecraft` namespace (`Identifier.toShortLanguageKey`).
+    pub fn music_song_key(&self) -> Option<String> {
+        let sound = self.music.and_then(|id| self.engine.picked_sound(id))?;
+        let location = &sound.location;
+        Some(if location.namespace() == "minecraft" {
+            location.path().to_owned()
+        } else {
+            format!("{}.{}", location.namespace(), location.path())
+        })
+    }
+
+    /// `SimpleSoundInstance.forUI`: a sound of the interface, heard at the same volume wherever
+    /// the listener is.
+    pub fn play_ui(&mut self, event: &str, pitch: f32, volume: f32) {
+        use photon_game::sounds::engine::Attenuation;
+        let mut instance = SoundInstance::new(event, SoundSource::Ui, RandomSource::create(0));
+        instance.attenuation = Attenuation::None;
+        instance.relative = true;
+        instance.pitch = pitch;
+        instance.volume = volume;
+        let id = self.engine.add(instance);
+        self.engine.play(id);
+    }
+
     pub fn stop_music(&mut self) {
         if let Some(id) = self.music.take() {
             self.engine.stop(id);

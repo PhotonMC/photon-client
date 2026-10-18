@@ -307,7 +307,7 @@
 "crates/photon-oracle/src/error.rs::common_packet_result" = 12
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 36
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 33
-"crates/photon-oracle/src/gui/result.rs::gui_result" = 45
+"crates/photon-oracle/src/gui/result.rs::gui_result" = 44
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 22
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 20
@@ -765,7 +765,7 @@
 "crates/photon-oracle/src/guardian.rs::banner_pose_result" = 96
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 76
-"crates/photon-oracle/src/gui/result.rs::gui_result" = 84
+"crates/photon-oracle/src/gui/result.rs::gui_result" = 83
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 81
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 119
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 75
@@ -1014,7 +1014,7 @@
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
 "crates/photon/src/equipment/held_items.rs::Hands::collect" = 64
 "crates/photon/src/gui/chat.rs::Gui::receive_chat" = 77
-"crates/photon/src/gui/draw.rs::Gui::draw" = 300
+"crates/photon/src/gui/draw.rs::Gui::draw" = 296
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75
@@ -1053,7 +1053,7 @@
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
-"crates/photon/src/play/ticks.rs::Play::tick" = 67
+"crates/photon/src/play/ticks.rs::Play::tick" = 62
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/script.rs::HeldKeys::parse" = 77
 "crates/photon/src/window_probe/version.rs::model_scene" = 74

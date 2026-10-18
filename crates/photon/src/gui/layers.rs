@@ -1,20 +1,48 @@
-//! The layers drawn over the HUD in one go: the tab list and the subtitles of the sounds heard.
+//! The layers drawn over the HUD in one go: the tab list, the subtitles of the sounds heard and
+//! the toasts.
 
 use super::*;
+use photon_gui::hud::subtitles::{Listener, Subtitles};
+use photon_gui::toasts::{MusicToast, ToastEnv, ToastManager};
 
-impl Gui {
+/// What the layers over the HUD keep from frame to frame.
+pub(crate) struct Layers {
+    subtitles: Subtitles,
+    listener: Option<Listener>,
+    pub(super) toasts: ToastManager,
+    /// The state of the music toast option the manager has.
+    music_toast: MusicToast,
+    /// The song the music manager has playing, as its language key.
+    current_song: Option<String>,
+    started_at: std::time::Instant,
+}
+
+impl Layers {
+    pub(super) fn new(started_at: std::time::Instant) -> Self {
+        Self {
+            subtitles: Subtitles::default(),
+            listener: None,
+            toasts: ToastManager::new(MusicToast::Never),
+            music_toast: MusicToast::Never,
+            current_song: None,
+            started_at,
+        }
+    }
+
+    fn now_ms(&self) -> u64 {
+        self.started_at.elapsed().as_millis() as u64
+    }
+
     /// What the sound system heard since the last frame joins the subtitles (and it listens only
-    /// while the option is on, `SubtitleOverlay.isListening`); the listener is kept for drawing them.
-    pub fn hear_sounds(
+    /// while the option is on, `SubtitleOverlay.isListening`); the listener is kept for drawing
+    /// them.
+    fn hear_sounds(
         &mut self,
-        sound: Option<&mut crate::sound::SoundSystem>,
+        sound: &mut crate::sound::SoundSystem,
         options: &photon_game::options::Options,
     ) {
-        let Some(sound) = sound else {
-            return;
-        };
         sound.set_listening(options.show_subtitles);
-        let now = self.started_at.elapsed().as_millis() as u64;
+        let now = self.now_ms();
         for heard in sound.take_heard() {
             if let Some(key) = heard.subtitle {
                 self.subtitles.heard(&key, heard.position, heard.range, now);
@@ -22,11 +50,42 @@ impl Gui {
         }
         let (position, forward, up) = sound.listener_view();
         let vec = |value: [f64; 3]| photon_core::math::Vec3::new(value[0], value[1], value[2]);
-        self.listener = Some(photon_gui::hud::subtitles::Listener::new(
-            position,
-            vec(forward),
-            vec(up),
-        ));
+        self.listener = Some(Listener::new(position, vec(forward), vec(up)));
+    }
+
+    /// `Gui.update`: the toasts move on, with the sounds they make played, and the music toast
+    /// follows its option (`Options.musicToast`'s change callback).
+    fn update_toasts(
+        &mut self,
+        sound: &mut crate::sound::SoundSystem,
+        options: &photon_game::options::Options,
+        ((font, lang), current_song): ((&Font, &Lang), Option<String>),
+    ) {
+        self.current_song = current_song;
+        if options.music_toast != self.music_toast {
+            self.music_toast = options.music_toast;
+            let volume = (options.sound_category_volume(photon_game::sounds::SoundSource::Master)
+                * options.sound_category_volume(photon_game::sounds::SoundSource::Music))
+                as f32;
+            self.toasts.set_music_toast(
+                self.music_toast,
+                volume,
+                options.notification_display_time,
+            );
+        }
+        let wall = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_millis() as i64);
+        let env = ToastEnv {
+            font,
+            lang,
+            display_time: options.notification_display_time,
+            current_song: self.current_song.as_deref(),
+            note_colour: self.toasts.notes.colour,
+        };
+        for event in self.toasts.update((self.now_ms() as i64, wall), &env) {
+            sound.play_ui(event, 1.0, 1.0);
+        }
     }
 
     /// `Hud.extractSubtitleOverlay`: the subtitles over the HUD, or with it hidden only over a
@@ -34,13 +93,9 @@ impl Gui {
     /// the books). Java draws them in the screen's background, after its darkening and under its
     /// panel; here a container, sign or book screen has them drawn once it is (`over_screen`),
     /// any other time they come before the screens.
-    pub(super) fn draw_subtitles(
+    fn draw_subtitles(
+        &mut self,
         frame: &mut photon_render::gui::GuiFrame,
-        (subtitles, listener, started_at): (
-            &mut photon_gui::hud::subtitles::Subtitles,
-            Option<photon_gui::hud::subtitles::Listener>,
-            std::time::Instant,
-        ),
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (controls, size): (&Controls, &photon_render::window::scale::WindowScale),
         over_screen: bool,
@@ -50,7 +105,7 @@ impl Gui {
             || controls.sign_edit.is_some()
             || controls.book_edit.is_some();
         let in_game_ui = drawn_over_screen || controls.chat.is_some();
-        let Some(listener) = listener.filter(|_| options.show_subtitles) else {
+        let Some(listener) = self.listener.filter(|_| options.show_subtitles) else {
             return;
         };
         if over_screen != drawn_over_screen || (controls.hud_hidden && !in_game_ui) {
@@ -62,12 +117,13 @@ impl Gui {
         } else {
             options.text_background_opacity as f32
         };
-        subtitles.draw(
+        let now = self.now_ms();
+        self.subtitles.draw(
             frame,
             (atlas, font, lang),
             (size.gui_scaled_width(), size.gui_scaled_height()),
             listener,
-            started_at.elapsed().as_millis() as u64,
+            now,
             (
                 options.notification_display_time,
                 ((opacity * 255.0) as u32) << 24,
@@ -75,12 +131,93 @@ impl Gui {
         );
     }
 
+    /// The toasts over everything (`Gui.extractRenderState`: after the screen), and the music
+    /// toast too unless the pause screen draws it itself.
+    fn draw_toasts(
+        &self,
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        (controls, size): (&Controls, &photon_render::window::scale::WindowScale),
+    ) {
+        let options = &controls.options;
+        let env = ToastEnv {
+            font,
+            lang,
+            display_time: options.notification_display_time,
+            current_song: self.current_song.as_deref(),
+            note_colour: self.toasts.notes.colour,
+        };
+        self.toasts.draw(
+            frame,
+            atlas,
+            size.gui_scaled_width(),
+            (
+                controls.hud_hidden,
+                options.music_toast,
+                controls.pause.is_some(),
+            ),
+            &env,
+        );
+    }
+
+    /// The music toast of the pause screen (`PauseScreen.rendersNowPlayingToast`): while the music
+    /// is heard, drawn at the corner.
+    fn draw_pause_toast(
+        &self,
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &Controls,
+    ) {
+        let options = &controls.options;
+        let volume = options.sound_category_volume(photon_game::sounds::SoundSource::Master)
+            * options.sound_category_volume(photon_game::sounds::SoundSource::Music);
+        if controls.pause.is_none()
+            || !options.music_toast.render_in_pause_screen()
+            || volume <= 0.0
+        {
+            return;
+        }
+        let env = ToastEnv {
+            font,
+            lang,
+            display_time: options.notification_display_time,
+            current_song: self.current_song.as_deref(),
+            note_colour: self.toasts.notes.colour,
+        };
+        self.toasts.draw_now_playing_for_pause(frame, atlas, &env);
+    }
+}
+
+impl Gui {
+    /// What the sounds told since the last frame goes to the subtitles, and the toasts move on.
+    pub fn feed_sounds(
+        &mut self,
+        sound: Option<&mut crate::sound::SoundSystem>,
+        options: &photon_game::options::Options,
+        current_song: Option<String>,
+    ) {
+        let Some(sound) = sound else {
+            return;
+        };
+        self.layers.hear_sounds(sound, options);
+        self.layers
+            .update_toasts(sound, options, ((&self.font, &self.lang), current_song));
+    }
+
+    /// `Hud.showNowPlayingToast` and `hideNowPlayingToast` as the music manager asked.
+    pub fn music_toast_requests(&mut self, requests: Vec<bool>, display_time: f64) {
+        for show in requests {
+            if show {
+                self.layers.toasts.show_now_playing(display_time);
+            } else {
+                self.layers.toasts.hide_now_playing();
+            }
+        }
+    }
+
     /// The tab list (while Tab is held and the interface shown), then the subtitles over it
     /// (`Hud.extractRenderState`: the tab list comes before the subtitle overlay).
-    #[expect(
-        clippy::type_complexity,
-        reason = "the fields the two layers draw from"
-    )]
+    #[expect(clippy::type_complexity, reason = "the fields the layers draw from")]
     pub(super) fn draw_tab_and_subtitles(
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
@@ -93,12 +230,8 @@ impl Gui {
             ),
             i64,
         ),
-        (subtitles, (controls, size)): (
-            (
-                &mut photon_gui::hud::subtitles::Subtitles,
-                Option<photon_gui::hud::subtitles::Listener>,
-                std::time::Instant,
-            ),
+        (layers, (controls, size)): (
+            &mut Layers,
             (&Controls, &photon_render::window::scale::WindowScale),
         ),
     ) {
@@ -118,12 +251,19 @@ impl Gui {
                 },
             );
         }
-        Self::draw_subtitles(
-            frame,
-            subtitles,
-            (atlas, font, lang),
-            (controls, size),
-            false,
-        );
+        layers.draw_subtitles(frame, (atlas, font, lang), (controls, size), false);
+    }
+
+    /// What is drawn once the screens are: the subtitles over a container, sign or book screen,
+    /// the music toast of the pause screen and the toasts.
+    pub(super) fn draw_late_layers(
+        frame: &mut photon_render::gui::GuiFrame,
+        resources: (&GuiAtlas, &Font, &Lang),
+        layers: &mut Layers,
+        view: (&Controls, &photon_render::window::scale::WindowScale),
+    ) {
+        layers.draw_subtitles(frame, resources, view, true);
+        layers.draw_pause_toast(frame, resources, view.0);
+        layers.draw_toasts(frame, resources, view);
     }
 }

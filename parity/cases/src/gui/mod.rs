@@ -24,6 +24,7 @@ mod social;
 mod status;
 mod suggest;
 mod title;
+mod toasts;
 mod tooltips;
 mod tree;
 mod video;
@@ -70,6 +71,7 @@ const ORDER: &[Generator] = &[
     || vec![status::hud_hotbar()],
     || vec![status::hud_sleep()],
     || vec![status::subtitles()],
+    || vec![toasts::toasts()],
     || vec![status::hud_status()],
     language::language_cases,
     || vec![locator::locator_bar()],

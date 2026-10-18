@@ -117,7 +117,6 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
             "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
             "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,
-            "hud_status" | "hud_sleep" | "subtitles" => hud_case(&mut ctx, row, operation)?,
             "boss_bar" => boss_bar_case(&mut ctx, row)?,
             "locator_bar" => locator_bar_case(&mut ctx, row)?,
             "tab_list" => tab_list_case(&mut ctx, row)?,
@@ -130,7 +129,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "book_view" => book_view_case(&mut ctx, row)?,
             "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
             "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
-            _ => return Err("unknown gui operation".into()),
+            other => hud_ops(&mut ctx, row, other)?,
         });
     }
     Ok(json!({"rows": out}))

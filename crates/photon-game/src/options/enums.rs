@@ -165,6 +165,16 @@ impl MusicToast {
             .find(|value| value.serialized() == name)
     }
 
+    /// `renderInPauseScreen`.
+    pub const fn render_in_pause_screen(self) -> bool {
+        !matches!(self, Self::Never)
+    }
+
+    /// `renderToast`.
+    pub const fn render_toast(self) -> bool {
+        matches!(self, Self::PauseAndToast)
+    }
+
     /// The label's translation key; the tooltip's is this and `.tooltip`.
     pub const fn text_key(self) -> &'static str {
         match self {

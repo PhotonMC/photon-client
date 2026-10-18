@@ -10,7 +10,7 @@ use photon_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 12] = [
+const SPRITE_FOLDERS: [&str; 13] = [
     "social_interactions",
     "gamemode_switcher",
     "boss_bar",
@@ -23,6 +23,7 @@ const SPRITE_FOLDERS: [&str; 12] = [
     "tooltip",
     "icon",
     "widget",
+    "toast",
 ];
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as

@@ -67,6 +67,137 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /** The sound manager of the toasts' game: it notes the sounds asked of it. */
+    static class RecordingSounds extends net.minecraft.client.sounds.SoundManager {
+        final java.util.List<String> played = new java.util.ArrayList<>();
+
+        RecordingSounds() {
+            super(null);
+        }
+
+        @Override
+        public net.minecraft.client.sounds.SoundEngine.PlayResult play(
+                final net.minecraft.client.resources.sounds.SoundInstance instance) {
+            this.played.add(instance.getIdentifier().toString());
+            return net.minecraft.client.sounds.SoundEngine.PlayResult.STARTED;
+        }
+    }
+
+    /**
+     * The toasts (`ToastManager`): a script of events (toasts added or updated, the manager's
+     * update at a time of the game's clock, the music toast shown, the manager drawn), each
+     * answered with the sounds it made and the ops it drew.
+     */
+    static JsonObject toasts(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
+            var minecraft = screen.minecraft();
+            var sounds = (RecordingSounds) unsafe.allocateInstance(RecordingSounds.class);
+            set(sounds, "played", new java.util.ArrayList<String>());
+            set(minecraft, "soundManager", sounds);
+            // The options' own change callbacks reach for the game's toast manager: set the values
+            // under them.
+            var musicState = net.minecraft.client.MusicToastDisplayState.valueOf(
+                row.get("music_toast").getAsString());
+            set(minecraft.options.musicToast(), "value", musicState);
+            set(minecraft.options.notificationDisplayTime(), "value", row.get("display_time").getAsDouble());
+            // The song that plays, as the toast asks the music manager for its key.
+            var music = unsafe.allocateInstance(net.minecraft.client.sounds.MusicManager.class);
+            if (row.has("song")) {
+                var sound = unsafe.allocateInstance(net.minecraft.client.resources.sounds.Sound.class);
+                set(sound, "location", net.minecraft.resources.Identifier.parse(row.get("song").getAsString()));
+                var instance = (net.minecraft.client.resources.sounds.SoundInstance) java.lang.reflect.Proxy.newProxyInstance(
+                    Oracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.client.resources.sounds.SoundInstance.class},
+                    (proxy, method, args) -> method.getName().equals("getSound") ? sound : null);
+                set(music, "currentMusic", instance);
+            }
+            set(minecraft, "musicManager", music);
+            set(screen.hud(), "isHidden", row.get("hud_hidden").getAsBoolean());
+            if (row.get("pause_screen").getAsBoolean()) {
+                set(screen.minecraft().gui, "screen", unsafe.allocateInstance(net.minecraft.client.gui.screens.PauseScreen.class));
+            }
+            // The music notes' colour waits on the wall clock: held where the row says.
+            var noteClass = net.minecraft.client.gui.components.toasts.NowPlayingToast.class;
+            var tick = noteClass.getDeclaredField("musicNoteColorTick");
+            tick.setAccessible(true);
+            tick.setInt(null, 0);
+            var last = noteClass.getDeclaredField("lastMusicNoteColorChange");
+            last.setAccessible(true);
+            last.setLong(null, Long.MAX_VALUE / 2);
+            var colour = noteClass.getDeclaredField("musicNoteColor");
+            colour.setAccessible(true);
+            colour.setInt(null, -1);
+            var manager = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
+            var events = new JsonArray();
+            for (var eventElement : row.getAsJsonArray("events")) {
+                var event = eventElement.getAsJsonObject();
+                var out = new JsonObject();
+                out.addProperty("do", event.get("do").getAsString());
+                var systemId = (java.util.function.Function<String, net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId>) name -> {
+                    try {
+                        return (net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId)
+                            net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.class
+                                .getField(name).get(null);
+                    } catch (ReflectiveOperationException error) {
+                        throw new IllegalStateException(error);
+                    }
+                };
+                var text = (java.util.function.Function<String, Component>) literal -> literal == null ? null : Component.literal(literal);
+                switch (event.get("do").getAsString()) {
+                    case "system" -> net.minecraft.client.gui.components.toasts.SystemToast.add(manager,
+                        systemId.apply(event.get("id").getAsString()),
+                        text.apply(event.get("title").getAsString()),
+                        event.get("message").isJsonNull() ? null : text.apply(event.get("message").getAsString()));
+                    case "system_update" -> net.minecraft.client.gui.components.toasts.SystemToast.addOrUpdate(manager,
+                        systemId.apply(event.get("id").getAsString()),
+                        text.apply(event.get("title").getAsString()),
+                        event.get("message").isJsonNull() ? null : text.apply(event.get("message").getAsString()));
+                    case "force_hide" -> net.minecraft.client.gui.components.toasts.SystemToast.forceHide(manager,
+                        systemId.apply(event.get("id").getAsString()));
+                    case "note_colours" -> {
+                        var colours = new JsonArray();
+                        for (var tickElement : event.getAsJsonArray("ticks")) {
+                            colours.add(net.minecraft.client.color.ColorLerper.getLerpedColor(
+                                net.minecraft.client.color.ColorLerper.Type.MUSIC_NOTE, tickElement.getAsFloat()));
+                        }
+                        out.add("colours", colours);
+                    }
+                    case "show_now_playing" -> manager.showNowPlayingToast();
+                    case "hide_now_playing" -> manager.hideNowPlayingToast();
+                    case "update" -> {
+                        long at = event.get("at").getAsLong();
+                        net.minecraft.util.Util.setTimeSource(() -> at * 1_000_000L);
+                        manager.update();
+                    }
+                    case "draw" -> {
+                        screen.state().reset();
+                        manager.extractRenderState(screen.graphics());
+                        out.add("ops", record(screen.state()));
+                    }
+                    default -> throw new IllegalArgumentException(event.get("do").getAsString());
+                }
+                var heard = new JsonArray();
+                for (var name : sounds.played) {
+                    heard.add(name);
+                }
+                sounds.played.clear();
+                out.add("sounds", heard);
+                events.add(out);
+            }
+            net.minecraft.util.Util.setTimeSource(System::nanoTime);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("events", events);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The boss bars: each event as the packet adds it, drawn by the overlay. */
     static JsonObject bossBar(JsonObject request) throws Exception {
         var rows = new JsonArray();
