@@ -305,6 +305,9 @@ pub(super) struct TranslucentSort {
     pub(super) indices: Vec<u32>,
     /// How many of them are opaque.
     pub(super) opaque: usize,
+    /// The translucent faces' indices as the mesh gave them, which the
+    /// centroids follow.
+    pub(super) faces: Vec<[u32; 6]>,
     /// The middle of each translucent face, which sits on one or two
     /// sextets of indices.
     pub(super) centroids: Vec<[f32; 3]>,

@@ -255,6 +255,7 @@ impl TranslucentSort {
             })
             .collect();
         Self {
+            faces: mesh.translucent_indices.as_chunks::<6>().0.to_vec(),
             opaque: mesh.indices.len(),
             indices,
             centroids,
@@ -266,9 +267,44 @@ impl TranslucentSort {
     fn order(&mut self, camera: [f32; 3], centre: [f32; 3]) {
         self.point_of_view = point_of_view(camera, centre);
         let order = crate::translucent::order(camera, &self.centroids);
-        let faces: Vec<[u32; 6]> = self.indices[self.opaque..].as_chunks::<6>().0.to_vec();
         self.indices.truncate(self.opaque);
         self.indices
-            .extend(order.into_iter().flat_map(|index| faces[index]));
+            .extend(order.into_iter().flat_map(|index| self.faces[index]));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Faces one block apart along x, each a quad of four corners.
+    fn mesh() -> Mesh {
+        let mut mesh = Mesh::default();
+        for face in 0..4_u32 {
+            let base = mesh.vertices.len() as u32;
+            for corner in 0..4 {
+                let at = [face as f32 * 3.0, (corner / 2) as f32, (corner % 2) as f32];
+                mesh.vertices.push(crate::scene::BlockVertex::new(
+                    at, [0.0; 2], [1.0; 4], [0.0; 2],
+                ));
+            }
+            mesh.translucent_indices
+                .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+        }
+        mesh
+    }
+
+    #[test]
+    fn ordering_again_from_a_new_camera_matches_ordering_fresh() {
+        let mesh = mesh();
+        let all: Vec<u32> = mesh.translucent_indices.clone();
+        let mut again = TranslucentSort::new(&mesh, all.clone());
+        again.order([-10.0, 0.0, 0.0], [8.0; 3]);
+        again.order([20.0, 0.0, 0.0], [8.0; 3]);
+        let mut fresh = TranslucentSort::new(&mesh, all);
+        fresh.order([20.0, 0.0, 0.0], [8.0; 3]);
+        assert_eq!(again.indices, fresh.indices);
+        // From the far side along x, the face at x = 0 is drawn first.
+        assert_eq!(again.indices[0], 0);
     }
 }
