@@ -29,6 +29,73 @@ impl Controls {
         surface.set_cursor_captured(false);
     }
 
+    /// Whether a screen is up over the game (`Gui.screen != null`): any of the screens and
+    /// dialogs the controls hold.
+    fn any_screen_open(&self) -> bool {
+        [
+            self.screen.is_some(),
+            self.chat.is_some(),
+            self.pause.is_some(),
+            self.death.is_some(),
+            self.credits.is_some(),
+            self.social.is_some(),
+            self.sign_edit.is_some(),
+            self.book_edit.is_some(),
+            self.confirm.is_some(),
+            self.link_confirm.is_some(),
+            self.dialog.is_some(),
+            self.dialog_warning.is_some(),
+            self.pack_prompt.is_some(),
+            self.disconnected.is_some(),
+        ]
+        .contains(&true)
+    }
+
+    /// `Gui.tick`'s part for the bed: a sleeper with no screen up gets the in-bed chat box, and
+    /// that box ends with the sleep (`InBedChatScreen.onPlayerWokeUp`): what was typed goes on in
+    /// the ordinary chat box, or the box closes.
+    pub fn bed_tick(
+        &mut self,
+        session: &PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        let sleeping = session
+            .world()
+            .local_player()
+            .is_some_and(|player| player.is_sleeping());
+        if let Some(chat) = self.chat.as_ref().filter(|chat| chat.is_in_bed()) {
+            if !sleeping {
+                let (text, draft) = (chat.value(), chat.is_draft());
+                self.close_chat(surface, ExitReason::Interrupted);
+                if !draft && !text.is_empty() {
+                    self.open_chat_with(&text, surface, assets);
+                }
+            }
+        } else if !self.any_screen_open() && sleeping {
+            self.open_chat(ChatMethod::Message, false, surface, assets);
+            if let Some(chat) = self.chat.take() {
+                self.chat = Some(chat.in_bed(&assets.lang));
+            }
+        }
+    }
+
+    /// An ordinary chat box that holds `text` (`new ChatScreen(text, false)`).
+    fn open_chat_with(&mut self, text: &str, surface: &mut WindowSurface, assets: &ScreenAssets) {
+        let size = surface.scale();
+        let size = (size.gui_scaled_width(), size.gui_scaled_height());
+        let screen = ChatScreen::new(
+            assets.creative.font.clone(),
+            size,
+            text,
+            self.chat_history.clone(),
+        );
+        self.chat = Some(screen.without_key());
+        self.captured = false;
+        self.release_keys();
+        surface.set_cursor_captured(false);
+    }
+
     /// `ChatScreen.removed`: the box's text is kept or dropped as a draft by
     /// the way it went.
     pub(super) fn leave_chat(&mut self, chat: &ChatScreen, reason: ExitReason) {
@@ -102,6 +169,56 @@ impl Controls {
         }
     }
 
+    /// What a key in the chat box asks for.
+    fn chat_key(
+        &mut self,
+        key: ChatKey,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
+        if self.chat.as_ref().is_some_and(|chat| chat.is_in_bed()) {
+            return self.bed_chat_key(key, session);
+        }
+        match key {
+            ChatKey::Close => self.close_chat(surface, ExitReason::Intentional),
+            ChatKey::Done => self.close_chat(surface, ExitReason::Done),
+            ChatKey::Send(text) => {
+                Self::send_chat(session, &text)?;
+                self.remember_command(&text);
+                self.close_chat(surface, ExitReason::Done);
+            }
+            ChatKey::Page(direction) => self.page_chat(direction),
+            ChatKey::None => {}
+        }
+        Ok(())
+    }
+
+    /// A key in the in-bed chat box: the box stays up until the server has the player out of
+    /// bed, so Escape asks for that and a sent line only empties the box.
+    fn bed_chat_key(&mut self, key: ChatKey, session: &mut PlaySession) -> Result {
+        match key {
+            ChatKey::Close => session.send_stop_sleeping()?,
+            ChatKey::Done => self.chat_log.reset_scroll(),
+            ChatKey::Send(text) => {
+                if let Some(chat) = self.chat.as_mut() {
+                    chat.clear();
+                }
+                Self::send_chat(session, &text)?;
+                self.remember_command(&text);
+                self.chat_log.reset_scroll();
+            }
+            ChatKey::Page(direction) => self.page_chat(direction),
+            ChatKey::None => {}
+        }
+        Ok(())
+    }
+
+    /// Page Up and Page Down: the log scrolls a page, less a line.
+    fn page_chat(&mut self, direction: i32) {
+        let page = self.chat_log.lines_per_page(true) as i32 - 1;
+        self.chat_log.scroll_by(direction * page, true);
+    }
+
     /// An event for the open chat box.
     pub(super) fn chat_event(
         &mut self,
@@ -137,20 +254,9 @@ impl Controls {
                 let control = modifiers.contains(glfw::Modifiers::Control)
                     || modifiers.contains(glfw::Modifiers::Super);
                 let shift = modifiers.contains(glfw::Modifiers::Shift);
-                match chat.key_pressed(key, (control, shift), &mut WindowClipboard(surface)) {
-                    ChatKey::Close => self.close_chat(surface, ExitReason::Intentional),
-                    ChatKey::Done => self.close_chat(surface, ExitReason::Done),
-                    ChatKey::Send(text) => {
-                        Self::send_chat(session, &text)?;
-                        self.remember_command(&text);
-                        self.close_chat(surface, ExitReason::Done);
-                    }
-                    ChatKey::Page(direction) => {
-                        let page = self.chat_log.lines_per_page(true) as i32 - 1;
-                        self.chat_log.scroll_by(direction * page, true);
-                    }
-                    ChatKey::None => {}
-                }
+                let pressed =
+                    chat.key_pressed(key, (control, shift), &mut WindowClipboard(surface));
+                self.chat_key(pressed, session, surface)?;
                 self.send_suggestion_request(session)?;
             }
             glfw::WindowEvent::Char(character) => {
@@ -182,7 +288,9 @@ impl Controls {
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
                 // `ChatScreen.mouseClicked`: the list of matches first, then
                 // the style of the text under the mouse.
-                if !chat.mouse_clicked(mouse) {
+                if chat.leave_bed_clicked(mouse) {
+                    session.send_stop_sleeping()?;
+                } else if !chat.mouse_clicked(mouse) {
                     let shift = modifiers.contains(glfw::Modifiers::Shift);
                     let gui = (size.gui_scaled_width(), size.gui_scaled_height());
                     let font = chat.font();

@@ -166,6 +166,12 @@ impl Controls {
             self.death_action(action, session, surface, assets)?;
         } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
             self.pause_action(action, surface, assets);
+        } else if self
+            .chat
+            .as_ref()
+            .is_some_and(|chat| chat.leave_bed_clicked(mouse))
+        {
+            session.send_stop_sleeping()?;
         }
         Ok(())
     }

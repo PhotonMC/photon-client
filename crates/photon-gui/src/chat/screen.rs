@@ -1,6 +1,21 @@
 use super::*;
 use crate::FrameRuns;
 
+/// `InBedChatScreen.init`: the button, 200 by 20 units, 40 above the bottom.
+fn leave_bed_buttons(
+    size: (i32, i32),
+    label: Vec<Run>,
+) -> crate::widgets::button_set::ButtonSet<()> {
+    let mut buttons = crate::widgets::button_set::ButtonSet::new(size);
+    buttons.add(
+        (size.0 / 2 - 100, size.1 - 40, 200, 20),
+        (crate::widgets::Kind::Button { label }, true),
+        (),
+        None,
+    );
+    buttons
+}
+
 impl ChatScreen {
     /// `ChatScreen.init`: the box holds `initial` (empty, or a slash), and
     /// the character of the key that opened it is to be dropped.
@@ -29,6 +44,7 @@ impl ChatScreen {
             selectors: true,
             draft: false,
             local: Vec::new(),
+            bed: None,
         }
     }
 
@@ -73,6 +89,38 @@ impl ChatScreen {
 
     pub fn resize(&mut self, size: (i32, i32)) {
         self.size = size;
+        if let Some((buttons, label)) = self.bed.take() {
+            self.bed = Some((leave_bed_buttons(size, label.clone()), label));
+            drop(buttons);
+        }
+    }
+
+    /// `InBedChatScreen`: the box has the button that gets the player out of bed.
+    pub fn in_bed(mut self, lang: &Lang) -> Self {
+        let label = lang.runs(
+            &Component::translatable("multiplayer.stopSleeping"),
+            &Style::default(),
+        );
+        self.bed = Some((leave_bed_buttons(self.size, label.clone()), label));
+        self
+    }
+
+    pub fn is_in_bed(&self) -> bool {
+        self.bed.is_some()
+    }
+
+    /// A press at `mouse` on the leave-bed button.
+    pub fn leave_bed_clicked(&self, mouse: (i32, i32)) -> bool {
+        self.bed
+            .as_ref()
+            .is_some_and(|(buttons, _)| buttons.clicked(mouse).is_some())
+    }
+
+    /// The text sent, the box empty again (`ChatScreen` without `closeOnSubmit`).
+    pub fn clear(&mut self) {
+        let font = self.font.clone();
+        self.edit.set_value("", &font);
+        self.edited();
     }
 
     /// The request the last edit asked for, taken.
@@ -326,6 +374,18 @@ impl ChatScreen {
         ChatKey::None
     }
 
+    /// Where the usage lines start: under the argument they are about, kept on the screen.
+    fn usage_x(&self, text: &str, start: i32, longest: i32) -> i32 {
+        let chars: Vec<char> = text.chars().collect();
+        let start = start.max(0) as usize;
+        let start_x = if start > chars.len() {
+            4
+        } else {
+            4 + self.font.width(&chars[..start].iter().collect::<String>())
+        };
+        start_x.clamp(0, (4 + self.size.0 - 4 - longest).max(0))
+    }
+
     /// `charTyped`: a character the chat allows.
     pub fn char_typed(&mut self, character: char) {
         if std::mem::take(&mut self.skip_char) {
@@ -410,6 +470,9 @@ impl ChatScreen {
             Some(self.focused_at),
             Some(&format),
         );
+        if let Some((buttons, _)) = &self.bed {
+            buttons.draw(frame, atlas, &self.font, mouse);
+        }
         if let Some(list) = &mut self.list {
             list.draw(frame, atlas, &self.font, mouse);
         } else if let (Some((tree, lang, parse)), false) = (&parse, self.stale) {
@@ -420,14 +483,7 @@ impl ChatScreen {
                 .map(|line| self.font.width(line))
                 .max()
                 .unwrap_or(0);
-            let chars: Vec<char> = text.chars().collect();
-            let start = view.start.max(0) as usize;
-            let start_x = if start > chars.len() {
-                4
-            } else {
-                4 + self.font.width(&chars[..start].iter().collect::<String>())
-            };
-            let x = start_x.clamp(0, (4 + width - 4 - longest).max(0));
+            let x = self.usage_x(&text, view.start, longest);
             for (index, line) in view.lines.iter().enumerate() {
                 let y = height - 27 - 12 * index as i32;
                 frame.fill(atlas, (x - 1, y, x + longest + 1, y + 12), 0xD000_0000);

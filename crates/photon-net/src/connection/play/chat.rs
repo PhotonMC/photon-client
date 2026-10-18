@@ -176,6 +176,21 @@ impl PlaySession {
         std::mem::take(&mut self.social.chat_events)
     }
 
+    /// The leave-bed button and Escape in bed (`InBedChatScreen.sendWakeUp`): the player asks the
+    /// server to get up.
+    pub fn send_stop_sleeping(&mut self) -> Result<(), ConnectionError> {
+        let Some(entity_id) = self.world.local_player().map(|player| player.id()) else {
+            return Ok(());
+        };
+        self.send_movement(
+            photon_world::local_player::ServerboundMovement::PlayerCommand {
+                entity_id,
+                action: photon_world::local_player::PlayerCommandAction::StopSleeping,
+                data: 0,
+            },
+        )
+    }
+
     /// `ClientPacketListener.sendChat` and `sendCommand`: a line typed into
     /// the chat, sent as a command when `command` (without its slash).
     /// Without a chat key the message goes unsigned.

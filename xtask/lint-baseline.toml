@@ -528,7 +528,7 @@
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 14
-"crates/photon/src/controls/chat.rs::Controls::chat_event" = 17
+"crates/photon/src/controls/chat.rs::Controls::chat_event" = 14
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 16
 "crates/photon/src/controls/events.rs::Controls::handle" = 32
 "crates/photon/src/controls/events.rs::Controls::mapped_input" = 40
@@ -1002,7 +1002,7 @@
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 100
 "crates/photon/src/controls/book.rs::Controls::book_event" = 67
-"crates/photon/src/controls/chat.rs::Controls::chat_event" = 88
+"crates/photon/src/controls/chat.rs::Controls::chat_event" = 79
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 64
 "crates/photon/src/controls/events.rs::Controls::handle" = 83
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 80
@@ -1053,7 +1053,7 @@
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
-"crates/photon/src/play/ticks.rs::Play::tick" = 79
+"crates/photon/src/play/ticks.rs::Play::tick" = 67
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/script.rs::HeldKeys::parse" = 77
 "crates/photon/src/window_probe/version.rs::model_scene" = 74

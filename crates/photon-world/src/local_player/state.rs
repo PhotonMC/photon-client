@@ -179,6 +179,7 @@ pub(crate) fn property(state_id: Option<BlockStateId>, name: &str) -> Option<&'s
 /// `ServerboundPlayerCommandPacket.Action`, by ordinal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerCommandAction {
+    StopSleeping = 0,
     StartSprinting = 1,
     StopSprinting = 2,
     StartRidingJump = 3,

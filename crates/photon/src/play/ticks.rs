@@ -446,6 +446,28 @@ impl Play {
         Ok(Some(held))
     }
 
+    /// The screens that tick with the game: the death screen, the credits, the confirmations,
+    /// the waiting dialog, the sign, the bed's chat box and the chat's lines.
+    fn tick_screens(&mut self) -> Result<()> {
+        let session = &mut self.session;
+        if let Some(death) = self.controls.death.as_mut() {
+            death.tick();
+        }
+        self.controls.credits_tick(session, &mut self.surface)?;
+        if let Some(confirm) = self.controls.confirm.as_mut() {
+            confirm.tick();
+        }
+        if let Some(crate::controls::DialogLayer::Waiting(waiting)) = self.controls.dialog.as_mut()
+        {
+            waiting.tick(&self.screen_assets.lang);
+        }
+        self.controls.sign_tick(session, &mut self.surface)?;
+        self.controls
+            .bed_tick(session, &mut self.surface, &self.screen_assets);
+        self.gui.tick_chat(&mut self.controls.chat_log);
+        Ok(())
+    }
+
     /// One client tick.
     pub(super) fn tick(&mut self, held: HeldKeys) -> Result<()> {
         if let Some(sound) = self.sound.as_mut() {
@@ -513,21 +535,9 @@ impl Play {
             self.sound.as_mut(),
         );
         super::camera::tick_view((&mut self.camera, &mut self.gui), session, &self.sky);
-        if let Some(death) = self.controls.death.as_mut() {
-            death.tick();
-        }
-        self.controls.credits_tick(session, &mut self.surface)?;
-        if let Some(confirm) = self.controls.confirm.as_mut() {
-            confirm.tick();
-        }
-        if let Some(crate::controls::DialogLayer::Waiting(waiting)) = self.controls.dialog.as_mut()
-        {
-            waiting.tick(&self.screen_assets.lang);
-        }
-        self.controls.sign_tick(session, &mut self.surface)?;
-        self.gui.tick_chat(&mut self.controls.chat_log);
+        self.tick_screens()?;
         self.sky
-            .tick(session, self.controls.options.hide_lightning_flashes);
+            .tick(&self.session, self.controls.options.hide_lightning_flashes);
         self.ticks += 1;
         Ok(())
     }

@@ -405,6 +405,8 @@ pub struct ChatScreen {
     /// What the tree suggested for the text, while the server's answer on
     /// its own arguments is awaited.
     local: Vec<String>,
+    /// `InBedChatScreen`: the leave-bed button, and its label.
+    bed: Option<(crate::widgets::button_set::ButtonSet<()>, Vec<Run>)>,
 }
 
 /// `ChatScreen.normalizeChatMessage`: trimmed, runs of blanks made one,
