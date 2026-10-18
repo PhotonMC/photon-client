@@ -46,6 +46,17 @@ fn sky_of(packed: i32) -> i32 {
     (packed >> 20) & 15
 }
 
+/// `ModelBlockRenderer.tesselateBlock`'s choice of smooth lighting: the
+/// `ao` option on, a block that gives no light, and the model's first part
+/// (which decides for every part) asking for ambient occlusion.
+pub fn smooth_lighting(
+    enabled: bool,
+    light_emission: u8,
+    mut parts: impl Iterator<Item = bool>,
+) -> bool {
+    enabled && light_emission == 0 && parts.next().unwrap_or(false)
+}
+
 /// `LightCoordsUtil.smoothBlend`.
 fn smooth_blend(mut first: i32, mut second: i32, mut third: i32, centre: i32) -> i32 {
     if sky_of(centre) > 2 || block_of(centre) > 2 {

@@ -142,3 +142,27 @@ pub fn rows() -> Vec<Value> {
         ),
     ]
 }
+
+/// Which lighting a block takes: the `ao` option, light emission and the
+/// parts' own say, the first of which decides for all.
+pub fn gate_rows() -> Vec<Value> {
+    let rows = [
+        ("stone-option-on", "minecraft:stone", true, vec![true]),
+        ("stone-option-off", "minecraft:stone", false, vec![true]),
+        ("stone-model-opts-out", "minecraft:stone", true, vec![false]),
+        ("stone-first-part-opts-out", "minecraft:stone", true, vec![false, true]),
+        ("stone-first-part-opts-in", "minecraft:stone", true, vec![true, false]),
+        ("stone-no-parts-opt-out", "minecraft:stone", true, vec![false, false]),
+        ("glowstone-option-on", "minecraft:glowstone", true, vec![true]),
+        ("glowstone-option-off", "minecraft:glowstone", false, vec![true]),
+        ("torch-glows", "minecraft:torch", true, vec![true]),
+    ];
+    rows.into_iter()
+        .map(|(label, block, option, parts)| {
+            json!({
+                "label": label, "option": option, "parts": parts, "chunk_radius": 1,
+                "blocks": cat![floor(), rubble(), vec![put(0, 64, 0, block)]],
+            })
+        })
+        .collect()
+}

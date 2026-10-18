@@ -244,13 +244,14 @@ impl BlockRenderer {
         info: &photon_world::block::StateInfo,
         picked: &[Option<u32>],
     ) -> bool {
-        enabled
-            && info.light_emission == 0
-            && picked
+        super::super::light::smooth_lighting(
+            enabled,
+            info.light_emission,
+            picked
                 .iter()
                 .flatten()
-                .next()
-                .is_some_and(|&first| self.baked[first as usize].ambient_occlusion)
+                .map(|&part| self.baked[part as usize].ambient_occlusion),
+        )
     }
 
     /// [`Self::mesh_region`] and [`Self::mesh_moving_block`]: with a seed position, the

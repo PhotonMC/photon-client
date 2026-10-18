@@ -357,6 +357,108 @@ class MovementEntityOracle extends MovementSupport {
         return entry;
     }
 
+    /**
+     * `ModelBlockRenderer.tesselateBlock`'s choice between smooth and flat
+     * lighting: a block with parts the row describes goes through the real
+     * renderer, and each quad it emits is matched against what the lighter
+     * gives for smooth and for flat.
+     */
+    static JsonObject blockSmoothGate(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = litScene(row);
+        var level = scene.level();
+        var pos = new net.minecraft.core.BlockPos(0, 64, 0);
+        var state = level.getBlockState(pos);
+        var sources = new java.util.ArrayList<net.minecraft.client.resources.model.geometry.BakedQuad>();
+        var parts = new java.util.ArrayList<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart>();
+        for (var element : row.getAsJsonArray("parts")) {
+            boolean useAmbientOcclusion = element.getAsBoolean();
+            var quad = partialUpFace();
+            sources.add(quad);
+            parts.add(new net.minecraft.client.renderer.block.dispatch.BlockStateModelPart() {
+                public java.util.List<net.minecraft.client.resources.model.geometry.BakedQuad> getQuads(
+                    net.minecraft.core.Direction direction) {
+                    return direction == null ? java.util.List.of(quad) : java.util.List.of();
+                }
+                public boolean useAmbientOcclusion() {
+                    return useAmbientOcclusion;
+                }
+                public net.minecraft.client.resources.model.sprite.Material.Baked particleMaterial() {
+                    return null;
+                }
+                public int materialFlags() {
+                    return 0;
+                }
+            });
+        }
+        var model = new net.minecraft.client.renderer.block.dispatch.BlockStateModel() {
+            public void collectParts(net.minecraft.util.RandomSource random,
+                java.util.List<net.minecraft.client.renderer.block.dispatch.BlockStateModelPart> output) {
+                output.addAll(parts);
+            }
+            public net.minecraft.client.resources.model.sprite.Material.Baked particleMaterial() {
+                return null;
+            }
+            public int materialFlags() {
+                return 0;
+            }
+        };
+        var renderer = new net.minecraft.client.renderer.block.ModelBlockRenderer(
+            row.get("option").getAsBoolean(), true, null);
+        var lighter = new net.minecraft.client.renderer.block.BlockModelLighter();
+        var seen = new java.util.ArrayList<int[]>();
+        renderer.tesselateBlock((x, y, z, quad, instance) -> {
+            var got = new int[8];
+            for (int vertex = 0; vertex < 4; vertex++) {
+                got[vertex] = instance.getColor(vertex);
+                got[4 + vertex] = instance.getLightCoords(vertex);
+            }
+            seen.add(got);
+        }, 0.0F, 0.0F, 0.0F, level, pos, state, model, 0L);
+        if (seen.size() != parts.size()) {
+            throw new IllegalStateException("the renderer drew " + seen.size() + " quads for " + parts.size() + " parts");
+        }
+        Boolean smooth = null;
+        for (int index = 0; index < seen.size(); index++) {
+            var instance = new com.mojang.blaze3d.vertex.QuadInstance();
+            lighter.prepareQuadAmbientOcclusion(level, state, pos, sources.get(index), instance);
+            boolean isSmooth = matches(seen.get(index), instance);
+            lighter.prepareQuadFlat(level, state, pos, -1, sources.get(index), instance);
+            boolean isFlat = matches(seen.get(index), instance);
+            if (isSmooth == isFlat) {
+                throw new IllegalStateException("smooth and flat light the row's quad the same way: " + row.get("label"));
+            }
+            if (smooth != null && smooth != isSmooth) {
+                throw new IllegalStateException("the parts of one block took different lighting");
+            }
+            smooth = isSmooth;
+        }
+        entry.addProperty("smooth", smooth != null && smooth);
+        return entry;
+    }
+
+    /** A lopsided face on top of the block, where smooth and flat lighting differ. */
+    static net.minecraft.client.resources.model.geometry.BakedQuad partialUpFace() {
+        var positions = new org.joml.Vector3f[] {
+            new org.joml.Vector3f(0.0F, 1.0F, 0.0F), new org.joml.Vector3f(0.0F, 1.0F, 0.5F),
+            new org.joml.Vector3f(0.5F, 1.0F, 0.5F), new org.joml.Vector3f(0.5F, 1.0F, 0.0F)};
+        var material = new net.minecraft.client.resources.model.geometry.BakedQuad.MaterialInfo(
+            null, null, null, -1, true, 0);
+        return new net.minecraft.client.resources.model.geometry.BakedQuad(
+            positions[0], positions[1], positions[2], positions[3], 0L, 0L, 0L, 0L,
+            net.minecraft.core.Direction.UP, material);
+    }
+
+    static boolean matches(int[] seen, com.mojang.blaze3d.vertex.QuadInstance instance) {
+        for (int vertex = 0; vertex < 4; vertex++) {
+            if (seen[vertex] != instance.getColor(vertex) || seen[4 + vertex] != instance.getLightCoords(vertex)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     static JsonObject entityShadows(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());

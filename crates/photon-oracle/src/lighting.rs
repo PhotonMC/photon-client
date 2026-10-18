@@ -14,6 +14,7 @@ fn bits32(value: &Value) -> Result<f32, String> {
 pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
     match operation {
         "block_lighting" => Some(block_lighting_result(request)),
+        "block_smooth_gate" => Some(block_smooth_gate_result(request)),
         "entity_shadows" => Some(entity_shadows_result(request)),
         _ => None,
     }
@@ -75,6 +76,26 @@ pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
             quads.push(json!({"label": quad["label"], "vertices": vertices}));
         }
         out.push(json!({"label": row["label"], "quads": quads}));
+    }
+    Ok(json!({"rows": out}))
+}
+
+/// `block_smooth_gate`: whether a block with the given parts is lit smooth
+/// (`ModelBlockRenderer.tesselateBlock`), for a block that may glow.
+pub(super) fn block_smooth_gate_result(request: &Value) -> Result<Value, String> {
+    let mut out = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows must be an array")? {
+        let world = movement_world(row)?;
+        let state = world
+            .block_state_at(0, 64, 0)
+            .ok_or("the block is not loaded")?;
+        let parts = row["parts"].as_array().ok_or("parts must be an array")?;
+        let smooth = photon_render::block::light::smooth_lighting(
+            row["option"].as_bool().ok_or("option must be a bool")?,
+            photon_world::block::state_or_air(state).light_emission,
+            parts.iter().map(|part| part.as_bool().unwrap_or(false)),
+        );
+        out.push(json!({"label": row["label"], "smooth": smooth}));
     }
     Ok(json!({"rows": out}))
 }

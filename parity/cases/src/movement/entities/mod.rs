@@ -28,5 +28,6 @@ pub fn cases() -> Vec<Value> {
         ticks("movement/projectile-ticks", "projectile_ticks", projectiles::rows()),
         ticks("movement/entity-shadows", "entity_shadows", shadows::rows()),
         ticks("movement/block-lighting", "block_lighting", lighting::rows()),
+        ticks("movement/block-smooth-gate", "block_smooth_gate", lighting::gate_rows()),
     ]
 }
