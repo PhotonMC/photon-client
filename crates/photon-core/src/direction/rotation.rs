@@ -245,3 +245,20 @@ pub enum DirectionYRotationError {
     ClockwiseVertical(Direction),
     CounterClockwiseVertical(Direction),
 }
+
+#[cfg(test)]
+mod y_rot_tests {
+    use super::*;
+
+    #[test]
+    fn the_horizontal_directions_turn_in_the_two_dimensional_order() {
+        let turns = [
+            Direction::South,
+            Direction::West,
+            Direction::North,
+            Direction::East,
+        ]
+        .map(Direction::to_y_rot);
+        assert_eq!(turns, [0.0, 90.0, 180.0, 270.0]);
+    }
+}
