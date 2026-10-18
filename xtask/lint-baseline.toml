@@ -1048,7 +1048,7 @@
 "crates/photon/src/overlays/wear.rs::name_tags" = 65
 "crates/photon/src/overlays/wear.rs::remote_players" = 104
 "crates/photon/src/particles.rs::Particles::vertices" = 78
-"crates/photon/src/play/camera.rs::Play::frame_camera" = 73
+"crates/photon/src/play/camera.rs::Play::frame_camera" = 70
 "crates/photon/src/play/draw.rs::Play::draw" = 96
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75

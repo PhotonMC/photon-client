@@ -14,6 +14,35 @@ impl Play {
         }
     }
 
+    /// The eyes of the camera's entity: its feet and the smoothed eye height above them.
+    fn eye_at(&self, feet: Vec3, partial: f64) -> Vec3 {
+        Vec3::new(
+            feet.x,
+            feet.y + f64::from(self.camera.eye_height(partial as f32)),
+            feet.z,
+        )
+    }
+
+    /// `Camera.alignWithEntity` for a sleeper in first person: the view turns to the foot of the
+    /// bed and the eyes lift; the rotation it looks along, with `eye` moved.
+    fn sleeping_view(
+        &self,
+        camera_type: CameraType,
+        eye: &mut Vec3,
+        rotation: (f32, f32),
+    ) -> (f32, f32) {
+        let world = self.session.world();
+        let bed = (camera_type == CameraType::FirstPerson)
+            .then(|| world.local_player().and_then(|state| state.sleeping_pos()))
+            .flatten();
+        let Some(bed) = bed else {
+            return rotation;
+        };
+        eye.y += f64::from(0.15_f32);
+        let facing = photon_world::block::bed::bed_orientation(world, (bed.x, bed.y, bed.z));
+        (facing.map_or(0.0, |facing| facing.to_y_rot() - 180.0), 0.0)
+    }
+
     /// `Camera.alignWithEntity` and the projection: the front view turns
     /// round, and a detached camera backs away from the eyes until a block
     /// is in the way.
@@ -30,11 +59,8 @@ impl Play {
         } else {
             (player_y_rot, player_x_rot)
         };
-        let eye = Vec3::new(
-            feet.x,
-            feet.y + f64::from(self.camera.eye_height(partial as f32)),
-            feet.z,
-        );
+        let mut eye = self.eye_at(feet, partial);
+        let (y_rot, x_rot) = self.sleeping_view(camera_type, &mut eye, (y_rot, x_rot));
         let camera = camera_position(self.session.world(), camera_type, eye, (y_rot, x_rot));
         let relative = [
             (camera.x - f64::from(self.origin[0])) as f32,

@@ -2,6 +2,7 @@
 //! and what each class works out from them, the way `Block`, its subclasses
 //! and `BlockStateBase` do.
 
+pub mod bed;
 pub(crate) mod chest;
 pub(crate) mod entity;
 pub(crate) mod piston;
