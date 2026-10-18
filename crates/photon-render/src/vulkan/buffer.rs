@@ -231,6 +231,8 @@ pub(super) struct SceneResources {
     /// The GUI sprites' atlas.
     pub(super) gui_texture: Option<Texture>,
     pub(super) gui_set: Option<vk::DescriptorSet>,
+    /// The same atlas sampled smoothly, for the textures whose metadata asks for it (`blur`).
+    pub(super) gui_blur: Option<(vk::DescriptorSet, Sampler)>,
     /// The maps' colours and the decoration sprites, packed in one image, and its sampler and set.
     pub(super) map_texture: Option<Texture>,
     pub(super) map_set: Option<vk::DescriptorSet>,

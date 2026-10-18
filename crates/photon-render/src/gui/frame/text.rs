@@ -370,6 +370,7 @@ impl GuiFrame {
         if w == 0 || h == 0 || uw == 0.0 || vh == 0.0 {
             return;
         }
+        let blend = atlas.blend_of(name, blend);
         let [u0, v0, u1, v1] = atlas.sprite(name);
         let su = |offset: f32| u0 + (u1 - u0) * offset / size.0 as f32;
         let sv = |offset: f32| v0 + (v1 - v0) * offset / size.1 as f32;

@@ -904,7 +904,7 @@
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
 "crates/photon-render/src/entity/player_renderer.rs::held_item_vertices" = 71
 "crates/photon-render/src/entity/special_models.rs::head" = 90
-"crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 88
+"crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 81
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 93
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
@@ -938,7 +938,7 @@
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::load_panorama" = 61
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 352
-"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 135
+"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 129
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::create_depth_target" = 63
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 103
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::update_atlas" = 69

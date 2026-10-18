@@ -29,6 +29,10 @@ pub enum GuiBlend {
     Highlight,
     /// The credits' vignette: what is behind it darkened by its colour.
     Vignette,
+    /// `Translucent` for a texture whose metadata asks for smooth sampling.
+    TranslucentBlur,
+    /// `Vignette` for a texture whose metadata asks for smooth sampling.
+    VignetteBlur,
     /// A sprite of the block atlas, which the portal overlay is.
     BlockSprite,
     /// Items in slots, whose run counts in `GuiFrame::items`.

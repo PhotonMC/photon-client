@@ -2,7 +2,33 @@
 
 use super::*;
 
+/// The pipelines the GUI draws its special blends with.
+struct GuiPipelines {
+    invert: Pipeline,
+    highlight: Pipeline,
+    vignette: Pipeline,
+    item: Pipeline,
+}
+
 impl VulkanBackend {
+    /// # Safety
+    ///
+    /// The device and `layout` must be live.
+    unsafe fn create_gui_pipelines(
+        &self,
+        layout: vk::DescriptorSetLayout,
+    ) -> Result<GuiPipelines, VulkanError> {
+        // SAFETY: the caller keeps the device and the layout live.
+        unsafe {
+            Ok(GuiPipelines {
+                invert: self.create_pipeline(layout, PipelineKind::GuiInvert)?,
+                highlight: self.create_pipeline(layout, PipelineKind::GuiHighlight)?,
+                vignette: self.create_pipeline(layout, PipelineKind::GuiVignette)?,
+                item: self.create_pipeline(layout, PipelineKind::GuiItem)?,
+            })
+        }
+    }
+
     /// Build the depth target, texture, buffers and pipeline for one mesh.
     ///
     /// The GLSL is this project's own; `build.rs` compiles it with shaderc, the library the
@@ -109,14 +135,7 @@ impl VulkanBackend {
                 self.create_pipeline(descriptors.layout, PipelineKind::WorldBorder)?;
             let screen_effect_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::ScreenEffect)?;
-            let gui_invert_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::GuiInvert)?;
-            let gui_highlight_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::GuiHighlight)?;
-            let gui_vignette_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::GuiVignette)?;
-            let gui_item_pipeline =
-                self.create_pipeline(descriptors.layout, PipelineKind::GuiItem)?;
+            let gui = self.create_gui_pipelines(descriptors.layout)?;
 
             self.scene = Some(SceneResources {
                 texture: Texture {
@@ -157,13 +176,14 @@ impl VulkanBackend {
                 entity_texture: None,
                 entity_set: None,
                 gui_pipeline,
-                gui_invert_pipeline,
-                gui_highlight_pipeline,
+                gui_invert_pipeline: gui.invert,
+                gui_highlight_pipeline: gui.highlight,
                 panorama: None,
-                gui_vignette_pipeline,
-                gui_item_pipeline,
+                gui_vignette_pipeline: gui.vignette,
+                gui_item_pipeline: gui.item,
                 gui_texture: None,
                 gui_set: None,
+                gui_blur: None,
                 map_texture: None,
                 map_set: None,
             });

@@ -1,7 +1,7 @@
 //! The GUI's sprites packed into one texture: the reference's `gui/sprites`
 //! folders, the whole textures screens blit parts of, and the font's images.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use crate::texture::atlas::{AtlasSprite, SpriteEntry, Stitcher};
@@ -145,7 +145,8 @@ fn register_whole_textures(
     stitcher: &mut Stitcher,
     images: &mut BTreeMap<String, DecodedImage>,
     assets_root: &Path,
-) -> Option<()> {
+) -> Option<BTreeSet<String>> {
+    let mut blurred = BTreeSet::new();
     let skins =
         crate::entity::player_renderer::skin_textures().map(|name| format!("textures/{name}"));
     let wholes = WHOLE_TEXTURES
@@ -159,8 +160,14 @@ fn register_whole_textures(
         } else {
             assets_root.join(format!("minecraft/textures/gui/{name}.png"))
         };
-        let image = crate::texture::png::decode_rgba(&std::fs::read(path).ok()?).ok()?;
+        let mut image = crate::texture::png::decode_rgba(&std::fs::read(&path).ok()?).ok()?;
         let key = format!("minecraft:texture/{name}");
+        // A blurred texture is sampled linearly and clamped at its edge: a border of its own
+        // edge texels around it keeps the filter off its neighbours.
+        if has_blur(&path) {
+            image = with_edge_border(&image);
+            blurred.insert(key.clone());
+        }
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,
@@ -168,6 +175,78 @@ fn register_whole_textures(
         });
         images.insert(key, image);
     }
+    Some(blurred)
+}
+
+/// Where a stitched image's own texels are in the atlas: inside the border a blurred
+/// texture carries.
+fn placed_sprite(
+    placement: &crate::texture::atlas::SpritePlacement,
+    (image, blurred): (&DecodedImage, bool),
+    (atlas_width, atlas_height): (i32, i32),
+) -> AtlasSprite {
+    let border = i32::from(blurred);
+    let mut inner = placement.clone();
+    inner.x += border;
+    inner.y += border;
+    AtlasSprite::new(
+        &inner,
+        image.width as i32 - 2 * border,
+        image.height as i32 - 2 * border,
+        atlas_width,
+        atlas_height,
+    )
+}
+
+/// Whether a texture's metadata file asks for it to be sampled smoothly (`blur`).
+fn has_blur(texture: &Path) -> bool {
+    let mut metadata = texture.as_os_str().to_owned();
+    metadata.push(".mcmeta");
+    photon_core::json::read_object(Path::new(&metadata))
+        .and_then(|file| {
+            file.object("texture")
+                .and_then(crate::texture::metadata::TextureMetadata::parse)
+        })
+        .is_some_and(|section| section.blur)
+}
+
+/// The image with one more texel all round, each a copy of the nearest edge texel.
+fn with_edge_border(image: &DecodedImage) -> DecodedImage {
+    let (width, height) = (image.width + 2, image.height + 2);
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        let row = y.saturating_sub(1).min(image.height - 1);
+        for x in 0..width {
+            let column = x.saturating_sub(1).min(image.width - 1);
+            let at = ((row * image.width + column) * 4) as usize;
+            rgba.extend_from_slice(&image.rgba[at..at + 4]);
+        }
+    }
+    DecodedImage {
+        width,
+        height,
+        rgba,
+    }
+}
+
+/// One white texel, which fills are drawn with.
+fn register_white(
+    stitcher: &mut Stitcher,
+    images: &mut BTreeMap<String, DecodedImage>,
+) -> Option<()> {
+    stitcher.register_sprite(SpriteEntry {
+        width: 1,
+        height: 1,
+        name: Identifier::parse("minecraft:white").ok()?,
+    });
+    images.insert(
+        "minecraft:white".to_owned(),
+        DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255; 4],
+        },
+    );
     Some(())
 }
 
@@ -217,6 +296,8 @@ fn register_favicon_slots(
 pub struct GuiAtlas {
     sprites: BTreeMap<String, [f32; 4]>,
     favicons: Vec<FaviconSlot>,
+    /// The whole textures sampled smoothly (`blur` in their metadata), by key.
+    blurred: BTreeSet<String>,
 }
 
 impl GuiAtlas {
@@ -247,7 +328,7 @@ impl GuiAtlas {
             });
             images.insert(format!("minecraft:{name}"), image);
         }
-        register_whole_textures(&mut stitcher, &mut images, assets_root)?;
+        let blurred = register_whole_textures(&mut stitcher, &mut images, assets_root)?;
         // The boards the sign editing screens show, one per wood, and the
         // banner patterns' textures, which the loom's buttons show a piece of.
         let textures = assets_root.join("minecraft/textures");
@@ -259,20 +340,7 @@ impl GuiAtlas {
             register_folder(&mut stitcher, &mut images, &textures.join(folder), prefix)?;
         }
         register_favicon_slots(&mut stitcher, &mut images)?;
-        // One white texel, which fills are drawn with.
-        stitcher.register_sprite(SpriteEntry {
-            width: 1,
-            height: 1,
-            name: Identifier::parse("minecraft:white").ok()?,
-        });
-        images.insert(
-            "minecraft:white".to_owned(),
-            DecodedImage {
-                width: 1,
-                height: 1,
-                rgba: vec![255; 4],
-            },
-        );
+        register_white(&mut stitcher, &mut images)?;
         stitcher.stitch().ok()?;
         let width = stitcher.width().max(1) as u32;
         let height = stitcher.height().max(1) as u32;
@@ -294,12 +362,10 @@ impl GuiAtlas {
                 atlas.rgba[to..to + image.width as usize * 4]
                     .copy_from_slice(&image.rgba[from..from + image.width as usize * 4]);
             }
-            let sprite = AtlasSprite::new(
+            let sprite = placed_sprite(
                 &placement,
-                image.width as i32,
-                image.height as i32,
-                width as i32,
-                height as i32,
+                (image, blurred.contains(&key)),
+                (width as i32, height as i32),
             );
             let uv = [sprite.u0, sprite.v0, sprite.u1, sprite.v1];
             if key.starts_with(FAVICON_SLOT_PREFIX) {
@@ -312,7 +378,14 @@ impl GuiAtlas {
                 sprites.insert(key, uv);
             }
         }
-        Some((Self { sprites, favicons }, atlas))
+        Some((
+            Self {
+                sprites,
+                favicons,
+                blurred,
+            },
+            atlas,
+        ))
     }
 
     /// Every icon texture released (`FaviconTexture.close` of the entries of a list that is gone).
@@ -363,10 +436,40 @@ impl GuiAtlas {
         true
     }
 
+    /// The blend a draw of `name` takes: the smooth-sampling variant for a blurred texture.
+    pub(crate) fn blend_of(&self, name: &str, blend: super::GuiBlend) -> super::GuiBlend {
+        if !self.blurred.contains(&format!("minecraft:{name}")) {
+            return blend;
+        }
+        match blend {
+            super::GuiBlend::Translucent => super::GuiBlend::TranslucentBlur,
+            super::GuiBlend::Vignette => super::GuiBlend::VignetteBlur,
+            other => other,
+        }
+    }
+
     pub(crate) fn sprite(&self, name: &str) -> [f32; 4] {
         self.sprites
             .get(&format!("minecraft:{name}"))
             .copied()
             .unwrap_or([0.0; 4])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_edge_border_repeats_the_nearest_texels() {
+        let image = DecodedImage {
+            width: 2,
+            height: 1,
+            rgba: vec![1, 2, 3, 4, 5, 6, 7, 8],
+        };
+        let padded = with_edge_border(&image);
+        assert_eq!((padded.width, padded.height), (4, 3));
+        let row = [[1, 2, 3, 4], [1, 2, 3, 4], [5, 6, 7, 8], [5, 6, 7, 8]].concat();
+        assert_eq!(padded.rgba, [row.clone(), row.clone(), row].concat());
     }
 }

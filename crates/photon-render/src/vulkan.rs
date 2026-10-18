@@ -50,6 +50,7 @@ mod bytes;
 mod device;
 mod draws;
 mod frame;
+mod gui_blur;
 mod memory;
 mod owned;
 mod panorama;

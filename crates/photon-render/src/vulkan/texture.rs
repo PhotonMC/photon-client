@@ -461,6 +461,7 @@ impl VulkanBackend {
             return Ok(());
         };
         let image = self.replace_image(atlas, set, sampler)?;
+        self.repoint_blur_set(image.view);
         if let Some(texture) = self
             .scene
             .as_mut()
@@ -483,9 +484,11 @@ impl VulkanBackend {
         let Some((texture, set)) = self.upload_sampled_texture(atlas)? else {
             return Ok(());
         };
+        let blur = self.create_blur_set(texture.image.view)?;
         let scene = self.scene.as_mut().expect("checked above");
         scene.gui_texture = Some(texture);
         scene.gui_set = Some(set);
+        scene.gui_blur = blur;
         Ok(())
     }
 
