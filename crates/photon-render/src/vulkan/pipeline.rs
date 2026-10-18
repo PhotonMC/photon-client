@@ -205,7 +205,7 @@ impl VulkanBackend {
                 // (the grass side overlay) is the one seen.
                 .depth_test_enable(!sky && !gui && !text_see_through && !screen_effect)
                 .depth_write_enable(writes_depth(kind))
-                .depth_compare_op(vk::CompareOp::GREATER_OR_EQUAL);
+                .depth_compare_op(depth_compare(kind));
             let blends = [if crumbling {
                 // Source times destination, twice: darkens and lightens.
                 vk::PipelineColorBlendAttachmentState::default()
@@ -384,6 +384,17 @@ impl VulkanBackend {
     }
 }
 
+/// How a pipeline tests depth: reversed, with equal depth passing, as the reference does; the
+/// glint is drawn over exactly the depth the model wrote (`DepthTestFunction.EQUAL`), which keeps
+/// it off the transparent texels of a flat item.
+fn depth_compare(kind: PipelineKind) -> vk::CompareOp {
+    if kind == PipelineKind::Glint {
+        vk::CompareOp::EQUAL
+    } else {
+        vk::CompareOp::GREATER_OR_EQUAL
+    }
+}
+
 /// Whether a pipeline's draws write the depth buffer.
 fn writes_depth(kind: PipelineKind) -> bool {
     matches!(
@@ -392,6 +403,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Translucent
             | PipelineKind::Clouds
             | PipelineKind::Entity
+            | PipelineKind::Held
             | PipelineKind::Dissolve
             | PipelineKind::Rays
             | PipelineKind::Portal
@@ -402,4 +414,3 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::WorldBorder
     )
 }
-            | PipelineKind::Held

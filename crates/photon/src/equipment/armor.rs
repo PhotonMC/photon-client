@@ -237,8 +237,13 @@ impl Armor {
 
     /// `TextureTransform.ARMOR_ENTITY_GLINT_TEXTURING` now.
     fn glint_matrix(&self) -> [f32; 16] {
+        self.glint_matrix_scaled(ARMOR_GLINT_SCALE)
+    }
+
+    /// The glint's texture matrix now, at the scale of the render type that draws it.
+    pub fn glint_matrix_scaled(&self, scale: f32) -> [f32; 16] {
         let millis = self.clock.elapsed().as_millis() as i64;
-        glint_texture_matrix(millis, GLINT_SPEED, ARMOR_GLINT_SCALE)
+        glint_texture_matrix(millis, GLINT_SPEED, scale)
     }
 
     /// The triangles of the armor on a wearer. `prefix` names the wearer's

@@ -231,6 +231,30 @@ fn push_layer(vertices: &mut Vec<Vertex>, layer: &ItemLayer, pose: &Pose, light:
     }
 }
 
+/// `ItemFeatureRenderer.prepareFoilSubmit` for a standard foil: the same triangles again, their
+/// texture coordinate (of the block atlas, in 0 to 1) moved by the glint's matrix into the glint
+/// texture, which sits at `glint` (`[u0, v0, u1, v1]`) in the packed image and repeats.
+pub fn item_glint_vertices(
+    triangles: &[Vertex],
+    matrix: &[f32; 16],
+    glint: [f32; 4],
+) -> Vec<Vertex> {
+    let size = [glint[2] - glint[0], glint[3] - glint[1]];
+    triangles
+        .iter()
+        .map(|vertex| {
+            let moved = crate::render_types::glint_uv(matrix, vertex.uv);
+            Vertex {
+                position: vertex.position,
+                uv: [glint[0] + moved[0] * size[0], glint[1] + moved[1] * size[1]],
+                shade: 0.0,
+                tint: [glint[0], glint[1], size[0], size[1]],
+                light: [0.0; 2],
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,5 +266,25 @@ mod tests {
             .map(rendered_amount)
             .collect();
         assert_eq!(shown, [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    }
+
+    #[test]
+    fn a_glint_moves_the_atlas_coordinate_into_the_glint_texture() {
+        let vertex = Vertex {
+            position: [1.0, 2.0, 3.0],
+            uv: [0.25, 0.5],
+            shade: 1.0,
+            tint: [1.0; 4],
+            light: [240.0; 2],
+        };
+        let matrix = crate::render_types::glint_texture_matrix(0, 0.5, 8.0);
+        let glint = item_glint_vertices(&[vertex], &matrix, [0.5, 0.25, 0.625, 0.375]);
+        let moved = crate::render_types::glint_uv(&matrix, [0.25, 0.5]);
+        assert_eq!(glint[0].position, vertex.position);
+        assert_eq!(
+            glint[0].uv,
+            [0.5 + moved[0] * 0.125, 0.25 + moved[1] * 0.125]
+        );
+        assert_eq!(glint[0].tint, [0.5, 0.25, 0.125, 0.125]);
     }
 }

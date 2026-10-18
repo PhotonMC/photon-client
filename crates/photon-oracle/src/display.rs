@@ -316,13 +316,19 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
 /// moves the texture.
 pub(super) fn glint_layers_result(request: &Value) -> Result<Value, String> {
     use photon_render::render_types::{
-        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, GLINT, glint_texture_matrix,
+        ARMOR_GLINT_SCALE, ARMOR_GLINT_TEXTURE, GLINT, ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE,
+        glint_texture_matrix,
+    };
+    let (texture, scale) = if request["render_type"].as_str() == Some("item") {
+        (ITEM_GLINT_TEXTURE, ITEM_GLINT_SCALE)
+    } else {
+        (ARMOR_GLINT_TEXTURE, ARMOR_GLINT_SCALE)
     };
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let millis = row["millis"].as_i64().ok_or("millis")?;
         let speed = row["speed"].as_f64().ok_or("speed")?;
-        let matrix: Vec<String> = glint_texture_matrix(millis, speed, ARMOR_GLINT_SCALE)
+        let matrix: Vec<String> = glint_texture_matrix(millis, speed, scale)
             .iter()
             .map(|value| format!("{:08x}", value.to_bits()))
             .collect();
@@ -336,7 +342,7 @@ pub(super) fn glint_layers_result(request: &Value) -> Result<Value, String> {
         "depth_test": GLINT.depth_test,
         "depth_write": GLINT.depth_write,
         "cull": GLINT.cull,
-        "texture": format!("textures/{ARMOR_GLINT_TEXTURE}.png"),
+        "texture": format!("textures/{texture}.png"),
         "rows": rows,
     }))
 }

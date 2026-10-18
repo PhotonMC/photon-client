@@ -94,6 +94,11 @@ pub const GLINT: PipelineState = PipelineState {
 pub const ARMOR_GLINT_TEXTURE: &str = "misc/enchanted_glint_armor";
 pub const ARMOR_GLINT_SCALE: f32 = 0.16;
 
+/// `ItemFeatureRenderer.ENCHANTED_GLINT_ITEM`: the texture the glint on items is drawn in, and the
+/// scale of `TextureTransform.GLINT_TEXTURING` (`RenderTypes.glint` and `glintTranslucent`).
+pub const ITEM_GLINT_TEXTURE: &str = "misc/enchanted_glint_item";
+pub const ITEM_GLINT_SCALE: f32 = 8.0;
+
 /// `TextureTransform.setupGlintTexturing`: the matrix (as `Matrix4f.get(float[])` gives it, column
 /// by column) that moves the glint's texture at a time (`Util.getMillis`) and glint speed (the
 /// option): translated by two slow offsets, turned a tenth of a half turn about z and scaled.

@@ -173,8 +173,10 @@ pub fn glint() -> Vec<Value> {
     .map(|(millis, speed)| {
         json!({"label": format!("glint-matrix-{millis}-{}", float_text(*speed)), "millis": millis, "speed": speed})
     })
-    .collect();
-    vec![entity("item-foil", "item_foil", rows), entity("glint-layers", "glint_layers", matrices)]
+    .collect::<Vec<Value>>();
+    let mut items = entity("item-glint-layers", "glint_layers", matrices.clone());
+    items["render_type"] = json!("item");
+    vec![entity("item-foil", "item_foil", rows), entity("glint-layers", "glint_layers", matrices), items]
 }
 
 fn name(text: &str) -> String {

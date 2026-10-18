@@ -767,7 +767,9 @@ class EntityDisplayOracle extends EntityDataOracle {
 
     static JsonObject glintLayers(final JsonObject request) throws Exception {
         var gameState = installGameState();
-        var renderType = net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
+        var renderType = request.has("render_type") && request.get("render_type").getAsString().equals("item")
+            ? net.minecraft.client.renderer.rendertype.RenderTypes.glint()
+            : net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
         var renderTypeState = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
         renderTypeState.setAccessible(true);
         var setup = renderTypeState.get(renderType);

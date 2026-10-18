@@ -105,6 +105,14 @@ struct Caster {
 /// The shadow texture's path (under `textures/`).
 pub const SHADOW_TEXTURE: &str = "misc/shadow";
 
+/// The textures of the overlays that the entity texture packs besides the mobs': the orbs', the
+/// shadows' and the items' glint.
+pub const SHARED_TEXTURES: [&str; 3] = [
+    ORB_TEXTURE,
+    SHADOW_TEXTURE,
+    photon_render::render_types::ITEM_GLINT_TEXTURE,
+];
+
 mod light;
 pub use light::*;
 mod wear;

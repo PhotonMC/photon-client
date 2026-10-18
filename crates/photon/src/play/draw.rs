@@ -2,6 +2,7 @@ use super::*;
 use crate::objects::displays;
 use crate::objects::leashes;
 use crate::world::sections;
+use photon_render::render_types::{ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE};
 
 impl Play {
     /// The listener of the sounds goes where the camera is.
@@ -47,10 +48,13 @@ impl Play {
         let local =
             (!first_person && !spectating).then(|| player.interpolated_position(frame.partial));
         let held = self.draw_entities(view, first_person, hook_sprites)?;
-        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
         let with_textures = (tints.0, tints.1, &self.entity_textures);
+        self.item_layers.set_glint(
+            self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE),
+            self.entity_textures.rect(ITEM_GLINT_TEXTURE),
+        );
         let items = &mut self.item_vertices;
         items.clear();
         let pickups: Vec<_> = self.particles.pickups().collect();
@@ -62,6 +66,9 @@ impl Play {
             items,
         );
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
+        // The items' glints are drawn with the armor's, over the depth the items wrote.
+        self.armor.glint.extend(self.item_layers.take_glint());
+        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
         self.item_layers
             .hand_over(&mut self.backend, &self.item_vertices)?;
         set_moving_blocks(&mut self.backend, &self.session, tints, view)

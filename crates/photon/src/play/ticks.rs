@@ -80,7 +80,7 @@ impl Play {
         let entity_textures = photon_render::entity::textures::EntityTextures::build(
             photon_render::entity::player_renderer::skin_textures()
                 .chain(mobs::textures())
-                .chain([overlays::ORB_TEXTURE, overlays::SHADOW_TEXTURE])
+                .chain(overlays::SHARED_TEXTURES)
                 .map(str::to_owned)
                 .chain(villagers::textures())
                 .chain(armor.textures())

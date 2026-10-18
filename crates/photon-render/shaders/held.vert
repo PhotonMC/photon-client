@@ -12,6 +12,7 @@ layout(location = 1) out float out_shade;
 layout(location = 2) out vec4 out_tint;
 layout(location = 3) out vec2 out_fog;
 layout(location = 4) out vec3 out_light;
+invariant gl_Position;
 void main() {
     gl_Position = push.view_projection * vec4(in_position, 1.0);
     out_uv = in_uv;

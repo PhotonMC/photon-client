@@ -4,6 +4,8 @@ use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
 use photon_render::model::DisplayContext;
+use photon_render::objects::item::item_glint_vertices;
+use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
 /// Each stack's layers in one display context, built the first time a slot
@@ -13,6 +15,15 @@ pub struct ItemLayerCache {
     layers: std::collections::HashMap<i32, Vec<PatchLayers>>,
     /// Block states drawn on entities, by state id, with the light each gives off.
     blocks: std::collections::HashMap<BlockStateId, Option<(ItemLayer, i32)>>,
+    glint: Glint,
+}
+
+/// The glints of the enchanted stacks drawn since they were last taken.
+#[derive(Default)]
+struct Glint {
+    /// The glint's texture matrix now and the texture's place in the packed image.
+    moving: Option<([f32; 16], [f32; 4])>,
+    vertices: Vec<Vertex>,
 }
 
 /// The layers of an item with one component patch.
@@ -24,7 +35,35 @@ impl ItemLayerCache {
             context,
             layers: std::collections::HashMap::new(),
             blocks: std::collections::HashMap::new(),
+            glint: Glint::default(),
         }
+    }
+
+    /// Set how the glints of the frame move (`TextureTransform.GLINT_TEXTURING`) and where their
+    /// texture is; without it no glint is drawn.
+    pub fn set_glint(&mut self, matrix: [f32; 16], texture: Option<[f32; 4]>) {
+        self.glint.moving = texture.map(|texture| (matrix, texture));
+    }
+
+    /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
+    /// has one (`ItemStack.hasFoil`).
+    pub fn add_glint(&mut self, stack: &ClientItemStackState, drawn: &[Vertex]) {
+        let Some((matrix, texture)) = self.glint.moving else {
+            return;
+        };
+        let foil =
+            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+                .has_foil();
+        if foil {
+            self.glint
+                .vertices
+                .extend(item_glint_vertices(drawn, &matrix, texture));
+        }
+    }
+
+    /// The glints added since the last call.
+    pub fn take_glint(&mut self) -> Vec<Vertex> {
+        std::mem::take(&mut self.glint.vertices)
     }
 
     /// The model of a block state drawn on an entity (`BlockModelResolver`),
