@@ -180,6 +180,7 @@ fn main() {
                     light: &|x, y, z| copy.light_at(x, y, z),
                     biome_tint: &tint,
                     tags: copy.tags(),
+                    cardinal: photon_world::CardinalLightType::Default,
                 },
                 [key.0 * 16, key.1 * 16, key.2 * 16],
                 [16, 16, 16],

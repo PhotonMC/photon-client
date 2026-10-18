@@ -414,7 +414,9 @@ impl SectionMeshes {
             let copy = world.copy_region(min, size, quart_min, quart_size);
             self.next_generation += 1;
             self.latest.insert(key, self.next_generation);
-            self.workers.submit(key, self.next_generation, copy, origin);
+            let cardinal = world.dimension_environment().cardinal_light_type();
+            self.workers
+                .submit(key, self.next_generation, copy, origin, cardinal);
         }
     }
 

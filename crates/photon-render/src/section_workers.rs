@@ -26,6 +26,7 @@ struct Job {
     generation: u64,
     copy: RegionCopy,
     origin: [i32; 3],
+    cardinal: photon_world::CardinalLightType,
 }
 
 /// A finished section mesh.
@@ -89,12 +90,20 @@ impl SectionWorkers {
 
     /// Hand a copied section to the workers, which take them in the order
     /// they were handed over.
-    pub fn submit(&mut self, key: SectionKey, generation: u64, copy: RegionCopy, origin: [i32; 3]) {
+    pub fn submit(
+        &mut self,
+        key: SectionKey,
+        generation: u64,
+        copy: RegionCopy,
+        origin: [i32; 3],
+        cardinal: photon_world::CardinalLightType,
+    ) {
         let job = Job {
             key,
             generation,
             copy,
             origin,
+            cardinal,
         };
         let renderer = Arc::clone(&self.renderer);
         let tints = Arc::clone(&self.tints);
@@ -139,6 +148,7 @@ fn mesh_section(renderer: &BlockRenderer, tints: &BiomeTints, job: Job) -> Built
             light: &light,
             biome_tint: &tint,
             tags: copy.tags(),
+            cardinal: job.cardinal,
         },
         corner,
         [16, 16, 16],

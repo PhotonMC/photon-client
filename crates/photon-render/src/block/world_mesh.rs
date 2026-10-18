@@ -84,4 +84,6 @@ pub struct MeshWorld<'a, R, L, T> {
     pub light: &'a L,
     pub biome_tint: &'a T,
     pub tags: &'a photon_world::block::tags::BlockTags,
+    /// The dimension type's side shades.
+    pub cardinal: photon_world::CardinalLightType,
 }

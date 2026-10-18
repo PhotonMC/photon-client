@@ -10,6 +10,7 @@
 //! half, each in sixteenths.
 
 use photon_core::direction::Direction;
+use photon_world::CardinalLightType;
 use photon_world::block::StateInfo;
 
 /// Full brightness in both halves.
@@ -74,11 +75,16 @@ fn smooth_weighted_blend(coords: [i32; 4], weights: [f32; 4]) -> i32 {
     ((block as i32) & 0xFF) | (((sky as i32) & 0xFF) << 16)
 }
 
-/// The side shade the default dimension gives each face.
-pub fn cardinal(direction: Direction) -> f32 {
+/// The side shade a dimension type's cardinal light gives each face
+/// (`CardinalLighting.DEFAULT` and `NETHER`).
+pub fn cardinal(direction: Direction, kind: CardinalLightType) -> f32 {
+    let (down, up) = match kind {
+        CardinalLightType::Default => (0.5, 1.0),
+        CardinalLightType::Nether => (0.9, 0.9),
+    };
     match direction {
-        Direction::Down => 0.5,
-        Direction::Up => 1.0,
+        Direction::Down => down,
+        Direction::Up => up,
         Direction::North | Direction::South => 0.8,
         Direction::West | Direction::East => 0.6,
     }
@@ -220,6 +226,20 @@ fn offset(position: [i32; 3], direction: Direction) -> [i32; 3] {
     [position[0] + x, position[1] + y, position[2] + z]
 }
 
+/// The block a flat quad reads its light from.
+fn flat_light_position(
+    position: [i32; 3],
+    direction: Direction,
+    cull: Option<Direction>,
+    face_cubic: bool,
+) -> [i32; 3] {
+    match cull {
+        Some(side) => offset(position, side),
+        None if face_cubic => offset(position, direction),
+        None => position,
+    }
+}
+
 /// The level as the lighter reads it.
 pub struct Lighter<S, L> {
     /// The block state at a position, or nothing where no chunk is loaded.
@@ -231,6 +251,8 @@ pub struct Lighter<S, L> {
 /// One quad's lighting: each corner's shade (before the side shade) and its
 /// packed light coordinates, in the quad's own corner order.
 pub struct QuadLight {
+    /// Whether the corners are lit smoothly (ambient occlusion) or flat.
+    pub smooth: bool,
     pub shade: [f32; 4],
     pub light: [i32; 4],
 }
@@ -305,13 +327,12 @@ where
             // Flat: a face hidden behind a side reads that side's block; any
             // other reads the block it faces if it lies on the block's edge,
             // else its own. Both read with this block's own emission.
-            let light_position = match cull {
-                Some(side) => offset(position, side),
-                None if face_cubic => offset(position, direction),
-                None => position,
-            };
-            let light = self.light_coords(Some(state), light_position);
+            let light = self.light_coords(
+                Some(state),
+                flat_light_position(position, direction, cull, face_cubic),
+            );
             return QuadLight {
+                smooth: false,
                 shade: [1.0; 4],
                 light: [light; 4],
             };
@@ -394,6 +415,7 @@ where
         let blend4 = smooth_blend(light[3], light[1], light13, light_centre);
 
         let mut out = QuadLight {
+            smooth: true,
             shade: [0.0; 4],
             light: [0; 4],
         };
@@ -435,6 +457,22 @@ mod tests {
         photon_data::block::registry::block("minecraft:stone")
             .expect("stone")
             .default_state_id()
+    }
+
+    #[test]
+    fn the_nether_flattens_the_top_and_bottom_shade() {
+        use CardinalLightType::{Default, Nether};
+        let faces = [
+            Direction::Down,
+            Direction::Up,
+            Direction::North,
+            Direction::South,
+            Direction::West,
+            Direction::East,
+        ];
+        let shades = |kind| faces.map(|face| cardinal(face, kind));
+        assert_eq!(shades(Default), [0.5, 1.0, 0.8, 0.8, 0.6, 0.6]);
+        assert_eq!(shades(Nether), [0.9, 0.9, 0.8, 0.8, 0.6, 0.6]);
     }
 
     #[test]

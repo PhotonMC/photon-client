@@ -255,6 +255,7 @@ impl BlockRenderer {
             light,
             biome_tint,
             tags,
+            ..
         } = *world;
         let lighter = crate::block::light::Lighter {
             state: |p: [i32; 3]| read(p[0], p[1], p[2]),
@@ -316,9 +317,7 @@ impl BlockRenderer {
                     // A model is built in its own block's unit cube, so it
                     // moves to where the block sits, measured from the box's
                     // near corner.
-                    let shift: [f32; 3] = std::array::from_fn(|axis| {
-                        (position[axis] - mesh_origin[axis]) as f32 + nudge[axis] as f32
-                    });
+                    let shift = block_shift(position, mesh_origin, nudge);
                     for model in picked.into_iter().flatten() {
                         let model = &self.baked[model as usize];
                         // Smooth lighting, the reference's default, unless the
@@ -343,9 +342,9 @@ impl BlockRenderer {
                                     quad.cull,
                                     smooth,
                                 ),
-                                smooth,
                                 tint,
                                 shift,
+                                world.cardinal,
                             );
                         }
                     }
@@ -385,6 +384,12 @@ impl BlockRenderer {
     }
 }
 
+/// Where a block's unit cube sits from the mesh origin, with its random
+/// offset.
+fn block_shift(position: [i32; 3], mesh_origin: [i32; 3], nudge: [f64; 3]) -> [f32; 3] {
+    std::array::from_fn(|axis| (position[axis] - mesh_origin[axis]) as f32 + nudge[axis] as f32)
+}
+
 /// One lit quad of a block into the mesh. The colour is built in 8-bit
 /// steps as the reference builds it: the occlusion grey, then the side
 /// shade, then the tint.
@@ -392,12 +397,12 @@ pub(super) fn push_block_quad(
     mesh: &mut Mesh,
     quad: &crate::block::bake::BakedQuad,
     lit: &crate::block::light::QuadLight,
-    smooth: bool,
     tint: u32,
     shift: [f32; 3],
+    cardinal: photon_world::CardinalLightType,
 ) {
     let side = if quad.shade {
-        crate::block::light::cardinal(quad.direction)
+        crate::block::light::cardinal(quad.direction, cardinal)
     } else {
         1.0
     };
@@ -405,7 +410,7 @@ pub(super) fn push_block_quad(
     let white = tint == [255, 255, 255, 255];
     let base = mesh.vertices.len() as u32;
     for corner in 0..4 {
-        let grey = if smooth {
+        let grey = if lit.smooth {
             let grey = (lit.shade[corner] * 255.0).floor() as i32;
             ((grey as f32 * side) as i32).clamp(0, 255)
         } else {
@@ -453,6 +458,7 @@ pub fn build_world_mesh(
         light: &light,
         biome_tint: &biome_tint,
         tags: &tags,
+        cardinal: photon_world::CardinalLightType::Default,
     };
     let region = renderer.mesh_region(&world, origin, size, origin);
     let model_count = renderer.model_count();

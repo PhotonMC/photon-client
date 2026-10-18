@@ -43,6 +43,7 @@ pub(crate) fn moving_block_mesh(
             light: &light,
             biome_tint: &tint,
             tags: world.block_state_registry().tags(),
+            cardinal: world.dimension_environment().cardinal_light_type(),
         },
         block,
         seed_position,
