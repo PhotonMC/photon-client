@@ -26,6 +26,7 @@ public final class ModelOracle extends ModelMath {
                 case "euler_rotation" -> rows.add(euler(element.getAsJsonObject()));
                 case "face_uv_rotation" -> rows.add(uvRotation(element.getAsJsonObject()));
                 case "parse_model" -> rows.add(parseModel(element.getAsJsonObject()));
+                case "model_ao" -> rows.add(modelAmbientOcclusion(element.getAsJsonObject()));
                 case "model_state" -> rows.add(modelState(element.getAsJsonObject()));
                 case "blockstate_parse" -> rows.add(blockstate(element.getAsJsonObject()));
                 case "uv_lock" -> rows.add(uvLock(element.getAsJsonObject()));
@@ -255,6 +256,35 @@ public final class ModelOracle extends ModelMath {
         entry.addProperty("identity", identity);
         entry.addProperty("u", Oracle.bits(transformedU));
         entry.addProperty("v", Oracle.bits(transformedV));
+        return entry;
+    }
+
+    /**
+     * The ambient occlusion flag a model ends up with after inheritance, read
+     * from a real resolved chain built by the model discovery.
+     */
+    static JsonObject modelAmbientOcclusion(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var models = new java.util.HashMap<net.minecraft.resources.Identifier,
+            net.minecraft.client.resources.model.UnbakedModel>();
+        for (var element : row.getAsJsonArray("models")) {
+            var model = element.getAsJsonObject();
+            String text = new String(
+                HexFormat.of().parseHex(model.get("text").getAsString()),
+                java.nio.charset.StandardCharsets.UTF_8);
+            models.put(
+                net.minecraft.resources.Identifier.parse(model.get("name").getAsString()),
+                net.minecraft.client.resources.model.cuboid.CuboidModel
+                    .fromStream(new java.io.StringReader(text)));
+        }
+        var leaf = net.minecraft.resources.Identifier.parse(row.get("leaf").getAsString());
+        var discovery = new net.minecraft.client.resources.model.ModelDiscovery(
+            models, net.minecraft.client.resources.model.cuboid.MissingCuboidModel.missingModel());
+        discovery.addRoot(resolver -> resolver.markDependency(leaf));
+        var resolved = discovery.resolve().get(leaf);
+        entry.addProperty("outcome", "resolved");
+        entry.addProperty("ambient_occlusion", resolved.getTopAmbientOcclusion());
         return entry;
     }
 

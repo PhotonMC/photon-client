@@ -1,27 +1,45 @@
 use super::*;
 
-pub(super) fn model_result(request: &Value) -> Result<Value, String> {
-    if string(request, "operation")? == "nearest_direction" {
-        let rows = request["rows"]
-            .as_array()
-            .ok_or("model rows must be an array")?;
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            let read = |name: &str| -> Result<f32, String> {
-                Ok(f32::from_bits(
-                    u32::from_str_radix(string(row, name)?, 16)
-                        .map_err(|error| format!("{name}: {error}"))?,
-                ))
-            };
-            let vector = [read("x")?, read("y")?, read("z")?];
-            out.push(json!({
-                "label": string(row, "label")?,
-                "outcome": "resolved",
-                "direction": photon_render::approximate_nearest_direction(vector).name(),
-            }));
-        }
-        return Ok(json!({"rows": out}));
+type Operation = fn(&Value) -> Result<Value, String>;
+
+/// The operations that have a function of their own.
+const DELEGATED: [(&str, Operation); 11] = [
+    ("nearest_direction", model_nearest_direction_result),
+    ("uv_lock", model_uv_lock_result),
+    ("blockstate_parse", model_blockstate_result),
+    ("model_state", model_state_result),
+    ("parse_model", model_parse_result),
+    ("model_ao", crate::model_ao::model_ambient_occlusion_result),
+    ("face_uv_rotation", model_uv_rotation_result),
+    ("euler_rotation", model_euler_result),
+    ("quad_winding", model_winding_result),
+    ("element_rotation", model_rotation_result),
+    ("face_geometry", model_geometry_result),
+];
+
+fn model_nearest_direction_result(request: &Value) -> Result<Value, String> {
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("model rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let read = |name: &str| -> Result<f32, String> {
+            Ok(f32::from_bits(
+                u32::from_str_radix(string(row, name)?, 16)
+                    .map_err(|error| format!("{name}: {error}"))?,
+            ))
+        };
+        let vector = [read("x")?, read("y")?, read("z")?];
+        out.push(json!({
+            "label": string(row, "label")?,
+            "outcome": "resolved",
+            "direction": photon_render::approximate_nearest_direction(vector).name(),
+        }));
     }
+    Ok(json!({"rows": out}))
+}
+
+pub(super) fn model_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "cull_rotation" {
         use photon_core::direction::Direction;
         use photon_render::block::rotation;
@@ -46,32 +64,9 @@ pub(super) fn model_result(request: &Value) -> Result<Value, String> {
         }
         return Ok(json!({"rows": out}));
     }
-    if string(request, "operation")? == "uv_lock" {
-        return model_uv_lock_result(request);
-    }
-    if string(request, "operation")? == "blockstate_parse" {
-        return model_blockstate_result(request);
-    }
-    if string(request, "operation")? == "model_state" {
-        return model_state_result(request);
-    }
-    if string(request, "operation")? == "parse_model" {
-        return model_parse_result(request);
-    }
-    if string(request, "operation")? == "face_uv_rotation" {
-        return model_uv_rotation_result(request);
-    }
-    if string(request, "operation")? == "euler_rotation" {
-        return model_euler_result(request);
-    }
-    if string(request, "operation")? == "quad_winding" {
-        return model_winding_result(request);
-    }
-    if string(request, "operation")? == "element_rotation" {
-        return model_rotation_result(request);
-    }
-    if string(request, "operation")? == "face_geometry" {
-        return model_geometry_result(request);
+    let operation = string(request, "operation")?;
+    if let Some((_, run)) = DELEGATED.iter().find(|(name, _)| *name == operation) {
+        return run(request);
     }
     if string(request, "operation")? != "texture_slots" {
         return Err("unknown model operation".into());

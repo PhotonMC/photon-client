@@ -205,6 +205,7 @@ use image::*;
 mod living_ticks;
 use living_ticks::*;
 mod model;
+mod model_ao;
 use model::*;
 mod model_layers;
 use model_layers::*;

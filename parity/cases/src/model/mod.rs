@@ -103,6 +103,49 @@ fn parse_model() -> Vec<Value> {
         .collect()
 }
 
+/// The ambient occlusion flag after inheritance: the first value set walking
+/// up from the leaf, and on when no model in the chain sets it.
+fn model_ao() -> Vec<Value> {
+    const SET_ON: &str = r#"{"ambientocclusion": true}"#;
+    const SET_OFF: &str = r#"{"ambientocclusion": false}"#;
+    const UNSET: &str = "{}";
+    // Each chain is root first; the last model is the leaf.
+    let chains: [(&str, &[&str]); 8] = [
+        ("single-unset", &[UNSET]),
+        ("single-off", &[SET_OFF]),
+        ("child-inherits-off", &[SET_OFF, UNSET]),
+        ("child-overrides-on", &[SET_OFF, SET_ON]),
+        ("child-overrides-off", &[SET_ON, SET_OFF]),
+        ("middle-off", &[UNSET, SET_OFF, UNSET]),
+        ("root-off-deep", &[SET_OFF, UNSET, UNSET]),
+        ("nothing-set-deep", &[UNSET, UNSET, UNSET]),
+    ];
+    chains
+        .iter()
+        .map(|(label, texts)| {
+            let name = |index: usize| format!("photon:ao/{label}/{index}");
+            let models: Vec<Value> = texts
+                .iter()
+                .enumerate()
+                .map(|(index, text)| {
+                    let body = if index == 0 {
+                        (*text).to_owned()
+                    } else {
+                        let parent = format!(r#""parent": "{}""#, name(index - 1));
+                        if *text == UNSET {
+                            format!("{{{parent}}}")
+                        } else {
+                            format!("{{{parent}, {}", text.trim_start_matches('{'))
+                        }
+                    };
+                    json!({"name": name(index), "text": hex(body.as_bytes())})
+                })
+                .collect();
+            json!({"label": label, "models": models, "leaf": name(texts.len() - 1)})
+        })
+        .collect()
+}
+
 fn model(label: &str, operation: &str, rows: Vec<Value>) -> Value {
     case(format!("model/{label}"), "model", operation, json!({ "rows": rows }))
 }
@@ -115,6 +158,7 @@ pub fn cases() -> Vec<Value> {
         model("blockstate-parse", "blockstate_parse", blockstates()),
         model("model-state", "model_state", states::model_state()),
         model("parse-model", "parse_model", parse_model()),
+        model("model-ao", "model_ao", model_ao()),
         model("face-uv-rotation", "face_uv_rotation", geometry::face_uv_rotation()),
         model("euler-rotation", "euler_rotation", geometry::euler_rotation()),
         model("quad-winding", "quad_winding", geometry::quad_winding()),
