@@ -230,6 +230,14 @@ impl Gui {
                 lines,
             );
         }
+        // `Hud.extractRenderState`: the overlay message and the titles come before the chat.
+        let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
+        Self::draw_announcements(
+            &mut self.titles,
+            (&self.atlas, &self.font),
+            &mut frame,
+            (hidden, gui_size, partial),
+        );
         // The chat, over the hotbar; open, it is the box's and brighter.
         let chat_tooltip = (!hidden)
             .then(|| {
@@ -249,7 +257,6 @@ impl Gui {
                 session.commands().map(|tree| (&**tree, &*self.lang)),
             );
         }
-        let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
         if let Some(lines) = chat_tooltip {
             frame.tooltip(
                 &self.atlas,
@@ -259,15 +266,8 @@ impl Gui {
                 gui_size,
             );
         }
-        let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
         let now = self.started_at.elapsed().as_millis() as u64;
         let last_frame = std::mem::replace(&mut self.last_frame_ms, now);
-        Self::draw_announcements(
-            &mut self.titles,
-            (&self.atlas, &self.font),
-            &mut frame,
-            (hidden, gui_size, partial),
-        );
         if Self::draw_server_dialog(
             (&self.atlas, &self.font, &self.lang),
             controls,
