@@ -39,6 +39,10 @@ pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
                 )
             },
         };
+        let kind = match row["cardinal"].as_str() {
+            Some("nether") => photon_world::CardinalLightType::Nether,
+            _ => photon_world::CardinalLightType::Default,
+        };
         let mut quads = Vec::new();
         for quad in row["quads"].as_array().ok_or("quads must be an array")? {
             let at = [
@@ -66,9 +70,9 @@ pub(super) fn block_lighting_result(request: &Value) -> Result<Value, String> {
             let smooth = quad["smooth"].as_bool().ok_or("smooth must be a bool")?;
             let lit = lighter.light_quad(state, at, &corners, face, cull, smooth);
             let side = if quad["shade"].as_bool().ok_or("shade must be a bool")? {
-                cardinal(face, photon_world::CardinalLightType::Default)
+                cardinal(face, kind)
             } else {
-                cardinal(Direction::Up, photon_world::CardinalLightType::Default)
+                cardinal(Direction::Up, kind)
             };
             let vertices: Vec<Value> = (0..4)
                 .map(|corner| json!({"grey": grey(&lit, corner, side), "light": lit.light[corner]}))

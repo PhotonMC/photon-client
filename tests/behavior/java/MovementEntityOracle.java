@@ -311,6 +311,22 @@ class MovementEntityOracle extends MovementSupport {
         entry.addProperty("label", row.get("label").getAsString());
         var scene = litScene(row);
         var level = scene.level();
+        if (row.has("cardinal") && row.get("cardinal").getAsString().equals("nether")) {
+            // Only the face shade comes from the dimension type, which is what
+            // `ClientLevel.cardinalLighting` reads. The overworld's type with
+            // the nether's cardinal light keeps the level's height and lighting
+            // as built.
+            var base = level.dimensionType();
+            var changed = new net.minecraft.world.level.dimension.DimensionType(
+                base.hasFixedTime(), base.hasSkyLight(), base.hasCeiling(),
+                base.hasEnderDragonFight(), base.coordinateScale(), base.minY(),
+                base.height(), base.logicalHeight(), base.infiniburn(), base.ambientLight(),
+                base.monsterSettings(), base.skybox(),
+                net.minecraft.world.level.CardinalLighting.Type.NETHER, base.attributes(),
+                base.timelines(), base.defaultClock());
+            setField(level, "dimensionTypeRegistration",
+                net.minecraft.core.Holder.direct(changed));
+        }
         var lighter = new net.minecraft.client.renderer.block.BlockModelLighter();
         var quads = new JsonArray();
         for (var element : row.getAsJsonArray("quads")) {

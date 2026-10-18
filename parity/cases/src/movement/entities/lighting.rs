@@ -93,7 +93,20 @@ fn roofed() -> Vec<Value> {
     (-8..9).flat_map(|x| (-8..9).map(move |z| put(x, 70, z, "minecraft:stone"))).collect()
 }
 
+/// A row's cardinal light type: the dimension type's `cardinal_light`.
+fn in_nether(mut row: Value) -> Value {
+    row["label"] = json!(format!("nether-{}", row["label"].as_str().unwrap_or_default()));
+    row["cardinal"] = json!("nether");
+    row
+}
+
 pub fn rows() -> Vec<Value> {
+    let overworld = overworld_rows();
+    let nether: Vec<Value> = overworld.iter().take(3).cloned().map(in_nether).collect();
+    cat![overworld, nether]
+}
+
+fn overworld_rows() -> Vec<Value> {
     let ground = floor();
     let centre = [0, 64, 0];
     let on = |block: Value| cat![ground.clone(), vec![block]];
