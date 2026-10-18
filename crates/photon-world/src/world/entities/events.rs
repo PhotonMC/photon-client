@@ -138,12 +138,17 @@ impl Entities {
 
     /// `LivingEntity.handleEntityEvent(3)` for an entity that is not a
     /// player: it dies (health spent), the sound aside.
-    /// `handleAnimate`: an arm swings (actions 0 and 3). The others (waking
-    /// from bed, the critical-hit particles) are not carried out.
+    /// `handleAnimate`: an arm swings (actions 0 and 3), or a player wakes up (2: its sleeping
+    /// position is emptied and it stands). The critical-hit particles are not carried out here.
     pub fn apply_animate(&mut self, entity_id: EntityId, action: u8) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
+        if action == 2 && entity.living_kind().is_some() {
+            entity.sleeping_pos = None;
+            entity.pose = ClientEntityPose::Standing;
+            return true;
+        }
         if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
             return false;
         }

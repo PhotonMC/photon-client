@@ -448,3 +448,28 @@ fn the_level_events_wait_for_the_particle_engine_in_order() {
     );
     assert!(world.take_level_events().is_empty());
 }
+
+#[test]
+fn a_wake_up_animation_empties_a_remote_players_sleeping_position() {
+    let mut world = ClientWorld::default();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(9),
+        uuid: Uuid::new(1, 2),
+        type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+        x: 0.5,
+        y: 0.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    let bed = photon_core::binary::BlockPos { x: 1, y: 64, z: 2 };
+    world
+        .entities_mut()
+        .at_mut(EntityId(9))
+        .unwrap()
+        .sleeping_pos = Some(bed);
+    assert!(world.entities_mut().apply_animate(EntityId(9), 2));
+    let player = world.entities().at(EntityId(9)).unwrap();
+    assert_eq!(player.sleeping_pos(), None);
+}
