@@ -444,6 +444,17 @@ where
     }
 }
 
+/// A corner's grey (0 to 255) from its occlusion shade, built in 8-bit steps
+/// as the reference builds it: the shade, then the side shade scaled in.
+pub fn grey(lit: &QuadLight, corner: usize, side: f32) -> i32 {
+    if lit.smooth {
+        let grey = (lit.shade[corner] * 255.0).floor() as i32;
+        ((grey as f32 * side) as i32).clamp(0, 255)
+    } else {
+        (side * 255.0).floor() as i32
+    }
+}
+
 /// The two lightmap coordinates a packed light value gives a vertex.
 pub fn light_uv(packed: i32) -> [f32; 2] {
     [(packed & 0xFFFF) as f32, ((packed >> 16) & 0xFFFF) as f32]

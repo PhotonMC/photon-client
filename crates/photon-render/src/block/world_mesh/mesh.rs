@@ -432,12 +432,7 @@ pub(super) fn push_block_quad(
     let white = tint == [255, 255, 255, 255];
     let base = mesh.vertices.len() as u32;
     for corner in 0..4 {
-        let grey = if lit.smooth {
-            let grey = (lit.shade[corner] * 255.0).floor() as i32;
-            ((grey as f32 * side) as i32).clamp(0, 255)
-        } else {
-            (side * 255.0).floor() as i32
-        };
+        let grey = crate::block::light::grey(lit, corner, side);
         let channel = |index: usize| {
             if white {
                 grey

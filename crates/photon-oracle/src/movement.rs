@@ -106,8 +106,8 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "living_entity_ticks" {
         return living_entity_ticks_result(request);
     }
-    if string(request, "operation")? == "entity_shadows" {
-        return entity_shadows_result(request);
+    if let Some(result) = lighting_result(string(request, "operation")?, request) {
+        return result;
     }
     if string(request, "operation")? == "entity_pick_table" {
         return Ok(entity_pick_table_result(request));

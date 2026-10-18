@@ -263,9 +263,8 @@ class MovementEntityOracle extends MovementSupport {
      * An entity's shadow over a lit scene: the pieces `extractShadow` finds
      * under it, and the corners `ShadowFeatureRenderer` writes for them.
      */
-    static JsonObject entityShadows(JsonObject row) throws Exception {
-        var entry = new JsonObject();
-        entry.addProperty("label", row.get("label").getAsString());
+    /** The scene's level, lit as the client lights loaded chunks, as the game's current level. */
+    static Scene litScene(JsonObject row) throws Exception {
         var scene = buildScene(row);
         var level = scene.level();
         var minecraft = scene.minecraft();
@@ -298,6 +297,72 @@ class MovementEntityOracle extends MovementSupport {
             engine.propagateLightSources(chunkPos);
         }
         engine.runLightUpdates();
+
+        return scene;
+    }
+
+    static float bits(com.google.gson.JsonElement value) {
+        return Float.intBitsToFloat(Integer.parseUnsignedInt(value.getAsString(), 16));
+    }
+
+    /** `BlockModelLighter` on quads the row describes, in the level the row builds. */
+    static JsonObject blockLighting(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = litScene(row);
+        var level = scene.level();
+        var lighter = new net.minecraft.client.renderer.block.BlockModelLighter();
+        var quads = new JsonArray();
+        for (var element : row.getAsJsonArray("quads")) {
+            var described = element.getAsJsonObject();
+            var pos = new net.minecraft.core.BlockPos(described.get("x").getAsInt(),
+                described.get("y").getAsInt(), described.get("z").getAsInt());
+            var state = level.getBlockState(pos);
+            var direction = net.minecraft.core.Direction.byName(described.get("direction").getAsString());
+            var corners = described.getAsJsonArray("corners");
+            var positions = new org.joml.Vector3f[4];
+            for (int corner = 0; corner < 4; corner++) {
+                var values = corners.get(corner).getAsJsonArray();
+                positions[corner] = new org.joml.Vector3f(bits(values.get(0)), bits(values.get(1)), bits(values.get(2)));
+            }
+            var material = new net.minecraft.client.resources.model.geometry.BakedQuad.MaterialInfo(
+                null, null, null, -1, described.get("shade").getAsBoolean(), 0);
+            var quad = new net.minecraft.client.resources.model.geometry.BakedQuad(
+                positions[0], positions[1], positions[2], positions[3], 0L, 0L, 0L, 0L, direction, material);
+            var instance = new com.mojang.blaze3d.vertex.QuadInstance();
+            if (described.get("smooth").getAsBoolean()) {
+                lighter.prepareQuadAmbientOcclusion(level, state, pos, quad, instance);
+            } else {
+                int lightCoords = -1;
+                if (described.has("cull") && !described.get("cull").isJsonNull()) {
+                    var cull = net.minecraft.core.Direction.byName(described.get("cull").getAsString());
+                    var relative = pos.relative(cull);
+                    lightCoords = lighter.getLightCoords(state, level, relative);
+                }
+                lighter.prepareQuadFlat(level, state, pos, lightCoords, quad, instance);
+            }
+            var vertices = new JsonArray();
+            for (int vertex = 0; vertex < 4; vertex++) {
+                var out = new JsonObject();
+                out.addProperty("grey", instance.getColor(vertex) & 0xFF);
+                out.addProperty("light", instance.getLightCoords(vertex));
+                vertices.add(out);
+            }
+            var result = new JsonObject();
+            result.add("label", described.get("label"));
+            result.add("vertices", vertices);
+            quads.add(result);
+        }
+        entry.add("quads", quads);
+        return entry;
+    }
+
+    static JsonObject entityShadows(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var scene = litScene(row);
+        var level = scene.level();
+        var minecraft = scene.minecraft();
 
         var renderer = (ShadowProbe) unsafe.allocateInstance(ShadowProbe.class);
         setField(renderer, "shadowRadius", Oracle.f32(row, "radius"));

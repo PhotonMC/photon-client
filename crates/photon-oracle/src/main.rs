@@ -145,6 +145,8 @@ mod block;
 use block::*;
 mod vanilla;
 use vanilla::*;
+mod lighting;
+use lighting::*;
 mod shadows;
 use shadows::*;
 mod sky;

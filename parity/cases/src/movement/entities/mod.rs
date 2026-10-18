@@ -5,6 +5,7 @@ mod animation;
 mod damage;
 mod events;
 mod items;
+mod lighting;
 mod living;
 mod pick_table;
 mod prelude;
@@ -26,5 +27,6 @@ pub fn cases() -> Vec<Value> {
         pick_table::entity_pick_table(),
         ticks("movement/projectile-ticks", "projectile_ticks", projectiles::rows()),
         ticks("movement/entity-shadows", "entity_shadows", shadows::rows()),
+        ticks("movement/block-lighting", "block_lighting", lighting::rows()),
     ]
 }

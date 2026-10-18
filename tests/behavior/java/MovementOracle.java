@@ -24,6 +24,7 @@ public final class MovementOracle extends MovementFireOracle {
                 case "item_entity_ticks" -> rows.add(itemEntityTicks(element.getAsJsonObject()));
                 case "projectile_ticks" -> rows.add(projectileTicks(element.getAsJsonObject()));
                 case "living_entity_ticks" -> rows.add(livingEntityTicks(element.getAsJsonObject()));
+                case "block_lighting" -> rows.add(blockLighting(element.getAsJsonObject()));
                 case "entity_shadows" -> rows.add(entityShadows(element.getAsJsonObject()));
                 case "entity_pick_table" -> rows.add(entityPickTable(element.getAsJsonObject()));
                 case "light_changes" -> rows.add(lightChanges(element.getAsJsonObject()));
