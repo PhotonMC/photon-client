@@ -77,6 +77,26 @@ impl Play {
         set_moving_blocks(&mut self.backend, &self.session, tints, view)
     }
 
+    /// What the hands draw, nothing with the HUD hidden.
+    fn first_person_hands(&mut self, view: FrameView) -> overlays::HandVertices {
+        let player = self.session.player();
+        match player {
+            Some(player) if !self.controls.hud_hidden => hands(
+                player,
+                &self.item_in_hand,
+                &mut self.held_item_layers,
+                (&self.block_renderer, &self.biome_tints),
+                &mut self.player_model,
+                view,
+            ),
+            _ => overlays::HandVertices {
+                hand: Vec::new(),
+                held: Vec::new(),
+                glint: Vec::new(),
+            },
+        }
+    }
+
     /// The hands in first person unless the player only watches, the screen effects, and the
     /// totem animation in any view, all drawn in the hand pass.
     fn set_hands(&mut self, view: FrameView, first_person: bool) -> Result<()> {
@@ -86,20 +106,25 @@ impl Play {
         for cache in &mut self.held_item_layers {
             cache.set_glint(matrix, texture);
         }
+        let sleeping = self
+            .session
+            .world()
+            .local_player()
+            .is_some_and(|state| state.is_sleeping());
+        let watching = self
+            .session
+            .player()
+            .is_some_and(|player| player.spectating());
+        // `GameRenderer.renderItemInHand` and `ScreenEffectRenderer.submit`: nothing of the hands
+        // or the view-blocking effects for a sleeper, and no hands with the HUD hidden.
+        let hands = (first_person && !watching && !sleeping).then(|| self.first_person_hands(view));
         let player = self.session.player().ok_or("no local player")?;
-        if first_person && !player.spectating() {
-            let overlays::HandVertices {
-                hand,
-                mut held,
-                mut glint,
-            } = hands(
-                player,
-                &self.item_in_hand,
-                &mut self.held_item_layers,
-                (&self.block_renderer, &self.biome_tints),
-                &mut self.player_model,
-                view,
-            );
+        if let Some(overlays::HandVertices {
+            hand,
+            mut held,
+            mut glint,
+        }) = hands
+        {
             let hand_projection = photon_render::scene::perspective(
                 hud_fov(player).to_radians(),
                 self.aspect,
