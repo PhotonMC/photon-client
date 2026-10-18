@@ -25,6 +25,7 @@ pub(super) struct FluidMesher<'a, R: Fn(i32, i32, i32) -> Option<BlockStateId>, 
     pub(super) lighter: &'a crate::block::light::Lighter<S, L>,
     pub(super) atlas: &'a BuiltAtlas,
     pub(super) origin: [i32; 3],
+    pub(super) cardinal: photon_world::CardinalLightType,
 }
 
 #[derive(Clone, Copy)]
@@ -125,6 +126,16 @@ where
     /// neighbour's face occlusion shape. A whole-block shape hides every face
     /// but a surface below full height; a partial one is treated as hiding
     /// nothing, which is where this still differs from the reference.
+    /// `FluidRenderer`'s shade of the top and bottom faces.
+    fn shade(&self, direction: Direction) -> f32 {
+        crate::block::light::cardinal(direction, self.cardinal)
+    }
+
+    /// The shade of a side face: the top's times its axis' own.
+    fn side_shade(&self, direction: Direction) -> f32 {
+        self.shade(Direction::Up) * self.shade(direction)
+    }
+
     pub(super) fn occluded(
         &self,
         direction: Direction,
@@ -278,7 +289,7 @@ where
                 mesh,
                 corners,
                 uv,
-                1.0,
+                self.shade(Direction::Up),
                 tint,
                 light,
                 !self.solid(x, y + 1, z),
@@ -296,7 +307,7 @@ where
                     [lx, ly + bottom, lz + 1.0],
                 ],
                 [[u0, v0], [u1, v0], [u1, v1], [u0, v1]],
-                0.5,
+                self.shade(Direction::Down),
                 tint,
                 self.fluid_light(x, y - 1, z),
                 false,
@@ -312,7 +323,7 @@ where
                 north_east,
                 [lx, lz + 0.001],
                 [lx + 1.0, lz + 0.001],
-                0.8,
+                self.side_shade(Direction::North),
             ),
             (
                 Direction::South,
@@ -322,7 +333,7 @@ where
                 south_west,
                 [lx + 1.0, lz + 0.999],
                 [lx, lz + 0.999],
-                0.8,
+                self.side_shade(Direction::North),
             ),
             (
                 Direction::West,
@@ -332,7 +343,7 @@ where
                 north_west,
                 [lx + 0.001, lz + 1.0],
                 [lx + 0.001, lz],
-                0.6,
+                self.side_shade(Direction::West),
             ),
             (
                 Direction::East,
@@ -342,7 +353,7 @@ where
                 south_east,
                 [lx + 0.999, lz],
                 [lx + 0.999, lz + 1.0],
-                0.6,
+                self.side_shade(Direction::West),
             ),
         ];
         for (direction, render, [nx, nz], h0, h1, [x0, z0], [x1, z1], shade) in sides {

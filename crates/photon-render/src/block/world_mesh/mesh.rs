@@ -327,10 +327,7 @@ impl BlockRenderer {
                             if quad.cull.is_some_and(&mut is_hidden) {
                                 continue;
                             }
-                            let tint = usize::try_from(quad.tint_index)
-                                .ok()
-                                .and_then(|slot| tints.get(slot).copied())
-                                .unwrap_or(0xFFFF_FFFF);
+                            let tint = quad_tint(quad.tint_index, &tints);
                             push_block_quad(
                                 &mut mesh,
                                 quad,
@@ -359,6 +356,7 @@ impl BlockRenderer {
             lighter: &lighter,
             atlas,
             origin: mesh_origin,
+            cardinal: world.cardinal,
         };
         // A moving block draws no fluid (`tesselateBlock` alone).
         let fluid_size = if seed_position.is_some() {
@@ -384,6 +382,14 @@ impl BlockRenderer {
     }
 }
 
+/// The colour a quad takes from its tint slot; white without one.
+fn quad_tint(tint_index: i32, tints: &[u32]) -> u32 {
+    usize::try_from(tint_index)
+        .ok()
+        .and_then(|slot| tints.get(slot).copied())
+        .unwrap_or(0xFFFF_FFFF)
+}
+
 /// Where a block's unit cube sits from the mesh origin, with its random
 /// offset.
 fn block_shift(position: [i32; 3], mesh_origin: [i32; 3], nudge: [f64; 3]) -> [f32; 3] {
@@ -404,7 +410,7 @@ pub(super) fn push_block_quad(
     let side = if quad.shade {
         crate::block::light::cardinal(quad.direction, cardinal)
     } else {
-        1.0
+        crate::block::light::cardinal(Direction::Up, cardinal)
     };
     let tint = [16, 8, 0, 24].map(|bits| ((tint >> bits) & 0xFF) as i32);
     let white = tint == [255, 255, 255, 255];
