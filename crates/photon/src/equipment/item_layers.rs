@@ -182,9 +182,8 @@ impl ItemLayerCache {
         let layers = &variants[index].1;
         self.glint.decal = (self.glint.moving.is_some()
             && has_special_foil(stack.item_registry_id()))
-        .then(|| {
-            photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context))
-        });
+        .then(|| photon_render::objects::item::foil_decal_corners(layers, foil_pose_scale(context)))
+        .filter(|corners| !corners.is_empty());
         layers
     }
 }
