@@ -51,6 +51,12 @@ public final class WireOracle extends WireRegistryOracle {
         if (operation.equals("enabled_features")) {
             return enabledFeaturesResult(request);
         }
+        if (operation.equals("update_advancements")) {
+            return updateAdvancementsResult(request);
+        }
+        if (operation.equals("select_advancements_tab")) {
+            return selectAdvancementsTabResult(request);
+        }
         if (operation.equals("award_stats")) {
             return awardStatsResult(request);
         }

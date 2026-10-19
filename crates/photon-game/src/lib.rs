@@ -1,5 +1,6 @@
 //! Items, menus and the player's actions, built on the client's world copy.
 
+pub mod advancements;
 pub mod chat;
 pub mod commands;
 pub mod dialog;

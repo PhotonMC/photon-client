@@ -237,6 +237,123 @@ class WireRegistryOracle extends WireConfigurationOracle {
         }
     }
 
+    /**
+     * `ClientboundUpdateAdvancementsPacket.STREAM_CODEC` on bytes: the flags, each advancement (its id, parent,
+     * requirements and display with the title and description as text, the icon's item id and count and how many
+     * components it patches, the frame, the flags, the background and the place as bits), the ids removed and the
+     * progress of each criterion; the advancements in the order they came, the progress by id.
+     */
+    static JsonObject updateAdvancementsResult(JsonObject request) {
+        Oracle.vanillaRegistries();
+        ByteBuf buffer = Unpooled.buffer();
+        try {
+            buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+            var result = new JsonObject();
+            try {
+                var access = net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(
+                    net.minecraft.core.registries.BuiltInRegistries.REGISTRY);
+                var packet = net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket.STREAM_CODEC
+                    .decode(new net.minecraft.network.RegistryFriendlyByteBuf(buffer, access));
+                result.addProperty("reset", packet.shouldReset());
+                result.addProperty("show", packet.shouldShowAdvancements());
+                var added = new JsonArray();
+                for (var holder : packet.getAdded()) {
+                    var advancement = holder.value();
+                    var entry = new JsonObject();
+                    entry.addProperty("id", holder.id().toString());
+                    entry.add("parent", advancement.parent().map(id -> (JsonElement) new com.google.gson.JsonPrimitive(id.toString()))
+                        .orElse(JsonNull.INSTANCE));
+                    var groups = new JsonArray();
+                    for (var group : advancement.requirements().requirements()) {
+                        var names = new JsonArray();
+                        group.forEach(names::add);
+                        groups.add(names);
+                    }
+                    entry.add("requirements", groups);
+                    entry.addProperty("telemetry", advancement.sendsTelemetryEvent());
+                    if (advancement.display().isPresent()) {
+                        var display = advancement.display().get();
+                        var shown = new JsonObject();
+                        shown.addProperty("title", display.getTitle().getString());
+                        shown.addProperty("description", display.getDescription().getString());
+                        shown.addProperty("icon", net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(display.getIcon().item().value()));
+                        shown.addProperty("icon_count", display.getIcon().count());
+                        shown.addProperty("icon_patched", display.getIcon().components().size());
+                        shown.addProperty("frame", display.getType().ordinal());
+                        shown.addProperty("show_toast", display.shouldShowToast());
+                        shown.addProperty("hidden", display.isHidden());
+                        shown.add("background", display.getBackground().map(asset -> (JsonElement) new com.google.gson.JsonPrimitive(asset.id().toString()))
+                            .orElse(JsonNull.INSTANCE));
+                        shown.addProperty("x", Oracle.bits(display.getX()));
+                        shown.addProperty("y", Oracle.bits(display.getY()));
+                        entry.add("display", shown);
+                    } else {
+                        entry.add("display", JsonNull.INSTANCE);
+                    }
+                    added.add(entry);
+                }
+                result.add("added", added);
+                var removed = new JsonArray();
+                packet.getRemoved().forEach(id -> removed.add(id.toString()));
+                result.add("removed", removed);
+                var progress = new JsonArray();
+                var ids = new java.util.ArrayList<>(packet.getProgress().keySet());
+                ids.sort(java.util.Comparator.comparing(Identifier::toString));
+                var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
+                criteriaField.setAccessible(true);
+                var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
+                obtainedField.setAccessible(true);
+                for (var id : ids) {
+                    var criteria = (Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(packet.getProgress().get(id));
+                    var names = new java.util.ArrayList<>(criteria.keySet());
+                    java.util.Collections.sort(names);
+                    var list = new JsonArray();
+                    for (var name : names) {
+                        var pair = new JsonArray();
+                        pair.add(name);
+                        var obtained = (java.time.Instant) obtainedField.get(criteria.get(name));
+                        pair.add(obtained == null ? JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(obtained.toEpochMilli()));
+                        list.add(pair);
+                    }
+                    var one = new JsonObject();
+                    one.addProperty("id", id.toString());
+                    one.add("criteria", list);
+                    progress.add(one);
+                }
+                result.add("progress", progress);
+                result.addProperty("outcome", "value");
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(error);
+            } catch (RuntimeException error) {
+                result.addProperty("outcome", "error");
+            }
+            return result;
+        } finally {
+            buffer.release();
+        }
+    }
+
+    /** `ClientboundSelectAdvancementsTabPacket.STREAM_CODEC` on bytes: the tab, if there is one. */
+    static JsonObject selectAdvancementsTabResult(JsonObject request) {
+        ByteBuf buffer = Unpooled.buffer();
+        try {
+            buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+            var result = new JsonObject();
+            try {
+                var packet = net.minecraft.network.protocol.game.ClientboundSelectAdvancementsTabPacket.STREAM_CODEC
+                    .decode(new FriendlyByteBuf(buffer));
+                var tab = packet.getTab();
+                result.add("tab", tab == null ? JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(tab.toString()));
+                result.addProperty("outcome", "value");
+            } catch (RuntimeException error) {
+                result.addProperty("outcome", "error");
+            }
+            return result;
+        } finally {
+            buffer.release();
+        }
+    }
+
     static JsonObject registryDataResult(JsonObject request) {
         String direction = request.get("direction").getAsString();
         if (direction.equals("write")) {

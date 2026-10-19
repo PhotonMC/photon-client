@@ -63,6 +63,8 @@ const WIRE_OPERATIONS: &[(&str, WireOperation)] = &[
     ("common_packet", common_packet_result),
     ("enabled_features", enabled_features_result),
     ("award_stats", award_stats_result),
+    ("update_advancements", update_advancements_result),
+    ("select_advancements_tab", select_advancements_tab_result),
     ("update_tags", update_tags_result),
     ("registry_data", registry_data_result),
     ("status_request", status_request_result),
@@ -412,4 +414,90 @@ fn award_stats_result(request: &Value) -> Result<Value, String> {
         }
         Err(_) => json!({"outcome": "error"}),
     })
+}
+
+/// `UpdateAdvancements` on bytes, as the game's codec is read: see `update_advancements` of the
+/// oracle for the fields.
+fn update_advancements_result(request: &Value) -> Result<Value, String> {
+    use photon_protocol::play::{Decode, UpdateAdvancements};
+    let bytes = decode_hex(string(request, "hex")?)?;
+    let lang = photon_game::text::Lang::new(std::iter::empty());
+    let Ok(packet) = UpdateAdvancements::decode(&bytes) else {
+        return Ok(json!({"outcome": "error"}));
+    };
+    let added: Vec<Value> = packet
+        .added
+        .iter()
+        .map(|advancement| {
+            let display = advancement.display.as_ref().map(|display| {
+                json!({
+                    "title": lang.plain(&display.title),
+                    "description": lang.plain(&display.description),
+                    "icon": display.icon.0.0,
+                    "icon_count": display.icon.1,
+                    "icon_patched": display.icon.2.added.len() + display.icon.2.removed.len(),
+                    "frame": display.frame as i32,
+                    "show_toast": display.show_toast,
+                    "hidden": display.hidden,
+                    "background": display.background,
+                    "x": format!("{:08x}", display.x.to_bits()),
+                    "y": format!("{:08x}", display.y.to_bits()),
+                })
+            });
+            json!({
+                "id": advancement.id,
+                "parent": advancement.parent,
+                "requirements": advancement.requirements,
+                "telemetry": advancement.sends_telemetry_event,
+                "display": display,
+            })
+        })
+        .collect();
+    let mut progress: Vec<_> = packet.progress.iter().collect();
+    progress.sort_by(|a, b| a.0.cmp(&b.0));
+    let progress: Vec<Value> = progress
+        .into_iter()
+        .map(|(id, criteria)| {
+            let mut criteria: Vec<_> = criteria.iter().collect();
+            criteria.sort_by(|a, b| a.0.cmp(&b.0));
+            json!({
+                "id": id,
+                "criteria": criteria.into_iter().map(|(name, obtained)| json!([name, obtained])).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    Ok(without_nulls(json!({
+        "outcome": "value",
+        "reset": packet.reset,
+        "show": packet.show_advancements,
+        "added": added,
+        "removed": packet.removed,
+        "progress": progress,
+    })))
+}
+
+/// `SelectAdvancementsTab` on bytes.
+fn select_advancements_tab_result(request: &Value) -> Result<Value, String> {
+    use photon_protocol::play::{Decode, SelectAdvancementsTab};
+    let bytes = decode_hex(string(request, "hex")?)?;
+    Ok(match SelectAdvancementsTab::decode(&bytes) {
+        Ok(SelectAdvancementsTab(tab)) => without_nulls(json!({"outcome": "value", "tab": tab})),
+        Err(_) => json!({"outcome": "error"}),
+    })
+}
+
+/// The oracle leaves out what is null (Gson drops a null member), so a member that is not there is
+/// the same answer.
+fn without_nulls(value: Value) -> Value {
+    match value {
+        Value::Object(members) => Value::Object(
+            members
+                .into_iter()
+                .filter(|(_, member)| !member.is_null())
+                .map(|(key, member)| (key, without_nulls(member)))
+                .collect(),
+        ),
+        Value::Array(items) => Value::Array(items.into_iter().map(without_nulls).collect()),
+        other => other,
+    }
 }
