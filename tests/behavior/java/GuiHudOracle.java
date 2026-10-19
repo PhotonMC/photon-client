@@ -429,6 +429,59 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
+     * The game's own debug overlay (`DebugScreenOverlay.extractRenderState`) over a real local player: the
+     * default profile's entry list as the game rebuilds it (the overlay up or not, reduced debug info or
+     * not), the camera entity at a position and a rotation, and the interface hidden or shown.
+     */
+    static JsonObject hudDebugOverlay(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
+            var minecraft = scene.minecraft();
+            var local = scene.local();
+            MovementOracle.setField(minecraft, "gameLoadFinished", true);
+            MovementOracle.setField(minecraft, "level", scene.level());
+            MovementOracle.setField(minecraft, "launchedVersion", row.get("launched").getAsString());
+            MovementOracle.setField(local, "reducedDebugInfo", row.get("reduced").getAsBoolean());
+            local.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
+                Oracle.f32(row, "yaw"), Oracle.f32(row, "pitch"));
+            var entries = (net.minecraft.client.gui.components.debug.DebugScreenEntryList) unsafe.allocateInstance(
+                net.minecraft.client.gui.components.debug.DebugScreenEntryList.class);
+            // Only the entries that take nothing from a running game: the others (the frame rate, the
+            // memory) read state the headless scene has none of.
+            var statuses = new java.util.HashMap<>(
+                net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(
+                    net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT));
+            statuses.keySet().removeIf(id -> !java.util.Set.of("game_version", "player_position",
+                "player_section_position", "3d_crosshair").contains(id.getPath()));
+            MovementOracle.setField(entries, "allStatuses", statuses);
+            MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
+            MovementOracle.setField(entries, "isOverlayVisible", row.get("overlay").getAsBoolean());
+            MovementOracle.setField(minecraft, "debugEntries", entries);
+            entries.rebuildCurrentList();
+            MovementOracle.setField(scene.screen().hud(), "isHidden", row.get("hidden").getAsBoolean());
+            // The footer names the keys, which the game's own language gives.
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            net.minecraft.locale.Language.inject(clientLanguage("en_us", java.util.Map.of(
+                "key.keyboard.1", "1", "key.keyboard.2", "2", "key.keyboard.3", "3", "key.keyboard.4", "4")));
+            try {
+                new net.minecraft.client.gui.components.DebugScreenOverlay(minecraft)
+                    .extractRenderState(scene.screen().graphics());
+            } finally {
+                net.minecraft.locale.Language.inject(languageBefore);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The game's own crosshair and hotbar (`Hud.extractCrosshair`, then `extractItemHotbar` for
      * a player who is not spectating) for a real local player: its attack strength, the attack
      * indicator option, the game mode, the camera and what the crosshair is on.

@@ -35,6 +35,8 @@ pub struct HeldKeys {
     /// F1 and F2 pressed on this tick.
     pub toggle_gui: bool,
     pub screenshot: bool,
+    /// F3 pressed and let go on this tick: the debug overlay toggles.
+    pub debug_overlay: bool,
     /// A scripted click in the open inventory: slot, button, click type.
     pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
@@ -76,6 +78,15 @@ impl HeldKeys {
         }
     }
 
+    /// F1, F2 or F3 pressed.
+    fn press_function_key(&mut self, name: &str) {
+        match name {
+            "toggle_gui" => self.toggle_gui = true,
+            "screenshot" => self.screenshot = true,
+            _ => self.debug_overlay = true,
+        }
+    }
+
     /// One step of a `PHOTON_SCRIPT`, such as `forward,sprint`.
     pub fn parse(step: &str) -> Result<Self, String> {
         let mut keys = Self::default();
@@ -102,8 +113,7 @@ impl HeldKeys {
                 "enter" => keys.enter = true,
                 "escape" => keys.escape = true,
                 "complete" => keys.complete = true,
-                "toggle_gui" => keys.toggle_gui = true,
-                "screenshot" => keys.screenshot = true,
+                "toggle_gui" | "screenshot" | "debug_overlay" => keys.press_function_key(name),
                 "none" => {}
                 other => {
                     // `click/SLOT/BUTTON/TYPE`, the type by its id.

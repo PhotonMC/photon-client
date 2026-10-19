@@ -444,7 +444,7 @@ impl Gui {
             &mut frame,
             (&self.atlas, &self.font, &self.lang),
             &mut self.layers,
-            (controls, &size),
+            (controls, &size, session),
         );
         let scale = size.gui_scale() as f32;
         backend.set_gui(

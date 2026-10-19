@@ -33,6 +33,8 @@ pub(super) struct LocalState {
     pub(super) permission_level: i32,
     /// Whether the level is hardcore, as the login said.
     pub(super) hardcore: bool,
+    /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
+    pub(super) reduced_debug_info: bool,
     /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
     pub(super) show_death_screen: bool,
     /// The message of a death the death screen is yet to show.
@@ -189,6 +191,7 @@ impl Default for LocalState {
             status: PlayerStatus::default(),
             permission_level: 0,
             hardcore: false,
+            reduced_debug_info: false,
             show_death_screen: true,
             death: None,
             win_game: false,

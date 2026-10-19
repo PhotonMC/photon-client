@@ -7,6 +7,7 @@ mod commands;
 mod confirm;
 mod container;
 mod credits;
+mod debug;
 mod dialog;
 mod draft;
 mod hud;
@@ -70,6 +71,7 @@ const ORDER: &[Generator] = &[
     || vec![panels::sound_options_screen()],
     || vec![status::hud_hotbar()],
     || vec![status::hud_sleep()],
+    || vec![debug::hud_debug_overlay()],
     || vec![status::subtitles()],
     || vec![toasts::toasts()],
     || vec![status::hud_status()],

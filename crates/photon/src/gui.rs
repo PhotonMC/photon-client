@@ -96,6 +96,7 @@ pub(super) fn filtered_content(
 
 mod assets;
 mod chat;
+mod debug;
 mod draw;
 mod hud;
 mod layers;

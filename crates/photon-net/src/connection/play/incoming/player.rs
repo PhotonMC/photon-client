@@ -172,6 +172,7 @@ impl PlaySession {
             self.effects.seen_unsecure_warning = true;
         }
         self.local.hardcore = login.hardcore;
+        self.local.reduced_debug_info = login.reduced_debug_info;
         self.local.show_death_screen = login.show_death_screen;
         self.local.player_id = Some(login.player_id);
         self.local.permission_level = 0;

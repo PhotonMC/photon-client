@@ -192,3 +192,51 @@ pub(super) fn toasts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
     }
     Ok(json!({"label": row["label"], "events": events}))
 }
+
+/// `hud_debug_overlay`: the overlay's lines and their draw for the default profile.
+pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_gui::hud::debug::{self, CameraEntity, EntryList, FooterKeys, Input};
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+    let mut list = EntryList::default();
+    list.set_overlay_visible(flag("overlay"));
+    let launched = row["launched"].as_str().ok_or("launched")?;
+    let input = Input {
+        version: format!("Minecraft 26.2 ({launched}/vanilla)"),
+        camera: Some(CameraEntity {
+            position: (
+                crate::f64_field(row, "x")?,
+                crate::f64_field(row, "y")?,
+                crate::f64_field(row, "z")?,
+            ),
+            yaw: crate::f32_field(row, "yaw")?,
+            pitch: crate::f32_field(row, "pitch")?,
+            dimension: "minecraft:overworld".to_owned(),
+        }),
+    };
+    let footer = list.is_overlay_visible().then(|| {
+        debug::footer(
+            &FooterKeys::defaults(),
+            (false, false, false, false),
+            (false, false),
+        )
+    });
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    if !list.enabled(flag("reduced")).is_empty() && !flag("hidden") {
+        let (left, right) = debug::lines(&list, flag("reduced"), &input, footer);
+        debug::draw(
+            &mut frame,
+            &ctx.atlas,
+            &ctx.font,
+            int("width"),
+            (&left, &right),
+        );
+    }
+    Ok(json!({
+        "label": row["label"],
+        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+    }))
+}

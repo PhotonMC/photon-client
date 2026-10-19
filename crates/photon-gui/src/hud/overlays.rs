@@ -2,6 +2,7 @@
 
 use super::*;
 
+pub mod debug;
 pub mod sleep;
 
 /// What the camera overlays are made of this frame.

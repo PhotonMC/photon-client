@@ -17,7 +17,8 @@ impl Controls {
                 self.open_pause(surface, assets);
             }
             // `key.debug.switchGameMode` with the debug modifier held.
-            WindowEvent::Key(Key::F4, _, Action::Press, _) if self.debug_down => {
+            WindowEvent::Key(Key::F4, _, Action::Press, _) if self.debug.down => {
+                self.debug.used = true;
                 self.debug_switch_game_mode(session, surface, assets);
             }
             WindowEvent::Key(key, scancode, action, _) => {
@@ -268,7 +269,7 @@ impl Controls {
             }
             // `key.debug.modifier`.
             if key == glfw::Key::F3 {
-                self.debug_down = action != glfw::Action::Release;
+                self.debug.key(action);
             }
         }
         if let Some(screen) = self.screen.as_mut() {

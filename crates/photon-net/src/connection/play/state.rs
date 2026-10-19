@@ -106,6 +106,11 @@ impl PlaySession {
         self.level_info.hashed_seed
     }
 
+    /// `Player.isReducedDebugInfo`: the server asked for less on the debug screen.
+    pub fn reduced_debug_info(&self) -> bool {
+        self.local.reduced_debug_info
+    }
+
     /// The current dimension type's registry name.
     pub fn dimension_type(&self) -> Option<&str> {
         self.registry_names("minecraft:dimension_type")

@@ -50,6 +50,16 @@ class GuiLanguageOracle extends GuiRecorder {
 
     /** `ClientLanguage.loadFrom` for `en_us` and a code, from the jar and the asset index. */
     static net.minecraft.client.resources.language.ClientLanguage clientLanguage(String code) throws Exception {
+        return clientLanguage(code, java.util.Map.of());
+    }
+
+    /**
+     * The same with some translations added: the names GLFW gives printable keys on a keyboard layout,
+     * which a headless run has no window to ask (`InputConstants.Type.KEYSYM`'s display names fall back
+     * to their language key without it).
+     */
+    static net.minecraft.client.resources.language.ClientLanguage clientLanguage(
+            String code, java.util.Map<String, String> added) throws Exception {
         var index = languageIndex();
         var translations = new java.util.HashMap<String, String>();
         try (var jar = GuiOracle.class.getResourceAsStream("/assets/minecraft/lang/en_us.json")) {
@@ -60,6 +70,7 @@ class GuiLanguageOracle extends GuiRecorder {
                 net.minecraft.locale.Language.loadFromJson(stream, translations::put);
             }
         }
+        translations.putAll(added);
         var constructor = net.minecraft.client.resources.language.ClientLanguage.class
             .getDeclaredConstructor(java.util.Map.class, boolean.class);
         constructor.setAccessible(true);

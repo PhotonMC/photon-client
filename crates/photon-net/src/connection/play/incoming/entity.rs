@@ -438,6 +438,10 @@ impl PlaySession {
         if self.local.player_id == Some(id) && (24..=28).contains(&event) {
             self.local.permission_level = i32::from(event) - 24;
         }
+        // `Player.handleEntityEvent`: 22 and 23 turn reduced debug info on and off.
+        if self.local.player_id == Some(id) && matches!(event, 22 | 23) {
+            self.local.reduced_debug_info = event == 22;
+        }
         // `ClientPacketListener.handleEntityEvent`: 35 is a totem saving its holder.
         if event == 35 {
             self.queue_emitter(id, "totem_of_undying", 30, Some("minecraft:item.totem.use"));

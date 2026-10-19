@@ -578,7 +578,7 @@
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
 "crates/photon/src/screens.rs::run_actions" = 16
-"crates/photon/src/script.rs::HeldKeys::parse" = 28
+"crates/photon/src/script.rs::HeldKeys::parse" = 27
 "xtask/src/lint.rs::Rule::hint" = 12
 "xtask/src/lint.rs::Rule::name" = 12
 "xtask/src/lint/names.rs::name_problem" = 11
@@ -1008,7 +1008,7 @@
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 80
 "crates/photon/src/controls/options.rs::Controls::language_event" = 63
 "crates/photon/src/controls/options.rs::Controls::video_event" = 61
-"crates/photon/src/controls/scripted.rs::Controls::script_step" = 102
+"crates/photon/src/controls/scripted.rs::Controls::script_step" = 101
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
@@ -1055,7 +1055,7 @@
 "crates/photon/src/play/ticks.rs::Play::start" = 192
 "crates/photon/src/play/ticks.rs::Play::tick" = 62
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
-"crates/photon/src/script.rs::HeldKeys::parse" = 77
+"crates/photon/src/script.rs::HeldKeys::parse" = 76
 "crates/photon/src/window_probe/version.rs::model_scene" = 74
 "crates/photon/src/window_probe/version.rs::run_window" = 61
 "crates/photon/src/window_probe/world.rs::load_world" = 93

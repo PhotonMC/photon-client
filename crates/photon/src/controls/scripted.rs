@@ -78,8 +78,7 @@ impl Controls {
         if held.escape {
             self.scripted_escape(session, surface, assets)?;
         }
-        self.hud_hidden ^= held.toggle_gui;
-        self.screenshot_pending |= held.screenshot;
+        self.scripted_toggles(held);
         if held.chat {
             if self.chat.is_some() {
                 self.close_chat(surface, ExitReason::Intentional);
@@ -174,5 +173,16 @@ impl Controls {
             session.send_stop_sleeping()?;
         }
         Ok(())
+    }
+}
+
+impl Controls {
+    /// The scripted F1, F2 and F3 presses of a tick.
+    fn scripted_toggles(&mut self, held: HeldKeys) {
+        self.hud_hidden ^= held.toggle_gui;
+        self.screenshot_pending |= held.screenshot;
+        if held.debug_overlay {
+            self.debug.entries.toggle_overlay();
+        }
     }
 }

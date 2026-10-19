@@ -119,8 +119,8 @@ pub struct Controls {
     pub hidden_players: Vec<photon_core::binary::Uuid>,
     /// The game mode switcher (F3+F4), while F3 is held.
     pub game_mode_switcher: Option<GameModeSwitcherScreen>,
-    /// Whether F3, the debug modifier, is held.
-    debug_down: bool,
+    /// F3, the debug modifier, and the debug overlay's entries.
+    pub debug: DebugKeys,
     /// The sign the player is writing on, while its screen is up.
     pub sign_edit: Option<SignEdit>,
     /// The book and quill being written in, while its screen is up.
@@ -389,7 +389,7 @@ impl Controls {
             social: None,
             hidden_players: Vec::new(),
             game_mode_switcher: None,
-            debug_down: false,
+            debug: DebugKeys::default(),
             sign_edit: None,
             book_edit: None,
             confirm: None,
@@ -435,5 +435,30 @@ mod tests {
         assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, high));
         options.invert_mouse_y = true;
         assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, -high));
+    }
+}
+
+/// F3 as the debug modifier and as the overlay's key, and what the overlay shows.
+#[derive(Default)]
+pub struct DebugKeys {
+    /// Whether F3 is held.
+    pub(super) down: bool,
+    /// `KeyboardHandler.usedDebugKeyAsModifier`: a combination with F3 was used, so letting go of
+    /// it does not toggle the overlay.
+    pub(super) used: bool,
+    pub entries: photon_gui::hud::debug::EntryList,
+}
+
+impl DebugKeys {
+    /// F3 pressed or let go of: the overlay toggles on the release unless a combination used F3.
+    pub(super) fn key(&mut self, action: glfw::Action) {
+        self.down = action != glfw::Action::Release;
+        if action == glfw::Action::Release {
+            if self.used {
+                self.used = false;
+            } else {
+                self.entries.toggle_overlay();
+            }
+        }
     }
 }

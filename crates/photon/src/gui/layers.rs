@@ -339,11 +339,28 @@ impl Gui {
         frame: &mut photon_render::gui::GuiFrame,
         resources: (&GuiAtlas, &Font, &Lang),
         layers: &mut Layers,
-        view: (&Controls, &photon_render::window::scale::WindowScale),
+        (controls, size, session): (
+            &Controls,
+            &photon_render::window::scale::WindowScale,
+            &PlaySession,
+        ),
     ) {
+        let view = (controls, size);
+        let debug = Self::debug_columns(session, controls);
         layers.draw_subtitles(frame, resources, view, SubtitlePass::OverScreen);
         layers.draw_pause_toast(frame, resources, view.0);
         layers.draw_toasts(frame, resources, view);
+        // `Gui.extractRenderState`: the debug overlay comes after the toasts, before the
+        // subtitles that waited.
+        if let Some((left, right)) = debug.as_ref() {
+            photon_gui::hud::debug::draw(
+                frame,
+                resources.0,
+                resources.1,
+                view.1.gui_scaled_width(),
+                (left, right),
+            );
+        }
         layers.draw_subtitles(frame, resources, view, SubtitlePass::AfterToasts);
     }
 }
