@@ -4,6 +4,7 @@
 //! The chat's width, height, scale, opacity, background opacity and line
 //! spacing are the options' ([`ChatSettings`]). Not drawn: the chat queue
 //! and the prompt of a chat that the options disable.
+pub mod queue;
 pub mod suggestions;
 
 use std::collections::VecDeque;

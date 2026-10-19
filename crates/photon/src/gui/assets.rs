@@ -34,6 +34,7 @@ impl Gui {
             last_tick: std::time::Instant::now(),
             items: ItemLayerCache::new(photon_render::model::DisplayContext::Gui),
             started_at,
+            chat_queue: Default::default(),
             assets_root: root.to_path_buf(),
             last_frame_ms: 0,
             layers: super::layers::Layers::new(started_at),

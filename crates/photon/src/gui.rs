@@ -58,6 +58,8 @@ pub struct Gui {
     pub(super) last_tick: std::time::Instant,
     pub(super) items: ItemLayerCache,
     pub(super) started_at: std::time::Instant,
+    /// `ChatListener`'s delayed messages.
+    pub(super) chat_queue: photon_gui::chat::queue::ChatQueue<photon_net::connection::ChatEvent>,
     /// Where the assets are read from, and when (in `started_at` milliseconds) the last frame was
     /// drawn: the credits roll by the time between frames.
     pub(super) assets_root: std::path::PathBuf,
@@ -96,6 +98,7 @@ pub(super) fn filtered_content(
 
 mod assets;
 mod chat;
+pub use chat::ChatView;
 mod debug;
 mod draw;
 mod hud;

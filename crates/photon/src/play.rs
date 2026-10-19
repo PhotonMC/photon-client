@@ -505,6 +505,7 @@ fn set_moving_blocks(
 }
 
 mod camera;
+mod chat;
 mod cull;
 mod draw;
 mod effects;

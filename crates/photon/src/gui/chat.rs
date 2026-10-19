@@ -37,11 +37,6 @@ impl Gui {
         )
     }
 
-    /// The chat's clock, and the deletions that have waited long enough.
-    pub fn tick_chat(&self, log: &mut ChatLog) {
-        log.tick(&self.font, &self.deleted_marker());
-    }
-
     /// `ChatListener.showMessageToPlayer`: a player's message, tagged by how
     /// far it can be trusted, and cut by what the server filtered.
     pub(super) fn show_player_chat(
@@ -135,33 +130,18 @@ impl Gui {
         );
     }
 
-    /// The chat the server sent, worded and added to the log. What comes back is each signed
-    /// player message and whether it was shown, which the server is told of
-    /// (`markMessageAsProcessed`).
+    /// The chat the server sent, worded and added to the log, or held back by the chat delay.
+    /// What comes back is each signed player message and whether it was shown, which the server
+    /// is told of (`markMessageAsProcessed`).
     pub fn receive_chat(
         &mut self,
         events: Vec<ChatEvent>,
         log: &mut ChatLog,
-        (focused, hidden): (bool, &[photon_core::binary::Uuid]),
+        (view, delay): (ChatView<'_>, f64),
     ) -> Vec<(Vec<u8>, bool)> {
-        use photon_gui::chat::Tag;
-        let mut processed = Vec::new();
+        let mut processed = self.set_chat_delay(delay, log, view);
+        let now = self.started_at.elapsed().as_millis() as u64;
         for event in events {
-            // `Minecraft.isBlocked`: what a player the local player hid says is not shown (the
-            // local player's own words always are).
-            if let ChatEvent::Player {
-                packet,
-                sender_is_local: false,
-                ..
-            } = &event
-                && hidden.contains(&photon_core::binary::Uuid::new(
-                    packet.sender.0,
-                    packet.sender.1,
-                ))
-            {
-                processed.extend(packet.signature.clone().map(|signature| (signature, false)));
-                continue;
-            }
             match event {
                 ChatEvent::System {
                     content,
@@ -173,39 +153,120 @@ impl Gui {
                 ChatEvent::System { content, .. } => log.add_component(
                     &content,
                     &self.lang,
-                    (None, Some(Tag::SystemSinglePlayer)),
+                    (None, Some(photon_gui::chat::Tag::SystemSinglePlayer)),
                     &self.font,
-                    focused,
+                    view.focused,
                 ),
-                ChatEvent::Disguised { content, bound } => {
-                    let decorated = self.decorate(content, &bound);
-                    log.add_component(
-                        &decorated,
-                        &self.lang,
-                        (None, Some(Tag::System)),
-                        &self.font,
-                        focused,
-                    );
-                }
-                ChatEvent::Player {
-                    packet,
-                    sender_known,
-                    sender_is_local,
-                } => {
-                    let signature = packet.signature.clone();
-                    if sender_known {
-                        let shown = self.show_player_chat(packet, sender_is_local, log, focused);
-                        processed.extend(signature.map(|signature| (signature, shown)));
-                    } else {
-                        processed.extend(signature.map(|signature| (signature, false)));
-                        self.show_chat_error(&packet.bound, log, focused);
+                // `handleDeleteChat`: a message still waiting is dropped from the queue.
+                ChatEvent::Delete(signature) => {
+                    if !self.chat_queue.remove(&signature) {
+                        log.delete(&signature, &self.font, &self.deleted_marker());
                     }
                 }
-                ChatEvent::Delete(signature) => {
-                    log.delete(&signature, &self.font, &self.deleted_marker());
+                event if self.chat_queue.will_delay(now) => {
+                    let signature = match &event {
+                        ChatEvent::Player { packet, .. } => packet.signature.clone(),
+                        _ => None,
+                    };
+                    self.chat_queue.push(signature, event);
+                }
+                event => {
+                    if self.show_chat(event, log, view, &mut processed) {
+                        self.chat_queue.shown(now);
+                    }
                 }
             }
         }
         processed
     }
+
+    /// `ChatListener.tick`: the chat's clock, and the messages the delay let through.
+    pub fn tick_chat(
+        &mut self,
+        log: &mut ChatLog,
+        (view, delay): (ChatView<'_>, f64),
+    ) -> Vec<(Vec<u8>, bool)> {
+        log.tick(&self.font, &self.deleted_marker());
+        let mut processed = self.set_chat_delay(delay, log, view);
+        let now = self.started_at.elapsed().as_millis() as u64;
+        let mut queue = std::mem::take(&mut self.chat_queue);
+        queue.due(now, |event| {
+            self.show_chat(event, log, view, &mut processed)
+        });
+        self.chat_queue = queue;
+        processed
+    }
+
+    /// `setMessageDelay`: a delay that goes to none shows what waited.
+    fn set_chat_delay(
+        &mut self,
+        seconds: f64,
+        log: &mut ChatLog,
+        view: ChatView<'_>,
+    ) -> Vec<(Vec<u8>, bool)> {
+        let mut processed = Vec::new();
+        for event in self.chat_queue.set_delay(seconds) {
+            self.show_chat(event, log, view, &mut processed);
+        }
+        processed
+    }
+
+    /// A player's or a disguised message shown, or left out for a hidden player: whether it was
+    /// shown, with a signed player message noted for the server.
+    fn show_chat(
+        &self,
+        event: ChatEvent,
+        log: &mut ChatLog,
+        view: ChatView<'_>,
+        processed: &mut Vec<(Vec<u8>, bool)>,
+    ) -> bool {
+        use photon_gui::chat::Tag;
+        match event {
+            ChatEvent::Disguised { content, bound } => {
+                let decorated = self.decorate(content, &bound);
+                log.add_component(
+                    &decorated,
+                    &self.lang,
+                    (None, Some(Tag::System)),
+                    &self.font,
+                    view.focused,
+                );
+                true
+            }
+            ChatEvent::Player {
+                packet,
+                sender_known,
+                sender_is_local,
+            } => {
+                let signature = packet.signature.clone();
+                // `Minecraft.isBlocked`: what a player the local player hid says is not shown
+                // (the local player's own words always are).
+                let hidden = !sender_is_local
+                    && view.hidden.contains(&photon_core::binary::Uuid::new(
+                        packet.sender.0,
+                        packet.sender.1,
+                    ));
+                let shown = if hidden {
+                    false
+                } else if sender_known {
+                    self.show_player_chat(packet, sender_is_local, log, view.focused)
+                } else {
+                    // `handleChatMessageError`: shown as an error, and not as a message.
+                    self.show_chat_error(&packet.bound, log, view.focused);
+                    false
+                };
+                processed.extend(signature.map(|signature| (signature, shown)));
+                // The error line sets the clock as a shown message does.
+                shown || (!hidden && !sender_known)
+            }
+            ChatEvent::System { .. } | ChatEvent::Delete(_) => false,
+        }
+    }
+}
+
+/// What the chat is drawn and heard for: whether its screen is open, and the players hidden.
+#[derive(Clone, Copy)]
+pub struct ChatView<'a> {
+    pub focused: bool,
+    pub hidden: &'a [photon_core::binary::Uuid],
 }

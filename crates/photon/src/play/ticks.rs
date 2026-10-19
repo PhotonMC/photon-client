@@ -379,17 +379,7 @@ impl Play {
         if !hud.is_empty() {
             self.gui.receive_hud(hud);
         }
-        let chat = self.session.drain_chat();
-        if !chat.is_empty() {
-            let processed = self.gui.receive_chat(
-                chat,
-                &mut self.controls.chat_log,
-                (self.controls.chat.is_some(), &self.controls.hidden_players),
-            );
-            for (signature, shown) in processed {
-                self.session.mark_message_processed(&signature, shown)?;
-            }
-        }
+        self.receive_chat()?;
         Ok(())
     }
 
@@ -460,7 +450,7 @@ impl Play {
         self.controls.sign_tick(session, &mut self.surface)?;
         self.controls
             .screens_tick(session, &mut self.surface, &self.screen_assets);
-        self.gui.tick_chat(&mut self.controls.chat_log);
+        self.tick_chat()?;
         Ok(())
     }
 
