@@ -12,6 +12,7 @@ pub mod sign_text;
 pub mod text_hit;
 pub mod toasts;
 pub mod tooltip;
+pub mod tutorial;
 pub mod widgets;
 
 pub use hud::{HeartType, Hud, HudInput};
