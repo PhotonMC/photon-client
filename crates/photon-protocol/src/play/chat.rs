@@ -266,18 +266,23 @@ pub fn parse_delete_chat_packet(input: &[u8]) -> Result<PackedSignature, Connect
     read_packed_signature(&mut input)
 }
 
-/// `ServerboundChatPacket` for a session without a chat key: the message, the
-/// time, a salt, no signature and an empty acknowledgement (offset 0, no
-/// messages, checksum 1).
-pub fn encode_chat(message: &str, millis: i64, salt: i64, output: &mut Vec<u8>) {
+/// `ServerboundChatPacket` for a session without a chat key: the line, when and with what salt
+/// it was sent, no signature, and the update of the messages seen (`LastSeenMessages.Update`:
+/// offset, 20 bits and the checksum).
+pub fn encode_chat(
+    message: &str,
+    (millis, salt): (i64, i64),
+    (offset, acknowledged, checksum): (i32, u32, u8),
+    output: &mut Vec<u8>,
+) {
     let units: Vec<u16> = message.encode_utf16().collect();
     let _ = photon_core::utf8::write_utf8(output, &units, 256);
     output.extend_from_slice(&millis.to_be_bytes());
     output.extend_from_slice(&salt.to_be_bytes());
     output.push(0);
-    photon_core::wire::write_varint(0, output);
-    output.extend_from_slice(&[0, 0, 0]);
-    output.push(1);
+    photon_core::wire::write_varint(offset, output);
+    output.extend_from_slice(&acknowledged.to_le_bytes()[..3]);
+    output.push(checksum);
 }
 
 pub fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {

@@ -381,11 +381,14 @@ impl Play {
         }
         let chat = self.session.drain_chat();
         if !chat.is_empty() {
-            self.gui.receive_chat(
+            let processed = self.gui.receive_chat(
                 chat,
                 &mut self.controls.chat_log,
                 (self.controls.chat.is_some(), &self.controls.hidden_players),
             );
+            for (signature, shown) in processed {
+                self.session.mark_message_processed(&signature, shown)?;
+            }
         }
         Ok(())
     }

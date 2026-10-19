@@ -41,10 +41,13 @@ impl ClientboundPacket for PlayerChat {
 impl ClientboundPacket for DeleteChat {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         match session.social.signature_cache.unpack(&self.0) {
-            Some(signature) => session
-                .social
-                .chat_events
-                .push(ChatEvent::Delete(signature)),
+            Some(signature) => {
+                session.social.last_seen.ignore_pending(&signature);
+                session
+                    .social
+                    .chat_events
+                    .push(ChatEvent::Delete(signature));
+            }
             // The reference drops the connection over a number it does not know.
             None => session.warn("delete chat: unknown signature".to_owned()),
         }

@@ -72,10 +72,18 @@ fn a_partial_filter_mask_hides_its_set_bits() {
 #[test]
 fn an_unsigned_chat_packet_ends_in_an_empty_acknowledgement() {
     let mut output = Vec::new();
-    super::super::encode_chat("hi", 5, 7, &mut output);
+    super::super::encode_chat("hi", (5, 7), (0, 0, 1), &mut output);
     assert_eq!(output[..3], [2, b'h', b'i']);
     // offset 0, three bytes of bits, checksum 1, after the signature flag.
     assert_eq!(output[3 + 16..], [0, 0, 0, 0, 0, 1]);
+}
+
+#[test]
+fn a_chat_packet_carries_the_offset_the_bits_and_the_checksum() {
+    let mut output = Vec::new();
+    super::super::encode_chat("hi", (5, 7), (70, 0x0A_0003, 0xE5), &mut output);
+    // The signature flag, the offset as a varint, the 20 bits little endian, the checksum.
+    assert_eq!(output[3 + 16..], [0, 70, 0x03, 0x00, 0x0A, 0xE5]);
 }
 
 #[test]

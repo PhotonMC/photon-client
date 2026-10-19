@@ -206,10 +206,30 @@ impl PlaySession {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |time| time.as_millis() as i64);
         let salt = i64::from(rand_salt());
+        let update = self.social.last_seen.generate_update();
         self.send(PLAY_SERVERBOUND_CHAT_PACKET_ID, |output| {
-            encode_chat(text, millis, salt, output);
+            let seen = (update.offset, update.acknowledged, update.checksum);
+            encode_chat(text, (millis, salt), seen, output);
             Ok(())
         })
+    }
+
+    /// `ClientPacketListener.markMessageAsProcessed`: a player's message was shown or left out.
+    /// Past 64 messages the server is told how many came (`sendChatAcknowledgement`).
+    pub fn mark_message_processed(
+        &mut self,
+        signature: &[u8],
+        was_shown: bool,
+    ) -> Result<(), ConnectionError> {
+        let social = &mut self.social;
+        if social.last_seen.add_pending(signature, was_shown) && social.last_seen.offset() > 64 {
+            let offset = social.last_seen.take_offset();
+            return self.send(PLAY_SERVERBOUND_CHAT_ACK_PACKET_ID, |output| {
+                photon_core::wire::write_varint(offset, output);
+                Ok(())
+            });
+        }
+        Ok(())
     }
 }
 

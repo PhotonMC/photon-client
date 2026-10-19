@@ -106,6 +106,8 @@ pub(super) struct Social {
     pub(super) chat_events: Vec<ChatEvent>,
     pub(super) signature_cache: SignatureCache,
     pub(super) next_chat_index: i32,
+    /// `ClientPacketListener.lastSeenMessages`.
+    pub(super) last_seen: super::last_seen::LastSeenTracker,
     /// Title, action bar and tab list packets not yet shown, and the players
     /// the tab list names.
     pub(super) hud_events: Vec<HudEvent>,

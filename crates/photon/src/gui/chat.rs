@@ -50,11 +50,11 @@ impl Gui {
         sender_is_local: bool,
         log: &mut ChatLog,
         focused: bool,
-    ) {
+    ) -> bool {
         use photon_gui::chat::Tag;
         use photon_net::connection::FilterMask;
         if packet.filter == FilterMask::FullyFiltered {
-            return;
+            return false;
         }
         let content = packet
             .unsigned
@@ -92,6 +92,31 @@ impl Gui {
             &self.font,
             focused,
         );
+        true
+    }
+
+    /// `handleChatMessageError`: a sender the client has no player for.
+    fn show_chat_error(
+        &self,
+        bound: &photon_net::connection::ChatBound,
+        log: &mut ChatLog,
+        focused: bool,
+    ) {
+        let style = Style {
+            colour: photon_game::text::named_colour("red"),
+            italic: Some(true),
+            ..Style::default()
+        };
+        let error =
+            photon_game::text::Component::translatable("chat.validation_error").with_style(&style);
+        let decorated = self.decorate(error, bound);
+        log.add_component(
+            &decorated,
+            &self.lang,
+            (None, Some(photon_gui::chat::Tag::Error)),
+            &self.font,
+            focused,
+        );
     }
 
     /// `ChatComponent.addClientSystemMessage`: a message of the client's own.
@@ -110,14 +135,17 @@ impl Gui {
         );
     }
 
-    /// The chat the server sent, worded and added to the log.
+    /// The chat the server sent, worded and added to the log. What comes back is each signed
+    /// player message and whether it was shown, which the server is told of
+    /// (`markMessageAsProcessed`).
     pub fn receive_chat(
         &mut self,
         events: Vec<ChatEvent>,
         log: &mut ChatLog,
         (focused, hidden): (bool, &[photon_core::binary::Uuid]),
-    ) {
+    ) -> Vec<(Vec<u8>, bool)> {
         use photon_gui::chat::Tag;
+        let mut processed = Vec::new();
         for event in events {
             // `Minecraft.isBlocked`: what a player the local player hid says is not shown (the
             // local player's own words always are).
@@ -131,6 +159,7 @@ impl Gui {
                     packet.sender.1,
                 ))
             {
+                processed.extend(packet.signature.clone().map(|signature| (signature, false)));
                 continue;
             }
             match event {
@@ -163,27 +192,13 @@ impl Gui {
                     sender_known,
                     sender_is_local,
                 } => {
+                    let signature = packet.signature.clone();
                     if sender_known {
-                        self.show_player_chat(packet, sender_is_local, log, focused);
+                        let shown = self.show_player_chat(packet, sender_is_local, log, focused);
+                        processed.extend(signature.map(|signature| (signature, shown)));
                     } else {
-                        // `handleChatMessageError`: a sender the client has
-                        // no player for.
-                        let style = Style {
-                            colour: photon_game::text::named_colour("red"),
-                            italic: Some(true),
-                            ..Style::default()
-                        };
-                        let error =
-                            photon_game::text::Component::translatable("chat.validation_error")
-                                .with_style(&style);
-                        let decorated = self.decorate(error, &packet.bound);
-                        log.add_component(
-                            &decorated,
-                            &self.lang,
-                            (None, Some(Tag::Error)),
-                            &self.font,
-                            focused,
-                        );
+                        processed.extend(signature.map(|signature| (signature, false)));
+                        self.show_chat_error(&packet.bound, log, focused);
                     }
                 }
                 ChatEvent::Delete(signature) => {
@@ -191,5 +206,6 @@ impl Gui {
                 }
             }
         }
+        processed
     }
 }

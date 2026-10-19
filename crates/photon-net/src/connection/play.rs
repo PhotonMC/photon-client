@@ -36,6 +36,7 @@ mod chunks;
 mod containers;
 mod groups;
 mod incoming;
+mod last_seen;
 mod lifecycle;
 mod menu_sync;
 mod movement;
