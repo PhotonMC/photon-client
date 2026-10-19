@@ -10,7 +10,9 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         if self.escape_light_screen(session, surface) {
-        } else if let Some(confirm) = &self.confirm {
+            return Ok(());
+        }
+        if let Some(confirm) = &self.confirm {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
