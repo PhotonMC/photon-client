@@ -39,6 +39,13 @@ impl Controls {
         stats.set_stats(session.stats());
     }
 
+    /// A press of the primary button on the statistics screen: Done leaves it.
+    pub(super) fn stats_pressed(&mut self, mouse: (i32, i32)) {
+        if self.stats.as_mut().and_then(|stats| stats.clicked(mouse)) == Some(StatsAction::Close) {
+            self.stats = None;
+        }
+    }
+
     /// An event for the open statistics screen: Done and Escape go back to the pause menu, the
     /// mouse chooses a tab and the wheel scrolls.
     pub(super) fn stats_event(
@@ -50,19 +57,20 @@ impl Controls {
     ) -> Result {
         use glfw::{Action, Key, MouseButton, WindowEvent};
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        let Some(stats) = self.stats.as_mut() else {
+        if self.stats.is_none() {
             return Ok(());
-        };
+        }
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => self.stats = None,
             WindowEvent::CursorPos(x, y) => self.move_gui_mouse((x, y), surface),
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
-                if stats.clicked(mouse) == Some(StatsAction::Close) {
-                    self.stats = None;
-                }
+                self.stats_pressed(mouse);
             }
             WindowEvent::Scroll(_, y) => {
-                stats.scrolled(mouse, y * self.options.mouse_wheel_sensitivity);
+                let delta = y * self.options.mouse_wheel_sensitivity;
+                self.stats
+                    .iter_mut()
+                    .for_each(|stats| stats.scrolled(mouse, delta));
             }
             _ => {}
         }

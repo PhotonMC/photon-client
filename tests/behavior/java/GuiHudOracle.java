@@ -484,6 +484,12 @@ class GuiHudOracle extends GuiCommandOracle {
                             stats.mouseReleased(event);
                         }
                         case "scroll" -> stats.mouseScrolled(x, y, 0.0, action.get("delta").getAsDouble());
+                        case "resize" -> {
+                            // The window is the new size too: the scissors clamp to it.
+                            MovementOracle.setField(minecraft.getWindow(), "guiScaledWidth", action.get("width").getAsInt());
+                            MovementOracle.setField(minecraft.getWindow(), "guiScaledHeight", action.get("height").getAsInt());
+                            stats.init(action.get("width").getAsInt(), action.get("height").getAsInt());
+                        }
                         case "frame" -> {
                             // A frame drawn and thrown away: the header's buttons take their places in one.
                             var thrown = new GuiGraphicsExtractor(minecraft, new GuiRenderState(), mouseX, mouseY);

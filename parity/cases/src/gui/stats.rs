@@ -87,6 +87,7 @@ pub fn stats_screen() -> Value {
     }
     rows.extend(mob_rows());
     rows.extend(item_rows());
+    rows.extend(selection_rows());
     gui("stats-screen", "stats_screen", rows)
 }
 
@@ -127,35 +128,58 @@ fn mob_rows() -> Vec<Value> {
     rows
 }
 
+fn items_tab() -> Value {
+    json!({"do": "click", "x": 200, "y": 10})
+}
+
+fn frame() -> Value {
+    json!({"do": "frame"})
+}
+
+fn header(column: i64) -> Value {
+    json!({"do": "click", "x": 140 + 40 * column, "y": 35})
+}
+
+fn scroll(delta: f64) -> Value {
+    json!({"do": "scroll", "x": 200, "y": 100, "delta": delta})
+}
+
+fn resize(width: i64, height: i64) -> Value {
+    json!({"do": "resize", "width": width, "height": height})
+}
+
+/// A row on the items tab with the statistics of many items, after the clicks. The header's buttons
+/// take their places when drawn, so a frame comes between the clicks.
+fn sorted(label: &str, clicks: Vec<Value>, mouse: [i64; 2]) -> Value {
+    let mut steps = vec![items_tab(), frame()];
+    for click in clicks {
+        steps.push(click);
+        steps.push(frame());
+    }
+    with(screen_row(label, (427, 240), &many_item_stats(), true), json!({"steps": steps, "mouse": mouse}))
+}
+
+/// Sorted once and the focus let go, so that the order is the game's and nothing is selected.
+fn settle(clicks: Vec<Value>) -> Vec<Value> {
+    let mut steps = vec![header(3), json!({"do": "click", "x": 10, "y": 100})];
+    steps.extend(clicks);
+    steps
+}
+
 /// The items tab. The game keeps the items in a set with no order until a column is sorted, so the
 /// rows with more than one item are sorted first.
 fn item_rows() -> Vec<Value> {
     let one = json!([["minecraft:used", "minecraft:diamond_sword", 5]]);
-    let many = many_item_stats();
-    let items_tab = json!({"do": "click", "x": 200, "y": 10});
-    let frame = json!({"do": "frame"});
-    let header = |column: i64| json!({"do": "click", "x": 140 + 40 * column, "y": 35});
-    let sorted = |label: &str, clicks: Vec<Value>, mouse: [i64; 2]| {
-        // The header's buttons take their places when drawn: a frame comes between the clicks.
-        let mut steps = vec![items_tab.clone(), frame.clone()];
-        for click in clicks {
-            steps.push(click);
-            steps.push(frame.clone());
-        }
-        with(screen_row(label, (427, 240), &many, true), json!({"steps": steps, "mouse": mouse}))
+    let on_tab = |label: &str, size: (i64, i64), stats: &Value, changes: Value| {
+        let row = with(screen_row(label, size, stats, true), json!({"steps": [items_tab()]}));
+        with(row, changes)
     };
     let mut rows = vec![
-        with(screen_row("items-one", (427, 240), &one, true), json!({"steps": [items_tab.clone()]})),
-        with(screen_row("items-one-small", (320, 180), &one, true), json!({"steps": [items_tab.clone()]})),
-        with(
-            screen_row("items-one-hover-button", (427, 240), &one, true),
-            json!({"steps": [items_tab.clone()], "mouse": [172, 35]}),
-        ),
+        on_tab("items-one", (427, 240), &one, json!({})),
+        on_tab("items-one-small", (320, 180), &one, json!({})),
+        on_tab("items-one-hover-button", (427, 240), &one, json!({"mouse": [172, 35]})),
         with(screen_row("items-tab-hover", (427, 240), &one, true), json!({"mouse": [200, 10]})),
-        with(
-            screen_row("items-none", (427, 240), &json!([["minecraft:custom", "minecraft:jump", 1]]), true),
-            json!({"steps": [items_tab.clone()]}),
-        ),
+        on_tab("items-none", (427, 240), &json!([["minecraft:custom", "minecraft:jump", 1]]), json!({})),
     ];
     for column in 0..6 {
         rows.push(sorted(&format!("items-sort-{column}"), vec![header(column)], [0, 0]));
@@ -164,17 +188,43 @@ fn item_rows() -> Vec<Value> {
     rows.push(sorted("items-sort-off", vec![header(2), header(2), header(2)], [0, 0]));
     rows.push(sorted("items-sort-switch", vec![header(2), header(3)], [0, 0]));
     rows.push(sorted("items-sort-hover", vec![header(0)], [132 + 40 * 3 + 5, 35]));
-    rows.push(sorted(
-        "items-sort-scrolled",
-        vec![header(3), json!({"do": "scroll", "x": 200, "y": 100, "delta": -4.0})],
-        [0, 0],
-    ));
-    rows.push(sorted(
-        "items-sort-scrolled-far",
-        vec![header(3), json!({"do": "scroll", "x": 200, "y": 100, "delta": -100.0})],
-        [0, 0],
-    ));
+    rows.push(sorted("items-sort-scrolled", vec![header(3), scroll(-4.0)], [0, 0]));
+    rows.push(sorted("items-sort-scrolled-far", vec![header(3), scroll(-100.0)], [0, 0]));
+    rows.extend(item_header_rows());
+    rows.extend(item_focus_rows());
     rows
+}
+
+/// The header scrolled up under the tab bar: where a press and the pointer count.
+fn item_header_rows() -> Vec<Value> {
+    let click_under_bar = |x: i64| json!({"do": "click", "x": x, "y": 20});
+    vec![
+        sorted("items-scrolled-click-active-tab", settle(vec![scroll(-1.0), click_under_bar(140)]), [0, 0]),
+        sorted("items-scrolled-click-inactive-tab", settle(vec![scroll(-1.0), click_under_bar(340)]), [0, 0]),
+        sorted("items-scrolled-hover-under-bar", settle(vec![scroll(-1.0)]), [340, 20]),
+        sorted("items-scrolled-hover-in-list", settle(vec![scroll(-1.0)]), [340, 28]),
+    ]
+}
+
+/// The focus of the slots and the header's buttons, and what resizing does to the scroll.
+fn item_focus_rows() -> Vec<Value> {
+    let slot = |row: i64| json!({"do": "click", "x": 80, "y": 55 + 22 * row});
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    vec![
+        sorted("items-slot", settle(vec![slot(0)]), [0, 0]),
+        sorted("items-slot-then-tab", settle(vec![slot(1), click(60, 10)]), [0, 0]),
+        sorted("items-slot-numbers-click", settle(vec![click(200, 55)]), [0, 0]),
+        sorted("items-slot-scrolled-resize", settle(vec![slot(0), scroll(-40.0), resize(320, 180)]), [0, 0]),
+        sorted("items-slot-clipped", settle(vec![scroll(-1.0), slot(0)]), [0, 0]),
+        sorted("items-resize", vec![header(3), scroll(-4.0), resize(320, 180)], [0, 0]),
+        sorted("items-resize-scroll-only", vec![header(3), scroll(-4.0), scroll(-4.0), resize(427, 200)], [0, 0]),
+        sorted("items-resize-back", vec![header(1), resize(240, 150), resize(427, 240)], [0, 0]),
+        with(
+            screen_row("general-resize", (427, 240), &many_item_stats(), true),
+            json!({"steps": [scroll(-6.0), resize(300, 160)]}),
+        ),
+        with(screen_row("loading-resize", (427, 240), &json!([]), false), json!({"steps": [resize(200, 120)]})),
+    ]
 }
 
 /// The statistics of a good many items: blocks mined, items crafted, used, broken, picked up.
@@ -220,4 +270,41 @@ fn many_item_stats() -> Value {
         stats.push(json!(["minecraft:used", format!("minecraft:{name}"), index + 1]));
     }
     Value::Array(stats)
+}
+
+/// Selecting a row of the general and the mobs lists: the outline, the focus lost to the tab bar,
+/// a row partly out of the list, and the selection kept over a resize.
+fn selection_rows() -> Vec<Value> {
+    let stats = json!([
+        ["minecraft:custom", "minecraft:jump", 1234],
+        ["minecraft:killed", "minecraft:zombie", 12],
+        ["minecraft:killed_by", "minecraft:creeper", 3],
+        ["minecraft:killed", "minecraft:pig", 4],
+        ["minecraft:killed", "minecraft:cow", 5],
+        ["minecraft:killed", "minecraft:sheep", 6],
+    ]);
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let scroll = |delta: f64| json!({"do": "scroll", "x": 200, "y": 100, "delta": delta});
+    let resize = |width: i64, height: i64| json!({"do": "resize", "width": width, "height": height});
+    let mobs = click(300, 10);
+    let general =
+        |label: &str, steps: Vec<Value>| with(screen_row(label, (427, 240), &stats, true), json!({"steps": steps}));
+    let mut rows = vec![
+        general("general-select", vec![click(200, 40)]),
+        general("general-select-empty-area", vec![click(10, 40)]),
+        general("general-select-then-tab", vec![click(200, 40), click(60, 10)]),
+        general("general-select-then-done-area", vec![click(200, 40), click(200, 207)]),
+        general("general-select-scrolled", vec![scroll(-2.0), click(200, 40)]),
+        general("general-select-clipped-top", vec![scroll(-2.0), click(200, 25)]),
+        general("general-select-clipped-bottom", vec![click(200, 200)]),
+        general("general-select-resize", vec![scroll(-9.0), click(200, 100), resize(320, 150)]),
+        general("general-select-resize-taller", vec![click(200, 200), resize(427, 400)]),
+        general("general-select-twice", vec![click(200, 40), click(200, 70)]),
+        general("general-select-under-bar", vec![click(200, 20)]),
+    ];
+    rows.push(general("mobs-select", vec![mobs.clone(), click(200, 50)]));
+    rows.push(general("mobs-select-second", vec![mobs.clone(), click(200, 90)]));
+    rows.push(general("mobs-select-then-tab", vec![mobs.clone(), click(200, 50), click(60, 10)]));
+    rows.push(general("mobs-select-clipped", vec![mobs.clone(), scroll(-1.0), click(200, 25)]));
+    rows
 }

@@ -54,8 +54,18 @@ pub(super) struct ItemsList {
     none: Vec<Run>,
     /// `sortColumn` and `sortOrder`: the column sorted by and which way (-1 down, 1 up).
     sort: Option<(usize, i32)>,
-    /// The button the last press was on, which keeps the focus.
-    focused: Option<usize>,
+    /// What the last press was on, which keeps the focus.
+    focus: Focus,
+}
+
+/// The widget of the list that has the focus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    None,
+    /// The sort button of a column in the header.
+    Button(usize),
+    /// The item's slot in a row (by its place among the items).
+    Slot(usize),
 }
 
 fn type_id(name: &str) -> i32 {
@@ -111,7 +121,7 @@ impl ItemsList {
             types,
             none: lang.runs(&Component::translatable("stats.none"), &Style::default()),
             sort: None,
-            focused: None,
+            focus: Focus::None,
         }
     }
 
@@ -143,9 +153,11 @@ impl ItemsList {
         )
     }
 
-    /// The column whose button is at the mouse.
-    fn button_at(&self, mouse: (i32, i32)) -> Option<usize> {
-        if self.rows.is_empty() {
+    /// The column whose button is at the mouse. A button is hovered only inside the list (the
+    /// scissor), but pressed wherever it is.
+    fn button_at(&self, mouse: (i32, i32), hover: bool) -> Option<usize> {
+        let place = self.view.place;
+        if self.rows.is_empty() || hover && (mouse.1 < place.y || mouse.1 >= place.bottom()) {
             return None;
         }
         let y = self.view.row_y(0);
@@ -158,13 +170,53 @@ impl ItemsList {
         })
     }
 
-    /// A press on the header: the column's button sorts (`sortByColumn`): by it descending, then
-    /// ascending, then not at all. The rows are sorted by the numbers held now.
-    pub(super) fn clicked(&mut self, mouse: (i32, i32), stats: &HashMap<StatKey, i32>) {
-        self.focused = self.button_at(mouse);
-        let Some(column) = self.focused else {
-            return;
+    /// Another child of the screen took the press: the focus leaves the list, and with it the
+    /// selection (`ContainerObjectSelectionList.setFocused`).
+    pub(super) fn unfocus(&mut self) {
+        self.focus = Focus::None;
+        self.view.selected = None;
+        self.view.focused = false;
+    }
+
+    /// The item slot whose rectangle holds the point.
+    fn slot_at(&self, mouse: (i32, i32), index: usize) -> bool {
+        let (x, y) = (
+            self.view.row_left() + PADDING,
+            self.view.row_y(index + 1) + PADDING,
+        );
+        mouse.0 >= x && mouse.0 < x + 18 && mouse.1 >= y && mouse.1 < y + 18
+    }
+
+    /// The widget at the mouse, with its entry: a header button or an item's slot.
+    fn widget_at(&self, mouse: (i32, i32)) -> Option<(usize, Focus)> {
+        let entry = self.view.entry_at(mouse, self.len())?;
+        let focus = match entry {
+            0 => Focus::Button(self.button_at(mouse, false)?),
+            index if self.slot_at(mouse, index - 1) => Focus::Slot(index - 1),
+            _ => return None,
         };
+        Some((entry, focus))
+    }
+
+    /// A press: a header button sorts, a slot is focused; both choose their entry. Whether the
+    /// list took the press (a press it does not take leaves the focus as it was).
+    pub(super) fn clicked(&mut self, mouse: (i32, i32), stats: &HashMap<StatKey, i32>) -> bool {
+        let Some((entry, focus)) = self.widget_at(mouse) else {
+            return false;
+        };
+        self.focus = focus;
+        self.view.focused = true;
+        let rows = self.len();
+        self.view.select(entry, rows);
+        if let Focus::Button(column) = focus {
+            self.sort_by(column, stats);
+        }
+        true
+    }
+
+    /// `sortByColumn`: by the column descending, then ascending, then not at all, the rows sorted
+    /// by the numbers held now (`ItemRowComparator`: equal numbers by item id).
+    fn sort_by(&mut self, column: usize, stats: &HashMap<StatKey, i32>) {
         self.sort = match self.sort {
             Some((held, -1)) if held == column => Some((column, 1)),
             Some((held, _)) if held == column => None,
@@ -202,7 +254,7 @@ impl ItemsList {
         &self,
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
-        (row, y, shaded): (&Row, i32, bool),
+        (index, row, y, shaded): (usize, &Row, i32, bool),
         (stats, item): (&HashMap<StatKey, i32>, &mut ItemDrawer<'_>),
     ) {
         let x = self.view.row_left() + PADDING;
@@ -211,6 +263,9 @@ impl ItemsList {
         frame.sprite(atlas, "container/slot", x, content_y, 18, 18);
         let stack = photon_world::ClientItemStackState::new(1, photon_core::ids::ItemId(row.item));
         frame.item(item, &stack, x + 1, content_y + 1);
+        if self.focus == Focus::Slot(index) {
+            outline(frame, atlas, (x, content_y, 18, 18));
+        }
         let colour = if shaded { 0xFFFF_FFFF } else { 0xFFBA_BABA };
         for column in 0..6 {
             let value = if column == 0 {
@@ -249,7 +304,7 @@ impl ItemsList {
                 self.draw_row(
                     frame,
                     (atlas, font),
-                    (row, y, (index + 1) % 2 == 0),
+                    (index, row, y, (index + 1) % 2 == 0),
                     (stats, item),
                 );
             }
@@ -267,10 +322,10 @@ impl ItemsList {
         if !self.view.shows(y) {
             return;
         }
-        let hovered = self.button_at(mouse);
+        let hovered = self.button_at(mouse, true);
         for (column, icon) in ICONS.iter().enumerate() {
             let (x, top) = self.button_rect(column, y);
-            let background = if hovered == Some(column) || self.focused == Some(column) {
+            let background = if hovered == Some(column) || self.focus == Focus::Button(column) {
                 "container/slot"
             } else {
                 "statistics/header"
@@ -288,4 +343,17 @@ impl ItemsList {
             frame.sprite(atlas, sprite, x, y + PADDING + 1, BUTTON_SIZE, BUTTON_SIZE);
         }
     }
+}
+
+/// `GuiGraphicsExtractor.outline` in white.
+fn outline(frame: &mut GuiFrame, atlas: &GuiAtlas, (x, y, width, height): (i32, i32, i32, i32)) {
+    let white = 0xFFFF_FFFF;
+    frame.fill(atlas, (x, y, x + width, y + 1), white);
+    frame.fill(atlas, (x, y + height - 1, x + width, y + height), white);
+    frame.fill(atlas, (x, y + 1, x + 1, y + height - 1), white);
+    frame.fill(
+        atlas,
+        (x + width - 1, y + 1, x + width, y + height - 1),
+        white,
+    );
 }

@@ -65,6 +65,22 @@ impl GeneralList {
         self.view.scroll_by(delta, self.entries.len());
     }
 
+    /// A press: an entry under it is selected, and the list has the focus. Whether the list took it.
+    pub(super) fn clicked(&mut self, mouse: (i32, i32)) -> bool {
+        let rows = self.entries.len();
+        let Some(index) = self.view.entry_at(mouse, rows) else {
+            return false;
+        };
+        self.view.focused = true;
+        self.view.select(index, rows);
+        true
+    }
+
+    /// Another child of the screen took the press: the focus leaves the list.
+    pub(super) fn unfocus(&mut self) {
+        self.view.focused = false;
+    }
+
     /// The entries that show, then the scroll bar.
     pub(super) fn draw(
         &self,
@@ -79,6 +95,7 @@ impl GeneralList {
             if !view.shows(y) {
                 continue;
             }
+            view.draw_selection(frame, atlas, index);
             let text_y = y + PADDING + (ROW_HEIGHT - 2 * PADDING) / 2 - 9 / 2;
             let colour = if index % 2 == 0 {
                 0xFFFF_FFFF

@@ -15,7 +15,7 @@ impl Gui {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         if let Some(stats) = controls.stats.as_mut() {
             if stats.size() != gui_size {
-                *stats = stats.resized(lang, gui_size);
+                stats.resize(gui_size);
             }
             let millis = frame.millis;
             stats.draw(frame, (atlas, font), mouse, (millis, item));

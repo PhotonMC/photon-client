@@ -60,6 +60,8 @@ pub struct StatsScreen {
     selected: usize,
     /// The tab the bar has focused, after one was clicked.
     focused_tab: Option<usize>,
+    /// Whether the screen's focus is on the tab bar.
+    bar_focused: bool,
     /// The lists, once the server's statistics are in (`isLoading`).
     lists: Option<Lists>,
     /// What each tab's list has in it, which decides if the tab can be chosen.
@@ -111,6 +113,7 @@ impl StatsScreen {
             pending: runs(lang, "multiplayer.downloadingStats"),
             selected: 0,
             focused_tab: None,
+            bar_focused: false,
             lists: None,
             tab_active: [true, false, false],
             stats: stats.clone(),
@@ -146,6 +149,9 @@ impl StatsScreen {
             mobs,
         });
         self.selected = 0;
+        // `setFocused(tabNavigationBar)`: the bar has the focus, no tab of it.
+        self.bar_focused = true;
+        self.focused_tab = None;
         self.layout();
     }
 
@@ -154,15 +160,11 @@ impl StatsScreen {
         self.stats = stats.clone();
     }
 
-    pub fn resized(&self, lang: &Lang, size: (i32, i32)) -> Self {
-        let mut screen = Self::new(lang, size, self.in_world, &self.stats);
-        // A new layout is not a new `init`: the server is not asked again.
-        screen.request_pending = self.request_pending;
-        if self.lists.is_some() {
-            screen.on_stats_updated(lang, &self.stats);
-            screen.selected = self.selected;
-        }
-        screen
+    /// `Screen.init(width, height)` on a screen that was initialized: `repositionElements`, which
+    /// lays the same lists out again.
+    pub fn resize(&mut self, size: (i32, i32)) {
+        self.size = size;
+        self.layout();
     }
 
     /// `repositionElements`: the footer's Done, and the list to the room between the bar and it.
@@ -368,29 +370,68 @@ impl StatsScreen {
         );
     }
 
-    /// A press of the primary button at `mouse`.
+    /// The tab the pointer is over, active or not.
+    fn tab_at(&self, mouse: (i32, i32)) -> Option<usize> {
+        let (first, tab_width) = self.tab_geometry();
+        let in_bar = mouse.1 >= 0
+            && mouse.1 < TAB_BAR_HEIGHT
+            && mouse.0 >= first
+            && mouse.0 < first + TABS as i32 * tab_width;
+        in_bar.then(|| ((mouse.0 - first) / tab_width) as usize)
+    }
+
+    /// A press of the primary button at `mouse`: of the children (Done, the tab bar, the list) the
+    /// first one the pointer is over gets it, and the focus goes to it if it took it. An inactive
+    /// tab takes nothing.
     pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<StatsAction> {
         if self.done.contains(&self.arena, mouse) {
             return Some(StatsAction::Close);
         }
-        if let Some(lists) = &mut self.lists
-            && self.selected == 1
-        {
-            lists.items.clicked(mouse, &self.stats);
-        }
-        // A press moves the focus: to the tab it chose, or off the bar.
-        self.focused_tab = None;
-        let (first, tab_width) = self.tab_geometry();
-        if mouse.1 >= 0 && mouse.1 < TAB_BAR_HEIGHT {
-            for tab in 0..TABS {
-                let x = first + tab as i32 * tab_width;
-                if mouse.0 >= x && mouse.0 < x + tab_width && self.tab_active[tab] {
-                    self.selected = tab;
-                    self.focused_tab = Some(tab);
-                }
+        if let Some(tab) = self.tab_at(mouse) {
+            if self.tab_active[tab] {
+                self.press_tab(tab);
             }
+        } else if self.press_list(mouse) {
+            // The list has the focus now, and the bar lets go of its tab.
+            self.bar_focused = false;
+            self.focused_tab = None;
         }
         None
+    }
+
+    /// A tab chosen: it is focused in the bar, and the screen then gives the bar its focus, which
+    /// lets go of the tab if the bar had not had it.
+    fn press_tab(&mut self, tab: usize) {
+        self.selected = tab;
+        self.focused_tab = Some(tab);
+        if !self.bar_focused {
+            self.bar_focused = true;
+            self.focused_tab = None;
+            self.unfocus_lists();
+        }
+    }
+
+    /// A press in the list of the tab chosen: whether it took it.
+    fn press_list(&mut self, mouse: (i32, i32)) -> bool {
+        let place = self.list_place();
+        let inside = place.contains((f64::from(mouse.0), f64::from(mouse.1)));
+        match &mut self.lists {
+            Some(lists) if inside => match self.selected {
+                0 => lists.general.clicked(mouse),
+                1 => lists.items.clicked(mouse, &self.stats),
+                _ => lists.mobs.clicked(mouse),
+            },
+            _ => false,
+        }
+    }
+
+    /// The tab bar took the focus: no list has it.
+    fn unfocus_lists(&mut self) {
+        if let Some(lists) = &mut self.lists {
+            lists.general.unfocus();
+            lists.items.unfocus();
+            lists.mobs.unfocus();
+        }
     }
 
     /// A turn of the wheel over the screen: the list scrolls.

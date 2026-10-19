@@ -109,6 +109,22 @@ impl MobsList {
         self.view.scroll_by(delta, self.rows.len());
     }
 
+    /// A press: a row under it is selected, and the list has the focus. Whether the list took it.
+    pub(super) fn clicked(&mut self, mouse: (i32, i32)) -> bool {
+        let rows = self.rows.len();
+        let Some(index) = self.view.entry_at(mouse, rows) else {
+            return false;
+        };
+        self.view.focused = true;
+        self.view.select(index, rows);
+        true
+    }
+
+    /// Another child of the screen took the press: the focus leaves the list.
+    pub(super) fn unfocus(&mut self) {
+        self.view.focused = false;
+    }
+
     /// The rows that show, then the scroll bar.
     pub(super) fn draw(&self, frame: &mut GuiFrame, (atlas, font): (&GuiAtlas, &Font)) {
         let view = &self.view;
@@ -118,6 +134,7 @@ impl MobsList {
             if !view.shows(y) {
                 continue;
             }
+            view.draw_selection(frame, atlas, index);
             let (x, top) = (view.row_left() + PADDING, y + PADDING + 1);
             let shade = |on: bool| if on { 0xFFBA_BABA } else { 0xFF80_8080 };
             frame.styled_text(atlas, font, &row.name, x + 2, top, 0xFFFF_FFFF, true);

@@ -16,6 +16,10 @@ pub(super) struct ListView {
     pub(super) scroll: f64,
     /// `defaultEntryHeight`, which is also twice the scroll rate.
     pub(super) row_height: i32,
+    /// `getSelected`: the entry the last press chose, kept when the list loses the focus.
+    pub(super) selected: Option<usize>,
+    /// Whether the list has the focus: the screen's focus is on it.
+    pub(super) focused: bool,
 }
 
 impl ListView {
@@ -29,15 +33,75 @@ impl ListView {
             },
             scroll: 0.0,
             row_height,
+            selected: None,
+            focused: false,
         }
     }
 
-    /// `updateSizeAndPosition`: the place, and the scroll held to what it can be there.
+    /// `updateSizeAndPosition`: the place, the selected entry shown, and the scroll held to what it
+    /// can be there.
     pub(super) fn place(&mut self, place: Place, rows: usize) {
         self.place = place;
+        if let Some(selected) = self.selected {
+            self.scroll_to(selected);
+        }
         self.scroll = self
             .scroll
             .clamp(0.0, f64::from(place.max_scroll(self.content_height(rows))));
+    }
+
+    /// `scrollToEntry`: the least scroll that shows the entry whole.
+    pub(super) fn scroll_to(&mut self, index: usize) {
+        let y = self.row_y(index);
+        let top = y - self.place.y - 2;
+        if top < 0 {
+            self.scroll += f64::from(top);
+        }
+        let bottom = self.place.bottom() - y - self.row_height - 2;
+        if bottom < 0 {
+            self.scroll += f64::from(-bottom);
+        }
+    }
+
+    /// `getEntryAtPosition`: the entry whose rectangle holds the point.
+    pub(super) fn entry_at(&self, (x, y): (i32, i32), rows: usize) -> Option<usize> {
+        (0..rows).find(|index| {
+            let top = self.row_y(*index);
+            x >= self.row_left() && x < self.row_right() && y >= top && y < top + self.row_height
+        })
+    }
+
+    /// `setSelected` by a press: the entry is chosen, and shown if it is clipped.
+    pub(super) fn select(&mut self, index: usize, rows: usize) {
+        self.selected = Some(index);
+        let y = self.row_y(index);
+        let (content_top, content_bottom) = (y + PADDING, y + self.row_height - PADDING);
+        if content_top < self.place.y || content_bottom > self.place.bottom() {
+            self.scroll_to(index);
+        }
+        let max = f64::from(self.place.max_scroll(self.content_height(rows)));
+        self.scroll = self.scroll.clamp(0.0, max);
+    }
+
+    /// `AbstractSelectionList.extractSelection`: the outline of the entry, white while the list has
+    /// the focus and grey after.
+    pub(super) fn draw_selection(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, index: usize) {
+        if self.selected != Some(index) {
+            return;
+        }
+        let y = self.row_y(index);
+        let colour = if self.focused {
+            0xFFFF_FFFF
+        } else {
+            0xFF80_8080
+        };
+        let (left, right) = (self.row_left(), self.row_right());
+        frame.fill(atlas, (left, y, right, y + self.row_height), colour);
+        frame.fill(
+            atlas,
+            (left + 1, y + 1, right - 1, y + self.row_height - 1),
+            0xFF00_0000,
+        );
     }
 
     /// `AbstractSelectionList.contentHeight`.

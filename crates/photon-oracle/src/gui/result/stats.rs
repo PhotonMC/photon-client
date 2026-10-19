@@ -58,6 +58,10 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
             "scroll" => screen.scrolled(at, step["delta"].as_f64().ok_or("delta")?),
             // A frame between two steps: the screen has no state that waits for one.
             "frame" => {}
+            "resize" => screen.resize((
+                step["width"].as_i64().unwrap_or(0) as i32,
+                step["height"].as_i64().unwrap_or(0) as i32,
+            )),
             _ => return Err("unknown step".into()),
         }
     }

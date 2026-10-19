@@ -153,6 +153,10 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+        if self.stats.is_some() {
+            self.stats_pressed(mouse);
+            return Ok(());
+        }
         if let Some(confirm) = &self.confirm {
             if let Some(action) = confirm.clicked(mouse) {
                 self.confirm_action(action, session, surface)?;
