@@ -428,6 +428,80 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /**
+     * The game's own `StatsScreen` over a real `StatsCounter`: in the loading state or with the
+     * statistics in, on a tab, after some scrolls and clicks, drawn in a world.
+     */
+    @SuppressWarnings("unchecked")
+    static JsonObject statsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var mouse = row.getAsJsonArray("mouse");
+            int mouseX = mouse.get(0).getAsInt();
+            int mouseY = mouse.get(1).getAsInt();
+            var scene = hudScene(width, height, false, false);
+            var minecraft = scene.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            MovementOracle.setField(minecraft, "level", scene.level());
+            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
+            clockField.setAccessible(true);
+            var clockBefore = clockField.get(null);
+            long[] now = {row.get("now").getAsLong()};
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            net.minecraft.locale.Language.inject(clientLanguage("en_us"));
+            try {
+                var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
+                MovementOracle.setField(scene.local().connection, "connection", connection);
+                var counter = new net.minecraft.stats.StatsCounter();
+                for (var stat : row.getAsJsonArray("stats")) {
+                    var entry = stat.getAsJsonArray();
+                    var type = net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE.getValue(
+                        net.minecraft.resources.Identifier.parse(entry.get(0).getAsString()));
+                    var value = ((net.minecraft.core.Registry<Object>) type.getRegistry()).getValue(
+                        net.minecraft.resources.Identifier.parse(entry.get(1).getAsString()));
+                    counter.setValue(null, ((net.minecraft.stats.StatType<Object>) type).get(value), entry.get(2).getAsInt());
+                }
+                var stats = new net.minecraft.client.gui.screens.achievement.StatsScreen(null, counter);
+                stats.init(width, height);
+                if (row.get("loaded").getAsBoolean()) {
+                    stats.onStatsUpdated();
+                }
+                for (var step : row.getAsJsonArray("steps")) {
+                    var action = step.getAsJsonObject();
+                    double x = action.get("x").getAsDouble();
+                    double y = action.get("y").getAsDouble();
+                    switch (action.get("do").getAsString()) {
+                        case "click" -> {
+                            var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                            stats.mouseClicked(event, false);
+                            stats.mouseReleased(event);
+                        }
+                        case "scroll" -> stats.mouseScrolled(x, y, 0.0, action.get("delta").getAsDouble());
+                        default -> throw new IllegalArgumentException(action.get("do").getAsString());
+                    }
+                }
+                var frame = new GuiRenderState();
+                var graphics = new GuiGraphicsExtractor(minecraft, frame, mouseX, mouseY);
+                stats.extractRenderStateWithTooltipAndSubtitles(graphics, mouseX, mouseY, 0.0F);
+                var out = new JsonObject();
+                out.addProperty("label", row.get("label").getAsString());
+                out.add("ops", record(frame));
+                rows.add(out);
+            } finally {
+                net.minecraft.locale.Language.inject(languageBefore);
+                clockField.set(null, clockBefore);
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** `StatFormatter` for numbers: each formatter of the game on each value. */
     static JsonObject statFormat(JsonObject request) {
         var rows = new JsonArray();

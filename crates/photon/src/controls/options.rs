@@ -53,7 +53,7 @@ impl Controls {
                     lang,
                     self.gui_mouse,
                     y * wheel,
-                    self.control_held,
+                    self.mods.control,
                     &mut resize,
                 );
             }
@@ -270,7 +270,7 @@ impl Controls {
             return;
         }
         let mouse = self.gui_mouse;
-        let control = self.control_held;
+        let control = self.mods.control;
         let wheel = self.options.mouse_wheel_sensitivity;
         let Some(screen) = self.language_screen.as_mut() else {
             return;

@@ -33,6 +33,7 @@ impl Controls {
             PauseAction::Resume => self.close_pause(surface),
             PauseAction::Disconnect => self.leave = true,
             PauseAction::Options => self.open_options(surface, assets),
+            PauseAction::Statistics => self.open_stats(surface, assets),
             _ => {}
         }
     }

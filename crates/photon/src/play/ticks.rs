@@ -451,7 +451,7 @@ impl Play {
         }
         self.controls.sign_tick(session, &mut self.surface)?;
         self.controls
-            .bed_tick(session, &mut self.surface, &self.screen_assets);
+            .screens_tick(session, &mut self.surface, &self.screen_assets);
         self.gui.tick_chat(&mut self.controls.chat_log);
         Ok(())
     }
@@ -494,7 +494,7 @@ impl Play {
                 use_clicks: self.controls.use_key.take_clicks(),
                 use_held: self.controls.use_key.is_down(),
                 pick_clicks: self.controls.pick_key.take_clicks(),
-                control_down: self.controls.ctrl_down,
+                control_down: self.controls.mods.ctrl,
             },
             aim,
         )?;

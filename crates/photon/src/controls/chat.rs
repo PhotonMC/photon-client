@@ -39,6 +39,7 @@ impl Controls {
             self.death.is_some(),
             self.credits.is_some(),
             self.social.is_some(),
+            self.stats.is_some(),
             self.game_mode_switcher.is_some(),
             self.sign_edit.is_some(),
             self.book_edit.is_some(),
@@ -274,7 +275,7 @@ impl Controls {
         if let glfw::WindowEvent::Key(glfw::Key::LeftShift | glfw::Key::RightShift, _, action, _) =
             event
         {
-            self.shift_held = action != glfw::Action::Release;
+            self.mods.shift = action != glfw::Action::Release;
         }
         match event {
             glfw::WindowEvent::Key(
@@ -301,7 +302,7 @@ impl Controls {
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
                 if !chat.mouse_scrolled(y, mouse) {
                     let notch = y.clamp(-1.0, 1.0);
-                    let lines = if self.shift_held { notch } else { notch * 7.0 };
+                    let lines = if self.mods.shift { notch } else { notch * 7.0 };
                     self.chat_log.scroll_by(lines as i32, true);
                 }
             }

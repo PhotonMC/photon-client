@@ -254,10 +254,10 @@ impl Controls {
             [glfw::Key::LeftControl, glfw::Key::RightControl]
         };
         if control_keys.contains(&key) {
-            self.control_held = action != glfw::Action::Release;
+            self.mods.control = action != glfw::Action::Release;
         }
         if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
-            self.ctrl_down = action != glfw::Action::Release;
+            self.mods.ctrl = action != glfw::Action::Release;
         }
         // `key.debug.modifier`.
         if key == glfw::Key::F3 {
@@ -265,6 +265,72 @@ impl Controls {
         } else if action != glfw::Action::Release && !self.any_screen_open() {
             self.debug.combination(key, reduced_debug_info);
         }
+    }
+
+    /// The screens and dialogs over the game that take an event whole, in the order they stack:
+    /// what handled it, or the event back.
+    fn modal_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+        for_screen: bool,
+    ) -> std::result::Result<Result, glfw::WindowEvent> {
+        if !for_screen {
+            return Err(event);
+        }
+        if self.game_mode_switcher.is_some() {
+            return Ok(self.game_mode_switcher_event(event, session, surface, assets));
+        }
+        if self.link_confirm.is_some() {
+            self.link_event(event, surface);
+            return Ok(Ok(()));
+        }
+        if self.dialog_warning.is_some() {
+            self.dialog_warning_event(event, session, surface);
+            return Ok(Ok(()));
+        }
+        if self.dialog.is_some() {
+            return Ok(self.dialog_event(event, session, surface, assets));
+        }
+        if self.chat.is_some() {
+            return Ok(self.chat_event(event, session, surface, assets));
+        }
+        if self.disconnected.is_some() {
+            self.disconnected_event(event, surface);
+            return Ok(Ok(()));
+        }
+        Err(event)
+    }
+
+    /// The screens that fill the game's place, and the statistics over the pause menu.
+    fn full_screen_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+        for_screen: bool,
+    ) -> std::result::Result<Result, glfw::WindowEvent> {
+        if !for_screen {
+            return Err(event);
+        }
+        if self.confirm.is_some() {
+            return Ok(self.confirm_event(event, session, surface));
+        }
+        if self.credits.is_some() {
+            return Ok(self.credits_event(event, session, surface));
+        }
+        if self.death.is_some() {
+            return Ok(self.death_event(event, session, surface, assets));
+        }
+        if self.sign_edit.is_some() {
+            return Ok(self.sign_event(event, session, surface, assets));
+        }
+        if self.book_edit.is_some() {
+            return Ok(self.book_event(event, session, surface, assets));
+        }
+        if self.stats.is_some() {
+            return Ok(self.stats_event(event, session, surface, assets));
+        }
+        Err(event)
     }
 
     /// One window event. An open screen takes the keys and the mouse.
@@ -290,42 +356,14 @@ impl Controls {
                 | glfw::WindowEvent::Scroll(..)
                 | glfw::WindowEvent::CursorPos(..)
         );
-        if self.game_mode_switcher.is_some() && for_screen {
-            return self.game_mode_switcher_event(event, session, surface, assets);
-        }
-        if self.link_confirm.is_some() && for_screen {
-            self.link_event(event, surface);
-            return Ok(());
-        }
-        if self.dialog_warning.is_some() && for_screen {
-            self.dialog_warning_event(event, session, surface);
-            return Ok(());
-        }
-        if self.dialog.is_some() && for_screen {
-            return self.dialog_event(event, session, surface, assets);
-        }
-        if self.chat.is_some() && for_screen {
-            return self.chat_event(event, session, surface, assets);
-        }
-        if self.disconnected.is_some() && for_screen {
-            self.disconnected_event(event, surface);
-            return Ok(());
-        }
-        if self.confirm.is_some() && for_screen {
-            return self.confirm_event(event, session, surface);
-        }
-        if self.credits.is_some() && for_screen {
-            return self.credits_event(event, session, surface);
-        }
-        if self.death.is_some() && for_screen {
-            return self.death_event(event, session, surface, assets);
-        }
-        if self.sign_edit.is_some() && for_screen {
-            return self.sign_event(event, session, surface, assets);
-        }
-        if self.book_edit.is_some() && for_screen {
-            return self.book_event(event, session, surface, assets);
-        }
+        let event = match self.modal_event(event, (session, surface, assets), for_screen) {
+            Ok(done) => return done,
+            Err(event) => event,
+        };
+        let event = match self.full_screen_event(event, (session, surface, assets), for_screen) {
+            Ok(done) => return done,
+            Err(event) => event,
+        };
         let event = match self.settings_event(event, surface, assets, for_screen) {
             Ok(()) => return Ok(()),
             Err(event) => event,

@@ -25,3 +25,65 @@ pub fn stat_format() -> Value {
     ];
     gui("stat-format", "stat_format", rows)
 }
+
+/// One statistics screen row: a window, the statistics held, loaded or not, the mouse and the steps.
+fn screen_row(label: &str, size: (i64, i64), stats: &Value, loaded: bool) -> Value {
+    json!({"label": label, "width": size.0, "height": size.1, "mouse": [0, 0], "now": 0,
+        "stats": stats, "loaded": loaded, "steps": []})
+}
+
+fn with(mut row: Value, changes: Value) -> Value {
+    let fields = row.as_object_mut().expect("an object");
+    for (key, value) in changes.as_object().expect("an object") {
+        fields.insert(key.clone(), value.clone());
+    }
+    row
+}
+
+/// `StatsScreen`: loading (at times, in windows of different shapes), then the general tab with
+/// numbers of each formatter, scrolled, with the mouse over a tab and over Done.
+pub fn stats_screen() -> Value {
+    let stats = json!([
+        ["minecraft:custom", "minecraft:jump", 1234],
+        ["minecraft:custom", "minecraft:play_time", 72_000],
+        ["minecraft:custom", "minecraft:walk_one_cm", 123_450],
+        ["minecraft:custom", "minecraft:damage_dealt", 215],
+        ["minecraft:custom", "minecraft:deaths", 3],
+        ["minecraft:custom", "minecraft:fly_one_cm", 12_345_678],
+        ["minecraft:custom", "minecraft:time_since_death", 123_456_789],
+    ]);
+    let mut rows = Vec::new();
+    for (size, label) in
+        [((427, 240), "427"), ((320, 180), "320"), ((854, 480), "854"), ((240, 150), "240"), ((427, 241), "odd")]
+    {
+        rows.push(screen_row(&format!("loading-{label}"), size, &json!([]), false));
+        rows.push(screen_row(&format!("general-{label}"), size, &stats, true));
+    }
+    for now in [300, 600, 900, 1200] {
+        rows.push(with(screen_row(&format!("loading-{now}"), (427, 240), &json!([]), false), json!({"now": now})));
+    }
+    let general = screen_row("general", (427, 240), &stats, true);
+    for (label, steps) in [
+        ("scroll-1", json!([{"do": "scroll", "x": 200, "y": 100, "delta": -1.0}])),
+        ("scroll-5", json!([{"do": "scroll", "x": 200, "y": 100, "delta": -5.0}])),
+        ("scroll-all", json!([{"do": "scroll", "x": 200, "y": 100, "delta": -200.0}])),
+        (
+            "scroll-back",
+            json!([{"do": "scroll", "x": 200, "y": 100, "delta": -200.0}, {"do": "scroll", "x": 200, "y": 100, "delta": 3.0}]),
+        ),
+        ("scroll-outside", json!([{"do": "scroll", "x": 200, "y": 10, "delta": -5.0}])),
+        ("click-inactive-tab", json!([{"do": "click", "x": 200, "y": 10}])),
+    ] {
+        rows.push(with(general.clone(), json!({"label": format!("general-{label}"), "steps": steps})));
+    }
+    for (label, mouse) in
+        [("tab-selected", [60, 10]), ("tab-other", [200, 10]), ("done", [200, 224]), ("list", [200, 100])]
+    {
+        rows.push(with(general.clone(), json!({"label": format!("hover-{label}"), "mouse": mouse})));
+        rows.push(with(
+            screen_row(&format!("hover-loading-{label}"), (427, 240), &json!([]), false),
+            json!({"mouse": mouse}),
+        ));
+    }
+    gui("stats-screen", "stats_screen", rows)
+}

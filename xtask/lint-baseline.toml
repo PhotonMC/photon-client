@@ -529,7 +529,6 @@
 "crates/photon/src/controls/book.rs::Controls::book_event" = 14
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 11
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 16
-"crates/photon/src/controls/events.rs::Controls::handle" = 28
 "crates/photon/src/controls/events.rs::Controls::mapped_input" = 40
 "crates/photon/src/controls/events.rs::Controls::pause_event" = 13
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 12
@@ -1002,7 +1001,6 @@
 "crates/photon/src/controls/book.rs::Controls::book_event" = 67
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 64
-"crates/photon/src/controls/events.rs::Controls::handle" = 70
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 80
 "crates/photon/src/controls/options.rs::Controls::language_event" = 63
 "crates/photon/src/controls/options.rs::Controls::video_event" = 61

@@ -17,6 +17,7 @@ pub mod server_form;
 pub mod servers;
 pub mod sign_edit;
 pub mod social;
+pub mod stats;
 pub mod title;
 pub mod waiting;
 

@@ -34,6 +34,7 @@ use signs::*;
 mod social;
 use social::*;
 mod books;
+mod stats;
 use books::*;
 mod keybinds;
 use keybinds::*;
@@ -107,7 +108,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             | "skin_customization_screen"
             | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
             "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
-            "lang_text" | "stat_format" => texts_case(&mut ctx, row, operation)?,
+            "lang_text" | "stat_format" | "stats_screen" => texts_case(&mut ctx, row, operation)?,
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,
             "credits_screen" => credits_screen_case(&mut ctx, row)?,
@@ -199,9 +200,9 @@ fn stat_format_case(row: &Value) -> Result<Value, String> {
 
 /// The operations that answer with texts: what the language says, and how the statistics write numbers.
 fn texts_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
-    if operation == "stat_format" {
-        stat_format_case(row)
-    } else {
-        lang_text_case(ctx, row)
+    match operation {
+        "stat_format" => stat_format_case(row),
+        "stats_screen" => stats::stats_screen_case(ctx, row),
+        _ => lang_text_case(ctx, row),
     }
 }

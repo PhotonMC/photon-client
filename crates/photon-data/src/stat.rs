@@ -3,6 +3,14 @@
 
 use crate::generated::registry_names::{CUSTOM_STAT_FORMATTERS, CUSTOM_STATS, STAT_TYPES};
 
+/// A statistic as the wire names it: the stat type's id, then the id of the value in the registry
+/// that type counts (`Stat.STREAM_CODEC`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StatKey {
+    pub stat_type: i32,
+    pub value: i32,
+}
+
 /// What a stat type counts: the registry its values are in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueRegistry {

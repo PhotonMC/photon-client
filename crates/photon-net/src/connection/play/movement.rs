@@ -256,6 +256,11 @@ impl PlaySession {
         )
     }
 
+    /// `LocalPlayer.getStats`: what the server said of the statistics.
+    pub fn stats(&self) -> &std::collections::HashMap<StatKey, i32> {
+        &self.local.stats
+    }
+
     /// `StatsCounter.getValue` of the statistic with this key: none counted is zero.
     pub fn stat(&self, key: StatKey) -> i32 {
         self.local.stats.get(&key).copied().unwrap_or(0)

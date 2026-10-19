@@ -1,12 +1,6 @@
 use super::*;
 
-/// A statistic as the wire names it: the stat type's id, then the id of the value in the registry
-/// that type counts (`Stat.STREAM_CODEC`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StatKey {
-    pub stat_type: i32,
-    pub value: i32,
-}
+pub use photon_data::stat::StatKey;
 
 /// `ClientboundAwardStatsPacket`: the statistics the server counts for the player, in the order
 /// they came (a statistic named twice takes the last number).

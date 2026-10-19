@@ -13,6 +13,13 @@ impl Gui {
         gui_size: (i32, i32),
     ) {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        if let Some(stats) = controls.stats.as_mut() {
+            if stats.size() != gui_size {
+                *stats = stats.resized(lang, gui_size);
+            }
+            stats.draw(frame, (atlas, font), mouse, frame.millis);
+            return;
+        }
         macro_rules! sized {
             ($screen:expr) => {
                 if let Some(screen) = $screen.as_mut() {
@@ -432,7 +439,7 @@ impl Gui {
                 entity: &mut draw_entity,
                 tooltip: &mut tooltip_lines,
                 lang: &self.lang,
-                control_held: controls.control_held,
+                control_held: controls.mods.control,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
                 widget_tooltips: true,
                 book: session.world().recipe_book(),

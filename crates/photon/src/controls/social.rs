@@ -75,7 +75,7 @@ impl Controls {
         }
         let mouse = self.gui_mouse;
         let wheel = self.options.mouse_wheel_sensitivity;
-        let control = self.control_held;
+        let control = self.mods.control;
         let social_key = |controls: &Controls, key, scancode| {
             let input = keybinds::input_key(key, scancode);
             controls

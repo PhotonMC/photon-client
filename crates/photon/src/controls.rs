@@ -70,7 +70,6 @@ pub struct Controls {
     /// The pick item key (the middle button) and whether a control key is
     /// down (`Minecraft.hasControlDown`), which asks for the item's data too.
     pub pick_key: AttackKey,
-    pub ctrl_down: bool,
     pub(super) scroll_wheel: ScrollWheel,
     /// F5 cycles first person, third person from behind and from the front.
     pub camera_type: CameraType,
@@ -115,10 +114,14 @@ pub struct Controls {
     pub credits: Option<CreditsScreen>,
     /// The social interactions screen, while it is open.
     pub social: Option<SocialInteractionsScreen>,
+    /// The statistics screen over the pause menu, while it is open.
+    pub stats: Option<photon_gui::screen::stats::StatsScreen>,
     /// `PlayerSocialManager.hiddenPlayers`: whose chat the player hid, for as long as the client runs.
     pub hidden_players: Vec<photon_core::binary::Uuid>,
     /// The game mode switcher (F3+F4), while F3 is held.
     pub game_mode_switcher: Option<GameModeSwitcherScreen>,
+    /// The modifier keys held.
+    pub mods: HeldModifiers,
     /// F3, the debug modifier, and the debug overlay's entries.
     pub debug: DebugKeys,
     /// The sign the player is writing on, while its screen is up.
@@ -150,11 +153,6 @@ pub struct Controls {
     pub(super) chat_drafts: ChatDrafts,
     /// `CommandHistory`: the commands sent, kept in a file.
     pub(super) command_history: Vec<String>,
-    /// `Minecraft.hasControlDown`: a control key is down (the command key on
-    /// macOS).
-    pub control_held: bool,
-    /// Whether a shift key is down, which wheel events carry no mark of.
-    pub(super) shift_held: bool,
     pub chat_log: ChatLog,
     /// Whether the tab list key is held.
     pub tab_held: bool,
@@ -335,6 +333,7 @@ mod sign;
 mod skin;
 
 mod social;
+mod stats;
 pub use dialogs::DialogLayer;
 pub use sign::SignEdit;
 
@@ -363,7 +362,6 @@ impl Controls {
             attack_key: AttackKey::default(),
             use_key: AttackKey::default(),
             pick_key: AttackKey::default(),
-            ctrl_down: false,
             scroll_wheel: ScrollWheel::default(),
             camera_type,
             captured,
@@ -387,6 +385,7 @@ impl Controls {
             death: None,
             credits: None,
             social: None,
+            stats: None,
             hidden_players: Vec::new(),
             game_mode_switcher: None,
             debug: DebugKeys::default(),
@@ -404,8 +403,7 @@ impl Controls {
             chat_history: command_history.clone(),
             chat_drafts: ChatDrafts::default(),
             command_history,
-            shift_held: false,
-            control_held: false,
+            mods: HeldModifiers::default(),
             chat_log: ChatLog::with_settings(chat_settings),
             tab_held: false,
             hud_hidden: false,
@@ -493,4 +491,15 @@ impl DebugKeys {
             }
         }
     }
+}
+
+/// The modifier keys that are down.
+#[derive(Default)]
+pub struct HeldModifiers {
+    /// `Minecraft.hasControlDown`: a control key is down (the command key on macOS).
+    pub control: bool,
+    /// Control itself, which sprinting asks for.
+    pub ctrl: bool,
+    /// A shift key, which wheel events carry no mark of.
+    pub shift: bool,
 }
