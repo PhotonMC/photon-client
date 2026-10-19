@@ -67,3 +67,6 @@ pub struct UpdateAdvancements {
     pub progress: Vec<(String, Progress)>,
     pub show_advancements: bool,
 }
+
+mod client;
+pub use client::{AdvancementProgress, ClientAdvancements, Updated};

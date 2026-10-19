@@ -60,6 +60,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "hud_debug_overlay" -> hudDebugOverlay(request);
                 case "hud_debug_lines" -> hudDebugLines(request);
                 case "stat_format" -> statFormat(request);
+                case "client_advancements" -> clientAdvancements(request);
                 case "stats_screen" -> statsScreen(request);
                 case "subtitles" -> subtitles(request);
                 case "toasts" -> toasts(request);

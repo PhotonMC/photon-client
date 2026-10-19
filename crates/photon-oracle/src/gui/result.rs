@@ -108,7 +108,6 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             | "skin_customization_screen"
             | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
             "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
-            "lang_text" | "stat_format" | "stats_screen" => texts_case(&mut ctx, row, operation)?,
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,
             "credits_screen" => credits_screen_case(&mut ctx, row)?,
@@ -198,11 +197,24 @@ fn stat_format_case(row: &Value) -> Result<Value, String> {
     Ok(json!({"label": row["label"], "texts": texts}))
 }
 
+/// The operations `texts_case` answers.
+pub(super) const TEXT_OPERATIONS: [&str; 4] = [
+    "lang_text",
+    "stat_format",
+    "stats_screen",
+    "client_advancements",
+];
+
 /// The operations that answer with texts: what the language says, and how the statistics write numbers.
-fn texts_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
+pub(super) fn texts_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+    operation: &str,
+) -> Result<Value, String> {
     match operation {
         "stat_format" => stat_format_case(row),
         "stats_screen" => stats::stats_screen_case(ctx, row),
+        "client_advancements" => stats::client_advancements_case(ctx, row),
         _ => lang_text_case(ctx, row),
     }
 }

@@ -256,6 +256,16 @@ impl PlaySession {
         )
     }
 
+    /// `ClientAdvancements`.
+    pub fn advancements(&self) -> &photon_game::advancements::ClientAdvancements {
+        &self.local.advancements
+    }
+
+    /// The advancements done since this was last asked, whose toasts are to show.
+    pub fn take_advancement_toasts(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.local.advancement_toasts)
+    }
+
     /// `LocalPlayer.getStats`: what the server said of the statistics.
     pub fn stats(&self) -> &std::collections::HashMap<StatKey, i32> {
         &self.local.stats

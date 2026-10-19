@@ -1,6 +1,7 @@
 //! The `gui` family: screens and heads-up displays drawn by the reference's
 //! own GUI code, with their glyphs left out.
 
+mod advancements;
 mod books;
 mod chat;
 mod commands;
@@ -76,6 +77,7 @@ const ORDER: &[Generator] = &[
     || vec![debug::hud_debug_lines()],
     || vec![stats::stat_format()],
     || vec![stats::stats_screen()],
+    || vec![advancements::client_advancements()],
     || vec![status::subtitles()],
     || vec![toasts::toasts()],
     || vec![status::hud_status()],

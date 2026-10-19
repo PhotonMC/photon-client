@@ -20,6 +20,14 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     ),
     (PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID, typed::<AwardStats>),
     (
+        PLAY_CLIENTBOUND_UPDATE_ADVANCEMENTS_PACKET_ID,
+        typed::<photon_game::advancements::UpdateAdvancements>,
+    ),
+    (
+        PLAY_CLIENTBOUND_SELECT_ADVANCEMENTS_TAB_PACKET_ID,
+        typed::<SelectAdvancementsTab>,
+    ),
+    (
         PLAY_CLIENTBOUND_TICKING_STATE_PACKET_ID,
         typed::<TickingState>,
     ),
@@ -95,6 +103,29 @@ impl ClientboundPacket for AwardStats {
             session.local.stats.insert(key, amount);
         }
         session.local.stats_updated = true;
+        Ok(())
+    }
+}
+
+/// `handleUpdateAdvancementsPacket`: the copy of the tree changes, and what was done shows a toast.
+impl ClientboundPacket for photon_game::advancements::UpdateAdvancements {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let updated = session.local.advancements.update(&self);
+        session.local.advancement_toasts.extend(updated.toasts);
+        Ok(())
+    }
+}
+
+/// `handleSelectAdvancementsTab`: the screen is told which tab to show; a tab that is not in the
+/// tree is none.
+impl ClientboundPacket for SelectAdvancementsTab {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        let advancements = &mut session.local.advancements;
+        let known = self
+            .0
+            .as_deref()
+            .filter(|id| advancements.get(id).is_some());
+        advancements.select_tab(known);
         Ok(())
     }
 }
@@ -185,6 +216,9 @@ impl PlaySession {
         }
         self.local.hardcore = login.hardcore;
         self.local.reduced_debug_info = login.reduced_debug_info;
+        // The advancements are the connection's: a login starts with none.
+        self.local.advancements = photon_game::advancements::ClientAdvancements::default();
+        self.local.advancement_toasts.clear();
         // `handleLogin` gives the new player a new `StatsCounter`.
         self.local.stats.clear();
         self.local.show_death_screen = login.show_death_screen;

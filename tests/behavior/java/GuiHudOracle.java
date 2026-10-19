@@ -515,6 +515,189 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /**
+     * The game's own `ClientAdvancements` over a script of updates built from JSON: after each step the roots and
+     * the other advancements in order, each node's parent and children, each progress (the percent as bits, the
+     * text, done, started), the tab selected and the toasts the step queued.
+     */
+    @SuppressWarnings("unchecked")
+    static JsonObject clientAdvancements(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(427, 240, false, false);
+            var minecraft = scene.minecraft();
+            var toasts = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
+            MovementOracle.setField(minecraft.gui, "toastManager", toasts);
+            var advancements = new net.minecraft.client.multiplayer.ClientAdvancements(minecraft, null);
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            net.minecraft.locale.Language.inject(clientLanguage("en_us"));
+            var states = new JsonArray();
+            try {
+                var queued = net.minecraft.client.gui.components.toasts.ToastManager.class.getDeclaredField("queued");
+                queued.setAccessible(true);
+                var toastAdvancement = net.minecraft.client.gui.components.toasts.AdvancementToast.class.getDeclaredField("advancement");
+                toastAdvancement.setAccessible(true);
+                var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
+                criteriaField.setAccessible(true);
+                var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
+                obtainedField.setAccessible(true);
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    ((java.util.Collection<Object>) queued.get(toasts)).clear();
+                    if (step.has("tab")) {
+                        var tab = step.get("tab");
+                        advancements.setSelectedTab(tab.isJsonNull() ? null : advancements.get(
+                            net.minecraft.resources.Identifier.parse(tab.getAsString())), false);
+                    } else {
+                        var holders = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>();
+                        for (var added : step.getAsJsonArray("added")) {
+                            holders.add(advancementHolder(added.getAsJsonObject()));
+                        }
+                        var removed = new java.util.LinkedHashSet<net.minecraft.resources.Identifier>();
+                        for (var id : step.getAsJsonArray("removed")) {
+                            removed.add(net.minecraft.resources.Identifier.parse(id.getAsString()));
+                        }
+                        var progress = new java.util.HashMap<net.minecraft.resources.Identifier, net.minecraft.advancements.AdvancementProgress>();
+                        for (var progressElement : step.getAsJsonArray("progress")) {
+                            var entry = progressElement.getAsJsonObject();
+                            var one = new net.minecraft.advancements.AdvancementProgress();
+                            var criteria = (java.util.Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(one);
+                            for (var criterion : entry.getAsJsonArray("criteria")) {
+                                var pair = criterion.getAsJsonArray();
+                                var obtained = new net.minecraft.advancements.CriterionProgress();
+                                if (!pair.get(1).isJsonNull()) {
+                                    obtainedField.set(obtained, java.time.Instant.ofEpochMilli(pair.get(1).getAsLong()));
+                                }
+                                criteria.put(pair.get(0).getAsString(), obtained);
+                            }
+                            progress.put(net.minecraft.resources.Identifier.parse(entry.get("id").getAsString()), one);
+                        }
+                        advancements.update(new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(
+                            step.get("reset").getAsBoolean(), holders, removed, progress, step.get("show").getAsBoolean()));
+                    }
+                    var state = new JsonObject();
+                    var tree = advancements.getTree();
+                    var roots = new JsonArray();
+                    tree.roots().forEach(node -> roots.add(node.holder().id().toString()));
+                    state.add("roots", roots);
+                    var nodes = new java.util.ArrayList<>(tree.nodes());
+                    nodes.sort(java.util.Comparator.comparing(node -> node.holder().id().toString()));
+                    var nodeList = new JsonArray();
+                    var progressList = new JsonArray();
+                    for (var node : nodes) {
+                        var one = new JsonObject();
+                        one.addProperty("id", node.holder().id().toString());
+                        one.add("parent", node.parent() == null ? com.google.gson.JsonNull.INSTANCE
+                            : new com.google.gson.JsonPrimitive(node.parent().holder().id().toString()));
+                        var children = new java.util.ArrayList<String>();
+                        node.children().forEach(child -> children.add(child.holder().id().toString()));
+                        java.util.Collections.sort(children);
+                        var childList = new JsonArray();
+                        children.forEach(childList::add);
+                        one.add("children", childList);
+                        nodeList.add(one);
+                    }
+                    state.add("nodes", nodeList);
+                    var tasks = new JsonArray();
+                    var taskField = net.minecraft.advancements.AdvancementTree.class.getDeclaredField("tasks");
+                    taskField.setAccessible(true);
+                    for (var task : (java.util.Collection<net.minecraft.advancements.AdvancementNode>) taskField.get(tree)) {
+                        tasks.add(task.holder().id().toString());
+                    }
+                    state.add("tasks", tasks);
+                    var progressField = net.minecraft.client.multiplayer.ClientAdvancements.class.getDeclaredField("progress");
+                    progressField.setAccessible(true);
+                    var held = (java.util.Map<net.minecraft.advancements.AdvancementHolder, net.minecraft.advancements.AdvancementProgress>) progressField.get(advancements);
+                    var heldIds = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>(held.keySet());
+                    heldIds.sort(java.util.Comparator.comparing(holder -> holder.id().toString()));
+                    for (var holder : heldIds) {
+                        var progressOne = held.get(holder);
+                        var one = new JsonObject();
+                        one.addProperty("id", holder.id().toString());
+                        one.addProperty("percent", Oracle.bits(progressOne.getPercent()));
+                        var text = progressOne.getProgressText();
+                        one.add("text", text == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(text.getString()));
+                        one.addProperty("done", progressOne.isDone());
+                        one.addProperty("started", progressOne.hasProgress());
+                        var remaining = new java.util.ArrayList<String>();
+                        progressOne.getRemainingCriteria().forEach(remaining::add);
+                        java.util.Collections.sort(remaining);
+                        var completed = new java.util.ArrayList<String>();
+                        progressOne.getCompletedCriteria().forEach(completed::add);
+                        java.util.Collections.sort(completed);
+                        var remainingList = new JsonArray();
+                        remaining.forEach(remainingList::add);
+                        var completedList = new JsonArray();
+                        completed.forEach(completedList::add);
+                        one.add("remaining", remainingList);
+                        one.add("completed", completedList);
+                        progressList.add(one);
+                    }
+                    state.add("progress", progressList);
+                    var selected = advancementsSelected(advancements);
+                    state.add("selected", selected == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(selected));
+                    var queuedIds = new java.util.ArrayList<String>();
+                    for (var toast : (java.util.Collection<Object>) queued.get(toasts)) {
+                        queuedIds.add(((net.minecraft.advancements.AdvancementHolder) toastAdvancement.get(toast)).id().toString());
+                    }
+                    java.util.Collections.sort(queuedIds);
+                    var queuedList = new JsonArray();
+                    queuedIds.forEach(queuedList::add);
+                    state.add("toasts", queuedList);
+                    states.add(state);
+                }
+            } finally {
+                net.minecraft.locale.Language.inject(languageBefore);
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("states", states);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    private static String advancementsSelected(net.minecraft.client.multiplayer.ClientAdvancements advancements) throws Exception {
+        var field = net.minecraft.client.multiplayer.ClientAdvancements.class.getDeclaredField("selectedTab");
+        field.setAccessible(true);
+        var selected = (net.minecraft.advancements.AdvancementHolder) field.get(advancements);
+        return selected == null ? null : selected.id().toString();
+    }
+
+    /** An advancement from its JSON: the id, the parent, the requirements and the display. */
+    static net.minecraft.advancements.AdvancementHolder advancementHolder(JsonObject json) {
+        var requirements = new java.util.ArrayList<java.util.List<String>>();
+        for (var group : json.getAsJsonArray("requirements")) {
+            var names = new java.util.ArrayList<String>();
+            group.getAsJsonArray().forEach(name -> names.add(name.getAsString()));
+            requirements.add(names);
+        }
+        java.util.Optional<net.minecraft.advancements.DisplayInfo> display = java.util.Optional.empty();
+        if (json.has("display") && !json.get("display").isJsonNull()) {
+            var shown = json.getAsJsonObject("display");
+            var info = new net.minecraft.advancements.DisplayInfo(
+                new net.minecraft.world.item.ItemStackTemplate(net.minecraft.world.item.Items.STONE),
+                net.minecraft.network.chat.Component.literal(shown.get("title").getAsString()),
+                net.minecraft.network.chat.Component.literal(shown.get("description").getAsString()),
+                java.util.Optional.empty(),
+                net.minecraft.advancements.AdvancementType.values()[shown.get("frame").getAsInt()],
+                shown.get("show_toast").getAsBoolean(), false, shown.get("hidden").getAsBoolean());
+            info.setLocation(Oracle.f32(shown, "x"), Oracle.f32(shown, "y"));
+            display = java.util.Optional.of(info);
+        }
+        java.util.Optional<net.minecraft.resources.Identifier> parent = json.has("parent") && !json.get("parent").isJsonNull()
+            ? java.util.Optional.of(net.minecraft.resources.Identifier.parse(json.get("parent").getAsString()))
+            : java.util.Optional.empty();
+        var advancement = new net.minecraft.advancements.Advancement(parent, display,
+            net.minecraft.advancements.AdvancementRewards.EMPTY, java.util.Map.of(),
+            new net.minecraft.advancements.AdvancementRequirements(requirements), false);
+        return new net.minecraft.advancements.AdvancementHolder(
+            net.minecraft.resources.Identifier.parse(json.get("id").getAsString()), advancement);
+    }
+
     /** `StatFormatter` for numbers: each formatter of the game on each value. */
     static JsonObject statFormat(JsonObject request) {
         var rows = new JsonArray();

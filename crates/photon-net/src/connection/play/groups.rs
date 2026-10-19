@@ -37,6 +37,10 @@ pub(super) struct LocalState {
     pub(super) hardcore: bool,
     /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
     pub(super) reduced_debug_info: bool,
+    /// `ClientAdvancements`: the tree the server told of and how far the player is.
+    pub(super) advancements: photon_game::advancements::ClientAdvancements,
+    /// The advancements done by updates whose toasts the screen is yet to show.
+    pub(super) advancement_toasts: Vec<String>,
     /// `LocalPlayer.getStats` (`StatsCounter`): what `AwardStats` last said, kept across respawns.
     pub(super) stats: std::collections::HashMap<StatKey, i32>,
     /// An `AwardStats` was handled since the statistics screen last looked.
@@ -199,6 +203,8 @@ impl Default for LocalState {
             permission_level: 0,
             hardcore: false,
             reduced_debug_info: false,
+            advancements: photon_game::advancements::ClientAdvancements::default(),
+            advancement_toasts: Vec::new(),
             stats: std::collections::HashMap::new(),
             stats_updated: false,
             show_death_screen: true,

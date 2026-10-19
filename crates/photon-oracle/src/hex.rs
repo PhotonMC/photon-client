@@ -488,7 +488,7 @@ fn select_advancements_tab_result(request: &Value) -> Result<Value, String> {
 
 /// The oracle leaves out what is null (Gson drops a null member), so a member that is not there is
 /// the same answer.
-fn without_nulls(value: Value) -> Value {
+pub(crate) fn without_nulls(value: Value) -> Value {
     match value {
         Value::Object(members) => Value::Object(
             members
