@@ -10,14 +10,15 @@ impl Gui {
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
-        gui_size: (i32, i32),
+        (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
     ) {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         if let Some(stats) = controls.stats.as_mut() {
             if stats.size() != gui_size {
                 *stats = stats.resized(lang, gui_size);
             }
-            stats.draw(frame, (atlas, font), mouse, frame.millis);
+            let millis = frame.millis;
+            stats.draw(frame, (atlas, font), mouse, (millis, item));
             return;
         }
         macro_rules! sized {
@@ -354,7 +355,7 @@ impl Gui {
             (&self.atlas, &self.font, &self.lang),
             controls,
             &mut frame,
-            gui_size,
+            (gui_size, &mut draw_item),
         );
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let skin = self.player_skin;

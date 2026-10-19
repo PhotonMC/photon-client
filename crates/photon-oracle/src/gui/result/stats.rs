@@ -56,6 +56,8 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
                 screen.clicked(at);
             }
             "scroll" => screen.scrolled(at, step["delta"].as_f64().ok_or("delta")?),
+            // A frame between two steps: the screen has no state that waits for one.
+            "frame" => {}
             _ => return Err("unknown step".into()),
         }
     }
@@ -71,7 +73,7 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         &mut frame,
         (&ctx.atlas, &ctx.font),
         mouse,
-        row["now"].as_u64().unwrap_or(0),
+        (row["now"].as_u64().unwrap_or(0), &mut no_items),
     );
     Ok(json!({
         "label": row["label"],

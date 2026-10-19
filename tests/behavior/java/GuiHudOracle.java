@@ -446,6 +446,8 @@ class GuiHudOracle extends GuiCommandOracle {
             var minecraft = scene.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             MovementOracle.setField(minecraft, "level", scene.level());
+            // Items are not drawn: the model resolver gives nothing to draw.
+            MovementOracle.setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
             var clockBefore = clockField.get(null);
@@ -472,8 +474,8 @@ class GuiHudOracle extends GuiCommandOracle {
                 }
                 for (var step : row.getAsJsonArray("steps")) {
                     var action = step.getAsJsonObject();
-                    double x = action.get("x").getAsDouble();
-                    double y = action.get("y").getAsDouble();
+                    double x = action.has("x") ? action.get("x").getAsDouble() : 0.0;
+                    double y = action.has("y") ? action.get("y").getAsDouble() : 0.0;
                     switch (action.get("do").getAsString()) {
                         case "click" -> {
                             var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
@@ -482,6 +484,11 @@ class GuiHudOracle extends GuiCommandOracle {
                             stats.mouseReleased(event);
                         }
                         case "scroll" -> stats.mouseScrolled(x, y, 0.0, action.get("delta").getAsDouble());
+                        case "frame" -> {
+                            // A frame drawn and thrown away: the header's buttons take their places in one.
+                            var thrown = new GuiGraphicsExtractor(minecraft, new GuiRenderState(), mouseX, mouseY);
+                            stats.extractRenderStateWithTooltipAndSubtitles(thrown, mouseX, mouseY, 0.0F);
+                        }
                         default -> throw new IllegalArgumentException(action.get("do").getAsString());
                     }
                 }

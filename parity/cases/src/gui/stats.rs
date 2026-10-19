@@ -85,5 +85,139 @@ pub fn stats_screen() -> Value {
             json!({"mouse": mouse}),
         ));
     }
+    rows.extend(mob_rows());
+    rows.extend(item_rows());
     gui("stats-screen", "stats_screen", rows)
+}
+
+/// The mobs tab: kills only, deaths only, both, many mobs scrolled, and the tab with nothing in it.
+fn mob_rows() -> Vec<Value> {
+    let few = json!([
+        ["minecraft:killed", "minecraft:zombie", 12],
+        ["minecraft:killed_by", "minecraft:creeper", 3],
+        ["minecraft:killed", "minecraft:creeper", 1],
+        ["minecraft:killed_by", "minecraft:creeper", 1],
+        ["minecraft:killed", "minecraft:pig", 1000],
+    ]);
+    let mut many = Vec::new();
+    for (index, name) in
+        ["cow", "sheep", "chicken", "skeleton", "spider", "enderman", "witch", "bat", "squid", "cod", "salmon", "wolf"]
+            .iter()
+            .enumerate()
+    {
+        many.push(json!(["minecraft:killed", format!("minecraft:{name}"), index + 1]));
+    }
+    let many = Value::Array(many);
+    let select_mobs = json!([{"do": "click", "x": 300, "y": 10}]);
+    let mut rows = vec![
+        with(screen_row("mobs-few", (427, 240), &few, true), json!({"steps": select_mobs})),
+        with(screen_row("mobs-many", (427, 240), &many, true), json!({"steps": select_mobs})),
+        with(
+            screen_row("mobs-scrolled", (427, 240), &many, true),
+            json!({"steps": [{"do": "click", "x": 300, "y": 10}, {"do": "scroll", "x": 200, "y": 100, "delta": -3.0}]}),
+        ),
+        with(screen_row("mobs-tab-hover", (427, 240), &few, true), json!({"mouse": [300, 10]})),
+        screen_row("mobs-tab-open-but-selected-general", (427, 240), &few, true),
+        with(screen_row("mobs-small", (320, 180), &many, true), json!({"steps": select_mobs})),
+    ];
+    rows.push(with(
+        screen_row("mobs-none", (427, 240), &json!([["minecraft:custom", "minecraft:jump", 1]]), true),
+        json!({"steps": select_mobs}),
+    ));
+    rows
+}
+
+/// The items tab. The game keeps the items in a set with no order until a column is sorted, so the
+/// rows with more than one item are sorted first.
+fn item_rows() -> Vec<Value> {
+    let one = json!([["minecraft:used", "minecraft:diamond_sword", 5]]);
+    let many = many_item_stats();
+    let items_tab = json!({"do": "click", "x": 200, "y": 10});
+    let frame = json!({"do": "frame"});
+    let header = |column: i64| json!({"do": "click", "x": 140 + 40 * column, "y": 35});
+    let sorted = |label: &str, clicks: Vec<Value>, mouse: [i64; 2]| {
+        // The header's buttons take their places when drawn: a frame comes between the clicks.
+        let mut steps = vec![items_tab.clone(), frame.clone()];
+        for click in clicks {
+            steps.push(click);
+            steps.push(frame.clone());
+        }
+        with(screen_row(label, (427, 240), &many, true), json!({"steps": steps, "mouse": mouse}))
+    };
+    let mut rows = vec![
+        with(screen_row("items-one", (427, 240), &one, true), json!({"steps": [items_tab.clone()]})),
+        with(screen_row("items-one-small", (320, 180), &one, true), json!({"steps": [items_tab.clone()]})),
+        with(
+            screen_row("items-one-hover-button", (427, 240), &one, true),
+            json!({"steps": [items_tab.clone()], "mouse": [172, 35]}),
+        ),
+        with(screen_row("items-tab-hover", (427, 240), &one, true), json!({"mouse": [200, 10]})),
+        with(
+            screen_row("items-none", (427, 240), &json!([["minecraft:custom", "minecraft:jump", 1]]), true),
+            json!({"steps": [items_tab.clone()]}),
+        ),
+    ];
+    for column in 0..6 {
+        rows.push(sorted(&format!("items-sort-{column}"), vec![header(column)], [0, 0]));
+        rows.push(sorted(&format!("items-sort-{column}-up"), vec![header(column), header(column)], [0, 0]));
+    }
+    rows.push(sorted("items-sort-off", vec![header(2), header(2), header(2)], [0, 0]));
+    rows.push(sorted("items-sort-switch", vec![header(2), header(3)], [0, 0]));
+    rows.push(sorted("items-sort-hover", vec![header(0)], [132 + 40 * 3 + 5, 35]));
+    rows.push(sorted(
+        "items-sort-scrolled",
+        vec![header(3), json!({"do": "scroll", "x": 200, "y": 100, "delta": -4.0})],
+        [0, 0],
+    ));
+    rows.push(sorted(
+        "items-sort-scrolled-far",
+        vec![header(3), json!({"do": "scroll", "x": 200, "y": 100, "delta": -100.0})],
+        [0, 0],
+    ));
+    rows
+}
+
+/// The statistics of a good many items: blocks mined, items crafted, used, broken, picked up.
+fn many_item_stats() -> Value {
+    let mut stats = vec![
+        json!(["minecraft:mined", "minecraft:stone", 100]),
+        json!(["minecraft:mined", "minecraft:dirt", 2500]),
+        json!(["minecraft:mined", "minecraft:oak_log", 12]),
+        json!(["minecraft:crafted", "minecraft:oak_planks", 48]),
+        json!(["minecraft:crafted", "minecraft:stick", 100]),
+        json!(["minecraft:used", "minecraft:stone", 3]),
+        json!(["minecraft:used", "minecraft:diamond_sword", 12345]),
+        json!(["minecraft:broken", "minecraft:wooden_pickaxe", 2]),
+        json!(["minecraft:picked_up", "minecraft:dirt", 7]),
+        json!(["minecraft:dropped", "minecraft:oak_log", 1]),
+        json!(["minecraft:picked_up", "minecraft:apple", 1_000_000]),
+        json!(["minecraft:mined", "minecraft:redstone_wire", 4]),
+        json!(["minecraft:mined", "minecraft:water", 9]),
+    ];
+    let names = [
+        "cobblestone",
+        "sand",
+        "gravel",
+        "glass",
+        "torch",
+        "bread",
+        "bone",
+        "arrow",
+        "bow",
+        "iron_ingot",
+        "coal",
+        "string",
+        "feather",
+        "flint",
+        "leather",
+        "wheat",
+        "carrot",
+        "potato",
+        "beef",
+        "porkchop",
+    ];
+    for (index, name) in names.iter().enumerate() {
+        stats.push(json!(["minecraft:used", format!("minecraft:{name}"), index + 1]));
+    }
+    Value::Array(stats)
 }

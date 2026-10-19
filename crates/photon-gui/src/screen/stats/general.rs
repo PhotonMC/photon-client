@@ -2,21 +2,16 @@
 
 use std::collections::HashMap;
 
+use super::list::{ListView, PADDING};
 use crate::FrameRuns;
-use crate::widgets::scroll_area::{Place, SCROLLBAR_WIDTH};
-use photon_data::stat::StatKey;
-use photon_data::stat::{self, Formatter};
+use crate::widgets::scroll_area::Place;
+use photon_data::stat::{self, Formatter, StatKey};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
-/// `ObjectSelectionList`'s row height and the width of a row.
 const ROW_HEIGHT: i32 = 14;
-const ROW_WIDTH: i32 = 280;
-/// `AbstractSelectionList.Entry`'s padding at each side of the content, and the list's under its
-/// top.
-const PADDING: i32 = 2;
-/// The stat type of the custom statistics, in the registry's order (`minecraft:custom`).
+/// The stat type of the custom statistics (`Stats.CUSTOM`).
 const CUSTOM_TYPE: &str = "minecraft:custom";
 
 struct Entry {
@@ -28,8 +23,7 @@ struct Entry {
 
 pub(super) struct GeneralList {
     entries: Vec<Entry>,
-    place: Place,
-    scroll: f64,
+    view: ListView,
     custom_type: i32,
 }
 
@@ -58,34 +52,17 @@ impl GeneralList {
         keyed.sort_by(|a, b| a.0.cmp(&b.0));
         Self {
             entries: keyed.into_iter().map(|(_, entry)| entry).collect(),
-            place: Place {
-                y: 0,
-                width: 0,
-                height: 0,
-                in_world: true,
-            },
-            scroll: 0.0,
+            view: ListView::new(ROW_HEIGHT),
             custom_type,
         }
     }
 
-    /// `updateSizeAndPosition`: the list's place, and the scroll held to what it can be there.
     pub(super) fn place(&mut self, place: Place) {
-        self.place = place;
-        self.scroll = self
-            .scroll
-            .clamp(0.0, f64::from(self.place.max_scroll(self.content_height())));
+        self.view.place(place, self.entries.len());
     }
 
-    /// `AbstractSelectionList.contentHeight`.
-    fn content_height(&self) -> i32 {
-        self.entries.len() as i32 * ROW_HEIGHT + 4
-    }
-
-    /// `AbstractScrollArea.mouseScrolled`: the rate is half a row.
     pub(super) fn scroll_by(&mut self, delta: f64) {
-        let max = f64::from(self.place.max_scroll(self.content_height()));
-        self.scroll = (self.scroll - delta * f64::from(ROW_HEIGHT / 2)).clamp(0.0, max);
+        self.view.scroll_by(delta, self.entries.len());
     }
 
     /// The entries that show, then the scroll bar.
@@ -95,48 +72,34 @@ impl GeneralList {
         (atlas, font): (&GuiAtlas, &Font),
         stats: &HashMap<StatKey, i32>,
     ) {
-        let place = self.place;
-        let row_left = place.width / 2 - ROW_WIDTH / 2;
-        let row_right = row_left + ROW_WIDTH;
+        let view = &self.view;
         let mark = frame.mark();
-        let top = place.y + 2 - self.scroll as i32;
         for (index, entry) in self.entries.iter().enumerate() {
-            let y = top + index as i32 * ROW_HEIGHT;
-            if y + ROW_HEIGHT < place.y || y > place.bottom() {
+            let y = view.row_y(index);
+            if !view.shows(y) {
                 continue;
             }
-            let content_y = y + PADDING;
-            let text_y = content_y + (ROW_HEIGHT - 2 * PADDING) / 2 - 9 / 2;
+            let text_y = y + PADDING + (ROW_HEIGHT - 2 * PADDING) / 2 - 9 / 2;
             let colour = if index % 2 == 0 {
                 0xFFFF_FFFF
             } else {
                 0xFFBA_BABA
             };
-            frame.styled_text(
-                atlas,
-                font,
-                &entry.name,
-                row_left + PADDING + 2,
-                text_y,
-                colour,
-                true,
-            );
+            let left = view.row_left() + PADDING + 2;
+            frame.styled_text(atlas, font, &entry.name, left, text_y, colour, true);
             let key = StatKey {
                 stat_type: self.custom_type,
                 value: entry.id,
             };
-            let value =
-                photon_game::stats::format(entry.formatter, stats.get(&key).copied().unwrap_or(0));
-            let x = row_right - PADDING - font.width(&value) - 4;
+            let number = stats.get(&key).copied().unwrap_or(0);
+            let value = photon_game::stats::format(entry.formatter, number);
+            let x = view.row_right() - PADDING - font.width(&value) - 4;
             frame.text_with_shadow(atlas, font, &value, x, text_y, colour);
         }
-        frame.clip_from(mark, (0, place.y, place.width, place.bottom()));
-        place.draw_scrollbar(
-            frame,
-            atlas,
-            row_right + SCROLLBAR_WIDTH + 2,
-            self.scroll,
-            self.content_height(),
+        frame.clip_from(
+            mark,
+            (0, view.place.y, view.place.width, view.place.bottom()),
         );
+        view.draw_scrollbar(frame, atlas, self.entries.len());
     }
 }

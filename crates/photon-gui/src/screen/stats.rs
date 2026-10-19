@@ -3,6 +3,9 @@
 //! "Retrieving statistics..." with dots that go round.
 
 mod general;
+mod items;
+mod list;
+mod mobs;
 
 use std::collections::HashMap;
 
@@ -13,9 +16,11 @@ use crate::{FontRuns, FrameRuns};
 use photon_data::stat::StatKey;
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
-use photon_render::gui::{GuiAtlas, GuiFrame};
+use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
 use general::GeneralList;
+use items::ItemsList;
+use mobs::MobsList;
 
 /// `MenuTabBar.HEIGHT`, the bar's height and where the content starts.
 const TAB_BAR_HEIGHT: i32 = 24;
@@ -53,6 +58,8 @@ pub struct StatsScreen {
     tab_titles: [Vec<Run>; TABS],
     pending: Vec<Run>,
     selected: usize,
+    /// The tab the bar has focused, after one was clicked.
+    focused_tab: Option<usize>,
     /// The lists, once the server's statistics are in (`isLoading`).
     lists: Option<Lists>,
     /// What each tab's list has in it, which decides if the tab can be chosen.
@@ -65,6 +72,8 @@ pub struct StatsScreen {
 
 struct Lists {
     general: GeneralList,
+    items: ItemsList,
+    mobs: MobsList,
 }
 
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
@@ -101,6 +110,7 @@ impl StatsScreen {
             ],
             pending: runs(lang, "multiplayer.downloadingStats"),
             selected: 0,
+            focused_tab: None,
             lists: None,
             tab_active: [true, false, false],
             stats: stats.clone(),
@@ -126,8 +136,15 @@ impl StatsScreen {
             return;
         }
         let general = GeneralList::new(lang);
-        self.tab_active = [true, false, false];
-        self.lists = Some(Lists { general });
+        let items = ItemsList::new(lang, stats);
+        let mobs = MobsList::new(lang, stats);
+        // `setTabActiveStateAndTooltip`: a tab with nothing in its list cannot be chosen.
+        self.tab_active = [true, !items.is_empty(), !mobs.is_empty()];
+        self.lists = Some(Lists {
+            general,
+            items,
+            mobs,
+        });
         self.selected = 0;
         self.layout();
     }
@@ -160,6 +177,8 @@ impl StatsScreen {
         let place = self.list_place();
         if let Some(lists) = &mut self.lists {
             lists.general.place(place);
+            lists.items.place(place);
+            lists.mobs.place(place);
         }
     }
 
@@ -187,7 +206,7 @@ impl StatsScreen {
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         mouse: (i32, i32),
-        millis: u64,
+        (millis, item): (u64, &mut ItemDrawer<'_>),
     ) {
         let (width, height) = self.size;
         // `extractMenuBackground`: the tab header's picture, then the menu's from under it.
@@ -211,10 +230,14 @@ impl StatsScreen {
         self.draw_tab_bar(frame, (atlas, font), mouse);
         match &self.lists {
             None => self.draw_loading(frame, (atlas, font), millis),
-            Some(lists) if self.selected == 0 => {
-                lists.general.draw(frame, (atlas, font), &self.stats);
-            }
-            Some(_) => {}
+            Some(lists) => match self.selected {
+                0 => lists.general.draw(frame, (atlas, font), &self.stats),
+                1 => lists
+                    .items
+                    .draw(frame, (atlas, font), (&self.stats, item), mouse),
+                2 => lists.mobs.draw(frame, (atlas, font)),
+                _ => {}
+            },
         }
         frame.blit_texture(
             atlas,
@@ -263,8 +286,9 @@ impl StatsScreen {
         );
         for tab in 0..TABS {
             let x = first + tab as i32 * tab_width;
-            let hovered =
+            let over =
                 mouse.0 >= x && mouse.0 < x + tab_width && mouse.1 >= 0 && mouse.1 < TAB_BAR_HEIGHT;
+            let hovered = over || self.focused_tab == Some(tab);
             self.draw_tab(frame, (atlas, font), tab, (x, tab_width), hovered);
         }
     }
@@ -349,12 +373,20 @@ impl StatsScreen {
         if self.done.contains(&self.arena, mouse) {
             return Some(StatsAction::Close);
         }
+        if let Some(lists) = &mut self.lists
+            && self.selected == 1
+        {
+            lists.items.clicked(mouse, &self.stats);
+        }
+        // A press moves the focus: to the tab it chose, or off the bar.
+        self.focused_tab = None;
         let (first, tab_width) = self.tab_geometry();
         if mouse.1 >= 0 && mouse.1 < TAB_BAR_HEIGHT {
             for tab in 0..TABS {
                 let x = first + tab as i32 * tab_width;
                 if mouse.0 >= x && mouse.0 < x + tab_width && self.tab_active[tab] {
                     self.selected = tab;
+                    self.focused_tab = Some(tab);
                 }
             }
         }
@@ -366,10 +398,14 @@ impl StatsScreen {
         let place = self.list_place();
         let selected = self.selected;
         if let Some(lists) = &mut self.lists
-            && selected == 0
             && place.contains((f64::from(mouse.0), f64::from(mouse.1)))
         {
-            lists.general.scroll_by(delta);
+            match selected {
+                0 => lists.general.scroll_by(delta),
+                1 => lists.items.scroll_by(delta),
+                2 => lists.mobs.scroll_by(delta),
+                _ => {}
+            }
         }
     }
 }
