@@ -34,6 +34,7 @@ pub struct FrameLimiter {
     average_overshoot_ns: i64,
     last_limit: i32,
     latest_input: Instant,
+    fps: FpsCounter,
 }
 
 impl FrameLimiter {
@@ -43,7 +44,18 @@ impl FrameLimiter {
             average_overshoot_ns: 0,
             last_limit: 0,
             latest_input: now,
+            fps: FpsCounter::new(now),
         }
+    }
+
+    /// `Minecraft.fps`.
+    pub fn fps(&self) -> i32 {
+        self.fps.fps()
+    }
+
+    /// The end of a frame, counted for the frame rate.
+    pub fn count_frame(&mut self, now: Instant) {
+        self.fps.frame(now);
     }
 
     /// `onInputReceived`: a key or the mouse was used.
@@ -126,6 +138,39 @@ impl FrameLimiter {
     }
 }
 
+/// `Minecraft.fps`: the frames counted in the last whole second, which the debug overlay shows.
+pub struct FpsCounter {
+    frames: i32,
+    last_time: Instant,
+    fps: i32,
+}
+
+impl FpsCounter {
+    pub fn new(now: Instant) -> Self {
+        Self {
+            frames: 0,
+            last_time: now,
+            fps: 0,
+        }
+    }
+
+    pub fn fps(&self) -> i32 {
+        self.fps
+    }
+
+    /// The end of a frame (`Minecraft.runTick`'s "fpsUpdate"): the frame is counted, and each whole
+    /// second that has passed takes the count so far and starts again from none, so a pause
+    /// of more than a second shows the empty seconds as zero.
+    pub fn frame(&mut self, now: Instant) {
+        self.frames += 1;
+        while now >= self.last_time + Duration::from_secs(1) {
+            self.fps = self.frames;
+            self.last_time += Duration::from_secs(1);
+            self.frames = 0;
+        }
+    }
+}
+
 /// Whether a window event is the keyboard or the mouse being used (`MouseHandler` and
 /// `KeyboardHandler` call `onInputReceived`).
 pub fn is_input(event: &glfw::WindowEvent) -> bool {
@@ -142,6 +187,24 @@ pub fn is_input(event: &glfw::WindowEvent) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fps_is_the_frames_of_the_last_whole_second_and_zero_after_a_gap() {
+        let start = Instant::now();
+        let mut counter = FpsCounter::new(start);
+        assert_eq!(counter.fps(), 0);
+        for step in 0..10 {
+            counter.frame(start + Duration::from_millis(step * 90));
+        }
+        assert_eq!(counter.fps(), 0);
+        counter.frame(start + Duration::from_millis(1000));
+        assert_eq!(counter.fps(), 11);
+        // A frame after three silent seconds: each second that passed is taken in turn.
+        counter.frame(start + Duration::from_millis(4100));
+        assert_eq!(counter.fps(), 0);
+        counter.frame(start + Duration::from_millis(4200));
+        assert_eq!(counter.fps(), 0);
+    }
 
     fn after(start: Instant, seconds: u64) -> Instant {
         start + Duration::from_secs(seconds)

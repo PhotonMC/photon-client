@@ -318,18 +318,6 @@ impl Play {
         Ok(())
     }
 
-    /// The frame limiter holds the frame for what the options ask.
-    pub(super) fn limit_frame(&mut self) {
-        let options = &self.controls.options;
-        let limit = self.limiter.limit(
-            options.framerate_limit,
-            options.inactivity_fps_limit,
-            self.surface.is_iconified(),
-            Instant::now(),
-        );
-        self.limiter.wait(limit);
-    }
-
     /// The window and what was loaded for it, back from an ended game, with whether to quit.
     fn into_client(self) -> Result<(Client, Exit)> {
         let exit = if self.surface.should_close() {

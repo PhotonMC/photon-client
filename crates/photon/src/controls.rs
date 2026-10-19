@@ -447,6 +447,8 @@ pub struct DebugKeys {
     /// it does not toggle the overlay.
     pub(super) used: bool,
     pub entries: photon_gui::hud::debug::EntryList,
+    /// What the frame loop last said of itself: the frames a second, the limit and the present mode.
+    pub frame: photon_gui::hud::debug::FrameStats,
 }
 
 impl DebugKeys {
@@ -456,8 +458,9 @@ impl DebugKeys {
     pub(super) fn combination(&mut self, key: glfw::Key, reduced: bool) {
         use glfw::Key;
         let acts = match key {
-            Key::B | Key::G | Key::C => !reduced,
+            Key::B | Key::G => !reduced,
             Key::A
+            | Key::C
             | Key::D
             | Key::H
             | Key::I

@@ -34,6 +34,7 @@ impl Gui {
                 debug::version_line(version, version)
             },
             camera,
+            frame: controls.debug.frame,
         };
         let footer = list.is_overlay_visible().then(|| {
             debug::footer(

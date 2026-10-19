@@ -195,7 +195,9 @@ pub(super) fn toasts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
 
 /// `hud_debug_overlay`: the overlay's lines and their draw for the default profile.
 pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_gui::hud::debug::{self, CameraEntity, EntryList, FooterKeys, Input};
+    use photon_gui::hud::debug::{
+        self, CameraEntity, EntryList, FooterKeys, FrameStats, Input, PresentMode,
+    };
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let mut list = EntryList::default();
@@ -203,6 +205,18 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
     let launched = row["launched"].as_str().ok_or("launched")?;
     let input = Input {
         version: debug::version_line("26.2", launched),
+        frame: FrameStats {
+            fps: int("fps"),
+            // `FramerateLimitTracker.getFramerateLimit`: a minimised window draws ten.
+            limit: if flag("iconified") { 10 } else { int("limit") },
+            present_mode: match row["present"].as_str().ok_or("present")? {
+                "IMMEDIATE" => Some(PresentMode::Immediate),
+                "MAILBOX" => Some(PresentMode::Mailbox),
+                "FIFO" => Some(PresentMode::Fifo),
+                "FIFO_RELAXED" => Some(PresentMode::FifoRelaxed),
+                _ => None,
+            },
+        },
         camera: Some(CameraEntity {
             position: (
                 crate::f64_field(row, "x")?,

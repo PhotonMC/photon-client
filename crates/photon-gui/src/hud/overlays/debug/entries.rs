@@ -16,22 +16,77 @@ pub struct CameraEntity {
     pub dimension: String,
 }
 
+/// How the window surface presents (`GpuSurface.PresentMode`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PresentMode {
+    Immediate,
+    Mailbox,
+    Fifo,
+    FifoRelaxed,
+}
+
+impl PresentMode {
+    /// From `VkPresentModeKHR`'s value: immediate, mailbox, fifo and fifo relaxed are 0 to 3.
+    pub fn from_vulkan(raw: i32) -> Option<Self> {
+        match raw {
+            0 => Some(Self::Immediate),
+            1 => Some(Self::Mailbox),
+            2 => Some(Self::Fifo),
+            3 => Some(Self::FifoRelaxed),
+            _ => None,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Immediate => " (immediate)",
+            Self::Mailbox => " (mailbox)",
+            Self::Fifo => " (fifo)",
+            Self::FifoRelaxed => " (fifo relaxed)",
+        }
+    }
+}
+
+/// What the frame loop says of itself.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FrameStats {
+    /// `Minecraft.getFps`.
+    pub fps: i32,
+    /// `FramerateLimitTracker.getFramerateLimit`; 260 is no limit.
+    pub limit: i32,
+    /// The surface's mode, none without a configuration.
+    pub present_mode: Option<PresentMode>,
+}
+
 /// What the entries read.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Input {
     /// `Minecraft <version> (<launched version>/<brand>)`.
     pub version: String,
     pub camera: Option<CameraEntity>,
+    pub frame: FrameStats,
 }
 
 /// The lines of one entry's `display`.
 pub fn display(id: &str, input: &Input) -> Vec<Line> {
     match id {
+        "fps" => vec![Line::Priority(fps_line(&input.frame))],
         "game_version" => vec![Line::Priority(input.version.clone())],
         "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),
         "player_section_position" => input.camera.as_ref().map(section).unwrap_or_default(),
         _ => Vec::new(),
     }
+}
+
+/// `DebugEntryFps`: the frames a second, the limit (`inf` from 260) and how the surface presents.
+fn fps_line(frame: &FrameStats) -> String {
+    let limit = if frame.limit == 260 {
+        "inf".to_owned()
+    } else {
+        frame.limit.to_string()
+    };
+    let mode = frame.present_mode.map_or("", PresentMode::name);
+    format!("{} fps T: {limit}{mode}", frame.fps)
 }
 
 const POSITION_GROUP: &str = "minecraft:position";

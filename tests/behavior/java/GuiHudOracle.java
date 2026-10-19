@@ -473,6 +473,24 @@ class GuiHudOracle extends GuiCommandOracle {
             MovementOracle.setField(minecraft, "gameLoadFinished", true);
             MovementOracle.setField(minecraft, "level", scene.level());
             MovementOracle.setField(minecraft, "launchedVersion", row.get("launched").getAsString());
+            // The frame rate line: the count of the last second, the limit the tracker gives (a real tracker
+            // over the options, with input just received) and the surface's configuration.
+            var fpsField = net.minecraft.client.Minecraft.class.getDeclaredField("fps");
+            fpsField.setAccessible(true);
+            fpsField.setInt(null, row.get("fps").getAsInt());
+            minecraft.options.framerateLimit().set(row.get("limit").getAsInt());
+            MovementOracle.setField(minecraft.getWindow(), "iconified", row.get("iconified").getAsBoolean());
+            var tracker = new com.mojang.blaze3d.platform.FramerateLimitTracker(minecraft.options, minecraft);
+            tracker.onInputReceived();
+            MovementOracle.setField(minecraft, "framerateLimitTracker", tracker);
+            var surface = (com.mojang.blaze3d.systems.GpuSurface) unsafe.allocateInstance(
+                com.mojang.blaze3d.systems.GpuSurface.class);
+            var present = row.get("present").getAsString();
+            MovementOracle.setField(surface, "currentConfiguration", present.equals("none")
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(new com.mojang.blaze3d.systems.GpuSurface.Configuration(854, 480,
+                    com.mojang.blaze3d.systems.GpuSurface.PresentMode.valueOf(present))));
+            MovementOracle.setField(minecraft, "windowSurface", surface);
             MovementOracle.setField(local, "reducedDebugInfo", row.get("reduced").getAsBoolean());
             local.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
                 Oracle.f32(row, "yaw"), Oracle.f32(row, "pitch"));
@@ -483,7 +501,7 @@ class GuiHudOracle extends GuiCommandOracle {
             var statuses = new java.util.HashMap<>(
                 net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(
                     net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT));
-            statuses.keySet().removeIf(id -> !java.util.Set.of("game_version", "player_position",
+            statuses.keySet().removeIf(id -> !java.util.Set.of("fps", "game_version", "player_position",
                 "player_section_position", "3d_crosshair").contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());

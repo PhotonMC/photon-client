@@ -509,5 +509,6 @@ mod cull;
 mod draw;
 mod effects;
 mod glints;
+mod pacing;
 mod schedule;
 mod ticks;

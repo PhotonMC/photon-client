@@ -32,7 +32,7 @@ pub fn hud_debug_overlay() -> Value {
             rows.push(json!({
                 "label": format!("debug-{index}-{overlay}-{reduced}-{hidden}"),
                 "width": 427, "height": 240,
-                "launched": "26.2",
+                "launched": "26.2", "fps": 60 + index, "limit": 120, "iconified": false, "present": "FIFO",
                 "overlay": overlay, "reduced": reduced, "hidden": hidden,
                 "x": f64_bits(x), "y": f64_bits(y), "z": f64_bits(z),
                 "yaw": f32_bits(yaw), "pitch": f32_bits(pitch),
@@ -41,10 +41,28 @@ pub fn hud_debug_overlay() -> Value {
     }
     rows.push(json!({
         "label": "debug-small-window", "width": 160, "height": 90, "launched": "26.2",
+        "fps": 144, "limit": 260, "iconified": false, "present": "MAILBOX",
         "overlay": true, "reduced": false, "hidden": false,
         "x": f64_bits(1.0), "y": f64_bits(2.0), "z": f64_bits(3.0),
         "yaw": f32_bits(0.0), "pitch": f32_bits(0.0),
     }));
+    // The frame rate line: the limit at the cutoff, lowered by a minimised window, each present mode
+    // and no configuration.
+    for (label, fps, limit, iconified, present) in [
+        ("unlimited-immediate", 1000, 260, false, "IMMEDIATE"),
+        ("limit-250", 5, 250, false, "FIFO_RELAXED"),
+        ("iconified", 0, 120, true, "MAILBOX"),
+        ("no-surface", 61, 60, false, "none"),
+        ("limit-10", 9, 10, false, "FIFO"),
+    ] {
+        rows.push(json!({
+            "label": format!("debug-fps-{label}"), "width": 427, "height": 240, "launched": "26.2",
+            "fps": fps, "limit": limit, "iconified": iconified, "present": present,
+            "overlay": true, "reduced": false, "hidden": false,
+            "x": f64_bits(1.0), "y": f64_bits(2.0), "z": f64_bits(3.0),
+            "yaw": f32_bits(0.0), "pitch": f32_bits(0.0),
+        }));
+    }
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
