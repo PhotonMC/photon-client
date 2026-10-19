@@ -169,54 +169,8 @@ pub(super) fn video_settings_screen_case(
     }))
 }
 
-pub(super) fn chat_options_screen_case(
-    ctx: &mut GuiContext,
-    row: &Value,
-    operation: &str,
-) -> Result<Value, String> {
-    let root = &ctx.root;
-    let font = &ctx.font;
-    let atlas = &ctx.atlas;
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    use photon_gui::options::chat::ChatOptionsScreen;
-    use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
-    use photon_gui::options::skin::SkinCustomizationScreen;
-    use photon_gui::options::sound::SoundOptionsScreen;
-    // The settings screens that have the same inputs.
-    enum Shell {
-        Chat(ChatOptionsScreen),
-        Mouse(MouseSettingsScreen),
-        Controls(ControlsScreen),
-        Sound(SoundOptionsScreen),
-        Skin(SkinCustomizationScreen),
-    }
-    macro_rules! each {
-        ($shell:expr, $screen:ident => $body:expr) => {
-            match $shell {
-                Shell::Chat($screen) => $body,
-                Shell::Mouse($screen) => $body,
-                Shell::Controls($screen) => $body,
-                Shell::Sound($screen) => $body,
-                Shell::Skin($screen) => $body,
-            }
-        };
-    }
-    use photon_render::window::scale::WindowScale;
-    let lang = photon_game::text::Lang::load(root);
-    let framebuffer = (
-        row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
-        row["framebuffer"][1].as_i64().unwrap_or(0) as i32,
-    );
-    let mouse = (
-        row["mouse"][0].as_i64().unwrap_or(0) as i32,
-        row["mouse"][1].as_i64().unwrap_or(0) as i32,
-    );
-    let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
-    window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
+/// The options a settings row sets.
+fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
     let mut options = photon_game::options::Options::default();
     let set = |key: &str, field: &mut f64| {
         if let Some(value) = row["options"][key].as_f64() {
@@ -230,6 +184,7 @@ pub(super) fn chat_options_screen_case(
     set("height_unfocused", &mut options.chat_height_unfocused);
     set("line_spacing", &mut options.chat_line_spacing);
     set("background_opacity", &mut options.text_background_opacity);
+    set("effects", &mut options.screen_effect_scale);
     set("sensitivity", &mut options.sensitivity);
     set("wheel", &mut options.mouse_wheel_sensitivity);
     options.invert_mouse_x = row["options"]["invert_x"].as_bool().unwrap_or(false);
@@ -260,6 +215,61 @@ pub(super) fn chat_options_screen_case(
         options.main_hand = photon_game::options::MainHand::from_serialized(&hand.to_lowercase())
             .ok_or("main_hand")?;
     }
+    Ok(options)
+}
+
+pub(super) fn chat_options_screen_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+    operation: &str,
+) -> Result<Value, String> {
+    let root = &ctx.root;
+    let font = &ctx.font;
+    let atlas = &ctx.atlas;
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    use photon_gui::options::accessibility::AccessibilityScreen;
+    use photon_gui::options::chat::ChatOptionsScreen;
+    use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+    use photon_gui::options::skin::SkinCustomizationScreen;
+    use photon_gui::options::sound::SoundOptionsScreen;
+    // The settings screens that have the same inputs.
+    enum Shell {
+        Chat(ChatOptionsScreen),
+        Accessibility(AccessibilityScreen),
+        Mouse(MouseSettingsScreen),
+        Controls(ControlsScreen),
+        Sound(SoundOptionsScreen),
+        Skin(SkinCustomizationScreen),
+    }
+    macro_rules! each {
+        ($shell:expr, $screen:ident => $body:expr) => {
+            match $shell {
+                Shell::Chat($screen) => $body,
+                Shell::Accessibility($screen) => $body,
+                Shell::Mouse($screen) => $body,
+                Shell::Controls($screen) => $body,
+                Shell::Sound($screen) => $body,
+                Shell::Skin($screen) => $body,
+            }
+        };
+    }
+    use photon_render::window::scale::WindowScale;
+    let lang = photon_game::text::Lang::load(root);
+    let framebuffer = (
+        row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
+        row["framebuffer"][1].as_i64().unwrap_or(0) as i32,
+    );
+    let mouse = (
+        row["mouse"][0].as_i64().unwrap_or(0) as i32,
+        row["mouse"][1].as_i64().unwrap_or(0) as i32,
+    );
+    let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
+    window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
+    let options = row_options(row)?;
     let size = (window.gui_scaled_width(), window.gui_scaled_height());
     let in_world = row["in_world"].as_bool().unwrap_or(false);
     let mut screen = match operation {
@@ -268,6 +278,16 @@ pub(super) fn chat_options_screen_case(
         )),
         "chat_options_screen" => Shell::Chat(ChatOptionsScreen::new(
             font, &lang, size, in_world, &options,
+        )),
+        "accessibility_options_screen" => Shell::Accessibility(AccessibilityScreen::new(
+            font,
+            &lang,
+            size,
+            in_world,
+            (
+                &options,
+                row["options"]["minecart"].as_bool().unwrap_or(false),
+            ),
         )),
         "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
             font, &lang, size, in_world, &options,

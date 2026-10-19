@@ -1,6 +1,7 @@
 //! The `gui` family: screens and heads-up displays drawn by the reference's
 //! own GUI code, with their glyphs left out.
 
+mod accessibility;
 mod advancements;
 mod books;
 mod chat;
@@ -67,6 +68,7 @@ const ORDER: &[Generator] = &[
     || vec![options::options_screen()],
     || vec![video::video_settings_screen()],
     || vec![panels::chat_options_screen()],
+    || vec![accessibility::accessibility_options_screen()],
     || vec![panels::skin_customization_screen()],
     || vec![crate::sound::music_manager()],
     panels::mouse_and_controls,

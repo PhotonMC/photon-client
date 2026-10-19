@@ -31,9 +31,9 @@ const SAVE_DRAFTS: u8 = 10;
 const DELAY: u8 = 11;
 
 /// `chatDelay`'s value set: tenths of a second from 0 to 6.
-type DelayValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
+pub(super) type DelayValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
 
-fn delay_values() -> DelayValues {
+pub(super) fn delay_values() -> DelayValues {
     IntRange::new(0, 60).xmap(
         (|tenths| f64::from(tenths) / 10.0) as fn(i32) -> f64,
         (|seconds: &f64| (*seconds * 10.0) as i32) as fn(&f64) -> i32,
@@ -41,7 +41,7 @@ fn delay_values() -> DelayValues {
     )
 }
 
-fn percent(caption: &Component, value: &f64) -> Component {
+pub(super) fn percent(caption: &Component, value: &f64) -> Component {
     percent_value(caption, *value)
 }
 
@@ -71,7 +71,7 @@ fn height(caption: &Component, value: &f64) -> Component {
 }
 
 /// `chatDelay`'s label, which does not name the option when there is none.
-fn delay(_caption: &Component, value: &f64) -> Component {
+pub(super) fn delay(_caption: &Component, value: &f64) -> Component {
     if *value <= 0.0 {
         Component::translatable("options.chat.delay_none")
     } else {
@@ -83,11 +83,15 @@ fn delay(_caption: &Component, value: &f64) -> Component {
 }
 
 /// The narrator's value, there being no narrator.
-fn narrator_unavailable(_value: &Named) -> Component {
+pub(super) fn narrator_unavailable(_value: &Named) -> Component {
     Component::translatable("options.narrator.notavailable")
 }
 
-fn unit(key: &'static str, label: fn(&Component, &f64) -> Component, initial: f64) -> Build {
+pub(super) fn unit(
+    key: &'static str,
+    label: fn(&Component, &f64) -> Component,
+    initial: f64,
+) -> Build {
     slider(key, UnitDouble, label, initial)
 }
 

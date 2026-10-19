@@ -83,8 +83,19 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(minecraft, "gpuWarnlistManager", warnlist);
             boolean inWorld = row.get("in_world").getAsBoolean();
             if (inWorld) {
-                set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+                var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+                // The features the server enabled: `rotateWithMinecart` needs the minecart ones.
+                var connection = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+                boolean minecart = row.has("options") && row.getAsJsonObject("options").has("minecart")
+                    && row.getAsJsonObject("options").get("minecart").getAsBoolean();
+                set(connection, "enabledFeatures", minecart
+                    ? net.minecraft.world.flag.FeatureFlagSet.of(net.minecraft.world.flag.FeatureFlags.MINECART_IMPROVEMENTS)
+                    : net.minecraft.world.flag.FeatureFlagSet.of());
+                set(level, "connection", connection);
+                set(minecraft, "level", level);
             }
+            // No resource packs are available, as in Photon.
+            set(minecraft, "resourcePackRepository", new net.minecraft.server.packs.repository.PackRepository());
             var window = minecraft.getWindow();
             set(window, "monitorManager", unsafe.allocateInstance(NoMonitors.class));
             set(window, "framebufferWidth", row.get("framebuffer").getAsJsonArray().get(0).getAsInt());
@@ -119,6 +130,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(
                     null, minecraft, minecraft.options);
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
+                case "accessibility" -> new net.minecraft.client.gui.screens.options.AccessibilityOptionsScreen(null, minecraft.options);
                 case "mouse" -> new net.minecraft.client.gui.screens.options.MouseSettingsScreen(null, minecraft.options);
                 case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(null, minecraft.options);
                 case "keybinds" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, minecraft.options);

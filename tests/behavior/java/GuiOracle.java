@@ -71,6 +71,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "options_screen" -> optionsScreen(request);
                 case "video_settings_screen" -> settingsScreen(request, "video");
                 case "chat_options_screen" -> settingsScreen(request, "chat");
+                case "accessibility_options_screen" -> settingsScreen(request, "accessibility");
                 case "mouse_settings_screen" -> settingsScreen(request, "mouse");
                 case "sound_options_screen" -> settingsScreen(request, "sound");
                 case "skin_customization_screen" -> settingsScreen(request, "skin");

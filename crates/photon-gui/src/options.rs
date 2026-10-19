@@ -1,6 +1,7 @@
 //! The options screen (`OptionsScreen`): the field of view and one more
 //! button under the title, the buttons that open the other settings screens
 //! in two columns, and Done.
+pub mod accessibility;
 pub mod chat;
 pub mod keybinds;
 pub mod language;

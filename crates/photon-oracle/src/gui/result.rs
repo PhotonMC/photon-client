@@ -53,27 +53,27 @@ pub(super) struct GuiContext {
     pub(super) languages: Option<photon_game::language::LanguageSource>,
 }
 
+/// The operations that need none of the shared context.
+fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, String>> {
+    Some(match request["operation"].as_str()? {
+        "name_tags" => crate::name_tags_result(request),
+        "key_mappings" => Ok(key_mappings()),
+        "panorama_view" => panorama_view(request),
+        "command_parse" => crate::command_parse_result(request, root),
+        "command_suggest" => crate::command_suggest_result(request),
+        _ => return None,
+    })
+}
+
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
-    if request["operation"].as_str() == Some("name_tags") {
-        return crate::name_tags_result(request);
-    }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets");
+    if let Some(result) = standalone(request, &root) {
+        return result;
+    }
     let font = Font::load(&root).ok_or("font")?;
     let alt = Font::load_alt(&root).ok_or("alt font")?;
     let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
-    if request["operation"] == "key_mappings" {
-        return Ok(key_mappings());
-    }
-    if request["operation"] == "panorama_view" {
-        return panorama_view(request);
-    }
-    if request["operation"] == "command_parse" {
-        return crate::command_parse_result(request, &root);
-    }
-    if request["operation"] == "command_suggest" {
-        return crate::command_suggest_result(request);
-    }
     let rows = request["rows"]
         .as_array()
         .ok_or("gui rows must be an array")?;
@@ -104,6 +104,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "options_screen" => options_screen_case(&mut ctx, row)?,
             "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,
             "chat_options_screen"
+            | "accessibility_options_screen"
             | "mouse_settings_screen"
             | "controls_screen"
             | "skin_customization_screen"

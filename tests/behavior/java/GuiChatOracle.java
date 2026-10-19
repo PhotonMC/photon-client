@@ -20,6 +20,7 @@ class GuiChatOracle extends GuiLanguageOracle {
         if (values.has("height_unfocused")) options.chatHeightUnfocused().set(values.get("height_unfocused").getAsDouble());
         if (values.has("line_spacing")) options.chatLineSpacing().set(values.get("line_spacing").getAsDouble());
         if (values.has("background_opacity")) options.textBackgroundOpacity().set(values.get("background_opacity").getAsDouble());
+        if (values.has("effects")) options.screenEffectScale().set(values.get("effects").getAsDouble());
         if (values.has("volumes")) {
             for (var source : net.minecraft.sounds.SoundSource.values()) {
                 var volumes = values.getAsJsonObject("volumes");

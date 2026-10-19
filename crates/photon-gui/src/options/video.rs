@@ -66,7 +66,7 @@ fn entity_distance(caption: &Component, value: &f64) -> Component {
 }
 
 /// `genericValueOrOffLabel`.
-fn blurriness(caption: &Component, value: &i32) -> Component {
+pub(super) fn blurriness(caption: &Component, value: &i32) -> Component {
     if *value == 0 {
         generic_value(caption, on_off(false))
     } else {
