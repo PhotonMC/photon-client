@@ -2,15 +2,13 @@
 //! which one is chosen, how Tab, the arrow keys and the mouse move the choice,
 //! and what the list and the ghost text after the box's cursor look like.
 
+use super::command_suggestions::SuggestionSettings;
 use crate::FrameRuns;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
-/// `CommandSuggestions` of the chat: lines in the list and a line's height.
-const LIMIT: usize = 10;
+/// A line's height, and the colours of a line.
 const LINE: i32 = 12;
-/// `ChatScreen`'s fill (`-805306368`), and the colours of a line.
-const FILL: u32 = 0xD000_0000;
 const CHOSEN: u32 = 0xFFFF_FF00;
 const OTHER: u32 = 0xFFAA_AAAA;
 
@@ -37,6 +35,10 @@ pub struct SuggestionsList {
     current: usize,
     tab_cycles: bool,
     last_mouse: (i32, i32),
+    /// The lines the list shows, where the window starts when the choice leaves it, the fill.
+    limit: usize,
+    line_start_offset: usize,
+    fill: u32,
 }
 
 /// `CommandSuggestions.getLastWordIndex`: where the last word of a text
@@ -64,15 +66,15 @@ pub fn sort(matches: Vec<String>, typed: &str) -> Vec<String> {
 
 impl SuggestionsList {
     /// `showSuggestions`: the matches for the range `start..start + length`
-    /// of `original`, the box's unbordered text at `text_x`, the screen
-    /// `height` and the `typed` text up to the cursor. `width_of` measures
-    /// text. `None` when there are no matches.
+    /// of `original`, the box's text at `text_x`, how the list is set and the
+    /// screen's size, and the `typed` text up to the cursor. `None` when there
+    /// are no matches.
     pub fn new(
         matches: Vec<String>,
         (start, length): (usize, usize),
         original: &str,
         typed: &str,
-        height: i32,
+        (settings, screen): (&SuggestionSettings, (i32, i32)),
         font: &Font,
         (text_x, box_width): (i32, i32),
     ) -> Option<Self> {
@@ -93,10 +95,16 @@ impl SuggestionsList {
             text_x + font.width(&chars[..start].iter().collect::<String>())
         };
         let x = start_x.clamp(0, (text_x + box_width - widest).max(0));
-        let anchor = height - 12;
-        let shown = matches.len().min(LIMIT) as i32;
+        let shown = matches.len().min(settings.line_limit) as i32;
+        let bordered = i32::from(settings.bordered);
+        // `SuggestionsList`: the corner, from the bottom or from the box.
+        let rect_y = if settings.anchor_to_bottom {
+            screen.1 - 12 - 3 - shown * LINE
+        } else {
+            72 - bordered
+        };
         let list = Self {
-            rect: (x - 1, anchor - 3 - shown * LINE, widest + 1, shown * LINE),
+            rect: (x - 1 + bordered, rect_y, widest + 1, shown * LINE),
             original: chars,
             range: (start, length),
             matches,
@@ -104,6 +112,9 @@ impl SuggestionsList {
             current: 0,
             tab_cycles: false,
             last_mouse: (0, 0),
+            limit: settings.line_limit,
+            line_start_offset: settings.line_start_offset,
+            fill: settings.fill,
         };
         Some(list)
     }
@@ -136,13 +147,14 @@ impl SuggestionsList {
     /// `cycle`: the choice moves, and the window of lines follows it.
     fn cycle(&mut self, direction: i64) {
         self.select(self.current as i64 + direction);
-        let most = self.matches.len().saturating_sub(LIMIT);
-        let last = self.offset + LIMIT - 1;
+        let most = self.matches.len().saturating_sub(self.limit);
+        let last = self.offset + self.limit - 1;
         if self.current < self.offset {
             self.offset = self.current.min(most);
         } else if self.current > last {
-            // `lineStartOffset` is 1 in the chat.
-            self.offset = (self.current + 1).saturating_sub(LIMIT).min(most);
+            self.offset = (self.current + self.line_start_offset)
+                .saturating_sub(self.limit)
+                .min(most);
         }
     }
 
@@ -201,7 +213,7 @@ impl SuggestionsList {
         if !self.contains(mouse) {
             return false;
         }
-        let most = self.matches.len().saturating_sub(LIMIT) as f64;
+        let most = self.matches.len().saturating_sub(self.limit) as f64;
         self.offset = (self.offset as f64 - scroll).clamp(0.0, most) as usize;
         true
     }
@@ -211,7 +223,7 @@ impl SuggestionsList {
     /// over a line chooses it.
     pub fn draw(&mut self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
         let (rx, ry, width, height) = self.rect;
-        let limit = self.matches.len().min(LIMIT);
+        let limit = self.matches.len().min(self.limit);
         let has_previous = self.offset > 0;
         let has_next = self.matches.len() > self.offset + limit;
         let moved = self.last_mouse != mouse;
@@ -219,8 +231,12 @@ impl SuggestionsList {
             self.last_mouse = mouse;
         }
         if has_previous || has_next {
-            frame.fill(atlas, (rx, ry - 1, rx + width, ry), FILL);
-            frame.fill(atlas, (rx, ry + height, rx + width, ry + height + 1), FILL);
+            frame.fill(atlas, (rx, ry - 1, rx + width, ry), self.fill);
+            frame.fill(
+                atlas,
+                (rx, ry + height, rx + width, ry + height + 1),
+                self.fill,
+            );
             for (shown, y) in [(has_previous, ry - 1), (has_next, ry + height)] {
                 if shown {
                     for x in (0..width).step_by(2) {
@@ -231,7 +247,7 @@ impl SuggestionsList {
         }
         for row in 0..limit {
             let top = ry + LINE * row as i32;
-            frame.fill(atlas, (rx, top, rx + width, top + LINE), FILL);
+            frame.fill(atlas, (rx, top, rx + width, top + LINE), self.fill);
             if mouse.0 > rx
                 && mouse.0 < rx + width
                 && mouse.1 > top

@@ -1,5 +1,4 @@
 use super::*;
-use crate::FrameRuns;
 
 /// `InBedChatScreen.init`: the button, 200 by 20 units, 40 above the bottom.
 fn leave_bed_buttons(
@@ -16,6 +15,15 @@ fn leave_bed_buttons(
     buttons
 }
 
+/// Where the chat's box sits: the whole width of the screen, at its bottom.
+fn place_of(size: (i32, i32)) -> Place {
+    Place {
+        text_x: 4,
+        inner_width: size.0 - 4,
+        screen: size,
+    }
+}
+
 impl ChatScreen {
     /// `ChatScreen.init`: the box holds `initial` (empty, or a slash), and
     /// the character of the key that opened it is to be dropped.
@@ -23,8 +31,10 @@ impl ChatScreen {
         let mut edit = EditBox::new(size.0 - 4, 256);
         edit.set_value(initial, &font);
         let history_pos = history.len();
+        let place = place_of(size);
         Self {
             edit,
+            suggest: CommandSuggestions::new(SuggestionSettings::CHAT, font.clone(), place),
             font,
             size,
             history,
@@ -32,18 +42,7 @@ impl ChatScreen {
             history_buffer: String::new(),
             focused_at: Instant::now(),
             skip_char: true,
-            list: None,
-            stale: false,
-            request: None,
-            request_id: 0,
-            applied: false,
-            commands: None,
-            players: Vec::new(),
-            teams: Vec::new(),
-            selected_entities: Vec::new(),
-            selectors: true,
             draft: false,
-            local: Vec::new(),
             bed: None,
         }
     }
@@ -51,24 +50,23 @@ impl ChatScreen {
     /// The tree the server sent: it is what suggests the commands, and the
     /// server is asked only for what the tree cannot tell.
     pub fn set_commands(&mut self, commands: Option<Arc<CommandTree>>) {
-        self.commands = commands;
+        self.suggest.set_commands(commands);
     }
 
     /// The online players' and the teams' names, which suggestions use.
     pub fn set_names(&mut self, players: Vec<String>, teams: Vec<String>) {
-        self.players = players;
-        self.teams = teams;
+        self.suggest.set_names(players, teams);
     }
 
     /// The string UUID of the entity in the crosshair, which entity
     /// arguments offer as a name.
     pub fn set_selected_entities(&mut self, selected: Vec<String>) {
-        self.selected_entities = selected;
+        self.suggest.set_selected_entities(selected);
     }
 
     /// Whether the player's permissions allow entity selectors.
     pub fn set_selectors(&mut self, allowed: bool) {
-        self.selectors = allowed;
+        self.suggest.set_selectors(allowed);
     }
 
     /// The box opens on a draft kept from an earlier box.
@@ -92,6 +90,7 @@ impl ChatScreen {
             return;
         }
         self.size = size;
+        self.suggest.set_place(place_of(size));
         if let Some((buttons, label)) = self.bed.take() {
             self.bed = Some((leave_bed_buttons(size, label.clone()), label));
             drop(buttons);
@@ -128,157 +127,31 @@ impl ChatScreen {
 
     /// The request the last edit asked for, taken.
     pub fn take_request(&mut self) -> Option<(i32, String)> {
-        self.request.take()
+        self.suggest.take_request()
     }
 
     /// `CommandSuggestions.updateCommandInfo`: the list goes, and a command's
-    /// text up to the cursor asks for its matches. A match just used keeps
-    /// the list and asks for nothing.
+    /// text up to the cursor asks for its matches.
     pub(super) fn edited(&mut self) {
         // `onEdited`: whatever changes the text makes it the player's own.
         self.draft = false;
-        if std::mem::take(&mut self.applied) {
-            return;
-        }
-        self.edit.set_suggestion(None);
-        self.stale = true;
-        let text = self.edit.value();
-        let cursor = self.edit.cursor();
-        // The reference knows the commands and answers within the same frame;
-        // here the server answers a moment later, so the list stays up until
-        // its answer replaces it, rather than blinking out between keys.
-        if !(text.starts_with('/') && cursor >= 1) {
-            self.list = None;
-        }
-        if text.starts_with('/') && cursor >= 1 {
-            self.local.clear();
-            let mut ask_server = true;
-            let mut start = 0;
-            if let Some(tree) = self.commands.clone() {
-                // `getCompletionSuggestions` of the whole text at the cursor.
-                let parse = tree.parse(&text, 1, self.selectors);
-                let suggested = tree.suggestions(
-                    &parse,
-                    cursor,
-                    &SuggestContext {
-                        players: &self.players,
-                        teams: &self.teams,
-                        selected_entities: &self.selected_entities,
-                        selectors: self.selectors,
-                    },
-                );
-                ask_server = suggested.ask_server;
-                start = suggested.start;
-                self.local = suggested.matches;
-            }
-            if ask_server {
-                self.request_id += 1;
-                let typed: String = text.chars().take(cursor).collect();
-                self.request = Some((self.request_id, typed));
-            } else {
-                // The tree knew it all: no request, and the list is final.
-                self.request_id += 1;
-                let matches = std::mem::take(&mut self.local);
-                self.show(start, cursor - start, matches);
-            }
-        }
+        self.suggest.edited(&mut self.edit);
     }
 
-    /// The server's answer, when it is to the last request:
-    /// `showSuggestions`, with what the tree suggested added to it.
+    /// The server's answer, when it is to the last request.
     pub fn suggested(&mut self, id: i32, start: usize, length: usize, matches: Vec<String>) {
-        if id != self.request_id {
-            return;
-        }
-        let mut matches = matches;
-        // The server's answer comes sorted; it is merged only with the tree's.
-        if !self.local.is_empty() {
-            matches.append(&mut self.local);
-            photon_game::commands::sort_suggestions(&mut matches);
-        }
-        self.show(start, length, matches);
-    }
-
-    /// The list for matches, the text up to the cursor having been read.
-    pub(super) fn show(&mut self, start: usize, length: usize, matches: Vec<String>) {
-        self.stale = false;
-        let value = self.edit.value();
-        let typed: String = value.chars().take(self.edit.cursor()).collect();
-        self.list = SuggestionsList::new(
-            matches,
-            (start, length),
-            &value,
-            &typed,
-            self.size.1,
-            &self.font,
-            (4, self.size.0 - 4),
-        );
-        self.update_ghost();
-    }
-
-    /// `select`'s `setSuggestion`: what the chosen match adds to the text.
-    pub(super) fn update_ghost(&mut self) {
-        let ghost = self
-            .list
-            .as_ref()
-            .filter(|_| !self.stale)
-            .and_then(|list| list.ghost(&self.edit.value()));
-        self.edit.set_suggestion(ghost);
-    }
-
-    /// `useSuggestion`: the box takes the match's text, the cursor after it.
-    pub(super) fn take_match(&mut self, (text, end): (String, usize)) {
-        self.applied = true;
-        let font = self.font.clone();
-        self.edit.set_value(&text, &font);
-        self.edit.set_cursor_position(end, &font);
-        self.update_ghost();
-    }
-
-    /// `CommandSuggestions.keyPressed`: whether the list took the key.
-    pub(super) fn list_key(&mut self, key: ListKey) -> bool {
-        let Some(list) = &mut self.list else {
-            return false;
-        };
-        if self.stale && key != ListKey::Escape {
-            // The list is for older text; the answer is on its way.
-            return true;
-        }
-        if key == ListKey::Escape {
-            self.list = None;
-            self.edit.set_suggestion(None);
-            return true;
-        }
-        let (taken, used) = list.key(key);
-        if let Some(used) = used {
-            self.take_match(used);
-        } else {
-            self.update_ghost();
-        }
-        taken
+        self.suggest
+            .suggested(&mut self.edit, (id, start, length), matches);
     }
 
     /// A press in the list (`mouseClicked`): whether it was the list's.
     pub fn mouse_clicked(&mut self, mouse: (i32, i32)) -> bool {
-        let Some(list) = &mut self.list else {
-            return false;
-        };
-        match list.clicked(mouse) {
-            None => false,
-            Some(used) => {
-                if let Some(used) = used {
-                    self.take_match(used);
-                }
-                true
-            }
-        }
+        self.suggest.mouse_clicked(&mut self.edit, mouse)
     }
 
     /// The wheel over the list (`mouseScrolled`): whether it was the list's.
     pub fn mouse_scrolled(&mut self, scroll: f64, mouse: (i32, i32)) -> bool {
-        self.list
-            .as_mut()
-            .is_some_and(|list| list.scrolled(scroll.clamp(-1.0, 1.0), mouse))
+        self.suggest.mouse_scrolled(scroll, mouse)
     }
 
     /// The box takes the focus again: its cursor shows from now.
@@ -331,7 +204,7 @@ impl ChatScreen {
             _ => None,
         };
         if let Some(list_key) = list_key
-            && self.list_key(list_key)
+            && self.suggest.list_key(&mut self.edit, list_key)
         {
             return ChatKey::None;
         }
@@ -377,18 +250,6 @@ impl ChatScreen {
         ChatKey::None
     }
 
-    /// Where the usage lines start: under the argument they are about, kept on the screen.
-    fn usage_x(&self, text: &str, start: i32, longest: i32) -> i32 {
-        let chars: Vec<char> = text.chars().collect();
-        let start = start.max(0) as usize;
-        let start_x = if start > chars.len() {
-            4
-        } else {
-            4 + self.font.width(&chars[..start].iter().collect::<String>())
-        };
-        start_x.clamp(0, (4 + self.size.0 - 4 - longest).max(0))
-    }
-
     /// `charTyped`: a character the chat allows.
     pub fn char_typed(&mut self, character: char) {
         if std::mem::take(&mut self.skip_char) {
@@ -427,10 +288,7 @@ impl ChatScreen {
             self.edit.set_value(&line, &font);
             // `setAllowSuggestions(false)`: a line taken from the history
             // shows no list until the next edit.
-            self.edit.set_suggestion(None);
-            self.list = None;
-            self.stale = false;
-            self.request = None;
+            self.suggest.hide(&mut self.edit);
         }
     }
 
@@ -448,9 +306,7 @@ impl ChatScreen {
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
         let text = self.edit.value();
         // `updateCommandInfo`: a command is read against the tree.
-        let parse = commands
-            .filter(|_| text.starts_with('/'))
-            .map(|(tree, lang)| (tree, lang, tree.parse(&text, 1, self.selectors)));
+        let parsed = self.suggest.parse(&text, commands);
         // `formatChat`: a restored draft is grey and slanted until it is
         // edited, which comes before the colours of a command.
         let draft = self.draft;
@@ -458,12 +314,7 @@ impl ChatScreen {
             if draft {
                 return Some(vec![(part.to_owned(), 0xAA_AAAA, true)]);
             }
-            parse.as_ref().map(|(_, _, parse)| {
-                format_text(parse, part, offset)
-                    .into_iter()
-                    .map(|(part, colour)| (part, colour, false))
-                    .collect()
-            })
+            parsed.as_ref().map(|parsed| parsed.format(part, offset))
         };
         self.edit.draw_formatted(
             frame,
@@ -476,24 +327,7 @@ impl ChatScreen {
         if let Some((buttons, _)) = &self.bed {
             buttons.draw(frame, atlas, &self.font, mouse);
         }
-        if let Some(list) = &mut self.list {
-            list.draw(frame, atlas, &self.font, mouse);
-        } else if let (Some((tree, lang, parse)), false) = (&parse, self.stale) {
-            let view = usage_lines(tree, parse, self.edit.cursor(), true);
-            let lines: Vec<String> = view.lines.iter().map(|line| lang.plain(line)).collect();
-            let longest = lines
-                .iter()
-                .map(|line| self.font.width(line))
-                .max()
-                .unwrap_or(0);
-            let x = self.usage_x(&text, view.start, longest);
-            for (index, line) in view.lines.iter().enumerate() {
-                let y = height - 27 - 12 * index as i32;
-                frame.fill(atlas, (x - 1, y, x + longest + 1, y + 12), 0xD000_0000);
-                let runs = lang.runs(line, &Style::default());
-                frame.styled_text(atlas, &self.font, &runs, x, y + 2, 0xFFFF_FFFF, true);
-            }
-        }
-        self.update_ghost();
+        self.suggest
+            .draw(frame, atlas, mouse, (&mut self.edit, parsed.as_ref()));
     }
 }

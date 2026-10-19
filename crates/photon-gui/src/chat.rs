@@ -4,6 +4,7 @@
 //! The chat's width, height, scale, opacity, background opacity and line
 //! spacing are the options' ([`ChatSettings`]). Not drawn: the prompt of a
 //! chat that the options disable.
+pub mod command_suggestions;
 pub mod queue;
 pub mod suggestions;
 
@@ -11,11 +12,12 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 
-use photon_game::commands::{CommandTree, SuggestContext, format_text, usage_lines};
 use photon_game::text::{Component, HoverEvent, Lang, Run, Style};
 
-use crate::chat::suggestions::{ListKey, SuggestionsList};
+use crate::chat::command_suggestions::{CommandSuggestions, Place, SuggestionSettings};
+use crate::chat::suggestions::ListKey;
 use crate::widgets::edit_box::{Clipboard, EditBox, edit_key};
+use photon_game::commands::CommandTree;
 use photon_render::gui::GuiAtlas;
 use photon_render::gui::GuiFrame;
 use photon_render::gui::font::Font;
@@ -392,29 +394,9 @@ pub struct ChatScreen {
     focused_at: Instant,
     /// The key that opened the box also types its character: dropped.
     skip_char: bool,
-    /// The list of matches the server sent for the text, when there is one.
-    list: Option<SuggestionsList>,
-    /// The list is for text since edited: it waits for the server's answer.
-    stale: bool,
-    /// The request to send: its id and text, and the id of the last sent.
-    request: Option<(i32, String)>,
-    request_id: i32,
-    /// `keepSuggestions`: a match was just used, and that edit asks for nothing.
-    applied: bool,
-    /// The command tree, which suggests what continues a command itself.
-    commands: Option<Arc<CommandTree>>,
-    /// The names the suggestions draw on: online players, and teams.
-    players: Vec<String>,
-    teams: Vec<String>,
-    /// The aimed entity's string UUID, if any (`getSelectedEntities`).
-    selected_entities: Vec<String>,
-    /// Whether the player may use entity selectors.
-    selectors: bool,
+    suggest: CommandSuggestions,
     /// The text is a draft kept from before, not yet edited (`isDraft`).
     draft: bool,
-    /// What the tree suggested for the text, while the server's answer on
-    /// its own arguments is awaited.
-    local: Vec<String>,
     /// `InBedChatScreen`: the leave-bed button, and its label.
     bed: Option<(crate::widgets::button_set::ButtonSet<()>, Vec<Run>)>,
 }
@@ -530,19 +512,19 @@ mod tests {
         let mut screen =
             ChatScreen::new(Arc::new(font), (427, 240), "/g", Vec::new()).without_key();
         screen.suggested(0, 1, 1, vec!["gamemode".into(), "gamerule".into()]);
-        assert!(screen.list.is_some());
+        assert!(screen.suggest.list.is_some());
         // A key asks again; the list does not blink out meanwhile.
         screen.char_typed('a');
         let (id, text) = screen.take_request().expect("a request");
         assert_eq!(text, "/ga");
-        assert!(screen.list.is_some() && screen.stale);
+        assert!(screen.suggest.list.is_some() && screen.suggest.stale);
         screen.suggested(id, 1, 2, vec!["gamemode".into(), "gamerule".into()]);
-        assert!(!screen.stale);
+        assert!(!screen.suggest.stale);
         // Text that is no command has no list.
         for _ in 0..3 {
             screen.key_pressed(glfw::Key::Backspace, (false, false), &mut NoClip);
         }
-        assert!(screen.list.is_none());
+        assert!(screen.suggest.list.is_none());
     }
 
     #[test]
@@ -560,9 +542,9 @@ mod tests {
         )
         .without_key();
         screen.suggested(0, 1, 1, vec!["gamemode".into()]);
-        screen.suggested(screen.request_id, 1, 1, vec!["gamemode".into()]);
+        screen.suggested(screen.suggest.request_id, 1, 1, vec!["gamemode".into()]);
         screen.move_in_history(-1);
-        assert!(screen.list.is_none() && screen.take_request().is_none());
+        assert!(screen.suggest.list.is_none() && screen.take_request().is_none());
         // Back to the line being typed asks again.
         screen.move_in_history(1);
         assert!(screen.take_request().is_some());
