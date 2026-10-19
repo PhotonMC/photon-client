@@ -2,7 +2,9 @@
 //! (`OptionInstanceSliderButton`): a handle that follows the mouse or the
 //! arrow keys along a bar, and a label that says what the value is.
 
-use photon_game::options::values::{IntRange, MappedIntRange, SliderableEnum, UnitDouble};
+use photon_game::options::values::{
+    IntRange, MappedIntRange, MappedUnitDouble, SliderableEnum, UnitDouble,
+};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::layout::Arena;
@@ -81,6 +83,23 @@ impl SliderValues for UnitDouble {
 
     fn value_at(&self, slider: f64) -> f64 {
         Self::from_slider_value(slider)
+    }
+}
+
+impl<R, To, FromValue> SliderValues for MappedUnitDouble<R, To, FromValue>
+where
+    R: Clone + PartialEq,
+    To: Fn(f64) -> R,
+    FromValue: Fn(&R) -> f64,
+{
+    type Value = R;
+
+    fn position_of(&self, value: &R) -> f64 {
+        self.to_slider_value(value)
+    }
+
+    fn value_at(&self, slider: f64) -> R {
+        self.from_slider_value(slider)
     }
 }
 

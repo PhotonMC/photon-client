@@ -6,7 +6,7 @@ use std::any::Any;
 
 use photon_game::text::{Component, Lang, Run, Style};
 
-use crate::layout::{Arena, Grid, Item, Settings, place_in_frame};
+use crate::layout::{Arena, Grid, Item, Settings, horizontal, place_in_frame};
 use crate::options::text::on_off;
 use crate::tooltip::{Holder, Pending};
 use crate::widgets::cycle::{CycleButton, Tip};
@@ -491,6 +491,8 @@ pub struct SubScreenInput {
     pub done: bool,
     /// The tag of the widget whose option changed.
     pub changed: Option<u8>,
+    /// The extra footer button, if the screen has one.
+    pub help: bool,
 }
 
 /// `OptionsSubScreen`: the title, the list and Done.
@@ -501,6 +503,10 @@ pub struct SubScreen {
     /// been added it keeps its place.
     warning: Option<(Widget, bool)>,
     done: Widget,
+    /// A button before Done in the footer (`addFooter` of the accessibility screen), and
+    /// whether it has the focus.
+    help: Option<Widget>,
+    help_focused: bool,
     pub list: OptionsList,
     /// Whether Done has the focus (the list keeps its own).
     done_focused: bool,
@@ -512,6 +518,7 @@ pub struct SubScreen {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Target {
     List(Focus),
+    Help,
     Done,
 }
 

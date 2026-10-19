@@ -32,6 +32,8 @@ impl SubScreen {
             title,
             warning: None,
             done,
+            help: None,
+            help_focused: false,
             list: OptionsList::new(
                 width,
                 (HEADER_AND_FOOTER, height - 2 * HEADER_AND_FOOTER),
@@ -71,14 +73,40 @@ impl SubScreen {
             frame,
             (0.5, 0.5),
         );
-        place_in_frame(
-            &mut self.arena,
-            Item::Leaf(self.done.rect),
-            (0, height - HEADER_AND_FOOTER, width, HEADER_AND_FOOTER),
-            (0.5, 0.5),
-        );
+        let footer = (0, height - HEADER_AND_FOOTER, width, HEADER_AND_FOOTER);
+        match &self.help {
+            Some(help) => {
+                let mut row = horizontal(&self.arena, &[help.rect, self.done.rect], 8);
+                row.arrange(&mut self.arena);
+                place_in_frame(
+                    &mut self.arena,
+                    Item::Grid(Box::new(row)),
+                    footer,
+                    (0.5, 0.5),
+                );
+            }
+            None => place_in_frame(
+                &mut self.arena,
+                Item::Leaf(self.done.rect),
+                footer,
+                (0.5, 0.5),
+            ),
+        }
         self.list
             .resize(width, (HEADER_AND_FOOTER, height - 2 * HEADER_AND_FOOTER));
+    }
+
+    /// A button before Done in the footer; both are the default 150 wide then.
+    pub fn add_help_button(&mut self, lang: &Lang, key: &str) {
+        let label = lang.runs(&Component::translatable(key), &Style::default());
+        let rect = self.arena.add(150, 20);
+        self.arena.0[self.done.rect].width = 150;
+        self.help = Some(Widget {
+            rect,
+            active: true,
+            kind: Kind::Button { label },
+        });
+        self.arrange();
     }
 
     /// A line of words in the header under the title, `line` being the
@@ -130,6 +158,10 @@ impl SubScreen {
         let pending = self.list.draw(frame, atlas, font, mouse);
         let highlighted = self.done.contains(&self.arena, mouse) || self.done_focused;
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
+        if let Some(help) = &self.help {
+            let highlighted = help.contains(&self.arena, mouse) || self.help_focused;
+            help.draw(frame, atlas, font, &self.arena, highlighted);
+        }
         if let Some(pending) = pending {
             pending.draw(frame, atlas, font, mouse, self.size);
         }
@@ -141,18 +173,27 @@ impl SubScreen {
         let (took, changed) = self.list.clicked(lang, mouse, shift);
         if took {
             self.done_focused = false;
+            self.help_focused = false;
             return SubScreenInput {
-                done: false,
                 changed,
+                ..SubScreenInput::default()
             };
         }
         let at = (mouse.0 as i32, mouse.1 as i32);
+        let help = self
+            .help
+            .as_ref()
+            .is_some_and(|help| help.is_active() && help.contains(&self.arena, at));
+        if help {
+            self.apply(Target::Help, InputType::Mouse);
+        }
         let done = self.done.is_active() && self.done.contains(&self.arena, at);
         if done {
             self.apply(Target::Done, InputType::Mouse);
         }
         SubScreenInput {
             done,
+            help,
             changed: None,
         }
     }
@@ -164,8 +205,13 @@ impl SubScreen {
     /// The focus moves to `target`; what had it lets go.
     pub(super) fn apply(&mut self, target: Target, input: InputType) {
         self.done_focused = false;
+        self.help_focused = false;
         match target {
             Target::List(focus) => self.list.move_focus(Some(focus), input),
+            Target::Help => {
+                self.list.move_focus(None, input);
+                self.help_focused = true;
+            }
             Target::Done => {
                 self.list.move_focus(None, input);
                 self.done_focused = true;
@@ -175,37 +221,59 @@ impl SubScreen {
 
     pub(super) fn clear_focus(&mut self) {
         self.done_focused = false;
+        self.help_focused = false;
         self.list.move_focus(None, InputType::None);
     }
 
+    /// The footer's widgets in order: the help link when there is one, then Done.
+    fn footer(&self) -> Vec<Target> {
+        let help = self.help.is_some().then_some(Target::Help);
+        help.into_iter().chain([Target::Done]).collect()
+    }
+
+    /// The footer widget that has the focus.
+    fn footer_focus(&self) -> Option<Target> {
+        if self.help_focused {
+            Some(Target::Help)
+        } else {
+            self.done_focused.then_some(Target::Done)
+        }
+    }
+
+    /// The footer widget's button.
+    fn footer_widget(&self, target: Target) -> Option<&Widget> {
+        match target {
+            Target::Help => self.help.as_ref(),
+            _ => Some(&self.done),
+        }
+    }
+
     /// `handleTabNavigation` of the screen, whose widgets in order are the
-    /// title, the list and Done: the focused widget's own next first.
+    /// title, the list and the footer: the focused widget's own next first.
     pub(super) fn tab_target(&self, forward: bool) -> Option<Target> {
         if self.list.screen_focused()
             && let Some(focus) = self.list.next_focus(Nav::Tab(forward))
         {
             return Some(Target::List(focus));
         }
+        let mut children = vec![None];
+        children.extend(self.footer().into_iter().map(Some));
         let at = if self.list.screen_focused() {
             Some(0)
         } else {
-            self.done_focused.then_some(1)
+            let focus = self.footer_focus();
+            children
+                .iter()
+                .position(|child| child.is_some() && *child == focus)
         };
-        let start = match (at, forward) {
-            (Some(at), true) => at + 1,
-            (Some(at), false) => at,
-            (None, true) => 0,
-            (None, false) => 2,
-        };
-        let order: Vec<usize> = if forward {
-            (start..2).collect()
-        } else {
-            (0..start).rev().collect()
-        };
-        order.into_iter().find_map(|child| match child {
-            0 => self.list.next_focus(Nav::Tab(forward)).map(Target::List),
-            _ => (self.done.is_active() && !self.done_focused).then_some(Target::Done),
-        })
+        child_order(at, forward, children.len())
+            .into_iter()
+            .find_map(|child| match children[child] {
+                None => self.list.next_focus(Nav::Tab(forward)).map(Target::List),
+                Some(target) => (self.footer_widget(target).is_some_and(Widget::is_active)
+                    && self.footer_focus() != Some(target))
+                .then_some(target),
+            })
     }
 
     /// Tab (and Shift+Tab): the focus moves on, and past the last widget
@@ -231,6 +299,36 @@ impl SubScreen {
             self.apply(Target::List(focus), InputType::KeyboardArrow);
             return;
         }
+        let (children, list_at) = self.arrow_children(list_step.is_some());
+        let footer = self.footer();
+        let focused = if self.list.screen_focused() {
+            Some(list_at)
+        } else {
+            let focus = self.footer_focus();
+            footer
+                .iter()
+                .position(|target| Some(*target) == focus)
+                .map(|at| list_at + 1 + at)
+        };
+        let container = Rectangle {
+            x: 0,
+            y: 0,
+            width: self.size.0,
+            height: self.size.1,
+        };
+        match next_in_direction(&children, focused, direction, container) {
+            Some(at) if at == list_at => {
+                if let Some(focus) = list_step {
+                    self.apply(Target::List(focus), InputType::KeyboardArrow);
+                }
+            }
+            Some(at) => self.apply(footer[at - list_at - 1], InputType::KeyboardArrow),
+            None => {}
+        }
+    }
+
+    /// The screen's children for the arrow keys, and where the list is among them.
+    fn arrow_children(&self, list_focusable: bool) -> (Vec<Candidate>, usize) {
         let rectangle = |rect: usize| {
             let rect = self.arena.0[rect];
             Rectangle {
@@ -254,32 +352,16 @@ impl SubScreen {
         let list_at = children.len();
         children.push(Candidate {
             rectangle: self.list.rectangle(),
-            focusable: list_step.is_some(),
+            focusable: list_focusable,
         });
-        children.push(Candidate {
-            rectangle: rectangle(self.done.rect),
-            focusable: self.done.is_active(),
-        });
-        let focused = if self.list.screen_focused() {
-            Some(list_at)
-        } else {
-            self.done_focused.then_some(list_at + 1)
-        };
-        let container = Rectangle {
-            x: 0,
-            y: 0,
-            width: self.size.0,
-            height: self.size.1,
-        };
-        match next_in_direction(&children, focused, direction, container) {
-            Some(at) if at == list_at => {
-                if let Some(focus) = list_step {
-                    self.apply(Target::List(focus), InputType::KeyboardArrow);
-                }
-            }
-            Some(_) => self.apply(Target::Done, InputType::KeyboardArrow),
-            None => {}
+        for target in self.footer() {
+            let widget = self.footer_widget(target).expect("a footer widget");
+            children.push(Candidate {
+                rectangle: rectangle(widget.rect),
+                focusable: widget.is_active(),
+            });
         }
+        (children, list_at)
     }
 
     /// `Screen.keyPressed` for a key other than Tab and Escape: the focused
@@ -289,15 +371,14 @@ impl SubScreen {
             let (taken, changed) = self.list.key_pressed(lang, key, shift);
             if taken {
                 return SubScreenInput {
-                    done: false,
                     changed,
+                    ..SubScreenInput::default()
                 };
             }
-        } else if self.done_focused && key == SliderKey::Select && self.done.is_active() {
-            return SubScreenInput {
-                done: true,
-                changed: None,
-            };
+        } else if key == SliderKey::Select
+            && let Some(input) = self.footer_pressed()
+        {
+            return input;
         }
         match key {
             SliderKey::Left => self.arrow(Direction::Left),
@@ -309,7 +390,36 @@ impl SubScreen {
         SubScreenInput::default()
     }
 
+    /// Enter on a focused footer button: what a press of it does.
+    fn footer_pressed(&self) -> Option<SubScreenInput> {
+        let target = self.footer_focus()?;
+        let active = self.footer_widget(target).is_some_and(Widget::is_active);
+        match target {
+            Target::Done if active => Some(SubScreenInput {
+                done: true,
+                ..SubScreenInput::default()
+            }),
+            Target::Help => Some(SubScreenInput {
+                help: true,
+                ..SubScreenInput::default()
+            }),
+            _ => None,
+        }
+    }
+
     pub fn released(&mut self, lang: &Lang) {
         self.list.released(lang);
+    }
+}
+
+/// The children to look at for the next focus from `at`, in the order Tab walks them.
+fn child_order(at: Option<usize>, forward: bool, count: usize) -> Vec<usize> {
+    let start = at.map_or(if forward { 0 } else { count }, |at| {
+        at + usize::from(forward)
+    });
+    if forward {
+        (start..count).collect()
+    } else {
+        (0..start).rev().collect()
     }
 }
