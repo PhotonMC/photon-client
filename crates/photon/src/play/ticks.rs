@@ -291,8 +291,12 @@ impl Play {
         let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
         self.accumulated += now - self.last_frame;
         self.last_frame = now;
-        self.controls.turn_frame(&mut self.session, now);
         frame_ticks
+    }
+
+    /// The mouse's movement of the frame turns the player.
+    pub(super) fn turn_player(&mut self) {
+        self.controls.turn_frame(&mut self.session, Instant::now());
     }
 
     /// The configuration phase again, a respawn or a change of dimension: what was open over the

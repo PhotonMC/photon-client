@@ -105,6 +105,7 @@ fn frame_schedule() -> Schedule {
             reset_level.pipe(record),
             route_effects,
             run_ticks,
+            turn_player,
             draw_frame.pipe(record),
             limit_frame,
         )
@@ -150,6 +151,11 @@ fn fit_swapchain(mut play: NonSendMut<Play>) -> Result<()> {
 
 fn advance_clock(mut play: NonSendMut<Play>, mut clock: ResMut<Clock>) {
     clock.ticks = play.advance_clock();
+}
+
+/// `MouseHandler.handleAccumulatedMovement`, after the ticks and before the frame is drawn.
+fn turn_player(mut play: NonSendMut<Play>) {
+    play.turn_player();
 }
 
 fn receive_session(mut play: NonSendMut<Play>) -> Result<()> {

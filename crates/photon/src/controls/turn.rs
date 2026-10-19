@@ -20,6 +20,13 @@ impl Turning {
         self.pending.1 += dy;
     }
 
+    /// A frame that does not turn the player (a screen is open): the time is stamped and the
+    /// movement dropped, and the smoothers are left as they were.
+    pub fn skip(&mut self, now: Instant) {
+        self.last = Some(now);
+        self.pending = (0.0, 0.0);
+    }
+
     /// `MouseHandler.handleAccumulatedMovement` for the frame at `now`: the turn to apply.
     /// The cinematic camera smooths it over the frame's length in seconds; a spyglass turns
     /// slowly (the sensitivity cubed, without the factor of eight); else it is the plain turn.
@@ -63,10 +70,13 @@ impl Turning {
 impl Controls {
     /// The frame's share of the mouse's movement turns the player.
     pub fn turn_frame(&mut self, session: &mut PlaySession, now: Instant) {
-        let scoping = self.camera_type == CameraType::FirstPerson
-            && session.player().is_some_and(|player| player.is_scoping());
+        let Some(player) = session.player().filter(|_| self.captured) else {
+            self.turning.skip(now);
+            return;
+        };
+        let scoping = self.camera_type == CameraType::FirstPerson && player.is_scoping();
         let (turn_x, turn_y) = self.turning.take(&self.options, scoping, now);
-        if self.captured && (turn_x != 0.0 || turn_y != 0.0) {
+        if turn_x != 0.0 || turn_y != 0.0 {
             session.turn_player(turn_x, turn_y);
         }
     }
@@ -98,6 +108,28 @@ mod tests {
         options.invert_mouse_y = true;
         turning.moved((1.0, 1.0));
         assert_eq!(turning.take(&options, false, now), (-high, -high));
+    }
+
+    #[test]
+    fn the_smoothers_wait_while_the_mouse_is_not_grabbed() {
+        let options = Options::default();
+        let start = Instant::now();
+        let mut turning = Turning {
+            smooth_camera: true,
+            ..Turning::default()
+        };
+        turning.take(&options, false, start);
+        turning.moved((100.0, 0.0));
+        let (first, _) = turning.take(&options, false, start + Duration::from_millis(16));
+        for frame in 2..10 {
+            turning.moved((5.0, 0.0));
+            turning.skip(start + Duration::from_millis(16 * frame));
+        }
+        let (next, _) = turning.take(&options, false, start + Duration::from_millis(16 * 10));
+        assert!(
+            first > 0.0 && next > 0.0,
+            "the turn resumes where it stopped"
+        );
     }
 
     #[test]
