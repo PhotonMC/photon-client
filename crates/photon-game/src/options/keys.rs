@@ -32,6 +32,7 @@ pub(super) enum Key {
     NotificationDisplayTime,
     MainHand,
     MouseWheelSensitivity,
+    JoinedFirstServer,
     SaveChatDrafts,
     AttackIndicator,
     HideLightningFlashes,
@@ -45,7 +46,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 51] = [
+pub(super) const KEYS: [(&str, Key); 52] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -70,6 +71,7 @@ pub(super) const KEYS: [(&str, Key); 51] = [
     ("notificationDisplayTime", Key::NotificationDisplayTime),
     ("mainHand", Key::MainHand),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
+    ("joinedFirstServer", Key::JoinedFirstServer),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
     ("hideLightningFlashes", Key::HideLightningFlashes),

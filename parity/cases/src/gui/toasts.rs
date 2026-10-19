@@ -67,6 +67,7 @@ pub fn toasts() -> Value {
     rows.extend(music_rows());
     rows.extend(advancement_rows());
     rows.extend(recipe_rows());
+    rows.extend(tutorial_rows());
     let ticks: Vec<f64> = (0..400).map(|tick| f64::from(tick) + [0.0, 0.25, 0.5, 0.99][tick as usize % 4]).collect();
     rows.push(row("music-note-colours", &SETUP, vec![json!({"do": "note_colours", "ticks": ticks})]));
     gui("toasts", "toasts", rows)
@@ -263,5 +264,48 @@ fn recipe_rows() -> Vec<Value> {
     events.push(table("minecraft:torch"));
     events.extend(run(&[701, 5000, 5800, 6000, 6500, 7000, 12_000]));
     rows.push(row("recipe-queued-behind-five", &SETUP, events));
+    rows
+}
+
+/// A tutorial toast event: the icon by its index, the title, the message, whether it has a bar
+/// of progress and how long it stays.
+fn tutorial(icon: u32, (title, message): (&str, Option<&str>), progressable: bool, time_ms: i32) -> Value {
+    json!({"do": "tutorial", "icon": icon, "title": title, "message": message,
+        "progressable": progressable, "time_ms": time_ms})
+}
+
+fn tutorial_progress(icon: u32, value: f32) -> Value {
+    json!({"do": "tutorial_progress", "icon": icon, "value": f64::from(value)})
+}
+
+fn tutorial_hide(icon: u32) -> Value {
+    json!({"do": "tutorial_hide", "icon": icon})
+}
+
+/// Tutorial toasts: the timed one the social interactions key gets, one with a bar of progress
+/// that moves and is hidden, titles of several lines, and no message.
+fn tutorial_rows() -> Vec<Value> {
+    let lifetime = [0, 600, 601, 1000, 2000, 4000, 8000, 8599, 8600, 8601, 9000, 9200, 9201, 9800];
+    let mut rows = Vec::new();
+    let mut events = vec![tutorial(5, ("Social Interactions", Some("Press P to view the players")), true, 8000)];
+    events.extend(run(&lifetime));
+    rows.push(row("tutorial-timed", &SETUP, events));
+    let long = "A title that is long enough to need several lines in a toast";
+    let mut events =
+        vec![tutorial(0, (long, Some("and a message that is long enough as well to go over lines")), true, 0)];
+    events.extend(run(&[0, 700]));
+    events.push(tutorial_progress(0, 0.5));
+    events.extend(run(&[701, 750, 800, 850, 1000, 2000]));
+    events.push(tutorial_progress(0, 1.0));
+    events.extend(run(&[2100, 2150, 2400, 3000]));
+    events.push(tutorial_hide(0));
+    events.extend(run(&[3001, 3500, 3700, 3701, 3900, 4400]));
+    rows.push(row("tutorial-progress-hidden", &SETUP, events));
+    let mut events = vec![tutorial(3, ("Only a title", None), false, 0)];
+    events.extend(run(&[0, 700, 2000]));
+    rows.push(row("tutorial-no-message", &SETUP, events));
+    let mut events = vec![tutorial(6, ("One", Some("Two")), false, 3000), table("minecraft:stick")];
+    events.extend(run(&[0, 700, 2000, 3500, 3600, 4300]));
+    rows.push(row("tutorial-with-recipe", &SETUP, events));
     rows
 }

@@ -19,6 +19,7 @@ impl Play {
         let pending = self.session.take_pending_toasts();
         self.gui
             .add_pending_toasts(pending, self.controls.options.notification_display_time);
+        self.social_interactions_toast();
         self.gui
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }

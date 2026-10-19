@@ -511,4 +511,5 @@ mod effects;
 mod glints;
 mod pacing;
 mod schedule;
+mod social_toast;
 mod ticks;

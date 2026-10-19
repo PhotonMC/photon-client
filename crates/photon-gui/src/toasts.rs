@@ -5,6 +5,7 @@ mod advancement;
 mod now_playing;
 mod recipe;
 mod system;
+mod tutorial;
 
 use std::any::Any;
 use std::collections::VecDeque;
@@ -17,6 +18,7 @@ pub use advancement::AdvancementToast;
 pub use now_playing::{MusicNotes, NowPlayingToast, music_note_colour};
 pub use recipe::RecipeToast;
 pub use system::{SystemToast, SystemToastId};
+pub use tutorial::{TutorialIcon, TutorialToast, TutorialWords};
 
 /// How long a toast takes to slide in or out, in milliseconds (`SLIDE_ANIMATION_DURATION_MS`).
 const SLIDE_MS: i64 = 600;
@@ -100,6 +102,11 @@ pub trait Toast: Any {
 
     /// The recipe toast this is, which `addOrUpdate` adds to.
     fn as_recipe_mut(&mut self) -> Option<&mut RecipeToast> {
+        None
+    }
+
+    /// The tutorial toast this is, which a step hides or moves on.
+    fn as_tutorial_mut(&mut self) -> Option<&mut TutorialToast> {
         None
     }
 
@@ -426,6 +433,23 @@ impl ToastManager {
                     .find_map(|toast| toast.as_recipe_mut())
             })
             .map(|toast| toast.displayed_index())
+    }
+
+    /// The tutorial toast with this icon, shown or waiting (`TutorialToast` held by a step).
+    pub fn tutorial_mut(&mut self, icon: TutorialIcon) -> Option<&mut TutorialToast> {
+        self.visible
+            .iter_mut()
+            .find_map(|instance| {
+                instance
+                    .toast
+                    .as_tutorial_mut()
+                    .filter(|toast| toast.icon() == icon)
+            })
+            .or_else(|| {
+                self.queued
+                    .iter_mut()
+                    .find_map(|toast| toast.as_tutorial_mut().filter(|toast| toast.icon() == icon))
+            })
     }
 
     /// `SystemToast.forceHide`.

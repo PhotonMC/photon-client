@@ -309,6 +309,46 @@ impl Gui {
         }
     }
 
+    /// `Gui.addSocialInteractionsToast`: the tutorial toast of the first server joined, kept
+    /// for eight seconds; `key` is the social interactions key as the words name it.
+    pub fn add_social_interactions_toast(
+        &mut self,
+        key: &photon_game::text::Component,
+        display_time: f64,
+    ) {
+        use photon_gui::toasts::{TutorialIcon, TutorialToast, TutorialWords};
+        let env = photon_gui::toasts::ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        let title = photon_game::text::Component::translatable("tutorial.socialInteractions.title");
+        let mut key = key.clone();
+        key.style.bold = Some(true);
+        let message = photon_game::text::Component::translatable_with(
+            "tutorial.socialInteractions.description",
+            vec![key],
+        );
+        let words = TutorialWords {
+            title: &title,
+            message: Some(&message),
+            progressable: true,
+            time_to_display_ms: 8000,
+        };
+        let toast = TutorialToast::new(&env, TutorialIcon::SocialInteractions, &words);
+        self.layers.toasts.add(Box::new(toast));
+    }
+
+    /// The social interactions toast is hidden once the screen is opened with its key.
+    pub fn hide_social_interactions_toast(&mut self) {
+        let icon = photon_gui::toasts::TutorialIcon::SocialInteractions;
+        if let Some(toast) = self.layers.toasts.tutorial_mut(icon) {
+            toast.hide();
+        }
+    }
+
     /// `Hud.showNowPlayingToast` and `hideNowPlayingToast` as the music manager asked.
     pub fn music_toast_requests(&mut self, requests: Vec<bool>, display_time: f64) {
         for show in requests {

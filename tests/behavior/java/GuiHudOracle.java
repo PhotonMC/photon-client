@@ -134,6 +134,7 @@ class GuiHudOracle extends GuiCommandOracle {
             colour.setInt(null, -1);
             var manager = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
             var events = new JsonArray();
+            net.minecraft.client.gui.components.toasts.TutorialToast[] tutorial = {null};
             for (var eventElement : row.getAsJsonArray("events")) {
                 var event = eventElement.getAsJsonObject();
                 var out = new JsonObject();
@@ -177,6 +178,16 @@ class GuiHudOracle extends GuiCommandOracle {
                         addItem.setAccessible(true);
                         addItem.invoke(toast, stack.apply(event.get("station")), stack.apply(event.get("result")));
                     }
+                    case "tutorial" -> {
+                        var icons = net.minecraft.client.gui.components.toasts.TutorialToast.Icons.values();
+                        tutorial[0] = new net.minecraft.client.gui.components.toasts.TutorialToast(minecraft.font,
+                            icons[event.get("icon").getAsInt()], Component.literal(event.get("title").getAsString()),
+                            event.get("message").isJsonNull() ? null : Component.literal(event.get("message").getAsString()),
+                            event.get("progressable").getAsBoolean(), event.get("time_ms").getAsInt());
+                        manager.addToast(tutorial[0]);
+                    }
+                    case "tutorial_progress" -> tutorial[0].updateProgress(event.get("value").getAsFloat());
+                    case "tutorial_hide" -> tutorial[0].hide();
                     case "force_hide" -> net.minecraft.client.gui.components.toasts.SystemToast.forceHide(manager,
                         systemId.apply(event.get("id").getAsString()));
                     case "note_colours" -> {

@@ -45,6 +45,8 @@ pub struct Options {
     pub language_code: String,
     /// `lastServer` (`lastMpIp`): the address the direct connection last had.
     pub last_server: String,
+    /// `Options.joinedFirstServer`: the social interactions toast has been shown.
+    pub joined_first_server: bool,
     pub chat_visibility: ChatVisibility,
     pub chat_opacity: f64,
     /// `screenEffectScale`, 0 to 1: how far nausea and portals distort the view.
@@ -96,6 +98,7 @@ impl Default for Options {
             render_distance: 12,
             language_code: "en_us".to_owned(),
             last_server: String::new(),
+            joined_first_server: false,
             chat_visibility: ChatVisibility::Full,
             chat_opacity: 1.0,
             screen_effect_scale: 1.0,

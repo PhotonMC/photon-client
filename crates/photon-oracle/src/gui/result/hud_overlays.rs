@@ -126,17 +126,64 @@ fn add_advancement_toast(
     Ok(())
 }
 
+/// A tutorial toast event: the toast is made and kept for the events that follow, which move its
+/// progress or hide it.
+fn tutorial_event(
+    manager: &mut photon_gui::toasts::ToastManager,
+    event: &Value,
+    env: &photon_gui::toasts::ToastEnv<'_>,
+) -> Result<(), String> {
+    use photon_game::text::Component;
+    use photon_gui::toasts::{TutorialIcon, TutorialToast, TutorialWords};
+    let icon = [
+        TutorialIcon::MovementKeys,
+        TutorialIcon::Mouse,
+        TutorialIcon::Tree,
+        TutorialIcon::RecipeBook,
+        TutorialIcon::WoodenPlanks,
+        TutorialIcon::SocialInteractions,
+        TutorialIcon::RightClick,
+    ][event["icon"].as_u64().ok_or("icon")? as usize];
+    match event["do"].as_str().unwrap_or_default() {
+        "tutorial" => {
+            let title = Component::literal(event["title"].as_str().ok_or("title")?);
+            let message = event["message"].as_str().map(Component::literal);
+            let words = TutorialWords {
+                title: &title,
+                message: message.as_ref(),
+                progressable: event["progressable"].as_bool().ok_or("progressable")?,
+                time_to_display_ms: event["time_ms"].as_i64().ok_or("time_ms")? as i32,
+            };
+            manager.add(Box::new(TutorialToast::new(env, icon, &words)));
+        }
+        "tutorial_progress" => {
+            let value = event["value"].as_f64().ok_or("value")? as f32;
+            manager
+                .tutorial_mut(icon)
+                .ok_or("no tutorial toast")?
+                .update_progress(value);
+        }
+        _ => manager
+            .tutorial_mut(icon)
+            .ok_or("no tutorial toast")?
+            .hide(),
+    }
+    Ok(())
+}
+
 /// The toast a packet asks for: an advancement's or a recipe's.
 fn add_packet_toast(
     manager: &mut photon_gui::toasts::ToastManager,
     event: &Value,
     env: &photon_gui::toasts::ToastEnv<'_>,
 ) -> Result<(), String> {
-    if event["do"] == "recipe" {
-        add_recipe_toast(manager, event, env);
-        Ok(())
-    } else {
-        add_advancement_toast(manager, event, env)
+    match event["do"].as_str().unwrap_or_default() {
+        "recipe" => {
+            add_recipe_toast(manager, event, env);
+            Ok(())
+        }
+        "advancement" => add_advancement_toast(manager, event, env),
+        _ => tutorial_event(manager, event, env),
     }
 }
 
@@ -178,7 +225,9 @@ fn toast_event(
             manager.add_or_update_system(id, env, (&title, message.as_ref()));
         }
         "force_hide" => manager.force_hide_system(id),
-        "advancement" | "recipe" => add_packet_toast(manager, event, env)?,
+        "advancement" | "recipe" | "tutorial" | "tutorial_progress" | "tutorial_hide" => {
+            add_packet_toast(manager, event, env)?;
+        }
         "note_colours" => {
             let ticks = event["ticks"].as_array().ok_or("ticks")?;
             let colours: Vec<i32> = ticks

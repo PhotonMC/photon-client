@@ -177,7 +177,7 @@ impl Options {
             | Key::MusicToast
             | Key::SoundCategory(_) => self.read_sound(key, &json),
             Key::Lang => text.clone_into(&mut self.language_code),
-            Key::LastServer => text.clone_into(&mut self.last_server),
+            Key::LastServer | Key::JoinedFirstServer => self.read_server(key, text, boolean()),
             Key::ChatVisibility => {
                 if let Json::Number(number) = json {
                     // `ByIdMap` wraps an id out of range.
@@ -285,6 +285,23 @@ impl Options {
         .to_string()
     }
 
+    /// The options about servers: the last one joined, and whether one was joined at all.
+    fn read_server(&mut self, key: Key, text: &str, flag: Option<bool>) {
+        if key == Key::LastServer {
+            text.clone_into(&mut self.last_server);
+        } else {
+            self.joined_first_server = flag.unwrap_or(self.joined_first_server);
+        }
+    }
+
+    fn server_state(&self, key: Key) -> String {
+        if key == Key::LastServer {
+            self.last_server.clone()
+        } else {
+            self.joined_first_server.to_string()
+        }
+    }
+
     /// The value the file holds for an option.
     pub(super) fn write(&self, key: Key) -> String {
         match key {
@@ -298,7 +315,7 @@ impl Options {
             Key::SaveChatDrafts | Key::BackgroundForChatOnly => self.chat_flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
-            Key::LastServer => self.last_server.clone(),
+            Key::LastServer | Key::JoinedFirstServer => self.server_state(key),
             Key::ChatVisibility => self.chat_visibility.id().to_string(),
             Key::MouseSensitivity
             | Key::ChatOpacity
