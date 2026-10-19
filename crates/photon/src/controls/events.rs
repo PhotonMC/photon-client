@@ -241,27 +241,6 @@ impl Controls {
         Ok(())
     }
 
-    /// The modifier keys held (control, the command key on macOS, F3 for the debug keys).
-    fn track_modifiers(&mut self, key: glfw::Key, action: glfw::Action, reduced_debug_info: bool) {
-        let control_keys: [glfw::Key; 2] = if cfg!(target_os = "macos") {
-            [glfw::Key::LeftSuper, glfw::Key::RightSuper]
-        } else {
-            [glfw::Key::LeftControl, glfw::Key::RightControl]
-        };
-        if control_keys.contains(&key) {
-            self.mods.control = action != glfw::Action::Release;
-        }
-        if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
-            self.mods.ctrl = action != glfw::Action::Release;
-        }
-        // `key.debug.modifier`.
-        if key == glfw::Key::F3 {
-            self.debug.key(action);
-        } else if action != glfw::Action::Release && !self.any_screen_open() {
-            self.debug.combination(key, reduced_debug_info);
-        }
-    }
-
     /// The screens and dialogs over the game that take an event whole, in the order they stack:
     /// what handled it, or the event back.
     fn modal_event(
@@ -403,29 +382,7 @@ impl Controls {
                 _,
                 glfw::Action::Press | glfw::Action::Repeat,
                 modifiers,
-            ) => {
-                let menu = session.active_menu().clone();
-                let mods = KeyMods {
-                    control: modifiers.contains(glfw::Modifiers::Control),
-                    shift: modifiers.contains(glfw::Modifiers::Shift),
-                    command: modifiers.contains(glfw::Modifiers::Super),
-                };
-                match screen.key_pressed(key, mods, &menu, &mut WindowClipboard(surface)) {
-                    KeyResult::Close => {
-                        close_inventory(
-                            session,
-                            surface,
-                            &mut self.screen,
-                            &mut self.creative_tab,
-                        )?;
-                        self.captured = true;
-                        self.last_cursor = None;
-                    }
-                    KeyResult::Actions(actions) => {
-                        run_actions(session, &mut self.screen, actions)?;
-                    }
-                }
-            }
+            ) => self.screen_key_press(key, modifiers, session, surface)?,
             glfw::WindowEvent::Key(..) => screen.key_released(),
             glfw::WindowEvent::Char(character) => screen.char_typed(character),
             glfw::WindowEvent::MouseButton(button, action, modifiers) => {

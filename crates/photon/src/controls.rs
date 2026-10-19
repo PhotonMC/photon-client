@@ -316,6 +316,9 @@ mod sign;
 mod skin;
 
 mod advancements;
+#[cfg(test)]
+mod debug_tests;
+mod screen_keys;
 mod social;
 mod stats;
 mod turn;
