@@ -470,3 +470,6 @@ fn last_options() -> Vec<(u8, Build)> {
         ),
     ]
 }
+
+#[cfg(test)]
+mod tests;

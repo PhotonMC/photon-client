@@ -12,6 +12,11 @@ impl Gui {
         frame: &mut photon_render::gui::GuiFrame,
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
     ) {
+        // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
+        // parent).
+        if controls.link_confirm.is_some() {
+            return;
+        }
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         if let Some(open) = controls.advancements.as_mut() {
             if open.screen.size() != gui_size {
