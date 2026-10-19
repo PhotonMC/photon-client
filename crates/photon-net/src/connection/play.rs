@@ -43,6 +43,7 @@ mod recipes;
 mod reconfigure;
 mod signs;
 mod state;
+mod traffic;
 
 pub(super) const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
 

@@ -19,6 +19,11 @@ mod world;
 pub(super) trait ClientboundPacket: Send {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError>;
 
+    /// Whether this is a bundle's delimiter, which `Connection` joins into one packet.
+    fn is_bundle_delimiter(&self) -> bool {
+        false
+    }
+
     /// Whether loading may be over once the packet is handled.
     fn checks_loading(&self) -> bool {
         true
@@ -46,6 +51,9 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             blocks::DECODERS,
             entity::DECODERS,
             session::DECODERS,
+            &[(PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID, |_, _| {
+                Ok(Box::new(BundleDelimiter))
+            })],
         ]
         .concat()
         .into_iter()
@@ -96,6 +104,19 @@ pub(super) fn failed(error: ConnectionError) -> Incoming {
     Box::new(Failed(error))
 }
 
+/// `ClientboundBundleDelimiterPacket`: it only marks where a bundle begins and ends.
+struct BundleDelimiter;
+
+impl ClientboundPacket for BundleDelimiter {
+    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+
+    fn is_bundle_delimiter(&self) -> bool {
+        true
+    }
+}
+
 /// A packet that did not parse and is dropped.
 struct Ignored;
 
@@ -119,6 +140,9 @@ impl PlaySession {
     /// A packet from the reader thread, applied to the client's state.
     pub(super) fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
         let checks_loading = packet.checks_loading();
+        self.link
+            .traffic
+            .received_packet(packet.is_bundle_delimiter());
         packet.handle(self)?;
         if checks_loading {
             self.maybe_finish_loading()?;

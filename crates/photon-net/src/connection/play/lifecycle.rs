@@ -57,12 +57,19 @@ impl PlaySession {
             .map_or(AIR_ITEM, |stack| stack.item_registry_id())
     }
 
+    /// `MultiPlayerGameMode.tick`: the carried item is sent if it changed, then the connection ticks.
+    fn tick_game_mode(&mut self) -> Result<(), ConnectionError> {
+        self.ensure_has_sent_carried_item()?;
+        self.link.traffic.tick(|| self.link.writer.take_sent());
+        Ok(())
+    }
+
     /// One client tick: the local player, its packets, then the tick end.
     pub fn tick(&mut self, keys: Input) -> Result<(), ConnectionError> {
         // `Minecraft.tick`: the level's tick rate manager first.
         self.level_info.tick_rate.tick();
         // The game mode's tick runs before the player moves.
-        self.ensure_has_sent_carried_item()?;
+        self.tick_game_mode()?;
         if self.local.loaded {
             self.local.drop_spam = (self.local.drop_spam - 1).max(0);
         }

@@ -491,6 +491,15 @@ class GuiHudOracle extends GuiCommandOracle {
                 : java.util.Optional.of(new com.mojang.blaze3d.systems.GpuSurface.Configuration(854, 480,
                     com.mojang.blaze3d.systems.GpuSurface.PresentMode.valueOf(present))));
             MovementOracle.setField(minecraft, "windowSurface", surface);
+            // The server line: the brand the server told, what the connection counted and the tick rate.
+            var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
+            MovementOracle.setField(connection, "averageSentPackets", Oracle.f32(row, "sent"));
+            MovementOracle.setField(connection, "averageReceivedPackets", Oracle.f32(row, "received"));
+            MovementOracle.setField(local.connection, "connection", connection);
+            MovementOracle.setField(local.connection, "serverBrand",
+                row.get("brand").isJsonNull() ? null : row.get("brand").getAsString());
+            scene.level().tickRateManager().setFrozen(row.get("frozen").getAsBoolean());
+            scene.level().tickRateManager().setFrozenTicksToRun(row.get("stepping").getAsBoolean() ? 3 : 0);
             MovementOracle.setField(local, "reducedDebugInfo", row.get("reduced").getAsBoolean());
             local.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"),
                 Oracle.f32(row, "yaw"), Oracle.f32(row, "pitch"));
@@ -501,7 +510,7 @@ class GuiHudOracle extends GuiCommandOracle {
             var statuses = new java.util.HashMap<>(
                 net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(
                     net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT));
-            statuses.keySet().removeIf(id -> !java.util.Set.of("fps", "game_version", "player_position",
+            statuses.keySet().removeIf(id -> !java.util.Set.of("fps", "tps", "game_version", "player_position",
                 "player_section_position", "3d_crosshair").contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());

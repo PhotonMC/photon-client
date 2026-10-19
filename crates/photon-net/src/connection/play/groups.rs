@@ -17,6 +17,8 @@ pub(super) struct Link {
     /// the connection said (`onDisconnect`).
     pub(super) disconnect: Option<photon_game::text::Component>,
     pub(super) warned: Option<String>,
+    /// `Connection`'s packet counts and their averages.
+    pub(super) traffic: super::traffic::Traffic,
 }
 
 /// The local player and what the server last said of it.
@@ -176,6 +178,7 @@ impl Link {
             client_information: photon_protocol::configuration::ClientInformation::default(),
             disconnect: None,
             warned: None,
+            traffic: super::traffic::Traffic::default(),
         }
     }
 }

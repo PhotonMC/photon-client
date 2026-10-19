@@ -6,7 +6,7 @@ mod format;
 mod layout;
 mod list;
 
-pub use entries::{CameraEntity, FrameStats, Input, PresentMode};
+pub use entries::{CameraEntity, FrameStats, Input, PresentMode, ServerInfo};
 pub use format::fixed;
 pub use layout::{Line, columns};
 pub use list::{EntryList, Status};

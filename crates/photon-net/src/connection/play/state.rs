@@ -106,6 +106,25 @@ impl PlaySession {
         self.level_info.hashed_seed
     }
 
+    /// `Connection.getAverageSentPackets` and `getAverageReceivedPackets`.
+    pub fn average_packets(&self) -> (f32, f32) {
+        (
+            self.link.traffic.average_sent(),
+            self.link.traffic.average_received(),
+        )
+    }
+
+    /// The tick rate manager's frozen state: whether it is stepping forward, and whether frozen.
+    pub fn tick_rate_status(&self) -> (bool, bool) {
+        let rate = &self.level_info.tick_rate;
+        (rate.frozen_ticks_to_run() > 0, rate.is_frozen())
+    }
+
+    /// `ClientPacketListener.serverBrand`.
+    pub fn server_brand(&self) -> Option<&str> {
+        self.state.server_brand.as_deref()
+    }
+
     /// `Player.isReducedDebugInfo`: the server asked for less on the debug screen.
     pub fn reduced_debug_info(&self) -> bool {
         self.local.reduced_debug_info

@@ -58,6 +58,19 @@ pub struct FrameStats {
     pub present_mode: Option<PresentMode>,
 }
 
+/// What the connection says of the server.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ServerInfo {
+    /// `ClientPacketListener.serverBrand`, none until the server has said it.
+    pub brand: Option<String>,
+    /// The tick rate manager: stepping forward, frozen.
+    pub stepping: bool,
+    pub frozen: bool,
+    /// `Connection.getAverageSentPackets` and `getAverageReceivedPackets`.
+    pub sent: f32,
+    pub received: f32,
+}
+
 /// What the entries read.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Input {
@@ -65,12 +78,14 @@ pub struct Input {
     pub version: String,
     pub camera: Option<CameraEntity>,
     pub frame: FrameStats,
+    pub server: Option<ServerInfo>,
 }
 
 /// The lines of one entry's `display`.
 pub fn display(id: &str, input: &Input) -> Vec<Line> {
     match id {
         "fps" => vec![Line::Priority(fps_line(&input.frame))],
+        "tps" => input.server.as_ref().map(tps).unwrap_or_default(),
         "game_version" => vec![Line::Priority(input.version.clone())],
         "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),
         "player_section_position" => input.camera.as_ref().map(section).unwrap_or_default(),
@@ -87,6 +102,24 @@ fn fps_line(frame: &FrameStats) -> String {
     };
     let mode = frame.present_mode.map_or("", PresentMode::name);
     format!("{} fps T: {limit}{mode}", frame.fps)
+}
+
+/// `DebugEntryTps` for a server that is not the integrated one: its brand, whether the tick rate is
+/// frozen, and the packets a second each way.
+fn tps(server: &ServerInfo) -> Vec<Line> {
+    let status = if server.stepping {
+        " (frozen - stepping)"
+    } else if server.frozen {
+        " (frozen)"
+    } else {
+        ""
+    };
+    vec![Line::Regular(format!(
+        "\"{}\" server{status}, {} tx, {} rx",
+        server.brand.as_deref().unwrap_or("null"),
+        fixed(f64::from(server.sent), 0),
+        fixed(f64::from(server.received), 0)
+    ))]
 }
 
 const POSITION_GROUP: &str = "minecraft:position";

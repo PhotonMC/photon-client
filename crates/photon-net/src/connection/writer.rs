@@ -3,6 +3,7 @@
 
 use std::io::{self, Write};
 use std::net::TcpStream;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -23,6 +24,8 @@ pub(super) struct PacketWriter {
     failure: Failure,
     stream: TcpStream,
     thread: Option<JoinHandle<()>>,
+    /// `Connection.sentPackets`: the packets queued since the count was last taken.
+    sent: AtomicU32,
 }
 
 impl PacketWriter {
@@ -39,13 +42,20 @@ impl PacketWriter {
             failure,
             stream,
             thread: Some(thread),
+            sent: AtomicU32::new(0),
         })
     }
 
     /// Queue a framed packet. A write that failed before is reported here.
     pub(super) fn send(&self, framed: Vec<u8>) -> Result<(), ConnectionError> {
         self.check()?;
+        self.sent.fetch_add(1, Ordering::Relaxed);
         self.queue(Job::Packet(framed))
+    }
+
+    /// The packets sent since this was last asked, which starts the count again.
+    pub(super) fn take_sent(&self) -> u32 {
+        self.sent.swap(0, Ordering::Relaxed)
     }
 
     /// Wait until everything queued is written, for what must reach the server before the

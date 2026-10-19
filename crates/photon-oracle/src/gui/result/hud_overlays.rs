@@ -193,17 +193,13 @@ pub(super) fn toasts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
     Ok(json!({"label": row["label"], "events": events}))
 }
 
-/// `hud_debug_overlay`: the overlay's lines and their draw for the default profile.
-pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_gui::hud::debug::{
-        self, CameraEntity, EntryList, FooterKeys, FrameStats, Input, PresentMode,
-    };
+/// What the entries read, from a `hud_debug_overlay` row.
+fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
+    use photon_gui::hud::debug::{self, CameraEntity, FrameStats, Input, PresentMode, ServerInfo};
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
-    let mut list = EntryList::default();
-    list.set_overlay_visible(flag("overlay"));
     let launched = row["launched"].as_str().ok_or("launched")?;
-    let input = Input {
+    Ok(Input {
         version: debug::version_line("26.2", launched),
         frame: FrameStats {
             fps: int("fps"),
@@ -217,6 +213,13 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
                 _ => None,
             },
         },
+        server: Some(ServerInfo {
+            brand: row["brand"].as_str().map(str::to_owned),
+            stepping: flag("stepping"),
+            frozen: flag("frozen"),
+            sent: crate::f32_field(row, "sent")?,
+            received: crate::f32_field(row, "received")?,
+        }),
         camera: Some(CameraEntity {
             position: (
                 crate::f64_field(row, "x")?,
@@ -227,7 +230,17 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
             pitch: crate::f32_field(row, "pitch")?,
             dimension: "minecraft:overworld".to_owned(),
         }),
-    };
+    })
+}
+
+/// `hud_debug_overlay`: the overlay's lines and their draw for the default profile.
+pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_gui::hud::debug::{self, EntryList, FooterKeys};
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+    let mut list = EntryList::default();
+    list.set_overlay_visible(flag("overlay"));
+    let input = debug_input(row)?;
     let footer = list.is_overlay_visible().then(|| {
         debug::footer(
             &FooterKeys::defaults(),

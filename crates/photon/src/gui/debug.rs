@@ -1,7 +1,7 @@
 //! The debug overlay F3 shows (`DebugScreenOverlay`), laid out from the camera entity.
 
 use super::*;
-use photon_gui::hud::debug::{self, CameraEntity, FooterKeys, Input};
+use photon_gui::hud::debug::{self, CameraEntity, FooterKeys, Input, ServerInfo};
 
 /// The two columns of the overlay's lines, or none when nothing is shown: no entry is on, or the
 /// interface is hidden with no screen over it.
@@ -35,6 +35,17 @@ impl Gui {
             },
             camera,
             frame: controls.debug.frame,
+            server: Some({
+                let (sent, received) = session.average_packets();
+                let (stepping, frozen) = session.tick_rate_status();
+                ServerInfo {
+                    brand: session.server_brand().map(str::to_owned),
+                    stepping,
+                    frozen,
+                    sent,
+                    received,
+                }
+            }),
         };
         let footer = list.is_overlay_visible().then(|| {
             debug::footer(
