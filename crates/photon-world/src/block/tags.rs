@@ -33,6 +33,11 @@ impl BlockTags {
         ))
     }
 
+    /// The blocks of a tag, by registry index.
+    pub fn members(&self, tag: &str) -> impl Iterator<Item = usize> + '_ {
+        self.0.get(tag).into_iter().flatten().copied()
+    }
+
     /// `BlockState.is(tag)` for a block, by registry index.
     pub fn contains(&self, block: usize, tag: &str) -> bool {
         self.0

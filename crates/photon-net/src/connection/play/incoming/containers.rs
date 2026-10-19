@@ -112,6 +112,7 @@ impl ClientboundPacket for Cooldown {
 impl ClientboundPacket for ContainerSetSlot {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let packet = self.0;
+        session.note_received_item(packet.item.as_ref());
         session.world.apply_local_player_container_slot(
             packet.container_id,
             packet.state_id,
@@ -124,6 +125,7 @@ impl ClientboundPacket for ContainerSetSlot {
 
 impl ClientboundPacket for SetCursorItem {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.note_received_item(self.0.item.as_ref());
         session
             .world
             .apply_local_player_carried_item(self.0.item.as_ref());
@@ -133,6 +135,7 @@ impl ClientboundPacket for SetCursorItem {
 
 impl ClientboundPacket for SetPlayerInventory {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.note_received_item(self.0.item.as_ref());
         session
             .world
             .apply_local_player_inventory_slot(self.0.slot, self.0.item.as_ref());
@@ -141,6 +144,13 @@ impl ClientboundPacket for SetPlayerInventory {
 }
 
 impl PlaySession {
+    /// `Tutorial.onGetItem`: an item the server put in a slot.
+    fn note_received_item(&mut self, item: Option<&photon_world::ClientItemStackState>) {
+        if let Some(item) = item {
+            self.local.received_items.push(item.item_registry_id().0);
+        }
+    }
+
     /// `handleMountScreenOpen`: what the screen needs of the entity it is for.
     fn open_mount_screen(&mut self, packet: &MountScreenOpen) {
         use photon_game::menus::container::{MOUNT_MENU_TYPE, Mount, MountEntity, MountFamily};

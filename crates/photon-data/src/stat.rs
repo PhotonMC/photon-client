@@ -29,6 +29,14 @@ pub enum Formatter {
     Time,
 }
 
+/// The id of the stat type with this name.
+pub fn type_id(name: &str) -> Option<i32> {
+    STAT_TYPES
+        .iter()
+        .position(|own| *own == name)
+        .map(|id| id as i32)
+}
+
 /// The name of the stat type with this id (`minecraft:mined`).
 pub fn type_name(id: i32) -> Option<&'static str> {
     entry(&STAT_TYPES, id)

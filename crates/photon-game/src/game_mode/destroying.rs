@@ -5,6 +5,12 @@ impl GameMode {
         self.is_destroying
     }
 
+    /// The blocks being broken since this was last asked, with how far (`Tutorial.onDestroyBlock`):
+    /// 0 for a start, 1 for a finished or creative break, -1 for an abandoned one.
+    pub fn take_destroyed(&mut self) -> Vec<(photon_core::ids::BlockStateId, f32)> {
+        std::mem::take(&mut self.destroyed)
+    }
+
     pub fn destroy_progress(&self) -> f32 {
         self.destroy_progress
     }
@@ -137,6 +143,7 @@ impl GameMode {
             return false;
         }
         if ctx.instabuild() {
+            self.destroyed.push((ctx.state_at(pos), 1.0));
             self.predict(ctx, out, |_, ctx, sequence| {
                 destroy_block(ctx, pos);
                 Self::action(PlayerAction::StartDestroyBlock, pos, face, sequence)
@@ -152,6 +159,7 @@ impl GameMode {
                 ));
             }
             let state = ctx.state_at(pos);
+            self.destroyed.push((state, 0.0));
             self.predict(ctx, out, |game_mode, ctx, sequence| {
                 let not_air = !is_air(state);
                 if not_air && ctx.miner.destroy_progress(ctx.world, ctx.player, state) >= 1.0 {
@@ -175,6 +183,7 @@ impl GameMode {
         if !self.is_destroying {
             return;
         }
+        self.destroyed.push((ctx.state_at(self.destroy_pos), -1.0));
         out.push(Self::action(
             PlayerAction::AbortDestroyBlock,
             self.destroy_pos,
@@ -203,6 +212,7 @@ impl GameMode {
         }
         if ctx.instabuild() && ctx.within_border(pos) {
             self.destroy_delay = 5;
+            self.destroyed.push((ctx.state_at(pos), 1.0));
             self.predict(ctx, out, |_, ctx, sequence| {
                 destroy_block(ctx, pos);
                 Self::action(PlayerAction::StartDestroyBlock, pos, face, sequence)
@@ -222,6 +232,8 @@ impl GameMode {
             ctx.world.play_hit_sound(pos, state);
         }
         self.destroy_ticks += 1.0;
+        self.destroyed
+            .push((state, self.destroy_progress.clamp(0.0, 1.0)));
         if self.destroy_progress >= 1.0 {
             self.is_destroying = false;
             self.predict(ctx, out, |_, ctx, sequence| {

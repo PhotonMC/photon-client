@@ -41,6 +41,9 @@ pub(super) struct LocalState {
     pub(super) advancements: photon_game::advancements::ClientAdvancements,
     /// The advancements done by updates whose toasts the screen is yet to show.
     pub(super) pending_toasts: Vec<photon_game::toast::PendingToast>,
+    /// The items (registry ids) that container, cursor and inventory packets set since the
+    /// tutorial last looked (`Tutorial.onGetItem`).
+    pub(super) received_items: Vec<i32>,
     /// `LocalPlayer.getStats` (`StatsCounter`): what `AwardStats` last said, kept across respawns.
     pub(super) stats: std::collections::HashMap<StatKey, i32>,
     /// An `AwardStats` was handled since the statistics screen last looked.
@@ -207,6 +210,7 @@ impl Default for LocalState {
             reduced_debug_info: false,
             advancements: photon_game::advancements::ClientAdvancements::default(),
             pending_toasts: Vec::new(),
+            received_items: Vec::new(),
             stats: std::collections::HashMap::new(),
             stats_updated: false,
             show_death_screen: true,
