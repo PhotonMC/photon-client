@@ -197,6 +197,19 @@ impl Gui {
         processed
     }
 
+    /// `ChatListener.flushQueue`: every held message is shown now.
+    pub fn flush_chat_queue(
+        &mut self,
+        log: &mut ChatLog,
+        view: ChatView<'_>,
+    ) -> Vec<(Vec<u8>, bool)> {
+        let mut processed = Vec::new();
+        for event in self.chat_queue.flush() {
+            self.show_chat(event, log, view, &mut processed);
+        }
+        processed
+    }
+
     /// `ChatListener.queueSize`.
     pub fn chat_queue_size(&self) -> usize {
         self.chat_queue.size()

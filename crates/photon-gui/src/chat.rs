@@ -2,8 +2,8 @@
 //! over the HUD, and the box a line is typed into (`ChatScreen`).
 //!
 //! The chat's width, height, scale, opacity, background opacity and line
-//! spacing are the options' ([`ChatSettings`]). Not drawn: the chat queue
-//! and the prompt of a chat that the options disable.
+//! spacing are the options' ([`ChatSettings`]). Not drawn: the prompt of a
+//! chat that the options disable.
 pub mod queue;
 pub mod suggestions;
 
@@ -255,6 +255,8 @@ pub struct ChatLog {
     queue_size: u64,
     /// Clicks on the queue line the game has not yet answered.
     queue_accepts: u32,
+    /// F3+D pressed: the game flushes the queue and then clears the lines.
+    clear_requested: bool,
     settings: ChatSettings,
 }
 

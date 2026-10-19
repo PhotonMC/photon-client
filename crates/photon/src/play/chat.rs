@@ -42,6 +42,22 @@ impl Play {
         Ok(())
     }
 
+    /// F3+D, `ChatComponent.clearMessages`: the held messages are shown (and told to the
+    /// server), then the lines go.
+    pub(super) fn clear_chat(&mut self) -> Result<()> {
+        if !self.controls.chat_log.take_clear_request() {
+            return Ok(());
+        }
+        let view = ChatView {
+            focused: self.controls.chat.is_some(),
+            hidden: &self.controls.hidden_players,
+        };
+        let processed = self.gui.flush_chat_queue(&mut self.controls.chat_log, view);
+        self.controls.chat_log.clear();
+        self.sync_chat_queue();
+        self.acknowledge_chat(processed)
+    }
+
     /// The count the chat's queue line shows is the queue's own.
     fn sync_chat_queue(&mut self) {
         let size = self.gui.chat_queue_size() as u64;

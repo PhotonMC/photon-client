@@ -24,6 +24,22 @@ impl ChatLog {
         std::mem::take(&mut self.queue_accepts)
     }
 
+    /// F3+D (`ChatComponent.clearMessages`): the game flushes the held messages, then clears.
+    pub fn request_clear(&mut self) {
+        self.clear_requested = true;
+    }
+
+    pub fn take_clear_request(&mut self) -> bool {
+        std::mem::take(&mut self.clear_requested)
+    }
+
+    /// `ChatComponent.clearMessages` without the history: the lines and the pending deletions.
+    pub fn clear(&mut self) {
+        self.deletions.clear();
+        self.lines.clear();
+        self.messages.clear();
+    }
+
     /// Whether the line is drawn: the chat has lines and messages wait.
     pub(super) fn has_queue_line(&self) -> bool {
         self.queue_size > 0 && !self.lines.is_empty()
@@ -79,5 +95,29 @@ impl ChatLog {
         let colour = (((0.5 * text_opacity) * 255.0) as u32) << 24 | 0x00FF_FFFF;
         frame.styled_text(atlas, font, &runs, 0, top, colour, true);
         crate::text_hit::style_under(font, &runs, (0, top), hover?).cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_requests_are_taken_once() {
+        let mut log = ChatLog::default();
+        log.request_queue_accept();
+        log.request_queue_accept();
+        assert_eq!(log.take_queue_accepts(), 2);
+        assert_eq!(log.take_queue_accepts(), 0);
+        log.request_clear();
+        assert!(log.take_clear_request());
+        assert!(!log.take_clear_request());
+    }
+
+    #[test]
+    fn the_line_needs_lines_and_waiting_messages() {
+        let mut log = ChatLog::default();
+        log.set_queue_size(2);
+        assert!(!log.has_queue_line());
     }
 }

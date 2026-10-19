@@ -23,8 +23,16 @@ impl Controls {
         if key == glfw::Key::F3 {
             self.debug.key(action);
         } else if action != glfw::Action::Release && self.debug_key_unconsumed(key) {
-            self.debug.combination(key, reduced_debug_info);
+            self.debug_combination(key, reduced_debug_info);
         }
+    }
+
+    /// A key pressed that `handleDebugKeys` sees: F3 is marked used, and F3+D clears the chat.
+    fn debug_combination(&mut self, key: glfw::Key, reduced: bool) {
+        if key == glfw::Key::D && self.debug.down {
+            self.chat_log.request_clear();
+        }
+        self.debug.combination(key, reduced);
     }
 
     /// Whether a key pressed for the debug keys reaches `handleDebugKeys` before the screens have
@@ -58,7 +66,7 @@ impl Controls {
         let result = screen.key_pressed(key, mods, &menu, &mut WindowClipboard(surface));
         if !matches!(result, KeyResult::Close | KeyResult::Consumed(_)) && key != glfw::Key::Escape
         {
-            self.debug.combination(key, session.reduced_debug_info());
+            self.debug_combination(key, session.reduced_debug_info());
         }
         match result {
             KeyResult::Close => {

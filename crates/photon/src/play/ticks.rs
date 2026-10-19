@@ -259,7 +259,8 @@ impl Play {
                 &self.screen_assets,
             )?;
         }
-        self.accept_chat_queue()
+        self.accept_chat_queue()?;
+        self.clear_chat()
     }
 
     /// Saved options tell the server what the client is now.
