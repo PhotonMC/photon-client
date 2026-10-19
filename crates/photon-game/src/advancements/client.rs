@@ -111,11 +111,11 @@ pub enum Event {
 }
 
 /// What an update did that others look at.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Updated {
     /// The advancements done by this update whose toast is shown, in the order of the packet's
-    /// progress.
-    pub toasts: Vec<String>,
+    /// progress, each with what it shows as it was then (the toast holds the advancement).
+    pub toasts: Vec<(String, super::DisplayInfo)>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -191,18 +191,14 @@ impl ClientAdvancements {
             };
             let mut progress = AdvancementProgress::from_wire(criteria);
             progress.update(&node.advancement.requirements);
-            let toast = !packet.reset
-                && progress.is_done()
-                && packet.show_advancements
-                && node
-                    .advancement
-                    .display
-                    .as_ref()
-                    .is_some_and(|display| display.show_toast);
+            let toast = (!packet.reset && progress.is_done() && packet.show_advancements)
+                .then(|| node.advancement.display.clone())
+                .flatten()
+                .filter(|display| display.show_toast);
             self.progress.insert(id.clone(), progress);
             self.tell(Event::Progress(id.clone()));
-            if toast {
-                updated.toasts.push(id.clone());
+            if let Some(display) = toast {
+                updated.toasts.push((id.clone(), display));
             }
         }
         updated

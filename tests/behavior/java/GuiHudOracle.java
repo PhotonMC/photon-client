@@ -97,6 +97,8 @@ class GuiHudOracle extends GuiCommandOracle {
             var sounds = (RecordingSounds) unsafe.allocateInstance(RecordingSounds.class);
             set(sounds, "played", new java.util.ArrayList<String>());
             set(minecraft, "soundManager", sounds);
+            // An item is not drawn here: its resolver adds nothing.
+            set(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
             // The options' own change callbacks reach for the game's toast manager: set the values
             // under them.
             var musicState = net.minecraft.client.MusicToastDisplayState.valueOf(
@@ -155,6 +157,8 @@ class GuiHudOracle extends GuiCommandOracle {
                         systemId.apply(event.get("id").getAsString()),
                         text.apply(event.get("title").getAsString()),
                         event.get("message").isJsonNull() ? null : text.apply(event.get("message").getAsString()));
+                    case "advancement" -> manager.addToast(new net.minecraft.client.gui.components.toasts.AdvancementToast(
+                        advancementHolder(event.getAsJsonObject("advancement"))));
                     case "force_hide" -> net.minecraft.client.gui.components.toasts.SystemToast.forceHide(manager,
                         systemId.apply(event.get("id").getAsString()));
                     case "note_colours" -> {

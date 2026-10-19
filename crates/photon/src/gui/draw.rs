@@ -458,7 +458,7 @@ impl Gui {
         Self::draw_late_layers(
             &mut frame,
             (&self.atlas, &self.font, &self.lang),
-            &mut self.layers,
+            (&mut self.layers, &mut draw_item),
             (controls, &size, session),
         );
         let scale = size.gui_scale() as f32;

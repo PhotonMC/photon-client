@@ -3,6 +3,7 @@
 use serde_json::{Value, json};
 
 use super::gui;
+use crate::bits::f32_bits;
 
 fn system(id: &str, title: &str, message: Option<&str>) -> Value {
     json!({"do": "system", "id": id, "title": title, "message": message})
@@ -64,6 +65,7 @@ pub fn toasts() -> Value {
     let mut rows = system_rows();
     rows.extend(changed_rows());
     rows.extend(music_rows());
+    rows.extend(advancement_rows());
     let ticks: Vec<f64> = (0..400).map(|tick| f64::from(tick) + [0.0, 0.25, 0.5, 0.99][tick as usize % 4]).collect();
     rows.push(row("music-note-colours", &SETUP, vec![json!({"do": "note_colours", "ticks": ticks})]));
     gui("toasts", "toasts", rows)
@@ -76,6 +78,12 @@ fn system_rows() -> Vec<Value> {
     let mut events = vec![system("PERIODIC_NOTIFICATION", "Hello", Some("A message of the system"))];
     events.extend(run(&lifetime));
     rows.push(row("one-toast", &SETUP, events));
+    let mut events = vec![system("WORLD_BACKUP", "", Some("an empty title"))];
+    events.extend(run(&[0, 700, 1300]));
+    rows.push(row("empty-system-title", &SETUP, events));
+    let mut events = vec![system("WORLD_BACKUP", "", None)];
+    events.extend(run(&[0, 700, 1300]));
+    rows.push(row("empty-system-words", &SETUP, events));
     let mut events = vec![system("WORLD_BACKUP", "Only a title", None)];
     events.extend(run(&[0, 300, 600, 601, 9000]));
     rows.push(row("title-only", &SETUP, events));
@@ -156,4 +164,56 @@ fn music_rows() -> Vec<Value> {
 
 fn song_setup() -> Setup {
     Setup { song: Some("minecraft:music/game/aerie"), ..SETUP }
+}
+
+/// An advancement toast event: a title of the given kind (0 task, 1 challenge, 2 goal).
+fn advancement(id: &str, title: &str, frame: i32) -> Value {
+    json!({"do": "advancement", "advancement": {
+        "id": id, "parent": null, "requirements": [],
+        "display": {"title": title, "description": "d", "frame": frame, "show_toast": true, "hidden": false,
+            "x": f32_bits(0.0), "y": f32_bits(0.0)},
+    }})
+}
+
+/// Advancement toasts: each kind with a title of one line, titles of none, two and three lines
+/// across the fade at 1500 ms and the one that follows, the challenge's sound, the display time
+/// option, and several at once.
+fn advancement_rows() -> Vec<Value> {
+    let lifetime = [
+        0, 600, 601, 1300, 2099, 2100, 2101, 2250, 2399, 2400, 2401, 2500, 3000, 5599, 5600, 5601, 6199, 6200, 6201,
+        6900, 7201,
+    ];
+    let two = "An advancement title long enough for two lines";
+    let three = "An advancement title that is long enough to need three lines at the width a toast gives it";
+    let mut rows = Vec::new();
+    for (name, title, frame) in [
+        ("task", "Stone Age", 0),
+        ("challenge", "Return to Sender", 1),
+        ("goal", "Monster Hunter", 2),
+        ("empty-title", "", 0),
+        ("two-lines", two, 0),
+        ("three-lines-challenge", three, 1),
+    ] {
+        let mut events = vec![advancement("minecraft:test/toast", title, frame)];
+        events.extend(run(&lifetime));
+        rows.push(row(&format!("advancement-{name}"), &SETUP, events));
+    }
+    for (name, time) in [("least", 0.5), ("tenfold", 10.0)] {
+        let setup = Setup { display_time: time, ..SETUP };
+        let mut events = vec![advancement("minecraft:test/toast", two, 1)];
+        events.extend(run(&[0, 600, 601, 2100, 2800, 2801, 3400, 3401, 6000, 20_000, 51_000, 51_700]));
+        rows.push(row(&format!("advancement-display-time-{name}"), &setup, events));
+    }
+    let mut events = vec![advancement("minecraft:test/x", "Sound", 1), advancement("minecraft:test/y", "Once", 1)];
+    events.extend(run(&[0, 700, 1300]));
+    rows.push(row("advancement-two-challenges", &SETUP, events));
+    let mut events = vec![
+        advancement("minecraft:test/a", "First", 0),
+        advancement("minecraft:test/b", two, 1),
+        system("PERIODIC_NOTIFICATION", "Between", Some("a system toast")),
+        advancement("minecraft:test/c", "Third", 2),
+    ];
+    events.extend(run(&[0, 700, 1300, 2300, 6000, 6700, 7300, 8000]));
+    rows.push(row("advancement-several", &SETUP, events));
+    rows
 }

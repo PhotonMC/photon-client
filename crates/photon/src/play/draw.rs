@@ -16,6 +16,9 @@ impl Play {
             .sound
             .as_ref()
             .and_then(|sound| self.music.current_song(sound));
+        let done = self.session.take_advancement_toasts();
+        self.gui
+            .add_advancement_toasts(done, self.controls.options.notification_display_time);
         self.gui
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }

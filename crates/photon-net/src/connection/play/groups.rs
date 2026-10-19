@@ -40,7 +40,7 @@ pub(super) struct LocalState {
     /// `ClientAdvancements`: the tree the server told of and how far the player is.
     pub(super) advancements: photon_game::advancements::ClientAdvancements,
     /// The advancements done by updates whose toasts the screen is yet to show.
-    pub(super) advancement_toasts: Vec<String>,
+    pub(super) advancement_toasts: Vec<(String, photon_game::advancements::DisplayInfo)>,
     /// `LocalPlayer.getStats` (`StatsCounter`): what `AwardStats` last said, kept across respawns.
     pub(super) stats: std::collections::HashMap<StatKey, i32>,
     /// An `AwardStats` was handled since the statistics screen last looked.

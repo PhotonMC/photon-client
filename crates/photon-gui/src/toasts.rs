@@ -1,6 +1,7 @@
 //! The toasts (`ToastManager`): small notices that slide in from the corner of the screen, wait,
 //! and slide out; the system notices and the now-playing music one.
 
+mod advancement;
 mod now_playing;
 mod system;
 
@@ -9,8 +10,9 @@ use std::collections::VecDeque;
 
 use photon_game::text::Lang;
 use photon_render::gui::font::Font;
-use photon_render::gui::{GuiAtlas, GuiFrame};
+use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
+pub use advancement::AdvancementToast;
 pub use now_playing::{MusicNotes, NowPlayingToast, music_note_colour};
 pub use system::{SystemToast, SystemToastId};
 
@@ -64,6 +66,10 @@ pub trait Toast: Any {
 
     /// `extractRenderState`, at the toast's own corner.
     fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, env: &ToastEnv<'_>);
+
+    /// The items a toast draws, at its corner as it has slid (`fakeItem`, which the frame keeps
+    /// apart from the sprites and text).
+    fn draw_items(&self, _frame: &mut GuiFrame, _item: &mut ItemDrawer<'_>, _origin: (f32, f32)) {}
 
     /// `xPos`: where its left edge is, with `visible_portion` of it slid in.
     fn x_pos(&self, screen_width: i32, visible_portion: f32, env: &ToastEnv<'_>) -> f32 {
@@ -171,7 +177,13 @@ impl<T: Toast + ?Sized> ToastInstance<T> {
         }
     }
 
-    fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, screen_width: i32, env: &ToastEnv<'_>) {
+    fn draw(
+        &self,
+        (frame, item): (&mut GuiFrame, &mut ItemDrawer<'_>),
+        atlas: &GuiAtlas,
+        screen_width: i32,
+        env: &ToastEnv<'_>,
+    ) {
         if self.finished {
             return;
         }
@@ -182,6 +194,7 @@ impl<T: Toast + ?Sized> ToastInstance<T> {
             self.toast.y_pos(self.first_slot, env),
         );
         frame.scale_from(first, 1.0, translate);
+        self.toast.draw_items(frame, item, translate);
     }
 }
 
@@ -276,7 +289,7 @@ impl ToastManager {
     /// hidden; the music toast is also left out under the pause screen, which draws it itself.
     pub fn draw(
         &self,
-        frame: &mut GuiFrame,
+        (frame, item): (&mut GuiFrame, &mut ItemDrawer<'_>),
         atlas: &GuiAtlas,
         screen_width: i32,
         (hidden, music_toast, pause_screen): (bool, MusicToast, bool),
@@ -290,13 +303,13 @@ impl ToastManager {
             ..*env
         };
         for instance in &self.visible {
-            instance.draw(frame, atlas, screen_width, env);
+            instance.draw((frame, &mut *item), atlas, screen_width, env);
         }
         if music_toast.render_toast()
             && !pause_screen
             && let Some(playing) = &self.now_playing
         {
-            playing.draw(frame, atlas, screen_width, env);
+            playing.draw((frame, item), atlas, screen_width, env);
         }
     }
 

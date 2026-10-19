@@ -112,6 +112,20 @@ struct ToastRow {
     pause_screen: bool,
 }
 
+/// An advancement toast event: the toast of the advancement the event holds.
+fn add_advancement_toast(
+    manager: &mut photon_gui::toasts::ToastManager,
+    event: &Value,
+    env: &photon_gui::toasts::ToastEnv<'_>,
+) -> Result<(), String> {
+    let shown = super::stats::advancement_from(&event["advancement"])?;
+    let display = shown.display.as_ref().ok_or("display")?;
+    manager.add(Box::new(photon_gui::toasts::AdvancementToast::new(
+        display, env,
+    )));
+    Ok(())
+}
+
 /// One toast event: the manager's answer, with the sounds it made and what it drew.
 fn toast_event(
     manager: &mut photon_gui::toasts::ToastManager,
@@ -132,6 +146,7 @@ fn toast_event(
             manager.add_or_update_system(id, env, (&title, message.as_ref()));
         }
         "force_hide" => manager.force_hide_system(id),
+        "advancement" => add_advancement_toast(manager, event, env)?,
         "note_colours" => {
             let ticks = event["ticks"].as_array().ok_or("ticks")?;
             let colours: Vec<i32> = ticks
@@ -152,7 +167,15 @@ fn toast_event(
                 ..GuiFrame::default()
             };
             let shown = (row.hidden, row.music, row.pause_screen);
-            manager.draw(&mut frame, &ctx.atlas, row.width, shown, env);
+            let mut no_items =
+                |_: &photon_world::ClientItemStackState, _: f32, _: f32, _: &mut Vec<_>| 0;
+            manager.draw(
+                (&mut frame, &mut no_items),
+                &ctx.atlas,
+                row.width,
+                shown,
+                env,
+            );
             entry["ops"] = json!(gui_ops(&frame.log.take().unwrap_or_default()));
         }
         other => return Err(format!("unknown toast event {other}")),

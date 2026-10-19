@@ -313,6 +313,7 @@ pub(crate) fn glyph_quads(
     quads
 }
 
+mod items;
 mod overlay;
 mod text;
 mod texture;

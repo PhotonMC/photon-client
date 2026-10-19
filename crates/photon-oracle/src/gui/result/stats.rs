@@ -86,7 +86,9 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
 }
 
 /// One advancement from its JSON (the shape the oracle builds the game's from).
-fn advancement_from(json: &Value) -> Result<photon_game::advancements::Advancement, String> {
+pub(super) fn advancement_from(
+    json: &Value,
+) -> Result<photon_game::advancements::Advancement, String> {
     use photon_game::advancements::{Advancement, AdvancementType, DisplayInfo};
     use photon_game::text::Component;
     let display = match json.get("display").filter(|display| !display.is_null()) {
@@ -198,7 +200,12 @@ pub(super) fn client_advancements_case(ctx: &mut GuiContext, row: &Value) -> Res
             let known = tab.as_str().filter(|id| advancements.get(id).is_some());
             advancements.select_tab(known);
         } else {
-            toasts = advancements.update(&update_from(step)?).toasts;
+            toasts = advancements
+                .update(&update_from(step)?)
+                .toasts
+                .into_iter()
+                .map(|(id, _)| id)
+                .collect();
         }
         toasts.sort();
         states.push(advancements_state(&advancements, &lang, toasts));

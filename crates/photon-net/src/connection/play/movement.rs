@@ -274,7 +274,9 @@ impl PlaySession {
     }
 
     /// The advancements done since this was last asked, whose toasts are to show.
-    pub fn take_advancement_toasts(&mut self) -> Vec<String> {
+    pub fn take_advancement_toasts(
+        &mut self,
+    ) -> Vec<(String, photon_game::advancements::DisplayInfo)> {
         std::mem::take(&mut self.local.advancement_toasts)
     }
 

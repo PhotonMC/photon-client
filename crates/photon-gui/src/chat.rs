@@ -154,6 +154,9 @@ pub fn wrap(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
 
 /// `Font.split`: the same lines, with no indent on those that follow.
 pub fn split(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
+    if runs.iter().all(|run| run.text.is_empty()) {
+        return Vec::new();
+    }
     break_lines(runs, max, font, false)
 }
 

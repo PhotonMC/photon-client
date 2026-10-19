@@ -192,6 +192,7 @@ impl Layers {
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (controls, size): (&Controls, &photon_render::window::scale::WindowScale),
+        item: &mut photon_render::gui::ItemDrawer<'_>,
     ) {
         let options = &controls.options;
         let env = ToastEnv {
@@ -202,7 +203,7 @@ impl Layers {
             note_colour: self.toasts.notes.colour,
         };
         self.toasts.draw(
-            frame,
+            (frame, item),
             atlas,
             size.gui_scaled_width(),
             (
@@ -278,6 +279,26 @@ impl Gui {
         self.layers.toasts.add_system(toast);
     }
 
+    /// `ClientAdvancements.update`'s `addToast` for each advancement done: the toast holds what the
+    /// advancement showed when the packet came.
+    pub fn add_advancement_toasts(
+        &mut self,
+        done: Vec<(String, photon_game::advancements::DisplayInfo)>,
+        display_time: f64,
+    ) {
+        let env = photon_gui::toasts::ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        for (_, display) in done {
+            let toast = photon_gui::toasts::AdvancementToast::new(&display, &env);
+            self.layers.toasts.add(Box::new(toast));
+        }
+    }
+
     /// `Hud.showNowPlayingToast` and `hideNowPlayingToast` as the music manager asked.
     pub fn music_toast_requests(&mut self, requests: Vec<bool>, display_time: f64) {
         for show in requests {
@@ -338,7 +359,7 @@ impl Gui {
     pub(super) fn draw_late_layers(
         frame: &mut photon_render::gui::GuiFrame,
         resources: (&GuiAtlas, &Font, &Lang),
-        layers: &mut Layers,
+        (layers, item): (&mut Layers, &mut photon_render::gui::ItemDrawer<'_>),
         (controls, size, session): (
             &Controls,
             &photon_render::window::scale::WindowScale,
@@ -349,7 +370,7 @@ impl Gui {
         let debug = Self::debug_columns(session, controls);
         layers.draw_subtitles(frame, resources, view, SubtitlePass::OverScreen);
         layers.draw_pause_toast(frame, resources, view.0);
-        layers.draw_toasts(frame, resources, view);
+        layers.draw_toasts(frame, resources, view, item);
         // `Gui.extractRenderState`: the debug overlay comes after the toasts, before the
         // subtitles that waited.
         if let Some((left, right)) = debug.as_ref() {
