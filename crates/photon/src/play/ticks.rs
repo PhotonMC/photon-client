@@ -525,6 +525,7 @@ impl Play {
         // After the keys and before the player ticks.
         tick_hands(&mut self.item_in_hand, session, &self.block_renderer);
         session.tick(held.input())?;
+        self.tutorial_tick();
         self.tick_player_sounds();
         let session = &mut self.session;
         self.animated_atlas.tick();

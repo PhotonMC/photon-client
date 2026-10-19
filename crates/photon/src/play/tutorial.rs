@@ -25,7 +25,7 @@ impl Facts for SessionFacts<'_> {
     }
 
     fn mined_trees_before(&self) -> bool {
-        self.0.mined_block_in_tag("minecraft:logs")
+        self.0.mined_block_in_tag(FIND_TREE_TAG)
     }
 
     fn crafted_planks_before(&self) -> bool {
@@ -34,8 +34,8 @@ impl Facts for SessionFacts<'_> {
 }
 
 impl Play {
-    /// The tutorial's share of one client tick, in `Minecraft.tick`'s order: the block looked at,
-    /// what the keys did to blocks, then the tutorial's own tick and the input of the player.
+    /// The tutorial's share of one client tick before the player ticks, in `Minecraft.tick`'s
+    /// order: the block looked at, what the keys did to blocks, and the input of the player.
     pub(super) fn tutorial_before_tick(&mut self, aim: &Aim, held: &HeldKeys) {
         if self.session.player().is_none() {
             let commands = self.tutorial.stop();
@@ -63,8 +63,6 @@ impl Play {
             let commands = self.tutorial.on_open_inventory();
             self.run_tutorial(commands);
         }
-        let commands = self.tutorial.tick(&SessionFacts(&self.session));
-        self.run_tutorial(commands);
         self.tutorial.on_input(Keys {
             forward: held.forward,
             backward: held.backward,
@@ -72,6 +70,14 @@ impl Play {
             right: held.right,
             jump: held.jump,
         });
+    }
+
+    /// `Tutorial.tick`, which `Minecraft.tick` runs after the level's entities ticked.
+    pub(super) fn tutorial_tick(&mut self) {
+        if self.session.player().is_some() {
+            let commands = self.tutorial.tick(&SessionFacts(&self.session));
+            self.run_tutorial(commands);
+        }
     }
 
     /// `Tutorial.onGetItem` for the stacks the server put in the inventory.
