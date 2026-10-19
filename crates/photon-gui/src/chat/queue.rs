@@ -75,6 +75,16 @@ impl<T> ChatQueue<T> {
         self.queue.len() != before
     }
 
+    /// `acceptNextDelayedMessage`: the message that waited longest is shown now, and the clock
+    /// is set if it was shown.
+    pub fn accept_next(&mut self, now: u64, show: impl FnOnce(T) -> bool) {
+        if let Some((_, item)) = self.queue.pop_front()
+            && show(item)
+        {
+            self.previous = Some(now);
+        }
+    }
+
     /// The part of `tick` that lets a message go: with no delay everything goes; otherwise, once
     /// the delay has passed, messages are taken until one is shown.
     pub fn due(&mut self, now: u64, mut show: impl FnMut(T) -> bool) {
@@ -108,6 +118,27 @@ mod tests {
         queue.shown(100);
         assert!(queue.will_delay(1099));
         assert!(!queue.will_delay(1100));
+    }
+
+    #[test]
+    fn accepting_shows_the_oldest_now_and_starts_the_delay_from_it() {
+        let mut queue = ChatQueue::default();
+        queue.set_delay(1.0);
+        queue.shown(0);
+        queue.push(None, 1);
+        queue.push(None, 2);
+        let mut seen = Vec::new();
+        queue.accept_next(300, |item| {
+            seen.push(item);
+            true
+        });
+        assert_eq!((seen, queue.size()), (vec![1], 1));
+        assert!(queue.will_delay(1299));
+        // A message that is not shown does not move the clock.
+        queue.accept_next(5000, |_| false);
+        assert_eq!(queue.size(), 0);
+        assert!(queue.will_delay(1299));
+        assert!(!queue.will_delay(1300));
     }
 
     #[test]

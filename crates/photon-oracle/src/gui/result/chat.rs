@@ -104,23 +104,21 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         log.set_settings(settings(&row["rescale"], log.settings()), font);
     }
     let focused = row["focused"].as_bool().unwrap_or(false);
+    log.set_queue_size(row["queued"].as_u64().unwrap_or(0));
     if let Some(scroll) = row["scroll"].as_i64() {
         log.scroll_by(scroll as i32, focused);
     }
     let gui = (int("width"), int("height"));
-    match row["mouse"].as_array() {
-        // The mouse over the open chat: the tooltip of what is under it.
-        Some(mouse) => {
-            let mouse = (
-                mouse[0].as_i64().unwrap_or(0) as i32,
-                mouse[1].as_i64().unwrap_or(0) as i32,
-            );
-            let tooltip = log.draw_with(&mut frame, atlas, font, gui, focused, Some(mouse), &lang);
-            if let Some(lines) = tooltip {
-                frame.tooltip(atlas, font, &lines, mouse, gui);
-            }
-        }
-        None => log.draw(&mut frame, atlas, font, gui, focused),
+    // The mouse over the open chat: the tooltip of what is under it.
+    let mouse = row["mouse"].as_array().map(|mouse| {
+        (
+            mouse[0].as_i64().unwrap_or(0) as i32,
+            mouse[1].as_i64().unwrap_or(0) as i32,
+        )
+    });
+    let tooltip = log.draw_with(&mut frame, atlas, font, gui, focused, mouse, &lang);
+    if let (Some(lines), Some(mouse)) = (tooltip, mouse) {
+        frame.tooltip(atlas, font, &lines, mouse, gui);
     }
 
     Ok(json!({

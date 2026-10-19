@@ -283,12 +283,8 @@ impl ChatLog {
                 background,
             );
         }
+        self.queue_background(frame, atlas, chat_bottom);
         let local = mouse.map(|mouse| pose_undone(scale, mouse));
-        let over = |local: Option<(f32, f32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)| {
-            local.is_some_and(|(x, y)| {
-                x >= x0 as f32 && x < x1 as f32 && y >= y0 as f32 && y < y1 as f32
-            })
-        };
         let mut tooltip = None;
         // The style with a hover event that the mouse is over, the last one
         // drawn (`hoveredTextStyle`).
@@ -312,21 +308,21 @@ impl ChatLog {
             let Some(tag) = &line.tag else {
                 continue;
             };
-            let bar = ((opacity * 255.0) as u32) << 24 | tag.colour();
-            frame.fill(atlas, (-4, entry_top, -2, entry_bottom), bar);
-            if focused && over(local, (-4, entry_top, -2, entry_bottom)) {
-                tooltip = Some(tag.tooltip(lang));
-            }
-            if tag.has_icon() && focused {
-                // `handleTagIcon`: shown while the mouse is over it.
-                let left = font.width_of_runs(&line.runs) + 4;
-                let bottom_of_text = text_top + MESSAGE_HEIGHT;
-                let top = bottom_of_text - 9 - 1;
-                if over(local, (left, top, left + 9, bottom_of_text)) {
-                    tooltip = Some(tag.tooltip(lang));
-                    frame.sprite(atlas, "icon/chat_modified", left, top, 9, 9);
-                }
-            }
+            let spot = TagSpot {
+                rows: (entry_top, entry_bottom),
+                text_top,
+                opacity,
+                local: local.filter(|_| focused),
+            };
+            tooltip = tag_overlay(frame, (atlas, font, lang), (&line.runs, tag), &spot).or(tooltip);
+        }
+        let queue_hover = self.queue_text(
+            (frame, atlas, font, lang),
+            (chat_bottom, text_opacity),
+            local.filter(|_| focused),
+        );
+        if queue_hover.is_some() {
+            hovered = queue_hover.as_ref();
         }
         self.scroll_bar(
             frame,
@@ -348,6 +344,7 @@ impl ChatLog {
     pub fn clicked_style(
         &self,
         font: &Font,
+        lang: &Lang,
         (_, gui_height): (i32, i32),
         mouse: (i32, i32),
         insertions: bool,
@@ -374,6 +371,16 @@ impl ChatLog {
             {
                 found = Some(style.clone());
             }
+        }
+        if self.has_queue_line()
+            && let Some(style) = crate::text_hit::style_under(
+                font,
+                &self.queue_runs(lang),
+                (0, chat_bottom + 1),
+                point,
+            )
+        {
+            found = Some(style.clone());
         }
         found
     }
@@ -417,4 +424,42 @@ impl ChatLog {
             alpha << 24 | 13_421_772,
         );
     }
+}
+
+/// Whether the mouse, in the chat's units, is over a box.
+fn over(local: Option<(f32, f32)>, (x0, y0, x1, y1): (i32, i32, i32, i32)) -> bool {
+    local.is_some_and(|(x, y)| x >= x0 as f32 && x < x1 as f32 && y >= y0 as f32 && y < y1 as f32)
+}
+
+/// Where a line's tag is drawn and whether the open chat's mouse is on it.
+struct TagSpot {
+    rows: (i32, i32),
+    text_top: i32,
+    opacity: f32,
+    local: Option<(f32, f32)>,
+}
+
+/// `handleTag` and `handleTagIcon`: the bar left of a line, and its icon; the tag's tooltip when
+/// the mouse is over either.
+fn tag_overlay(
+    frame: &mut GuiFrame,
+    (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+    (runs, tag): (&[Run], &Tag),
+    spot: &TagSpot,
+) -> Option<Vec<Run>> {
+    let (entry_top, entry_bottom) = spot.rows;
+    let bar = ((spot.opacity * 255.0) as u32) << 24 | tag.colour();
+    frame.fill(atlas, (-4, entry_top, -2, entry_bottom), bar);
+    let mut tooltip =
+        over(spot.local, (-4, entry_top, -2, entry_bottom)).then(|| tag.tooltip(lang));
+    if tag.has_icon() && spot.local.is_some() {
+        let left = font.width_of_runs(runs) + 4;
+        let bottom_of_text = spot.text_top + MESSAGE_HEIGHT;
+        let top = bottom_of_text - 9 - 1;
+        if over(spot.local, (left, top, left + 9, bottom_of_text)) {
+            tooltip = Some(tag.tooltip(lang));
+            frame.sprite(atlas, "icon/chat_modified", left, top, 9, 9);
+        }
+    }
+    tooltip
 }

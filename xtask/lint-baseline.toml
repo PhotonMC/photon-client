@@ -228,7 +228,6 @@
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 16
 "crates/photon-gui/src/chat.rs::break_lines" = 11
-"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 17
 "crates/photon-gui/src/chat/screen.rs::ChatScreen::key_pressed" = 21
 "crates/photon-gui/src/chat/suggestions.rs::SuggestionsList::draw" = 14
 "crates/photon-gui/src/hud.rs::HeartType::sprite" = 11
@@ -309,7 +308,7 @@
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 33
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 43
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
-"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 22
+"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 21
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 20
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 13
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 20
@@ -664,7 +663,7 @@
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 69
 "crates/photon-gui/src/chat.rs::break_lines" = 66
-"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 101
+"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 98
 "crates/photon-gui/src/hud.rs::Hud::draw" = 82
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 161
 "crates/photon-gui/src/hud/locator.rs::draw_dots" = 64
@@ -765,7 +764,7 @@
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 76
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 82
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 81
-"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 119
+"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 117
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 75
 "crates/photon-oracle/src/gui/result/chat.rs::suggestions_case" = 63
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 165

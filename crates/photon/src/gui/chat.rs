@@ -197,6 +197,27 @@ impl Gui {
         processed
     }
 
+    /// `ChatListener.queueSize`.
+    pub fn chat_queue_size(&self) -> usize {
+        self.chat_queue.size()
+    }
+
+    /// `acceptNextDelayedMessage`: the message that waited longest is shown at once.
+    pub fn accept_chat_message(
+        &mut self,
+        log: &mut ChatLog,
+        view: ChatView<'_>,
+    ) -> Vec<(Vec<u8>, bool)> {
+        let now = self.started_at.elapsed().as_millis() as u64;
+        let mut processed = Vec::new();
+        let mut queue = std::mem::take(&mut self.chat_queue);
+        queue.accept_next(now, |event| {
+            self.show_chat(event, log, view, &mut processed)
+        });
+        self.chat_queue = queue;
+        processed
+    }
+
     /// `setMessageDelay`: a delay that goes to none shows what waited.
     fn set_chat_delay(
         &mut self,

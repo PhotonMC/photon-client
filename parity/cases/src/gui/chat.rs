@@ -22,6 +22,7 @@ struct Chat {
     rescale: Option<Value>,
     lang_after: Option<&'static str>,
     mouse: Option<(i64, i64)>,
+    queued: Option<i64>,
 }
 
 impl Chat {
@@ -51,6 +52,9 @@ impl Chat {
         }
         if let Some((x, y)) = self.mouse {
             row["mouse"] = json!([x, y]);
+        }
+        if let Some(queued) = self.queued {
+            row["queued"] = json!(queued);
         }
         row
     }
@@ -293,6 +297,25 @@ fn event_hover_rows() -> Vec<Value> {
     ]
 }
 
+/// Messages held back by the chat delay: the line under the chat that counts them.
+fn queue_rows() -> Vec<Value> {
+    let held = |messages: Vec<Value>, queued: i64| Chat { queued: Some(queued), ..chat(messages, 3) };
+    let open_held = |mouse: (i64, i64)| Chat { focused: true, mouse: Some(mouse), ..held(texts(&[("hello", 0)]), 3) };
+    vec![
+        held(texts(&[("hello", 0)]), 3).row("queue-line"),
+        held(texts(&[("hello", 0)]), 12).row("queue-line-two-digits"),
+        held(Vec::new(), 3).row("queue-without-messages"),
+        Chat {
+            options: Some(json!({"scale": 0.5, "opacity": 0.5, "background_opacity": 0.8})),
+            ..held(texts(&[("hello", 0)]), 3)
+        }
+        .row("queue-line-scaled"),
+        Chat { focused: true, ..held(texts(&[("hello", 0)]), 3) }.row("queue-line-open"),
+        open_held((10, 203)).row("queue-line-hover"),
+        open_held((10, 150)).row("queue-line-mouse-elsewhere"),
+    ]
+}
+
 /// A language change words the translatable messages again, and wraps them.
 fn language_rows() -> Vec<Value> {
     let warning = |tick: i64| json!({"key": "options.languageAccuracyWarning", "tick": tick});
@@ -326,6 +349,7 @@ pub fn chat_case() -> Value {
         styled_hover_rows(),
         placed_hover_rows(),
         event_hover_rows(),
+        queue_rows(),
         language_rows(),
     ]
     .concat();

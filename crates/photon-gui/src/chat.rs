@@ -251,6 +251,10 @@ pub struct ChatLog {
     new_message: bool,
     /// `messageDeletionQueue`: a signature and the tick it may go at.
     deletions: Vec<(Vec<u8>, u64)>,
+    /// `ChatListener.queueSize`: the messages held back by the chat delay.
+    queue_size: u64,
+    /// Clicks on the queue line the game has not yet answered.
+    queue_accepts: u32,
     settings: ChatSettings,
 }
 
@@ -431,6 +435,8 @@ pub fn plain_runs(text: &str) -> Vec<Run> {
 mod screen;
 
 mod log;
+mod queue_line;
+pub use queue_line::QUEUE_EXPAND_ID;
 
 #[cfg(test)]
 mod tests {
@@ -455,19 +461,25 @@ mod tests {
         log.add_component(&component, &Lang::default(), (None, None), &font, true);
         let gui = (427, 240);
         // The line's text starts at x 4, 192 down.
-        let clicked = log.clicked_style(&font, gui, (8, 196), false);
+        let clicked = log.clicked_style(&font, &Lang::default(), gui, (8, 196), false);
         assert!(matches!(
             clicked.as_ref().and_then(|style| style.click.as_deref()),
             Some(photon_game::text::ClickEvent::OpenUrl(url)) if url == "https://a.b"
         ));
         assert_eq!(
-            log.clicked_style(&font, gui, (8, 196), true)
+            log.clicked_style(&font, &Lang::default(), gui, (8, 196), true)
                 .and_then(|style| style.insertion),
             Some("ins".into())
         );
         // Off the text, nothing.
-        assert!(log.clicked_style(&font, gui, (200, 196), false).is_none());
-        assert!(log.clicked_style(&font, gui, (8, 100), false).is_none());
+        assert!(
+            log.clicked_style(&font, &Lang::default(), gui, (200, 196), false)
+                .is_none()
+        );
+        assert!(
+            log.clicked_style(&font, &Lang::default(), gui, (8, 100), false)
+                .is_none()
+        );
     }
 
     #[test]

@@ -124,6 +124,18 @@ class GuiChatOracle extends GuiLanguageOracle {
             if (row.has("scroll")) {
                 chat.scrollChat(row.get("scroll").getAsInt());
             }
+            if (row.has("queued")) {
+                // Messages held back by the chat delay: only their count is drawn.
+                var listener = get(get(screen.minecraft(), "gui"), "chatListener");
+                @SuppressWarnings("unchecked")
+                var queue = (java.util.Queue<Object>) get(listener, "delayedMessageQueue");
+                var messageClass = Class.forName("net.minecraft.client.multiplayer.chat.ChatListener$Message");
+                var constructor = messageClass.getDeclaredConstructors()[0];
+                constructor.setAccessible(true);
+                for (int queued = 0; queued < row.get("queued").getAsInt(); queued++) {
+                    queue.add(constructor.newInstance(null, (java.util.function.BooleanSupplier) () -> true));
+                }
+            }
             chat.extractRenderState(screen.graphics(), font, row.get("tick").getAsInt(), chatMouseX, chatMouseY,
                 focused ? net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND
                     : net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);

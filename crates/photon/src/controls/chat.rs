@@ -245,7 +245,18 @@ impl Controls {
         let shift = modifiers.contains(glfw::Modifiers::Shift);
         let gui = (size.gui_scaled_width(), size.gui_scaled_height());
         let bed = chat.leave_bed_clicked(mouse);
-        if let Some(style) = self.chat_log.clicked_style(&chat.font(), gui, mouse, shift) {
+        if let Some(style) =
+            self.chat_log
+                .clicked_style(&chat.font(), &assets.lang, gui, mouse, shift)
+        {
+            // `ChatScreen.handleComponentClicked`: the queue line is the chat's own, not the server's.
+            if !shift
+                && matches!(style.click.as_deref(), Some(photon_game::text::ClickEvent::Custom(id, _))
+                    if id == photon_gui::chat::QUEUE_EXPAND_ID)
+            {
+                self.chat_log.request_queue_accept();
+                return Ok(());
+            }
             self.style_clicked(&style, shift, session, surface, assets)?;
         } else if bed {
             session.send_stop_sleeping()?;
