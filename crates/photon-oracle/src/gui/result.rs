@@ -14,6 +14,7 @@ fn no_items(
     0
 }
 
+mod advancements_screen;
 mod chat;
 use chat::*;
 mod hud;
@@ -198,11 +199,12 @@ fn stat_format_case(row: &Value) -> Result<Value, String> {
 }
 
 /// The operations `texts_case` answers.
-pub(super) const TEXT_OPERATIONS: [&str; 4] = [
+pub(super) const TEXT_OPERATIONS: [&str; 5] = [
     "lang_text",
     "stat_format",
     "stats_screen",
     "client_advancements",
+    "advancements_screen",
 ];
 
 /// The operations that answer with texts: what the language says, and how the statistics write numbers.
@@ -215,6 +217,7 @@ pub(super) fn texts_case(
         "stat_format" => stat_format_case(row),
         "stats_screen" => stats::stats_screen_case(ctx, row),
         "client_advancements" => stats::client_advancements_case(ctx, row),
+        "advancements_screen" => advancements_screen::advancements_screen_case(ctx, row),
         _ => lang_text_case(ctx, row),
     }
 }

@@ -550,31 +550,7 @@ class GuiHudOracle extends GuiCommandOracle {
                         advancements.setSelectedTab(tab.isJsonNull() ? null : advancements.get(
                             net.minecraft.resources.Identifier.parse(tab.getAsString())), false);
                     } else {
-                        var holders = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>();
-                        for (var added : step.getAsJsonArray("added")) {
-                            holders.add(advancementHolder(added.getAsJsonObject()));
-                        }
-                        var removed = new java.util.LinkedHashSet<net.minecraft.resources.Identifier>();
-                        for (var id : step.getAsJsonArray("removed")) {
-                            removed.add(net.minecraft.resources.Identifier.parse(id.getAsString()));
-                        }
-                        var progress = new java.util.HashMap<net.minecraft.resources.Identifier, net.minecraft.advancements.AdvancementProgress>();
-                        for (var progressElement : step.getAsJsonArray("progress")) {
-                            var entry = progressElement.getAsJsonObject();
-                            var one = new net.minecraft.advancements.AdvancementProgress();
-                            var criteria = (java.util.Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(one);
-                            for (var criterion : entry.getAsJsonArray("criteria")) {
-                                var pair = criterion.getAsJsonArray();
-                                var obtained = new net.minecraft.advancements.CriterionProgress();
-                                if (!pair.get(1).isJsonNull()) {
-                                    obtainedField.set(obtained, java.time.Instant.ofEpochMilli(pair.get(1).getAsLong()));
-                                }
-                                criteria.put(pair.get(0).getAsString(), obtained);
-                            }
-                            progress.put(net.minecraft.resources.Identifier.parse(entry.get("id").getAsString()), one);
-                        }
-                        advancements.update(new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(
-                            step.get("reset").getAsBoolean(), holders, removed, progress, step.get("show").getAsBoolean()));
+                        advancements.update(updatePacket(step));
                     }
                     var state = new JsonObject();
                     var tree = advancements.getTree();
@@ -660,6 +636,135 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /**
+     * The game's own `AdvancementsScreen` over a real `ClientAdvancements`: updates arriving, frames, clicks,
+     * drags, scrolls, ticks with the pointer somewhere, resizes; drawn in a world.
+     */
+    static JsonObject advancementsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var mouse = row.getAsJsonArray("mouse");
+            int mouseX = mouse.get(0).getAsInt();
+            int mouseY = mouse.get(1).getAsInt();
+            var scene = hudScene(width, height, false, false);
+            var minecraft = scene.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            var toasts = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
+            MovementOracle.setField(minecraft.gui, "toastManager", toasts);
+            MovementOracle.setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
+            var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
+            MovementOracle.setField(scene.local().connection, "connection", connection);
+            var window = minecraft.getWindow();
+            MovementOracle.setField(window, "width", width);
+            MovementOracle.setField(window, "height", height);
+            var mouseHandler = unsafe.allocateInstance(net.minecraft.client.MouseHandler.class);
+            MovementOracle.setField(minecraft, "mouseHandler", mouseHandler);
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            net.minecraft.locale.Language.inject(clientLanguage("en_us"));
+            try {
+                var advancements = new net.minecraft.client.multiplayer.ClientAdvancements(minecraft, null);
+                for (var update : row.getAsJsonArray("before")) {
+                    advancements.update(updatePacket(update.getAsJsonObject()));
+                }
+                var screen = new net.minecraft.client.gui.screens.advancements.AdvancementsScreen(advancements);
+                screen.init(width, height);
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
+                    double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
+                    switch (step.get("do").getAsString()) {
+                        case "update" -> advancements.update(updatePacket(step));
+                        case "tab" -> advancements.setSelectedTab(advancements.get(
+                            net.minecraft.resources.Identifier.parse(step.get("id").getAsString())), false);
+                        case "click" -> {
+                            var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                            screen.mouseClicked(event, false);
+                            screen.mouseReleased(event);
+                        }
+                        case "drag" -> {
+                            var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                            screen.mouseDragged(event, step.get("dx").getAsDouble(), step.get("dy").getAsDouble());
+                        }
+                        case "release" -> screen.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x, y,
+                            new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+                        case "scroll" -> screen.mouseScrolled(x, y, step.get("sx").getAsDouble(), step.get("sy").getAsDouble());
+                        case "tick" -> {
+                            MovementOracle.setField(mouseHandler, "xpos", x);
+                            MovementOracle.setField(mouseHandler, "ypos", y);
+                            screen.tick();
+                        }
+                        case "resize" -> {
+                            MovementOracle.setField(window, "guiScaledWidth", step.get("width").getAsInt());
+                            MovementOracle.setField(window, "guiScaledHeight", step.get("height").getAsInt());
+                            MovementOracle.setField(window, "width", step.get("width").getAsInt());
+                            MovementOracle.setField(window, "height", step.get("height").getAsInt());
+                            screen.init(step.get("width").getAsInt(), step.get("height").getAsInt());
+                        }
+                        case "frame" -> {
+                            MovementOracle.setField(minecraft, "level", scene.level());
+                            screen.extractRenderStateWithTooltipAndSubtitles(
+                                new GuiGraphicsExtractor(minecraft, new GuiRenderState(), mouseX, mouseY), mouseX, mouseY, 0.0F);
+                            MovementOracle.setField(minecraft, "level", null);
+                        }
+                        default -> throw new IllegalArgumentException(step.get("do").getAsString());
+                    }
+                }
+                MovementOracle.setField(minecraft, "level", scene.level());
+                var frame = new GuiRenderState();
+                var graphics = new GuiGraphicsExtractor(minecraft, frame, mouseX, mouseY);
+                screen.extractRenderStateWithTooltipAndSubtitles(graphics, mouseX, mouseY, 0.0F);
+                var out = new JsonObject();
+                out.addProperty("label", row.get("label").getAsString());
+                out.add("ops", record(frame));
+                rows.add(out);
+            } finally {
+                net.minecraft.locale.Language.inject(languageBefore);
+            }
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** An update packet from its JSON: the flags, the advancements, the ids removed and the progress. */
+    @SuppressWarnings("unchecked")
+    static net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket updatePacket(JsonObject step) throws Exception {
+        var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
+        criteriaField.setAccessible(true);
+        var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
+        obtainedField.setAccessible(true);
+        var holders = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>();
+        for (var added : step.getAsJsonArray("added")) {
+            holders.add(advancementHolder(added.getAsJsonObject()));
+        }
+        var removed = new java.util.LinkedHashSet<net.minecraft.resources.Identifier>();
+        for (var id : step.getAsJsonArray("removed")) {
+            removed.add(net.minecraft.resources.Identifier.parse(id.getAsString()));
+        }
+        var progress = new java.util.HashMap<net.minecraft.resources.Identifier, net.minecraft.advancements.AdvancementProgress>();
+        for (var progressElement : step.getAsJsonArray("progress")) {
+            var entry = progressElement.getAsJsonObject();
+            var one = new net.minecraft.advancements.AdvancementProgress();
+            var criteria = (java.util.Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(one);
+            for (var criterion : entry.getAsJsonArray("criteria")) {
+                var pair = criterion.getAsJsonArray();
+                var obtained = new net.minecraft.advancements.CriterionProgress();
+                if (!pair.get(1).isJsonNull()) {
+                    obtainedField.set(obtained, java.time.Instant.ofEpochMilli(pair.get(1).getAsLong()));
+                }
+                criteria.put(pair.get(0).getAsString(), obtained);
+            }
+            progress.put(net.minecraft.resources.Identifier.parse(entry.get("id").getAsString()), one);
+        }
+        return new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(
+            step.get("reset").getAsBoolean(), holders, removed, progress, step.get("show").getAsBoolean());
+    }
+
     private static String advancementsSelected(net.minecraft.client.multiplayer.ClientAdvancements advancements) throws Exception {
         var field = net.minecraft.client.multiplayer.ClientAdvancements.class.getDeclaredField("selectedTab");
         field.setAccessible(true);
@@ -682,7 +787,10 @@ class GuiHudOracle extends GuiCommandOracle {
                 new net.minecraft.world.item.ItemStackTemplate(net.minecraft.world.item.Items.STONE),
                 net.minecraft.network.chat.Component.literal(shown.get("title").getAsString()),
                 net.minecraft.network.chat.Component.literal(shown.get("description").getAsString()),
-                java.util.Optional.empty(),
+                shown.has("background") && !shown.get("background").isJsonNull()
+                    ? java.util.Optional.of(new net.minecraft.core.ClientAsset.ResourceTexture(
+                        net.minecraft.resources.Identifier.parse(shown.get("background").getAsString())))
+                    : java.util.Optional.empty(),
                 net.minecraft.advancements.AdvancementType.values()[shown.get("frame").getAsInt()],
                 shown.get("show_toast").getAsBoolean(), false, shown.get("hidden").getAsBoolean());
             info.setLocation(Oracle.f32(shown, "x"), Oracle.f32(shown, "y"));

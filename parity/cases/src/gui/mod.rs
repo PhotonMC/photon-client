@@ -78,6 +78,7 @@ const ORDER: &[Generator] = &[
     || vec![stats::stat_format()],
     || vec![stats::stats_screen()],
     || vec![advancements::client_advancements()],
+    || vec![advancements::advancements_screen()],
     || vec![status::subtitles()],
     || vec![toasts::toasts()],
     || vec![status::hud_status()],

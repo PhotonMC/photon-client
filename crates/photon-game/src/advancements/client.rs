@@ -97,6 +97,19 @@ struct Node {
     children: Vec<String>,
 }
 
+/// What `ClientAdvancements.Listener` is told, in the order it is told.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Event {
+    AddRoot(String),
+    AddTask(String),
+    /// `onAdvancementsCleared`: the tree was reset.
+    Cleared,
+    /// `onUpdateAdvancementProgress`.
+    Progress(String),
+    /// `onSelectedTabChanged`.
+    SelectedTab(Option<String>),
+}
+
 /// What an update did that others look at.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Updated {
@@ -113,9 +126,51 @@ pub struct ClientAdvancements {
     tasks: Vec<String>,
     progress: HashMap<String, AdvancementProgress>,
     selected_tab: Option<String>,
+    /// Whether a listener (the advancements screen) is set, and what it has yet to be told.
+    listening: bool,
+    events: Vec<Event>,
 }
 
 impl ClientAdvancements {
+    /// `setListener(listener)`: the roots, then the others, then the progress held and the tab
+    /// are told at once; what follows is told as it happens.
+    pub fn listen(&mut self) {
+        self.listening = true;
+        self.events.clear();
+        for id in &self.roots {
+            self.events.push(Event::AddRoot(id.clone()));
+        }
+        for id in &self.tasks {
+            self.events.push(Event::AddTask(id.clone()));
+        }
+        let mut held: Vec<&String> = self.progress.keys().collect();
+        held.sort_unstable();
+        for id in held {
+            if self.nodes.contains_key(id) {
+                self.events.push(Event::Progress(id.clone()));
+            }
+        }
+        self.events
+            .push(Event::SelectedTab(self.selected_tab.clone()));
+    }
+
+    /// `setListener(null)`.
+    pub fn unlisten(&mut self) {
+        self.listening = false;
+        self.events.clear();
+    }
+
+    /// What the listener has not yet been told.
+    pub fn take_events(&mut self) -> Vec<Event> {
+        std::mem::take(&mut self.events)
+    }
+
+    fn tell(&mut self, event: Event) {
+        if self.listening {
+            self.events.push(event);
+        }
+    }
+
     /// `ClientAdvancements.update`.
     pub fn update(&mut self, packet: &UpdateAdvancements) -> Updated {
         if packet.reset {
@@ -123,6 +178,7 @@ impl ClientAdvancements {
             self.roots.clear();
             self.tasks.clear();
             self.progress.clear();
+            self.tell(Event::Cleared);
         }
         for id in &packet.removed {
             self.remove(id);
@@ -144,6 +200,7 @@ impl ClientAdvancements {
                     .as_ref()
                     .is_some_and(|display| display.show_toast);
             self.progress.insert(id.clone(), progress);
+            self.tell(Event::Progress(id.clone()));
             if toast {
                 updated.toasts.push(id.clone());
             }
@@ -194,8 +251,12 @@ impl ClientAdvancements {
             if !self.tasks.contains(&advancement.id) {
                 self.tasks.push(advancement.id.clone());
             }
-        } else if !self.roots.contains(&advancement.id) {
-            self.roots.push(advancement.id.clone());
+            self.tell(Event::AddTask(advancement.id.clone()));
+        } else {
+            if !self.roots.contains(&advancement.id) {
+                self.roots.push(advancement.id.clone());
+            }
+            self.tell(Event::AddRoot(advancement.id.clone()));
         }
         self.nodes.insert(
             advancement.id.clone(),
@@ -210,7 +271,16 @@ impl ClientAdvancements {
 
     /// `setSelectedTab`: the tab the screen shows (the server is told by the screen).
     pub fn select_tab(&mut self, tab: Option<&str>) {
-        self.selected_tab = tab.map(str::to_owned);
+        let tab = tab.map(str::to_owned);
+        if self.selected_tab != tab {
+            self.selected_tab = tab.clone();
+            self.tell(Event::SelectedTab(tab));
+        }
+    }
+
+    /// `AdvancementNode.parent`.
+    pub fn parent_of(&self, id: &str) -> Option<&str> {
+        self.nodes.get(id)?.parent.as_deref()
     }
 
     pub fn selected_tab(&self) -> Option<&str> {

@@ -10,7 +10,8 @@ use photon_core::identifier::Identifier;
 
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 14] = [
+const SPRITE_FOLDERS: [&str; 15] = [
+    "advancements",
     "statistics",
     "social_interactions",
     "gamemode_switcher",
@@ -29,8 +30,14 @@ const SPRITE_FOLDERS: [&str; 14] = [
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 47] = [
+const WHOLE_TEXTURES: [&str; 53] = [
     "tab_header_background",
+    "advancements/window",
+    "advancements/backgrounds/adventure",
+    "advancements/backgrounds/end",
+    "advancements/backgrounds/husbandry",
+    "advancements/backgrounds/nether",
+    "advancements/backgrounds/stone",
     "menu_background",
     "inworld_menu_background",
     "menu_list_background",

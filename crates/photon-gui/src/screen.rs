@@ -4,6 +4,7 @@
 //! A screen is a [`Screen`]: it takes the mouse and the keys while it is open,
 //! answers with the clicks it wants run ([`ScreenAction`]), and draws itself
 //! into the GUI frame through a [`ScreenDraw`].
+pub mod advancements;
 pub mod confirm;
 pub mod connect;
 pub mod credits;

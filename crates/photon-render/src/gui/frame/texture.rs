@@ -151,6 +151,36 @@ impl GuiFrame {
         self.fill_gradient(atlas, rect, colour, colour);
     }
 
+    /// `blitSprite` of a nine-slice sprite (`tex` big, with a `border`) laid out `size` big, of which
+    /// only the part from `(u, v)` as big as `rect` is drawn, at `rect` (a bar of a box that is only
+    /// part full).
+    pub fn nine_slice_region(
+        &mut self,
+        atlas: &GuiAtlas,
+        name: &str,
+        ((tex, border), size): (((i32, i32), i32), (i32, i32)),
+        (u, v): (i32, i32),
+        (x, y, w, h): (i32, i32, i32, i32),
+    ) {
+        let mark = self.mark();
+        self.nine_slice(
+            atlas,
+            name,
+            tex,
+            border,
+            false,
+            x - u,
+            y - v,
+            size.0,
+            size.1,
+        );
+        self.clip_from(mark, (x, y, x + w, y + h));
+        if let Some(DrawOp::Sprite { rect, .. }) = self.log.as_mut().and_then(|log| log.last_mut())
+        {
+            *rect = (x as f32, y as f32, (x + w) as f32, (y + h) as f32);
+        }
+    }
+
     /// `GuiGraphics.blitSprite` of a whole sprite.
     pub fn sprite(&mut self, atlas: &GuiAtlas, name: &str, x: i32, y: i32, w: i32, h: i32) {
         self.sprite_blend(atlas, GuiBlend::Translucent, name, (x, y, w, h));

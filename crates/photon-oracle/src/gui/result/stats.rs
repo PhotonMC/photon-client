@@ -106,7 +106,10 @@ fn advancement_from(json: &Value) -> Result<photon_game::advancements::Advanceme
                 .ok_or("frame")?,
             show_toast: shown["show_toast"].as_bool().ok_or("show_toast")?,
             hidden: shown["hidden"].as_bool().ok_or("hidden")?,
-            background: None,
+            background: shown
+                .get("background")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
             x: crate::f32_field(shown, "x")?,
             y: crate::f32_field(shown, "y")?,
         }),
@@ -137,7 +140,9 @@ fn advancement_from(json: &Value) -> Result<photon_game::advancements::Advanceme
 }
 
 /// An update from its JSON.
-fn update_from(step: &Value) -> Result<photon_game::advancements::UpdateAdvancements, String> {
+pub(super) fn update_from(
+    step: &Value,
+) -> Result<photon_game::advancements::UpdateAdvancements, String> {
     let strings = |key: &str| -> Result<Vec<String>, String> {
         step[key]
             .as_array()

@@ -240,3 +240,179 @@ fn special_progress_rows() -> Vec<Value> {
         ),
     ]
 }
+
+/// An advancement for the screen: the title, the description, the frame, the place and whether it
+/// is hidden, with a background when it is a root.
+struct Shown {
+    id: &'static str,
+    parent: Option<&'static str>,
+    title: &'static str,
+    description: &'static str,
+    frame: i64,
+    place: (f32, f32),
+    hidden: bool,
+    requirements: &'static [&'static [&'static str]],
+}
+
+impl Shown {
+    fn new(id: &'static str, parent: Option<&'static str>, place: (f32, f32)) -> Self {
+        Self {
+            id,
+            parent,
+            title: "An Advancement",
+            description: "Do the thing",
+            frame: 0,
+            place,
+            hidden: false,
+            requirements: &[&["a"]],
+        }
+    }
+
+    fn json(&self) -> Value {
+        let background = self.parent.is_none().then_some("minecraft:gui/advancements/backgrounds/stone");
+        json!({
+            "id": self.id, "parent": self.parent, "requirements": self.requirements,
+            "display": {
+                "title": self.title, "description": self.description, "frame": self.frame,
+                "show_toast": true, "hidden": self.hidden, "background": background,
+                "x": f32_bits(self.place.0), "y": f32_bits(self.place.1),
+            },
+        })
+    }
+}
+
+fn screen_row(label: &str, before: Vec<Value>, steps: Vec<Value>) -> Value {
+    json!({"label": label, "width": 427, "height": 240, "mouse": [0, 0], "before": before, "steps": steps})
+}
+
+/// The points the pointer is put on to find the widgets of the trees below.
+const HOVER_POINTS: [(i32, i32); 8] =
+    [(200, 118), (213, 118), (226, 118), (240, 118), (256, 118), (270, 118), (226, 104), (226, 132)];
+
+fn with_mouse(mut row: Value, mouse: (i32, i32), steps: Vec<Value>) -> Value {
+    row["mouse"] = json!([mouse.0, mouse.1]);
+    row["steps"] = Value::Array(steps);
+    row
+}
+
+fn ticks(point: (i32, i32), count: usize) -> Vec<Value> {
+    let tick = json!({"do": "tick", "x": point.0, "y": point.1});
+    std::iter::repeat_n(tick, count).collect()
+}
+
+/// A tree of a root and a few under it, of every frame, with the places spread.
+fn spread_tree(prefix: &str, root_title: &'static str) -> Vec<Shown> {
+    let root_id: &'static str = Box::leak(format!("{prefix}:root").into_boxed_str());
+    let id = |name: &str| -> &'static str { Box::leak(format!("{prefix}:{name}").into_boxed_str()) };
+    vec![
+        Shown { title: root_title, ..Shown::new(root_id, None, (0.0, 0.0)) },
+        Shown { frame: 1, title: "A Challenge", ..Shown::new(id("a"), Some(root_id), (1.0, 0.0)) },
+        Shown { frame: 2, title: "A Goal", ..Shown::new(id("b"), Some(id("a")), (2.0, 1.0)) },
+        Shown { hidden: true, title: "Hidden", ..Shown::new(id("c"), Some(root_id), (1.0, -1.0)) },
+        Shown {
+            title: "A Title That Is Long Enough To Wrap Over Several Lines Of The Box",
+            description: "A description that is long as well, so that the lines of the box are broken in more than one place",
+            requirements: &[&["a"], &["b"], &["c"], &["d"]],
+            ..Shown::new(id("d"), Some(id("b")), (3.0, 0.0))
+        },
+    ]
+}
+
+fn tree_update(shown: &[Shown], progress: Vec<Value>) -> Value {
+    update(false, shown.iter().map(Shown::json).collect(), &[], progress, true)
+}
+
+/// `AdvancementsScreen`: the window, the tabs, the tree, and the pointer over a widget.
+pub fn advancements_screen() -> Value {
+    let one = spread_tree("one", "Minecraft");
+    let progress = vec![
+        done("one:a", &[("a", Some(1))]),
+        done("one:b", &[("a", None)]),
+        done("one:d", &[("a", Some(2)), ("b", None), ("c", Some(3)), ("d", None)]),
+    ];
+    let progressed = tree_update(&one, progress);
+    let tabs = vec![
+        tree_update(&one, vec![]),
+        tree_update(&spread_tree("two", "Nether"), vec![]),
+        tree_update(&spread_tree("three", "The End"), vec![]),
+    ];
+    let mut rows = vec![
+        screen_row("empty", vec![], vec![]),
+        screen_row("tree", vec![tabs[0].clone()], vec![]),
+        screen_row("progress", vec![progressed.clone()], vec![]),
+        screen_row("tabs", tabs[..2].to_vec(), vec![]),
+        screen_row("three-tabs", tabs.clone(), vec![]),
+    ];
+    rows.extend(hover_rows(&progressed));
+    rows.extend(motion_rows(&tabs));
+    rows.extend(window_rows(&tabs));
+    gui("advancements-screen", "advancements_screen", rows)
+}
+
+/// The pointer left on points of the tree, long enough for the box to fade in.
+fn hover_rows(progressed: &Value) -> Vec<Value> {
+    HOVER_POINTS
+        .into_iter()
+        .enumerate()
+        .map(|(index, point)| {
+            let mut steps = ticks(point, 12);
+            steps.push(json!({"do": "frame"}));
+            with_mouse(screen_row(&format!("hover-{index}"), vec![progressed.clone()], vec![]), point, steps)
+        })
+        .collect()
+}
+
+fn drag(dx: f64, dy: f64) -> Value {
+    json!({"do": "drag", "x": 200, "y": 118, "dx": dx, "dy": dy})
+}
+
+fn release() -> Value {
+    json!({"do": "release", "x": 200, "y": 118})
+}
+
+fn scroll(sx: f64, sy: f64) -> Value {
+    json!({"do": "scroll", "x": 200, "y": 118, "sx": sx, "sy": sy})
+}
+
+/// A progress for a tab's advancement, as an update step.
+fn server_update(id: &str, reset: bool) -> Value {
+    let progress = if reset { vec![] } else { vec![done(id, &[("a", Some(5))])] };
+    let mut step = update(reset, vec![], &[], progress, false);
+    step["do"] = json!("update");
+    step
+}
+
+/// The tree moved by drags and the wheel, resized, changed by the server.
+fn motion_rows(tabs: &[Value]) -> Vec<Value> {
+    [
+        ("drag", vec![drag(5.0, 5.0), drag(40.0, -20.0), release()]),
+        ("drag-far", vec![drag(1.0, 1.0), drag(4000.0, 4000.0)]),
+        ("drag-after-release", vec![drag(1.0, 1.0), release(), drag(30.0, 30.0)]),
+        ("scroll", vec![scroll(0.0, -1.0)]),
+        ("scroll-wide", vec![scroll(3.0, 2.0)]),
+        ("resize", vec![json!({"do": "resize", "width": 640, "height": 360})]),
+        ("resize-small", vec![json!({"do": "resize", "width": 200, "height": 120})]),
+        ("tab-step", vec![json!({"do": "tab", "id": "two:root"})]),
+        ("tab-unknown", vec![json!({"do": "tab", "id": "nowhere:root"})]),
+        ("update-after", vec![server_update("two:a", false)]),
+        ("reset", vec![server_update("", true)]),
+    ]
+    .into_iter()
+    .map(|(label, steps)| screen_row(label, tabs.to_vec(), steps))
+    .collect()
+}
+
+/// The window's own elements: the tab buttons and Done, pressed and hovered.
+fn window_rows(tabs: &[Value]) -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (label, point) in [("click-tab-1", (130, 45)), ("click-tab-2", (160, 45)), ("click-nothing", (10, 10))] {
+        let steps = vec![json!({"do": "click", "x": point.0, "y": point.1})];
+        rows.push(with_mouse(screen_row(label, tabs.to_vec(), vec![]), point, steps));
+    }
+    for (label, point) in
+        [("tab-hover-0", (120, 45)), ("tab-hover-1", (150, 45)), ("tab-hover-2", (180, 45)), ("done-hover", (213, 215))]
+    {
+        rows.push(with_mouse(screen_row(label, tabs.to_vec(), vec![]), point, ticks(point, 3)));
+    }
+    rows
+}

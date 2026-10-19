@@ -69,4 +69,4 @@ pub struct UpdateAdvancements {
 }
 
 mod client;
-pub use client::{AdvancementProgress, ClientAdvancements, Updated};
+pub use client::{AdvancementProgress, ClientAdvancements, Event, Updated};
