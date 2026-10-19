@@ -15,7 +15,13 @@ impl Play {
         let lang = &self.gui.lang;
         let key = bound.map_or_else(
             || photon_game::text::Component::literal(""),
-            |key| photon_game::options::key_display_name(key, None, lang),
+            |key| {
+                photon_game::options::key_display_name(
+                    key,
+                    crate::controls::keybinds::system_key_name(key),
+                    lang,
+                )
+            },
         );
         let time = options.notification_display_time;
         options.joined_first_server = true;

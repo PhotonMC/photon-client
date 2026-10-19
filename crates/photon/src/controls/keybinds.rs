@@ -2,7 +2,7 @@ use super::*;
 
 /// `glfwGetKeyName`: the name the keyboard layout gives a printable key, by its key code or its
 /// scancode; none for another key, or a mouse button.
-fn system_key_name(key: photon_data::keys::InputKey) -> Option<String> {
+pub(crate) fn system_key_name(key: photon_data::keys::InputKey) -> Option<String> {
     use photon_data::keys::InputKey;
     let (code, scancode) = match key {
         InputKey::Keysym(code) => (code, -1),

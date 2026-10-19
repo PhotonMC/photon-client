@@ -300,7 +300,7 @@ mod game_mode_switcher;
 
 mod events;
 
-mod keybinds;
+pub(crate) mod keybinds;
 
 mod options;
 mod pack_prompt;
