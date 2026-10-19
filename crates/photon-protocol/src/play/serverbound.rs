@@ -28,6 +28,22 @@ pub fn encode_set_beacon(primary: Option<i32>, secondary: Option<i32>) -> Vec<u8
     output
 }
 
+/// `ServerboundSeenAdvancementsPacket`: the opened tab (action 0 and its id), or the screen closed
+/// (action 1).
+pub fn encode_seen_advancements(
+    output: &mut Vec<u8>,
+    opened_tab: Option<&str>,
+) -> Result<(), ConnectionError> {
+    let Some(tab) = opened_tab else {
+        photon_core::wire::write_varint(1, output);
+        return Ok(());
+    };
+    photon_core::wire::write_varint(0, output);
+    let units: Vec<u16> = tab.encode_utf16().collect();
+    photon_core::utf8::write_utf8(output, &units, 32767)
+        .map_err(|_| ConnectionError::Codec("advancement tab"))
+}
+
 pub fn encode_move_player_pos_rot(
     output: &mut Vec<u8>,
     position: (f64, f64, f64, f32, f32),

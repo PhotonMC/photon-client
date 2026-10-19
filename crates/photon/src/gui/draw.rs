@@ -13,6 +13,13 @@ impl Gui {
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
     ) {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        if let Some(open) = controls.advancements.as_mut() {
+            if open.screen.size() != gui_size {
+                open.screen.resize(gui_size);
+            }
+            open.screen.draw(frame, (atlas, font, lang), mouse, item);
+            return;
+        }
         if let Some(stats) = controls.stats.as_mut() {
             if stats.size() != gui_size {
                 stats.resize(gui_size);

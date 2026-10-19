@@ -63,6 +63,7 @@ impl Controls {
     fn settings_event(
         &mut self,
         event: glfw::WindowEvent,
+        session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
         for_screen: bool,
@@ -107,7 +108,7 @@ impl Controls {
             return Ok(());
         }
         if self.pause.is_some() && for_screen {
-            self.pause_event(event, surface, assets);
+            self.pause_event(event, session, surface, assets);
             return Ok(());
         }
         Err(event)
@@ -148,15 +149,10 @@ impl Controls {
                     self.captured = false;
                     self.release_keys();
                 }
-                "key.socialInteractions" if press && self.captured => {
-                    self.open_social(session, surface, assets);
-                }
-                "key.chat" if press && self.captured => {
-                    self.open_chat(ChatMethod::Message, true, surface, assets);
-                }
-                "key.command" if press && self.captured => {
-                    self.open_chat(ChatMethod::Command, true, surface, assets);
-                }
+                screen
+                    if press
+                        && self.captured
+                        && self.screen_key(screen, session, surface, assets) => {}
                 "key.togglePerspective" if press => self.camera_type = self.camera_type.next(),
                 "key.fullscreen" if press => surface.toggle_fullscreen(),
                 "key.screenshot" if press => self.screenshot_pending = true,
@@ -327,6 +323,9 @@ impl Controls {
         if self.book_edit.is_some() {
             return Ok(self.book_event(event, session, surface, assets));
         }
+        if self.advancements.is_some() {
+            return Ok(self.advancements_event(event, (session, surface, assets)));
+        }
         if self.stats.is_some() {
             return Ok(self.stats_event(event, session, surface, assets));
         }
@@ -364,7 +363,7 @@ impl Controls {
             Ok(done) => return done,
             Err(event) => event,
         };
-        let event = match self.settings_event(event, surface, assets, for_screen) {
+        let event = match self.settings_event(event, session, surface, assets, for_screen) {
             Ok(()) => return Ok(()),
             Err(event) => event,
         };
@@ -487,6 +486,7 @@ impl Controls {
     pub(super) fn pause_event(
         &mut self,
         event: glfw::WindowEvent,
+        session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
@@ -501,7 +501,7 @@ impl Controls {
             }
             WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
                 if let Some(action) = pause.pressed() {
-                    self.pause_action(action, surface, assets);
+                    self.pause_action(action, session, surface, assets);
                 }
             }
             WindowEvent::Key(
@@ -530,7 +530,7 @@ impl Controls {
             WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
                 let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
                 if let Some(action) = pause.clicked(mouse) {
-                    self.pause_action(action, surface, assets);
+                    self.pause_action(action, session, surface, assets);
                 }
             }
             _ => {}

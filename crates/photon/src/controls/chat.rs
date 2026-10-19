@@ -40,6 +40,7 @@ impl Controls {
             self.credits.is_some(),
             self.social.is_some(),
             self.stats.is_some(),
+            self.advancements.is_some(),
             self.game_mode_switcher.is_some(),
             self.sign_edit.is_some(),
             self.book_edit.is_some(),

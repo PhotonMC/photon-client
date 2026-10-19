@@ -261,6 +261,18 @@ impl PlaySession {
         &self.local.advancements
     }
 
+    /// `ClientAdvancements`, for the screen that listens to it.
+    pub fn advancements_mut(&mut self) -> &mut photon_game::advancements::ClientAdvancements {
+        &mut self.local.advancements
+    }
+
+    /// `ServerboundSeenAdvancementsPacket`: the tab that was opened, or (`None`) the screen closed.
+    pub fn send_seen_advancements(&mut self, tab: Option<&str>) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_SEEN_ADVANCEMENTS_PACKET_ID, |output| {
+            encode_seen_advancements(output, tab)
+        })
+    }
+
     /// The advancements done since this was last asked, whose toasts are to show.
     pub fn take_advancement_toasts(&mut self) -> Vec<String> {
         std::mem::take(&mut self.local.advancement_toasts)

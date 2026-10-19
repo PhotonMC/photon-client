@@ -116,6 +116,8 @@ pub struct Controls {
     pub social: Option<SocialInteractionsScreen>,
     /// The statistics screen over the pause menu, while it is open.
     pub stats: Option<photon_gui::screen::stats::StatsScreen>,
+    /// The advancements screen, over the game or the pause menu, while it is open.
+    pub advancements: Option<advancements::OpenAdvancements>,
     /// `PlayerSocialManager.hiddenPlayers`: whose chat the player hid, for as long as the client runs.
     pub hidden_players: Vec<photon_core::binary::Uuid>,
     /// The game mode switcher (F3+F4), while F3 is held.
@@ -332,6 +334,7 @@ mod sign;
 
 mod skin;
 
+mod advancements;
 mod social;
 mod stats;
 pub use dialogs::DialogLayer;
@@ -386,6 +389,7 @@ impl Controls {
             credits: None,
             social: None,
             stats: None,
+            advancements: None,
             hidden_players: Vec::new(),
             game_mode_switcher: None,
             debug: DebugKeys::default(),

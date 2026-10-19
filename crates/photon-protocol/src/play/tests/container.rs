@@ -1,4 +1,5 @@
 use super::*;
+use crate::play::encode_seen_advancements;
 use photon_core::ids::ItemId;
 
 #[test]
@@ -375,4 +376,14 @@ fn a_beacon_choice_is_two_optional_effect_ids() {
         encode_set_beacon(Some(1), Some(300)),
         vec![1, 1, 1, 0xAC, 0x02]
     );
+}
+
+#[test]
+fn the_seen_advancements_packet_is_an_action_and_for_an_opened_tab_its_id() {
+    let mut closed = Vec::new();
+    encode_seen_advancements(&mut closed, None).unwrap();
+    assert_eq!(closed, vec![1]);
+    let mut opened = Vec::new();
+    encode_seen_advancements(&mut opened, Some("a:b")).unwrap();
+    assert_eq!(opened, vec![0, 3, b'a', b':', b'b']);
 }

@@ -25,6 +25,8 @@ pub struct HeldKeys {
     pub hold_use: bool,
     /// A scripted press of the inventory key on this tick.
     pub inventory: bool,
+    /// A scripted press of the advancements key on this tick.
+    pub advancements: bool,
     /// The chat box opened or closed on this tick, and Enter pressed in it.
     pub chat: bool,
     pub enter: bool,
@@ -50,6 +52,34 @@ pub struct HeldKeys {
     /// Text typed into the open screen.
     pub typed: Option<&'static str>,
 }
+
+/// What a plain key name does to a step.
+type Flag = (&'static str, fn(&mut HeldKeys));
+
+/// The plain key names of a step.
+const FLAGS: &[Flag] = &[
+    ("forward", |keys| keys.forward = true),
+    ("backward", |keys| keys.backward = true),
+    ("left", |keys| keys.left = true),
+    ("right", |keys| keys.right = true),
+    ("jump", |keys| keys.jump = true),
+    ("sneak", |keys| keys.sneak = true),
+    ("sprint", |keys| keys.sprint = true),
+    ("attack", |keys| keys.attack = true),
+    ("mine", |keys| keys.mine = true),
+    ("use", |keys| keys.use_click = true),
+    ("pick", |keys| keys.pick = true),
+    ("hold_use", |keys| keys.hold_use = true),
+    ("inventory", |keys| keys.inventory = true),
+    ("advancements", |keys| keys.advancements = true),
+    ("chat", |keys| keys.chat = true),
+    ("enter", |keys| keys.enter = true),
+    ("escape", |keys| keys.escape = true),
+    ("complete", |keys| keys.complete = true),
+    ("toggle_gui", |keys| keys.toggle_gui = true),
+    ("screenshot", |keys| keys.screenshot = true),
+    ("debug_overlay", |keys| keys.debug_overlay = true),
+];
 
 impl HeldKeys {
     pub fn input(self) -> photon_world::input::Input {
@@ -78,13 +108,13 @@ impl HeldKeys {
         }
     }
 
-    /// F1, F2 or F3 pressed.
-    fn press_function_key(&mut self, name: &str) {
-        match name {
-            "toggle_gui" => self.toggle_gui = true,
-            "screenshot" => self.screenshot = true,
-            _ => self.debug_overlay = true,
-        }
+    /// A step's plain key name, set. Whether it was one.
+    fn set_flag(&mut self, name: &str) -> bool {
+        FLAGS
+            .iter()
+            .find(|(flag, _)| *flag == name)
+            .map(|(_, set)| set(self))
+            .is_some()
     }
 
     /// One step of a `PHOTON_SCRIPT`, such as `forward,sprint`.
@@ -96,24 +126,7 @@ impl HeldKeys {
             .filter(|name| !name.is_empty())
         {
             match name {
-                "forward" => keys.forward = true,
-                "backward" => keys.backward = true,
-                "left" => keys.left = true,
-                "right" => keys.right = true,
-                "jump" => keys.jump = true,
-                "sneak" => keys.sneak = true,
-                "sprint" => keys.sprint = true,
-                "attack" => keys.attack = true,
-                "mine" => keys.mine = true,
-                "use" => keys.use_click = true,
-                "pick" => keys.pick = true,
-                "hold_use" => keys.hold_use = true,
-                "inventory" => keys.inventory = true,
-                "chat" => keys.chat = true,
-                "enter" => keys.enter = true,
-                "escape" => keys.escape = true,
-                "complete" => keys.complete = true,
-                "toggle_gui" | "screenshot" | "debug_overlay" => keys.press_function_key(name),
+                name if keys.set_flag(name) => {}
                 "none" => {}
                 other => {
                     // `click/SLOT/BUTTON/TYPE`, the type by its id.

@@ -49,20 +49,7 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        if held.inventory {
-            if self.screen.is_some() {
-                close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;
-                surface.set_cursor_captured(false);
-            } else {
-                open_inventory(
-                    surface,
-                    &mut self.screen,
-                    creative_tags(session),
-                    self.creative_tab,
-                    assets,
-                );
-            }
-        }
+        self.scripted_screens(held, session, surface, assets)?;
         if let Some((slot, button, kind)) = held.click {
             match self.screen.as_mut() {
                 Some(screen) => {
@@ -153,6 +140,10 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
+        if self.advancements.is_some() {
+            self.advancements_pressed(session, surface, assets);
+            return Ok(());
+        }
         if self.stats.is_some() {
             self.stats_pressed(mouse);
             return Ok(());
@@ -168,13 +159,43 @@ impl Controls {
         } else if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
             self.death_action(action, session, surface, assets)?;
         } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
-            self.pause_action(action, surface, assets);
+            self.pause_action(action, session, surface, assets);
         } else if self
             .chat
             .as_ref()
             .is_some_and(|chat| chat.leave_bed_clicked(mouse))
         {
             session.send_stop_sleeping()?;
+        }
+        Ok(())
+    }
+}
+
+impl Controls {
+    /// The scripted keys that open or close a screen: the inventory and the advancements.
+    fn scripted_screens(
+        &mut self,
+        held: HeldKeys,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        if held.inventory {
+            if self.screen.is_some() {
+                close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;
+                surface.set_cursor_captured(false);
+            } else {
+                open_inventory(
+                    surface,
+                    &mut self.screen,
+                    creative_tags(session),
+                    self.creative_tab,
+                    assets,
+                );
+            }
+        }
+        if held.advancements && self.advancements.is_none() {
+            self.open_advancements(session, surface, assets);
         }
         Ok(())
     }

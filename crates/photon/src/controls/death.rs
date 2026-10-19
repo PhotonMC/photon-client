@@ -32,6 +32,7 @@ impl Controls {
         self.skin_screen = None;
         self.social = None;
         self.stats = None;
+        self.advancements = None;
         self.sound_screen = None;
         self.controls_screen = None;
         self.language_screen = None;
@@ -109,7 +110,7 @@ impl Controls {
             self.skin_screen = None;
             self.social = None;
             self.stats = None;
-            self.stats = None;
+            self.drop_advancements(session);
             self.sound_screen = None;
             self.controls_screen = None;
             self.language_screen = None;

@@ -26,6 +26,7 @@ impl Controls {
     pub(super) fn pause_action(
         &mut self,
         action: PauseAction,
+        session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
@@ -34,6 +35,7 @@ impl Controls {
             PauseAction::Disconnect => self.leave = true,
             PauseAction::Options => self.open_options(surface, assets),
             PauseAction::Statistics => self.open_stats(surface, assets),
+            PauseAction::Advancements => self.open_advancements(session, surface, assets),
             _ => {}
         }
     }

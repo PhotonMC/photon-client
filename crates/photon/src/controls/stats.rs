@@ -11,6 +11,7 @@ impl Controls {
     ) {
         self.bed_tick(session, surface, assets);
         self.stats_tick(session, assets);
+        self.advancements_tick(session, assets);
     }
 
     /// `PauseScreen`'s Statistics: the screen opens over the pause menu.
