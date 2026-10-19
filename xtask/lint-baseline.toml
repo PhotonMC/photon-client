@@ -673,7 +673,7 @@
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 110
 "crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 88
 "crates/photon-gui/src/options.rs::OptionsScreen::new" = 126
-"crates/photon-gui/src/options/chat.rs::ChatOptionsScreen::new" = 127
+"crates/photon-gui/src/options/chat.rs::ChatOptionsScreen::new" = 123
 "crates/photon-gui/src/options/keybinds.rs::KeyBindsScreen::arrow" = 61
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::draw" = 89
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::refresh" = 63

@@ -203,7 +203,7 @@ impl Options {
                 }
             }
             Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
-            Key::MouseWheelSensitivity | Key::NotificationDisplayTime => {
+            Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 self.read_range(key, &json);
             }
         }
@@ -243,10 +243,10 @@ impl Options {
     }
 
     fn range_value(&self, key: Key) -> f64 {
-        if key == Key::NotificationDisplayTime {
-            self.notification_display_time
-        } else {
-            self.mouse_wheel_sensitivity
+        match key {
+            Key::NotificationDisplayTime => self.notification_display_time,
+            Key::ChatDelay => self.chat_delay,
+            _ => self.mouse_wheel_sensitivity,
         }
     }
 
@@ -258,7 +258,13 @@ impl Options {
             return;
         };
         let value = double_value(number);
-        if key == Key::NotificationDisplayTime {
+        if key == Key::ChatDelay {
+            // The codec takes 0 to 6; the value set then keeps the tenths (`xmap` of an
+            // `IntRange(0, 60)`), cut off rather than rounded.
+            if (0.0..=6.0).contains(&value) {
+                self.chat_delay = f64::from((value * 10.0) as i32) / 10.0;
+            }
+        } else if key == Key::NotificationDisplayTime {
             if (0.5..=10.0).contains(&value) {
                 self.notification_display_time = value;
             }
@@ -331,7 +337,7 @@ impl Options {
             }
             Key::MainHand => write_string(self.main_hand.serialized()),
             Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
-            Key::MouseWheelSensitivity | Key::NotificationDisplayTime => {
+            Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 java_double(self.range_value(key))
             }
             Key::AttackIndicator => self.attack_indicator.id().to_string(),
@@ -475,6 +481,17 @@ mod tests {
     }
 
     #[test]
+    fn the_chat_delay_keeps_its_tenths_and_stays_within_six_seconds() {
+        // The codec takes 0 to 6, and the value set cuts off at a tenth.
+        assert_eq!(loaded("chatDelay:2.5").chat_delay, 2.5);
+        assert_eq!(loaded("chatDelay:0.29").chat_delay, 0.2);
+        assert_eq!(loaded("chatDelay:6.0").chat_delay, 6.0);
+        assert_eq!(loaded("chatDelay:6.5").chat_delay, 0.0);
+        assert_eq!(loaded("chatDelay:-0.5").chat_delay, 0.0);
+        assert_eq!(loaded("chatDelay:true").chat_delay, 0.0);
+    }
+
+    #[test]
     fn a_unit_value_outside_its_range_leaves_the_option() {
         assert_eq!(loaded("mouseSensitivity:0.25").sensitivity, 0.25);
         assert_eq!(loaded("mouseSensitivity:1.5").sensitivity, 0.5);
@@ -557,6 +574,7 @@ mod tests {
         assert_eq!(options.fov, 90);
         options.fov = 100;
         options.chat_width = 0.25;
+        options.chat_delay = 1.5;
         options.save(&path).unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = text.lines().collect();
@@ -565,6 +583,7 @@ mod tests {
         assert_eq!(lines[2], "fov:0.75");
         assert_eq!(lines[3], "soundCategory_master:0.8");
         assert!(lines.contains(&"chatWidth:0.25"));
+        assert!(lines.contains(&"chatDelay:1.5"));
         assert!(lines.contains(&"guiScale:0"));
         let again = Options::load(&path);
         assert_eq!((again.fov, again.chat_width), (100, 0.25));

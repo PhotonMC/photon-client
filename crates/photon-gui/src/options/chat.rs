@@ -2,7 +2,7 @@
 //! a list. The visibility and the sizes, spacing and opacities of the chat
 //! are the options' and take effect; the rest hold a value on their widget.
 
-use photon_game::options::values::{IntRange, UnitDouble};
+use photon_game::options::values::{IntRange, MappedIntRange, UnitDouble};
 use photon_game::options::{ChatVisibility, Options};
 use photon_game::text::{Component, Lang};
 
@@ -28,6 +28,18 @@ const HEIGHT_FOCUSED: u8 = 7;
 const HEIGHT_UNFOCUSED: u8 = 8;
 const NARRATOR: u8 = 9;
 const SAVE_DRAFTS: u8 = 10;
+const DELAY: u8 = 11;
+
+/// `chatDelay`'s value set: tenths of a second from 0 to 6.
+type DelayValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
+
+fn delay_values() -> DelayValues {
+    IntRange::new(0, 60).xmap(
+        (|tenths| f64::from(tenths) / 10.0) as fn(i32) -> f64,
+        (|seconds: &f64| (*seconds * 10.0) as i32) as fn(&f64) -> i32,
+        true,
+    )
+}
 
 fn percent(caption: &Component, value: &f64) -> Component {
     percent_value(caption, *value)
@@ -85,6 +97,8 @@ pub struct ChatChoices {
     pub visibility: ChatVisibility,
     pub settings: ChatSettings,
     pub save_drafts: bool,
+    /// `chatDelay`, in seconds.
+    pub delay: f64,
 }
 
 pub struct ChatOptionsScreen {
@@ -142,16 +156,12 @@ impl ChatOptionsScreen {
                         ),
                     ),
                     (
-                        PLAIN,
+                        DELAY,
                         slider(
                             "options.chat.delay_instant",
-                            IntRange::new(0, 60).xmap(
-                                |value| f64::from(value) / 10.0,
-                                |value: &f64| (*value * 10.0) as i32,
-                                true,
-                            ),
+                            delay_values(),
                             delay,
-                            0.0,
+                            options.chat_delay,
                         ),
                     ),
                     (WIDTH, unit("options.chat.width", width, options.chat_width)),
@@ -242,9 +252,14 @@ impl ChatOptionsScreen {
             .find(SAVE_DRAFTS)
             .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
             .is_some_and(|button| *button.value());
+        let delay = list
+            .find(DELAY)
+            .and_then(|control| control.as_any().downcast_ref::<OptionSlider<DelayValues>>())
+            .map_or(0.0, |slider| *slider.value());
         ChatChoices {
             visibility,
             save_drafts,
+            delay,
             settings: ChatSettings {
                 width: share(WIDTH),
                 scale: share(SCALE),

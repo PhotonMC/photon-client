@@ -57,6 +57,8 @@ pub struct Options {
     pub background_for_chat_only: bool,
     /// `notificationDisplayTime`: how long the subtitles and toasts stay, as a multiplier.
     pub notification_display_time: f64,
+    /// `chatDelay`: seconds between the chat messages shown.
+    pub chat_delay: f64,
     pub chat_height_focused: f64,
     pub chat_height_unfocused: f64,
     pub chat_scale: f64,
@@ -106,6 +108,7 @@ impl Default for Options {
             text_background_opacity: 0.5,
             background_for_chat_only: true,
             notification_display_time: 1.0,
+            chat_delay: 0.0,
             chat_height_focused: 1.0,
             // `ChatComponent.defaultUnfocusedPct`.
             chat_height_unfocused: 70.0 / CHAT_HEIGHT_SPAN,

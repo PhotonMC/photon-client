@@ -26,6 +26,7 @@ pub(super) enum Key {
     TextBackgroundOpacity,
     BackgroundForChatOnly,
     ChatHeightFocused,
+    ChatDelay,
     ChatHeightUnfocused,
     ChatScale,
     ChatWidth,
@@ -46,7 +47,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 52] = [
+pub(super) const KEYS: [(&str, Key); 53] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -65,6 +66,7 @@ pub(super) const KEYS: [(&str, Key); 52] = [
     ("textBackgroundOpacity", Key::TextBackgroundOpacity),
     ("backgroundForChatOnly", Key::BackgroundForChatOnly),
     ("chatHeightFocused", Key::ChatHeightFocused),
+    ("chatDelay", Key::ChatDelay),
     ("chatHeightUnfocused", Key::ChatHeightUnfocused),
     ("chatScale", Key::ChatScale),
     ("chatWidth", Key::ChatWidth),
