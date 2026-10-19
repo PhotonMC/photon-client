@@ -1045,7 +1045,6 @@
 "crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
-"crates/photon/src/play/ticks.rs::Play::tick" = 62
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 74
 "crates/photon/src/window_probe/version.rs::run_window" = 61

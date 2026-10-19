@@ -251,6 +251,8 @@ struct Play {
     held_item_layers: [ItemLayerCache; 2],
     camera: photon_render::camera::Camera,
     controls: Controls,
+    /// The tutorial hints.
+    tutorial: photon_gui::tutorial::Tutorial,
     /// `PHOTON_CAPTURE_FRAMES`: how many frames after the script ends are
     /// captured, and how many have been.
     capture_frames: u32,
@@ -514,3 +516,4 @@ mod pacing;
 mod schedule;
 mod social_toast;
 mod ticks;
+mod tutorial;

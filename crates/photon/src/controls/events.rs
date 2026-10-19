@@ -146,6 +146,7 @@ impl Controls {
                         assets,
                     );
                     self.captured = false;
+                    self.turning.inventory_opened = true;
                     self.release_keys();
                 }
                 screen

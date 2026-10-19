@@ -11,6 +11,10 @@ pub struct Turning {
     last: Option<Instant>,
     /// `Options.smoothCamera`, toggled by `key.smoothCamera` and never saved.
     pub smooth_camera: bool,
+    /// The turns made since the tutorial last asked.
+    pub turned: Vec<(f64, f64)>,
+    /// The inventory key opened the screen since the tutorial last asked.
+    pub inventory_opened: bool,
 }
 
 impl Turning {
@@ -77,6 +81,7 @@ impl Controls {
         let scoping = self.camera_type == CameraType::FirstPerson && player.is_scoping();
         let (turn_x, turn_y) = self.turning.take(&self.options, scoping, now);
         if turn_x != 0.0 || turn_y != 0.0 {
+            self.turning.turned.push((turn_x, turn_y));
             session.turn_player(turn_x, turn_y);
         }
     }

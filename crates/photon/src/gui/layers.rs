@@ -341,6 +341,48 @@ impl Gui {
         self.layers.toasts.add(Box::new(toast));
     }
 
+    /// A tutorial step's toast, kept until the tutorial hides it.
+    pub fn add_tutorial_toast(
+        &mut self,
+        icon: photon_gui::toasts::TutorialIcon,
+        (title, message): (
+            &photon_game::text::Component,
+            Option<&photon_game::text::Component>,
+        ),
+        (progressable, display_time): (bool, f64),
+    ) {
+        use photon_gui::toasts::{TutorialToast, TutorialWords};
+        let env = photon_gui::toasts::ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        let words = TutorialWords {
+            title,
+            message,
+            progressable,
+            time_to_display_ms: 0,
+        };
+        let toast = TutorialToast::new(&env, icon, &words);
+        self.layers.toasts.add(Box::new(toast));
+    }
+
+    /// `TutorialToast.hide` or `updateProgress` of the toast with the icon.
+    pub fn tutorial_toast(
+        &mut self,
+        icon: photon_gui::toasts::TutorialIcon,
+        progress: Option<f32>,
+    ) {
+        if let Some(toast) = self.layers.toasts.tutorial_mut(icon) {
+            match progress {
+                Some(progress) => toast.update_progress(progress),
+                None => toast.hide(),
+            }
+        }
+    }
+
     /// The social interactions toast is hidden once the screen is opened with its key.
     pub fn hide_social_interactions_toast(&mut self) {
         let icon = photon_gui::toasts::TutorialIcon::SocialInteractions;

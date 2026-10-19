@@ -144,12 +144,11 @@ impl Play {
             session.registry_names("minecraft:worldgen/biome"),
         );
         let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
-        let language = &controls.options.language_code;
         let mut gui = Gui::load(
             std::path::Path::new(&root),
             registries,
             &mut backend,
-            language,
+            &controls.options.language_code,
         )?;
         gui.set_player_skin(skin_rect);
         session.set_lang(gui.lang_shared());
@@ -193,6 +192,7 @@ impl Play {
                 ItemLayerCache::new(photon_render::model::DisplayContext::FirstPersonLeftHand),
             ],
             camera: photon_render::camera::Camera::new(),
+            tutorial: photon_gui::tutorial::Tutorial::new(controls.options.tutorial_step),
             controls,
             capture_frames,
             captured_frames: 0,
@@ -381,6 +381,7 @@ impl Play {
             self.gui.receive_hud(hud);
         }
         self.receive_chat()?;
+        self.tutorial_items();
         Ok(())
     }
 
@@ -469,6 +470,25 @@ impl Play {
         );
     }
 
+    /// What the player's own tick sounded.
+    fn tick_player_sounds(&mut self) {
+        let session = &mut self.session;
+        let mut own_sounds = session
+            .player_mut()
+            .map(LocalPlayer::take_sounds)
+            .unwrap_or_default();
+        own_sounds.extend(session.take_world_sounds());
+        let (underwater, under_water) =
+            session.player_mut().map_or((Vec::new(), false), |player| {
+                (player.take_underwater_sounds(), player.is_under_water())
+            });
+        if let Some(sound) = self.sound.as_mut() {
+            sound.handle_local(own_sounds);
+            sound.handle_underwater(underwater, under_water);
+            self.ambient.tick(session, sound);
+        }
+    }
+
     /// One client tick.
     pub(super) fn tick(&mut self, held: HeldKeys) -> Result<()> {
         self.tick_sound();
@@ -500,23 +520,13 @@ impl Play {
         for hand in session.take_items_used() {
             self.item_in_hand.item_used(hand);
         }
+        self.tutorial_before_tick(&aim, &held);
+        let session = &mut self.session;
         // After the keys and before the player ticks.
         tick_hands(&mut self.item_in_hand, session, &self.block_renderer);
         session.tick(held.input())?;
-        let mut own_sounds = session
-            .player_mut()
-            .map(LocalPlayer::take_sounds)
-            .unwrap_or_default();
-        own_sounds.extend(session.take_world_sounds());
-        let (underwater, under_water) =
-            session.player_mut().map_or((Vec::new(), false), |player| {
-                (player.take_underwater_sounds(), player.is_under_water())
-            });
-        if let Some(sound) = self.sound.as_mut() {
-            sound.handle_local(own_sounds);
-            sound.handle_underwater(underwater, under_water);
-            self.ambient.tick(session, sound);
-        }
+        self.tick_player_sounds();
+        let session = &mut self.session;
         self.animated_atlas.tick();
         // What the level's own tick queued (a sulfur block's gas) joins the particles in this tick.
         super::effects::route_level_events(
