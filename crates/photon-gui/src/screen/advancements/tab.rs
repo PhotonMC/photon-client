@@ -10,6 +10,11 @@ use photon_game::text::{Lang, Run, Style};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
+/// `Mth.clamp` up to zero: the lower bound wins when it lies above zero, where `f64::clamp` would panic.
+fn clamp_scroll(value: f64, lower: f64) -> f64 {
+    if value < lower { lower } else { value.min(0.0) }
+}
+
 /// Where a tab sits on the window: above, below, left or right of it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TabType {
@@ -132,7 +137,7 @@ impl AdvancementTab {
         let mut tab = Self {
             root: root.to_owned(),
             kind,
-            index,
+            index: left,
             title: lang.runs(&display.title, &Style::default()),
             icon: display.icon.0,
             background: display.background.as_deref().map(texture_name),
@@ -246,10 +251,10 @@ impl AdvancementTab {
     /// `scroll`.
     pub(super) fn scroll(&mut self, (x, y): (f64, f64)) {
         if self.can_scroll_horizontally() {
-            self.scroll.0 = (self.scroll.0 + x).clamp(-f64::from(self.max.0 - 234), 0.0);
+            self.scroll.0 = clamp_scroll(self.scroll.0 + x, -f64::from(self.max.0 - 234));
         }
         if self.can_scroll_vertically() {
-            self.scroll.1 = (self.scroll.1 + y).clamp(-f64::from(self.max.1 - 113), 0.0);
+            self.scroll.1 = clamp_scroll(self.scroll.1 + y, -f64::from(self.max.1 - 113));
         }
     }
 
@@ -333,7 +338,8 @@ impl AdvancementTab {
             self.draw_connections(frame, atlas, 0, (at, background));
         }
         self.draw_widgets(frame, (atlas, item), 0, at);
-        // What is off the screen is dropped as well: the scissor is cut to it.
+        // The scissor stack starts from the screen's rectangle and intersects each push with it, so
+        // what lies off the screen is dropped as well.
         let (left, top) = (origin.0.max(0), origin.1.max(0));
         let (right, bottom) = (
             (origin.0 + 234).min(screen.0),

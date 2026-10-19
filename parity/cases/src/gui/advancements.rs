@@ -287,7 +287,7 @@ fn screen_row(label: &str, before: Vec<Value>, steps: Vec<Value>) -> Value {
 
 /// The points the pointer is put on to find the widgets of the trees below.
 const HOVER_POINTS: [(i32, i32); 8] =
-    [(200, 118), (213, 118), (226, 118), (240, 118), (256, 118), (270, 118), (226, 104), (226, 132)];
+    [(173, 124), (201, 124), (229, 151), (257, 124), (162, 113), (185, 136), (201, 97), (150, 124)];
 
 fn with_mouse(mut row: Value, mouse: (i32, i32), steps: Vec<Value>) -> Value {
     row["mouse"] = json!([mouse.0, mouse.1]);
@@ -318,6 +318,30 @@ fn spread_tree(prefix: &str, root_title: &'static str) -> Vec<Shown> {
     ]
 }
 
+/// The tree above, grown past the window on both axes so the pane can move.
+fn wide_tree(prefix: &str, root_title: &'static str) -> Vec<Shown> {
+    let mut shown = spread_tree(prefix, root_title);
+    let id = |name: &str| -> &'static str { Box::leak(format!("{prefix}:{name}").into_boxed_str()) };
+    shown.extend([
+        Shown::new(id("e"), Some(id("d")), (6.0, 0.0)),
+        Shown::new(id("f"), Some(id("e")), (9.0, 2.0)),
+        Shown::new(id("g"), Some(id("a")), (4.0, -2.0)),
+        Shown::new(id("h"), Some(id("b")), (5.0, 3.0)),
+        Shown::new(id("i"), Some(id("f")), (10.0, -1.0)),
+    ]);
+    shown
+}
+
+/// Ten trees, so the tabs run past the three above onto the other sides.
+fn many_roots() -> Vec<Value> {
+    (0..10)
+        .map(|index| {
+            let prefix: &'static str = Box::leak(format!("r{index}").into_boxed_str());
+            tree_update(&spread_tree(prefix, "Root"), vec![])
+        })
+        .collect()
+}
+
 fn tree_update(shown: &[Shown], progress: Vec<Value>) -> Value {
     update(false, shown.iter().map(Shown::json).collect(), &[], progress, true)
 }
@@ -344,7 +368,10 @@ pub fn advancements_screen() -> Value {
         screen_row("three-tabs", tabs.clone(), vec![]),
     ];
     rows.extend(hover_rows(&progressed));
-    rows.extend(motion_rows(&tabs));
+    let wide =
+        vec![tree_update(&wide_tree("one", "Minecraft"), vec![]), tree_update(&wide_tree("two", "Nether"), vec![])];
+    rows.extend(motion_rows(&wide));
+    rows.push(screen_row("many-roots", many_roots(), vec![]));
     rows.extend(window_rows(&tabs));
     gui("advancements-screen", "advancements_screen", rows)
 }
