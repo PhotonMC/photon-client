@@ -428,6 +428,32 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /** `StatFormatter` for numbers: each formatter of the game on each value. */
+    static JsonObject statFormat(JsonObject request) {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            net.minecraft.stats.StatFormatter formatter = switch (row.get("formatter").getAsString()) {
+                case "default" -> net.minecraft.stats.StatFormatter.DEFAULT;
+                case "divide_by_ten" -> net.minecraft.stats.StatFormatter.DIVIDE_BY_TEN;
+                case "distance" -> net.minecraft.stats.StatFormatter.DISTANCE;
+                case "time" -> net.minecraft.stats.StatFormatter.TIME;
+                default -> throw new IllegalArgumentException(row.get("formatter").getAsString());
+            };
+            var texts = new JsonArray();
+            for (var value : row.getAsJsonArray("values")) {
+                texts.add(formatter.format(value.getAsInt()));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("texts", texts);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * The game's own `DebugScreenOverlay.extractLines` for lines given: the left column then the right,
      * as the overlay draws them, so the order of the backgrounds and the text and the right alignment show.

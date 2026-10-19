@@ -22,6 +22,7 @@ mod screens;
 mod setting;
 mod signs;
 mod social;
+mod stats;
 mod status;
 mod suggest;
 mod title;
@@ -73,6 +74,7 @@ const ORDER: &[Generator] = &[
     || vec![status::hud_sleep()],
     || vec![debug::hud_debug_overlay()],
     || vec![debug::hud_debug_lines()],
+    || vec![stats::stat_format()],
     || vec![status::subtitles()],
     || vec![toasts::toasts()],
     || vec![status::hud_status()],

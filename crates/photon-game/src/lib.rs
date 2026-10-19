@@ -17,6 +17,7 @@ pub mod servers;
 pub mod sign;
 pub mod sounds;
 pub mod splash;
+pub mod stats;
 pub mod text;
 pub mod tooltip;
 pub mod waypoint;

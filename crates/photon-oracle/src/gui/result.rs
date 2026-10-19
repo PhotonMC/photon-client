@@ -107,7 +107,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             | "skin_customization_screen"
             | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
             "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
-            "lang_text" => lang_text_case(&mut ctx, row)?,
+            "lang_text" | "stat_format" => texts_case(&mut ctx, row, operation)?,
             "language_screen" => language_screen_case(&mut ctx, row)?,
             "death_screen" => death_screen_case(&mut ctx, row)?,
             "credits_screen" => credits_screen_case(&mut ctx, row)?,
@@ -176,4 +176,32 @@ fn panorama_view(request: &Value) -> Result<Value, String> {
         f64_field(request, "speed")?,
     );
     Ok(json!({"matrix": bits, "spin": format!("{:08x}", spin.to_bits())}))
+}
+
+/// `stat_format`: each value written by a formatter of the statistics.
+fn stat_format_case(row: &Value) -> Result<Value, String> {
+    use photon_data::stat::Formatter;
+    let formatter = match row["formatter"].as_str().ok_or("formatter")? {
+        "default" => Formatter::Default,
+        "divide_by_ten" => Formatter::DivideByTen,
+        "distance" => Formatter::Distance,
+        "time" => Formatter::Time,
+        _ => return Err("unknown formatter".into()),
+    };
+    let texts: Vec<String> = row["values"]
+        .as_array()
+        .ok_or("values")?
+        .iter()
+        .map(|value| photon_game::stats::format(formatter, value.as_i64().unwrap_or(0) as i32))
+        .collect();
+    Ok(json!({"label": row["label"], "texts": texts}))
+}
+
+/// The operations that answer with texts: what the language says, and how the statistics write numbers.
+fn texts_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
+    if operation == "stat_format" {
+        stat_format_case(row)
+    } else {
+        lang_text_case(ctx, row)
+    }
 }
