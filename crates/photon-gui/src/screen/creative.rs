@@ -279,7 +279,7 @@ impl Screen for CreativeScreen {
             {
                 self.select_tab(tab);
             }
-            return KeyResult::Actions(Vec::new());
+            return KeyResult::Consumed(Vec::new());
         }
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
             return KeyResult::Close;
@@ -547,5 +547,24 @@ mod tests {
         assert_eq!(slot_position(true, 36), (9, 112));
         assert_eq!(slot_position(true, 9), (9, 54));
         assert_eq!(slot_position(true, BIN), (173, 112));
+    }
+
+    #[test]
+    fn the_chat_key_switches_to_search_and_is_consumed() {
+        struct NoClip;
+        impl Clipboard for NoClip {
+            fn get(&mut self) -> String {
+                String::new()
+            }
+            fn set(&mut self, _text: &str) {}
+        }
+        let mut screen = test_screen(default_tab());
+        let inventory = ContainerMenu::default();
+        let mut press = |key| screen.key_pressed(key, KeyMods::default(), &inventory, &mut NoClip);
+        // A tab that is not the search takes the chat key, and lets other letters go on.
+        assert!(matches!(press(glfw::Key::H), KeyResult::Actions(_)));
+        assert!(matches!(press(glfw::Key::T), KeyResult::Consumed(_)));
+        // The focused search box then swallows every key.
+        assert!(matches!(press(glfw::Key::H), KeyResult::Consumed(_)));
     }
 }

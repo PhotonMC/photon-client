@@ -27,18 +27,18 @@ impl Controls {
         }
     }
 
-    /// Whether a key pressed for the debug keys reaches `handleDebugKeys`: Java runs it for every
-    /// key the open screen did not consume. Escape belongs to the screens, and a container screen
-    /// takes the number keys over a hovered slot (`screen_event` answers for those).
+    /// Whether a key pressed for the debug keys reaches `handleDebugKeys` before the screens have
+    /// answered: Java runs it for every key the open screen did not consume. Escape belongs to
+    /// the screens, and a container screen answers for itself in `screen_key_press`.
     fn debug_key_unconsumed(&self, key: glfw::Key) -> bool {
         if !self.any_screen_open() {
             return true;
         }
-        key != glfw::Key::Escape && !(self.screen.is_some() && is_slot_number_key(key))
+        key != glfw::Key::Escape && self.screen.is_none()
     }
 
-    /// A key pressed for the open screen: what the screen answers is done, and a number key it
-    /// did not take counts as a debug combination.
+    /// A key pressed for the open screen: what the screen answers is done, and a key it did not
+    /// consume counts as a debug combination.
     pub(super) fn screen_key_press(
         &mut self,
         key: glfw::Key,
@@ -56,8 +56,8 @@ impl Controls {
             command: modifiers.contains(glfw::Modifiers::Super),
         };
         let result = screen.key_pressed(key, mods, &menu, &mut WindowClipboard(surface));
-        // A number key that swapped nothing was not consumed, so F3 is used with it.
-        if is_slot_number_key(key) && result == KeyResult::Actions(Vec::new()) {
+        if !matches!(result, KeyResult::Close | KeyResult::Consumed(_)) && key != glfw::Key::Escape
+        {
             self.debug.combination(key, session.reduced_debug_info());
         }
         match result {
@@ -66,16 +66,10 @@ impl Controls {
                 self.captured = true;
                 self.last_cursor = None;
             }
-            KeyResult::Actions(actions) => run_actions(session, &mut self.screen, actions)?,
+            KeyResult::Actions(actions) | KeyResult::Consumed(actions) => {
+                run_actions(session, &mut self.screen, actions)?;
+            }
         }
         Ok(())
     }
-}
-
-/// The number keys with a debug answer that a container screen also reads (a hotbar swap).
-pub(super) fn is_slot_number_key(key: glfw::Key) -> bool {
-    matches!(
-        key,
-        glfw::Key::Num1 | glfw::Key::Num2 | glfw::Key::Num3 | glfw::Key::Num4
-    )
 }

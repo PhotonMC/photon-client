@@ -188,7 +188,7 @@ impl CreativeScreen {
             let actions = self.actions(clicks);
             if !actions.is_empty() {
                 self.ignore_text_input = true;
-                return KeyResult::Actions(actions);
+                return KeyResult::Consumed(actions);
             }
         }
         let before = self.search.value();
@@ -204,13 +204,13 @@ impl CreativeScreen {
             if before != self.search.value() {
                 self.refresh_search_results();
             }
-            return KeyResult::Actions(Vec::new());
+            return KeyResult::Consumed(Vec::new());
         }
         if key == glfw::Key::Escape {
             return KeyResult::Close;
         }
         // The focused box swallows every other key.
-        KeyResult::Actions(Vec::new())
+        KeyResult::Consumed(Vec::new())
     }
 
     /// `extractTabButton`: the button and the tab's icon.

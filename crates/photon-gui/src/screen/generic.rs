@@ -288,7 +288,7 @@ impl Screen for GenericScreen {
         if let Some(book) = &mut self.book
             && book.key_pressed(key, (mods.control || mods.command, mods.shift), clipboard)
         {
-            return KeyResult::Actions(Vec::new());
+            return KeyResult::Consumed(Vec::new());
         }
         if let Some(result) = self.name_key(
             key,

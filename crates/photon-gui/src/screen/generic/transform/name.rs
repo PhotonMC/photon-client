@@ -281,7 +281,7 @@ impl GenericScreen {
             self.name_changed();
         }
         // The box takes every key while it can, so the inventory key is typed.
-        Some(KeyResult::Actions(Vec::new()))
+        Some(KeyResult::Consumed(Vec::new()))
     }
 
     /// A character typed into the anvil's name box.

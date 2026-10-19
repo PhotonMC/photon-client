@@ -129,7 +129,11 @@ pub enum ScreenAction {
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyResult {
     Close,
+    /// The key did its clicks and was not taken: `keyPressed` answered false, so the keyboard
+    /// handler goes on (to the debug keys).
     Actions(Vec<ScreenAction>),
+    /// The key was taken (`keyPressed` answered true) and did these clicks, if any.
+    Consumed(Vec<ScreenAction>),
 }
 
 /// The modifiers a key came with.

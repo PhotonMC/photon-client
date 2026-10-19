@@ -226,7 +226,7 @@ impl Screen for InventoryScreen {
             .book
             .key_pressed(key, (mods.control || mods.command, mods.shift), clipboard)
         {
-            return KeyResult::Actions(Vec::new());
+            return KeyResult::Consumed(Vec::new());
         }
         if matches!(key, glfw::Key::Escape | glfw::Key::E) {
             return KeyResult::Close;
@@ -438,5 +438,38 @@ mod tests {
                 kind: ClickType::PickupAll
             })]
         );
+    }
+
+    struct NoClip;
+    impl Clipboard for NoClip {
+        fn get(&mut self) -> String {
+            String::new()
+        }
+        fn set(&mut self, _text: &str) {}
+    }
+
+    fn press(screen: &mut InventoryScreen, key: glfw::Key, menu: &ContainerMenu) -> KeyResult {
+        screen.key_pressed(key, KeyMods::default(), menu, &mut NoClip)
+    }
+
+    #[test]
+    fn a_letter_the_screen_has_no_use_for_is_not_consumed() {
+        let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
+        let menu = ContainerMenu::default();
+        assert_eq!(
+            press(&mut screen, glfw::Key::H, &menu),
+            KeyResult::Actions(Vec::new())
+        );
+        assert_eq!(press(&mut screen, glfw::Key::E, &menu), KeyResult::Close);
+    }
+
+    #[test]
+    fn a_hotbar_swap_is_not_consumed() {
+        let mut screen = InventoryScreen::new(427, 240, String::new(), std::sync::Arc::default());
+        let mut menu = ContainerMenu::default();
+        menu.slots[20] = Some(Stack::new(5, photon_core::ids::ItemId(1)));
+        screen.hovered = Some(20);
+        let result = press(&mut screen, glfw::Key::Num1, &menu);
+        assert!(matches!(result, KeyResult::Actions(actions) if !actions.is_empty()));
     }
 }

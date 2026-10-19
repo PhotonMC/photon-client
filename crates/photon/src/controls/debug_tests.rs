@@ -1,4 +1,4 @@
-use super::{DebugKeys, screen_keys::is_slot_number_key};
+use super::DebugKeys;
 use glfw::{Action, Key};
 
 fn tap(debug: &mut DebugKeys, key: Key) {
@@ -32,10 +32,4 @@ fn a_key_with_no_debug_answer_does_not_use_f3() {
     let mut debug = DebugKeys::default();
     tap(&mut debug, Key::W);
     assert!(debug.entries.is_overlay_visible());
-}
-
-#[test]
-fn the_number_keys_a_container_reads_are_the_first_four() {
-    assert!(is_slot_number_key(Key::Num1) && is_slot_number_key(Key::Num4));
-    assert!(!is_slot_number_key(Key::Num5) && !is_slot_number_key(Key::H));
 }
