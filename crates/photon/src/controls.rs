@@ -450,6 +450,35 @@ pub struct DebugKeys {
 }
 
 impl DebugKeys {
+    /// A key pressed with F3 held: the ones `KeyboardHandler.handleDebugKeys` answers (and Escape,
+    /// which pauses without the menu) mark F3 as used as a modifier, ported or not. The hitbox,
+    /// chunk border and location keys do nothing with reduced debug info.
+    pub(super) fn combination(&mut self, key: glfw::Key, reduced: bool) {
+        use glfw::Key;
+        let acts = match key {
+            Key::B | Key::G | Key::C => !reduced,
+            Key::A
+            | Key::D
+            | Key::H
+            | Key::I
+            | Key::N
+            | Key::P
+            | Key::S
+            | Key::T
+            | Key::L
+            | Key::V
+            | Key::F4
+            | Key::F6
+            | Key::Num1
+            | Key::Num2
+            | Key::Num3
+            | Key::Num4
+            | Key::Escape => true,
+            _ => false,
+        };
+        self.used |= self.down && acts;
+    }
+
     /// F3 pressed or let go of: the overlay toggles on the release unless a combination used F3.
     pub(super) fn key(&mut self, action: glfw::Action) {
         self.down = action != glfw::Action::Release;

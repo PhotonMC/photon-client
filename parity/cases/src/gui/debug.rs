@@ -47,3 +47,19 @@ pub fn hud_debug_overlay() -> Value {
     }));
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
+
+/// `extractLines` with lines in both columns: empty lines between, long lines that overlap in a narrow
+/// window, and a column with nothing.
+pub fn hud_debug_lines() -> Value {
+    let long = "Facing: south (Towards positive Z) (22.3 / 22.3)";
+    let rows = vec![
+        json!({"label": "both", "width": 427, "height": 240,
+            "left": ["Minecraft 26.2 (26.2/vanilla)", "", "XYZ: 1.001 / 64.06250 / 2.500", "Block: 1 64 2"],
+            "right": ["Allocated: 12% 123/1024MB", "", "CPU: 8x some processor", "Display: 854x480"]}),
+        json!({"label": "narrow-overlap", "width": 160, "height": 90,
+            "left": [long, "", long], "right": [long, "", "Chunk: 0 4 0 [0 0 in r.0.0.mca]"]}),
+        json!({"label": "right-only", "width": 427, "height": 240, "left": [], "right": ["a", "", "bb"]}),
+        json!({"label": "left-only", "width": 427, "height": 240, "left": ["a", "", "bb"], "right": []}),
+    ];
+    gui("hud-debug-lines", "hud_debug_lines", rows)
+}

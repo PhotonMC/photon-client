@@ -239,6 +239,7 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
     match operation {
         "hud_status" => hud_status_case(ctx, row),
         "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
+        "hud_debug_lines" => super::hud_overlays::hud_debug_lines_case(ctx, row),
         "hud_debug_overlay" => super::hud_overlays::hud_debug_overlay_case(ctx, row),
         "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
         "toasts" => super::hud_overlays::toasts_case(ctx, row),

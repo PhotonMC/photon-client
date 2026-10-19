@@ -202,7 +202,7 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
     list.set_overlay_visible(flag("overlay"));
     let launched = row["launched"].as_str().ok_or("launched")?;
     let input = Input {
-        version: format!("Minecraft 26.2 ({launched}/vanilla)"),
+        version: debug::version_line("26.2", launched),
         camera: Some(CameraEntity {
             position: (
                 crate::f64_field(row, "x")?,
@@ -225,7 +225,7 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    if !list.enabled(flag("reduced")).is_empty() && !flag("hidden") {
+    if debug::shown(&list, flag("reduced"), (flag("hidden"), false)) {
         let (left, right) = debug::lines(&list, flag("reduced"), &input, footer);
         debug::draw(
             &mut frame,
@@ -235,6 +235,34 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
             (&left, &right),
         );
     }
+    Ok(json!({
+        "label": row["label"],
+        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+    }))
+}
+
+/// `hud_debug_lines`: the columns drawn from lines given, the game's `extractLines` for each.
+pub(super) fn hud_debug_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    let lines = |key: &str| -> Vec<String> {
+        row[key]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|line| line.as_str().map(str::to_owned))
+            .collect()
+    };
+    let (left, right) = (lines("left"), lines("right"));
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    photon_gui::hud::debug::draw(
+        &mut frame,
+        &ctx.atlas,
+        &ctx.font,
+        row["width"].as_i64().unwrap_or(0) as i32,
+        (&left, &right),
+    );
     Ok(json!({
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),

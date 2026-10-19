@@ -29,10 +29,10 @@ impl Gui {
             }
         });
         let input = Input {
-            version: format!(
-                "Minecraft {0} ({0}/vanilla)",
-                photon_net::resources::KnownPack::VANILLA_VERSION
-            ),
+            version: {
+                let version = photon_net::resources::KnownPack::VANILLA_VERSION;
+                debug::version_line(version, version)
+            },
             camera,
         };
         let footer = list.is_overlay_visible().then(|| {

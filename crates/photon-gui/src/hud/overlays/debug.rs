@@ -90,8 +90,23 @@ impl FooterKeys {
     }
 }
 
-/// `DebugScreenOverlay.extractLines`: every background first, then the text, each line nine
-/// units under the one above from two units down; the right column ends two units from the edge.
+/// `DebugEntryVersion`: the game's version, the one launched and the client's brand.
+pub fn version_line(version: &str, launched: &str) -> String {
+    format!("Minecraft {version} ({launched}/vanilla)")
+}
+
+/// Whether the overlay draws: an entry is on and the interface is shown or a screen is up.
+pub fn shown(
+    list: &EntryList,
+    reduced_debug_info: bool,
+    (hud_hidden, screen_open): (bool, bool),
+) -> bool {
+    !list.enabled(reduced_debug_info).is_empty() && (!hud_hidden || screen_open)
+}
+
+/// `DebugScreenOverlay.extractLines`, a column at a time: every background of the column, then its
+/// text, each line nine units under the one above from two units down; the right column ends two
+/// units from the edge.
 pub fn draw(
     frame: &mut GuiFrame,
     atlas: &GuiAtlas,
@@ -100,33 +115,26 @@ pub fn draw(
     (left, right): (&[String], &[String]),
 ) {
     for (lines, align_left) in [(left, true), (right, false)] {
-        for (index, line) in lines
-            .iter()
-            .enumerate()
-            .filter(|(_, line)| !line.is_empty())
-        {
-            let text_width = font.width(line);
-            let x = if align_left {
-                2
-            } else {
-                width - 2 - text_width
-            };
-            let y = 2 + 9 * index as i32;
+        let placed = || {
+            lines
+                .iter()
+                .enumerate()
+                .filter(|(_, line)| !line.is_empty())
+                .map(|(index, line)| {
+                    let text_width = font.width(line);
+                    let x = if align_left {
+                        2
+                    } else {
+                        width - 2 - text_width
+                    };
+                    (line, text_width, (x, 2 + 9 * index as i32))
+                })
+        };
+        for (_, text_width, (x, y)) in placed() {
             frame.fill(atlas, (x - 1, y - 1, x + text_width + 1, y + 8), BACKGROUND);
         }
-    }
-    for (lines, align_left) in [(left, true), (right, false)] {
-        for (index, line) in lines
-            .iter()
-            .enumerate()
-            .filter(|(_, line)| !line.is_empty())
-        {
-            let x = if align_left {
-                2
-            } else {
-                width - 2 - font.width(line)
-            };
-            frame.text(atlas, font, line, x, 2 + 9 * index as i32, TEXT);
+        for (line, _, (x, y)) in placed() {
+            frame.text(atlas, font, line, x, y, TEXT);
         }
     }
 }

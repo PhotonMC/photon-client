@@ -18,7 +18,6 @@ impl Controls {
             }
             // `key.debug.switchGameMode` with the debug modifier held.
             WindowEvent::Key(Key::F4, _, Action::Press, _) if self.debug.down => {
-                self.debug.used = true;
                 self.debug_switch_game_mode(session, surface, assets);
             }
             WindowEvent::Key(key, scancode, action, _) => {
@@ -247,6 +246,27 @@ impl Controls {
         Ok(())
     }
 
+    /// The modifier keys held (control, the command key on macOS, F3 for the debug keys).
+    fn track_modifiers(&mut self, key: glfw::Key, action: glfw::Action, reduced_debug_info: bool) {
+        let control_keys: [glfw::Key; 2] = if cfg!(target_os = "macos") {
+            [glfw::Key::LeftSuper, glfw::Key::RightSuper]
+        } else {
+            [glfw::Key::LeftControl, glfw::Key::RightControl]
+        };
+        if control_keys.contains(&key) {
+            self.control_held = action != glfw::Action::Release;
+        }
+        if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
+            self.ctrl_down = action != glfw::Action::Release;
+        }
+        // `key.debug.modifier`.
+        if key == glfw::Key::F3 {
+            self.debug.key(action);
+        } else if action != glfw::Action::Release && !self.any_screen_open() {
+            self.debug.combination(key, reduced_debug_info);
+        }
+    }
+
     /// One window event. An open screen takes the keys and the mouse.
     pub fn handle(
         &mut self,
@@ -256,21 +276,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         if let glfw::WindowEvent::Key(key, _, action, _) = event {
-            let control_keys: [glfw::Key; 2] = if cfg!(target_os = "macos") {
-                [glfw::Key::LeftSuper, glfw::Key::RightSuper]
-            } else {
-                [glfw::Key::LeftControl, glfw::Key::RightControl]
-            };
-            if control_keys.contains(&key) {
-                self.control_held = action != glfw::Action::Release;
-            }
-            if matches!(key, glfw::Key::LeftControl | glfw::Key::RightControl) {
-                self.ctrl_down = action != glfw::Action::Release;
-            }
-            // `key.debug.modifier`.
-            if key == glfw::Key::F3 {
-                self.debug.key(action);
-            }
+            self.track_modifiers(key, action, session.reduced_debug_info());
         }
         if let Some(screen) = self.screen.as_mut() {
             let size = surface.scale();

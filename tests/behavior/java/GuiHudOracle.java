@@ -429,6 +429,36 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
+     * The game's own `DebugScreenOverlay.extractLines` for lines given: the left column then the right,
+     * as the overlay draws them, so the order of the backgrounds and the text and the right alignment show.
+     */
+    static JsonObject hudDebugLines(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
+            var overlay = new net.minecraft.client.gui.components.DebugScreenOverlay(scene.minecraft());
+            var method = net.minecraft.client.gui.components.DebugScreenOverlay.class.getDeclaredMethod(
+                "extractLines", GuiGraphicsExtractor.class, java.util.List.class, boolean.class);
+            method.setAccessible(true);
+            for (var side : new String[] {"left", "right"}) {
+                var lines = new java.util.ArrayList<String>();
+                for (var line : row.getAsJsonArray(side)) {
+                    lines.add(line.getAsString());
+                }
+                method.invoke(overlay, scene.screen().graphics(), lines, side.equals("left"));
+            }
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /**
      * The game's own debug overlay (`DebugScreenOverlay.extractRenderState`) over a real local player: the
      * default profile's entry list as the game rebuilds it (the overlay up or not, reduced debug info or
      * not), the camera entity at a position and a rotation, and the interface hidden or shown.
