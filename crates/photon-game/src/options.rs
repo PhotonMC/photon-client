@@ -64,6 +64,7 @@ pub struct Options {
     pub chat_scale: f64,
     pub chat_width: f64,
     pub attack_indicator: AttackIndicator,
+    pub tutorial_step: TutorialStep,
     /// `hideLightningFlashes`: the sky does not flash with lightning.
     pub hide_lightning_flashes: bool,
     /// `soundCategory_<name>` for each `SoundSource`, in ordinal order, 0 to 1.
@@ -115,6 +116,7 @@ impl Default for Options {
             chat_scale: 1.0,
             chat_width: 1.0,
             attack_indicator: AttackIndicator::Crosshair,
+            tutorial_step: TutorialStep::Movement,
             hide_lightning_flashes: false,
             sound_volumes: [1.0; 11],
             sound_device: String::new(),

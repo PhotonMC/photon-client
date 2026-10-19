@@ -159,16 +159,7 @@ impl Options {
                 self.read_chat_flag(key, boolean());
             }
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
-            Key::AttackIndicator => {
-                if let Json::Number(number) = json {
-                    // `ByIdMap` wraps an id out of range.
-                    let id = int_value(number).rem_euclid(3);
-                    self.attack_indicator = AttackIndicator::ALL
-                        .into_iter()
-                        .find(|value| value.id() == id)
-                        .unwrap_or(self.attack_indicator);
-                }
-            }
+            Key::AttackIndicator | Key::ChatVisibility => self.read_choice(key, &json),
             Key::ShowSubtitles
             | Key::HideLightningFlashes
             | Key::DirectionalAudio
@@ -177,14 +168,8 @@ impl Options {
             | Key::MusicToast
             | Key::SoundCategory(_) => self.read_sound(key, &json),
             Key::Lang => text.clone_into(&mut self.language_code),
-            Key::LastServer | Key::JoinedFirstServer => self.read_server(key, text, boolean()),
-            Key::ChatVisibility => {
-                if let Json::Number(number) = json {
-                    // `ByIdMap` wraps an id out of range.
-                    let id = int_value(number).rem_euclid(3);
-                    self.chat_visibility =
-                        ChatVisibility::from_id(id).unwrap_or(self.chat_visibility);
-                }
+            Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => {
+                self.read_server(key, text, boolean());
             }
             Key::MouseSensitivity
             | Key::ChatOpacity
@@ -291,20 +276,38 @@ impl Options {
         .to_string()
     }
 
-    /// The options about servers: the last one joined, and whether one was joined at all.
-    fn read_server(&mut self, key: Key, text: &str, flag: Option<bool>) {
-        if key == Key::LastServer {
-            text.clone_into(&mut self.last_server);
+    /// The options that are one of a few, by their id.
+    fn read_choice(&mut self, key: Key, json: &Json) {
+        let Json::Number(number) = json else {
+            return;
+        };
+        // `ByIdMap` wraps an id out of range.
+        let id = int_value(number).rem_euclid(3);
+        if key == Key::AttackIndicator {
+            self.attack_indicator = AttackIndicator::ALL
+                .into_iter()
+                .find(|value| value.id() == id)
+                .unwrap_or(self.attack_indicator);
         } else {
-            self.joined_first_server = flag.unwrap_or(self.joined_first_server);
+            self.chat_visibility = ChatVisibility::from_id(id).unwrap_or(self.chat_visibility);
+        }
+    }
+
+    /// The options about what the player has done: the last server joined, whether one was joined at
+    /// all, and the tutorial's step.
+    fn read_server(&mut self, key: Key, text: &str, flag: Option<bool>) {
+        match key {
+            Key::LastServer => text.clone_into(&mut self.last_server),
+            Key::TutorialStep => self.tutorial_step = TutorialStep::by_name(text),
+            _ => self.joined_first_server = flag.unwrap_or(self.joined_first_server),
         }
     }
 
     fn server_state(&self, key: Key) -> String {
-        if key == Key::LastServer {
-            self.last_server.clone()
-        } else {
-            self.joined_first_server.to_string()
+        match key {
+            Key::LastServer => self.last_server.clone(),
+            Key::TutorialStep => self.tutorial_step.name().to_owned(),
+            _ => self.joined_first_server.to_string(),
         }
     }
 
@@ -321,7 +324,7 @@ impl Options {
             Key::SaveChatDrafts | Key::BackgroundForChatOnly => self.chat_flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
-            Key::LastServer | Key::JoinedFirstServer => self.server_state(key),
+            Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => self.server_state(key),
             Key::ChatVisibility => self.chat_visibility.id().to_string(),
             Key::MouseSensitivity
             | Key::ChatOpacity
@@ -483,6 +486,15 @@ mod tests {
     #[test]
     fn the_chat_delay_keeps_its_tenths_and_stays_within_six_seconds() {
         // The codec takes 0 to 6, and the value set cuts off at a tenth.
+        assert_eq!(
+            loaded("tutorialStep:punch_tree").tutorial_step,
+            TutorialStep::PunchTree
+        );
+        assert_eq!(
+            loaded("tutorialStep:bogus").tutorial_step,
+            TutorialStep::None
+        );
+        assert_eq!(loaded("").tutorial_step, TutorialStep::Movement);
         assert_eq!(loaded("chatDelay:2.5").chat_delay, 2.5);
         assert_eq!(loaded("chatDelay:0.29").chat_delay, 0.2);
         assert_eq!(loaded("chatDelay:6.0").chat_delay, 6.0);
@@ -584,6 +596,7 @@ mod tests {
         assert_eq!(lines[3], "soundCategory_master:0.8");
         assert!(lines.contains(&"chatWidth:0.25"));
         assert!(lines.contains(&"chatDelay:1.5"));
+        assert!(lines.contains(&"tutorialStep:movement"));
         assert!(lines.contains(&"guiScale:0"));
         let again = Options::load(&path);
         assert_eq!((again.fov, again.chat_width), (100, 0.25));

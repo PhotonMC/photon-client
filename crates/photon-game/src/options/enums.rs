@@ -27,6 +27,44 @@ pub enum AttackIndicator {
     Hotbar,
 }
 
+/// `TutorialSteps`: where the tutorial is, which the options keep.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TutorialStep {
+    Movement,
+    FindTree,
+    PunchTree,
+    OpenInventory,
+    CraftPlanks,
+    None,
+}
+
+impl TutorialStep {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Movement => "movement",
+            Self::FindTree => "find_tree",
+            Self::PunchTree => "punch_tree",
+            Self::OpenInventory => "open_inventory",
+            Self::CraftPlanks => "craft_planks",
+            Self::None => "none",
+        }
+    }
+
+    /// `TutorialSteps.getByName`: a name nobody knows is the end of the tutorial.
+    pub fn by_name(name: &str) -> Self {
+        [
+            Self::Movement,
+            Self::FindTree,
+            Self::PunchTree,
+            Self::OpenInventory,
+            Self::CraftPlanks,
+        ]
+        .into_iter()
+        .find(|step| step.name() == name)
+        .unwrap_or(Self::None)
+    }
+}
+
 /// `MusicManager.MusicFrequency`: how long the music waits between songs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MusicFrequency {

@@ -36,6 +36,7 @@ pub(super) enum Key {
     JoinedFirstServer,
     SaveChatDrafts,
     AttackIndicator,
+    TutorialStep,
     HideLightningFlashes,
     SoundDevice,
     ShowSubtitles,
@@ -47,7 +48,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 53] = [
+pub(super) const KEYS: [(&str, Key); 54] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -76,6 +77,7 @@ pub(super) const KEYS: [(&str, Key); 53] = [
     ("joinedFirstServer", Key::JoinedFirstServer),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
+    ("tutorialStep", Key::TutorialStep),
     ("hideLightningFlashes", Key::HideLightningFlashes),
     ("soundDevice", Key::SoundDevice),
     ("screenEffectScale", Key::ScreenEffectScale),
