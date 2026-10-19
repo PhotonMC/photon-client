@@ -51,6 +51,8 @@ mod packet;
 pub use packet::*;
 mod hud;
 pub use hud::*;
+mod stats;
+pub use stats::*;
 mod ids;
 pub use ids::*;
 mod inventory;

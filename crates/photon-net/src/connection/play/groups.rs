@@ -37,6 +37,10 @@ pub(super) struct LocalState {
     pub(super) hardcore: bool,
     /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
     pub(super) reduced_debug_info: bool,
+    /// `LocalPlayer.getStats` (`StatsCounter`): what `AwardStats` last said, kept across respawns.
+    pub(super) stats: std::collections::HashMap<StatKey, i32>,
+    /// An `AwardStats` was handled since the statistics screen last looked.
+    pub(super) stats_updated: bool,
     /// `LocalPlayer.shouldShowDeathScreen`: off when the level respawns at once.
     pub(super) show_death_screen: bool,
     /// The message of a death the death screen is yet to show.
@@ -195,6 +199,8 @@ impl Default for LocalState {
             permission_level: 0,
             hardcore: false,
             reduced_debug_info: false,
+            stats: std::collections::HashMap::new(),
+            stats_updated: false,
             show_death_screen: true,
             death: None,
             win_game: false,

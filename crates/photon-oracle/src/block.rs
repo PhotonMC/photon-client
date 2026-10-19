@@ -501,6 +501,9 @@ fn registry_names(request: &Value) -> Result<Value, String> {
             "label": string(row, "label")?,
             "block_entity_types": photon_data::block_entity_type::names(),
             "menu_types": photon_data::menu_type::names(),
+            "stat_types": photon_data::stat::type_names(),
+            "custom_stats": photon_data::stat::custom_names(),
+            "custom_stat_formatters": photon_data::stat::custom_formatter_names(),
         }));
     }
     Ok(json!({"rows": out}))

@@ -18,6 +18,7 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         PLAY_CLIENTBOUND_SET_HELD_SLOT_PACKET_ID,
         typed::<SetHeldSlot>,
     ),
+    (PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID, typed::<AwardStats>),
     (
         PLAY_CLIENTBOUND_TICKING_STATE_PACKET_ID,
         typed::<TickingState>,
@@ -84,6 +85,17 @@ impl ClientboundPacket for SetExperience {
 impl ClientboundPacket for SetHeldSlot {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.on_set_held_slot(self.0)
+    }
+}
+
+/// `handleAwardStats`: each statistic is set to the number the server says.
+impl ClientboundPacket for AwardStats {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        for (key, amount) in self.0 {
+            session.local.stats.insert(key, amount);
+        }
+        session.local.stats_updated = true;
+        Ok(())
     }
 }
 
@@ -173,6 +185,8 @@ impl PlaySession {
         }
         self.local.hardcore = login.hardcore;
         self.local.reduced_debug_info = login.reduced_debug_info;
+        // `handleLogin` gives the new player a new `StatsCounter`.
+        self.local.stats.clear();
         self.local.show_death_screen = login.show_death_screen;
         self.local.player_id = Some(login.player_id);
         self.local.permission_level = 0;

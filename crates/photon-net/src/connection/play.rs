@@ -188,6 +188,41 @@ mod tests {
     }
 
     #[test]
+    fn award_stats_set_the_numbers_the_screen_reads() {
+        let (mut session, _far_end) = detached();
+        let jump = StatKey {
+            stat_type: 8,
+            value: 0,
+        };
+        assert_eq!(session.stat(jump), 0);
+        assert!(!session.take_stats_updated());
+        let mut body = varint(PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID as u32);
+        body.extend(varint(2));
+        for (stat_type, value, amount) in [(8, 0, 5), (0, 1, 7)] {
+            body.extend(varint(stat_type));
+            body.extend(varint(value));
+            body.extend(varint(amount));
+        }
+        session.handle_bytes(&body).unwrap();
+        assert_eq!(session.stat(jump), 5);
+        assert_eq!(
+            session.stat(StatKey {
+                stat_type: 0,
+                value: 1
+            }),
+            7
+        );
+        assert!(session.take_stats_updated());
+        assert!(!session.take_stats_updated());
+        // The server's number replaces the one held; it is not added to it.
+        let mut again = varint(PLAY_CLIENTBOUND_AWARD_STATS_PACKET_ID as u32);
+        again.extend(varint(1));
+        again.extend([8, 0, 2]);
+        session.handle_bytes(&again).unwrap();
+        assert_eq!(session.stat(jump), 2);
+    }
+
+    #[test]
     fn the_session_keeps_the_entities_the_server_adds_moves_and_removes() {
         let (mut session, _far_end) = detached();
         assert_eq!(session.entity_count(), 0);

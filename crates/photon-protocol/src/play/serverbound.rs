@@ -47,6 +47,12 @@ pub fn encode_perform_respawn(output: &mut Vec<u8>) -> Result<(), ConnectionErro
     Ok(())
 }
 
+/// `ServerboundClientCommandPacket` with `REQUEST_STATS`.
+pub fn encode_request_stats(output: &mut Vec<u8>) -> Result<(), ConnectionError> {
+    output.push(1);
+    Ok(())
+}
+
 pub fn encode_abort_destroy_block(
     output: &mut Vec<u8>,
     position: (i32, i32, i32),

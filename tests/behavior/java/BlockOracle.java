@@ -55,7 +55,34 @@ public final class BlockOracle extends BlockDeclarationOracle {
         entry.add("block_entity_types",
             names(net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE));
         entry.add("menu_types", names(net.minecraft.core.registries.BuiltInRegistries.MENU));
+        entry.add("stat_types", names(net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE));
+        entry.add("custom_stats", names(net.minecraft.core.registries.BuiltInRegistries.CUSTOM_STAT));
+        entry.add("custom_stat_formatters", customStatFormatters());
         return entry;
+    }
+
+    /** What formats each custom statistic's value, by the formatter the game registered it with. */
+    private static JsonArray customStatFormatters() {
+        var formatters = new JsonArray();
+        var registry = net.minecraft.core.registries.BuiltInRegistries.CUSTOM_STAT;
+        try {
+            var field = net.minecraft.stats.Stat.class.getDeclaredField("formatter");
+            field.setAccessible(true);
+            var known = java.util.Map.of(
+                "default", net.minecraft.stats.StatFormatter.DEFAULT,
+                "divide_by_ten", net.minecraft.stats.StatFormatter.DIVIDE_BY_TEN,
+                "distance", net.minecraft.stats.StatFormatter.DISTANCE,
+                "time", net.minecraft.stats.StatFormatter.TIME);
+            for (int id = 0; id < registry.size(); id++) {
+                var formatter = field.get(net.minecraft.stats.Stats.CUSTOM.get(registry.byId(id)));
+                var name = known.entrySet().stream().filter(entry -> entry.getValue() == formatter)
+                    .map(java.util.Map.Entry::getKey).findFirst().orElseThrow();
+                formatters.add(name);
+            }
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
+        }
+        return formatters;
     }
 
     private static <T> JsonArray names(net.minecraft.core.Registry<T> registry) {

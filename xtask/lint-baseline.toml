@@ -322,7 +322,6 @@
 "crates/photon-oracle/src/gui/result/social.rs::social_interactions_screen_case" = 18
 "crates/photon-oracle/src/gui/result/title.rs::join_multiplayer_screen_case" = 11
 "crates/photon-oracle/src/gui/result/title.rs::server_form_case" = 16
-"crates/photon-oracle/src/hex.rs::wire_result" = 25
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result" = 17
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result::held_poses" = 16
 "crates/photon-oracle/src/light.rs::client_world_light_result" = 12
@@ -786,7 +785,6 @@
 "crates/photon-oracle/src/gui/result/title.rs::join_multiplayer_screen_case" = 83
 "crates/photon-oracle/src/gui/result/title.rs::server_form_case" = 73
 "crates/photon-oracle/src/gui/scoreboard.rs::gui_ops" = 85
-"crates/photon-oracle/src/hex.rs::wire_result" = 98
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result" = 276
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result::held_poses" = 128
 "crates/photon-oracle/src/information.rs::configuration_misc_result" = 65

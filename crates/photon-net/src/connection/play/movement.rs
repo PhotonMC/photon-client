@@ -248,6 +248,24 @@ impl PlaySession {
         )
     }
 
+    /// `StatsScreen`'s request: ask the server for the statistics.
+    pub fn request_stats(&mut self) -> Result<(), ConnectionError> {
+        self.send(
+            PLAY_SERVERBOUND_CLIENT_COMMAND_PACKET_ID,
+            encode_request_stats,
+        )
+    }
+
+    /// `StatsCounter.getValue` of the statistic with this key: none counted is zero.
+    pub fn stat(&self, key: StatKey) -> i32 {
+        self.local.stats.get(&key).copied().unwrap_or(0)
+    }
+
+    /// Whether statistics arrived since this was last asked (`StatsScreen.onStatsUpdated`'s cue).
+    pub fn take_stats_updated(&mut self) -> bool {
+        std::mem::take(&mut self.local.stats_updated)
+    }
+
     /// `ClientLevel.getMarkerParticleTarget`: the block a creative player's barrier or light in
     /// the main hand stands for, which the level shows markers on.
     pub fn marker_particle_block(&self) -> Option<usize> {

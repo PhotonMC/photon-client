@@ -1386,6 +1386,7 @@ dependencies = [
  "photon-game",
  "photon-gui",
  "photon-net",
+ "photon-protocol",
  "photon-render",
  "photon-world",
  "serde_json",

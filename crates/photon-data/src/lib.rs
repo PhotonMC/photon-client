@@ -29,4 +29,5 @@ mod name;
 pub mod particle_type;
 pub mod sound_event;
 pub mod spear;
+pub mod stat;
 pub mod villager;

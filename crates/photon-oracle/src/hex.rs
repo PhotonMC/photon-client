@@ -45,60 +45,36 @@ pub(super) fn read(input: &mut &[u8], wide: bool) -> Result<i64, ReadError> {
     }
 }
 
+/// The wire operations that have a function of their own, by name.
+type WireOperation = fn(&Value) -> Result<Value, String>;
+const WIRE_OPERATIONS: &[(&str, WireOperation)] = &[
+    ("frame_prepend", frame_prepend_result),
+    ("frame_decode", frame_decode_result),
+    ("handshake_intention", handshake_intention_result),
+    ("login_hello", login_hello_result),
+    ("login_compression", login_compression_result),
+    ("login_server_hello", login_server_hello_result),
+    ("login_acknowledged", login_acknowledged_result),
+    ("login_finished", login_finished_result),
+    ("configuration_unit", configuration_unit_result),
+    ("configuration_misc", configuration_misc_result),
+    ("protocol_metadata", protocol_metadata_result),
+    ("client_information", client_information_result),
+    ("common_packet", common_packet_result),
+    ("enabled_features", enabled_features_result),
+    ("award_stats", award_stats_result),
+    ("update_tags", update_tags_result),
+    ("registry_data", registry_data_result),
+    ("status_request", status_request_result),
+    ("ping", ping_result),
+];
+
 pub(super) fn wire_result(request: &Value) -> Result<Value, String> {
-    if request["operation"].as_str() == Some("frame_prepend") {
-        return frame_prepend_result(request);
-    }
-    if request["operation"].as_str() == Some("frame_decode") {
-        return frame_decode_result(request);
-    }
-    if request["operation"].as_str() == Some("handshake_intention") {
-        return handshake_intention_result(request);
-    }
-    if request["operation"].as_str() == Some("login_hello") {
-        return login_hello_result(request);
-    }
-    if request["operation"].as_str() == Some("login_compression") {
-        return login_compression_result(request);
-    }
-    if request["operation"].as_str() == Some("login_server_hello") {
-        return login_server_hello_result(request);
-    }
-    if request["operation"].as_str() == Some("login_acknowledged") {
-        return login_acknowledged_result(request);
-    }
-    if request["operation"].as_str() == Some("login_finished") {
-        return login_finished_result(request);
-    }
-    if request["operation"].as_str() == Some("configuration_unit") {
-        return configuration_unit_result(request);
-    }
-    if request["operation"].as_str() == Some("configuration_misc") {
-        return configuration_misc_result(request);
-    }
-    if request["operation"].as_str() == Some("protocol_metadata") {
-        return protocol_metadata_result(request);
-    }
-    if request["operation"].as_str() == Some("client_information") {
-        return client_information_result(request);
-    }
-    if request["operation"].as_str() == Some("common_packet") {
-        return common_packet_result(request);
-    }
-    if request["operation"].as_str() == Some("enabled_features") {
-        return enabled_features_result(request);
-    }
-    if request["operation"].as_str() == Some("update_tags") {
-        return update_tags_result(request);
-    }
-    if request["operation"].as_str() == Some("registry_data") {
-        return registry_data_result(request);
-    }
-    if request["operation"].as_str() == Some("status_request") {
-        return status_request_result(request);
-    }
-    if request["operation"].as_str() == Some("ping") {
-        return ping_result(request);
+    if let Some((_, operation)) = WIRE_OPERATIONS
+        .iter()
+        .find(|(name, _)| request["operation"].as_str() == Some(*name))
+    {
+        return operation(request);
     }
     let wide = match string(request, "codec")? {
         "varint" => false,
@@ -414,4 +390,26 @@ pub(super) fn login_compression_result(request: &Value) -> Result<Value, String>
         }
         _ => Err("unknown compression direction".into()),
     }
+}
+
+/// `AwardStats` on bytes: each statistic as its type id, value id and number, in id order.
+fn award_stats_result(request: &Value) -> Result<Value, String> {
+    use photon_protocol::play::{AwardStats, Decode};
+    let bytes = decode_hex(string(request, "hex")?)?;
+    Ok(match AwardStats::decode(&bytes) {
+        Ok(AwardStats(stats)) => {
+            let mut last = std::collections::HashMap::new();
+            for (key, amount) in stats {
+                last.insert((key.stat_type, key.value), amount);
+            }
+            let mut rows: Vec<_> = last.into_iter().collect();
+            rows.sort_unstable();
+            let stats: Vec<Value> = rows
+                .into_iter()
+                .map(|((stat_type, value), amount)| json!([stat_type, value, amount]))
+                .collect();
+            json!({"outcome": "value", "stats": stats})
+        }
+        Err(_) => json!({"outcome": "error"}),
+    })
 }

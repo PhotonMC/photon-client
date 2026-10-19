@@ -193,6 +193,50 @@ class WireRegistryOracle extends WireConfigurationOracle {
         throw new IllegalArgumentException("Unknown update tags direction");
     }
 
+    /**
+     * `ClientboundAwardStatsPacket.STREAM_CODEC` on bytes: each statistic as its stat type's id, its value's
+     * id in the registry that type counts, and the number, in id order.
+     */
+    @SuppressWarnings("unchecked")
+    static JsonObject awardStatsResult(JsonObject request) {
+        Oracle.vanillaRegistries();
+        ByteBuf buffer = Unpooled.buffer();
+        try {
+            buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
+            var result = new JsonObject();
+            try {
+                var access = net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(
+                    net.minecraft.core.registries.BuiltInRegistries.REGISTRY);
+                var packet = net.minecraft.network.protocol.game.ClientboundAwardStatsPacket.STREAM_CODEC
+                    .decode(new net.minecraft.network.RegistryFriendlyByteBuf(buffer, access));
+                var rows = new java.util.ArrayList<int[]>();
+                for (var entry : packet.stats().object2IntEntrySet()) {
+                    var stat = entry.getKey();
+                    var registry = (Registry<Object>) stat.getType().getRegistry();
+                    rows.add(new int[] {
+                        net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE.getId(stat.getType()),
+                        registry.getId(stat.getValue()), entry.getIntValue()});
+                }
+                rows.sort(java.util.Comparator.<int[]>comparingInt(row -> row[0]).thenComparingInt(row -> row[1]));
+                var stats = new JsonArray();
+                for (var row : rows) {
+                    var stat = new JsonArray();
+                    stat.add(row[0]);
+                    stat.add(row[1]);
+                    stat.add(row[2]);
+                    stats.add(stat);
+                }
+                result.add("stats", stats);
+                result.addProperty("outcome", "value");
+            } catch (RuntimeException error) {
+                result.addProperty("outcome", "error");
+            }
+            return result;
+        } finally {
+            buffer.release();
+        }
+    }
+
     static JsonObject registryDataResult(JsonObject request) {
         String direction = request.get("direction").getAsString();
         if (direction.equals("write")) {
