@@ -15,6 +15,7 @@ use photon_gui::chat::ChatSettings;
 
 use photon_gui::chat::{ChatDrafts, ChatKey, ChatLog, ChatMethod, ChatScreen, ExitReason};
 
+use photon_gui::options::accessibility::AccessibilityScreen;
 use photon_gui::options::chat::ChatOptionsScreen;
 
 use photon_gui::options::keybinds::{BindKey, KeyBindsScreen};
@@ -60,6 +61,7 @@ use crate::view::CameraType;
 pub(super) type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
 /// What the player is holding and pointing at between events.
+#[derive(Default)]
 pub struct Controls {
     pub keys: HeldKeys,
     /// Attack clicks waiting for the next tick, and `Minecraft.missTime`:
@@ -96,6 +98,8 @@ pub struct Controls {
     pub video_screen: Option<VideoSettingsScreen>,
     /// The chat settings, opened the same way.
     pub chat_options_screen: Option<ChatOptionsScreen>,
+    /// `AccessibilityOptionsScreen`, over the options screen.
+    pub accessibility_screen: Option<AccessibilityScreen>,
     /// The skin customization, opened the same way.
     pub skin_screen: Option<photon_gui::options::skin::SkinCustomizationScreen>,
     pub sound_screen: Option<SoundOptionsScreen>,
@@ -288,6 +292,8 @@ pub(super) fn script_key(key: &mut AttackKey, click: bool, hold: bool) {
     }
 }
 
+mod accessibility;
+
 mod chat;
 
 mod confirm;
@@ -345,60 +351,14 @@ impl Controls {
         let command_history = read_command_history();
         let options = load_options();
         Self {
-            keys: HeldKeys::default(),
-            attack_key: AttackKey::default(),
-            use_key: AttackKey::default(),
-            pick_key: AttackKey::default(),
-            scroll_wheel: ScrollWheel::default(),
             camera_type,
             captured,
-            last_cursor: None,
-            turning: Default::default(),
-            screen: None,
-            server_container: None,
             creative_tab: photon_game::menus::creative::default_tab(),
-            chat: None,
-            pause: None,
-            options_screen: None,
-            video_screen: None,
-            chat_options_screen: None,
-            skin_screen: None,
-            sound_screen: None,
-            controls_screen: None,
-            language_screen: None,
-            language_request: None,
-            last_press: None,
-            mouse_screen: None,
-            key_binds_screen: None,
-            death: None,
-            credits: None,
-            social: None,
-            stats: None,
-            advancements: None,
-            hidden_players: vec![],
-            game_mode_switcher: None,
-            debug: DebugKeys::default(),
-            sign_edit: None,
-            book_edit: None,
-            confirm: None,
-            link_confirm: None,
-            dialog: None,
-            dialog_warning: None,
-            pack_prompt: None,
-            disconnected: None,
-            leave: false,
-            options_saved: false,
             chat_log: ChatLog::with_settings(ChatSettings::from(&options)),
             options,
             chat_history: command_history.clone(),
-            chat_drafts: ChatDrafts::default(),
             command_history,
-            mods: HeldModifiers::default(),
-            tab_held: false,
-            hud_hidden: false,
-            screenshot_pending: false,
-            gui_mouse: (0.0, 0.0),
-            active_button: None,
+            ..Self::default()
         }
     }
 }

@@ -24,8 +24,7 @@ impl Controls {
             self.close_sound_options();
         } else if self.skin_screen.is_some() {
             self.close_skin();
-        } else if self.chat_options_screen.is_some() {
-            self.close_chat_options();
+        } else if self.close_chat_settings() {
         } else if self.video_screen.is_some() {
             self.close_video();
         } else if self.options_screen.is_some() {
@@ -153,6 +152,8 @@ impl Controls {
             if let Some(action) = confirm.clicked(mouse) {
                 self.confirm_action(action, session, surface)?;
             }
+        } else if self.accessibility_screen.is_some() {
+            self.accessibility_pressed(surface, assets);
         } else if let Some(screen) = self.options_screen.as_mut() {
             let input = screen.clicked(&assets.lang, self.gui_mouse);
             screen.released(&assets.lang);

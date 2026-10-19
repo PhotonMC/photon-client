@@ -70,43 +70,47 @@ impl Controls {
         if !for_screen {
             return Err(event);
         }
-        if self.language_screen.is_some() && for_screen {
+        if self.language_screen.is_some() {
             self.language_event(event, surface, assets);
             return Ok(());
         }
-        if self.key_binds_screen.is_some() && for_screen {
+        if self.key_binds_screen.is_some() {
             self.key_binds_event(event, surface, assets);
             return Ok(());
         }
-        if (self.mouse_screen.is_some() || self.controls_screen.is_some()) && for_screen {
+        if self.mouse_screen.is_some() || self.controls_screen.is_some() {
             self.controls_event(event, surface, assets);
             return Ok(());
         }
-        if self.sound_screen.is_some() && for_screen {
+        if self.sound_screen.is_some() {
             self.sound_options_event(event, surface, assets);
             return Ok(());
         }
-        if self.skin_screen.is_some() && for_screen {
+        if self.skin_screen.is_some() {
             self.skin_event(event, surface, assets);
             return Ok(());
         }
-        if self.chat_options_screen.is_some() && for_screen {
+        if self.accessibility_screen.is_some() {
+            self.accessibility_event(event, surface, assets);
+            return Ok(());
+        }
+        if self.chat_options_screen.is_some() {
             self.chat_options_event(event, surface, assets);
             return Ok(());
         }
-        if self.video_screen.is_some() && for_screen {
+        if self.video_screen.is_some() {
             self.video_event(event, surface, assets);
             return Ok(());
         }
-        if self.options_screen.is_some() && for_screen {
+        if self.options_screen.is_some() {
             self.options_event(event, surface, assets);
             return Ok(());
         }
-        if self.social.is_some() && for_screen {
+        if self.social.is_some() {
             self.social_event(event, surface, assets);
             return Ok(());
         }
-        if self.pause.is_some() && for_screen {
+        if self.pause.is_some() {
             self.pause_event(event, session, surface, assets);
             return Ok(());
         }

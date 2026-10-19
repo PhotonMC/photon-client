@@ -157,6 +157,7 @@ impl Controls {
             Some(OptionsAction::Done) => self.close_options(),
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
+            Some(OptionsAction::Accessibility) => self.open_accessibility(surface, assets),
             Some(OptionsAction::SkinCustomisation) => self.open_skin(surface, assets),
             Some(OptionsAction::Sounds) => self.open_sound_options(surface, assets),
             Some(OptionsAction::Controls) => self.open_controls(surface, assets),

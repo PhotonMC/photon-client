@@ -14,8 +14,9 @@ pub fn eye_position(
 }
 
 /// Where the camera looks from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CameraType {
+    #[default]
     FirstPerson,
     ThirdPersonBack,
     ThirdPersonFront,

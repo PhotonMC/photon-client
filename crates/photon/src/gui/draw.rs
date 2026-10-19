@@ -45,6 +45,7 @@ impl Gui {
         sized!(controls.controls_screen);
         sized!(controls.skin_screen);
         sized!(controls.chat_options_screen);
+        sized!(controls.accessibility_screen);
         sized!(controls.sound_screen);
         sized!(controls.video_screen);
         if let Some(options_screen) = controls.options_screen.as_mut() {

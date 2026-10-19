@@ -55,6 +55,7 @@ fn pause_on_top(controls: &Controls) -> bool {
             controls.options_screen.is_some(),
             controls.video_screen.is_some(),
             controls.chat_options_screen.is_some(),
+            controls.accessibility_screen.is_some(),
             controls.skin_screen.is_some(),
             controls.sound_screen.is_some(),
             controls.controls_screen.is_some(),
