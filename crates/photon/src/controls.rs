@@ -76,6 +76,8 @@ pub struct Controls {
     /// Whether the mouse is grabbed to look around.
     pub captured: bool,
     pub(super) last_cursor: Option<(f64, f64)>,
+    /// The mouse's movement waiting for the frame, and the cinematic camera.
+    pub turning: turn::Turning,
     /// The open inventory screen, if any.
     pub screen: OpenScreen,
     /// The id of the container the server opened, while its screen is up.
@@ -181,27 +183,6 @@ pub(super) fn open_uri(uri: &str) {
         .args(arguments)
         .arg(uri)
         .spawn();
-}
-
-/// `MouseHandler.turnPlayer` for a mouse that moved `(dx, dy)`: scaled by
-/// the sensitivity cubed (`* 0.6F + 0.2F` widens floats), either axis
-/// reversed by its inversion option.
-pub(super) fn turn_by(options: &Options, (dx, dy): (f64, f64)) -> (f64, f64) {
-    let sensitivity = options.sensitivity * f64::from(0.6_f32) + f64::from(0.2_f32);
-    let scaled = sensitivity * sensitivity * sensitivity * 8.0;
-    let (turn_x, turn_y) = (dx * scaled, dy * scaled);
-    (
-        if options.invert_mouse_x {
-            -turn_x
-        } else {
-            turn_x
-        },
-        if options.invert_mouse_y {
-            -turn_y
-        } else {
-            turn_y
-        },
-    )
 }
 
 /// A key a settings screen gives to its widgets: Tab and Shift+Tab, or an
@@ -337,6 +318,7 @@ mod skin;
 mod advancements;
 mod social;
 mod stats;
+mod turn;
 pub use dialogs::DialogLayer;
 pub use sign::SignEdit;
 
@@ -359,7 +341,6 @@ impl Controls {
     pub fn new(camera_type: CameraType, captured: bool) -> Self {
         let command_history = read_command_history();
         let options = load_options();
-        let chat_settings = ChatSettings::from(&options);
         Self {
             keys: HeldKeys::default(),
             attack_key: AttackKey::default(),
@@ -369,6 +350,7 @@ impl Controls {
             camera_type,
             captured,
             last_cursor: None,
+            turning: Default::default(),
             screen: None,
             server_container: None,
             creative_tab: photon_game::menus::creative::default_tab(),
@@ -390,7 +372,7 @@ impl Controls {
             social: None,
             stats: None,
             advancements: None,
-            hidden_players: Vec::new(),
+            hidden_players: vec![],
             game_mode_switcher: None,
             debug: DebugKeys::default(),
             sign_edit: None,
@@ -403,40 +385,18 @@ impl Controls {
             disconnected: None,
             leave: false,
             options_saved: false,
+            chat_log: ChatLog::with_settings(ChatSettings::from(&options)),
             options,
             chat_history: command_history.clone(),
             chat_drafts: ChatDrafts::default(),
             command_history,
             mods: HeldModifiers::default(),
-            chat_log: ChatLog::with_settings(chat_settings),
             tab_held: false,
             hud_hidden: false,
             screenshot_pending: false,
             gui_mouse: (0.0, 0.0),
             active_button: None,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_camera_turns_by_the_sensitivity_cubed_and_the_inversions() {
-        let mut options = Options::default();
-        // At the least, (0.2)^3 * 8; at the most, (0.8)^3 * 8, in single
-        // precision where the reference widens a float.
-        options.sensitivity = 0.0;
-        let low = f64::from(0.2_f32).powi(3) * 8.0;
-        assert_eq!(turn_by(&options, (10.0, -5.0)), (10.0 * low, -5.0 * low));
-        options.sensitivity = 1.0;
-        let high = (f64::from(0.6_f32) + f64::from(0.2_f32)).powi(3) * 8.0;
-        assert_eq!(turn_by(&options, (1.0, 1.0)), (high, high));
-        options.invert_mouse_x = true;
-        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, high));
-        options.invert_mouse_y = true;
-        assert_eq!(turn_by(&options, (1.0, 1.0)), (-high, -high));
     }
 }
 

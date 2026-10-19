@@ -291,6 +291,7 @@ impl Play {
         let frame_ticks = (now - self.last_frame).as_secs_f32() / TICK_LENGTH.as_secs_f32();
         self.accumulated += now - self.last_frame;
         self.last_frame = now;
+        self.controls.turn_frame(&mut self.session, now);
         frame_ticks
     }
 

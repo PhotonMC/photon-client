@@ -13,7 +13,7 @@ pub struct OpenAdvancements {
 
 impl Controls {
     /// The keys that open a screen over the game: the advancements, the social interactions and
-    /// the chat. Whether the mapping was one of them.
+    /// the chat; and the cinematic camera's. Whether the mapping was one of them.
     pub(super) fn screen_key(
         &mut self,
         name: &str,
@@ -22,6 +22,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> bool {
         match name {
+            "key.smoothCamera" => self.turning.smooth_camera = !self.turning.smooth_camera,
             "key.advancements" => self.open_advancements(session, surface, assets),
             "key.socialInteractions" => self.open_social(session, surface, assets),
             "key.chat" => self.open_chat(ChatMethod::Message, true, surface, assets),

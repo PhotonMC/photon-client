@@ -48,8 +48,7 @@ impl Controls {
                 if self.captured
                     && let Some((last_x, last_y)) = self.last_cursor
                 {
-                    let (turn_x, turn_y) = turn_by(&self.options, (x - last_x, y - last_y));
-                    session.turn_player(turn_x, turn_y);
+                    self.turning.moved((x - last_x, y - last_y));
                 }
                 self.last_cursor = Some((x, y));
             }
