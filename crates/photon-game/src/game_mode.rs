@@ -37,6 +37,8 @@ pub struct GameMode {
     pub(super) items_used: Vec<u8>,
     /// The hand whose book and quill was used, whose screen is to open (`openItemGui`).
     pub(super) opened_book: Option<u8>,
+    /// The command block whose screen is to open (`Player.openCommandBlock`).
+    pub(super) opened_command_block: Option<(i32, i32, i32)>,
     /// The block states of the breaks the tutorial is told of, and how far each was.
     pub(super) destroyed: Vec<(photon_core::ids::BlockStateId, f32)>,
 }
@@ -54,6 +56,7 @@ impl Default for GameMode {
             right_click_delay: 0,
             items_used: Vec::new(),
             opened_book: None,
+            opened_command_block: None,
             destroyed: Vec::new(),
         }
     }

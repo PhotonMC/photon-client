@@ -13,6 +13,8 @@ mod blocks;
 mod border;
 mod chunks;
 mod collision;
+mod command_block;
+pub use command_block::{CommandBlockMode, CommandBlockView};
 mod dimension;
 mod enchanting;
 pub use enchanting::EnchantTableView;

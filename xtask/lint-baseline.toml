@@ -183,7 +183,7 @@
 "crates/photon-game/src/commands/suggest.rs::coordinates" = 11
 "crates/photon-game/src/commands/suggest.rs::entities" = 13
 "crates/photon-game/src/commands/usage.rs::usage_lines" = 12
-"crates/photon-game/src/game_mode/using.rs::GameMode::perform_use_item_on" = 14
+"crates/photon-game/src/game_mode/using.rs::GameMode::perform_use_item_on" = 13
 "crates/photon-game/src/game_mode/using.rs::GameMode::place" = 16
 "crates/photon-game/src/game_mode/using.rs::GameMode::start_use_item" = 16
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 11

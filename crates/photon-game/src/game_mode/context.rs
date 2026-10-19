@@ -57,11 +57,18 @@ pub struct Context<'a> {
     pub selected_slot: i32,
     /// `Player.getCooldowns`.
     pub cooldowns: &'a crate::item::cooldowns::ItemCooldowns,
+    /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
+    pub game_master: bool,
 }
 
 impl Context<'_> {
     pub(super) fn state_at(&self, (x, y, z): (i32, i32, i32)) -> BlockStateId {
         self.world.block_state_or_air(x, y, z)
+    }
+
+    /// `Player.canUseGameMasterBlocks`.
+    pub(super) fn can_use_game_master_blocks(&self) -> bool {
+        self.game_master && self.instabuild()
     }
 
     pub(super) fn instabuild(&self) -> bool {

@@ -392,14 +392,14 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                         .map_or(Ok(0), |pick| count(pick, "clicks"))?,
                     control_down: false,
                 };
-                let miner = photon_game::game_mode::Miner::of(&world, 0);
                 let mut ctx = photon_game::game_mode::Context {
+                    miner: &photon_game::game_mode::Miner::of(&world, 0),
                     world: &mut world,
                     player: &mut player,
-                    miner: &miner,
                     mode: game_mode_of_row,
                     selected_slot: 0,
                     cooldowns: &photon_game::item::cooldowns::ItemCooldowns::default(),
+                    game_master: false,
                 };
                 actions = game_mode.keys_tick(&mut ctx, keys, aim);
             }

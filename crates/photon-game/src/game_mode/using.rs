@@ -8,6 +8,11 @@ impl GameMode {
     }
 
     /// The hand whose book and quill's screen is to open, once.
+    /// The position of the command block used, whose screen is to open.
+    pub fn take_opened_command_block(&mut self) -> Option<(i32, i32, i32)> {
+        self.opened_command_block.take()
+    }
+
     pub fn take_opened_book(&mut self) -> Option<u8> {
         self.opened_book.take()
     }
@@ -155,10 +160,7 @@ impl GameMode {
                 return item_use;
             }
             if item_use == UseResult::TryEmptyHand && hand == MAIN_HAND {
-                let used = match rules::use_without_item(state) {
-                    Rule::Known(result) => result,
-                    Rule::Unported => return UseResult::Success { swing: true },
-                };
+                let used = self.use_without_item(ctx, state, (x, y, z));
                 if used.consumes_action() {
                     return used;
                 }
@@ -167,6 +169,23 @@ impl GameMode {
         match item {
             Some((item, _)) if !ctx.on_cooldown(hand) => self.item_use_on(ctx, hand, item, aim),
             _ => UseResult::Pass,
+        }
+    }
+
+    /// `BlockBehaviour.useWithoutItem`; a command block opens its screen for a game master.
+    fn use_without_item(
+        &mut self,
+        ctx: &Context<'_>,
+        state: photon_core::ids::BlockStateId,
+        pos: (i32, i32, i32),
+    ) -> UseResult {
+        if ctx.can_use_game_master_blocks() && ctx.world.command_block_view(pos).is_some() {
+            self.opened_command_block = Some(pos);
+            return UseResult::Success { swing: true };
+        }
+        match rules::use_without_item(state) {
+            Rule::Known(result) => result,
+            Rule::Unported => UseResult::Success { swing: true },
         }
     }
 

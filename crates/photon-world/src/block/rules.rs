@@ -334,6 +334,9 @@ pub fn use_item_on(state: BlockStateId) -> Rule<UseResult> {
 pub fn use_without_item(state: BlockStateId) -> Rule<UseResult> {
     match state_owner(state, Method::UseWithoutItem) {
         None => Rule::Known(UseResult::Pass),
+        // `CommandBlock.useWithoutItem` opens the screen for a game master, which the game mode
+        // decides with the player's permission; anyone else passes.
+        Some(BlockClass::CommandBlock) => Rule::Known(UseResult::Pass),
         Some(_) => Rule::Unported,
     }
 }

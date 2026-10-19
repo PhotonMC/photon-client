@@ -11,23 +11,23 @@ impl PlaySession {
         keys: photon_game::game_mode::Keys,
         aim: photon_game::game_mode::Aim,
     ) -> Result<(), ConnectionError> {
-        use photon_game::game_mode::{Context, Miner, Outgoing};
+        use photon_game::game_mode::{Aim, Context, Miner, Outgoing};
         self.local.aimed_entity = match aim {
-            photon_game::game_mode::Aim::Entity { id, .. } => Some(id),
+            Aim::Entity { id, .. } => Some(id),
             _ => None,
         };
         self.ensure_has_sent_carried_item()?;
         let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
-        let miner = Miner::of(&self.world, self.local.status.selected_slot);
         let mut ctx = Context {
+            miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,
             player,
-            miner: &miner,
             mode: self.local.game_mode,
             selected_slot: self.local.status.selected_slot,
             cooldowns: &self.local.item_cooldowns,
+            game_master: self.local.permission_level >= 2,
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {
