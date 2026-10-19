@@ -31,7 +31,7 @@ impl Controls {
 
     /// Whether a screen is up over the game (`Gui.screen != null`): any of the screens and
     /// dialogs the controls hold.
-    fn any_screen_open(&self) -> bool {
+    pub(crate) fn any_screen_open(&self) -> bool {
         [
             self.screen.is_some(),
             self.chat.is_some(),

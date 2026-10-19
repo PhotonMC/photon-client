@@ -123,6 +123,9 @@ pub(super) struct Effects {
     pub(super) tracking_emitters: Vec<photon_world::particles::TrackingRequest>,
     /// The stack a totem's animation was asked to show (the latest), until it is taken.
     pub(super) item_activation: Option<photon_world::ClientItemStackState>,
+    /// The unsecure-server toast is due (`seenInsecureChatWarning` says whether it was shown).
+    pub(super) unsecure_warning: bool,
+    pub(super) seen_unsecure_warning: bool,
     /// The entities taken since the last [`Self::take_item_pickups`], flying to their takers.
     pub(super) item_pickups: Vec<photon_world::particles::ItemPickup>,
     pub(super) dirty_sections: std::collections::BTreeSet<(i32, i32, i32)>,
@@ -211,6 +214,8 @@ impl Default for Effects {
             level_particles: Vec::new(),
             tracking_emitters: Vec::new(),
             item_activation: None,
+            unsecure_warning: false,
+            seen_unsecure_warning: false,
             item_pickups: Vec::new(),
             dirty_sections: std::collections::BTreeSet::new(),
             forgotten_chunks: Vec::new(),

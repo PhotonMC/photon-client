@@ -167,6 +167,10 @@ impl PlaySession {
         self.level_info.dimension_type_id = login.spawn_info.dimension_type_id;
         self.level_info.hashed_seed = login.spawn_info.seed;
         self.world.set_local_player_id(login.player_id);
+        if !login.enforces_secure_chat && !self.effects.seen_unsecure_warning {
+            self.effects.unsecure_warning = true;
+            self.effects.seen_unsecure_warning = true;
+        }
         self.local.hardcore = login.hardcore;
         self.local.show_death_screen = login.show_death_screen;
         self.local.player_id = Some(login.player_id);

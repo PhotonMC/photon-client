@@ -10,11 +10,60 @@ pub(crate) struct Layers {
     subtitles: Subtitles,
     listener: Option<Listener>,
     pub(super) toasts: ToastManager,
-    /// The state of the music toast option the manager has.
-    music_toast: MusicToast,
+    /// The state of the music toast option the manager has, once it has looked (the manager's
+    /// constructor only builds the toast, `initializeMusicToast`).
+    music_toast: Option<MusicToast>,
     /// The song the music manager has playing, as its language key.
     current_song: Option<String>,
     started_at: std::time::Instant,
+}
+
+/// Where in the frame the subtitles are drawn.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SubtitlePass {
+    /// Before the screens (and with another screen than a container, sign or book up).
+    Hud,
+    /// Over a container, sign or book screen.
+    OverScreen,
+    /// With no screen up, after the toasts.
+    AfterToasts,
+}
+
+impl SubtitlePass {
+    /// The pass the subtitles are drawn in now, and whether the screen up (if any) is part of the
+    /// game's own interface.
+    fn of(controls: &Controls) -> (Self, bool) {
+        let over_screen = controls.screen.is_some()
+            || controls.sign_edit.is_some()
+            || controls.book_edit.is_some();
+        let pass = if !controls.any_screen_open() {
+            Self::AfterToasts
+        } else if over_screen {
+            Self::OverScreen
+        } else {
+            Self::Hud
+        };
+        (pass, over_screen || controls.chat.is_some())
+    }
+}
+
+/// Whether the pause screen is the screen up (`screen instanceof PauseScreen`): the settings screens
+/// opened from it are over it.
+fn pause_on_top(controls: &Controls) -> bool {
+    controls.pause.is_some()
+        && [
+            controls.options_screen.is_some(),
+            controls.video_screen.is_some(),
+            controls.chat_options_screen.is_some(),
+            controls.skin_screen.is_some(),
+            controls.sound_screen.is_some(),
+            controls.controls_screen.is_some(),
+            controls.language_screen.is_some(),
+            controls.mouse_screen.is_some(),
+            controls.key_binds_screen.is_some(),
+        ]
+        .iter()
+        .all(|open| !open)
 }
 
 impl Layers {
@@ -23,7 +72,7 @@ impl Layers {
             subtitles: Subtitles::default(),
             listener: None,
             toasts: ToastManager::new(MusicToast::Never),
-            music_toast: MusicToast::Never,
+            music_toast: None,
             current_song: None,
             started_at,
         }
@@ -57,21 +106,25 @@ impl Layers {
     /// follows its option (`Options.musicToast`'s change callback).
     fn update_toasts(
         &mut self,
-        sound: &mut crate::sound::SoundSystem,
+        sound: Option<&mut crate::sound::SoundSystem>,
         options: &photon_game::options::Options,
         ((font, lang), current_song): ((&Font, &Lang), Option<String>),
     ) {
         self.current_song = current_song;
-        if options.music_toast != self.music_toast {
-            self.music_toast = options.music_toast;
-            let volume = (options.sound_category_volume(photon_game::sounds::SoundSource::Master)
-                * options.sound_category_volume(photon_game::sounds::SoundSource::Music))
-                as f32;
-            self.toasts.set_music_toast(
-                self.music_toast,
-                volume,
-                options.notification_display_time,
-            );
+        match self.music_toast.replace(options.music_toast) {
+            None => self.toasts.init_music_toast(options.music_toast),
+            Some(before) if before != options.music_toast => {
+                let volume = (options
+                    .sound_category_volume(photon_game::sounds::SoundSource::Master)
+                    * options.sound_category_volume(photon_game::sounds::SoundSource::Music))
+                    as f32;
+                self.toasts.set_music_toast(
+                    options.music_toast,
+                    volume,
+                    options.notification_display_time,
+                );
+            }
+            Some(_) => {}
         }
         let wall = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -83,32 +136,33 @@ impl Layers {
             current_song: self.current_song.as_deref(),
             note_colour: self.toasts.notes.colour,
         };
-        for event in self.toasts.update((self.now_ms() as i64, wall), &env) {
-            sound.play_ui(event, 1.0, 1.0);
+        let sounds = self.toasts.update((self.now_ms() as i64, wall), &env);
+        if let Some(sound) = sound {
+            for event in sounds {
+                sound.play_ui(event, 1.0, 1.0);
+            }
         }
     }
 
     /// `Hud.extractSubtitleOverlay`: the subtitles over the HUD, or with it hidden only over a
     /// screen that is part of the game's own interface (the chat, the containers, the signs and
-    /// the books). Java draws them in the screen's background, after its darkening and under its
-    /// panel; here a container, sign or book screen has them drawn once it is (`over_screen`),
-    /// any other time they come before the screens.
+    /// the books). Java draws them where the game is at (`pass`): with no screen up they are
+    /// deferred to after the toasts; over a container, sign or book screen in the screen's
+    /// background, after its darkening and under its panel (here once the screen is drawn); with
+    /// any other screen in the HUD pass, before the screen.
     fn draw_subtitles(
         &mut self,
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (controls, size): (&Controls, &photon_render::window::scale::WindowScale),
-        over_screen: bool,
+        pass: SubtitlePass,
     ) {
         let options = &controls.options;
-        let drawn_over_screen = controls.screen.is_some()
-            || controls.sign_edit.is_some()
-            || controls.book_edit.is_some();
-        let in_game_ui = drawn_over_screen || controls.chat.is_some();
         let Some(listener) = self.listener.filter(|_| options.show_subtitles) else {
             return;
         };
-        if over_screen != drawn_over_screen || (controls.hud_hidden && !in_game_ui) {
+        let (wanted, in_game_ui) = SubtitlePass::of(controls);
+        if pass != wanted || (controls.hud_hidden && !in_game_ui) {
             return;
         }
         // `Options.getBackgroundColor(0.8F)`.
@@ -154,7 +208,7 @@ impl Layers {
             (
                 controls.hud_hidden,
                 options.music_toast,
-                controls.pause.is_some(),
+                pause_on_top(controls),
             ),
             &env,
         );
@@ -171,9 +225,7 @@ impl Layers {
         let options = &controls.options;
         let volume = options.sound_category_volume(photon_game::sounds::SoundSource::Master)
             * options.sound_category_volume(photon_game::sounds::SoundSource::Music);
-        if controls.pause.is_none()
-            || !options.music_toast.render_in_pause_screen()
-            || volume <= 0.0
+        if !pause_on_top(controls) || !options.music_toast.render_in_pause_screen() || volume <= 0.0
         {
             return;
         }
@@ -196,12 +248,34 @@ impl Gui {
         options: &photon_game::options::Options,
         current_song: Option<String>,
     ) {
-        let Some(sound) = sound else {
-            return;
-        };
-        self.layers.hear_sounds(sound, options);
+        let mut sound = sound;
+        if let Some(sound) = sound.as_deref_mut() {
+            self.layers.hear_sounds(sound, options);
+        }
         self.layers
             .update_toasts(sound, options, ((&self.font, &self.lang), current_song));
+    }
+
+    /// `ClientPacketListener.handleLogin`'s toast for a server that does not enforce secure chat.
+    pub fn add_unsecure_server_toast(&mut self) {
+        use photon_game::text::Component;
+        use photon_gui::toasts::{SystemToast, SystemToastId, ToastEnv};
+        let env = ToastEnv {
+            font: &self.font,
+            lang: &self.lang,
+            display_time: 1.0,
+            current_song: None,
+            note_colour: 0xFFFF_FFFF,
+        };
+        let title = Component::translatable("multiplayer.unsecureserver.toast.title");
+        let message = Component::translatable("multiplayer.unsecureserver.toast");
+        let toast = SystemToast::new(
+            SystemToastId::UnsecureServerWarning,
+            &env,
+            &title,
+            Some(&message),
+        );
+        self.layers.toasts.add_system(toast);
     }
 
     /// `Hud.showNowPlayingToast` and `hideNowPlayingToast` as the music manager asked.
@@ -251,7 +325,12 @@ impl Gui {
                 },
             );
         }
-        layers.draw_subtitles(frame, (atlas, font, lang), (controls, size), false);
+        layers.draw_subtitles(
+            frame,
+            (atlas, font, lang),
+            (controls, size),
+            SubtitlePass::Hud,
+        );
     }
 
     /// What is drawn once the screens are: the subtitles over a container, sign or book screen,
@@ -262,8 +341,9 @@ impl Gui {
         layers: &mut Layers,
         view: (&Controls, &photon_render::window::scale::WindowScale),
     ) {
-        layers.draw_subtitles(frame, resources, view, true);
+        layers.draw_subtitles(frame, resources, view, SubtitlePass::OverScreen);
         layers.draw_pause_toast(frame, resources, view.0);
         layers.draw_toasts(frame, resources, view);
+        layers.draw_subtitles(frame, resources, view, SubtitlePass::AfterToasts);
     }
 }

@@ -26,6 +26,12 @@ impl PlaySession {
         std::mem::take(&mut self.effects.tracking_emitters)
     }
 
+    /// Whether the unsecure-server toast is due (`ClientPacketListener.handleLogin`: the server does
+    /// not enforce secure chat and the warning was not shown on this connection), once.
+    pub fn take_unsecure_server_warning(&mut self) -> bool {
+        std::mem::take(&mut self.effects.unsecure_warning)
+    }
+
     /// The stack a totem's animation is to show, if one was asked for since the last call.
     pub fn take_item_activation(&mut self) -> Option<photon_world::ClientItemStackState> {
         self.effects.item_activation.take()

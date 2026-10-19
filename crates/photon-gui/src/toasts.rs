@@ -207,10 +207,15 @@ impl ToastManager {
             now_playing: None,
             notes: MusicNotes::default(),
         };
-        if music_toast.render_in_pause_screen() {
-            manager.now_playing = Some(ToastInstance::new(Box::new(NowPlayingToast::new()), 0, 0));
-        }
+        manager.init_music_toast(music_toast);
         manager
+    }
+
+    /// `initializeMusicToast`: the music toast exists for the option's state, shown for nothing.
+    pub fn init_music_toast(&mut self, music_toast: MusicToast) {
+        self.now_playing = music_toast
+            .render_in_pause_screen()
+            .then(|| ToastInstance::new(Box::new(NowPlayingToast::new()), 0, 0));
     }
 
     /// `update`, at `now` milliseconds: the toasts move on, the finished ones free their slots,
