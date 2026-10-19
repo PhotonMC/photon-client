@@ -9,12 +9,11 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        if let Some(confirm) = &self.confirm {
+        if self.escape_light_screen(session, surface) {
+        } else if let Some(confirm) = &self.confirm {
             if let Some(action) = confirm.escape() {
                 self.confirm_action(action, session, surface)?;
             }
-        } else if self.language_screen.is_some() {
-            self.language_screen = None;
         } else if self.key_binds_screen.is_some() {
             self.close_key_binds();
         } else if self.mouse_screen.is_some() || self.controls_screen.is_some() {
@@ -172,6 +171,22 @@ impl Controls {
 }
 
 impl Controls {
+    /// A scripted Escape in the advancements or the language screen. Whether there was one.
+    fn escape_light_screen(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> bool {
+        if self.advancements.is_some() {
+            self.close_advancements(session, surface);
+        } else if self.language_screen.is_some() {
+            self.language_screen = None;
+        } else {
+            return false;
+        }
+        true
+    }
+
     /// The scripted keys that open or close a screen: the inventory and the advancements.
     fn scripted_screens(
         &mut self,
