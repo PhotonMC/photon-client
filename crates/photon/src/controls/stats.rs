@@ -24,14 +24,16 @@ impl Controls {
     /// `StatsScreen.init` asks the server for the statistics once, and `handleAwardStats` builds
     /// the lists in the tick the answer was handled (with the screen up).
     fn stats_tick(&mut self, session: &mut PlaySession, assets: &ScreenAssets) {
-        let updated = session.take_stats_updated();
+        let mut updated = session.take_stats_updated();
         let Some(stats) = self.stats.as_mut() else {
             return;
         };
-        if stats.take_request()
-            && let Err(error) = session.request_stats()
-        {
-            log::warn!("could not ask for the statistics: {error:?}");
+        if stats.take_request() {
+            // What arrived before the request is not its answer: the screen did not exist then.
+            updated = false;
+            if let Err(error) = session.request_stats() {
+                log::warn!("could not ask for the statistics: {error:?}");
+            }
         }
         if updated {
             stats.on_stats_updated(&assets.lang, session.stats());
