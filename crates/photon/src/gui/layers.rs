@@ -279,13 +279,14 @@ impl Gui {
         self.layers.toasts.add_system(toast);
     }
 
-    /// `ClientAdvancements.update`'s `addToast` for each advancement done: the toast holds what the
-    /// advancement showed when the packet came.
-    pub fn add_advancement_toasts(
+    /// The toasts the packets asked for, in the order they came: an advancement's holds what it
+    /// showed when the packet came, a recipe is added to the recipe toast.
+    pub fn add_pending_toasts(
         &mut self,
-        done: Vec<(String, photon_game::advancements::DisplayInfo)>,
+        pending: Vec<photon_game::toast::PendingToast>,
         display_time: f64,
     ) {
+        use photon_game::toast::PendingToast;
         let env = photon_gui::toasts::ToastEnv {
             font: &self.font,
             lang: &self.lang,
@@ -293,9 +294,18 @@ impl Gui {
             current_song: None,
             note_colour: 0xFFFF_FFFF,
         };
-        for (_, display) in done {
-            let toast = photon_gui::toasts::AdvancementToast::new(&display, &env);
-            self.layers.toasts.add(Box::new(toast));
+        for toast in pending {
+            match toast {
+                PendingToast::Advancement(display) => {
+                    let toast = photon_gui::toasts::AdvancementToast::new(display.as_ref(), &env);
+                    self.layers.toasts.add(Box::new(toast));
+                }
+                PendingToast::Recipe { station, result } => {
+                    self.layers
+                        .toasts
+                        .add_or_update_recipe(&env, (station, result));
+                }
+            }
         }
     }
 

@@ -27,6 +27,15 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 impl ClientboundPacket for RecipeBookAdd {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let (entries, replace) = self.0;
+        // `entry.notification()`: bit 1 of the flags asks for a toast.
+        let toasts = entries
+            .iter()
+            .filter(|(_, flags)| flags & 1 != 0)
+            .map(|(entry, _)| photon_game::toast::PendingToast::Recipe {
+                station: entry.station.first_item(),
+                result: entry.display.result().first_item(),
+            });
+        session.local.pending_toasts.extend(toasts);
         session.world.recipe_book_mut().add(entries, replace);
         Ok(())
     }

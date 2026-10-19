@@ -3,6 +3,7 @@
 
 mod advancement;
 mod now_playing;
+mod recipe;
 mod system;
 
 use std::any::Any;
@@ -14,6 +15,7 @@ use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 
 pub use advancement::AdvancementToast;
 pub use now_playing::{MusicNotes, NowPlayingToast, music_note_colour};
+pub use recipe::RecipeToast;
 pub use system::{SystemToast, SystemToastId};
 
 /// How long a toast takes to slide in or out, in milliseconds (`SLIDE_ANIMATION_DURATION_MS`).
@@ -95,6 +97,11 @@ pub trait Toast: Any {
     }
 
     fn on_finished_rendering(&mut self) {}
+
+    /// The recipe toast this is, which `addOrUpdate` adds to.
+    fn as_recipe_mut(&mut self) -> Option<&mut RecipeToast> {
+        None
+    }
 
     /// The system toast this is, to be found by its id.
     fn as_system_mut(&mut self) -> Option<&mut SystemToast> {
@@ -378,6 +385,47 @@ impl ToastManager {
                     .iter_mut()
                     .find_map(|toast| toast.as_system_mut().filter(|toast| toast.id() == id))
             })
+    }
+
+    /// `RecipeToast.addOrUpdate`: the recipe toast, shown or waiting, takes another recipe; one
+    /// is made if there is none.
+    pub fn add_or_update_recipe(
+        &mut self,
+        env: &ToastEnv<'_>,
+        (station, result): (
+            Option<photon_core::ids::ItemId>,
+            Option<photon_core::ids::ItemId>,
+        ),
+    ) {
+        let found = self
+            .visible
+            .iter_mut()
+            .find_map(|instance| instance.toast.as_recipe_mut())
+            .or_else(|| {
+                self.queued
+                    .iter_mut()
+                    .find_map(|toast| toast.as_recipe_mut())
+            });
+        if let Some(toast) = found {
+            toast.add_item(station, result);
+        } else {
+            let mut toast = RecipeToast::new(env);
+            toast.add_item(station, result);
+            self.add(Box::new(toast));
+        }
+    }
+
+    /// The recipe shown by the recipe toast, shown or waiting (`displayedRecipeIndex`).
+    pub fn recipe_index(&mut self) -> Option<usize> {
+        self.visible
+            .iter_mut()
+            .find_map(|instance| instance.toast.as_recipe_mut())
+            .or_else(|| {
+                self.queued
+                    .iter_mut()
+                    .find_map(|toast| toast.as_recipe_mut())
+            })
+            .map(|toast| toast.displayed_index())
     }
 
     /// `SystemToast.forceHide`.

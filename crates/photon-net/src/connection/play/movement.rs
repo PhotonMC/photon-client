@@ -273,11 +273,9 @@ impl PlaySession {
         })
     }
 
-    /// The advancements done since this was last asked, whose toasts are to show.
-    pub fn take_advancement_toasts(
-        &mut self,
-    ) -> Vec<(String, photon_game::advancements::DisplayInfo)> {
-        std::mem::take(&mut self.local.advancement_toasts)
+    /// The toasts the packets asked for since this was last asked, in the order they came.
+    pub fn take_pending_toasts(&mut self) -> Vec<photon_game::toast::PendingToast> {
+        std::mem::take(&mut self.local.pending_toasts)
     }
 
     /// `LocalPlayer.getStats`: what the server said of the statistics.

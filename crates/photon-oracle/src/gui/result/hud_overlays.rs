@@ -126,6 +126,38 @@ fn add_advancement_toast(
     Ok(())
 }
 
+/// The toast a packet asks for: an advancement's or a recipe's.
+fn add_packet_toast(
+    manager: &mut photon_gui::toasts::ToastManager,
+    event: &Value,
+    env: &photon_gui::toasts::ToastEnv<'_>,
+) -> Result<(), String> {
+    if event["do"] == "recipe" {
+        add_recipe_toast(manager, event, env);
+        Ok(())
+    } else {
+        add_advancement_toast(manager, event, env)
+    }
+}
+
+/// A recipe toast event: the item a recipe's station and result name, or none. The oracle
+/// draws no items, so any item stands for the named one.
+fn add_recipe_toast(
+    manager: &mut photon_gui::toasts::ToastManager,
+    event: &Value,
+    env: &photon_gui::toasts::ToastEnv<'_>,
+) {
+    let item = |key: &str| (!event[key].is_null()).then_some(photon_core::ids::ItemId(1));
+    manager.add_or_update_recipe(env, (item("station"), item("result")));
+}
+
+/// The recipe the recipe toast shows, if there is one; the reference's JSON leaves out a null.
+fn note_recipe_index(entry: &mut Value, manager: &mut photon_gui::toasts::ToastManager) {
+    if let Some(index) = manager.recipe_index() {
+        entry["recipe_index"] = json!(index);
+    }
+}
+
 /// One toast event: the manager's answer, with the sounds it made and what it drew.
 fn toast_event(
     manager: &mut photon_gui::toasts::ToastManager,
@@ -146,7 +178,7 @@ fn toast_event(
             manager.add_or_update_system(id, env, (&title, message.as_ref()));
         }
         "force_hide" => manager.force_hide_system(id),
-        "advancement" => add_advancement_toast(manager, event, env)?,
+        "advancement" | "recipe" => add_packet_toast(manager, event, env)?,
         "note_colours" => {
             let ticks = event["ticks"].as_array().ok_or("ticks")?;
             let colours: Vec<i32> = ticks
@@ -181,6 +213,7 @@ fn toast_event(
         other => return Err(format!("unknown toast event {other}")),
     }
     entry["sounds"] = json!(sounds);
+    note_recipe_index(&mut entry, manager);
     Ok(entry)
 }
 

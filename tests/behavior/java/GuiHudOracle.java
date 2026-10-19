@@ -159,6 +159,24 @@ class GuiHudOracle extends GuiCommandOracle {
                         event.get("message").isJsonNull() ? null : text.apply(event.get("message").getAsString()));
                     case "advancement" -> manager.addToast(new net.minecraft.client.gui.components.toasts.AdvancementToast(
                         advancementHolder(event.getAsJsonObject("advancement"))));
+                    case "recipe" -> {
+                        var toastClass = net.minecraft.client.gui.components.toasts.RecipeToast.class;
+                        var toast = manager.getToast(toastClass, net.minecraft.client.gui.components.toasts.Toast.NO_TOKEN);
+                        if (toast == null) {
+                            var constructor = toastClass.getDeclaredConstructor();
+                            constructor.setAccessible(true);
+                            toast = constructor.newInstance();
+                            manager.addToast(toast);
+                        }
+                        var stack = (java.util.function.Function<com.google.gson.JsonElement, net.minecraft.world.item.ItemStack>) name ->
+                            name.isJsonNull() ? net.minecraft.world.item.ItemStack.EMPTY
+                                : new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                                    .getValue(net.minecraft.resources.Identifier.parse(name.getAsString())));
+                        var addItem = toastClass.getDeclaredMethod("addItem",
+                            net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class);
+                        addItem.setAccessible(true);
+                        addItem.invoke(toast, stack.apply(event.get("station")), stack.apply(event.get("result")));
+                    }
                     case "force_hide" -> net.minecraft.client.gui.components.toasts.SystemToast.forceHide(manager,
                         systemId.apply(event.get("id").getAsString()));
                     case "note_colours" -> {
@@ -189,6 +207,15 @@ class GuiHudOracle extends GuiCommandOracle {
                 }
                 sounds.played.clear();
                 out.add("sounds", heard);
+                var recipeClass = net.minecraft.client.gui.components.toasts.RecipeToast.class;
+                var recipeToast = manager.getToast(recipeClass, net.minecraft.client.gui.components.toasts.Toast.NO_TOKEN);
+                if (recipeToast == null) {
+                    out.add("recipe_index", com.google.gson.JsonNull.INSTANCE);
+                } else {
+                    var index = recipeClass.getDeclaredField("displayedRecipeIndex");
+                    index.setAccessible(true);
+                    out.addProperty("recipe_index", index.getInt(recipeToast));
+                }
                 events.add(out);
             }
             net.minecraft.util.Util.setTimeSource(System::nanoTime);

@@ -20,5 +20,6 @@ pub mod sounds;
 pub mod splash;
 pub mod stats;
 pub mod text;
+pub mod toast;
 pub mod tooltip;
 pub mod waypoint;

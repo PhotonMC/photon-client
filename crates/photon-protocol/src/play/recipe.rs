@@ -122,65 +122,73 @@ pub(super) fn read_slot_displays(
     Ok(all)
 }
 
-/// `RecipeDisplay.STREAM_CODEC`: the crafting station each one ends with is
-/// read and dropped.
-pub fn read_recipe_display(
-    input: &mut &[u8],
-) -> Result<photon_world::RecipeDisplay, ConnectionError> {
+type DisplayWithStation = (photon_world::RecipeDisplay, photon_world::SlotDisplay);
+
+fn read_shaped_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
+    let width = read_varint(input, "shaped width")?;
+    let height = read_varint(input, "shaped height")?;
+    let ingredients = read_slot_displays(input)?;
+    if i64::from(width) * i64::from(height) != ingredients.len() as i64 {
+        return Err(ConnectionError::Codec("shaped recipe size"));
+    }
+    let result = read_slot_display(input, 0)?;
+    let station = read_slot_display(input, 0)?;
+    let shaped = photon_world::RecipeDisplay::Shaped {
+        width,
+        height,
+        ingredients,
+        result,
+    };
+    Ok((shaped, station))
+}
+
+fn read_furnace_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
+    let ingredient = read_slot_display(input, 0)?;
+    let fuel = read_slot_display(input, 0)?;
+    let result = read_slot_display(input, 0)?;
+    let station = read_slot_display(input, 0)?;
+    read_varint(input, "furnace duration")?;
+    read_f32(input, "furnace experience")?;
+    let furnace = photon_world::RecipeDisplay::Furnace {
+        ingredient,
+        fuel,
+        result,
+    };
+    Ok((furnace, station))
+}
+
+/// `RecipeDisplay.STREAM_CODEC`: the display and the crafting station each one ends with.
+pub fn read_recipe_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
     use photon_world::RecipeDisplay as R;
     let slot = |input: &mut &[u8]| read_slot_display(input, 0);
     Ok(match read_varint(input, "recipe display type")? {
         0 => {
             let ingredients = read_slot_displays(input)?;
             let result = slot(input)?;
-            slot(input)?;
-            R::Shapeless {
-                ingredients,
-                result,
-            }
+            let station = slot(input)?;
+            (
+                R::Shapeless {
+                    ingredients,
+                    result,
+                },
+                station,
+            )
         }
-        1 => {
-            let width = read_varint(input, "shaped width")?;
-            let height = read_varint(input, "shaped height")?;
-            let ingredients = read_slot_displays(input)?;
-            if i64::from(width) * i64::from(height) != ingredients.len() as i64 {
-                return Err(ConnectionError::Codec("shaped recipe size"));
-            }
-            let result = slot(input)?;
-            slot(input)?;
-            R::Shaped {
-                width,
-                height,
-                ingredients,
-                result,
-            }
-        }
-        2 => {
-            let ingredient = slot(input)?;
-            let fuel = slot(input)?;
-            let result = slot(input)?;
-            slot(input)?;
-            read_varint(input, "furnace duration")?;
-            read_f32(input, "furnace experience")?;
-            R::Furnace {
-                ingredient,
-                fuel,
-                result,
-            }
-        }
+        1 => read_shaped_display(input)?,
+        2 => read_furnace_display(input)?,
         3 => {
             slot(input)?;
             let result = slot(input)?;
-            slot(input)?;
-            R::Stonecutter { result }
+            let station = slot(input)?;
+            (R::Stonecutter { result }, station)
         }
         4 => {
             slot(input)?;
             slot(input)?;
             slot(input)?;
             let result = slot(input)?;
-            slot(input)?;
-            R::Smithing { result }
+            let station = slot(input)?;
+            (R::Smithing { result }, station)
         }
         _ => return Err(ConnectionError::Codec("unknown recipe display")),
     })
@@ -196,7 +204,7 @@ pub fn parse_recipe_book_add_packet(
     let mut entries = Vec::new();
     for _ in 0..count {
         let id = read_varint(&mut input, "recipe id")?;
-        let display = read_recipe_display(&mut input)?;
+        let (display, station) = read_recipe_display(&mut input)?;
         let group = match read_varint(&mut input, "recipe group")? {
             0 => None,
             value => Some(value - 1),
@@ -217,6 +225,7 @@ pub fn parse_recipe_book_add_packet(
             photon_world::RecipeDisplayEntry {
                 id,
                 display,
+                station,
                 group,
                 category,
                 requirements,
@@ -258,7 +267,7 @@ pub fn parse_place_ghost_recipe_packet(
 ) -> Result<(i32, photon_world::RecipeDisplay), ConnectionError> {
     let mut input = input;
     let container = read_varint(&mut input, "ghost container")?;
-    Ok((container, read_recipe_display(&mut input)?))
+    Ok((container, read_recipe_display(&mut input)?.0))
 }
 
 /// What a clientbound update-recipes packet carries: the item sets by name

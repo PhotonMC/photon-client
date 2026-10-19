@@ -111,7 +111,11 @@ impl ClientboundPacket for AwardStats {
 impl ClientboundPacket for photon_game::advancements::UpdateAdvancements {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let updated = session.local.advancements.update(&self);
-        session.local.advancement_toasts.extend(updated.toasts);
+        let toasts = updated
+            .toasts
+            .into_iter()
+            .map(|(_, display)| photon_game::toast::PendingToast::Advancement(Box::new(display)));
+        session.local.pending_toasts.extend(toasts);
         Ok(())
     }
 }
@@ -218,7 +222,7 @@ impl PlaySession {
         self.local.reduced_debug_info = login.reduced_debug_info;
         // The advancements are the connection's: a login starts with none.
         self.local.advancements = photon_game::advancements::ClientAdvancements::default();
-        self.local.advancement_toasts.clear();
+        self.local.pending_toasts.clear();
         // `handleLogin` gives the new player a new `StatsCounter`.
         self.local.stats.clear();
         self.local.show_death_screen = login.show_death_screen;

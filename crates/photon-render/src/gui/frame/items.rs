@@ -49,4 +49,22 @@ impl GuiFrame {
                 .push((GuiBlend::ItemGlint, first + drawn, added - drawn));
         }
     }
+
+    /// An item drawn under a pose that scales by `scale` and moves by `origin` (a toast's slide
+    /// and the recipe toast's smaller station): the item is drawn at `(x, y)` in the scaled
+    /// space, and what it added is carried over to the screen, its glint with it.
+    pub fn item_scaled(
+        &mut self,
+        draw: &mut ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        (x, y): (f32, f32),
+        (scale, origin): (f32, (f32, f32)),
+    ) {
+        let first = self.items.len();
+        self.item_at(draw, stack, x, y);
+        for vertex in &mut self.items[first..] {
+            vertex.position[0] = origin.0 + scale * vertex.position[0];
+            vertex.position[1] = origin.1 + scale * vertex.position[1];
+        }
+    }
 }

@@ -54,7 +54,7 @@ pub struct StonecutterEntry {
 }
 
 /// A `RecipeDisplay`: what the recipe book shows for a recipe. The crafting
-/// station is not kept: the book never draws it.
+/// station is kept beside it, in the entry: only the recipe toast draws it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecipeDisplay {
     Shapeless {
@@ -97,6 +97,8 @@ impl RecipeDisplay {
 pub struct RecipeDisplayEntry {
     pub id: i32,
     pub display: RecipeDisplay,
+    /// `RecipeDisplay.craftingStation`.
+    pub station: SlotDisplay,
     /// `OptionalInt group`: entries of one category and group share a button.
     pub group: Option<i32>,
     /// A `RecipeBookCategories` registry id.

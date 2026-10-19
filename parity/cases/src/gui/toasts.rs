@@ -66,6 +66,7 @@ pub fn toasts() -> Value {
     rows.extend(changed_rows());
     rows.extend(music_rows());
     rows.extend(advancement_rows());
+    rows.extend(recipe_rows());
     let ticks: Vec<f64> = (0..400).map(|tick| f64::from(tick) + [0.0, 0.25, 0.5, 0.99][tick as usize % 4]).collect();
     rows.push(row("music-note-colours", &SETUP, vec![json!({"do": "note_colours", "ticks": ticks})]));
     gui("toasts", "toasts", rows)
@@ -215,5 +216,52 @@ fn advancement_rows() -> Vec<Value> {
     ];
     events.extend(run(&[0, 700, 1300, 2300, 6000, 6700, 7300, 8000]));
     rows.push(row("advancement-several", &SETUP, events));
+    rows
+}
+
+/// A recipe toast event: the items named by a recipe's crafting station and result.
+fn recipe(station: Option<&str>, result: Option<&str>) -> Value {
+    json!({"do": "recipe", "station": station, "result": result})
+}
+
+fn table(result: &str) -> Value {
+    recipe(Some("minecraft:crafting_table"), Some(result))
+}
+
+/// Recipe toasts: one recipe, several of them cycling through the display time option, ones
+/// added while it is shown, while it slides out and while it waits behind other toasts, and a
+/// recipe with no items.
+fn recipe_rows() -> Vec<Value> {
+    let lifetime = [0, 600, 601, 1700, 2500, 3000, 3400, 4400, 5599, 5600, 5601, 6199, 6200, 6201, 7000, 11_300];
+    let mut rows = Vec::new();
+    for (name, time) in [("least", 0.5), ("normal", 1.0), ("tenfold", 10.0)] {
+        let setup = Setup { display_time: time, ..SETUP };
+        for count in [1, 2, 3, 7] {
+            let mut events: Vec<Value> = (0..count).map(|_| table("minecraft:stick")).collect();
+            events.extend(run(&lifetime));
+            rows.push(row(&format!("recipe-{count}-{name}"), &setup, events));
+        }
+    }
+    rows.push(row("recipe-empty", &SETUP, {
+        let mut events = vec![recipe(None, None)];
+        events.extend(run(&[0, 700, 2000, 5700, 6400, 6401]));
+        events
+    }));
+    let mut events = vec![table("minecraft:stick")];
+    events.extend(run(&[0, 700, 3000]));
+    events.push(table("minecraft:torch"));
+    events.extend(run(&[3001, 5000, 8000, 8001, 9000, 12_000, 13_700]));
+    rows.push(row("recipe-added-while-shown", &SETUP, events));
+    let mut events = vec![table("minecraft:stick")];
+    events.extend(run(&[0, 700, 5700, 6000]));
+    events.push(table("minecraft:torch"));
+    events.extend(run(&[6001, 6100, 6400, 6700, 12_000]));
+    rows.push(row("recipe-added-while-sliding-out", &SETUP, events));
+    let mut events: Vec<Value> = (0..5).map(|n| system("PERIODIC_NOTIFICATION", &format!("n{n}"), None)).collect();
+    events.push(table("minecraft:stick"));
+    events.extend(run(&[0, 700]));
+    events.push(table("minecraft:torch"));
+    events.extend(run(&[701, 5000, 5800, 6000, 6500, 7000, 12_000]));
+    rows.push(row("recipe-queued-behind-five", &SETUP, events));
     rows
 }

@@ -16,9 +16,9 @@ impl Play {
             .sound
             .as_ref()
             .and_then(|sound| self.music.current_song(sound));
-        let done = self.session.take_advancement_toasts();
+        let pending = self.session.take_pending_toasts();
         self.gui
-            .add_advancement_toasts(done, self.controls.options.notification_display_time);
+            .add_pending_toasts(pending, self.controls.options.notification_display_time);
         self.gui
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }
