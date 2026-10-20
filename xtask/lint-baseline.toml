@@ -575,7 +575,6 @@
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
 "crates/photon/src/screens.rs::run_actions" = 16
-"crates/photon/src/script.rs::HeldKeys::parse" = 11
 "xtask/src/lint.rs::Rule::hint" = 12
 "xtask/src/lint.rs::Rule::name" = 12
 "xtask/src/lint/names.rs::name_problem" = 11

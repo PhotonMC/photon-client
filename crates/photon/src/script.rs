@@ -39,6 +39,8 @@ pub struct HeldKeys {
     pub screenshot: bool,
     /// F3 pressed and let go on this tick: the debug overlay toggles.
     pub debug_overlay: bool,
+    /// A letter or digit pressed with F3 held, as the window would send the events.
+    pub debug_key: Option<char>,
     /// A scripted click in the open inventory: slot, button, click type.
     pub click: Option<(i32, i32, ClickType)>,
     /// A scripted tab choice on the open creative screen, by table index.
@@ -151,28 +153,7 @@ impl HeldKeys {
                             // slash in it is part of the text.
                             keys.typed = Some(Box::leak(text.join("/").into_boxed_str()));
                         }
-                        ["mouse", x, y] => {
-                            let number = |text: &str| {
-                                text.parse::<f64>()
-                                    .map_err(|_| format!("bad mouse {other} in PHOTON_SCRIPT"))
-                            };
-                            keys.mouse = Some((number(x)?, number(y)?));
-                        }
-                        ["press", button] | ["press", button, _] => {
-                            keys.press = Some((
-                                button
-                                    .parse()
-                                    .map_err(|_| format!("bad press {other} in PHOTON_SCRIPT"))?,
-                                parts.len() == 3,
-                            ));
-                        }
-                        ["scroll", hundredths] => {
-                            keys.scroll = Some(
-                                hundredths
-                                    .parse()
-                                    .map_err(|_| format!("bad scroll {other} in PHOTON_SCRIPT"))?,
-                            );
-                        }
+                        _ if keys.parse_pointer_step(&parts, other)? => {}
                         _ => return Err(format!("unknown key {other} in PHOTON_SCRIPT")),
                     }
                 }
@@ -260,4 +241,41 @@ fn click_type(id: i32) -> ClickType {
         ClickType::QuickCraft,
         ClickType::PickupAll,
     ][id.clamp(0, 6) as usize]
+}
+
+impl HeldKeys {
+    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H` and
+    /// `debug/K`. Whether `parts` was one of them.
+    fn parse_pointer_step(&mut self, parts: &[&str], other: &str) -> Result<bool, String> {
+        let keys = self;
+        match parts {
+            ["debug", key] if key.chars().count() == 1 => {
+                keys.debug_key = key.chars().next();
+            }
+            ["mouse", x, y] => {
+                let number = |text: &str| {
+                    text.parse::<f64>()
+                        .map_err(|_| format!("bad mouse {other} in PHOTON_SCRIPT"))
+                };
+                keys.mouse = Some((number(x)?, number(y)?));
+            }
+            ["press", button] | ["press", button, _] => {
+                keys.press = Some((
+                    button
+                        .parse()
+                        .map_err(|_| format!("bad press {other} in PHOTON_SCRIPT"))?,
+                    parts.len() == 3,
+                ));
+            }
+            ["scroll", hundredths] => {
+                keys.scroll = Some(
+                    hundredths
+                        .parse()
+                        .map_err(|_| format!("bad scroll {other} in PHOTON_SCRIPT"))?,
+                );
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
 }

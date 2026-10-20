@@ -409,8 +409,14 @@ impl DebugKeys {
     /// which pauses without the menu) mark F3 as used as a modifier, ported or not. The hitbox,
     /// chunk border and location keys do nothing with reduced debug info.
     pub(super) fn combination(&mut self, key: glfw::Key, reduced: bool) {
+        self.used |= self.down && Self::acts(key, reduced);
+    }
+
+    /// Whether `handleDebugKeys` answers a key pressed with F3 held, ported or not. Such a key is
+    /// not a game key then: it does not open the chat, move or select a slot.
+    pub(super) fn acts(key: glfw::Key, reduced: bool) -> bool {
         use glfw::Key;
-        let acts = match key {
+        match key {
             Key::B | Key::G => !reduced,
             Key::A
             | Key::C
@@ -431,8 +437,7 @@ impl DebugKeys {
             | Key::Num4
             | Key::Escape => true,
             _ => false,
-        };
-        self.used |= self.down && acts;
+        }
     }
 
     /// F3 pressed or let go of: the overlay toggles on the release unless a combination used F3.

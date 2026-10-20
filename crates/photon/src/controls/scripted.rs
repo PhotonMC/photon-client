@@ -65,7 +65,7 @@ impl Controls {
         if held.escape {
             self.scripted_escape(session, surface, assets)?;
         }
-        self.scripted_toggles(held);
+        self.scripted_toggles(held, (session, surface, assets))?;
         if held.chat {
             if self.chat.is_some() {
                 self.close_chat(surface, ExitReason::Intentional);
@@ -277,11 +277,19 @@ impl Controls {
 
 impl Controls {
     /// The scripted F1, F2 and F3 presses of a tick.
-    fn scripted_toggles(&mut self, held: HeldKeys) {
+    fn scripted_toggles(
+        &mut self,
+        held: HeldKeys,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+    ) -> Result {
         self.hud_hidden ^= held.toggle_gui;
         self.screenshot_pending |= held.screenshot;
         if held.debug_overlay {
             self.debug.entries.toggle_overlay();
         }
+        if let Some(key) = held.debug_key {
+            self.scripted_debug_key(key, session, surface, assets)?;
+        }
+        Ok(())
     }
 }

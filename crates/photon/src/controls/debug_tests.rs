@@ -8,6 +8,16 @@ fn tap(debug: &mut DebugKeys, key: Key) {
 }
 
 #[test]
+fn the_debug_keys_are_not_game_keys_but_escape_and_the_rest_are() {
+    for key in [Key::T, Key::L, Key::Num1, Key::D, Key::S] {
+        assert!(DebugKeys::acts(key, false), "{key:?}");
+    }
+    assert!(!DebugKeys::acts(Key::W, false));
+    // The hitbox key does nothing with reduced debug info, so it is the game's again.
+    assert!(!DebugKeys::acts(Key::B, true));
+}
+
+#[test]
 fn a_lone_f3_toggles_the_overlay_on_release() {
     let mut debug = DebugKeys::default();
     debug.key(Action::Press);

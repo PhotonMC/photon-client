@@ -36,7 +36,46 @@ fn pause_due(
     )
 }
 
+/// The key a script's letter or digit stands for.
+fn scripted_key(letter: char) -> Option<glfw::Key> {
+    use glfw::Key::*;
+    let letters = [
+        A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+    ];
+    let digits = [Num1, Num2, Num3, Num4];
+    match letter {
+        'a'..='z' => letters.get(letter as usize - 'a' as usize).copied(),
+        '1'..='4' => digits.get(letter as usize - '1' as usize).copied(),
+        _ => None,
+    }
+}
+
 impl Controls {
+    /// A script's `debug/K` step: F3 pressed, the key pressed and let go, F3 let go, each as an
+    /// event of the window, so the routing is the real one.
+    pub(super) fn scripted_debug_key(
+        &mut self,
+        letter: char,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> Result {
+        use glfw::{Action, Key, Modifiers, WindowEvent};
+        let Some(key) = scripted_key(letter) else {
+            return Ok(());
+        };
+        for (key, action) in [
+            (Key::F3, Action::Press),
+            (key, Action::Press),
+            (key, Action::Release),
+            (Key::F3, Action::Release),
+        ] {
+            let event = WindowEvent::Key(key, 0, action, Modifiers::empty());
+            self.handle(event, session, surface, assets)?;
+        }
+        Ok(())
+    }
+
     /// A key pressed with F3 held and no screen up: the ones that act here, and whether one did.
     pub(super) fn debug_world_key(
         &mut self,
@@ -49,6 +88,19 @@ impl Controls {
         if !self.debug.down {
             return Ok(false);
         }
+        if self.run_debug_key(key, (session, surface, assets))? {
+            return Ok(true);
+        }
+        // Escape still pauses; the other keys are the debug keys' and not the game's.
+        Ok(key != glfw::Key::Escape && DebugKeys::acts(key, session.reduced_debug_info()))
+    }
+
+    /// The debug keys that act in the world, and whether `key` was one.
+    fn run_debug_key(
+        &mut self,
+        key: glfw::Key,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+    ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
         match key {
             glfw::Key::F4 => self.debug_switch_game_mode(session, surface, assets),
             glfw::Key::C => self.debug_copy_location(session, surface, assets),
