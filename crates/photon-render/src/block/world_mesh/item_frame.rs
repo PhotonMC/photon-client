@@ -15,7 +15,7 @@ impl BlockRenderer {
     /// the vertices' colour. `grass` reads the grass colour map.
     pub fn item_layers(
         &self,
-        item: ItemId,
+        (item, item_use): (ItemId, Option<crate::item_model::ItemUse>),
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
         values: &dyn crate::item_model::ItemTints,
@@ -27,7 +27,7 @@ impl BlockRenderer {
             return Vec::new();
         };
         let mut layers = Vec::new();
-        crate::item_model::layers_for(&def.model, context, &mut layers);
+        crate::item_model::layers_in_use(&def.model, context, item_use, &mut layers);
         let mut out = Vec::new();
         for layer in layers {
             let Some(model) = self.models.get(&layer.model.as_string()) else {
@@ -86,6 +86,23 @@ impl BlockRenderer {
             });
         }
         out
+    }
+
+    /// The branches an item's model takes for its holder's use of it: what tells the layers of
+    /// one item apart.
+    pub fn item_branches(
+        &self,
+        item: ItemId,
+        context: crate::model::DisplayContext,
+        item_use: crate::item_model::ItemUse,
+    ) -> Vec<u8> {
+        let Some(Some(def)) = usize::try_from(item.0)
+            .ok()
+            .and_then(|index| self.items.get(index))
+        else {
+            return Vec::new();
+        };
+        crate::item_model::layers_in_use(&def.model, context, Some(item_use), &mut Vec::new())
     }
 
     /// The particle textures of an item's model layers on the ground (`pickParticleMaterial`'s
@@ -211,7 +228,7 @@ pub(super) fn item_models(
     let layers_of = |def: &crate::item_model::ClientItem| {
         let mut layers = Vec::new();
         for context in crate::model::DisplayContext::ALL {
-            crate::item_model::layers_for(&def.model, context, &mut layers);
+            crate::item_model::layers_any_use(&def.model, context, &mut layers);
         }
         layers
     };

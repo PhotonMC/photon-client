@@ -272,6 +272,33 @@ pub fn parse_item_model(object: &JsonObject) -> ItemModelDef {
     }
 }
 
+/// A `range_dispatch` node: its property, scale, entries by threshold, and fallback.
+fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
+    ItemModelDef::RangeDispatch {
+        property: object.text("property").unwrap_or_default(),
+        scale: object.f32("scale").unwrap_or(1.0),
+        remaining: object.bool("remaining").unwrap_or(false),
+        entries: object
+            .array("entries")
+            .unwrap_or(&[])
+            .iter()
+            .filter_map(|value| {
+                let JsonValue::Object(entry) = value else {
+                    return None;
+                };
+                Some((
+                    entry.f32("threshold")?,
+                    parse_item_model(entry.object("model")?),
+                ))
+            })
+            .collect(),
+        fallback: object
+            .object("fallback")
+            .map(parse_item_model)
+            .map(Box::new),
+    }
+}
+
 pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
     let kind = object.text("type").unwrap_or_default();
     let child = |key: &str| object.object(key).map(parse_item_model);
@@ -326,24 +353,7 @@ pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
                 .collect(),
             fallback: child("fallback").map(Box::new),
         },
-        "minecraft:range_dispatch" => ItemModelDef::RangeDispatch {
-            property: object.text("property").unwrap_or_default(),
-            entries: object
-                .array("entries")
-                .unwrap_or(&[])
-                .iter()
-                .filter_map(|value| {
-                    let JsonValue::Object(entry) = value else {
-                        return None;
-                    };
-                    Some((
-                        entry.f32("threshold")?,
-                        parse_item_model(entry.object("model")?),
-                    ))
-                })
-                .collect(),
-            fallback: child("fallback").map(Box::new),
-        },
+        "minecraft:range_dispatch" => parse_range_dispatch(object),
         "minecraft:special" => {
             let base = object
                 .text("base")
@@ -374,78 +384,4 @@ pub fn parse_client_item(text: &str) -> Option<ClientItem> {
         hand_animation_on_swap: object.bool("hand_animation_on_swap").unwrap_or(true),
         swap_animation_scale: object.f32("swap_animation_scale").unwrap_or(1.0),
     })
-}
-
-/// The layers a default stack (no components, not in use) draws in a
-/// display context. Properties read the default stack: conditions are
-/// false, selections other than the display context and numeric
-/// properties take their fallbacks.
-pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<ItemLayerRef>) {
-    layers_under(def, context, &IDENTITY, out);
-}
-
-pub(super) fn layers_under(
-    def: &ItemModelDef,
-    context: DisplayContext,
-    local: &Matrix4,
-    out: &mut Vec<ItemLayerRef>,
-) {
-    match def {
-        ItemModelDef::Transformed { matrix, model } => {
-            layers_under(model, context, &multiply(local, matrix), out);
-        }
-        ItemModelDef::Model { model, tints } => out.push(ItemLayerRef {
-            model: model.clone(),
-            tints: tints.clone(),
-            special: None,
-            local: *local,
-        }),
-        ItemModelDef::Special { base, model } => out.push(ItemLayerRef {
-            model: base.clone(),
-            tints: Vec::new(),
-            special: Some(model.clone()),
-            local: *local,
-        }),
-        ItemModelDef::Composite(models) => {
-            for model in models {
-                layers_under(model, context, local, out);
-            }
-        }
-        ItemModelDef::Condition { on_false, .. } => layers_under(on_false, context, local, out),
-        ItemModelDef::Select {
-            property,
-            cases,
-            fallback,
-        } => {
-            let chosen = (property == "minecraft:display_context")
-                .then(|| {
-                    cases
-                        .iter()
-                        .find(|(when, _)| when.iter().any(|name| name == context.name()))
-                        .map(|(_, model)| model)
-                })
-                .flatten();
-            match (chosen, fallback) {
-                (Some(model), _) => layers_under(model, context, local, out),
-                (None, Some(fallback)) => layers_under(fallback, context, local, out),
-                (None, None) => {}
-            }
-        }
-        ItemModelDef::RangeDispatch {
-            entries, fallback, ..
-        } => {
-            // The value is zero: the last entry whose threshold it reaches.
-            let chosen = entries
-                .iter()
-                .filter(|(threshold, _)| *threshold <= 0.0)
-                .max_by(|a, b| a.0.total_cmp(&b.0))
-                .map(|(_, model)| model);
-            match (chosen, fallback) {
-                (Some(model), _) => layers_under(model, context, local, out),
-                (None, Some(fallback)) => layers_under(fallback, context, local, out),
-                (None, None) => {}
-            }
-        }
-        ItemModelDef::Empty | ItemModelDef::Unknown(_) => {}
-    }
 }

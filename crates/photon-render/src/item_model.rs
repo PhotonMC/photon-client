@@ -102,6 +102,10 @@ pub enum ItemModelDef {
     },
     RangeDispatch {
         property: String,
+        /// The property's value is multiplied by this (`scale`), and `remaining` counts a use
+        /// down instead of up (`use_duration`).
+        scale: f32,
+        remaining: bool,
         entries: Vec<(f32, ItemModelDef)>,
         fallback: Option<Box<ItemModelDef>>,
     },
@@ -164,6 +168,8 @@ pub type LayerAlpha = (Vec<u8>, i32, i32);
 
 mod parse;
 pub use parse::*;
+mod resolve;
+pub use resolve::*;
 mod generated;
 pub use generated::*;
 

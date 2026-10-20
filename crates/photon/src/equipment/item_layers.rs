@@ -3,6 +3,7 @@
 use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
+use photon_render::item_model::ItemUse;
 use photon_render::model::DisplayContext;
 use photon_render::objects::item::item_glint_vertices;
 use photon_render::scene::Vertex;
@@ -63,7 +64,7 @@ fn foil_pose_scale(context: DisplayContext) -> f32 {
 }
 
 /// The layers of an item with one component patch.
-type PatchLayers = (Vec<u8>, Vec<ItemLayer>);
+type PatchLayers = ((Vec<u8>, Vec<u8>), Vec<ItemLayer>);
 
 impl ItemLayerCache {
     pub fn new(context: DisplayContext) -> Self {
@@ -165,24 +166,38 @@ impl ItemLayerCache {
         renderer: &BlockRenderer,
         tints: &BiomeTints,
     ) -> &[ItemLayer] {
+        self.get_in_use(stack, None, (renderer, tints))
+    }
+
+    /// A stack's layers as its holder uses it: the bow's pulling models, say.
+    pub fn get_in_use(
+        &mut self,
+        stack: &ClientItemStackState,
+        item_use: Option<ItemUse>,
+        (renderer, tints): (&BlockRenderer, &BiomeTints),
+    ) -> &[ItemLayer] {
         let context = self.context;
-        let variants = self.layers.entry(stack.item_registry_id().0).or_default();
+        let item = stack.item_registry_id();
+        let branches = item_use.map_or_else(Vec::new, |item_use| {
+            renderer.item_branches(item, context, item_use)
+        });
+        let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
             .iter()
-            .position(|(patch, _)| patch == stack.patch_bytes())
+            .position(|((patch, seen), _)| patch == stack.patch_bytes() && *seen == branches)
         {
             index
         } else {
             let layers = renderer.item_layers(
-                stack.item_registry_id(),
+                (item, item_use),
                 context,
                 &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
                 &StackTints(photon_game::item::values::Values::new(
-                    stack.item_registry_id(),
+                    item,
                     stack.patch_bytes(),
                 )),
             );
-            variants.push((stack.patch_bytes().to_vec(), layers));
+            variants.push(((stack.patch_bytes().to_vec(), branches), layers));
             variants.len() - 1
         };
         let layers = &variants[index].1;

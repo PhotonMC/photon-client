@@ -66,7 +66,11 @@ pub fn hands(
         let Some(stack) = stack else {
             continue;
         };
-        let layers = held_layers[usize::from(!right)].get(stack, renderer, tints);
+        let item_use = player
+            .use_ticks_of(right)
+            .map(|ticks| photon_render::item_model::ItemUse { ticks });
+        let layers =
+            held_layers[usize::from(!right)].get_in_use(stack, item_use, (renderer, tints));
         let drawn = photon_render::entity::player_renderer::held_item_vertices(
             &hand_view, layers, right, attack, height,
         );

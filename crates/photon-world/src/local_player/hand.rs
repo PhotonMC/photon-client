@@ -213,6 +213,13 @@ impl LocalPlayer {
         }
     }
 
+    /// How many ticks the stack in a hand has been used, if the player uses that hand's stack
+    /// (`getUseItem() == stack`).
+    pub fn use_ticks_of(&self, main_hand: bool) -> Option<i32> {
+        (self.hands.using_item && self.hands.using_off_hand != main_hand)
+            .then_some(self.use_edge.ticks)
+    }
+
     /// The item now in the main hand, by registry id; air when empty.
     pub fn set_main_hand_item(&mut self, item: ItemId) {
         self.main_hand_item = item;
