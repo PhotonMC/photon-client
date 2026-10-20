@@ -212,7 +212,7 @@
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 15
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 22
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 22
-"crates/photon-game/src/options/file.rs::Options::read" = 24
+"crates/photon-game/src/options/file.rs::Options::read" = 20
 "crates/photon-game/src/options/file.rs::Options::read_sound" = 13
 "crates/photon-game/src/options/file.rs::Options::write" = 24
 "crates/photon-game/src/sounds.rs::SoundSource::name" = 11
@@ -651,7 +651,7 @@
 "crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 131
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 69
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 81
-"crates/photon-game/src/options/file.rs::Options::read" = 78
+"crates/photon-game/src/options/file.rs::Options::read" = 69
 "crates/photon-game/src/registries.rs::Registries::load" = 81
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 79
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81

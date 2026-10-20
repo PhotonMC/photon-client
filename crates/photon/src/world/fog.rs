@@ -61,6 +61,7 @@ pub fn lightmap_view(
     session: &PlaySession,
     partial: f32,
     (boss_darkening, end_flash_boost): (f32, f32),
+    darkness_scale: f32,
 ) -> LightmapView {
     let local = session.world().local_player();
     let effects = local.map_or(&[][..], |local| local.effects());
@@ -73,6 +74,7 @@ pub fn lightmap_view(
     LightmapView {
         darkness_blend: effect(effects, "minecraft:darkness")
             .map_or(0.0, |state| state.blend_factor(partial)),
+        darkness_scale,
         tick_count: local.map_or(0, |local| local.tick_count()),
         night_vision,
         boss_darkening,

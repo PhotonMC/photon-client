@@ -137,7 +137,12 @@ impl Play {
         player: &photon_world::local_player::LocalPlayer,
         partial: f32,
     ) -> [[f32; 4]; 4] {
-        let motion = player_motion(player, partial);
+        let options = &self.controls.options;
+        let motion = player_motion(
+            player,
+            partial,
+            (options.view_bobbing, options.damage_tilt_strength),
+        );
         let nausea = crate::world::fog::nausea_blend(&self.session, partial);
         let portal = player.portal_effect_intensity(partial);
         let scale = self.controls.options.screen_effect_scale as f32;
@@ -150,9 +155,14 @@ impl Play {
 
 /// What the view is moved by: `GameRenderer.bobHurt` first, then `bobView`, the view tilting away
 /// from a blow and swaying as the player walks.
-fn player_motion(player: &photon_world::local_player::LocalPlayer, partial: f32) -> [[f32; 4]; 4] {
-    // The view bob option's default is on.
+fn player_motion(
+    player: &photon_world::local_player::LocalPlayer,
+    partial: f32,
+    (view_bobbing, damage_tilt): (bool, f64),
+) -> [[f32; 4]; 4] {
     let (walked, bob) = player.view_bob(partial);
+    // `bobView` off leaves the view without the sway.
+    let bob = if view_bobbing { bob } else { 0.0 };
     let bob = photon_render::camera::view_bob(walked, bob);
     let (hurt_time, hurt_duration, hurt_dir, dying, death_time) = player.hurt_view(partial);
     let hurt = photon_render::camera::view_hurt(&photon_render::camera::HurtView {
@@ -161,8 +171,7 @@ fn player_motion(player: &photon_world::local_player::LocalPlayer, partial: f32)
         hurt_dir,
         dying,
         death_time,
-        // `damageTiltStrength`'s default: the option is not kept.
-        tilt_strength: 1.0,
+        tilt_strength: damage_tilt,
     });
     photon_render::scene::multiply(hurt, bob)
 }

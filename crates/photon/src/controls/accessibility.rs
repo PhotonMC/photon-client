@@ -43,6 +43,12 @@ impl Controls {
         options.notification_display_time = choices.notification_display_time;
         options.screen_effect_scale = choices.screen_effect_scale;
         options.hide_lightning_flashes = choices.hide_lightning_flashes;
+        options.view_bobbing = choices.view_bobbing;
+        options.fov_effect_scale = choices.fov_effect_scale;
+        options.darkness_effect_scale = choices.darkness_effect_scale;
+        options.damage_tilt_strength = choices.damage_tilt_strength;
+        options.glint_speed = choices.glint_speed;
+        options.glint_strength = choices.glint_strength;
         let settings = photon_gui::chat::ChatSettings::from(&self.options);
         self.chat_log.set_settings(settings, &assets.creative.font);
     }

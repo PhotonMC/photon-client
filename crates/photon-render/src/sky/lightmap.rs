@@ -35,14 +35,14 @@ impl Attributes {
 
 /// The brightness option's default (`Options.gamma`).
 const GAMMA: f32 = 0.5;
-/// The darkness effect scale option's default (`Options.darknessEffectScale`).
-const DARKNESS_EFFECT_SCALE: f32 = 1.0;
 
 /// What the local player gives the lightmap besides the attributes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LightmapView {
     /// `getEffectBlendFactor(DARKNESS)`, zero without the effect.
     pub darkness_blend: f32,
+    /// `Options.darknessEffectScale`.
+    pub darkness_scale: f32,
     /// The player's `tickCount`.
     pub tick_count: i32,
     /// `nightVisionEffectIntensity`: the night vision scale, the water vision under conduit
@@ -94,7 +94,7 @@ impl LightmapInputs {
     /// The darkness effect's and night vision's part of the extraction
     /// (`LightmapRenderStateExtractor.extract`).
     pub fn effects(&self, view: &LightmapView, partial: f32) -> LightmapEffects {
-        let modifier = view.darkness_blend * DARKNESS_EFFECT_SCALE;
+        let modifier = view.darkness_blend * view.darkness_scale;
         let strength = 0.45 * modifier;
         let angle = (view.tick_count as f32 - partial) * std::f32::consts::PI * 0.025;
         let pulse = photon_core::math::mth_cos_f64(f64::from(angle)) * strength;
@@ -103,7 +103,7 @@ impl LightmapInputs {
             .map(|channel| channel * view.night_vision);
         LightmapEffects {
             base: std::array::from_fn(|i| self.ambient[i].max(night[i])),
-            darkness: pulse.max(0.0) * DARKNESS_EFFECT_SCALE,
+            darkness: pulse.max(0.0) * view.darkness_scale,
             brightness: (GAMMA - modifier).max(0.0),
             boss_darkening: view.boss_darkening,
             sky_factor: self.sky_factor + view.end_flash_boost,

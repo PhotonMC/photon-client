@@ -49,6 +49,8 @@ pub struct Sky {
     end_flash: Option<photon_world::end_flash::EndFlashState>,
     /// The option that hides the lightning flashes, as the last tick saw it.
     hide_flashes: bool,
+    /// `Options.darknessEffectScale`.
+    darkness_scale: f32,
     /// The angles of a flash that started, until its sound is asked for.
     flash_start: Option<(f32, f32)>,
 }
@@ -150,6 +152,7 @@ impl Sky {
             )),
             end_flash,
             hide_flashes: false,
+            darkness_scale: 1.0,
             flash_start: None,
         })
     }
@@ -175,9 +178,11 @@ impl Sky {
 
     /// One client tick: the block light flicker, and the camera's attribute
     /// probe while there is a player.
-    pub fn tick(&mut self, session: &PlaySession, hide_lightning_flashes: bool) {
+    pub fn tick(&mut self, session: &PlaySession, options: &photon_game::options::Options) {
+        let hide_lightning_flashes = options.hide_lightning_flashes;
         self.flicker.tick();
         self.hide_flashes = hide_lightning_flashes;
+        self.darkness_scale = options.darkness_effect_scale as f32;
         self.tick_end_flash(session);
         if session.player().is_some() {
             let next = probe(
@@ -264,7 +269,12 @@ impl Sky {
             self.hide_flashes,
             fog.boss_fog,
         );
-        let view = super::fog::lightmap_view(session, partial, (fog.darken_world, flash));
+        let view = super::fog::lightmap_view(
+            session,
+            partial,
+            (fog.darken_world, flash),
+            self.darkness_scale,
+        );
         let effects = lightmap.effects(&view, partial);
         backend.set_level_lighting(
             session

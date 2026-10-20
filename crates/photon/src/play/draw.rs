@@ -24,21 +24,29 @@ impl Play {
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }
 
+    /// What the frame's overlays are drawn from.
+    fn frame_view(&self, frame: &FrameCamera) -> FrameView {
+        let options = &self.controls.options;
+        FrameView {
+            render_distance: frame.render_distance,
+            partial: frame.partial,
+            light: packed_light(self.session.world(), frame.eye),
+            ambient_occlusion: options.ambient_occlusion,
+            origin: self.origin,
+            camera: frame.relative,
+            rotation: frame.rotation,
+            skin: self.skin_rect,
+            view_bobbing: options.view_bobbing,
+            damage_tilt: options.damage_tilt_strength,
+        }
+    }
+
     /// What is drawn over the blocks from the player's side: the hands in
     /// first person unless the player only watches, the aimed block's
     /// outline, the cracks, and the player's own model once the camera
     /// leaves its eyes.
     pub(super) fn draw_overlays(&mut self, frame: &FrameCamera) -> Result<()> {
-        let view = FrameView {
-            render_distance: frame.render_distance,
-            partial: frame.partial,
-            light: packed_light(self.session.world(), frame.eye),
-            ambient_occlusion: self.controls.options.ambient_occlusion,
-            origin: self.origin,
-            camera: frame.relative,
-            rotation: frame.rotation,
-            skin: self.skin_rect,
-        };
+        let view = self.frame_view(frame);
         self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         self.set_hands(view, first_person)?;

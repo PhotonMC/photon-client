@@ -77,6 +77,18 @@ pub struct Options {
     pub sound_device: String,
     pub show_subtitles: bool,
     pub directional_audio: bool,
+    /// `bobView`: the view and the hand sway with the walk.
+    pub view_bobbing: bool,
+    /// `fovEffectScale`, 0 to 1: how far speed and effects change the field of view.
+    pub fov_effect_scale: f64,
+    /// `darknessEffectScale`, 0 to 1: how far the darkness effect dims the view.
+    pub darkness_effect_scale: f64,
+    /// `glintSpeed`, 0 to 1: how fast the enchantment glint moves.
+    pub glint_speed: f64,
+    /// `glintStrength`, 0 to 1: how strongly the enchantment glint shows.
+    pub glint_strength: f64,
+    /// `damageTiltStrength`, 0 to 1: how far a hit tilts the view.
+    pub damage_tilt_strength: f64,
     pub music_frequency: MusicFrequency,
     pub music_toast: MusicToast,
     /// `modelParts`: the bits (`PlayerModelPart.getMask`) of the parts of the skin shown.
@@ -128,6 +140,12 @@ impl Default for Options {
             sound_device: String::new(),
             show_subtitles: false,
             directional_audio: false,
+            view_bobbing: true,
+            fov_effect_scale: 1.0,
+            darkness_effect_scale: 1.0,
+            glint_speed: 0.5,
+            glint_strength: 0.75,
+            damage_tilt_strength: 1.0,
             music_frequency: MusicFrequency::Default,
             music_toast: MusicToast::Never,
             model_parts: ALL_MODEL_PARTS,

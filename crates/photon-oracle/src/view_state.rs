@@ -430,6 +430,7 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
     let effects = inputs.effects(
         &photon_render::sky::LightmapView {
             darkness_blend: view.darkness.unwrap_or(0.0),
+            darkness_scale: 1.0,
             tick_count: i32_field(row, "tick_count")?,
             night_vision: intensity,
             boss_darkening: photon_render::camera::BossDarkening {

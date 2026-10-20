@@ -535,8 +535,7 @@ impl Play {
         );
         super::camera::tick_view((&mut self.camera, &mut self.gui), session, &self.sky);
         self.tick_screens()?;
-        self.sky
-            .tick(&self.session, self.controls.options.hide_lightning_flashes);
+        self.sky.tick(&self.session, &self.controls.options);
         self.ticks += 1;
         Ok(())
     }

@@ -76,7 +76,7 @@ impl Options {
     /// `option.codec().parse` and `set`: a value its codec refuses leaves
     /// the option as it was; one its value set refuses falls to the default.
     /// The options that are a number from zero to one, with the field each is kept in.
-    fn unit_slots(&mut self) -> [(Key, &mut f64); 9] {
+    fn unit_slots(&mut self) -> [(Key, &mut f64); 12] {
         [
             (Key::MouseSensitivity, &mut self.sensitivity),
             (Key::ChatOpacity, &mut self.chat_opacity),
@@ -90,11 +90,14 @@ impl Options {
             (Key::ChatHeightUnfocused, &mut self.chat_height_unfocused),
             (Key::ChatScale, &mut self.chat_scale),
             (Key::ChatWidth, &mut self.chat_width),
+            (Key::GlintSpeed, &mut self.glint_speed),
+            (Key::GlintStrength, &mut self.glint_strength),
+            (Key::DamageTiltStrength, &mut self.damage_tilt_strength),
         ]
     }
 
     /// [`Self::unit_slots`]'s values.
-    fn unit_values(&self) -> [(Key, f64); 9] {
+    fn unit_values(&self) -> [(Key, f64); 12] {
         [
             (Key::MouseSensitivity, self.sensitivity),
             (Key::ChatOpacity, self.chat_opacity),
@@ -105,7 +108,44 @@ impl Options {
             (Key::ChatHeightUnfocused, self.chat_height_unfocused),
             (Key::ChatScale, self.chat_scale),
             (Key::ChatWidth, self.chat_width),
+            (Key::GlintSpeed, self.glint_speed),
+            (Key::GlintStrength, self.glint_strength),
+            (Key::DamageTiltStrength, self.damage_tilt_strength),
         ]
+    }
+
+    /// `read` for the field of view, the effect scales and the GUI scale.
+    fn read_scale(&mut self, key: Key, json: &Json) {
+        match (key, json) {
+            (Key::Fov, Json::Number(number)) => {
+                let degrees = (double_value(number) * 40.0 + 70.0) as i32;
+                self.fov = FOV.validate_value(degrees).unwrap_or(FOV_DEFAULT);
+            }
+            // `Codec.doubleRange(0, 1)` of the real value, which `set` then takes through the
+            // value set's `validateValue`: the square of the root.
+            (Key::FovEffectScale, Json::Number(number)) => {
+                let value = double_value(number);
+                if (0.0..=1.0).contains(&value) {
+                    self.fov_effect_scale = squared_through_root(value);
+                }
+            }
+            // `UnitDouble.xmap(square, sqrt)`: the file holds the root (a boolean reads as one or
+            // nothing, as the unit codec has it).
+            (Key::DarknessEffectScale, json) => {
+                if let Some(root) = unit_of(json) {
+                    self.darkness_effect_scale = squared_through_root(root * root);
+                }
+            }
+            (Key::GuiScale, Json::Number(number)) => {
+                let scale = int_value(number);
+                if (0..=GUI_SCALE_MAX + 1).contains(&scale) {
+                    self.gui_scale =
+                        ClampingLazyMaxIntRange::new(0, || GUI_SCALE_MAX, GUI_SCALE_MAX)
+                            .validate_value(scale);
+                }
+            }
+            _ => {}
+        }
     }
 
     pub(super) fn read(&mut self, key: Key, text: &str) {
@@ -120,21 +160,8 @@ impl Options {
             _ => None,
         };
         match key {
-            Key::Fov => {
-                if let Json::Number(number) = json {
-                    let degrees = (double_value(number) * 40.0 + 70.0) as i32;
-                    self.fov = FOV.validate_value(degrees).unwrap_or(FOV_DEFAULT);
-                }
-            }
-            Key::GuiScale => {
-                if let Json::Number(number) = json {
-                    let scale = int_value(number);
-                    if (0..=GUI_SCALE_MAX + 1).contains(&scale) {
-                        self.gui_scale =
-                            ClampingLazyMaxIntRange::new(0, || GUI_SCALE_MAX, GUI_SCALE_MAX)
-                                .validate_value(scale);
-                    }
-                }
+            Key::Fov | Key::FovEffectScale | Key::DarknessEffectScale | Key::GuiScale => {
+                self.read_scale(key, &json);
             }
             Key::AmbientOcclusion | Key::EnableVsync => self.read_switch(key, boolean()),
             // `Codec.intRange(10, 260)`.
@@ -152,7 +179,8 @@ impl Options {
             Key::SaveChatDrafts
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
-            | Key::PauseOnLostFocus => self.read_flag(key, boolean()),
+            | Key::PauseOnLostFocus
+            | Key::ViewBobbing => self.read_flag(key, boolean()),
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::AttackIndicator | Key::ChatVisibility => self.read_choice(key, &json),
             Key::ShowSubtitles
@@ -174,7 +202,10 @@ impl Options {
             | Key::ChatHeightFocused
             | Key::ChatHeightUnfocused
             | Key::ChatScale
-            | Key::ChatWidth => {
+            | Key::ChatWidth
+            | Key::GlintSpeed
+            | Key::GlintStrength
+            | Key::DamageTiltStrength => {
                 if let (Some(value), Some((_, slot))) = (
                     unit(),
                     self.unit_slots().into_iter().find(|(own, _)| *own == key),
@@ -219,6 +250,7 @@ impl Options {
             Key::SaveChatDrafts => &mut self.save_chat_drafts,
             Key::AdvancedItemTooltips => &mut self.advanced_item_tooltips,
             Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
+            Key::ViewBobbing => &mut self.view_bobbing,
             _ => &mut self.background_for_chat_only,
         };
         *flag = value.unwrap_or(*flag);
@@ -229,6 +261,7 @@ impl Options {
             Key::SaveChatDrafts => self.save_chat_drafts,
             Key::AdvancedItemTooltips => self.advanced_item_tooltips,
             Key::PauseOnLostFocus => self.pause_on_lost_focus,
+            Key::ViewBobbing => self.view_bobbing,
             _ => self.background_for_chat_only,
         }
     }
@@ -317,6 +350,15 @@ impl Options {
         }
     }
 
+    /// `write` for the field of view and the effect scales.
+    fn write_scale(&self, key: Key) -> String {
+        java_double(match key {
+            Key::Fov => (f64::from(self.fov) - 70.0) / 40.0,
+            Key::FovEffectScale => self.fov_effect_scale,
+            _ => self.darkness_effect_scale.sqrt(),
+        })
+    }
+
     /// The value the file holds for an option.
     pub(super) fn write(&self, key: Key) -> String {
         match key {
@@ -324,13 +366,14 @@ impl Options {
             Key::MaxFps => self.framerate_limit.to_string(),
             Key::RenderDistance => self.render_distance.to_string(),
             Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
-            Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
+            Key::Fov | Key::FovEffectScale | Key::DarknessEffectScale => self.write_scale(key),
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
             Key::SaveChatDrafts
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
-            | Key::PauseOnLostFocus => self.flag(key).to_string(),
+            | Key::PauseOnLostFocus
+            | Key::ViewBobbing => self.flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
             Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => self.server_state(key),
@@ -343,7 +386,10 @@ impl Options {
             | Key::ChatHeightFocused
             | Key::ChatHeightUnfocused
             | Key::ChatScale
-            | Key::ChatWidth => {
+            | Key::ChatWidth
+            | Key::GlintSpeed
+            | Key::GlintStrength
+            | Key::DamageTiltStrength => {
                 let value = self.unit_values().into_iter().find(|(own, _)| *own == key);
                 java_double(value.map_or(0.0, |(_, value)| value))
             }
@@ -394,6 +440,22 @@ impl Options {
             std::fs::create_dir_all(directory)?;
         }
         std::fs::write(path, text)
+    }
+}
+
+/// `UnitDouble.validateValue` of the root, mapped back by `square`: what `set` keeps of a value
+/// of a `UnitDouble.xmap(square, sqrt)` option.
+fn squared_through_root(value: f64) -> f64 {
+    let root = value.sqrt();
+    root * root
+}
+
+/// `UnitDouble.codec`: a number from zero to one, or a boolean as one or nothing.
+fn unit_of(json: &Json<'_>) -> Option<f64> {
+    match json {
+        Json::Number(number) => UnitDouble::validate_value(double_value(number)),
+        Json::Bool(value) => Some(if *value { 1.0 } else { 0.0 }),
+        Json::Text(_) | Json::Other => None,
     }
 }
 
@@ -576,6 +638,45 @@ mod tests {
         let options = loaded("pauseOnLostFocus:false\nadvancedItemTooltips:true");
         assert!(!options.pause_on_lost_focus && options.advanced_item_tooltips);
         assert_eq!(options.write(Key::PauseOnLostFocus), "false");
+    }
+
+    #[test]
+    fn the_accessibility_scales_read_with_their_codecs() {
+        let options = loaded("");
+        assert!(options.view_bobbing);
+        assert_eq!(
+            (options.fov_effect_scale, options.darkness_effect_scale),
+            (1.0, 1.0)
+        );
+        assert_eq!((options.glint_speed, options.glint_strength), (0.5, 0.75));
+        let options = loaded(
+            "bobView:false\nfovEffectScale:0.25\ndarknessEffectScale:0.5\nglintSpeed:2.0\nglintStrength:0.1\ndamageTiltStrength:0.0",
+        );
+        assert!(!options.view_bobbing);
+        assert_eq!(options.fov_effect_scale, 0.25);
+        // The file holds the root of the darkness scale.
+        assert_eq!(options.darkness_effect_scale, 0.25);
+        assert_eq!(options.write(Key::DarknessEffectScale), "0.5");
+        // A value its codec refuses leaves the default.
+        assert_eq!(options.glint_speed, 0.5);
+        assert_eq!(options.glint_strength, 0.1);
+        assert_eq!(options.damage_tilt_strength, 0.0);
+        assert_eq!(loaded("fovEffectScale:1.5").fov_effect_scale, 1.0);
+        assert_eq!(
+            loaded("darknessEffectScale:true").darkness_effect_scale,
+            1.0
+        );
+        assert_eq!(
+            loaded("darknessEffectScale:false").darkness_effect_scale,
+            0.0
+        );
+        // The value set takes the value through its root and back.
+        let root = 0.3_f64.sqrt();
+        assert_eq!(loaded("fovEffectScale:0.3").fov_effect_scale, root * root);
+        assert_eq!(
+            loaded("darknessEffectScale:0.3").darkness_effect_scale,
+            (0.3_f64 * 0.3).sqrt().powi(2)
+        );
     }
 
     #[test]

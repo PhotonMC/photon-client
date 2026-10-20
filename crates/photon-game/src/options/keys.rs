@@ -10,6 +10,10 @@ pub(super) enum Key {
     AmbientOcclusion,
     EnableVsync,
     Fov,
+    FovEffectScale,
+    DarknessEffectScale,
+    GlintSpeed,
+    GlintStrength,
     GuiScale,
     MaxFps,
     RenderDistance,
@@ -43,6 +47,8 @@ pub(super) enum Key {
     SoundDevice,
     ShowSubtitles,
     DirectionalAudio,
+    ViewBobbing,
+    DamageTiltStrength,
     MusicToast,
     MusicFrequency,
     SoundCategory(SoundSource),
@@ -50,10 +56,14 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 56] = [
+pub(super) const KEYS: [(&str, Key); 62] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
+    ("fovEffectScale", Key::FovEffectScale),
+    ("darknessEffectScale", Key::DarknessEffectScale),
+    ("glintSpeed", Key::GlintSpeed),
+    ("glintStrength", Key::GlintStrength),
     ("guiScale", Key::GuiScale),
     ("maxFps", Key::MaxFps),
     ("renderDistance", Key::RenderDistance),
@@ -87,6 +97,8 @@ pub(super) const KEYS: [(&str, Key); 56] = [
     ("screenEffectScale", Key::ScreenEffectScale),
     ("showSubtitles", Key::ShowSubtitles),
     ("directionalAudio", Key::DirectionalAudio),
+    ("bobView", Key::ViewBobbing),
+    ("damageTiltStrength", Key::DamageTiltStrength),
     ("musicToast", Key::MusicToast),
     ("musicFrequency", Key::MusicFrequency),
     (

@@ -90,6 +90,8 @@ pub struct HandVertices {
 fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> HandView {
     let partial = view.partial as f32;
     let (walked, bob) = player.view_bob(partial);
+    // `bobView` off leaves the hand without the sway.
+    let bob = if view.view_bobbing { bob } else { 0.0 };
     let (x_bob, y_bob) = player.hand_bob(partial);
     let (view_y_rot, view_x_rot) = player.rotation();
     HandView {
@@ -111,7 +113,7 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
                 hurt_dir,
                 dying,
                 death_time,
-                tilt_strength: 1.0,
+                tilt_strength: view.damage_tilt,
             }
         },
     }

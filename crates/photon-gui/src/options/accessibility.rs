@@ -1,8 +1,10 @@
 //! The accessibility settings screen (`AccessibilityOptionsScreen`): the options that make the
 //! game easier to take in, in a list with the Controls link beside the narrator, and a link to the
 //! guide beside Done. The options the game keeps (subtitles, the chat's text background and
-//! opacities, the delay, the notification time, the screen effects and lightning flashes) are the
-//! options'; the others hold a value on their widget.
+//! opacities, the delay, the notification time, the screen, field of view, darkness and damage
+//! effects, view bobbing, the glint and lightning flashes) are the options'; the others (the
+//! menu blurriness, the Mojang background colour, the resource pack contrast, the minecart
+//! rotation) hold a value on their widget.
 
 use photon_game::options::Options;
 use photon_game::options::values::{IntRange, UnitDouble};
@@ -35,6 +37,12 @@ const NOTIFICATION_TIME: u8 = 9;
 const SCREEN_EFFECTS: u8 = 10;
 const LIGHTNING: u8 = 11;
 const ROTATE_WITH_MINECART: u8 = 12;
+const VIEW_BOBBING: u8 = 14;
+const FOV_EFFECTS: u8 = 15;
+const DARKNESS_EFFECTS: u8 = 16;
+const DAMAGE_TILT: u8 = 17;
+const GLINT_SPEED: u8 = 18;
+const GLINT_STRENGTH: u8 = 19;
 
 /// `notificationDisplayTime`'s value set: tenths of a second from 0.5 to 10.
 type TimeValues =
@@ -100,6 +108,12 @@ pub struct AccessibilityChoices {
     pub notification_display_time: f64,
     pub screen_effect_scale: f64,
     pub hide_lightning_flashes: bool,
+    pub view_bobbing: bool,
+    pub fov_effect_scale: f64,
+    pub darkness_effect_scale: f64,
+    pub damage_tilt_strength: f64,
+    pub glint_speed: f64,
+    pub glint_strength: f64,
 }
 
 /// What an input to the screen asks for.
@@ -168,6 +182,11 @@ impl AccessibilityScreen {
                 .and_then(|control| control.as_any().downcast_ref::<OptionSlider<DelayValues>>())
                 .map_or(0.0, |slider| *slider.value())
         };
+        let squares = |tag: u8| {
+            list.find(tag)
+                .and_then(|control| control.as_any().downcast_ref::<OptionSlider<Squared>>())
+                .map_or(1.0, |slider| *slider.value())
+        };
         let time = list
             .find(NOTIFICATION_TIME)
             .and_then(|control| control.as_any().downcast_ref::<OptionSlider<TimeValues>>())
@@ -182,6 +201,12 @@ impl AccessibilityScreen {
             notification_display_time: time,
             screen_effect_scale: share(SCREEN_EFFECTS),
             hide_lightning_flashes: flag(LIGHTNING),
+            view_bobbing: flag(VIEW_BOBBING),
+            fov_effect_scale: squares(FOV_EFFECTS),
+            darkness_effect_scale: squares(DARKNESS_EFFECTS),
+            damage_tilt_strength: share(DAMAGE_TILT),
+            glint_speed: share(GLINT_SPEED),
+            glint_strength: share(GLINT_STRENGTH),
         }
     }
 
@@ -352,7 +377,10 @@ fn chat_options(options: &Options) -> Vec<(u8, Build)> {
 
 fn effect_options(options: &Options) -> Vec<(u8, Build)> {
     vec![
-        (PLAIN, boolean("options.viewBobbing", true)),
+        (
+            VIEW_BOBBING,
+            boolean("options.viewBobbing", options.view_bobbing),
+        ),
         (
             SCREEN_EFFECTS,
             unit_tip(
@@ -362,42 +390,46 @@ fn effect_options(options: &Options) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            FOV_EFFECTS,
             slider_tip(
                 "options.fovEffectScale",
                 squared(),
                 percent_or_off,
-                1.0,
+                options.fov_effect_scale,
                 constant_tip("options.fovEffectScale.tooltip"),
             ),
         ),
         (
-            PLAIN,
+            DARKNESS_EFFECTS,
             slider_tip(
                 "options.darknessEffectScale",
                 squared(),
                 percent_or_off,
-                1.0,
+                options.darkness_effect_scale,
                 constant_tip("options.darknessEffectScale.tooltip"),
             ),
         ),
         (
-            PLAIN,
+            DAMAGE_TILT,
             unit_tip(
                 "options.damageTiltStrength",
-                1.0,
+                options.damage_tilt_strength,
                 "options.damageTiltStrength.tooltip",
             ),
         ),
         (
-            PLAIN,
-            unit_tip("options.glintSpeed", 0.5, "options.glintSpeed.tooltip"),
+            GLINT_SPEED,
+            unit_tip(
+                "options.glintSpeed",
+                options.glint_speed,
+                "options.glintSpeed.tooltip",
+            ),
         ),
         (
-            PLAIN,
+            GLINT_STRENGTH,
             unit_tip(
                 "options.glintStrength",
-                0.75,
+                options.glint_strength,
                 "options.glintStrength.tooltip",
             ),
         ),

@@ -42,6 +42,10 @@ pub struct FrameView {
     pub rotation: (f32, f32),
     /// Where the skin the local player wears is in the entity textures.
     pub skin: photon_render::entity::textures::TextureRect,
+    /// The `bobView` option.
+    pub view_bobbing: bool,
+    /// The `damageTiltStrength` option.
+    pub damage_tilt: f64,
 }
 
 impl FrameView {
