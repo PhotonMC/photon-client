@@ -997,7 +997,7 @@
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
-"crates/photon/src/equipment/held_items.rs::Hands::collect" = 64
+"crates/photon/src/equipment/held_items.rs::Hands::collect" = 61
 "crates/photon/src/gui/draw.rs::Gui::draw" = 282
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
@@ -1018,7 +1018,7 @@
 "crates/photon/src/mobs/monsters/ender_dragons.rs::remote_ender_dragons" = 79
 "crates/photon/src/mobs/monsters/remote.rs::pose_monster" = 97
 "crates/photon/src/mobs/monsters/remote.rs::remote_monsters" = 104
-"crates/photon/src/mobs/pose.rs::remote_humanoids" = 96
+"crates/photon/src/mobs/pose.rs::remote_humanoids" = 95
 "crates/photon/src/mobs/wild.rs::remote_mobs" = 72
 "crates/photon/src/objects/bullets.rs::remote_bullets" = 67
 "crates/photon/src/objects/displays.rs::display_texts" = 75

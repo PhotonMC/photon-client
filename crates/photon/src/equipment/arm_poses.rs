@@ -196,6 +196,31 @@ pub struct SpearRest {
     pub hit_feedback: f32,
 }
 
+/// What an entity's hands do besides holding: the spears' motions and the use of the stacks.
+pub fn entity_actions(
+    entity: &ClientEntity,
+    attack: (f32, Arm),
+    arm_poses: (ArmPose, ArmPose),
+    time: (u64, f32),
+) -> crate::equipment::held_items::HandActions {
+    let view = entity_spear_view(entity, attack, arm_poses, time);
+    crate::equipment::held_items::HandActions::new(view.motions, entity_uses(entity))
+}
+
+/// For how many ticks an entity has used the stack in each arm, the right arm's first: the used
+/// hand is the main hand's arm, or the other one for the off hand.
+pub fn entity_uses(entity: &ClientEntity) -> [Option<i32>; 2] {
+    if !entity.is_using_item() {
+        return [None, None];
+    }
+    let ticks = Some(entity.ticks_using_item(0.0) as i32);
+    if entity.main_arm_is_left() ^ entity.used_item_is_off_hand() {
+        [None, ticks]
+    } else {
+        [ticks, None]
+    }
+}
+
 /// [`spear_view`] of an entity.
 pub fn entity_spear_view(
     entity: &ClientEntity,

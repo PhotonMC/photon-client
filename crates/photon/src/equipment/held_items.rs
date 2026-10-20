@@ -13,6 +13,7 @@ use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
 use crate::equipment::item_layers::ItemLayerCache;
+use photon_render::item_model::ItemUse;
 
 /// Where a stack is carried: in a hand, or on the head.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -52,6 +53,8 @@ pub struct HeldItem {
     pub pose: Pose,
     pub place: Place,
     pub light: i32,
+    /// The use of the stack by its holder, which picks the model's branches.
+    pub item_use: Option<ItemUse>,
 }
 
 impl HeldItem {
@@ -62,6 +65,7 @@ impl HeldItem {
             pose,
             place,
             light,
+            item_use: None,
         }
     }
 
@@ -72,6 +76,7 @@ impl HeldItem {
             pose,
             place: Place::Head,
             light,
+            item_use: None,
         }
     }
 }
@@ -118,8 +123,22 @@ pub struct Hands<'a> {
     pub head_transforms: (f32, f32),
     /// The arm whose stack is held to the eye instead of in the hand (`renderItemHeldToEye`).
     pub eye: Option<Arm>,
-    /// What each hand's item does besides being held, the right hand's first.
-    pub motions: [HandMotion; 2],
+    /// What each hand's item does besides being held.
+    pub motions: HandActions,
+}
+
+/// What each hand's item does besides being held, the right hand's first: a spear's thrust or
+/// use, and for how many ticks its holder has used the stack in the hand (`getUseItem() == stack`).
+#[derive(Default)]
+pub struct HandActions {
+    motions: [HandMotion; 2],
+    uses: [Option<i32>; 2],
+}
+
+impl HandActions {
+    pub fn new(motions: [HandMotion; 2], uses: [Option<i32>; 2]) -> Self {
+        Self { motions, uses }
+    }
 }
 
 /// `CustomHeadLayer.Transforms.DEFAULT` less its skull offset.
@@ -147,6 +166,11 @@ impl Hands<'_> {
         ))
     }
 
+    /// The part of the model named so.
+    fn part(&self, name: &str) -> Option<&Part> {
+        self.root.children().iter().find(|part| part.name() == name)
+    }
+
     /// Adds each held stack, the right arm's first.
     pub fn collect(&self, out: &mut Vec<HeldItem>) {
         for (index, (side, stack)) in [(Arm::Right, self.right), (Arm::Left, self.left)]
@@ -161,54 +185,51 @@ impl Hands<'_> {
             } else {
                 "right_arm"
             };
-            let Some(arm) = self.root.children().iter().find(|part| part.name() == name) else {
+            let Some(arm) = self.part(name) else {
                 continue;
             };
+            let item_use = self.motions.uses[index].map(|ticks| ItemUse { ticks });
+            let held = |pose, place| HeldItem {
+                stack: Carried::Stack(stack.clone()),
+                pose,
+                place,
+                light: self.light,
+                item_use,
+            };
             if self.eye == Some(side)
-                && let Some(head) = self
-                    .root
-                    .children()
-                    .iter()
-                    .find(|part| part.name() == "head")
+                && let Some(head) = self.part("head")
             {
-                out.push(HeldItem {
-                    stack: Carried::Stack(stack.clone()),
-                    pose: held_to_eye_pose(self.base, self.root, head, side),
-                    place: Place::Head,
-                    light: self.light,
-                });
+                out.push(held(
+                    held_to_eye_pose(self.base, self.root, head, side),
+                    Place::Head,
+                ));
                 continue;
             }
-            out.push(HeldItem {
-                stack: Carried::Stack(stack.clone()),
-                pose: hand_pose(
-                    self.base,
-                    self.root,
-                    arm,
-                    side,
-                    (self.hand_shift, self.baby),
-                    &self.motions[index],
-                ),
-                place: if side == Arm::Left {
-                    Place::Left
-                } else {
-                    Place::Right
-                },
-                light: self.light,
-            });
+            let pose = hand_pose(
+                self.base,
+                self.root,
+                arm,
+                side,
+                (self.hand_shift, self.baby),
+                &self.motions.motions[index],
+            );
+            let place = if side == Arm::Left {
+                Place::Left
+            } else {
+                Place::Right
+            };
+            out.push(held(pose, place));
         }
         if let (Some(stack), Some(head)) = (
             self.head.filter(|stack| skull_of(stack).is_none()),
-            self.root
-                .children()
-                .iter()
-                .find(|part| part.name() == "head"),
+            self.part("head"),
         ) {
             out.push(HeldItem {
                 stack: Carried::Stack(stack.clone()),
                 pose: head_item_pose(self.base, self.root, head, self.head_transforms),
                 place: Place::Head,
                 light: self.light,
+                item_use: None,
             });
         }
     }
@@ -239,7 +260,7 @@ pub fn held_item_vertices(
                 continue;
             }
         };
-        let item_layers = cache.get(stack, renderer, tints);
+        let item_layers = cache.get_in_use(stack, item.item_use, (renderer, tints));
         let drawn = item_layer_vertices(
             item_layers,
             &[item.pose],

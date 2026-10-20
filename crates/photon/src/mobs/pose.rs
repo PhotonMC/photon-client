@@ -69,13 +69,12 @@ pub(super) fn remote_humanoids(
                         HEAD_TRANSFORMS
                     },
                     eye: None,
-                    motions: arm_poses::entity_spear_view(
+                    motions: arm_poses::entity_actions(
                         entity,
                         (humanoid.attack_time, humanoid.attack_arm),
                         (humanoid.right_arm_pose, humanoid.left_arm_pose),
                         (world.game_time(), partial),
-                    )
-                    .motions,
+                    ),
                 };
                 hands.collect(held);
                 skull = hands.skull();

@@ -1,5 +1,6 @@
 use super::*;
 use crate::equipment::arm_poses;
+use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
@@ -79,7 +80,7 @@ pub fn remote_players(
             head: worn.head_item(armor),
             head_transforms: HEAD_TRANSFORMS,
             eye: arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
-            motions: spears.motions,
+            motions: HandActions::new(spears.motions, arm_poses::entity_uses(entity)),
         };
         hands.collect(held);
         let skull = hands.skull();

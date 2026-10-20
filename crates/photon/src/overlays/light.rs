@@ -1,5 +1,6 @@
 use super::*;
 use crate::equipment::arm_poses;
+use crate::equipment::held_items::HandActions;
 use photon_core::ids::ItemId;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
@@ -315,7 +316,7 @@ pub fn player_model(
         head: worn.head_item(armor),
         head_transforms: HEAD_TRANSFORMS,
         eye: None,
-        motions: spears.motions,
+        motions: HandActions::new(spears.motions, player.arm_uses()),
     };
     hands.collect(held);
     let skull = hands.skull();

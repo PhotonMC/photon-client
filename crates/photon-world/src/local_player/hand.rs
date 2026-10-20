@@ -220,6 +220,11 @@ impl LocalPlayer {
             .then_some(self.use_edge.ticks)
     }
 
+    /// [`Self::use_ticks_of`] by arm, the right arm's first (the main arm is the right).
+    pub fn arm_uses(&self) -> [Option<i32>; 2] {
+        [self.use_ticks_of(true), self.use_ticks_of(false)]
+    }
+
     /// The item now in the main hand, by registry id; air when empty.
     pub fn set_main_hand_item(&mut self, item: ItemId) {
         self.main_hand_item = item;
