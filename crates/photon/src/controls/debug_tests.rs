@@ -43,3 +43,13 @@ fn a_key_with_no_debug_answer_does_not_use_f3() {
     tap(&mut debug, Key::W);
     assert!(debug.entries.is_overlay_visible());
 }
+
+#[test]
+fn escape_with_f3_is_a_debug_action_so_the_release_leaves_the_overlay() {
+    // `pauseGame(debugModifierDown)`: the pause menu comes up on a remote server all the same, and
+    // F3 counts as used.
+    let mut debug = DebugKeys::default();
+    assert!(DebugKeys::acts(Key::Escape, false));
+    tap(&mut debug, Key::Escape);
+    assert!(!debug.entries.is_overlay_visible());
+}
