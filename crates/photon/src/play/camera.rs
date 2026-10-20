@@ -43,6 +43,27 @@ impl Play {
         (facing.map_or(0.0, |facing| facing.to_y_rot() - 180.0), 0.0)
     }
 
+    /// The vertical field of view: the option's, the modifier, and the narrowing in a fluid
+    /// (`Camera.getFluidInCamera`), with that fluid.
+    fn view_fov(
+        &self,
+        camera: Vec3,
+        rotation: (f32, f32),
+        partial: f32,
+    ) -> (f32, photon_render::sky::FogType) {
+        let option_fov = self.controls.options.fov;
+        let fluid = crate::view::camera_fluid(
+            self.session.world(),
+            camera,
+            rotation,
+            (option_fov, f64::from(self.aspect)),
+        );
+        let scale = fluid
+            .narrows_view()
+            .then_some(self.controls.options.fov_effect_scale as f32);
+        (self.camera.fov(option_fov, partial, scale), fluid)
+    }
+
     /// `Camera.alignWithEntity` and the projection: the front view turns
     /// round, and a detached camera backs away from the eyes until a block
     /// is in the way.
@@ -68,16 +89,7 @@ impl Play {
             (camera.z - f64::from(self.origin[2])) as f32,
         ];
         let option_fov = self.controls.options.fov;
-        // `Camera.getFluidInCamera`, which narrows the field of view in water and lava.
-        let fluid = crate::view::camera_fluid(
-            self.session.world(),
-            camera,
-            (y_rot, x_rot),
-            (option_fov, f64::from(self.aspect)),
-        );
-        let fov = self
-            .camera
-            .fov(option_fov, partial as f32, fluid.narrows_view());
+        let (fov, fluid) = self.view_fov(camera, (y_rot, x_rot), partial as f32);
         // The camera's far plane: four times the render distance, or the
         // cloud range if that is farther.
         let render_distance = self.effective_render_distance();
@@ -182,7 +194,7 @@ fn player_motion(
 pub(super) fn tick_view(
     (camera, gui): (&mut photon_render::camera::Camera, &mut crate::gui::Gui),
     session: &photon_net::connection::PlaySession,
-    sky: &crate::world::sky::Sky,
+    (sky, fov_effect_scale): (&crate::world::sky::Sky, f32),
 ) {
     // `GameRenderer.tick`: the boss darkening and the totem run only while the level does.
     if session.runs_normally() {
@@ -190,7 +202,13 @@ pub(super) fn tick_view(
         camera.activation.tick();
     }
     let eyes = session.player().map(|player| {
-        camera.tick(player, crate::world::fog::nausea_blend(session, 1.0));
+        camera.tick(
+            player,
+            (
+                crate::world::fog::nausea_blend(session, 1.0),
+                fov_effect_scale,
+            ),
+        );
         let at = player.position();
         [at.x, at.y + f64::from(player.eye_height()), at.z]
     });

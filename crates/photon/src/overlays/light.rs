@@ -121,9 +121,10 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
 
 /// `Camera.calculateHudFov`: the hand's field of view is the default,
 /// narrowed in water, and not widened by speed.
-pub fn hud_fov(player: &LocalPlayer) -> f32 {
+pub fn hud_fov(player: &LocalPlayer, effect_scale: f32) -> f32 {
     if player.is_eye_in_water() {
-        70.0 * 0.857_142_87
+        // `fovEffectScale` lerps the narrowing in.
+        70.0 * (1.0 + effect_scale * (0.857_142_87 - 1.0))
     } else {
         70.0
     }

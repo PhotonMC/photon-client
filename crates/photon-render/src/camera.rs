@@ -40,7 +40,7 @@ impl Camera {
     }
 
     /// One client tick, after the player's.
-    pub fn tick(&mut self, player: &LocalPlayer, nausea: f32) {
+    pub fn tick(&mut self, player: &LocalPlayer, (nausea, effect_scale): (f32, f32)) {
         // `GameRenderer.tick` runs before the player's, so it reads what the last tick ended with.
         let seen = std::mem::replace(&mut self.nausea, nausea);
         let portal = std::mem::replace(&mut self.portal, player.portal_effect_intensity_now());
@@ -48,8 +48,7 @@ impl Camera {
         self.eye_height_old = self.eye_height;
         self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
 
-        // The field-of-view effect scale is left at its default, one, so the
-        // target is the player's modifier itself.
+        // `getFieldOfViewModifier`, its effect scale lerping from one to the modifier.
         let abilities = player.abilities();
         let mut target = 1.0_f32;
         if abilities.flying() {
@@ -60,6 +59,7 @@ impl Camera {
             let speed_factor = player.movement_speed() / walking_speed;
             target *= (speed_factor + 1.0) / 2.0;
         }
+        let target = 1.0 + effect_scale * (target - 1.0);
         self.old_fov_modifier = self.fov_modifier;
         self.fov_modifier += (target - self.fov_modifier) * 0.5;
         self.fov_modifier = self.fov_modifier.clamp(0.1, 1.5);
@@ -79,12 +79,14 @@ impl Camera {
         self.eye_height_old + partial_tick * (self.eye_height - self.eye_height_old)
     }
 
-    /// The vertical field of view in degrees, from the option's, narrowed in water and in lava.
-    pub fn fov(&self, option_fov: i32, partial_tick: f32, in_fluid: bool) -> f32 {
+    /// The vertical field of view in degrees, from the option's, narrowed in water and in lava by what the effect scale
+    /// lets of it (`fluid` is the scale there).
+    pub fn fov(&self, option_fov: i32, partial_tick: f32, fluid: Option<f32>) -> f32 {
         let modifier =
             self.old_fov_modifier + partial_tick * (self.fov_modifier - self.old_fov_modifier);
         let fov = option_fov as f32 * modifier;
-        if in_fluid { fov * 0.857_142_87 } else { fov }
+        // In a fluid, `fovEffectScale` lerps the narrowing in.
+        fluid.map_or(fov, |scale| fov * (1.0 + scale * (0.857_142_87 - 1.0)))
     }
 }
 

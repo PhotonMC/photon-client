@@ -145,7 +145,7 @@ impl Play {
         }) = hands
         {
             let hand_projection = photon_render::scene::perspective(
-                hud_fov(player).to_radians(),
+                hud_fov(player, self.controls.options.fov_effect_scale as f32).to_radians(),
                 self.aspect,
                 0.05,
                 100.0,
@@ -167,7 +167,7 @@ impl Play {
             )?;
         } else {
             let hand_projection = photon_render::scene::perspective(
-                hud_fov(player).to_radians(),
+                hud_fov(player, self.controls.options.fov_effect_scale as f32).to_radians(),
                 self.aspect,
                 0.05,
                 100.0,
