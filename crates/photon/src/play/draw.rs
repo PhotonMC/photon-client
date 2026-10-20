@@ -68,9 +68,10 @@ impl Play {
             view,
         ))?;
         let spectating = player.spectating();
-        let local =
-            (!first_person && !spectating).then(|| player.interpolated_position(frame.partial));
-        let held = self.draw_entities(view, first_person, hook_sprites)?;
+        let local = (!first_person && !spectating && !self.local_invisible())
+            .then(|| player.interpolated_position(frame.partial));
+        let held =
+            self.draw_entities(view, first_person || self.local_invisible(), hook_sprites)?;
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
         let with_textures = (tints.0, tints.1, &self.entity_textures);
@@ -185,11 +186,11 @@ impl Play {
 
     /// The other players, the mobs and the objects the server added, the
     /// bobbers, and the local player's own model once the camera leaves its
-    /// eyes; what they hold is given back for the item pass.
+    /// eyes (unless it is invisible); what they hold is given back for the item pass.
     fn draw_entities(
         &mut self,
         view: overlays::FrameView,
-        first_person: bool,
+        own_body_hidden: bool,
         hook_sprites: Vec<photon_render::scene::Vertex>,
     ) -> Result<Vec<crate::equipment::held_items::HeldItem>> {
         let player = self.session.player().ok_or("no local player")?;
@@ -215,7 +216,7 @@ impl Play {
             self.particles
                 .elder_guardian_vertices(&self.entity_textures, (view.partial as f32, &view)),
         );
-        if !first_person {
+        if !own_body_hidden {
             // What the local player holds: the selected hotbar slot and the
             // off hand, the main arm being the right.
             let stack = |slot: i16| {

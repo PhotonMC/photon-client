@@ -132,6 +132,15 @@ impl Play {
             ),
         }
     }
+
+    /// Whether the local player is invisible: its model and shadow are then not drawn in third
+    /// person (what it wears and holds goes with them here).
+    pub(super) fn local_invisible(&self) -> bool {
+        self.session
+            .world()
+            .local_player()
+            .is_some_and(|state| state.is_invisible())
+    }
 }
 
 impl Play {
