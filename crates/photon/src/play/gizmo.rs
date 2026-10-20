@@ -76,14 +76,9 @@ impl Play {
             return Vec::new();
         }
         let partial = view.partial as f32;
-        let place = |x: f64, y: f64, z: f64| {
-            [x, y, z]
-                .into_iter()
-                .zip(view.origin)
-                .map(|(value, origin)| (value - f64::from(origin)) as f32)
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap_or_default()
+        let place = |x: f64, y: f64, z: f64| -> [f32; 3] {
+            let at = [x, y, z];
+            std::array::from_fn(|axis| (at[axis] - f64::from(view.origin[axis])) as f32)
         };
         let mut lines = Vec::new();
         for entity in self.session.world().entities().drawn() {

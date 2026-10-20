@@ -162,5 +162,11 @@ mod tests {
                 "tps"
             ]
         );
+        // The chunk borders and the hitboxes are not allowed with reduced debug info.
+        list.toggle_status("chunk_borders");
+        list.toggle_status("entity_hitboxes");
+        assert!(!list.enabled(true).contains(&"chunk_borders"));
+        assert!(!list.enabled(true).contains(&"entity_hitboxes"));
+        assert!(list.enabled(false).contains(&"entity_hitboxes"));
     }
 }
