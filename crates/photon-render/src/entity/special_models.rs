@@ -37,6 +37,8 @@ pub enum SpecialKind {
     Shield,
     /// The conduit's shell.
     Conduit,
+    /// A trident.
+    Trident,
     /// A decorated pot with no decorations.
     DecoratedPot,
     /// A standing copper golem statue with its texture.
@@ -90,6 +92,7 @@ pub fn layers(kind: &SpecialKind) -> Vec<ModelLayer> {
         SpecialKind::Banner { color } => banner(*color),
         SpecialKind::Shield => shield(),
         SpecialKind::Conduit => conduit(),
+        SpecialKind::Trident => trident(),
         SpecialKind::DecoratedPot => decorated_pot(),
         SpecialKind::CopperGolemStatue { texture } => copper_golem(texture),
     }
@@ -285,6 +288,50 @@ fn conduit() -> Vec<ModelLayer> {
     vec![layer(&model, "entity/conduit/base", WHITE)]
 }
 
+/// `TridentModel.createLayer`: the pole with the base and three spikes on it.
+fn trident() -> Vec<ModelLayer> {
+    let size = (32.0, 32.0);
+    let piece =
+        |name: &'static str, tex: (i32, i32), min: [f32; 3], size_of: [f32; 3], mirror: bool| {
+            Part::new(
+                name,
+                vec![Cube::sized(tex, min, size_of, 0.0, mirror, size, &FACES)],
+                [0.0; 3],
+                Vec::new(),
+            )
+        };
+    let pole = Part::new(
+        "pole",
+        vec![cube(size, (0, 6), [-0.5, 2.0, -0.5], [1.0, 25.0, 1.0])],
+        [0.0; 3],
+        vec![
+            piece("base", (4, 0), [-1.5, 0.0, -0.5], [3.0, 2.0, 1.0], false),
+            piece(
+                "left_spike",
+                (4, 3),
+                [-2.5, -3.0, -0.5],
+                [1.0, 4.0, 1.0],
+                false,
+            ),
+            piece(
+                "middle_spike",
+                (0, 0),
+                [-0.5, -4.0, -0.5],
+                [1.0, 4.0, 1.0],
+                false,
+            ),
+            piece(
+                "right_spike",
+                (4, 3),
+                [1.5, -3.0, -0.5],
+                [1.0, 4.0, 1.0],
+                true,
+            ),
+        ],
+    );
+    vec![layer(&root(vec![pole]), "entity/trident/trident", WHITE)]
+}
+
 /// `DecoratedPotRenderer.createBaseLayer` and `createSidesLayer`, every side
 /// the plain one.
 fn decorated_pot() -> Vec<ModelLayer> {
@@ -438,6 +485,7 @@ mod tests {
             SpecialKind::Banner { color: WHITE },
             SpecialKind::Shield,
             SpecialKind::Conduit,
+            SpecialKind::Trident,
             SpecialKind::DecoratedPot,
             SpecialKind::CopperGolemStatue {
                 texture: "entity/copper_golem/copper_golem".into(),

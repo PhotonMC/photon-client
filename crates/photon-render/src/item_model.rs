@@ -199,7 +199,7 @@ mod special_tests {
     #[test]
     fn other_special_renderers_draw_nothing() {
         let text = r#"{"model":{"type":"minecraft:special","base":"minecraft:item/trident",
-            "model":{"type":"minecraft:trident"}}}"#;
+            "model":{"type":"minecraft:not_a_renderer"}}}"#;
         let item = parse_client_item(text).expect("a client item");
         let mut layers = Vec::new();
         layers_for(&item.model, DisplayContext::ALL[0], &mut layers);

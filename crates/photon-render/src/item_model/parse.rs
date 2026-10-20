@@ -190,9 +190,6 @@ pub(super) fn parse_special(model: &JsonObject) -> Option<SpecialModel> {
         "minecraft:banner" => SpecialModel::Banner {
             color: dye_colour(&model.text("color")?)?,
         },
-        "minecraft:shield" => SpecialModel::Shield,
-        "minecraft:conduit" => SpecialModel::Conduit,
-        "minecraft:decorated_pot" => SpecialModel::DecoratedPot,
         "minecraft:copper_golem_statue" => {
             if model.text("pose")? != "standing" {
                 return None;
@@ -205,6 +202,17 @@ pub(super) fn parse_special(model: &JsonObject) -> Option<SpecialModel> {
                     .to_owned(),
             }
         }
+        other => return fixed_special(other),
+    })
+}
+
+/// The special models that take no parameters.
+fn fixed_special(kind: &str) -> Option<SpecialModel> {
+    Some(match kind {
+        "minecraft:shield" => SpecialModel::Shield,
+        "minecraft:conduit" => SpecialModel::Conduit,
+        "minecraft:trident" => SpecialModel::Trident,
+        "minecraft:decorated_pot" => SpecialModel::DecoratedPot,
         _ => return None,
     })
 }
