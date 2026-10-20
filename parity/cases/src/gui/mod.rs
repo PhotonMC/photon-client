@@ -82,6 +82,7 @@ const ORDER: &[Generator] = &[
     || vec![debug::hud_debug_overlay()],
     || vec![debug::hud_debug_lines()],
     || vec![debug::debug_entries()],
+    || vec![debug::debug_options_screen()],
     || vec![stats::stat_format()],
     || vec![stats::stats_screen()],
     || vec![advancements::client_advancements()],

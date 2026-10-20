@@ -10,6 +10,7 @@ pub mod confirm;
 pub mod connect;
 pub mod credits;
 pub mod death;
+pub mod debug_options;
 pub mod dialog;
 mod dialog_body;
 pub mod disconnected;

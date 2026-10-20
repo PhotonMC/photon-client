@@ -89,6 +89,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "death_screen" -> deathScreen(request);
                 case "credits_screen" -> creditsScreen(request);
                 case "social_interactions_screen" -> socialInteractionsScreen(request);
+                case "debug_options_screen" -> debugOptionsScreen(request);
                 case "music_manager" -> musicManager(request);
                 case "disconnected_screen" -> disconnectedScreen(request);
                 case "tab_list" -> tabList(request);

@@ -164,6 +164,65 @@ class GuiSocialOracle extends GuiCreditsOracle {
         return result;
     }
 
+    /**
+     * The game's own debug options screen over a real entry list, after the row's statuses were set and
+     * a search typed, drawn once (the debug overlay behind it is the game's and not drawn here).
+     */
+    static JsonObject debugOptionsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            minecraft.options.reducedDebugInfo().set(row.get("reduced").getAsBoolean());
+            var directory = java.nio.file.Files.createTempDirectory("debug-options").toFile();
+            var list = new net.minecraft.client.gui.components.debug.DebugScreenEntryList(directory,
+                net.minecraft.util.datafix.DataFixers.getDataFixer());
+            if (row.has("profile")) {
+                list.loadProfile(net.minecraft.client.gui.components.debug.DebugScreenProfile
+                    .valueOf(row.get("profile").getAsString()));
+            }
+            for (var setting : row.getAsJsonArray("set")) {
+                var pair = setting.getAsJsonArray();
+                list.setStatus(net.minecraft.resources.Identifier.withDefaultNamespace(pair.get(0).getAsString()),
+                    net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.valueOf(pair.get(1).getAsString()));
+            }
+            set(minecraft, "debugEntries", list);
+            // The overlay behind the screen is the game's; its game has not finished loading, so it draws nothing.
+            var overlay = unsafe.allocateInstance(net.minecraft.client.gui.components.DebugScreenOverlay.class);
+            set(overlay, "minecraft", minecraft);
+            set(get(get(minecraft, "gui"), "hud"), "debugOverlay", overlay);
+            var options = new net.minecraft.client.gui.screens.debug.DebugOptionsScreen();
+            set(options, "minecraft", minecraft);
+            set(options, "font", minecraft.font);
+            options.init(width, height);
+            var box = (net.minecraft.client.gui.components.EditBox) get(options, "searchBox");
+            for (var cp : (Iterable<Integer>) row.get("search").getAsString().codePoints()::iterator) {
+                box.charTyped(new net.minecraft.client.input.CharacterEvent(cp));
+            }
+            if (row.has("scroll")) {
+                options.mouseScrolled(width / 2.0, height / 2.0, 0.0, row.get("scroll").getAsDouble());
+            }
+            options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A game whose music situation and volume the scenario sets. */
     static final class MusicGame extends net.minecraft.client.Minecraft {
         net.minecraft.sounds.Music music;

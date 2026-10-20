@@ -261,3 +261,33 @@ pub fn debug_entries() -> Value {
     ];
     gui("debug-entries", "debug_entries", rows)
 }
+
+/// The debug options screen (`F3+F6`) over an entry list: its groups, the three buttons of each
+/// entry, a search, the reduced-info italics, and a list taller than the window.
+pub fn debug_options_screen() -> Value {
+    let row = |label: &str, size: (i64, i64)| {
+        json!({"label": label, "width": size.0, "height": size.1, "mouse": [0, 0], "search": "",
+            "reduced": false, "set": []})
+    };
+    let with = |mut base: Value, key: &str, value: Value| {
+        base[key] = value;
+        base
+    };
+    let rows = vec![
+        row("default", (427, 240)),
+        row("tall", (854, 1000)),
+        row("short", (427, 140)),
+        with(
+            row("mixed", (427, 240)),
+            "set",
+            json!([["fps", "NEVER"], ["biome", "ALWAYS_ON"], ["chunk_borders", "IN_OVERLAY"],]),
+        ),
+        with(row("performance", (427, 240)), "profile", json!("PERFORMANCE")),
+        with(row("search", (427, 240)), "search", json!("chunk")),
+        with(row("search-empty", (427, 240)), "search", json!("zzz")),
+        with(row("reduced", (427, 240)), "reduced", json!(true)),
+        with(with(row("scrolled", (427, 240)), "scroll", json!(-3.0)), "set", json!([["tps", "NEVER"]])),
+        with(row("hover", (427, 240)), "mouse", json!([310, 90])),
+    ];
+    gui("debug-options-screen", "debug_options_screen", rows)
+}

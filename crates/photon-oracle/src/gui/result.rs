@@ -41,6 +41,7 @@ mod structure_block;
 use structure_block::*;
 mod test_block;
 use test_block::*;
+mod debug_options;
 mod social;
 use social::*;
 mod books;

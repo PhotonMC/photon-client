@@ -262,13 +262,22 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
     match operation {
         "hud_status" => hud_status_case(ctx, row),
         "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
-        "debug_entries" => super::debug_entries::debug_entries_case(row),
+        "debug_entries" | "debug_options_screen" => debug_screen_case(ctx, row, operation),
         "hud_debug_lines" => super::hud_overlays::hud_debug_lines_case(ctx, row),
         "hud_debug_overlay" => super::hud_overlays::hud_debug_overlay_case(ctx, row),
         "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
         "toasts" => super::hud_overlays::toasts_case(ctx, row),
         op if super::TEXT_OPERATIONS.contains(&op) => super::texts_case(ctx, row, op),
         _ => Err("unknown gui operation".into()),
+    }
+}
+
+/// The debug screen's model and its options screen.
+fn debug_screen_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Result<Value, String> {
+    if operation == "debug_entries" {
+        super::debug_entries::debug_entries_case(row)
+    } else {
+        super::debug_options::debug_options_screen_case(ctx, row)
     }
 }
 

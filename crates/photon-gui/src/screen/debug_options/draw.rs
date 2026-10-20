@@ -1,0 +1,118 @@
+//! The debug options screen's drawing (`DebugOptionsScreen.extractRenderState`,
+//! `OptionEntry.extractContent`, `CategoryEntry.extractContent`).
+
+use crate::{FontRuns, FrameRuns};
+
+use super::*;
+use photon_render::gui::{GuiAtlas, GuiFrame};
+
+impl DebugOptionsScreen {
+    /// The menu background over the world, then the widgets in the order they were added: the
+    /// title, the search box, the warning, the list and the footer.
+    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+        let (width, height) = self.size;
+        frame.tile_texture(
+            atlas,
+            "inworld_menu_background",
+            (32, 32),
+            (0, 0, width, height),
+        );
+        self.title.draw(frame, atlas, font, &self.arena, false);
+        self.draw_search(frame, atlas, font);
+        let rect = self.arena.0[self.subtitle_rect];
+        let middle = rect.x + rect.width / 2;
+        for (line, y) in self.subtitle.iter().zip((rect.y..).step_by(9)) {
+            let x = middle - font.width_of_runs(line) / 2;
+            frame.styled_text(atlas, font, line, x, y, 0xFFFF_FFFF, true);
+        }
+        self.draw_list(frame, atlas, font, mouse);
+        for widget in self.profiles.iter().chain([&self.done]) {
+            let lit = widget.contains(&self.arena, mouse);
+            widget.draw(frame, atlas, font, &self.arena, lit);
+        }
+    }
+
+    /// `EditBox.extractWidgetRenderState`: the field, which has the focus from the start, and its
+    /// text.
+    fn draw_search(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
+        let rect = self.arena.0[self.search_rect];
+        frame.nine_slice(
+            atlas,
+            "widget/text_field_highlighted",
+            (200, 20),
+            1,
+            false,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+        );
+        let text_at = (rect.x + 4, rect.y + (rect.height - 8) / 2);
+        self.search
+            .draw_formatted(frame, atlas, font, text_at, Some(self.focused_at), None);
+    }
+
+    /// The list: its background, its rows cut to its window, the lines above and below it and
+    /// its scrollbar.
+    fn draw_list(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+        let place = self.place;
+        place.draw_background(frame, atlas, self.scroll);
+        let inside = place.contains((f64::from(mouse.0), f64::from(mouse.1)));
+        let mouse = if inside { mouse } else { (i32::MIN, i32::MIN) };
+        let mark = frame.mark();
+        for (index, row) in self.rows.iter().enumerate() {
+            let y = self.row_y(index);
+            if y + ITEM_HEIGHT < place.y || y > place.bottom() {
+                continue;
+            }
+            self.draw_row(frame, atlas, font, row, (self.row_left() + 2, y + 2));
+            if let Row::Entry { buttons, .. } = row {
+                self.draw_buttons(frame, atlas, font, buttons, mouse);
+            }
+        }
+        frame.clip_from(mark, (0, place.y, place.width, place.bottom()));
+        let bar_x = self.row_left() + ROW_WIDTH + crate::widgets::scroll_area::SCROLLBAR_WIDTH + 2;
+        place.draw_edges(frame, atlas, (self.scroll, self.content_height()), bar_x);
+    }
+
+    /// A row's label: a group's centred, an entry's name at the left.
+    fn draw_row(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        row: &Row,
+        (x, y): (i32, i32),
+    ) {
+        let content_width = ROW_WIDTH - 4;
+        match row {
+            Row::Category(text) => {
+                let at = x + content_width / 2 - font.width_of_runs(text) / 2;
+                frame.styled_text(atlas, font, text, at, y + 5, 0xFFFF_FFFF, true);
+            }
+            Row::Entry { name, allowed, .. } => {
+                let colour = if *allowed {
+                    0xFFFF_FFFF
+                } else {
+                    DISALLOWED_COLOUR
+                };
+                frame.styled_text(atlas, font, name, x, y + 5, colour, true);
+            }
+        }
+    }
+
+    /// An entry's three buttons, against the row's right edge, the last to draw the first.
+    fn draw_buttons(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        buttons: &[Widget; 3],
+        mouse: (i32, i32),
+    ) {
+        for button in buttons.iter().rev() {
+            let lit = button.contains(&self.arena, mouse);
+            button.draw(frame, atlas, font, &self.arena, lit);
+        }
+    }
+}
