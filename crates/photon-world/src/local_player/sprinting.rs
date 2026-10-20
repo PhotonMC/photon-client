@@ -153,13 +153,16 @@ impl LocalPlayer {
         !self.abilities.flying && !self.is_spectator() && self.swimming
     }
 
+    /// `LocalPlayer.isSprintingPossible`: no blindness, a vehicle that can sprint or enough food
+    /// (more than three bars, or the ability to fly), and no shallow water unless allowed.
     pub(super) fn is_sprinting_possible(&self, allowed_in_shallow_water: bool) -> bool {
-        // A passenger sprints only in a vehicle that can be (and it is its authority).
-        if self.riding.is_some_and(|riding| !riding.can_sprint) {
-            return false;
-        }
-        // No blindness, and a full food bar or the ability to fly.
-        allowed_in_shallow_water || !(self.is_in_water() && !self.is_under_water())
+        let able = match self.riding {
+            Some(riding) => riding.can_sprint,
+            None => self.hands.food > 6 || self.abilities.may_fly,
+        };
+        !self.hands.blinded
+            && able
+            && (allowed_in_shallow_water || !(self.is_in_water() && !self.is_under_water()))
     }
 
     pub(super) fn has_forward_impulse(&self) -> bool {

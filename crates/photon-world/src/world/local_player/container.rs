@@ -204,6 +204,7 @@ impl ClientWorld {
         pub(crate) const HASTE: i32 = 2;
         const MINING_FATIGUE: i32 = 3;
         const CONDUIT_POWER: i32 = 28;
+        const BLINDNESS: i32 = 14;
         let Some(state) = self.local_player() else {
             return local_player::HandState::default();
         };
@@ -231,6 +232,8 @@ impl ClientWorld {
             using_off_hand: state.used_item_is_off_hand(),
             main_use: use_effects(state.inventory_slot(36 + selected_slot as i16)),
             off_use: use_effects(state.inventory_slot(45)),
+            food: state.food,
+            blinded: amplifier(BLINDNESS).is_some(),
         }
     }
 

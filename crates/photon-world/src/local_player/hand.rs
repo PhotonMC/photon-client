@@ -319,6 +319,8 @@ impl Default for HandState {
             using_off_hand: false,
             main_use: UseEffects::DEFAULT,
             off_use: UseEffects::DEFAULT,
+            food: 20,
+            blinded: false,
         }
     }
 }
@@ -339,6 +341,9 @@ pub struct HandState {
     /// What using the stack in each hand does to walking and sprinting (`use_effects`).
     pub main_use: UseEffects,
     pub off_use: UseEffects,
+    /// The food level, and whether blindness is on: what sprinting reads of the player state.
+    pub food: i32,
+    pub blinded: bool,
 }
 
 /// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.
@@ -457,5 +462,22 @@ mod tests {
         player.set_hand_state(spear);
         assert!(!player.is_slow_due_to_using_item());
         assert_eq!(modify(&player).to_bits(), 0.98_f32.to_bits());
+    }
+
+    /// Sprinting needs more than three bars of food (or the ability to fly) and no blindness.
+    #[test]
+    fn sprinting_needs_food_and_sight() {
+        let mut player = player();
+        let with = |food, blinded| HandState {
+            food,
+            blinded,
+            ..HandState::default()
+        };
+        player.set_hand_state(with(7, false));
+        assert!(player.is_sprinting_possible(false));
+        player.set_hand_state(with(6, false));
+        assert!(!player.is_sprinting_possible(false));
+        player.set_hand_state(with(20, true));
+        assert!(!player.is_sprinting_possible(false));
     }
 }
