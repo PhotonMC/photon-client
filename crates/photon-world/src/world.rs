@@ -18,6 +18,8 @@ mod jigsaw;
 mod structure_block;
 pub use command_block::{CommandBlockMode, CommandBlockView, CommandMinecartView};
 pub use jigsaw::JigsawBlockView;
+mod test_block;
+pub use test_block::TestBlockView;
 mod dimension;
 mod enchanting;
 pub use enchanting::EnchantTableView;

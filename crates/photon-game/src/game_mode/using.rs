@@ -18,6 +18,11 @@ impl GameMode {
         self.opened_jigsaw_block.take()
     }
 
+    /// The position of the test block used, whose screen is to open.
+    pub fn take_opened_test_block(&mut self) -> Option<(i32, i32, i32)> {
+        self.opened_test_block.take()
+    }
+
     /// The position of the structure block used, whose screen is to open.
     pub fn take_opened_structure_block(&mut self) -> Option<(i32, i32, i32)> {
         self.opened_structure_block.take()
@@ -211,6 +216,37 @@ impl GameMode {
         }
     }
 
+    /// The use of a structure, jigsaw or test block (`StructureBlockEntity.usedBy`,
+    /// `JigsawBlock.useWithoutItem`, `TestBlock.useWithoutItem`): a game master opens the block's
+    /// screen, anyone else passes. `None` for any other block.
+    fn operator_block(
+        &mut self,
+        ctx: &Context<'_>,
+        state: photon_core::ids::BlockStateId,
+        pos: (i32, i32, i32),
+    ) -> Option<UseResult> {
+        let (present, opened) = match photon_world::block::state_or_air(state).block().name {
+            "minecraft:structure_block" => (
+                ctx.world.structure_block_view(pos).is_some(),
+                &mut self.opened_structure_block,
+            ),
+            "minecraft:jigsaw" => (
+                ctx.world.jigsaw_block_view(pos).is_some(),
+                &mut self.opened_jigsaw_block,
+            ),
+            "minecraft:test_block" => (
+                ctx.world.test_block_view(pos).is_some(),
+                &mut self.opened_test_block,
+            ),
+            _ => return None,
+        };
+        if ctx.can_use_game_master_blocks() && present {
+            *opened = Some(pos);
+            return Some(UseResult::Success { swing: true });
+        }
+        Some(UseResult::Pass)
+    }
+
     /// `BlockBehaviour.useWithoutItem`; a command block opens its screen for a game master.
     fn use_without_item(
         &mut self,
@@ -222,21 +258,8 @@ impl GameMode {
             self.opened_command_block = Some(pos);
             return UseResult::Success { swing: true };
         }
-        if photon_world::block::state_or_air(state).block().name == "minecraft:structure_block" {
-            // `StructureBlockEntity.usedBy`: a game master opens the screen; anyone else passes.
-            if ctx.can_use_game_master_blocks() && ctx.world.structure_block_view(pos).is_some() {
-                self.opened_structure_block = Some(pos);
-                return UseResult::Success { swing: true };
-            }
-            return UseResult::Pass;
-        }
-        if photon_world::block::state_or_air(state).block().name == "minecraft:jigsaw" {
-            // `JigsawBlock.useWithoutItem`: a game master opens the screen; anyone else passes.
-            if ctx.can_use_game_master_blocks() && ctx.world.jigsaw_block_view(pos).is_some() {
-                self.opened_jigsaw_block = Some(pos);
-                return UseResult::Success { swing: true };
-            }
-            return UseResult::Pass;
+        if let Some(result) = self.operator_block(ctx, state, pos) {
+            return result;
         }
         match rules::use_without_item(state) {
             Rule::Known(result) => result,
