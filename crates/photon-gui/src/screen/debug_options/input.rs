@@ -1,8 +1,8 @@
 //! The debug options screen's input (`DebugOptionsScreen`, `OptionList`, `OptionEntry`): clicks on
 //! the buttons, the scroll bar and wheel, the search box.
 //!
-//! Not handled: focus travel with Tab and the arrows, Enter on a focused button, a drag selecting
-//! text in the search box, and the double click.
+//! Focus travels with Tab and Shift+Tab, and Enter or Space presses the focused button. Not handled:
+//! focus travel with the arrows, a drag selecting text in the search box, and the double click.
 
 use super::*;
 use crate::widgets::edit_box::{Clipboard, edit_key};
@@ -79,6 +79,11 @@ impl DebugOptionsScreen {
             self.set_focus(Focus::List);
         }
         let (id, slot) = self.pressed_button(row?, at)?;
+        Some(self.press_entry_button(id, slot))
+    }
+
+    /// An entry's button pressed, by the mouse or by Enter: it takes the focus and sets the status.
+    fn press_entry_button(&mut self, id: &'static str, slot: usize) -> DebugOptionsEvent {
         self.set_focus(Focus::Button(id, slot));
         let status = BUTTON_STATUSES[slot];
         self.entries.set_status(id, status);
@@ -87,7 +92,98 @@ impl DebugOptionsScreen {
             widget.active = true;
         }
         self.refresh_rows();
-        Some(DebugOptionsEvent::Status { id, status })
+        DebugOptionsEvent::Status { id, status }
+    }
+
+    /// Every widget Tab visits, in the order the screen added them, and whether each takes the
+    /// focus now (a button of the value an entry has is inactive).
+    fn tab_order(&self) -> Vec<(Focus, bool)> {
+        let mut order = vec![(Focus::Search, true)];
+        for row in &self.rows {
+            if let Row::Entry { id, buttons, .. } = row {
+                for (slot, button) in buttons.iter().enumerate() {
+                    order.push((Focus::Button(id, slot), button.is_active()));
+                }
+            }
+        }
+        for (index, profile) in self.profiles.iter().enumerate() {
+            order.push((Focus::Profile(index), profile.is_active()));
+        }
+        order.push((Focus::Done, self.done.is_active()));
+        order
+    }
+
+    /// `Screen.keyPressed` with Tab: the next widget that takes the focus after the focused one, or
+    /// before it with Shift; past the end the focus is cleared and the search starts over.
+    fn tab(&mut self, forward: bool) {
+        let order = self.tab_order();
+        // A list taken hold of without a button in it stands before the first button.
+        let (after, before) = match order.iter().position(|(focus, _)| *focus == self.focus) {
+            Some(at) => (at + 1, at),
+            None => (1, 1),
+        };
+        let takes = |candidate: &&(Focus, bool)| candidate.1;
+        let found = if forward {
+            order[after..].iter().find(takes)
+        } else {
+            order[..before].iter().rev().find(takes)
+        };
+        let found = found.or_else(|| {
+            if forward {
+                order.iter().find(takes)
+            } else {
+                order.iter().rev().find(takes)
+            }
+        });
+        if let Some(&(focus, _)) = found {
+            self.set_focus(focus);
+            if let Focus::Button(id, _) = focus {
+                self.scroll_to_entry(id);
+            }
+        }
+    }
+
+    /// `AbstractSelectionList.scrollToEntry`: the list scrolls the least that shows the whole row.
+    fn scroll_to_entry(&mut self, id: &str) {
+        let Some(index) = self
+            .rows
+            .iter()
+            .position(|row| matches!(row, Row::Entry { id: row_id, .. } if *row_id == id))
+        else {
+            return;
+        };
+        let top_delta = self.row_y(index) - self.place.y - 2;
+        if top_delta < 0 {
+            self.set_scroll(self.scroll + f64::from(top_delta));
+        }
+        let bottom = self.place.y + self.place.height;
+        let bottom_delta = bottom - self.row_y(index) - ITEM_HEIGHT - 2;
+        if bottom_delta < 0 {
+            self.set_scroll(self.scroll - f64::from(bottom_delta));
+        }
+    }
+
+    /// Enter or Space on the focused button: the press of the mouse.
+    fn press_focused(&mut self) -> Option<DebugOptionsEvent> {
+        match self.focus {
+            Focus::Button(id, slot) => {
+                let Some(Row::Entry { buttons, .. }) = self
+                    .rows
+                    .iter()
+                    .find(|row| matches!(row, Row::Entry { id: row_id, .. } if *row_id == id))
+                else {
+                    return None;
+                };
+                buttons[slot]
+                    .is_active()
+                    .then(|| self.press_entry_button(id, slot))
+            }
+            Focus::Profile(index) if self.profiles[index].is_active() => {
+                Some(self.press_profile(Profile::ALL[index], index))
+            }
+            Focus::Done if self.done.is_active() => Some(DebugOptionsEvent::Close),
+            _ => None,
+        }
     }
 
     /// `getEntryAtPosition`: the row under `at`.
@@ -138,6 +234,18 @@ impl DebugOptionsScreen {
     ) -> Option<DebugOptionsEvent> {
         if key == glfw::Key::Escape {
             return Some(DebugOptionsEvent::Close);
+        }
+        match key {
+            glfw::Key::Tab => {
+                self.tab(!shift);
+                return None;
+            }
+            glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space => {
+                if let Some(event) = self.press_focused() {
+                    return Some(event);
+                }
+            }
+            _ => {}
         }
         if self.focus == Focus::Search
             && let Some(edit) = edit_key(key)

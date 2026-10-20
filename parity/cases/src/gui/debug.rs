@@ -301,6 +301,11 @@ fn debug_options_step_rows(
     with: &impl Fn(Value, &str, Value) -> Value,
 ) -> Vec<Value> {
     let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let key = |code: i64| json!({"do": "key", "key": code});
+    let tabs = |count: usize, shift: bool| -> Vec<Value> {
+        let step = if shift { json!({"do": "key", "key": 258, "shift": true}) } else { key(258) };
+        vec![step; count]
+    };
     let steps = |label: &str, search: &str, steps: Vec<Value>| {
         with(with(row(label, (427, 240)), "search", json!(search)), "steps", json!(steps))
     };
@@ -324,6 +329,19 @@ fn debug_options_step_rows(
             ],
         ),
         steps("escape", "", vec![json!({"do": "key", "key": 256})]),
+        // Tab walks the search box, the buttons that can be pressed, the profiles and Done; Shift
+        // goes back, and the ends wrap.
+        steps("tab-first", "", tabs(1, false)),
+        steps("tab-several", "", tabs(5, false)),
+        steps("tab-scrolls", "", tabs(18, false)),
+        steps("tab-back-wraps", "", tabs(1, true)),
+        steps("tab-wraps-past-done", "", tabs(75, false)),
+        steps("tab-then-back", "", [tabs(4, false), tabs(2, true)].concat()),
+        // Enter and Space press the focused button; a pressed one stays focused and cannot be again.
+        steps("tab-enter", "", [tabs(1, false), vec![key(257)]].concat()),
+        steps("tab-space-twice", "", [tabs(2, false), vec![key(32), key(32)]].concat()),
+        steps("tab-to-done-enter", "", [tabs(1, true), vec![key(257)]].concat()),
+        steps("tab-search-filter", "chunk", tabs(4, false)),
         // The scroll bar: taken hold of, dragged, let go.
         steps(
             "bar-drag",

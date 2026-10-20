@@ -123,14 +123,25 @@ fn run_step(
             screen.type_search(step["text"].as_str().unwrap_or_default(), &ctx.font);
             None
         }
-        "key" => {
-            let key = match step["key"].as_i64() {
-                Some(256) => glfw::Key::Escape,
-                Some(259) => glfw::Key::Backspace,
-                other => return Err(format!("a key: {other:?}")),
-            };
-            screen.key_pressed(key, (false, false), &ctx.font, &mut crate::gui::NoClipboard)
-        }
+        "key" => key_step(screen, step, ctx)?,
         other => return Err(format!("a step: {other}")),
     })
+}
+
+/// A `key` step: the key by its code, with Shift held when the step says so.
+fn key_step(
+    screen: &mut DebugOptionsScreen,
+    step: &Value,
+    ctx: &GuiContext,
+) -> Result<Option<DebugOptionsEvent>, String> {
+    let key = match step["key"].as_i64() {
+        Some(32) => glfw::Key::Space,
+        Some(256) => glfw::Key::Escape,
+        Some(257) => glfw::Key::Enter,
+        Some(258) => glfw::Key::Tab,
+        Some(259) => glfw::Key::Backspace,
+        other => return Err(format!("a key: {other:?}")),
+    };
+    let shift = step["shift"].is_boolean();
+    Ok(screen.key_pressed(key, (false, shift), &ctx.font, &mut crate::gui::NoClipboard))
 }
