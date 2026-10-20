@@ -12,6 +12,10 @@ pub struct ElytraState {
     old: [f32; 3],
     /// The local player's shared flag 7, which a jump sets and the server's data overwrites.
     pub(crate) fall_flying: bool,
+    /// `fallFlyTicks` of the local player: the ticks spent gliding.
+    pub(crate) fall_fly_ticks: i32,
+    /// `ClientAvatarState.deltaMovementOnPreviousTick` of the local player.
+    pub(crate) previous_motion: [f64; 3],
 }
 
 // The rotations are never NaN.

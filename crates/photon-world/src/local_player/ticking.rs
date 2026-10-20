@@ -16,7 +16,7 @@ impl LocalPlayer {
         self.tick_count += 1;
 
         // AbstractClientPlayer.tick: the avatar state steps first.
-        self.walk_dist_old = self.walk_dist;
+        self.begin_avatar_tick();
         self.player_tick(&level)?;
 
         if self.last_sent_input != self.input.key_presses {
@@ -54,7 +54,7 @@ impl LocalPlayer {
         self.old_position = self.position;
         self.tick_count += 1;
         self.delta = Vec3::ZERO;
-        self.walk_dist_old = self.walk_dist;
+        self.begin_avatar_tick();
         let ticked = self.player_tick(&level);
         if let Err(error) = ticked {
             self.riding = None;
@@ -133,6 +133,11 @@ impl LocalPlayer {
         if clamped_x != self.position.x || clamped_z != self.position.z {
             self.set_pos(Vec3::new(clamped_x, self.position.y, clamped_z));
         }
+        self.elytra.fall_fly_ticks = if self.elytra.fall_flying {
+            self.elytra.fall_fly_ticks.saturating_add(1)
+        } else {
+            0
+        };
         self.elytra.tick(crate::elytra::ElytraInput {
             fall_flying: self.elytra.fall_flying,
             motion: (self.delta.x, self.delta.y, self.delta.z),
@@ -180,10 +185,8 @@ impl LocalPlayer {
         }
         // LivingEntity.tick: the swimming pose eases in or out.
         self.swim_amount_old = self.swim_amount;
-        self.swim_amount = crate::living::ease_swim_amount(
-            self.swim_amount,
-            self.pose == ClientEntityPose::Swimming,
-        );
+        self.swim_amount =
+            crate::living::ease_swim_amount(self.swim_amount, self.is_visually_swimming());
         self.local_ai_step(level)?;
         self.turn_body();
         Ok(())

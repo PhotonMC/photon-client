@@ -141,7 +141,14 @@ impl LocalPlayer {
     }
 
     pub(super) fn is_moving_slowly(&self) -> bool {
-        self.crouching || self.pose == ClientEntityPose::Swimming && !self.is_in_water()
+        self.crouching || self.is_visually_swimming() && !self.is_in_water()
+    }
+
+    /// `LivingEntity.isVisuallySwimming`: the swimming pose, or the glide's pose for the tick
+    /// after the flag ended and before the pose follows.
+    pub fn is_visually_swimming(&self) -> bool {
+        self.pose == ClientEntityPose::Swimming
+            || !self.elytra.fall_flying && self.pose == ClientEntityPose::FallFlying
     }
 }
 

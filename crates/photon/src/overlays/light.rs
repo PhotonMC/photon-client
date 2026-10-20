@@ -278,7 +278,10 @@ pub fn player_model(
             hit_feedback: player.ticks_since_kinetic_hit(partial),
         },
     );
+    let glide = local_glide(player, pose.head_rot, partial);
     let state = PlayerRenderState {
+        is_fall_flying: glide.is_some(),
+        speed_value: glide.map_or(1.0, |glide| glide.speed_value),
         head_y_rot: photon_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
         x_rot,
         walk_position: pose.walk_position,
@@ -311,13 +314,13 @@ pub fn player_model(
         x_rot,
         swim_amount: pose.swim_amount,
         in_water: player.in_water(),
-        visually_swimming: pose.pose == photon_world::ClientEntityPose::Swimming,
+        visually_swimming: player.is_visually_swimming(),
         crouching: pose.crouching,
         light: view.light,
         skin: view.skin,
         death_time: 0.0,
         red_overlay: false,
-        fall_flying: None,
+        fall_flying: glide.map(|glide| glide.flight),
         auto_spin: None,
     };
     let hands = Hands {
@@ -349,13 +352,10 @@ pub fn player_model(
         textures,
         (&state, &placement),
     ));
-    vertices.extend(armor.wings(
-        worn.chest,
-        (false, pose.crouching, player.elytra_rotations(partial)),
-        textures,
-        &|model, rect, colour| {
-            photon_render::entity::player_renderer::layer_vertices(model, &placement, rect, colour)
-        },
+    vertices.extend(local_wings(
+        armor,
+        (worn.chest, player),
+        (&placement, textures, partial),
     ));
     vertices
 }
@@ -385,13 +385,9 @@ pub(super) fn remote_render_state(
         (arms.right, arms.left),
         (world.game_time(), partial),
     );
-    // `HumanoidMobRenderer.extractHumanoidRenderState`: a glider's limbs swing slower the
-    // faster it flies.
     let gliding = entity.is_fall_flying();
     let speed_value = if gliding {
-        let (mx, my, mz) = entity.motion();
-        let squared = (mx * mx + my * my + mz * mz) as f32 / 0.2;
-        (squared * (squared * squared)).max(1.0)
+        arm_poses::glider_speed_value(entity.motion())
     } else {
         1.0
     };
@@ -421,4 +417,51 @@ pub(super) fn remote_render_state(
         ..Default::default()
     };
     (state, spears)
+}
+
+/// What the local player's glide gives its model.
+#[derive(Clone, Copy)]
+struct Glide {
+    speed_value: f32,
+    flight: photon_render::entity::player_renderer::FallFlying,
+}
+
+/// The glide of the player's own model, when it glides.
+fn local_glide(player: &LocalPlayer, head_rot: f32, partial: f32) -> Option<Glide> {
+    if !player.is_fall_flying() {
+        return None;
+    }
+    let delta = player.delta_movement();
+    let motion = (delta.x, delta.y, delta.z);
+    let (_, x_rot) = player.rotation();
+    Some(Glide {
+        speed_value: arm_poses::glider_speed_value(motion),
+        flight: arm_poses::flight(
+            player.fall_flying_ticks(),
+            (player.motion_on_previous_tick(), motion),
+            (x_rot, head_rot),
+            partial,
+        )?,
+    })
+}
+
+/// The wings of what the player's own model wears on the chest.
+fn local_wings(
+    armor: &mut Armor,
+    (chest, player): (Option<&ClientItemStackState>, &LocalPlayer),
+    (placement, textures, partial): (
+        &Placement,
+        &photon_render::entity::textures::EntityTextures,
+        f32,
+    ),
+) -> Vec<Vertex> {
+    let crouching = player.model_pose(partial).crouching;
+    armor.wings(
+        chest,
+        (false, crouching, player.elytra_rotations(partial)),
+        textures,
+        &|model, rect, colour| {
+            photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
+        },
+    )
 }

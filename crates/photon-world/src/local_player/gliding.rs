@@ -7,6 +7,23 @@ impl LocalPlayer {
         self.elytra.fall_flying
     }
 
+    /// `ClientAvatarState.tick`: the walk distance and the motion of the tick before are kept.
+    pub(super) fn begin_avatar_tick(&mut self) {
+        self.walk_dist_old = self.walk_dist;
+        self.elytra.previous_motion = [self.delta.x, self.delta.y, self.delta.z];
+    }
+
+    /// `getFallFlyingTicks`: how long the player has glided.
+    pub fn fall_flying_ticks(&self) -> i32 {
+        self.elytra.fall_fly_ticks
+    }
+
+    /// `ClientAvatarState.deltaMovementOnPreviousTick`.
+    pub fn motion_on_previous_tick(&self) -> (f64, f64, f64) {
+        let [x, y, z] = self.elytra.previous_motion;
+        (x, y, z)
+    }
+
     /// The server's shared flags arrived with the gliding bit as `set`.
     pub fn set_server_fall_flying(&mut self, set: bool) {
         self.elytra.fall_flying = set;
@@ -169,6 +186,32 @@ mod tests {
             .expect("tick");
         assert!(!player.is_fall_flying());
         assert_eq!(player.pose(), ClientEntityPose::Standing);
+    }
+
+    /// The tick the server ends a glide, the pose is still the glide's: the player counts as
+    /// crawling for that tick (`isVisuallySwimming`), so the input is slowed.
+    #[test]
+    fn the_tick_a_glide_ends_counts_as_crawling() {
+        let world = ClientWorld::default();
+        let mut player = airborne(true);
+        player.tick(&world, jump()).expect("tick");
+        player
+            .tick(
+                &world,
+                Input::new(false, false, false, false, false, false, false),
+            )
+            .expect("tick");
+        assert_eq!(player.pose(), ClientEntityPose::FallFlying);
+        assert!(!player.is_moving_slowly());
+        player.set_server_fall_flying(false);
+        assert!(player.is_moving_slowly());
+        player
+            .tick(
+                &world,
+                Input::new(false, false, false, false, false, false, false),
+            )
+            .expect("tick");
+        assert!(!player.is_moving_slowly());
     }
 
     /// Gliding level drops slower than falling does.

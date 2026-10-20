@@ -417,8 +417,14 @@ pub fn eye_arm_of(
     )
 }
 
-/// `AvatarRenderer.extractFlightData`: how far a gliding player has tipped forward, and which way
-/// the flight turns it (the movement against the look, when both have a heading).
+/// `HumanoidMobRenderer.extractHumanoidRenderState`: a glider's limbs swing slower the faster it
+/// flies.
+pub(crate) fn glider_speed_value((mx, my, mz): (f64, f64, f64)) -> f32 {
+    let squared = (mx * mx + my * my + mz * mz) as f32 / 0.2;
+    (squared * (squared * squared)).max(1.0)
+}
+
+/// `AvatarRenderer.extractFlightData` of an entity.
 pub(crate) fn fall_flying(
     entity: &ClientEntity,
     snapshot: &photon_world::EntitySnapshot,
@@ -427,16 +433,27 @@ pub(crate) fn fall_flying(
     if !entity.is_fall_flying() {
         return None;
     }
-    let time = entity.fall_flying_ticks() as f32 + partial;
-    let (px, _, pz) = entity.previous_motion();
-    let (cx, _, cz) = entity.motion();
+    flight(
+        entity.fall_flying_ticks(),
+        (entity.previous_motion(), entity.motion()),
+        (snapshot.pitch, snapshot.head_yaw),
+        partial,
+    )
+}
+
+/// `AvatarRenderer.extractFlightData`: how far a gliding player has tipped forward, and which way
+/// the flight turns it (the movement against the look, when both have a heading).
+pub(crate) fn flight(
+    ticks: i32,
+    ((px, _, pz), (cx, _, cz)): ((f64, f64, f64), (f64, f64, f64)),
+    (pitch, head_yaw): (f32, f32),
+    partial: f32,
+) -> Option<photon_render::entity::player_renderer::FallFlying> {
+    let time = ticks as f32 + partial;
     let partial = f64::from(partial);
     let movement = (px + partial * (cx - px), pz + partial * (cz - pz));
     // `Entity.getViewVector`: the look's heading.
-    let look = photon_core::math::Vec3::direction_from_rotation_components(
-        snapshot.pitch,
-        snapshot.head_yaw,
-    );
+    let look = photon_core::math::Vec3::direction_from_rotation_components(pitch, head_yaw);
     let (movement_len, look_len) = (
         movement.0 * movement.0 + movement.1 * movement.1,
         look.x * look.x + look.z * look.z,
