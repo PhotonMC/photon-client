@@ -289,7 +289,6 @@
 "crates/photon-net/src/connection/open.rs::configure_connection" = 24
 "crates/photon-net/src/connection/play/incoming/player.rs::PlaySession::on_game_event" = 11
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 15
-"crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 12
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 19
 "crates/photon-oracle/src/block.rs::block_result" = 43
@@ -720,7 +719,6 @@
 "crates/photon-net/src/connection/open.rs::log_in" = 94
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 67
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
-"crates/photon-net/src/connection/play/movement.rs::PlaySession::keys" = 61
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95

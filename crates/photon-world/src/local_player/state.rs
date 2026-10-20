@@ -79,7 +79,7 @@ impl LocalPlayer {
             main_hand_item: AIR_ITEM,
             last_main_hand_item: AIR_ITEM,
             hands: HandState::default(),
-            using_item_ticks: 0,
+            use_edge: Default::default(),
             item_swap_ticker: 0,
             health: 20.0,
             flash_on_set_health: false,

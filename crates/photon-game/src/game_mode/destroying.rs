@@ -96,7 +96,7 @@ impl GameMode {
         if !down {
             self.miss_time = 0;
         }
-        if self.miss_time > 0 {
+        if self.miss_time > 0 || ctx.player.is_using_item() {
             return;
         }
         match aim {

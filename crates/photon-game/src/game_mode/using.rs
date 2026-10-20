@@ -436,17 +436,8 @@ impl GameMode {
         if self.right_click_delay > 0 {
             self.right_click_delay -= 1;
         }
-        let mut instant_attack = false;
-        for _ in 0..keys.attack_clicks {
-            instant_attack |= self.start_attack(ctx, aim, &mut out);
-        }
-        for _ in 0..keys.use_clicks {
-            self.start_use_item(ctx, aim, &mut out);
-        }
-        for _ in 0..keys.pick_clicks {
-            Self::pick_block_or_entity(aim, keys.control_down, &mut out);
-        }
-        if keys.use_held && self.right_click_delay == 0 {
+        let instant_attack = self.spend_clicks(ctx, keys, aim, &mut out);
+        if keys.use_held && self.right_click_delay == 0 && !ctx.player.is_using_item() {
             self.start_use_item(ctx, aim, &mut out);
         }
         self.continue_attack(ctx, keys.attack_held && !instant_attack, aim, &mut out);
@@ -454,6 +445,47 @@ impl GameMode {
             self.miss_time -= 1;
         }
         out
+    }
+
+    /// The clicks of one tick, whether an attack was instant. While an item is in use they are
+    /// spent for nothing, and a use key that is up lets go of the item.
+    fn spend_clicks(
+        &mut self,
+        ctx: &mut Context<'_>,
+        keys: Keys,
+        aim: Aim,
+        out: &mut Vec<Outgoing>,
+    ) -> bool {
+        if ctx.player.is_using_item() {
+            if !keys.use_held {
+                Self::release_using_item(ctx, out);
+            }
+            return false;
+        }
+        let mut instant_attack = false;
+        for _ in 0..keys.attack_clicks {
+            instant_attack |= self.start_attack(ctx, aim, out);
+        }
+        for _ in 0..keys.use_clicks {
+            self.start_use_item(ctx, aim, out);
+        }
+        for _ in 0..keys.pick_clicks {
+            Self::pick_block_or_entity(aim, keys.control_down, out);
+        }
+        instant_attack
+    }
+
+    /// `MultiPlayerGameMode.releaseUsingItem`: the server hears the release, and the use ends.
+    fn release_using_item(ctx: &mut Context<'_>, out: &mut Vec<Outgoing>) {
+        out.push(Outgoing::PlayerAction {
+            action: PlayerAction::ReleaseUseItem,
+            x: 0,
+            y: 0,
+            z: 0,
+            face: 0,
+            sequence: 0,
+        });
+        ctx.player.release_using_item();
     }
 
     /// `Minecraft.pickBlockOrEntity`: the server is asked for the aimed

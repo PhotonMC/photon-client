@@ -136,8 +136,9 @@ pub struct LocalPlayer {
     pub(super) last_main_hand_item: ItemId,
     /// What the hands hold, the effects and the use of an item, as the world last heard them.
     pub(super) hands: HandState,
-    /// How many ticks the item in use has been used (`getTicksUsingItem`).
-    pub(super) using_item_ticks: i32,
+    /// `LocalPlayer.startedUsingItem`, the hand it uses, the server's flag the last tick saw and
+    /// how many ticks the item has been used (`getTicksUsingItem`).
+    pub(super) use_edge: hand::UseEdge,
     pub(super) item_swap_ticker: i32,
     /// `LivingEntity`'s health as the client last set it, and the hurt
     /// state `LocalPlayer.hurtTo` keeps: ticks of damage immunity, of the

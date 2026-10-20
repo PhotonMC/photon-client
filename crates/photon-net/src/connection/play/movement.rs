@@ -11,7 +11,7 @@ impl PlaySession {
         keys: photon_game::game_mode::Keys,
         aim: photon_game::game_mode::Aim,
     ) -> Result<(), ConnectionError> {
-        use photon_game::game_mode::{Aim, Context, Miner, Outgoing};
+        use photon_game::game_mode::{Aim, Context, Miner};
         self.local.aimed_entity = match aim {
             Aim::Entity { id, .. } => Some(id),
             _ => None,
@@ -31,37 +31,7 @@ impl PlaySession {
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {
-            let id = match packet {
-                Outgoing::Swing { .. } => {
-                    self.local.swings += 1;
-                    PLAY_SERVERBOUND_SWING_PACKET_ID
-                }
-                Outgoing::PlayerAction { x, y, z, .. } => {
-                    // A predicted break changes the block it names.
-                    self.mark_block(x, y, z);
-                    PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID
-                }
-                Outgoing::UseItemOn { x, y, z, face, .. } => {
-                    // A predicted placement changes the block or the one
-                    // in front of the face, and its neighbours.
-                    let (dx, dy, dz) =
-                        photon_core::direction::Direction::from_3d_data_value(i32::from(face))
-                            .step();
-                    self.mark_block(x, y, z);
-                    self.mark_block(x + dx, y + dy, z + dz);
-                    PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
-                }
-                Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
-                Outgoing::Attack { .. } => PLAY_SERVERBOUND_ATTACK_PACKET_ID,
-                Outgoing::PickItemFromBlock { .. } => {
-                    PLAY_SERVERBOUND_PICK_ITEM_FROM_BLOCK_PACKET_ID
-                }
-                Outgoing::PickItemFromEntity { .. } => {
-                    PLAY_SERVERBOUND_PICK_ITEM_FROM_ENTITY_PACKET_ID
-                }
-                Outgoing::SpectatorAction { .. } => PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID,
-                Outgoing::Interact { .. } => PLAY_SERVERBOUND_INTERACT_PACKET_ID,
-            };
+            let id = self.note_sent(packet);
             let body = packet.encode_body();
             self.send(id, |output| {
                 output.extend_from_slice(&body);
@@ -69,6 +39,41 @@ impl PlaySession {
             })?;
         }
         Ok(())
+    }
+
+    /// What a packet of the game mode changes here, and the id it goes out under.
+    fn note_sent(&mut self, packet: photon_game::game_mode::Outgoing) -> i32 {
+        use photon_game::game_mode::Outgoing;
+        match packet {
+            Outgoing::Swing { .. } => {
+                self.local.swings += 1;
+                PLAY_SERVERBOUND_SWING_PACKET_ID
+            }
+            Outgoing::PlayerAction {
+                x, y, z, action, ..
+            } => {
+                // A predicted break changes the block it names.
+                if action != photon_game::game_mode::PlayerAction::ReleaseUseItem {
+                    self.mark_block(x, y, z);
+                }
+                PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID
+            }
+            Outgoing::UseItemOn { x, y, z, face, .. } => {
+                // A predicted placement changes the block or the one
+                // in front of the face, and its neighbours.
+                let (dx, dy, dz) =
+                    photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
+                self.mark_block(x, y, z);
+                self.mark_block(x + dx, y + dy, z + dz);
+                PLAY_SERVERBOUND_USE_ITEM_ON_PACKET_ID
+            }
+            Outgoing::UseItem { .. } => PLAY_SERVERBOUND_USE_ITEM_PACKET_ID,
+            Outgoing::Attack { .. } => PLAY_SERVERBOUND_ATTACK_PACKET_ID,
+            Outgoing::PickItemFromBlock { .. } => PLAY_SERVERBOUND_PICK_ITEM_FROM_BLOCK_PACKET_ID,
+            Outgoing::PickItemFromEntity { .. } => PLAY_SERVERBOUND_PICK_ITEM_FROM_ENTITY_PACKET_ID,
+            Outgoing::SpectatorAction { .. } => PLAY_SERVERBOUND_SPECTATOR_ACTION_PACKET_ID,
+            Outgoing::Interact { .. } => PLAY_SERVERBOUND_INTERACT_PACKET_ID,
+        }
     }
 
     pub(super) fn send_movement(

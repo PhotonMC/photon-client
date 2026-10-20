@@ -124,6 +124,36 @@ impl LocalPlayer {
     pub fn set_hand_state(&mut self, hands: HandState) {
         self.main_hand_item = hands.main_item;
         self.hands = hands;
+        self.follow_use_flags();
+    }
+
+    /// `LocalPlayer.onSyncedDataUpdated`: the server's use flag acts only when it changes. A use
+    /// the client ended itself stays ended while the flag still says it is on.
+    fn follow_use_flags(&mut self) {
+        let (server, off_hand) = (self.hands.using_item, self.hands.using_off_hand);
+        let held = if off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        let edge = &mut self.use_edge;
+        if server != edge.server {
+            if server && !edge.started && held != AIR_ITEM {
+                edge.started = true;
+                edge.off_hand = off_hand;
+            } else if !server {
+                edge.started = false;
+            }
+        }
+        edge.server = server;
+        self.hands.using_item = edge.started;
+        self.hands.using_off_hand = edge.off_hand;
+    }
+
+    /// `LivingEntity.releaseUsingItem` on the client: the use ends here and now.
+    pub fn release_using_item(&mut self) {
+        self.use_edge.started = false;
+        self.hands.using_item = false;
     }
 
     /// `LivingEntity.isUsingItem`, as the server's flag says.
@@ -164,7 +194,7 @@ impl LocalPlayer {
         };
         let class = crate::block::rules::item(used).map(|item| item.class);
         if class == Some(ItemClass::BowItem) {
-            let scale = (self.using_item_ticks as f32 / 20.0).min(1.0);
+            let scale = (self.use_edge.ticks as f32 / 20.0).min(1.0);
             UseFov::Drawing(1.0 - scale * scale * 0.15)
         } else if first_person && class == Some(ItemClass::SpyglassItem) {
             UseFov::Scoped
@@ -176,7 +206,7 @@ impl LocalPlayer {
     /// `LivingEntity.getTicksUsingItem(partialTicks)`.
     pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
         if self.hands.using_item {
-            self.using_item_ticks as f32 + partial_tick
+            self.use_edge.ticks as f32 + partial_tick
         } else {
             0.0
         }
@@ -258,6 +288,15 @@ pub struct HandState {
     pub using_off_hand: bool,
 }
 
+/// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct UseEdge {
+    pub(super) server: bool,
+    pub(super) started: bool,
+    pub(super) off_hand: bool,
+    pub(super) ticks: i32,
+}
+
 /// How the use of an item changes the field of view.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UseFov {
@@ -266,4 +305,47 @@ pub enum UseFov {
     Drawing(f32),
     /// A spyglass held to the eye.
     Scoped,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn holding(using: bool) -> HandState {
+        HandState {
+            main_item: photon_data::item::registry::named("minecraft:bow"),
+            off_item: AIR_ITEM,
+            dig_speed: None,
+            mining_fatigue: None,
+            using_item: using,
+            using_off_hand: false,
+        }
+    }
+
+    fn player() -> LocalPlayer {
+        LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            Vec3::ZERO,
+            0.0,
+            0.0,
+            ClientPlayerGameMode::Survival,
+            true,
+        )
+    }
+
+    /// The server's flag acts when it changes: a use the player let go of stays ended while the
+    /// flag is still on, and starts again only when the flag goes off and on.
+    #[test]
+    fn a_released_use_stays_ended_until_the_flag_changes() {
+        let mut player = player();
+        player.set_hand_state(holding(true));
+        assert!(player.is_using_item());
+        player.release_using_item();
+        assert!(!player.is_using_item());
+        player.set_hand_state(holding(true));
+        assert!(!player.is_using_item());
+        player.set_hand_state(holding(false));
+        player.set_hand_state(holding(true));
+        assert!(player.is_using_item());
+    }
 }
