@@ -114,6 +114,7 @@ impl Controls {
             log::warn!("failed to show a dialog whose screen is not built");
             return;
         };
+        self.drop_light_screens();
         self.dialog = Some(layer);
         self.captured = false;
         self.release_keys();

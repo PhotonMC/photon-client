@@ -32,8 +32,7 @@ impl Controls {
         self.chat_options_screen = None;
         self.accessibility_screen = None;
         self.skin_screen = None;
-        self.social = None;
-        self.debug_options = None;
+        self.drop_light_screens();
         self.stats = None;
         self.drop_advancements(session);
         self.sound_screen = None;

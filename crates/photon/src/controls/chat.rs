@@ -1,6 +1,12 @@
 use super::*;
 
 impl Controls {
+    /// A screen the server opens takes the place of the light screens over the game.
+    pub(super) fn drop_light_screens(&mut self) {
+        self.social = None;
+        self.debug_options = None;
+    }
+
     /// `ChatComponent.openScreen`: the chat box opens on the draft a closed
     /// one left, or empty (a slash for a command), and the mouse is let go.
     /// `keyed` is whether a key opened it.

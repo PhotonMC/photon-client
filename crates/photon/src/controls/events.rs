@@ -209,6 +209,7 @@ impl Controls {
         match (self.server_container, session.open_container_info()) {
             (None, Some((id, kind, title))) => {
                 self.server_container = Some(id);
+                self.drop_light_screens();
                 self.screen = Some(assets.container_screen(kind, &title, width, height, may_build));
                 self.release_keys();
                 surface.set_cursor_captured(false);
@@ -218,6 +219,7 @@ impl Controls {
             }
             (Some(open), Some((id, kind, title))) if open != id => {
                 self.server_container = Some(id);
+                self.drop_light_screens();
                 self.screen = Some(assets.container_screen(kind, &title, width, height, may_build));
                 return Ok(());
             }
@@ -259,9 +261,6 @@ impl Controls {
         if self.game_mode_switcher.is_some() {
             return Ok(self.game_mode_switcher_event(event, session, surface, assets));
         }
-        if self.debug_options.is_some() {
-            return Ok(self.debug_options_event(event, (session, surface, assets)));
-        }
         if self.link_confirm.is_some() {
             self.link_event(event, surface);
             return Ok(Ok(()));
@@ -275,6 +274,9 @@ impl Controls {
         }
         if self.chat.is_some() {
             return Ok(self.chat_event(event, session, surface, assets));
+        }
+        if self.debug_options.is_some() {
+            return Ok(self.debug_options_event(event, (session, surface, assets)));
         }
         if self.disconnected.is_some() {
             self.disconnected_event(event, surface);
