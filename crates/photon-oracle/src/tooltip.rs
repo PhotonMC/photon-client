@@ -215,6 +215,12 @@ fn describe_consume(item: &photon_data::item::definition::Item, described: &mut 
         );
         described["use_animation"] = json!(consume.animation);
     }
+    // Every item has the component; the table lists only those that differ from the default.
+    let effects = item
+        .use_effects
+        .unwrap_or(photon_data::item::definition::UseEffects::DEFAULT);
+    described["use_can_sprint"] = json!(effects.can_sprint);
+    described["use_speed"] = json!(effects.speed.to_string().parse::<f64>().unwrap_or_default());
     if let Some(equip) = &item.equippable {
         described["equippable"] = describe_equippable(equip);
     }

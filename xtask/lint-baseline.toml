@@ -472,7 +472,7 @@
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 12
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::living_ai_step" = 19
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 49
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 43
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 26
 "crates/photon-world/src/metadata/fields.rs::variant_from_metadata" = 11
@@ -950,7 +950,7 @@
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
 "crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 108
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::living_ai_step" = 70
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 135
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 121
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 79
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 64
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 92

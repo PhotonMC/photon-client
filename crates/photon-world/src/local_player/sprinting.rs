@@ -166,10 +166,39 @@ impl LocalPlayer {
         self.input.move_vector().y > 1.0e-5
     }
 
+    /// The sprint trigger of `LocalPlayer.aiStep`: sneaking, a slowing use or walking back
+    /// closes the window, and a second tap on forward (or the sprint key) inside it sprints.
+    pub(super) fn open_sprint_window(
+        &mut self,
+        was_shift_key_down: bool,
+        had_forward_impulse: bool,
+    ) {
+        if was_shift_key_down
+            || self.is_slow_due_to_using_item() && !self.is_passenger()
+            || self.input.key_presses.backward
+        {
+            self.sprint_trigger_time = 0;
+        }
+        if !self.can_start_sprinting() {
+            return;
+        }
+        if !had_forward_impulse {
+            if self.sprint_trigger_time > 0 {
+                self.set_sprinting(true);
+            } else {
+                self.sprint_trigger_time = SPRINT_WINDOW;
+            }
+        }
+        if self.input.key_presses.sprint {
+            self.set_sprinting(true);
+        }
+    }
+
     pub(super) fn can_start_sprinting(&self) -> bool {
         !self.sprinting
             && self.has_forward_impulse()
             && self.is_sprinting_possible(self.abilities.flying)
+            && !self.is_slow_due_to_using_item()
             && (!self.is_moving_slowly() || self.is_under_water())
     }
 

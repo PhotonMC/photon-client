@@ -317,22 +317,7 @@ impl LocalPlayer {
             self.move_towards_closest_space(level, x + half, z + half);
         }
 
-        if was_shift_key_down || self.input.key_presses.backward {
-            self.sprint_trigger_time = 0;
-        }
-
-        if self.can_start_sprinting() {
-            if !had_forward_impulse {
-                if self.sprint_trigger_time > 0 {
-                    self.set_sprinting(true);
-                } else {
-                    self.sprint_trigger_time = SPRINT_WINDOW;
-                }
-            }
-            if self.input.key_presses.sprint {
-                self.set_sprinting(true);
-            }
-        }
+        self.open_sprint_window(was_shift_key_down, had_forward_impulse);
 
         if self.sprinting {
             if self.is_swimming() {
@@ -488,9 +473,9 @@ impl LocalPlayer {
         let modified = modify_local_player_input(
             self.input.move_vector(),
             LocalPlayerInputModifiers {
-                using_item: false,
+                using_item: self.is_using_item(),
                 passenger: self.is_passenger(),
-                item_use_speed_multiplier: 1.0,
+                item_use_speed_multiplier: self.item_use_speed_multiplier(),
                 moving_slowly: self.is_moving_slowly(),
                 sneaking_movement_factor: SNEAKING_SPEED as f32,
             },

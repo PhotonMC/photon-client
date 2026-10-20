@@ -377,6 +377,11 @@ class BlockDeclarationOracle extends BlockItemOracle {
                 described.addProperty("consume_seconds", consumable.consumeSeconds());
                 described.addProperty("use_animation", consumable.animation().getSerializedName());
             }
+            var useEffects = data.get(net.minecraft.core.component.DataComponents.USE_EFFECTS);
+            if (useEffects != null) {
+                described.addProperty("use_can_sprint", useEffects.canSprint());
+                described.addProperty("use_speed", useEffects.speedMultiplier());
+            }
             described.addProperty("blocks_attacks",
                 data.has(net.minecraft.core.component.DataComponents.BLOCKS_ATTACKS));
             described.addProperty("kinetic_weapon",

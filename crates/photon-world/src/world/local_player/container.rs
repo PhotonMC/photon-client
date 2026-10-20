@@ -1,4 +1,5 @@
 use crate::*;
+use photon_data::item::definition::UseEffects;
 use photon_data::item::registry::AIR_ITEM;
 
 impl ClientWorld {
@@ -228,6 +229,8 @@ impl ClientWorld {
             mining_fatigue: amplifier(MINING_FATIGUE),
             using_item: state.is_using_item(),
             using_off_hand: state.used_item_is_off_hand(),
+            main_use: use_effects(state.inventory_slot(36 + selected_slot as i16)),
+            off_use: use_effects(state.inventory_slot(45)),
         }
     }
 
@@ -285,5 +288,64 @@ impl ClientWorld {
         };
         player.inventory_slots.insert(menu_slot, item.cloned());
         true
+    }
+}
+
+/// `ItemStack.getOrDefault(USE_EFFECTS, DEFAULT)`: the stack's own component, else the item's,
+/// and the default when the patch removes it or the slot is empty.
+fn use_effects(stack: Option<&ClientItemStackState>) -> UseEffects {
+    let Some(stack) = stack else {
+        return UseEffects::DEFAULT;
+    };
+    match stack.patched(crate::item_components::ids::USE_EFFECTS) {
+        Some(Some(value)) => match value.as_slice() {
+            [can_sprint, _, speed @ ..] => {
+                speed
+                    .first_chunk::<4>()
+                    .map_or(UseEffects::DEFAULT, |speed| UseEffects {
+                        can_sprint: *can_sprint != 0,
+                        speed: f32::from_be_bytes(*speed),
+                    })
+            }
+            _ => UseEffects::DEFAULT,
+        },
+        Some(None) => UseEffects::DEFAULT,
+        None => crate::block::rules::item(stack.item_registry_id())
+            .and_then(|item| item.use_effects)
+            .unwrap_or(UseEffects::DEFAULT),
+    }
+}
+
+#[cfg(test)]
+mod use_effects_tests {
+    use super::*;
+
+    #[test]
+    fn a_stack_takes_its_own_use_effects_over_the_items() {
+        let spear = photon_data::item::registry::named("minecraft:iron_spear");
+        let bread = photon_data::item::registry::named("minecraft:bread");
+        let bare = ClientItemStackState::new(1, spear);
+        assert_eq!(
+            use_effects(Some(&bare)),
+            UseEffects {
+                can_sprint: true,
+                speed: 1.0
+            }
+        );
+        assert_eq!(use_effects(None), UseEffects::DEFAULT);
+        // One component added: `can_sprint`, `interact_vibrations` and a speed of 0.5.
+        let mut patch = vec![1, 0, 5, 1, 0];
+        patch.extend(0.5_f32.to_be_bytes());
+        let own = ClientItemStackState::new(1, bread).with_patch_bytes(patch);
+        assert_eq!(
+            use_effects(Some(&own)),
+            UseEffects {
+                can_sprint: true,
+                speed: 0.5
+            }
+        );
+        // The patch removing it leaves the default, also over a spear's own.
+        let removed = ClientItemStackState::new(1, spear).with_patch_bytes(vec![0, 1, 5]);
+        assert_eq!(use_effects(Some(&removed)), UseEffects::DEFAULT);
     }
 }

@@ -135,6 +135,9 @@ def items_file(items):
             calls.append(f"tool(&{names[json.dumps(item['tool'], sort_keys=True)]})")
         if item["consumable"]:
             calls.append(f"consumable({float(item['consume_seconds'])!r}, {rust_str(item['use_animation'])})")
+        # Every item has the component; only a non-default one is written.
+        if (item["use_can_sprint"], float(item["use_speed"])) != (False, 0.2):
+            calls.append(f"use_effects({str(item['use_can_sprint']).lower()}, {float(item['use_speed'])!r})")
         for flag in ("blocks_attacks", "kinetic_weapon"):
             if item[flag]:
                 calls.append(f"{flag}()")

@@ -60,6 +60,22 @@ pub struct Consume {
     pub animation: &'static str,
 }
 
+/// `UseEffects`: whether sprinting goes on while the item is used, and how much the use slows
+/// the walk.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UseEffects {
+    pub can_sprint: bool,
+    pub speed: f32,
+}
+
+impl UseEffects {
+    /// `UseEffects.DEFAULT`, which an item without the component has.
+    pub const DEFAULT: Self = Self {
+        can_sprint: false,
+        speed: 0.2,
+    };
+}
+
 /// One item of the registry.
 #[derive(Debug)]
 pub struct Item {
@@ -74,6 +90,8 @@ pub struct Item {
     pub consumable: Option<Consume>,
     pub blocks_attacks: bool,
     pub kinetic_weapon: bool,
+    /// The item's own `use_effects` component, when it has one.
+    pub use_effects: Option<UseEffects>,
     /// Ticks a furnace burns it for; zero when it is no fuel.
     pub burn_time: i32,
     /// Whether a brewing stand takes it in its ingredient slot (`PotionBrewing.isIngredient`).
@@ -98,6 +116,7 @@ impl Item {
             consumable: None,
             blocks_attacks: false,
             kinetic_weapon: false,
+            use_effects: None,
             burn_time: 0,
             brewing_ingredient: false,
             block: None,
@@ -149,6 +168,11 @@ impl Item {
 
     pub const fn blocks_attacks(mut self) -> Self {
         self.blocks_attacks = true;
+        self
+    }
+
+    pub const fn use_effects(mut self, can_sprint: bool, speed: f32) -> Self {
+        self.use_effects = Some(UseEffects { can_sprint, speed });
         self
     }
 

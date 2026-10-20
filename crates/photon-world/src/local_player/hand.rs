@@ -1,4 +1,5 @@
 use super::*;
+use photon_data::item::definition::UseEffects;
 use photon_data::item::registry::AIR_ITEM;
 
 impl LocalPlayer {
@@ -170,6 +171,25 @@ impl LocalPlayer {
         }
     }
 
+    /// The `use_effects` of the stack being used (`LocalPlayer.useItem`).
+    fn use_effects(&self) -> UseEffects {
+        if self.hands.using_off_hand {
+            self.hands.off_use
+        } else {
+            self.hands.main_use
+        }
+    }
+
+    /// `LocalPlayer.isSlowDueToUsingItem`.
+    pub fn is_slow_due_to_using_item(&self) -> bool {
+        self.hands.using_item && !self.use_effects().can_sprint
+    }
+
+    /// `LocalPlayer.itemUseSpeedMultiplier`.
+    pub(super) fn item_use_speed_multiplier(&self) -> f32 {
+        self.use_effects().speed
+    }
+
     /// `LocalPlayer.isUsingItem`: the use the client has started, which the server's flag starts
     /// and stops when it changes.
     pub fn is_using_item(&self) -> bool {
@@ -297,12 +317,14 @@ impl Default for HandState {
             mining_fatigue: None,
             using_item: false,
             using_off_hand: false,
+            main_use: UseEffects::DEFAULT,
+            off_use: UseEffects::DEFAULT,
         }
     }
 }
 
 /// What the local player's swing and use of items read of the world's player state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HandState {
     /// The registry ids of what the main and off hands hold (air when empty).
     pub main_item: ItemId,
@@ -314,6 +336,9 @@ pub struct HandState {
     /// (in the player) the use the client has started.
     pub using_item: bool,
     pub using_off_hand: bool,
+    /// What using the stack in each hand does to walking and sprinting (`use_effects`).
+    pub main_use: UseEffects,
+    pub off_use: UseEffects,
 }
 
 /// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.
@@ -349,6 +374,7 @@ mod tests {
             mining_fatigue: None,
             using_item: using,
             using_off_hand: false,
+            ..HandState::default()
         }
     }
 
@@ -393,5 +419,43 @@ mod tests {
         assert!(!player.is_using_item());
         player.set_hand_state(switched);
         assert!(!player.is_using_item());
+    }
+
+    /// Using an item slows the walk to a fifth and bars a new sprint; a spear's use does neither,
+    /// and a use the client let go of no longer counts.
+    #[test]
+    fn using_an_item_slows_unless_its_use_effects_say_otherwise() {
+        use crate::input::{LocalPlayerInputModifiers, modify_local_player_input};
+        let modify = |player: &LocalPlayer| {
+            modify_local_player_input(
+                photon_core::math::Vec2::UNIT_Y,
+                LocalPlayerInputModifiers {
+                    using_item: player.is_using_item(),
+                    passenger: false,
+                    item_use_speed_multiplier: player.item_use_speed_multiplier(),
+                    moving_slowly: false,
+                    sneaking_movement_factor: 0.3,
+                },
+            )
+            .y
+        };
+        let mut player = player();
+        player.set_hand_state(holding(false));
+        assert!(!player.is_slow_due_to_using_item());
+        assert_eq!(modify(&player).to_bits(), 0.98_f32.to_bits());
+        player.set_hand_state(holding(true));
+        assert!(player.is_slow_due_to_using_item());
+        assert_eq!(modify(&player).to_bits(), (0.98_f32 * 0.2).to_bits());
+        player.release_using_item();
+        assert!(!player.is_slow_due_to_using_item());
+        let mut spear = holding(true);
+        spear.main_use = UseEffects {
+            can_sprint: true,
+            speed: 1.0,
+        };
+        let mut player = self::player();
+        player.set_hand_state(spear);
+        assert!(!player.is_slow_due_to_using_item());
+        assert_eq!(modify(&player).to_bits(), 0.98_f32.to_bits());
     }
 }
