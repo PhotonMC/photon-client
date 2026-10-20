@@ -161,6 +161,13 @@ pub struct BackendDescription {
     pub discrete: bool,
     /// Device API version, encoded as Vulkan does.
     pub api_version: u32,
+    /// `VkPhysicalDeviceProperties::vendorID`.
+    pub vendor_id: u32,
+    /// `VkPhysicalDeviceProperties::deviceType`: 1 integrated, 2 discrete, 3 virtual, 4 CPU.
+    pub device_type: i32,
+    /// `VulkanPhysicalDevice.driverInfo`: the API version, the driver's name and its info, such as
+    /// `1.4.311 NVIDIA 570.133.07`.
+    pub driver_info: String,
     /// Chosen swapchain image format.
     pub surface_format: vk::Format,
     /// Number of swapchain images actually created.

@@ -7,7 +7,8 @@ mod layout;
 mod list;
 
 pub use entries::{
-    CameraEntity, Clouds, Filtering, FrameStats, Impactors, Input, PresentMode, ServerInfo,
+    CameraEntity, Clouds, DeviceType, Filtering, FrameStats, Impactors, Input, PresentMode,
+    ServerInfo, SystemSpecs, vendor_name,
 };
 pub use format::fixed;
 pub use layout::{Line, columns};

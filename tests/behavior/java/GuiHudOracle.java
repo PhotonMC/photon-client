@@ -958,8 +958,10 @@ class GuiHudOracle extends GuiCommandOracle {
                     net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT));
             var kept = new java.util.HashSet<>(java.util.Set.of("fps", "tps", "game_version", "player_position",
                 "player_section_position", "3d_crosshair"));
+            // The device the entries ask for: its limits for the anisotropy, its description for the specs.
+            int anisotropyLimit = 0;
             if (row.has("impactors")) {
-                // The options that entry reads, and the device that bounds the anisotropy.
+                // The options that entry reads.
                 kept.add("simple_performance_impactors");
                 var impactors = row.getAsJsonObject("impactors");
                 var options = minecraft.options;
@@ -969,9 +971,30 @@ class GuiHudOracle extends GuiCommandOracle {
                 options.textureFiltering().set(
                     net.minecraft.client.TextureFilteringMethod.values()[impactors.get("filtering").getAsInt()]);
                 options.maxAnisotropyBit().set(impactors.get("bit").getAsInt());
-                var limits = new com.mojang.blaze3d.systems.DeviceLimits(impactors.get("limit").getAsInt(), 0, 0, 0L, 0, 0);
-                var deviceInfo = new com.mojang.blaze3d.systems.DeviceInfo(null, null, null, true, null, 0.0F, limits,
-                    null, null, null, null);
+                anisotropyLimit = impactors.get("limit").getAsInt();
+            }
+            String deviceName = null, vendor = null, driver = null, backendName = null;
+            var deviceType = com.mojang.blaze3d.systems.DeviceType.OTHER;
+            if (row.has("system")) {
+                // The machine that entry names: the runtime, the processor, the window and the device.
+                kept.add("system_specs");
+                var system = row.getAsJsonObject("system");
+                System.setProperty("java.version", system.get("runtime").getAsString());
+                var cpu = com.mojang.blaze3d.platform.GLX.class.getDeclaredField("cpuInfo");
+                cpu.setAccessible(true);
+                cpu.set(null, system.get("cpu").getAsString());
+                MovementOracle.setField(minecraft.getWindow(), "framebufferWidth", system.get("width").getAsInt());
+                MovementOracle.setField(minecraft.getWindow(), "framebufferHeight", system.get("height").getAsInt());
+                deviceName = system.get("name").getAsString();
+                vendor = system.get("vendor").getAsString();
+                driver = system.get("driver").getAsString();
+                backendName = system.get("backend").getAsString();
+                deviceType = com.mojang.blaze3d.systems.DeviceType.values()[system.get("type").getAsInt()];
+            }
+            if (row.has("impactors") || row.has("system")) {
+                var limits = new com.mojang.blaze3d.systems.DeviceLimits(anisotropyLimit, 0, 0, 0L, 0, 0);
+                var deviceInfo = new com.mojang.blaze3d.systems.DeviceInfo(deviceName, vendor, driver, true,
+                    backendName, 0.0F, limits, null, null, null, deviceType);
                 var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
                     GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
                     (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);

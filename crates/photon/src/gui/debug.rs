@@ -31,6 +31,7 @@ impl Gui {
             }
         });
         let input = Input {
+            system: controls.debug.system.clone(),
             // The video options these read are not stored yet: the game's own defaults.
             impactors: Some(Impactors {
                 improved_transparency: false,

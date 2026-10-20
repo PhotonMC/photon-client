@@ -394,6 +394,8 @@ pub struct DebugKeys {
     pub entries: photon_gui::hud::debug::EntryList,
     /// What the frame loop last said of itself: the frames a second, the limit and the present mode.
     pub frame: photon_gui::hud::debug::FrameStats,
+    /// The machine the system entry names, taken from the backend.
+    pub system: Option<photon_gui::hud::debug::SystemSpecs>,
 }
 
 impl DebugKeys {

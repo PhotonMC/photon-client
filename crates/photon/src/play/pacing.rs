@@ -22,5 +22,7 @@ impl Play {
                 self.backend.description().present_mode.as_raw(),
             ),
         };
+        self.controls.debug.system =
+            Some(crate::system_info::system_specs(self.backend.description()));
     }
 }

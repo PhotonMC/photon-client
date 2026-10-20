@@ -37,6 +37,7 @@ pub fn hud_debug_overlay() -> Value {
     let mut rows = place_rows();
     rows.extend(frame_and_server_rows());
     rows.extend(impactor_rows());
+    rows.extend(system_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -141,6 +142,45 @@ fn impactor_rows() -> Vec<Value> {
                     "bit": 3, "limit": 16}}),
         ));
     }
+    rows
+}
+
+/// The system entry: each device type, a driver with several lines, vendors by name, the window's
+/// size, and the entry beside the performance options and under reduced debug info.
+fn system_rows() -> Vec<Value> {
+    let origin = ((1.0, 2.0, 3.0), (0.0, 0.0));
+    let system = |runtime: &str, cpu: &str, size: (i32, i32), device: (&str, &str, i32)| {
+        json!({
+            "runtime": runtime, "cpu": cpu, "width": size.0, "height": size.1,
+            "vendor": device.0, "name": device.1, "type": device.2,
+            "backend": "Vulkan", "driver": "1.4.311 NVIDIA 570.133.07",
+        })
+    };
+    let mut rows = Vec::new();
+    for (label, type_code) in [("other", 0), ("integrated", 1), ("discrete", 2), ("virtual", 3), ("cpu", 4)] {
+        rows.push(row(
+            format!("debug-system-{label}"),
+            origin,
+            json!({"system": system("25.0.1", "16x AMD Ryzen 7 5800X 8-Core Processor", (854, 480),
+                ("NVIDIA", "NVIDIA GeForce RTX 3070", type_code))}),
+        ));
+    }
+    let mut lines = system("21.0.7", "<unknown>", (1, 1), ("0x1af4", "llvmpipe (LLVM 19.1.7)", 4));
+    lines["driver"] = json!("1.3.296 llvmpipe Mesa 25.0.3\nsecond line\nthird");
+    lines["backend"] = json!("");
+    rows.push(row("debug-system-multi-line-driver".to_owned(), origin, json!({"system": lines})));
+    rows.push(row(
+        "debug-system-with-options".to_owned(),
+        origin,
+        json!({"system": system("25.0.1", "4x Intel Core", (1920, 1080), ("INTEL", "Intel UHD", 1)),
+            "impactors": {"transparency": false, "clouds": 2, "blend": 2, "filtering": 0,
+                "bit": 2, "limit": 16}}),
+    ));
+    rows.push(row(
+        "debug-system-reduced".to_owned(),
+        origin,
+        json!({"reduced": true, "system": system("25.0.1", "2x X", (427, 240), ("AMD", "Radeon", 2))}),
+    ));
     rows
 }
 

@@ -2,7 +2,9 @@
 //! connection say.
 
 mod impactors;
+mod system;
 pub use impactors::{Clouds, Filtering, Impactors};
+pub use system::{DeviceType, SystemSpecs, vendor_name};
 
 use super::format::fixed;
 use super::layout::Line;
@@ -84,6 +86,8 @@ pub struct Input {
     pub server: Option<ServerInfo>,
     /// The options `simple_performance_impactors` reads, none without them.
     pub impactors: Option<Impactors>,
+    /// The machine `system_specs` describes, none without it.
+    pub system: Option<SystemSpecs>,
 }
 
 /// The lines of one entry's `display`.
@@ -95,6 +99,11 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
             .impactors
             .as_ref()
             .map(impactors::display)
+            .unwrap_or_default(),
+        "system_specs" => input
+            .system
+            .as_ref()
+            .map(system::display)
             .unwrap_or_default(),
         "game_version" => vec![Line::Priority(input.version.clone())],
         "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),

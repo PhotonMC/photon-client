@@ -20,6 +20,7 @@ mod screens;
 mod screenshot;
 mod script;
 mod sound;
+mod system_info;
 mod view;
 mod window_probe;
 mod world;

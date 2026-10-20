@@ -53,7 +53,7 @@ impl VulkanBackend {
             } = sync;
             let command_buffer = frames[0].command_buffer;
             let description = describe(
-                &properties,
+                (&instance, physical_device, &properties),
                 (surface_format, images.len(), present_mode, extent),
             );
 
@@ -202,7 +202,11 @@ impl VulkanBackend {
 
 /// What the backend tells of the device it chose and the surface it draws to.
 fn describe(
-    properties: &vk::PhysicalDeviceProperties,
+    (instance, physical_device, properties): (
+        &ash::Instance,
+        vk::PhysicalDevice,
+        &vk::PhysicalDeviceProperties,
+    ),
     (surface_format, image_count, present_mode, extent): (
         vk::Format,
         usize,
@@ -218,9 +222,39 @@ fn describe(
         device_name,
         discrete: properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU,
         api_version: properties.api_version,
+        vendor_id: properties.vendor_id,
+        device_type: properties.device_type.as_raw(),
+        driver_info: driver_info(instance, physical_device, properties.api_version),
         surface_format,
         image_count: image_count as u32,
         present_mode,
         extent,
     }
+}
+
+/// `VulkanPhysicalDevice.driverInfo`: the version the API reports in `major.minor.patch`, then
+/// the driver's name and its info. Drivers older than Vulkan 1.2 have neither without an
+/// extension, so those parts are empty.
+fn driver_info(instance: &ash::Instance, device: vk::PhysicalDevice, api_version: u32) -> String {
+    let (name, info) = if api_version >= vk::API_VERSION_1_2 {
+        let mut driver = vk::PhysicalDeviceDriverProperties::default();
+        let mut query = vk::PhysicalDeviceProperties2::default().push_next(&mut driver);
+        // SAFETY: the device belongs to the instance and the chain holds one live structure.
+        unsafe { instance.get_physical_device_properties2(device, &mut query) };
+        let text = |chars: &[std::ffi::c_char]| {
+            // SAFETY: the driver fills these with terminated strings.
+            unsafe { CStr::from_ptr(chars.as_ptr()) }
+                .to_string_lossy()
+                .into_owned()
+        };
+        (text(&driver.driver_name), text(&driver.driver_info))
+    } else {
+        (String::new(), String::new())
+    };
+    format!(
+        "{}.{}.{} {name} {info}",
+        api_version >> 22 & 127,
+        api_version >> 12 & 1023,
+        api_version & 4095
+    )
 }
