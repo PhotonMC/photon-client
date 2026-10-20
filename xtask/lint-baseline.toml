@@ -370,7 +370,7 @@
 "crates/photon-render/src/block/geometry.rs::recalculate_winding" = 13
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 42
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 23
-"crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 13
+"crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 12
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 17
 "crates/photon-render/src/entity/mob_model/bears.rs::MobModel::setup_panda" = 14
 "crates/photon-render/src/entity/mob_model/bears.rs::panda_rotate" = 14
@@ -861,7 +861,7 @@
 "crates/photon-render/src/block/light.rs::adjacency" = 99
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 180
 "crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 74
-"crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 81
+"crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 74
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 134
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 80
 "crates/photon-render/src/block/world_mesh/states.rs::bake_states" = 75

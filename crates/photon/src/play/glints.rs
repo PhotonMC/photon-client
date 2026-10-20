@@ -24,6 +24,7 @@ impl Play {
                 .block_state_registry()
                 .item_tags()
                 .clone(),
+            quick_charge: crate::equipment::crossbow::quick_charge_id(&self.session),
         }
     }
 }

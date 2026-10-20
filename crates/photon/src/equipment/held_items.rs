@@ -13,7 +13,6 @@ use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
 use crate::equipment::item_layers::ItemLayerCache;
-use photon_render::item_model::ItemUse;
 
 /// Where a stack is carried: in a hand, or on the head.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -54,7 +53,7 @@ pub struct HeldItem {
     pub place: Place,
     pub light: i32,
     /// The use of the stack by its holder, which picks the model's branches.
-    pub item_use: Option<ItemUse>,
+    pub item_use: Option<i32>,
 }
 
 impl HeldItem {
@@ -188,7 +187,7 @@ impl Hands<'_> {
             let Some(arm) = self.part(name) else {
                 continue;
             };
-            let item_use = self.motions.uses[index].map(|ticks| ItemUse { ticks });
+            let item_use = self.motions.uses[index];
             let held = |pose, place| HeldItem {
                 stack: Carried::Stack(stack.clone()),
                 pose,

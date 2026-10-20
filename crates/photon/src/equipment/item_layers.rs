@@ -3,7 +3,7 @@
 use photon_core::ids::BlockStateId;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
-use photon_render::item_model::ItemUse;
+use photon_render::item_model::{Charge, ItemState, ItemUse};
 use photon_render::model::DisplayContext;
 use photon_render::objects::item::item_glint_vertices;
 use photon_render::scene::Vertex;
@@ -17,6 +17,8 @@ pub struct ItemLayerCache {
     /// Block states drawn on entities, by state id, with the light each gives off.
     blocks: std::collections::HashMap<BlockStateId, Option<(ItemLayer, i32)>>,
     glint: Glint,
+    /// The quick charge enchantment's registry id, for a crossbow's charge time.
+    quick_charge: Option<i32>,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -39,6 +41,8 @@ pub struct GlintFrame {
     pub texture: Option<[f32; 4]>,
     /// The item tags the server sent: `minecraft:compasses` is one of them.
     pub tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
+    /// The registry id of the quick charge enchantment, which sets a crossbow's charge time.
+    pub quick_charge: Option<i32>,
 }
 
 /// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the clock and the items of the compasses
@@ -73,6 +77,7 @@ impl ItemLayerCache {
             layers: std::collections::HashMap::new(),
             blocks: std::collections::HashMap::new(),
             glint: Glint::default(),
+            quick_charge: None,
         }
     }
 
@@ -81,6 +86,7 @@ impl ItemLayerCache {
     pub fn set_glint(&mut self, frame: &GlintFrame) {
         self.glint.moving = frame.texture.map(|texture| (frame.matrix, texture));
         self.glint.tags = Some(frame.tags.clone());
+        self.quick_charge = frame.quick_charge;
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
@@ -107,13 +113,13 @@ impl ItemLayerCache {
     pub fn gui_vertices(
         &mut self,
         stack: &ClientItemStackState,
-        item_use: Option<ItemUse>,
+        ticks: Option<i32>,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
         (x, y): (f32, f32),
         out: &mut Vec<photon_render::gui::GuiItemVertex>,
     ) -> usize {
         let first = out.len();
-        let layers = self.get_in_use(stack, item_use, (renderer, tints));
+        let layers = self.get_in_use(stack, ticks, (renderer, tints));
         photon_render::gui::items::item_vertices(layers, x, y, out);
         let drawn = out.len() - first;
         let foil =
@@ -143,10 +149,7 @@ impl ItemLayerCache {
         &mut Vec<photon_render::gui::GuiItemVertex>,
     ) -> usize
     + 'a {
-        move |stack, at, ticks, out| {
-            let item_use = ticks.map(|ticks| ItemUse { ticks });
-            self.gui_vertices(stack, item_use, (renderer, tints), at, out)
-        }
+        move |stack, at, ticks, out| self.gui_vertices(stack, ticks, (renderer, tints), at, out)
     }
 
     /// Add what a stack drew to `out`, with its glint kept for the glint pass.
@@ -178,6 +181,18 @@ impl ItemLayerCache {
             .as_ref()
     }
 
+    /// What the item models read of a stack: the ticks it was used for and what a crossbow holds.
+    fn item_state(&self, stack: &ClientItemStackState, ticks: Option<i32>) -> ItemState {
+        let charge_duration = super::crossbow::charge_duration(self.quick_charge, stack);
+        ItemState {
+            item_use: ticks.map(|ticks| ItemUse {
+                ticks,
+                charge_duration,
+            }),
+            charge: super::crossbow::charge_type(stack),
+        }
+    }
+
     /// A stack's layers, its grass tinted by climate.
     pub fn get(
         &mut self,
@@ -192,14 +207,17 @@ impl ItemLayerCache {
     pub fn get_in_use(
         &mut self,
         stack: &ClientItemStackState,
-        item_use: Option<ItemUse>,
+        ticks: Option<i32>,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
     ) -> &[ItemLayer] {
         let context = self.context;
         let item = stack.item_registry_id();
-        let branches = item_use.map_or_else(Vec::new, |item_use| {
-            renderer.item_branches(item, context, item_use)
-        });
+        let state = self.item_state(stack, ticks);
+        let branches = if state.item_use.is_some() || state.charge != Charge::None {
+            renderer.item_branches(item, context, state)
+        } else {
+            Vec::new()
+        };
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
             .iter()
@@ -208,7 +226,7 @@ impl ItemLayerCache {
             index
         } else {
             let layers = renderer.item_layers(
-                (item, item_use),
+                (item, state),
                 context,
                 &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
                 &StackTints(photon_game::item::values::Values::new(

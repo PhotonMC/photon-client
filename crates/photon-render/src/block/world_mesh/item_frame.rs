@@ -15,7 +15,7 @@ impl BlockRenderer {
     /// the vertices' colour. `grass` reads the grass colour map.
     pub fn item_layers(
         &self,
-        (item, item_use): (ItemId, Option<crate::item_model::ItemUse>),
+        (item, state): (ItemId, crate::item_model::ItemState),
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
         values: &dyn crate::item_model::ItemTints,
@@ -27,7 +27,7 @@ impl BlockRenderer {
             return Vec::new();
         };
         let mut layers = Vec::new();
-        crate::item_model::layers_in_use(&def.model, context, item_use, &mut layers);
+        crate::item_model::layers_in_use(&def.model, context, state, &mut layers);
         let mut out = Vec::new();
         for layer in layers {
             let Some(model) = self.models.get(&layer.model.as_string()) else {
@@ -94,7 +94,7 @@ impl BlockRenderer {
         &self,
         item: ItemId,
         context: crate::model::DisplayContext,
-        item_use: crate::item_model::ItemUse,
+        state: crate::item_model::ItemState,
     ) -> Vec<u8> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()
@@ -102,7 +102,7 @@ impl BlockRenderer {
         else {
             return Vec::new();
         };
-        crate::item_model::layers_in_use(&def.model, context, Some(item_use), &mut Vec::new())
+        crate::item_model::layers_in_use(&def.model, context, state, &mut Vec::new())
     }
 
     /// The particle textures of an item's model layers on the ground (`pickParticleMaterial`'s
@@ -203,6 +203,19 @@ pub(super) fn add_item_frame_states(
     }
 }
 
+/// Every layer an item draws in any display context and any state of its use.
+fn layers_of_any_use(def: &crate::item_model::ClientItem) -> Vec<crate::item_model::ItemLayerRef> {
+    let mut layers = Vec::new();
+    for context in crate::model::DisplayContext::ALL {
+        crate::item_model::layers_any_use(
+            &def.model,
+            context,
+            (&crate::item_model::IDENTITY, &mut layers),
+        );
+    }
+    layers
+}
+
 /// Every item's client item definition, the models its layers name in any
 /// display context (added to `models`), the alpha of every flat item's
 /// layers and the sprites no element names.
@@ -225,19 +238,12 @@ pub(super) fn item_models(
                 .and_then(|text| crate::item_model::parse_client_item(&text))
         })
         .collect();
-    let layers_of = |def: &crate::item_model::ClientItem| {
-        let mut layers = Vec::new();
-        for context in crate::model::DisplayContext::ALL {
-            crate::item_model::layers_any_use(&def.model, context, &mut layers);
-        }
-        layers
-    };
     cache.prefetch(
         source,
         items
             .iter()
             .flatten()
-            .flat_map(layers_of)
+            .flat_map(layers_of_any_use)
             .map(|layer| layer.model),
     );
     let mut layer_sprites = Vec::new();
@@ -245,7 +251,7 @@ pub(super) fn item_models(
     let mut flat_sprites: Vec<Identifier> = Vec::new();
     let mut asked = std::collections::HashSet::new();
     for def in items.iter().flatten() {
-        for layer in layers_of(def) {
+        for layer in layers_of_any_use(def) {
             if let Some(special) = &layer.special {
                 for part in crate::entity::special_models::layers(special) {
                     if let Ok(sprite) = Identifier::parse(&format!("minecraft:{}", part.sprite)) {

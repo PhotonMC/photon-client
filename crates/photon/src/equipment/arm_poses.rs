@@ -6,7 +6,7 @@
 
 use photon_data::item::classes::ItemClass;
 use photon_data::item::component_types::{
-    BLOCKS_ATTACKS, CHARGED_PROJECTILES, CONSUMABLE, ENCHANTMENTS, KINETIC_WEAPON,
+    BLOCKS_ATTACKS, CHARGED_PROJECTILES, CONSUMABLE, KINETIC_WEAPON,
 };
 use photon_data::spear::{Spear, spear_of};
 use photon_game::item::values::Values;
@@ -75,27 +75,12 @@ pub(crate) fn is_charged_crossbow(stack: &ClientItemStackState) -> bool {
             .is_some_and(|count| *count > 0)
 }
 
-/// `CrossbowItem.getChargeDuration`: a second and a quarter, less a quarter per level of quick
-/// charge, in ticks.
+/// `CrossbowItem.getChargeDuration`, in ticks.
 fn crossbow_charge_duration(session: &PlaySession, stack: Option<&ClientItemStackState>) -> f32 {
-    let level = stack.map_or(0, |stack| {
-        let quick_charge = session
-            .registry_names("minecraft:enchantment")
-            .iter()
-            .position(|name| name == "minecraft:quick_charge")
-            .and_then(|index| i32::try_from(index).ok());
-        Values::new(stack.item_registry_id(), stack.patch_bytes())
-            .enchantments(ENCHANTMENTS)
-            .into_iter()
-            .find(|(id, _)| Some(*id) == quick_charge)
-            .map_or(0, |(_, level)| level)
-    });
-    let seconds = if level > 0 {
-        1.25 - 0.25 * level as f32
-    } else {
-        1.25
-    };
-    (seconds * 20.0).floor()
+    use crate::equipment::crossbow;
+    stack.map_or(1.25 * 20.0, |stack| {
+        crossbow::charge_duration(crossbow::quick_charge_id(session), stack) as f32
+    })
 }
 
 /// The arm poses and use-item fields of a player's model.
