@@ -124,6 +124,11 @@ fn run_step(
             None
         }
         "key" => key_step(screen, step, ctx)?,
+        "resize" => {
+            let size = |field: &str| step[field].as_i64().unwrap_or(0) as i32;
+            screen.resize((size("width"), size("height")));
+            None
+        }
         other => return Err(format!("a step: {other}")),
     })
 }

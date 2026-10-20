@@ -277,6 +277,7 @@ pub fn debug_options_screen() -> Value {
         row("default", (427, 240)),
         row("tall", (854, 1000)),
         row("short", (427, 140)),
+        row("narrow", (300, 200)),
         with(
             row("mixed", (427, 240)),
             "set",
@@ -324,6 +325,11 @@ fn keys(codes: &[i64]) -> Vec<Value> {
     codes.iter().map(|&code| key(code)).collect()
 }
 
+/// The window resized.
+fn resize(width: i64, height: i64) -> Value {
+    json!({"do": "resize", "width": width, "height": height})
+}
+
 /// Tab pressed `count` times, with Shift or not.
 fn tabs(count: usize, shift: bool) -> Vec<Value> {
     let step = if shift { json!({"do": "key", "key": 258, "shift": true}) } else { key(258) };
@@ -344,7 +350,30 @@ fn debug_options_step_rows(
     let mut rows = debug_options_key_rows(&steps);
     rows.extend(debug_options_arrow_rows(&steps));
     rows.extend(debug_options_click_rows(&steps));
+    // The frame is drawn in a window the resizes stay inside.
+    let windowed =
+        |label: &str, search: &str, list: Vec<Value>| with(steps(label, search, list), "window", json!([854, 480]));
+    rows.extend(debug_options_resize_rows(&windowed));
     rows
+}
+
+/// `Screen.resize`.
+fn debug_options_resize_rows(steps: StepRow) -> Vec<Value> {
+    vec![
+        // A resize keeps the rows, the search, the scroll and the focus; the list shows the
+        // entry whose button has the focus.
+        steps("resize-taller", "", vec![resize(427, 400)]),
+        steps("resize-shorter", "", vec![resize(427, 140)]),
+        steps("resize-wider", "", vec![resize(854, 240)]),
+        steps("resize-focused-button", "", [tabs(18, false), vec![resize(427, 140)]].concat()),
+        steps("resize-scrolled-then-taller", "", [tabs(30, false), vec![resize(427, 480)]].concat()),
+        steps("resize-search-filtered", "chunk", vec![resize(500, 200)]),
+        steps("resize-narrow", "", vec![resize(300, 200)]),
+        steps("resize-narrower", "", vec![resize(250, 200)]),
+        steps("resize-then-tab", "", [tabs(3, false), vec![resize(300, 200)], tabs(2, false)].concat()),
+        steps("resize-then-click", "", vec![resize(500, 300), click(380, 100)]),
+        steps("resize-twice", "", vec![resize(300, 300), resize(427, 240)]),
+    ]
 }
 
 /// Tab, Enter and Space.

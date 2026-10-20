@@ -336,14 +336,16 @@ impl Grid {
     }
 }
 
-/// A child of a `FrameLayout` of a given place and size: put in it by its
-/// alignment (`x` truncates, `y` rounds, as `AbstractChildWrapper` has it).
+/// A child of a `FrameLayout` of a given place and least size: put in it by its alignment (`x`
+/// truncates, `y` rounds, as `AbstractChildWrapper` has it). The frame grows to fit a child that
+/// is larger than it, so the child overflows it only by its own size.
 pub fn place_in_frame(
     arena: &mut Arena,
     item: Item,
     (x, y, width, height): (i32, i32, i32, i32),
     (x_align, y_align): (f32, f32),
 ) {
+    let (width, height) = (width.max(item.width(arena)), height.max(item.height(arena)));
     let mut cell = Cell {
         item,
         row: 0,

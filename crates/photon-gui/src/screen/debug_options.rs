@@ -134,6 +134,7 @@ enum Focus {
 pub struct DebugOptionsScreen {
     arena: Arena,
     title: Widget,
+    spacer: usize,
     search_rect: usize,
     search: EditBox,
     focused_at: Instant,
@@ -184,6 +185,7 @@ impl DebugOptionsScreen {
                 active: false,
                 kind: Kind::Text { text: title_runs },
             },
+            spacer,
             search_rect,
             // `EditBox.getInnerWidth` of the box.
             search: EditBox::new(ROW_WIDTH / 3 - 8, 32),
@@ -218,13 +220,14 @@ impl DebugOptionsScreen {
             size,
             arena,
         };
-        screen.arrange(spacer);
+        screen.arrange();
         screen.update_search();
         screen
     }
 
     /// The header's title row and subtitle and the footer's buttons, placed in their frames.
-    fn arrange(&mut self, spacer: usize) {
+    fn arrange(&mut self) {
+        let spacer = self.spacer;
         let (width, height) = self.size;
         let centred = Settings::default().align_horizontally(0.5);
         let middle = Settings {
@@ -267,20 +270,19 @@ impl DebugOptionsScreen {
         self.size
     }
 
-    /// The screen laid out again for another window size (`Screen.resize`): the search box keeps
-    /// its text but the list is built unfiltered, as the reference builds it, and the scroll and
-    /// the focus are not kept.
-    pub fn resized(
-        &self,
-        font: &Font,
-        lang: &Lang,
-        size: (i32, i32),
-        entries: &EntryList,
-        reduced: bool,
-    ) -> Self {
-        let mut screen = Self::new(font, lang, size, entries, reduced);
-        screen.search.set_value(&self.search.value(), font);
-        screen
+    /// `Screen.resize` (`repositionElements` of this screen): the widgets are laid out again for
+    /// the new size and the list sized to it; the rows, the search text, the scroll and the focus
+    /// stay, the list scrolling to show the entry whose button has the focus.
+    pub fn resize(&mut self, size: (i32, i32)) {
+        let (width, height) = size;
+        self.size = size;
+        self.place.width = width;
+        self.place.height = height - HEADER_HEIGHT - FOOTER_HEIGHT;
+        self.arrange();
+        self.set_scroll(self.scroll);
+        if let Focus::Button(id, _) = self.focus {
+            self.scroll_to_entry(id);
+        }
     }
 
     /// `OptionList.updateSearch`: the rows for the entries whose id holds the search text, each

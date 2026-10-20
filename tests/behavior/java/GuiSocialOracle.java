@@ -176,7 +176,10 @@ class GuiSocialOracle extends GuiCreditsOracle {
             int height = row.get("height").getAsInt();
             int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
-            var screen = screen(width, height, mouseX, mouseY);
+            // The window the frame is drawn in, when a resize step goes past the screen's own size.
+            int windowWidth = row.has("window") ? row.getAsJsonArray("window").get(0).getAsInt() : width;
+            int windowHeight = row.has("window") ? row.getAsJsonArray("window").get(1).getAsInt() : height;
+            var screen = screen(windowWidth, windowHeight, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
@@ -238,6 +241,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                                 options.charTyped(new net.minecraft.client.input.CharacterEvent(cp));
                             }
                         }
+                        case "resize" -> options.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
                         case "key" -> options.keyPressed(new net.minecraft.client.input.KeyEvent(
                             step.get("key").getAsInt(), 0, step.has("shift") ? 1 : 0));
                         default -> throw new IllegalArgumentException(step.toString());
