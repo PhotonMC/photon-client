@@ -232,6 +232,21 @@ class GuiSocialOracle extends GuiCreditsOracle {
                     double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
                     var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
                         new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                    // The input type the game sets before a screen hears the event (MouseHandler.onButton
+                    // and KeyboardHandler.keyPress); a list scrolls to a focused entry differently by it.
+                    switch (step.get("do").getAsString()) {
+                        case "click", "release" ->
+                            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                        case "key" -> {
+                            int code = step.get("key").getAsInt();
+                            if (code == 258) {
+                                minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                            } else if (code >= 262 && code <= 265) {
+                                minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
+                            }
+                        }
+                        default -> { }
+                    }
                     switch (step.get("do").getAsString()) {
                         case "click" -> options.mouseClicked(press, false);
                         case "release" -> options.mouseReleased(press);

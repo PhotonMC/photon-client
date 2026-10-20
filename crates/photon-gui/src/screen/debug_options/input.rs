@@ -80,7 +80,20 @@ impl DebugOptionsScreen {
             self.set_focus(Focus::List);
         }
         let (id, slot) = self.pressed_button(row?, at)?;
-        Some(self.press_entry_button(id, slot))
+        let event = self.press_entry_button(id, slot);
+        self.scroll_if_clipped(row?);
+        Some(event)
+    }
+
+    /// `AbstractSelectionList.setSelected` after a click: an entry the list's edge cuts is scrolled
+    /// into view (a key does that for any entry it focuses).
+    fn scroll_if_clipped(&mut self, row: usize) {
+        let content_top = self.row_y(row) + 2;
+        let content_bottom = content_top + ITEM_HEIGHT - 4;
+        let clipped = content_top < self.place.y || content_bottom > self.place.bottom();
+        if clipped && let Row::Entry { id, .. } = &self.rows[row] {
+            self.scroll_to_entry(id);
+        }
     }
 
     /// An entry's button pressed, by the mouse or by Enter: it takes the focus and sets the status.

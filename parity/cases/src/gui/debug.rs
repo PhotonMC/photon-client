@@ -354,7 +354,22 @@ fn debug_options_step_rows(
     let windowed =
         |label: &str, search: &str, list: Vec<Value>| with(steps(label, search, list), "window", json!([854, 480]));
     rows.extend(debug_options_resize_rows(&windowed));
+    let scrolled =
+        |label: &str, search: &str, list: Vec<Value>| with(steps(label, search, list), "scroll", json!(-1.3));
+    rows.extend(debug_options_clipped_rows(&steps, &scrolled));
     rows
+}
+
+/// A press on a button of a row cut by the list's edge: the mouse scrolls it into view, a key
+/// does not move the list for a button that is pressed.
+fn debug_options_clipped_rows(steps: StepRow, scrolled: StepRow) -> Vec<Value> {
+    vec![
+        steps("clip-bottom-click", "", vec![click(350, 206)]),
+        steps("clip-bottom-click-name-side", "", vec![click(150, 206)]),
+        scrolled("clip-top-click", "", vec![click(350, 66)]),
+        scrolled("clip-top-click-then-tab", "", [vec![click(350, 66)], tabs(1, false)].concat()),
+        steps("clip-bottom-tab-enter", "", [tabs(15, false), vec![key(257)]].concat()),
+    ]
 }
 
 /// `Screen.resize`.
