@@ -202,6 +202,7 @@ impl LocalPlayer {
             && self.has_forward_impulse()
             && self.is_sprinting_possible(self.abilities.flying)
             && !self.is_slow_due_to_using_item()
+            && (!self.elytra.fall_flying || self.is_under_water())
             && (!self.is_moving_slowly() || self.is_under_water())
     }
 

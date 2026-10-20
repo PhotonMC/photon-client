@@ -93,6 +93,8 @@ impl LocalPlayer {
         }
         let desired = if self.is_swimming() {
             ClientEntityPose::Swimming
+        } else if self.elytra.fall_flying {
+            ClientEntityPose::FallFlying
         } else if self.is_shift_key_down() && !self.abilities.flying {
             ClientEntityPose::Crouching
         } else {

@@ -205,6 +205,8 @@ impl ClientWorld {
         const MINING_FATIGUE: i32 = 3;
         const CONDUIT_POWER: i32 = 28;
         const BLINDNESS: i32 = 14;
+        const LEVITATION: i32 = 24;
+        const SLOW_FALLING: i32 = 27;
         let Some(state) = self.local_player() else {
             return local_player::HandState::default();
         };
@@ -234,6 +236,9 @@ impl ClientWorld {
             off_use: use_effects(state.inventory_slot(45)),
             food: state.food,
             blinded: amplifier(BLINDNESS).is_some(),
+            levitating: amplifier(LEVITATION).is_some(),
+            slow_falling: amplifier(SLOW_FALLING).is_some(),
+            glider: false,
         }
     }
 

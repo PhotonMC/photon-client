@@ -183,6 +183,7 @@ pub enum PlayerCommandAction {
     StartSprinting = 1,
     StopSprinting = 2,
     StartRidingJump = 3,
+    StartFallFlying = 6,
 }
 
 // Player attribute defaults, as the reference registers them.

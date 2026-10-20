@@ -226,9 +226,37 @@ fn describe_consume(item: &photon_data::item::definition::Item, described: &mut 
     }
 }
 
+/// A tool component as the declarations list it.
+fn describe_tool(tool: &photon_data::item::definition::Tool) -> Value {
+    use photon_data::item::definition::RuleBlocks;
+    let rules: Vec<Value> = tool
+        .rules
+        .iter()
+        .map(|rule| {
+            let mut written = json!({});
+            written["blocks"] = match rule.blocks {
+                RuleBlocks::Tag(tag) => json!(format!("#{tag}")),
+                RuleBlocks::Blocks(names) => json!(names),
+            };
+            if let Some(speed) = rule.speed {
+                written["speed"] = json!(format!("{:08x}", speed.to_bits()));
+            }
+            if let Some(correct) = rule.correct_for_drops {
+                written["correct_for_drops"] = json!(correct);
+            }
+            written
+        })
+        .collect();
+    json!({
+        "rules": rules,
+        "default_mining_speed": format!("{:08x}", tool.default_mining_speed.to_bits()),
+        "damage_per_block": tool.damage_per_block,
+        "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
+    })
+}
+
 pub(super) fn item_declarations(label: &str) -> Value {
     use photon_data::item::classes::ItemClass;
-    use photon_data::item::definition::RuleBlocks;
     let classes: Vec<Value> = ItemClass::ALL
         .iter()
         .map(|class| {
@@ -261,6 +289,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
                 "consumable": item.consumable.is_some(),
                 "blocks_attacks": item.blocks_attacks,
                 "kinetic_weapon": item.kinetic_weapon,
+                "glider": item.glider,
             });
             describe_consume(item, &mut described);
             if let Some(remainder) = &item.crafting_remainder {
@@ -268,30 +297,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
                     json!({"item": remainder.item, "count": remainder.count});
             }
             if let Some(tool) = item.tool {
-                let rules: Vec<Value> = tool
-                    .rules
-                    .iter()
-                    .map(|rule| {
-                        let mut written = json!({});
-                        written["blocks"] = match rule.blocks {
-                            RuleBlocks::Tag(tag) => json!(format!("#{tag}")),
-                            RuleBlocks::Blocks(names) => json!(names),
-                        };
-                        if let Some(speed) = rule.speed {
-                            written["speed"] = json!(format!("{:08x}", speed.to_bits()));
-                        }
-                        if let Some(correct) = rule.correct_for_drops {
-                            written["correct_for_drops"] = json!(correct);
-                        }
-                        written
-                    })
-                    .collect();
-                described["tool"] = json!({
-                    "rules": rules,
-                    "default_mining_speed": format!("{:08x}", tool.default_mining_speed.to_bits()),
-                    "damage_per_block": tool.damage_per_block,
-                    "can_destroy_blocks_in_creative": tool.can_destroy_blocks_in_creative,
-                });
+                described["tool"] = describe_tool(tool);
             }
             if item.burn_time > 0 {
                 described["burn_time"] = json!(item.burn_time);

@@ -507,6 +507,13 @@ impl PlaySession {
         packet: EntityMetadataObservation,
     ) -> Result<(), ConnectionError> {
         entities::metadata(&mut self.world, &packet);
+        // The shared flags' gliding bit (flag 7) is the server's word over the client's start.
+        if self.local.player_id == Some(packet.entity_id)
+            && let Some(player) = self.local.player.as_mut()
+            && let Some((_, [flags, ..])) = photon_world::entity_metadata_field(&packet.metadata, 0)
+        {
+            player.set_server_fall_flying(flags & 0x80 != 0);
+        }
         Ok(())
     }
 

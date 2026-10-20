@@ -90,6 +90,8 @@ pub struct Item {
     pub consumable: Option<Consume>,
     pub blocks_attacks: bool,
     pub kinetic_weapon: bool,
+    /// Whether the item has the `glider` component (an elytra).
+    pub glider: bool,
     /// The item's own `use_effects` component, when it has one.
     pub use_effects: Option<UseEffects>,
     /// Ticks a furnace burns it for; zero when it is no fuel.
@@ -116,6 +118,7 @@ impl Item {
             consumable: None,
             blocks_attacks: false,
             kinetic_weapon: false,
+            glider: false,
             use_effects: None,
             burn_time: 0,
             brewing_ingredient: false,
@@ -173,6 +176,11 @@ impl Item {
 
     pub const fn use_effects(mut self, can_sprint: bool, speed: f32) -> Self {
         self.use_effects = Some(UseEffects { can_sprint, speed });
+        self
+    }
+
+    pub const fn glider(mut self) -> Self {
+        self.glider = true;
         self
     }
 

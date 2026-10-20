@@ -76,18 +76,7 @@ impl PlaySession {
         let main_hand = self.main_hand_item();
         // The level ticks a vehicle before its passengers: a boat the player rides moves first
         // (and tells the server of its paddles), then the player sits in it.
-        // What the rider steers with: its input, its look, and the stick in its hands.
-        if let Some(player) = self.local.player.as_ref() {
-            let mut controls = player.controller();
-            let holds = |name: &str| {
-                [main_hand, self.off_hand_item()].into_iter().any(|item| {
-                    photon_world::block::rules::item(item).is_some_and(|item| item.name == name)
-                })
-            };
-            controls.holds_carrot_on_a_stick = holds("minecraft:carrot_on_a_stick");
-            controls.holds_warped_fungus_on_a_stick = holds("minecraft:warped_fungus_on_a_stick");
-            self.world.set_rider_controls(controls);
-        }
+        self.set_rider_controls(main_hand);
         let ridden = self.world.ridden_vehicle_of_local_player();
         if ridden.is_some() {
             if let Some(player) = self.local.player.as_ref() {
@@ -100,11 +89,12 @@ impl PlaySession {
             }
         }
         if self.local.loaded
+            && let hands = self.hand_state()
             && let Some(player) = self.local.player.as_mut()
         {
             // `Player.tick` counts the item cooldowns down.
             self.local.item_cooldowns.tick();
-            player.set_hand_state(self.world.local_hand_state(self.local.status.selected_slot));
+            player.set_hand_state(hands);
             let ticked = match ridden.and_then(|id| self.world.vehicle_view(id)) {
                 Some(view) => player.tick_riding(&self.world, keys, &view).map(|rode| {
                     if view.kind == photon_world::VehicleKind::Boat && view.controlled {
@@ -138,6 +128,21 @@ impl PlaySession {
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// What the rider steers with: its input, its look, and the stick in its hands.
+    fn set_rider_controls(&mut self, main_hand: photon_core::ids::ItemId) {
+        if let Some(player) = self.local.player.as_ref() {
+            let mut controls = player.controller();
+            let holds = |name: &str| {
+                [main_hand, self.off_hand_item()].into_iter().any(|item| {
+                    photon_world::block::rules::item(item).is_some_and(|item| item.name == name)
+                })
+            };
+            controls.holds_carrot_on_a_stick = holds("minecraft:carrot_on_a_stick");
+            controls.holds_warped_fungus_on_a_stick = holds("minecraft:warped_fungus_on_a_stick");
+            self.world.set_rider_controls(controls);
+        }
     }
 
     /// `ClientLevel.tickEntities`: the entities the server added move on. The player's effects

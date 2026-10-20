@@ -1242,7 +1242,7 @@ pub static ITEMS: [Item; 1537] = [
     Item::of("minecraft:carrot_on_a_stick", ItemClass::FoodOnAStickItem).stacks_to(1).durability(25),
     Item::of("minecraft:warped_fungus_on_a_stick", ItemClass::FoodOnAStickItem).stacks_to(1).durability(100),
     Item::of("minecraft:phantom_membrane", ItemClass::Item).brews(),
-    Item::of("minecraft:elytra", ItemClass::Item).stacks_to(1).durability(432).equippable(Equip { slot: "chest", player: true, swappable: true, asset: Some("minecraft:elytra"), camera_overlay: None }).components(&[Component::Rarity(Rarity::Epic)]),
+    Item::of("minecraft:elytra", ItemClass::Item).stacks_to(1).durability(432).equippable(Equip { slot: "chest", player: true, swappable: true, asset: Some("minecraft:elytra"), camera_overlay: None }).glider().components(&[Component::Rarity(Rarity::Epic)]),
     Item::of("minecraft:oak_boat", ItemClass::BoatItem).stacks_to(1).burns(1200),
     Item::of("minecraft:oak_chest_boat", ItemClass::BoatItem).stacks_to(1).burns(1200),
     Item::of("minecraft:spruce_boat", ItemClass::BoatItem).stacks_to(1).burns(1200),

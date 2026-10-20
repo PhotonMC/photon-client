@@ -3,6 +3,19 @@ use photon_core::ids::{EntityId, ItemId};
 use photon_data::item::registry::AIR_ITEM;
 
 impl PlaySession {
+    /// `local_hand_state` with what the item rules add: whether a stack lets the player glide.
+    pub(super) fn hand_state(&self) -> photon_world::local_player::HandState {
+        let selected = self.local.status.selected_slot;
+        let mut state = self.world.local_hand_state(selected);
+        if let Some(player) = self.world.local_player() {
+            state.glider = photon_game::item::glider::any_can_glide(
+                |slot| player.inventory_slot(slot),
+                selected,
+            );
+        }
+        state
+    }
+
     /// The attack and use keys' part of `handleKeybinds`, with what the
     /// player aims at. Runs before the tick, as the reference handles keys
     /// before the level ticks the player.
@@ -17,11 +30,12 @@ impl PlaySession {
             _ => None,
         };
         self.ensure_has_sent_carried_item()?;
+        let hands = self.hand_state();
         let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
         // The server's flags the packets just brought, which `onSyncedDataUpdated` acts on at once.
-        player.set_hand_state(self.world.local_hand_state(self.local.status.selected_slot));
+        player.set_hand_state(hands);
         let mut ctx = Context {
             miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,

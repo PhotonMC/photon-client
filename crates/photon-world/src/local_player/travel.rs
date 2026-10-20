@@ -166,6 +166,9 @@ impl LocalPlayer {
         level: &Level<'_>,
         input: Vec3,
     ) -> Result<(), Unsupported> {
+        if self.elytra.fall_flying {
+            self.check_fall_distance_accumulation();
+        }
         // `Player.travel`: a passenger travels as any living entity does.
         if self.is_passenger() {
             return self.living_travel(level, input);
@@ -202,6 +205,8 @@ impl LocalPlayer {
     ) -> Result<(), Unsupported> {
         if (self.is_in_water() || self.is_in_lava()) && self.is_affected_by_fluids() {
             self.travel_in_fluid(level, input)
+        } else if self.elytra.fall_flying {
+            self.travel_fall_flying(level, input)
         } else {
             self.travel_in_air(level, input)
         }

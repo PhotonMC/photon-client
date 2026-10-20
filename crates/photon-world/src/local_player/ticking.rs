@@ -134,7 +134,7 @@ impl LocalPlayer {
             self.set_pos(Vec3::new(clamped_x, self.position.y, clamped_z));
         }
         self.elytra.tick(crate::elytra::ElytraInput {
-            fall_flying: false,
+            fall_flying: self.elytra.fall_flying,
             motion: (self.delta.x, self.delta.y, self.delta.z),
             crouching: self.crouching,
         });
@@ -242,6 +242,9 @@ impl LocalPlayer {
         }
         let pos = self.block_position();
         let info = level.info(pos);
+        if self.elytra.fall_flying && info.flags & flag::CAN_GLIDE_THROUGH != 0 {
+            return false;
+        }
         if info.flags & flag::CLIMBABLE != 0 {
             return true;
         }
@@ -351,8 +354,7 @@ impl LocalPlayer {
                 }
             }
         }
-        // Gliding needs an elytra, which this port's player never wears.
-        let _ = just_toggled_creative_flight;
+        self.start_fall_flying_on_jump(level, (was_jumping, just_toggled_creative_flight));
 
         if self.is_in_water() && self.input.key_presses.shift && self.is_affected_by_fluids() {
             self.delta = self.delta.add_components(0.0, f64::from(-0.04_f32), 0.0);
@@ -488,32 +490,7 @@ impl LocalPlayer {
         self.x_bob += (self.x_rot - self.x_bob) * 0.5;
         self.y_bob += (self.y_rot - self.y_bob) * 0.5;
 
-        if self.jumping && self.is_affected_by_fluids() {
-            let fluid_height = if self.is_in_lava() {
-                self.lava.height
-            } else {
-                self.water.height
-            };
-            let in_water_and_has_fluid_height = self.is_in_water() && fluid_height > 0.0;
-            let threshold = self.fluid_jump_threshold();
-            if !in_water_and_has_fluid_height || self.on_ground && !(fluid_height > threshold) {
-                if !self.is_in_lava() || self.on_ground && self.lava.height <= threshold {
-                    if (self.on_ground
-                        || in_water_and_has_fluid_height && fluid_height <= threshold)
-                        && self.no_jump_delay == 0
-                    {
-                        self.jump_from_ground(level);
-                        self.no_jump_delay = 10;
-                    }
-                } else {
-                    self.delta = self.delta.add_components(0.0, f64::from(0.04_f32), 0.0);
-                }
-            } else {
-                self.delta = self.delta.add_components(0.0, f64::from(0.04_f32), 0.0);
-            }
-        } else {
-            self.no_jump_delay = 0;
-        }
+        self.jump_or_rise_in_fluid(level);
 
         let input = Vec3::new(f64::from(self.xxa), 0.0, f64::from(self.zza));
         self.player_travel(level, input)?;

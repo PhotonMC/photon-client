@@ -471,7 +471,6 @@
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::apply_movement_emission" = 11
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 12
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::living_ai_step" = 19
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 43
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 26
@@ -715,7 +714,6 @@
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
 "crates/photon-net/src/connection/open.rs::configure_connection" = 198
 "crates/photon-net/src/connection/open.rs::log_in" = 94
-"crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 67
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
@@ -839,7 +837,7 @@
 "crates/photon-oracle/src/ticks.rs::movement_world" = 84
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
 "crates/photon-oracle/src/tooltip.rs::component_json" = 80
-"crates/photon-oracle/src/tooltip.rs::item_declarations" = 91
+"crates/photon-oracle/src/tooltip.rs::item_declarations" = 68
 "crates/photon-oracle/src/tooltip.rs::tooltip_registries" = 89
 "crates/photon-oracle/src/transform.rs::client_world_entity_tick_result" = 78
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 107
@@ -949,7 +947,6 @@
 "crates/photon-world/src/local_player/serverbound.rs::ServerboundMovement::encode_body" = 96
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
 "crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 108
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::living_ai_step" = 70
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 121
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 79
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 64

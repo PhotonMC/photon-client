@@ -340,6 +340,9 @@ impl Default for HandState {
             off_use: UseEffects::DEFAULT,
             food: 20,
             blinded: false,
+            levitating: false,
+            slow_falling: false,
+            glider: false,
         }
     }
 }
@@ -363,6 +366,11 @@ pub struct HandState {
     /// The food level, and whether blindness is on: what sprinting reads of the player state.
     pub food: i32,
     pub blinded: bool,
+    /// Levitation is on, and slow falling: what gliding and its fall read of the effects.
+    pub levitating: bool,
+    pub slow_falling: bool,
+    /// Some worn or held stack lets the player glide (`canGlideUsing`); the connection fills it.
+    pub glider: bool,
 }
 
 /// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.

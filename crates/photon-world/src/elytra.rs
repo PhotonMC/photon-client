@@ -10,6 +10,8 @@ const DEFAULT_Z_ROT: f32 = (-std::f64::consts::PI / 12.0) as f32;
 pub struct ElytraState {
     rot: [f32; 3],
     old: [f32; 3],
+    /// The local player's shared flag 7, which a jump sets and the server's data overwrites.
+    pub(crate) fall_flying: bool,
 }
 
 // The rotations are never NaN.
