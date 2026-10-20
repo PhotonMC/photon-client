@@ -123,6 +123,10 @@ impl CommandSuggestions {
         self.place = place;
     }
 
+    pub fn has_commands(&self) -> bool {
+        self.commands.is_some()
+    }
+
     pub fn set_commands(&mut self, commands: Option<Arc<CommandTree>>) {
         self.commands = commands;
     }

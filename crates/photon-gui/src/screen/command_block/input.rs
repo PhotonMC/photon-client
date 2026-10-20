@@ -100,7 +100,7 @@ impl CommandBlockScreen {
 
     /// Whether the widget can be focused and pressed.
     fn is_active(&self, focus: Focus) -> bool {
-        self.candidates()[ORDER.iter().position(|each| *each == focus).unwrap_or(0)].focusable
+        self.candidate_of(focus).focusable
     }
 
     /// The focused button pressed (`onPress`): Done sends, Cancel closes, the others cycle.
@@ -111,14 +111,10 @@ impl CommandBlockScreen {
                 let tracking = buttons.output.press(lang, shift);
                 self.update_previous_output(tracking);
             }
-            Focus::Mode => {
-                buttons.mode.press(lang, shift);
-            }
-            Focus::Conditional => {
-                buttons.conditional.press(lang, shift);
-            }
-            Focus::Automatic => {
-                buttons.automatic.press(lang, shift);
+            Focus::Mode | Focus::Conditional | Focus::Automatic => {
+                if let Some(extra) = &mut buttons.extra {
+                    extra.press(self.focus, lang, shift);
+                }
             }
             Focus::Done => return CommandBlockAction::Done(self.edit()),
             Focus::Cancel => return CommandBlockAction::Close,
@@ -133,20 +129,20 @@ impl CommandBlockScreen {
         }
         self.focus = focus;
         self.buttons.output.set_focused(focus == Focus::Output);
-        self.buttons.mode.set_focused(focus == Focus::Mode);
-        self.buttons
-            .conditional
-            .set_focused(focus == Focus::Conditional);
-        self.buttons
-            .automatic
-            .set_focused(focus == Focus::Automatic);
+        if let Some(extra) = &mut self.buttons.extra {
+            extra.mode.set_focused(focus == Focus::Mode);
+            extra.conditional.set_focused(focus == Focus::Conditional);
+            extra.automatic.set_focused(focus == Focus::Automatic);
+        }
     }
 
     /// Tab (and Shift+Tab): the focus moves to the next widget that can take it, wrapping round.
     fn tab(&mut self, forward: bool) {
         let candidates = self.candidates();
-        let count = ORDER.len();
-        let place = ORDER
+        let count = self.kind.order().len();
+        let place = self
+            .kind
+            .order()
             .iter()
             .position(|each| *each == self.focus)
             .unwrap_or(0);
@@ -157,7 +153,7 @@ impl CommandBlockScreen {
                 (place + count - step % count) % count
             };
             if candidates[index].focusable {
-                self.set_focus(ORDER[index]);
+                self.set_focus(self.kind.order()[index]);
                 return;
             }
         }
@@ -166,7 +162,11 @@ impl CommandBlockScreen {
     /// An arrow key the focused widget did not take: the focus goes to the widget beside it.
     fn arrow(&mut self, direction: Direction) {
         let candidates = self.candidates();
-        let focused = ORDER.iter().position(|each| *each == self.focus);
+        let focused = self
+            .kind
+            .order()
+            .iter()
+            .position(|each| *each == self.focus);
         let container = Rectangle {
             x: 0,
             y: 0,
@@ -174,7 +174,7 @@ impl CommandBlockScreen {
             height: self.size.1,
         };
         if let Some(next) = next_in_direction(&candidates, focused, direction, container) {
-            self.set_focus(ORDER[next]);
+            self.set_focus(self.kind.order()[next]);
         }
     }
 
@@ -196,8 +196,8 @@ impl CommandBlockScreen {
         let Some(hit) = hit else {
             return CommandBlockAction::Stay;
         };
-        self.set_focus(ORDER[hit]);
-        match ORDER[hit] {
+        self.set_focus(self.kind.order()[hit]);
+        match self.kind.order()[hit] {
             Focus::Command => self
                 .command
                 .click_at(mouse.0 - candidates[hit].rectangle.x - 4, &self.font),
@@ -217,28 +217,35 @@ impl CommandBlockScreen {
         }
         let buttons = &mut self.buttons;
         let arena = &buttons.arena;
-        if buttons
-            .output
-            .is_mouse_over(arena, (f64::from(mouse.0), f64::from(mouse.1)))
-        {
+        let over = (f64::from(mouse.0), f64::from(mouse.1));
+        if buttons.output.is_mouse_over(arena, over) {
             if let Some(tracking) = buttons.output.scrolled(lang, scroll_y) {
                 self.update_previous_output(tracking);
             }
-        } else if buttons
-            .mode
-            .is_mouse_over(arena, (f64::from(mouse.0), f64::from(mouse.1)))
-        {
-            buttons.mode.scrolled(lang, scroll_y);
-        } else if buttons
-            .conditional
-            .is_mouse_over(arena, (f64::from(mouse.0), f64::from(mouse.1)))
-        {
-            buttons.conditional.scrolled(lang, scroll_y);
-        } else if buttons
-            .automatic
-            .is_mouse_over(arena, (f64::from(mouse.0), f64::from(mouse.1)))
-        {
-            buttons.automatic.scrolled(lang, scroll_y);
+        } else if let Some(extra) = &mut buttons.extra {
+            extra.scrolled(lang, scroll_y, (arena, over));
+        }
+    }
+}
+
+impl Extra {
+    /// A press of the button the focus is on.
+    fn press(&mut self, focus: Focus, lang: &Lang, shift: bool) {
+        match focus {
+            Focus::Mode => drop(self.mode.press(lang, shift)),
+            Focus::Conditional => drop(self.conditional.press(lang, shift)),
+            _ => drop(self.automatic.press(lang, shift)),
+        }
+    }
+
+    /// The wheel over one of the buttons.
+    fn scrolled(&mut self, lang: &Lang, scroll_y: f64, (arena, over): (&Arena, (f64, f64))) {
+        if self.mode.is_mouse_over(arena, over) {
+            self.mode.scrolled(lang, scroll_y);
+        } else if self.conditional.is_mouse_over(arena, over) {
+            self.conditional.scrolled(lang, scroll_y);
+        } else if self.automatic.is_mouse_over(arena, over) {
+            self.automatic.scrolled(lang, scroll_y);
         }
     }
 }

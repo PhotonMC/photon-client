@@ -13,6 +13,11 @@ impl GameMode {
         self.opened_command_block.take()
     }
 
+    /// The id of the command block minecart used, whose screen is to open.
+    pub fn take_opened_command_minecart(&mut self) -> Option<photon_core::ids::EntityId> {
+        self.opened_command_minecart.take()
+    }
+
     pub fn take_opened_book(&mut self) -> Option<u8> {
         self.opened_book.take()
     }
@@ -30,33 +35,8 @@ impl GameMode {
         }
         self.right_click_delay = 4;
         for hand in [MAIN_HAND, OFF_HAND] {
-            if let Aim::Entity {
-                id,
-                location,
-                position,
-                bounds,
-            } = aim
-            {
-                let block = position.map(|value| value.floor() as i32);
-                if !ctx.within_border((block[0], block[1], block[2])) {
-                    return;
-                }
-                if ctx.within_entity_interaction_range(bounds) {
-                    // `MultiPlayerGameMode.interact`. What the entity does on
-                    // its own side of the click is not predicted: the click
-                    // passes on to the hand's item as if it had not been
-                    // consumed.
-                    out.push(Outgoing::Interact {
-                        entity_id: id,
-                        hand,
-                        location: [
-                            location[0] - position[0],
-                            location[1] - position[1],
-                            location[2] - position[2],
-                        ],
-                        secondary_use: ctx.player.is_shift_key_down(),
-                    });
-                }
+            if self.click_entity(ctx, hand, aim, out) {
+                return;
             }
             if let Aim::Block { .. } = aim {
                 let old_count = ctx.held(hand).map(|(_, count)| count);
@@ -88,6 +68,55 @@ impl GameMode {
                 return;
             }
         }
+    }
+
+    /// `MultiPlayerGameMode.interact` for an aimed entity. Whether the use is over: the click fell
+    /// outside the border, or the entity took it.
+    fn click_entity(
+        &mut self,
+        ctx: &mut Context<'_>,
+        hand: u8,
+        aim: Aim,
+        out: &mut Vec<Outgoing>,
+    ) -> bool {
+        let Aim::Entity {
+            id,
+            location,
+            position,
+            bounds,
+        } = aim
+        else {
+            return false;
+        };
+        let block = position.map(|value| value.floor() as i32);
+        if !ctx.within_border((block[0], block[1], block[2])) {
+            return true;
+        }
+        if !ctx.within_entity_interaction_range(bounds) {
+            return false;
+        }
+        // What the entity does on its own side of the click is not predicted: the click passes
+        // on to the hand's item as if it had not been consumed.
+        out.push(Outgoing::Interact {
+            entity_id: id,
+            hand,
+            location: [
+                location[0] - position[0],
+                location[1] - position[1],
+                location[2] - position[2],
+            ],
+            secondary_use: ctx.player.is_shift_key_down(),
+        });
+        // `MinecartCommandBlock.interact`: a game master's click opens its screen, unless the
+        // player only watches.
+        let opens = ctx.mode != ClientPlayerGameMode::Spectator
+            && ctx.can_use_game_master_blocks()
+            && ctx.world.command_minecart_view(id).is_some();
+        if opens {
+            self.opened_command_minecart = Some(id);
+            ctx.swing_hand(hand, out);
+        }
+        opens
     }
 
     /// `MultiPlayerGameMode.useItemOn`: the use runs as a prediction whose

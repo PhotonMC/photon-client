@@ -1,15 +1,23 @@
 use super::*;
 
+use photon_core::ids::EntityId;
 use photon_game::text::Lang;
 use photon_gui::screen::command_block::{
     CommandBlockAction, CommandBlockScreen, SuggestionSources,
 };
 use photon_net::connection::CommandBlockSettings;
 
-/// The command block the player is editing: its screen and its position.
+/// What the screen edits: a command block, or a command block minecart.
+#[derive(Clone, Copy)]
+pub enum CommandBlockTarget {
+    Block((i32, i32, i32)),
+    Minecart(EntityId),
+}
+
+/// The command block the player is editing: its screen and what it belongs to.
 pub struct CommandBlockEdit {
     pub screen: CommandBlockScreen,
-    pub pos: (i32, i32, i32),
+    pub target: CommandBlockTarget,
 }
 
 impl CommandBlockEdit {
@@ -37,30 +45,37 @@ impl CommandBlockEdit {
 }
 
 impl Controls {
-    /// `Player.openCommandBlock`: the screen of the block just used opens over the game and the
-    /// mouse is let go. Its controls wait for the block's data from the server.
+    /// `Player.openCommandBlock` and `openMinecartCommandBlock`: the screen of the block or
+    /// minecart just used opens over the game and the mouse is let go. The block's controls wait
+    /// for its data from the server.
     pub fn open_command_block(
         &mut self,
         session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
-        let Some(pos) = session.take_opened_command_block() else {
-            return;
-        };
-        let Some(block) = session.command_block(pos) else {
-            return;
-        };
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
-        self.command_block = Some(CommandBlockEdit {
-            screen: CommandBlockScreen::new(
-                (&assets.creative.font, &assets.lang),
-                &block.contents,
-                size,
-            ),
-            pos,
-        });
+        let fonts = (&assets.creative.font, &*assets.lang);
+        let edit = if let Some(pos) = session.take_opened_command_block() {
+            session.command_block(pos).map(|block| CommandBlockEdit {
+                screen: CommandBlockScreen::new(fonts, &block.contents, size),
+                target: CommandBlockTarget::Block(pos),
+            })
+        } else if let Some(id) = session.take_opened_command_minecart() {
+            session
+                .command_minecart(id)
+                .map(|contents| CommandBlockEdit {
+                    screen: CommandBlockScreen::minecart(fonts, &contents, size),
+                    target: CommandBlockTarget::Minecart(id),
+                })
+        } else {
+            None
+        };
+        let Some(edit) = edit else {
+            return;
+        };
+        self.command_block = Some(edit);
         self.chat = None;
         self.pause = None;
         self.captured = false;
@@ -81,16 +96,26 @@ impl Controls {
         let Some(edit) = self.command_block.as_mut() else {
             return Ok(());
         };
-        let Some(block) = session.command_block(edit.pos) else {
-            self.close_command_block(session, surface, None)?;
-            return Ok(());
-        };
-        if session.take_command_block_data() {
-            edit.screen.update_gui(
-                &assets.lang,
-                (block.mode, block.conditional),
-                &block.contents,
-            );
+        match edit.target {
+            CommandBlockTarget::Block(pos) => {
+                let Some(block) = session.command_block(pos) else {
+                    self.close_command_block(session, surface, None)?;
+                    return Ok(());
+                };
+                if session.take_command_block_data() {
+                    edit.screen.update_gui(
+                        &assets.lang,
+                        (block.mode, block.conditional),
+                        &block.contents,
+                    );
+                }
+            }
+            CommandBlockTarget::Minecart(id) => {
+                if session.command_minecart(id).is_none() {
+                    self.close_command_block(session, surface, None)?;
+                    return Ok(());
+                }
+            }
         }
         edit.screen.set_suggestion_sources(SuggestionSources {
             commands: session.commands().cloned(),
@@ -116,19 +141,13 @@ impl Controls {
         surface: &mut WindowSurface,
         done: Option<photon_gui::screen::command_block::CommandBlockEdit>,
     ) -> Result {
-        if let Some(edit) = self.command_block.take()
-            && let Some(done) = done
-        {
-            session.set_command_block(
-                edit.pos,
-                &CommandBlockSettings {
-                    command: &done.command,
-                    mode: done.mode,
-                    track_output: done.track_output,
-                    conditional: done.conditional,
-                    automatic: done.automatic,
-                },
-            )?;
+        if let Some(edit) = self.command_block.take() {
+            if let CommandBlockTarget::Minecart(id) = edit.target {
+                session.set_minecart_track_output(id, edit.screen.track_output());
+            }
+            if let Some(done) = done {
+                send_command_block(session, edit.target, &done)?;
+            }
         }
         self.captured = true;
         self.last_cursor = None;
@@ -182,4 +201,28 @@ impl Controls {
             }
         }
     }
+}
+
+/// What Done sends: the block's settings, or the minecart's command.
+fn send_command_block(
+    session: &mut PlaySession,
+    target: CommandBlockTarget,
+    done: &photon_gui::screen::command_block::CommandBlockEdit,
+) -> Result {
+    Ok(match (target, done.block) {
+        (CommandBlockTarget::Block(pos), Some(block)) => session.set_command_block(
+            pos,
+            &CommandBlockSettings {
+                command: &done.command,
+                mode: block.mode,
+                track_output: done.track_output,
+                conditional: block.conditional,
+                automatic: block.automatic,
+            },
+        ),
+        (CommandBlockTarget::Minecart(id), _) => {
+            session.set_command_minecart(id, &done.command, done.track_output)
+        }
+        (CommandBlockTarget::Block(_), None) => Ok(()),
+    }?)
 }

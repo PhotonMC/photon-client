@@ -29,6 +29,21 @@ impl Default for CommandBlockContents {
 }
 
 impl CommandBlockContents {
+    /// `BaseCommandBlock` of a command block minecart, read from its synched data: the command, the
+    /// last output as the network tag carries it, and whether the output is tracked.
+    pub fn from_minecart(command: String, last_output: Option<&[u8]>, track_output: bool) -> Self {
+        let last_output = last_output
+            .and_then(|mut input| photon_core::nbt::read_any_nbt(&mut input).ok().flatten())
+            .filter(|_| track_output)
+            .and_then(|value| Component::from_nbt(&value));
+        Self {
+            command,
+            track_output,
+            last_output,
+            automatic: false,
+        }
+    }
+
     /// `CommandBlockEntity.loadAdditional` for a tag.
     pub fn from_tag(tag: Option<&[u8]>) -> Self {
         let fields =
@@ -102,6 +117,22 @@ mod tests {
         assert_eq!(
             CommandBlockContents::from_tag(None),
             CommandBlockContents::default()
+        );
+    }
+
+    #[test]
+    fn a_minecart_keeps_its_output_only_while_tracked() {
+        // A network string tag: type 8, a length and the bytes.
+        let output = [8u8, 0, 2, b'h', b'i'];
+        let tracked = CommandBlockContents::from_minecart("say".into(), Some(&output), true);
+        assert_eq!(tracked.command, "say");
+        assert_eq!(tracked.last_output, Some(Component::literal("hi")));
+        let untracked = CommandBlockContents::from_minecart("say".into(), Some(&output), false);
+        assert!(!untracked.track_output && untracked.last_output.is_none());
+        assert!(
+            CommandBlockContents::from_minecart(String::new(), None, true)
+                .last_output
+                .is_none()
         );
     }
 }

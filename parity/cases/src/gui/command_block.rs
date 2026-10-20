@@ -14,6 +14,8 @@ struct Case {
     track_output: bool,
     command: &'static str,
     last_output: Option<&'static str>,
+    /// The entity id of the command block minecart whose screen it is.
+    minecart: Option<i64>,
     size: (i64, i64),
     mouse: (i64, i64),
     steps: Vec<Value>,
@@ -29,6 +31,7 @@ fn case(label: &str) -> Case {
         track_output: true,
         command: "say hi",
         last_output: Some("Hello"),
+        minecart: None,
         size: (427, 240),
         mouse: (0, 0),
         steps: vec![],
@@ -38,13 +41,18 @@ fn case(label: &str) -> Case {
 
 impl Case {
     fn row(self) -> Value {
-        json!({
+        let mut row = json!({
             "label": self.label, "mode": self.mode, "conditional": self.conditional,
             "automatic": self.automatic, "track_output": self.track_output,
             "command": self.command, "last_output": self.last_output,
             "width": self.size.0, "height": self.size.1, "mouse": [self.mouse.0, self.mouse.1],
             "steps": self.steps, "ms": self.ms,
-        })
+        });
+        if let Some(entity) = self.minecart {
+            row["minecart"] = json!(true);
+            row["entity_id"] = json!(entity);
+        }
+        row
     }
 }
 
@@ -78,6 +86,9 @@ fn resize(width: i64, height: i64) -> Value {
 
 /// The buttons of the 427 by 240 screen.
 const MODE: (i64, i64) = (100, 175);
+/// The output button and the last output's box of the minecart's screen, which sit lower.
+const MINECART_OUTPUT: (i64, i64) = (350, 160);
+const MINECART_PREVIOUS: (i64, i64) = (200, 160);
 const CONDITIONAL: (i64, i64) = (210, 175);
 const AUTOMATIC: (i64, i64) = (310, 175);
 const OUTPUT: (i64, i64) = (350, 145);
@@ -240,11 +251,69 @@ fn resized() -> Vec<Case> {
     ]
 }
 
+fn minecart() -> Vec<Case> {
+    let cart = |label: &str, steps: Vec<Value>| Case { minecart: Some(7), steps, ..case(label) };
+    let at = |label: &str, mouse: (i64, i64)| Case { mouse, ..cart(label, vec![]) };
+    let with = |label: &str, change: fn(Case) -> Case| change(cart(label, vec![]));
+    let tabs = |count: usize| vec![key("tab"); count];
+    vec![
+        cart("opened", vec![]),
+        with("no output", |case| Case { last_output: None, ..case }),
+        with("untracked", |case| Case { track_output: false, ..case }),
+        with("empty", |case| Case { command: "", ..case }),
+        with("long", |case| Case { command: "teleport @a ~ ~ ~ and some further words", ..case }),
+        with("small", |case| Case { size: (320, 240), ..case }),
+        with("wide", |case| Case { size: (640, 360), ..case }),
+        with("tall", |case| Case { size: (427, 480), ..case }),
+        cart("press output", vec![click(MINECART_OUTPUT.0, MINECART_OUTPUT.1)]),
+        cart("press output twice", vec![click(MINECART_OUTPUT.0, MINECART_OUTPUT.1); 2]),
+        cart("wheel output", vec![wheel(MINECART_OUTPUT.0, MINECART_OUTPUT.1, -1)]),
+        cart("press where mode was", vec![click(MODE.0, MODE.1)]),
+        cart("wheel where mode was", vec![wheel(MODE.0, MODE.1, -1)]),
+        at("hover output", MINECART_OUTPUT),
+        at("hover done", DONE),
+        at("hover cancel", CANCEL),
+        cart("done", vec![click(DONE.0, DONE.1)]),
+        cart("cancel", vec![click(CANCEL.0, CANCEL.1)]),
+        cart("escape", vec![key("escape")]),
+        cart("enter", vec![key("enter")]),
+        cart("done untracked", vec![click(MINECART_OUTPUT.0, MINECART_OUTPUT.1), click(DONE.0, DONE.1)]),
+        cart("done typed", vec![text(" now"), click(DONE.0, DONE.1)]),
+        cart("enter replaced", vec![key("ctrl+a"), text("tp @s 0 0 0"), key("enter")]),
+        Case { minecart: Some(300), steps: vec![click(DONE.0, DONE.1)], ..case("done another cart") },
+        cart("type", vec![text(" there")]),
+        cart("type slash", vec![key("ctrl+a"), text("/say hi")]),
+        cart("click in command", vec![click(80, COMMAND.1), text("Z")]),
+        cart("click previous", vec![click(MINECART_PREVIOUS.0, MINECART_PREVIOUS.1), text("Z")]),
+        cart("previous select", vec![click(MINECART_PREVIOUS.0, MINECART_PREVIOUS.1), key("ctrl+a")]),
+        cart("click between", vec![click(200, 100)]),
+        cart("tab 1", tabs(1)),
+        cart("tab 2", tabs(2)),
+        cart("tab 3", tabs(3)),
+        cart("tab 4", tabs(4)),
+        cart("tab round", tabs(5)),
+        cart("tab back", vec![key("shift+tab")]),
+        cart("tab back twice", vec![key("shift+tab"), key("shift+tab")]),
+        cart("tab to output space", vec![key("tab"), key("tab"), key("space")]),
+        cart("tab to done enter", vec![key("tab"), key("tab"), key("tab"), key("enter")]),
+        cart("arrow down", vec![key("down")]),
+        cart("arrow down from previous", vec![key("tab"), key("down")]),
+        cart("arrow right from output", vec![key("tab"), key("tab"), key("right")]),
+        cart("arrow down from output", vec![key("tab"), key("tab"), key("down")]),
+        cart("arrow up from done", vec![key("shift+tab"), key("shift+tab"), key("up")]),
+        cart("arrow left from cancel", vec![key("shift+tab"), key("left")]),
+        cart("resize", vec![resize(640, 360)]),
+        cart("resize keeps text", vec![text(" more"), resize(640, 360)]),
+        cart("resize keeps output", vec![click(MINECART_OUTPUT.0, MINECART_OUTPUT.1), resize(500, 300)]),
+    ]
+}
+
 /// The command block's screen: the box and the buttons asleep and woken by the block's data, each
 /// mode, the condition and the trigger, the output shown or a dash, the buttons pressed, scrolled
 /// and tabbed to, Done, Cancel, Escape and Enter with what they send, the box typed into,
-/// and the screen made again at another size.
+/// and the screen made again at another size; then the command block minecart's screen, the same
+/// without the three extra buttons, a little lower and awake from the start.
 pub fn command_block_screen() -> Value {
-    let rows = [opened(), pressed(), closing(), typing(), focus(), resized()].concat();
+    let rows = [opened(), pressed(), closing(), typing(), focus(), resized(), minecart()].concat();
     gui("command-block-screen", "command_block_screen", rows.into_iter().map(Case::row).collect())
 }

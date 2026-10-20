@@ -6,9 +6,12 @@
 //! The screen opens with the defaults of a block it knows nothing of and its buttons asleep; the
 //! block's own values arrive with the server's data ([`CommandBlockScreen::update_gui`]).
 
+mod buttons;
 mod input;
 #[cfg(test)]
 mod tests;
+
+use buttons::{Buttons, Extra, Values};
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -46,7 +49,7 @@ enum Focus {
     Cancel,
 }
 
-const ORDER: [Focus; 8] = [
+const BLOCK_ORDER: [Focus; 8] = [
     Focus::Command,
     Focus::Previous,
     Focus::Output,
@@ -56,6 +59,40 @@ const ORDER: [Focus; 8] = [
     Focus::Done,
     Focus::Cancel,
 ];
+
+const MINECART_ORDER: [Focus; 5] = [
+    Focus::Command,
+    Focus::Previous,
+    Focus::Output,
+    Focus::Done,
+    Focus::Cancel,
+];
+
+/// Which screen this is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandBlockKind {
+    /// `CommandBlockEditScreen`.
+    Block,
+    /// `MinecartCommandBlockEditScreen`.
+    Minecart,
+}
+
+impl CommandBlockKind {
+    fn order(self) -> &'static [Focus] {
+        match self {
+            Self::Block => &BLOCK_ORDER,
+            Self::Minecart => &MINECART_ORDER,
+        }
+    }
+
+    /// `getPreviousY`.
+    fn previous_y(self) -> i32 {
+        match self {
+            Self::Block => 135,
+            Self::Minecart => 150,
+        }
+    }
+}
 
 /// What the player's last action did to the screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,156 +108,21 @@ pub enum CommandBlockAction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandBlockEdit {
     pub command: String,
-    pub mode: CommandBlockMode,
     pub track_output: bool,
+    /// The block's own settings; a minecart has none.
+    pub block: Option<BlockSettings>,
+}
+
+/// What a command block's three extra buttons hold.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlockSettings {
+    pub mode: CommandBlockMode,
     pub conditional: bool,
     pub automatic: bool,
 }
 
-/// The buttons, in the order they were added.
-struct Buttons {
-    arena: Arena,
-    output: CycleButton<bool>,
-    mode: CycleButton<CommandBlockMode>,
-    conditional: CycleButton<bool>,
-    automatic: CycleButton<bool>,
-    done: Widget,
-    cancel: Widget,
-}
-
-/// The values the buttons start from.
-#[derive(Clone, Copy)]
-struct Values {
-    track_output: bool,
-    mode: CommandBlockMode,
-    conditional: bool,
-    automatic: bool,
-}
-
-fn mode_text(mode: &CommandBlockMode) -> Component {
-    Component::translatable(match mode {
-        CommandBlockMode::Sequence => "advMode.mode.sequence",
-        CommandBlockMode::Auto => "advMode.mode.auto",
-        CommandBlockMode::Redstone => "advMode.mode.redstone",
-    })
-}
-
-fn output_text(tracked: &bool) -> Component {
-    Component::literal(if *tracked { "O" } else { "X" })
-}
-
-fn conditional_text(conditional: &bool) -> Component {
-    Component::translatable(if *conditional {
-        "advMode.mode.conditional"
-    } else {
-        "advMode.mode.unconditional"
-    })
-}
-
-fn automatic_text(automatic: &bool) -> Component {
-    Component::translatable(if *automatic {
-        "advMode.mode.autoexec.bat"
-    } else {
-        "advMode.mode.redstoneTriggered"
-    })
-}
-
-/// The rectangles of the six buttons, in the order output, mode, conditional, automatic, Done
-/// and Cancel, for a screen `size` big.
-fn arena_of((width, height): (i32, i32)) -> (Arena, [usize; 6]) {
-    let mut arena = Arena::default();
-    let mut place = |x: i32, y: i32, w: i32| {
-        let rect = arena.add(w, 20);
-        arena.0[rect].x = x;
-        arena.0[rect].y = y;
-        rect
-    };
-    let rects = [
-        place(width / 2 + 150 - 20, 135, 20),
-        place(width / 2 - 50 - 100 - 4, 165, 100),
-        place(width / 2 - 50, 165, 100),
-        place(width / 2 + 50 + 4, 165, 100),
-        place(width / 2 - 4 - 150, height / 4 + 120 + 12, 150),
-        place(width / 2 + 4, height / 4 + 120 + 12, 150),
-    ];
-    (arena, rects)
-}
-
-fn button(rect: usize, active: bool, label: Vec<photon_game::text::Run>) -> Widget {
-    Widget {
-        rect,
-        active,
-        kind: Kind::Button { label },
-    }
-}
-
-impl Buttons {
-    /// `init` and `addExtraControls`: the buttons for a screen `size` big.
-    fn new(lang: &Lang, (width, height): (i32, i32), values: Values, active: bool) -> Self {
-        let (arena, [output, mode, conditional, automatic, done, cancel]) =
-            arena_of((width, height));
-        let name = |key: &str| Component::translatable(key);
-        let runs = |key: &str| lang.runs(&name(key), &Style::default());
-        let mut buttons = Self {
-            output: CycleButton::new(
-                lang,
-                output,
-                name("advMode.trackOutput"),
-                vec![true, false],
-                output_text,
-                &values.track_output,
-            )
-            .only_value(lang),
-            mode: CycleButton::new(
-                lang,
-                mode,
-                name("advMode.mode"),
-                vec![
-                    CommandBlockMode::Sequence,
-                    CommandBlockMode::Auto,
-                    CommandBlockMode::Redstone,
-                ],
-                mode_text,
-                &values.mode,
-            )
-            .only_value(lang),
-            conditional: CycleButton::new(
-                lang,
-                conditional,
-                name("advMode.type"),
-                vec![true, false],
-                conditional_text,
-                &values.conditional,
-            )
-            .only_value(lang),
-            automatic: CycleButton::new(
-                lang,
-                automatic,
-                name("advMode.triggering"),
-                vec![true, false],
-                automatic_text,
-                &values.automatic,
-            )
-            .only_value(lang),
-            done: button(done, active, runs("gui.done")),
-            cancel: button(cancel, true, runs("gui.cancel")),
-            arena,
-        };
-        buttons.enable(active);
-        buttons
-    }
-
-    /// `enableControls`.
-    fn enable(&mut self, active: bool) {
-        self.done.active = active;
-        self.output.set_active(active);
-        self.mode.set_active(active);
-        self.conditional.set_active(active);
-        self.automatic.set_active(active);
-    }
-}
-
 pub struct CommandBlockScreen {
+    kind: CommandBlockKind,
     size: (i32, i32),
     command: EditBox,
     previous: EditBox,
@@ -237,22 +139,45 @@ impl CommandBlockScreen {
     /// `new CommandBlockEditScreen` and `init`: the screen for a block whose client-side contents
     /// are `contents`, in a screen `size` big. Its buttons sleep until the data arrives.
     pub fn new(
+        fonts: (&Arc<Font>, &Lang),
+        contents: &CommandBlockContents,
+        size: (i32, i32),
+    ) -> Self {
+        Self::open(CommandBlockKind::Block, fonts, contents, size)
+    }
+
+    /// `new MinecartCommandBlockEditScreen` and `init`: the screen for a command block minecart
+    /// whose client-side contents are `contents`. Nothing sleeps, and the box is filled at once.
+    pub fn minecart(
+        fonts: (&Arc<Font>, &Lang),
+        contents: &CommandBlockContents,
+        size: (i32, i32),
+    ) -> Self {
+        Self::open(CommandBlockKind::Minecart, fonts, contents, size)
+    }
+
+    fn open(
+        kind: CommandBlockKind,
         (font, lang): (&Arc<Font>, &Lang),
         contents: &CommandBlockContents,
         size: (i32, i32),
     ) -> Self {
         let values = Values {
             track_output: contents.track_output,
-            mode: CommandBlockMode::Redstone,
-            conditional: false,
-            automatic: false,
+            block: BlockSettings {
+                mode: CommandBlockMode::Redstone,
+                conditional: false,
+                automatic: false,
+            },
         };
         let last_output = contents
             .last_output
             .as_ref()
             .map(|output| lang.plain(output))
             .unwrap_or_default();
+        let awake = kind == CommandBlockKind::Minecart;
         let mut screen = Self {
+            kind,
             size,
             command: EditBox::new(292, MAX_LENGTH),
             previous: EditBox::new(268, MAX_LENGTH).uneditable(),
@@ -261,7 +186,7 @@ impl CommandBlockScreen {
                 font.clone(),
                 place_of(size),
             ),
-            buttons: Buttons::new(lang, size, values, false),
+            buttons: Buttons::new(lang, size, (kind, values), awake),
             last_output,
             focus: Focus::Command,
             focused_at: Instant::now(),
@@ -269,6 +194,10 @@ impl CommandBlockScreen {
         };
         screen.update_previous_output(values.track_output);
         screen.suggest.edited(&mut screen.command);
+        if awake {
+            screen.command.set_value(&contents.command, font);
+            screen.suggest.edited(&mut screen.command);
+        }
         screen
     }
 
@@ -284,7 +213,7 @@ impl CommandBlockScreen {
         self.size = size;
         self.command = EditBox::new(292, MAX_LENGTH);
         self.suggest.set_place(place_of(size));
-        self.buttons = Buttons::new(lang, size, values, true);
+        self.buttons = Buttons::new(lang, size, (self.kind, values), true);
         self.focus = Focus::Command;
         self.focused_at = Instant::now();
         self.command.set_value(&text, &self.font);
@@ -293,12 +222,29 @@ impl CommandBlockScreen {
     }
 
     fn values(&self) -> Values {
+        let buttons = &self.buttons;
+        let block = buttons.extra.as_ref().map_or(
+            BlockSettings {
+                mode: CommandBlockMode::Redstone,
+                conditional: false,
+                automatic: false,
+            },
+            |extra| BlockSettings {
+                mode: *extra.mode.value(),
+                conditional: *extra.conditional.value(),
+                automatic: *extra.automatic.value(),
+            },
+        );
         Values {
-            track_output: *self.buttons.output.value(),
-            mode: *self.buttons.mode.value(),
-            conditional: *self.buttons.conditional.value(),
-            automatic: *self.buttons.automatic.value(),
+            track_output: *buttons.output.value(),
+            block,
         }
+    }
+
+    /// Whether the output is tracked, as the button holds it (the client's copy of the block's
+    /// `trackOutput`, which the button writes at once).
+    pub fn track_output(&self) -> bool {
+        *self.buttons.output.value()
     }
 
     /// `updateGui`: the block's data arrived. The box and the buttons take it, and the controls
@@ -318,9 +264,11 @@ impl CommandBlockScreen {
             .unwrap_or_default();
         let buttons = &mut self.buttons;
         buttons.output.set_value(lang, contents.track_output);
-        buttons.mode.set_value(lang, mode);
-        buttons.conditional.set_value(lang, conditional);
-        buttons.automatic.set_value(lang, contents.automatic);
+        if let Some(extra) = &mut buttons.extra {
+            extra.mode.set_value(lang, mode);
+            extra.conditional.set_value(lang, conditional);
+            extra.automatic.set_value(lang, contents.automatic);
+        }
         self.update_previous_output(contents.track_output);
         self.buttons.enable(true);
     }
@@ -336,20 +284,24 @@ impl CommandBlockScreen {
         let values = self.values();
         CommandBlockEdit {
             command: self.command.value(),
-            mode: values.mode,
             track_output: values.track_output,
-            conditional: values.conditional,
-            automatic: values.automatic,
+            block: (self.kind == CommandBlockKind::Block).then_some(values.block),
         }
     }
 
     /// The command tree and names the suggestions draw on.
     pub fn set_suggestion_sources(&mut self, sources: SuggestionSources) {
+        // The reference has the dispatcher when the box is filled; here it is handed over after
+        // the screen is made, so the text it already holds is read again.
+        let first = !self.suggest.has_commands() && sources.commands.is_some();
         self.suggest.set_commands(sources.commands);
         self.suggest.set_selectors(sources.selectors);
         self.suggest.set_names(sources.players, sources.teams);
         self.suggest
             .set_selected_entities(sources.selected_entities);
+        if first {
+            self.suggest.edited(&mut self.command);
+        }
     }
 
     /// The request the last edit asked the server for, taken.
@@ -361,6 +313,34 @@ impl CommandBlockScreen {
     pub fn suggested(&mut self, id: i32, start: usize, length: usize, matches: Vec<String>) {
         self.suggest
             .suggested(&mut self.command, (id, start, length), matches);
+    }
+
+    /// The last output's label and box, when there is an output to show.
+    fn draw_previous(&self, (frame, atlas, font): (&mut GuiFrame, &GuiAtlas, &Font), lang: &Lang) {
+        if self.previous.is_empty() {
+            return;
+        }
+        let (width, _) = self.size;
+        let previous_y = self.kind.previous_y();
+        let label = lang.runs(
+            &Component::translatable("advMode.previousOutput"),
+            &Style::default(),
+        );
+        frame.styled_text(
+            atlas,
+            font,
+            &label,
+            width / 2 - 149,
+            previous_y - 10,
+            LABEL_GREY,
+            true,
+        );
+        self.draw_box(
+            (frame, atlas, font),
+            (width / 2 - 150, previous_y, 276),
+            (&self.previous, self.focus == Focus::Previous),
+            None,
+        );
     }
 
     /// `extractRenderState`: the buttons over the dimmed game, the title and the labels, the boxes
@@ -404,24 +384,7 @@ impl CommandBlockScreen {
             (&self.command, self.focus == Focus::Command),
             Some(&format),
         );
-        if !self.previous.is_empty() {
-            let at = (width / 2 - 150, 135, 276);
-            frame.styled_text(
-                atlas,
-                font,
-                &runs("advMode.previousOutput"),
-                at.0 + 1,
-                125,
-                LABEL_GREY,
-                true,
-            );
-            self.draw_box(
-                (frame, atlas, font),
-                at,
-                (&self.previous, self.focus == Focus::Previous),
-                None,
-            );
-        }
+        self.draw_previous((frame, atlas, font), lang);
         self.suggest
             .draw(frame, atlas, mouse, (&mut self.command, parsed.as_ref()));
     }
@@ -430,9 +393,11 @@ impl CommandBlockScreen {
         let buttons = &self.buttons;
         let arena = &buttons.arena;
         buttons.output.draw(frame, atlas, font, arena, mouse);
-        buttons.mode.draw(frame, atlas, font, arena, mouse);
-        buttons.conditional.draw(frame, atlas, font, arena, mouse);
-        buttons.automatic.draw(frame, atlas, font, arena, mouse);
+        if let Some(extra) = &buttons.extra {
+            extra.mode.draw(frame, atlas, font, arena, mouse);
+            extra.conditional.draw(frame, atlas, font, arena, mouse);
+            extra.automatic.draw(frame, atlas, font, arena, mouse);
+        }
         for (widget, focus) in [
             (&buttons.done, Focus::Done),
             (&buttons.cancel, Focus::Cancel),
@@ -466,11 +431,21 @@ impl CommandBlockScreen {
         );
     }
 
-    /// The widgets' rectangles in the order they were added, and whether each can take the focus.
+    /// What can take the focus, in the order Tab goes through it: the widgets' rectangles in the
+    /// order they were added, and whether each can.
     fn candidates(&self) -> Vec<Candidate> {
+        self.kind
+            .order()
+            .iter()
+            .map(|focus| self.candidate_of(*focus))
+            .collect()
+    }
+
+    fn candidate_of(&self, focus: Focus) -> Candidate {
+        let buttons = &self.buttons;
         let width = self.size.0;
         let button = |rect: usize, active: bool| {
-            let rect = self.buttons.arena.0[rect];
+            let rect = buttons.arena.0[rect];
             Candidate {
                 rectangle: Rectangle {
                     x: rect.x,
@@ -490,17 +465,24 @@ impl CommandBlockScreen {
             },
             focusable: true,
         };
-        let buttons = &self.buttons;
-        vec![
-            boxed(width / 2 - 150, 50, 300),
-            boxed(width / 2 - 150, 135, 276),
-            button(buttons.output.rect(), buttons.output.is_active()),
-            button(buttons.mode.rect(), buttons.mode.is_active()),
-            button(buttons.conditional.rect(), buttons.conditional.is_active()),
-            button(buttons.automatic.rect(), buttons.automatic.is_active()),
-            button(buttons.done.rect, buttons.done.active),
-            button(buttons.cancel.rect, true),
-        ]
+        let cycle = |select: fn(&Extra) -> (usize, bool)| {
+            let (rect, active) = buttons.extra.as_ref().map_or((0, false), select);
+            button(rect, active)
+        };
+        match focus {
+            Focus::Command => boxed(width / 2 - 150, 50, 300),
+            Focus::Previous => boxed(width / 2 - 150, self.kind.previous_y(), 276),
+            Focus::Output => button(buttons.output.rect(), buttons.output.is_active()),
+            Focus::Mode => cycle(|extra| (extra.mode.rect(), extra.mode.is_active())),
+            Focus::Conditional => {
+                cycle(|extra| (extra.conditional.rect(), extra.conditional.is_active()))
+            }
+            Focus::Automatic => {
+                cycle(|extra| (extra.automatic.rect(), extra.automatic.is_active()))
+            }
+            Focus::Done => button(buttons.done.rect, buttons.done.active),
+            Focus::Cancel => button(buttons.cancel.rect, true),
+        }
     }
 }
 

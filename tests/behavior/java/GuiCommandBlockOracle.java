@@ -68,36 +68,14 @@ class GuiCommandBlockOracle extends GuiSignOracle {
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
-            var block = switch (row.get("mode").getAsString()) {
-                case "sequence" -> net.minecraft.world.level.block.Blocks.CHAIN_COMMAND_BLOCK;
-                case "auto" -> net.minecraft.world.level.block.Blocks.REPEATING_COMMAND_BLOCK;
-                default -> net.minecraft.world.level.block.Blocks.COMMAND_BLOCK;
-            };
-            var state = block.defaultBlockState().setValue(
-                net.minecraft.world.level.block.CommandBlock.CONDITIONAL, row.get("conditional").getAsBoolean());
-            // A block in no level: its condition is read from the state it was given.
-            boolean conditional = row.get("conditional").getAsBoolean();
-            var entity = new net.minecraft.world.level.block.entity.CommandBlockEntity(
-                net.minecraft.core.BlockPos.ZERO, state) {
-                @Override
-                public boolean isConditional() {
-                    return conditional;
-                }
-            };
-            var base = entity.getCommandBlock();
-            base.setCommand(row.get("command").getAsString());
-            base.setTrackOutput(row.get("track_output").getAsBoolean());
-            if (row.has("last_output") && !row.get("last_output").isJsonNull()) {
-                base.setLastOutput(net.minecraft.network.chat.Component.literal(row.get("last_output").getAsString()));
-            }
-            entity.setAutomatic(row.get("automatic").getAsBoolean());
-            var edit = new net.minecraft.client.gui.screens.inventory.CommandBlockEditScreen(entity);
+            net.minecraft.client.gui.screens.inventory.AbstractCommandBlockEditScreen edit = row.has("minecart")
+                ? minecartScreen(row) : blockScreen(row);
             edit.init(width, height);
             var steps = new JsonArray();
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
                 switch (step.get("do").getAsString()) {
-                    case "update" -> edit.updateGui();
+                    case "update" -> ((net.minecraft.client.gui.screens.inventory.CommandBlockEditScreen) edit).updateGui();
                     case "resize" -> edit.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
                     case "wheel" -> edit.mouseScrolled(step.get("x").getAsDouble(), step.get("y").getAsDouble(),
                         0.0, step.get("amount").getAsDouble());
@@ -123,10 +101,14 @@ class GuiCommandBlockOracle extends GuiSignOracle {
             for (var packet : sent.packets) {
                 var json = new JsonObject();
                 json.addProperty("command", (String) get(packet, "command"));
-                json.addProperty("mode", ((Enum<?>) get(packet, "mode")).name().toLowerCase());
                 json.addProperty("track_output", (Boolean) get(packet, "trackOutput"));
-                json.addProperty("conditional", (Boolean) get(packet, "conditional"));
-                json.addProperty("automatic", (Boolean) get(packet, "automatic"));
+                if (row.has("minecart")) {
+                    json.addProperty("entity", (Integer) get(packet, "entity"));
+                } else {
+                    json.addProperty("mode", ((Enum<?>) get(packet, "mode")).name().toLowerCase());
+                    json.addProperty("conditional", (Boolean) get(packet, "conditional"));
+                    json.addProperty("automatic", (Boolean) get(packet, "automatic"));
+                }
                 packets.add(json);
             }
             out.add("packets", packets);
@@ -135,5 +117,63 @@ class GuiCommandBlockOracle extends GuiSignOracle {
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** A command block of a mode and condition in no level, with the contents a row gives it. */
+    static net.minecraft.client.gui.screens.inventory.CommandBlockEditScreen blockScreen(JsonObject row) {
+        var block = switch (row.get("mode").getAsString()) {
+            case "sequence" -> net.minecraft.world.level.block.Blocks.CHAIN_COMMAND_BLOCK;
+            case "auto" -> net.minecraft.world.level.block.Blocks.REPEATING_COMMAND_BLOCK;
+            default -> net.minecraft.world.level.block.Blocks.COMMAND_BLOCK;
+        };
+        var state = block.defaultBlockState().setValue(
+            net.minecraft.world.level.block.CommandBlock.CONDITIONAL, row.get("conditional").getAsBoolean());
+        // A block in no level: its condition is read from the state it was given.
+        boolean conditional = row.get("conditional").getAsBoolean();
+        var entity = new net.minecraft.world.level.block.entity.CommandBlockEntity(
+            net.minecraft.core.BlockPos.ZERO, state) {
+            @Override
+            public boolean isConditional() {
+                return conditional;
+            }
+        };
+        var base = entity.getCommandBlock();
+        base.setCommand(row.get("command").getAsString());
+        base.setTrackOutput(row.get("track_output").getAsBoolean());
+        if (row.has("last_output") && !row.get("last_output").isJsonNull()) {
+            base.setLastOutput(net.minecraft.network.chat.Component.literal(row.get("last_output").getAsString()));
+        }
+        entity.setAutomatic(row.get("automatic").getAsBoolean());
+        return new net.minecraft.client.gui.screens.inventory.CommandBlockEditScreen(entity);
+    }
+
+    /** A command block minecart in no level: its base is the game's own, made as the game makes it. */
+    static net.minecraft.client.gui.screens.inventory.MinecartCommandBlockEditScreen minecartScreen(JsonObject row)
+            throws Exception {
+        var minecart = (net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock)
+            unsafe.allocateInstance(net.minecraft.world.entity.vehicle.minecart.MinecartCommandBlock.class);
+        set(minecart, "id", row.get("entity_id").getAsInt());
+        var base = new net.minecraft.world.level.BaseCommandBlock() {
+            @Override
+            public void onUpdated(net.minecraft.server.level.ServerLevel level) {}
+
+            @Override
+            public net.minecraft.commands.CommandSourceStack createCommandSourceStack(
+                    net.minecraft.server.level.ServerLevel level, net.minecraft.commands.CommandSource source) {
+                return null;
+            }
+
+            @Override
+            public boolean isValid() {
+                return true;
+            }
+        };
+        set(minecart, "commandBlock", base);
+        base.setCommand(row.get("command").getAsString());
+        base.setTrackOutput(row.get("track_output").getAsBoolean());
+        if (row.has("last_output") && !row.get("last_output").isJsonNull()) {
+            base.setLastOutput(net.minecraft.network.chat.Component.literal(row.get("last_output").getAsString()));
+        }
+        return new net.minecraft.client.gui.screens.inventory.MinecartCommandBlockEditScreen(minecart);
     }
 }

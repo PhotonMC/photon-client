@@ -47,3 +47,48 @@ impl ClientWorld {
         })
     }
 }
+
+/// `AbstractMinecart`'s data ids, then `MinecartCommandBlock`'s: the command and the last output.
+const MINECART_COMMAND_DATA_ID: u8 = 13;
+const MINECART_LAST_OUTPUT_DATA_ID: u8 = 14;
+/// The serializers of a string and of a component.
+const STRING_SERIALIZER: i32 = 4;
+const COMPONENT_SERIALIZER: i32 = 5;
+
+/// A command block minecart as the client has it (`MinecartCommandBlock.getCommandBlock`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommandMinecartView<'a> {
+    /// `BaseCommandBlock.getCommand`, from the synched data.
+    pub command: String,
+    /// `getLastOutput` as the network tag the data carries, from its first byte on.
+    pub last_output: Option<&'a [u8]>,
+}
+
+impl ClientWorld {
+    /// The command block minecart with an id, or `None` when no such entity is there.
+    pub fn command_minecart_view(&self, entity_id: EntityId) -> Option<CommandMinecartView<'_>> {
+        let entity = self.entities.at(entity_id)?;
+        if photon_data::entity_type::name(entity.type_id)
+            != Some("minecraft:command_block_minecart")
+        {
+            return None;
+        }
+        let metadata = entity.metadata().unwrap_or_default();
+        let command = match find_metadata_field(metadata, MINECART_COMMAND_DATA_ID) {
+            Some((STRING_SERIALIZER, mut input)) => {
+                let length =
+                    usize::try_from(photon_core::wire::read_varint(&mut input).ok()?).ok()?;
+                String::from_utf8_lossy(input.get(..length)?).into_owned()
+            }
+            _ => String::new(),
+        };
+        let last_output = match find_metadata_field(metadata, MINECART_LAST_OUTPUT_DATA_ID) {
+            Some((COMPONENT_SERIALIZER, input)) => Some(input),
+            _ => None,
+        };
+        Some(CommandMinecartView {
+            command,
+            last_output,
+        })
+    }
+}

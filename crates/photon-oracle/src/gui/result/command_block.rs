@@ -56,6 +56,8 @@ fn no_commands() -> Result<std::sync::Arc<photon_game::commands::CommandTree>, S
 struct Outcome {
     closed: bool,
     packets: Vec<Value>,
+    /// The minecart whose screen it is, if it is one's.
+    minecart: Option<i64>,
 }
 
 impl Outcome {
@@ -65,15 +67,23 @@ impl Outcome {
             CommandBlockAction::Close => self.closed = true,
             CommandBlockAction::Done(edit) => {
                 self.closed = true;
-                self.packets.push(json!({
-                    "command": edit.command,
-                    "mode": format!("{:?}", edit.mode).to_lowercase(),
-                    "track_output": edit.track_output,
-                    "conditional": edit.conditional,
-                    "automatic": edit.automatic,
-                }));
+                self.packets.push(self.packet(&edit));
             }
         }
+    }
+
+    /// `ServerboundSetCommandBlockPacket` or `ServerboundSetCommandMinecartPacket`.
+    fn packet(&self, edit: &photon_gui::screen::command_block::CommandBlockEdit) -> Value {
+        let mut packet = json!({"command": edit.command, "track_output": edit.track_output});
+        if let Some(entity) = self.minecart {
+            packet["entity"] = json!(entity);
+        }
+        if let Some(block) = &edit.block {
+            packet["mode"] = json!(format!("{:?}", block.mode).to_lowercase());
+            packet["conditional"] = json!(block.conditional);
+            packet["automatic"] = json!(block.automatic);
+        }
+        packet
     }
 }
 
@@ -154,17 +164,19 @@ pub(super) fn command_block_screen_case(
     let int = |value: &Value| value.as_i64().unwrap_or(0) as i32;
     let block = block_of(row);
     let commands = no_commands()?;
-    let mut screen = CommandBlockScreen::new(
-        (&font, &lang),
-        &block.contents,
-        (int(&row["width"]), int(&row["height"])),
-    );
+    let size = (int(&row["width"]), int(&row["height"]));
+    let mut outcome = Outcome::default();
+    let mut screen = if row["minecart"].as_bool() == Some(true) {
+        outcome.minecart = row["entity_id"].as_i64();
+        CommandBlockScreen::minecart((&font, &lang), &block.contents, size)
+    } else {
+        CommandBlockScreen::new((&font, &lang), &block.contents, size)
+    };
     screen.set_suggestion_sources(SuggestionSources {
         commands: Some(commands.clone()),
         selectors: true,
         ..SuggestionSources::default()
     });
-    let mut outcome = Outcome::default();
     for each in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         step(&mut screen, (&lang, &block), each, &mut outcome)?;
     }

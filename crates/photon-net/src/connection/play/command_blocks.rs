@@ -1,4 +1,6 @@
 use super::*;
+use photon_core::ids::EntityId;
+use photon_game::command_block::CommandBlockContents;
 use photon_world::CommandBlockMode;
 
 /// What the command block's screen sends back (`ServerboundSetCommandBlockPacket`).
@@ -30,6 +32,55 @@ impl PlaySession {
             );
             Ok(())
         })
+    }
+}
+
+impl PlaySession {
+    /// `ServerboundSetCommandMinecartPacket`: the entity id, the command and whether the output is
+    /// tracked.
+    pub fn set_command_minecart(
+        &mut self,
+        entity_id: EntityId,
+        command: &str,
+        track_output: bool,
+    ) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_SET_COMMAND_MINECART_PACKET_ID, |output| {
+            wire::write_varint(entity_id.0, output);
+            wire::write_varint(command.len() as i32, output);
+            output.extend_from_slice(command.as_bytes());
+            output.push(u8::from(track_output));
+            Ok(())
+        })
+    }
+
+    /// The command block minecart the player used, whose screen is to open
+    /// (`Player.openMinecartCommandBlock`).
+    pub fn take_opened_command_minecart(&mut self) -> Option<EntityId> {
+        self.local.game_mode_state.take_opened_command_minecart()
+    }
+
+    /// `BaseCommandBlock.setTrackOutput` of a minecart: what its screen last left.
+    pub fn set_minecart_track_output(&mut self, entity_id: EntityId, track_output: bool) {
+        self.menus
+            .minecart_track_output
+            .insert(entity_id.0, track_output);
+    }
+
+    /// The command block minecart with an id, as its synched data and the client's copy of its
+    /// output tracking have it, or `None` once it is gone.
+    pub fn command_minecart(&self, entity_id: EntityId) -> Option<CommandBlockContents> {
+        let view = self.world.command_minecart_view(entity_id)?;
+        let track = self
+            .menus
+            .minecart_track_output
+            .get(&entity_id.0)
+            .copied()
+            .unwrap_or(true);
+        Some(CommandBlockContents::from_minecart(
+            view.command,
+            view.last_output,
+            track,
+        ))
     }
 }
 
