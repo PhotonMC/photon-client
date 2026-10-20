@@ -11,14 +11,13 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         use glfw::{Action, Key, WindowEvent};
+        if self.debug_world_key(&event, (session, surface, assets))? {
+            return Ok(());
+        }
         let spectating = session.player().is_some_and(|player| player.spectating());
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                 self.open_pause(surface, assets);
-            }
-            // `key.debug.switchGameMode` with the debug modifier held.
-            WindowEvent::Key(Key::F4, _, Action::Press, _) if self.debug.down => {
-                self.debug_switch_game_mode(session, surface, assets);
             }
             WindowEvent::Key(key, scancode, action, _) => {
                 let input = keybinds::input_key(key, scancode);

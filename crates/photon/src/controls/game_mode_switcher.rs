@@ -2,7 +2,7 @@ use super::*;
 use photon_gui::screen::game_mode::GameModeSwitcherScreen;
 
 /// `debug.prefix` and a message: `KeyboardHandler.debugFeedbackComponent`.
-fn debug_feedback(key: &str) -> photon_game::text::Component {
+pub(super) fn debug_feedback(key: &str) -> photon_game::text::Component {
     use photon_game::text::{Component, Style};
     let prefix = Component::translatable("debug.prefix").with_style(&Style {
         colour: photon_game::text::named_colour("yellow"),
@@ -25,13 +25,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) {
         if !session.may_change_game_mode() {
-            self.chat_log.add_component(
-                &debug_feedback("debug.gamemodes.error"),
-                &assets.lang,
-                (None, None),
-                &assets.creative.font,
-                false,
-            );
+            self.debug_say("debug.gamemodes.error", assets);
             return;
         }
         let size = surface.scale();

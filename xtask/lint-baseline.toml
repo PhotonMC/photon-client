@@ -532,7 +532,7 @@
 "crates/photon/src/controls/events.rs::Controls::pause_event" = 13
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 11
 "crates/photon/src/controls/events.rs::Controls::settings_event" = 14
-"crates/photon/src/controls/events.rs::Controls::world_event" = 15
+"crates/photon/src/controls/events.rs::Controls::world_event" = 14
 "crates/photon/src/controls/keybinds.rs::Controls::key_binds_event" = 12
 "crates/photon/src/controls/options.rs::Controls::language_event" = 13
 "crates/photon/src/controls/options.rs::Controls::options_event" = 13

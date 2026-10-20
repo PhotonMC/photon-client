@@ -309,6 +309,7 @@ mod confirm;
 mod credits;
 
 mod death;
+mod debug_actions;
 mod dialogs;
 mod game_mode_switcher;
 
