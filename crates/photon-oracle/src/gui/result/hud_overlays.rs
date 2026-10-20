@@ -369,6 +369,8 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             yaw: crate::f32_field(row, "yaw")?,
             pitch: crate::f32_field(row, "pitch")?,
             dimension: "minecraft:overworld".to_owned(),
+            build_height: (-64, 384),
+            biome: "minecraft:plains".to_owned(),
         }),
     })
 }
@@ -380,6 +382,14 @@ pub(super) fn hud_debug_overlay_case(ctx: &mut GuiContext, row: &Value) -> Resul
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let mut list = EntryList::default();
     list.set_overlay_visible(flag("overlay"));
+    for extra in row["extra"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        list.set_status(extra, debug::Status::InOverlay);
+    }
     let input = debug_input(row)?;
     let footer = list.is_overlay_visible().then(|| {
         debug::footer(

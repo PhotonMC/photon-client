@@ -38,6 +38,7 @@ pub fn hud_debug_overlay() -> Value {
     rows.extend(frame_and_server_rows());
     rows.extend(impactor_rows());
     rows.extend(system_rows());
+    rows.extend(biome_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -110,6 +111,27 @@ fn frame_and_server_rows() -> Vec<Value> {
         ));
     }
     rows
+}
+
+/// The biome entry: shown inside the build height, not at its edges outside, not with reduced debug
+/// info.
+fn biome_rows() -> Vec<Value> {
+    let row = |label: &str, place: Place, more: Value| {
+        let mut options = json!({"extra": ["biome"]});
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-biome-{label}"), (place, (0.0, 0.0)), options)
+    };
+    vec![
+        row("feet", (1.0, 64.0, 3.0), json!({})),
+        row("lowest-block", (1.0, -64.0, 3.0), json!({})),
+        row("below", (1.0, -64.5, 3.0), json!({})),
+        row("highest-block", (1.0, 319.9, 3.0), json!({})),
+        row("above", (1.0, 320.0, 3.0), json!({})),
+        row("reduced", (1.0, 64.0, 3.0), json!({"reduced": true})),
+        row("unloaded-chunk", (5000.5, 64.0, -5000.5), json!({})),
+    ]
 }
 
 /// The performance options entry: each cloud status and filtering method, the blend radius at its

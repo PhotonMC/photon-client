@@ -1107,6 +1107,14 @@ class GuiHudOracle extends GuiCommandOracle {
                 deviceField.setAccessible(true);
                 deviceField.set(null, device);
             }
+            // The entries a row turns on besides the defaults.
+            if (row.has("extra")) {
+                for (var extra : row.getAsJsonArray("extra")) {
+                    var id = net.minecraft.resources.Identifier.withDefaultNamespace(extra.getAsString());
+                    kept.add(id.getPath());
+                    statuses.put(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.IN_OVERLAY);
+                }
+            }
             statuses.keySet().removeIf(id -> !kept.contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());

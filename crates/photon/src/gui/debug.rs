@@ -20,6 +20,7 @@ impl Gui {
         if list.enabled(reduced).is_empty() || controls.hud_hidden && !controls.any_screen_open() {
             return None;
         }
+        let bounds = session.world().dimension();
         let camera = session.player().map(|player| {
             let position = player.position();
             let (yaw, pitch) = player.rotation();
@@ -28,6 +29,8 @@ impl Gui {
                 yaw,
                 pitch,
                 dimension: session.world().dimension_key().to_owned(),
+                build_height: (bounds.min_y, bounds.height),
+                biome: Self::feet_biome(session, position),
             }
         });
         let input = Input {
@@ -67,5 +70,17 @@ impl Gui {
             )
         });
         Some(debug::lines(list, reduced, &input, footer))
+    }
+
+    /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains
+    /// where the chunk is not loaded (`ClientLevel.getUncachedNoiseBiome`).
+    fn feet_biome(session: &PlaySession, feet: photon_core::math::Vec3) -> String {
+        let quart = |value: f64| (value.floor() as i32) >> 2;
+        session
+            .world()
+            .noise_biome(quart(feet.x), quart(feet.y), quart(feet.z))
+            .and_then(|id| usize::try_from(id).ok())
+            .and_then(|id| session.registry_names("minecraft:worldgen/biome").get(id))
+            .map_or_else(|| "minecraft:plains".to_owned(), Clone::clone)
     }
 }

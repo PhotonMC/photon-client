@@ -21,6 +21,10 @@ pub struct CameraEntity {
     pub pitch: f32,
     /// The dimension's id, such as `minecraft:overworld`.
     pub dimension: String,
+    /// The level's lowest block row and its height (`isInsideBuildHeight`).
+    pub build_height: (i32, i32),
+    /// The biome at the feet's quart position, `minecraft:plains` where the chunk is not there.
+    pub biome: String,
 }
 
 /// How the window surface presents (`GpuSurface.PresentMode`).
@@ -117,8 +121,18 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
         "game_version" => vec![Line::Priority(input.version.clone())],
         "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),
         "player_section_position" => input.camera.as_ref().map(section).unwrap_or_default(),
+        "biome" => input.camera.as_ref().and_then(biome).into_iter().collect(),
         _ => Vec::new(),
     }
+}
+
+/// `DebugEntryBiome`: the biome at the feet, while they are inside the build height.
+fn biome(camera: &CameraEntity) -> Option<Line> {
+    let (_, y, _) = feet(camera);
+    let (min_y, height) = camera.build_height;
+    (min_y..min_y + height)
+        .contains(&y)
+        .then(|| Line::Regular(format!("Biome: {}", camera.biome)))
 }
 
 /// `DebugEntryFps`: the frames a second, the limit (`inf` from 260) and how the surface presents.
