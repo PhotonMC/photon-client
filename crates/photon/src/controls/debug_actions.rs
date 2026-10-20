@@ -115,7 +115,7 @@ impl Controls {
                 self.debug_say("debug.reload_chunks.message", assets);
             }
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,
-            glfw::Key::F6 => self.toggle_debug_options(session, surface, assets),
+            glfw::Key::F6 => self.toggle_debug_options(session, surface, assets)?,
             _ => return Ok(self.run_debug_toggle(key, (session, surface, assets))),
         }
         Ok(true)

@@ -12,15 +12,31 @@ impl Controls {
         session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
-    ) {
+    ) -> Result {
         if self.debug_options.is_some() {
             self.close_debug_options(surface);
-            return;
+            return Ok(());
         }
-        self.close_screens_with_escape(session, surface, assets);
+        self.close_screens_with_escape(session, surface, assets)?;
         if !self.any_screen_open() {
             self.open_debug_options(session, surface, assets);
         }
+        Ok(())
+    }
+
+    /// The screens that do not close on Escape (`shouldCloseOnEsc`), or that answer it: they stay.
+    /// A dialog that does close on Escape is held back here too, as it is not known apart yet.
+    fn refuses_to_close(&self) -> bool {
+        [
+            self.death.is_some(),
+            self.disconnected.is_some(),
+            self.confirm.is_some(),
+            self.link_confirm.is_some(),
+            self.dialog.is_some(),
+            self.dialog_warning.is_some(),
+            self.pack_prompt.is_some(),
+        ]
+        .contains(&true)
     }
 
     /// `Minecraft.canInterruptScreen` and `onClose`: a screen that closes on Escape is closed, by
@@ -31,20 +47,19 @@ impl Controls {
         session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
-    ) {
+    ) -> Result {
         use glfw::{Action, Key, Modifiers, WindowEvent};
         // A screen that goes back to the one before it needs one press per level.
         for _ in 0..4 {
-            if !self.any_screen_open() {
-                return;
+            if !self.any_screen_open() || self.refuses_to_close() {
+                return Ok(());
             }
             for action in [Action::Press, Action::Release] {
                 let event = WindowEvent::Key(Key::Escape, 0, action, Modifiers::empty());
-                if self.handle(event, session, surface, assets).is_err() {
-                    return;
-                }
+                self.handle(event, session, surface, assets)?;
             }
         }
+        Ok(())
     }
 
     /// `new DebugOptionsScreen()`: the screen opens over the entries, and the mouse is let go.
