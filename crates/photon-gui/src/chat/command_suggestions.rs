@@ -70,6 +70,9 @@ pub struct CommandSuggestions {
     pub(super) list: Option<SuggestionsList>,
     /// The list is for text since edited: it waits for the server's answer.
     pub(super) stale: bool,
+    /// Where the cursor was at the last edit: `updateUsageInfo` reads the usage there, and moving
+    /// the cursor does not read it again.
+    usage_cursor: usize,
     /// The request to send: its id and text, and the id of the last sent.
     request: Option<(i32, String)>,
     pub(super) request_id: i32,
@@ -103,6 +106,7 @@ impl CommandSuggestions {
             place,
             list: None,
             stale: false,
+            usage_cursor: 0,
             request: None,
             request_id: 0,
             applied: false,
@@ -159,6 +163,7 @@ impl CommandSuggestions {
         self.stale = true;
         let text = edit.value();
         let cursor = edit.cursor();
+        self.usage_cursor = cursor;
         let reading = self.reading(&text);
         let parse_start = if self.settings.only_show_if_cursor_past_error {
             reading.offset
@@ -353,7 +358,8 @@ impl CommandSuggestions {
         } else {
             text_x + self.font.width(&chars[..start].iter().collect::<String>())
         };
-        start_x.clamp(0, (text_x + inner_width - longest).max(0))
+        // `Mth.clamp`: the upper bound wins when it is below the lower one.
+        start_x.max(0).min(text_x + inner_width - longest)
     }
 
     /// `extractRenderState`: the list of matches, or the usage and errors of the command in its
@@ -381,7 +387,7 @@ impl CommandSuggestions {
         parsed: &Parsed<'_>,
     ) {
         let text = edit.value();
-        let view = usage_lines(parsed.tree, &parsed.parse, edit.cursor(), true);
+        let view = usage_lines(parsed.tree, &parsed.parse, self.usage_cursor, true);
         let lines: Vec<String> = view
             .lines
             .iter()

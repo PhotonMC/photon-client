@@ -7,7 +7,7 @@ impl Gui {
     /// The settings screen that is open, the topmost of those over the
     /// options, or the options screen, or the pause menu.
     pub(super) fn draw_menu(
-        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
@@ -70,7 +70,7 @@ impl Gui {
     /// The chat's messages, the box's and brighter when it is open; the lines of the tooltip
     /// the mouse is over, if any.
     fn draw_chat_log(
-        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         frame: &mut photon_render::gui::GuiFrame,
         controls: &Controls,
         size: &photon_render::window::WindowScale,
@@ -90,7 +90,7 @@ impl Gui {
     /// The link question or the dialog a server put over the game (or the question about it):
     /// whether one is up.
     fn draw_server_dialog(
-        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
@@ -167,6 +167,24 @@ impl Gui {
             .map(|(name, score)| (runs(name), runs(score)))
             .collect();
         Some((runs(&objective.display_name), lines))
+    }
+
+    /// The sign's or the command block's screen, at the size of the window.
+    fn draw_text_edit(
+        frame: &mut photon_render::gui::GuiFrame,
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
+        (session, controls, gui_size): (&PlaySession, &mut Controls, (i32, i32)),
+    ) {
+        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        if let Some(sign) = controls.sign_edit.as_mut() {
+            if sign.screen.size() != gui_size {
+                sign.screen.resize(gui_size);
+            }
+            sign.screen.draw(frame, atlas, font, mouse);
+        } else if let Some(edit) = controls.command_block.as_mut() {
+            let commands = session.commands().map(|tree| &**tree);
+            edit.draw(frame, (atlas, font, lang), (mouse, gui_size, commands));
+        }
     }
 
     /// The HUD, then the open screen over it, with the player in the screen
@@ -320,12 +338,9 @@ impl Gui {
         } else if let Some(death) = controls.death.as_mut() {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             death.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if let Some(sign) = controls.sign_edit.as_mut() {
-            if sign.screen.size() != gui_size {
-                sign.screen.resize(gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            sign.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if controls.sign_edit.is_some() || controls.command_block.is_some() {
+            let assets = (&self.atlas, &self.font, &self.lang);
+            Self::draw_text_edit(&mut frame, assets, (session, controls, gui_size));
         } else if let Some(book) = controls.book_edit.as_mut() {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             if let Some(sign) = book.sign.as_mut() {

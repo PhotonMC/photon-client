@@ -94,7 +94,8 @@ impl SuggestionsList {
         } else {
             text_x + font.width(&chars[..start].iter().collect::<String>())
         };
-        let x = start_x.clamp(0, (text_x + box_width - widest).max(0));
+        // `Mth.clamp`: the upper bound wins when it is below the lower one.
+        let x = start_x.max(0).min(text_x + box_width - widest);
         let shown = matches.len().min(settings.line_limit) as i32;
         let bordered = i32::from(settings.bordered);
         // `SuggestionsList`: the corner, from the bottom or from the box.

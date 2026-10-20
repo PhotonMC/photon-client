@@ -96,6 +96,8 @@ pub(super) struct Menus {
     pub(super) sign_editor: Option<((i32, i32, i32), bool)>,
     /// The hand whose book the server last opened, until the client shows it.
     pub(super) opened_book: Option<u8>,
+    /// A command block's data came in since the client last looked: its open screen updates.
+    pub(super) command_block_data: bool,
     /// What menus read of the enchantments, from the data pack.
     pub(super) enchantment_traits:
         std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,

@@ -39,3 +39,28 @@ impl PlaySession {
         self.local.game_mode_state.take_opened_command_block()
     }
 }
+
+/// What a command block's screen shows of the block, as the client has it.
+pub struct CommandBlockState {
+    pub mode: CommandBlockMode,
+    pub conditional: bool,
+    pub contents: photon_game::command_block::CommandBlockContents,
+}
+
+impl PlaySession {
+    /// The command block at a position, with the contents its block entity holds
+    /// (`BaseCommandBlock`), or `None` when the block is no command block.
+    pub fn command_block(&self, pos: (i32, i32, i32)) -> Option<CommandBlockState> {
+        let view = self.world.command_block_view(pos)?;
+        Some(CommandBlockState {
+            mode: view.mode,
+            conditional: view.conditional,
+            contents: photon_game::command_block::CommandBlockContents::from_tag(view.tag),
+        })
+    }
+
+    /// Whether a command block's data arrived since the last call.
+    pub fn take_command_block_data(&mut self) -> bool {
+        std::mem::take(&mut self.menus.command_block_data)
+    }
+}

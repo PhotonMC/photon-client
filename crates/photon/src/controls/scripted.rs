@@ -73,11 +73,7 @@ impl Controls {
                 self.open_chat(ChatMethod::Message, false, surface, assets);
             }
         }
-        if let (Some(text), Some(chat)) = (held.typed, self.chat.as_mut()) {
-            for character in text.chars() {
-                chat.char_typed(character);
-            }
-        }
+        self.scripted_typing(held.typed);
         self.send_suggestion_request(session)?;
         if held.complete
             && let Some(chat) = self.chat.as_mut()
@@ -107,11 +103,6 @@ impl Controls {
             actions.extend(screen.mouse_released(self.gui_mouse, button, shift, &menu));
             run_actions(session, &mut self.screen, actions)?;
         }
-        if let (Some(text), Some(screen)) = (held.typed, self.screen.as_mut()) {
-            for character in text.chars() {
-                screen.char_typed(character);
-            }
-        }
         self.drain_screen_actions(session)?;
         if let Some(screen) = self
             .screen
@@ -131,6 +122,46 @@ impl Controls {
         Ok(())
     }
 
+    /// Scripted text typed into the chat box, the command block's box or the container screen.
+    fn scripted_typing(&mut self, typed: Option<&str>) {
+        for character in typed.unwrap_or_default().chars() {
+            if let Some(chat) = self.chat.as_mut() {
+                chat.char_typed(character);
+            }
+            if let Some(edit) = self.command_block.as_mut() {
+                edit.screen.char_typed(character);
+            }
+            if let Some(screen) = self.screen.as_mut() {
+                screen.char_typed(character);
+            }
+        }
+    }
+
+    /// A scripted press on the advancements, the statistics or the command block screen. Whether
+    /// one of them was up to take it.
+    fn scripted_press_own(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
+        if self.advancements.is_some() {
+            self.advancements_pressed(session, surface, assets);
+        } else if self.stats.is_some() {
+            self.stats_pressed((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32));
+        } else if self.command_block.is_some() {
+            let press = glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                glfw::Modifiers::empty(),
+            );
+            self.command_block_event(press, session, surface, assets)?;
+        } else {
+            return Ok(false);
+        }
+        Ok(true)
+    }
+
     /// A scripted press of the primary button on the confirmation, the death
     /// screen or the pause menu, at the mouse.
     pub(super) fn scripted_press(
@@ -140,12 +171,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        if self.advancements.is_some() {
-            self.advancements_pressed(session, surface, assets);
-            return Ok(());
-        }
-        if self.stats.is_some() {
-            self.stats_pressed(mouse);
+        if self.scripted_press_own(session, surface, assets)? {
             return Ok(());
         }
         if let Some(confirm) = &self.confirm {

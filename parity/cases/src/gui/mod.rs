@@ -5,6 +5,7 @@ mod accessibility;
 mod advancements;
 mod books;
 mod chat;
+mod command_block;
 mod commands;
 mod confirm;
 mod container;
@@ -100,6 +101,7 @@ const ORDER: &[Generator] = &[
     || vec![keybinds::key_binds_screen()],
     || vec![signs::sign_texts()],
     || vec![signs::sign_edit_screen()],
+    || vec![command_block::command_block_screen()],
     || vec![books::book_edit_screen()],
     || vec![books::book_sign_screen()],
     || vec![books::book_view()],

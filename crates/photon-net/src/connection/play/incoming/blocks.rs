@@ -138,6 +138,9 @@ impl ClientboundPacket for BlockDestruction {
 impl ClientboundPacket for BlockEntityData {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         let entity = self.0;
+        // `handleBlockEntityData`: an open command block screen takes the data of any command block.
+        session.menus.command_block_data |=
+            photon_data::block_entity_type::name(entity.type_id) == Some("minecraft:command_block");
         session.world.apply_block_entity_update(BlockEntityInput {
             x: entity.x,
             y: entity.y,

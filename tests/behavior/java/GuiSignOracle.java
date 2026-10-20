@@ -195,6 +195,7 @@ class GuiSignOracle extends GuiTitleOracle {
                         case "backspace" -> 259;
                         case "delete" -> 261;
                         case "enter" -> 257;
+                        case "escape" -> 256;
                         case "space" -> 32;
                         case "left" -> 263;
                         case "right" -> 262;

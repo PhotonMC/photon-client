@@ -134,6 +134,8 @@ pub struct Controls {
     pub debug: DebugKeys,
     /// The sign the player is writing on, while its screen is up.
     pub sign_edit: Option<SignEdit>,
+    /// The command block the player is editing, while its screen is up.
+    pub command_block: Option<CommandBlockEdit>,
     /// The book and quill being written in, while its screen is up.
     pub book_edit: Option<BookEdit>,
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
@@ -317,6 +319,8 @@ mod scripted;
 
 mod settings;
 
+mod command_block;
+
 mod sign;
 
 mod skin;
@@ -328,6 +332,7 @@ mod screen_keys;
 mod social;
 mod stats;
 mod turn;
+pub use command_block::CommandBlockEdit;
 pub use dialogs::DialogLayer;
 pub use sign::SignEdit;
 

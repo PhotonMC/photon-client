@@ -303,6 +303,9 @@ impl Controls {
         if self.sign_edit.is_some() {
             return Ok(self.sign_event(event, session, surface, assets));
         }
+        if self.command_block.is_some() {
+            return Ok(self.command_block_event(event, session, surface, assets));
+        }
         if self.book_edit.is_some() {
             return Ok(self.book_event(event, session, surface, assets));
         }

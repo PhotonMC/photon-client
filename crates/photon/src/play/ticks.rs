@@ -373,6 +373,8 @@ impl Play {
         self.controls
             .open_sign_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
+            .open_command_block(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.controls
             .open_book_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .open_held_book(&mut self.session, &mut self.surface, &self.screen_assets);
@@ -450,6 +452,8 @@ impl Play {
             waiting.tick(&self.screen_assets.lang);
         }
         self.controls.sign_tick(session, &mut self.surface)?;
+        self.controls
+            .command_block_tick(session, &mut self.surface, &self.screen_assets)?;
         self.controls
             .screens_tick(session, &mut self.surface, &self.screen_assets);
         self.tick_chat()?;

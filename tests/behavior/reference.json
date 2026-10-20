@@ -587,6 +587,7 @@
         "GuiRecorder.java",
         "GuiScreenOracle.java",
         "GuiSettingsOracle.java",
+        "GuiCommandBlockOracle.java",
         "GuiSignOracle.java",
         "GuiCreditsOracle.java",
         "GuiSocialOracle.java",

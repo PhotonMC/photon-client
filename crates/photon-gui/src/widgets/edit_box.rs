@@ -9,6 +9,9 @@ use crate::{FontRuns, FrameRuns};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
+/// `EditBox.textColorUneditable`.
+const UNEDITABLE_COLOUR: u32 = 0xFF70_7070;
+
 /// A key an edit box acts on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditKey {
@@ -50,6 +53,8 @@ pub struct EditBox {
     suggestion: Option<String>,
     /// `setTextShadow`.
     shadow: bool,
+    /// `setEditable`: a box that is not shows its text in `textColorUneditable` and takes no edit.
+    editable: bool,
 }
 
 /// `Font.plainSubstrByWidth`: the longest head of the text that fits.
@@ -95,6 +100,7 @@ impl EditBox {
             colour: 0xFFE0_E0E0,
             suggestion: None,
             shadow: true,
+            editable: true,
         }
     }
 
@@ -102,6 +108,21 @@ impl EditBox {
     pub fn without_shadow(mut self) -> Self {
         self.shadow = false;
         self
+    }
+
+    /// `setEditable(false)`.
+    #[must_use]
+    pub fn uneditable(mut self) -> Self {
+        self.editable = false;
+        self
+    }
+
+    fn text_colour(&self) -> u32 {
+        if self.editable {
+            self.colour
+        } else {
+            UNEDITABLE_COLOUR
+        }
     }
 
     /// `setTextColor`.
@@ -254,6 +275,30 @@ impl EditBox {
         self.display_pos = self.display_pos.min(length);
     }
 
+    /// `keyPressed` of a box that may not be editable: it takes the keys that would edit, and a
+    /// cut only copies.
+    pub fn press_key(
+        &mut self,
+        key: EditKey,
+        control: bool,
+        shift: bool,
+        font: &Font,
+        clipboard: &mut dyn Clipboard,
+    ) -> bool {
+        if !self.editable {
+            match key {
+                EditKey::Backspace | EditKey::Delete => return true,
+                EditKey::V if control => return true,
+                EditKey::X if control => {
+                    clipboard.set(&self.highlighted());
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        self.key_pressed(key, control, shift, font, clipboard)
+    }
+
     /// `keyPressed` for a key the box knows. Whether the key was taken.
     pub fn key_pressed(
         &mut self,
@@ -322,7 +367,7 @@ impl EditBox {
 
     /// `charTyped`. Whether the character was taken.
     pub fn char_typed(&mut self, character: char, font: &Font) -> bool {
-        if character == '\u{a7}' || character < ' ' || character == '\u{7f}' {
+        if !self.editable || character == '\u{a7}' || character < ' ' || character == '\u{7f}' {
             return false;
         }
         self.insert_text(&character.to_string(), font);
@@ -402,24 +447,20 @@ impl EditBox {
         let draw_text =
             |frame: &mut GuiFrame, text: &str, offset: usize, x: i32, colour: u32| -> i32 {
                 if let Some(parts) = formatter.and_then(|format| format(text, offset)) {
-                    let mut at = x;
-                    for (part, rgb, italic) in parts {
-                        if italic {
-                            let runs = [photon_game::text::Run {
-                                text: part,
-                                style: photon_game::text::Style {
-                                    colour: Some(rgb),
-                                    italic: Some(true),
-                                    ..photon_game::text::Style::default()
-                                },
-                            }];
-                            frame.styled_text(atlas, font, &runs, at, text_y, colour, shadow);
-                            at += font.width_of_runs(&runs);
-                        } else {
-                            plain(frame, &part, at, 0xFF00_0000 | rgb);
-                            at += font.width(&part);
-                        }
-                    }
+                    // One string of runs, as the formatter's `FormattedCharSequence` is drawn.
+                    let runs: Vec<_> = parts
+                        .into_iter()
+                        .map(|(text, rgb, italic)| photon_game::text::Run {
+                            text,
+                            style: photon_game::text::Style {
+                                colour: Some(rgb),
+                                italic: italic.then_some(true),
+                                ..photon_game::text::Style::default()
+                            },
+                        })
+                        .collect();
+                    frame.styled_text(atlas, font, &runs, x, text_y, colour, shadow);
+                    let at = x + font.width_of_runs(&runs);
                     at - x
                 } else {
                     plain(frame, text, x, colour);
@@ -430,7 +471,7 @@ impl EditBox {
         let chars: Vec<char> = shown.text.chars().collect();
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
         let blink = focused_at.is_some_and(|at| (at.elapsed().as_millis() / 300).is_multiple_of(2));
-        let colour = self.colour;
+        let colour = self.text_colour();
         let right = text_x + self.width;
         let mut draw_x = text_x;
         if !chars.is_empty() {
@@ -544,6 +585,19 @@ mod tests {
         assert_eq!(clipboard.0, "hello ");
         edit.key_pressed(EditKey::V, true, false, &font, &mut clipboard);
         assert_eq!(edit.value(), "hello ");
+    }
+
+    #[test]
+    fn a_box_that_is_not_editable_only_copies() {
+        let Some(font) = font() else { return };
+        let mut clipboard = Held("pasted".to_owned());
+        let mut edit = EditBox::new(80, 50).uneditable();
+        edit.set_value("shown", &font);
+        assert!(!edit.char_typed('x', &font));
+        for key in [EditKey::Backspace, EditKey::V, EditKey::X] {
+            assert!(edit.press_key(key, key != EditKey::Backspace, false, &font, &mut clipboard));
+        }
+        assert_eq!(edit.value(), "shown");
     }
 
     #[test]

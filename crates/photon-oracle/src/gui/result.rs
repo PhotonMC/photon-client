@@ -32,6 +32,8 @@ mod title;
 use title::*;
 mod signs;
 use signs::*;
+mod command_block;
+use command_block::*;
 mod social;
 use social::*;
 mod books;
@@ -61,6 +63,22 @@ fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, S
         "panorama_view" => panorama_view(request),
         "command_parse" => crate::command_parse_result(request, root),
         "command_suggest" => crate::command_suggest_result(request),
+        _ => return None,
+    })
+}
+
+/// The screens that edit text: a sign, a command block, a book.
+fn editing_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+    operation: &str,
+) -> Option<Result<Value, String>> {
+    Some(match operation {
+        "sign_edit_screen" => sign_edit_screen_case(ctx, row),
+        "command_block_screen" => command_block_screen_case(ctx, row),
+        "book_edit_screen" => book_edit_screen_case(ctx, row),
+        "book_sign_screen" => book_sign_screen_case(ctx, row),
+        "book_view" => book_view_case(ctx, row),
         _ => return None,
     })
 }
@@ -125,13 +143,12 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "container_screen" => container_screen_case(&mut ctx, row)?,
             "game_mode_switcher" => game_mode_switcher_case(&mut ctx, row)?,
             "sign_texts" => sign_texts_case(&mut ctx, row)?,
-            "sign_edit_screen" => sign_edit_screen_case(&mut ctx, row)?,
-            "book_edit_screen" => book_edit_screen_case(&mut ctx, row)?,
-            "book_sign_screen" => book_sign_screen_case(&mut ctx, row)?,
-            "book_view" => book_view_case(&mut ctx, row)?,
             "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
             "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
-            other => hud_ops(&mut ctx, row, other)?,
+            other => match editing_case(&mut ctx, row, other) {
+                Some(result) => result?,
+                None => hud_ops(&mut ctx, row, other)?,
+            },
         });
     }
     Ok(json!({"rows": out}))

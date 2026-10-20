@@ -43,7 +43,7 @@ mod menu_sync;
 mod movement;
 mod recipes;
 mod reconfigure;
-pub use command_blocks::CommandBlockSettings;
+pub use command_blocks::{CommandBlockSettings, CommandBlockState};
 mod signs;
 mod state;
 mod traffic;

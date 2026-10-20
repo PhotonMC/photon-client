@@ -19,6 +19,8 @@ pub struct CycleButton<V> {
     index: i32,
     value_text: fn(&V) -> Component,
     focused: bool,
+    /// `displayOnlyValue`: the button says the value alone, without the name.
+    only_value: bool,
     /// What the tooltip says of a value, and the tooltip.
     tip: Option<Tip<V>>,
     tooltip: Holder,
@@ -59,6 +61,7 @@ impl<V: Clone + PartialEq> CycleButton<V> {
             index,
             value_text,
             focused: false,
+            only_value: false,
             tip: None,
             tooltip: Holder::default(),
         };
@@ -72,6 +75,19 @@ impl<V: Clone + PartialEq> CycleButton<V> {
         self.tip = Some(tip);
         self.update_label(lang);
         self
+    }
+
+    /// `displayOnlyValue`.
+    #[must_use]
+    pub fn only_value(mut self, lang: &Lang) -> Self {
+        self.only_value = true;
+        self.update_label(lang);
+        self
+    }
+
+    /// The button's place in the arena.
+    pub fn rect(&self) -> usize {
+        self.widget.rect
     }
 
     pub fn tooltip(&self) -> &Holder {
@@ -113,7 +129,12 @@ impl<V: Clone + PartialEq> CycleButton<V> {
     }
 
     fn update_label(&mut self, lang: &Lang) {
-        let text = generic_value(&self.name, (self.value_text)(self.value()));
+        let value = (self.value_text)(self.value());
+        let text = if self.only_value {
+            value
+        } else {
+            generic_value(&self.name, value)
+        };
         self.widget.kind = Kind::Button {
             label: lang.runs(&text, &Style::default()),
         };
