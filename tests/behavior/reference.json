@@ -588,6 +588,7 @@
         "GuiScreenOracle.java",
         "GuiSettingsOracle.java",
         "GuiCommandBlockOracle.java",
+        "GuiStructureBlockOracle.java",
         "GuiSignOracle.java",
         "GuiCreditsOracle.java",
         "GuiSocialOracle.java",
