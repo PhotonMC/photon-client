@@ -111,6 +111,7 @@ impl Controls {
             glfw::Key::B => self.debug_hitboxes(session, assets),
             glfw::Key::G => self.debug_chunk_borders(session, assets),
             glfw::Key::H => self.debug_advanced_tooltips(assets),
+            glfw::Key::I => self.debug_copy_recreate(session, surface, assets),
             glfw::Key::P => self.debug_pause_on_focus_loss(assets),
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,
             _ => return Ok(false),

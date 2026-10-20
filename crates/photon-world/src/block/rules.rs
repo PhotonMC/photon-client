@@ -57,6 +57,23 @@ pub fn property(state: BlockStateId, name: &str) -> Option<&'static str> {
         .map(|(_, value)| value)
 }
 
+/// `BlockStateParser.serialize`: the block's name, and its properties in the state definition's
+/// order (`name=value`, comma-separated) unless it has none.
+pub fn serialize_state(state: BlockStateId) -> String {
+    let Some((block, offset)) = registry::block_for_state(state) else {
+        return "air".to_owned();
+    };
+    let properties = block.properties_at(offset).unwrap_or_default();
+    if properties.is_empty() {
+        return block.name.to_owned();
+    }
+    let values: Vec<String> = properties
+        .iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect();
+    format!("{}[{}]", block.name, values.join(","))
+}
+
 /// `setValue`: the same state with one property changed.
 pub fn with_property(state: BlockStateId, name: &str, value: &str) -> Option<BlockStateId> {
     let (block, offset) = registry::block_for_state(state)?;

@@ -314,6 +314,7 @@ mod credits;
 
 mod death;
 mod debug_actions;
+mod debug_inspect;
 mod dialogs;
 mod game_mode_switcher;
 
