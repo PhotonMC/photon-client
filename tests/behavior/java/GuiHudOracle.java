@@ -1061,6 +1061,22 @@ class GuiHudOracle extends GuiCommandOracle {
             MovementOracle.setField(local, "attackStrengthTicker", row.get("attack_ticks").getAsInt());
             local.getInventory().setSelectedSlot(row.get("selected_slot").getAsInt());
 
+            if (row.has("debug")) {
+                // The overlay up or not and reduced debug info or not, for the entries the game lists
+                // as shown now: the 3D crosshair takes the 2D one's place.
+                var debug = row.getAsJsonObject("debug");
+                MovementOracle.setField(local, "reducedDebugInfo", debug.get("reduced").getAsBoolean());
+                var entries = (net.minecraft.client.gui.components.debug.DebugScreenEntryList) unsafe.allocateInstance(
+                    net.minecraft.client.gui.components.debug.DebugScreenEntryList.class);
+                MovementOracle.setField(entries, "allStatuses", new java.util.HashMap<>(
+                    net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(
+                        net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT)));
+                MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
+                MovementOracle.setField(entries, "isOverlayVisible", debug.get("overlay").getAsBoolean());
+                MovementOracle.setField(minecraft, "debugEntries", entries);
+                entries.rebuildCurrentList();
+            }
+
             // What the crosshair is on.
             net.minecraft.world.entity.Entity target = switch (row.get("target").getAsString()) {
                 case "none" -> null;

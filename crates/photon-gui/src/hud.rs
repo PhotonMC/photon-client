@@ -72,6 +72,8 @@ pub struct HudInput {
     /// The camera is in the player's eyes: the crosshair shows.
     pub first_person: bool,
     pub spectator: bool,
+    /// The `3d_crosshair` debug entry is shown now, which takes the flat crosshair's place.
+    pub three_dimensional_crosshair: bool,
     /// Survival or adventure: `canHurtPlayer` and `hasExperience`.
     pub survival: bool,
     pub selected_slot: i32,
@@ -358,7 +360,7 @@ impl Hud {
         height: i32,
         input: &HudInput,
     ) {
-        if !input.first_person || input.spectator {
+        if !input.first_person || input.spectator || input.three_dimensional_crosshair {
             return;
         }
         let invert = GuiBlend::Invert;
@@ -371,8 +373,7 @@ impl Hud {
         if input.attack_indicator != AttackIndicator::Crosshair {
             return;
         }
-        let y = height / 2 - 7 + 16;
-        let x = width / 2 - 8;
+        let (x, y) = (width / 2 - 8, height / 2 - 7 + 16);
         if input.target_is_living && input.attack_strength >= 1.0 && input.attack_delay > 5.0 {
             frame.sprite_blend(
                 atlas,

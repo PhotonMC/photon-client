@@ -131,7 +131,7 @@ pub fn hud_hotbar() -> Value {
         hotbar_row("fast-speed", Hotbar { speed: 20.0, ticks: 0, ..HOTBAR }),
         hotbar_row("hotbar-slow-speed", Hotbar { indicator: 2, speed: 0.5, ticks: 20, ..HOTBAR }),
     ]);
-    rows.extend(overlay_rows());
+    rows.extend(overlay_rows().into_iter().chain(super::debug::crosshair_rows()));
     rows.extend(worn_rows());
     rows.extend(scope_rows());
     gui("hud-hotbar", "hud_hotbar", rows)

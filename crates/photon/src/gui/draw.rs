@@ -1,5 +1,4 @@
 use super::*;
-use crate::hud_input::camera_overlays;
 use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
 
@@ -232,17 +231,8 @@ impl Gui {
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
-        let hud_input = photon_gui::HudInput {
-            // `getGameTimeDeltaPartialTick(true)`.
-            cooldowns: session.item_cooldowns().percents(partial),
-            overlays: camera_overlays(session, renderer, (partial, &controls.options)),
-            ..hud_input(
-                session,
-                controls.camera_type == CameraType::FirstPerson,
-                locator_camera,
-                controls.options.attack_indicator,
-            )
-        };
+        let hud_input =
+            crate::hud_input::frame_input((session, controls), (renderer, partial, locator_camera));
         let mut frame = if hidden {
             photon_render::gui::GuiFrame {
                 cooldowns: hud_input.cooldowns.clone(),

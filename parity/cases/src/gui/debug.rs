@@ -184,6 +184,32 @@ fn system_rows() -> Vec<Value> {
     rows
 }
 
+/// The crosshair under F3: with the overlay up the 3D crosshair is shown and the flat one is not,
+/// attack indicator and all; reduced debug info, no overlay and another camera keep the flat one.
+/// Each has a half-charged attack indicator, which goes with it.
+pub fn crosshair_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (label, overlay, reduced, third_person, spectator) in [
+        ("overlay", true, false, false, false),
+        ("overlay-reduced", true, true, false, false),
+        ("no-overlay", false, false, false, false),
+        ("no-overlay-reduced", false, true, false, false),
+        ("overlay-third-person", true, false, true, false),
+        ("overlay-spectator", true, false, false, true),
+    ] {
+        for (indicator, name) in [(1, "crosshair"), (2, "hotbar")] {
+            rows.push(json!({
+                "label": format!("debug-{label}-{name}"), "width": 427, "height": 240,
+                "attack_indicator": indicator, "attack_ticks": 2, "attack_speed": 1.6,
+                "target": "none", "spectator": spectator, "third_person": third_person,
+                "selected_slot": 0,
+                "debug": {"overlay": overlay, "reduced": reduced},
+            }));
+        }
+    }
+    rows
+}
+
 /// `extractLines` with lines in both columns: empty lines between, long lines that overlap in a narrow
 /// window, and a column with nothing.
 pub fn hud_debug_lines() -> Value {

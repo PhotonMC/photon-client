@@ -27,9 +27,7 @@ use photon_world::ClientItemStackState;
 
 use crate::controls::Controls;
 use crate::equipment::item_layers::ItemLayerCache;
-use crate::hud_input::hud_input;
 use crate::screens::ScreenAssets;
-use crate::view::CameraType;
 
 /// The HUD's sprites and font, its own state, the client's language, and
 /// each item's GUI layers, built the first time a slot shows it.

@@ -171,30 +171,21 @@ fn frozen_alpha(row: &Value) -> Option<f32> {
     Some(frozen.min(140) as f32 / 140.0)
 }
 
-pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    let font = &ctx.font;
-    let atlas = &ctx.atlas;
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    let flag = |key: &str| row[key].as_bool().unwrap_or(false);
-    let delay = attack_strength_delay(row["attack_speed"].as_f64().unwrap_or(4.0));
-    let ticks = row["attack_ticks"].as_i64().unwrap_or(0) as f32;
-    let attack_indicator = AttackIndicator::ALL[int("attack_indicator") as usize];
-    let input = HudInput {
+/// A HUD with nothing going on: a player at full health and food in the first person, no overlays,
+/// no waypoints, an empty hotbar; the rows set what they test.
+fn quiet_input() -> HudInput {
+    HudInput {
         cooldowns: Vec::new(),
-        first_person: !flag("third_person"),
-        spectator: flag("spectator"),
-        // The reference draws the crosshair and the hotbar alone here.
+        first_person: true,
+        spectator: false,
+        three_dimensional_crosshair: false,
         survival: false,
-        selected_slot: int("selected_slot"),
+        selected_slot: 0,
         health: 20.0,
         max_health: 20.0,
         absorption: 0.0,
         invulnerable_time: 0,
-        heart_type: photon_gui::HeartType::Normal,
+        heart_type: HeartType::Normal,
         regeneration: false,
         hardcore: false,
         armor: 0,
@@ -208,13 +199,44 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         experience_level: 0,
         experience_prioritised: false,
         locator: None,
+        overlays: Default::default(),
+        attack_strength: 1.0,
+        attack_delay: 5.0,
+        attack_indicator: photon_game::options::AttackIndicator::Off,
+        target_is_living: false,
+        hotbar: Default::default(),
+        offhand: None,
+    }
+}
+
+pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    let font = &ctx.font;
+    let atlas = &ctx.atlas;
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    let flag = |key: &str| row[key].as_bool().unwrap_or(false);
+    let delay = attack_strength_delay(row["attack_speed"].as_f64().unwrap_or(4.0));
+    let ticks = row["attack_ticks"].as_i64().unwrap_or(0) as f32;
+    let attack_indicator = AttackIndicator::ALL[int("attack_indicator") as usize];
+    let input = HudInput {
+        first_person: !flag("third_person"),
+        spectator: flag("spectator"),
+        three_dimensional_crosshair: row.get("debug").is_some_and(|debug| {
+            let mut list = photon_gui::hud::debug::EntryList::default();
+            list.set_overlay_visible(debug["overlay"].as_bool().unwrap_or(false));
+            list.enabled(debug["reduced"].as_bool().unwrap_or(false))
+                .contains(&"3d_crosshair")
+        }),
+        selected_slot: int("selected_slot"),
         overlays: camera_overlays(row),
         attack_strength: (ticks / delay).clamp(0.0, 1.0),
         attack_delay: delay,
         attack_indicator,
         target_is_living: row["target"] == "living",
-        hotbar: Default::default(),
-        offhand: None,
+        ..quiet_input()
     };
     let mut draw_item = no_items;
     hud_of(row)?.draw(
@@ -272,11 +294,7 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
             ticks += 1;
         }
         let input = HudInput {
-            cooldowns: Vec::new(),
-            first_person: true,
-            spectator: false,
             survival: true,
-            selected_slot: 0,
             health: u32::from_str_radix(step["health"].as_str().ok_or("health")?, 16)
                 .map(f32::from_bits)
                 .map_err(|error| error.to_string())?,
@@ -295,19 +313,10 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
             saturation: float("saturation")?,
             hunger: has("hunger"),
             air_supply: int("air"),
-            max_air_supply: 300,
             eye_in_water: row["eye_in_water"].as_bool().unwrap_or(false),
             experience_progress: float("xp_progress")?,
             experience_level: int("xp_level"),
-            experience_prioritised: false,
-            locator: None,
-            overlays: Default::default(),
-            attack_strength: 1.0,
-            attack_delay: 5.0,
-            attack_indicator: photon_game::options::AttackIndicator::Off,
-            target_is_living: false,
-            hotbar: Default::default(),
-            offhand: None,
+            ..quiet_input()
         };
         let mut drawn = GuiFrame {
             log: Some(Vec::new()),

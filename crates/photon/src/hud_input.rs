@@ -173,6 +173,7 @@ pub fn hud_input(
     photon_gui::HudInput {
         cooldowns: Vec::new(),
         first_person,
+        three_dimensional_crosshair: false,
         spectator: game_mode == photon_world::ClientPlayerGameMode::Spectator,
         survival: game_mode.is_survival(),
         selected_slot: status.selected_slot,
@@ -209,5 +210,30 @@ pub fn hud_input(
         target_is_living,
         hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
         offhand: stack(45),
+    }
+}
+
+/// What the HUD draws from this frame: the cooldowns and camera overlays at the frame's partial tick,
+/// and whether the 3D crosshair is among the debug entries shown, which the flat one gives way to.
+pub fn frame_input(
+    (session, controls): (&PlaySession, &crate::controls::Controls),
+    (renderer, partial, camera): (
+        &photon_render::block::world_mesh::BlockRenderer,
+        f32,
+        LocatorCamera,
+    ),
+) -> photon_gui::HudInput {
+    let shown = controls.debug.entries.enabled(session.reduced_debug_info());
+    photon_gui::HudInput {
+        // `getGameTimeDeltaPartialTick(true)`.
+        cooldowns: session.item_cooldowns().percents(partial),
+        overlays: camera_overlays(session, renderer, (partial, &controls.options)),
+        three_dimensional_crosshair: shown.contains(&"3d_crosshair"),
+        ..hud_input(
+            session,
+            controls.camera_type == crate::view::CameraType::FirstPerson,
+            camera,
+            controls.options.attack_indicator,
+        )
     }
 }
