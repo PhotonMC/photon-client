@@ -183,6 +183,8 @@ impl Gui {
             sign.screen.draw(frame, atlas, font, mouse);
         } else if let Some(edit) = controls.structure_block.as_mut() {
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
+        } else if let Some(edit) = controls.jigsaw_block.as_mut() {
+            edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
         } else if let Some(edit) = controls.command_block.as_mut() {
             let commands = session.commands().map(|tree| &**tree);
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size, commands));

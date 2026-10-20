@@ -14,7 +14,9 @@ pub struct StructureBlockEdit {
 impl Controls {
     /// Whether the command block's or the structure block's screen is up.
     pub(super) fn block_screen_open(&self) -> bool {
-        self.command_block.is_some() || self.structure_block.is_some()
+        self.command_block.is_some()
+            || self.structure_block.is_some()
+            || self.jigsaw_block.is_some()
     }
 
     /// Whether a sign's or a block's text screen is up.
@@ -30,6 +32,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) {
         self.open_structure_block(session, surface, assets);
+        self.open_jigsaw_block(session, surface, assets);
         self.open_command_block(session, surface, assets);
     }
 
@@ -43,6 +46,8 @@ impl Controls {
     ) -> Result {
         if self.structure_block.is_some() {
             self.structure_block_event(event, session, surface, assets)
+        } else if self.jigsaw_block.is_some() {
+            self.jigsaw_block_event(event, session, surface, assets)
         } else {
             self.command_block_event(event, session, surface, assets)
         }

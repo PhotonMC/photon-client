@@ -13,6 +13,11 @@ impl GameMode {
         self.opened_command_block.take()
     }
 
+    /// The position of the jigsaw block used, whose screen is to open.
+    pub fn take_opened_jigsaw_block(&mut self) -> Option<(i32, i32, i32)> {
+        self.opened_jigsaw_block.take()
+    }
+
     /// The position of the structure block used, whose screen is to open.
     pub fn take_opened_structure_block(&mut self) -> Option<(i32, i32, i32)> {
         self.opened_structure_block.take()
@@ -221,6 +226,14 @@ impl GameMode {
             // `StructureBlockEntity.usedBy`: a game master opens the screen; anyone else passes.
             if ctx.can_use_game_master_blocks() && ctx.world.structure_block_view(pos).is_some() {
                 self.opened_structure_block = Some(pos);
+                return UseResult::Success { swing: true };
+            }
+            return UseResult::Pass;
+        }
+        if photon_world::block::state_or_air(state).block().name == "minecraft:jigsaw" {
+            // `JigsawBlock.useWithoutItem`: a game master opens the screen; anyone else passes.
+            if ctx.can_use_game_master_blocks() && ctx.world.jigsaw_block_view(pos).is_some() {
+                self.opened_jigsaw_block = Some(pos);
                 return UseResult::Success { swing: true };
             }
             return UseResult::Pass;
