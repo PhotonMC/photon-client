@@ -9,14 +9,41 @@ impl Controls {
     /// in the way, which the reference closes first, is not handled.)
     pub(super) fn toggle_debug_options(
         &mut self,
-        session: &PlaySession,
+        session: &mut PlaySession,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
         if self.debug_options.is_some() {
             self.close_debug_options(surface);
-        } else if !self.any_screen_open() {
+            return;
+        }
+        self.close_screens_with_escape(session, surface, assets);
+        if !self.any_screen_open() {
             self.open_debug_options(session, surface, assets);
+        }
+    }
+
+    /// `Minecraft.canInterruptScreen` and `onClose`: a screen that closes on Escape is closed, by
+    /// the Escape key itself, so each screen ends as it does for the player; one that does not
+    /// stays, and then the options screen does not open.
+    fn close_screens_with_escape(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        use glfw::{Action, Key, Modifiers, WindowEvent};
+        // A screen that goes back to the one before it needs one press per level.
+        for _ in 0..4 {
+            if !self.any_screen_open() {
+                return;
+            }
+            for action in [Action::Press, Action::Release] {
+                let event = WindowEvent::Key(Key::Escape, 0, action, Modifiers::empty());
+                if self.handle(event, session, surface, assets).is_err() {
+                    return;
+                }
+            }
         }
     }
 
