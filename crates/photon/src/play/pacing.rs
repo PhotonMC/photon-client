@@ -23,10 +23,16 @@ impl Play {
             ),
         };
         self.controls.debug.memory.update(Instant::now());
-        // The machine does not change while the game runs.
-        if self.controls.debug.system.is_none() {
-            self.controls.debug.system =
-                Some(crate::system_info::system_specs(self.backend.description()));
-        }
+        // The machine does not change while the game runs, the framebuffer does.
+        let described = self.backend.description();
+        let system = self
+            .controls
+            .debug
+            .system
+            .get_or_insert_with(|| crate::system_info::system_specs(described));
+        system.display = (
+            described.extent.width as i32,
+            described.extent.height as i32,
+        );
     }
 }

@@ -973,6 +973,11 @@ class GuiHudOracle extends GuiCommandOracle {
                 options.maxAnisotropyBit().set(impactors.get("bit").getAsInt());
                 anisotropyLimit = impactors.get("limit").getAsInt();
             }
+            // What the system entry reads from the process, put back after the row.
+            var cpuField = com.mojang.blaze3d.platform.GLX.class.getDeclaredField("cpuInfo");
+            cpuField.setAccessible(true);
+            var cpuBefore = cpuField.get(null);
+            var javaVersionBefore = System.getProperty("java.version");
             String deviceName = null, vendor = null, driver = null, backendName = null;
             var deviceType = com.mojang.blaze3d.systems.DeviceType.OTHER;
             if (row.has("system")) {
@@ -980,9 +985,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 kept.add("system_specs");
                 var system = row.getAsJsonObject("system");
                 System.setProperty("java.version", system.get("runtime").getAsString());
-                var cpu = com.mojang.blaze3d.platform.GLX.class.getDeclaredField("cpuInfo");
-                cpu.setAccessible(true);
-                cpu.set(null, system.get("cpu").getAsString());
+                cpuField.set(null, system.get("cpu").getAsString());
                 MovementOracle.setField(minecraft.getWindow(), "framebufferWidth", system.get("width").getAsInt());
                 MovementOracle.setField(minecraft.getWindow(), "framebufferHeight", system.get("height").getAsInt());
                 deviceName = system.get("name").getAsString();
@@ -1020,6 +1023,8 @@ class GuiHudOracle extends GuiCommandOracle {
                     .extractRenderState(scene.screen().graphics());
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);
+                cpuField.set(null, cpuBefore);
+                System.setProperty("java.version", javaVersionBefore);
             }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

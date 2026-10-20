@@ -9,17 +9,19 @@ use std::time::{Duration, Instant};
 fn cpu_info() -> &'static str {
     static CPU: OnceLock<String> = OnceLock::new();
     CPU.get_or_init(|| {
-        let name = std::fs::read_to_string("/proc/cpuinfo")
-            .ok()
-            .and_then(|text| {
-                text.lines()
-                    .find_map(|line| line.strip_prefix("model name"))
-                    .and_then(|rest| rest.split_once(':').map(|(_, name)| name.to_owned()))
-            });
+        let text = std::fs::read_to_string("/proc/cpuinfo").unwrap_or_default();
+        let name = text
+            .lines()
+            .find_map(|line| line.strip_prefix("model name"))
+            .and_then(|rest| rest.split_once(':').map(|(_, name)| name.to_owned()));
         let Some(name) = name else {
             return "<unknown>".to_owned();
         };
-        let count = std::thread::available_parallelism().map_or(1, usize::from);
+        // The logical processors the machine has, not the ones this process may run on.
+        let count = text
+            .lines()
+            .filter(|line| line.starts_with("processor"))
+            .count();
         format!("{count}x {name}")
             .split_whitespace()
             .collect::<Vec<_>>()
