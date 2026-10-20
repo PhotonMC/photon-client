@@ -1,6 +1,7 @@
 //! What the first-person hand does with the stack in it (`ItemInHandRenderer.submitArmWithItem`):
 //! the swing, and the poses of a drawn bow and a charging or loaded crossbow.
 
+use super::spear_animation;
 use crate::joml::{Pose, Quaternion};
 
 /// What the held stack's hand is doing, which places its item after the arm transform.
@@ -22,6 +23,14 @@ pub enum HandMotion {
     Trident { held: f32 },
     /// A brush at work: `remaining % 10 - partialTick + 1`.
     Brush { phase: f32 },
+    /// A spear being used: how long it has been held, and the ticks since a hit's kick began.
+    SpearUse {
+        spear: &'static photon_data::spear::Spear,
+        held: f32,
+        hit_feedback: f32,
+    },
+    /// A spear's swing: the stab, in place of the whack.
+    Stab,
     /// A use that only lifts the item (a horn): the arm transform and nothing more.
     Lifted,
 }
@@ -155,15 +164,45 @@ fn crossbow_charge_transform(pose: &mut Pose, invert: f32, (held, charge_duratio
     draw_finish(pose, (held, power), invert);
 }
 
+/// A loaded crossbow in the main hand: the swing, and the hold's offset when none is on.
+fn loaded_crossbow_transform(pose: &mut Pose, invert: f32, attack: f32) {
+    swing_arm(pose, invert, attack);
+    if attack < 0.001 {
+        pose.translate(invert * -0.641_864, 0.0, 0.0);
+        rotate(pose, 'y', invert * 10.0);
+    }
+}
+
+/// The motions that place the stack by themselves: eating moves before the arm's transform, and
+/// a spear in use skips the hand's drop. Whether `motion` was one.
+fn place_before_arm(pose: &mut Pose, motion: HandMotion, invert: f32, height: f32) -> bool {
+    match motion {
+        HandMotion::Eat { current, duration } => {
+            eat_transform(pose, invert, (current, duration));
+            arm_transform(pose, invert, height);
+        }
+        HandMotion::SpearUse {
+            spear,
+            held,
+            hit_feedback,
+        } => {
+            pose.translate(invert * 0.56, -0.52, -0.72);
+            spear_animation::first_person_use(pose, (invert, held), spear, hit_feedback);
+        }
+        _ => return false,
+    }
+    true
+}
+
 /// The pose of the hand's stack from the pose of the hand: `invert` is 1 for the right arm and
 /// -1 for the left, `attack` how far the swing is and `height` how far the hand has dropped.
 pub fn apply(pose: &mut Pose, motion: HandMotion, (invert, attack, height): (f32, f32, f32)) {
-    if let HandMotion::Eat { current, duration } = motion {
-        eat_transform(pose, invert, (current, duration));
-        return arm_transform(pose, invert, height);
+    if place_before_arm(pose, motion, invert, height) {
+        return;
     }
     arm_transform(pose, invert, height);
     match motion {
+        HandMotion::Stab => spear_animation::first_person_attack(pose, attack, invert),
         HandMotion::Block { shield: false } => block_transform(pose, invert),
         HandMotion::Trident { held } => trident_transform(pose, invert, held),
         HandMotion::Brush { phase } => brush_transform(pose, invert, phase),
@@ -173,14 +212,11 @@ pub fn apply(pose: &mut Pose, motion: HandMotion, (invert, attack, height): (f32
             held,
             charge_duration,
         } => crossbow_charge_transform(pose, invert, (held, charge_duration)),
-        HandMotion::LoadedCrossbow => {
-            swing_arm(pose, invert, attack);
-            if attack < 0.001 {
-                pose.translate(invert * -0.641_864, 0.0, 0.0);
-                rotate(pose, 'y', invert * 10.0);
-            }
-        }
-        HandMotion::Block { shield: true } | HandMotion::Lifted | HandMotion::Eat { .. } => {}
+        HandMotion::LoadedCrossbow => loaded_crossbow_transform(pose, invert, attack),
+        HandMotion::Block { shield: true }
+        | HandMotion::Lifted
+        | HandMotion::Eat { .. }
+        | HandMotion::SpearUse { .. } => {}
     }
 }
 
@@ -208,5 +244,29 @@ mod tests {
         assert!((idle[0] - plain[0]).abs() > 0.5, "{idle:?} {plain:?}");
         let swinging = position(HandMotion::LoadedCrossbow, 0.5);
         assert_eq!(swinging, position(HandMotion::Swing, 0.5));
+    }
+
+    #[test]
+    fn a_spear_stabs_in_a_swing_and_is_raised_in_use() {
+        let spear = photon_data::spear::spear_of("minecraft:iron_spear").expect("a spear");
+        // A swing at its start is the arm transform; a stab is drawn back before the thrust.
+        let rest = position(HandMotion::Stab, 0.0);
+        assert_eq!(rest, position(HandMotion::Lifted, 0.0));
+        let thrust = position(HandMotion::Stab, 0.15);
+        assert!(thrust[2] != rest[2]);
+        // In use the spear starts at the hand's rest and is lifted as the raise goes on.
+        let used = |held| {
+            position(
+                HandMotion::SpearUse {
+                    spear,
+                    held,
+                    hit_feedback: 0.0,
+                },
+                0.0,
+            )
+        };
+        let (start, raised) = (used(0.0), used(spear.delay_ticks as f32));
+        assert!((start[0] - 0.56).abs() < 1e-5 && (start[1] + 0.52).abs() < 1e-5);
+        assert!(raised != start);
     }
 }

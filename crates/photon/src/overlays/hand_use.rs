@@ -41,7 +41,23 @@ pub(super) fn motion(
             _ if main_hand && is_charged_crossbow(stack) => HandMotion::LoadedCrossbow,
             _ => HandMotion::Swing,
         },
-        _ => in_use(stack, (ticks, partial)).unwrap_or(HandMotion::Swing),
+        _ => in_use(stack, (ticks, partial)).unwrap_or_else(|| swing_of(stack)),
+    }
+}
+
+/// The spear a stack is, by its item.
+fn spear_of(stack: &ClientItemStackState) -> Option<&'static photon_data::spear::Spear> {
+    let item = photon_world::block::rules::item(stack.item_registry_id())?;
+    photon_data::spear::spear_of(item.name)
+}
+
+/// What a swing does with the stack: a spear stabs, anything else whacks
+/// (`ItemStack.getSwingAnimation().type()`).
+fn swing_of(stack: &ClientItemStackState) -> HandMotion {
+    if spear_of(stack).is_some() {
+        HandMotion::Stab
+    } else {
+        HandMotion::Swing
     }
 }
 
@@ -70,8 +86,12 @@ fn in_use(
         UseAnimation::Brush => HandMotion::Brush {
             phase: (remaining % 10) as f32 - partial + 1.0,
         },
-        // The spear places itself with its own animation, which is not ported yet.
-        UseAnimation::Spear => return None,
+        UseAnimation::Spear => HandMotion::SpearUse {
+            spear: spear_of(stack)?,
+            held,
+            // The kick of a hit on the local player is not tracked yet.
+            hit_feedback: 0.0,
+        },
         _ => HandMotion::Lifted,
     })
 }

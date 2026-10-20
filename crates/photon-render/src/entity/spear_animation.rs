@@ -60,6 +60,15 @@ pub fn out_back(x: f32) -> f32 {
     1.0 + 2.701_58 * cube(x - 1.0) + 1.701_58 * square(x - 1.0)
 }
 
+/// `Ease.inOutBack`.
+pub fn in_out_back(x: f32) -> f32 {
+    if x < 0.5 {
+        return 4.0 * x * x * (7.189_819 * x - 2.594_909_4) / 2.0;
+    }
+    let dt = 2.0 * x - 2.0;
+    (dt * dt * (3.594_909_4 * dt + 2.594_909_4) + 2.0) / 2.0
+}
+
 /// `Ease.outQuart`.
 pub fn out_quart(x: f32) -> f32 {
     1.0 - square(square(1.0 - x))
@@ -281,6 +290,58 @@ pub fn third_person_attack_item(pose: &mut Pose, attack_time: f32, forward_movem
         (0.0, -0.125, 0.125),
     );
     pose.translate(0.0, forward_movement * (attack - retract), 0.0);
+}
+
+/// `SpearAnimations.firstPersonUse`: the spear in the player's hand is raised, swayed, lowered and
+/// raised back as the use goes on, `time_held` ticks in.
+pub fn first_person_use(pose: &mut Pose, (invert, time_held): (f32, f32), spear: &Spear, hit: f32) {
+    let params = UseParams::new(spear, time_held);
+    pose.translate(
+        invert
+            * (params.raise_progress * 0.15
+                + params.raise_progress_end * -0.05
+                + params.sway_progress * -0.1
+                + params.sway_scale_slow * 0.005),
+        params.raise_progress * -0.075
+            + params.raise_progress_middle * 0.075
+            + params.sway_scale_fast * 0.01,
+        // The reference adds this one in doubles.
+        (f64::from(params.raise_progress_start) * 0.05
+            + f64::from(params.raise_progress_end) * -0.05
+            + f64::from(params.sway_scale_slow * 0.005)) as f32,
+    );
+    let raise = -65.0 * in_out_back(params.raise_progress) - 35.0 * params.lower_progress
+        + 100.0 * params.raise_back_progress
+        + -0.5 * params.sway_scale_fast;
+    pose.rotate_around(
+        &Quaternion::rotation_x(Quaternion::degrees_to_radians(raise)),
+        (0.0, 0.1, 0.0),
+    );
+    let turn = invert
+        * (-90.0 * progress(params.raise_progress, 0.5, 0.55)
+            + 90.0 * params.sway_progress
+            + 2.0 * params.sway_scale_slow);
+    pose.rotate_around(
+        &Quaternion::rotation_y(-Quaternion::degrees_to_radians(turn)),
+        (invert * 0.15, 0.0, 0.0),
+    );
+    pose.translate(0.0, -hit_feedback_amount(hit), 0.0);
+}
+
+/// `SpearAnimations.firstPersonAttack`: the stab of a swing, drawn back, thrust and brought in.
+pub fn first_person_attack(pose: &mut Pose, attack: f32, invert: f32) {
+    let start = in_out_sine(progress(attack, 0.0, 0.05));
+    let middle = out_back(progress(attack, 0.05, 0.2));
+    let end = in_out_expo(progress(attack, 0.4, 1.0));
+    pose.translate(
+        invert * 0.1 * (start - middle),
+        -0.075 * (start - end),
+        0.65 * (start - middle),
+    );
+    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+        -70.0 * (start - end),
+    )));
+    pose.translate(0.0, 0.0, (-0.25 * f64::from(end - middle)) as f32);
 }
 
 /// `SpearAnimations.hitFeedbackAmount`: the kick of a hit, over the ticks since it landed.
