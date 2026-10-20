@@ -36,6 +36,7 @@ impl SubtitlePass {
         let over_screen = controls.screen.is_some()
             || controls.sign_edit.is_some()
             || controls.command_block.is_some()
+            || controls.structure_block.is_some()
             || controls.book_edit.is_some();
         let pass = if !controls.any_screen_open() {
             Self::AfterToasts

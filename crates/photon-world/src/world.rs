@@ -14,6 +14,7 @@ mod border;
 mod chunks;
 mod collision;
 mod command_block;
+mod structure_block;
 pub use command_block::{CommandBlockMode, CommandBlockView, CommandMinecartView};
 mod dimension;
 mod enchanting;

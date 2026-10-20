@@ -131,6 +131,9 @@ impl Controls {
             if let Some(edit) = self.command_block.as_mut() {
                 edit.screen.char_typed(character);
             }
+            if let Some(edit) = self.structure_block.as_mut() {
+                edit.screen.char_typed(character);
+            }
             if let Some(screen) = self.screen.as_mut() {
                 screen.char_typed(character);
             }
@@ -156,6 +159,13 @@ impl Controls {
                 glfw::Modifiers::empty(),
             );
             self.command_block_event(press, session, surface, assets)?;
+        } else if self.structure_block.is_some() {
+            let press = glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                glfw::Modifiers::empty(),
+            );
+            self.structure_block_event(press, session, surface, assets)?;
         } else {
             return Ok(false);
         }

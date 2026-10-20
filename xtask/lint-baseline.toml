@@ -547,7 +547,7 @@
 "crates/photon/src/equipment/arm_poses.rs::hand_pose" = 15
 "crates/photon/src/equipment/arm_poses.rs::use_animation" = 12
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 14
-"crates/photon/src/gui/draw.rs::Gui::draw" = 24
+"crates/photon/src/gui/draw.rs::Gui::draw" = 23
 "crates/photon/src/gui/hud.rs::Gui::receive_hud" = 13
 "crates/photon/src/menu.rs::Menu::form_result" = 11
 "crates/photon/src/menu.rs::Menu::handle" = 22

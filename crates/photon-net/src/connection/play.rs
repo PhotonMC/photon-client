@@ -45,6 +45,8 @@ mod recipes;
 mod reconfigure;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
 mod signs;
+mod structure_blocks;
+pub use structure_blocks::{StructureBlockSettings, StructureFlags};
 mod state;
 mod traffic;
 

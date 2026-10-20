@@ -373,7 +373,7 @@ impl Play {
         self.controls
             .open_sign_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
-            .open_command_block(&mut self.session, &mut self.surface, &self.screen_assets);
+            .open_block_screens(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .open_book_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls

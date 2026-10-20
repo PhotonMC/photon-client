@@ -12,7 +12,9 @@ mod writer;
 
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
-pub use play::{CommandBlockSettings, CommandBlockState, PlaySession};
+pub use play::{
+    CommandBlockSettings, CommandBlockState, PlaySession, StructureBlockSettings, StructureFlags,
+};
 pub use record::{NoRecorder, Recorder};
 pub use session::{
     connect_stream, frame_packet, read_packet, send_configuration_start, send_handshake_intention,

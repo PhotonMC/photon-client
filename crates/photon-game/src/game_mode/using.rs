@@ -13,6 +13,11 @@ impl GameMode {
         self.opened_command_block.take()
     }
 
+    /// The position of the structure block used, whose screen is to open.
+    pub fn take_opened_structure_block(&mut self) -> Option<(i32, i32, i32)> {
+        self.opened_structure_block.take()
+    }
+
     /// The id of the command block minecart used, whose screen is to open.
     pub fn take_opened_command_minecart(&mut self) -> Option<photon_core::ids::EntityId> {
         self.opened_command_minecart.take()
@@ -211,6 +216,14 @@ impl GameMode {
         if ctx.can_use_game_master_blocks() && ctx.world.command_block_view(pos).is_some() {
             self.opened_command_block = Some(pos);
             return UseResult::Success { swing: true };
+        }
+        if photon_world::block::state_or_air(state).block().name == "minecraft:structure_block" {
+            // `StructureBlockEntity.usedBy`: a game master opens the screen; anyone else passes.
+            if ctx.can_use_game_master_blocks() && ctx.world.structure_block_view(pos).is_some() {
+                self.opened_structure_block = Some(pos);
+                return UseResult::Success { swing: true };
+            }
+            return UseResult::Pass;
         }
         match rules::use_without_item(state) {
             Rule::Known(result) => result,

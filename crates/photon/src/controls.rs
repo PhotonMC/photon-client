@@ -136,6 +136,8 @@ pub struct Controls {
     pub sign_edit: Option<SignEdit>,
     /// The command block the player is editing, while its screen is up.
     pub command_block: Option<CommandBlockEdit>,
+    /// The structure block the player is editing, while its screen is up.
+    pub structure_block: Option<StructureBlockEdit>,
     /// The book and quill being written in, while its screen is up.
     pub book_edit: Option<BookEdit>,
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
@@ -321,6 +323,8 @@ mod settings;
 
 mod command_block;
 
+mod structure_block;
+
 mod sign;
 
 mod skin;
@@ -335,6 +339,7 @@ mod turn;
 pub use command_block::CommandBlockEdit;
 pub use dialogs::DialogLayer;
 pub use sign::SignEdit;
+pub use structure_block::StructureBlockEdit;
 
 mod book;
 pub use book::BookEdit;

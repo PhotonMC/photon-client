@@ -44,6 +44,7 @@ impl Controls {
             self.game_mode_switcher.is_some(),
             self.sign_edit.is_some(),
             self.command_block.is_some(),
+            self.structure_block.is_some(),
             self.book_edit.is_some(),
             self.confirm.is_some(),
             self.link_confirm.is_some(),

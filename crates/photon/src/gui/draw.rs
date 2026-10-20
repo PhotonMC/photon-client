@@ -181,6 +181,8 @@ impl Gui {
                 sign.screen.resize(gui_size);
             }
             sign.screen.draw(frame, atlas, font, mouse);
+        } else if let Some(edit) = controls.structure_block.as_mut() {
+            edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
         } else if let Some(edit) = controls.command_block.as_mut() {
             let commands = session.commands().map(|tree| &**tree);
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size, commands));
@@ -338,7 +340,7 @@ impl Gui {
         } else if let Some(death) = controls.death.as_mut() {
             let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
             death.draw(&mut frame, &self.atlas, &self.font, mouse);
-        } else if controls.sign_edit.is_some() || controls.command_block.is_some() {
+        } else if controls.text_edit_open() {
             let assets = (&self.atlas, &self.font, &self.lang);
             Self::draw_text_edit(&mut frame, assets, (session, controls, gui_size));
         } else if let Some(book) = controls.book_edit.as_mut() {
