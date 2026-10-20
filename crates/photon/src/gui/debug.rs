@@ -1,7 +1,9 @@
 //! The debug overlay F3 shows (`DebugScreenOverlay`), laid out from the camera entity.
 
 use super::*;
-use photon_gui::hud::debug::{self, CameraEntity, FooterKeys, Input, ServerInfo};
+use photon_gui::hud::debug::{
+    self, CameraEntity, Clouds, Filtering, FooterKeys, Impactors, Input, ServerInfo,
+};
 
 /// The two columns of the overlay's lines, or none when nothing is shown: no entry is on, or the
 /// interface is hidden with no screen over it.
@@ -29,6 +31,14 @@ impl Gui {
             }
         });
         let input = Input {
+            // The video options these read are not stored yet: the game's own defaults.
+            impactors: Some(Impactors {
+                improved_transparency: false,
+                clouds: Clouds::Fancy,
+                biome_blend: 2,
+                filtering: Filtering::None,
+                anisotropy: 4,
+            }),
             version: {
                 let version = photon_net::resources::KnownPack::VANILLA_VERSION;
                 debug::version_line(version, version)

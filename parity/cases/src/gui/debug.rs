@@ -36,6 +36,7 @@ fn row(label: String, place: (Place, (f64, f64)), changes: Value) -> Value {
 pub fn hud_debug_overlay() -> Value {
     let mut rows = place_rows();
     rows.extend(frame_and_server_rows());
+    rows.extend(impactor_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -105,6 +106,39 @@ fn frame_and_server_rows() -> Vec<Value> {
                 "brand": brand, "frozen": frozen, "stepping": stepping,
                 "sent": f32_bits(sent), "received": f32_bits(received),
             }),
+        ));
+    }
+    rows
+}
+
+/// The performance options entry: each cloud status and filtering method, the blend radius at its
+/// ends, improved transparency, and the anisotropy held to what the device supports.
+fn impactor_rows() -> Vec<Value> {
+    let origin = ((1.0, 2.0, 3.0), (0.0, 0.0));
+    let mut rows = Vec::new();
+    for (label, transparency, clouds, blend, filtering, bit, limit) in [
+        ("defaults", false, 2, 2, 0, 2, 16),
+        ("off", true, 0, 0, 1, 2, 16),
+        ("fast-max", false, 1, 7, 0, 2, 16),
+        ("aniso-4", true, 2, 3, 2, 2, 16),
+        ("aniso-2", false, 1, 5, 2, 1, 16),
+        ("aniso-8", false, 0, 1, 2, 3, 16),
+        ("aniso-capped", false, 2, 2, 2, 3, 4),
+        ("aniso-unsupported", false, 2, 2, 2, 2, 1),
+    ] {
+        let impactors = json!({
+            "transparency": transparency, "clouds": clouds, "blend": blend,
+            "filtering": filtering, "bit": bit, "limit": limit,
+        });
+        rows.push(row(format!("debug-impactors-{label}"), origin, json!({"impactors": impactors})));
+    }
+    for (label, overlay, reduced) in [("hidden-overlay", false, false), ("reduced", true, true)] {
+        rows.push(row(
+            format!("debug-impactors-{label}"),
+            origin,
+            json!({"overlay": overlay, "reduced": reduced,
+                "impactors": {"transparency": true, "clouds": 1, "blend": 4, "filtering": 2,
+                    "bit": 3, "limit": 16}}),
         ));
     }
     rows

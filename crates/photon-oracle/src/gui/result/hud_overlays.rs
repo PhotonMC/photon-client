@@ -300,11 +300,27 @@ pub(super) fn toasts_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, St
 
 /// What the entries read, from a `hud_debug_overlay` row.
 fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
-    use photon_gui::hud::debug::{self, CameraEntity, FrameStats, Input, PresentMode, ServerInfo};
+    use photon_gui::hud::debug::{
+        self, CameraEntity, Clouds, Filtering, FrameStats, Impactors, Input, PresentMode,
+        ServerInfo,
+    };
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let launched = row["launched"].as_str().ok_or("launched")?;
+    let impactors = row.get("impactors").map(|each| {
+        let number = |key: &str| each[key].as_i64().unwrap_or(0) as i32;
+        Impactors {
+            improved_transparency: each["transparency"].as_bool().unwrap_or(false),
+            clouds: [Clouds::Off, Clouds::Fast, Clouds::Fancy][number("clouds") as usize],
+            biome_blend: number("blend"),
+            filtering: [Filtering::None, Filtering::Rgss, Filtering::Anisotropic]
+                [number("filtering") as usize],
+            // `Options.maxAnisotropyValue`.
+            anisotropy: (1 << number("bit")).min(number("limit")),
+        }
+    });
     Ok(Input {
+        impactors,
         version: debug::version_line("26.2", launched),
         frame: FrameStats {
             fps: int("fps"),

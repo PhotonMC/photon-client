@@ -1,6 +1,9 @@
 //! The lines the entries add (`DebugScreenEntries`), from what the camera entity and the
 //! connection say.
 
+mod impactors;
+pub use impactors::{Clouds, Filtering, Impactors};
+
 use super::format::fixed;
 use super::layout::Line;
 use photon_core::direction::Direction;
@@ -79,6 +82,8 @@ pub struct Input {
     pub camera: Option<CameraEntity>,
     pub frame: FrameStats,
     pub server: Option<ServerInfo>,
+    /// The options `simple_performance_impactors` reads, none without them.
+    pub impactors: Option<Impactors>,
 }
 
 /// The lines of one entry's `display`.
@@ -86,6 +91,11 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
     match id {
         "fps" => vec![Line::Priority(fps_line(&input.frame))],
         "tps" => input.server.as_ref().map(tps).unwrap_or_default(),
+        "simple_performance_impactors" => input
+            .impactors
+            .as_ref()
+            .map(impactors::display)
+            .unwrap_or_default(),
         "game_version" => vec![Line::Priority(input.version.clone())],
         "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),
         "player_section_position" => input.camera.as_ref().map(section).unwrap_or_default(),

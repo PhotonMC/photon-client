@@ -956,8 +956,32 @@ class GuiHudOracle extends GuiCommandOracle {
             var statuses = new java.util.HashMap<>(
                 net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(
                     net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT));
-            statuses.keySet().removeIf(id -> !java.util.Set.of("fps", "tps", "game_version", "player_position",
-                "player_section_position", "3d_crosshair").contains(id.getPath()));
+            var kept = new java.util.HashSet<>(java.util.Set.of("fps", "tps", "game_version", "player_position",
+                "player_section_position", "3d_crosshair"));
+            if (row.has("impactors")) {
+                // The options that entry reads, and the device that bounds the anisotropy.
+                kept.add("simple_performance_impactors");
+                var impactors = row.getAsJsonObject("impactors");
+                var options = minecraft.options;
+                options.improvedTransparency().set(impactors.get("transparency").getAsBoolean());
+                options.cloudStatus().set(net.minecraft.client.CloudStatus.values()[impactors.get("clouds").getAsInt()]);
+                options.biomeBlendRadius().set(impactors.get("blend").getAsInt());
+                options.textureFiltering().set(
+                    net.minecraft.client.TextureFilteringMethod.values()[impactors.get("filtering").getAsInt()]);
+                options.maxAnisotropyBit().set(impactors.get("bit").getAsInt());
+                var limits = new com.mojang.blaze3d.systems.DeviceLimits(impactors.get("limit").getAsInt(), 0, 0, 0L, 0, 0);
+                var deviceInfo = new com.mojang.blaze3d.systems.DeviceInfo(null, null, null, true, null, 0.0F, limits,
+                    null, null, null, null);
+                var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
+                    GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
+                    (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);
+                var device = unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
+                set(device, "backend", backend);
+                var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
+                deviceField.setAccessible(true);
+                deviceField.set(null, device);
+            }
+            statuses.keySet().removeIf(id -> !kept.contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());
             MovementOracle.setField(entries, "isOverlayVisible", row.get("overlay").getAsBoolean());
