@@ -5,6 +5,7 @@
 //! Not drawn: the tooltip over the name of an entry that reduced debug info hides.
 
 mod draw;
+mod input;
 
 use std::time::Instant;
 
@@ -79,6 +80,15 @@ fn value_texts(lang: &Lang) -> [[Vec<Run>; 2]; 3] {
     })
 }
 
+/// The title, and the warning wrapped to the width of the rows.
+fn header_texts(font: &Font, lang: &Lang) -> (Vec<Run>, Vec<Vec<Run>>) {
+    let warning = styled(lang, "debug.options.warning", Some(ALWAYS_COLOUR));
+    (
+        styled(lang, "debug.options.title", None),
+        split(&warning, ROW_WIDTH, font),
+    )
+}
+
 /// The footer's buttons: the two profiles (the one in use cannot be pressed) and Done.
 fn footer_buttons(arena: &mut Arena, lang: &Lang, entries: &EntryList) -> ([Widget; 2], Widget) {
     let mut button = |key: &str, wide: i32| Widget {
@@ -96,12 +106,40 @@ fn footer_buttons(arena: &mut Arena, lang: &Lang, entries: &EntryList) -> ([Widg
     (profiles, button("gui.done", 60))
 }
 
+/// What the screen asks of the game when it is pressed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DebugOptionsEvent {
+    /// The screen closes (`onClose`).
+    Close,
+    /// An entry's button set its status; the entry list saves.
+    Status { id: &'static str, status: Status },
+    /// A profile's button loaded it; the entry list saves.
+    Profile(Profile),
+}
+
+/// Where the focus is: the search box at first, then whichever widget was pressed last.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    Search,
+    /// The list itself, with its scroll bar held.
+    List,
+    /// A profile button, by its index.
+    Profile(usize),
+    Done,
+    /// A button of an entry, by the entry's id and its place among the three.
+    Button(&'static str, usize),
+}
+
 pub struct DebugOptionsScreen {
     arena: Arena,
     title: Widget,
     search_rect: usize,
     search: EditBox,
     focused_at: Instant,
+    focus: Focus,
+    search_hint: Vec<Run>,
+    /// Whether the list's scroll bar is held (`AbstractScrollArea.scrolling`).
+    scrolling: bool,
     subtitle: Vec<Vec<Run>>,
     subtitle_rect: usize,
     profiles: [Widget; 2],
@@ -129,13 +167,7 @@ impl DebugOptionsScreen {
         reduced: bool,
     ) -> Self {
         let (width, height) = size;
-        let styled = |key: &str, colour: Option<u32>| styled(lang, key, colour);
-        let title_runs = styled("debug.options.title", None);
-        let subtitle = split(
-            &styled("debug.options.warning", Some(ALWAYS_COLOUR)),
-            ROW_WIDTH,
-            font,
-        );
+        let (title_runs, subtitle) = header_texts(font, lang);
         let mut arena = Arena::default();
         let spacer = arena.add(ROW_WIDTH / 3, 1);
         let title_rect = arena.add(font.width_of_runs(&title_runs), 9);
@@ -153,6 +185,14 @@ impl DebugOptionsScreen {
             // `EditBox.getInnerWidth` of the box.
             search: EditBox::new(ROW_WIDTH / 3 - 8, 32),
             focused_at: Instant::now(),
+            focus: Focus::Search,
+            search_hint: lang.runs(
+                &Component::translatable("debug.options.search")
+                    .with_colour("gray")
+                    .italic(),
+                &Style::default(),
+            ),
+            scrolling: false,
             subtitle,
             subtitle_rect,
             profiles,
@@ -162,10 +202,8 @@ impl DebugOptionsScreen {
             last_search: String::new(),
             rows: Vec::new(),
             values: value_texts(lang),
-            categories: [
-                styled(Category::ScreenText.translation_key(), None),
-                styled(Category::Renderer.translation_key(), None),
-            ],
+            categories: [Category::ScreenText, Category::Renderer]
+                .map(|category| styled(lang, category.translation_key(), None)),
             place: Place {
                 y: HEADER_HEIGHT,
                 width,
@@ -223,6 +261,22 @@ impl DebugOptionsScreen {
 
     pub fn size(&self) -> (i32, i32) {
         self.size
+    }
+
+    /// The screen laid out again for another window size (`Screen.resize`): the search box keeps
+    /// its text but the list is built unfiltered, as the reference builds it, and the scroll and
+    /// the focus are not kept.
+    pub fn resized(
+        &self,
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        entries: &EntryList,
+        reduced: bool,
+    ) -> Self {
+        let mut screen = Self::new(font, lang, size, entries, reduced);
+        screen.search.set_value(&self.search.value(), font);
+        screen
     }
 
     /// `OptionList.updateSearch`: the rows for the entries whose id holds the search text, each
@@ -289,7 +343,7 @@ impl DebugOptionsScreen {
         self.rows.len() as i32 * ITEM_HEIGHT + 4
     }
 
-    fn max_scroll(&self) -> f64 {
+    pub(super) fn max_scroll(&self) -> f64 {
         f64::from(self.place.max_scroll(self.content_height()))
     }
 
@@ -324,7 +378,10 @@ impl DebugOptionsScreen {
 
     /// A character typed into the search box (it has the focus at first).
     pub fn char_typed(&mut self, character: char, font: &Font) {
-        if self.search.char_typed(character, font) && self.search.value() != self.last_search {
+        if self.focus == Focus::Search
+            && self.search.char_typed(character, font)
+            && self.search.value() != self.last_search
+        {
             self.update_search();
         }
     }

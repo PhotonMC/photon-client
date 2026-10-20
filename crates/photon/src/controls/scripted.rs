@@ -158,6 +158,8 @@ impl Controls {
             self.advancements_pressed(session, surface, assets);
         } else if self.stats.is_some() {
             self.stats_pressed((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32));
+        } else if self.debug_options.is_some() {
+            self.scripted_debug_options_press(session, surface, assets)?;
         } else if self.command_block.is_some() {
             let press = glfw::WindowEvent::MouseButton(
                 glfw::MouseButton::Button1,

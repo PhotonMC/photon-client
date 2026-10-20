@@ -30,6 +30,12 @@ pub(super) fn load_debug_entries() -> EntryList {
 }
 
 impl Controls {
+    /// `DebugScreenEntryList.save`, whether or not a status changed (the profile buttons).
+    pub(super) fn save_debug_profile_now(&mut self) {
+        self.debug.entries.take_changed();
+        write_debug_profile(&self.debug.entries);
+    }
+
     /// `DebugScreenEntryList.save`, after a status was set.
     pub(super) fn save_debug_profile(&mut self) {
         if self.debug.entries.take_changed() {

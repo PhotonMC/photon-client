@@ -194,11 +194,18 @@ class GuiSocialOracle extends GuiCreditsOracle {
                 list.setStatus(net.minecraft.resources.Identifier.withDefaultNamespace(pair.get(0).getAsString()),
                     net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.valueOf(pair.get(1).getAsString()));
             }
+            // What the setup saved is not what the screen saves.
+            new java.io.File(directory, "debug-profile.json").delete();
             set(minecraft, "debugEntries", list);
-            // The overlay behind the screen is the game's; its game has not finished loading, so it draws nothing.
+            // The game that hears of the screens opened, as for the social screen.
+            var hud = get(get(minecraft, "gui"), "hud");
+            var recording = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);
+            set(recording, "hud", hud);
+            set(recording, "events", new java.util.ArrayList<String>());
+            set(minecraft, "gui", recording);
             var overlay = unsafe.allocateInstance(net.minecraft.client.gui.components.DebugScreenOverlay.class);
             set(overlay, "minecraft", minecraft);
-            set(get(get(minecraft, "gui"), "hud"), "debugOverlay", overlay);
+            set(hud, "debugOverlay", overlay);
             var options = new net.minecraft.client.gui.screens.debug.DebugOptionsScreen();
             set(options, "minecraft", minecraft);
             set(options, "font", minecraft.font);
@@ -210,12 +217,52 @@ class GuiSocialOracle extends GuiCreditsOracle {
             if (row.has("scroll")) {
                 options.mouseScrolled(width / 2.0, height / 2.0, 0.0, row.get("scroll").getAsDouble());
             }
+            // The steps, each followed by a frame, as the game draws between its events; the entries
+            // put their buttons in place as they draw, so a frame comes first.
+            if (row.has("steps")) {
+                options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+                options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+                screen.state().reset();
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    double x = step.has("x") ? step.get("x").getAsDouble() : 0.0;
+                    double y = step.has("y") ? step.get("y").getAsDouble() : 0.0;
+                    var press = new net.minecraft.client.input.MouseButtonEvent(x, y,
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                    switch (step.get("do").getAsString()) {
+                        case "click" -> options.mouseClicked(press, false);
+                        case "release" -> options.mouseReleased(press);
+                        case "drag" -> options.mouseDragged(press, 0.0, step.get("dy").getAsDouble());
+                        case "type" -> {
+                            for (var cp : (Iterable<Integer>) step.get("text").getAsString().codePoints()::iterator) {
+                                options.charTyped(new net.minecraft.client.input.CharacterEvent(cp));
+                            }
+                        }
+                        case "key" -> options.keyPressed(
+                            new net.minecraft.client.input.KeyEvent(step.get("key").getAsInt(), 0, 0));
+                        default -> throw new IllegalArgumentException(step.toString());
+                    }
+                    options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+                    options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+                    screen.state().reset();
+                }
+            }
             options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var events = new JsonArray();
+            for (var event : recording.events) {
+                events.add(event);
+            }
+            out.add("events", events);
+            // What the entry list saved: the file, none when nothing was saved.
+            var saved = new java.io.File(directory, "debug-profile.json");
+            if (saved.exists()) {
+                out.add("file", com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(saved.toPath())));
+            }
             rows.add(out);
         }
         var result = new JsonObject();

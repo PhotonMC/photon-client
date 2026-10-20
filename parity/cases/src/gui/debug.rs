@@ -288,6 +288,53 @@ pub fn debug_options_screen() -> Value {
         with(row("reduced", (427, 240)), "reduced", json!(true)),
         with(with(row("scrolled", (427, 240)), "scroll", json!(-3.0)), "set", json!([["tps", "NEVER"]])),
         with(row("hover", (427, 240)), "mouse", json!([310, 90])),
+        // A few rows only, so no scroll bar.
+        with(row("search-fps", (427, 240)), "search", json!("fps")),
     ];
+    let rows = [rows, debug_options_step_rows(&row, &with)].concat();
     gui("debug-options-screen", "debug_options_screen", rows)
+}
+
+/// The rows of the screen that press, type and drag.
+fn debug_options_step_rows(
+    row: &impl Fn(&str, (i64, i64)) -> Value,
+    with: &impl Fn(Value, &str, Value) -> Value,
+) -> Vec<Value> {
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let steps = |label: &str, search: &str, steps: Vec<Value>| {
+        with(with(row(label, (427, 240)), "search", json!(search)), "steps", json!(steps))
+    };
+    vec![
+        // A button of the first entry: the focus leaves the search box, both profiles can be loaded.
+        steps("press-overlay", "", vec![click(290, 92)]),
+        steps("press-always-then-off", "", vec![click(350, 92), click(230, 92)]),
+        // The search box takes the focus back with a click.
+        steps("press-then-search", "", vec![click(350, 92), click(260, 18)]),
+        // The profiles: the one in use is inactive, the other loads and saves.
+        steps("press-performance", "", vec![click(240, 223)]),
+        steps("press-performance-default", "", vec![click(240, 223), click(115, 223)]),
+        steps("press-done", "", vec![click(340, 223)]),
+        steps(
+            "typing",
+            "",
+            vec![
+                json!({"do": "type", "text": "chunk"}),
+                json!({"do": "key", "key": 259}),
+                json!({"do": "key", "key": 259}),
+            ],
+        ),
+        steps("escape", "", vec![json!({"do": "key", "key": 256})]),
+        // The scroll bar: taken hold of, dragged, let go.
+        steps(
+            "bar-drag",
+            "",
+            vec![
+                click(398, 70),
+                json!({"do": "drag", "x": 398, "y": 100, "dy": 30}),
+                json!({"do": "release", "x": 398, "y": 100}),
+            ],
+        ),
+        // A press on a category, a disabled button or the empty header does nothing.
+        steps("press-nothing", "", vec![click(200, 70), click(230, 92), click(20, 30)]),
+    ]
 }

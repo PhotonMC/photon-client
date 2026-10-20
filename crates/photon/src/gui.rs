@@ -101,6 +101,7 @@ mod debug;
 mod draw;
 mod hud;
 mod layers;
+mod light_screens;
 mod title;
 
 #[cfg(test)]

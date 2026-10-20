@@ -36,7 +36,7 @@ fn pause_due(
     )
 }
 
-/// The key a script's letter or digit stands for.
+/// The key a script's letter or digit stands for (`6` is F6, as no script needs the digit).
 fn scripted_key(letter: char) -> Option<glfw::Key> {
     use glfw::Key::*;
     let letters = [
@@ -45,6 +45,7 @@ fn scripted_key(letter: char) -> Option<glfw::Key> {
     let digits = [Num1, Num2, Num3, Num4];
     match letter {
         'a'..='z' => letters.get(letter as usize - 'a' as usize).copied(),
+        '6' => Some(F6),
         '1'..='4' => digits.get(letter as usize - '1' as usize).copied(),
         _ => None,
     }
@@ -96,7 +97,7 @@ impl Controls {
     }
 
     /// The debug keys that act in the world, and whether `key` was one.
-    fn run_debug_key(
+    pub(super) fn run_debug_key(
         &mut self,
         key: glfw::Key,
         (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
@@ -108,15 +109,28 @@ impl Controls {
                 self.reload_chunks = true;
                 self.debug_say("debug.reload_chunks.message", assets);
             }
+            glfw::Key::N => self.debug_creative_spectator(session, assets)?,
+            glfw::Key::F6 => self.toggle_debug_options(session, surface, assets),
+            _ => return Ok(self.run_debug_toggle(key, (session, surface, assets))),
+        }
+        Ok(true)
+    }
+
+    /// The debug keys that switch something on or off, and whether `key` was one.
+    fn run_debug_toggle(
+        &mut self,
+        key: glfw::Key,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+    ) -> bool {
+        match key {
             glfw::Key::B => self.debug_hitboxes(session, assets),
             glfw::Key::G => self.debug_chunk_borders(session, assets),
             glfw::Key::H => self.debug_advanced_tooltips(assets),
             glfw::Key::I => self.debug_copy_recreate(session, surface, assets),
             glfw::Key::P => self.debug_pause_on_focus_loss(assets),
-            glfw::Key::N => self.debug_creative_spectator(session, assets)?,
-            _ => return Ok(false),
+            _ => return false,
         }
-        Ok(true)
+        true
     }
 
     /// The `[Debug]:` line in the chat.

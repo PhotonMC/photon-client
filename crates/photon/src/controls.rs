@@ -36,6 +36,7 @@ use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScree
 
 use photon_gui::screen::credits::CreditsScreen;
 use photon_gui::screen::death::{DeathAction, DeathScreen};
+use photon_gui::screen::debug_options::DebugOptionsScreen;
 use photon_gui::screen::game_mode::GameModeSwitcherScreen;
 use photon_gui::screen::social::SocialInteractionsScreen;
 
@@ -120,6 +121,8 @@ pub struct Controls {
     pub credits: Option<CreditsScreen>,
     /// The social interactions screen, while it is open.
     pub social: Option<SocialInteractionsScreen>,
+    /// The debug options screen (F3+F6), while it is open.
+    pub debug_options: Option<DebugOptionsScreen>,
     /// The statistics screen over the pause menu, while it is open.
     pub stats: Option<photon_gui::screen::stats::StatsScreen>,
     /// The advancements screen, over the game or the pause menu, while it is open.
@@ -315,6 +318,7 @@ mod credits;
 mod death;
 mod debug_actions;
 mod debug_inspect;
+mod debug_options;
 mod debug_profile;
 mod dialogs;
 mod game_mode_switcher;

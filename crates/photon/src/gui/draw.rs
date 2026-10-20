@@ -223,8 +223,7 @@ impl Gui {
             self.tab_health.clear();
         }
         let sidebar = self.sidebar_lines(session);
-        let items = &mut self.items;
-        let mut draw_item = items.drawer((renderer, tints));
+        let mut draw_item = self.items.drawer((renderer, tints));
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);
@@ -347,12 +346,9 @@ impl Gui {
                 }
                 book.screen.draw(&mut frame, &self.atlas, &self.font, mouse);
             }
-        } else if let Some(social) = controls.social.as_mut() {
-            if social.size() != gui_size {
-                *social = social.resized(&self.font, &self.lang, gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            social.draw(&mut frame, &self.atlas, &self.font, mouse);
+        } else if controls.light_screen_open() {
+            let assets = (&self.atlas, &self.font, &self.lang);
+            Self::draw_light_screen(&mut frame, assets, (session, controls, gui_size));
         }
         if let Some(switcher) = controls.game_mode_switcher.as_mut() {
             switcher.resize(gui_size);

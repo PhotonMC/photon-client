@@ -18,7 +18,7 @@ impl DebugOptionsScreen {
             (0, 0, width, height),
         );
         self.title.draw(frame, atlas, font, &self.arena, false);
-        self.draw_search(frame, atlas, font);
+        self.draw_search(frame, atlas, font, mouse);
         let rect = self.arena.0[self.subtitle_rect];
         let middle = rect.x + rect.width / 2;
         for (line, y) in self.subtitle.iter().zip((rect.y..).step_by(9)) {
@@ -26,19 +26,30 @@ impl DebugOptionsScreen {
             frame.styled_text(atlas, font, line, x, y, 0xFFFF_FFFF, true);
         }
         self.draw_list(frame, atlas, font, mouse);
-        for widget in self.profiles.iter().chain([&self.done]) {
-            let lit = widget.contains(&self.arena, mouse);
+        let footer = [
+            (&self.profiles[0], Focus::Profile(0)),
+            (&self.profiles[1], Focus::Profile(1)),
+            (&self.done, Focus::Done),
+        ];
+        for (widget, focus) in footer {
+            let lit = widget.contains(&self.arena, mouse) || self.focus == focus;
             widget.draw(frame, atlas, font, &self.arena, lit);
         }
     }
 
-    /// `EditBox.extractWidgetRenderState`: the field, which has the focus from the start, and its
-    /// text.
-    fn draw_search(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
+    /// `EditBox.extractWidgetRenderState`: the field, lit while it has the focus or the mouse,
+    /// its text, and its hint while it is empty and without the focus.
+    fn draw_search(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
         let rect = self.arena.0[self.search_rect];
+        let focused = self.focus == Focus::Search;
+        let lit = focused || self.search_contains(mouse);
         frame.nine_slice(
             atlas,
-            "widget/text_field_highlighted",
+            if lit {
+                "widget/text_field_highlighted"
+            } else {
+                "widget/text_field"
+            },
             (200, 20),
             1,
             false,
@@ -48,8 +59,13 @@ impl DebugOptionsScreen {
             rect.height,
         );
         let text_at = (rect.x + 4, rect.y + (rect.height - 8) / 2);
+        let focused = focused.then_some(self.focused_at);
         self.search
-            .draw_formatted(frame, atlas, font, text_at, Some(self.focused_at), None);
+            .draw_formatted(frame, atlas, font, text_at, focused, None);
+        if self.search.is_empty() && self.focus != Focus::Search {
+            let hint = &self.search_hint;
+            frame.styled_text(atlas, font, hint, text_at.0, text_at.1, 0xFFE0_E0E0, true);
+        }
     }
 
     /// The list: its background, its rows cut to its window, the lines above and below it and
@@ -66,8 +82,8 @@ impl DebugOptionsScreen {
                 continue;
             }
             self.draw_row(frame, atlas, font, row, (self.row_left() + 2, y + 2));
-            if let Row::Entry { buttons, .. } = row {
-                self.draw_buttons(frame, atlas, font, buttons, mouse);
+            if let Row::Entry { id, buttons, .. } = row {
+                self.draw_buttons(frame, atlas, font, (id, buttons), mouse);
             }
         }
         frame.clip_from(mark, (0, place.y, place.width, place.bottom()));
@@ -107,11 +123,11 @@ impl DebugOptionsScreen {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         font: &Font,
-        buttons: &[Widget; 3],
+        (id, buttons): (&'static str, &[Widget; 3]),
         mouse: (i32, i32),
     ) {
-        for button in buttons.iter().rev() {
-            let lit = button.contains(&self.arena, mouse);
+        for (slot, button) in buttons.iter().enumerate().rev() {
+            let lit = button.contains(&self.arena, mouse) || self.focus == Focus::Button(id, slot);
             button.draw(frame, atlas, font, &self.arena, lit);
         }
     }

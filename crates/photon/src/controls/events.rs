@@ -259,6 +259,9 @@ impl Controls {
         if self.game_mode_switcher.is_some() {
             return Ok(self.game_mode_switcher_event(event, session, surface, assets));
         }
+        if self.debug_options.is_some() {
+            return Ok(self.debug_options_event(event, (session, surface, assets)));
+        }
         if self.link_confirm.is_some() {
             self.link_event(event, surface);
             return Ok(Ok(()));

@@ -29,6 +29,11 @@ impl Controls {
         surface.set_cursor_captured(false);
     }
 
+    /// Whether the social interactions screen or the debug options screen is up.
+    pub(crate) fn light_screen_open(&self) -> bool {
+        self.social.is_some() || self.debug_options.is_some()
+    }
+
     /// Whether a screen is up over the game (`Gui.screen != null`): any of the screens and
     /// dialogs the controls hold.
     pub(crate) fn any_screen_open(&self) -> bool {

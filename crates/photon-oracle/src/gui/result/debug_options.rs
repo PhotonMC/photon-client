@@ -1,7 +1,7 @@
 use super::*;
 
-use photon_gui::hud::debug::{EntryList, Profile, Status};
-use photon_gui::screen::debug_options::DebugOptionsScreen;
+use photon_gui::hud::debug::{EntryList, Profile, Status, profile_text};
+use photon_gui::screen::debug_options::{DebugOptionsEvent, DebugOptionsScreen};
 
 /// `debug_options_screen`: the screen over an entry list the row's profile and statuses were
 /// set on, after a search was typed and the list scrolled, drawn once.
@@ -11,20 +11,7 @@ pub(super) fn debug_options_screen_case(
 ) -> Result<Value, String> {
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let lang = photon_game::text::Lang::load(&ctx.root);
-    let mut entries = EntryList::default();
-    if let Some(name) = row["profile"].as_str() {
-        let profile = Profile::from_name(&name.to_lowercase()).ok_or("profile")?;
-        entries.load_profile(profile);
-    }
-    for setting in row["set"].as_array().map(Vec::as_slice).unwrap_or_default() {
-        let status = match setting[1].as_str() {
-            Some("ALWAYS_ON") => Status::AlwaysOn,
-            Some("IN_OVERLAY") => Status::InOverlay,
-            Some("NEVER") => Status::Never,
-            other => return Err(format!("a status: {other:?}")),
-        };
-        entries.set_status(setting[0].as_str().ok_or("id")?, status);
-    }
+    let mut entries = start_entries(row)?;
     let mut screen = DebugOptionsScreen::new(
         &ctx.font,
         &lang,
@@ -41,13 +28,109 @@ pub(super) fn debug_options_screen_case(
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
+    let mut asked = Asked::default();
+    for step in row["steps"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+    {
+        asked.record(run_step(&mut screen, step, ctx)?, &mut entries);
+        screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
+    }
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
     screen.draw(&mut frame, &ctx.atlas, &ctx.font, mouse);
-    Ok(json!({
+    let mut out = json!({
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
-    }))
+        "events": asked.events,
+    });
+    if asked.saved {
+        let text = profile_text(&entries, photon_game::options::DATA_VERSION);
+        out["file"] = serde_json::from_str(&text).map_err(|error| error.to_string())?;
+    }
+    Ok(out)
+}
+
+/// The entry list a row starts from: its profile, then its statuses.
+fn start_entries(row: &Value) -> Result<EntryList, String> {
+    let mut entries = EntryList::default();
+    if let Some(name) = row["profile"].as_str() {
+        let profile = Profile::from_name(&name.to_lowercase()).ok_or("profile")?;
+        entries.load_profile(profile);
+    }
+    for setting in row["set"].as_array().map(Vec::as_slice).unwrap_or_default() {
+        let status = match setting[1].as_str() {
+            Some("ALWAYS_ON") => Status::AlwaysOn,
+            Some("IN_OVERLAY") => Status::InOverlay,
+            Some("NEVER") => Status::Never,
+            other => return Err(format!("a status: {other:?}")),
+        };
+        entries.set_status(setting[0].as_str().ok_or("id")?, status);
+    }
+    Ok(entries)
+}
+
+/// What the screen asked of the game over the steps: whether the entry list saved, and the screens
+/// it was told to show.
+#[derive(Default)]
+struct Asked {
+    saved: bool,
+    events: Vec<&'static str>,
+}
+
+impl Asked {
+    /// One answer of the screen, done to the entry list as the game does.
+    fn record(&mut self, event: Option<DebugOptionsEvent>, entries: &mut EntryList) {
+        match event {
+            Some(DebugOptionsEvent::Close) => self.events.push("close"),
+            Some(DebugOptionsEvent::Status { id, status }) => {
+                entries.set_status(id, status);
+                self.saved = true;
+            }
+            Some(DebugOptionsEvent::Profile(profile)) => {
+                entries.load_profile(profile);
+                self.saved = true;
+            }
+            None => {}
+        }
+    }
+}
+
+/// One step of a row, and what the screen answered.
+fn run_step(
+    screen: &mut DebugOptionsScreen,
+    step: &Value,
+    ctx: &GuiContext,
+) -> Result<Option<DebugOptionsEvent>, String> {
+    let at = (
+        step["x"].as_f64().unwrap_or(0.0),
+        step["y"].as_f64().unwrap_or(0.0),
+    );
+    Ok(match step["do"].as_str().ok_or("do")? {
+        "click" => screen.clicked(at, &ctx.font),
+        "release" => {
+            screen.released();
+            None
+        }
+        "drag" => {
+            screen.dragged(at, step["dy"].as_f64().unwrap_or(0.0));
+            None
+        }
+        "type" => {
+            screen.type_search(step["text"].as_str().unwrap_or_default(), &ctx.font);
+            None
+        }
+        "key" => {
+            let key = match step["key"].as_i64() {
+                Some(256) => glfw::Key::Escape,
+                Some(259) => glfw::Key::Backspace,
+                other => return Err(format!("a key: {other:?}")),
+            };
+            screen.key_pressed(key, (false, false), &ctx.font, &mut crate::gui::NoClipboard)
+        }
+        other => return Err(format!("a step: {other}")),
+    })
 }
