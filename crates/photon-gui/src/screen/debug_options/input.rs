@@ -117,10 +117,11 @@ impl DebugOptionsScreen {
     /// before it with Shift; past the end the focus is cleared and the search starts over.
     fn tab(&mut self, forward: bool) {
         let order = self.tab_order();
-        // A list taken hold of without a button in it stands before the first button.
+        // The list taken hold of without a button in it is entered from its start going forward and
+        // from its end going back (`ContainerEventHandler.handleTabNavigation` with no focused child).
         let (after, before) = match order.iter().position(|(focus, _)| *focus == self.focus) {
             Some(at) => (at + 1, at),
-            None => (1, 1),
+            None => (1, order.len() - 3),
         };
         let takes = |candidate: &&(Focus, bool)| candidate.1;
         let found = if forward {

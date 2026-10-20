@@ -342,6 +342,16 @@ fn debug_options_step_rows(
         steps("tab-space-twice", "", [tabs(2, false), vec![key(32), key(32)]].concat()),
         steps("tab-to-done-enter", "", [tabs(1, true), vec![key(257)]].concat()),
         steps("tab-search-filter", "chunk", tabs(4, false)),
+        // A click in the list that presses no button leaves the list, or an entry of it, holding
+        // the focus; Tab goes on from there.
+        steps("name-click-tab", "", [vec![click(150, 152)], tabs(1, false)].concat()),
+        steps("name-click-shift-tab", "", [vec![click(150, 152)], tabs(1, true)].concat()),
+        steps("category-click-tab", "", [vec![click(200, 70)], tabs(1, false)].concat()),
+        steps(
+            "bar-click-tab",
+            "",
+            [vec![click(398, 70), json!({"do": "release", "x": 398, "y": 70})], tabs(1, false)].concat(),
+        ),
         // The scroll bar: taken hold of, dragged, let go.
         steps(
             "bar-drag",
