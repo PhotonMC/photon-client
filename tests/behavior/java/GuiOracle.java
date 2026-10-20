@@ -53,6 +53,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "sign_edit_screen" -> signEditScreen(request);
                 case "command_block_screen" -> commandBlockScreen(request);
                 case "structure_block_screen" -> structureBlockScreen(request);
+                case "jigsaw_screen" -> jigsawScreen(request);
                 case "book_edit_screen" -> bookEditScreen(request);
                 case "book_sign_screen" -> bookSignScreen(request);
                 case "book_view" -> bookView(request);

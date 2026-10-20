@@ -9,6 +9,7 @@ pub mod item;
 pub use photon_world::item_components;
 pub mod command_block;
 pub mod input;
+pub mod jigsaw;
 pub mod language;
 pub mod menus;
 pub mod options;

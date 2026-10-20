@@ -252,7 +252,9 @@ impl EditBox {
     fn move_cursor_to(&mut self, position: usize, extend: bool, font: &Font) {
         self.set_cursor(position, font);
         if !extend {
+            // `setHighlightPos` scrolls to the new end of the selection as well.
             self.highlight = self.cursor;
+            self.scroll_to(self.highlight, font);
         }
     }
 

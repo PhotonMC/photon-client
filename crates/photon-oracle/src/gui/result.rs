@@ -34,6 +34,8 @@ mod signs;
 use signs::*;
 mod command_block;
 use command_block::*;
+mod jigsaw;
+use jigsaw::*;
 mod structure_block;
 use structure_block::*;
 mod social;
@@ -79,6 +81,7 @@ fn editing_case(
         "sign_edit_screen" => sign_edit_screen_case(ctx, row),
         "command_block_screen" => command_block_screen_case(ctx, row),
         "structure_block_screen" => structure_block_screen_case(ctx, row),
+        "jigsaw_screen" => jigsaw_screen_case(ctx, row),
         "book_edit_screen" => book_edit_screen_case(ctx, row),
         "book_sign_screen" => book_sign_screen_case(ctx, row),
         "book_view" => book_view_case(ctx, row),

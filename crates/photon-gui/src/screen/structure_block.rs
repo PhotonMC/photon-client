@@ -5,7 +5,7 @@
 mod buttons;
 mod input;
 mod layout;
-mod number;
+pub(crate) mod number;
 #[cfg(test)]
 mod tests;
 

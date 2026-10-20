@@ -15,6 +15,7 @@ mod dialog;
 mod draft;
 mod hud;
 mod icons;
+mod jigsaw;
 mod keybinds;
 mod language;
 mod locator;
@@ -104,6 +105,7 @@ const ORDER: &[Generator] = &[
     || vec![signs::sign_edit_screen()],
     || vec![command_block::command_block_screen()],
     || vec![structure_block::structure_block_screen()],
+    || vec![jigsaw::jigsaw_screen()],
     || vec![books::book_edit_screen()],
     || vec![books::book_sign_screen()],
     || vec![books::book_view()],

@@ -115,22 +115,22 @@ pub fn structure_name(name: &str) -> String {
 }
 
 /// The fields of a block entity tag, read the way `loadAdditional` reads them.
-struct Fields(Vec<Field>);
+pub(crate) struct Fields(pub(crate) Vec<Field>);
 
 impl Fields {
-    fn get(&self, key: &str) -> Option<&FieldValue> {
+    pub(crate) fn get(&self, key: &str) -> Option<&FieldValue> {
         self.0
             .iter()
             .find(|field| field.key == key)
             .map(|field| &field.value)
     }
 
-    fn text(&self, key: &str) -> String {
+    pub(crate) fn text(&self, key: &str) -> String {
         self.name(key).unwrap_or_default().to_owned()
     }
 
     /// A string, if the field is one.
-    fn name(&self, key: &str) -> Option<&str> {
+    pub(crate) fn name(&self, key: &str) -> Option<&str> {
         match self.get(key) {
             Some(FieldValue::Str(text)) => Some(text.as_str()),
             _ => None,
@@ -138,7 +138,7 @@ impl Fields {
     }
 
     /// `Mth.clamp` of a number the tag holds as a byte, short or int.
-    fn int(&self, key: &str, default: i32, (low, high): (i32, i32)) -> i32 {
+    pub(crate) fn int(&self, key: &str, default: i32, (low, high): (i32, i32)) -> i32 {
         let value = match self.get(key) {
             Some(FieldValue::Byte(value)) => i32::from(*value),
             Some(FieldValue::Short(value)) => i32::from(*value),
@@ -148,7 +148,7 @@ impl Fields {
         value.max(low).min(high)
     }
 
-    fn flag(&self, key: &str, default: bool) -> bool {
+    pub(crate) fn flag(&self, key: &str, default: bool) -> bool {
         match self.get(key) {
             Some(FieldValue::Byte(value)) => *value != 0,
             _ => default,
