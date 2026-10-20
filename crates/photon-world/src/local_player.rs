@@ -45,6 +45,7 @@ pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
 mod portal;
 mod screen_effect;
 mod underwater;
+pub use gliding::GLIDE_SOUND;
 pub use portal::PortalKind;
 pub use underwater::UnderwaterSound;
 

@@ -477,6 +477,14 @@ impl Play {
         if let Some(sound) = self.sound.as_mut() {
             sound.handle_local(own_sounds);
             sound.handle_underwater(underwater, under_water);
+            if let Some(player) = session.player() {
+                let (motion, position) = (player.delta_movement(), player.position());
+                sound.set_glide(
+                    position,
+                    [motion.x, motion.y, motion.z],
+                    player.is_fall_flying(),
+                );
+            }
             self.ambient.tick(session, sound);
         }
     }

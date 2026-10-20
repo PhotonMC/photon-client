@@ -77,6 +77,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     net.minecraft.resources.Identifier.parse(breaking_.get("off_hand").getAsString()));
                 player.getInventory().setItem(40, new net.minecraft.world.item.ItemStack(item));
             }
+            if (breaking_.has("chest")) {
+                var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                    net.minecraft.resources.Identifier.parse(breaking_.get("chest").getAsString()));
+                player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
+                    new net.minecraft.world.item.ItemStack(item));
+            }
             setField(getField(minecraft, "gameRenderer"), "itemInHandRenderer",
                 unsafe.allocateInstance(net.minecraft.client.renderer.ItemInHandRenderer.class));
             if (breaking_.has("effects")) {
@@ -402,6 +408,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("sprinting", player.isSprinting());
         tick.addProperty("shift_key_down", player.isShiftKeyDown());
         tick.addProperty("pose", player.getPose().name());
+        tick.addProperty("fall_flying", player.isFallFlying());
         tick.addProperty("fall_distance", Oracle.bits(player.fallDistance));
         tick.addProperty("water_vision", Oracle.bits(player.getWaterVision()));
         tick.addProperty("flying", player.getAbilities().flying);

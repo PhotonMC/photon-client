@@ -3,17 +3,9 @@ use photon_core::ids::{EntityId, ItemId};
 use photon_data::item::registry::AIR_ITEM;
 
 impl PlaySession {
-    /// `local_hand_state` with what the item rules add: whether a stack lets the player glide.
+    /// What the hands hold and the glider rule, for the local player's tick.
     pub(super) fn hand_state(&self) -> photon_world::local_player::HandState {
-        let selected = self.local.status.selected_slot;
-        let mut state = self.world.local_hand_state(selected);
-        if let Some(player) = self.world.local_player() {
-            state.glider = photon_game::item::glider::any_can_glide(
-                |slot| player.inventory_slot(slot),
-                selected,
-            );
-        }
-        state
+        photon_game::item::glider::hand_state(&self.world, self.local.status.selected_slot)
     }
 
     /// The attack and use keys' part of `handleKeybinds`, with what the

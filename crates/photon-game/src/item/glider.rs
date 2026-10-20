@@ -59,6 +59,19 @@ fn slots(selected: i32) -> [(&'static str, i16); 6] {
     ]
 }
 
+/// `ClientWorld::local_hand_state` with what the item rules add: whether a stack lets the
+/// player glide.
+pub fn hand_state(
+    world: &photon_world::ClientWorld,
+    selected: i32,
+) -> photon_world::local_player::HandState {
+    let mut state = world.local_hand_state(selected);
+    if let Some(player) = world.local_player() {
+        state.glider = any_can_glide(|slot| player.inventory_slot(slot), selected);
+    }
+    state
+}
+
 /// Whether any worn or held stack lets the player glide.
 pub fn any_can_glide<'a>(stack_at: impl Fn(i16) -> Option<&'a Stack>, selected: i32) -> bool {
     slots(selected)

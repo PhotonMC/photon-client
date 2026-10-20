@@ -79,6 +79,8 @@ pub struct SoundSystem {
     jukeboxes: HashMap<(i32, i32, i32), photon_game::sounds::engine::InstanceId>,
     /// Whether the local player is under water, for the sounds that end when the water is left.
     underwater: Arc<AtomicBool>,
+    /// Where the local player is, how they move and whether they glide.
+    glide: Arc<Mutex<(Vec3, [f64; 3], bool)>>,
     /// The listener as last placed: where it is, which way it looks and which way is up.
     listener: Mutex<(Vec3, [f64; 3], [f64; 3])>,
 }
@@ -127,6 +129,7 @@ impl SoundSystem {
             music: None,
             jukeboxes: HashMap::new(),
             underwater: Arc::new(AtomicBool::new(false)),
+            glide: Arc::new(Mutex::new((Vec3::ZERO, [0.0; 3], false))),
             listener: Mutex::new((Vec3::ZERO, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0])),
         })
     }
@@ -170,6 +173,9 @@ impl SoundSystem {
             // The reference draws the seed from the level's own random source.
             let seed = i64::from(self.local_sounds).wrapping_mul(0x5DEE_CE66_D1CE_4E5B);
             let mut instance = SoundInstance::new(sound.event, source, RandomSource::create(seed));
+            if sound.event == photon_world::local_player::GLIDE_SOUND {
+                self.glide_loop(&mut instance);
+            }
             instance.volume = sound.volume;
             instance.pitch = sound.pitch;
             instance.position = sound.position;
@@ -184,6 +190,56 @@ impl SoundSystem {
                 self.engine.play(id);
             }
         }
+    }
+
+    /// The player's place and motion for the glide loop, and whether they glide.
+    pub fn set_glide(&self, position: Vec3, motion: [f64; 3], gliding: bool) {
+        if let Ok(mut glide) = self.glide.lock() {
+            *glide = (position, motion, gliding);
+        }
+    }
+
+    /// `ElytraOnPlayerSoundInstance`: silent for a second, then as loud as the speed, until the
+    /// glide has ended.
+    fn glide_loop(&self, instance: &mut SoundInstance) {
+        let glide = Arc::clone(&self.glide);
+        instance.looping = true;
+        let mut time = 0_i32;
+        instance.ticker = Some(Box::new(move |state: &mut TickState| {
+            time += 1;
+            let Ok((position, motion, gliding)) = glide.lock().map(|glide| *glide) else {
+                return;
+            };
+            if time > 20 && !gliding {
+                *state.stopped = true;
+                *state.looping = false;
+                return;
+            }
+            // The reference places the sound at the player's position narrowed to floats.
+            *state.position = (
+                f64::from(position.x as f32),
+                f64::from(position.y as f32),
+                f64::from(position.z as f32),
+            );
+            let speed =
+                (motion[0] * motion[0] + motion[1] * motion[1] + motion[2] * motion[2]) as f32;
+            let mut volume = if speed >= 1.0e-7 {
+                (speed / 4.0).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            if time < 20 {
+                volume = 0.0;
+            } else if time < 40 {
+                volume *= (time - 20) as f32 / 20.0;
+            }
+            *state.volume = volume;
+            *state.pitch = if volume > 0.8 {
+                1.0 + (volume - 0.8)
+            } else {
+                1.0
+            };
+        }));
     }
 
     /// `Minecraft.setLevel`: a new level starts in silence (`SoundManager.stop`).

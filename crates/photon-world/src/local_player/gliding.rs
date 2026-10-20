@@ -1,5 +1,8 @@
 use super::*;
 
+/// The loop that plays while the player glides.
+pub const GLIDE_SOUND: &str = "minecraft:item.elytra.flying";
+
 impl LocalPlayer {
     /// `Entity.isFallFlying`: shared flag 7, which the client sets itself on a start and the
     /// server's data then keeps or clears.
@@ -26,7 +29,21 @@ impl LocalPlayer {
 
     /// The server's shared flags arrived with the gliding bit as `set`.
     pub fn set_server_fall_flying(&mut self, set: bool) {
+        if set && !self.elytra.fall_flying {
+            self.start_glide_sound();
+        }
         self.elytra.fall_flying = set;
+    }
+
+    /// `ElytraOnPlayerSoundInstance` is started where the glide begins; it is placed by its own
+    /// first tick, so it is queued at the origin.
+    fn start_glide_sound(&mut self) {
+        self.pending_sounds.push(LocalSound::at(
+            GLIDE_SOUND,
+            LocalSoundSource::Players,
+            (0.1, 1.0),
+            (0.0, 0.0, 0.0),
+        ));
     }
 
     /// `Player.canGlide`: not flying, in the air, not riding, not levitating, and with a stack
@@ -43,6 +60,7 @@ impl LocalPlayer {
     pub(super) fn try_to_start_fall_flying(&mut self) -> bool {
         if !self.elytra.fall_flying && self.can_glide() && !self.is_in_water() {
             self.elytra.fall_flying = true;
+            self.start_glide_sound();
             true
         } else {
             false
@@ -162,6 +180,23 @@ mod tests {
         let mut bare = airborne(false);
         let sent = bare.tick(&world, jump()).expect("tick");
         assert!(!bare.is_fall_flying() && !started(&sent));
+    }
+
+    /// The start sound plays once per glide: the server's echo of the flag adds none, and a flag
+    /// that was cleared and comes back starts it again.
+    #[test]
+    fn the_start_sound_plays_once_per_glide() {
+        let world = ClientWorld::default();
+        let mut player = airborne(true);
+        let count =
+            |sounds: Vec<LocalSound>| sounds.iter().filter(|s| s.event == GLIDE_SOUND).count();
+        player.tick(&world, jump()).expect("tick");
+        assert_eq!(count(player.take_sounds()), 1);
+        player.set_server_fall_flying(true);
+        assert_eq!(count(player.take_sounds()), 0);
+        player.set_server_fall_flying(false);
+        player.set_server_fall_flying(true);
+        assert_eq!(count(player.take_sounds()), 1);
     }
 
     /// The server's shared flags end a glide, and the pose follows the flag.

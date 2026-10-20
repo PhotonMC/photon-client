@@ -153,6 +153,8 @@ mod sky;
 use sky::*;
 mod movement;
 use movement::*;
+mod movement_gear;
+use movement_gear::*;
 mod quads;
 use quads::*;
 mod frog;

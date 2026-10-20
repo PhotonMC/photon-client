@@ -77,7 +77,7 @@ pub fn local_player_update_fall_flying_movement(
     let look_horizontal_length =
         (state.look_angle.x * state.look_angle.x + state.look_angle.z * state.look_angle.z).sqrt();
     let move_horizontal_length = state.delta_movement.horizontal_distance();
-    let lift_force = f64::from(lean_angle).cos().powi(2);
+    let lift_force = photon_core::math::fdlibm_cos(f64::from(lean_angle)).powi(2);
     let mut movement =
         state
             .delta_movement

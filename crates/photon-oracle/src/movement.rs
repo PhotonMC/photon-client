@@ -183,16 +183,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 );
                 player.set_main_hand_item(item);
             }
-            if let Some(name) = breaking["off_hand"].as_str() {
-                let item =
-                    photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
-                world.apply_local_player_container_slot(
-                    0,
-                    0,
-                    45,
-                    Some(&photon_world::ClientItemStackState::new(1, item)),
-                );
-            }
+            worn_items(&mut world, breaking)?;
             for effect in breaking["effects"].as_array().into_iter().flatten() {
                 let id = match string(effect, "effect")? {
                     "minecraft:haste" => 2,
@@ -406,7 +397,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             // As the session does: the main hand the player ticks with is
             // the world's inventory now.
             if breaking.is_some() {
-                player.set_hand_state(world.local_hand_state(0));
+                player.set_hand_state(photon_game::item::glider::hand_state(&world, 0));
             }
             let sent = if let Some(vehicle_id) = ridden {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
@@ -513,6 +504,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 "sprinting": player.is_sprinting(),
                 "shift_key_down": player.is_shift_key_down(),
                 "pose": player.pose().java_name(),
+                "fall_flying": player.is_fall_flying(),
                 "fall_distance": format!("{:016x}", player.fall_distance().to_bits()),
                 "water_vision": format!("{:08x}", player.water_vision().to_bits()),
                 "flying": player.is_flying(),

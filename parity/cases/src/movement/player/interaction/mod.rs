@@ -4,6 +4,7 @@
 
 mod aiming;
 mod digging;
+mod gliding;
 mod placing;
 
 use serde_json::{Value, json};
@@ -20,6 +21,7 @@ pub struct Interaction {
     main_hand: Option<&'static str>,
     count: Option<i64>,
     off_hand: Option<&'static str>,
+    chest: Option<&'static str>,
     effects: Option<Vec<Value>>,
     entities: Option<Vec<Value>>,
 }
@@ -30,6 +32,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         main_hand: None,
         count,
         off_hand: None,
+        chest: None,
         effects: None,
         entities: None,
     }
@@ -68,6 +71,10 @@ impl Interaction {
         Self { off_hand: Some(item), ..self }
     }
 
+    pub fn chest(self, item: &'static str) -> Self {
+        Self { chest: Some(item), ..self }
+    }
+
     pub fn effects(self, effects: &[(&str, i64)]) -> Self {
         let effects = effects.iter().map(|(name, amplifier)| json!({"effect": name, "amplifier": amplifier})).collect();
         Self { effects: Some(effects), ..self }
@@ -101,6 +108,9 @@ impl Interaction {
         if let Some(item) = self.off_hand {
             held["off_hand"] = json!(item);
         }
+        if let Some(item) = self.chest {
+            held["chest"] = json!(item);
+        }
         if let Some(effects) = self.effects {
             held["effects"] = json!(effects);
         }
@@ -131,5 +141,6 @@ pub fn cases() -> Vec<Value> {
         local("movement/using", placing::rows()),
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),
+        local("movement/gliding", gliding::rows()),
     ]
 }
