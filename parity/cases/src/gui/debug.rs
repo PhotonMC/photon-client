@@ -325,6 +325,16 @@ fn keys(codes: &[i64]) -> Vec<Value> {
     codes.iter().map(|&code| key(code)).collect()
 }
 
+/// A key pressed with Control held.
+fn ctrl(code: i64) -> Value {
+    json!({"do": "key", "key": code, "ctrl": true})
+}
+
+/// A key pressed with Shift held.
+fn shifted(code: i64) -> Value {
+    json!({"do": "key", "key": code, "shift": true})
+}
+
 /// The window resized.
 fn resize(width: i64, height: i64) -> Value {
     json!({"do": "resize", "width": width, "height": height})
@@ -456,6 +466,14 @@ fn debug_options_click_rows(steps: StepRow) -> Vec<Value> {
             ],
         ),
         steps("escape", "", vec![json!({"do": "key", "key": 256})]),
+        // The edit keys that need no clipboard: the ends, Delete, select all and word steps.
+        steps("edit-home-delete", "chunk", keys(&[268, 261, 261])),
+        steps("edit-end-backspace", "chunk", keys(&[268, 269, 259])),
+        steps("edit-select-all-type", "chunk", vec![ctrl(65), json!({"do": "type", "text": "x"})]),
+        steps("edit-select-all-backspace", "chunk", vec![ctrl(65), key(259)]),
+        steps("edit-ctrl-left-delete", "chunk fog", vec![ctrl(263), key(259)]),
+        steps("edit-shift-left-type", "chunk", vec![shifted(263), shifted(263), json!({"do": "type", "text": "q"})]),
+        steps("edit-select-all-left", "chunk", vec![ctrl(65), key(263), json!({"do": "type", "text": "q"})]),
         // A click in the list that presses no button leaves the list, or an entry of it, holding
         // the focus; Tab goes on from there.
         steps("name-click-tab", "", [vec![click(150, 152)], tabs(1, false)].concat()),

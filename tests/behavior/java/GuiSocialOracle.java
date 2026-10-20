@@ -258,7 +258,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                         }
                         case "resize" -> options.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
                         case "key" -> options.keyPressed(new net.minecraft.client.input.KeyEvent(
-                            step.get("key").getAsInt(), 0, step.has("shift") ? 1 : 0));
+                            step.get("key").getAsInt(), 0, (step.has("shift") ? 1 : 0) | (step.has("ctrl") ? 2 : 0)));
                         default -> throw new IllegalArgumentException(step.toString());
                     }
                     options.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);

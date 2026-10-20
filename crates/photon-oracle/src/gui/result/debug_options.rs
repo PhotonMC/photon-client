@@ -133,24 +133,40 @@ fn run_step(
     })
 }
 
-/// A `key` step: the key by its code, with Shift held when the step says so.
+/// The keys a step's GLFW codes stand for.
+const KEYS: [(i64, glfw::Key); 13] = [
+    (32, glfw::Key::Space),
+    (65, glfw::Key::A),
+    (256, glfw::Key::Escape),
+    (257, glfw::Key::Enter),
+    (258, glfw::Key::Tab),
+    (259, glfw::Key::Backspace),
+    (261, glfw::Key::Delete),
+    (262, glfw::Key::Right),
+    (263, glfw::Key::Left),
+    (264, glfw::Key::Down),
+    (265, glfw::Key::Up),
+    (268, glfw::Key::Home),
+    (269, glfw::Key::End),
+];
+
+/// A `key` step: the key by its code, with Control and Shift held when the step says so.
 fn key_step(
     screen: &mut DebugOptionsScreen,
     step: &Value,
     ctx: &GuiContext,
 ) -> Result<Option<DebugOptionsEvent>, String> {
-    let key = match step["key"].as_i64() {
-        Some(32) => glfw::Key::Space,
-        Some(256) => glfw::Key::Escape,
-        Some(257) => glfw::Key::Enter,
-        Some(258) => glfw::Key::Tab,
-        Some(259) => glfw::Key::Backspace,
-        Some(262) => glfw::Key::Right,
-        Some(263) => glfw::Key::Left,
-        Some(264) => glfw::Key::Down,
-        Some(265) => glfw::Key::Up,
-        other => return Err(format!("a key: {other:?}")),
-    };
-    let shift = step["shift"].is_boolean();
-    Ok(screen.key_pressed(key, (false, shift), &ctx.font, &mut crate::gui::NoClipboard))
+    let code = step["key"].as_i64();
+    let key = KEYS
+        .iter()
+        .find(|(known, _)| Some(*known) == code)
+        .map(|&(_, key)| key)
+        .ok_or_else(|| format!("a key: {code:?}"))?;
+    let (control, shift) = (step["ctrl"].is_boolean(), step["shift"].is_boolean());
+    Ok(screen.key_pressed(
+        key,
+        (control, shift),
+        &ctx.font,
+        &mut crate::gui::NoClipboard,
+    ))
 }
