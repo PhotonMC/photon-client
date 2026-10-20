@@ -5,6 +5,7 @@ mod entries;
 mod format;
 mod layout;
 mod list;
+mod profile_file;
 
 pub use entries::{
     CameraEntity, Clouds, DeviceType, Filtering, FrameStats, Impactors, Input, MemoryUsage,
@@ -12,7 +13,8 @@ pub use entries::{
 };
 pub use format::fixed;
 pub use layout::{Line, columns};
-pub use list::{EntryList, Status};
+pub use list::{Category, ENTRIES, Entry, EntryList, Profile, Status, entry, listed_entries};
+pub use profile_file::{parse_profile, profile_text};
 
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};

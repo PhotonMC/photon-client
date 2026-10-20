@@ -225,3 +225,39 @@ pub fn hud_debug_lines() -> Value {
     ];
     gui("hud-debug-lines", "hud_debug_lines", rows)
 }
+
+/// The debug screen's model: what is registered with its group and its reduced-info rule, the
+/// profiles, and an entry list put through toggles, profile loads and files (what it saves, and
+/// what it makes of what it reads).
+pub fn debug_entries() -> Value {
+    let toggle = |id: &str| json!({"op": "toggle", "id": id});
+    let overlay = |visible: bool| json!({"op": "overlay", "visible": visible});
+    let write = |text: &str| json!({"op": "write", "text": text});
+    let rows = vec![
+        json!({"label": "registry", "registry": true}),
+        // An entry nothing was set for comes on always, with the overlay up or not.
+        json!({"label": "toggle", "ops": [
+            overlay(true), toggle("chunk_borders"), toggle("chunk_borders"), toggle("chunk_borders"),
+            toggle("chunk_borders"), toggle("fps"), toggle("fps"), toggle("fps"),
+            overlay(false), toggle("fps"), toggle("fps"), toggle("entity_hitboxes"),
+        ]}),
+        json!({"label": "profiles", "ops": [
+            {"op": "profile", "profile": "PERFORMANCE"},
+            {"op": "set", "id": "fps", "status": "NEVER"},
+            {"op": "set", "id": "biome", "status": "ALWAYS_ON"},
+            overlay(true), {"op": "reduced", "on": true}, {"op": "reduced", "on": false},
+            {"op": "profile", "profile": "DEFAULT"},
+        ]}),
+        json!({"label": "files", "ops": [
+            write(r#"{"custom":{"minecraft:fps":"alwaysOn","minecraft:bogus":"never"},"DataVersion":4903}"#),
+            toggle("fps"),
+            write(r#"{"profile":"performance","DataVersion":4903}"#),
+            write(r#"{"DataVersion":4903}"#),
+            write("not json"),
+            write(r#"{"profile":"nope"}"#),
+            write(r#"{"custom":{"minecraft:tps":"sometimes"}}"#),
+            write(r#"{"custom":{"minecraft:tps":"inOverlay"}}"#),
+        ]}),
+    ];
+    gui("debug-entries", "debug_entries", rows)
+}

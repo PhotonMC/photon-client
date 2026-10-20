@@ -2,7 +2,7 @@ use super::*;
 
 /// The data version `options.txt` is written for (`version:` in the file),
 /// the pinned client's `world_version`.
-pub(super) const DATA_VERSION: i32 = 4903;
+pub const DATA_VERSION: i32 = 4903;
 
 /// An option of the file, in the order `processOptions` goes through them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

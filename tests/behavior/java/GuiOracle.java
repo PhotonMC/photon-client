@@ -63,6 +63,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "hud_sleep" -> hudSleep(request);
                 case "hud_debug_overlay" -> hudDebugOverlay(request);
                 case "hud_debug_lines" -> hudDebugLines(request);
+                case "debug_entries" -> debugEntries(request);
                 case "stat_format" -> statFormat(request);
                 case "client_advancements" -> clientAdvancements(request);
                 case "advancements_screen" -> advancementsScreen(request);

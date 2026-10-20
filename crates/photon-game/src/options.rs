@@ -164,6 +164,7 @@ mod file;
 mod json;
 pub use json::*;
 mod keys;
+pub use keys::DATA_VERSION;
 use keys::*;
 mod sliders;
 pub use sliders::*;

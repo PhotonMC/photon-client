@@ -315,6 +315,7 @@ mod credits;
 mod death;
 mod debug_actions;
 mod debug_inspect;
+mod debug_profile;
 mod dialogs;
 mod game_mode_switcher;
 
@@ -382,6 +383,10 @@ impl Controls {
             creative_tab: photon_game::menus::creative::default_tab(),
             chat_log: ChatLog::with_settings(ChatSettings::from(&options)),
             options,
+            debug: DebugKeys {
+                entries: debug_profile::load_debug_entries(),
+                ..DebugKeys::default()
+            },
             chat_history: command_history.clone(),
             command_history,
             ..Self::default()

@@ -159,6 +159,7 @@ impl Controls {
             return;
         }
         let on = self.debug.entries.toggle_status("chunk_borders");
+        self.save_debug_profile();
         let key = format!("debug.chunk_boundaries.{}", if on { "on" } else { "off" });
         self.debug_say(&key, assets);
     }
@@ -170,6 +171,7 @@ impl Controls {
             return;
         }
         let on = self.debug.entries.toggle_status("entity_hitboxes");
+        self.save_debug_profile();
         let key = format!("debug.show_hitboxes.{}", if on { "on" } else { "off" });
         self.debug_say(&key, assets);
     }

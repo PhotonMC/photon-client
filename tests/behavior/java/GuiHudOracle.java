@@ -875,6 +875,106 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     /**
+     * The debug screen's entries as the game keeps them (`DebugScreenEntries`, `DebugScreenEntryList`): what is
+     * registered with its group and whether reduced debug info allows it, the profiles, and a real entry list
+     * put through a row's operations, with its statuses, its enabled ids and the file it saved after each.
+     */
+    static JsonObject debugEntries(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(427, 240, false, false);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var all = new java.util.TreeMap<>(net.minecraft.client.gui.components.debug.DebugScreenEntries.allEntries());
+            if (row.has("registry")) {
+                var registry = new JsonArray();
+                for (var entry : all.entrySet()) {
+                    var described = new JsonObject();
+                    described.addProperty("id", entry.getKey().getPath());
+                    described.addProperty("sort_key", Oracle.bits(entry.getValue().category().sortKey()));
+                    described.addProperty("category", ((net.minecraft.network.chat.contents.TranslatableContents)
+                        entry.getValue().category().label().getContents()).getKey());
+                    described.addProperty("allowed", entry.getValue().isAllowed(false));
+                    described.addProperty("allowed_reduced", entry.getValue().isAllowed(true));
+                    registry.add(described);
+                }
+                out.add("registry", registry);
+                var profiles = new JsonObject();
+                for (var profile : net.minecraft.client.gui.components.debug.DebugScreenProfile.values()) {
+                    var statuses = new JsonObject();
+                    new java.util.TreeMap<>(net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES.get(profile))
+                        .forEach((id, status) -> statuses.addProperty(id.getPath(), status.getSerializedName()));
+                    profiles.add(profile.getSerializedName(), statuses);
+                }
+                out.add("profiles", profiles);
+            }
+            if (row.has("ops")) {
+                var directory = java.nio.file.Files.createTempDirectory("debug-profile").toFile();
+                var file = new java.io.File(directory, "debug-profile.json");
+                var list = new net.minecraft.client.gui.components.debug.DebugScreenEntryList(directory,
+                    net.minecraft.util.datafix.DataFixers.getDataFixer());
+                var states = new JsonArray();
+                states.add(debugEntriesState(list, all.keySet(), file));
+                for (var opElement : row.getAsJsonArray("ops")) {
+                    var op = opElement.getAsJsonObject();
+                    var id = op.has("id") ? net.minecraft.resources.Identifier.withDefaultNamespace(op.get("id").getAsString()) : null;
+                    switch (op.get("op").getAsString()) {
+                        case "set" -> list.setStatus(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus
+                            .valueOf(op.get("status").getAsString()));
+                        case "toggle" -> op.addProperty("result", list.toggleStatus(id));
+                        case "profile" -> {
+                            list.loadProfile(net.minecraft.client.gui.components.debug.DebugScreenProfile
+                                .valueOf(op.get("profile").getAsString()));
+                            list.save();
+                        }
+                        case "overlay" -> list.setOverlayVisible(op.get("visible").getAsBoolean());
+                        case "reduced" -> {
+                            MovementOracle.setField(scene.local(), "reducedDebugInfo", op.get("on").getAsBoolean());
+                            list.rebuildCurrentList();
+                        }
+                        case "write" -> {
+                            java.nio.file.Files.writeString(file.toPath(), op.get("text").getAsString());
+                            list.load();
+                        }
+                        default -> throw new IllegalStateException(op.toString());
+                    }
+                    var state = debugEntriesState(list, all.keySet(), file);
+                    if (op.has("result")) {
+                        state.addProperty("result", op.get("result").getAsBoolean());
+                    }
+                    states.add(state);
+                }
+                out.add("states", states);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    static JsonObject debugEntriesState(net.minecraft.client.gui.components.debug.DebugScreenEntryList list,
+            java.util.Set<net.minecraft.resources.Identifier> ids, java.io.File file) throws Exception {
+        var state = new JsonObject();
+        var statuses = new JsonObject();
+        for (var id : ids) {
+            statuses.addProperty(id.getPath(), list.getStatus(id).getSerializedName());
+        }
+        state.add("statuses", statuses);
+        var enabled = new JsonArray();
+        list.getCurrentlyEnabled().forEach(id -> enabled.add(id.getPath()));
+        state.add("enabled", enabled);
+        for (var profile : net.minecraft.client.gui.components.debug.DebugScreenProfile.values()) {
+            state.addProperty("using_" + profile.getSerializedName(), list.isUsingProfile(profile));
+        }
+        if (file.isFile()) {
+            state.add("file", com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(file.toPath())));
+        }
+        return state;
+    }
+
+    /**
      * The game's own `DebugScreenOverlay.extractLines` for lines given: the left column then the right,
      * as the overlay draws them, so the order of the backgrounds and the text and the right alignment show.
      */

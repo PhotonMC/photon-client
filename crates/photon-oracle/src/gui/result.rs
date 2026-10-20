@@ -19,6 +19,7 @@ mod chat;
 use chat::*;
 mod hud;
 use hud::*;
+mod debug_entries;
 mod hud_overlays;
 mod screens;
 use screens::*;
