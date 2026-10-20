@@ -42,6 +42,7 @@ impl Play {
         self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         self.set_hands(view, first_person)?;
+        self.set_debug_gizmo(frame, first_person)?;
         let player = self.session.player().ok_or("no local player")?;
         let line_width =
             photon_render::block::outline::appropriate_line_width(self.backend.extent().0);

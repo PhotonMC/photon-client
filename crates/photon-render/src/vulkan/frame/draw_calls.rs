@@ -145,7 +145,7 @@ impl VulkanBackend {
                 push[40..42].copy_from_slice(&self.dissolve_mask_offset);
                 184
             }
-            Run::Outline => {
+            Run::Outline | Run::Gizmo => {
                 let extent = self.description.extent;
                 push[16] = extent.width as f32;
                 push[17] = extent.height as f32;
@@ -258,7 +258,7 @@ impl VulkanBackend {
             Run::MapDecoration => list(&self.map_decoration),
             Run::NameTagSeeThrough => list(&self.name_tag_see),
             Run::NameTag => list(&self.name_tag),
-            Run::Outline => list(&self.outline),
+            Run::Outline | Run::Gizmo => list(self.lines.of(run)),
             Run::Cracks => list(&self.breaking),
             Run::Hand => list(&self.hand),
             // The items follow the arm in the hand's buffer.
@@ -292,6 +292,16 @@ impl VulkanBackend {
                     layer_count: 1,
                 }],
             );
+        }
+    }
+}
+
+impl LineDraws {
+    /// The list a line run draws.
+    fn of(&self, run: Run) -> &DrawList {
+        match run {
+            Run::Gizmo => &self.gizmo,
+            _ => &self.outline,
         }
     }
 }

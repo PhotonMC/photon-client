@@ -97,6 +97,8 @@ pub(super) enum Run {
     NameTag,
     /// The aimed block's outline: lines, with the window's size in the push constants.
     Outline,
+    /// The F3 3D crosshair: lines like the outline, in the hand's view.
+    Gizmo,
     Cracks,
     /// The first-person arm.
     Hand,
@@ -168,7 +170,7 @@ impl Run {
             Self::Orb | Self::MapDecoration => &scene.text_translucent_pipeline,
             Self::Map | Self::NameTag => &scene.text_pipeline,
             Self::NameTagSeeThrough => &scene.text_see_through_pipeline,
-            Self::Outline => &scene.lines_pipeline,
+            Self::Outline | Self::Gizmo => &scene.lines_pipeline,
             Self::Cracks => &scene.crumbling_pipeline,
         }
     }
@@ -179,7 +181,7 @@ impl Run {
             Self::Ground | Self::Held | Self::BlockParticle => Sampled::Atlas,
             Self::Map => Sampled::Map,
             Self::NameTagSeeThrough | Self::NameTag => Sampled::Gui,
-            Self::Outline => Sampled::Unbound,
+            Self::Outline | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
             Self::Entity
             | Self::Shadow

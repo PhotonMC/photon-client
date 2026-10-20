@@ -114,7 +114,7 @@ impl VulkanBackend {
                 name_tag: DrawList::default(),
                 hand: DrawList::default(),
                 held_counts: [0; 2],
-                outline: DrawList::default(),
+                lines: LineDraws::default(),
                 breaking: DrawList::default(),
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: DynamicBuffer::default(),

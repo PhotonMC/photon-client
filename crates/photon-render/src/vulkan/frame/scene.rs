@@ -403,22 +403,28 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
     unsafe fn record_hand(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
-        if self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_counts[0] != 0 {
-            let mut hand_push = *terrain_push;
-            hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
-                self.hand_projection[i / 4][i % 4]
-            }));
-            hand_push[28..31].copy_from_slice(&[0.0; 3]);
-            // SAFETY: recording (see `# Safety`).
-            unsafe {
+        let hand =
+            self.hand.buffer.as_ref().is_some() && self.hand.count + self.held_counts[0] != 0;
+        let mut hand_push = *terrain_push;
+        hand_push[..16].copy_from_slice(&std::array::from_fn::<f32, 16, _>(|i| {
+            self.hand_projection[i / 4][i % 4]
+        }));
+        hand_push[28..31].copy_from_slice(&[0.0; 3]);
+        // SAFETY: recording (see `# Safety`).
+        unsafe {
+            if hand || self.lines.gizmo.count != 0 {
                 self.clear_depth();
+            }
+            if hand {
                 self.draw_run(scene, Run::Hand, &hand_push);
                 self.draw_run(scene, Run::Held, &hand_push);
                 self.draw_run(scene, Run::HandGlint, &hand_push);
             }
+            self.record_screen_effects(scene, terrain_push);
+            // `GameRenderer.renderLevel` draws the 3D crosshair last, over the hand and the
+            // effects.
+            self.draw_run(scene, Run::Gizmo, &hand_push);
         }
-        // SAFETY: recording (see `# Safety`).
-        unsafe { self.record_screen_effects(scene, terrain_push) };
     }
 
     /// What covers the view from inside, over the hand: the block the eyes are in, the water, the

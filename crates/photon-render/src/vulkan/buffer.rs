@@ -506,3 +506,11 @@ pub(super) struct DrawList {
     pub(super) buffer: DynamicBuffer,
     pub(super) count: u32,
 }
+
+/// The line strips: the aimed block's outline, and the F3 3D crosshair, which is in view space and
+/// drawn with the hand.
+#[derive(Default)]
+pub(super) struct LineDraws {
+    pub(super) outline: DrawList,
+    pub(super) gizmo: DrawList,
+}

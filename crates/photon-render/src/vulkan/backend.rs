@@ -107,8 +107,8 @@ pub struct VulkanBackend {
     /// The held items' triangles and then their glints' (counts), after the arm's in the hand
     /// buffer.
     pub(super) held_counts: [u32; 2],
-    /// The aimed block's outline strips for the next frame.
-    pub(super) outline: DrawList,
+    /// The aimed block's outline strips and the F3 3D crosshair for the next frame.
+    pub(super) lines: LineDraws,
     /// The breaking overlay's triangles for the next frame.
     pub(super) breaking: DrawList,
     pub(super) hand_projection: [[f32; 4]; 4],

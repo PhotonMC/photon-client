@@ -31,7 +31,8 @@ impl Drop for VulkanBackend {
             self.portal.buffer.clear();
             self.name_tag.buffer.clear();
             self.hand.buffer.clear();
-            self.outline.buffer.clear();
+            self.lines.outline.buffer.clear();
+            self.lines.gizmo.buffer.clear();
             self.breaking.buffer.clear();
             self.gui_buffer.clear();
             self.gui_item_buffer.clear();

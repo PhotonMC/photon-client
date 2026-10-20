@@ -218,11 +218,23 @@ impl VulkanBackend {
         &mut self,
         vertices: &[crate::block::outline::LineVertex],
     ) -> Result<(), VulkanError> {
-        let mut buffer = std::mem::take(&mut self.outline.buffer);
+        let mut buffer = std::mem::take(&mut self.lines.outline.buffer);
         let bytes = as_bytes(vertices);
         self.fill_bytes(&mut buffer, bytes)?;
-        self.outline.buffer = buffer;
-        self.outline.count = vertices.len() as u32;
+        self.lines.outline.buffer = buffer;
+        self.lines.outline.count = vertices.len() as u32;
+        Ok(())
+    }
+
+    /// Hand over the next frame's F3 3D crosshair (empty for none), in view space.
+    pub fn set_gizmo(
+        &mut self,
+        vertices: &[crate::block::outline::LineVertex],
+    ) -> Result<(), VulkanError> {
+        let mut buffer = std::mem::take(&mut self.lines.gizmo.buffer);
+        self.fill_bytes(&mut buffer, as_bytes(vertices))?;
+        self.lines.gizmo.buffer = buffer;
+        self.lines.gizmo.count = vertices.len() as u32;
         Ok(())
     }
 

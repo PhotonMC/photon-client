@@ -5,6 +5,7 @@ pub mod biome_tint;
 pub mod blockstate;
 pub mod breaking;
 pub mod geometry;
+pub mod gizmo;
 pub mod light;
 pub mod outline;
 pub mod rotation;
