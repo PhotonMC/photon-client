@@ -149,6 +149,30 @@ impl LocalPlayer {
             })
     }
 
+    /// What the use of an item does to the field of view (`getFieldOfViewModifier`): a bow being
+    /// drawn narrows it by up to a seventh of the draw's square, and a spyglass in use in the
+    /// first person fixes the modifier at a tenth.
+    pub fn use_fov(&self, first_person: bool) -> UseFov {
+        use photon_data::item::classes::ItemClass;
+        if !self.hands.using_item {
+            return UseFov::Free;
+        }
+        let used = if self.hands.using_off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        let class = crate::block::rules::item(used).map(|item| item.class);
+        if class == Some(ItemClass::BowItem) {
+            let scale = (self.using_item_ticks as f32 / 20.0).min(1.0);
+            UseFov::Drawing(1.0 - scale * scale * 0.15)
+        } else if first_person && class == Some(ItemClass::SpyglassItem) {
+            UseFov::Scoped
+        } else {
+            UseFov::Free
+        }
+    }
+
     /// `LivingEntity.getTicksUsingItem(partialTicks)`.
     pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
         if self.hands.using_item {
@@ -232,4 +256,14 @@ pub struct HandState {
     /// The server's flags: an item is in use, and in the off hand.
     pub using_item: bool,
     pub using_off_hand: bool,
+}
+
+/// How the use of an item changes the field of view.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum UseFov {
+    Free,
+    /// A bow being drawn: the factor it multiplies the modifier by.
+    Drawing(f32),
+    /// A spyglass held to the eye.
+    Scoped,
 }

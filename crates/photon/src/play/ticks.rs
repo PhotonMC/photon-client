@@ -533,11 +533,10 @@ impl Play {
             (&mut self.particles, &self.sky),
             self.sound.as_mut(),
         );
-        let fov_scale = self.controls.options.fov_effect_scale as f32;
         super::camera::tick_view(
             (&mut self.camera, &mut self.gui),
             session,
-            (&self.sky, fov_scale),
+            (&self.sky, &self.controls),
         );
         self.tick_screens()?;
         self.sky.tick(&self.session, &self.controls.options);

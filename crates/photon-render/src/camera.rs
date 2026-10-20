@@ -6,7 +6,7 @@
 //! each frame blends the last two values by the partial tick, which is why a
 //! crouch sinks the view over a few ticks rather than at once.
 
-use photon_world::local_player::LocalPlayer;
+use photon_world::local_player::{LocalPlayer, UseFov};
 
 #[derive(Debug, Clone, Default)]
 pub struct Camera {
@@ -40,7 +40,12 @@ impl Camera {
     }
 
     /// One client tick, after the player's.
-    pub fn tick(&mut self, player: &LocalPlayer, (nausea, effect_scale): (f32, f32)) {
+    pub fn tick(
+        &mut self,
+        player: &LocalPlayer,
+        (nausea, effect_scale): (f32, f32),
+        first_person: bool,
+    ) {
         // `GameRenderer.tick` runs before the player's, so it reads what the last tick ended with.
         let seen = std::mem::replace(&mut self.nausea, nausea);
         let portal = std::mem::replace(&mut self.portal, player.portal_effect_intensity_now());
@@ -59,7 +64,12 @@ impl Camera {
             let speed_factor = player.movement_speed() / walking_speed;
             target *= (speed_factor + 1.0) / 2.0;
         }
-        let target = 1.0 + effect_scale * (target - 1.0);
+        let target = match player.use_fov(first_person) {
+            UseFov::Free => 1.0 + effect_scale * (target - 1.0),
+            UseFov::Drawing(factor) => 1.0 + effect_scale * (target * factor - 1.0),
+            // A spyglass fixes the modifier whatever the effect scale is.
+            UseFov::Scoped => 0.1,
+        };
         self.old_fov_modifier = self.fov_modifier;
         self.fov_modifier += (target - self.fov_modifier) * 0.5;
         self.fov_modifier = self.fov_modifier.clamp(0.1, 1.5);

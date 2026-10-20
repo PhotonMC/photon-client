@@ -203,8 +203,10 @@ fn player_motion(
 pub(super) fn tick_view(
     (camera, gui): (&mut photon_render::camera::Camera, &mut crate::gui::Gui),
     session: &photon_net::connection::PlaySession,
-    (sky, fov_effect_scale): (&crate::world::sky::Sky, f32),
+    (sky, controls): (&crate::world::sky::Sky, &crate::controls::Controls),
 ) {
+    let fov_effect_scale = controls.options.fov_effect_scale as f32;
+    let first_person = controls.camera_type == CameraType::FirstPerson;
     // `GameRenderer.tick`: the boss darkening and the totem run only while the level does.
     if session.runs_normally() {
         camera.boss.tick(gui.boss_bars.darkens_screen());
@@ -217,6 +219,7 @@ pub(super) fn tick_view(
                 crate::world::fog::nausea_blend(session, 1.0),
                 fov_effect_scale,
             ),
+            first_person,
         );
         let at = player.position();
         [at.x, at.y + f64::from(player.eye_height()), at.z]
