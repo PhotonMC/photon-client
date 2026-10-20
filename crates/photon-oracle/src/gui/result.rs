@@ -38,6 +38,8 @@ mod jigsaw;
 use jigsaw::*;
 mod structure_block;
 use structure_block::*;
+mod test_block;
+use test_block::*;
 mod social;
 use social::*;
 mod books;
@@ -82,6 +84,7 @@ fn editing_case(
         "command_block_screen" => command_block_screen_case(ctx, row),
         "structure_block_screen" => structure_block_screen_case(ctx, row),
         "jigsaw_screen" => jigsaw_screen_case(ctx, row),
+        "test_block_screen" => test_block_screen_case(ctx, row),
         "book_edit_screen" => book_edit_screen_case(ctx, row),
         "book_sign_screen" => book_sign_screen_case(ctx, row),
         "book_view" => book_view_case(ctx, row),

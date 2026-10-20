@@ -30,6 +30,7 @@ mod stats;
 mod status;
 mod structure_block;
 mod suggest;
+mod test_block;
 mod title;
 mod toasts;
 mod tooltips;
@@ -106,6 +107,7 @@ const ORDER: &[Generator] = &[
     || vec![command_block::command_block_screen()],
     || vec![structure_block::structure_block_screen()],
     || vec![jigsaw::jigsaw_screen()],
+    || vec![test_block::test_block_screen()],
     || vec![books::book_edit_screen()],
     || vec![books::book_sign_screen()],
     || vec![books::book_view()],

@@ -22,6 +22,7 @@ pub mod sounds;
 pub mod splash;
 pub mod stats;
 pub mod structure_block;
+pub mod test_block;
 pub mod text;
 pub mod toast;
 pub mod tooltip;
