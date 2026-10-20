@@ -443,6 +443,7 @@ impl LocalPlayer {
         if self.abilities.flying {
             self.fall_distance = 0.0;
         }
+        self.end_use_of_changed_item();
         self.living_ai_step(level)?;
         // `updateSwingTime`: the swing lasts as long as the swinging hand's item says.
         let swing_duration = self.current_swing_duration();

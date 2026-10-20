@@ -141,6 +141,7 @@ impl LocalPlayer {
             if server && !edge.started && held != AIR_ITEM {
                 edge.started = true;
                 edge.off_hand = off_hand;
+                edge.item = Some(held);
             } else if !server {
                 edge.started = false;
             }
@@ -154,6 +155,19 @@ impl LocalPlayer {
     pub fn release_using_item(&mut self) {
         self.use_edge.started = false;
         self.hands.using_item = false;
+    }
+
+    /// `LivingEntity.updatingUsingItem`: a use ends when the item in the used hand is no longer
+    /// the item being used (a hotbar switch, a drop).
+    pub(super) fn end_use_of_changed_item(&mut self) {
+        let held = if self.hands.using_off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        if self.hands.using_item && Some(held) != self.use_edge.item {
+            self.release_using_item();
+        }
     }
 
     /// `LocalPlayer.isUsingItem`: the use the client has started, which the server's flag starts
@@ -309,6 +323,8 @@ pub struct UseEdge {
     pub(super) started: bool,
     pub(super) off_hand: bool,
     pub(super) ticks: i32,
+    /// The item being used (`useItem`), which a change of the used hand's item ends the use of.
+    pub(super) item: Option<ItemId>,
 }
 
 /// How the use of an item changes the field of view.
@@ -361,5 +377,21 @@ mod tests {
         player.set_hand_state(holding(false));
         player.set_hand_state(holding(true));
         assert!(player.is_using_item());
+    }
+
+    /// A use ends when the used hand holds another item, and stays ended under the same flag.
+    #[test]
+    fn a_use_ends_when_the_used_hand_changes_its_item() {
+        let mut player = player();
+        player.set_hand_state(holding(true));
+        player.end_use_of_changed_item();
+        assert!(player.is_using_item());
+        let mut switched = holding(true);
+        switched.main_item = photon_data::item::registry::named("minecraft:stick");
+        player.set_hand_state(switched);
+        player.end_use_of_changed_item();
+        assert!(!player.is_using_item());
+        player.set_hand_state(switched);
+        assert!(!player.is_using_item());
     }
 }
