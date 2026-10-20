@@ -4,6 +4,7 @@ pub mod bake;
 pub mod biome_tint;
 pub mod blockstate;
 pub mod breaking;
+pub mod chunk_borders;
 pub mod geometry;
 pub mod gizmo;
 pub mod light;

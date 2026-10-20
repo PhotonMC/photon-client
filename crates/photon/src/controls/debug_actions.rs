@@ -108,6 +108,7 @@ impl Controls {
                 self.reload_chunks = true;
                 self.debug_say("debug.reload_chunks.message", assets);
             }
+            glfw::Key::G => self.debug_chunk_borders(session, assets),
             glfw::Key::H => self.debug_advanced_tooltips(assets),
             glfw::Key::P => self.debug_pause_on_focus_loss(assets),
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,
@@ -147,6 +148,17 @@ impl Controls {
         if pause {
             self.open_pause(surface, assets);
         }
+    }
+
+    /// F3+G: the chunk borders entry is toggled, unless the player is absent or has
+    /// reduced debug info.
+    fn debug_chunk_borders(&mut self, session: &PlaySession, assets: &ScreenAssets) {
+        if session.player().is_none() || session.reduced_debug_info() {
+            return;
+        }
+        let on = self.debug.entries.toggle_status("chunk_borders");
+        let key = format!("debug.chunk_boundaries.{}", if on { "on" } else { "off" });
+        self.debug_say(&key, assets);
     }
 
     /// F3+H: the advanced tooltips are toggled and saved.

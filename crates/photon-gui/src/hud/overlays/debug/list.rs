@@ -72,6 +72,21 @@ impl EntryList {
         self.overlay_visible = visible;
     }
 
+    /// `toggleStatus`: an entry that is on goes off, and one that is off comes on (in the overlay
+    /// only while the overlay is up). Whether it is on now.
+    pub fn toggle_status(&mut self, id: &'static str) -> bool {
+        let status = self.statuses.get(id).copied().unwrap_or(Status::Never);
+        let (now, on) = match status {
+            Status::AlwaysOn => (Status::Never, false),
+            Status::InOverlay if self.overlay_visible => (Status::Never, false),
+            Status::InOverlay => (Status::AlwaysOn, true),
+            Status::Never if self.overlay_visible => (Status::InOverlay, true),
+            Status::Never => (Status::AlwaysOn, true),
+        };
+        self.statuses.insert(id, now);
+        on
+    }
+
     /// `getCurrentlyEnabled`: the ids shown now, sorted by their paths as `Identifier`'s natural
     /// order does (the map is sorted by them).
     pub fn enabled(&self, reduced_debug_info: bool) -> Vec<&'static str> {
@@ -115,6 +130,20 @@ mod tests {
                 "tps"
             ]
         );
+    }
+
+    #[test]
+    fn toggling_an_entry_follows_the_overlay() {
+        let mut list = EntryList::default();
+        assert!(list.toggle_status("chunk_borders"));
+        assert_eq!(list.enabled(false), ["chunk_borders"]);
+        assert!(!list.toggle_status("chunk_borders"));
+        list.toggle_overlay();
+        assert!(list.toggle_status("chunk_borders"));
+        assert!(list.enabled(false).contains(&"chunk_borders"));
+        list.toggle_overlay();
+        assert!(list.enabled(false).is_empty());
+        assert!(list.enabled(true).is_empty());
     }
 
     #[test]
