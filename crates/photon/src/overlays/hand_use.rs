@@ -1,7 +1,7 @@
 //! What the first-person hands do with their stacks while a bow or a crossbow is in play
 //! (`ItemInHandRenderer.submitArmWithItem` and `evaluateWhichHandsToRender`).
 
-use crate::equipment::arm_poses::is_charged_crossbow;
+use crate::equipment::arm_poses::{UseAnimation, is_charged_crossbow, use_animation, use_duration};
 use photon_data::item::classes::ItemClass;
 use photon_render::entity::hand_motion::HandMotion;
 use photon_world::ClientItemStackState;
@@ -23,8 +23,8 @@ fn held_time(ticks: i32, partial: f32) -> f32 {
 }
 
 /// The motion of a hand's stack: a drawn bow, a charging crossbow, a loaded one in the main
-/// hand, else the swing. `ticks` is how long the player has used this hand's stack, if it does,
-/// and `charge_duration` the crossbow's.
+/// hand, what an item in use does with the hand, else the swing. `ticks` is how long the player
+/// has used this hand's stack, if it does, and `charge_duration` the crossbow's.
 pub(super) fn motion(
     stack: &ClientItemStackState,
     (ticks, partial): (Option<i32>, f32),
@@ -41,8 +41,39 @@ pub(super) fn motion(
             _ if main_hand && is_charged_crossbow(stack) => HandMotion::LoadedCrossbow,
             _ => HandMotion::Swing,
         },
-        _ => HandMotion::Swing,
+        _ => in_use(stack, (ticks, partial)).unwrap_or(HandMotion::Swing),
     }
+}
+
+/// What the hand does with a stack it is using, when it has ticks of use left
+/// (`getUseItemRemainingTicks() > 0`).
+fn in_use(
+    stack: &ClientItemStackState,
+    (ticks, partial): (Option<i32>, f32),
+) -> Option<HandMotion> {
+    let ticks = ticks?;
+    let duration = use_duration(stack);
+    let remaining = duration - ticks;
+    if remaining <= 0 {
+        return None;
+    }
+    let held = held_time(ticks, partial);
+    Some(match use_animation(stack) {
+        UseAnimation::Eat | UseAnimation::Drink => HandMotion::Eat {
+            current: remaining as f32 - partial + 1.0,
+            duration,
+        },
+        UseAnimation::Block => HandMotion::Block {
+            shield: class_of(Some(stack)) == Some(ItemClass::ShieldItem),
+        },
+        UseAnimation::Trident => HandMotion::Trident { held },
+        UseAnimation::Brush => HandMotion::Brush {
+            phase: (remaining % 10) as f32 - partial + 1.0,
+        },
+        // The spear places itself with its own animation, which is not ported yet.
+        UseAnimation::Spear => return None,
+        _ => HandMotion::Lifted,
+    })
 }
 
 /// `evaluateWhichHandsToRender`: whether the main and the off hand are drawn. A bow or a

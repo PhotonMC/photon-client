@@ -372,6 +372,11 @@ class BlockDeclarationOracle extends BlockItemOracle {
             }
             described.addProperty("consumable",
                 data.has(net.minecraft.core.component.DataComponents.CONSUMABLE));
+            var consumable = data.get(net.minecraft.core.component.DataComponents.CONSUMABLE);
+            if (consumable != null) {
+                described.addProperty("consume_seconds", consumable.consumeSeconds());
+                described.addProperty("use_animation", consumable.animation().getSerializedName());
+            }
             described.addProperty("blocks_attacks",
                 data.has(net.minecraft.core.component.DataComponents.BLOCKS_ATTACKS));
             described.addProperty("kinetic_weapon",

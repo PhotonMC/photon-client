@@ -133,7 +133,9 @@ def items_file(items):
             calls.append(f"crafting_remainder({rust_str(remainder['item'])}, {remainder['count']})")
         if item.get("tool") is not None:
             calls.append(f"tool(&{names[json.dumps(item['tool'], sort_keys=True)]})")
-        for flag in ("consumable", "blocks_attacks", "kinetic_weapon"):
+        if item["consumable"]:
+            calls.append(f"consumable({float(item['consume_seconds'])!r}, {rust_str(item['use_animation'])})")
+        for flag in ("blocks_attacks", "kinetic_weapon"):
             if item[flag]:
                 calls.append(f"{flag}()")
         if item.get("burn_time"):

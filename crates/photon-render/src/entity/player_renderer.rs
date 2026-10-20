@@ -470,9 +470,7 @@ pub fn held_item_vertices(
 ) -> Vec<Vertex> {
     let invert = if right_arm { 1.0_f32 } else { -1.0 };
     let mut pose = view_pose(view);
-    // `applyItemArmTransform`.
-    pose.translate(invert * 0.56, -0.52 + inverse_arm_height * -0.6, -0.72);
-    crate::entity::hand_motion::apply(&mut pose, motion, (invert, attack));
+    crate::entity::hand_motion::apply(&mut pose, motion, (invert, attack, inverse_arm_height));
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
     for layer in layers {

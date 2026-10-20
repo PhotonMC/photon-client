@@ -14,10 +14,24 @@ pub enum HandMotion {
     CrossbowCharge { held: f32, charge_duration: f32 },
     /// A loaded crossbow in the main hand: the swing, and the hold's offset when none is on.
     LoadedCrossbow,
+    /// Eating or drinking: `getUseItemRemainingTicks - partialTick + 1` and the use duration.
+    Eat { current: f32, duration: i32 },
+    /// A raised shield, or another blocking item, which is moved to the blocking pose.
+    Block { shield: bool },
+    /// A trident being drawn, as the bow is.
+    Trident { held: f32 },
+    /// A brush at work: `remaining % 10 - partialTick + 1`.
+    Brush { phase: f32 },
+    /// A use that only lifts the item (a horn): the arm transform and nothing more.
+    Lifted,
 }
 
 fn sin(value: f32) -> f32 {
     photon_core::math::mth_sin_f64(f64::from(value))
+}
+
+fn cos(value: f32) -> f32 {
+    photon_core::math::mth_cos_f64(f64::from(value))
 }
 
 fn rotate(pose: &mut Pose, axis: char, degrees: f32) {
@@ -48,40 +62,117 @@ fn swing_arm(pose: &mut Pose, invert: f32, attack: f32) {
 
 /// The shake, push and stretch both draws end with, for a draw `power` of the way through.
 fn draw_finish(pose: &mut Pose, (held, power): (f32, f32), invert: f32) {
-    if power > 0.1 {
-        let shake = sin((held - 0.1) * 1.3) * (power - 0.1);
-        pose.translate(shake * 0.0, shake * 0.004, shake * 0.0);
-    }
+    shake(pose, (held, power));
     pose.translate(power * 0.0, power * 0.0, power * 0.04);
     pose.scale(1.0, 1.0, 1.0 + power * 0.2);
     rotate(pose, 'y', -invert * 45.0);
 }
 
-/// The pose of the hand's stack after the arm transform: `invert` is 1 for the right arm and -1
-/// for the left, `attack` how far the swing is.
-pub fn apply(pose: &mut Pose, motion: HandMotion, (invert, attack): (f32, f32)) {
+/// `ItemInHandRenderer.applyItemArmTransform`.
+fn arm_transform(pose: &mut Pose, invert: f32, inverse_arm_height: f32) {
+    pose.translate(invert * 0.56, -0.52 + inverse_arm_height * -0.6, -0.72);
+}
+
+/// `applyEatTransform`: the bite's bob and the item's lift to the mouth as the use runs out.
+fn eat_transform(pose: &mut Pose, invert: f32, (current, duration): (f32, i32)) {
+    let pi = std::f64::consts::PI as f32;
+    let scaled = current / duration as f32;
+    if scaled < 0.8 {
+        let bob = (cos(current / 4.0 * pi) * 0.1).abs();
+        pose.translate(0.0, bob, 0.0);
+    }
+    let jiggle = 1.0 - f64::from(scaled).powf(27.0) as f32;
+    pose.translate(jiggle * 0.6 * invert, jiggle * -0.5, jiggle * 0.0);
+    rotate(pose, 'y', invert * jiggle * 90.0);
+    rotate(pose, 'x', jiggle * 10.0);
+    rotate(pose, 'z', invert * jiggle * 30.0);
+}
+
+/// `applyBrushTransform`: the swipe of the brush, one stroke every ten ticks.
+fn brush_transform(pose: &mut Pose, invert: f32, phase: f32) {
+    let pi = std::f64::consts::PI as f32;
+    let scaled = 1.0 - phase / 10.0;
+    let angle = -15.0 + 75.0 * cos(scaled * 2.0 * pi);
+    if invert < 0.0 {
+        pose.translate(0.1, 0.83, 0.35);
+        rotate(pose, 'x', -80.0);
+        rotate(pose, 'y', -90.0);
+        rotate(pose, 'x', angle);
+        pose.translate(-0.3, 0.22, 0.35);
+    } else {
+        pose.translate(-0.25, 0.22, 0.35);
+        rotate(pose, 'x', -80.0);
+        rotate(pose, 'y', 90.0);
+        rotate(pose, 'z', 0.0);
+        rotate(pose, 'x', angle);
+    }
+}
+
+/// The shaking a draw does once it is a tenth of the way through.
+fn shake(pose: &mut Pose, (held, power): (f32, f32)) {
+    if power > 0.1 {
+        let shake = sin((held - 0.1) * 1.3) * (power - 0.1);
+        pose.translate(shake * 0.0, shake * 0.004, shake * 0.0);
+    }
+}
+
+/// A blocking item that is no shield, moved to the blocking pose.
+fn block_transform(pose: &mut Pose, invert: f32) {
+    pose.translate(invert * -0.141_421_36, 0.08, 0.141_421_36);
+    rotate(pose, 'x', -102.25);
+    rotate(pose, 'y', invert * 13.365);
+    rotate(pose, 'z', invert * 78.05);
+}
+
+fn trident_transform(pose: &mut Pose, invert: f32, held: f32) {
+    pose.translate(invert * -0.5, 0.7, 0.1);
+    rotate(pose, 'x', -55.0);
+    rotate(pose, 'y', invert * 35.3);
+    rotate(pose, 'z', invert * -9.785);
+    let power = (held / 10.0).min(1.0);
+    shake(pose, (held, power));
+    pose.translate(0.0, 0.0, power * 0.2);
+    pose.scale(1.0, 1.0, 1.0 + power * 0.2);
+    rotate(pose, 'y', -invert * 45.0);
+}
+
+fn bow_transform(pose: &mut Pose, invert: f32, held: f32) {
+    pose.translate(invert * -0.278_568_2, 0.183_443_87, 0.157_315_31);
+    rotate(pose, 'x', -13.935);
+    rotate(pose, 'y', invert * 35.3);
+    rotate(pose, 'z', invert * -9.785);
+    let power = held / 20.0;
+    let power = ((power * power + power * 2.0) / 3.0).min(1.0);
+    draw_finish(pose, (held, power), invert);
+}
+
+fn crossbow_charge_transform(pose: &mut Pose, invert: f32, (held, charge_duration): (f32, f32)) {
+    pose.translate(invert * -0.478_568_2, -0.094_387, 0.057_315_31);
+    rotate(pose, 'x', -11.935);
+    rotate(pose, 'y', invert * 65.3);
+    rotate(pose, 'z', invert * -9.785);
+    let power = (held / charge_duration).min(1.0);
+    draw_finish(pose, (held, power), invert);
+}
+
+/// The pose of the hand's stack from the pose of the hand: `invert` is 1 for the right arm and
+/// -1 for the left, `attack` how far the swing is and `height` how far the hand has dropped.
+pub fn apply(pose: &mut Pose, motion: HandMotion, (invert, attack, height): (f32, f32, f32)) {
+    if let HandMotion::Eat { current, duration } = motion {
+        eat_transform(pose, invert, (current, duration));
+        return arm_transform(pose, invert, height);
+    }
+    arm_transform(pose, invert, height);
     match motion {
+        HandMotion::Block { shield: false } => block_transform(pose, invert),
+        HandMotion::Trident { held } => trident_transform(pose, invert, held),
+        HandMotion::Brush { phase } => brush_transform(pose, invert, phase),
         HandMotion::Swing => swing_arm(pose, invert, attack),
-        HandMotion::Bow { held } => {
-            pose.translate(invert * -0.278_568_2, 0.183_443_87, 0.157_315_31);
-            rotate(pose, 'x', -13.935);
-            rotate(pose, 'y', invert * 35.3);
-            rotate(pose, 'z', invert * -9.785);
-            let power = held / 20.0;
-            let power = ((power * power + power * 2.0) / 3.0).min(1.0);
-            draw_finish(pose, (held, power), invert);
-        }
+        HandMotion::Bow { held } => bow_transform(pose, invert, held),
         HandMotion::CrossbowCharge {
             held,
             charge_duration,
-        } => {
-            pose.translate(invert * -0.478_568_2, -0.094_387, 0.057_315_31);
-            rotate(pose, 'x', -11.935);
-            rotate(pose, 'y', invert * 65.3);
-            rotate(pose, 'z', invert * -9.785);
-            let power = (held / charge_duration).min(1.0);
-            draw_finish(pose, (held, power), invert);
-        }
+        } => crossbow_charge_transform(pose, invert, (held, charge_duration)),
         HandMotion::LoadedCrossbow => {
             swing_arm(pose, invert, attack);
             if attack < 0.001 {
@@ -89,6 +180,7 @@ pub fn apply(pose: &mut Pose, motion: HandMotion, (invert, attack): (f32, f32)) 
                 rotate(pose, 'y', invert * 10.0);
             }
         }
+        HandMotion::Block { shield: true } | HandMotion::Lifted | HandMotion::Eat { .. } => {}
     }
 }
 
@@ -98,7 +190,7 @@ mod tests {
 
     fn position(motion: HandMotion, attack: f32) -> [f32; 3] {
         let mut pose = Pose::default();
-        apply(&mut pose, motion, (1.0, attack));
+        apply(&mut pose, motion, (1.0, attack, 0.0));
         pose.pose.transform_position(0.0, 0.0, 0.0)
     }
 

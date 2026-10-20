@@ -17,7 +17,9 @@ use photon_world::{ClientEntity, ClientItemStackState, EquipmentSlot};
 
 /// `ItemUseAnimation`, of the ones that pose an arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum UseAnimation {
+pub(crate) enum UseAnimation {
+    Eat,
+    Drink,
     Block,
     Bow,
     Trident,
@@ -29,8 +31,46 @@ enum UseAnimation {
     Other,
 }
 
+/// `Consumable`'s consume seconds and animation for a stack: its component's, else the item's
+/// own default, and none when it has neither or the patch removes it.
+pub(crate) fn consumable_of(stack: &ClientItemStackState) -> Option<(f32, UseAnimation)> {
+    let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
+    if !values.has(CONSUMABLE) {
+        return None;
+    }
+    if let Some(mut bytes) = values.raw(CONSUMABLE) {
+        let seconds = f32::from_be_bytes(*bytes.first_chunk::<4>()?);
+        bytes = &bytes[4..];
+        let animation = match photon_core::wire::read_varint(&mut bytes).ok()? {
+            1 => UseAnimation::Eat,
+            2 => UseAnimation::Drink,
+            _ => UseAnimation::Other,
+        };
+        return Some((seconds, animation));
+    }
+    let consume = photon_world::block::rules::item(stack.item_registry_id())?.consumable?;
+    let animation = match consume.animation {
+        "eat" => UseAnimation::Eat,
+        "drink" => UseAnimation::Drink,
+        _ => UseAnimation::Other,
+    };
+    Some((consume.seconds, animation))
+}
+
+/// `ItemStack.getUseDuration`, in ticks, for the stacks whose hand animation reads it: what a
+/// consumable takes, and the brush's stroke count; everything else here runs until released.
+pub(crate) fn use_duration(stack: &ClientItemStackState) -> i32 {
+    if let Some((seconds, _)) = consumable_of(stack) {
+        return (seconds * 20.0) as i32;
+    }
+    match photon_world::block::rules::item(stack.item_registry_id()).map(|item| item.class) {
+        Some(ItemClass::BrushItem) => 200,
+        _ => 72000,
+    }
+}
+
 /// `ItemStack.getUseAnimation`: the item's own, else a shield's by its component.
-fn use_animation(stack: &ClientItemStackState) -> UseAnimation {
+pub(crate) fn use_animation(stack: &ClientItemStackState) -> UseAnimation {
     let item = photon_world::block::rules::item(stack.item_registry_id());
     match item.map(|item| item.class) {
         Some(ItemClass::BowItem) => UseAnimation::Bow,
@@ -51,8 +91,8 @@ fn use_animation(stack: &ClientItemStackState) -> UseAnimation {
                 Some(_) => true,
                 None => item.is_some_and(|item| item.kinetic_weapon),
             };
-            if values.has(CONSUMABLE) {
-                UseAnimation::Other
+            if let Some((_, animation)) = consumable_of(stack) {
+                animation
             } else if blocks {
                 UseAnimation::Block
             } else if kinetic {
@@ -123,7 +163,7 @@ fn hand_pose(source: &ArmSource, stack: Option<&ClientItemStackState>, off_hand:
             UseAnimation::TootHorn => return ArmPose::TootHorn,
             UseAnimation::Brush => return ArmPose::Brush,
             UseAnimation::Spear => return ArmPose::Spear,
-            UseAnimation::Other => {}
+            UseAnimation::Eat | UseAnimation::Drink | UseAnimation::Other => {}
         }
     }
     // A spear thrust in a swing, or held about to be, is posed as one.
@@ -436,10 +476,8 @@ mod tests {
             use_animation(&stack("minecraft:shield")),
             UseAnimation::Block
         );
-        assert_eq!(
-            use_animation(&stack("minecraft:apple")),
-            UseAnimation::Other
-        );
+        // Food eats, which poses no arm.
+        assert_eq!(use_animation(&stack("minecraft:apple")), UseAnimation::Eat);
         assert_eq!(
             use_animation(&stack("minecraft:stick")),
             UseAnimation::Other
@@ -524,5 +562,27 @@ mod tests {
             eye_arm(&arms(true, false), (Arm::Left, 0.0), stacks),
             Some(Arm::Right)
         );
+    }
+
+    #[test]
+    fn a_consumable_takes_its_seconds_and_animates_as_it_eats_or_drinks() {
+        let consume = |name: &str| {
+            consumable_of(&stack(name)).map(|(s, a)| (s, a, use_duration(&stack(name))))
+        };
+        assert_eq!(
+            consume("minecraft:bread"),
+            Some((1.6, UseAnimation::Eat, 32))
+        );
+        assert_eq!(
+            consume("minecraft:honey_bottle"),
+            Some((2.0, UseAnimation::Drink, 40))
+        );
+        assert_eq!(
+            consume("minecraft:dried_kelp"),
+            Some((0.8, UseAnimation::Eat, 16))
+        );
+        assert_eq!(consume("minecraft:stick"), None);
+        assert_eq!(use_duration(&stack("minecraft:bow")), 72000);
+        assert_eq!(use_duration(&stack("minecraft:brush")), 200);
     }
 }

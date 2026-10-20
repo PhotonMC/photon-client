@@ -202,6 +202,24 @@ fn describe_equippable(equip: &photon_data::item::definition::Equip) -> Value {
     described
 }
 
+/// An item's default consume seconds, animation and equippable, as the declarations case writes them.
+fn describe_consume(item: &photon_data::item::definition::Item, described: &mut Value) {
+    if let Some(consume) = &item.consumable {
+        // Java writes the float's own shortest text, which reads back as this double.
+        described["consume_seconds"] = json!(
+            consume
+                .seconds
+                .to_string()
+                .parse::<f64>()
+                .unwrap_or_default()
+        );
+        described["use_animation"] = json!(consume.animation);
+    }
+    if let Some(equip) = &item.equippable {
+        described["equippable"] = describe_equippable(equip);
+    }
+}
+
 pub(super) fn item_declarations(label: &str) -> Value {
     use photon_data::item::classes::ItemClass;
     use photon_data::item::definition::RuleBlocks;
@@ -234,13 +252,11 @@ pub(super) fn item_declarations(label: &str) -> Value {
                 "class": format!("{:?}", item.class),
                 "max_stack_size": item.max_stack_size,
                 "max_damage": item.max_damage,
-                "consumable": item.consumable,
+                "consumable": item.consumable.is_some(),
                 "blocks_attacks": item.blocks_attacks,
                 "kinetic_weapon": item.kinetic_weapon,
             });
-            if let Some(equip) = &item.equippable {
-                described["equippable"] = describe_equippable(equip);
-            }
+            describe_consume(item, &mut described);
             if let Some(remainder) = &item.crafting_remainder {
                 described["crafting_remainder"] =
                     json!({"item": remainder.item, "count": remainder.count});

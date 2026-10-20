@@ -52,6 +52,14 @@ pub struct Remainder {
     pub count: i32,
 }
 
+/// The default `consumable` component's reading: how long the item takes to consume, in
+/// seconds, and its use animation by serialized name.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Consume {
+    pub seconds: f32,
+    pub animation: &'static str,
+}
+
 /// One item of the registry.
 #[derive(Debug)]
 pub struct Item {
@@ -63,7 +71,7 @@ pub struct Item {
     pub equippable: Option<Equip>,
     pub crafting_remainder: Option<Remainder>,
     pub tool: Option<&'static Tool>,
-    pub consumable: bool,
+    pub consumable: Option<Consume>,
     pub blocks_attacks: bool,
     pub kinetic_weapon: bool,
     /// Ticks a furnace burns it for; zero when it is no fuel.
@@ -87,7 +95,7 @@ impl Item {
             equippable: None,
             crafting_remainder: None,
             tool: None,
-            consumable: false,
+            consumable: None,
             blocks_attacks: false,
             kinetic_weapon: false,
             burn_time: 0,
@@ -134,8 +142,8 @@ impl Item {
         self
     }
 
-    pub const fn consumable(mut self) -> Self {
-        self.consumable = true;
+    pub const fn consumable(mut self, seconds: f32, animation: &'static str) -> Self {
+        self.consumable = Some(Consume { seconds, animation });
         self
     }
 
@@ -165,7 +173,7 @@ impl Item {
     /// it has no consumable, swappable equippable, blocking or kinetic
     /// component to act on.
     pub fn use_does_nothing(&self) -> bool {
-        !self.consumable
+        self.consumable.is_none()
             && !self.equippable.is_some_and(|equip| equip.swappable)
             && !self.blocks_attacks
             && !self.kinetic_weapon

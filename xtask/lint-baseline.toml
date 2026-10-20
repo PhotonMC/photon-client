@@ -839,7 +839,7 @@
 "crates/photon-oracle/src/ticks.rs::movement_world" = 84
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
 "crates/photon-oracle/src/tooltip.rs::component_json" = 80
-"crates/photon-oracle/src/tooltip.rs::item_declarations" = 93
+"crates/photon-oracle/src/tooltip.rs::item_declarations" = 91
 "crates/photon-oracle/src/tooltip.rs::tooltip_registries" = 89
 "crates/photon-oracle/src/transform.rs::client_world_entity_tick_result" = 78
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 107
