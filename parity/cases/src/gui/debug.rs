@@ -295,20 +295,88 @@ pub fn debug_options_screen() -> Value {
     gui("debug-options-screen", "debug_options_screen", rows)
 }
 
+/// A click of the primary button.
+fn click(x: i64, y: i64) -> Value {
+    json!({"do": "click", "x": x, "y": y})
+}
+
+/// A key pressed, by its code.
+fn key(code: i64) -> Value {
+    json!({"do": "key", "key": code})
+}
+
+fn keys(codes: &[i64]) -> Vec<Value> {
+    codes.iter().map(|&code| key(code)).collect()
+}
+
+/// Tab pressed `count` times, with Shift or not.
+fn tabs(count: usize, shift: bool) -> Vec<Value> {
+    let step = if shift { json!({"do": "key", "key": 258, "shift": true}) } else { key(258) };
+    vec![step; count]
+}
+
+/// A row that runs `steps` over the screen with `search` typed.
+type StepRow<'a> = &'a dyn Fn(&str, &str, Vec<Value>) -> Value;
+
 /// The rows of the screen that press, type and drag.
 fn debug_options_step_rows(
     row: &impl Fn(&str, (i64, i64)) -> Value,
     with: &impl Fn(Value, &str, Value) -> Value,
 ) -> Vec<Value> {
-    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
-    let key = |code: i64| json!({"do": "key", "key": code});
-    let tabs = |count: usize, shift: bool| -> Vec<Value> {
-        let step = if shift { json!({"do": "key", "key": 258, "shift": true}) } else { key(258) };
-        vec![step; count]
-    };
     let steps = |label: &str, search: &str, steps: Vec<Value>| {
         with(with(row(label, (427, 240)), "search", json!(search)), "steps", json!(steps))
     };
+    let mut rows = debug_options_key_rows(&steps);
+    rows.extend(debug_options_arrow_rows(&steps));
+    rows.extend(debug_options_click_rows(&steps));
+    rows
+}
+
+/// Tab, Enter and Space.
+fn debug_options_key_rows(steps: StepRow) -> Vec<Value> {
+    vec![
+        // Tab walks the search box, the buttons that can be pressed, the profiles and Done; Shift
+        // goes back, and the ends wrap.
+        steps("tab-first", "", tabs(1, false)),
+        steps("tab-several", "", tabs(5, false)),
+        steps("tab-scrolls", "", tabs(18, false)),
+        steps("tab-back-wraps", "", tabs(1, true)),
+        steps("tab-wraps-past-done", "", tabs(75, false)),
+        steps("tab-then-back", "", [tabs(4, false), tabs(2, true)].concat()),
+        // Enter and Space press the focused button; a pressed one stays focused and cannot be again.
+        steps("tab-enter", "", [tabs(1, false), vec![key(257)]].concat()),
+        steps("tab-space-twice", "", [tabs(2, false), vec![key(32), key(32)]].concat()),
+        steps("tab-to-done-enter", "", [tabs(1, true), vec![key(257)]].concat()),
+        steps("tab-search-filter", "chunk", tabs(4, false)),
+    ]
+}
+
+/// The arrows: along the screen's widgets, within an entry, and down and up the list.
+fn debug_options_arrow_rows(steps: StepRow) -> Vec<Value> {
+    vec![
+        steps("arrow-down-from-search", "", keys(&[264])),
+        steps("arrow-up-from-search", "", keys(&[265])),
+        steps("arrow-down-twice", "", keys(&[264, 264])),
+        steps("arrow-down-right-left", "", keys(&[264, 262, 263, 263])),
+        steps("arrow-right-from-search-edits", "", keys(&[262])),
+        steps("arrow-down-many", "", keys(&[264; 12])),
+        steps("arrow-down-up-skips-categories", "", keys(&[264; 40])),
+        steps("arrow-up-from-first", "", keys(&[264, 265])),
+        steps("arrow-up-up-from-first", "", keys(&[264, 265, 265])),
+        steps("arrow-right-end", "", keys(&[264, 262, 262, 262, 262])),
+        steps("arrow-down-to-profile", "", [tabs(1, true), keys(&[265])].concat()),
+        steps("arrow-from-done", "", [tabs(1, true), keys(&[263, 263, 265])].concat()),
+        steps("arrow-after-tab-down", "", [tabs(4, false), keys(&[264, 264, 262])].concat()),
+        steps("name-click-arrow-down", "", [vec![click(150, 152)], keys(&[264])].concat()),
+        steps("name-click-arrow-up", "", [vec![click(150, 152)], keys(&[265])].concat()),
+        steps("name-click-arrow-left", "", [vec![click(150, 152)], keys(&[263])].concat()),
+        steps("name-click-arrow-right", "", [vec![click(150, 152)], keys(&[262])].concat()),
+        steps("arrow-filtered", "chunk", keys(&[264, 264, 264, 264, 262])),
+    ]
+}
+
+/// The clicks, and the keys after them.
+fn debug_options_click_rows(steps: StepRow) -> Vec<Value> {
     vec![
         // A button of the first entry: the focus leaves the search box, both profiles can be loaded.
         steps("press-overlay", "", vec![click(290, 92)]),
@@ -329,19 +397,6 @@ fn debug_options_step_rows(
             ],
         ),
         steps("escape", "", vec![json!({"do": "key", "key": 256})]),
-        // Tab walks the search box, the buttons that can be pressed, the profiles and Done; Shift
-        // goes back, and the ends wrap.
-        steps("tab-first", "", tabs(1, false)),
-        steps("tab-several", "", tabs(5, false)),
-        steps("tab-scrolls", "", tabs(18, false)),
-        steps("tab-back-wraps", "", tabs(1, true)),
-        steps("tab-wraps-past-done", "", tabs(75, false)),
-        steps("tab-then-back", "", [tabs(4, false), tabs(2, true)].concat()),
-        // Enter and Space press the focused button; a pressed one stays focused and cannot be again.
-        steps("tab-enter", "", [tabs(1, false), vec![key(257)]].concat()),
-        steps("tab-space-twice", "", [tabs(2, false), vec![key(32), key(32)]].concat()),
-        steps("tab-to-done-enter", "", [tabs(1, true), vec![key(257)]].concat()),
-        steps("tab-search-filter", "chunk", tabs(4, false)),
         // A click in the list that presses no button leaves the list, or an entry of it, holding
         // the focus; Tab goes on from there.
         steps("name-click-tab", "", [vec![click(150, 152)], tabs(1, false)].concat()),

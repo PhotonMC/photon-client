@@ -140,6 +140,10 @@ fn key_step(
         Some(257) => glfw::Key::Enter,
         Some(258) => glfw::Key::Tab,
         Some(259) => glfw::Key::Backspace,
+        Some(262) => glfw::Key::Right,
+        Some(263) => glfw::Key::Left,
+        Some(264) => glfw::Key::Down,
+        Some(265) => glfw::Key::Up,
         other => return Err(format!("a key: {other:?}")),
     };
     let shift = step["shift"].is_boolean();

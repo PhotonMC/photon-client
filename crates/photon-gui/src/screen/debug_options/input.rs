@@ -1,15 +1,16 @@
 //! The debug options screen's input (`DebugOptionsScreen`, `OptionList`, `OptionEntry`): clicks on
 //! the buttons, the scroll bar and wheel, the search box.
 //!
-//! Focus travels with Tab and Shift+Tab, and Enter or Space presses the focused button. Not handled:
-//! focus travel with the arrows, a drag selecting text in the search box, and the double click.
+//! Focus travels with Tab, Shift+Tab and the arrows, and Enter or Space presses the focused button.
+//! Not handled: a drag selecting text in the search box, and the double click.
 
 use super::*;
 use crate::widgets::edit_box::{Clipboard, edit_key};
+use crate::widgets::navigation::Direction;
 use crate::widgets::scroll_area::SCROLLBAR_WIDTH;
 
 impl DebugOptionsScreen {
-    fn set_focus(&mut self, focus: Focus) {
+    pub(super) fn set_focus(&mut self, focus: Focus) {
         if focus == Focus::Search && self.focus != Focus::Search {
             self.focused_at = Instant::now();
         }
@@ -145,7 +146,7 @@ impl DebugOptionsScreen {
     }
 
     /// `AbstractSelectionList.scrollToEntry`: the list scrolls the least that shows the whole row.
-    fn scroll_to_entry(&mut self, id: &str) {
+    pub(super) fn scroll_to_entry(&mut self, id: &str) {
         let Some(index) = self
             .rows
             .iter()
@@ -236,27 +237,44 @@ impl DebugOptionsScreen {
         if key == glfw::Key::Escape {
             return Some(DebugOptionsEvent::Close);
         }
-        match key {
-            glfw::Key::Tab => {
-                self.tab(!shift);
-                return None;
-            }
-            glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space => {
-                if let Some(event) = self.press_focused() {
-                    return Some(event);
-                }
-            }
-            _ => {}
+        if key == glfw::Key::Tab {
+            self.tab(!shift);
+            return None;
         }
+        if matches!(
+            key,
+            glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space
+        ) && let Some(event) = self.press_focused()
+        {
+            return Some(event);
+        }
+        // The search box takes the keys it edits with, the arrows Left and Right among them,
+        // whether they change anything or not.
         if self.focus == Focus::Search
             && let Some(edit) = edit_key(key)
-            && self
-                .search
-                .key_pressed(edit, control, shift, font, clipboard)
-            && self.search.value() != self.last_search
         {
-            self.update_search();
+            let changed = self
+                .search
+                .key_pressed(edit, control, shift, font, clipboard);
+            if changed && self.search.value() != self.last_search {
+                self.update_search();
+            }
+            return None;
+        }
+        if let Some(direction) = arrow_direction(key) {
+            self.arrow(direction);
         }
         None
+    }
+}
+
+/// The direction an arrow key points in.
+fn arrow_direction(key: glfw::Key) -> Option<Direction> {
+    match key {
+        glfw::Key::Up => Some(Direction::Up),
+        glfw::Key::Down => Some(Direction::Down),
+        glfw::Key::Left => Some(Direction::Left),
+        glfw::Key::Right => Some(Direction::Right),
+        _ => None,
     }
 }

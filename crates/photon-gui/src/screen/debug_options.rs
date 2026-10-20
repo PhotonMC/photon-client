@@ -4,6 +4,7 @@
 //!
 //! Not drawn: the tooltip over the name of an entry that reduced debug info hides.
 
+mod arrows;
 mod draw;
 mod input;
 
