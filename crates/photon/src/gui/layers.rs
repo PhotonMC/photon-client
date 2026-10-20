@@ -464,7 +464,9 @@ impl Gui {
         ),
     ) {
         let view = (controls, size);
-        let debug = Self::debug_columns(session, controls);
+        // The debug options screen draws the overlay itself, under its widgets.
+        let debug =
+            Self::debug_columns(session, controls).filter(|_| controls.debug_options.is_none());
         layers.draw_subtitles(frame, resources, view, SubtitlePass::OverScreen);
         layers.draw_pause_toast(frame, resources, view.0);
         layers.draw_toasts(frame, resources, view, item);

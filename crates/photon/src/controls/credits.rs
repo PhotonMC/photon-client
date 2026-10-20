@@ -33,6 +33,7 @@ impl Controls {
         self.accessibility_screen = None;
         self.skin_screen = None;
         self.social = None;
+        self.debug_options = None;
         self.stats = None;
         self.drop_advancements(session);
         self.sound_screen = None;

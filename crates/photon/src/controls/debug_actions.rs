@@ -103,6 +103,7 @@ impl Controls {
         (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
     ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
         match key {
+            glfw::Key::F4 if self.any_screen_open() => {}
             glfw::Key::F4 => self.debug_switch_game_mode(session, surface, assets),
             glfw::Key::C => self.debug_copy_location(session, surface, assets),
             glfw::Key::A => {
