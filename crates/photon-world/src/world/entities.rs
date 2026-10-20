@@ -232,7 +232,7 @@ impl ClientWorld {
                 leash_holder_id: EntityId(0),
                 lightning_done: false,
                 shot_at_angle: false,
-                attached_to_entity: false,
+                attached_target: None,
             },
         );
         self.entities_mut()
@@ -318,9 +318,11 @@ impl ClientWorld {
 mod events;
 mod motion;
 mod passengers;
+mod rockets;
 mod seeds;
 mod state;
 mod store;
+pub use rockets::RocketHand;
 pub use store::Entities;
 mod targets;
 mod ticking;

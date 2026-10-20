@@ -89,8 +89,8 @@ pub use region_copy::RegionCopy;
 pub use shadow::{ShadowInput, ShadowPiece};
 pub use world::{
     BeaconView, CommandBlockMode, CommandBlockView, CommandMinecartView, ConduitView,
-    EnchantTableView, Entities, GatewayBeamView, JigsawBlockView, LevelEvent, TestBlockView,
-    block_sound_of,
+    EnchantTableView, Entities, GatewayBeamView, JigsawBlockView, LevelEvent, RocketHand,
+    TestBlockView, block_sound_of,
 };
 
 /// The client-side copy of the currently loaded world.
@@ -233,7 +233,7 @@ fn apply_firework_data(entity: &mut ClientEntity, metadata: &[u8]) {
     if let Some(target) =
         metadata_optional_unsigned_int_value(metadata, FIREWORK_ATTACHED_TO_TARGET_DATA_ID)
     {
-        entity.attached_to_entity = target.is_some();
+        entity.attached_target = target.map(EntityId);
     }
 }
 

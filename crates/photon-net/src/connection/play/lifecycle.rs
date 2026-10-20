@@ -152,6 +152,16 @@ impl PlaySession {
             self.world.tick_local_player_effects();
             self.world.tick_entities();
         }
+        let rocket = photon_game::item::id_of("minecraft:firework_rocket");
+        let hand = photon_world::RocketHand {
+            main_arm_left: self.link.client_information.main_hand
+                == photon_protocol::configuration::MainHand::Left,
+            only_off_hand: rocket == Some(self.off_hand_item())
+                && rocket != Some(self.main_hand_item()),
+        };
+        if let Some(player) = self.local.player.as_mut() {
+            self.world.boost_from_rockets(player, hand);
+        }
     }
 
     /// Where the client's own player stands after it moved this tick, for what the world's own

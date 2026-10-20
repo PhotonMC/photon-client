@@ -25,7 +25,7 @@ mod enchanting;
 pub use enchanting::EnchantTableView;
 pub(crate) use enchanting::Tables;
 mod entities;
-pub use entities::Entities;
+pub use entities::{Entities, RocketHand};
 mod lighting;
 mod local_player;
 mod minecarts;

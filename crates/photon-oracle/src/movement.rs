@@ -183,7 +183,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 );
                 player.set_main_hand_item(item);
             }
-            worn_items(&mut world, breaking)?;
+            worn_items(&mut world, &player, breaking)?;
             for effect in breaking["effects"].as_array().into_iter().flatten() {
                 let id = match string(effect, "effect")? {
                     "minecraft:haste" => 2,
@@ -396,9 +396,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             }
             // As the session does: the main hand the player ticks with is
             // the world's inventory now.
-            if breaking.is_some() {
-                player.set_hand_state(photon_game::item::glider::hand_state(&world, 0));
-            }
+            before_tick(&world, &mut player, breaking);
             let sent = if let Some(vehicle_id) = ridden {
                 // The level ticks the vehicle (which tells the server of its paddles), then its
                 // passenger, which hands the boat the keys for the next tick.
@@ -443,6 +441,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                 }
             };
+            after_tick(&mut world, &mut player, breaking);
             let position = player.position();
             let motion = player.delta_movement();
             let (y_rot, x_rot) = player.rotation();
@@ -564,7 +563,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     "watched_states": watched,
                 });
             }
-            ticks.push(described);
+            ticks.push(with_rockets(described, &world, breaking));
         }
         match failure {
             None => out.push(json!({"label": label, "outcome": "ticked", "ticks": ticks})),

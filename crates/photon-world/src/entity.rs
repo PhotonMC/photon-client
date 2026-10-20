@@ -105,7 +105,7 @@ pub struct ClientEntity {
     /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
     pub(crate) shot_at_angle: bool,
     /// `FireworkRocketEntity.isAttachedToEntity`: its data names an entity it flies with.
-    pub(crate) attached_to_entity: bool,
+    pub(crate) attached_target: Option<EntityId>,
 }
 
 mod animation;

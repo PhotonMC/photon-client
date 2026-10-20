@@ -46,6 +46,40 @@ impl LocalPlayer {
         ));
     }
 
+    /// `FireworkRocketEntity.tick` for a rocket attached to this player: a glide is pushed along
+    /// the look direction. Whether the player glides.
+    pub fn boost_from_rocket(&mut self) -> bool {
+        if !self.elytra.fall_flying {
+            return false;
+        }
+        let look = self.look_angle();
+        let motion = self.delta;
+        self.delta = motion.add_components(
+            look.x * 0.1 + (look.x * 1.5 - motion.x) * 0.5,
+            look.y * 0.1 + (look.y * 1.5 - motion.y) * 0.5,
+            look.z * 0.1 + (look.z * 1.5 - motion.z) * 0.5,
+        );
+        true
+    }
+
+    /// `Entity.getHandHoldingItemAngle`: where the hand that holds the item is, half a block out to
+    /// the side the arm is on. `holds_in_off_hand_only` turns the arm to the other one.
+    pub fn hand_holding_item_angle(
+        &self,
+        main_arm_left: bool,
+        holds_in_off_hand_only: bool,
+    ) -> Vec3 {
+        let arm_left = main_arm_left != holds_in_off_hand_only;
+        let y_rot = self.y_rot + if arm_left { -80.0 } else { 80.0 };
+        let real_y_rot = -y_rot * MTH_DEG_TO_RAD;
+        let x_cos = mth_cos_f64(0.0);
+        Vec3::new(
+            f64::from(mth_sin_f64(f64::from(real_y_rot)) * x_cos) * 0.5,
+            f64::from(-mth_sin_f64(0.0)) * 0.5,
+            f64::from(mth_cos_f64(f64::from(real_y_rot)) * x_cos) * 0.5,
+        )
+    }
+
     /// `Player.canGlide`: not flying, in the air, not riding, not levitating, and with a stack
     /// that lets the player glide.
     pub(super) fn can_glide(&self) -> bool {
@@ -197,6 +231,23 @@ mod tests {
         player.set_server_fall_flying(false);
         player.set_server_fall_flying(true);
         assert_eq!(count(player.take_sounds()), 1);
+    }
+
+    /// A rocket pushes a glide toward the look direction and leaves a player on foot alone.
+    #[test]
+    fn a_rocket_pushes_only_a_glide() {
+        let world = ClientWorld::default();
+        let mut player = airborne(true);
+        let before = player.delta_movement();
+        assert!(!player.boost_from_rocket() && player.delta_movement().z == before.z);
+        player.tick(&world, jump()).expect("tick");
+        let before = player.delta_movement();
+        assert!(player.boost_from_rocket());
+        let look = player.look_angle();
+        // The push is a tenth of the look plus half the way to one and a half times it.
+        let after = player.delta_movement();
+        let expected = before.z + look.z * 0.1 + (look.z * 1.5 - before.z) * 0.5;
+        assert_eq!(after.z, expected);
     }
 
     /// The server's shared flags end a glide, and the pose follows the flag.

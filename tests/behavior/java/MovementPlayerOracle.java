@@ -50,6 +50,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
         player.yBodyRotO = player.getYRot();
 
         boolean breaking = row.has("breaking");
+        var rockets = new java.util.ArrayList<net.minecraft.world.entity.Entity>();
         if (breaking) {
             // The client's own player is one of its level's entities, and
             // placing a block checks the level's entities for room.
@@ -82,6 +83,16 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     net.minecraft.resources.Identifier.parse(breaking_.get("chest").getAsString()));
                 player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
                     new net.minecraft.world.item.ItemStack(item));
+            }
+            if (breaking_.has("rockets")) {
+                // Fireworks that fly with the player, as the server's use of a rocket makes them.
+                for (int i = 0; i < breaking_.get("rockets").getAsInt(); i++) {
+                    var rocket = new net.minecraft.world.entity.projectile.FireworkRocketEntity(level,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FIREWORK_ROCKET), player);
+                    rocket.setId(900 + i);
+                    level.addEntity(rocket);
+                    rockets.add(rocket);
+                }
             }
             setField(getField(minecraft, "gameRenderer"), "itemInHandRenderer",
                 unsafe.allocateInstance(net.minecraft.client.renderer.ItemInHandRenderer.class));
@@ -222,7 +233,20 @@ class MovementPlayerOracle extends MovementWorldOracle {
             // the old position and rotation and counts the tick first, and
             // both are read during the tick.
             level.tickNonPassenger(vehicle != null ? vehicle : player);
+            // The rockets were added after the player, so the level ticks them after it.
+            for (var rocket : rockets) {
+                level.tickNonPassenger(rocket);
+            }
             var described = describe(player, wire.sent);
+            var rocketPositions = new JsonArray();
+            for (var rocket : rockets) {
+                var at = new JsonObject();
+                at.addProperty("x", Oracle.bits(rocket.getX()));
+                at.addProperty("y", Oracle.bits(rocket.getY()));
+                at.addProperty("z", Oracle.bits(rocket.getZ()));
+                rocketPositions.add(at);
+            }
+            described.add("rockets", rocketPositions);
             if (vehicle != null) {
                 // The fall of a vehicle that lands is passed on to its passenger (its sounds); that
                 // is not ported, so a ridden tick's sounds are not compared.

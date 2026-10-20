@@ -160,6 +160,10 @@ impl ClientEntity {
     }
 
     pub(crate) fn tick_firework(&mut self) {
+        // An attached rocket flies with its target and does not accelerate on its own.
+        if self.attached_target.is_some() {
+            return;
+        }
         let current_motion = self.motion();
         let movement = (
             current_motion.0 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,

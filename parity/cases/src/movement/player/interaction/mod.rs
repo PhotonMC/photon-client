@@ -22,6 +22,7 @@ pub struct Interaction {
     count: Option<i64>,
     off_hand: Option<&'static str>,
     chest: Option<&'static str>,
+    rockets: Option<i64>,
     effects: Option<Vec<Value>>,
     entities: Option<Vec<Value>>,
 }
@@ -33,6 +34,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         count,
         off_hand: None,
         chest: None,
+        rockets: None,
         effects: None,
         entities: None,
     }
@@ -71,6 +73,11 @@ impl Interaction {
         Self { off_hand: Some(item), ..self }
     }
 
+    /// Fireworks that fly with the player.
+    pub fn rockets(self, count: i64) -> Self {
+        Self { rockets: Some(count), ..self }
+    }
+
     pub fn chest(self, item: &'static str) -> Self {
         Self { chest: Some(item), ..self }
     }
@@ -107,6 +114,9 @@ impl Interaction {
         }
         if let Some(item) = self.off_hand {
             held["off_hand"] = json!(item);
+        }
+        if let Some(count) = self.rockets {
+            held["rockets"] = json!(count);
         }
         if let Some(item) = self.chest {
             held["chest"] = json!(item);
