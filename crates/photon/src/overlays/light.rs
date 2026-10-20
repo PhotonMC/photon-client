@@ -78,8 +78,10 @@ pub fn hands(
         };
         let cache = &mut held_layers[usize::from(!right)];
         let ticks = player.use_ticks_of(right);
+        let hit_feedback = player.ticks_since_kinetic_hit(partial);
         let charge = cache.charge_duration(stack);
-        let motion = super::hand_use::motion(stack, (ticks, partial), (right, charge));
+        let motion =
+            super::hand_use::motion(stack, (ticks, partial), (right, charge, hit_feedback));
         let layers = cache.get_in_use(stack, ticks, (renderer, tints));
         let drawn = photon_render::entity::player_renderer::held_item_vertices(
             &hand_view,
@@ -273,7 +275,7 @@ pub fn player_model(
             attack: (attack_time, attack_arm),
             arm_poses,
             using: (arms.using_item, arms.use_main_hand, arms.ticks_using_item),
-            hit_feedback: 0.0,
+            hit_feedback: player.ticks_since_kinetic_hit(partial),
         },
     );
     let state = PlayerRenderState {

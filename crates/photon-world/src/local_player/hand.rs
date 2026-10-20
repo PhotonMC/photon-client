@@ -190,6 +190,25 @@ impl LocalPlayer {
         self.use_effects().speed
     }
 
+    /// `LivingEntity.onKineticHit` (entity event 2): the kick of a spear's hit starts, unless
+    /// one began in the last ten ticks.
+    pub fn on_kinetic_hit(&mut self) {
+        if self
+            .use_edge
+            .kinetic_hit
+            .is_none_or(|last| self.tick_count - last > 10)
+        {
+            self.use_edge.kinetic_hit = Some(self.tick_count);
+        }
+    }
+
+    /// `LivingEntity.getTicksSinceLastKineticHitFeedback`.
+    pub fn ticks_since_kinetic_hit(&self, partial_tick: f32) -> f32 {
+        self.use_edge
+            .kinetic_hit
+            .map_or(0.0, |last| (self.tick_count - last) as f32 + partial_tick)
+    }
+
     /// `LocalPlayer.isUsingItem`: the use the client has started, which the server's flag starts
     /// and stops when it changes.
     pub fn is_using_item(&self) -> bool {
@@ -355,6 +374,8 @@ pub struct UseEdge {
     pub(super) ticks: i32,
     /// The item being used (`useItem`), which a change of the used hand's item ends the use of.
     pub(super) item: Option<ItemId>,
+    /// `lastKineticHitFeedbackTime`, in the player's own ticks: when a spear hit last kicked.
+    pub(super) kinetic_hit: Option<i32>,
 }
 
 /// How the use of an item changes the field of view.
@@ -479,5 +500,21 @@ mod tests {
         assert!(!player.is_sprinting_possible(false));
         player.set_hand_state(with(20, true));
         assert!(!player.is_sprinting_possible(false));
+    }
+
+    /// A hit's kick counts from the first event, and one within ten ticks does not restart it.
+    #[test]
+    fn a_kinetic_hit_kicks_for_ten_ticks_from_the_first_event() {
+        let mut player = player();
+        assert_eq!(player.ticks_since_kinetic_hit(0.5), 0.0);
+        player.tick_count = 100;
+        player.on_kinetic_hit();
+        player.tick_count = 104;
+        assert_eq!(player.ticks_since_kinetic_hit(0.5), 4.5);
+        player.on_kinetic_hit();
+        assert_eq!(player.ticks_since_kinetic_hit(0.0), 4.0);
+        player.tick_count = 111;
+        player.on_kinetic_hit();
+        assert_eq!(player.ticks_since_kinetic_hit(0.0), 0.0);
     }
 }

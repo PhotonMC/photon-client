@@ -28,7 +28,7 @@ fn held_time(ticks: i32, partial: f32) -> f32 {
 pub(super) fn motion(
     stack: &ClientItemStackState,
     (ticks, partial): (Option<i32>, f32),
-    (main_hand, charge_duration): (bool, i32),
+    (main_hand, charge_duration, hit_feedback): (bool, i32, f32),
 ) -> HandMotion {
     let held = ticks.map(|ticks| held_time(ticks, partial));
     match (class_of(Some(stack)), held) {
@@ -41,7 +41,7 @@ pub(super) fn motion(
             _ if main_hand && is_charged_crossbow(stack) => HandMotion::LoadedCrossbow,
             _ => HandMotion::Swing,
         },
-        _ => in_use(stack, (ticks, partial)).unwrap_or_else(|| swing_of(stack)),
+        _ => in_use(stack, (ticks, partial), hit_feedback).unwrap_or_else(|| swing_of(stack)),
     }
 }
 
@@ -66,6 +66,7 @@ fn swing_of(stack: &ClientItemStackState) -> HandMotion {
 fn in_use(
     stack: &ClientItemStackState,
     (ticks, partial): (Option<i32>, f32),
+    hit_feedback: f32,
 ) -> Option<HandMotion> {
     let ticks = ticks?;
     let duration = use_duration(stack);
@@ -89,8 +90,7 @@ fn in_use(
         UseAnimation::Spear => HandMotion::SpearUse {
             spear: spear_of(stack)?,
             held,
-            // The kick of a hit on the local player is not tracked yet.
-            hit_feedback: 0.0,
+            hit_feedback,
         },
         _ => HandMotion::Lifted,
     })

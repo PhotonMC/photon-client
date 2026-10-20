@@ -458,9 +458,21 @@ impl PlaySession {
             }
             self.world.entities_mut().apply_death_event(id);
         } else {
+            self.local_kinetic_hit(id, event);
             self.world.apply_entity_event(id, event);
         }
         Ok(())
+    }
+
+    /// `LivingEntity.handleEntityEvent`: 2 is the kick of a spear's hit, which the server sends to
+    /// the attacker too.
+    fn local_kinetic_hit(&mut self, id: EntityId, event: i8) {
+        if event == 2
+            && self.local.player_id == Some(id)
+            && let Some(player) = self.local.player.as_mut()
+        {
+            player.on_kinetic_hit();
+        }
     }
 
     fn on_damage_event(
