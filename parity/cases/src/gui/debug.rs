@@ -288,6 +288,21 @@ pub fn debug_options_screen() -> Value {
         with(row("reduced", (427, 240)), "reduced", json!(true)),
         with(with(row("scrolled", (427, 240)), "scroll", json!(-3.0)), "set", json!([["tps", "NEVER"]])),
         with(row("hover", (427, 240)), "mouse", json!([310, 90])),
+        // Reduced debug info hides some entries: the tooltip over their names, not over the
+        // allowed ones, their buttons, a group or the empty header; and with the list scrolled.
+        with(with(row("reduced-name-1", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 92])),
+        with(with(row("reduced-name-2", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 112])),
+        with(with(row("reduced-name-4", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 152])),
+        with(with(row("reduced-name-6", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 192])),
+        with(with(row("reduced-buttons", (427, 240)), "reduced", json!(true)), "mouse", json!([300, 112])),
+        with(with(row("reduced-group", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 72])),
+        with(with(row("reduced-header", (427, 240)), "reduced", json!(true)), "mouse", json!([150, 30])),
+        with(
+            with(with(row("reduced-scrolled", (427, 240)), "reduced", json!(true)), "mouse", json!([120, 150])),
+            "scroll",
+            json!(-3.0),
+        ),
+        with(with(row("unreduced-name", (427, 240)), "mouse", json!([150, 112])), "scroll", json!(-3.0)),
         // A few rows only, so no scroll bar.
         with(row("search-fps", (427, 240)), "search", json!("fps")),
     ];

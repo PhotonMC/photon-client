@@ -189,7 +189,7 @@ impl DebugOptionsScreen {
     }
 
     /// `getEntryAtPosition`: the row under `at`.
-    fn row_at(&self, (x, y): (i32, i32)) -> Option<usize> {
+    pub(super) fn row_at(&self, (x, y): (i32, i32)) -> Option<usize> {
         let left = self.row_left();
         if x < left || x > left + ROW_WIDTH {
             return None;

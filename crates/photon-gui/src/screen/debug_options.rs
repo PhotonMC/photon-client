@@ -139,6 +139,8 @@ pub struct DebugOptionsScreen {
     focused_at: Instant,
     focus: Focus,
     search_hint: Vec<Run>,
+    /// The tooltip over the name of an entry that reduced debug info hides.
+    not_allowed: Vec<Run>,
     /// Whether the list's scroll bar is held (`AbstractScrollArea.scrolling`).
     scrolling: bool,
     subtitle: Vec<Vec<Run>>,
@@ -187,6 +189,7 @@ impl DebugOptionsScreen {
             search: EditBox::new(ROW_WIDTH / 3 - 8, 32),
             focused_at: Instant::now(),
             focus: Focus::Search,
+            not_allowed: styled(lang, "debug.options.notAllowed.tooltip", None),
             search_hint: lang.runs(
                 &Component::translatable("debug.options.search")
                     .with_colour("gray")

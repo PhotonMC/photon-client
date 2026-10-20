@@ -35,6 +35,35 @@ impl DebugOptionsScreen {
             let lit = widget.contains(&self.arena, mouse) || self.focus == focus;
             widget.draw(frame, atlas, font, &self.arena, lit);
         }
+        self.draw_not_allowed_tooltip(frame, atlas, font, mouse);
+    }
+
+    /// `OptionEntry.extractContent`'s `setTooltipForNextFrame`, drawn with the deferred elements:
+    /// the mouse over the name side of a row whose entry reduced debug info hides.
+    fn draw_not_allowed_tooltip(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        font: &Font,
+        mouse: (i32, i32),
+    ) {
+        let over_list = self
+            .place
+            .contains((f64::from(mouse.0), f64::from(mouse.1)));
+        let Some(index) = self.row_at(mouse).filter(|_| over_list) else {
+            return;
+        };
+        let buttons_start = self.row_left() + 2 + (ROW_WIDTH - 4) - 3 * BUTTON_WIDTH;
+        if matches!(self.rows[index], Row::Entry { allowed: false, .. }) && mouse.0 < buttons_start
+        {
+            frame.tooltip(
+                atlas,
+                font,
+                std::slice::from_ref(&self.not_allowed),
+                mouse,
+                self.size,
+            );
+        }
     }
 
     /// `EditBox.extractWidgetRenderState`: the field, lit while it has the focus or the mouse,
