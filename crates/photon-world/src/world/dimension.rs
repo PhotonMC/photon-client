@@ -32,6 +32,7 @@ impl ClientWorld {
             rider_controls: ride::mount::Controller::default(),
             predictions: prediction::BlockPredictions::new(),
             destroying_blocks: BTreeMap::new(),
+            minecart_track_output: BTreeMap::new(),
             block_tickers: crate::world::BlockTickers::default(),
             tables: crate::world::Tables::default(),
         }

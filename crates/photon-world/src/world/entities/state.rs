@@ -262,7 +262,7 @@ impl ClientWorld {
         let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
-        entity.metadata = Some(metadata.to_vec());
+        entity.metadata = Some(merge_metadata(entity.metadata.as_deref(), metadata));
         if let Some(variant) = variant_from_metadata(entity.type_id, metadata) {
             entity.living.variant = Some(variant);
         }

@@ -67,6 +67,7 @@ impl ClientWorld {
         self.detach_entity_from_vehicle(entity_id);
         self.eject_entity_passengers(entity_id);
         self.entities_mut().remove_from_section(entity_id, position);
+        self.minecart_track_output.remove(&entity_id);
         self.entities.remove(entity_id).is_some()
     }
 

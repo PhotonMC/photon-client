@@ -251,6 +251,47 @@ pub(crate) fn metadata_pose_value(metadata: &[u8]) -> Option<ClientEntityPose> {
     Some(ClientEntityPose::from_wire_id(value))
 }
 
+/// `SynchedEntityData.assignValues`: what a data packet carries replaces the fields of the same id
+/// and the fields it does not carry stay. Both lists are in the layout `find_metadata_field` walks;
+/// a list that does not parse is replaced whole.
+pub fn merge_metadata(old: Option<&[u8]>, new: &[u8]) -> Vec<u8> {
+    let (Some(old), Some(new_fields)) = (old.and_then(split_metadata), split_metadata(new)) else {
+        return new.to_vec();
+    };
+    let mut merged = Vec::with_capacity(new.len());
+    for (id, field) in &old {
+        if !new_fields.iter().any(|(each, _)| each == id) {
+            merged.extend_from_slice(field);
+        }
+    }
+    for (_, field) in &new_fields {
+        merged.extend_from_slice(field);
+    }
+    merged.push(255);
+    merged
+}
+
+/// A list's fields by data id, each as its bytes from the id to the end of the value.
+fn split_metadata(metadata: &[u8]) -> Option<Vec<(u8, &[u8])>> {
+    if metadata.last() != Some(&255) {
+        return None;
+    }
+    let mut rest = metadata;
+    let mut fields = Vec::new();
+    loop {
+        let (&data_id, after_id) = rest.split_first()?;
+        if data_id == 255 {
+            return Some(fields);
+        }
+        let mut cursor = after_id;
+        let serializer_id = photon_core::wire::read_varint(&mut cursor).ok()?;
+        skip_metadata_value(&mut cursor, serializer_id)?;
+        let length = rest.len() - cursor.len();
+        fields.push((data_id, &rest[..length]));
+        rest = cursor;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,6 +307,26 @@ mod tests {
         }
         out.push(255);
         out
+    }
+
+    #[test]
+    fn a_data_packet_replaces_the_fields_it_carries_and_keeps_the_rest() {
+        let old = data(&[(0, 0, &[1]), (13, 4, &[1, b'a']), (14, 0, &[7])]);
+        let new = data(&[(13, 4, &[2, b'b', b'c'])]);
+        let merged = merge_metadata(Some(&old), &new);
+        assert_eq!(
+            find_metadata_field(&merged, 0).map(|found| found.0),
+            Some(0)
+        );
+        assert_eq!(
+            find_metadata_field(&merged, 13),
+            Some((4, &[2, b'b', b'c', 255][..]))
+        );
+        assert_eq!(
+            find_metadata_field(&merged, 14).map(|found| found.0),
+            Some(0)
+        );
+        assert_eq!(merge_metadata(None, &new), new);
     }
 
     #[test]

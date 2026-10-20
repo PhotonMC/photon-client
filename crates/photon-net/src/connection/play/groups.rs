@@ -98,9 +98,6 @@ pub(super) struct Menus {
     pub(super) opened_book: Option<u8>,
     /// A command block's data came in since the client last looked: its open screen updates.
     pub(super) command_block_data: bool,
-    /// `BaseCommandBlock.isTrackOutput` of the command block minecarts the player opened; a
-    /// minecart not in it tracks.
-    pub(super) minecart_track_output: std::collections::HashMap<i32, bool>,
     /// What menus read of the enchantments, from the data pack.
     pub(super) enchantment_traits:
         std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,

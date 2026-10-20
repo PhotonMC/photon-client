@@ -61,25 +61,18 @@ impl PlaySession {
 
     /// `BaseCommandBlock.setTrackOutput` of a minecart: what its screen last left.
     pub fn set_minecart_track_output(&mut self, entity_id: EntityId, track_output: bool) {
-        self.menus
-            .minecart_track_output
-            .insert(entity_id.0, track_output);
+        self.world
+            .set_command_minecart_track_output(entity_id, track_output);
     }
 
     /// The command block minecart with an id, as its synched data and the client's copy of its
     /// output tracking have it, or `None` once it is gone.
     pub fn command_minecart(&self, entity_id: EntityId) -> Option<CommandBlockContents> {
         let view = self.world.command_minecart_view(entity_id)?;
-        let track = self
-            .menus
-            .minecart_track_output
-            .get(&entity_id.0)
-            .copied()
-            .unwrap_or(true);
         Some(CommandBlockContents::from_minecart(
             view.command,
             view.last_output,
-            track,
+            view.track_output,
         ))
     }
 }

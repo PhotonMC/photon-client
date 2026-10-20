@@ -136,6 +136,9 @@ pub struct ClientWorld {
     rider_controls: ride::mount::Controller,
     predictions: prediction::BlockPredictions,
     destroying_blocks: BTreeMap<EntityId, DestroyProgress>,
+    /// `BaseCommandBlock.isTrackOutput` of the command block minecarts the player set; a client
+    /// copy not in it tracks, as one just made does.
+    minecart_track_output: BTreeMap<EntityId, bool>,
     /// The block entities the level ticks, in the order they were set up.
     block_tickers: world::BlockTickers,
     /// What the enchanting tables' ticks read of the level.

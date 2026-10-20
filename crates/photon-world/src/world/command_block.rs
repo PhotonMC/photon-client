@@ -62,6 +62,8 @@ pub struct CommandMinecartView<'a> {
     pub command: String,
     /// `getLastOutput` as the network tag the data carries, from its first byte on.
     pub last_output: Option<&'a [u8]>,
+    /// `BaseCommandBlock.isTrackOutput` of the client's copy.
+    pub track_output: bool,
 }
 
 impl ClientWorld {
@@ -89,6 +91,19 @@ impl ClientWorld {
         Some(CommandMinecartView {
             command,
             last_output,
+            track_output: self
+                .minecart_track_output
+                .get(&entity_id)
+                .copied()
+                .unwrap_or(true),
         })
+    }
+
+    /// `BaseCommandBlock.setTrackOutput` of a command block minecart, which the entity keeps until
+    /// the client drops it.
+    pub fn set_command_minecart_track_output(&mut self, entity_id: EntityId, track_output: bool) {
+        if self.command_minecart_view(entity_id).is_some() {
+            self.minecart_track_output.insert(entity_id, track_output);
+        }
     }
 }
