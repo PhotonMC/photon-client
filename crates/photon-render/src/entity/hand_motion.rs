@@ -81,7 +81,7 @@ fn eat_transform(pose: &mut Pose, invert: f32, (current, duration): (f32, i32)) 
         let bob = (cos(current / 4.0 * pi) * 0.1).abs();
         pose.translate(0.0, bob, 0.0);
     }
-    let jiggle = 1.0 - f64::from(scaled).powf(27.0) as f32;
+    let jiggle = 1.0 - photon_core::math::fdlibm_pow(f64::from(scaled), 27.0) as f32;
     pose.translate(jiggle * 0.6 * invert, jiggle * -0.5, jiggle * 0.0);
     rotate(pose, 'y', invert * jiggle * 90.0);
     rotate(pose, 'x', jiggle * 10.0);

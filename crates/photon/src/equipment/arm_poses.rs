@@ -31,6 +31,41 @@ pub(crate) enum UseAnimation {
     Other,
 }
 
+impl UseAnimation {
+    /// `ItemUseAnimation` in id order, with its serialized names; the ones nothing here draws
+    /// (none, bundle) are `Other`.
+    const TABLE: [(&'static str, Self); 12] = [
+        ("none", Self::Other),
+        ("eat", Self::Eat),
+        ("drink", Self::Drink),
+        ("block", Self::Block),
+        ("bow", Self::Bow),
+        ("trident", Self::Trident),
+        ("crossbow", Self::Crossbow),
+        ("spyglass", Self::Spyglass),
+        ("toot_horn", Self::TootHorn),
+        ("brush", Self::Brush),
+        ("bundle", Self::Other),
+        ("spear", Self::Spear),
+    ];
+
+    /// `ItemUseAnimation.BY_ID`.
+    fn by_id(id: i32) -> Self {
+        usize::try_from(id)
+            .ok()
+            .and_then(|id| Self::TABLE.get(id))
+            .map_or(Self::Other, |(_, animation)| *animation)
+    }
+
+    /// `ItemUseAnimation.getSerializedName`'s inverse.
+    fn by_name(name: &str) -> Self {
+        Self::TABLE
+            .iter()
+            .find(|(serialized, _)| *serialized == name)
+            .map_or(Self::Other, |(_, animation)| *animation)
+    }
+}
+
 /// `Consumable`'s consume seconds and animation for a stack: its component's, else the item's
 /// own default, and none when it has neither or the patch removes it.
 pub(crate) fn consumable_of(stack: &ClientItemStackState) -> Option<(f32, UseAnimation)> {
@@ -41,20 +76,11 @@ pub(crate) fn consumable_of(stack: &ClientItemStackState) -> Option<(f32, UseAni
     if let Some(mut bytes) = values.raw(CONSUMABLE) {
         let seconds = f32::from_be_bytes(*bytes.first_chunk::<4>()?);
         bytes = &bytes[4..];
-        let animation = match photon_core::wire::read_varint(&mut bytes).ok()? {
-            1 => UseAnimation::Eat,
-            2 => UseAnimation::Drink,
-            _ => UseAnimation::Other,
-        };
-        return Some((seconds, animation));
+        let id = photon_core::wire::read_varint(&mut bytes).ok()?;
+        return Some((seconds, UseAnimation::by_id(id)));
     }
     let consume = photon_world::block::rules::item(stack.item_registry_id())?.consumable?;
-    let animation = match consume.animation {
-        "eat" => UseAnimation::Eat,
-        "drink" => UseAnimation::Drink,
-        _ => UseAnimation::Other,
-    };
-    Some((consume.seconds, animation))
+    Some((consume.seconds, UseAnimation::by_name(consume.animation)))
 }
 
 /// `ItemStack.getUseDuration`, in ticks, for the stacks whose hand animation reads it: what a
