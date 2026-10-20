@@ -511,6 +511,7 @@ mod chat;
 mod cull;
 mod draw;
 mod effects;
+mod fitting;
 mod gizmo;
 mod glints;
 mod pacing;

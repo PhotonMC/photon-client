@@ -154,6 +154,15 @@ impl SectionMeshes {
             return Ok(());
         }
         self.ambient_occlusion = value;
+        self.rebuild_all(backend)
+    }
+
+    /// `LevelExtractor.allChanged`: every section is dropped and built again (the `ao` option,
+    /// F3+A).
+    pub fn rebuild_all(
+        &mut self,
+        backend: &mut VulkanBackend,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Built, in flight and waiting: the sections that held something.
         let mut again: Vec<SectionKey> = self.compiled.keys().copied().collect();
         again.extend(self.latest.keys().copied());

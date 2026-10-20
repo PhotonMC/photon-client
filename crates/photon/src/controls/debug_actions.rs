@@ -52,6 +52,10 @@ impl Controls {
         match key {
             glfw::Key::F4 => self.debug_switch_game_mode(session, surface, assets),
             glfw::Key::C => self.debug_copy_location(session, surface, assets),
+            glfw::Key::A => {
+                self.reload_chunks = true;
+                self.debug_say("debug.reload_chunks.message", assets);
+            }
             glfw::Key::H => self.debug_advanced_tooltips(assets),
             glfw::Key::P => self.debug_pause_on_focus_loss(assets),
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,

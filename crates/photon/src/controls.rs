@@ -164,6 +164,8 @@ pub struct Controls {
     pub options_saved: bool,
     /// `Minecraft.lastActiveTime`: the last frame the window was focused (or the option off).
     pub(super) last_active: Option<Instant>,
+    /// F3+A asked for every chunk to be built again; the frame takes it.
+    pub reload_chunks: bool,
     /// The values of `options.txt` the client reads.
     pub options: Options,
     pub(super) chat_history: Vec<String>,

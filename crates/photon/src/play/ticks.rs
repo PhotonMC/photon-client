@@ -387,18 +387,6 @@ impl Play {
         Ok(())
     }
 
-    /// A resized or fullscreen window gets a swapchain of its new size.
-    pub(super) fn fit_swapchain(&mut self) -> Result<()> {
-        self.backend.set_vsync(self.controls.options.enable_vsync);
-        self.sections
-            .set_ambient_occlusion(self.controls.options.ambient_occlusion, &mut self.backend)?;
-        if resize_to_window(&self.surface, &mut self.backend, &mut self.sized_for)? {
-            let (width, height) = self.backend.extent();
-            self.aspect = width as f32 / height as f32;
-        }
-        Ok(())
-    }
-
     /// The next tick the time since the last frame owes, with the keys a person or the script
     /// holds; none once the time is spent. `script_done` is set once the script has ended.
     pub(super) fn begin_tick(&mut self, script_done: &mut bool) -> Result<Option<HeldKeys>> {
