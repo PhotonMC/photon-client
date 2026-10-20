@@ -156,7 +156,8 @@ impl LocalPlayer {
         self.hands.using_item = false;
     }
 
-    /// `LivingEntity.isUsingItem`, as the server's flag says.
+    /// `LocalPlayer.isUsingItem`: the use the client has started, which the server's flag starts
+    /// and stops when it changes.
     pub fn is_using_item(&self) -> bool {
         self.hands.using_item
     }
@@ -283,7 +284,8 @@ pub struct HandState {
     /// The greater of the haste and conduit power amplifiers, if either is on.
     pub dig_speed: Option<i32>,
     pub mining_fatigue: Option<i32>,
-    /// The server's flags: an item is in use, and in the off hand.
+    /// An item is in use, and in the off hand: the server's flags as the world holds them, then
+    /// (in the player) the use the client has started.
     pub using_item: bool,
     pub using_off_hand: bool,
 }

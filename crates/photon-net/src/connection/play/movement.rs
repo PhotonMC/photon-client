@@ -20,6 +20,8 @@ impl PlaySession {
         let Some(player) = self.local.player.as_mut() else {
             return Ok(());
         };
+        // The server's flags the packets just brought, which `onSyncedDataUpdated` acts on at once.
+        player.set_hand_state(self.world.local_hand_state(self.local.status.selected_slot));
         let mut ctx = Context {
             miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,
