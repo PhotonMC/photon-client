@@ -226,6 +226,11 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// `glintStrength` (`Options.glintStrength`), what the glints are scaled by.
+    pub fn set_glint_strength(&mut self, strength: f32) {
+        self.glint_strength = strength;
+    }
+
     /// Hand over the next frame's F3 3D crosshair (empty for none), in view space.
     pub fn set_gizmo(
         &mut self,

@@ -132,10 +132,11 @@ impl VulkanBackend {
         if sampled != Sampled::Unbound && set.is_none() {
             return;
         }
-        let mut push = [0.0_f32; 46];
+        let mut push = [0.0_f32; 47];
         push[..40].copy_from_slice(&base[..40]);
         push[44] = base[44];
         push[45] = base[45];
+        push[46] = self.glint_strength;
         let bytes = match run {
             Run::Ground | Run::Held | Run::BlockParticle => {
                 push[40] = 1.0;
@@ -151,6 +152,8 @@ impl VulkanBackend {
                 push[17] = extent.height as f32;
                 184
             }
+            // The glint shader reads its strength after the boss's two values.
+            Run::Glint | Run::HandGlint => 188,
             _ => 184,
         };
         // SAFETY: recording (see `# Safety`); the pipeline, set and buffer belong to `scene` and

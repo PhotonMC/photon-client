@@ -51,7 +51,6 @@ impl VulkanBackend {
                 render_finished,
                 timestamps,
             } = sync;
-            let command_buffer = frames[0].command_buffer;
             let description = describe(
                 (&instance, physical_device, &properties),
                 (surface_format, images.len(), present_mode, extent),
@@ -71,7 +70,7 @@ impl VulkanBackend {
                 images,
                 image_views,
                 command_pool,
-                command_buffer,
+                command_buffer: frames[0].command_buffer,
                 frames,
                 frame_slot: 0,
                 frames_submitted: 0,
@@ -115,6 +114,7 @@ impl VulkanBackend {
                 hand: DrawList::default(),
                 held_counts: [0; 2],
                 lines: LineDraws::default(),
+                glint_strength: 0.75,
                 breaking: DrawList::default(),
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: DynamicBuffer::default(),

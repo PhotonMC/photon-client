@@ -5,6 +5,14 @@ use crate::equipment::item_layers::GlintFrame;
 use photon_render::render_types::{ITEM_GLINT_SCALE, ITEM_GLINT_TEXTURE};
 
 impl Play {
+    /// `GameRenderer`'s options state: the glint's speed and strength as the options hold them.
+    pub(super) fn apply_glint_options(&mut self) {
+        let options = &self.controls.options;
+        self.armor.glint_speed = options.glint_speed;
+        self.backend
+            .set_glint_strength(options.glint_strength as f32);
+    }
+
     /// How this frame's item glints move, where their texture is and the server's item tags.
     pub(super) fn glint_frame(&self) -> GlintFrame {
         GlintFrame {

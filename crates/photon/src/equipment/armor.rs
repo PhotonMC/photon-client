@@ -91,10 +91,9 @@ pub struct Armor {
     pub glint: Vec<Vertex>,
     /// What `Util.getMillis` is counted from for the glint's movement.
     clock: std::time::Instant,
+    /// `Options.glintSpeed`, what the glint's movement is scaled by.
+    pub glint_speed: f64,
 }
-
-/// The glint speed option's default (`Options.glintSpeed`, one half).
-const GLINT_SPEED: f64 = 0.5;
 
 /// Turns a posed armor model into triangles, in a texture, multiplied by a
 /// colour (`0xRRGGBB`).
@@ -142,6 +141,7 @@ impl Armor {
             trim_names: None,
             glint: Vec::new(),
             clock: std::time::Instant::now(),
+            glint_speed: 0.5,
         }
     }
 
@@ -243,7 +243,7 @@ impl Armor {
     /// The glint's texture matrix now, at the scale of the render type that draws it.
     pub fn glint_matrix_scaled(&self, scale: f32) -> [f32; 16] {
         let millis = self.clock.elapsed().as_millis() as i64;
-        glint_texture_matrix(millis, GLINT_SPEED, scale)
+        glint_texture_matrix(millis, self.glint_speed, scale)
     }
 
     /// The triangles of the armor on a wearer. `prefix` names the wearer's

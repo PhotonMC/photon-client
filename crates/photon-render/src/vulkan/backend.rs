@@ -109,6 +109,8 @@ pub struct VulkanBackend {
     pub(super) held_counts: [u32; 2],
     /// The aimed block's outline strips and the F3 3D crosshair for the next frame.
     pub(super) lines: LineDraws,
+    /// `glintStrength`: how bright the enchantment glints are drawn.
+    pub(super) glint_strength: f32,
     /// The breaking overlay's triangles for the next frame.
     pub(super) breaking: DrawList,
     pub(super) hand_projection: [[f32; 4]; 4],

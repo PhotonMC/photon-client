@@ -46,6 +46,7 @@ impl Play {
     /// outline, the cracks, and the player's own model once the camera
     /// leaves its eyes.
     pub(super) fn draw_overlays(&mut self, frame: &FrameCamera) -> Result<()> {
+        self.apply_glint_options();
         let view = self.frame_view(frame);
         self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;

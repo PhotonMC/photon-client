@@ -478,7 +478,12 @@ impl VulkanBackend {
         let (Some(buffer), Some(set)) = (self.gui_buffer.as_ref(), scene.gui_set) else {
             return;
         };
-        let push = [2.0 / self.gui_size[0], 2.0 / self.gui_size[1], 0.0, 0.0];
+        let push = [
+            2.0 / self.gui_size[0],
+            2.0 / self.gui_size[1],
+            self.glint_strength,
+            0.0,
+        ];
         let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..16])];
         for &(blend, first, count) in &self.gui_batches {
             let (pipeline, set, vertices) = match blend {
