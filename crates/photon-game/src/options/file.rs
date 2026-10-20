@@ -147,17 +147,12 @@ impl Options {
                 self.render_distance = int_in(&json, RENDER_DISTANCE_MIN..=RENDER_DISTANCE_MAX)
                     .unwrap_or(self.render_distance);
             }
-            Key::InactivityFpsLimit => {
-                if let Json::Text(name) = &json
-                    && let Some(value) = InactivityFpsLimit::from_serialized(name)
-                {
-                    self.inactivity_fps_limit = value;
-                }
-            }
+            Key::InactivityFpsLimit => self.read_inactivity_limit(&json),
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
-            Key::SaveChatDrafts | Key::BackgroundForChatOnly => {
-                self.read_chat_flag(key, boolean());
-            }
+            Key::SaveChatDrafts
+            | Key::BackgroundForChatOnly
+            | Key::AdvancedItemTooltips
+            | Key::PauseOnLostFocus => self.read_flag(key, boolean()),
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::AttackIndicator | Key::ChatVisibility => self.read_choice(key, &json),
             Key::ShowSubtitles
@@ -208,22 +203,33 @@ impl Options {
         }
     }
 
-    /// A display switch the file holds; anything but a boolean leaves it.
-    /// The two switches of the chat: saving drafts, and the text background being the chat's alone.
-    fn read_chat_flag(&mut self, key: Key, value: Option<bool>) {
-        let flag = if key == Key::SaveChatDrafts {
-            &mut self.save_chat_drafts
-        } else {
-            &mut self.background_for_chat_only
+    /// `inactivityFpsLimit`: a known name leaves the limit as it is read, anything else keeps it.
+    fn read_inactivity_limit(&mut self, json: &Json) {
+        if let Json::Text(name) = json
+            && let Some(value) = InactivityFpsLimit::from_serialized(name)
+        {
+            self.inactivity_fps_limit = value;
+        }
+    }
+
+    /// A plain switch the file holds; anything but a boolean leaves it. They are the chat's two
+    /// (saving drafts, the text background being the chat's alone) and F3+H and F3+P's.
+    fn read_flag(&mut self, key: Key, value: Option<bool>) {
+        let flag = match key {
+            Key::SaveChatDrafts => &mut self.save_chat_drafts,
+            Key::AdvancedItemTooltips => &mut self.advanced_item_tooltips,
+            Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
+            _ => &mut self.background_for_chat_only,
         };
         *flag = value.unwrap_or(*flag);
     }
 
-    fn chat_flag(&self, key: Key) -> bool {
-        if key == Key::SaveChatDrafts {
-            self.save_chat_drafts
-        } else {
-            self.background_for_chat_only
+    fn flag(&self, key: Key) -> bool {
+        match key {
+            Key::SaveChatDrafts => self.save_chat_drafts,
+            Key::AdvancedItemTooltips => self.advanced_item_tooltips,
+            Key::PauseOnLostFocus => self.pause_on_lost_focus,
+            _ => self.background_for_chat_only,
         }
     }
 
@@ -321,7 +327,10 @@ impl Options {
             Key::Fov => java_double((f64::from(self.fov) - 70.0) / 40.0),
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
-            Key::SaveChatDrafts | Key::BackgroundForChatOnly => self.chat_flag(key).to_string(),
+            Key::SaveChatDrafts
+            | Key::BackgroundForChatOnly
+            | Key::AdvancedItemTooltips
+            | Key::PauseOnLostFocus => self.flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
             Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => self.server_state(key),
@@ -558,6 +567,15 @@ mod tests {
         assert!(options.invert_mouse_y);
         assert!(!options.invert_mouse_x);
         assert_eq!(options.language_code, "tr_tr");
+    }
+
+    #[test]
+    fn the_focus_pause_is_on_and_the_advanced_tooltips_off_until_the_file_says_otherwise() {
+        let options = loaded("");
+        assert!(options.pause_on_lost_focus && !options.advanced_item_tooltips);
+        let options = loaded("pauseOnLostFocus:false\nadvancedItemTooltips:true");
+        assert!(!options.pause_on_lost_focus && options.advanced_item_tooltips);
+        assert_eq!(options.write(Key::PauseOnLostFocus), "false");
     }
 
     #[test]

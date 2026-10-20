@@ -150,6 +150,11 @@ impl WindowSurface {
         self.window.should_close()
     }
 
+    /// Whether the window has the input focus.
+    pub fn is_focused(&self) -> bool {
+        self.window.is_focused()
+    }
+
     /// Whether the window is minimised.
     pub fn is_iconified(&self) -> bool {
         self.window.is_iconified()

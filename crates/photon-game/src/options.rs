@@ -47,6 +47,10 @@ pub struct Options {
     pub last_server: String,
     /// `Options.joinedFirstServer`: the social interactions toast has been shown.
     pub joined_first_server: bool,
+    /// `Options.advancedItemTooltips`: F3+H.
+    pub advanced_item_tooltips: bool,
+    /// `Options.pauseOnLostFocus`: F3+P.
+    pub pause_on_lost_focus: bool,
     pub chat_visibility: ChatVisibility,
     pub chat_opacity: f64,
     /// `screenEffectScale`, 0 to 1: how far nausea and portals distort the view.
@@ -102,6 +106,8 @@ impl Default for Options {
             language_code: "en_us".to_owned(),
             last_server: String::new(),
             joined_first_server: false,
+            advanced_item_tooltips: false,
+            pause_on_lost_focus: true,
             chat_visibility: ChatVisibility::Full,
             chat_opacity: 1.0,
             screen_effect_scale: 1.0,

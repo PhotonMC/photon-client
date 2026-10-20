@@ -162,6 +162,8 @@ pub struct Controls {
     /// The options were saved since the session last looked (`Options.save` then
     /// `broadcastOptions`).
     pub options_saved: bool,
+    /// `Minecraft.lastActiveTime`: the last frame the window was focused (or the option off).
+    pub(super) last_active: Option<Instant>,
     /// The values of `options.txt` the client reads.
     pub options: Options,
     pub(super) chat_history: Vec<String>,

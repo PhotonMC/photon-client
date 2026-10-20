@@ -440,13 +440,12 @@ impl Gui {
                 })
             };
             let mut tooltip_lines = |stack: &ClientItemStackState, creative: bool| {
-                // `advancedItemTooltips` is off: its `F3+H` toggle is not ported.
                 photon_game::tooltip::lines(
                     stack,
                     true,
                     photon_game::tooltip::Flags {
                         creative,
-                        advanced: false,
+                        advanced: controls.options.advanced_item_tooltips,
                     },
                     registries,
                     &maps,

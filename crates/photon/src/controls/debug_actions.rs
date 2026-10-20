@@ -19,6 +19,23 @@ fn location_command(dimension: &str, position: (f64, f64, f64), rotation: (f32, 
     )
 }
 
+/// `Minecraft.pauseIfInactive` for one frame: whether the pause menu opens, and whether the window
+/// counts as active now. A window without focus pauses once it has been so for more than half a
+/// second; a screen that is up stops that, without counting as activity.
+fn pause_due(
+    (focused, option_on): (bool, bool),
+    (since, now): (Instant, Instant),
+    screen_open: bool,
+) -> (bool, bool) {
+    if focused || !option_on {
+        return (false, true);
+    }
+    (
+        !screen_open && now - since > Duration::from_millis(500),
+        false,
+    )
+}
+
 impl Controls {
     /// A key pressed with F3 held and no screen up: the ones that act here, and whether one did.
     pub(super) fn debug_world_key(
@@ -35,6 +52,8 @@ impl Controls {
         match key {
             glfw::Key::F4 => self.debug_switch_game_mode(session, surface, assets),
             glfw::Key::C => self.debug_copy_location(session, surface, assets),
+            glfw::Key::H => self.debug_advanced_tooltips(assets),
+            glfw::Key::P => self.debug_pause_on_focus_loss(assets),
             glfw::Key::N => self.debug_creative_spectator(session, assets)?,
             _ => return Ok(false),
         }
@@ -50,6 +69,52 @@ impl Controls {
             &assets.creative.font,
             false,
         );
+    }
+
+    /// `Minecraft.pauseIfInactive`: a window that has been without focus for half a second opens
+    /// the pause menu, unless a screen is up or the option is off.
+    pub fn pause_if_inactive(
+        &mut self,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+        now: Instant,
+    ) {
+        let since = *self.last_active.get_or_insert(now);
+        let (pause, active) = pause_due(
+            (surface.is_focused(), self.options.pause_on_lost_focus),
+            (since, now),
+            self.any_screen_open(),
+        );
+        if active {
+            self.last_active = Some(now);
+        }
+        if pause {
+            self.open_pause(surface, assets);
+        }
+    }
+
+    /// F3+H: the advanced tooltips are toggled and saved.
+    fn debug_advanced_tooltips(&mut self, assets: &ScreenAssets) {
+        self.options.advanced_item_tooltips = !self.options.advanced_item_tooltips;
+        let key = if self.options.advanced_item_tooltips {
+            "debug.advanced_tooltips.on"
+        } else {
+            "debug.advanced_tooltips.off"
+        };
+        self.debug_say(key, assets);
+        self.save_options();
+    }
+
+    /// F3+P: the focus pause is toggled and saved.
+    fn debug_pause_on_focus_loss(&mut self, assets: &ScreenAssets) {
+        self.options.pause_on_lost_focus = !self.options.pause_on_lost_focus;
+        self.save_options();
+        let key = if self.options.pause_on_lost_focus {
+            "debug.pause_focus.on"
+        } else {
+            "debug.pause_focus.off"
+        };
+        self.debug_say(key, assets);
     }
 
     /// F3+C, with the full debug info: the location goes to the clipboard.
@@ -98,7 +163,37 @@ impl Controls {
 
 #[cfg(test)]
 mod tests {
-    use super::location_command;
+    use super::{location_command, pause_due};
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn a_window_pauses_after_half_a_second_without_focus() {
+        let start = Instant::now();
+        let at = |ms| start + Duration::from_millis(ms);
+        // Focus, or the option being off, keeps the clock running and never pauses.
+        assert_eq!(
+            pause_due((true, true), (start, at(9000)), false),
+            (false, true)
+        );
+        assert_eq!(
+            pause_due((false, false), (start, at(9000)), false),
+            (false, true)
+        );
+        // Exactly 500 ms is not yet over; 501 is.
+        assert_eq!(
+            pause_due((false, true), (start, at(500)), false),
+            (false, false)
+        );
+        assert_eq!(
+            pause_due((false, true), (start, at(501)), false),
+            (true, false)
+        );
+        // A screen holds the pause back and does not restart the clock.
+        assert_eq!(
+            pause_due((false, true), (start, at(900)), true),
+            (false, false)
+        );
+    }
 
     #[test]
     fn the_location_is_a_tp_with_two_decimals() {

@@ -23,6 +23,9 @@ impl Play {
             ),
         };
         self.controls.debug.memory.update(Instant::now());
+        // `Minecraft.pauseIfInactive`.
+        self.controls
+            .pause_if_inactive(&mut self.surface, &self.screen_assets, Instant::now());
         // The machine does not change while the game runs, the framebuffer does.
         let described = self.backend.description();
         let system = self
