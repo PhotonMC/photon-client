@@ -32,6 +32,7 @@ impl Gui {
         });
         let input = Input {
             system: controls.debug.system.clone(),
+            memory: controls.debug.memory.usage(),
             // The video options these read are not stored yet: the game's own defaults.
             impactors: Some(Impactors {
                 improved_transparency: false,

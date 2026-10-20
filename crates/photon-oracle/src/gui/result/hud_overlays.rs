@@ -339,6 +339,8 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
     Ok(Input {
         impactors: row.get("impactors").map(debug_impactors),
         system: row.get("system").map(debug_system),
+        // The game's own memory is the machine's, which a row cannot pin.
+        memory: None,
         version: debug::version_line("26.2", launched),
         frame: FrameStats {
             fps: int("fps"),

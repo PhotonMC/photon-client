@@ -396,6 +396,7 @@ pub struct DebugKeys {
     pub frame: photon_gui::hud::debug::FrameStats,
     /// The machine the system entry names, taken from the backend.
     pub system: Option<photon_gui::hud::debug::SystemSpecs>,
+    pub memory: crate::system_info::MemorySampler,
 }
 
 impl DebugKeys {

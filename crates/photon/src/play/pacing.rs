@@ -22,7 +22,11 @@ impl Play {
                 self.backend.description().present_mode.as_raw(),
             ),
         };
-        self.controls.debug.system =
-            Some(crate::system_info::system_specs(self.backend.description()));
+        self.controls.debug.memory.update(Instant::now());
+        // The machine does not change while the game runs.
+        if self.controls.debug.system.is_none() {
+            self.controls.debug.system =
+                Some(crate::system_info::system_specs(self.backend.description()));
+        }
     }
 }

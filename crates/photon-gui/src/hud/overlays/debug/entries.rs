@@ -2,8 +2,10 @@
 //! connection say.
 
 mod impactors;
+mod memory;
 mod system;
 pub use impactors::{Clouds, Filtering, Impactors};
+pub use memory::MemoryUsage;
 pub use system::{DeviceType, SystemSpecs, vendor_name};
 
 use super::format::fixed;
@@ -88,6 +90,8 @@ pub struct Input {
     pub impactors: Option<Impactors>,
     /// The machine `system_specs` describes, none without it.
     pub system: Option<SystemSpecs>,
+    /// What `memory` shows, none without it.
+    pub memory: Option<MemoryUsage>,
 }
 
 /// The lines of one entry's `display`.
@@ -99,6 +103,11 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
             .impactors
             .as_ref()
             .map(impactors::display)
+            .unwrap_or_default(),
+        "memory" => input
+            .memory
+            .as_ref()
+            .map(memory::display)
             .unwrap_or_default(),
         "system_specs" => input
             .system
