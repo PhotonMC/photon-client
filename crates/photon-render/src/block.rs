@@ -7,6 +7,7 @@ pub mod breaking;
 pub mod chunk_borders;
 pub mod geometry;
 pub mod gizmo;
+pub mod hitboxes;
 pub mod light;
 pub mod outline;
 pub mod rotation;

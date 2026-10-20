@@ -59,6 +59,7 @@ impl Play {
         let mut lines = outline(&self.session, player, view, frame.relative, line_width);
         lines.extend(hook_lines);
         lines.extend(self.chunk_borders(player, view, frame.relative));
+        lines.extend(self.entity_hitboxes(view, frame.relative));
         self.backend.set_outline(&lines)?;
         self.backend.set_breaking(&cracks(
             &self.session,
