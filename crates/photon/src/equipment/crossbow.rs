@@ -11,9 +11,13 @@ use photon_world::ClientItemStackState;
 /// firework rocket, an arrow otherwise.
 pub fn charge_type(stack: &ClientItemStackState) -> Charge {
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
-    let Some(mut input) = values.raw(CHARGED_PROJECTILES) else {
-        return Charge::None;
-    };
+    values
+        .raw(CHARGED_PROJECTILES)
+        .map_or(Charge::None, charge_of)
+}
+
+/// The charge `charged_projectiles`' value gives: see [`charge_type`].
+fn charge_of(mut input: &[u8]) -> Charge {
     let count = photon_core::wire::read_varint(&mut input).unwrap_or(0);
     if count <= 0 {
         return Charge::None;
@@ -21,17 +25,18 @@ pub fn charge_type(stack: &ClientItemStackState) -> Charge {
     let rocket = photon_game::item::id_of("minecraft:firework_rocket");
     let mut found_rocket = false;
     for _ in 0..count {
-        // `ItemStack.STREAM_CODEC`: the count, the item, and the component patch.
-        let (Ok(amount), Ok(item)) = (
+        // `ItemStackTemplate.STREAM_CODEC`: the item, the count and the component patch.
+        let (Ok(item), Ok(amount)) = (
             photon_core::wire::read_varint(&mut input),
             photon_core::wire::read_varint(&mut input),
         ) else {
             break;
         };
+        // The item decides, so a patch this client cannot read still counts.
+        found_rocket |= rocket.is_some_and(|rocket| rocket.0 == item);
         if amount <= 0 || photon_game::item_components::read_patch(&mut input).is_err() {
             break;
         }
-        found_rocket |= rocket.is_some_and(|rocket| rocket.0 == item);
     }
     if found_rocket {
         Charge::Rocket
@@ -64,4 +69,42 @@ pub fn charge_duration(quick_charge: Option<i32>, stack: &ClientItemStackState) 
         1.25
     };
     (seconds * 20.0).floor() as i32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn varint(mut value: i32) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        while value >= 0x80 {
+            bytes.push((value & 0x7f) as u8 | 0x80);
+            value >>= 7;
+        }
+        bytes.push(value as u8);
+        bytes
+    }
+
+    /// A projectile list: the count, then each stack's item, count and an empty patch.
+    fn list(items: &[&str]) -> Vec<u8> {
+        let mut bytes = varint(items.len() as i32);
+        for name in items {
+            bytes.extend(varint(photon_game::item::id_of(name).unwrap().0));
+            bytes.push(1);
+            bytes.extend([0, 0]);
+        }
+        bytes
+    }
+
+    #[test]
+    fn a_rocket_among_the_projectiles_makes_the_charge_a_rocket() {
+        assert_eq!(charge_of(&[0]), Charge::None);
+        assert_eq!(charge_of(&list(&["minecraft:arrow"])), Charge::Arrow);
+        let rocket = "minecraft:firework_rocket";
+        assert_eq!(charge_of(&list(&[rocket])), Charge::Rocket);
+        assert_eq!(
+            charge_of(&list(&["minecraft:arrow", rocket])),
+            Charge::Rocket
+        );
+    }
 }
