@@ -167,6 +167,7 @@ impl EditBox {
     pub fn set_value(&mut self, text: &str, font: &Font) {
         self.value = text.chars().take(self.max_length).collect();
         self.move_cursor_to(self.value.len(), false, font);
+        self.set_highlight(self.cursor, font);
     }
 
     /// `getHighlighted`.
@@ -198,7 +199,7 @@ impl EditBox {
         let length = text.len();
         self.value.splice(start..end, text);
         self.set_cursor(start + length, font);
-        self.highlight = self.cursor;
+        self.set_highlight(self.cursor, font);
     }
 
     fn delete_to(&mut self, position: usize, font: &Font) {
@@ -252,10 +253,14 @@ impl EditBox {
     fn move_cursor_to(&mut self, position: usize, extend: bool, font: &Font) {
         self.set_cursor(position, font);
         if !extend {
-            // `setHighlightPos` scrolls to the new end of the selection as well.
-            self.highlight = self.cursor;
-            self.scroll_to(self.highlight, font);
+            self.set_highlight(self.cursor, font);
         }
+    }
+
+    /// `setHighlightPos`: the end of the selection moves, and the text is shifted so it shows.
+    fn set_highlight(&mut self, position: usize, font: &Font) {
+        self.highlight = position.min(self.value.len());
+        self.scroll_to(self.highlight, font);
     }
 
     /// `scrollTo`: the text is shifted so the position shows.
@@ -351,7 +356,7 @@ impl EditBox {
             EditKey::End => self.move_cursor_to(self.value.len(), shift, font),
             EditKey::A if control => {
                 self.move_cursor_to(self.value.len(), false, font);
-                self.highlight = 0;
+                self.set_highlight(0, font);
             }
             EditKey::C if control => clipboard.set(&self.highlighted()),
             EditKey::V if control => {
@@ -474,7 +479,10 @@ impl EditBox {
         let cursor_on_screen = shown.cursor >= 0 && shown.cursor as usize <= chars.len();
         let blink = focused_at.is_some_and(|at| (at.elapsed().as_millis() / 300).is_multiple_of(2));
         let colour = self.text_colour();
-        let right = text_x + self.width;
+        // The box is `width` wide inside its 4-unit border: the reference measures the cursor
+        // that is off screen from the text's left edge by the whole box, and clips the highlight
+        // at the box's right edge.
+        let right = text_x + self.width + 4;
         let mut draw_x = text_x;
         if !chars.is_empty() {
             let half: String = if cursor_on_screen {
@@ -486,7 +494,7 @@ impl EditBox {
         }
         let mut cursor_x = draw_x;
         if !cursor_on_screen {
-            cursor_x = if shown.cursor > 0 { right } else { text_x };
+            cursor_x = if shown.cursor > 0 { right + 4 } else { text_x };
         } else if shown.insert {
             cursor_x -= 1;
             draw_x -= 1;

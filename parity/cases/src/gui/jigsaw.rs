@@ -109,6 +109,9 @@ const GENERATE: (i64, i64) = middle(54, 185, 100);
 const DONE: (i64, i64) = middle(-154, 210, 150);
 const CANCEL: (i64, i64) = middle(4, 210, 150);
 
+/// A pool name longer than its box.
+const LONG_POOL: &str = "very:long/pool/name/that/goes/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on";
+
 fn opened() -> Vec<Case> {
     let mut rows = vec![case("opened up")];
     for orientation in ["down_south", "north_up", "east_up", "south_up", "west_up"] {
@@ -203,7 +206,15 @@ fn typing() -> Vec<Case> {
     let replace = |label: &str, at: (i64, i64), value: &str, then: Vec<Value>| {
         case(label).after([vec![click(at), key("ctrl+a"), text(value)], then].concat())
     };
+    let long_pool = |label: &str, steps: Vec<Value>| Case { pool: LONG_POOL, ..case(label) }.after(steps);
     vec![
+        long_pool("long pool select all", vec![click(POOL), key("ctrl+a")]),
+        long_pool("long pool home", vec![click(POOL), key("home")]),
+        long_pool("long pool home then end", vec![click(POOL), key("home"), key("end")]),
+        long_pool("long pool shift end", vec![click(POOL), key("home"), key("shift+end")]),
+        long_pool("long pool shift left", vec![click(POOL), key("shift+left"), key("shift+left")]),
+        long_pool("long pool insert in middle", vec![click((200, POOL.1)), text("zzzzzzzzzz")]),
+        long_pool("long pool select all type", vec![click(POOL), key("ctrl+a"), text("q")]),
         replace("pool typed", POOL, "my:pool", vec![]),
         replace("pool typed done", POOL, "my:pool", vec![key("enter")]),
         replace("pool short done", POOL, "tower", vec![key("enter")]),
