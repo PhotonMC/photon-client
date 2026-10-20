@@ -101,13 +101,16 @@ impl Entities {
         self.values()
     }
 
-    /// The entities the frame draws: every entity but those left out as out of view.
+    /// The entities the frame draws: every entity but those left out as out of view, and the
+    /// invisible mobs (`LivingEntityRenderer` skips the body of one the player is not allowed to
+    /// see; what such a mob wears is skipped with it here, and a spectator's ghostly view of it
+    /// is not drawn). Armor stands and players decide for themselves.
     pub fn drawn(&self) -> impl Iterator<Item = &ClientEntity> {
         // Both are in id order, so one pass over each finds the ids left out.
         let mut left_out = self.out_of_view.iter().copied().peekable();
         self.iter().filter_map(move |(&id, entity)| {
             while left_out.next_if(|&out| out < id).is_some() {}
-            left_out.next_if_eq(&id).is_none().then_some(entity)
+            (left_out.next_if_eq(&id).is_none() && !entity.is_invisible_mob()).then_some(entity)
         })
     }
 

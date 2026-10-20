@@ -86,6 +86,12 @@ impl ClientEntity {
         self.living_kind().is_some()
     }
 
+    /// Whether this is an invisible mob: not a player and not an armor stand, which are drawn
+    /// by their own rules.
+    pub fn is_invisible_mob(&self) -> bool {
+        self.is_invisible() && self.living_kind() == Some(LivingKind::Mob)
+    }
+
     /// Which kind of living entity this is, as far as its drawn pose goes.
     pub(crate) fn living_kind(&self) -> Option<LivingKind> {
         if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {

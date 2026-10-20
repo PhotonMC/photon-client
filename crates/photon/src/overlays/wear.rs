@@ -272,6 +272,11 @@ pub fn experience_orbs(
     }
 }
 
+/// Whether an entity casts no shadow: an invisible one, or a spectator.
+fn casts_no_shadow(entity: &photon_world::ClientEntity) -> bool {
+    entity.is_invisible() || entity.is_player() && entity.is_spectator()
+}
+
 /// `EntityRenderer.extractShadow` and `ShadowFeatureRenderer` for the
 /// entities the frame draws: the shadow each casts on the blocks below it.
 /// `shadowRadius` and `shadowStrength` are the renderers': a mob's is its
@@ -301,11 +306,12 @@ pub fn entity_shadows(
     );
     let mut casters: Vec<Caster> = Vec::new();
     for entity in world.entities().all() {
+        // `EntityRenderer.extractShadow`: an invisible entity casts none, nor does a spectator.
+        if casts_no_shadow(entity) {
+            continue;
+        }
         let type_id = Some(entity.type_id);
         let (radius, strength) = if entity.is_player() {
-            if entity.is_spectator() || entity.is_invisible() {
-                continue;
-            }
             (0.5, 1.0)
         } else if type_id == pig || type_id == cow {
             (if entity.is_baby() { 0.35 } else { 0.7 }, 1.0)
