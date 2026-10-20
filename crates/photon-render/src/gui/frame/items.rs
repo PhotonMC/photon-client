@@ -33,8 +33,20 @@ impl GuiFrame {
         x: f32,
         y: f32,
     ) {
+        self.item_in_use(draw, stack, (x, y), None);
+    }
+
+    /// An item's triangles into the slot at `(x, y)`, the stack the player has used for `ticks`
+    /// (`getUseItem() == stack`) if it is given.
+    pub fn item_in_use(
+        &mut self,
+        draw: &mut ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        (x, y): (f32, f32),
+        ticks: Option<i32>,
+    ) {
         let first = self.items.len() as u32;
-        let drawn = draw(stack, x, y, &mut self.items) as u32;
+        let drawn = draw(stack, (x, y), ticks, &mut self.items) as u32;
         let added = self.items.len() as u32 - first;
         if added == 0 {
             return;

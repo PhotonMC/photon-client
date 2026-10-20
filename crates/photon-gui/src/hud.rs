@@ -3,6 +3,7 @@
 //! Sprites come from the GUI atlas, the reference's `gui/sprites` folder,
 //! drawn at the size the HUD asks for.
 pub mod boss_bar;
+mod hotbar;
 pub mod locator;
 mod overlays;
 pub mod subtitles;
@@ -67,6 +68,9 @@ impl HeartType {
 /// What the HUD shows, as the client knows it this frame.
 #[derive(Debug, Clone)]
 pub struct HudInput {
+    /// The hand whose stack the player is using (true for the off hand) and for how many ticks:
+    /// that slot's icon is drawn as the stack in use (a bow being drawn).
+    pub item_use: Option<(bool, i32)>,
     /// The player's item cooldowns at this frame (see [`GuiFrame::cooldowns`]).
     pub cooldowns: Vec<(String, f32)>,
     /// The camera is in the player's eyes: the crosshair shows.
@@ -179,77 +183,9 @@ impl Hud {
         draw_item: &mut ItemDrawer<'_>,
     ) {
         self.camera_overlays_and_crosshair(frame, atlas, (width, height), (input, now_millis));
-        let t = GuiBlend::Translucent;
-        let centre = width / 2;
         // `extractItemHotbar`; a spectator's hotbar is its own menu.
         if !input.spectator {
-            frame.sprite_blend(atlas, t, "hud/hotbar", (centre - 91, height - 22, 182, 22));
-            frame.sprite_blend(
-                atlas,
-                t,
-                "hud/hotbar_selection",
-                (
-                    centre - 91 - 1 + input.selected_slot * 20,
-                    height - 22 - 1,
-                    24,
-                    23,
-                ),
-            );
-            // The off hand is on the left of a right-handed player, which
-            // is the default main arm.
-            if input.offhand.is_some() {
-                frame.sprite_blend(
-                    atlas,
-                    t,
-                    "hud/hotbar_offhand_left",
-                    (centre - 91 - 29, height - 23, 29, 24),
-                );
-            }
-            // `extractSlot` for each hotbar slot, then the off hand: the
-            // item, its bar and cooldown, then its count when it is not one.
-            let y = height - 16 - 3;
-            let slots = (0..9)
-                .map(|i| (&input.hotbar[i], centre - 90 + i as i32 * 20 + 2))
-                .chain(std::iter::once((&input.offhand, centre - 91 - 26)));
-            for (stack, x) in slots {
-                let Some(stack) = stack else {
-                    continue;
-                };
-                frame.item(draw_item, stack, x, y);
-                frame.item_bar(atlas, stack, x, y);
-                frame.item_cooldown(atlas, stack, x, y);
-                if stack.item_count() != 1 {
-                    let text = stack.item_count().to_string();
-                    frame.text_with_shadow(
-                        atlas,
-                        font,
-                        &text,
-                        x + 19 - 2 - font.width(&text),
-                        y + 6 + 3,
-                        0xFFFF_FFFF,
-                    );
-                }
-            }
-            // The indicator beside the hotbar, on the side of the off hand
-            // (the main arm is the right one).
-            if input.attack_indicator == AttackIndicator::Hotbar && input.attack_strength < 1.0 {
-                let progress = (input.attack_strength * 19.0) as i32;
-                let (x, y) = (centre + 91 + 6, height - 20);
-                frame.sprite_blend(
-                    atlas,
-                    t,
-                    "hud/hotbar_attack_indicator_background",
-                    (x, y, 18, 18),
-                );
-                frame.sprite_region_blend(
-                    atlas,
-                    t,
-                    "hud/hotbar_attack_indicator_progress",
-                    (18, 18),
-                    (0, 18 - progress),
-                    (x, y + 18 - progress, 18, progress),
-                );
-            }
+            hotbar::draw(frame, (atlas, font), (width, height), input, draw_item);
         }
         if input.survival {
             self.player_health(frame, atlas, width, height, input, now_millis);

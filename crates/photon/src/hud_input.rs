@@ -152,6 +152,12 @@ pub fn camera_overlays(
     }
 }
 
+/// The hand the player uses an item in (true for the off hand) and for how many ticks.
+fn hand_in_use(player: &photon_world::local_player::LocalPlayer) -> Option<(bool, i32)> {
+    let main = player.use_ticks_of(true).map(|ticks| (false, ticks));
+    main.or_else(|| player.use_ticks_of(false).map(|ticks| (true, ticks)))
+}
+
 /// Everything the HUD draws from, the camera in first person or not.
 pub fn hud_input(
     session: &PlaySession,
@@ -171,6 +177,7 @@ pub fn hud_input(
     };
     let target_is_living = crosshair_target_is_living(session, player);
     photon_gui::HudInput {
+        item_use: player.and_then(hand_in_use),
         cooldowns: Vec::new(),
         first_person,
         three_dimensional_crosshair: false,

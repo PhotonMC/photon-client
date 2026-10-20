@@ -7,8 +7,8 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 /// The item drawer of a scene that draws no items.
 fn no_items(
     _: &photon_world::ClientItemStackState,
-    _: f32,
-    _: f32,
+    _: (f32, f32),
+    _: Option<i32>,
     _: &mut Vec<photon_render::gui::GuiItemVertex>,
 ) -> usize {
     0

@@ -557,8 +557,8 @@ mod item_batch_tests {
         // Item A has a glint (3 vertices, then 3 of its glint), B and C have none.
         let mut draws = [(3, 3), (3, 0), (3, 0)].into_iter();
         let mut draw = |_: &photon_world::ClientItemStackState,
-                        _: f32,
-                        _: f32,
+                        _: (f32, f32),
+                        _: Option<i32>,
                         out: &mut Vec<crate::gui::items::GuiItemVertex>| {
             let (item, glint) = draws.next().expect("one draw per item");
             out.extend(std::iter::repeat_n(vertex(), item + glint));

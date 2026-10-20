@@ -224,10 +224,7 @@ impl Gui {
         }
         let sidebar = self.sidebar_lines(session);
         let items = &mut self.items;
-        let mut draw_item =
-            |stack: &ClientItemStackState, x: f32, y: f32, out: &mut Vec<GuiItemVertex>| {
-                items.gui_vertices(stack, (renderer, tints), (x, y), out)
-            };
+        let mut draw_item = items.drawer((renderer, tints));
         // F1 hides the interface (`Hud.isHidden`); the screens over it are not the hud.
         let hidden = controls.hud_hidden;
         let partial = (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0);

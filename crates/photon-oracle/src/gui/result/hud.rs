@@ -175,6 +175,7 @@ fn frozen_alpha(row: &Value) -> Option<f32> {
 /// no waypoints, an empty hotbar; the rows set what they test.
 fn quiet_input() -> HudInput {
     HudInput {
+        item_use: None,
         cooldowns: Vec::new(),
         first_person: true,
         spectator: false,

@@ -186,12 +186,13 @@ pub struct GuiFrame {
     pub cooldowns: Vec<(String, f32)>,
 }
 
-/// Draws an item's triangles into the 16 by 16 slot at a GUI position, followed by its glint's if
+/// Draws an item's triangles into the 16 by 16 slot at a GUI position (and for how many ticks the
+/// player has used the stack, if it is the one in use), followed by its glint's if
 /// it has one; the count it gives back is how many of the vertices it added are the item's.
 pub type ItemDrawer<'a> = dyn FnMut(
         &photon_world::ClientItemStackState,
-        f32,
-        f32,
+        (f32, f32),
+        Option<i32>,
         &mut Vec<crate::gui::items::GuiItemVertex>,
     ) -> usize
     + 'a;

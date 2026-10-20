@@ -107,12 +107,13 @@ impl ItemLayerCache {
     pub fn gui_vertices(
         &mut self,
         stack: &ClientItemStackState,
+        item_use: Option<ItemUse>,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
         (x, y): (f32, f32),
         out: &mut Vec<photon_render::gui::GuiItemVertex>,
     ) -> usize {
         let first = out.len();
-        let layers = self.get(stack, renderer, tints);
+        let layers = self.get_in_use(stack, item_use, (renderer, tints));
         photon_render::gui::items::item_vertices(layers, x, y, out);
         let drawn = out.len() - first;
         let foil =
@@ -128,6 +129,24 @@ impl ItemLayerCache {
             out.extend(glint);
         }
         drawn
+    }
+
+    /// The GUI's item drawer over this cache (`photon_render::gui::ItemDrawer`): a stack at a
+    /// place, with the ticks the player has used it for if it is the one in use.
+    pub fn drawer<'a>(
+        &'a mut self,
+        (renderer, tints): (&'a BlockRenderer, &'a BiomeTints),
+    ) -> impl FnMut(
+        &ClientItemStackState,
+        (f32, f32),
+        Option<i32>,
+        &mut Vec<photon_render::gui::GuiItemVertex>,
+    ) -> usize
+    + 'a {
+        move |stack, at, ticks, out| {
+            let item_use = ticks.map(|ticks| ItemUse { ticks });
+            self.gui_vertices(stack, item_use, (renderer, tints), at, out)
+        }
     }
 
     /// Add what a stack drew to `out`, with its glint kept for the glint pass.

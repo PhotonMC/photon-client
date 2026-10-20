@@ -248,8 +248,7 @@ fn toast_event(
                 ..GuiFrame::default()
             };
             let shown = (row.hidden, row.music, row.pause_screen);
-            let mut no_items =
-                |_: &photon_world::ClientItemStackState, _: f32, _: f32, _: &mut Vec<_>| 0;
+            let mut no_items = super::no_items;
             manager.draw(
                 (&mut frame, &mut no_items),
                 &ctx.atlas,
