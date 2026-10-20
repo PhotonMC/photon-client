@@ -181,12 +181,17 @@ impl ItemLayerCache {
             .as_ref()
     }
 
+    /// `CrossbowItem.getChargeDuration` of a stack, in ticks.
+    pub fn charge_duration(&self, stack: &ClientItemStackState) -> i32 {
+        super::crossbow::charge_duration(self.quick_charge, stack)
+    }
+
     /// What the item models read of a stack: the ticks it was used for and what a crossbow holds.
     fn item_state(&self, stack: &ClientItemStackState, ticks: Option<i32>) -> ItemState {
         ItemState {
             item_use: ticks.map(|ticks| ItemUse {
                 ticks,
-                charge_duration: super::crossbow::charge_duration(self.quick_charge, stack),
+                charge_duration: self.charge_duration(stack),
             }),
             charge: super::crossbow::charge_type(stack),
         }

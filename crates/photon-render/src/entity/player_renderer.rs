@@ -458,42 +458,21 @@ fn view_pose(view: &HandView) -> Pose {
 }
 
 /// A held item's triangles, in view space: `submitArmWithItem` for a stack
-/// that is not in use, a map or a crossbow, whose swing is the default
-/// whack, then `ItemTransform.apply` in the first-person context and the
-/// item's quads. Each vertex's shade is the entity lights on its turned
-/// normal, as the arm's shader lights it; its tint is the layer's.
+/// that is not a map, with the motion the hand makes with it, then
+/// `ItemTransform.apply` in the first-person context and the item's quads.
+/// Each vertex's shade is the entity lights on its turned normal, as the
+/// arm's shader lights it; its tint is the layer's.
 pub fn held_item_vertices(
     view: &HandView,
     layers: &[crate::block::world_mesh::ItemLayer],
-    right_arm: bool,
-    attack: f32,
+    (right_arm, attack, motion): (bool, f32, crate::entity::hand_motion::HandMotion),
     inverse_arm_height: f32,
 ) -> Vec<Vertex> {
-    let rad = Quaternion::degrees_to_radians;
-    let sin = |value: f32| photon_core::math::mth_sin_f64(f64::from(value));
-    let pi = std::f64::consts::PI as f32;
     let invert = if right_arm { 1.0_f32 } else { -1.0 };
     let mut pose = view_pose(view);
     // `applyItemArmTransform`.
     pose.translate(invert * 0.56, -0.52 + inverse_arm_height * -0.6, -0.72);
-    // `swingArm`.
-    let sqrt_attack = f64::from(attack).sqrt() as f32;
-    pose.translate(
-        invert * (-0.4 * sin(sqrt_attack * pi)),
-        0.2 * sin(sqrt_attack * (std::f64::consts::PI * 2.0) as f32),
-        -0.2 * sin(attack * pi),
-    );
-    // `applyItemArmAttackTransform`.
-    let y_swing_rotation = sin(attack * attack * pi);
-    pose.rotate(&Quaternion::rotation_y(rad(
-        invert * (45.0 + y_swing_rotation * -20.0)
-    )));
-    let xz_swing_rotation = sin(sqrt_attack * pi);
-    pose.rotate(&Quaternion::rotation_z(rad(invert
-        * xz_swing_rotation
-        * -20.0)));
-    pose.rotate(&Quaternion::rotation_x(rad(xz_swing_rotation * -80.0)));
-    pose.rotate(&Quaternion::rotation_y(rad(invert * -45.0)));
+    crate::entity::hand_motion::apply(&mut pose, motion, (invert, attack));
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
     for layer in layers {

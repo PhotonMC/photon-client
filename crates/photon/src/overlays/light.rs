@@ -54,26 +54,38 @@ pub fn hands(
     let hand_view = hand_view(player, view, main_height);
     let main_item = item_in_hand.item(MAIN_HAND);
     let off_item = item_in_hand.item(OFF_HAND);
-    let hand = if main_item.is_none() {
+    if player.is_scoping() {
+        return HandVertices::default();
+    }
+    let (show_main, show_off) = super::hand_use::selection(player, (main_item, off_item));
+    let hand = if main_item.is_none() && show_main {
         photon_render::entity::player_renderer::hand_vertices(model, &hand_view)
     } else {
         Vec::new()
     };
     let mut held = Vec::new();
     for (stack, right, attack, height) in [
-        (main_item, true, hand_view.attack, main_height),
-        (off_item, false, 0.0, off_height),
+        (
+            main_item.filter(|_| show_main),
+            true,
+            hand_view.attack,
+            main_height,
+        ),
+        (off_item.filter(|_| show_off), false, 0.0, off_height),
     ] {
         let Some(stack) = stack else {
             continue;
         };
-        let layers = held_layers[usize::from(!right)].get_in_use(
-            stack,
-            player.use_ticks_of(right),
-            (renderer, tints),
-        );
+        let cache = &mut held_layers[usize::from(!right)];
+        let ticks = player.use_ticks_of(right);
+        let charge = cache.charge_duration(stack);
+        let motion = super::hand_use::motion(stack, (ticks, partial), (right, charge));
+        let layers = cache.get_in_use(stack, ticks, (renderer, tints));
         let drawn = photon_render::entity::player_renderer::held_item_vertices(
-            &hand_view, layers, right, attack, height,
+            &hand_view,
+            layers,
+            (right, attack, motion),
+            height,
         );
         held_layers[usize::from(!right)].extend_with_glint(stack, drawn, &mut held);
     }
@@ -85,6 +97,7 @@ pub fn hands(
 }
 
 /// The first-person view's triangles: the bare arm, the held items, and the items' glints.
+#[derive(Default)]
 pub struct HandVertices {
     pub hand: Vec<Vertex>,
     pub held: Vec<Vertex>,

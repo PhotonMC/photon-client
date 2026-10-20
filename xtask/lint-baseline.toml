@@ -888,7 +888,6 @@
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 64
 "crates/photon-render/src/entity/player_model/pose.rs::humanoid_anim" = 65
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
-"crates/photon-render/src/entity/player_renderer.rs::held_item_vertices" = 71
 "crates/photon-render/src/entity/special_models.rs::head" = 90
 "crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 81
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 93
