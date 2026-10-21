@@ -76,6 +76,7 @@ impl Default for GameMode {
 
 mod base_use;
 mod context;
+mod stab;
 pub use context::*;
 mod destroying;
 mod mining;

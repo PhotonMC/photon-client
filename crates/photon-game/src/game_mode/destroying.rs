@@ -56,6 +56,9 @@ impl GameMode {
             });
             return true;
         }
+        if let Some(done) = super::stab::held_weapon(ctx, out) {
+            return done;
+        }
         if let Aim::Entity { id, .. } = aim {
             // `MultiPlayerGameMode.attack`: the server decides what it does.
             out.push(Outgoing::Attack { entity_id: id });
@@ -72,9 +75,7 @@ impl GameMode {
         };
         if let Some((x, y, z, face)) = aimed_block {
             self.start_destroy_block(ctx, (x, y, z), face, out);
-            if is_air(ctx.state_at((x, y, z))) {
-                end_attack = true;
-            }
+            end_attack = is_air(ctx.state_at((x, y, z)));
         } else {
             if ctx.mode != ClientPlayerGameMode::Creative {
                 self.miss_time = 10;
@@ -97,6 +98,9 @@ impl GameMode {
             self.miss_time = 0;
         }
         if self.miss_time > 0 || ctx.player.is_using_item() {
+            return;
+        }
+        if super::stab::holds_piercing_weapon(ctx) {
             return;
         }
         match aim {

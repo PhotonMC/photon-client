@@ -65,6 +65,7 @@ pub enum PlayerAction {
     AbortDestroyBlock = 1,
     StopDestroyBlock = 2,
     ReleaseUseItem = 5,
+    Stab = 7,
 }
 
 impl Outgoing {

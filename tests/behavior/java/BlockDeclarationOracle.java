@@ -392,6 +392,14 @@ class BlockDeclarationOracle extends BlockItemOracle {
             if (kinetic != null && kinetic.hitSound().isPresent()) {
                 described.addProperty("kinetic_hit_sound", kinetic.hitSound().get().getRegisteredName());
             }
+            var minimumCharge = data.get(net.minecraft.core.component.DataComponents.MINIMUM_ATTACK_CHARGE);
+            if (minimumCharge != null) {
+                described.addProperty("minimum_attack_charge", minimumCharge);
+            }
+            var piercing = data.get(net.minecraft.core.component.DataComponents.PIERCING_WEAPON);
+            if (piercing != null && piercing.sound().isPresent()) {
+                described.addProperty("piercing_sound", piercing.sound().get().getRegisteredName());
+            }
             described.addProperty("glider",
                 data.has(net.minecraft.core.component.DataComponents.GLIDER));
             if (item instanceof net.minecraft.world.item.BlockItem blockItem) {

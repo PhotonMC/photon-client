@@ -17,6 +17,8 @@ pub struct Miner {
     pub entity_interaction_range: f64,
     /// `Attributes.BLOCK_INTERACTION_RANGE`.
     pub block_interaction_range: f64,
+    /// `Attributes.ATTACK_SPEED`.
+    pub attack_speed: f64,
 }
 
 pub(super) const HASTE: i32 = 2;
@@ -34,6 +36,8 @@ pub(super) const SUBMERGED_MINING_SPEED: i32 = 34;
 pub(super) const BLOCK_INTERACTION_RANGE: i32 = 8;
 
 pub(super) const ENTITY_INTERACTION_RANGE: i32 = 13;
+
+pub(super) const ATTACK_SPEED: i32 = 5;
 
 pub(super) const DIRECTION_DOWN: u8 = 0;
 
@@ -89,6 +93,7 @@ impl Miner {
             submerged_mining_speed: attribute(SUBMERGED_MINING_SPEED, 0.2, 20.0),
             entity_interaction_range: attribute(ENTITY_INTERACTION_RANGE, 3.0, 64.0),
             block_interaction_range: attribute(BLOCK_INTERACTION_RANGE, 4.5, 64.0),
+            attack_speed: attribute(ATTACK_SPEED, 4.0, 1024.0),
         }
     }
 
@@ -103,6 +108,7 @@ impl Miner {
             submerged_mining_speed: 0.2,
             entity_interaction_range: 3.0,
             block_interaction_range: 4.5,
+            attack_speed: 4.0,
         }
     }
 

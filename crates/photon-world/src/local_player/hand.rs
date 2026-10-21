@@ -323,6 +323,11 @@ impl LocalPlayer {
         self.item_swap_ticker = 0;
     }
 
+    /// `Player.resetOnlyAttackStrengthTicker`, which `Player.onAttack` does.
+    pub fn reset_only_attack_strength(&mut self) {
+        self.attack_strength_ticker = 0;
+    }
+
     /// `LivingEntity.getAttackAnim`: how far through the swing, between the
     /// last two ticks, wrapping when a new swing began.
     pub fn attack_anim(&self, partial_tick: f32) -> f32 {

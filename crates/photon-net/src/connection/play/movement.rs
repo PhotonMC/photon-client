@@ -61,7 +61,11 @@ impl PlaySession {
                 x, y, z, action, ..
             } => {
                 // A predicted break changes the block it names.
-                if action != photon_game::game_mode::PlayerAction::ReleaseUseItem {
+                if !matches!(
+                    action,
+                    photon_game::game_mode::PlayerAction::ReleaseUseItem
+                        | photon_game::game_mode::PlayerAction::Stab
+                ) {
                     self.mark_block(x, y, z);
                 }
                 PLAY_SERVERBOUND_PLAYER_ACTION_PACKET_ID

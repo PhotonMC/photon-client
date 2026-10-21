@@ -96,6 +96,10 @@ pub struct Item {
     pub kinetic_weapon: bool,
     /// The `kinetic_weapon`'s hit sound, heard from the one holding it.
     pub kinetic_hit_sound: Option<&'static str>,
+    /// The `minimum_attack_charge` component's value; zero when the item has none.
+    pub minimum_attack_charge: f32,
+    /// The `piercing_weapon` component's stab sound.
+    pub piercing_sound: Option<&'static str>,
     /// Whether the item has the `glider` component (an elytra).
     pub glider: bool,
     /// The item's own `use_effects` component, when it has one.
@@ -125,6 +129,8 @@ impl Item {
             blocks_attacks: false,
             kinetic_weapon: false,
             kinetic_hit_sound: None,
+            minimum_attack_charge: 0.0,
+            piercing_sound: None,
             glider: false,
             use_effects: None,
             burn_time: 0,
@@ -209,6 +215,16 @@ impl Item {
 
     pub const fn kinetic_hit_sound(mut self, sound: &'static str) -> Self {
         self.kinetic_hit_sound = Some(sound);
+        self
+    }
+
+    pub const fn minimum_attack_charge(mut self, charge: f32) -> Self {
+        self.minimum_attack_charge = charge;
+        self
+    }
+
+    pub const fn piercing_sound(mut self, sound: &'static str) -> Self {
+        self.piercing_sound = Some(sound);
         self
     }
 

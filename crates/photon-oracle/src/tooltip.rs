@@ -220,6 +220,17 @@ fn describe_consume(item: &photon_data::item::definition::Item, described: &mut 
     if let Some(sound) = item.kinetic_hit_sound {
         described["kinetic_hit_sound"] = json!(sound);
     }
+    if item.minimum_attack_charge > 0.0 {
+        described["minimum_attack_charge"] = json!(
+            item.minimum_attack_charge
+                .to_string()
+                .parse::<f64>()
+                .unwrap_or_default()
+        );
+    }
+    if let Some(sound) = item.piercing_sound {
+        described["piercing_sound"] = json!(sound);
+    }
     // Every item has the component; the table lists only those that differ from the default.
     let effects = item
         .use_effects

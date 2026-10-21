@@ -146,6 +146,10 @@ def items_file(items):
                 calls.append(f"{flag}()")
         if item.get("kinetic_hit_sound"):
             calls.append(f"kinetic_hit_sound({rust_str(item['kinetic_hit_sound'])})")
+        if item.get("minimum_attack_charge"):
+            calls.append(f"minimum_attack_charge({float(item['minimum_attack_charge'])!r})")
+        if item.get("piercing_sound"):
+            calls.append(f"piercing_sound({rust_str(item['piercing_sound'])})")
         if item.get("burn_time"):
             calls.append(f"burns({item['burn_time']})")
         if item.get("brewing_ingredient"):
