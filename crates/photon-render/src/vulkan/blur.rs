@@ -109,30 +109,35 @@ impl VulkanBackend {
     /// all for 0. Makes the images at the frame's size when there are none or it has changed.
     pub fn set_panorama_blur(&mut self, radius: u32) -> Result<(), VulkanError> {
         self.panorama_blur = radius;
+        if radius == 0 {
+            return Ok(());
+        }
+        self.ensure_blur_targets()
+    }
+
+    /// Make the blur's two images at the frame's size, when there are none or it has changed.
+    pub(super) fn ensure_blur_targets(&mut self) -> Result<(), VulkanError> {
         let extent = self.description.extent;
         let current = self
             .scene
             .as_ref()
-            .and_then(|scene| scene.panorama.as_ref())
-            .and_then(|panorama| panorama.blur.targets.as_ref())
+            .and_then(|scene| scene.backdrop.blur.as_ref())
+            .and_then(|blur| blur.targets.as_ref())
             .map(|targets| targets.extent);
-        if radius == 0
-            || current == Some(extent)
-            || self.scene.as_ref().is_none_or(|s| s.panorama.is_none())
-        {
+        if current == Some(extent) || self.scene.is_none() {
             return Ok(());
         }
+        self.ensure_blur_scene()?;
         // SAFETY: the wait leaves the GPU done with the old images and sets before they are
         // replaced; the handles are live.
         unsafe {
             self.wait_in_flight()?;
             let (a, b) = (self.colour_target(extent)?, self.colour_target(extent)?);
-            let blur = &mut self
+            let blur = self
                 .scene
                 .as_mut()
-                .and_then(|scene| scene.panorama.as_mut())
-                .expect("checked above")
-                .blur;
+                .and_then(|scene| scene.backdrop.blur.as_mut())
+                .expect("made above");
             for (set, image) in [(blur.set_a, &a), (blur.set_b, &b)] {
                 let info = [vk::DescriptorImageInfo::default()
                     .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
@@ -152,6 +157,24 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Make the blur's pipelines, sampler and sets, once.
+    pub(super) fn ensure_blur_scene(&mut self) -> Result<(), VulkanError> {
+        let Some(scene) = self
+            .scene
+            .as_ref()
+            .filter(|scene| scene.backdrop.blur.is_none())
+        else {
+            return Ok(());
+        };
+        let (layout, pool) = (scene.descriptors.layout, scene.descriptors.pool);
+        // SAFETY: live handles; `layout` and `pool` belong to the scene's descriptors.
+        let blur = unsafe { self.create_blur_scene(layout, pool)? };
+        if let Some(scene) = self.scene.as_mut() {
+            scene.backdrop.blur = Some(blur);
+        }
+        Ok(())
+    }
+
     /// Whether the cube is blurred this frame.
     pub(super) fn blur_active(&self) -> bool {
         self.panorama_blur > 0
@@ -159,8 +182,18 @@ impl VulkanBackend {
             && self
                 .scene
                 .as_ref()
-                .and_then(|scene| scene.panorama.as_ref())
-                .is_some_and(|panorama| panorama.blur.targets.is_some())
+                .and_then(|scene| scene.backdrop.blur.as_ref())
+                .is_some_and(|blur| blur.targets.is_some())
+    }
+
+    /// Whether the blur's images exist at the frame's size, so the frame can be blurred.
+    pub(super) fn blur_images_ready(&self, scene: &SceneResources) -> bool {
+        scene
+            .backdrop
+            .blur
+            .as_ref()
+            .and_then(|blur| blur.targets.as_ref())
+            .is_some_and(|targets| targets.extent == self.description.extent)
     }
 
     /// An image of the frame's format that can be drawn to and sampled.
@@ -221,20 +254,22 @@ impl VulkanBackend {
     ///
     /// Recording outside a rendering scope; `scene` is live and `blur_active` holds.
     pub(super) unsafe fn record_blurred_panorama(&self, scene: &SceneResources) {
-        let (Some(panorama), Some(matrix)) = (scene.panorama.as_ref(), self.panorama_view.as_ref())
-        else {
+        let (Some(panorama), Some(matrix)) = (
+            scene.backdrop.panorama.as_ref(),
+            self.panorama_view.as_ref(),
+        ) else {
             return;
         };
-        let blur = &panorama.blur;
+        let Some(blur) = scene.backdrop.blur.as_ref() else {
+            return;
+        };
         let Some(targets) = blur.targets.as_ref() else {
             return;
         };
-        let extent = targets.extent;
-        let radius = self.panorama_blur as f32;
         // SAFETY: recording outside a scope (see `# Safety`); the images, sets and pipelines are
-        // live, and each pass writes a whole image the previous pass has finished with.
+        // live.
         unsafe {
-            self.offscreen_pass(&targets.a, extent, |this| {
+            self.offscreen_pass(&targets.a, targets.extent, |this| {
                 this.bind_state(
                     &blur.cube,
                     Some(panorama.set),
@@ -242,7 +277,22 @@ impl VulkanBackend {
                 );
                 this.device.cmd_draw(this.command_buffer, 36, 1, 0, 0);
             });
-            let size = [extent.width as f32, extent.height as f32];
+            self.blur_rounds(blur, targets, self.panorama_blur as f32);
+        }
+    }
+
+    /// Blur the first image by `radius` texels, along x and y over the second, three times.
+    ///
+    /// # Safety
+    ///
+    /// Recording outside a rendering scope; the images, sets and pipelines are live, and the first
+    /// image holds what is to be blurred, readable by its set. Each pass writes a whole image the
+    /// previous pass has finished with.
+    unsafe fn blur_rounds(&self, blur: &BlurScene, targets: &Targets, radius: f32) {
+        let extent = targets.extent;
+        let size = [extent.width as f32, extent.height as f32];
+        // SAFETY: the caller's contract.
+        unsafe {
             for _ in 0..ROUNDS {
                 for (direction, from, to) in [
                     ([1.0, 0.0], blur.set_a, &targets.b),
@@ -262,13 +312,111 @@ impl VulkanBackend {
         }
     }
 
+    /// `GameRenderer.processBlurEffect` over the frame so far: end the scene's rendering, copy the
+    /// swapchain image into the first blur image, blur it, and begin the rendering again with the
+    /// blurred image drawn over the whole frame and the depth cleared.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope over swapchain image `index`, which is in the
+    /// colour attachment layout; `scene` is live and the blur images exist at the frame's size.
+    pub(super) unsafe fn record_world_blur(
+        &self,
+        scene: &SceneResources,
+        index: usize,
+        radius: u32,
+    ) {
+        let Some(blur) = scene.backdrop.blur.as_ref() else {
+            return;
+        };
+        let (Some(targets), Some(depth)) = (blur.targets.as_ref(), self.depth.as_ref()) else {
+            return;
+        };
+        // SAFETY: the caller's contract; the copy is between two images of the same format and
+        // size, both outside a scope.
+        unsafe {
+            self.dynamic_rendering
+                .cmd_end_rendering(self.command_buffer);
+            self.copy_frame(self.images[index], &targets.a, targets.extent);
+            self.blur_rounds(blur, targets, radius as f32);
+            self.begin_rendering(self.image_views[index], depth.view);
+            self.draw_blurred_panorama(scene);
+        }
+    }
+
+    /// Copy the swapchain image (in the colour attachment layout, and left in it) into `target`,
+    /// which is left readable by its set.
+    ///
+    /// # Safety
+    ///
+    /// Recording outside a rendering scope; both images are live, of the frame's format, at
+    /// `extent`.
+    unsafe fn copy_frame(&self, frame: vk::Image, target: &Image, extent: vk::Extent2D) {
+        let layouts = |from, to, image: vk::Image| {
+            // SAFETY: the caller's contract.
+            unsafe {
+                transition(
+                    &self.device,
+                    self.command_buffer,
+                    image,
+                    COLOUR_RANGE,
+                    from,
+                    to,
+                );
+            }
+        };
+        let layer = vk::ImageSubresourceLayers::default()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .layer_count(1);
+        let region = vk::ImageCopy::default()
+            .src_subresource(layer)
+            .dst_subresource(layer)
+            .extent(vk::Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            });
+        use vk::ImageLayout as Layout;
+        layouts(
+            Layout::COLOR_ATTACHMENT_OPTIMAL,
+            Layout::TRANSFER_SRC_OPTIMAL,
+            frame,
+        );
+        layouts(
+            Layout::UNDEFINED,
+            Layout::TRANSFER_DST_OPTIMAL,
+            target.image,
+        );
+        // SAFETY: the caller's contract, and the layouts above.
+        unsafe {
+            self.device.cmd_copy_image(
+                self.command_buffer,
+                frame,
+                Layout::TRANSFER_SRC_OPTIMAL,
+                target.image,
+                Layout::TRANSFER_DST_OPTIMAL,
+                &[region],
+            );
+        }
+        layouts(
+            Layout::TRANSFER_SRC_OPTIMAL,
+            Layout::COLOR_ATTACHMENT_OPTIMAL,
+            frame,
+        );
+        layouts(
+            Layout::TRANSFER_DST_OPTIMAL,
+            Layout::SHADER_READ_ONLY_OPTIMAL,
+            target.image,
+        );
+    }
+
     /// Put the blurred image on the frame.
     ///
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `blur_active` holds.
     pub(super) unsafe fn draw_blurred_panorama(&self, scene: &SceneResources) {
-        let Some(blur) = scene.panorama.as_ref().map(|panorama| &panorama.blur) else {
+        let Some(blur) = scene.backdrop.blur.as_ref() else {
             return;
         };
         // SAFETY: recording (see `# Safety`); the pipeline and set are live.

@@ -9,6 +9,8 @@
 use super::TextRun;
 use super::atlas::GuiAtlas;
 
+pub use blur::{GuiBlur, split_batches};
+
 /// One GUI vertex, in GUI units.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -184,6 +186,8 @@ pub struct GuiFrame {
     /// The player's item cooldowns at this frame: each group and what is left
     /// of it (`ItemCooldowns.getCooldownPercent`).
     pub cooldowns: Vec<(String, f32)>,
+    /// Where the frame behind the screen is blurred, if it is.
+    pub blur: Option<GuiBlur>,
 }
 
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position (and for how many ticks the
@@ -314,6 +318,7 @@ pub(crate) fn glyph_quads(
     quads
 }
 
+mod blur;
 mod items;
 mod overlay;
 mod text;

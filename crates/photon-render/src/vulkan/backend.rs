@@ -117,7 +117,7 @@ pub struct VulkanBackend {
     /// The GUI's triangles, their runs by blend, and the window's size in
     /// GUI units.
     pub(super) gui_buffer: DynamicBuffer,
-    pub(super) gui_batches: Vec<(crate::gui::GuiBlend, u32, u32)>,
+    pub(super) gui_runs: GuiRuns,
     pub(super) gui_size: [f32; 2],
     /// The items in the GUI's slots, which the GUI's item runs count in.
     pub(super) gui_item_buffer: DynamicBuffer,
@@ -158,4 +158,12 @@ pub struct VulkanBackend {
     /// The time spent waiting for the frame in flight since the last frame was submitted.
     pub(super) fence_wait: std::cell::Cell<std::time::Duration>,
     pub(super) description: BackendDescription,
+}
+
+/// The GUI's runs by blend, and where the frame behind the screen is blurred
+/// (`GuiRenderState.firstStratumAfterBlur`).
+#[derive(Default)]
+pub(super) struct GuiRuns {
+    pub(super) batches: Vec<(crate::gui::GuiBlend, u32, u32)>,
+    pub(super) blur: Option<crate::gui::frame::GuiBlur>,
 }

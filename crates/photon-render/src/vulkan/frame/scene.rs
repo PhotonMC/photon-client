@@ -78,7 +78,7 @@ impl VulkanBackend {
                     }
                     Pass::Hand => self.record_hand(scene, &terrain_push),
                     Pass::Panorama => self.record_panorama(scene),
-                    Pass::Gui => self.record_gui(scene),
+                    Pass::Gui => self.record_gui(scene, index),
                 }
                 if let Some(query) = pass.stamp_after() {
                     self.stamp(query);
@@ -96,7 +96,11 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording outside a rendering scope; both views are live.
-    unsafe fn begin_rendering(&self, colour: vk::ImageView, depth: vk::ImageView) {
+    pub(in super::super) unsafe fn begin_rendering(
+        &self,
+        colour: vk::ImageView,
+        depth: vk::ImageView,
+    ) {
         // SAFETY: recording, outside a scope, with live views.
         unsafe {
             let colour_attachment = [vk::RenderingAttachmentInfo::default()
@@ -469,12 +473,42 @@ impl VulkanBackend {
         }
     }
 
-    /// The GUI, run by run in its blends.
+    /// The GUI, run by run in its blends. With a blur asked for and something to draw after it
+    /// (`GuiRenderer.draw`), the runs before it come first, then the frame so far is blurred, then
+    /// the rest is drawn sharp over it.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope over swapchain image `index`; `scene` is live.
+    unsafe fn record_gui(&self, scene: &SceneResources, index: usize) {
+        let blur = self
+            .gui_runs
+            .blur
+            .filter(|_| !self.gui_only && self.blur_images_ready(scene));
+        let (before, after) = match blur {
+            Some(blur) => crate::gui::frame::split_batches(&self.gui_runs.batches, blur.at),
+            None => (self.gui_runs.batches.clone(), Vec::new()),
+        };
+        // SAFETY: recording (see `# Safety`).
+        unsafe {
+            self.draw_gui_batches(scene, &before);
+            if let (Some(blur), false) = (blur, after.is_empty()) {
+                self.record_world_blur(scene, index, blur.radius);
+                self.draw_gui_batches(scene, &after);
+            }
+        }
+    }
+
+    /// Runs of the GUI.
     ///
     /// # Safety
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
-    unsafe fn record_gui(&self, scene: &SceneResources) {
+    unsafe fn draw_gui_batches(
+        &self,
+        scene: &SceneResources,
+        batches: &[(crate::gui::GuiBlend, u32, u32)],
+    ) {
         let (Some(buffer), Some(set)) = (self.gui_buffer.as_ref(), scene.gui_set) else {
             return;
         };
@@ -485,7 +519,7 @@ impl VulkanBackend {
             0.0,
         ];
         let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..16])];
-        for &(blend, first, count) in &self.gui_batches {
+        for &(blend, first, count) in batches {
             let (pipeline, set, vertices) = match blend {
                 crate::gui::GuiBlend::Translucent
                 | crate::gui::GuiBlend::TranslucentBlur

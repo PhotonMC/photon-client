@@ -12,6 +12,7 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     use photon_gui::widgets::navigation::Direction;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
+    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
     let mut screen = photon_gui::screen::pause::PauseScreen::new(font, &lang, size);
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
@@ -24,7 +25,7 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
                 millis: step["ms"].as_u64().unwrap_or(0),
                 ..GuiFrame::default()
             };
-            screen.draw(&mut thrown, atlas, font, mouse, size, true);
+            screen.draw(&mut thrown, atlas, font, mouse, size, Some(blurriness));
         } else {
             match step["key"].as_str().unwrap_or_default() {
                 "tab" => screen.tab(true),
@@ -38,10 +39,11 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         }
     }
     frame.millis = row["ms"].as_u64().unwrap_or(0);
-    screen.draw(&mut frame, atlas, font, mouse, size, true);
+    screen.draw(&mut frame, atlas, font, mouse, size, Some(blurriness));
 
     Ok(json!({
         "label": row["label"],
+        "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }

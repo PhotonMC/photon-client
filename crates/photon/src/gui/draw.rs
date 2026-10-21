@@ -3,69 +3,6 @@ use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
 
 impl Gui {
-    /// The settings screen that is open, the topmost of those over the
-    /// options, or the options screen, or the pause menu.
-    pub(super) fn draw_menu(
-        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
-        controls: &mut Controls,
-        frame: &mut photon_render::gui::GuiFrame,
-        (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
-    ) {
-        // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
-        // parent).
-        if controls.link_confirm.is_some() {
-            return;
-        }
-        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-        if let Some(open) = controls.advancements.as_mut() {
-            if open.screen.size() != gui_size {
-                open.screen.resize(gui_size);
-            }
-            open.screen.draw(frame, (atlas, font, lang), mouse, item);
-            return;
-        }
-        if let Some(stats) = controls.stats.as_mut() {
-            if stats.size() != gui_size {
-                stats.resize(gui_size);
-            }
-            let millis = frame.millis;
-            stats.draw(frame, (atlas, font), mouse, (millis, item));
-            return;
-        }
-        macro_rules! sized {
-            ($screen:expr) => {
-                if let Some(screen) = $screen.as_mut() {
-                    if screen.size() != gui_size {
-                        screen.resize(gui_size);
-                    }
-                    screen.draw(frame, atlas, font, mouse);
-                    return;
-                }
-            };
-        }
-        sized!(controls.language_screen);
-        sized!(controls.key_binds_screen);
-        sized!(controls.mouse_screen);
-        sized!(controls.controls_screen);
-        sized!(controls.skin_screen);
-        sized!(controls.chat_options_screen);
-        sized!(controls.accessibility_screen);
-        sized!(controls.sound_screen);
-        sized!(controls.video_screen);
-        if let Some(options_screen) = controls.options_screen.as_mut() {
-            if options_screen.size() != gui_size {
-                *options_screen =
-                    options_screen.resized(font, lang, gui_size, controls.options.fov);
-            }
-            options_screen.draw(frame, atlas, font, mouse);
-        } else if let Some(pause) = controls.pause.as_mut() {
-            if pause.size() != gui_size {
-                *pause = PauseScreen::new(font, lang, gui_size);
-            }
-            pause.draw(frame, atlas, font, mouse, gui_size, true);
-        }
-    }
-
     /// The chat's messages, the box's and brighter when it is open; the lines of the tooltip
     /// the mouse is over, if any.
     fn draw_chat_log(

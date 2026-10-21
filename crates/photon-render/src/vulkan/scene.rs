@@ -170,7 +170,7 @@ impl VulkanBackend {
                 entity_set: None,
                 gui_pipeline,
                 gui_pipelines: gui,
-                panorama: None,
+                backdrop: Backdrop::default(),
                 gui_texture: None,
                 gui_set: None,
                 gui_blur: None,

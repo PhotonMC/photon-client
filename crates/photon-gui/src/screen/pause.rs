@@ -51,6 +51,9 @@ fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     )
 }
 
+/// `menuBackgroundBlurriness` until the option is stored: the slider's default.
+pub const MENU_BLURRINESS: i32 = 5;
+
 impl PauseScreen {
     /// `PauseScreen.init` and `createPauseMenu`, for a server (not a local
     /// one) in a screen of `width` by `height` units.
@@ -184,9 +187,18 @@ impl PauseScreen {
         self.size
     }
 
-    /// The menu over the game: the background texture, the buttons (the
-    /// highlighted one under the mouse or with the focus), the title. The
-    /// reference also blurs what is behind; this does not.
+    /// The texture the background is tiled with; over a game, the frame is blurred first.
+    fn background(frame: &mut GuiFrame, world: Option<i32>) -> &'static str {
+        let Some(blurriness) = world else {
+            return "menu_background";
+        };
+        frame.blur_before_this_stratum(blurriness);
+        "inworld_menu_background"
+    }
+
+    /// The menu: the background texture, the buttons (the highlighted one under the mouse or with
+    /// the focus), the title. Over a game (`world` holds the menu blurriness) what is behind is
+    /// blurred first (`PauseScreen.extractBackground`).
     pub fn draw(
         &self,
         frame: &mut GuiFrame,
@@ -194,13 +206,9 @@ impl PauseScreen {
         font: &Font,
         mouse: (i32, i32),
         (width, height): (i32, i32),
-        in_world: bool,
+        world: Option<i32>,
     ) {
-        let background = if in_world {
-            "inworld_menu_background"
-        } else {
-            "menu_background"
-        };
+        let background = Self::background(frame, world);
         frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
         for (index, (widget, _)) in self.widgets.iter().enumerate() {
             let highlighted = widget.contains(&self.arena, mouse) || self.focus == Some(index);

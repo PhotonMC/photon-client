@@ -158,12 +158,18 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 }
             }
             now[0] = row.has("ms") ? row.get("ms").getAsLong() : 0;
+            // The blur is asked for only by the screen that is up, at a blurriness of one or more.
+            set(minecraft.gui, "screen", pause);
+            minecraft.options.menuBackgroundBlurriness().set(row.has("blurriness") ? row.get("blurriness").getAsInt() : 5);
             pause.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             pause.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
+            var blurField = GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
+            blurField.setAccessible(true);
+            out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             rows.add(out);
         }

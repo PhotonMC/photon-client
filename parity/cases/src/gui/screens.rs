@@ -118,8 +118,20 @@ fn arrow_rows() -> Vec<Value> {
 
 /// The pause menu in screens of several sizes, with the mouse away and over
 /// each of its buttons, its tooltips and keyboard focus.
+/// The blur behind the menu is asked for from a blurriness of one (`Screen.extractBlurredBackground`).
+fn blur_rows() -> Vec<Value> {
+    [("blur-0", 0), ("blur-1", 1), ("blur-10", 10)]
+        .into_iter()
+        .map(|(label, blurriness)| {
+            let mut row = pause(label, SIZE, (0, 0), vec![], 0);
+            row["blurriness"] = json!(blurriness);
+            row
+        })
+        .collect()
+}
+
 pub fn pause_screen() -> Value {
-    gui("pause-screen", "pause_screen", [hover_rows(), focus_rows(), arrow_rows()].concat())
+    gui("pause-screen", "pause_screen", [hover_rows(), focus_rows(), arrow_rows(), blur_rows()].concat())
 }
 
 /// One death screen scenario.

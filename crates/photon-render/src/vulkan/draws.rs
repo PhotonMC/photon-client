@@ -207,7 +207,13 @@ impl VulkanBackend {
             self.fill_bytes(&mut items, bytes)?;
             self.gui_item_buffer = items;
         }
-        self.gui_batches = frame.batches.clone();
+        self.gui_runs = GuiRuns {
+            batches: frame.batches.clone(),
+            blur: frame.blur,
+        };
+        if frame.blur.is_some() {
+            self.ensure_blur_targets()?;
+        }
         self.gui_size = size;
         Ok(())
     }

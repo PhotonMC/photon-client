@@ -2,6 +2,14 @@
 
 use super::*;
 
+/// What the frame's images are used for: drawn to, cleared, and read back for the blur behind a
+/// screen and for captures.
+pub(super) const SWAPCHAIN_USAGE: vk::ImageUsageFlags = vk::ImageUsageFlags::from_raw(
+    vk::ImageUsageFlags::COLOR_ATTACHMENT.as_raw()
+        | vk::ImageUsageFlags::TRANSFER_DST.as_raw()
+        | vk::ImageUsageFlags::TRANSFER_SRC.as_raw(),
+);
+
 /// The present mode for vsync on or off, from what the surface supports, by the reference's own
 /// preference (`GpuSurface.PresentMode.getSupportedVsyncMode`). FIFO is always supported.
 pub(super) fn choose_present_mode(
@@ -91,9 +99,7 @@ impl VulkanBackend {
                 .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
                 .image_extent(extent)
                 .image_array_layers(1)
-                .image_usage(
-                    vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_DST,
-                )
+                .image_usage(SWAPCHAIN_USAGE)
                 .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                 .pre_transform(capabilities.current_transform)
                 .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)

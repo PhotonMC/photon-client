@@ -118,7 +118,7 @@ impl VulkanBackend {
                 breaking: DrawList::default(),
                 hand_projection: [[0.0; 4]; 4],
                 gui_buffer: DynamicBuffer::default(),
-                gui_batches: Vec::new(),
+                gui_runs: GuiRuns::default(),
                 gui_size: [1.0, 1.0],
                 gui_item_buffer: DynamicBuffer::default(),
                 sections: std::collections::BTreeMap::new(),

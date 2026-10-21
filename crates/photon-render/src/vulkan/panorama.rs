@@ -9,7 +9,6 @@ pub(super) struct PanoramaScene {
     _texture: Texture,
     pub(super) set: vk::DescriptorSet,
     pipeline: Pipeline,
-    pub(super) blur: super::blur::BlurScene,
 }
 
 /// The cube's vertices: six quads of two triangles, generated in the vertex shader.
@@ -22,7 +21,7 @@ impl VulkanBackend {
         if self
             .scene
             .as_ref()
-            .is_none_or(|scene| scene.panorama.is_some())
+            .is_none_or(|scene| scene.backdrop.panorama.is_some())
         {
             return Ok(());
         }
@@ -34,6 +33,36 @@ impl VulkanBackend {
                 (descriptors.layout, descriptors.pool)
             };
             let image = self.upload_cube(layers)?;
+            let (sampler, set) = self.cube_set(layout, pool, &image)?;
+            let pipeline = self.create_panorama_pipeline(layout)?;
+            self.ensure_blur_scene()?;
+            let panorama = PanoramaScene {
+                _texture: Texture { image, sampler },
+                set,
+                pipeline,
+            };
+            self.scene
+                .as_mut()
+                .expect("checked above")
+                .backdrop
+                .panorama = Some(panorama);
+            Ok(())
+        }
+    }
+
+    /// A linear, clamped sampler over the cube and a set that samples it.
+    ///
+    /// # Safety
+    ///
+    /// Live handles; `layout` and `pool` belong to the scene's descriptors.
+    unsafe fn cube_set(
+        &self,
+        layout: vk::DescriptorSetLayout,
+        pool: vk::DescriptorPool,
+        image: &Image,
+    ) -> Result<(Sampler, vk::DescriptorSet), VulkanError> {
+        // SAFETY: the caller's contract; this only creates objects the caller stores.
+        unsafe {
             let sampler = self
                 .device
                 .create_sampler(
@@ -70,15 +99,7 @@ impl VulkanBackend {
                     .image_info(&image_info)],
                 &[],
             );
-            let pipeline = self.create_panorama_pipeline(layout)?;
-            let blur = self.create_blur_scene(layout, pool)?;
-            self.scene.as_mut().expect("checked above").panorama = Some(PanoramaScene {
-                _texture: Texture { image, sampler },
-                set,
-                pipeline,
-                blur,
-            });
-            Ok(())
+            Ok((sampler, set))
         }
     }
 
@@ -94,8 +115,10 @@ impl VulkanBackend {
     ///
     /// Recording inside the scene's rendering scope; `scene` is live.
     pub(super) unsafe fn record_panorama(&self, scene: &SceneResources) {
-        let (Some(panorama), Some(matrix)) = (scene.panorama.as_ref(), self.panorama_view.as_ref())
-        else {
+        let (Some(panorama), Some(matrix)) = (
+            scene.backdrop.panorama.as_ref(),
+            self.panorama_view.as_ref(),
+        ) else {
             return;
         };
         // SAFETY: recording (see `# Safety`); the pipeline and set are live and the cube needs no

@@ -202,6 +202,14 @@ pub(super) struct GuiPipelines {
 }
 
 /// Everything needed to draw one textured mesh.
+/// What a screen is drawn over besides the game: the title's cube, and the blur of it or of the
+/// frame (made when first needed).
+#[derive(Default)]
+pub(super) struct Backdrop {
+    pub(super) panorama: Option<super::panorama::PanoramaScene>,
+    pub(super) blur: Option<super::blur::BlurScene>,
+}
+
 pub(super) struct SceneResources {
     pub(super) texture: Texture,
     pub(super) descriptors: Descriptors,
@@ -252,7 +260,7 @@ pub(super) struct SceneResources {
     pub(super) map_texture: Option<Texture>,
     pub(super) map_set: Option<vk::DescriptorSet>,
     /// The title screen's cube map, once loaded.
-    pub(super) panorama: Option<super::panorama::PanoramaScene>,
+    pub(super) backdrop: Backdrop,
 }
 
 /// A rectangle of one atlas level to rewrite.
