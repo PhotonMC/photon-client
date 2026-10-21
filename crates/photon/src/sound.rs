@@ -435,6 +435,9 @@ impl SoundSystem {
         if device == options.sound_device {
             return;
         }
+        // `SoundEngine.reload` destroys the library before it loads the next, so the old stream
+        // lets go of the device first.
+        *sound = None;
         *sound = Self::open(&assets, options);
         if let Some(sound) = sound.as_mut() {
             sound.play_ui("minecraft:ui.button.click", 1.0, 1.0);

@@ -40,18 +40,22 @@ impl Output {
         devices.filter_map(|device| device_name(&device)).collect()
     }
 
-    /// Open the preferred output device, or the default one when it is empty or gone
-    /// (`Library.openDeviceOrFallback`).
+    /// Open the preferred output device, or the default one when it is empty, gone or will not
+    /// open (`Library.openDeviceOrFallback`).
     pub fn open(preferred: &str) -> Result<Self, OutputError> {
-        let host = cpal::default_host();
-        let named = (!preferred.is_empty())
-            .then(|| host.output_devices().ok())
-            .flatten()
-            .and_then(|mut devices| {
-                devices.find(|device| device_name(device).as_deref() == Some(preferred))
-            });
-        let device = named
-            .or_else(|| host.default_output_device())
+        let named = Self::find(preferred).and_then(|device| Self::open_device(Some(device)).ok());
+        named.map_or_else(|| Self::open_device(None), Ok)
+    }
+
+    fn find(name: &str) -> Option<cpal::Device> {
+        let mut devices = cpal::default_host().output_devices().ok()?;
+        devices.find(|device| device_name(device).as_deref() == Some(name))
+    }
+
+    /// Open `device`, or the default output device for none.
+    fn open_device(device: Option<cpal::Device>) -> Result<Self, OutputError> {
+        let device = device
+            .or_else(|| cpal::default_host().default_output_device())
             .ok_or_else(|| OutputError("no output device".into()))?;
         let supported = device
             .default_output_config()
