@@ -2,9 +2,7 @@
 //! turned to the stand's rotations, with the armor and the items it holds.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    ArmorStandState, mob_vertices, mob_vertices_coloured, placement_pose,
-};
+use photon_render::entity::mob_model::{ArmorStandState, mob_vertices_coloured, placement_pose};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -32,7 +30,7 @@ pub fn remote_armor_stands(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(snapshot) = world
             .entity_snapshot(entity.id(), partial)
             .filter(|_| entity.type_id == stand_type)
@@ -79,7 +77,7 @@ pub fn remote_armor_stands(
                 motions: Default::default(),
             };
             hands.collect(held);
-            vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
             vertices.extend(armor.skull_vertices(
                 hands.skull(),
                 0.0,
