@@ -3,6 +3,8 @@
 use photon_core::ids::ItemId;
 use std::collections::BTreeMap;
 
+mod facts;
+
 /// Raw item-stack state retained by the client inventory copy.
 #[derive(Debug, Clone)]
 pub struct ClientItemStackState {

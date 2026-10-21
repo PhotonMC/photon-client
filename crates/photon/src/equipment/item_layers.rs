@@ -1,9 +1,10 @@
 //! Item models turned into layers once and kept.
 
 use photon_core::ids::BlockStateId;
+use photon_data::item::component_types::{DYED_COLOR, LODESTONE_TRACKER};
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
-use photon_render::item_model::{Charge, ItemState, ItemUse};
+use photon_render::item_model::{ItemState, ItemUse};
 use photon_render::model::DisplayContext;
 use photon_render::objects::item::item_glint_vertices;
 use photon_render::scene::Vertex;
@@ -194,6 +195,11 @@ impl ItemLayerCache {
                 charge_duration: self.charge_duration(stack),
             }),
             charge: super::crossbow::charge_type(stack),
+            broken: stack.breaks_on_next_damage(),
+            components: photon_render::item_model::TestedComponents {
+                dyed_color: stack.has_added_component(DYED_COLOR),
+                lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
+            },
         }
     }
 
@@ -217,10 +223,10 @@ impl ItemLayerCache {
         let context = self.context;
         let item = stack.item_registry_id();
         let state = self.item_state(stack, ticks);
-        let branches = if state.item_use.is_some() || state.charge != Charge::None {
-            renderer.item_branches(item, context, state)
-        } else {
+        let branches = if state == ItemState::default() {
             Vec::new()
+        } else {
+            renderer.item_branches(item, context, state)
         };
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants

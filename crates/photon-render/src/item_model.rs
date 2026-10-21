@@ -92,6 +92,8 @@ pub enum ItemModelDef {
     Composite(Vec<ItemModelDef>),
     Condition {
         property: String,
+        /// `has_component`'s component and its `ignore_default`.
+        component: Option<(String, bool)>,
         on_true: Box<ItemModelDef>,
         on_false: Box<ItemModelDef>,
     },

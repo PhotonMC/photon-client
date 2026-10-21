@@ -35,6 +35,36 @@ impl Charge {
 pub struct ItemState {
     pub item_use: Option<ItemUse>,
     pub charge: Charge,
+    /// `ItemStack.nextDamageWillBreak` (`broken`).
+    pub broken: bool,
+    /// The components `has_component` asks about in the item definitions.
+    pub components: TestedComponents,
+}
+
+impl ItemState {
+    /// A condition property of the item model, decided from this state: `IsUsingItem`, `Broken`
+    /// and `HasComponent`. One this client does not read is false.
+    pub fn condition(&self, property: &str, component: Option<&(String, bool)>) -> bool {
+        match property {
+            "minecraft:using_item" => self.item_use.is_some(),
+            "minecraft:broken" => self.broken,
+            "minecraft:has_component" => match component.map(|(name, _)| name.as_str()) {
+                Some("minecraft:dyed_color") => self.components.dyed_color,
+                Some("minecraft:lodestone_tracker") => self.components.lodestone_tracker,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+}
+
+/// Whether a stack has the components the vanilla item definitions test with `has_component`
+/// (`ItemStack.has`; `ignore_default` is for a component the item does not declare, which
+/// these two never are).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TestedComponents {
+    pub dyed_color: bool,
+    pub lodestone_tracker: bool,
 }
 
 /// What a walk of the model tree reads, and which branches it took (the cache key of the layers).
@@ -45,8 +75,8 @@ struct Walk {
 
 impl Walk {
     /// `IsUsingItem`: the holder uses this very stack.
-    fn condition(&self, property: &str) -> bool {
-        property == "minecraft:using_item" && self.state.item_use.is_some()
+    fn condition(&self, property: &str, component: Option<&(String, bool)>) -> bool {
+        self.state.condition(property, component)
     }
 
     /// The numeric property of a range dispatch, before its scale. Properties this client does
@@ -147,7 +177,8 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             property,
             on_true,
             on_false,
-        } if property == "minecraft:using_item" => Some(vec![on_true, on_false]),
+            ..
+        } if READ_CONDITIONS.contains(&property.as_str()) => Some(vec![on_true, on_false]),
         ItemModelDef::RangeDispatch {
             property,
             entries,
@@ -174,6 +205,13 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
         _ => None,
     }
 }
+
+/// The conditions decided here.
+const READ_CONDITIONS: [&str; 3] = [
+    "minecraft:using_item",
+    "minecraft:broken",
+    "minecraft:has_component",
+];
 
 /// The numeric properties a range dispatch is decided from here.
 const READ_RANGES: [&str; 2] = ["minecraft:use_duration", "minecraft:crossbow/pull"];
@@ -241,10 +279,11 @@ fn chosen_child<'a>(
     match def {
         ItemModelDef::Condition {
             property,
+            component,
             on_true,
             on_false,
         } => {
-            let chosen = walk.condition(property);
+            let chosen = walk.condition(property, component.as_ref());
             walk.trace.push(u8::from(chosen));
             Some(if chosen { on_true } else { on_false })
         }
@@ -365,6 +404,7 @@ mod tests {
                 charge_duration,
             }),
             charge,
+            ..ItemState::default()
         };
         drawn_by(CROSSBOW, state).0
     }
@@ -425,5 +465,50 @@ mod tests {
         ] {
             assert!(names.contains(&format!("minecraft:item/{name}")), "{name}");
         }
+    }
+
+    const ELYTRA: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:broken",
+        "on_false":{"type":"minecraft:model","model":"minecraft:item/elytra"},
+        "on_true":{"type":"minecraft:model","model":"minecraft:item/elytra_broken"}}}"#;
+
+    const WOLF_ARMOR: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:has_component",
+        "component":"minecraft:dyed_color",
+        "on_false":{"type":"minecraft:model","model":"minecraft:item/wolf_armor"},
+        "on_true":{"type":"minecraft:model","model":"minecraft:item/wolf_armor_dyed"}}}"#;
+
+    #[test]
+    fn a_broken_elytra_draws_the_cracked_model() {
+        let at = |broken| {
+            drawn_by(
+                ELYTRA,
+                ItemState {
+                    broken,
+                    ..ItemState::default()
+                },
+            )
+            .0
+        };
+        assert_eq!(at(false), "minecraft:item/elytra");
+        assert_eq!(at(true), "minecraft:item/elytra_broken");
+    }
+
+    #[test]
+    fn dyed_wolf_armor_draws_the_dyed_model() {
+        let at = |dyed_color| {
+            let components = TestedComponents {
+                dyed_color,
+                ..TestedComponents::default()
+            };
+            drawn_by(
+                WOLF_ARMOR,
+                ItemState {
+                    components,
+                    ..ItemState::default()
+                },
+            )
+            .0
+        };
+        assert_eq!(at(false), "minecraft:item/wolf_armor");
+        assert_eq!(at(true), "minecraft:item/wolf_armor_dyed");
     }
 }

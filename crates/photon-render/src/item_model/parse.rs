@@ -307,6 +307,19 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
     }
 }
 
+/// A `condition` node: its property, the component `has_component` asks about and both branches.
+fn parse_condition(object: &JsonObject) -> ItemModelDef {
+    let child = |key: &str| object.object(key).map(parse_item_model);
+    ItemModelDef::Condition {
+        property: object.text("property").unwrap_or_default(),
+        component: object
+            .text("component")
+            .map(|name| (name, object.bool("ignore_default").unwrap_or(false))),
+        on_true: Box::new(child("on_true").unwrap_or(ItemModelDef::Empty)),
+        on_false: Box::new(child("on_false").unwrap_or(ItemModelDef::Empty)),
+    }
+}
+
 pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
     let kind = object.text("type").unwrap_or_default();
     let child = |key: &str| object.object(key).map(parse_item_model);
@@ -337,11 +350,7 @@ pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
                 })
                 .collect(),
         ),
-        "minecraft:condition" => ItemModelDef::Condition {
-            property: object.text("property").unwrap_or_default(),
-            on_true: Box::new(child("on_true").unwrap_or(ItemModelDef::Empty)),
-            on_false: Box::new(child("on_false").unwrap_or(ItemModelDef::Empty)),
-        },
+        "minecraft:condition" => parse_condition(object),
         "minecraft:select" => ItemModelDef::Select {
             property: object.text("property").unwrap_or_default(),
             cases: object

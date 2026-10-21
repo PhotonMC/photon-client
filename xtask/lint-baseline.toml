@@ -883,7 +883,7 @@
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 119
-"crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 74
+"crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 70
 "crates/photon-render/src/joml/matrix4.rs::Matrix4::invert_affine" = 64
 "crates/photon-render/src/model/parse.rs::parse_model" = 73
 "crates/photon-render/src/objects/guardian_beam.rs::guardian_beam" = 80

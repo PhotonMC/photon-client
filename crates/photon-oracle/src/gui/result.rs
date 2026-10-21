@@ -27,6 +27,7 @@ mod dialog;
 use dialog::*;
 mod restrictions;
 use restrictions::*;
+mod item_condition;
 mod settings;
 use settings::*;
 mod container;
@@ -74,6 +75,7 @@ fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, S
         "command_parse" => crate::command_parse_result(request, root),
         "command_suggest" => crate::command_suggest_result(request),
         "command_verify" => crate::command_verify_result(request),
+        "item_condition" => item_condition::item_condition_result(request),
         _ => return None,
     })
 }

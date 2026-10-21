@@ -1,30 +1,7 @@
 //! Which worn stacks let the player glide (`LivingEntity.canGlideUsing`).
 
-use photon_core::wire::read_varint;
 use photon_world::ClientItemStackState as Stack;
 use photon_world::item_components::ids;
-
-/// An int component of the stack: its patch's value, else the item's own.
-fn int_component(stack: &Stack, id: i32, own: i32) -> i32 {
-    match stack.patched(id) {
-        Some(Some(value)) => read_varint(&mut value.as_slice()).unwrap_or(own),
-        Some(None) => 0,
-        None => own,
-    }
-}
-
-/// `ItemStack.nextDamageWillBreak`: a damageable stack one point from its end.
-fn next_damage_will_break(stack: &Stack, item_durability: i32) -> bool {
-    let max = int_component(stack, ids::MAX_DAMAGE, item_durability);
-    let unbreakable = stack
-        .patched(ids::UNBREAKABLE)
-        .is_some_and(|value| value.is_some());
-    if max <= 0 || unbreakable {
-        return false;
-    }
-    let damage = int_component(stack, ids::DAMAGE, 0).clamp(0, max);
-    damage >= max - 1
-}
 
 /// `LivingEntity.canGlideUsing`: the stack has the glider component, is worn in the slot its
 /// equippable names, and its next point of damage would not break it.
@@ -42,8 +19,7 @@ pub fn can_glide_using(stack: &Stack, slot: &str) -> bool {
     else {
         return false;
     };
-    equippable.slot == slot
-        && !next_damage_will_break(stack, item.map_or(0, |item| item.max_damage))
+    equippable.slot == slot && !stack.breaks_on_next_damage()
 }
 
 /// The inventory slot of each equipment slot, by `EquipmentSlot` name; the main hand is the
