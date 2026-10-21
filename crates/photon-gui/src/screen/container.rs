@@ -33,6 +33,9 @@ pub trait SlotView {
     fn slot_count(&self) -> usize;
     /// `Slot.isSameInventory`.
     fn same_container(&self, a: usize, b: usize) -> bool;
+    /// The screen slot that shows the player's inventory index (0 to 8 the hotbar, 40 the off
+    /// hand), if the screen shows it.
+    fn inventory_slot(&self, index: usize) -> Option<usize>;
 }
 
 /// `AbstractContainerScreen`'s mouse state: the drag, the double click and

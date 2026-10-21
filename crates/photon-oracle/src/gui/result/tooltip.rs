@@ -90,6 +90,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         ..GuiFrame::default()
     };
     let mut draw = photon_gui::screen::ScreenDraw {
+        held: (0, [false; 2]),
         frame: &mut frame,
         atlas: &ctx.atlas,
         font: &ctx.font,

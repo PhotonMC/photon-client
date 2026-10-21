@@ -150,7 +150,7 @@ pub trait ItemSlots {
         draw: &mut photon_render::gui::ItemDrawer<'_>,
         stack: &photon_world::ClientItemStackState,
         shown: (i32, Option<(&str, u32)>),
-        place: (i32, i32, i32),
+        place: (i32, i32, photon_render::gui::ItemHolding),
     );
 
     /// [`Self::item_with_count_seeded`] with the seed of an item drawn outside a slot.
@@ -183,7 +183,14 @@ impl ItemSlots for photon_render::gui::GuiFrame {
         x: i32,
         y: i32,
     ) {
-        self.item_with_count_seeded(atlas, font, draw, stack, (count, text), (x, y, 0));
+        self.item_with_count_seeded(
+            atlas,
+            font,
+            draw,
+            stack,
+            (count, text),
+            (x, y, Default::default()),
+        );
     }
 
     fn item_bar(
@@ -215,12 +222,8 @@ impl ItemSlots for photon_render::gui::GuiFrame {
         draw: &mut photon_render::gui::ItemDrawer<'_>,
         stack: &photon_world::ClientItemStackState,
         (count, text): (i32, Option<(&str, u32)>),
-        (x, y, seed): (i32, i32, i32),
+        (x, y, holding): (i32, i32, photon_render::gui::ItemHolding),
     ) {
-        let holding = photon_render::gui::ItemHolding {
-            seed,
-            ..Default::default()
-        };
         self.item_in_use(draw, stack, (x as f32, y as f32), holding);
         self.item_bar(atlas, stack, x, y);
         self.item_cooldown(atlas, stack, x, y);

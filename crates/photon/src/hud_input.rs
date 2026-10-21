@@ -166,6 +166,11 @@ fn hud_casts(
     local_casts(session, player, local.inventory_slot(selected))
 }
 
+/// [`hud_casts`] of the session's own player, for the screens.
+pub(crate) fn held_casts(session: &PlaySession) -> [bool; 2] {
+    hud_casts(session, session.player(), session.world().local_player())
+}
+
 /// The hand the player uses an item in (true for the off hand) and for how many ticks.
 fn hand_in_use(player: &photon_world::local_player::LocalPlayer) -> Option<(bool, i32)> {
     let main = player.use_ticks_of(true).map(|ticks| (false, ticks));

@@ -27,17 +27,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     use photon_gui::screen::Screen;
     use photon_gui::screen::generic::{EnchantText, GenericScreen, Titles};
     let name = row["menu"].as_str().ok_or("menu")?;
-    // Item cooldowns the server set, then the player's ticks since.
-    let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
-    for cooldown in row["cooldowns"].as_array().into_iter().flatten() {
-        cooldowns.add(
-            photon_game::item::cooldowns::namespaced(cooldown["group"].as_str().ok_or("group")?),
-            cooldown["duration"].as_i64().ok_or("duration")? as i32,
-        );
-    }
-    for _ in 0..row["cooldown_ticks"].as_i64().unwrap_or(0) {
-        cooldowns.tick();
-    }
+    let cooldowns = row_cooldowns(row)?;
     let mut menu = if row.get("mount").is_some() {
         crate::mount_menu(&row["mount"])?
     } else {
@@ -173,6 +163,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
                 Vec::<photon_render::gui::GuiItemVertex>::new()
             };
         let mut draw = photon_gui::screen::ScreenDraw {
+            held: (0, [false; 2]),
             frame: &mut drawn,
             atlas,
             font,
@@ -266,4 +257,19 @@ pub(super) fn game_mode_switcher_case(ctx: &mut GuiContext, row: &Value) -> Resu
         }));
     }
     Ok(json!({"label": row["label"], "steps": steps}))
+}
+
+/// Item cooldowns the server set, then the player's ticks since.
+fn row_cooldowns(row: &Value) -> Result<photon_game::item::cooldowns::ItemCooldowns, String> {
+    let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
+    for cooldown in row["cooldowns"].as_array().into_iter().flatten() {
+        cooldowns.add(
+            photon_game::item::cooldowns::namespaced(cooldown["group"].as_str().ok_or("group")?),
+            cooldown["duration"].as_i64().ok_or("duration")? as i32,
+        );
+    }
+    for _ in 0..row["cooldown_ticks"].as_i64().unwrap_or(0) {
+        cooldowns.tick();
+    }
+    Ok(cooldowns)
 }

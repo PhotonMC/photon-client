@@ -218,6 +218,16 @@ pub struct ItemHolding {
     pub seed: i32,
 }
 
+impl ItemHolding {
+    /// A stack nobody holds, drawn with this seed.
+    pub fn seeded(seed: i32) -> Self {
+        Self {
+            seed,
+            ..Self::default()
+        }
+    }
+}
+
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position (and what the player does
 /// with the stack), followed by its glint's if it has one; the count it gives back is how many of
 /// the vertices it added are the item's.

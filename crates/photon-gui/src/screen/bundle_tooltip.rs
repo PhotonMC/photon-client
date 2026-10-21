@@ -8,6 +8,7 @@ use crate::ItemSlots;
 use crate::{FontRuns, FrameRuns};
 use photon_game::menus::container::{BundleView, bundle_view};
 use photon_game::text::{Component, Run, Style};
+use photon_render::gui::ItemHolding;
 use photon_render::gui::frame::Positioner;
 use photon_world::ClientItemStackState as Stack;
 
@@ -167,52 +168,60 @@ fn image(
                     draw_y + 10,
                 );
             } else if shown >= slot_number {
-                let index = shown - slot_number;
-                let highlight = index as i32 == view.selected;
-                let back = if highlight {
-                    "container/bundle/slot_highlight_back"
-                } else {
-                    "container/bundle/slot_background"
-                };
-                draw.frame.nine_slice(
-                    draw.atlas,
-                    back,
-                    (24, 24),
-                    4,
-                    false,
-                    draw_x,
-                    draw_y,
-                    SLOT,
-                    SLOT,
+                slot(
+                    draw,
+                    view,
+                    (shown - slot_number, slot_number),
+                    (draw_x, draw_y),
                 );
-                let stack = &view.items[index];
-                draw.frame.item_with_count_seeded(
-                    draw.atlas,
-                    draw.font,
-                    draw.item,
-                    stack,
-                    (stack.item_count(), None),
-                    (draw_x + 4, draw_y + 4, slot_number as i32),
-                );
-                if highlight {
-                    draw.frame.nine_slice(
-                        draw.atlas,
-                        "container/bundle/slot_highlight_front",
-                        (24, 24),
-                        4,
-                        false,
-                        draw_x,
-                        draw_y,
-                        SLOT,
-                        SLOT,
-                    );
-                }
                 slot_number += 1;
             }
         }
     }
     selected_name(draw, view, (x, y, w), screen);
     progress_bar(draw, left, y + rows(view) * SLOT + 4, weight);
+}
+
+/// `extractSlot`: the back of the slot, the stack at visual place `number` seeded by it, and the
+/// front of the highlight when it is the selected one.
+fn slot(
+    draw: &mut ScreenDraw<'_, '_>,
+    view: &BundleView,
+    (index, number): (usize, usize),
+    (draw_x, draw_y): (i32, i32),
+) {
+    let highlight = index as i32 == view.selected;
+    let back = if highlight {
+        "container/bundle/slot_highlight_back"
+    } else {
+        "container/bundle/slot_background"
+    };
+    let nine = |draw: &mut ScreenDraw<'_, '_>, sprite| {
+        draw.frame.nine_slice(
+            draw.atlas,
+            sprite,
+            (24, 24),
+            4,
+            false,
+            draw_x,
+            draw_y,
+            SLOT,
+            SLOT,
+        );
+    };
+    nine(draw, back);
+    let stack = &view.items[index];
+    draw.frame.item_with_count_seeded(
+        draw.atlas,
+        draw.font,
+        draw.item,
+        stack,
+        (stack.item_count(), None),
+        (draw_x + 4, draw_y + 4, ItemHolding::seeded(number as i32)),
+    );
+    if highlight {
+        nine(draw, "container/bundle/slot_highlight_front");
+    }
 }
 
 /// `extractSelectedItemTooltip`: the selected stack's name in a tooltip of

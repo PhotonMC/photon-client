@@ -18,6 +18,11 @@ impl ContainerMenu {
         }
     }
 
+    /// Where an `Inventory` index sits in this menu, if it is shown there.
+    pub fn slot_of_inventory(&self, index: usize) -> Option<usize> {
+        self.inventory_to_menu(index)
+    }
+
     /// `Slot.getMaxStackSize(stack)`.
     pub fn slot_max_for(&self, index: usize, stack: &Stack) -> i32 {
         let slot_max = if self.armour_at(index).is_some()

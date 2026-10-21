@@ -90,6 +90,15 @@ fn target_of(inventory_tab: bool, slot: usize) -> Target {
 }
 
 impl SlotView for View<'_> {
+    fn inventory_slot(&self, index: usize) -> Option<usize> {
+        if self.creative.kind() == TabKind::Inventory {
+            self.inventory.slot_of_inventory(index)
+        } else {
+            // The pickers' bottom row is the player's hotbar.
+            (index < 9).then_some(45 + index)
+        }
+    }
+
     fn stack(&self, slot: usize) -> Option<&Stack> {
         match self.target(slot) {
             Target::Window(slot) => self.creative.window_stack(slot),

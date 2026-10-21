@@ -372,12 +372,7 @@ impl Gui {
             // A stack's tooltip in words.
             let lang = &self.lang;
             let registries = &self.registries;
-            let maps = |id: i32| {
-                world.map_data(id).map(|map| photon_game::tooltip::MapInfo {
-                    scale: map.scale,
-                    locked: map.locked,
-                })
-            };
+            let maps = |id: i32| map_info(world, id);
             let mut tooltip_lines = |stack: &ClientItemStackState, creative: bool| {
                 photon_game::tooltip::lines(
                     stack,
@@ -405,6 +400,10 @@ impl Gui {
                 control_held: controls.mods.control,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
                 widget_tooltips: true,
+                held: (
+                    session.status().selected_slot as usize,
+                    crate::hud_input::held_casts(session),
+                ),
                 book: session.world().recipe_book(),
                 tags: session.world().block_state_registry().item_tags(),
             };
@@ -462,4 +461,12 @@ fn player_preview(
         mouse,
         skin,
     )
+}
+
+/// What a map's tooltip reads of the map with this id.
+fn map_info(world: &photon_world::ClientWorld, id: i32) -> Option<photon_game::tooltip::MapInfo> {
+    world.map_data(id).map(|map| photon_game::tooltip::MapInfo {
+        scale: map.scale,
+        locked: map.locked,
+    })
 }

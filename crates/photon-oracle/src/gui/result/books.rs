@@ -143,11 +143,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
     let font = std::sync::Arc::new(Font::load(&ctx.root).ok_or("font")?);
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(&ctx.root));
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut pages = Vec::new();
-    for page in row["pages"].as_array().ok_or("pages")? {
-        let json = photon_core::json::parse(&page.to_string()).map_err(|_| "json")?;
-        pages.push(photon_game::text::Component::from_json(&json).ok_or("component")?);
-    }
+    let pages = row_pages(row)?;
     let mut screen = BookScreen::held(
         (int("width"), int("height")),
         lang.clone(),
@@ -197,6 +193,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         photon_world::block::tags::ItemTags::default(),
     );
     let mut draw = photon_gui::screen::ScreenDraw {
+        held: (0, [false; 2]),
         frame: &mut frame,
         atlas: &ctx.atlas,
         font: &font,
@@ -217,4 +214,14 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
         "page": screen.held_page(),
     }))
+}
+
+/// The pages of a book row, as text components.
+fn row_pages(row: &Value) -> Result<Vec<photon_game::text::Component>, String> {
+    let mut pages = Vec::new();
+    for page in row["pages"].as_array().ok_or("pages")? {
+        let json = photon_core::json::parse(&page.to_string()).map_err(|_| "json")?;
+        pages.push(photon_game::text::Component::from_json(&json).ok_or("component")?);
+    }
+    Ok(pages)
 }

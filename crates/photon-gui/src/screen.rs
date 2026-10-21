@@ -88,6 +88,8 @@ pub struct ScreenDraw<'a, 'b> {
     /// Whether the tooltips the screen's own widgets ask for are drawn (the reference draws them
     /// last, after everything a draw log compares).
     pub widget_tooltips: bool,
+    /// The selected hotbar slot, and which hand's stack a rod's bobber makes the cast one.
+    pub held: (usize, [bool; 2]),
 }
 
 /// A click a screen asks the session to run.

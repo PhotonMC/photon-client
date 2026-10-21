@@ -2,6 +2,7 @@
 
 use super::{ContainerLayout, ContainerMouse, SlotPreview, SlotView, Stack};
 use crate::{ItemSlots, screen::ScreenDraw};
+use photon_render::gui::ItemHolding;
 
 impl ContainerMouse {
     /// `extractCarriedItem`: the stack at the mouse, less what a drag over
@@ -77,8 +78,26 @@ impl ContainerMouse {
                 draw.item,
                 &stack,
                 (count, text),
-                (x, y, seed),
+                (x, y, slot_holding(draw.held, menu, index, (seed, preview))),
             );
         }
+    }
+}
+
+/// What the slot's stack is held as: its `seed`, and the rod cast when the slot shows the stack a
+/// hand holds (`FishingRodCast` compares the stacks themselves, which a drag's preview is not).
+fn slot_holding(
+    (selected, casts): (usize, [bool; 2]),
+    menu: &impl SlotView,
+    index: usize,
+    (seed, preview): (i32, bool),
+) -> ItemHolding {
+    let held_here = |hand: usize, inventory_index: usize| {
+        casts[hand] && menu.inventory_slot(inventory_index) == Some(index)
+    };
+    ItemHolding {
+        seed,
+        cast: !preview && (held_here(0, selected) || held_here(1, 40)),
+        ..ItemHolding::default()
     }
 }

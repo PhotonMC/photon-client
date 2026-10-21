@@ -48,6 +48,10 @@ pub(crate) fn empty_icon(index: usize) -> Option<&'static str> {
 }
 
 impl SlotView for ContainerMenu {
+    fn inventory_slot(&self, index: usize) -> Option<usize> {
+        self.slot_of_inventory(index)
+    }
+
     fn stack(&self, slot: usize) -> Option<&Stack> {
         self.slots[slot].as_ref()
     }
