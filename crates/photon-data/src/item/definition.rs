@@ -94,6 +94,8 @@ pub struct Item {
     pub consumable: Option<Consume>,
     pub blocks_attacks: bool,
     pub kinetic_weapon: bool,
+    /// The `kinetic_weapon`'s hit sound, heard from the one holding it.
+    pub kinetic_hit_sound: Option<&'static str>,
     /// Whether the item has the `glider` component (an elytra).
     pub glider: bool,
     /// The item's own `use_effects` component, when it has one.
@@ -122,6 +124,7 @@ impl Item {
             consumable: None,
             blocks_attacks: false,
             kinetic_weapon: false,
+            kinetic_hit_sound: None,
             glider: false,
             use_effects: None,
             burn_time: 0,
@@ -201,6 +204,11 @@ impl Item {
 
     pub const fn kinetic_weapon(mut self) -> Self {
         self.kinetic_weapon = true;
+        self
+    }
+
+    pub const fn kinetic_hit_sound(mut self, sound: &'static str) -> Self {
+        self.kinetic_hit_sound = Some(sound);
         self
     }
 

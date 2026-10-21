@@ -144,6 +144,8 @@ def items_file(items):
         for flag in ("blocks_attacks", "kinetic_weapon", "glider"):
             if item[flag]:
                 calls.append(f"{flag}()")
+        if item.get("kinetic_hit_sound"):
+            calls.append(f"kinetic_hit_sound({rust_str(item['kinetic_hit_sound'])})")
         if item.get("burn_time"):
             calls.append(f"burns({item['burn_time']})")
         if item.get("brewing_ingredient"):

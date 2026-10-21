@@ -219,6 +219,15 @@ impl LocalPlayer {
             .is_none_or(|last| self.tick_count - last > 10)
         {
             self.use_edge.kinetic_hit = Some(self.tick_count);
+            // `KineticWeapon.makeLocalHitSound` of the item being used.
+            let sound = self
+                .use_edge
+                .item
+                .and_then(crate::block::rules::item)
+                .and_then(|item| item.kinetic_hit_sound);
+            if let Some(sound) = sound {
+                self.play_own_sound(sound, (1.0, 1.0));
+            }
         }
     }
 
@@ -571,5 +580,23 @@ mod tests {
         player.tick_count = 111;
         player.on_kinetic_hit();
         assert_eq!(player.ticks_since_kinetic_hit(0.0), 0.0);
+    }
+
+    /// A spear in use sounds its own hit, at most once for the ten ticks of a kick.
+    #[test]
+    fn a_spear_in_use_sounds_its_hit_once_per_kick() {
+        let mut player = player();
+        player.use_edge.item = Some(photon_data::item::registry::named("minecraft:iron_spear"));
+        player.tick_count = 100;
+        player.on_kinetic_hit();
+        player.tick_count = 104;
+        player.on_kinetic_hit();
+        let sounds = player.take_sounds();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, "minecraft:item.spear.hit");
+        player.use_edge.item = Some(photon_data::item::registry::named("minecraft:stick"));
+        player.tick_count = 120;
+        player.on_kinetic_hit();
+        assert!(player.take_sounds().is_empty());
     }
 }
