@@ -126,6 +126,8 @@ pub enum ItemModelDef {
     },
     Empty,
     /// A kind this client does not know.
+    /// `bundle/selected_item`: the layers of the item the bundle has selected.
+    BundleSelectedItem,
     Unknown(String),
 }
 
@@ -163,6 +165,8 @@ pub struct ItemLayerRef {
     /// The transformations of the nodes above the layer, composed: applied
     /// to the layer's geometry before its display transform.
     pub local: Matrix4,
+    /// For `bundle/selected_item`: the item whose own layers are drawn here instead of `model`.
+    pub nested: Option<photon_core::ids::ItemId>,
 }
 
 /// A texture's alpha, row by row, with its width and height.

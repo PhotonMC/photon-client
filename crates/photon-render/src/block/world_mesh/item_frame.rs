@@ -30,6 +30,11 @@ impl BlockRenderer {
         crate::item_model::layers_in_use(&def.model, context, state, &mut layers);
         let mut out = Vec::new();
         for layer in layers {
+            if let Some(nested) = layer.nested {
+                let state = crate::item_model::ItemState::default();
+                out.extend(self.item_layers((nested, state), context, grass, values));
+                continue;
+            }
             let Some(model) = self.models.get(&layer.model.as_string()) else {
                 continue;
             };
@@ -39,22 +44,7 @@ impl BlockRenderer {
                 .map(|tint| crate::item_model::tint_colour(tint, grass, values))
                 .collect();
             if let Some(special) = &layer.special {
-                for part in crate::entity::special_models::layers(special) {
-                    let Some(rect) = self
-                        .atlas
-                        .sprites
-                        .get(&format!("minecraft:{}", part.sprite))
-                    else {
-                        continue;
-                    };
-                    let mut mesh = model_mesh(&part, rect);
-                    apply_local(&mut mesh, &layer.local);
-                    out.push(ItemLayer {
-                        mesh,
-                        side_lit: model.gui_light == crate::model::GuiLight::Side,
-                        transform: model.display.get(context),
-                    });
-                }
+                out.extend(self.special_layers(special, &layer.local, context, model));
                 continue;
             }
             let geometry;
@@ -79,6 +69,34 @@ impl BlockRenderer {
                 continue;
             };
             apply_local(&mut mesh, &layer.local);
+            out.push(ItemLayer {
+                mesh,
+                side_lit: model.gui_light == crate::model::GuiLight::Side,
+                transform: model.display.get(context),
+            });
+        }
+        out
+    }
+
+    /// The layers of a special renderer's parts, each drawn from the base model's transforms.
+    fn special_layers(
+        &self,
+        special: &crate::item_model::SpecialModel,
+        local: &crate::item_model::Matrix4,
+        context: crate::model::DisplayContext,
+        model: &ResolvedModel,
+    ) -> Vec<ItemLayer> {
+        let mut out = Vec::new();
+        for part in crate::entity::special_models::layers(special) {
+            let Some(rect) = self
+                .atlas
+                .sprites
+                .get(&format!("minecraft:{}", part.sprite))
+            else {
+                continue;
+            };
+            let mut mesh = model_mesh(&part, rect);
+            apply_local(&mut mesh, local);
             out.push(ItemLayer {
                 mesh,
                 side_lit: model.gui_light == crate::model::GuiLight::Side,

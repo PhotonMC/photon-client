@@ -104,22 +104,29 @@ impl Controls {
             run_actions(session, &mut self.screen, actions)?;
         }
         self.drain_screen_actions(session)?;
-        if let Some(screen) = self
-            .screen
-            .as_mut()
-            .and_then(|screen| screen.as_creative_mut())
-        {
-            if let Some(tab) = held.tab {
-                screen.select_tab_index(tab);
-            }
-            if let Some(scroll) = held.scroll {
-                screen.menu_mut().set_scroll(scroll as f32 / 100.0);
-            }
-        }
+        self.scripted_scroll(held, session);
         script_key(&mut self.attack_key, held.attack, held.mine);
         script_key(&mut self.use_key, held.use_click, held.hold_use);
         script_key(&mut self.pick_key, held.pick, false);
         Ok(())
+    }
+
+    /// The scripted creative tab and scroll, and the wheel turned over the open screen.
+    fn scripted_scroll(&mut self, held: HeldKeys, session: &mut PlaySession) {
+        let Some(screen) = self.screen.as_mut() else {
+            return;
+        };
+        if let Some(notches) = held.wheel {
+            screen.mouse_scrolled(f64::from(notches), &session.active_menu().clone());
+        }
+        if let Some(creative) = screen.as_creative_mut() {
+            if let Some(tab) = held.tab {
+                creative.select_tab_index(tab);
+            }
+            if let Some(scroll) = held.scroll {
+                creative.menu_mut().set_scroll(scroll as f32 / 100.0);
+            }
+        }
     }
 
     /// Scripted text typed into the chat box, the command block's box or the container screen.

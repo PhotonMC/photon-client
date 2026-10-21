@@ -395,6 +395,16 @@ impl ContainerMenu {
     }
 }
 
+/// `BundleItem.getSelectedItem`: the item of the bundle's selected contents, if there are any.
+pub fn selected_item(stack: &Stack) -> Option<photon_core::ids::ItemId> {
+    let contents = Contents::of(stack)?;
+    let index = usize::try_from(contents.selected).ok()?;
+    contents
+        .items
+        .get(index)
+        .map(|item| item.item_registry_id())
+}
+
 /// What a bundle's tooltip image shows (`BundleItem.getTooltipImage`,
 /// `ClientBundleTooltip`).
 #[derive(Debug, Clone)]

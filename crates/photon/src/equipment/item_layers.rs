@@ -196,6 +196,7 @@ impl ItemLayerCache {
             }),
             charge: super::crossbow::charge_type(stack),
             broken: stack.breaks_on_next_damage(),
+            selected: photon_game::menus::container::bundle_selected_item(stack),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
                 lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
@@ -223,11 +224,18 @@ impl ItemLayerCache {
         let context = self.context;
         let item = stack.item_registry_id();
         let state = self.item_state(stack, ticks);
-        let branches = if state == ItemState::default() {
+        let mut branches = if state == ItemState::default() {
             Vec::new()
         } else {
             renderer.item_branches(item, context, state)
         };
+        // The selected item is not in the patch, and decides the nested layers.
+        branches.extend(
+            state
+                .selected
+                .into_iter()
+                .flat_map(|item| item.0.to_le_bytes()),
+        );
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
             .iter()

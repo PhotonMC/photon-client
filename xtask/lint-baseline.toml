@@ -395,7 +395,7 @@
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 19
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 12
 "crates/photon-render/src/item_model/parse.rs::dye_colour" = 17
-"crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 13
+"crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 11
 "crates/photon-render/src/item_model/parse.rs::parse_special" = 14
 "crates/photon-render/src/model/parse.rs::parse_model" = 15
 "crates/photon-render/src/model/parse.rs::parse_rotation" = 13
@@ -529,7 +529,7 @@
 "crates/photon/src/controls/options.rs::Controls::language_event" = 13
 "crates/photon/src/controls/options.rs::Controls::options_event" = 13
 "crates/photon/src/controls/options.rs::Controls::video_event" = 11
-"crates/photon/src/controls/scripted.rs::Controls::script_step" = 17
+"crates/photon/src/controls/scripted.rs::Controls::script_step" = 14
 "crates/photon/src/controls/scripted.rs::Controls::scripted_escape" = 13
 "crates/photon/src/controls/settings.rs::Controls::chat_options_event" = 11
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 22
@@ -849,7 +849,7 @@
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 136
 "crates/photon-render/src/block/light.rs::adjacency" = 99
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 180
-"crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 74
+"crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 64
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 74
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 134
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 80
@@ -883,7 +883,6 @@
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 119
-"crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 70
 "crates/photon-render/src/joml/matrix4.rs::Matrix4::invert_affine" = 64
 "crates/photon-render/src/model/parse.rs::parse_model" = 73
 "crates/photon-render/src/objects/guardian_beam.rs::guardian_beam" = 80
@@ -978,7 +977,7 @@
 "crates/photon/src/controls/dialogs.rs::Controls::dialog_event" = 64
 "crates/photon/src/controls/options.rs::Controls::language_event" = 63
 "crates/photon/src/controls/options.rs::Controls::video_event" = 61
-"crates/photon/src/controls/scripted.rs::Controls::script_step" = 79
+"crates/photon/src/controls/scripted.rs::Controls::script_step" = 68
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73

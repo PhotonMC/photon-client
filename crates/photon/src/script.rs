@@ -47,6 +47,8 @@ pub struct HeldKeys {
     pub tab: Option<usize>,
     /// A scripted scroll of the creative screen, in hundredths.
     pub scroll: Option<i32>,
+    /// A scripted mouse wheel turn over the open screen, in notches (negative is down).
+    pub wheel: Option<i32>,
     /// The mouse moved to a place, in GUI units.
     pub mouse: Option<(f64, f64)>,
     /// A mouse press and release at the mouse: button and whether shift is held.
@@ -244,7 +246,7 @@ fn click_type(id: i32) -> ClickType {
 }
 
 impl HeldKeys {
-    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H` and
+    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen) and
     /// `debug/K`. Whether `parts` was one of them.
     fn parse_pointer_step(&mut self, parts: &[&str], other: &str) -> Result<bool, String> {
         let keys = self;
@@ -272,6 +274,13 @@ impl HeldKeys {
                     hundredths
                         .parse()
                         .map_err(|_| format!("bad scroll {other} in PHOTON_SCRIPT"))?,
+                );
+            }
+            ["wheel", notches] => {
+                keys.wheel = Some(
+                    notches
+                        .parse()
+                        .map_err(|_| format!("bad wheel {other} in PHOTON_SCRIPT"))?,
                 );
             }
             _ => return Ok(false),

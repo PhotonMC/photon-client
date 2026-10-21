@@ -320,9 +320,51 @@ fn parse_condition(object: &JsonObject) -> ItemModelDef {
     }
 }
 
+/// A `minecraft:select` node: the cases by what they test, and the fallback.
+fn parse_select(object: &JsonObject) -> ItemModelDef {
+    ItemModelDef::Select {
+        property: object.text("property").unwrap_or_default(),
+        cases: object
+            .array("cases")
+            .unwrap_or(&[])
+            .iter()
+            .filter_map(|value| {
+                let JsonValue::Object(case) = value else {
+                    return None;
+                };
+                let when = match case.get_str("when")? {
+                    JsonValue::Array(values) => values.iter().filter_map(text_of).collect(),
+                    other => vec![text_of(other)?],
+                };
+                Some((when, parse_item_model(case.object("model")?)))
+            })
+            .collect(),
+        fallback: object
+            .object("fallback")
+            .map(parse_item_model)
+            .map(Box::new),
+    }
+}
+
+/// A `minecraft:special` node: its base model and the special renderer.
+fn parse_special_model(object: &JsonObject) -> ItemModelDef {
+    let base = object
+        .text("base")
+        .and_then(|name| Identifier::parse(&name).ok());
+    let model = object.object("model");
+    match (base, model.and_then(parse_special)) {
+        (Some(base), Some(model)) => ItemModelDef::Special { base, model },
+        _ => ItemModelDef::Unknown(format!(
+            "special {}",
+            model
+                .and_then(|model| model.text("type"))
+                .unwrap_or_default()
+        )),
+    }
+}
+
 pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
     let kind = object.text("type").unwrap_or_default();
-    let child = |key: &str| object.object(key).map(parse_item_model);
     match kind.as_str() {
         "minecraft:model" => ItemModelDef::Model {
             model: object
@@ -351,41 +393,10 @@ pub(super) fn parse_item_model_node(object: &JsonObject) -> ItemModelDef {
                 .collect(),
         ),
         "minecraft:condition" => parse_condition(object),
-        "minecraft:select" => ItemModelDef::Select {
-            property: object.text("property").unwrap_or_default(),
-            cases: object
-                .array("cases")
-                .unwrap_or(&[])
-                .iter()
-                .filter_map(|value| {
-                    let JsonValue::Object(case) = value else {
-                        return None;
-                    };
-                    let when = match case.get_str("when")? {
-                        JsonValue::Array(values) => values.iter().filter_map(text_of).collect(),
-                        other => vec![text_of(other)?],
-                    };
-                    Some((when, parse_item_model(case.object("model")?)))
-                })
-                .collect(),
-            fallback: child("fallback").map(Box::new),
-        },
+        "minecraft:select" => parse_select(object),
         "minecraft:range_dispatch" => parse_range_dispatch(object),
-        "minecraft:special" => {
-            let base = object
-                .text("base")
-                .and_then(|name| Identifier::parse(&name).ok());
-            let model = object.object("model");
-            match (base, model.and_then(parse_special)) {
-                (Some(base), Some(model)) => ItemModelDef::Special { base, model },
-                _ => ItemModelDef::Unknown(format!(
-                    "special {}",
-                    model
-                        .and_then(|model| model.text("type"))
-                        .unwrap_or_default()
-                )),
-            }
-        }
+        "minecraft:bundle/selected_item" => ItemModelDef::BundleSelectedItem,
+        "minecraft:special" => parse_special_model(object),
         "minecraft:empty" => ItemModelDef::Empty,
         other => ItemModelDef::Unknown(other.to_owned()),
     }

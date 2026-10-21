@@ -37,6 +37,8 @@ pub struct ItemState {
     pub charge: Charge,
     /// `ItemStack.nextDamageWillBreak` (`broken`).
     pub broken: bool,
+    /// The item a bundle has selected (`BundleItem.getSelectedItem`).
+    pub selected: Option<photon_core::ids::ItemId>,
     /// The components `has_component` asks about in the item definitions.
     pub components: TestedComponents,
 }
@@ -48,6 +50,7 @@ impl ItemState {
         match property {
             "minecraft:using_item" => self.item_use.is_some(),
             "minecraft:broken" => self.broken,
+            "minecraft:bundle/has_selected_item" => self.selected.is_some(),
             "minecraft:has_component" => match component.map(|(name, _)| name.as_str()) {
                 Some("minecraft:dyed_color") => self.components.dyed_color,
                 Some("minecraft:lodestone_tracker") => self.components.lodestone_tracker,
@@ -207,9 +210,10 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
 }
 
 /// The conditions decided here.
-const READ_CONDITIONS: [&str; 3] = [
+const READ_CONDITIONS: [&str; 4] = [
     "minecraft:using_item",
     "minecraft:broken",
+    "minecraft:bundle/has_selected_item",
     "minecraft:has_component",
 ];
 
@@ -240,12 +244,14 @@ fn leaf(def: &ItemModelDef, local: &Matrix4) -> Option<ItemLayerRef> {
             tints: tints.clone(),
             special: None,
             local: *local,
+            nested: None,
         }),
         ItemModelDef::Special { base, model } => Some(ItemLayerRef {
             model: base.clone(),
             tints: Vec::new(),
             special: Some(model.clone()),
             local: *local,
+            nested: None,
         }),
         _ => None,
     }
@@ -320,6 +326,15 @@ fn layers_under(
             for model in models {
                 layers_under(model, context, (local, walk), out);
             }
+        }
+        ItemModelDef::BundleSelectedItem => {
+            out.extend(walk.state.selected.map(|item| ItemLayerRef {
+                model: Identifier::parse("minecraft:bundle/selected_item").expect("fixed"),
+                tints: Vec::new(),
+                special: None,
+                local: *local,
+                nested: Some(item),
+            }));
         }
         ItemModelDef::Empty | ItemModelDef::Unknown(_) => {}
         _ => {
@@ -510,5 +525,37 @@ mod tests {
         };
         assert_eq!(at(false), "minecraft:item/wolf_armor");
         assert_eq!(at(true), "minecraft:item/wolf_armor_dyed");
+    }
+
+    const BUNDLE: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:bundle/has_selected_item",
+        "on_false":{"type":"minecraft:model","model":"minecraft:item/bundle"},
+        "on_true":{"type":"minecraft:composite","models":[
+            {"type":"minecraft:model","model":"minecraft:item/bundle_open_back"},
+            {"type":"minecraft:bundle/selected_item"},
+            {"type":"minecraft:model","model":"minecraft:item/bundle_open_front"}]}}}"#;
+
+    #[test]
+    fn an_open_bundle_draws_its_selected_item_between_its_halves() {
+        let item = parse_client_item(BUNDLE).expect("a client item");
+        let layers_of = |selected| {
+            let state = ItemState {
+                selected,
+                ..ItemState::default()
+            };
+            let mut layers = Vec::new();
+            layers_in_use(&item.model, DisplayContext::ALL[0], state, &mut layers);
+            layers
+        };
+        let closed = layers_of(None);
+        assert_eq!(closed.len(), 1);
+        assert_eq!(closed[0].model.as_string(), "minecraft:item/bundle");
+        let open = layers_of(Some(photon_core::ids::ItemId(7)));
+        assert_eq!(open.len(), 3);
+        assert_eq!(open[0].model.as_string(), "minecraft:item/bundle_open_back");
+        assert!(open[1].nested.is_some());
+        assert_eq!(
+            open[2].model.as_string(),
+            "minecraft:item/bundle_open_front"
+        );
     }
 }

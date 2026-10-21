@@ -177,7 +177,7 @@ pub use bar::item_bar;
 mod bundle;
 pub use bundle::{
     BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE, BundleView, bundle_items_to_show,
-    bundle_view, toggle_bundle_selected,
+    bundle_view, selected_item as bundle_selected_item, toggle_bundle_selected,
 };
 mod clicks;
 mod components;
