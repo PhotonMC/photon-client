@@ -136,7 +136,7 @@ fn biome_rows() -> Vec<Value> {
 }
 
 /// The day count entry: the overworld clock's ticks divided by the day's 24000, floored, from a
-/// clock never set up through days in the hundreds of thousands.
+/// clock never set up through days in the hundreds of thousands, and not with reduced debug info.
 fn day_rows() -> Vec<Value> {
     [0_i64, 1, 23_999, 24_000, 24_001, 1_000_000, 100_000_000_000]
         .into_iter()
@@ -147,6 +147,11 @@ fn day_rows() -> Vec<Value> {
                 json!({"extra": ["day_count"], "day": ticks}),
             )
         })
+        .chain([row(
+            "debug-day-reduced".to_owned(),
+            ((1.0, 64.0, 3.0), (0.0, 0.0)),
+            json!({"extra": ["day_count"], "day": 48_000, "reduced": true}),
+        )])
         .collect()
 }
 
