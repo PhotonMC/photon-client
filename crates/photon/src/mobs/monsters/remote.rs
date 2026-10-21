@@ -110,7 +110,7 @@ pub(super) fn pose_monster(
 
 /// `LivingEntityRenderer` for the spiders, creepers and endermen the server
 /// added, with the block an enderman carries. The spiders' and the enderman's
-/// glowing eyes and the charged creeper's swirl are not drawn yet.
+/// glowing eyes and the charged creeper's swirl over the body (an invisible one keeps them).
 pub fn remote_monsters(
     session: &PlaySession,
     models: &mut MobModels,
@@ -201,12 +201,21 @@ pub fn remote_monsters(
     models.swirl.extend(swirl);
 }
 
-/// The models whose layers all draw over an invisible body (`EyesLayer`, `EnergySwirlLayer` and
-/// `CarriedBlockLayer` have no `isInvisible` check): the rest are left out whole for now.
+/// The models whose layers all draw over an invisible body (`EyesLayer`, `EnergySwirlLayer`,
+/// `CarriedBlockLayer`, `ItemInHandLayer`, the breeze's layers and the creaking's always-visible
+/// emissive one have no `isInvisible` check): the rest are left out whole for now.
 fn shows_when_invisible(pose: Pose) -> bool {
     matches!(
         pose,
-        Pose::Spider | Pose::Creeper | Pose::Enderman | Pose::Phantom
+        Pose::Spider
+            | Pose::Creeper
+            | Pose::Enderman
+            | Pose::Phantom
+            | Pose::Vex
+            | Pose::Allay
+            | Pose::Breeze
+            | Pose::Wither
+            | Pose::Creaking
     )
 }
 
