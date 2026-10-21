@@ -377,20 +377,20 @@ pub fn advancements_screen() -> Value {
     rows.extend(motion_rows(&wide));
     rows.push(screen_row("many-roots", many_roots(), vec![]));
     rows.push(screen_row("roots-past-every-tab-slot", roots(40), vec![]));
-    rows.extend(revealed_rows(&one));
+    rows.extend(hidden_rows(&one));
     rows.extend(window_rows(&tabs));
     gui("advancements-screen", "advancements_screen", rows)
 }
 
-/// The hidden widget before and after its parent is done: its box is only there once it shows.
-fn revealed_rows(one: &[Shown]) -> Vec<Value> {
+/// A hidden widget shows only once its own progress is done, not when its parent is.
+fn hidden_rows(one: &[Shown]) -> Vec<Value> {
     let hidden_at = (201, 97);
     let after_root = tree_update(one, vec![done("one:root", &[("a", Some(1))])]);
     let mut rows = Vec::new();
     for (label, before) in [
-        ("hidden-hover-unrevealed", tree_update(one, vec![])),
-        ("hidden-hover-revealed", after_root.clone()),
-        ("hidden-hover-done", tree_update(one, vec![done("one:c", &[("a", Some(1))])])),
+        ("hidden-hover-none-done", tree_update(one, vec![])),
+        ("hidden-hover-parent-done", after_root.clone()),
+        ("hidden-hover-own-done", tree_update(one, vec![done("one:c", &[("a", Some(1))])])),
     ] {
         let mut steps = ticks(hidden_at, 12);
         steps.push(json!({"do": "frame"}));
