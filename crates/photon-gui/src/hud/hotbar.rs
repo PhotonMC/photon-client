@@ -70,7 +70,12 @@ fn slot_items(
         } else {
             input.item_cast[0] && slot as i32 == input.selected_slot
         };
-        let holding = ItemHolding { ticks: using, cast };
+        let holding = ItemHolding {
+            ticks: using,
+            cast,
+            // `Hud.extractItemHotbar`: the slots count from 1, the off hand after them.
+            seed: slot as i32 + 1,
+        };
         frame.item_in_use(draw_item, stack, (x as f32, y as f32), holding);
         frame.item_bar(atlas, stack, x, y);
         frame.item_cooldown(atlas, stack, x, y);

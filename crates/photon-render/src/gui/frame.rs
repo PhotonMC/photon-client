@@ -214,6 +214,8 @@ pub struct GuiFrame {
 pub struct ItemHolding {
     pub ticks: Option<i32>,
     pub cast: bool,
+    /// The seed `ItemModelResolver` gets: the hotbar's slot number, a container's slot place.
+    pub seed: i32,
 }
 
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position (and what the player does

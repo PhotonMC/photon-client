@@ -28,6 +28,9 @@ pub struct ItemLayerCache {
     owner: Option<super::needle::Owner>,
     /// The stacks drawn next are the local player's own, on its body.
     local_body: bool,
+    /// The seed of the local player's stacks (`ItemModelResolver`'s `seed`): a spinning needle is
+    /// offset by it.
+    seed: i32,
     /// Whether the stacks drawn next are a rod with its bobber out (`FishingRodCast`).
     cast: bool,
 }
@@ -97,6 +100,7 @@ impl ItemLayerCache {
             needles: None,
             owner: None,
             local_body: false,
+            seed: 0,
             cast: false,
         }
     }
@@ -125,6 +129,10 @@ impl ItemLayerCache {
     }
 
     /// Whether the stacks drawn next are the local player's own on its body (third person).
+    pub fn set_seed(&mut self, seed: i32) {
+        self.seed = seed;
+    }
+
     pub fn set_local_body(&mut self, local_body: bool) {
         self.local_body = local_body;
     }
@@ -201,6 +209,7 @@ impl ItemLayerCache {
     + 'a {
         move |stack, at, holding, out| {
             self.set_cast(holding.cast);
+            self.set_seed(holding.seed);
             self.gui_vertices(stack, holding.ticks, (renderer, tints), at, out)
         }
     }
@@ -306,7 +315,11 @@ impl ItemLayerCache {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         for (target, wobble) in wanted {
-            let angle = store.angle((item, target, wobble), lodestone.clone(), self.owner);
+            let angle = store.angle(
+                (item, target, wobble),
+                lodestone.clone(),
+                (self.owner, self.seed),
+            );
             state.needles.0[target.index()] = Some(angle.to_bits());
         }
     }

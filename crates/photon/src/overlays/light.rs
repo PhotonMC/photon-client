@@ -79,6 +79,8 @@ pub fn hands(
         };
         let cache = &mut held_layers[usize::from(!right)];
         cache.set_cast(cast[usize::from(!right)]);
+        // `ItemInHandRenderer`: the player's id plus the first-person context's ordinal.
+        cache.set_seed(player.entity_id().0 + if right { 4 } else { 3 });
         let ticks = player.use_ticks_of(right);
         let hit_feedback = player.ticks_since_kinetic_hit(partial);
         let charge = cache.charge_duration(stack);

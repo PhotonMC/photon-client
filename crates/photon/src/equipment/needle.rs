@@ -100,12 +100,12 @@ impl NeedleStore {
         &mut self,
         (item, target, wobble): (ItemId, NeedleSource, bool),
         lodestone: Option<(String, [i32; 3])>,
-        owner: Option<Owner>,
+        (owner, local_seed): (Option<Owner>, i32),
     ) -> f32 {
         let local = owner.is_none();
         let (holder, seed) = match (owner, self.frame.holder) {
             (Some(owner), _) => (owner.holder, owner.seed),
-            (None, Some(holder)) => (holder, 0),
+            (None, Some(holder)) => (holder, local_seed),
             (None, None) => return 0.0,
         };
         let tick = self.frame.game_time;
@@ -196,7 +196,7 @@ mod tests {
     fn a_needle_eases_once_per_tick_towards_the_spawn() {
         let mut store = store([0.5, 64.0, 20.5], 0.0);
         let at = |store: &mut NeedleStore| {
-            store.angle((compass(), NeedleSource::Spawn, true), None, None)
+            store.angle((compass(), NeedleSource::Spawn, true), None, (None, 0))
         };
         let first = at(&mut store);
         // The same game tick does not move the needle again.
@@ -212,12 +212,12 @@ mod tests {
             dimension: "minecraft:the_nether".to_owned(),
             block: [0, 64, 0],
         });
-        let angle = store.angle((compass(), NeedleSource::Spawn, true), None, None);
+        let angle = store.angle((compass(), NeedleSource::Spawn, true), None, (None, 0));
         assert!((0.0..1.0).contains(&angle));
         // Nothing to hold, nothing to point.
         store.frame.holder = None;
         assert_eq!(
-            store.angle((compass(), NeedleSource::Spawn, true), None, None),
+            store.angle((compass(), NeedleSource::Spawn, true), None, (None, 0)),
             0.0
         );
     }
@@ -227,8 +227,20 @@ mod tests {
         let mut store = store([0.5, 64.0, 0.5], 0.0);
         store.frame.sun_angle = 90.0;
         let clock = photon_game::item::id_of("minecraft:clock").expect("a clock");
-        let angle = store.angle((clock, NeedleSource::TimeDaytime, false), None, None);
+        let angle = store.angle((clock, NeedleSource::TimeDaytime, false), None, (None, 0));
         assert_eq!(angle, 0.25);
+    }
+
+    #[test]
+    fn a_stack_with_no_target_spins_offset_by_its_seed() {
+        let mut store = store([0.5, 64.0, 20.5], 0.0);
+        store.frame.respawn = None;
+        // One game tick: the spin itself is shared, so only the seed tells the stacks apart.
+        let mut spin =
+            |seed: i32| store.angle((compass(), NeedleSource::Spawn, true), None, (None, seed));
+        let (first, again, other) = (spin(1), spin(1), spin(2));
+        assert_eq!(first, again);
+        assert_ne!(first, other);
     }
 
     #[test]
@@ -242,7 +254,11 @@ mod tests {
             seed: 5,
         };
         let at = |store: &mut NeedleStore| {
-            store.angle((compass(), NeedleSource::Spawn, true), None, Some(owner))
+            store.angle(
+                (compass(), NeedleSource::Spawn, true),
+                None,
+                (Some(owner), 0),
+            )
         };
         // The spawn is straight north of the frame: the formula gives half a turn, with no easing.
         assert_eq!(at(&mut store), 0.5);
@@ -250,7 +266,11 @@ mod tests {
         assert_eq!(at(&mut store), 0.5);
         // Only the local player's death is known: a frame's recovery compass spins.
         store.frame.last_death = store.frame.respawn.clone();
-        let spun = store.angle((compass(), NeedleSource::Recovery, true), None, Some(owner));
+        let spun = store.angle(
+            (compass(), NeedleSource::Recovery, true),
+            None,
+            (Some(owner), 0),
+        );
         assert_ne!(spun, 0.5);
     }
 }

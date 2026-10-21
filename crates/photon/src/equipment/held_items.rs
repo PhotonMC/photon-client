@@ -70,8 +70,8 @@ pub struct HeldItem {
     pub cast: bool,
     /// The entity that holds the stack when it is not the local player.
     pub owner: Option<Owner>,
-    /// The stack is the local player's own, on its body.
-    pub local: bool,
+    /// The stack is the local player's own, on its body: the seed of its needle's spin.
+    pub local: Option<i32>,
 }
 
 impl HeldItem {
@@ -85,7 +85,7 @@ impl HeldItem {
             item_use: None,
             cast: false,
             owner: None,
-            local: false,
+            local: None,
         }
     }
 
@@ -99,7 +99,7 @@ impl HeldItem {
             item_use: None,
             cast: false,
             owner: None,
-            local: false,
+            local: None,
         }
     }
 }
@@ -160,8 +160,8 @@ pub struct HandActions {
     cast: [bool; 2],
     /// Who holds the stacks when it is a world entity, with its id as the seed.
     owner: Option<Owner>,
-    /// The hands are the local player's.
-    local: bool,
+    /// The id of the local player when the hands are its.
+    local: Option<i32>,
 }
 
 impl HandActions {
@@ -171,7 +171,7 @@ impl HandActions {
             uses,
             cast: [false; 2],
             owner: None,
-            local: false,
+            local: None,
         }
     }
 
@@ -207,7 +207,7 @@ impl HandActions {
         let mut actions = Self::new(motions, player.arm_uses()).with_cast(
             crate::objects::fishing_hooks::local_casts(session, player, main),
         );
-        actions.local = true;
+        actions.local = Some(player.entity_id().0);
         actions
     }
 
@@ -218,6 +218,12 @@ impl HandActions {
             seed: owner.seed + place.context_ordinal(),
             ..owner
         })
+    }
+
+    /// The seed of a local stack drawn at a place: the player's id plus the display context's
+    /// ordinal, as for any living holder.
+    fn local_at(&self, place: Place) -> Option<i32> {
+        self.local.map(|id| id + place.context_ordinal())
     }
 
     /// The arms that hold a rod with its bobber out (`FishingRodCast`).
@@ -272,7 +278,7 @@ impl Hands<'_> {
             item_use: self.motions.uses[index],
             cast: self.motions.cast[index],
             owner: self.motions.owner_at(place),
-            local: self.motions.local,
+            local: self.motions.local_at(place),
         }
     }
 
@@ -330,7 +336,7 @@ impl Hands<'_> {
                 item_use: None,
                 cast: false,
                 owner: self.motions.owner_at(Place::Head),
-                local: self.motions.local,
+                local: self.motions.local_at(Place::Head),
             });
         }
     }
@@ -363,7 +369,8 @@ pub fn held_item_vertices(
         };
         cache.set_cast(item.cast);
         cache.set_owner(item.owner);
-        cache.set_local_body(item.local);
+        cache.set_local_body(item.local.is_some());
+        cache.set_seed(item.local.unwrap_or(0));
         let item_layers = cache.get_in_use(stack, item.item_use, (renderer, tints));
         let drawn = item_layer_vertices(
             item_layers,
