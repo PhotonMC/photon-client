@@ -3,6 +3,54 @@
 
 use photon_core::math::positive_modulo_f32;
 
+/// `CompassAngleState.CompassTarget`: what a compass needle points at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CompassTarget {
+    None,
+    Lodestone,
+    Spawn,
+    Recovery,
+}
+
+/// What a `compass` range's property is named in front of: its target and `wobble`.
+pub const COMPASS: &str = "minecraft:compass/";
+
+impl CompassTarget {
+    pub const ALL: [Self; 4] = [Self::None, Self::Lodestone, Self::Spawn, Self::Recovery];
+
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|target| target.name() == name)
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Lodestone => "lodestone",
+            Self::Spawn => "spawn",
+            Self::Recovery => "recovery",
+        }
+    }
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
+
+    /// The property a range dispatch is named by, for a target and its `wobble`.
+    pub fn property(self, wobble: bool) -> String {
+        format!("{COMPASS}{}/{}", self.name(), u8::from(wobble))
+    }
+
+    /// The target and `wobble` a range dispatch's property names.
+    pub fn from_property(property: &str) -> Option<(Self, bool)> {
+        let (target, wobble) = property.strip_prefix(COMPASS)?.split_once('/')?;
+        Some((Self::parse(target)?, wobble == "1"))
+    }
+}
+
+/// The needle angles a draw reads, by target, as `f32` bits (a turn, from 0 to 1).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Needles(pub [Option<u32>; 4]);
+
 /// `NeedleDirectionHelper.Wobbler`: eases a rotation towards a target, once per game tick.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Wobbler {

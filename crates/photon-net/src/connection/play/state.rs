@@ -150,6 +150,21 @@ impl PlaySession {
             .map_or(&[], Vec::as_slice)
     }
 
+    /// The key of the level's dimension.
+    pub fn dimension(&self) -> &str {
+        &self.level_info.dimension
+    }
+
+    /// `ClientLevel.getRespawnData`'s position, once the server has said.
+    pub fn level_respawn(&self) -> Option<&GlobalBlock> {
+        self.level_info.respawn.as_ref()
+    }
+
+    /// `Player.getLastDeathLocation` of the local player.
+    pub fn last_death(&self) -> Option<&GlobalBlock> {
+        self.local.last_death.as_ref()
+    }
+
     /// The level's game time, as the server last set it and the ticks since.
     pub fn game_time(&self) -> i64 {
         self.level_info.game_time

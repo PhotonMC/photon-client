@@ -47,6 +47,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID, decode_sound),
     (PLAY_CLIENTBOUND_STOP_SOUND_PACKET_ID, decode_sound),
     (PLAY_CLIENTBOUND_SET_TIME_PACKET_ID, typed::<SetTime>),
+    (
+        PLAY_CLIENTBOUND_SET_DEFAULT_SPAWN_POSITION_PACKET_ID,
+        typed::<SetDefaultSpawn>,
+    ),
     (PLAY_CLIENTBOUND_SET_TITLE_TEXT_PACKET_ID, decode_hud),
     (PLAY_CLIENTBOUND_SET_SUBTITLE_TEXT_PACKET_ID, decode_hud),
     (PLAY_CLIENTBOUND_SET_ACTION_BAR_TEXT_PACKET_ID, decode_hud),
@@ -189,6 +193,14 @@ fn decode_sound(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionEr
 impl ClientboundPacket for Sound {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.effects.sounds.push(self.0);
+        Ok(())
+    }
+}
+
+/// `handleSetSpawn`: the level's respawn data.
+impl ClientboundPacket for SetDefaultSpawn {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.level_info.respawn = Some(GlobalBlock::from_packed(self.dimension, self.position));
         Ok(())
     }
 }

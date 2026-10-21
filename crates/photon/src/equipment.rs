@@ -5,3 +5,4 @@ pub(crate) mod armor;
 pub(crate) mod crossbow;
 pub(crate) mod held_items;
 pub(crate) mod item_layers;
+pub(crate) mod needle;

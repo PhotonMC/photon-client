@@ -13,7 +13,7 @@ mod writer;
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
 pub use play::{
-    CommandBlockSettings, CommandBlockState, JigsawBlockSettings, PlaySession,
+    CommandBlockSettings, CommandBlockState, GlobalBlock, JigsawBlockSettings, PlaySession,
     StructureBlockSettings, StructureFlags,
 };
 pub use record::{NoRecorder, Recorder};

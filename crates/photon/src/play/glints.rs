@@ -15,6 +15,7 @@ impl Play {
 
     /// How this frame's item glints move, where their texture is and the server's item tags.
     pub(super) fn glint_frame(&self) -> GlintFrame {
+        self.set_needle_frame();
         GlintFrame {
             matrix: self.armor.glint_matrix_scaled(ITEM_GLINT_SCALE),
             texture: self.entity_textures.rect(ITEM_GLINT_TEXTURE),
@@ -26,7 +27,33 @@ impl Play {
                 .clone(),
             quick_charge: crate::equipment::crossbow::quick_charge_id(&self.session),
             trim_materials: self.armor.trim_materials(),
+            needles: self.armor.needles.clone(),
         }
+    }
+
+    /// What the compass needles of this frame read: the level, and the local player as the
+    /// holder.
+    fn set_needle_frame(&self) {
+        let session = &self.session;
+        let holder = session.player().map(|player| {
+            let position = player.position();
+            photon_render::item_model::Holder {
+                position: [position.x, position.y, position.z],
+                yaw: player.rotation().0,
+            }
+        });
+        self.armor
+            .needles
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .set_frame(crate::equipment::needle::NeedleFrame {
+                game_time: session.game_time(),
+                dimension: session.dimension().to_owned(),
+                respawn: session.level_respawn().cloned(),
+                last_death: session.last_death().cloned(),
+                holder,
+                runs_normally: session.runs_normally(),
+            });
     }
 }
 

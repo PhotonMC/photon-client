@@ -24,6 +24,8 @@ pub(super) struct Link {
 /// The local player and what the server last said of it.
 pub(super) struct LocalState {
     pub(super) player_id: Option<EntityId>,
+    /// `Player.getLastDeathLocation`, as the login and respawn packets say.
+    pub(super) last_death: Option<GlobalBlock>,
     pub(super) game_mode: ClientPlayerGameMode,
     /// `MultiPlayerGameMode.previousLocalPlayerMode`: the mode played in before this one.
     pub(super) previous_game_mode: Option<ClientPlayerGameMode>,
@@ -155,9 +157,31 @@ pub(super) struct Effects {
     pub(super) level_random: photon_core::random::RandomSource,
 }
 
+/// A block in a dimension (`GlobalPos`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalBlock {
+    pub dimension: String,
+    pub block: [i32; 3],
+}
+
+impl GlobalBlock {
+    /// A position as the wire packs it (`BlockPos.asLong`).
+    pub(super) fn from_packed(dimension: String, packed: i64) -> Self {
+        let pos = photon_core::binary::BlockPos::unpack(packed as u64);
+        Self {
+            dimension,
+            block: [pos.x, pos.y, pos.z],
+        }
+    }
+}
+
 /// What the server said of the level and its clocks.
 #[derive(Default)]
 pub(super) struct LevelInfo {
+    /// `ClientLevel.getRespawnData`: unset in a new level until the server says.
+    pub(super) respawn: Option<GlobalBlock>,
+    /// The key of the level's dimension.
+    pub(super) dimension: String,
     pub(super) view_distance: i32,
     pub(super) dimension_type_id: i32,
     pub(super) hashed_seed: i64,
@@ -224,6 +248,7 @@ impl Default for LocalState {
             sent_slot: 0,
             game_mode_state: photon_game::game_mode::GameMode::default(),
             drop_spam: 0,
+            last_death: None,
             removed_player_vehicle: None,
             teleports: 0,
             swings: 0,

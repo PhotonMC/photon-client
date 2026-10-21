@@ -417,6 +417,22 @@ impl Values {
         (material > 0).then_some(material - 1)
     }
 
+    /// `lodestone_tracker`'s target: the dimension and block it points at, if it has one.
+    pub fn lodestone_target(&self) -> Option<(String, [i32; 3])> {
+        let mut cursor = Cursor {
+            data: self.raw(ids::LODESTONE_TRACKER)?,
+        };
+        if !cursor.boolean().ok()? {
+            return None;
+        }
+        let length = cursor.count().ok()?;
+        let dimension = String::from_utf8_lossy(cursor.data.get(..length)?).into_owned();
+        cursor.skip(length).ok()?;
+        let packed = i64::from_be_bytes(cursor.data.get(..8)?.try_into().ok()?);
+        let pos = photon_core::binary::BlockPos::unpack(packed as u64);
+        Some((dimension, [pos.x, pos.y, pos.z]))
+    }
+
     /// `suspicious_stew_effects`: effect registry ids and durations.
     pub fn suspicious_stew(&self) -> Vec<(i32, i32)> {
         let Some(data) = self.raw(ids::SUSPICIOUS_STEW_EFFECTS) else {
@@ -502,6 +518,30 @@ mod tests {
         patch.extend(overlay.bytes());
         patch.extend([0, 1, 1, 1, 0, 0, 1]);
         patch
+    }
+
+    /// A lodestone tracker holds the dimension and block of its target, if it has one.
+    #[test]
+    fn a_lodestone_tracker_reads_its_target() {
+        let tracker = |data: &[u8]| {
+            let mut patch = vec![
+                1,
+                0,
+                photon_data::item::component_types::LODESTONE_TRACKER as u8,
+            ];
+            patch.extend(data);
+            Values::new(item("minecraft:compass"), &patch).lodestone_target()
+        };
+        assert_eq!(tracker(&[0, 1]), None);
+        let pos = photon_core::binary::BlockPos::new(-12, 70, 345).pack() as i64;
+        let mut data = vec![1, 19];
+        data.extend(b"minecraft:overworld");
+        data.extend(pos.to_be_bytes());
+        data.push(1);
+        assert_eq!(
+            tracker(&data),
+            Some(("minecraft:overworld".to_owned(), [-12, 70, 345]))
+        );
     }
 
     /// A trim's material is a holder: `0` is an inline value with no key, `n` the registry entry

@@ -281,6 +281,27 @@ impl Decode for SetTime {
     }
 }
 
+/// `ClientboundSetDefaultSpawnPositionPacket`: where the level's spawn is (`RespawnData`).
+pub struct SetDefaultSpawn {
+    pub dimension: String,
+    /// The block, packed as a `BlockPos` is.
+    pub position: i64,
+    pub yaw: f32,
+    pub pitch: f32,
+}
+
+impl Decode for SetDefaultSpawn {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        let mut input = payload;
+        Ok(Self {
+            dimension: read_identifier_string(&mut input, "default spawn dimension")?,
+            position: read_i64(&mut input, "default spawn position")?,
+            yaw: read_f32(&mut input, "default spawn yaw")?,
+            pitch: read_f32(&mut input, "default spawn pitch")?,
+        })
+    }
+}
+
 wrapped_packet!(
     /// `ClientboundSetEntityLinkPacket`.
     SetEntityLink((EntityId, EntityId)) = parse_set_entity_link_packet,

@@ -51,6 +51,8 @@ pub struct ItemState {
     /// The properties of the stack's `block_state` component, as `name=value` lines
     /// (`BlockState` select).
     pub block_state: Option<&'static str>,
+    /// The compass needles the holder's draw works out (`compass` range dispatches).
+    pub needles: Needles,
 }
 
 /// What a `block_state` select's property is named in front of: the state property it reads.
@@ -102,6 +104,8 @@ pub struct TestedComponents {
 struct Walk {
     state: ItemState,
     trace: Vec<u8>,
+    /// The compass needles the state did not hold when a range asked for them.
+    wanted: Vec<(CompassTarget, bool)>,
 }
 
 impl Walk {
@@ -112,7 +116,16 @@ impl Walk {
 
     /// The numeric property of a range dispatch, before its scale. Properties this client does
     /// not read give zero.
-    fn number(&self, property: &str, remaining: bool) -> f32 {
+    fn number(&mut self, property: &str, remaining: bool) -> f32 {
+        if let Some((target, wobble)) = CompassTarget::from_property(property) {
+            if let Some(bits) = self.state.needles.0[target.index()] {
+                return f32::from_bits(bits);
+            }
+            if !self.wanted.contains(&(target, wobble)) {
+                self.wanted.push((target, wobble));
+            }
+            return 0.0;
+        }
         let (Some(item_use), false) = (self.state.item_use, remaining) else {
             return 0.0;
         };
@@ -144,7 +157,7 @@ impl Walk {
 
     /// `RangeSelectItemModel.update`: the entry with the greatest threshold the value reaches.
     fn range_entry(
-        &self,
+        &mut self,
         (property, scale, remaining): (&str, f32, bool),
         entries: &[(f32, ItemModelDef)],
     ) -> Option<usize> {
@@ -195,6 +208,7 @@ pub fn layers_any_use(
             let mut walk = Walk {
                 state: ItemState::default(),
                 trace: Vec::new(),
+                wanted: Vec::new(),
             };
             chosen_child(def, context, &mut walk).into_iter().collect()
         }
@@ -220,13 +234,18 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             entries,
             fallback,
             ..
-        } if READ_RANGES.contains(&property.as_str()) || property.starts_with(USE_CYCLE) => Some(
-            entries
-                .iter()
-                .map(|(_, model)| model)
-                .chain(fallback.as_deref())
-                .collect(),
-        ),
+        } if READ_RANGES.contains(&property.as_str())
+            || property.starts_with(USE_CYCLE)
+            || property.starts_with(COMPASS) =>
+        {
+            Some(
+                entries
+                    .iter()
+                    .map(|(_, model)| model)
+                    .chain(fallback.as_deref())
+                    .collect(),
+            )
+        }
         ItemModelDef::Select {
             property,
             cases,
@@ -271,9 +290,26 @@ pub fn layers_in_use(
     let mut walk = Walk {
         state,
         trace: Vec::new(),
+        wanted: Vec::new(),
     };
     layers_under(def, context, (&IDENTITY, &mut walk), out);
     walk.trace
+}
+
+/// The compass needles a model reads for a state that holds none of them yet: the targets of
+/// the `compass` ranges the walk reaches, which is what the reference works out and no more.
+pub fn needles_wanted(
+    def: &ItemModelDef,
+    context: DisplayContext,
+    state: ItemState,
+) -> Vec<(CompassTarget, bool)> {
+    let mut walk = Walk {
+        state,
+        trace: Vec::new(),
+        wanted: Vec::new(),
+    };
+    layers_under(def, context, (&IDENTITY, &mut walk), &mut Vec::new());
+    walk.wanted
 }
 
 /// The layer a model or a special renderer draws.
@@ -674,6 +710,40 @@ mod tests {
             },
         );
         assert_eq!(model, "minecraft:item/iron_chestplate_gold_trim");
+    }
+
+    const COMPASS_MODEL: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:has_component",
+        "component":"minecraft:lodestone_tracker",
+        "on_true":{"type":"minecraft:range_dispatch","property":"minecraft:compass","scale":2.0,"target":"lodestone",
+            "entries":[{"threshold":0.0,"model":{"type":"minecraft:model","model":"minecraft:item/lode_0"}},
+                       {"threshold":1.0,"model":{"type":"minecraft:model","model":"minecraft:item/lode_1"}}]},
+        "on_false":{"type":"minecraft:range_dispatch","property":"minecraft:compass","scale":2.0,"target":"spawn","wobble":false,
+            "entries":[{"threshold":0.0,"model":{"type":"minecraft:model","model":"minecraft:item/spawn_0"}},
+                       {"threshold":1.0,"model":{"type":"minecraft:model","model":"minecraft:item/spawn_1"}}]}}}"#;
+
+    #[test]
+    fn a_compass_asks_only_for_the_needle_of_the_target_it_reaches() {
+        let item = parse_client_item(COMPASS_MODEL).expect("a client item");
+        let wanted = |lodestone_tracker| {
+            let state = ItemState {
+                components: TestedComponents {
+                    lodestone_tracker,
+                    ..TestedComponents::default()
+                },
+                ..ItemState::default()
+            };
+            needles_wanted(&item.model, DisplayContext::Gui, state)
+        };
+        assert_eq!(wanted(false), [(CompassTarget::Spawn, false)]);
+        assert_eq!(wanted(true), [(CompassTarget::Lodestone, true)]);
+        let mut needles = Needles::default();
+        needles.0[CompassTarget::Spawn.index()] = Some(0.75_f32.to_bits());
+        let state = ItemState {
+            needles,
+            ..ItemState::default()
+        };
+        assert!(needles_wanted(&item.model, DisplayContext::Gui, state).is_empty());
+        assert_eq!(drawn_by(COMPASS_MODEL, state).0, "minecraft:item/spawn_1");
     }
 
     const LIGHT: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:block_state",

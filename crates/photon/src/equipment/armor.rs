@@ -89,6 +89,8 @@ pub struct Armor {
     /// The glints of the enchanted pieces drawn since they were last taken
     /// (`RenderTypes.armorEntityGlint`), for the renderer's glint pass.
     pub glint: Vec<Vertex>,
+    /// The compass needles, shared by the caches that draw the local player's stacks.
+    pub needles: super::needle::SharedNeedles,
     /// What `Util.getMillis` is counted from for the glint's movement.
     clock: std::time::Instant,
     /// `Options.glintSpeed`, what the glint's movement is scaled by.
@@ -140,6 +142,7 @@ impl Armor {
             trims: TrimData::load(&std::path::Path::new(root).with_file_name("data")),
             trim_names: None,
             glint: Vec::new(),
+            needles: super::needle::SharedNeedles::default(),
             clock: std::time::Instant::now(),
             glint_speed: 0.5,
         }

@@ -190,6 +190,13 @@ impl ClientboundPacket for PlayerInfoRemove {
     }
 }
 
+/// `CommonPlayerSpawnInfo.lastDeathLocation`.
+fn last_death_of(info: &SpawnInfoObservation) -> Option<GlobalBlock> {
+    info.last_death_location
+        .as_ref()
+        .map(|death| GlobalBlock::from_packed(death.dimension.clone(), death.position))
+}
+
 impl PlaySession {
     fn on_login(&mut self, login: LoginObservation) -> Result<(), ConnectionError> {
         self.social.next_chat_index = 0;
@@ -211,6 +218,9 @@ impl PlaySession {
         );
         self.world.configure_chunk_cache(login.chunk_radius);
         self.level_info.view_distance = login.chunk_radius;
+        self.level_info.dimension = login.spawn_info.dimension.clone();
+        self.level_info.respawn = None;
+        self.local.last_death = last_death_of(&login.spawn_info);
         self.level_info.dimension_type_id = login.spawn_info.dimension_type_id;
         self.level_info.hashed_seed = login.spawn_info.seed;
         self.world.set_local_player_id(login.player_id);
@@ -267,6 +277,12 @@ impl PlaySession {
         // The new player starts with an empty inventory; the server
         // sends it again.
         self.world.recreate_local_player(data_to_keep);
+        if swapped {
+            // A new dimension is a new `ClientLevel` with no respawn data yet.
+            self.level_info.respawn = None;
+        }
+        self.level_info.dimension = spawn_info.dimension.clone();
+        self.local.last_death = last_death_of(&spawn_info);
         self.level_info.dimension_type_id = spawn_info.dimension_type_id;
         self.level_info.hashed_seed = spawn_info.seed;
         // A respawn makes a new player that waits for its position; the portal effect goes with it.

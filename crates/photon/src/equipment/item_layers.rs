@@ -22,6 +22,8 @@ pub struct ItemLayerCache {
     quick_charge: Option<i32>,
     /// The server's trim materials, in the order a `trim` component numbers them.
     trim_materials: std::sync::Arc<Vec<String>>,
+    /// The compass needles, for the contexts the local player holds the stack in.
+    needles: Option<super::needle::SharedNeedles>,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -48,6 +50,8 @@ pub struct GlintFrame {
     pub quick_charge: Option<i32>,
     /// The server's trim materials, in the order a `trim` component numbers them.
     pub trim_materials: std::sync::Arc<Vec<String>>,
+    /// The compass needles of the frame.
+    pub needles: super::needle::SharedNeedles,
 }
 
 /// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the clock and the items of the compasses
@@ -84,6 +88,7 @@ impl ItemLayerCache {
             glint: Glint::default(),
             quick_charge: None,
             trim_materials: std::sync::Arc::default(),
+            needles: None,
         }
     }
 
@@ -94,6 +99,15 @@ impl ItemLayerCache {
         self.glint.tags = Some(frame.tags.clone());
         self.quick_charge = frame.quick_charge;
         self.trim_materials = frame.trim_materials.clone();
+        // The GUI and the first-person hand show the local player's own stacks; in the others the
+        // holder is another entity, whose needle is not worked out yet.
+        self.needles = matches!(
+            self.context,
+            DisplayContext::Gui
+                | DisplayContext::FirstPersonLeftHand
+                | DisplayContext::FirstPersonRightHand
+        )
+        .then(|| frame.needles.clone());
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
@@ -215,10 +229,36 @@ impl ItemLayerCache {
             selected: photon_game::menus::container::bundle_selected_item(stack),
             trim_material: self.trim_material(stack),
             block_state: block_state_lines(stack),
+            needles: photon_render::item_model::Needles::default(),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
                 lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
             },
+        }
+    }
+
+    /// The needles the stack's compass model reads, worked out once for the draw.
+    fn work_out_needles(
+        &self,
+        renderer: &BlockRenderer,
+        (item, stack): (photon_core::ids::ItemId, &ClientItemStackState),
+        state: &mut ItemState,
+    ) {
+        let Some(needles) = &self.needles else {
+            return;
+        };
+        let wanted = renderer.item_needles_wanted(item, self.context, *state);
+        if wanted.is_empty() {
+            return;
+        }
+        let lodestone =
+            photon_game::item::values::Values::new(item, stack.patch_bytes()).lodestone_target();
+        let mut store = needles
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for (target, wobble) in wanted {
+            let angle = store.angle((item, target, wobble), lodestone.clone(), 0);
+            state.needles.0[target.index()] = Some(angle.to_bits());
         }
     }
 
@@ -241,7 +281,8 @@ impl ItemLayerCache {
     ) -> &[ItemLayer] {
         let context = self.context;
         let item = stack.item_registry_id();
-        let state = self.item_state(stack, ticks);
+        let mut state = self.item_state(stack, ticks);
+        self.work_out_needles(renderer, (item, stack), &mut state);
         let mut branches = if state == ItemState::default() {
             Vec::new()
         } else {

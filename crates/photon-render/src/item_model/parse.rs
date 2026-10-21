@@ -285,6 +285,11 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
     // `use_cycle` has a `period` of its own; it is kept in the name.
     let property = match property.as_str() {
         "minecraft:use_cycle" => format!("{USE_CYCLE}{}", object.f32("period").unwrap_or(1.0)),
+        // `compass` has a `target` and a `wobble` of its own; they are kept in the name.
+        "minecraft:compass" => CompassTarget::parse(&object.text("target").unwrap_or_default())
+            .map_or(property, |target| {
+                target.property(object.bool("wobble").unwrap_or(true))
+            }),
         _ => property,
     };
     ItemModelDef::RangeDispatch {

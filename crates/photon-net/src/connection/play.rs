@@ -44,6 +44,7 @@ mod movement;
 mod recipes;
 mod reconfigure;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
+pub use groups::GlobalBlock;
 mod jigsaw_blocks;
 mod signs;
 pub use jigsaw_blocks::JigsawBlockSettings;
@@ -58,6 +59,8 @@ pub(super) const PLAY_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 32;
 pub(super) const PLAY_CLIENTBOUND_PING_PACKET_ID: i32 = 61;
 
 pub(super) const PLAY_CLIENTBOUND_SECTION_BLOCKS_UPDATE_PACKET_ID: i32 = 84;
+
+pub(super) const PLAY_CLIENTBOUND_SET_DEFAULT_SPAWN_POSITION_PACKET_ID: i32 = 97;
 
 pub(super) const PLAY_CLIENTBOUND_SET_TIME_PACKET_ID: i32 = 113;
 
