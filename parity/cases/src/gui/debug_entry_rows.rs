@@ -132,3 +132,29 @@ pub(super) fn looking_at_rows() -> Vec<Value> {
         ),
     ]
 }
+
+/// The targeted entity entry: a type with an underscore in its name, none under the crosshair, with
+/// the block entry (one group after the other), and reduced debug info.
+pub(super) fn looking_at_entity_rows() -> Vec<Value> {
+    let aim = |label: &str, more: Value| {
+        let mut options = json!({"extra": ["looking_at_entity"]});
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-looking-at-entity-{label}"), ((0.5, 64.0, 0.5), (0.0, 0.0)), options)
+    };
+    vec![
+        aim("cow", json!({"entity": "minecraft:cow"})),
+        aim("iron-golem", json!({"entity": "minecraft:iron_golem"})),
+        aim("nothing", json!({})),
+        aim("reduced", json!({"entity": "minecraft:cow", "reduced": true})),
+        aim(
+            "with-block",
+            json!({
+                "extra": ["looking_at_entity", "looking_at_block_state"],
+                "entity": "minecraft:pig",
+                "target": {"x": 0, "y": 65, "z": 4, "state": "minecraft:stone"},
+            }),
+        ),
+    ]
+}

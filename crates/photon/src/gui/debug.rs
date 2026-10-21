@@ -39,6 +39,7 @@ impl Gui {
                 let version = photon_net::resources::KnownPack::VANILLA_VERSION;
                 debug::version_line(version, version)
             },
+            crosshair_entity: Self::crosshair_entity(session),
             gpu_utilization: Some(controls.debug.gpu.utilization()),
             day_count: Self::day_count(session),
             camera,
@@ -99,6 +100,24 @@ impl Gui {
             ),
             biome: Self::feet_biome(session, position),
         }
+    }
+
+    /// `Minecraft.crosshairPickEntity`: the type of the entity the crosshair is on.
+    fn crosshair_entity(session: &PlaySession) -> Option<String> {
+        let player = session.player()?;
+        let photon_game::game_mode::Aim::Entity { id, .. } = photon_game::input::pick::pick(
+            session.world(),
+            player,
+            crate::view::eye_position(player, 1.0),
+        ) else {
+            return None;
+        };
+        let entity = session
+            .world()
+            .entities()
+            .all()
+            .find(|entity| entity.id() == id)?;
+        photon_data::entity_type::name(entity.type_id).map(str::to_owned)
     }
 
     /// `Entity.pick(20.0, 0.0F, false)`: the block outline the view meets within 20 blocks, from

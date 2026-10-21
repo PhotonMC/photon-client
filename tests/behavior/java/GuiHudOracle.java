@@ -1129,6 +1129,13 @@ class GuiHudOracle extends GuiCommandOracle {
                 scene.level().setBlock(new net.minecraft.core.BlockPos(target.get("x").getAsInt(),
                     target.get("y").getAsInt(), target.get("z").getAsInt()), parsed.blockState(), 3);
             }
+            if (row.has("entity")) {
+                // The entity the crosshair is on.
+                var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                    net.minecraft.resources.Identifier.parse(row.get("entity").getAsString()));
+                MovementOracle.setField(minecraft, "crosshairPickEntity",
+                    type.create(scene.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND));
+            }
             if (row.has("sky")) {
                 // The light at the feet: the section holds one value in each layer.
                 var engine = scene.level().getChunkSource().getLightEngine();

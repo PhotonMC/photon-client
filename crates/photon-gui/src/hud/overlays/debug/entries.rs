@@ -128,6 +128,8 @@ pub struct Input {
     pub memory: Option<MemoryUsage>,
     /// `Minecraft.getGpuUtilization`, none where the frame loop does not measure it.
     pub gpu_utilization: Option<f64>,
+    /// The registered name of the entity type under the crosshair (`crosshairPickEntity`).
+    pub crosshair_entity: Option<String>,
     /// The overworld day timeline's period count, none without the timeline in the registry.
     pub day_count: Option<i32>,
 }
@@ -155,6 +157,7 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
         "game_version" => vec![Line::Priority(input.version.clone())],
         "day_count" => day(input.day_count),
         "gpu_utilization" => gpu(input.gpu_utilization),
+        "looking_at_entity" => looking_at_entity(input.crosshair_entity.as_deref()),
         _ => input
             .camera
             .as_ref()
@@ -173,6 +176,14 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "looking_at_block_state" => looking_at_block(camera),
         _ => Vec::new(),
     }
+}
+
+/// `DebugEntryLookingAtEntity`: the entity type under the crosshair; the group stays when none is.
+fn looking_at_entity(name: Option<&str>) -> Vec<Line> {
+    let lines = name
+        .map(|name| vec!["\u{a7}nTargeted Entity".to_owned(), name.to_owned()])
+        .unwrap_or_default();
+    vec![Line::Group(LOOKING_AT_ENTITY_GROUP, lines)]
 }
 
 /// `DebugEntryGpuUtilization`: the share of the frame the GPU was busy, in red from the second the
@@ -283,6 +294,7 @@ fn tps(server: &ServerInfo) -> Vec<Line> {
 
 const POSITION_GROUP: &str = "minecraft:position";
 const LIGHT_GROUP: &str = "minecraft:light";
+const LOOKING_AT_ENTITY_GROUP: &str = "minecraft:looking_at_entity";
 const LOOKING_AT_BLOCK_GROUP: &str = "minecraft:looking_at_block";
 
 fn feet(camera: &CameraEntity) -> (i32, i32, i32) {
