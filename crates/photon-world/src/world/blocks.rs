@@ -91,6 +91,7 @@ impl ClientWorld {
         // `LevelChunk.setBlockState`: the light hears of a section turning
         // empty or not, and of a change in how light passes the block.
         let is_empty = section.has_only_air();
+        chunk.update_heightmaps(local_z * 16 + local_x, y, state_id);
         // A chest block has its own block entity on the client, and a lid that goes with it.
         self.block_animations.remove(&(x, y, z));
         // `LevelChunk.setBlockState`: a block of another kind has no use for the old block's
@@ -99,11 +100,7 @@ impl ClientWorld {
             chunk.block_entities.remove(&(x, y, z));
             self.block_tickers.unregister((x, y, z));
         }
-        if block::chest::is_drawn_state(state_id) {
-            chunk.chests.insert((x, y, z));
-        } else {
-            chunk.chests.remove(&(x, y, z));
-        }
+        chunk.mark_chest((x, y, z), state_id);
         if was_empty != is_empty {
             self.light
                 .update_section_status((chunk_key.0, section_y, chunk_key.1), is_empty);

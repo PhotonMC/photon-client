@@ -159,6 +159,38 @@ pub(crate) struct ClientChunk {
     pub(crate) block_entities: BTreeMap<(i32, i32, i32), ClientBlockEntity>,
     /// The blocks of the chunk that are chests, which the client gives a block entity of its own.
     pub(crate) chests: std::collections::BTreeSet<(i32, i32, i32)>,
+    /// The heightmaps the packet carried, kept up as blocks change.
+    pub(crate) heightmaps: crate::heightmap::ChunkHeightmaps,
+}
+
+impl ClientChunk {
+    /// A chest block has its own block entity on the client, and a lid that goes with it.
+    pub(crate) fn mark_chest(&mut self, at: (i32, i32, i32), state: BlockStateId) {
+        if crate::block::chest::is_drawn_state(state) {
+            self.chests.insert(at);
+        } else {
+            self.chests.remove(&at);
+        }
+    }
+
+    /// `LevelChunk.setBlockState`'s update of the heightmaps for a block that changed.
+    pub(crate) fn update_heightmaps(&mut self, column: usize, y: i32, state: BlockStateId) {
+        let sections = &self.sections;
+        self.heightmaps.update(column, y, state, |below| {
+            sections_state(sections, column, below)
+        });
+    }
+}
+
+pub(crate) fn sections_state(sections: &Sections, column: usize, y: i32) -> BlockStateId {
+    sections
+        .get(&y.div_euclid(16))
+        .and_then(|section| {
+            section
+                .block_states
+                .get(y.rem_euclid(16) as usize * 256 + column)
+        })
+        .unwrap_or(VANILLA_AIR_BLOCK_STATE_ID)
 }
 
 /// The sections of a chunk from the lowest up, by section number: one slot for each, so a lookup

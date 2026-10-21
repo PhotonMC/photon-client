@@ -99,10 +99,12 @@ fn chunk_packet_parser_records_heightmap_and_light_lengths() {
             super::super::HeightmapObservation {
                 type_id: 1,
                 word_count: 2,
+                data: vec![0, 0],
             },
             super::super::HeightmapObservation {
                 type_id: 4,
                 word_count: 3,
+                data: vec![0, 0, 0],
             },
         ]
     );

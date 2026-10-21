@@ -4,6 +4,7 @@
 mod animation;
 mod damage;
 mod events;
+mod heightmaps;
 mod items;
 mod lighting;
 mod living;
@@ -27,6 +28,7 @@ pub fn cases() -> Vec<Value> {
         pick_table::entity_pick_table(),
         ticks("movement/projectile-ticks", "projectile_ticks", projectiles::rows()),
         ticks("movement/entity-shadows", "entity_shadows", shadows::rows()),
+        ticks("movement/chunk-heightmaps", "chunk_heightmaps", heightmaps::rows()),
         ticks("movement/block-lighting", "block_lighting", lighting::rows()),
         ticks("movement/block-smooth-gate", "block_smooth_gate", lighting::gate_rows()),
         ticks("movement/fluid-mesh", "fluid_mesh", lighting::fluid_rows()),

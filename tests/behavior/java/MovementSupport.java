@@ -410,15 +410,35 @@ class MovementSupport {
                     }
                     section.write(buffer);
                 }
-                level.getChunkSource().replaceWithPacketData(
-                    chunkX, chunkZ, buffer, java.util.Map.of(), output -> {});
+                // The heightmaps a row sends as the server's packet carries them (raw longs).
+                var sent = new java.util.EnumMap<net.minecraft.world.level.levelgen.Heightmap.Types, long[]>(
+                    net.minecraft.world.level.levelgen.Heightmap.Types.class);
+                if (row.has("heightmaps")) {
+                    for (var element : row.getAsJsonArray("heightmaps")) {
+                        var described = element.getAsJsonObject();
+                        var at = described.getAsJsonArray("chunk");
+                        if (at.get(0).getAsInt() != chunkX || at.get(1).getAsInt() != chunkZ) {
+                            continue;
+                        }
+                        var raw = described.getAsJsonArray("raw");
+                        var longs = new long[raw.size()];
+                        for (int index = 0; index < longs.length; index++) {
+                            longs[index] = Long.parseUnsignedLong(raw.get(index).getAsString(), 16);
+                        }
+                        sent.put(net.minecraft.world.level.levelgen.Heightmap.Types.valueOf(
+                            described.get("type").getAsString()), longs);
+                    }
+                }
+                level.getChunkSource().replaceWithPacketData(chunkX, chunkZ, buffer, sent, output -> {});
                 // The server sends the heightmaps the client reads (`WORLD_SURFACE` and the like):
-                // here they are worked out from the blocks the chunk holds.
+                // those a row does not send are worked out from the blocks the chunk holds.
+                var unsent = java.util.EnumSet.of(
+                    net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                    net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
+                    net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES);
+                unsent.removeAll(sent.keySet());
                 net.minecraft.world.level.levelgen.Heightmap.primeHeightmaps(
-                    level.getChunk(chunkX, chunkZ), java.util.EnumSet.of(
-                        net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
-                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
-                        net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES));
+                    level.getChunk(chunkX, chunkZ), unsent);
             }
         }
 

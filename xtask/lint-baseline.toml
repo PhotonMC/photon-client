@@ -346,7 +346,6 @@
 "crates/photon-oracle/src/shape.rs::shape_result" = 70
 "crates/photon-oracle/src/sound.rs::sound_engine_result" = 25
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 29
-"crates/photon-oracle/src/ticks.rs::movement_world" = 13
 "crates/photon-oracle/src/timer.rs::binary_result" = 32
 "crates/photon-oracle/src/timer.rs::nbt_type_name" = 12
 "crates/photon-oracle/src/tooltip.rs::component_json" = 18
@@ -512,7 +511,7 @@
 "crates/photon-world/src/ride/mount/world.rs::ClientWorld::tick_ridden_mount" = 13
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 12
 "crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 11
-"crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 13
+"crates/photon-world/src/world/blocks.rs::ClientWorld::update_block_state" = 12
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 14
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 31
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13
@@ -831,7 +830,6 @@
 "crates/photon-oracle/src/sound.rs::sound_packets_result" = 65
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 163
 "crates/photon-oracle/src/strider.rs::villager_held_layers_result" = 88
-"crates/photon-oracle/src/ticks.rs::movement_world" = 84
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
 "crates/photon-oracle/src/tooltip.rs::component_json" = 80
 "crates/photon-oracle/src/tooltip.rs::item_declarations" = 68
@@ -842,7 +840,7 @@
 "crates/photon-oracle/src/travel.rs::local_player_travel_dispatch_parameters" = 86
 "crates/photon-oracle/src/vanilla.rs::image_result" = 95
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 81
-"crates/photon-protocol/src/play/chunk.rs::parse_chunk_packet" = 77
+"crates/photon-protocol/src/play/chunk.rs::parse_chunk_packet" = 69
 "crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 102
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 113
 "crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68

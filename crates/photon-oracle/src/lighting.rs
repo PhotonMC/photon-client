@@ -14,6 +14,7 @@ fn bits32(value: &Value) -> Result<f32, String> {
 pub(super) fn lighting_result(operation: &str, request: &Value) -> Option<Result<Value, String>> {
     match operation {
         "block_lighting" => Some(block_lighting_result(request)),
+        "chunk_heightmaps" => Some(chunk_heightmaps_result(request)),
         "block_smooth_gate" => Some(block_smooth_gate_result(request)),
         "fluid_mesh" => Some(fluid_mesh_result(request)),
         "face_layer" => Some(face_layer_result(request)),

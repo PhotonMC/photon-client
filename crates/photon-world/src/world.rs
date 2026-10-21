@@ -22,6 +22,7 @@ mod test_block;
 pub use test_block::TestBlockView;
 mod dimension;
 mod enchanting;
+mod heightmaps;
 pub use enchanting::EnchantTableView;
 pub(crate) use enchanting::Tables;
 mod entities;

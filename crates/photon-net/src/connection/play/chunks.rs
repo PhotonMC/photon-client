@@ -17,6 +17,14 @@ impl PlaySession {
                     biomes: &section.biome_values,
                 }),
         );
+        self.world.set_chunk_heightmaps(
+            chunk.x,
+            chunk.z,
+            chunk
+                .heightmap_observations
+                .iter()
+                .map(|map| (map.type_id, map.data.as_slice())),
+        );
         self.world.apply_block_entities(
             chunk.x,
             chunk.z,

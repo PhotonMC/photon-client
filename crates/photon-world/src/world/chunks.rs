@@ -193,6 +193,7 @@ impl ClientWorld {
             sky_sources: Some(sky_sources),
             block_entities: BTreeMap::new(),
             chests: std::collections::BTreeSet::new(),
+            heightmaps: crate::heightmap::ChunkHeightmaps::new(self.level.dimension.min_y),
         };
         new_chunk.chests = block::chest::chests_of(chunk_x, chunk_z, &new_chunk.sections);
         let new_section_statuses = new_chunk

@@ -630,6 +630,41 @@ class MovementEntityOracle extends MovementSupport {
         }
     }
 
+    /**
+     * The client chunk's heightmaps (`ChunkAccess.getHeight`) at the columns a row probes, after
+     * blocks are changed the way a block update packet changes them.
+     */
+    static JsonObject chunkHeightmaps(JsonObject row) throws Exception {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        var level = buildScene(row).level();
+        if (row.has("edits")) {
+            for (var element : row.getAsJsonArray("edits")) {
+                var described = element.getAsJsonObject();
+                var pos = new net.minecraft.core.BlockPos(described.get("x").getAsInt(),
+                    described.get("y").getAsInt(), described.get("z").getAsInt());
+                level.setServerVerifiedBlockState(pos, state(described), 19);
+            }
+        }
+        var probes = new JsonArray();
+        for (var element : row.getAsJsonArray("probes")) {
+            var column = element.getAsJsonObject();
+            int x = column.get("x").getAsInt();
+            int z = column.get("z").getAsInt();
+            var chunk = level.getChunk(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+            var heights = new JsonObject();
+            for (var type : java.util.List.of(
+                net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
+                net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
+                net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES)) {
+                heights.addProperty(type.name(), chunk.getHeight(type, x, z));
+            }
+            probes.add(heights);
+        }
+        entry.add("probes", probes);
+        return entry;
+    }
+
     /** `BlockModelLighter` on quads the row describes, in the level the row builds. */
     static JsonObject blockLighting(JsonObject row) throws Exception {
         var entry = new JsonObject();

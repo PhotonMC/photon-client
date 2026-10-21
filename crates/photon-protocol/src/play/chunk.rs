@@ -294,6 +294,8 @@ pub struct LightUpdateData {
 pub struct HeightmapObservation {
     pub type_id: i32,
     pub word_count: usize,
+    /// The packed values, as the packet carries them.
+    pub data: Vec<i64>,
 }
 
 /// Structural fields decoded from one serialized 16-by-16 chunk section.
@@ -317,21 +319,27 @@ pub struct ChunkSectionObservation {
     pub biome_distinct_value_count: usize,
 }
 
+fn read_heightmaps(input: &mut &[u8]) -> Result<Vec<HeightmapObservation>, ConnectionError> {
+    let count = read_count(input, "heightmap count")?;
+    let mut observations = Vec::with_capacity(count);
+    for _ in 0..count {
+        let type_id = read_varint(input, "heightmap type")?;
+        let data = read_long_array(input, "heightmap data")?;
+        observations.push(HeightmapObservation {
+            type_id,
+            word_count: data.len(),
+            data,
+        });
+    }
+    Ok(observations)
+}
+
 pub fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, ConnectionError> {
     let x = read_i32(&mut input, "chunk x")?;
     let z = read_i32(&mut input, "chunk z")?;
 
-    let heightmap_count = read_count(&mut input, "heightmap count")?;
-    let mut heightmap_observations = Vec::with_capacity(heightmap_count);
-    for _ in 0..heightmap_count {
-        let type_id = read_varint(&mut input, "heightmap type")?;
-        let word_count = read_long_array(&mut input, "heightmap data")?.len();
-        heightmap_observations.push(HeightmapObservation {
-            type_id,
-            word_count,
-        });
-    }
-
+    let heightmap_observations = read_heightmaps(&mut input)?;
+    let heightmap_count = heightmap_observations.len();
     let section_data =
         read_length_prefixed_bytes(&mut input, MAX_CHUNK_DATA_LENGTH, "chunk section data")?;
     let section_data_length = section_data.len();
