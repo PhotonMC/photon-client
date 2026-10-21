@@ -118,6 +118,18 @@ impl LocalPlayer {
         }
     }
 
+    /// `LocalPlayer.playSound`: a sound of the player's own, heard at their feet from the
+    /// players' volume slider.
+    pub fn play_own_sound(&mut self, event: &'static str, (volume, pitch): (f32, f32)) {
+        let at = self.position;
+        self.pending_sounds.push(LocalSound::at(
+            event,
+            LocalSoundSource::Players,
+            (volume, pitch),
+            (at.x, at.y, at.z),
+        ));
+    }
+
     /// The particles the player's own tick threw since the last call.
     pub fn take_particles(&mut self) -> Vec<crate::particles::LevelParticles> {
         std::mem::take(&mut self.use_edge.crumbs)

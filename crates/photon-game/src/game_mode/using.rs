@@ -482,6 +482,11 @@ impl GameMode {
             face: 0,
             sequence: 0,
         });
+        // `SpyglassItem.releaseUsing`.
+        if ctx.player.is_scoping() {
+            ctx.player
+                .play_own_sound("minecraft:item.spyglass.stop_using", (1.0, 1.0));
+        }
         ctx.player.release_using_item();
     }
 
