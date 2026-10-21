@@ -11,6 +11,7 @@ mod confirm;
 mod container;
 mod credits;
 mod debug;
+mod debug_entry_rows;
 mod dialog;
 mod draft;
 mod hud;

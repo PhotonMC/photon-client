@@ -16,6 +16,7 @@ pub use layout::{Line, columns};
 pub use list::{Category, ENTRIES, Entry, EntryList, Profile, Status, entry, listed_entries};
 pub use profile_file::{parse_profile, profile_text};
 
+use crate::{FontRuns, FrameRuns};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -126,7 +127,7 @@ pub fn draw(
                 .enumerate()
                 .filter(|(_, line)| !line.is_empty())
                 .map(|(index, line)| {
-                    let text_width = font.width(line);
+                    let text_width = width_of(font, line);
                     let x = if align_left {
                         2
                     } else {
@@ -139,7 +140,30 @@ pub fn draw(
             frame.fill(atlas, (x - 1, y - 1, x + text_width + 1, y + 8), BACKGROUND);
         }
         for (line, _, (x, y)) in placed() {
-            frame.text(atlas, font, line, x, y, TEXT);
+            draw_line(frame, (atlas, font), line, (x, y));
         }
+    }
+}
+
+/// `Font.width` of a line, whose `\u{a7}` codes style it and take no room.
+fn width_of(font: &Font, line: &str) -> i32 {
+    if line.contains('\u{a7}') {
+        font.width_of_runs(&crate::legacy_runs(line))
+    } else {
+        font.width(line)
+    }
+}
+
+/// One line of the overlay, in the colours its `\u{a7}` codes set.
+fn draw_line(
+    frame: &mut GuiFrame,
+    (atlas, font): (&GuiAtlas, &Font),
+    line: &str,
+    (x, y): (i32, i32),
+) {
+    if line.contains('\u{a7}') {
+        frame.styled_text(atlas, font, &crate::legacy_runs(line), x, y, TEXT, false);
+    } else {
+        frame.text(atlas, font, line, x, y, TEXT);
     }
 }

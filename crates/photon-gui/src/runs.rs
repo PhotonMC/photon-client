@@ -1,6 +1,7 @@
 //! The game's text runs and items as the draw layer takes them: the screens keep their `Run`s and
 //! `Stack`s, and these turn them into what `GuiFrame` and `Font` draw and measure.
 
+use photon_game::text::{Run, Style};
 use photon_render::gui::TextRun;
 
 /// A component's runs as the draw layer takes them.
@@ -209,4 +210,69 @@ impl ItemSlots for photon_render::gui::GuiFrame {
             );
         }
     }
+}
+
+/// `StringDecomposer.iterateFormatted` over a plain string: the `\u{a7}` codes become styles.
+pub fn legacy_runs(text: &str) -> Vec<Run> {
+    let mut runs: Vec<Run> = Vec::new();
+    let mut style = Style::default();
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c == '\u{a7}' {
+            // A lone `\u{a7}` at the end is dropped; an unknown code is skipped with its letter.
+            let Some(code) = chars.next() else { break };
+            style = styled_by(style, code.to_ascii_lowercase());
+            continue;
+        }
+        match runs.last_mut() {
+            Some(last) if last.style == style => last.text.push(c),
+            _ => runs.push(Run {
+                text: c.to_string(),
+                style: style.clone(),
+            }),
+        }
+    }
+    runs
+}
+
+/// The style after a `\u{a7}` code: a colour clears the formats, a format adds one, `r` resets.
+fn styled_by(mut style: Style, code: char) -> Style {
+    const COLOURS: [&str; 16] = [
+        "black",
+        "dark_blue",
+        "dark_green",
+        "dark_aqua",
+        "dark_red",
+        "dark_purple",
+        "gold",
+        "gray",
+        "dark_gray",
+        "blue",
+        "green",
+        "aqua",
+        "red",
+        "light_purple",
+        "yellow",
+        "white",
+    ];
+    if let Some(index) = code.to_digit(16) {
+        return Style {
+            obfuscated: Some(false),
+            bold: Some(false),
+            strikethrough: Some(false),
+            underlined: Some(false),
+            italic: Some(false),
+            ..Style::coloured(COLOURS[index as usize])
+        };
+    }
+    match code {
+        'k' => style.obfuscated = Some(true),
+        'l' => style.bold = Some(true),
+        'm' => style.strikethrough = Some(true),
+        'n' => style.underlined = Some(true),
+        'o' => style.italic = Some(true),
+        'r' => style = Style::default(),
+        _ => {}
+    }
+    style
 }

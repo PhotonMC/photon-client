@@ -340,6 +340,9 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
         system: row.get("system").map(debug_system),
         // The game's own memory is the machine's, which a row cannot pin.
         memory: None,
+        gpu_utilization: row
+            .get("gpu")
+            .and_then(|_| crate::f64_field(row, "gpu").ok()),
         day_count: row
             .get("day")
             .and_then(Value::as_i64)

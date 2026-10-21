@@ -1115,6 +1115,11 @@ class GuiHudOracle extends GuiCommandOracle {
                     statuses.put(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.IN_OVERLAY);
                 }
             }
+            if (row.has("gpu")) {
+                // The share of the frame the GPU was busy, as the frame loop last measured it.
+                kept.add("gpu_utilization");
+                MovementOracle.setField(minecraft, "gpuUtilization", Oracle.f64(row, "gpu"));
+            }
             if (row.has("sky")) {
                 // The light at the feet: the section holds one value in each layer.
                 var engine = scene.level().getChunkSource().getLightEngine();

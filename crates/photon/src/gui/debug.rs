@@ -38,6 +38,7 @@ impl Gui {
                 let version = photon_net::resources::KnownPack::VANILLA_VERSION;
                 debug::version_line(version, version)
             },
+            gpu_utilization: None,
             day_count: Self::day_count(session),
             camera,
             frame: controls.debug.frame,

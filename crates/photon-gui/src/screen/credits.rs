@@ -1,7 +1,7 @@
 //! The credits screen (`WinScreen`): the end poem and the credits, rolled up the screen over the
 //! menu's background, shown when the player wins the game.
 
-use crate::{FontRuns, FrameRuns};
+use crate::{FontRuns, FrameRuns, legacy_runs};
 use std::path::Path;
 
 use photon_core::json::{self, JsonValue};
@@ -34,67 +34,6 @@ const SECTION: char = '\u{a7}';
 /// What the poem marks to be replaced by a scrambled word (`OBFUSCATE_TOKEN`).
 fn obfuscate_token() -> String {
     format!("{SECTION}f{SECTION}k{SECTION}a{SECTION}b")
-}
-
-/// `StringDecomposer.iterateFormatted` over a plain string: the `\u{a7}` codes become styles.
-fn legacy_runs(text: &str) -> Vec<Run> {
-    const COLOURS: [&str; 16] = [
-        "black",
-        "dark_blue",
-        "dark_green",
-        "dark_aqua",
-        "dark_red",
-        "dark_purple",
-        "gold",
-        "gray",
-        "dark_gray",
-        "blue",
-        "green",
-        "aqua",
-        "red",
-        "light_purple",
-        "yellow",
-        "white",
-    ];
-    let mut runs: Vec<Run> = Vec::new();
-    let mut style = Style::default();
-    let mut chars = text.chars();
-    while let Some(c) = chars.next() {
-        if c == SECTION {
-            // A lone `\u{a7}` at the end is dropped; an unknown code is skipped with its letter.
-            let Some(code) = chars.next() else { break };
-            let code = code.to_ascii_lowercase();
-            if let Some(index) = code.to_digit(16) {
-                style = Style {
-                    obfuscated: Some(false),
-                    bold: Some(false),
-                    strikethrough: Some(false),
-                    underlined: Some(false),
-                    italic: Some(false),
-                    ..Style::coloured(COLOURS[index as usize])
-                };
-            } else {
-                match code {
-                    'k' => style.obfuscated = Some(true),
-                    'l' => style.bold = Some(true),
-                    'm' => style.strikethrough = Some(true),
-                    'n' => style.underlined = Some(true),
-                    'o' => style.italic = Some(true),
-                    'r' => style = Style::default(),
-                    _ => {}
-                }
-            }
-            continue;
-        }
-        match runs.last_mut() {
-            Some(last) if last.style == style => last.text.push(c),
-            _ => runs.push(Run {
-                text: c.to_string(),
-                style: style.clone(),
-            }),
-        }
-    }
-    runs
 }
 
 fn plain(text: &str, colour: &str) -> Vec<Run> {

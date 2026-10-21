@@ -251,7 +251,6 @@
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 23
 "crates/photon-gui/src/screen/container.rs::slot_key_clicks" = 17
 "crates/photon-gui/src/screen/creative/tab.rs::CreativeScreen::build_tooltip" = 19
-"crates/photon-gui/src/screen/credits.rs::legacy_runs" = 13
 "crates/photon-gui/src/screen/dialog.rs::DialogScreen::draw" = 14
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::build" = 18
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::mouse_clicked" = 14

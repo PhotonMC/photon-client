@@ -16,4 +16,4 @@ pub mod tutorial;
 pub mod widgets;
 
 pub use hud::{HeartType, Hud, HudInput};
-pub use runs::{FontRuns, FrameRuns, ItemSlots, draw_lines, draw_runs};
+pub use runs::{FontRuns, FrameRuns, ItemSlots, draw_lines, draw_runs, legacy_runs};

@@ -2,14 +2,15 @@
 
 use serde_json::{Map, Value, json};
 
+use super::debug_entry_rows as entry_rows;
 use super::gui;
 use crate::bits::{f32_bits, f64_bits};
 
-type Place = (f64, f64, f64);
+pub(super) type Place = (f64, f64, f64);
 
 /// One overlay row: a window, the camera entity at `place` and the usual frame and connection, with
 /// `changes` laid over it.
-fn row(label: String, place: (Place, (f64, f64)), changes: Value) -> Value {
+pub(super) fn row(label: String, place: (Place, (f64, f64)), changes: Value) -> Value {
     let ((x, y, z), (yaw, pitch)) = place;
     let mut row = json!({
         "label": label, "width": 427, "height": 240, "launched": "26.2",
@@ -38,9 +39,10 @@ pub fn hud_debug_overlay() -> Value {
     rows.extend(frame_and_server_rows());
     rows.extend(impactor_rows());
     rows.extend(system_rows());
-    rows.extend(biome_rows());
-    rows.extend(day_rows());
-    rows.extend(light_rows());
+    rows.extend(entry_rows::biome_rows());
+    rows.extend(entry_rows::day_rows());
+    rows.extend(entry_rows::light_rows());
+    rows.extend(entry_rows::gpu_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -113,72 +115,6 @@ fn frame_and_server_rows() -> Vec<Value> {
         ));
     }
     rows
-}
-
-/// The biome entry: shown inside the build height, not at its edges outside, not with reduced debug
-/// info.
-fn biome_rows() -> Vec<Value> {
-    let row = |label: &str, place: Place, more: Value| {
-        let mut options = json!({"extra": ["biome"]});
-        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
-            options.extend(more.clone());
-        }
-        row(format!("debug-biome-{label}"), (place, (0.0, 0.0)), options)
-    };
-    vec![
-        row("feet", (1.0, 64.0, 3.0), json!({})),
-        row("lowest-block", (1.0, -64.0, 3.0), json!({})),
-        row("below", (1.0, -64.5, 3.0), json!({})),
-        row("highest-block", (1.0, 319.9, 3.0), json!({})),
-        row("above", (1.0, 320.0, 3.0), json!({})),
-        row("reduced", (1.0, 64.0, 3.0), json!({"reduced": true})),
-        row("unloaded-chunk", (5000.5, 64.0, -5000.5), json!({})),
-    ]
-}
-
-/// The day count entry: the overworld clock's ticks divided by the day's 24000, floored, from a
-/// clock never set up through days in the hundreds of thousands, and not with reduced debug info.
-fn day_rows() -> Vec<Value> {
-    [0_i64, 1, 23_999, 24_000, 24_001, 1_000_000, 100_000_000_000]
-        .into_iter()
-        .map(|ticks| {
-            row(
-                format!("debug-day-{ticks}"),
-                ((1.0, 64.0, 3.0), (0.0, 0.0)),
-                json!({"extra": ["day_count"], "day": ticks}),
-            )
-        })
-        .chain([row(
-            "debug-day-reduced".to_owned(),
-            ((1.0, 64.0, 3.0), (0.0, 0.0)),
-            json!({"extra": ["day_count"], "day": 48_000, "reduced": true}),
-        )])
-        .collect()
-}
-
-/// The light entry: each layer ahead, behind and level, the ends, and not with reduced debug info.
-fn light_rows() -> Vec<Value> {
-    let lit = |label: &str, sky: i32, block: i32, reduced: bool| {
-        row(
-            format!("debug-light-{label}"),
-            ((1.0, 64.0, 3.0), (0.0, 0.0)),
-            json!({"extra": ["light_levels"], "sky": sky, "block": block, "reduced": reduced}),
-        )
-    };
-    vec![
-        lit("sky-ahead", 15, 3, false),
-        lit("block-ahead", 2, 11, false),
-        lit("level", 7, 7, false),
-        lit("dark", 0, 0, false),
-        lit("full", 15, 15, false),
-        lit("reduced", 15, 3, true),
-        // The groups and the plain lines of several entries together.
-        row(
-            "debug-light-with-biome-and-day".to_owned(),
-            ((1.0, 64.0, 3.0), (0.0, 0.0)),
-            json!({"extra": ["biome", "day_count", "light_levels"], "day": 72_000, "sky": 9, "block": 4}),
-        ),
-    ]
 }
 
 /// The performance options entry: each cloud status and filtering method, the blend radius at its

@@ -98,6 +98,8 @@ pub struct Input {
     pub system: Option<SystemSpecs>,
     /// What `memory` shows, none without it.
     pub memory: Option<MemoryUsage>,
+    /// `Minecraft.getGpuUtilization`, none where the frame loop does not measure it.
+    pub gpu_utilization: Option<f64>,
     /// The overworld day timeline's period count, none without the timeline in the registry.
     pub day_count: Option<i32>,
 }
@@ -124,6 +126,7 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
             .unwrap_or_default(),
         "game_version" => vec![Line::Priority(input.version.clone())],
         "day_count" => day(input.day_count),
+        "gpu_utilization" => gpu(input.gpu_utilization),
         _ => input
             .camera
             .as_ref()
@@ -141,6 +144,30 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "light_levels" => light(camera),
         _ => Vec::new(),
     }
+}
+
+/// `DebugEntryGpuUtilization`: the share of the frame the GPU was busy, in red from the second the
+/// GPU is past a full frame (`Math.round` of the share otherwise).
+fn gpu(utilization: Option<f64>) -> Vec<Line> {
+    let Some(share) = utilization else {
+        return Vec::new();
+    };
+    let shown = if share > 100.0 {
+        "\u{a7}c100%".to_owned()
+    } else {
+        format!("{}%", java_round(share))
+    };
+    vec![Line::Regular(format!("GPU: {shown}"))]
+}
+
+/// `Math.round(double)`: the nearest whole number, halves up, NaN zero.
+fn java_round(value: f64) -> i64 {
+    let floor = value.floor();
+    (if value - floor >= 0.5 {
+        floor + 1.0
+    } else {
+        floor
+    }) as i64
 }
 
 /// `DebugEntryDayCount`: the days the overworld clock has run.
