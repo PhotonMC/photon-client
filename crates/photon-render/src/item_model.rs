@@ -172,6 +172,8 @@ pub struct ItemLayerRef {
 /// A texture's alpha, row by row, with its width and height.
 pub type LayerAlpha = (Vec<u8>, i32, i32);
 
+mod needle;
+pub use needle::*;
 mod parse;
 pub use parse::*;
 mod resolve;

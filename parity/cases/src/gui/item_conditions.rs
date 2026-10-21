@@ -96,3 +96,39 @@ fn select_rows() -> Vec<Value> {
 pub fn item_select() -> Value {
     gui("item-select", "item_select", select_rows())
 }
+
+/// The needle's wobbler over a run of game ticks: still on a tick, moving on the next.
+fn wobble_rows() -> Vec<Value> {
+    let run = |label: &str, wobble: bool, steps: &[(i64, f64)]| {
+        let steps: Vec<Value> = steps.iter().map(|(tick, target)| json!({"tick": tick, "target": target})).collect();
+        json!({"label": label, "kind": "wobble", "wobble": wobble, "steps": steps})
+    };
+    let climb: Vec<(i64, f64)> = (1..=12).map(|tick| (tick, 0.3)).collect();
+    vec![
+        run("wobble-climbs-to-the-target", true, &climb),
+        run("wobble-same-tick-twice", true, &[(4, 0.9), (4, 0.1), (5, 0.9)]),
+        run("wobble-starts-at-tick-zero", true, &[(0, 0.4), (1, 0.4)]),
+        run("wobble-wraps-the-short-way", true, &[(1, 0.95), (2, 0.95), (3, 0.95), (4, 0.95)]),
+        run("plain-follows-every-call", false, &[(4, 0.9), (4, 0.1), (5, 0.6)]),
+        run("wobble-long-gap", true, &[(1, 0.5), (900, 0.5), (901, 0.2)]),
+    ]
+}
+
+/// The needle turn of a holder that is not the local player, towards a block.
+fn towards_rows() -> Vec<Value> {
+    let at = |label: &str, (x, y, z): (f64, f64, f64), yaw: f64, block: [i32; 3]| json!({"label": label, "kind": "towards", "tick": 10, "owner": {"x": x, "y": y, "z": z, "yaw": yaw}, "block": block});
+    vec![
+        at("north-of-the-block", (0.5, 64.0, 20.5), 0.0, [0, 64, 0]),
+        at("east-of-the-block", (-30.5, 64.0, 0.5), 90.0, [0, 64, 0]),
+        at("looking-away", (10.0, 70.0, -4.0), 213.5, [-3, 12, 40]),
+        at("negative-yaw", (123.25, 5.0, -77.75), -47.0, [100, 80, -100]),
+        at("yaw-wraps", (0.0, 0.0, 0.0), 725.0, [5, 0, 5]),
+        at("same-column", (0.5, 90.0, 0.5), 33.0, [0, 10, 0]),
+        at("far", (30000000.0, 64.0, -30000000.0), 12.5, [-30000000, 64, 30000000]),
+    ]
+}
+
+/// The compass needle: the wobbler and the turn towards a block.
+pub fn item_needle() -> Value {
+    gui("item-needle", "item_needle", [wobble_rows(), towards_rows()].concat())
+}

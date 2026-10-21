@@ -1,0 +1,126 @@
+//! The compass needle (`NeedleDirectionHelper`, `CompassAngleState`): a wobbler that eases the
+//! needle once per game tick, and the turn that points it at a block.
+
+use photon_core::math::positive_modulo_f32;
+
+/// `NeedleDirectionHelper.Wobbler`: eases a rotation towards a target, once per game tick.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Wobbler {
+    /// Whether it eases (`standardWobbler`) or follows its target (`nonWobbler`).
+    wobble: bool,
+    rotation: f32,
+    delta_rotation: f32,
+    last_update_tick: i64,
+}
+
+/// What the easing multiplies the speed by each update (`newWobbler(0.8F)`).
+const FACTOR: f32 = 0.8;
+
+impl Wobbler {
+    pub fn new(wobble: bool) -> Self {
+        Self {
+            wobble,
+            ..Self::default()
+        }
+    }
+
+    pub fn rotation(&self) -> f32 {
+        self.rotation
+    }
+
+    /// Whether this game tick has not moved the needle yet; a plain needle always follows.
+    pub fn should_update(&self, tick: i64) -> bool {
+        !self.wobble || self.last_update_tick != tick
+    }
+
+    pub fn update(&mut self, tick: i64, target: f32) {
+        if !self.wobble {
+            self.rotation = target;
+            return;
+        }
+        self.last_update_tick = tick;
+        let step = positive_modulo_f32(target - self.rotation + 0.5, 1.0) - 0.5;
+        self.delta_rotation += step * 0.1;
+        self.delta_rotation *= FACTOR;
+        self.rotation = positive_modulo_f32(self.rotation + self.delta_rotation, 1.0);
+    }
+}
+
+/// Where the holder stands and looks.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Holder {
+    pub position: [f64; 3],
+    /// `getVisualRotationYInDegrees`.
+    pub yaw: f32,
+}
+
+/// `getAngleFromEntityToPos`: the heading from the holder to the centre of a block, in turns.
+fn angle_to(holder: &Holder, block: [i32; 3]) -> f32 {
+    let dz = f64::from(block[2]) + 0.5 - holder.position[2];
+    let dx = f64::from(block[0]) + 0.5 - holder.position[0];
+    (dz.atan2(dx) / f64::from((std::f64::consts::PI * 2.0) as f32)) as f32
+}
+
+/// `getWrappedVisualRotationY`: the holder's yaw in turns, from 0 to 1.
+fn wrapped_yaw(holder: &Holder) -> f32 {
+    positive_modulo_f32(holder.yaw / 360.0, 1.0)
+}
+
+/// `getRotationTowardsCompassTarget`: the needle turn towards a block. The local player's needle
+/// eases through its wobbler; anyone else's follows the heading at once.
+pub fn rotation_towards(
+    holder: &Holder,
+    block: [i32; 3],
+    local: Option<(&mut Wobbler, i64)>,
+) -> f32 {
+    let angle = angle_to(holder, block);
+    let yaw = wrapped_yaw(holder);
+    let target = match local {
+        Some((wobbler, tick)) => {
+            if wobbler.should_update(tick) {
+                wobbler.update(tick, 0.5 - (yaw - 0.25));
+            }
+            angle + wobbler.rotation()
+        }
+        None => 0.5 - (yaw - 0.25 - angle),
+    };
+    positive_modulo_f32(target, 1.0)
+}
+
+/// `isValidCompassTargetPos`, past the dimension: a block the holder is not standing in the
+/// centre of.
+pub fn is_valid_target(holder: &Holder, block: [i32; 3]) -> bool {
+    let distance = (0..3)
+        .map(|axis| {
+            let delta = f64::from(block[axis]) + 0.5 - holder.position[axis];
+            delta * delta
+        })
+        .sum::<f64>();
+    distance >= f64::from(1.0E-5_f32)
+}
+
+/// `getRandomlySpinningRotation`: the needle with no target, from the spin and the draw's seed.
+pub fn spinning_rotation(spin: f32, seed: i32) -> f32 {
+    positive_modulo_f32(
+        spin + seed.wrapping_mul(1_327_217_883) as f32 / 2.147_483_6E9,
+        1.0,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_plain_needle_follows_at_once_and_a_wobbling_one_waits_for_the_next_tick() {
+        let mut plain = Wobbler::new(false);
+        plain.update(5, 0.25);
+        assert!(plain.should_update(5));
+        assert_eq!(plain.rotation(), 0.25);
+        let mut wobbling = Wobbler::new(true);
+        assert!(!wobbling.should_update(0));
+        wobbling.update(7, 0.25);
+        assert!(!wobbling.should_update(7));
+        assert!(wobbling.should_update(8));
+    }
+}

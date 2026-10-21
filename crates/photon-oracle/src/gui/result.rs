@@ -77,6 +77,7 @@ fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, S
         "command_verify" => crate::command_verify_result(request),
         "item_condition" => item_condition::item_condition_result(request),
         "item_select" => item_condition::item_select_result(request),
+        "item_needle" => item_condition::item_needle_result(request),
         _ => return None,
     })
 }

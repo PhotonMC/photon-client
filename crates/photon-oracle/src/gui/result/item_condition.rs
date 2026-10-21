@@ -140,3 +140,38 @@ pub(super) fn item_select_result(request: &Value) -> Result<Value, String> {
     }
     Ok(json!({"rows": rows}))
 }
+
+/// Each row's compass needle by the production wobbler and turn.
+pub(super) fn item_needle_result(request: &Value) -> Result<Value, String> {
+    use photon_render::item_model::{Holder, Wobbler, rotation_towards};
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let mut out = json!({"label": row["label"]});
+        if row["kind"] == "wobble" {
+            let mut wobbler = Wobbler::new(row["wobble"].as_bool().ok_or("wobble")?);
+            let mut steps = Vec::new();
+            for step in row["steps"].as_array().ok_or("steps")? {
+                let tick = step["tick"].as_i64().ok_or("tick")?;
+                let update = wobbler.should_update(tick);
+                if update {
+                    wobbler.update(tick, step["target"].as_f64().ok_or("target")? as f32);
+                }
+                steps.push(
+                    json!({"updated": update, "rotation": wobbler.rotation().to_bits() as i32}),
+                );
+            }
+            out["steps"] = json!(steps);
+        } else {
+            let owner = &row["owner"];
+            let holder = Holder {
+                position: ["x", "y", "z"].map(|axis| owner[axis].as_f64().unwrap_or_default()),
+                yaw: owner["yaw"].as_f64().ok_or("yaw")? as f32,
+            };
+            let block = row["block"].as_array().ok_or("block")?;
+            let block = [0, 1, 2].map(|axis| block[axis].as_i64().unwrap_or_default() as i32);
+            out["rotation"] = json!(rotation_towards(&holder, block, None).to_bits() as i32);
+        }
+        rows.push(out);
+    }
+    Ok(json!({"rows": rows}))
+}

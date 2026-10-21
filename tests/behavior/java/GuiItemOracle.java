@@ -89,4 +89,62 @@ class GuiItemOracle extends GuiDialogOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /** The compass needle: the wobbler over a run of ticks, and the rotation towards a block. */
+    static JsonObject itemNeedle(JsonObject request) throws Exception {
+        Oracle.bootstrap();
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (row.get("kind").getAsString().equals("wobble")) {
+                var wobbler = row.get("wobble").getAsBoolean()
+                    ? net.minecraft.client.renderer.item.properties.numeric.NeedleDirectionHelper.standardWobbler(0.8F)
+                    : net.minecraft.client.renderer.item.properties.numeric.NeedleDirectionHelper.nonWobbler();
+                var steps = new JsonArray();
+                for (var step : row.getAsJsonArray("steps")) {
+                    var object = step.getAsJsonObject();
+                    long tick = object.get("tick").getAsLong();
+                    var result = new JsonObject();
+                    boolean update = wobbler.shouldUpdate(tick);
+                    if (update) {
+                        wobbler.update(tick, object.get("target").getAsFloat());
+                    }
+                    result.addProperty("updated", update);
+                    result.addProperty("rotation", Float.floatToRawIntBits(wobbler.rotation()));
+                    steps.add(result);
+                }
+                out.add("steps", steps);
+            } else {
+                var owner = row.getAsJsonObject("owner");
+                var position = new net.minecraft.world.phys.Vec3(
+                    owner.get("x").getAsDouble(), owner.get("y").getAsDouble(), owner.get("z").getAsDouble());
+                float yaw = owner.get("yaw").getAsFloat();
+                var itemOwner = (net.minecraft.world.entity.ItemOwner)java.lang.reflect.Proxy.newProxyInstance(
+                    GuiItemOracle.class.getClassLoader(),
+                    new Class<?>[] {net.minecraft.world.entity.ItemOwner.class},
+                    (proxy, method, args) -> switch (method.getName()) {
+                        case "position" -> position;
+                        case "getVisualRotationYInDegrees" -> yaw;
+                        case "asLivingEntity" -> null;
+                        default -> throw new UnsupportedOperationException(method.getName());
+                    });
+                var block = row.getAsJsonArray("block");
+                var state = new net.minecraft.client.renderer.item.properties.numeric.CompassAngleState(
+                    true, net.minecraft.client.renderer.item.properties.numeric.CompassAngleState.CompassTarget.NONE);
+                var method = net.minecraft.client.renderer.item.properties.numeric.CompassAngleState.class
+                    .getDeclaredMethod("getRotationTowardsCompassTarget",
+                        net.minecraft.world.entity.ItemOwner.class, long.class, net.minecraft.core.BlockPos.class);
+                method.setAccessible(true);
+                float rotation = (Float)method.invoke(state, itemOwner, row.get("tick").getAsLong(),
+                    new net.minecraft.core.BlockPos(block.get(0).getAsInt(), block.get(1).getAsInt(), block.get(2).getAsInt()));
+                out.addProperty("rotation", Float.floatToRawIntBits(rotation));
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

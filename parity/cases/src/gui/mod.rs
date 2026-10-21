@@ -62,7 +62,7 @@ const ORDER: &[Generator] = &[
     || vec![commands::command_parse()],
     || vec![suggest::command_suggest()],
     || vec![commands::command_verify()],
-    || vec![item_conditions::item_condition(), item_conditions::item_select()],
+    || vec![item_conditions::item_condition(), item_conditions::item_select(), item_conditions::item_needle()],
     || vec![screens::pause_screen()],
     || vec![screens::death_screen()],
     || vec![screens::disconnected_screen()],
