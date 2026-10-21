@@ -126,11 +126,12 @@ pub fn remote_monsters(
         .collect();
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(monster) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)
             .map(|(_, monster)| monster)
+            .filter(|monster| !entity.is_invisible() || shows_when_invisible(monster.pose))
         else {
             continue;
         };
@@ -170,7 +171,9 @@ pub fn remote_monsters(
             (look, &snapshot, partial),
             &mut placed,
         );
-        vertices.extend(mob_vertices(model, &placed, rect));
+        if !entity.is_invisible() {
+            vertices.extend(mob_vertices(model, &placed, rect));
+        }
         if matches!(monster.pose, Pose::Vex | Pose::Allay) {
             flier_hand_items(model.root(), (monster, entity), &placed, held);
         }
@@ -187,35 +190,60 @@ pub fn remote_monsters(
             (&placed, &mut glow, &mut swirl),
             vertices,
         );
-        // A charged creeper's swirl: the armor model, posed as the creeper is.
-        if monster.pose == Pose::Creeper
-            && entity.is_powered()
-            && let (Some(rect), Some(armor)) = (
-                textures.rect(POWER_TEXTURE),
-                models.model("minecraft:creeper#armor"),
-            )
-        {
-            armor.setup_creeper(&look);
-            swirl.extend(mob_vertices_swirl(
-                armor,
-                &placed,
-                rect,
-                swirl_offset(entity.tick_count() as f32 + partial),
-                POWER_COLOUR as u32,
-            ));
-        }
-        if let Some(state) = entity
-            .carried_block_state()
-            .filter(|_| monster.pose == Pose::Enderman)
-        {
-            held.push(HeldItem::block(
-                state,
-                carried_block_pose(&placement_pose(&placed)),
-                placed.light,
-                0.0,
-            ));
-        }
+        swirl.extend(creeper_swirl(
+            (models, textures),
+            (monster.pose, entity),
+            (&look, &placed, partial),
+        ));
+        held.extend(carried_block(monster.pose, entity, &placed));
     }
     models.glow.extend(glow);
     models.swirl.extend(swirl);
+}
+
+/// The models whose layers all draw over an invisible body (`EyesLayer`, `EnergySwirlLayer` and
+/// `CarriedBlockLayer` have no `isInvisible` check): the rest are left out whole for now.
+fn shows_when_invisible(pose: Pose) -> bool {
+    matches!(
+        pose,
+        Pose::Spider | Pose::Creeper | Pose::Enderman | Pose::Phantom
+    )
+}
+
+/// `CreeperPowerLayer`: a charged creeper's swirl, the armor model posed as the creeper is.
+fn creeper_swirl(
+    (models, textures): (&mut MobModels, &EntityTextures),
+    (pose, entity): (Pose, &ClientEntity),
+    (look, placed, partial): (&QuadrupedState, &MobPlacement, f32),
+) -> Vec<Vertex> {
+    if pose != Pose::Creeper || !entity.is_powered() {
+        return Vec::new();
+    }
+    let (Some(rect), Some(armor)) = (
+        textures.rect(POWER_TEXTURE),
+        models.model("minecraft:creeper#armor"),
+    ) else {
+        return Vec::new();
+    };
+    armor.setup_creeper(look);
+    mob_vertices_swirl(
+        armor,
+        placed,
+        rect,
+        swirl_offset(entity.tick_count() as f32 + partial),
+        POWER_COLOUR as u32,
+    )
+}
+
+/// `CarriedBlockLayer`: the block an enderman carries.
+fn carried_block(pose: Pose, entity: &ClientEntity, placed: &MobPlacement) -> Option<HeldItem> {
+    let state = entity
+        .carried_block_state()
+        .filter(|_| pose == Pose::Enderman)?;
+    Some(HeldItem::block(
+        state,
+        carried_block_pose(&placement_pose(placed)),
+        placed.light,
+        0.0,
+    ))
 }
