@@ -400,17 +400,11 @@ impl GameMode {
                 self.opened_book = Some(hand);
                 UseResult::Success { swing: true }
             }
-            Some((item, _)) => {
-                let row = rules::item(item);
-                if rules::item_use_owner(item) == ItemClass::Item
-                    && row.is_some_and(photon_data::item::registry::Item::use_does_nothing)
-                {
-                    UseResult::Pass
-                } else {
-                    // Eating, equipping and the rest are not written yet.
-                    UseResult::Success { swing: false }
-                }
+            Some((item, _)) if rules::item_use_owner(item) == ItemClass::Item => {
+                super::base_use::base_item_use(ctx, hand)
             }
+            // The items whose class overrides `use` are not predicted yet.
+            Some(_) => UseResult::Success { swing: false },
             None => UseResult::Pass,
         };
         out.push(Outgoing::UseItem {

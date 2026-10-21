@@ -152,6 +152,26 @@ impl LocalPlayer {
         self.hands.using_off_hand = edge.off_hand;
     }
 
+    /// `LocalPlayer.startUsingItem`: a use starts at once when the hand holds something and no use
+    /// has started; the server's flag, when it comes, finds it started and changes nothing.
+    pub fn start_using_item(&mut self, off_hand: bool) {
+        let held = if off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        if held == AIR_ITEM || self.use_edge.started {
+            return;
+        }
+        let edge = &mut self.use_edge;
+        edge.started = true;
+        edge.off_hand = off_hand;
+        edge.item = Some(held);
+        edge.ticks = 0;
+        self.hands.using_item = true;
+        self.hands.using_off_hand = off_hand;
+    }
+
     /// `LivingEntity.releaseUsingItem` on the client: the use ends here and now.
     pub fn release_using_item(&mut self) {
         self.use_edge.started = false;
@@ -437,6 +457,26 @@ mod tests {
         player.set_hand_state(holding(false));
         player.set_hand_state(holding(true));
         assert!(player.is_using_item());
+    }
+
+    /// A use the click starts is on before the server's flag; the flag then changes nothing, and
+    /// a use is not started over a use, nor from an empty hand.
+    #[test]
+    fn a_use_the_click_starts_is_on_before_the_flag() {
+        let mut player = player();
+        player.set_hand_state(holding(false));
+        player.start_using_item(true);
+        assert!(!player.is_using_item(), "the off hand is empty");
+        player.start_using_item(false);
+        assert!(player.is_using_item() && !player.used_item_is_off_hand());
+        player.set_hand_state(holding(true));
+        assert!(player.is_using_item());
+        player.release_using_item();
+        player.set_hand_state(holding(true));
+        assert!(
+            !player.is_using_item(),
+            "the flag stayed on and changed nothing"
+        );
     }
 
     /// A use ends when the used hand holds another item, and stays ended under the same flag.
