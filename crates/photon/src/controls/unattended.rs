@@ -131,7 +131,7 @@ impl Controls {
             }
             (LinkAction::Yes, ConfirmTarget::Suggest(command)) => {
                 self.dialog = None;
-                self.open_chat(ChatMethod::Command, true, surface, assets);
+                self.open_chat(ChatMethod::Command, false, surface, assets);
                 if let Some(chat) = self.chat.as_mut() {
                     chat.insert_text(command, false);
                 }

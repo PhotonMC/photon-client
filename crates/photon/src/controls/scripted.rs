@@ -226,6 +226,13 @@ impl Controls {
             .is_some_and(|chat| chat.leave_bed_clicked(mouse))
         {
             session.send_stop_sleeping()?;
+        } else if self.chat.is_some() {
+            let press = glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                glfw::Modifiers::empty(),
+            );
+            self.chat_event(press, session, surface, assets)?;
         }
         Ok(())
     }
