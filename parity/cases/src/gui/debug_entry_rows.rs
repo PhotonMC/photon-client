@@ -152,6 +152,7 @@ pub(super) fn looking_at_tag_rows() -> Vec<Value> {
         aim("glass", Some("minecraft:glass"), json!({})),
         aim("tnt", Some("minecraft:tnt[unstable=true]"), json!({})),
         aim("nothing", None, json!({})),
+        aim("reduced", Some("minecraft:glass"), json!({"reduced": true})),
         aim(
             "with-state",
             Some("minecraft:glass"),

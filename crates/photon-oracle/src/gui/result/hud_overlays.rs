@@ -343,17 +343,12 @@ fn debug_target(row: &Value) -> Option<photon_gui::hud::debug::TargetedBlock> {
         .map(|(key, value)| (key.to_owned(), value.to_owned()))
         .collect();
     let block = photon_data::block::registry::block(name)?;
-    // The tags the server would have sent: the pack's own.
-    let tags = crate::vanilla_block_tags().ok()?;
-    let tags = photon_world::block::tags::BlockTags::from_registries(&tags.registries)?;
-    let index = photon_data::block::registry::BLOCKS
-        .iter()
-        .position(|each| each.name == name)?;
-    let listed = tags.of_block(index).map(str::to_owned).collect();
-    Some(
-        photon_gui::hud::debug::TargetedBlock::of(position, block.state_id(&chosen)?)?
-            .with_tags(listed),
-    )
+    // The tags the server would have sent: the pack's own, through the world that holds them.
+    let mut world = photon_world::ClientWorld::new(photon_world::DimensionBounds::new(-64, 384));
+    world.apply_update_tags_packet(&crate::vanilla_block_tags().ok()?);
+    let state = block.state_id(&chosen)?;
+    let listed = world.block_state_registry().state_tags(state);
+    Some(photon_gui::hud::debug::TargetedBlock::of(position, state)?.with_tags(listed))
 }
 
 /// What the entries read, from a `hud_debug_overlay` row.
