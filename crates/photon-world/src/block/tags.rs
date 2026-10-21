@@ -38,6 +38,14 @@ impl BlockTags {
         self.0.get(tag).into_iter().flatten().copied()
     }
 
+    /// The tags a block is in (`TypedInstance.tags`), by id without the leading `#`.
+    pub fn of_block(&self, block: usize) -> impl Iterator<Item = &str> + '_ {
+        self.0
+            .iter()
+            .filter(move |(_, blocks)| blocks.contains(&block))
+            .map(|(tag, _)| tag.as_str())
+    }
+
     /// `BlockState.is(tag)` for a block, by registry index.
     pub fn contains(&self, block: usize, tag: &str) -> bool {
         self.0

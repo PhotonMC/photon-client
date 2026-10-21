@@ -111,6 +111,18 @@ impl ClientBlockStateRegistry {
         }
     }
 
+    /// The tags the server last sent that hold the state's block.
+    pub fn state_tags(&self, state_id: BlockStateId) -> Vec<String> {
+        self.block_registry_id(state_id)
+            .map(|block| {
+                self.tags
+                    .of_block(block as usize)
+                    .map(str::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// `BlockState.is(tag)`, against the tags the server last sent. `tag` is
     /// the tag id without the leading `#`.
     pub fn is_state_in_tag(&self, state_id: BlockStateId, tag: &str) -> bool {

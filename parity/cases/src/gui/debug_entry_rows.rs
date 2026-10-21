@@ -133,6 +133,33 @@ pub(super) fn looking_at_rows() -> Vec<Value> {
     ]
 }
 
+/// The block tag entry: a block with no tag, with one (a full block each), nothing in view, and
+/// with the state entry. The game lists a block's tags in an order that changes between launches,
+/// so no block with two is pinned.
+pub(super) fn looking_at_tag_rows() -> Vec<Value> {
+    let aim = |label: &str, state: Option<&str>, more: Value| {
+        let mut options = json!({"extra": ["looking_at_block_tags"]});
+        if let Some(state) = state {
+            options["target"] = json!({"x": 0, "y": 65, "z": 4, "state": state});
+        }
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-looking-at-tags-{label}"), ((0.5, 64.0, 0.5), (0.0, 0.0)), options)
+    };
+    vec![
+        aim("none", Some("minecraft:glowstone"), json!({})),
+        aim("glass", Some("minecraft:glass"), json!({})),
+        aim("tnt", Some("minecraft:tnt[unstable=true]"), json!({})),
+        aim("nothing", None, json!({})),
+        aim(
+            "with-state",
+            Some("minecraft:glass"),
+            json!({"extra": ["looking_at_block_state", "looking_at_block_tags"]}),
+        ),
+    ]
+}
+
 /// The targeted entity entry: a type with an underscore in its name, none under the crosshair, with
 /// the block entry (one group after the other), and reduced debug info.
 pub(super) fn looking_at_entity_rows() -> Vec<Value> {

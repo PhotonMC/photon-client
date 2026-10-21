@@ -138,7 +138,9 @@ impl Gui {
         let world = session.world();
         let hit = world.clip_outlines(eye, to)?;
         let pos = (hit.block_pos.x, hit.block_pos.y, hit.block_pos.z);
-        TargetedBlock::of(pos, world.block_state_or_air(pos.0, pos.1, pos.2))
+        let state = world.block_state_or_air(pos.0, pos.1, pos.2);
+        let tags = world.block_state_registry().state_tags(state);
+        TargetedBlock::of(pos, state).map(|block| block.with_tags(tags))
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

@@ -39,6 +39,8 @@ pub struct TargetedBlock {
     pub name: String,
     /// Each property with its value's name, in the order the block lists them.
     pub properties: Vec<(String, String)>,
+    /// The tags the block is in, without the leading `#`, in the order they are listed.
+    pub tags: Vec<String>,
 }
 
 impl TargetedBlock {
@@ -53,7 +55,14 @@ impl TargetedBlock {
                 .into_iter()
                 .map(|(name, value)| (name.to_owned(), value.to_owned()))
                 .collect(),
+            tags: Vec::new(),
         })
+    }
+
+    /// The same with the tags the block is in.
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = tags;
+        self
     }
 }
 
@@ -174,6 +183,7 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "biome" => biome(camera).into_iter().collect(),
         "light_levels" => light(camera),
         "looking_at_block_state" => looking_at_block(camera),
+        "looking_at_block_tags" => looking_at_tags(camera),
         _ => Vec::new(),
     }
 }
@@ -240,6 +250,15 @@ fn looking_at_block(camera: &CameraEntity) -> Vec<Line> {
             }),
     );
     vec![Line::Group(LOOKING_AT_BLOCK_GROUP, lines)]
+}
+
+/// `DebugEntryLookingAt.BlockTagInfo`: a `#tag` line for each tag of the block in view.
+fn looking_at_tags(camera: &CameraEntity) -> Vec<Line> {
+    let lines = camera
+        .target
+        .iter()
+        .flat_map(|target| target.tags.iter().map(|tag| format!("#{tag}")));
+    vec![Line::Group(LOOKING_AT_BLOCK_GROUP, lines.collect())]
 }
 
 /// `DebugEntryLight`: the light at the feet, the brighter of the two layers first.
