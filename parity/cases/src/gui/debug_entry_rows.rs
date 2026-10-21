@@ -298,7 +298,7 @@ pub(super) fn heightmap_rows() -> Vec<Value> {
         aim("light-block", feet, vec![block(1, 80, 3, "minecraft:light")], json!({})),
         aim("tall-column", (1.0, 300.0, 3.0), vec![block(1, 299, 3, "minecraft:stone")], json!({})),
         aim("next-column", feet, vec![block(2, 64, 3, "minecraft:stone")], json!({})),
-        aim("negative-column", (-1.5, 64.0, -2.5), vec![block(-2, 64, -3, "minecraft:stone")], json!({})),
+        aim("block-in-unloaded-chunk", (-1.5, 64.0, -2.5), vec![block(-2, 64, -3, "minecraft:stone")], json!({})),
         aim("unloaded-chunk", (5000.5, 64.0, -5000.5), vec![], json!({})),
         aim("reduced", feet, vec![block(1, 64, 3, "minecraft:stone")], json!({"reduced": true})),
         aim(

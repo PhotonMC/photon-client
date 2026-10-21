@@ -62,7 +62,7 @@ fn row(label: &'static str, blocks: Vec<Value>, heights: &[u32; 256], edits: Vec
 }
 
 pub fn rows() -> Vec<Value> {
-    cat![update_rows(), removal_rows(), kind_rows(), unpacking_rows(), mismatched_rows()]
+    cat![update_rows(), removal_rows(), kind_rows(), unpacking_rows(), mismatched_rows(), negative_rows()]
 }
 
 /// Where a block update lands against the packet's value.
@@ -140,6 +140,22 @@ fn removal_rows() -> Vec<Value> {
         row("build-on-empty", vec![], &level(-64, &[]), vec![put(6, -64, 6, "minecraft:stone")], &[(6, 6)]),
     ];
     rows.into_iter().map(Row::value).collect()
+}
+
+/// A chunk at negative coordinates, its maps made from the blocks (none were sent): the probe's
+/// column is read from the chunk's own, counted from the chunk's corner.
+fn negative_rows() -> Vec<Value> {
+    let mut row = row(
+        "negative-chunk-primed",
+        vec![put(-2, 64, -3, "minecraft:stone"), put(-17, 70, -30, "minecraft:stone")],
+        &level(-64, &[]),
+        vec![put(-2, 90, -3, "minecraft:stone"), put(-17, 70, -30, "minecraft:air")],
+        &[(-2, -3), (-17, -30), (-1, -1)],
+    );
+    row.heightmaps = vec![];
+    let mut value = row.value();
+    value["chunk_radius"] = json!(2);
+    vec![value]
 }
 
 /// What each map counts: leaves, water, glass, a block with no collision, air that is not plain.
