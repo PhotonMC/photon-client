@@ -333,6 +333,12 @@ fn parse_select(object: &JsonObject) -> ItemModelDef {
         ("minecraft:block_state", Some(name)) => format!("{BLOCK_STATE_SELECT}{name}"),
         _ => property,
     };
+    // The trim material is a resource key; a case names it with or without the namespace.
+    let identifiers = property == "minecraft:trim_material";
+    let normalize = move |name: String| match Identifier::parse(&name) {
+        Ok(id) if identifiers => id.as_string(),
+        _ => name,
+    };
     ItemModelDef::Select {
         property,
         cases: object
@@ -347,6 +353,7 @@ fn parse_select(object: &JsonObject) -> ItemModelDef {
                     JsonValue::Array(values) => values.iter().filter_map(text_of).collect(),
                     other => vec![text_of(other)?],
                 };
+                let when = when.into_iter().map(normalize).collect();
                 Some((when, parse_item_model(case.object("model")?)))
             })
             .collect(),

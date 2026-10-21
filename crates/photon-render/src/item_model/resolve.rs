@@ -662,6 +662,20 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_case_without_a_namespace_names_the_vanilla_material() {
+        let text = TRIMMED.replace("minecraft:gold\"", "gold\"");
+        assert_ne!(text, TRIMMED);
+        let (model, _) = drawn_by(
+            &text,
+            ItemState {
+                trim_material: Some(intern_key("minecraft:gold")),
+                ..ItemState::default()
+            },
+        );
+        assert_eq!(model, "minecraft:item/iron_chestplate_gold_trim");
+    }
+
     const LIGHT: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:block_state",
         "block_state_property":"level",
         "cases":[{"model":{"type":"minecraft:model","model":"minecraft:item/light_00"},"when":"0"},
