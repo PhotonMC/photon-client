@@ -35,6 +35,11 @@ impl LocalPlayer {
         self.dimensions.eye_height()
     }
 
+    /// `Entity.getBbWidth`.
+    pub fn bb_width(&self) -> f32 {
+        self.dimensions.width()
+    }
+
     /// `Entity.getBbHeight`.
     pub fn bb_height(&self) -> f32 {
         self.dimensions.height()

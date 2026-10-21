@@ -28,6 +28,8 @@ pub struct EntitySnapshot {
     pub age_in_ticks: f32,
     /// `LivingEntityRenderer.isShaking`.
     pub shaking: bool,
+    /// `Entity.isOnFire`: the renderer lights it at full block light.
+    pub burning: bool,
 }
 
 /// The entities a tick looks up in the world: what a guardian's beam aims at and

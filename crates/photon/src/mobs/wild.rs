@@ -179,13 +179,25 @@ pub(crate) fn placement(
         ],
         body_rot: snapshot.body_yaw,
         scale,
-        light: packed_light(world, Vec3::new(x, y + 0.5, z)),
+        light: burning_light(
+            packed_light(world, Vec3::new(x, y + 0.5, z)),
+            snapshot.burning,
+        ),
         death_time: snapshot.death_time,
         flip_degrees: photon_render::entity::mob_model::FLIP_DEGREES,
         red_overlay: snapshot.red_overlay,
         shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
         ghost: view.spectating.then_some(view.camera),
         ..MobPlacement::default()
+    }
+}
+
+/// `EntityRenderer.getBlockLightLevel`: a burning entity is lit by full block light.
+fn burning_light(light: i32, burning: bool) -> i32 {
+    if burning {
+        (light & !0xFFFF) | (15 << 4)
+    } else {
+        light
     }
 }
 

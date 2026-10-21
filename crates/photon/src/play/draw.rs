@@ -87,6 +87,13 @@ impl Play {
             view,
             items,
         );
+        if !first_person {
+            crate::objects::flames::local_flames(
+                &self.session,
+                (&self.block_renderer, view),
+                items,
+            );
+        }
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
         take_item_glints(
             &mut self.armor,

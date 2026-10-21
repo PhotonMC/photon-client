@@ -5,6 +5,7 @@ use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::entity::name_tag::camera_orientation;
+use photon_render::joml::Quaternion;
 use photon_render::objects::flame::{Flame, camera_twist, flame_vertices};
 use photon_render::scene::Vertex;
 
@@ -34,18 +35,77 @@ pub fn flames(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let (x, y, z) = snapshot.position;
         let size = entity.leash_size();
-        let flame = Flame {
-            origin: [
-                (x - f64::from(view.origin[0])) as f32,
-                (y - f64::from(view.origin[1])) as f32,
-                (z - f64::from(view.origin[2])) as f32,
-            ],
+        let body = Body {
+            position: snapshot.position,
             size: (size.width, size.height),
-            light: packed_light(world, Vec3::new(x, y + f64::from(size.eye_height), z)),
-            twist,
+            eye_height: size.eye_height,
         };
-        vertices.extend(flame_vertices(&flame, [first, second]));
+        vertices.extend(flame_vertices(
+            &flame(world, &body, (view, twist)),
+            [first, second],
+        ));
+    }
+}
+
+/// `EntityRenderDispatcher.submit` for the player who looks from outside their body, who is not
+/// among the entities. Not drawn for a spectator, and drawn whether or not it is invisible.
+pub fn local_flames(
+    session: &PlaySession,
+    (renderer, view): (&BlockRenderer, FrameView),
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    let Some(player) = session.player() else {
+        return;
+    };
+    let burning = world
+        .local_player()
+        .is_some_and(photon_world::ClientPlayerState::is_on_fire);
+    let (Some(first), Some(second)) = (
+        renderer.sprite_rect("minecraft:block/fire_0"),
+        renderer.sprite_rect("minecraft:block/fire_1"),
+    ) else {
+        return;
+    };
+    if !burning || player.is_spectator() {
+        return;
+    }
+    let twist = camera_twist(&camera_orientation(view.rotation.0, view.rotation.1));
+    let at = player.interpolated_position(view.partial);
+    let body = Body {
+        position: (at.x, at.y, at.z),
+        size: (player.bb_width(), player.bb_height()),
+        eye_height: player.eye_height(),
+    };
+    vertices.extend(flame_vertices(
+        &flame(world, &body, (view, twist)),
+        [first, second],
+    ));
+}
+
+/// Where an entity is and how big.
+struct Body {
+    position: (f64, f64, f64),
+    size: (f32, f32),
+    eye_height: f32,
+}
+
+/// What an entity's flames are drawn from, lit where its eyes are.
+fn flame(
+    world: &photon_world::ClientWorld,
+    body: &Body,
+    (view, twist): (FrameView, Quaternion),
+) -> Flame {
+    let (x, y, z) = body.position;
+    Flame {
+        origin: [
+            (x - f64::from(view.origin[0])) as f32,
+            (y - f64::from(view.origin[1])) as f32,
+            (z - f64::from(view.origin[2])) as f32,
+        ],
+        size: body.size,
+        light: packed_light(world, Vec3::new(x, y + f64::from(body.eye_height), z)),
+        twist,
     }
 }
