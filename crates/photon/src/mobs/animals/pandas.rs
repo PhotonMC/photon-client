@@ -8,7 +8,7 @@
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
-    PandaRotation, PandaState, QuadrupedState, mob_vertices, panda_item_pose, placement_pose,
+    PandaRotation, PandaState, QuadrupedState, panda_item_pose, placement_pose,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -42,7 +42,7 @@ pub fn remote_pandas(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == panda)
     {
         let baby = entity.is_baby();
@@ -99,7 +99,7 @@ pub fn remote_pandas(
             scared,
             baby,
         });
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         if let Some(stack) = entity.equipment(EquipmentSlot::MainHand)
             && own.is_sitting()
             && !scared

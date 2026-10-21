@@ -7,8 +7,8 @@ use photon_core::ids::BlockStateId;
 use photon_net::connection::PlaySession;
 use photon_render::entity::block::{iron_golem_flower_pose, snow_golem_head_pose};
 use photon_render::entity::mob_model::{
-    Crackiness, IronGolemState, QuadrupedState, golem_crackiness, iron_golem_roll, mob_vertices,
-    overlay_code, placement_pose,
+    Crackiness, IronGolemState, QuadrupedState, golem_crackiness, iron_golem_roll, overlay_code,
+    placement_pose,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -69,7 +69,7 @@ pub fn remote_golems(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let is_iron = entity.type_id == iron;
         if !is_iron && entity.type_id != snow {
             continue;
@@ -122,7 +122,7 @@ pub fn remote_golems(
             } else {
                 model.setup_snow_golem(&look);
             }
-            vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         }
         let layer = if is_iron {
             IRON_GOLEM_LAYER

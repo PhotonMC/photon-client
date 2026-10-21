@@ -3,9 +3,7 @@
 //! carries under its chin.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    DolphinState, dolphin_item_pose, mob_vertices, placement_pose,
-};
+use photon_render::entity::mob_model::{DolphinState, dolphin_item_pose, placement_pose};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -38,7 +36,7 @@ pub fn remote_dolphins(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == dolphin)
     {
         let index = usize::from(entity.is_baby());
@@ -56,7 +54,7 @@ pub fn remote_dolphins(
             is_moving: entity.is_moving_horizontally(),
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         if let Some(stack) = entity.equipment(EquipmentSlot::MainHand) {
             let pose = dolphin_item_pose(&placement_pose(&placed), snapshot.pitch);
             held.push(HeldItem::stack(stack, pose, Place::Ground, placed.light));

@@ -12,7 +12,7 @@ use photon_render::entity::held_item::{
     copper_golem_antenna_pose, copper_golem_hand_pose, copper_golem_head_pose,
 };
 use photon_render::entity::mob_model::{
-    CopperGolemModelState, QuadrupedState, mob_vertices, mob_vertices_glow, placement_pose,
+    CopperGolemModelState, QuadrupedState, mob_vertices_glow, placement_pose,
 };
 use photon_render::entity::player_model::{Arm, Part};
 use photon_render::entity::textures::EntityTextures;
@@ -67,7 +67,7 @@ pub fn remote_copper_golems(
     let mut glow = Vec::new();
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == golem)
     {
         let (body, eyes) = TEXTURES[usize::from(entity.copper_golem_weather().min(3))];
@@ -82,36 +82,49 @@ pub fn remote_copper_golems(
             entity.item_held_by_arm(false),
             entity.item_held_by_arm(true),
         );
-        model.setup_copper_golem(&CopperGolemModelState {
-            quadruped: QuadrupedState {
-                head_y_rot: photon_core::math::wrap_degrees_f32(
-                    snapshot.head_yaw - snapshot.body_yaw,
-                ),
-                x_rot: snapshot.pitch,
-                walk_position: snapshot.walk_position,
-                walk_speed: snapshot.walk_speed,
-            },
-            age_in_ticks: snapshot.age_in_ticks,
-            holds_item: right.is_some() || left.is_some(),
-            animations: entity
-                .copper_golem()
-                .map(|golem| golem.playing)
-                .unwrap_or_default(),
-        });
+        model.setup_copper_golem(&golem_state(entity, &snapshot, (right, left)));
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         carried(
             model.root(),
             entity,
             (&placement_pose(&placed), placed.light),
             held,
         );
-        // The eyes: the same model, as posed, in the glowing texture.
-        if let Some(eyes) = textures.rect(eyes) {
+        // The eyes: the same model, as posed, in the glowing texture; an invisible golem's layer
+        // is not drawn (`LivingEntityEmissiveLayer`, not always visible).
+        if !entity.is_invisible()
+            && let Some(eyes) = textures.rect(eyes)
+        {
             glow.extend(mob_vertices_glow(model, &placed, eyes));
         }
     }
     models.glow.extend(glow);
+}
+
+/// What the golem's model is posed from.
+fn golem_state(
+    entity: &photon_world::ClientEntity,
+    snapshot: &photon_world::EntitySnapshot,
+    (right, left): (
+        Option<&photon_world::ClientItemStackState>,
+        Option<&photon_world::ClientItemStackState>,
+    ),
+) -> CopperGolemModelState {
+    CopperGolemModelState {
+        quadruped: QuadrupedState {
+            head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+        },
+        age_in_ticks: snapshot.age_in_ticks,
+        holds_item: right.is_some() || left.is_some(),
+        animations: entity
+            .copper_golem()
+            .map(|golem| golem.playing)
+            .unwrap_or_default(),
+    }
 }
 
 /// What the golem carries, each where its layer puts it: the stacks in its

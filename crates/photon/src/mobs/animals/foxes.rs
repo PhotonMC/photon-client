@@ -4,7 +4,7 @@
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::held_item::fox_item_pose;
-use photon_render::entity::mob_model::{FoxState, QuadrupedState, mob_vertices, placement_pose};
+use photon_render::entity::mob_model::{FoxState, QuadrupedState, placement_pose};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -39,7 +39,7 @@ pub fn remote_foxes(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == fox)
     {
         let baby = entity.is_baby();
@@ -84,7 +84,7 @@ pub fn remote_foxes(
         if own.is_pouncing() || own.is_faceplanted() {
             placed.fox_tipping(snapshot.pitch);
         }
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         let head = model
             .root()
             .children()
