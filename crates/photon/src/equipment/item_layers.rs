@@ -33,6 +33,8 @@ pub struct ItemLayerCache {
     seed: i32,
     /// Whether the stacks drawn next are a rod with its bobber out (`FishingRodCast`).
     cast: bool,
+    /// Whether the stacks drawn next have no owner (`GuiGraphics.fakeItem`).
+    fake: bool,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -102,6 +104,7 @@ impl ItemLayerCache {
             local_body: false,
             seed: 0,
             cast: false,
+            fake: false,
         }
     }
 
@@ -209,8 +212,11 @@ impl ItemLayerCache {
     + 'a {
         move |stack, at, holding, out| {
             self.set_cast(holding.cast);
+            self.fake = holding.fake;
             self.set_seed(holding.seed);
-            self.gui_vertices(stack, holding.ticks, (renderer, tints), at, out)
+            let drawn = self.gui_vertices(stack, holding.ticks, (renderer, tints), at, out);
+            self.fake = false;
+            drawn
         }
     }
 
@@ -307,6 +313,13 @@ impl ItemLayerCache {
         let wanted = renderer.item_needles_wanted(item, self.context, *state);
         if wanted.is_empty() {
             state.dimension = None;
+            return;
+        }
+        if self.fake {
+            // `NeedleDirectionHelper.get`: no owner, no angle.
+            for (target, _) in wanted {
+                state.needles.0[target.index()] = Some(0.0_f32.to_bits());
+            }
             return;
         }
         let lodestone =

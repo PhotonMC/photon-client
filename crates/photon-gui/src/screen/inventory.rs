@@ -52,6 +52,10 @@ impl SlotView for ContainerMenu {
         self.slot_of_inventory(index)
     }
 
+    fn is_fake(&self, slot: usize) -> bool {
+        self.is_fake_slot(slot)
+    }
+
     fn stack(&self, slot: usize) -> Option<&Stack> {
         self.slots[slot].as_ref()
     }

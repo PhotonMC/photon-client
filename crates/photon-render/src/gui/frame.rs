@@ -216,6 +216,9 @@ pub struct ItemHolding {
     pub cast: bool,
     /// The seed `ItemModelResolver` gets: the hotbar's slot number, a container's slot place.
     pub seed: i32,
+    /// A slot the reference draws as a fake item (`Slot.isFake`): the stack has no owner, so a
+    /// needle reads nothing of the world.
+    pub fake: bool,
 }
 
 impl ItemHolding {

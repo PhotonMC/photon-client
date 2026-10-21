@@ -18,6 +18,11 @@ impl ContainerMenu {
         }
     }
 
+    /// `Slot.isFake` of a slot of this menu.
+    pub fn is_fake_slot(&self, slot: usize) -> bool {
+        self.kind.is_fake_slot(slot)
+    }
+
     /// Where an `Inventory` index sits in this menu, if it is shown there.
     pub fn slot_of_inventory(&self, index: usize) -> Option<usize> {
         self.inventory_to_menu(index)
@@ -300,6 +305,16 @@ mod tests {
         menu.clicked(62, 0, ClickType::QuickMove, PLAYER);
         assert_eq!(menu.slots[0].as_ref().map(Stack::item_count), Some(5));
         assert!(menu.slots[62].is_none());
+    }
+
+    #[test]
+    fn only_the_crafting_results_are_fake_slots() {
+        assert!(MenuKind::Inventory.is_fake_slot(0));
+        assert!(MenuKind::Crafting.is_fake_slot(0));
+        assert!(MenuKind::Crafter.is_fake_slot(45));
+        assert!(!MenuKind::Crafting.is_fake_slot(1));
+        assert!(!MenuKind::Furnace(Smelter::Furnace).is_fake_slot(2));
+        assert!(!MenuKind::Stonecutter.is_fake_slot(1));
     }
 
     #[test]

@@ -190,6 +190,14 @@ impl MenuKind {
         }
     }
 
+    /// Whether the slot is one `Slot.isFake` is true of: the crafting result and the crafter's.
+    pub fn is_fake_slot(self, slot: usize) -> bool {
+        matches!(
+            (self, slot),
+            (Self::Inventory | Self::Crafting, 0) | (Self::Crafter, 45)
+        )
+    }
+
     /// The menu's result slot, for the menus that have one.
     pub fn result_slot(self) -> Option<usize> {
         match self {

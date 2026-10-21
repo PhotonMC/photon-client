@@ -75,6 +75,7 @@ fn slot_items(
             cast,
             // `Hud.extractItemHotbar`: the slots count from 1, the off hand after them.
             seed: slot as i32 + 1,
+            fake: false,
         };
         frame.item_in_use(draw_item, stack, (x as f32, y as f32), holding);
         frame.item_bar(atlas, stack, x, y);

@@ -98,6 +98,7 @@ fn slot_holding(
     ItemHolding {
         seed,
         cast: !preview && (held_here(0, selected) || held_here(1, 40)),
+        fake: menu.is_fake(index),
         ..ItemHolding::default()
     }
 }
