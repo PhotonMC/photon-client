@@ -295,9 +295,9 @@ pub(super) fn chat_options_screen_case(
         "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
             font, &lang, size, in_world, &options,
         )),
-        "sound_options_screen" => Shell::Sound(SoundOptionsScreen::new(
-            font, &lang, size, in_world, &options,
-        )),
+        "sound_options_screen" => {
+            Shell::Sound(sound_screen(font, &lang, (size, in_world), &options))
+        }
         _ => Shell::Controls(ControlsScreen::new(font, &lang, size, in_world)),
     };
     let mut last = (0.0, 0.0);
@@ -474,4 +474,16 @@ pub(super) fn language_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<
         "search": screen.search_text(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
+}
+
+/// The sound options screen, offering only the device the options name.
+fn sound_screen(
+    font: &photon_render::gui::font::Font,
+    lang: &photon_game::text::Lang,
+    (size, in_world): ((i32, i32), bool),
+    options: &photon_game::options::Options,
+) -> photon_gui::options::sound::SoundOptionsScreen {
+    use photon_gui::options::sound::SoundOptionsScreen;
+    let devices = vec![options.sound_device.clone()];
+    SoundOptionsScreen::new(font, lang, size, in_world, (options, devices))
 }

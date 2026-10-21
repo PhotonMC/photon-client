@@ -11,6 +11,19 @@ use crate::mixer::Mixer;
 #[derive(Debug)]
 pub struct OutputError(pub String);
 
+fn device_name(device: &cpal::Device) -> Option<String> {
+    device
+        .description()
+        .ok()
+        .map(|description| description.name().to_owned())
+}
+
+/// The values of the sound device option: the system default (empty), then each device
+/// (`Options.soundDevice`'s `LazyEnum`).
+pub fn device_choices(devices: Vec<String>) -> Vec<String> {
+    std::iter::once(String::new()).chain(devices).collect()
+}
+
 /// An open output: the mixer it plays, and the stream that plays it.
 pub struct Output {
     pub mixer: Arc<Mutex<Mixer>>,
@@ -18,11 +31,27 @@ pub struct Output {
 }
 
 impl Output {
-    /// Open the default output device.
-    pub fn open() -> Result<Self, OutputError> {
+    /// The names of the output devices the system offers
+    /// (`SoundManager.getAvailableSoundDevices`).
+    pub fn devices() -> Vec<String> {
+        let Ok(devices) = cpal::default_host().output_devices() else {
+            return Vec::new();
+        };
+        devices.filter_map(|device| device_name(&device)).collect()
+    }
+
+    /// Open the preferred output device, or the default one when it is empty or gone
+    /// (`Library.openDeviceOrFallback`).
+    pub fn open(preferred: &str) -> Result<Self, OutputError> {
         let host = cpal::default_host();
-        let device = host
-            .default_output_device()
+        let named = (!preferred.is_empty())
+            .then(|| host.output_devices().ok())
+            .flatten()
+            .and_then(|mut devices| {
+                devices.find(|device| device_name(device).as_deref() == Some(preferred))
+            });
+        let device = named
+            .or_else(|| host.default_output_device())
             .ok_or_else(|| OutputError("no output device".into()))?;
         let supported = device
             .default_output_config()
@@ -75,5 +104,17 @@ impl Output {
                 frame[0] = (pair[0] + pair[1]) * 0.5;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_default_device_comes_first() {
+        let choices = device_choices(vec!["Speakers".into(), "Headset".into()]);
+        assert_eq!(choices, ["", "Speakers", "Headset"]);
+        assert_eq!(device_choices(Vec::new()), [""]);
     }
 }

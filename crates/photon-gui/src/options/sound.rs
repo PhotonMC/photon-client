@@ -17,11 +17,14 @@ use crate::widgets::slider::{OptionSlider, SliderKey};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
-const PLAIN: u8 = 0;
 const SUBTITLES: u8 = 20;
 const DIRECTIONAL: u8 = 21;
 const FREQUENCY: u8 = 22;
 const TOAST: u8 = 23;
+const DEVICE: u8 = 24;
+
+/// `SoundEngine.OPEN_AL_SOFT_PREFIX`, which the device's caption leaves out.
+const OPEN_AL_SOFT_PREFIX: &str = "OpenAL Soft on ";
 
 /// A sound category's slider caption, in `SoundSource` order.
 const CAPTIONS: [&str; 11] = [
@@ -44,13 +47,14 @@ const fn volume_tag(source: SoundSource) -> u8 {
 }
 
 /// What the sound screen's options say.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SoundChoices {
     pub volumes: [f64; 11],
     pub show_subtitles: bool,
     pub directional_audio: bool,
     pub music_frequency: MusicFrequency,
     pub music_toast: MusicToast,
+    pub sound_device: String,
 }
 
 pub struct SoundOptionsScreen {
@@ -65,7 +69,12 @@ fn device_text(device: &String) -> Component {
     if device.is_empty() {
         Component::translatable("options.audioDevice.default")
     } else {
-        Component::literal(device.clone())
+        Component::literal(
+            device
+                .strip_prefix(OPEN_AL_SOFT_PREFIX)
+                .unwrap_or(device)
+                .to_owned(),
+        )
     }
 }
 
@@ -95,7 +104,7 @@ impl SoundOptionsScreen {
         lang: &Lang,
         size: (i32, i32),
         in_world: bool,
-        options: &Options,
+        (options, devices): (&Options, Vec<String>),
     ) -> Self {
         let screen = SubScreen::new(font, lang, size, "options.sounds.title", in_world, |list| {
             let (tag, build) = volume(SoundSource::Master, options);
@@ -108,13 +117,12 @@ impl SoundOptionsScreen {
                     .map(|source| volume(source, options))
                     .collect(),
             );
-            // Only the default device is offered; choosing another is not built.
             list.add_big(
                 lang,
-                PLAIN,
+                DEVICE,
                 cycle(
                     "options.audioDevice",
-                    vec![options.sound_device.clone()],
+                    devices,
                     device_text,
                     options.sound_device.clone(),
                 ),
@@ -208,6 +216,9 @@ impl SoundOptionsScreen {
             music_toast: cycled(TOAST)
                 .and_then(|any| any.downcast_ref::<CycleButton<MusicToast>>())
                 .map_or(MusicToast::Never, |button| *button.value()),
+            sound_device: cycled(DEVICE)
+                .and_then(|any| any.downcast_ref::<CycleButton<String>>())
+                .map_or_else(String::new, |button| button.value().clone()),
         }
     }
 

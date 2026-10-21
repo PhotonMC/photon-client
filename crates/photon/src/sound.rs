@@ -69,6 +69,8 @@ pub struct SoundSystem {
     engine: SoundEngine<MixerChannels>,
     mixer: Arc<Mutex<photon_audio::mixer::Mixer>>,
     _output: Output,
+    /// The sound device option the output was opened for, and where the assets are.
+    device: (String, std::path::PathBuf),
     followed: Followed,
     /// Where the listener is, which the sounds that hang at an angle from it follow.
     camera: Arc<Mutex<Vec3>>,
@@ -88,7 +90,7 @@ pub struct SoundSystem {
 impl SoundSystem {
     /// Open the device and read the sound definitions; none if either cannot be had.
     pub fn open(jar_assets: &Path, options: &Options) -> Option<Self> {
-        let output = match Output::open() {
+        let output = match Output::open(&options.sound_device) {
             Ok(output) => output,
             Err(error) => {
                 log::warn!("sound off: {}", error.0);
@@ -123,6 +125,7 @@ impl SoundSystem {
             engine,
             mixer: Arc::clone(&output.mixer),
             _output: output,
+            device: (options.sound_device.clone(), jar_assets.to_path_buf()),
             followed: Arc::new(Mutex::new(HashMap::new())),
             camera: Arc::new(Mutex::new(Vec3::ZERO)),
             local_sounds: 0,
@@ -420,6 +423,22 @@ impl SoundSystem {
         }));
         let id = self.engine.add(instance);
         self.engine.play(id);
+    }
+
+    /// `SoundManager.reload` after the sound device option changed: every sound stops and the
+    /// engine starts on the device now chosen, with a UI click as its first sound. Nothing
+    /// happens while the option is as the engine was opened for.
+    pub fn reload_for_device(sound: &mut Option<Self>, options: &Options) {
+        let Some((device, assets)) = sound.as_ref().map(|sound| sound.device.clone()) else {
+            return;
+        };
+        if device == options.sound_device {
+            return;
+        }
+        *sound = Self::open(&assets, options);
+        if let Some(sound) = sound.as_mut() {
+            sound.play_ui("minecraft:ui.button.click", 1.0, 1.0);
+        }
     }
 
     /// `Options`' sound sliders, as the engine plays by them: a category that changed is applied

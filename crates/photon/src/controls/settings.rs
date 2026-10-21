@@ -270,7 +270,10 @@ impl Controls {
             &assets.lang,
             Self::gui_size(surface),
             true,
-            &self.options,
+            (
+                &self.options,
+                photon_audio::output::device_choices(photon_audio::output::Output::devices()),
+            ),
         ));
     }
 
@@ -293,5 +296,6 @@ impl Controls {
         options.directional_audio = choices.directional_audio;
         options.music_frequency = choices.music_frequency;
         options.music_toast = choices.music_toast;
+        options.sound_device = choices.sound_device;
     }
 }
