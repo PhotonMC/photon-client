@@ -104,7 +104,7 @@ pub struct SignTextSubmit {
 
 /// The world triangles of a sign's text (`TextFeatureRenderer`): an outlined line is drawn eight
 /// times a glyph's shadow offset around in the outline's colour (whatever the line's styles say)
-/// then once over them in its own colour.
+/// then once over them in its own colour. The outline copies draw no effects (`discardEffects`).
 pub fn sign_text_vertices(
     submits: &[SignTextSubmit],
     (font, atlas): (&Font, &crate::gui::GuiAtlas),
@@ -130,9 +130,7 @@ pub fn sign_text_vertices(
                         continue;
                     }
                     let at = (submit.x + dx as f32, submit.y + dy as f32);
-                    let mut quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
-                    let bars = effects(font, &plain, at, (submit.outline, false));
-                    quads.extend(effect_quads(atlas, bars));
+                    let quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
                     world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
                 }
             }

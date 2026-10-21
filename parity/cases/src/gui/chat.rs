@@ -72,6 +72,20 @@ fn chat(messages: Vec<Value>, tick: i64) -> Chat {
     Chat { messages, tick, ..Chat::default() }
 }
 
+/// Underlined and struck text, which chat draws with a shadow: each effect's shadow copy and the
+/// parent's flags reaching a sibling.
+fn effect_rows() -> Vec<Value> {
+    let one = |component_: Ordered| vec![component(&component_, 0)];
+    let under = show("under ").with("underlined", true);
+    let both = show("both").with("underlined", true).with("strikethrough", true).with("color", "red");
+    vec![
+        chat(one(under.clone()), 0).row("effect-underlined"),
+        chat(one(show("struck").with("strikethrough", true)), 0).row("effect-struck"),
+        chat(one(both.clone()), 0).row("effect-both-coloured"),
+        chat(one(under.with("extra", vec![show("child"), both])), 0).row("effect-inherited"),
+    ]
+}
+
 fn basic_rows() -> Vec<Value> {
     vec![
         chat(texts(&[("hello world", 0)]), 0).row("one-line"),
@@ -341,6 +355,7 @@ fn language_rows() -> Vec<Value> {
 pub fn chat_case() -> Value {
     let rows = [
         basic_rows(),
+        effect_rows(),
         tagged_rows(),
         scale_and_width_rows(),
         opacity_and_spacing_rows(),

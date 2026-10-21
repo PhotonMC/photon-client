@@ -211,25 +211,31 @@ fn break_lines(runs: &[Run], max: i32, font: &Font, indent_soft: bool) -> Vec<Ve
     lines.push((current, soft));
     lines
         .into_iter()
-        .map(|(line, soft)| {
-            let mut out: Vec<Run> = Vec::new();
-            // A line after a soft break starts with a space in no style.
-            let indent = (soft && indent_soft).then_some((' ', Style::default()));
-            let styled = line
-                .into_iter()
-                .map(|(c, index)| (c, runs[index].style.clone()));
-            for (c, style) in indent.into_iter().chain(styled) {
-                match out.last_mut() {
-                    Some(run) if run.style == style => run.text.push(c),
-                    _ => out.push(Run {
-                        text: c.to_string(),
-                        style,
-                    }),
-                }
-            }
-            out
-        })
+        .map(|(line, soft)| line_runs(runs, line, soft && indent_soft))
         .collect()
+}
+
+/// A line's characters as runs. A line after a soft break starts with a space in no style.
+/// Characters of one component stay one run; the next component starts its own, in the same
+/// style or not, as the reference's pieces do.
+fn line_runs(runs: &[Run], line: Vec<(char, usize)>, indent: bool) -> Vec<Run> {
+    let mut out: Vec<Run> = Vec::new();
+    let indent = indent.then_some((' ', Style::default(), usize::MAX));
+    let styled = line
+        .into_iter()
+        .map(|(c, index)| (c, runs[index].style.clone(), index));
+    let mut last = None;
+    for (c, style, index) in indent.into_iter().chain(styled) {
+        match out.last_mut() {
+            Some(run) if last == Some(index) => run.text.push(c),
+            _ => out.push(Run {
+                text: c.to_string(),
+                style,
+            }),
+        }
+        last = Some(index);
+    }
+    out
 }
 
 /// `AlphaCalculator.timeBased`: fully shown for 180 ticks, then faded out by
