@@ -48,6 +48,7 @@ impl Gui {
                 let version = photon_net::resources::KnownPack::VANILLA_VERSION;
                 debug::version_line(version, version)
             },
+            day_count: Self::day_count(session),
             camera,
             frame: controls.debug.frame,
             server: Some({
@@ -70,6 +71,17 @@ impl Gui {
             )
         });
         Some(debug::lines(list, reduced, &input, footer))
+    }
+
+    /// `Timeline.getPeriodCount` of the overworld day timeline (a 24000-tick period on the
+    /// overworld clock); an unset clock counts from zero (`ClientClockManager.getInstance`).
+    fn day_count(session: &PlaySession) -> Option<i32> {
+        const DAY_PERIOD: i64 = 24000;
+        session
+            .registry_names("minecraft:timeline")
+            .iter()
+            .any(|name| name == "minecraft:day")
+            .then(|| (session.clock_ticks("minecraft:overworld").unwrap_or(0) / DAY_PERIOD) as i32)
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

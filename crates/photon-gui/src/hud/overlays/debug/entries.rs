@@ -96,6 +96,8 @@ pub struct Input {
     pub system: Option<SystemSpecs>,
     /// What `memory` shows, none without it.
     pub memory: Option<MemoryUsage>,
+    /// The overworld day timeline's period count, none without the timeline in the registry.
+    pub day_count: Option<i32>,
 }
 
 /// The lines of one entry's `display`.
@@ -119,11 +121,31 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
             .map(system::display)
             .unwrap_or_default(),
         "game_version" => vec![Line::Priority(input.version.clone())],
-        "player_position" => input.camera.as_ref().map(position).unwrap_or_default(),
-        "player_section_position" => input.camera.as_ref().map(section).unwrap_or_default(),
-        "biome" => input.camera.as_ref().and_then(biome).into_iter().collect(),
+        "day_count" => day(input.day_count),
+        _ => input
+            .camera
+            .as_ref()
+            .map(|camera| at_camera(id, camera))
+            .unwrap_or_default(),
+    }
+}
+
+/// The entries that describe where the camera entity is.
+fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
+    match id {
+        "player_position" => position(camera),
+        "player_section_position" => section(camera),
+        "biome" => biome(camera).into_iter().collect(),
         _ => Vec::new(),
     }
+}
+
+/// `DebugEntryDayCount`: the days the overworld clock has run.
+fn day(count: Option<i32>) -> Vec<Line> {
+    count
+        .map(|day| Line::Regular(format!("Day #{day}")))
+        .into_iter()
+        .collect()
 }
 
 /// `DebugEntryBiome`: the biome at the feet, while they are inside the build height.

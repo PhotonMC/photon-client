@@ -1115,6 +1115,13 @@ class GuiHudOracle extends GuiCommandOracle {
                     statuses.put(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.IN_OVERLAY);
                 }
             }
+            if (row.has("day")) {
+                // The overworld clock's total ticks, which the day count entry divides by the day's period.
+                var clock = scene.level().registryAccess()
+                    .get(net.minecraft.world.clock.WorldClocks.OVERWORLD).orElseThrow();
+                scene.level().clockManager().handleUpdates(0L, java.util.Map.of(clock,
+                    new net.minecraft.world.clock.ClockNetworkState(row.get("day").getAsLong(), 0.0F, 1.0F)));
+            }
             statuses.keySet().removeIf(id -> !kept.contains(id.getPath()));
             MovementOracle.setField(entries, "allStatuses", statuses);
             MovementOracle.setField(entries, "currentlyEnabled", new java.util.ArrayList<>());

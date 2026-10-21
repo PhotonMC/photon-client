@@ -39,6 +39,7 @@ pub fn hud_debug_overlay() -> Value {
     rows.extend(impactor_rows());
     rows.extend(system_rows());
     rows.extend(biome_rows());
+    rows.extend(day_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -132,6 +133,21 @@ fn biome_rows() -> Vec<Value> {
         row("reduced", (1.0, 64.0, 3.0), json!({"reduced": true})),
         row("unloaded-chunk", (5000.5, 64.0, -5000.5), json!({})),
     ]
+}
+
+/// The day count entry: the overworld clock's ticks divided by the day's 24000, floored, from a
+/// clock never set up through days in the hundreds of thousands.
+fn day_rows() -> Vec<Value> {
+    [0_i64, 1, 23_999, 24_000, 24_001, 1_000_000, 100_000_000_000]
+        .into_iter()
+        .map(|ticks| {
+            row(
+                format!("debug-day-{ticks}"),
+                ((1.0, 64.0, 3.0), (0.0, 0.0)),
+                json!({"extra": ["day_count"], "day": ticks}),
+            )
+        })
+        .collect()
 }
 
 /// The performance options entry: each cloud status and filtering method, the blend radius at its
