@@ -5,7 +5,7 @@ use photon_game::chat_abilities::{ChatAbilities, ChatRestriction, MessageSource}
 use photon_gui::chat::{ChatLog, ChatSettings};
 
 /// The abilities a row's restriction names leave.
-fn abilities(names: &Value) -> Result<ChatAbilities, String> {
+pub(super) fn abilities(names: &Value) -> Result<ChatAbilities, String> {
     names
         .as_array()
         .into_iter()

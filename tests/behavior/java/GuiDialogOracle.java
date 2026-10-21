@@ -236,4 +236,91 @@ class GuiDialogOracle extends GuiSocialOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /**
+     * The chat restrictions screen of some restrictions, after some keys, clicks and wheel turns:
+     * what its buttons opened, and what it draws.
+     */
+    static JsonObject restrictionsScreen(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse").getAsJsonArray().get(0).getAsInt();
+            int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
+            var screen = screen(width, height, mouseX, mouseY);
+            var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            if (row.get("in_world").getAsBoolean()) {
+                set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
+            }
+            var gui = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);
+            set(gui, "events", new java.util.ArrayList<String>());
+            set(gui, "hud", screen.hud());
+            set(minecraft, "gui", gui);
+            var shown = new net.minecraft.client.gui.screens.multiplayer.RestrictionsScreen(new PreviousScreen(),
+                abilities(row.getAsJsonArray("restrictions")));
+            set(shown, "width", width);
+            set(shown, "height", height);
+            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
+            init.setAccessible(true);
+            init.invoke(shown);
+            var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
+            for (var stepElement : row.getAsJsonArray("steps")) {
+                var step = stepElement.getAsJsonObject();
+                String action = step.get("do").getAsString();
+                switch (action) {
+                    case "key" -> {
+                        String name = step.get("key").getAsString();
+                        int code = switch (name) {
+                            case "tab", "shift+tab" -> 258;
+                            case "escape" -> 256;
+                            case "enter" -> 257;
+                            case "space" -> 32;
+                            default -> throw new IllegalArgumentException(name);
+                        };
+                        if (code == 258) {
+                            minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                        }
+                        shown.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                    }
+                    case "click" -> {
+                        minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                        shown.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                            step.get("x").getAsDouble(), step.get("y").getAsDouble(), info), false);
+                    }
+                    case "drag" -> shown.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(), info),
+                        step.get("dx").getAsDouble(), step.get("dy").getAsDouble());
+                    case "release" -> shown.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(), info));
+                    case "scroll" -> shown.mouseScrolled(step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        0.0, step.get("amount").getAsDouble());
+                    default -> throw new IllegalArgumentException(action);
+                }
+            }
+            minecraft.options.menuBackgroundBlurriness().set(5);
+            if (row.get("in_world").getAsBoolean()) {
+                shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            } else {
+                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
+                background.setAccessible(true);
+                background.invoke(shown, screen.graphics());
+            }
+            shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
+            screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var events = new JsonArray();
+            gui.events.forEach(events::add);
+            out.add("events", events);
+            out.add("ops", record(screen.state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

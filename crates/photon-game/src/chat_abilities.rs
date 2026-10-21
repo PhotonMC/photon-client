@@ -93,6 +93,8 @@ pub enum MessageSource {
 /// `ChatAbilities`.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ChatAbilities {
+    /// In the order they were given: the reference keeps them in a set whose order is salted anew
+    /// in every run, so none is the right one.
     restrictions: Vec<ChatRestriction>,
 }
 

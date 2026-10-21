@@ -156,6 +156,8 @@ pub struct Controls {
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
     /// screen, which this takes the place of while it is open.
     pub confirm: Option<ConfirmScreen>,
+    /// The chat restrictions screen, over the chat.
+    pub restrictions: Option<photon_gui::screen::restrictions::RestrictionsScreen>,
     /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
     pub link_confirm: Option<(ConfirmScreen, String)>,
     /// The screen a server dialog puts over the game, and the question about it.
@@ -337,6 +339,7 @@ mod options;
 mod pack_prompt;
 
 mod pause;
+mod restrictions;
 
 mod scripted;
 

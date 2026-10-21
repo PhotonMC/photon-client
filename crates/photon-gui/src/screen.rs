@@ -17,6 +17,7 @@ pub mod disconnected;
 pub mod game_mode;
 pub mod jigsaw;
 pub mod pause;
+pub mod restrictions;
 pub mod server_form;
 pub mod servers;
 pub mod sign_edit;

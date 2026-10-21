@@ -15,15 +15,6 @@ impl ChatLog {
         focused && self.abilities.has_any_restrictions()
     }
 
-    /// A click on the line: the game opens the restrictions screen.
-    pub fn request_restrictions(&mut self) {
-        self.restrictions_requested = true;
-    }
-
-    pub fn take_restrictions_request(&mut self) -> bool {
-        std::mem::take(&mut self.restrictions_requested)
-    }
-
     /// `chat_screen.restricted` as red, underlined text that opens the restrictions, clipped to
     /// the chat's width (and then with a hover of its own text) when it does not fit.
     pub(super) fn prompt_runs(&self, font: &Font, lang: &Lang, max_width: i32) -> Vec<Run> {

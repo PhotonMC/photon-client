@@ -1,6 +1,7 @@
 use super::*;
 use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
+use photon_gui::screen::restrictions::RestrictionsScreen;
 
 impl Gui {
     /// The chat's messages, the box's and brighter when it is open; the lines of the tooltip
@@ -38,6 +39,17 @@ impl Gui {
                 *link = link.resized(font, lang, gui_size);
             }
             link.draw(frame, (atlas, font), mouse, blurriness);
+        } else if let Some(restrictions) = controls.restrictions.as_mut() {
+            if restrictions.size() != gui_size {
+                *restrictions = RestrictionsScreen::new(
+                    font,
+                    lang,
+                    gui_size,
+                    controls.chat_log.abilities(),
+                    true,
+                );
+            }
+            restrictions.draw(frame, (atlas, font), (mouse, blurriness));
         } else if let Some(warning) = controls.dialog_warning.as_mut() {
             if warning.size() != gui_size {
                 *warning = warning.resized(font, lang, gui_size);

@@ -25,6 +25,8 @@ mod screens;
 use screens::*;
 mod dialog;
 use dialog::*;
+mod restrictions;
+use restrictions::*;
 mod settings;
 use settings::*;
 mod container;
@@ -128,7 +130,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
             "server_form" => server_form_case(&mut ctx, row)?,
             "connect_screen" => connect_screen_case(&mut ctx, row)?,
             "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
-            "dialog_screen" => dialog_screen_case(&mut ctx, row)?,
+            "dialog_screen" | "restrictions_screen" => dialog_case(&mut ctx, row, operation)?,
             "widgets" => widgets_case(&mut ctx, row)?,
             "options_screen" => options_screen_case(&mut ctx, row)?,
             "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,

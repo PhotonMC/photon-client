@@ -27,10 +27,10 @@ use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
 /// `HeaderAndFooterLayout`'s content margin.
 /// `ButtonListDialogScreen.FOOTER_MARGIN`: the footer of a button list with no exit button.
 const SHORT_FOOTER: i32 = 5;
-const CONTENT_MARGIN: i32 = 30;
+pub(super) const CONTENT_MARGIN: i32 = 30;
 /// `ScrollableLayout`'s space either side of the content: the bar and its gap.
-const RESERVE: i32 = 4 + SCROLLBAR_WIDTH;
-const SCROLL_RATE: f64 = 10.0;
+pub(super) const RESERVE: i32 = 4 + SCROLLBAR_WIDTH;
+pub(super) const SCROLL_RATE: f64 = 10.0;
 const WARNING_SIZE: i32 = 20;
 
 /// What the player did on the screen.
@@ -53,11 +53,11 @@ enum Focus {
 
 /// `ScrollableLayout.Container`: where the box stands.
 #[derive(Debug, Clone, Copy)]
-struct Container {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+pub(super) struct Container {
+    pub(super) x: i32,
+    pub(super) y: i32,
+    pub(super) width: i32,
+    pub(super) height: i32,
 }
 
 pub struct DialogScreen {
@@ -100,7 +100,7 @@ fn place_header(arena: &mut Arena, (title, warning): (&Widget, &Widget), width: 
 
 /// `ScrollableLayout`: the box is as tall as the body, to what the bars leave, and is put at the
 /// top of the content frame.
-fn container_for(
+pub(super) fn container_for(
     (width, height): (i32, i32),
     footer_height: i32,
     (body_width, body_height): (i32, i32),
@@ -114,6 +114,19 @@ fn container_for(
         width: box_width,
         height: box_height,
     }
+}
+
+/// The texture a menu background is tiled with; over a game, the frame is blurred first.
+pub(super) fn menu_background(
+    frame: &mut GuiFrame,
+    in_world: bool,
+    blurriness: i32,
+) -> &'static str {
+    if !in_world {
+        return "menu_background";
+    }
+    frame.blur_before_this_stratum(blurriness);
+    "inworld_menu_background"
 }
 
 impl DialogScreen {
@@ -345,15 +358,6 @@ impl DialogScreen {
         }
     }
 
-    /// The texture the background is tiled with; over a game, the frame is blurred first.
-    fn background(&self, frame: &mut GuiFrame, blurriness: i32) -> &'static str {
-        if !self.in_world {
-            return "menu_background";
-        }
-        frame.blur_before_this_stratum(blurriness);
-        "inworld_menu_background"
-    }
-
     /// The background, the title, the body in its box, the buttons, the warning button, and the
     /// tooltip of the one the mouse is on (or the keyboard has).
     pub fn draw(
@@ -364,7 +368,7 @@ impl DialogScreen {
         (mouse, blurriness): ((i32, i32), i32),
     ) {
         let (width, height) = self.size;
-        let background = self.background(frame, blurriness);
+        let background = menu_background(frame, self.in_world, blurriness);
         frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
         self.title.draw(frame, atlas, font, &self.arena, false);
         let c = self.container;

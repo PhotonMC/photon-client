@@ -280,6 +280,14 @@ impl Controls {
                 self.chat_log.request_queue_accept();
                 return Ok(());
             }
+            // The restricted line opens the restrictions screen (`GO_TO_RESTRICTIONS_SCREEN`).
+            if !shift
+                && matches!(style.click.as_deref(), Some(photon_game::text::ClickEvent::Custom(id, _))
+                    if id == photon_gui::chat::GO_TO_RESTRICTIONS_ID)
+            {
+                self.open_restrictions(surface, assets);
+                return Ok(());
+            }
             self.style_clicked(&style, shift, session, surface, assets)?;
         } else if bed {
             session.send_stop_sleeping()?;

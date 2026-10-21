@@ -23,6 +23,7 @@ mod locator;
 mod options;
 mod panels;
 mod panorama;
+mod restrictions;
 mod screens;
 mod setting;
 mod signs;
@@ -69,6 +70,7 @@ const ORDER: &[Generator] = &[
     || vec![widgets::game_mode_switcher()],
     || vec![confirm::confirm_screen()],
     || vec![dialog::dialog_screen()],
+    || vec![restrictions::restrictions_screen()],
     || vec![widgets::widgets()],
     || vec![options::options_screen()],
     || vec![video::video_settings_screen()],

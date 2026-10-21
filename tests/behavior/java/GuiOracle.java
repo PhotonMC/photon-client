@@ -72,6 +72,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "toasts" -> toasts(request);
                 case "confirm_screen" -> confirmScreen(request);
                 case "dialog_screen" -> dialogScreen(request);
+                case "restrictions_screen" -> restrictionsScreen(request);
                 case "widgets" -> widgets(request);
                 case "options_screen" -> optionsScreen(request);
                 case "video_settings_screen" -> settingsScreen(request, "video");

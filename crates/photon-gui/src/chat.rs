@@ -270,8 +270,6 @@ pub struct ChatLog {
     settings: ChatSettings,
     /// `visibleMessageFilter`: what the player may see of the chat.
     abilities: ChatAbilities,
-    /// Clicks on that prompt the game has not yet answered.
-    restrictions_requested: bool,
 }
 
 /// A point of the screen in the chat's own units: the pose, which scales

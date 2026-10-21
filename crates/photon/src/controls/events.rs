@@ -273,7 +273,7 @@ impl Controls {
             return Ok(self.dialog_event(event, session, surface, assets));
         }
         if self.chat.is_some() {
-            return Ok(self.chat_event(event, session, surface, assets));
+            return Ok(self.chat_screen_event(event, session, surface, assets));
         }
         if self.debug_options.is_some() {
             return Ok(self.debug_options_event(event, (session, surface, assets)));
