@@ -18,6 +18,7 @@ struct Node {
     executable: bool,
     redirect: Option<usize>,
     provider: Option<&'static str>,
+    restricted: bool,
 }
 
 /// Nodes by index; the root is node 0.
@@ -35,6 +36,7 @@ impl Tree {
             executable: false,
             redirect: None,
             provider: None,
+            restricted: false,
         };
         Self { nodes: vec![root] }
     }
@@ -56,6 +58,7 @@ impl Tree {
             executable,
             redirect: None,
             provider: None,
+            restricted: false,
         };
         self.add(node)
     }
@@ -70,6 +73,7 @@ impl Tree {
             executable,
             redirect: None,
             provider: None,
+            restricted: false,
         };
         self.add(node)
     }
@@ -80,6 +84,11 @@ impl Tree {
 
     pub fn set_redirect(&mut self, node: usize, target: usize) {
         self.nodes[node].redirect = Some(target);
+    }
+
+    /// Only a source with the restricted-command permission may use the node.
+    pub fn restrict(&mut self, node: usize) {
+        self.nodes[node].restricted = true;
     }
 
     pub fn set_provider(&mut self, node: usize, provider: &'static str) {
@@ -138,7 +147,8 @@ impl Tree {
         let executable = if node.executable { 4 } else { 0 };
         let redirect = if node.redirect.is_some() { 8 } else { 0 };
         let provider = if node.provider.is_some() { 16 } else { 0 };
-        kind | executable | redirect | provider
+        let restricted = if node.restricted { 32 } else { 0 };
+        kind | executable | redirect | provider | restricted
     }
 
     fn body(node: &Node) -> Vec<u8> {

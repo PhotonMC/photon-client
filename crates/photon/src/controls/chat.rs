@@ -403,7 +403,8 @@ impl Controls {
         match event {
             // `Commands.trimOptionalPrefix`, then the command as typed.
             ClickEvent::RunCommand(command) => {
-                session.send_chat(command.strip_prefix('/').unwrap_or(command), true)?;
+                let command = command.strip_prefix('/').unwrap_or(command);
+                self.send_unattended(command, session, surface, assets)?;
             }
             ClickEvent::SuggestCommand(command) => {
                 if let Some(chat) = self.chat.as_mut() {
@@ -421,7 +422,7 @@ impl Controls {
                         .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
                             in_world: true,
                         });
-                self.link_confirm = Some((screen, url.clone()));
+                self.link_confirm = Some((screen, ConfirmTarget::Link(url.clone())));
             }
             ClickEvent::OpenFile(path) => open_uri(path),
             ClickEvent::Custom(id, payload) => {
@@ -440,15 +441,20 @@ impl Controls {
 
     /// An event for the open link confirmation: Yes opens the link, Copy
     /// keeps it on the clipboard, No and Escape go back to the chat.
-    pub(super) fn link_event(&mut self, event: glfw::WindowEvent, surface: &mut WindowSurface) {
+    pub(super) fn link_event(
+        &mut self,
+        event: glfw::WindowEvent,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+    ) -> Result {
         use glfw::{Action, Key, WindowEvent};
         if let WindowEvent::CursorPos(x, y) = event {
             self.move_gui_mouse((x, y), surface);
-            return;
+            return Ok(());
         }
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        let Some((screen, url)) = self.link_confirm.as_mut() else {
-            return;
+        let Some((screen, _)) = self.link_confirm.as_mut() else {
+            return Ok(());
         };
         let action = match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
@@ -465,13 +471,11 @@ impl Controls {
             _ => None,
         };
         let Some(action) = action else {
-            return;
+            return Ok(());
         };
-        match action {
-            LinkAction::Yes => open_uri(url),
-            LinkAction::Copy => surface.set_clipboard(url),
-            LinkAction::No => {}
-        }
-        self.link_confirm = None;
+        let Some((_, target)) = self.link_confirm.take() else {
+            return Ok(());
+        };
+        self.answer_confirm(action, &target, session, surface)
     }
 }

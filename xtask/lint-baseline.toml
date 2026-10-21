@@ -174,7 +174,6 @@
 "crates/photon-dev/examples/world_remote_player_head_rotation_probe.rs::main" = 11
 "crates/photon-dev/src/probe/mode.rs::connect_and_probe_with_mode" = 332
 "crates/photon-dev/src/probe/observe.rs::observe_player_interpolation" = 11
-"crates/photon-game/src/commands.rs::CommandTree::smart_usage_of" = 15
 "crates/photon-game/src/commands/arguments.rs::balanced" = 11
 "crates/photon-game/src/commands/arguments.rs::entity" = 24
 "crates/photon-game/src/commands/arguments/argument_kind_items.rs::ArgumentKind::read_as" = 61
@@ -629,7 +628,6 @@
 "crates/photon-dev/examples/world_remote_player_motion_probe.rs::main" = 98
 "crates/photon-dev/examples/world_remote_player_position_snap_probe.rs::main" = 98
 "crates/photon-dev/src/probe/mode.rs::connect_and_probe_with_mode" = 2245
-"crates/photon-game/src/commands.rs::CommandTree::parse_nodes" = 62
 "crates/photon-game/src/commands/arguments.rs::entity" = 83
 "crates/photon-game/src/commands/arguments/argument_kind_items.rs::ArgumentKind::read_as" = 295
 "crates/photon-game/src/game_mode/outgoing.rs::Outgoing::encode_body" = 97

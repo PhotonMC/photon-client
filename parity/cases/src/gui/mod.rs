@@ -60,6 +60,7 @@ const ORDER: &[Generator] = &[
     || vec![hud::sidebar()],
     || vec![commands::command_parse()],
     || vec![suggest::command_suggest()],
+    || vec![commands::command_verify()],
     || vec![screens::pause_screen()],
     || vec![screens::death_screen()],
     || vec![screens::disconnected_screen()],

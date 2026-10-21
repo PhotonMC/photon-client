@@ -44,6 +44,7 @@ fn no_commands() -> Result<std::sync::Arc<photon_game::commands::CommandTree>, S
         redirect: None,
         executable: false,
         custom_suggestions: false,
+        restricted: false,
         type_id: 0,
     };
     CommandTree::build(vec![root], 0)

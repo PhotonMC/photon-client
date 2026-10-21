@@ -64,6 +64,7 @@ pub fn parse_commands_packet(
             redirect,
             executable: flags & 4 != 0,
             custom_suggestions: custom,
+            restricted: flags & 32 != 0,
             type_id,
         });
     }

@@ -273,3 +273,67 @@ pub fn command_parse() -> Value {
 pub fn title(flag: bool) -> &'static str {
     if flag { "True" } else { "False" }
 }
+
+/// The tree of the verify cases: commands anyone may run, one that takes a message, one that
+/// only a source with the restricted permission may use, one with a restricted argument, some
+/// that take a selector, and `execute` with its redirects.
+fn verify_tree() -> Tree {
+    let mut tree = Tree::new();
+    let entity = || (6, vec![0]);
+    let help = tree.literal("help", vec![], true);
+    let message = tree.argument("message", plain(20), vec![], true);
+    let say = tree.literal("say", vec![message], false);
+    let target = tree.argument("target", plain(24), vec![], true);
+    let kick = tree.literal("kick", vec![target], false);
+    tree.restrict(kick);
+    let reason = tree.argument("reason", plain(24), vec![], true);
+    tree.restrict(reason);
+    let ban = tree.literal("ban", vec![reason], true);
+    let targets = tree.argument("targets", entity(), vec![], true);
+    let op = tree.literal("op", vec![targets], false);
+    let gamemode = tree.argument("gamemode", plain(42), vec![], true);
+    let gamemode = tree.literal("gamemode", vec![gamemode], false);
+    let execute = execute_branch(&mut tree, entity());
+    tree.set_children(Tree::ROOT, vec![help, say, kick, ban, op, gamemode, execute]);
+    tree
+}
+
+const VERIFY: &[&str] = &[
+    "help",
+    "help me",
+    "help ",
+    "say hi",
+    "say",
+    "kick bob",
+    "kick",
+    "kick bob extra",
+    "nope",
+    "",
+    "/help",
+    "ban",
+    "ban spam",
+    "op Steve",
+    "op @s",
+    "gamemode creative",
+    "gamemode nonsense",
+    "execute run help",
+    "execute run kick bob",
+    "execute run say hi",
+    "execute run",
+    "execute as @a run help",
+    "execute as Steve run help",
+];
+
+/// What running a command for the player needs first (`verifyCommand`).
+pub fn command_verify() -> Value {
+    let mut rows = Vec::new();
+    for (number, text) in VERIFY.iter().enumerate() {
+        for selectors in [true, false] {
+            let label = format!("{number}-{text}-selectors-{}", title(selectors));
+            rows.push(json!({"label": label, "text": text, "selectors": selectors}));
+        }
+    }
+    let mut case = gui("command-verify", "command_verify", rows);
+    case["tree"] = json!(verify_tree().payload());
+    case
+}

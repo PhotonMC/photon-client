@@ -10,6 +10,75 @@ const ARGUMENT_COLOURS: [u32; 5] = [0x55_FFFF, 0xFF_FF55, 0x55_FF55, 0xFF_55FF, 
 const LITERAL_COLOUR: u32 = 0xAA_AAAA;
 const UNPARSED_COLOUR: u32 = 0xFF_5555;
 
+impl CommandTree {
+    /// `getSmartUsage`: a line for each child that is not a literal's own
+    /// (the caller drops literals).
+    pub fn smart_usage(&self, node: usize) -> Vec<(usize, String)> {
+        let optional = self.nodes[node].executable;
+        self.nodes[node]
+            .children
+            .iter()
+            .filter_map(|&child| {
+                self.smart_usage_of(child, optional, false)
+                    .map(|usage| (child, usage))
+            })
+            .collect()
+    }
+
+    fn smart_usage_of(&self, node: usize, optional: bool, deep: bool) -> Option<String> {
+        let data = &self.nodes[node];
+        let own = if optional {
+            format!("[{}]", data.usage_text())
+        } else {
+            data.usage_text()
+        };
+        if deep {
+            return Some(own);
+        }
+        if let Some(redirect) = data.redirect {
+            let target = if redirect == self.root {
+                "...".to_owned()
+            } else {
+                format!("-> {}", self.nodes[redirect].usage_text())
+            };
+            return Some(format!("{own} {target}"));
+        }
+        let continued = match data.children.as_slice() {
+            [] => None,
+            [only] => self
+                .smart_usage_of(*only, data.executable, data.executable)
+                .map(|usage| format!("{own} {usage}")),
+            children => self.branch_usage(children, data.executable, &own),
+        };
+        Some(continued.unwrap_or(own))
+    }
+
+    /// The usage of a node with several children: the one line they share, or their names.
+    fn branch_usage(&self, children: &[usize], optional: bool, own: &str) -> Option<String> {
+        let mut usages: Vec<String> = Vec::new();
+        for &child in children {
+            if let Some(usage) = self.smart_usage_of(child, optional, true)
+                && !usages.contains(&usage)
+            {
+                usages.push(usage);
+            }
+        }
+        match usages.as_slice() {
+            [] => None,
+            [usage] if optional => Some(format!("{own} [{usage}]")),
+            [usage] => Some(format!("{own} {usage}")),
+            _ => {
+                let (open, close) = if optional { ('[', ']') } else { ('(', ')') };
+                let names: Vec<String> = children
+                    .iter()
+                    .map(|&child| self.nodes[child].usage_text())
+                    .collect();
+                Some(format!("{own} {open}{}{close}", names.join("|")))
+            }
+        }
+    }
+}
+
 /// `formatText`: the visible `text`, which starts `offset` characters into
 /// the box, cut into parts of one colour each.
 pub fn format_text(parse: &ParseResults, text: &str, offset: usize) -> Vec<(String, u32)> {
@@ -49,8 +118,28 @@ pub fn format_text(parse: &ParseResults, text: &str, offset: usize) -> Vec<(Stri
 /// `CommandSuggestions.hasMessageArguments`: whether the command read has a message in it
 /// (`minecraft:message`, which the tree keeps as the rest of the text).
 pub fn has_message_arguments(tree: &CommandTree, parse: &ParseResults) -> bool {
+    message_in_contexts(tree, parse, false)
+}
+
+/// `SignableCommand.hasSignableArguments`: the same, but what comes after a redirect to the root
+/// (`execute run ...`) is left out, the server being unable to take a signed message there.
+pub fn has_signable_arguments(tree: &CommandTree, parse: &ParseResults) -> bool {
+    message_in_contexts(tree, parse, true)
+}
+
+/// `ArgumentVisitor.visitArguments` looking for a message argument.
+fn message_in_contexts(
+    tree: &CommandTree,
+    parse: &ParseResults,
+    reject_root_redirects: bool,
+) -> bool {
+    let root = parse.context.root_node();
     let mut context = Some(&parse.context);
     while let Some(each) = context {
+        if reject_root_redirects && !std::ptr::eq(each, &parse.context) && each.root_node() == root
+        {
+            break;
+        }
         let found = each.nodes.iter().any(|(node, _)| {
             matches!(
                 &tree.node(*node).kind,
@@ -153,6 +242,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                restricted: false,
                 type_id: 0,
             },
             NodeStub {
@@ -161,6 +251,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                restricted: false,
                 type_id: 0,
             },
             NodeStub {
@@ -172,6 +263,7 @@ mod tests {
                 redirect: None,
                 executable: false,
                 custom_suggestions: false,
+                restricted: false,
                 type_id: 24,
             },
             NodeStub {
@@ -183,6 +275,7 @@ mod tests {
                 redirect: None,
                 executable: true,
                 custom_suggestions: false,
+                restricted: false,
                 type_id: 0,
             },
         ];

@@ -132,7 +132,7 @@ impl Controls {
                 let gui = (size.gui_scaled_width(), size.gui_scaled_height());
                 let screen = ConfirmScreen::link(font, &assets.lang, gui, BLOCKING_HELP, false)
                     .with_background(ConfirmBackground::Menu { in_world: true });
-                self.link_confirm = Some((screen, BLOCKING_HELP.to_owned()));
+                self.link_confirm = Some((screen, ConfirmTarget::Link(BLOCKING_HELP.to_owned())));
             }
             // The report screen needs the online services.
             Some(SocialEvent::Report(_)) | None => {}

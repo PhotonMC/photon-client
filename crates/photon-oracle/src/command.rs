@@ -82,6 +82,34 @@ pub(super) fn command_parse_result(
     Ok(json!({"rows": rows}))
 }
 
+/// The command tree a request's packet payload holds.
+fn tree_of(request: &Value) -> Result<photon_game::commands::CommandTree, String> {
+    let hex = request["tree"].as_str().ok_or("tree")?;
+    let bytes: Vec<u8> = (0..hex.len() / 2)
+        .map(|index| u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).map_err(|_| "tree hex"))
+        .collect::<Result<_, _>>()?;
+    photon_net::connection::parse_commands_packet(&bytes).map_err(|error| format!("{error:?}"))
+}
+
+/// What running each command for the player needs first: nothing, a whole command, a signature
+/// or a permission.
+pub(super) fn command_verify_result(request: &Value) -> Result<Value, String> {
+    let tree = tree_of(request)?;
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let text = row["text"].as_str().ok_or("text")?;
+        let selectors = row["selectors"].as_bool().unwrap_or(true);
+        let check = match tree.check(text, selectors) {
+            photon_game::commands::CommandCheck::NoIssues => "NO_ISSUES",
+            photon_game::commands::CommandCheck::ParseErrors => "PARSE_ERRORS",
+            photon_game::commands::CommandCheck::SignatureRequired => "SIGNATURE_REQUIRED",
+            photon_game::commands::CommandCheck::PermissionsRequired => "PERMISSIONS_REQUIRED",
+        };
+        rows.push(json!({"label": row["label"], "check": check}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// The tree's own suggestions for text at a cursor, and whether the server
 /// would be asked.
 pub(super) fn command_suggest_result(request: &Value) -> Result<Value, String> {

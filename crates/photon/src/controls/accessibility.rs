@@ -149,6 +149,6 @@ impl Controls {
             false,
         )
         .with_background(ConfirmBackground::Menu { in_world: true });
-        self.link_confirm = Some((screen, ACCESSIBILITY_HELP.to_owned()));
+        self.link_confirm = Some((screen, ConfirmTarget::Link(ACCESSIBILITY_HELP.to_owned())));
     }
 }

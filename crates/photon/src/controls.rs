@@ -158,8 +158,8 @@ pub struct Controls {
     pub confirm: Option<ConfirmScreen>,
     /// The chat restrictions screen, over the chat.
     pub restrictions: Option<photon_gui::screen::restrictions::RestrictionsScreen>,
-    /// `ConfirmLinkScreen`, over the chat, and the link it asks about.
-    pub link_confirm: Option<(ConfirmScreen, String)>,
+    /// `ConfirmLinkScreen` or a command confirmation, over the chat, and what it asks about.
+    pub link_confirm: Option<(ConfirmScreen, ConfirmTarget)>,
     /// The screen a server dialog puts over the game, and the question about it.
     pub dialog: Option<DialogLayer>,
     pub dialog_warning: Option<ConfirmScreen>,
@@ -340,6 +340,8 @@ mod pack_prompt;
 
 mod pause;
 mod restrictions;
+mod unattended;
+pub use unattended::ConfirmTarget;
 
 mod scripted;
 

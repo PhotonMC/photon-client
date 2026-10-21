@@ -189,4 +189,37 @@ class GuiCommandOracle extends GuiChatOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /**
+     * What the game checks of a command it runs for the player (a clicked command): whether it
+     * needs nothing, cannot be parsed, needs a signature or needs a permission, by its own
+     * `verifyCommand`.
+     */
+    static JsonObject commandVerify(JsonObject request) throws Exception {
+        var dispatcher = commandDispatcher(request.get("tree").getAsString());
+        var verify = net.minecraft.client.multiplayer.ClientPacketListener.class.getDeclaredMethod("verifyCommand",
+            String.class);
+        verify.setAccessible(true);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            boolean selectors = !row.has("selectors") || row.get("selectors").getAsBoolean();
+            var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            set(listener, "commands", dispatcher);
+            // The player's own provider also holds the restricted-command permission; the
+            // restricted one holds none.
+            set(listener, "suggestionsProvider", new net.minecraft.client.multiplayer.ClientSuggestionProvider(null,
+                null, permission -> selectors
+                    || !permission.equals(net.minecraft.server.permissions.Permissions.COMMANDS_ENTITY_SELECTORS)));
+            set(listener, "restrictedSuggestionsProvider", new net.minecraft.client.multiplayer.ClientSuggestionProvider(
+                null, null, net.minecraft.server.permissions.PermissionSet.NO_PERMISSIONS));
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("check", String.valueOf(verify.invoke(listener, row.get("text").getAsString())));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

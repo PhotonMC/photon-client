@@ -33,6 +33,7 @@ fn commands_of(say: bool) -> photon_game::commands::CommandTree {
         redirect: None,
         executable,
         custom_suggestions: false,
+        restricted: false,
         type_id: 0,
     };
     let mut nodes = vec![stub(NodeKind::Root, Vec::new(), false)];

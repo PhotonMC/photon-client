@@ -107,6 +107,9 @@ pub struct Node {
     /// The server answers this argument's suggestions (`ask_server` and the
     /// other custom providers).
     pub custom_suggestions: bool,
+    /// Only a source with the restricted-command permission may use it (the packet's restricted
+    /// flag).
+    pub restricted: bool,
     /// The argument type's id on the wire (`COMMAND_ARGUMENT_TYPE`), 0 for
     /// the rest.
     pub type_id: u8,
@@ -147,6 +150,7 @@ pub struct NodeStub {
     pub redirect: Option<usize>,
     pub executable: bool,
     pub custom_suggestions: bool,
+    pub restricted: bool,
     pub type_id: u8,
 }
 
@@ -164,6 +168,7 @@ impl CommandTree {
                 redirect: stub.redirect,
                 executable: stub.executable,
                 custom_suggestions: stub.custom_suggestions,
+                restricted: stub.restricted,
                 type_id: stub.type_id,
             })
             .collect();
@@ -261,12 +266,15 @@ pub struct Context {
     /// Whether the source may use entity selectors
     /// (`EntitySelectorParser.allowSelectors`).
     selectors: bool,
+    /// Whether the source may use the nodes the packet marks restricted.
+    restricted_ok: bool,
 }
 
 impl Context {
-    fn new(root: usize, start: i32, selectors: bool) -> Self {
+    fn new(root: usize, start: i32, (selectors, restricted_ok): (bool, bool)) -> Self {
         Self {
             selectors,
+            restricted_ok,
             root,
             nodes: Vec::new(),
             arguments: Vec::new(),
@@ -274,6 +282,11 @@ impl Context {
             child: None,
             executable: false,
         }
+    }
+
+    /// `getRootNode`: the node the context started from.
+    pub fn root_node(&self) -> usize {
+        self.root
     }
 
     /// `getLastChild`.
@@ -356,50 +369,80 @@ impl CommandTree {
     /// `CommandDispatcher.parse` of `text` from `start` (past a slash), for
     /// a source that may use entity selectors or not.
     pub fn parse(&self, text: &str, start: usize, selectors: bool) -> ParseResults {
+        self.parse_as(text, start, (selectors, true))
+    }
+
+    /// [`Self::parse`] for a source that may use selectors and the restricted nodes, or not.
+    pub fn parse_as(&self, text: &str, start: usize, source: (bool, bool)) -> ParseResults {
         let mut reader = StringReader::new(text);
         reader.set_cursor(start);
-        let context = Context::new(self.root, start as i32, selectors);
+        let context = Context::new(self.root, start as i32, source);
         self.parse_nodes(self.root, &reader, context)
+    }
+
+    /// One child tried on a copy of the reader: `None` when the source may not use the node
+    /// (`CommandNode.canUse`), else the context and reader after it, or why it did not parse.
+    fn read_child(
+        &self,
+        child: usize,
+        original: &StringReader,
+        so_far: &Context,
+    ) -> Result<Option<(Context, StringReader)>, CommandSyntaxException> {
+        if self.nodes[child].restricted && !so_far.restricted_ok {
+            return Ok(None);
+        }
+        let mut context = so_far.clone();
+        let mut reader = original.clone();
+        self.nodes[child].read(&mut reader, &mut context, child)?;
+        if reader.can_read() && reader.peek() != ' ' {
+            return Err(CommandSyntaxException::at(
+                &reader,
+                "command.expected.separator",
+                &[],
+            ));
+        }
+        Ok(Some((context, reader)))
+    }
+
+    /// The rest of a command a node redirects: parsed from the target, as a child of `context`.
+    fn redirected(
+        &self,
+        target: usize,
+        reader: StringReader,
+        mut context: Context,
+    ) -> ParseResults {
+        let child_context = Context::new(
+            target,
+            reader.cursor() as i32,
+            (context.selectors, context.restricted_ok),
+        );
+        let parse = self.parse_nodes(target, &reader, child_context);
+        context.child = Some(Box::new(parse.context));
+        ParseResults {
+            context,
+            reader: parse.reader,
+            exceptions: parse.exceptions,
+        }
     }
 
     fn parse_nodes(&self, node: usize, original: &StringReader, so_far: Context) -> ParseResults {
         let mut errors: Vec<(usize, CommandSyntaxException)> = Vec::new();
         let mut potentials: Vec<ParseResults> = Vec::new();
-        let cursor = original.cursor();
         for child in self.relevant(node, original) {
-            let mut context = so_far.clone();
-            let mut reader = original.clone();
-            let read = self.nodes[child]
-                .read(&mut reader, &mut context, child)
-                .and_then(|()| {
-                    if reader.can_read() && reader.peek() != ' ' {
-                        Err(CommandSyntaxException::at(
-                            &reader,
-                            "command.expected.separator",
-                            &[],
-                        ))
-                    } else {
-                        Ok(())
-                    }
-                });
-            if let Err(error) = read {
-                errors.push((child, error));
-                continue;
-            }
+            let (mut context, mut reader) = match self.read_child(child, original, &so_far) {
+                Ok(Some(read)) => read,
+                Ok(None) => continue,
+                Err(error) => {
+                    errors.push((child, error));
+                    continue;
+                }
+            };
             context.executable = self.nodes[child].executable;
             let redirect = self.nodes[child].redirect;
             if reader.can_read_n(if redirect.is_none() { 2 } else { 1 }) {
                 reader.skip();
                 if let Some(target) = redirect {
-                    let child_context =
-                        Context::new(target, reader.cursor() as i32, context.selectors);
-                    let parse = self.parse_nodes(target, &reader, child_context);
-                    context.child = Some(Box::new(parse.context));
-                    return ParseResults {
-                        context,
-                        reader: parse.reader,
-                        exceptions: parse.exceptions,
-                    };
+                    return self.redirected(target, reader, context);
                 }
                 potentials.push(self.parse_nodes(child, &reader, context));
             } else {
@@ -418,83 +461,11 @@ impl CommandTree {
             });
             return potentials.swap_remove(0);
         }
-        let _ = cursor;
         ParseResults {
             context: so_far,
             reader: original.clone(),
             exceptions: errors,
         }
-    }
-
-    /// `getSmartUsage`: a line for each child that is not a literal's own
-    /// (the caller drops literals).
-    pub fn smart_usage(&self, node: usize) -> Vec<(usize, String)> {
-        let optional = self.nodes[node].executable;
-        self.nodes[node]
-            .children
-            .iter()
-            .filter_map(|&child| {
-                self.smart_usage_of(child, optional, false)
-                    .map(|usage| (child, usage))
-            })
-            .collect()
-    }
-
-    fn smart_usage_of(&self, node: usize, optional: bool, deep: bool) -> Option<String> {
-        let data = &self.nodes[node];
-        let own = if optional {
-            format!("[{}]", data.usage_text())
-        } else {
-            data.usage_text()
-        };
-        let child_optional = data.executable;
-        let (open, close) = if child_optional {
-            ('[', ']')
-        } else {
-            ('(', ')')
-        };
-        if !deep {
-            if let Some(redirect) = data.redirect {
-                let target = if redirect == self.root {
-                    "...".to_owned()
-                } else {
-                    format!("-> {}", self.nodes[redirect].usage_text())
-                };
-                return Some(format!("{own} {target}"));
-            }
-            let children = &data.children;
-            if children.len() == 1 {
-                if let Some(usage) =
-                    self.smart_usage_of(children[0], child_optional, child_optional)
-                {
-                    return Some(format!("{own} {usage}"));
-                }
-            } else if children.len() > 1 {
-                let mut usages: Vec<String> = Vec::new();
-                for &child in children {
-                    if let Some(usage) = self.smart_usage_of(child, child_optional, true)
-                        && !usages.contains(&usage)
-                    {
-                        usages.push(usage);
-                    }
-                }
-                if usages.len() == 1 {
-                    let usage = &usages[0];
-                    return Some(if child_optional {
-                        format!("{own} [{usage}]")
-                    } else {
-                        format!("{own} {usage}")
-                    });
-                } else if usages.len() > 1 {
-                    let names: Vec<String> = children
-                        .iter()
-                        .map(|&child| self.nodes[child].usage_text())
-                        .collect();
-                    return Some(format!("{own} {open}{}{close}", names.join("|")));
-                }
-            }
-        }
-        Some(own)
     }
 }
 
@@ -554,7 +525,11 @@ impl Context {
 }
 
 mod arguments;
+mod check;
 mod suggest;
 mod usage;
+pub use check::CommandCheck;
 pub use suggest::{LocalSuggestions, SuggestContext, sort_suggestions};
-pub use usage::{CommandSuggestionsView, format_text, has_message_arguments, usage_lines};
+pub use usage::{
+    CommandSuggestionsView, format_text, has_message_arguments, has_signable_arguments, usage_lines,
+};

@@ -43,6 +43,7 @@ public final class GuiOracle extends GuiDialogOracle {
                 case "sidebar" -> sidebar(request);
                 case "command_parse" -> commandParse(request);
                 case "command_suggest" -> commandSuggest(request);
+                case "command_verify" -> commandVerify(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "title_screen" -> titleScreen(request);
                 case "join_multiplayer_screen" -> joinMultiplayerScreen(request);
