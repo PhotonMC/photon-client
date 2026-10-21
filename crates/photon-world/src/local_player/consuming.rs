@@ -1,6 +1,6 @@
 //! The sound of eating and drinking (`Consumable.shouldEmitParticlesAndSounds` and
-//! `emitParticlesAndSounds`, driven from `ItemStack.onUseTick`). The completion's own emit
-//! (`onConsume`) runs on the server only, which sends that one on.
+//! `emitParticlesAndSounds`, driven from `ItemStack.onUseTick`, and once more from `onConsume`
+//! when the server's entity event 9 completes the use on the client too).
 
 use super::*;
 
@@ -26,24 +26,52 @@ impl ConsumeCue {
     }
 }
 
-/// `ItemStack.onUseTick` of the item the player is using, as far as it sounds.
 impl LocalPlayer {
-    pub(super) fn consume_tick(&mut self) {
-        let cue = if self.hands.using_off_hand {
+    /// The cue of the stack in the used hand.
+    fn consume_cue(&self) -> Option<ConsumeCue> {
+        if self.hands.using_off_hand {
             self.hands.off_consume
         } else {
             self.hands.main_consume
-        };
-        let Some(cue) = cue.filter(|cue| cue.emits(self.use_edge.ticks)) else {
+        }
+    }
+
+    /// `ItemStack.onUseTick` of the item the player is using, as far as it sounds: five crumbs.
+    pub(super) fn consume_tick(&mut self) {
+        if let Some(cue) = self
+            .consume_cue()
+            .filter(|cue| cue.emits(self.use_edge.ticks))
+        {
+            self.emit_consume_effects(cue, 5);
+        }
+    }
+
+    /// `LivingEntity.completeUsingItem` for the server's entity event 9: when the item in the
+    /// used hand is still the one in use, `Consumable.onConsume` sounds and throws sixteen
+    /// crumbs, and the use ends. (The stack's shrink and the remainder it leaves come with the
+    /// server's slot update.)
+    pub fn complete_using_item(&mut self) {
+        if !self.hands.using_item {
             return;
-        };
-        // `emitParticlesAndSounds`: the volumes and pitches of both kinds are drawn, then the
-        // crumbs (five of them, four draws each).
+        }
+        self.end_use_of_changed_item();
+        if !self.hands.using_item {
+            return;
+        }
+        if let Some(cue) = self.consume_cue() {
+            self.emit_consume_effects(cue, 16);
+        }
+        self.release_using_item();
+    }
+
+    /// `Consumable.emitParticlesAndSounds`: the volumes and pitches of both kinds are drawn,
+    /// then the crumbs (four draws each), then the sound is played.
+    fn emit_consume_effects(&mut self, cue: ConsumeCue, crumbs: usize) {
         let eat_volume = if self.random.next_boolean() { 0.5 } else { 1.0 };
         let eat_pitch = self.random.triangle_f32(1.0, 0.2);
         let drink_pitch = self.random.next_float() * (1.0_f32 - 0.9_f32) + 0.9_f32;
         if cue.particles {
-            for _ in 0..5 * 4 {
+            for _ in 0..crumbs * 4 {
                 self.random.next_float();
             }
         }
@@ -136,5 +164,20 @@ mod tests {
         let mut player = using(bread());
         player.hands.main_consume = None;
         assert!(sounded(&mut player, 40).is_empty());
+    }
+
+    /// The server's completion sounds once more at the item's sound and ends the use; with no
+    /// use going on it does nothing.
+    #[test]
+    fn the_completion_event_sounds_once_and_ends_the_use() {
+        let mut player = using(bread());
+        player.use_edge.item = Some(player.hands.main_item);
+        player.complete_using_item();
+        assert!(!player.is_using_item());
+        let sounds = player.take_sounds();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, "minecraft:entity.generic.eat");
+        player.complete_using_item();
+        assert!(player.take_sounds().is_empty());
     }
 }

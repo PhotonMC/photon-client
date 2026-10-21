@@ -9,6 +9,7 @@ mod connection;
 mod containers;
 mod emitters;
 mod entity;
+mod local_events;
 mod player;
 mod recipes;
 mod session;
