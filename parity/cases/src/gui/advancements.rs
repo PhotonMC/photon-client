@@ -334,7 +334,11 @@ fn wide_tree(prefix: &str, root_title: &'static str) -> Vec<Shown> {
 
 /// Ten trees, so the tabs run past the three above onto the other sides.
 fn many_roots() -> Vec<Value> {
-    (0..10)
+    roots(10)
+}
+
+fn roots(count: usize) -> Vec<Value> {
+    (0..count)
         .map(|index| {
             let prefix: &'static str = Box::leak(format!("r{index}").into_boxed_str());
             tree_update(&spread_tree(prefix, "Root"), vec![])
@@ -372,8 +376,27 @@ pub fn advancements_screen() -> Value {
         vec![tree_update(&wide_tree("one", "Minecraft"), vec![]), tree_update(&wide_tree("two", "Nether"), vec![])];
     rows.extend(motion_rows(&wide));
     rows.push(screen_row("many-roots", many_roots(), vec![]));
+    rows.push(screen_row("roots-past-every-tab-slot", roots(40), vec![]));
+    rows.extend(revealed_rows(&one));
     rows.extend(window_rows(&tabs));
     gui("advancements-screen", "advancements_screen", rows)
+}
+
+/// The hidden widget before and after its parent is done: its box is only there once it shows.
+fn revealed_rows(one: &[Shown]) -> Vec<Value> {
+    let hidden_at = (201, 97);
+    let after_root = tree_update(one, vec![done("one:root", &[("a", Some(1))])]);
+    let mut rows = Vec::new();
+    for (label, before) in [
+        ("hidden-hover-unrevealed", tree_update(one, vec![])),
+        ("hidden-hover-revealed", after_root.clone()),
+        ("hidden-hover-done", tree_update(one, vec![done("one:c", &[("a", Some(1))])])),
+    ] {
+        let mut steps = ticks(hidden_at, 12);
+        steps.push(json!({"do": "frame"}));
+        rows.push(with_mouse(screen_row(label, vec![before], vec![]), hidden_at, steps));
+    }
+    rows
 }
 
 /// The pointer left on points of the tree, long enough for the box to fade in.
