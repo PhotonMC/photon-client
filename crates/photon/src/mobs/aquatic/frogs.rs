@@ -3,9 +3,7 @@
 //! its pose and floating run; a tadpole's tail swinging.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    FrogRenderState, QuadrupedState, TadpoleState, mob_vertices,
-};
+use photon_render::entity::mob_model::{FrogRenderState, QuadrupedState, TadpoleState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -41,7 +39,7 @@ pub fn remote_frogs(
     let partial = view.partial as f32;
     let frog = photon_data::entity_type::id("minecraft:frog");
     let tadpole = photon_data::entity_type::id("minecraft:tadpole");
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let is_frog = Some(entity.type_id) == frog;
         if !is_frog && Some(entity.type_id) != tadpole {
             continue;
@@ -98,6 +96,6 @@ pub fn remote_frogs(
             });
         }
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
 }

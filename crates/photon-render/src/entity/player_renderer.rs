@@ -195,6 +195,24 @@ pub fn player_vertices(model: &PlayerModel, placement: &Placement) -> Vec<Vertex
     vertices
 }
 
+/// [`player_vertices`] for the ghost of an invisible player a spectator sees
+/// (`forceTransparent`, the colour `0x26FFFFFF`): blended, and sorted far to near from the camera.
+pub fn player_ghost_vertices(
+    model: &PlayerModel,
+    placement: &Placement,
+    camera: [f32; 3],
+) -> Vec<Vertex> {
+    let mut vertices = player_vertices(model, placement);
+    for vertex in &mut vertices {
+        vertex.shade = crate::entity::mob_model::BLENDED_SHADE + f32::from(GHOST_ALPHA);
+    }
+    crate::entity::mob_model::sort_translucent_quads(&mut vertices, camera);
+    vertices
+}
+
+/// The alpha byte of the ghost's colour `0x26FFFFFF`.
+const GHOST_ALPHA: u8 = 0x26;
+
 /// Another model of the wearer's (an armor model), placed as the player is,
 /// in its own texture and multiplied by a colour (`0xRRGGBB`).
 pub fn layer_vertices(

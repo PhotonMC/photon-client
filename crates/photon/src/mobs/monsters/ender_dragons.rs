@@ -86,7 +86,7 @@ pub fn remote_ender_dragons(
     let mut mask_offset = None;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == dragon)
     {
         let (Some(snapshot), Some(rect), Some(eyes), Some(model)) = (

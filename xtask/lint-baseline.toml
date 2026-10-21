@@ -548,7 +548,6 @@
 "crates/photon/src/mobs/animals/farm_animals/gear.rs::layers" = 14
 "crates/photon/src/mobs/animals/felines.rs::remote_felines" = 22
 "crates/photon/src/mobs/animals/pandas.rs::remote_pandas" = 11
-"crates/photon/src/mobs/animals/sheep.rs::remote_sheep" = 14
 "crates/photon/src/mobs/animals/wolves.rs::remote_wolves" = 13
 "crates/photon/src/mobs/humanoids/golems.rs::remote_golems" = 22
 "crates/photon/src/mobs/humanoids/illagers.rs::arm_pose" = 15
@@ -991,10 +990,9 @@
 "crates/photon/src/mobs/humanoids/armor_stands.rs::remote_armor_stands" = 75
 "crates/photon/src/mobs/humanoids/golems.rs::remote_golems" = 104
 "crates/photon/src/mobs/humanoids/villagers.rs::remote_villagers" = 94
-"crates/photon/src/mobs/monsters/cube_mobs.rs::remote_sulfur_cubes" = 63
 "crates/photon/src/mobs/monsters/ender_dragons.rs::remote_ender_dragons" = 79
 "crates/photon/src/mobs/monsters/remote.rs::pose_monster" = 97
-"crates/photon/src/mobs/monsters/remote.rs::remote_monsters" = 86
+"crates/photon/src/mobs/monsters/remote.rs::remote_monsters" = 76
 "crates/photon/src/mobs/pose.rs::remote_humanoids" = 95
 "crates/photon/src/mobs/wild.rs::remote_mobs" = 72
 "crates/photon/src/objects/bullets.rs::remote_bullets" = 67

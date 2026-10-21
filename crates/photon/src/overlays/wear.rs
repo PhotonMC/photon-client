@@ -90,7 +90,7 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        vertices.extend(body(model, &placement, entity.is_invisible()));
+        vertices.extend(body(model, &placement, hidden_body(entity, view)));
         vertices.extend(wear(
             armor,
             worn,
@@ -111,12 +111,29 @@ pub fn remote_players(
     }
 }
 
-/// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body.
-pub(super) fn body(model: &PlayerModel, placement: &Placement, invisible: bool) -> Vec<Vertex> {
-    if invisible {
-        return Vec::new();
+/// Whether the body of a player is hidden: none when it shows, else the camera a spectating
+/// viewer sees its ghost from (none when the viewer sees nothing).
+fn hidden_body(entity: &photon_world::ClientEntity, view: FrameView) -> Option<Option<[f32; 3]>> {
+    entity
+        .is_invisible()
+        .then_some(view.spectating.then_some(view.camera))
+}
+
+/// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body; a spectator
+/// sees the body as a ghost. `invisible` is none for a visible player, else the camera a
+/// spectating viewer sees the ghost from.
+pub(super) fn body(
+    model: &PlayerModel,
+    placement: &Placement,
+    invisible: Option<Option<[f32; 3]>>,
+) -> Vec<Vertex> {
+    match invisible {
+        None => photon_render::entity::player_renderer::player_vertices(model, placement),
+        Some(None) => Vec::new(),
+        Some(Some(camera)) => {
+            photon_render::entity::player_renderer::player_ghost_vertices(model, placement, camera)
+        }
     }
-    photon_render::entity::player_renderer::player_vertices(model, placement)
 }
 
 /// What a player wears, drawn over its model: the armor models of its build,

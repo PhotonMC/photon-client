@@ -2,7 +2,7 @@
 //! texture, posed from the state the server synced.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, SnifferRenderState, mob_vertices};
+use photon_render::entity::mob_model::{QuadrupedState, SnifferRenderState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -32,7 +32,7 @@ pub fn remote_sniffers(
     };
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == sniffer)
     {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
@@ -62,6 +62,6 @@ pub fn remote_sniffers(
             scenting: own.scenting,
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
 }

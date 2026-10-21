@@ -2,7 +2,7 @@
 //! texture, posed from the state the server synced.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{ArmadilloRenderState, QuadrupedState, mob_vertices};
+use photon_render::entity::mob_model::{ArmadilloRenderState, QuadrupedState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -35,7 +35,7 @@ pub fn remote_armadillos(
     };
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == armadillo)
     {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };
@@ -66,6 +66,6 @@ pub fn remote_armadillos(
             entity.is_baby(),
         );
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
 }

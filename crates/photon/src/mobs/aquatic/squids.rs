@@ -3,7 +3,7 @@
 //! their bodies in the water, and the light a glow squid gives itself.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{SquidTurns, glow_squid_block_light, mob_vertices};
+use photon_render::entity::mob_model::{SquidTurns, glow_squid_block_light};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -48,7 +48,7 @@ pub fn remote_squids(
         };
         for entity in world
             .entities()
-            .drawn()
+            .drawn_with_invisible()
             .filter(|entity| entity.type_id == type_id)
         {
             let baby = entity.is_baby();
@@ -75,7 +75,7 @@ pub fn remote_squids(
                 let block = glow_squid_block_light(entity.glow_dark_ticks(), block);
                 placed.light = (placed.light & !(15 << 4)) | (block << 4);
             }
-            vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         }
     }
 }

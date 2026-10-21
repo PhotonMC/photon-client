@@ -2,7 +2,7 @@
 //! its flippers on land and the paddling in water, and the egg on its belly.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, TurtleState, mob_vertices};
+use photon_render::entity::mob_model::{QuadrupedState, TurtleState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -33,7 +33,7 @@ pub fn remote_turtles(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == turtle)
     {
         let baby = entity.is_baby();
@@ -59,6 +59,6 @@ pub fn remote_turtles(
             has_egg: !baby && entity.turtle_has_egg(),
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
 }

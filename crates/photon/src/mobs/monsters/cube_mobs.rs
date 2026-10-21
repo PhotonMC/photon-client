@@ -65,7 +65,7 @@ pub fn remote_cube_mobs(
         let magma = name == MAGMA_CUBE;
         for entity in world
             .entities()
-            .drawn()
+            .drawn_with_invisible()
             .filter(|entity| entity.type_id == type_id)
         {
             let (Some(snapshot), Some(rect)) = (
@@ -89,14 +89,17 @@ pub fn remote_cube_mobs(
                     continue;
                 };
                 model.setup_magma_cube(squish);
-                vertices.extend(mob_vertices(model, &placed, rect));
+                vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
                 continue;
             }
             let Some(model) = models.model("minecraft:slime#main") else {
                 continue;
             };
-            vertices.extend(mob_vertices(model, &placed, rect));
-            // `SlimeOuterLayer`: the outer body, translucent, drawn after.
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+            // `SlimeOuterLayer`: the outer body, translucent, drawn after (not on an invisible slime).
+            if entity.is_invisible() {
+                continue;
+            }
             let Some(outer) = models.model("minecraft:slime#outer") else {
                 continue;
             };
@@ -124,7 +127,7 @@ pub fn remote_sulfur_cubes(
     };
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == type_id)
     {
         let baby = usize::from(entity.is_baby());
@@ -146,17 +149,7 @@ pub fn remote_sulfur_cubes(
         let block = entity
             .equipment(EquipmentSlot::Body)
             .and_then(block_item_state);
-        let mut placed = placement(world, &snapshot, view, entity.scale());
-        placed.cube_mob = Some(CubeMobScale {
-            size: entity.cube_size(),
-            squish: entity.cube_mob().squish(partial),
-            downscale: true,
-            sulfur: Some(SulfurCubeScale {
-                fuse_remaining: fuse,
-                baby: entity.is_baby(),
-                holds_block: block.is_some(),
-            }),
-        });
+        let placed = sulfur_placement(world, &snapshot, view, (entity, fuse, block.is_some()));
         // `SulfurCubeInnerLayer`: a fuse that is lit flashes the body white.
         let mut inner_placed = placed;
         (inner_placed.red_overlay, inner_placed.white_overlay) =
@@ -167,15 +160,39 @@ pub fn remote_sulfur_cubes(
             // flashes the block white.
             let overlay = overlay_code(inner_placed.red_overlay, inner_placed.white_overlay);
             held.push(HeldItem::block(state, pose, placed.light, overlay));
-        } else if let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby]) {
+        } else if !entity.is_invisible()
+            && let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby])
+        {
             let mut body = mob_vertices(inner, &inner_placed, inner_rect);
             sort_translucent_quads(&mut body, view.camera);
             vertices.extend(body);
         }
         if let Some(outer) = models.model(SULFUR_OUTER_LAYERS[baby]) {
-            let mut shell = mob_vertices(outer, &placed, outer_rect);
+            // The body: a ghost for a spectator when the cube is invisible.
+            let mut shell = crate::mobs::visible_body(entity, outer, (&placed, outer_rect));
             sort_translucent_quads(&mut shell, view.camera);
             vertices.extend(shell);
         }
     }
+}
+
+/// Where a sulfur cube is drawn, sized and squashed, with the fuse's swelling.
+fn sulfur_placement(
+    world: &photon_world::ClientWorld,
+    snapshot: &photon_world::EntitySnapshot,
+    view: FrameView,
+    (entity, fuse, holds_block): (&photon_world::ClientEntity, f32, bool),
+) -> photon_render::entity::mob_model::MobPlacement {
+    let mut placed = placement(world, snapshot, view, entity.scale());
+    placed.cube_mob = Some(CubeMobScale {
+        size: entity.cube_size(),
+        squish: entity.cube_mob().squish(view.partial as f32),
+        downscale: true,
+        sulfur: Some(SulfurCubeScale {
+            fuse_remaining: fuse,
+            baby: entity.is_baby(),
+            holds_block,
+        }),
+    });
+    placed
 }

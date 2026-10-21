@@ -3,7 +3,7 @@
 //! attached to.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{ShulkerRenderState, mob_vertices};
+use photon_render::entity::mob_model::ShulkerRenderState;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -61,7 +61,7 @@ pub fn remote_shulkers(
     };
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == type_id)
     {
         let (Some(snapshot), Some(rect), Some(model)) = (
@@ -89,6 +89,6 @@ pub fn remote_shulkers(
         // face it is attached to.
         placed.body_rot += 180.0;
         placed.attach_face = Some(entity.shulker_attach_face());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
     }
 }

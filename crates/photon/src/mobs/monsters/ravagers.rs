@@ -34,7 +34,7 @@ pub fn remote_ravagers(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == ravager)
     {
         let (Some(snapshot), Some(rect), Some(model)) = (

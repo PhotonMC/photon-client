@@ -5,9 +5,7 @@
 //! client world decides that and `placement` draws it.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    QuadrupedState, StriderState, mob_vertices, mob_vertices_coloured,
-};
+use photon_render::entity::mob_model::{QuadrupedState, StriderState, mob_vertices_coloured};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -45,7 +43,7 @@ pub fn remote_striders(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == strider)
     {
         let baby = entity.is_baby();
@@ -77,7 +75,7 @@ pub fn remote_striders(
         };
         model.setup_strider(&state);
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         // The saddle goes on a grown strider's own model, posed as it is.
         if let (false, Some(stack)) = (baby, entity.equipment(EquipmentSlot::Saddle)) {
             vertices.extend(armor.simple_layer(

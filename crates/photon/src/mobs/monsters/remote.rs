@@ -127,23 +127,10 @@ pub fn remote_monsters(
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
     for entity in world.entities().drawn_with_invisible() {
-        let Some(monster) = ids
-            .iter()
-            .find(|(id, _)| *id == entity.type_id)
-            .map(|(_, monster)| monster)
-            .filter(|monster| !entity.is_invisible() || shows_when_invisible(monster.pose))
-        else {
+        let Some(monster) = monster_drawn(&ids, entity, view.spectating) else {
             continue;
         };
-        // `EndermanRenderer.getRenderOffset`: a creepy enderman shakes, by a
-        // little in x and in z (two draws of the renderer's random source).
-        let shake = (monster.pose == Pose::Enderman && entity.is_creepy()).then(|| {
-            let spread = 0.02;
-            [
-                models.shake.next_gaussian() * spread,
-                models.shake.next_gaussian() * spread,
-            ]
-        });
+        let shake = creepy_shake(models, monster, entity);
         let texture = texture_of(monster, entity, partial);
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
@@ -171,8 +158,10 @@ pub fn remote_monsters(
             (look, &snapshot, partial),
             &mut placed,
         );
-        if !entity.is_invisible() {
-            vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        // The layers of the rest do check (the warden's emissive ones), so only a ghost is left.
+        if entity.is_invisible() && !shows_when_invisible(monster.pose) {
+            continue;
         }
         if matches!(monster.pose, Pose::Vex | Pose::Allay) {
             flier_hand_items(model.root(), (monster, entity), &placed, held);
@@ -201,9 +190,40 @@ pub fn remote_monsters(
     models.swirl.extend(swirl);
 }
 
+/// The monster of an entity that is drawn: an invisible one only where a layer shows over the
+/// missing body, or as the ghost a spectator sees.
+fn monster_drawn<'a>(
+    ids: &[(EntityTypeId, &'a Monster)],
+    entity: &ClientEntity,
+    spectating: bool,
+) -> Option<&'a Monster> {
+    ids.iter()
+        .find(|(id, _)| *id == entity.type_id)
+        .map(|(_, monster)| *monster)
+        .filter(|monster| {
+            !entity.is_invisible() || spectating || shows_when_invisible(monster.pose)
+        })
+}
+
+/// `EndermanRenderer.getRenderOffset`: a creepy enderman shakes, by a little in x and in z (two
+/// draws of the renderer's random source).
+fn creepy_shake(
+    models: &mut MobModels,
+    monster: &Monster,
+    entity: &ClientEntity,
+) -> Option<[f64; 2]> {
+    (monster.pose == Pose::Enderman && entity.is_creepy()).then(|| {
+        let spread = 0.02;
+        [
+            models.shake.next_gaussian() * spread,
+            models.shake.next_gaussian() * spread,
+        ]
+    })
+}
+
 /// The models whose layers all draw over an invisible body (`EyesLayer`, `EnergySwirlLayer`,
 /// `CarriedBlockLayer`, `ItemInHandLayer`, the breeze's layers and the creaking's always-visible
-/// emissive one have no `isInvisible` check): the rest are left out whole for now.
+/// emissive one have no `isInvisible` check): the rest draw only the ghost a spectator sees.
 fn shows_when_invisible(pose: Pose) -> bool {
     matches!(
         pose,

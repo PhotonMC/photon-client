@@ -5,7 +5,7 @@
 
 use photon_core::ids::EntityId;
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{GuardianLook, GuardianState, mob_vertices};
+use photon_render::entity::mob_model::{GuardianLook, GuardianState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
 use photon_render::objects::guardian_beam::{beam_triangles, guardian_beam};
@@ -132,7 +132,7 @@ pub fn remote_guardians(
     let partial = view.partial as f32;
     let guardian = photon_data::entity_type::id("minecraft:guardian");
     let elder = photon_data::entity_type::id("minecraft:elder_guardian");
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let is_elder = Some(entity.type_id) == elder;
         if !is_elder && Some(entity.type_id) != guardian {
             continue;
@@ -170,7 +170,7 @@ pub fn remote_guardians(
             look,
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         vertices.extend(beam(
             session,
             (entity, partial),

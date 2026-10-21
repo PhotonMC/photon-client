@@ -104,7 +104,7 @@ impl Entities {
     /// The entities the frame draws: every entity but those left out as out of view, and the
     /// invisible mobs (`LivingEntityRenderer` skips the body of one the player is not allowed to
     /// see). The families that keep what an invisible mob wears, holds or glows with use
-    /// [`Self::drawn_with_invisible`]; a spectator's ghostly view of it is not drawn. Players decide
+    /// [`Self::drawn_with_invisible`], which also gives a spectator the ghost of its body. Players decide
     /// for themselves, and an armor stand is not a mob here: its renderer hides only the body.
     pub fn drawn(&self) -> impl Iterator<Item = &ClientEntity> {
         self.drawn_with_invisible()

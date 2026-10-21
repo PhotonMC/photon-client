@@ -204,7 +204,7 @@ pub fn remote_mobs(
     models.swirl.clear();
     models.dissolve.clear();
     models.rays.clear();
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;
         };

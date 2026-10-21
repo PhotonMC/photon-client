@@ -3,9 +3,7 @@
 //! down, and the collar of a tame cat.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    FelineState, QuadrupedState, mob_vertices, mob_vertices_coloured,
-};
+use photon_render::entity::mob_model::{FelineState, QuadrupedState, mob_vertices_coloured};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::ClientEntity;
@@ -74,7 +72,7 @@ pub fn remote_felines(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == cat || entity.type_id == ocelot)
     {
         let is_cat = entity.type_id == cat;
@@ -128,7 +126,7 @@ pub fn remote_felines(
         }
         if let Some(model) = models.model(name) {
             model.setup_feline(&state);
-            vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         }
         // The collar of a tame cat, on a model of its own posed the same way.
         if is_cat

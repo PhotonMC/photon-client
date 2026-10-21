@@ -357,7 +357,7 @@ pub fn player_model(
         motions: HandActions::of_local(spears.motions, (session, player), stacks.0),
     };
     hands.collect(held);
-    let mut vertices = body(model, &placement, invisible);
+    let mut vertices = body(model, &placement, invisible.then_some(None));
     vertices.extend(armor.skull_vertices(
         hands.skull(),
         pose.walk_position,

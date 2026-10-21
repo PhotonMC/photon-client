@@ -16,7 +16,7 @@ use photon_render::entity::held_item::{allay_hand_pose, vex_hand_pose};
 use photon_render::entity::mob_model::{
     AllayRenderState, BatRenderState, BreezeRenderState, CreakingRenderState, EndermanState,
     MobModel, MobPlacement, ParrotPose, ParrotRenderState, QuadrupedState, VexRenderState,
-    WardenRenderState, WitherRenderState, creeper_scale, creeper_white_overlay, mob_vertices,
+    WardenRenderState, WitherRenderState, creeper_scale, creeper_white_overlay,
     mob_vertices_emissive, mob_vertices_emissive_faded, mob_vertices_glow, mob_vertices_scrolled,
     mob_vertices_swirl, placement_pose,
 };

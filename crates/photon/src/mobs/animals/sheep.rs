@@ -3,10 +3,13 @@
 //! `SheepWoolLayer`).
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, SheepState, mob_vertices_coloured};
+use photon_render::entity::mob_model::{
+    MobPlacement, QuadrupedState, SheepState, mob_vertices_coloured,
+};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::entity::wool::wool_colour;
 use photon_render::scene::Vertex;
+use photon_world::ClientEntity;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -77,7 +80,7 @@ pub fn remote_sheep(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(snapshot) = world
             .entity_snapshot(entity.id(), partial)
             .filter(|_| entity.type_id == sheep)
@@ -99,24 +102,42 @@ pub fn remote_sheep(
             head_eat_angle_scale: eat_angle,
             age_scale: if baby { 0.5 } else { 1.0 },
         };
-        let dye = entity.sheep_dye_id();
         let placement = placement(world, &snapshot, view, entity.scale());
         for (index, layer) in LAYERS.iter().enumerate() {
-            // The wool layers are not drawn on a sheep that cannot be seen.
-            let hidden = index > 0 && entity.is_invisible();
-            let shown = (layer.shows_sheared || !entity.is_sheared())
-                && (!layer.only_dyed || dye != WHITE_DYE)
-                && !hidden;
-            let Some((id, texture)) = (if baby { layer.baby } else { layer.adult }) else {
-                continue;
-            };
-            let (true, Some(rect), Some(model)) = (shown, textures.rect(texture), models.model(id))
-            else {
-                continue;
-            };
-            model.setup_sheep(&state);
-            let colour = layer.coloured.then(|| wool_colour(usize::from(dye)));
-            vertices.extend(mob_vertices_coloured(model, &placement, rect, colour));
+            vertices.extend(layer_vertices(
+                (index, layer),
+                (entity, &state, &placement),
+                (models, textures),
+            ));
         }
     }
+}
+
+/// What one layer of a sheep draws: the body (a ghost for a spectator when the sheep is
+/// invisible) or a wool layer, which is not drawn on a sheep that cannot be seen.
+fn layer_vertices(
+    (index, layer): (usize, &Layer),
+    (entity, state, placement): (&ClientEntity, &SheepState, &MobPlacement),
+    (models, textures): (&mut MobModels, &EntityTextures),
+) -> Vec<Vertex> {
+    let dye = entity.sheep_dye_id();
+    let shown = (layer.shows_sheared || !entity.is_sheared())
+        && (!layer.only_dyed || dye != WHITE_DYE)
+        && (index == 0 || !entity.is_invisible());
+    let Some((id, texture)) = (if entity.is_baby() {
+        layer.baby
+    } else {
+        layer.adult
+    }) else {
+        return Vec::new();
+    };
+    let (true, Some(rect), Some(model)) = (shown, textures.rect(texture), models.model(id)) else {
+        return Vec::new();
+    };
+    model.setup_sheep(state);
+    if index == 0 {
+        return crate::mobs::visible_body(entity, model, (placement, rect));
+    }
+    let colour = layer.coloured.then(|| wool_colour(usize::from(dye)));
+    mob_vertices_coloured(model, placement, rect, colour)
 }
