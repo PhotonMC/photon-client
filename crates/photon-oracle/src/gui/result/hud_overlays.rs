@@ -351,35 +351,38 @@ fn debug_blocks(row: &Value) -> Vec<Value> {
 }
 
 /// What the view lands on, by the world's own clip over the blocks a row put in a level with the
-/// tags the server would have sent: the targeted block and the targeted fluid.
-fn debug_targets(
-    row: &Value,
-) -> Result<
-    (
-        Option<photon_gui::hud::debug::TargetedBlock>,
-        Option<photon_gui::hud::debug::TargetedBlock>,
-    ),
-    String,
-> {
-    let blocks = debug_blocks(row);
-    if blocks.is_empty() {
-        return Ok((None, None));
-    }
-    let scene = json!({"blocks": blocks, "chunk_radius": 1});
+/// tags the server would have sent, and the heights at the feet's column.
+type Surroundings = (
+    Option<photon_gui::hud::debug::TargetedBlock>,
+    Option<photon_gui::hud::debug::TargetedBlock>,
+    Option<[i32; 3]>,
+);
+
+fn debug_surroundings(row: &Value) -> Result<Surroundings, String> {
+    use photon_world::HeightmapType::{MotionBlocking, MotionBlockingNoLeaves, WorldSurface};
+    let scene = json!({"blocks": debug_blocks(row), "chunk_radius": 0});
     let mut world = crate::ticks::movement_world(&scene)?;
     world.apply_update_tags_packet(&crate::vanilla_block_tags()?);
     world.apply_update_tags_packet(&crate::vanilla_fluid_tags()?);
-    // The eyes of a standing player, a tick ago.
-    let eye = photon_core::math::Vec3::new(
+    let feet = [
         crate::f64_field(row, "x")?,
-        crate::f64_field(row, "y")? + 1.62,
+        crate::f64_field(row, "y")?,
         crate::f64_field(row, "z")?,
-    );
+    ];
+    // The eyes of a standing player, a tick ago.
+    let eye = photon_core::math::Vec3::new(feet[0], feet[1] + 1.62, feet[2]);
     let rotation = (
         crate::f32_field(row, "yaw")?,
         crate::f32_field(row, "pitch")?,
     );
-    Ok(photon_gui::hud::debug::targets(&world, eye, rotation))
+    let (target, fluid_target) = photon_gui::hud::debug::targets(&world, eye, rotation);
+    let [x, z] = [feet[0], feet[2]].map(|axis| axis.floor() as i32);
+    // A chunk that is not loaded is the level's empty one, whose heights are one below the world.
+    let empty = world.dimension().min_y - 1;
+    let heights = [WorldSurface, MotionBlocking, MotionBlockingNoLeaves]
+        .map(|kind| world.chunk_height(kind, x, z).unwrap_or(empty));
+    let heights = Some(heights);
+    Ok((target, fluid_target, heights))
 }
 
 /// What `sound_mood` reads, from a row's `mood` and the pools of its `channels`.
@@ -402,7 +405,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let launched = row["launched"].as_str().ok_or("launched")?;
-    let (target, fluid_target) = debug_targets(row)?;
+    let (target, fluid_target, heights) = debug_surroundings(row)?;
     Ok(Input {
         impactors: row.get("impactors").map(debug_impactors),
         system: row.get("system").map(debug_system),
@@ -451,6 +454,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             fluid_target,
             light: (int("sky"), int("block")),
             biome: "minecraft:plains".to_owned(),
+            heights,
         }),
     })
 }

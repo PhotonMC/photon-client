@@ -270,3 +270,42 @@ pub(super) fn looking_at_entity_rows() -> Vec<Value> {
         ),
     ]
 }
+
+/// The heightmaps entry: the client chunk's three heights at the feet's column over open ground,
+/// a block at the feet, leaves, water and a block with no collision above, a column beside the
+/// feet's, a chunk that is not loaded and reduced debug info; the server chunk's line is always
+/// the unknown one.
+pub(super) fn heightmap_rows() -> Vec<Value> {
+    let block = |x: i64, y: i64, z: i64, state: &str| json!({"x": x, "y": y, "z": z, "state": state});
+    let aim = |label: &str, place: Place, blocks: Vec<Value>, more: Value| {
+        let mut options = json!({"extra": ["heightmap"], "blocks": blocks});
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-heightmap-{label}"), (place, (0.0, 0.0)), options)
+    };
+    let feet = (1.0, 64.0, 3.0);
+    vec![
+        aim("open", feet, vec![], json!({})),
+        aim("stone-at-feet", feet, vec![block(1, 64, 3, "minecraft:stone")], json!({})),
+        aim(
+            "leaves-over-stone",
+            feet,
+            vec![block(1, 60, 3, "minecraft:stone"), block(1, 70, 3, "minecraft:oak_leaves")],
+            json!({}),
+        ),
+        aim("water-above", feet, vec![block(1, 66, 3, "minecraft:water")], json!({})),
+        aim("light-block", feet, vec![block(1, 80, 3, "minecraft:light")], json!({})),
+        aim("tall-column", (1.0, 300.0, 3.0), vec![block(1, 299, 3, "minecraft:stone")], json!({})),
+        aim("next-column", feet, vec![block(2, 64, 3, "minecraft:stone")], json!({})),
+        aim("negative-column", (-1.5, 64.0, -2.5), vec![block(-2, 64, -3, "minecraft:stone")], json!({})),
+        aim("unloaded-chunk", (5000.5, 64.0, -5000.5), vec![], json!({})),
+        aim("reduced", feet, vec![block(1, 64, 3, "minecraft:stone")], json!({"reduced": true})),
+        aim(
+            "with-light-and-biome",
+            feet,
+            vec![block(1, 64, 3, "minecraft:stone")],
+            json!({"extra": ["biome", "heightmap", "light_levels"], "sky": 9, "block": 4}),
+        ),
+    ]
+}

@@ -102,6 +102,7 @@ impl Gui {
                 i32::from(world.block_brightness(x, y, z)),
             ),
             biome: Self::feet_biome(session, position),
+            heights: Self::feet_heights(session, [x, z]),
         }
     }
 
@@ -121,6 +122,20 @@ impl Gui {
             .all()
             .find(|entity| entity.id() == id)?;
         photon_data::entity_type::name(entity.type_id).map(str::to_owned)
+    }
+
+    /// The client chunk's heightmaps at the feet's column (`DebugEntryHeightmap`).
+    fn feet_heights(session: &PlaySession, [x, z]: [i32; 2]) -> Option<[i32; 3]> {
+        use photon_world::HeightmapType::{MotionBlocking, MotionBlockingNoLeaves, WorldSurface};
+        let world = session.world();
+        // A chunk that is not loaded is the level's empty one, whose heights are one below the world.
+        let empty = world.dimension().min_y - 1;
+        let height = |kind| world.chunk_height(kind, x, z).unwrap_or(empty);
+        Some([
+            height(WorldSurface),
+            height(MotionBlocking),
+            height(MotionBlockingNoLeaves),
+        ])
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

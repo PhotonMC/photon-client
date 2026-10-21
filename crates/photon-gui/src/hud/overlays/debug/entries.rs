@@ -32,6 +32,9 @@ pub struct CameraEntity {
     pub light: (i32, i32),
     /// The biome at the feet's quart position, `minecraft:plains` where the chunk is not there.
     pub biome: String,
+    /// The client chunk's `WORLD_SURFACE`, `MOTION_BLOCKING` and `MOTION_BLOCKING_NO_LEAVES`
+    /// heights at the feet's column; none where the chunk is not loaded.
+    pub heights: Option<[i32; 3]>,
 }
 
 /// A block position and what the level holds there (`DebugEntryLookingAt`).
@@ -203,6 +206,7 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "player_section_position" => section(camera),
         "biome" => biome(camera).into_iter().collect(),
         "light_levels" => light(camera),
+        "heightmap" => heightmaps(camera),
         "looking_at_block_state" => looking_at_block(camera),
         "looking_at_block_tags" => looking_at_tags(camera),
         "looking_at_fluid_state" => looking_at_fluid(camera),
@@ -217,6 +221,21 @@ fn looking_at_entity(name: Option<&str>) -> Vec<Line> {
         .map(|name| vec!["\u{a7}nTargeted Entity".to_owned(), name.to_owned()])
         .unwrap_or_default();
     vec![Line::Group(LOOKING_AT_ENTITY_GROUP, lines)]
+}
+
+/// `DebugEntryHeightmap`: the client chunk's heights at the feet, and the server chunk's, which a
+/// client without an integrated server has none of.
+fn heightmaps(camera: &CameraEntity) -> Vec<Line> {
+    let Some([surface, blocking, no_leaves]) = camera.heights else {
+        return Vec::new();
+    };
+    vec![Line::Group(
+        HEIGHTMAPS_GROUP,
+        vec![
+            format!("CH S: {surface} M: {blocking} ML: {no_leaves}"),
+            "SH S: ?? O: ?? M: ?? ML: ??".to_owned(),
+        ],
+    )]
 }
 
 /// `DebugEntryGpuUtilization`: the share of the frame the GPU was busy, in red from the second the
@@ -374,6 +393,7 @@ fn tps(server: &ServerInfo) -> Vec<Line> {
     ))]
 }
 
+const HEIGHTMAPS_GROUP: &str = "minecraft:heightmaps";
 const POSITION_GROUP: &str = "minecraft:position";
 const LIGHT_GROUP: &str = "minecraft:light";
 const LOOKING_AT_ENTITY_GROUP: &str = "minecraft:looking_at_entity";
