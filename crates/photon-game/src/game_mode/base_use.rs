@@ -5,7 +5,7 @@ use super::UseResult;
 use super::context::Context;
 use crate::item::values::Values;
 use photon_data::item::component_types::{
-    BLOCKS_ATTACKS, CONSUMABLE, EQUIPPABLE, FOOD, KINETIC_WEAPON,
+    BLOCKS_ATTACKS, CHARGED_PROJECTILES, CONSUMABLE, EQUIPPABLE, FOOD, KINETIC_WEAPON,
 };
 use photon_world::block::rules;
 
@@ -127,30 +127,65 @@ pub(super) fn base_item_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     }
 }
 
-/// `BowItem.use`: refused unless a projectile is found (the arrows in any hand or slot of the
-/// inventory, which the item tag `arrows` names) or the player's materials are infinite.
-fn bow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+/// `Player.getProjectile` for the arrows: one in any slot of the inventory, armor or off hand
+/// (not the crafting grid), which the item tag `arrows` names; or the player's materials are
+/// infinite. A crossbow also takes a firework rocket in a hand.
+fn has_projectile(ctx: &Context<'_>, rockets: bool) -> bool {
+    let tags = ctx.world.block_state_registry().item_tags();
+    let rocket = crate::item::id_of("minecraft:firework_rocket");
     let found = ctx.world.local_player().is_some_and(|state| {
-        // `Inventory.getContainerSize`: the main slots, the armor and the off hand, not the crafting grid.
-        (5..=45).any(|slot| {
-            state.inventory_slot(slot).is_some_and(|stack| {
-                stack.item_count() > 0
-                    && ctx
-                        .world
-                        .block_state_registry()
-                        .item_tags()
-                        .contains(stack.item_registry_id().0, "minecraft:arrows")
+        let held = |slot| {
+            state
+                .inventory_slot(slot)
+                .filter(|stack| stack.item_count() > 0)
+        };
+        let in_hand = rockets
+            && [45, 36 + ctx.selected_slot as i16].into_iter().any(|slot| {
+                held(slot).is_some_and(|stack| Some(stack.item_registry_id()) == rocket)
+            });
+        in_hand
+            || (5..=45).any(|slot| {
+                held(slot).is_some_and(|stack| {
+                    tags.contains(stack.item_registry_id().0, "minecraft:arrows")
+                })
             })
-        })
     });
-    if !found && !ctx.instabuild() {
+    found || ctx.instabuild()
+}
+
+/// `BowItem.use`: refused without a projectile, else the draw starts.
+fn bow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    if !has_projectile(ctx, false) {
         return UseResult::Fail;
     }
     ctx.player.start_using_item(hand != super::MAIN_HAND);
     UseResult::Success { swing: false }
 }
 
-/// `Item.use` for the classes that override it and are predicted: the bow and the spyglass (which
+/// `CrossbowItem.use`: a charged crossbow shoots (not predicted), else it is refused without a
+/// projectile or the charge starts.
+fn crossbow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    let charged = ctx
+        .world
+        .local_player()
+        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
+        .is_some_and(|stack| {
+            let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
+            values.raw(CHARGED_PROJECTILES).is_some_and(|mut bytes| {
+                photon_core::wire::read_varint(&mut bytes).is_ok_and(|count| count > 0)
+            })
+        });
+    if charged {
+        return UseResult::Success { swing: false };
+    }
+    if !has_projectile(ctx, true) {
+        return UseResult::Fail;
+    }
+    ctx.player.start_using_item(hand != super::MAIN_HAND);
+    UseResult::Success { swing: false }
+}
+
+/// `Item.use` for the classes that override it and are predicted: the bow, the crossbow and the spyglass (which
 /// starts using at once; its sound is not played). `None` for the rest.
 pub(super) fn class_item_use(
     ctx: &mut Context<'_>,
@@ -160,6 +195,7 @@ pub(super) fn class_item_use(
     use photon_data::item::classes::ItemClass;
     match class {
         ItemClass::BowItem => Some(bow_use(ctx, hand)),
+        ItemClass::CrossbowItem => Some(crossbow_use(ctx, hand)),
         ItemClass::SpyglassItem => {
             ctx.player.start_using_item(hand != super::MAIN_HAND);
             Some(UseResult::Success { swing: false })
