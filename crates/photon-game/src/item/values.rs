@@ -504,6 +504,26 @@ mod tests {
         patch
     }
 
+    /// A trim's material is a holder: `0` is an inline value with no key, `n` the registry entry
+    /// `n - 1`.
+    #[test]
+    fn a_trim_material_is_the_holder_less_one_and_an_inline_one_has_none() {
+        let trim = |holder: u8| {
+            // The pattern after the material is registry entry 0.
+            let patch = vec![
+                1,
+                0,
+                photon_data::item::component_types::TRIM as u8,
+                holder,
+                1,
+            ];
+            Values::new(item("minecraft:iron_chestplate"), &patch).trim_material()
+        };
+        assert_eq!(trim(1), Some(0));
+        assert_eq!(trim(4), Some(3));
+        assert_eq!(trim(0), None);
+    }
+
     /// The carved pumpkin lays its blur over the head's view, and only there; a stack that a
     /// patch makes equippable in the hand does it from the hand, and only from a game namespace.
     #[test]
