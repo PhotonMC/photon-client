@@ -24,13 +24,29 @@ impl Play {
             .feed_sounds(self.sound.as_mut(), &self.controls.options, song);
     }
 
+    /// `EntityRenderer.getPackedLightCoords` of the local player: a burning one is lit by full
+    /// block light.
+    fn player_light(&self, frame: &FrameCamera) -> i32 {
+        let light = packed_light(self.session.world(), frame.eye);
+        let burning = self
+            .session
+            .world()
+            .local_player()
+            .is_some_and(photon_world::ClientPlayerState::is_on_fire);
+        if burning {
+            crate::overlays::full_block_light(light)
+        } else {
+            light
+        }
+    }
+
     /// What the frame's overlays are drawn from.
     fn frame_view(&self, frame: &FrameCamera) -> FrameView {
         let options = &self.controls.options;
         FrameView {
             render_distance: frame.render_distance,
             partial: frame.partial,
-            light: packed_light(self.session.world(), frame.eye),
+            light: self.player_light(frame),
             ambient_occlusion: options.ambient_occlusion,
             origin: self.origin,
             camera: frame.relative,

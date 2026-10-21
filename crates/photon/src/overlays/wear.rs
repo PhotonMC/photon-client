@@ -54,7 +54,7 @@ pub fn remote_players(
             in_water: false,
             visually_swimming: snapshot.pose == photon_world::ClientEntityPose::Swimming,
             crouching,
-            light: packed_light(world, eye),
+            light: burning_light(packed_light(world, eye), snapshot.burning),
             skin: rect,
             death_time: snapshot.death_time,
             red_overlay: snapshot.red_overlay,
@@ -409,5 +409,14 @@ pub fn entity_shadows(
             rect,
             camera.relative,
         ));
+    }
+}
+
+/// `EntityRenderer.getBlockLightLevel`: a burning entity is lit by full block light.
+fn burning_light(light: i32, burning: bool) -> i32 {
+    if burning {
+        super::light::full_block_light(light)
+    } else {
+        light
     }
 }
