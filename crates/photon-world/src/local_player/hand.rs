@@ -399,7 +399,7 @@ pub struct HandState {
 }
 
 /// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct UseEdge {
     pub(super) server: bool,
     pub(super) started: bool,
@@ -409,6 +409,8 @@ pub struct UseEdge {
     pub(super) item: Option<ItemId>,
     /// `lastKineticHitFeedbackTime`, in the player's own ticks: when a spear hit last kicked.
     pub(super) kinetic_hit: Option<i32>,
+    /// The crumbs the use threw since the frame last took them.
+    pub(super) crumbs: Vec<crate::particles::LevelParticles>,
 }
 
 /// How the use of an item changes the field of view.

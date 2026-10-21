@@ -4,6 +4,26 @@
 
 use super::*;
 
+/// `(float) (Math.PI / 180.0)`.
+const RADIANS: f32 = 0.017453292;
+
+#[derive(Clone, Copy)]
+enum Axis {
+    X,
+    Y,
+}
+
+/// `Vec3.xRot` and `Vec3.yRot`: the point turned by the radians, with the table's sine and
+/// cosine.
+fn turn((x, y, z): (f64, f64, f64), radians: f32, axis: Axis) -> (f64, f64, f64) {
+    let cos = f64::from(photon_core::math::mth_cos_f64(f64::from(radians)));
+    let sin = f64::from(photon_core::math::mth_sin_f64(f64::from(radians)));
+    match axis {
+        Axis::X => (x, y * cos + z * sin, z * cos - y * sin),
+        Axis::Y => (x * cos + z * sin, y, z * cos - x * sin),
+    }
+}
+
 /// What the consumable of a stack in use sounds like.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConsumeCue {
@@ -64,6 +84,45 @@ impl LocalPlayer {
         self.release_using_item();
     }
 
+    /// `LivingEntity.spawnItemParticles`: crumbs of the item in use, thrown from in front of the
+    /// face along its direction. (The push goes through the packet's single floats.)
+    fn throw_crumbs(&mut self, count: usize) {
+        let item = if self.hands.using_off_hand {
+            self.hands.off_item
+        } else {
+            self.hands.main_item
+        };
+        let Some(type_id) = photon_data::particle_type::id("item") else {
+            return;
+        };
+        let (y_rot, x_rot) = self.rotation();
+        let (pitch, yaw) = (-x_rot * RADIANS, -y_rot * RADIANS);
+        let (at, eye) = (self.position, f64::from(self.eye_height()));
+        for _ in 0..count {
+            let mut draw = || f64::from(self.random.next_float());
+            let push = ((draw() - 0.5) * 0.1, draw() * 0.1 + 0.1, 0.0);
+            let down = -draw() * 0.6 - 0.3;
+            let from = ((draw() - 0.5) * 0.3, down, 0.6);
+            let push = turn(turn(push, pitch, Axis::X), yaw, Axis::Y);
+            let from = turn(turn(from, pitch, Axis::X), yaw, Axis::Y);
+            self.use_edge.crumbs.push(crate::particles::LevelParticles {
+                type_id,
+                data: crate::particles::ParticleData::Item(item),
+                override_limiter: false,
+                always_show: false,
+                at: (from.0 + at.x, from.1 + at.y + eye, from.2 + at.z),
+                spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
+                max_speed: 1.0,
+                count: 0,
+            });
+        }
+    }
+
+    /// The particles the player's own tick threw since the last call.
+    pub fn take_particles(&mut self) -> Vec<crate::particles::LevelParticles> {
+        std::mem::take(&mut self.use_edge.crumbs)
+    }
+
     /// `Consumable.emitParticlesAndSounds`: the volumes and pitches of both kinds are drawn,
     /// then the crumbs (four draws each), then the sound is played.
     fn emit_consume_effects(&mut self, cue: ConsumeCue, crumbs: usize) {
@@ -71,9 +130,7 @@ impl LocalPlayer {
         let eat_pitch = self.random.triangle_f32(1.0, 0.2);
         let drink_pitch = self.random.next_float() * (1.0_f32 - 0.9_f32) + 0.9_f32;
         if cue.particles {
-            for _ in 0..crumbs * 4 {
-                self.random.next_float();
-            }
+            self.throw_crumbs(crumbs);
         }
         let (volume, pitch) = if cue.drink {
             (0.5, drink_pitch)
@@ -179,5 +236,35 @@ mod tests {
         assert_eq!(sounds[0].event, "minecraft:entity.generic.eat");
         player.complete_using_item();
         assert!(player.take_sounds().is_empty());
+    }
+
+    /// Five crumbs for each tick that sounds, sixteen at the completion, none when the component
+    /// has no particles; each is one particle of the item, thrown in front of the face.
+    #[test]
+    fn the_crumbs_are_five_a_tick_and_sixteen_at_the_end() {
+        let mut player = using(bread());
+        player.use_edge.item = Some(player.hands.main_item);
+        sounded(&mut player, 33);
+        let crumbs = player.take_particles();
+        assert_eq!(crumbs.len(), 7 * 5);
+        let first = crumbs[0];
+        assert_eq!(first.count, 0);
+        assert_eq!(
+            first.type_id,
+            photon_data::particle_type::id("item").expect("the item particle")
+        );
+        // Looking along +z from the feet at the origin: 0.6 ahead, 0.3 to 0.9 below the eye.
+        let eye = f64::from(player.eye_height());
+        assert!((first.at.2 - 0.6).abs() < 1e-6);
+        assert!(first.at.1 < eye - 0.3 + 1e-9 && first.at.1 > eye - 0.9 - 1e-9);
+        assert!(first.at.0.abs() <= 0.15 + 1e-9);
+        player.complete_using_item();
+        assert_eq!(player.take_particles().len(), 16);
+        let mut bare = using(ConsumeCue {
+            particles: false,
+            ..bread()
+        });
+        sounded(&mut bare, 33);
+        assert!(bare.take_particles().is_empty());
     }
 }

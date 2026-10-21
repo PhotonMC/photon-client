@@ -18,6 +18,10 @@ impl PlaySession {
 
     /// The particle packets that arrived since the last call, for the particle engine.
     pub fn take_level_particles(&mut self) -> Vec<photon_world::particles::LevelParticles> {
+        // The crumbs of what the local player eats are thrown by its own tick.
+        if let Some(player) = self.local.player.as_mut() {
+            self.effects.level_particles.extend(player.take_particles());
+        }
         std::mem::take(&mut self.effects.level_particles)
     }
 
