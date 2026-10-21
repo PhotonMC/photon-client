@@ -16,8 +16,8 @@ use crate::overlays::FrameView;
 pub const TEXTURE: &str = "entity/armorstand/armorstand";
 
 /// The armor stands of the world, each posed from the data the server sent.
-/// A stand's wiggle when it is hit (`wiggle`) is not drawn, and the head item
-/// and the elytra are not either (T41c).
+/// A stand's wiggle when it is hit (`wiggle`) is not drawn, and neither is the elytra. An invisible
+/// stand keeps its armor and items and leaves out only the body.
 pub fn remote_armor_stands(
     session: &PlaySession,
     (models, armor): (&mut MobModels, &mut Armor),
