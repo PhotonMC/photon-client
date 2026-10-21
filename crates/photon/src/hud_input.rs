@@ -10,6 +10,7 @@ use photon_net::connection::PlaySession;
 use photon_world::ClientPlayerState;
 use photon_world::local_player::attack_strength_delay;
 
+use crate::objects::fishing_hooks::local_casts;
 use crate::view::eye_position;
 
 const ARMOR: i32 = 1;
@@ -152,6 +153,19 @@ pub fn camera_overlays(
     }
 }
 
+/// Which hands hold a rod whose bobber is out, the main hand's first (the main arm is the right).
+fn hud_casts(
+    session: &PlaySession,
+    player: Option<&photon_world::local_player::LocalPlayer>,
+    local: Option<&ClientPlayerState>,
+) -> [bool; 2] {
+    let Some((player, local)) = player.zip(local) else {
+        return [false; 2];
+    };
+    let selected = 36 + session.status().selected_slot as i16;
+    local_casts(session, player, local.inventory_slot(selected))
+}
+
 /// The hand the player uses an item in (true for the off hand) and for how many ticks.
 fn hand_in_use(player: &photon_world::local_player::LocalPlayer) -> Option<(bool, i32)> {
     let main = player.use_ticks_of(true).map(|ticks| (false, ticks));
@@ -178,6 +192,7 @@ pub fn hud_input(
     let target_is_living = crosshair_target_is_living(session, player);
     photon_gui::HudInput {
         item_use: player.and_then(hand_in_use),
+        item_cast: hud_casts(session, player, local),
         cooldowns: Vec::new(),
         first_person,
         three_dimensional_crosshair: false,

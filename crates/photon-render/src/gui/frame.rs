@@ -207,13 +207,22 @@ pub struct GuiFrame {
     pub blur: Option<GuiBlur>,
 }
 
-/// Draws an item's triangles into the 16 by 16 slot at a GUI position (and for how many ticks the
-/// player has used the stack, if it is the one in use), followed by its glint's if
-/// it has one; the count it gives back is how many of the vertices it added are the item's.
+/// What the player does with the stack a slot shows, as far as the item models read it: for how
+/// many ticks the stack is used (`getUseItem() == stack`) and whether it is the rod held out
+/// with its bobber out (`FishingRodCast`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ItemHolding {
+    pub ticks: Option<i32>,
+    pub cast: bool,
+}
+
+/// Draws an item's triangles into the 16 by 16 slot at a GUI position (and what the player does
+/// with the stack), followed by its glint's if it has one; the count it gives back is how many of
+/// the vertices it added are the item's.
 pub type ItemDrawer<'a> = dyn FnMut(
         &photon_world::ClientItemStackState,
         (f32, f32),
-        Option<i32>,
+        ItemHolding,
         &mut Vec<crate::gui::items::GuiItemVertex>,
     ) -> usize
     + 'a;

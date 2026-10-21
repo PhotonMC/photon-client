@@ -184,11 +184,14 @@ impl ItemLayerCache {
     ) -> impl FnMut(
         &ClientItemStackState,
         (f32, f32),
-        Option<i32>,
+        photon_render::gui::ItemHolding,
         &mut Vec<photon_render::gui::GuiItemVertex>,
     ) -> usize
     + 'a {
-        move |stack, at, ticks, out| self.gui_vertices(stack, ticks, (renderer, tints), at, out)
+        move |stack, at, holding, out| {
+            self.set_cast(holding.cast);
+            self.gui_vertices(stack, holding.ticks, (renderer, tints), at, out)
+        }
     }
 
     /// Add what a stack drew to `out`, with its glint kept for the glint pass.

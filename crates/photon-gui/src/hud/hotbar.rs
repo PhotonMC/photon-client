@@ -2,6 +2,7 @@
 //! and the attack indicator beside it.
 
 use super::*;
+use photon_render::gui::ItemHolding;
 
 pub(super) fn draw(
     frame: &mut GuiFrame,
@@ -64,7 +65,13 @@ fn slot_items(
             };
             is_used.then_some(ticks)
         });
-        frame.item_in_use(draw_item, stack, (x as f32, y as f32), using);
+        let cast = if slot == 9 {
+            input.item_cast[1]
+        } else {
+            input.item_cast[0] && slot as i32 == input.selected_slot
+        };
+        let holding = ItemHolding { ticks: using, cast };
+        frame.item_in_use(draw_item, stack, (x as f32, y as f32), holding);
         frame.item_bar(atlas, stack, x, y);
         frame.item_cooldown(atlas, stack, x, y);
         if stack.item_count() != 1 {

@@ -12,7 +12,8 @@ pub mod text_hit;
 
 pub use atlas::GuiAtlas;
 pub use frame::{
-    DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, LoggedRun, Positioner, ScreenRect,
+    DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, ItemHolding, LoggedRun,
+    Positioner, ScreenRect,
 };
 pub use items::GuiItemVertex;
 pub use run::TextRun;

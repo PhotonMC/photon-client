@@ -8,7 +8,7 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 fn no_items(
     _: &photon_world::ClientItemStackState,
     _: (f32, f32),
-    _: Option<i32>,
+    _: photon_render::gui::ItemHolding,
     _: &mut Vec<photon_render::gui::GuiItemVertex>,
 ) -> usize {
     0

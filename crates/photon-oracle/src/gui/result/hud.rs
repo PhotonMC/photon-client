@@ -176,6 +176,7 @@ fn frozen_alpha(row: &Value) -> Option<f32> {
 fn quiet_input() -> HudInput {
     HudInput {
         item_use: None,
+        item_cast: [false; 2],
         cooldowns: Vec::new(),
         first_person: true,
         spectator: false,

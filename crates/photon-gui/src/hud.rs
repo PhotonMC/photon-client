@@ -71,6 +71,9 @@ pub struct HudInput {
     /// The hand whose stack the player is using (true for the off hand) and for how many ticks:
     /// that slot's icon is drawn as the stack in use (a bow being drawn).
     pub item_use: Option<(bool, i32)>,
+    /// Which of the hands (main, then off) holds a rod whose bobber is out: its slot's icon is
+    /// the cast rod (`FishingRodCast`, the slot's stack is the one held).
+    pub item_cast: [bool; 2],
     /// The player's item cooldowns at this frame (see [`GuiFrame::cooldowns`]).
     pub cooldowns: Vec<(String, f32)>,
     /// The camera is in the player's eyes: the crosshair shows.

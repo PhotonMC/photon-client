@@ -558,7 +558,7 @@ mod item_batch_tests {
         let mut draws = [(3, 3), (3, 0), (3, 0)].into_iter();
         let mut draw = |_: &photon_world::ClientItemStackState,
                         _: (f32, f32),
-                        _: Option<i32>,
+                        _: crate::gui::ItemHolding,
                         out: &mut Vec<crate::gui::items::GuiItemVertex>| {
             let (item, glint) = draws.next().expect("one draw per item");
             out.extend(std::iter::repeat_n(vertex(), item + glint));
