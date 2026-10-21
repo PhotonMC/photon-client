@@ -1010,11 +1010,10 @@
 "crates/photon/src/overlays/light.rs::player_model" = 109
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 101
 "crates/photon/src/overlays/wear.rs::name_tags" = 65
-"crates/photon/src/overlays/wear.rs::remote_players" = 104
+"crates/photon/src/overlays/wear.rs::remote_players" = 102
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 62
 "crates/photon/src/play/draw.rs::Play::draw" = 96
-"crates/photon/src/play/draw.rs::Play::draw_entities" = 61
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 192
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63

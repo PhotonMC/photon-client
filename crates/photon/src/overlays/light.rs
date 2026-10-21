@@ -2,6 +2,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use photon_core::ids::ItemId;
+use wear::body;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
 /// the attack strength recovers.
@@ -261,6 +262,7 @@ pub fn player_model(
         Worn,
         &photon_render::entity::textures::EntityTextures,
     ),
+    invisible: bool,
 ) -> Vec<Vertex> {
     let feet = player.interpolated_position(view.partial);
     let partial = view.partial as f32;
@@ -338,10 +340,9 @@ pub fn player_model(
         motions: HandActions::of_local(spears.motions, (session, player), stacks.0),
     };
     hands.collect(held);
-    let skull = hands.skull();
-    let mut vertices = photon_render::entity::player_renderer::player_vertices(model, &placement);
+    let mut vertices = body(model, &placement, invisible);
     vertices.extend(armor.skull_vertices(
-        skull,
+        hands.skull(),
         pose.walk_position,
         textures,
         (placement.light, false),

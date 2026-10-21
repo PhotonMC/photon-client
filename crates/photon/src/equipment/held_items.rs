@@ -70,6 +70,8 @@ pub struct HeldItem {
     pub cast: bool,
     /// The entity that holds the stack when it is not the local player.
     pub owner: Option<Owner>,
+    /// The stack is the local player's own, on its body.
+    pub local: bool,
 }
 
 impl HeldItem {
@@ -83,6 +85,7 @@ impl HeldItem {
             item_use: None,
             cast: false,
             owner: None,
+            local: false,
         }
     }
 
@@ -96,6 +99,7 @@ impl HeldItem {
             item_use: None,
             cast: false,
             owner: None,
+            local: false,
         }
     }
 }
@@ -156,6 +160,8 @@ pub struct HandActions {
     cast: [bool; 2],
     /// Who holds the stacks when it is a world entity, with its id as the seed.
     owner: Option<Owner>,
+    /// The hands are the local player's.
+    local: bool,
 }
 
 impl HandActions {
@@ -165,6 +171,7 @@ impl HandActions {
             uses,
             cast: [false; 2],
             owner: None,
+            local: false,
         }
     }
 
@@ -197,9 +204,11 @@ impl HandActions {
         ),
         main: Option<&ClientItemStackState>,
     ) -> Self {
-        Self::new(motions, player.arm_uses()).with_cast(crate::objects::fishing_hooks::local_casts(
-            session, player, main,
-        ))
+        let mut actions = Self::new(motions, player.arm_uses()).with_cast(
+            crate::objects::fishing_hooks::local_casts(session, player, main),
+        );
+        actions.local = true;
+        actions
     }
 
     /// The owner of a stack drawn at a place: `ItemModelResolver.updateForLiving` seeds a spinning
@@ -263,6 +272,7 @@ impl Hands<'_> {
             item_use: self.motions.uses[index],
             cast: self.motions.cast[index],
             owner: self.motions.owner_at(place),
+            local: self.motions.local,
         }
     }
 
@@ -320,6 +330,7 @@ impl Hands<'_> {
                 item_use: None,
                 cast: false,
                 owner: self.motions.owner_at(Place::Head),
+                local: self.motions.local,
             });
         }
     }
@@ -352,6 +363,7 @@ pub fn held_item_vertices(
         };
         cache.set_cast(item.cast);
         cache.set_owner(item.owner);
+        cache.set_local_body(item.local);
         let item_layers = cache.get_in_use(stack, item.item_use, (renderer, tints));
         let drawn = item_layer_vertices(
             item_layers,

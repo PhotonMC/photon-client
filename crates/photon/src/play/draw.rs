@@ -70,8 +70,7 @@ impl Play {
         let spectating = player.spectating();
         let local = (!first_person && !spectating && !self.local_invisible())
             .then(|| player.interpolated_position(frame.partial));
-        let held =
-            self.draw_entities(view, first_person || self.local_invisible(), hook_sprites)?;
+        let held = self.draw_entities(view, first_person, hook_sprites)?;
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
         let with_textures = (tints.0, tints.1, &self.entity_textures);
@@ -187,15 +186,16 @@ impl Play {
 
     /// The other players, the mobs and the objects the server added, the
     /// bobbers, and the local player's own model once the camera leaves its
-    /// eyes (unless it is invisible); what they hold is given back for the item pass.
+    /// eyes (an invisible one keeps what it wears and holds); what they hold is given back for the item pass.
     fn draw_entities(
         &mut self,
         view: overlays::FrameView,
-        own_body_hidden: bool,
+        first_person: bool,
         hook_sprites: Vec<photon_render::scene::Vertex>,
     ) -> Result<Vec<crate::equipment::held_items::HeldItem>> {
-        let player = self.session.player().ok_or("no local player")?;
+        self.session.player().ok_or("no local player")?;
         let mut held = Vec::new();
+        let invisible = self.local_invisible();
         let models = &mut self.entity_vertices;
         models.clear();
         overlays::remote_players(
@@ -217,33 +217,9 @@ impl Play {
             self.particles
                 .elder_guardian_vertices(&self.entity_textures, (view.partial as f32, &view)),
         );
-        if !own_body_hidden {
-            // What the local player holds: the selected hotbar slot and the
-            // off hand, the main arm being the right.
-            let stack = |slot: i16| {
-                self.session
-                    .world()
-                    .local_player()
-                    .and_then(|state| state.inventory_slot(slot))
-                    .filter(|stack| stack.item_count() > 0)
-            };
-            let selected = self.session.status().selected_slot as i16;
-            models.extend(overlays::player_model(
-                (&self.session, player),
-                &mut self.player_model,
-                (view, &mut held),
-                (stack(36 + selected), stack(45)),
-                (
-                    &mut self.armor,
-                    Worn {
-                        head: stack(5),
-                        chest: stack(6),
-                        legs: stack(7),
-                        feet: stack(8),
-                    },
-                    &self.entity_textures,
-                ),
-            ));
+        if !first_person {
+            let own = self.own_model(view, &mut held, invisible)?;
+            self.entity_vertices.extend(own);
         }
         self.backend.set_draw(
             photon_render::vulkan::DrawKind::Entities,

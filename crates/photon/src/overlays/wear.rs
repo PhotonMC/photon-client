@@ -112,7 +112,7 @@ pub fn remote_players(
 }
 
 /// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body.
-fn body(model: &PlayerModel, placement: &Placement, invisible: bool) -> Vec<Vertex> {
+pub(super) fn body(model: &PlayerModel, placement: &Placement, invisible: bool) -> Vec<Vertex> {
     if invisible {
         return Vec::new();
     }

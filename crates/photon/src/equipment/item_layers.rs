@@ -26,6 +26,8 @@ pub struct ItemLayerCache {
     needles: Option<super::needle::SharedNeedles>,
     /// Who holds the stacks drawn next, when it is not the local player.
     owner: Option<super::needle::Owner>,
+    /// The stacks drawn next are the local player's own, on its body.
+    local_body: bool,
     /// Whether the stacks drawn next are a rod with its bobber out (`FishingRodCast`).
     cast: bool,
 }
@@ -94,6 +96,7 @@ impl ItemLayerCache {
             trim_materials: std::sync::Arc::default(),
             needles: None,
             owner: None,
+            local_body: false,
             cast: false,
         }
     }
@@ -119,6 +122,11 @@ impl ItemLayerCache {
                 | DisplayContext::Ground
         )
         .then(|| frame.needles.clone());
+    }
+
+    /// Whether the stacks drawn next are the local player's own on its body (third person).
+    pub fn set_local_body(&mut self, local_body: bool) {
+        self.local_body = local_body;
     }
 
     /// Whether the stacks drawn next are held by the arm of a player whose bobber is out.
@@ -280,7 +288,7 @@ impl ItemLayerCache {
                 | DisplayContext::FirstPersonLeftHand
                 | DisplayContext::FirstPersonRightHand
         );
-        if !own_view && self.owner.is_none() {
+        if !own_view && !self.local_body && self.owner.is_none() {
             return;
         }
         // `context_dimension` picks a clock's source, so the walk needs it.

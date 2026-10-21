@@ -514,6 +514,7 @@ mod effects;
 mod fitting;
 mod gizmo;
 mod glints;
+mod own_model;
 mod pacing;
 mod schedule;
 mod social_toast;
