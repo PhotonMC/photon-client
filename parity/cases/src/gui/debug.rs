@@ -158,7 +158,7 @@ fn day_rows() -> Vec<Value> {
 
 /// The light entry: each layer ahead, behind and level, the ends, and not with reduced debug info.
 fn light_rows() -> Vec<Value> {
-    let row = |label: &str, sky: i32, block: i32, reduced: bool| {
+    let lit = |label: &str, sky: i32, block: i32, reduced: bool| {
         row(
             format!("debug-light-{label}"),
             ((1.0, 64.0, 3.0), (0.0, 0.0)),
@@ -166,12 +166,18 @@ fn light_rows() -> Vec<Value> {
         )
     };
     vec![
-        row("sky-ahead", 15, 3, false),
-        row("block-ahead", 2, 11, false),
-        row("level", 7, 7, false),
-        row("dark", 0, 0, false),
-        row("full", 15, 15, false),
-        row("reduced", 15, 3, true),
+        lit("sky-ahead", 15, 3, false),
+        lit("block-ahead", 2, 11, false),
+        lit("level", 7, 7, false),
+        lit("dark", 0, 0, false),
+        lit("full", 15, 15, false),
+        lit("reduced", 15, 3, true),
+        // The groups and the plain lines of several entries together.
+        row(
+            "debug-light-with-biome-and-day".to_owned(),
+            ((1.0, 64.0, 3.0), (0.0, 0.0)),
+            json!({"extra": ["biome", "day_count", "light_levels"], "day": 72_000, "sky": 9, "block": 4}),
+        ),
     ]
 }
 
