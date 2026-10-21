@@ -71,3 +71,26 @@ pub fn effects(
     }
     found
 }
+
+/// `Font.getGlyph`: an obfuscated character other than a space is drawn as a random glyph of the
+/// same width, a new one every frame. Where is advances is the character's own.
+pub(crate) fn obfuscated(
+    font: &Font,
+    run: &TextRun,
+    codepoint: char,
+    glyph: crate::gui::font::Glyph,
+) -> crate::gui::font::Glyph {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static STATE: AtomicU32 = AtomicU32::new(0x9E37_79B9);
+    if !run.obfuscated || codepoint == ' ' {
+        return glyph;
+    }
+    // A xorshift step; the picks need to differ, not to be good random numbers.
+    let mut roll = STATE.load(Ordering::Relaxed);
+    roll ^= roll << 13;
+    roll ^= roll >> 17;
+    roll ^= roll << 5;
+    STATE.store(roll, Ordering::Relaxed);
+    font.random_glyph(glyph.advance(false).ceil() as i32, roll)
+        .unwrap_or(glyph)
+}

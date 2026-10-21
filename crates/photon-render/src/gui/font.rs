@@ -54,6 +54,8 @@ pub struct Font {
     /// Each bitmap provider's image, by its texture name (`font/ascii`).
     pub images: Vec<(String, DecodedImage)>,
     glyphs: HashMap<u32, Glyph>,
+    /// `FontSet.glyphsByWidth`: the codepoints by their advance rounded up, in codepoint order.
+    by_width: HashMap<i32, Vec<u32>>,
 }
 
 impl Font {
@@ -62,8 +64,10 @@ impl Font {
         let mut font = Self {
             images: Vec::new(),
             glyphs: HashMap::new(),
+            by_width: HashMap::new(),
         };
         font.load_definition(assets_root, "minecraft:default")?;
+        font.index_widths();
         Some(font)
     }
 
@@ -72,8 +76,10 @@ impl Font {
         let mut font = Self {
             images: Vec::new(),
             glyphs: HashMap::new(),
+            by_width: HashMap::new(),
         };
         font.load_definition(assets_root, "minecraft:alt")?;
+        font.index_widths();
         Some(font)
     }
 
@@ -171,6 +177,22 @@ impl Font {
         self.images
             .push((path.trim_end_matches(".png").to_owned(), image));
         Some(())
+    }
+
+    fn index_widths(&mut self) {
+        let mut codepoints: Vec<u32> = self.glyphs.keys().copied().collect();
+        codepoints.sort_unstable();
+        for codepoint in codepoints {
+            let width = self.glyphs[&codepoint].advance(false).ceil() as i32;
+            self.by_width.entry(width).or_default().push(codepoint);
+        }
+    }
+
+    /// `FontSet.getRandomGlyph`: a glyph as wide as `width`, picked by `roll`; none if there is
+    /// none.
+    pub fn random_glyph(&self, width: i32, roll: u32) -> Option<Glyph> {
+        let same = self.by_width.get(&width).filter(|same| !same.is_empty())?;
+        self.glyphs.get(&same[roll as usize % same.len()]).copied()
     }
 
     pub fn glyph(&self, codepoint: char) -> Option<Glyph> {

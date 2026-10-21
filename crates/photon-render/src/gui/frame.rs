@@ -8,6 +8,8 @@
 
 use super::TextRun;
 use super::atlas::GuiAtlas;
+use super::font::Glyph;
+use super::text_effect;
 
 pub use blur::{GuiBlur, split_batches};
 
@@ -263,7 +265,7 @@ pub(crate) fn glyph_quads(
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
-            if let crate::gui::font::Glyph::Bitmap(bitmap) = glyph {
+            if let Glyph::Bitmap(bitmap) = text_effect::obfuscated(font, run, codepoint, glyph) {
                 let (name, image) = &font.images[bitmap.image];
                 let [u0, v0, u1, v1] = atlas.sprite(name);
                 let [cx, cy, cw, ch] = bitmap.cell;
