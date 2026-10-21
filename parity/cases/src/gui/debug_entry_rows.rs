@@ -200,6 +200,15 @@ pub(super) fn looking_at_fluid_rows() -> Vec<Value> {
         aim("nothing", Vec::new(), (0.0, 0.0), json!({})),
         aim("reduced", level("minecraft:water"), (0.0, 0.0), json!({"reduced": true})),
         aim("with-block", level("minecraft:water"), (0.0, 0.0), both),
+        aim(
+            "both-groups",
+            vec![block(0, 65, 4, "minecraft:lava"), block(0, 65, 6, "minecraft:glass")],
+            (0.0, 0.0),
+            json!({"extra": [
+                "looking_at_block_state", "looking_at_block_tags",
+                "looking_at_fluid_state", "looking_at_fluid_tags",
+            ]}),
+        ),
         aim("tags-lava", level("minecraft:lava"), (0.0, 0.0), tags.clone()),
         aim("tags-flowing-lava", level("minecraft:lava[level=1]"), (0.0, 0.0), tags.clone()),
         aim("tags-stone", level("minecraft:stone"), (0.0, 0.0), tags.clone()),
