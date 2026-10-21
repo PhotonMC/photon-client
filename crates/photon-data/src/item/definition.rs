@@ -58,6 +58,10 @@ pub struct Remainder {
 pub struct Consume {
     pub seconds: f32,
     pub animation: &'static str,
+    /// The sound event played while it is used.
+    pub sound: &'static str,
+    /// Whether the use throws crumbs of the item (`hasConsumeParticles`).
+    pub particles: bool,
 }
 
 /// `UseEffects`: whether sprinting goes on while the item is used, and how much the use slows
@@ -164,8 +168,19 @@ impl Item {
         self
     }
 
-    pub const fn consumable(mut self, seconds: f32, animation: &'static str) -> Self {
-        self.consumable = Some(Consume { seconds, animation });
+    pub const fn consumable(
+        mut self,
+        seconds: f32,
+        animation: &'static str,
+        sound: &'static str,
+        particles: bool,
+    ) -> Self {
+        self.consumable = Some(Consume {
+            seconds,
+            animation,
+            sound,
+            particles,
+        });
         self
     }
 

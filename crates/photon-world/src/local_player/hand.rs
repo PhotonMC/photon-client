@@ -358,6 +358,8 @@ impl Default for HandState {
             using_off_hand: false,
             main_use: UseEffects::DEFAULT,
             off_use: UseEffects::DEFAULT,
+            main_consume: None,
+            off_consume: None,
             food: 20,
             blinded: false,
             levitating: false,
@@ -383,6 +385,9 @@ pub struct HandState {
     /// What using the stack in each hand does to walking and sprinting (`use_effects`).
     pub main_use: UseEffects,
     pub off_use: UseEffects,
+    /// What eating or drinking the stack in each hand sounds like (the `consumable`).
+    pub main_consume: Option<super::ConsumeCue>,
+    pub off_consume: Option<super::ConsumeCue>,
     /// The food level, and whether blindness is on: what sprinting reads of the player state.
     pub food: i32,
     pub blinded: bool,

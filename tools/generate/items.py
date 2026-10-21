@@ -15,7 +15,7 @@ Nothing the game computes from these is written; see `definition.rs`.
 """
 import json
 
-from common import f32, header, load_case, run, rust_str, write
+from common import f32, header, load_case, run, rust_bool, rust_str, write
 from components import convert
 
 METHODS = ["useOn", "use", "overrideStackedOnOther", "overrideOtherStackedOnMe"]
@@ -134,7 +134,10 @@ def items_file(items):
         if item.get("tool") is not None:
             calls.append(f"tool(&{names[json.dumps(item['tool'], sort_keys=True)]})")
         if item["consumable"]:
-            calls.append(f"consumable({float(item['consume_seconds'])!r}, {rust_str(item['use_animation'])})")
+            calls.append(
+                f"consumable({float(item['consume_seconds'])!r}, {rust_str(item['use_animation'])}, "
+                f"{rust_str(item['consume_sound'])}, {rust_bool(item['consume_particles'])})"
+            )
         # Every item has the component; only a non-default one is written.
         if (item["use_can_sprint"], float(item["use_speed"])) != (False, 0.2):
             calls.append(f"use_effects({str(item['use_can_sprint']).lower()}, {float(item['use_speed'])!r})")

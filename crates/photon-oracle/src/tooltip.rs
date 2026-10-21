@@ -214,6 +214,8 @@ fn describe_consume(item: &photon_data::item::definition::Item, described: &mut 
                 .unwrap_or_default()
         );
         described["use_animation"] = json!(consume.animation);
+        described["consume_sound"] = json!(consume.sound);
+        described["consume_particles"] = json!(consume.particles);
     }
     // Every item has the component; the table lists only those that differ from the default.
     let effects = item

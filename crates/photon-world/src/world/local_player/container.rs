@@ -1,3 +1,4 @@
+use crate::local_player::ConsumeCue;
 use crate::*;
 use photon_data::item::definition::UseEffects;
 use photon_data::item::registry::AIR_ITEM;
@@ -234,6 +235,8 @@ impl ClientWorld {
             using_off_hand: state.used_item_is_off_hand(),
             main_use: use_effects(state.inventory_slot(36 + selected_slot as i16)),
             off_use: use_effects(state.inventory_slot(45)),
+            main_consume: consume_cue(state.inventory_slot(36 + selected_slot as i16)),
+            off_consume: consume_cue(state.inventory_slot(45)),
             food: state.food,
             blinded: amplifier(BLINDNESS).is_some(),
             levitating: amplifier(LEVITATION).is_some(),
@@ -324,6 +327,40 @@ fn use_effects(stack: Option<&ClientItemStackState>) -> UseEffects {
     }
 }
 
+/// `ItemStack.get(CONSUMABLE)`: the stack's own component, else the item's. A sound the patch
+/// gives inline (not by registry id) is not carried.
+fn consume_cue(stack: Option<&ClientItemStackState>) -> Option<ConsumeCue> {
+    let stack = stack?;
+    match stack.patched(crate::item_components::ids::CONSUMABLE) {
+        Some(Some(value)) => patched_consume_cue(&value),
+        Some(None) => None,
+        None => crate::block::rules::item(stack.item_registry_id())
+            .and_then(|item| item.consumable)
+            .map(|consume| ConsumeCue {
+                ticks: (consume.seconds * 20.0) as i32,
+                drink: consume.animation == "drink",
+                sound: consume.sound,
+                particles: consume.particles,
+            }),
+    }
+}
+
+/// The wire form of a `consumable`: seconds, animation id, the sound's holder (its registry id
+/// plus one, or zero for an inline one), the particles flag.
+fn patched_consume_cue(value: &[u8]) -> Option<ConsumeCue> {
+    let (seconds, mut rest) = value.split_first_chunk::<4>()?;
+    let animation = photon_core::wire::read_varint(&mut rest).ok()?;
+    let holder = photon_core::wire::read_varint(&mut rest).ok()?;
+    let sound = photon_data::sound_event::name(holder - 1)?;
+    let particles = *rest.first()? != 0;
+    Some(ConsumeCue {
+        ticks: (f32::from_be_bytes(*seconds) * 20.0) as i32,
+        drink: animation == 2,
+        sound,
+        particles,
+    })
+}
+
 #[cfg(test)]
 mod use_effects_tests {
     use super::*;
@@ -355,5 +392,49 @@ mod use_effects_tests {
         // The patch removing it leaves the default, also over a spear's own.
         let removed = ClientItemStackState::new(1, spear).with_patch_bytes(vec![0, 1, 5]);
         assert_eq!(use_effects(Some(&removed)), UseEffects::DEFAULT);
+    }
+}
+
+#[cfg(test)]
+mod consume_cue_tests {
+    use super::*;
+
+    fn stack(name: &str) -> ClientItemStackState {
+        ClientItemStackState::new(1, photon_data::item::registry::named(name))
+    }
+
+    #[test]
+    fn an_item_eats_or_drinks_as_its_component_says() {
+        let bread = consume_cue(Some(&stack("minecraft:bread"))).expect("bread is food");
+        assert_eq!(
+            (bread.ticks, bread.drink, bread.particles),
+            (32, false, true)
+        );
+        assert_eq!(bread.sound, "minecraft:entity.generic.eat");
+        let honey = consume_cue(Some(&stack("minecraft:honey_bottle"))).expect("a drink");
+        assert_eq!((honey.ticks, honey.drink), (40, true));
+        assert_eq!(honey.sound, "minecraft:item.honey_bottle.drink");
+        assert!(consume_cue(Some(&stack("minecraft:stick"))).is_none());
+        assert!(consume_cue(None).is_none());
+    }
+
+    /// A stack that sets its `consumable`: 3 seconds, the drink animation, the sound the
+    /// registry names with id 5, no crumbs. A patch removing it leaves nothing.
+    #[test]
+    fn a_patched_component_replaces_the_items_own() {
+        let mut value = 3.0_f32.to_be_bytes().to_vec();
+        value.extend([2, 6, 0, 0]);
+        let mut patch = vec![1, 0, photon_data::item::component_types::CONSUMABLE as u8];
+        patch.extend(&value);
+        let stack = stack("minecraft:stick").with_patch_bytes(patch);
+        let cue = consume_cue(Some(&stack)).expect("the patch sets it");
+        assert_eq!((cue.ticks, cue.drink, cue.particles), (60, true, false));
+        assert_eq!(Some(cue.sound), photon_data::sound_event::name(5));
+        let removed = self::stack("minecraft:bread").with_patch_bytes(vec![
+            0,
+            1,
+            photon_data::item::component_types::CONSUMABLE as u8,
+        ]);
+        assert!(consume_cue(Some(&removed)).is_none());
     }
 }

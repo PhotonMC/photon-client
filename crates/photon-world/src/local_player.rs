@@ -42,6 +42,8 @@ use photon_data::block::registry;
 /// The tags and classes movement tests of a block.
 mod sounds;
 pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
+mod consuming;
+pub use consuming::ConsumeCue;
 mod portal;
 mod screen_effect;
 mod underwater;

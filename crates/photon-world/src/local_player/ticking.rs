@@ -447,6 +447,9 @@ impl LocalPlayer {
             self.swing_time = 0;
         }
         self.attack_anim = self.swing_time as f32 / swing_duration as f32;
+        if self.hands.using_item {
+            self.consume_tick();
+        }
         // `getTicksUsingItem`: counted while the item is in use.
         self.use_edge.ticks = if self.hands.using_item {
             self.use_edge.ticks.saturating_add(1)

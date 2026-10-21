@@ -376,6 +376,8 @@ class BlockDeclarationOracle extends BlockItemOracle {
             if (consumable != null) {
                 described.addProperty("consume_seconds", consumable.consumeSeconds());
                 described.addProperty("use_animation", consumable.animation().getSerializedName());
+                described.addProperty("consume_sound", consumable.sound().getRegisteredName());
+                described.addProperty("consume_particles", consumable.hasConsumeParticles());
             }
             var useEffects = data.get(net.minecraft.core.component.DataComponents.USE_EFFECTS);
             if (useEffects != null) {
