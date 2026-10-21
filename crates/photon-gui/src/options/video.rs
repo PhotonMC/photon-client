@@ -34,6 +34,7 @@ const VSYNC: u8 = 7;
 const INACTIVITY_FPS_LIMIT: u8 = 8;
 const RENDER_DISTANCE: u8 = CUSTOMISING | 3;
 const AMBIENT_OCCLUSION: u8 = CUSTOMISING | 4;
+const MENU_BLURRINESS: u8 = CUSTOMISING | 5;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -112,6 +113,8 @@ pub struct VideoValues {
     pub inactivity_fps_limit: InactivityFpsLimit,
     /// `renderDistance`, in chunks.
     pub render_distance: i32,
+    /// `menuBackgroundBlurriness`.
+    pub menu_blurriness: i32,
 }
 
 impl Default for VideoValues {
@@ -123,6 +126,7 @@ impl Default for VideoValues {
             ambient_occlusion: true,
             inactivity_fps_limit: InactivityFpsLimit::Afk,
             render_distance: 12,
+            menu_blurriness: 5,
         }
     }
 }
@@ -353,7 +357,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
 }
 
 /// `qualityOptions`, the rest.
-fn quality_options_rest() -> Vec<(u8, Build)> {
+fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
             CUSTOMISING,
@@ -369,12 +373,12 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            MENU_BLURRINESS,
             slider_tip(
                 "options.accessibility.menu_background_blurriness",
                 IntRange::new(0, 10),
                 blurriness,
-                5,
+                display.menu_blurriness,
                 constant_tip("options.accessibility.menu_background_blurriness.tooltip"),
             ),
         ),
@@ -437,7 +441,7 @@ fn quality_options_rest() -> Vec<(u8, Build)> {
 /// `qualityOptions`.
 fn quality_options(display: &VideoValues) -> Vec<(u8, Build)> {
     let mut options = quality_options_first(display);
-    options.extend(quality_options_rest());
+    options.extend(quality_options_rest(display));
     options
 }
 

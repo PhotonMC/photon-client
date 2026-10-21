@@ -1,7 +1,13 @@
 //! The settings screens drawn over the game, and the blur behind them.
 
 use super::*;
-use photon_gui::screen::pause::MENU_BLURRINESS;
+
+/// Where the screen goes and with what: its size and the mouse, the menu blurriness, the item drawer.
+type ProgressArgs<'a> = (
+    ((i32, i32), (i32, i32)),
+    i32,
+    &'a mut photon_render::gui::ItemDrawer<'a>,
+);
 
 impl Gui {
     /// The settings screen that is open, the topmost of those over the
@@ -19,18 +25,19 @@ impl Gui {
         }
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
         // `Screen.extractBackground`: a screen with no background of its own blurs what is behind it.
+        let blurriness = controls.options.menu_background_blurriness;
         if Self::draw_progress_screen(
             (atlas, font, lang),
             controls,
             frame,
-            (gui_size, mouse, item),
+            ((gui_size, mouse), blurriness, item),
         ) {
             return;
         }
         macro_rules! sized {
             ($screen:expr) => {
                 if let Some(screen) = $screen.as_mut() {
-                    frame.blur_before_this_stratum(MENU_BLURRINESS);
+                    frame.blur_before_this_stratum(blurriness);
                     if screen.size() != gui_size {
                         screen.resize(gui_size);
                     }
@@ -49,7 +56,7 @@ impl Gui {
         sized!(controls.sound_screen);
         sized!(controls.video_screen);
         if let Some(options_screen) = controls.options_screen.as_mut() {
-            frame.blur_before_this_stratum(MENU_BLURRINESS);
+            frame.blur_before_this_stratum(blurriness);
             if options_screen.size() != gui_size {
                 *options_screen =
                     options_screen.resized(font, lang, gui_size, controls.options.fov);
@@ -59,7 +66,7 @@ impl Gui {
             if pause.size() != gui_size {
                 *pause = PauseScreen::new(font, lang, gui_size);
             }
-            pause.draw(frame, atlas, font, mouse, gui_size, Some(MENU_BLURRINESS));
+            pause.draw(frame, atlas, font, mouse, gui_size, Some(blurriness));
         }
     }
 
@@ -68,20 +75,16 @@ impl Gui {
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
-        (gui_size, mouse, item): (
-            (i32, i32),
-            (i32, i32),
-            &mut photon_render::gui::ItemDrawer<'_>,
-        ),
+        ((gui_size, mouse), blurriness, item): ProgressArgs<'_>,
     ) -> bool {
         if let Some(open) = controls.advancements.as_mut() {
-            frame.blur_before_this_stratum(MENU_BLURRINESS);
+            frame.blur_before_this_stratum(blurriness);
             if open.screen.size() != gui_size {
                 open.screen.resize(gui_size);
             }
             open.screen.draw(frame, (atlas, font, lang), mouse, item);
         } else if let Some(stats) = controls.stats.as_mut() {
-            frame.blur_before_this_stratum(MENU_BLURRINESS);
+            frame.blur_before_this_stratum(blurriness);
             if stats.size() != gui_size {
                 stats.resize(gui_size);
             }

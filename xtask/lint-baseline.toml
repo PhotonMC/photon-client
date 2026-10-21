@@ -15,7 +15,7 @@
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-world/src/particles/firework.rs" = 540
-"crates/photon/src/menu.rs" = 644
+"crates/photon/src/menu.rs" = 643
 "crates/photon/src/mobs/animals/farm_animals.rs" = 515
 
 [file-name]
@@ -212,9 +212,9 @@
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 15
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 22
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 22
-"crates/photon-game/src/options/file.rs::Options::read" = 20
+"crates/photon-game/src/options/file.rs::Options::read" = 19
 "crates/photon-game/src/options/file.rs::Options::read_sound" = 13
-"crates/photon-game/src/options/file.rs::Options::write" = 24
+"crates/photon-game/src/options/file.rs::Options::write" = 23
 "crates/photon-game/src/sounds.rs::SoundSource::name" = 11
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 17
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 15
@@ -647,7 +647,7 @@
 "crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 131
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 69
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 81
-"crates/photon-game/src/options/file.rs::Options::read" = 69
+"crates/photon-game/src/options/file.rs::Options::read" = 64
 "crates/photon-game/src/registries.rs::Registries::load" = 81
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 79
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81

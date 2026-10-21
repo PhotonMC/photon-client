@@ -187,6 +187,9 @@ fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
     set("effects", &mut options.screen_effect_scale);
     set("sensitivity", &mut options.sensitivity);
     set("wheel", &mut options.mouse_wheel_sensitivity);
+    if let Some(value) = row["options"]["blurriness"].as_i64() {
+        options.menu_background_blurriness = value as i32;
+    }
     options.invert_mouse_x = row["options"]["invert_x"].as_bool().unwrap_or(false);
     options.invert_mouse_y = row["options"]["invert_y"].as_bool().unwrap_or(false);
     for source in photon_game::sounds::SoundSource::ALL {

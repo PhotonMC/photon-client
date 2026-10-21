@@ -49,6 +49,7 @@ pub(super) enum Key {
     DirectionalAudio,
     ViewBobbing,
     DamageTiltStrength,
+    MenuBackgroundBlurriness,
     MusicToast,
     MusicFrequency,
     SoundCategory(SoundSource),
@@ -56,7 +57,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 62] = [
+pub(super) const KEYS: [(&str, Key); 63] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -99,6 +100,7 @@ pub(super) const KEYS: [(&str, Key); 62] = [
     ("directionalAudio", Key::DirectionalAudio),
     ("bobView", Key::ViewBobbing),
     ("damageTiltStrength", Key::DamageTiltStrength),
+    ("menuBackgroundBlurriness", Key::MenuBackgroundBlurriness),
     ("musicToast", Key::MusicToast),
     ("musicFrequency", Key::MusicFrequency),
     (

@@ -49,6 +49,7 @@ impl Controls {
         options.damage_tilt_strength = choices.damage_tilt_strength;
         options.glint_speed = choices.glint_speed;
         options.glint_strength = choices.glint_strength;
+        options.menu_background_blurriness = choices.menu_blurriness;
         let settings = photon_gui::chat::ChatSettings::from(&self.options);
         self.chat_log.set_settings(settings, &assets.creative.font);
     }

@@ -33,6 +33,9 @@ fn layout() -> Vec<Value> {
         options("spacing-mid", json!({"line_spacing": 0.25})),
         options("effects-zero", json!({"effects": 0.0})),
         options("effects-mid", json!({"effects": 0.43})),
+        options("blurriness-zero", json!({"blurriness": 0})),
+        options("blurriness-one", json!({"blurriness": 1})),
+        options("blurriness-ten", json!({"blurriness": 10})),
     ]
 }
 

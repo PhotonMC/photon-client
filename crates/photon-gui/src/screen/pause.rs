@@ -51,9 +51,6 @@ fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     )
 }
 
-/// `menuBackgroundBlurriness` until the option is stored: the slider's default.
-pub const MENU_BLURRINESS: i32 = 5;
-
 impl PauseScreen {
     /// `PauseScreen.init` and `createPauseMenu`, for a server (not a local
     /// one) in a screen of `width` by `height` units.

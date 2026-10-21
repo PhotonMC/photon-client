@@ -135,6 +135,10 @@ impl VideoSettingsScreen {
                 .find(RENDER_DISTANCE)
                 .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
                 .map_or(fallback.render_distance, |slider| *slider.value()),
+            menu_blurriness: list
+                .find(MENU_BLURRINESS)
+                .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
+                .map_or(fallback.menu_blurriness, |slider| *slider.value()),
         }
     }
 

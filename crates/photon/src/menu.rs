@@ -103,6 +103,8 @@ struct Menu {
     game_directory: PathBuf,
     servers: ServerList,
     screen: Screen,
+    /// `menuBackgroundBlurriness`, as the options held it when the menu opened.
+    blurriness: i32,
     mouse: (i32, i32),
     /// When and where the last primary press was, for a double click.
     last_click: Option<(Instant, (i32, i32))>,
@@ -172,6 +174,7 @@ impl Menu {
             icons_dirty: false,
             spin: 0.0,
             last_spin: Instant::now(),
+            blurriness: options.menu_background_blurriness,
         })
     }
 
@@ -186,12 +189,9 @@ impl Menu {
         self.spin = photon_render::panorama::spin_after(self.spin, ticks, 1.0);
         let extent = client.backend.description().extent;
         // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
-        // background of its own. `menuBackgroundBlurriness` is not read yet; its default is 5.
-        let blur = if matches!(self.screen, Screen::Title(_)) {
-            0
-        } else {
-            5
-        };
+        // background of its own.
+        let title = matches!(self.screen, Screen::Title(_));
+        let blur = if title { 0 } else { self.blurriness as u32 };
         if let Err(error) = client.backend.set_panorama_blur(blur) {
             log::warn!("panorama blur: {error:?}");
         }

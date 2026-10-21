@@ -43,6 +43,7 @@ const DARKNESS_EFFECTS: u8 = 16;
 const DAMAGE_TILT: u8 = 17;
 const GLINT_SPEED: u8 = 18;
 const GLINT_STRENGTH: u8 = 19;
+const MENU_BLURRINESS: u8 = 20;
 
 /// `notificationDisplayTime`'s value set: tenths of a second from 0.5 to 10.
 type TimeValues =
@@ -114,6 +115,7 @@ pub struct AccessibilityChoices {
     pub damage_tilt_strength: f64,
     pub glint_speed: f64,
     pub glint_strength: f64,
+    pub menu_blurriness: i32,
 }
 
 /// What an input to the screen asks for.
@@ -207,6 +209,10 @@ impl AccessibilityScreen {
             damage_tilt_strength: share(DAMAGE_TILT),
             glint_speed: share(GLINT_SPEED),
             glint_strength: share(GLINT_STRENGTH),
+            menu_blurriness: list
+                .find(MENU_BLURRINESS)
+                .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
+                .map_or(5, |slider| *slider.value()),
         }
     }
 
@@ -310,12 +316,12 @@ fn first_options(options: &Options) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            MENU_BLURRINESS,
             slider_tip(
                 "options.accessibility.menu_background_blurriness",
                 IntRange::new(0, 10),
                 blurriness,
-                5,
+                options.menu_background_blurriness,
                 constant_tip("options.accessibility.menu_background_blurriness.tooltip"),
             ),
         ),

@@ -188,6 +188,7 @@ impl Controls {
         self.options.enable_vsync = shown.vsync;
         self.options.inactivity_fps_limit = shown.inactivity_fps_limit;
         self.options.render_distance = shown.render_distance;
+        self.options.menu_background_blurriness = shown.menu_blurriness;
     }
 
     /// The options the video screen shows, as the options hold them.
@@ -199,6 +200,7 @@ impl Controls {
             ambient_occlusion: options.ambient_occlusion,
             inactivity_fps_limit: options.inactivity_fps_limit,
             render_distance: options.render_distance,
+            menu_blurriness: options.menu_background_blurriness,
         }
     }
 

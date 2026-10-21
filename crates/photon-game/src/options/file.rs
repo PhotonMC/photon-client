@@ -148,6 +148,20 @@ impl Options {
         }
     }
 
+    /// The options that are an integer in a range; a value outside it leaves the option as it was:
+    /// `Codec.intRange(10, 260)`, `IntRange(2, 32)` and `IntRange(0, 10)`.
+    fn read_int(&mut self, key: Key, json: &Json<'_>) {
+        let (field, range) = match key {
+            Key::MaxFps => (&mut self.framerate_limit, 10..=UNLIMITED_FRAMERATE_CUTOFF),
+            Key::RenderDistance => (
+                &mut self.render_distance,
+                RENDER_DISTANCE_MIN..=RENDER_DISTANCE_MAX,
+            ),
+            _ => (&mut self.menu_background_blurriness, 0..=10),
+        };
+        *field = int_in(json, range).unwrap_or(*field);
+    }
+
     pub(super) fn read(&mut self, key: Key, text: &str) {
         let json = parse_json(text);
         let unit = || match json {
@@ -164,15 +178,8 @@ impl Options {
                 self.read_scale(key, &json);
             }
             Key::AmbientOcclusion | Key::EnableVsync => self.read_switch(key, boolean()),
-            // `Codec.intRange(10, 260)`.
-            Key::MaxFps => {
-                self.framerate_limit =
-                    int_in(&json, 10..=UNLIMITED_FRAMERATE_CUTOFF).unwrap_or(self.framerate_limit);
-            }
-            // `IntRange(2, 32)`: a value outside it leaves the default.
-            Key::RenderDistance => {
-                self.render_distance = int_in(&json, RENDER_DISTANCE_MIN..=RENDER_DISTANCE_MAX)
-                    .unwrap_or(self.render_distance);
+            Key::MaxFps | Key::RenderDistance | Key::MenuBackgroundBlurriness => {
+                self.read_int(key, &json);
             }
             Key::InactivityFpsLimit => self.read_inactivity_limit(&json),
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
@@ -359,12 +366,22 @@ impl Options {
         })
     }
 
+    /// The value of an option that is an integer in a range ([`Self::read_int`]).
+    fn int_value(&self, key: Key) -> i32 {
+        match key {
+            Key::MaxFps => self.framerate_limit,
+            Key::RenderDistance => self.render_distance,
+            _ => self.menu_background_blurriness,
+        }
+    }
+
     /// The value the file holds for an option.
     pub(super) fn write(&self, key: Key) -> String {
         match key {
             Key::AmbientOcclusion | Key::EnableVsync => self.write_switch(key),
-            Key::MaxFps => self.framerate_limit.to_string(),
-            Key::RenderDistance => self.render_distance.to_string(),
+            Key::MaxFps | Key::RenderDistance | Key::MenuBackgroundBlurriness => {
+                self.int_value(key).to_string()
+            }
             Key::InactivityFpsLimit => write_string(self.inactivity_fps_limit.serialized()),
             Key::Fov | Key::FovEffectScale | Key::DarknessEffectScale => self.write_scale(key),
             Key::GuiScale => self.gui_scale.to_string(),
@@ -479,6 +496,27 @@ mod tests {
         let path = directory.join(format!("{number}.txt"));
         std::fs::write(&path, text).unwrap();
         Options::load(&path)
+    }
+
+    #[test]
+    fn the_menu_blurriness_reads_in_range_and_keeps_the_default_outside_it() {
+        assert_eq!(
+            loaded("menuBackgroundBlurriness:0\n").menu_background_blurriness,
+            0
+        );
+        assert_eq!(
+            loaded("menuBackgroundBlurriness:10\n").menu_background_blurriness,
+            10
+        );
+        assert_eq!(
+            loaded("menuBackgroundBlurriness:11\n").menu_background_blurriness,
+            5
+        );
+        assert_eq!(
+            loaded("menuBackgroundBlurriness:-1\n").menu_background_blurriness,
+            5
+        );
+        assert_eq!(loaded("").menu_background_blurriness, 5);
     }
 
     #[test]

@@ -41,6 +41,8 @@ pub struct Options {
     pub mouse_wheel_sensitivity: f64,
     /// `renderDistance`, in chunks.
     pub render_distance: i32,
+    /// `menuBackgroundBlurriness`, from 0 (none) to 10.
+    pub menu_background_blurriness: i32,
     /// `lang`.
     pub language_code: String,
     /// `lastServer` (`lastMpIp`): the address the direct connection last had.
@@ -115,6 +117,7 @@ impl Default for Options {
             sensitivity: 0.5,
             mouse_wheel_sensitivity: log_mouse(0),
             render_distance: 12,
+            menu_background_blurriness: 5,
             language_code: "en_us".to_owned(),
             last_server: String::new(),
             joined_first_server: false,
