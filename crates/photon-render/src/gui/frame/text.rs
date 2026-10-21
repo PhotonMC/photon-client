@@ -269,26 +269,8 @@ impl GuiFrame {
         ) {
             self.push_text_quad(corners);
         }
-        let [u0, v0, u1, v1] = atlas.sprite("white");
-        let uv = [(u0 + u1) / 2.0, (v0 + v1) / 2.0];
-        for effect in effects {
-            let (x0, y0, x1, y1) = effect.rect;
-            // `BakedSheetGlyph.renderEffect`: the shadow's copy first, a unit right and down.
-            let copies = [(effect.shadow_colour, 1.0), (effect.colour, 0.0)];
-            for (colour, offset) in copies.into_iter().filter(|(colour, _)| *colour != 0) {
-                let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
-                let corner = |px: f32, py: f32| GuiVertex {
-                    position: [px + offset, py + offset],
-                    uv,
-                    colour,
-                };
-                self.push_text_quad([
-                    corner(x0, y0),
-                    corner(x0, y1),
-                    corner(x1, y1),
-                    corner(x1, y0),
-                ]);
-            }
+        for corners in effect_quads(atlas, effects) {
+            self.push_text_quad(corners);
         }
     }
 
@@ -462,4 +444,31 @@ impl GuiFrame {
         self.fill_blend(atlas, GuiBlend::Invert, rect, 0xFFFF_FFFF);
         self.fill_blend(atlas, GuiBlend::Highlight, rect, 0xFF00_00FF);
     }
+}
+
+/// The quads of text effects (`BakedSheetGlyph.renderEffect`): each rectangle samples the middle
+/// of the white sprite, its shadow's copy first, a unit right and down.
+pub(crate) fn effect_quads(atlas: &GuiAtlas, effects: Vec<TextEffect>) -> Vec<[GuiVertex; 4]> {
+    let [u0, v0, u1, v1] = atlas.sprite("white");
+    let uv = [(u0 + u1) / 2.0, (v0 + v1) / 2.0];
+    let mut quads = Vec::new();
+    for effect in effects {
+        let (x0, y0, x1, y1) = effect.rect;
+        let copies = [(effect.shadow_colour, 1.0), (effect.colour, 0.0)];
+        for (colour, offset) in copies.into_iter().filter(|(colour, _)| *colour != 0) {
+            let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+            let corner = |px: f32, py: f32| GuiVertex {
+                position: [px + offset, py + offset],
+                uv,
+                colour,
+            };
+            quads.push([
+                corner(x0, y0),
+                corner(x0, y1),
+                corner(x1, y1),
+                corner(x1, y0),
+            ]);
+        }
+    }
+    quads
 }

@@ -340,6 +340,8 @@ mod overlay;
 mod text;
 mod texture;
 
+pub(crate) use text::effect_quads;
+
 #[cfg(test)]
 mod tests {
     use super::*;

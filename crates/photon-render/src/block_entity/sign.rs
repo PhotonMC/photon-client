@@ -109,7 +109,8 @@ pub fn sign_text_vertices(
     submits: &[SignTextSubmit],
     (font, atlas): (&Font, &crate::gui::GuiAtlas),
 ) -> Vec<crate::scene::Vertex> {
-    use crate::gui::frame::glyph_quads;
+    use crate::gui::frame::{effect_quads, glyph_quads};
+    use crate::gui::text_effect::effects;
     use crate::objects::display::world_glyphs;
     let mut vertices = Vec::new();
     for submit in submits {
@@ -129,19 +130,17 @@ pub fn sign_text_vertices(
                         continue;
                     }
                     let at = (submit.x + dx as f32, submit.y + dy as f32);
-                    let quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
+                    let mut quads = glyph_quads(atlas, font, &plain, at, submit.outline, false);
+                    let bars = effects(font, &plain, at, (submit.outline, false));
+                    quads.extend(effect_quads(atlas, bars));
                     world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
                 }
             }
         }
-        let quads = glyph_quads(
-            atlas,
-            font,
-            &submit.line,
-            (submit.x, submit.y),
-            submit.color,
-            false,
-        );
+        let at = (submit.x, submit.y);
+        let mut quads = glyph_quads(atlas, font, &submit.line, at, submit.color, false);
+        let bars = effects(font, &submit.line, at, (submit.color, false));
+        quads.extend(effect_quads(atlas, bars));
         world_glyphs(&submit.pose.pose, quads, light, &mut vertices);
     }
     vertices

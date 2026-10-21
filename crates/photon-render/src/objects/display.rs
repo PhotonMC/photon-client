@@ -211,14 +211,11 @@ pub fn text_vertices(
         push(corners.map(|[x, y, z]| place(x, y, z, none, tint)));
     }
     for (runs, (x, y)) in lines.iter().zip(&submit.lines) {
-        let quads = crate::gui::frame::glyph_quads(
-            atlas,
-            font,
-            runs,
-            (*x, *y),
-            submit.color as u32,
-            submit.shadow,
-        );
+        let at = (*x, *y);
+        let colours = (submit.color as u32, submit.shadow);
+        let mut quads = crate::gui::frame::glyph_quads(atlas, font, runs, at, colours.0, colours.1);
+        let bars = crate::gui::text_effect::effects(font, runs, at, colours);
+        quads.extend(crate::gui::frame::effect_quads(atlas, bars));
         world_glyphs(&submit.pose, quads, light, &mut vertices);
     }
     vertices
