@@ -114,6 +114,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             }
             var gui = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);
             set(gui, "events", new java.util.ArrayList<String>());
+            set(gui, "hud", screen.hud());
             set(minecraft, "gui", gui);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -208,14 +209,23 @@ class GuiDialogOracle extends GuiSocialOracle {
             }
             now[0] = row.has("ms") ? row.get("ms").getAsLong() : 0;
             // Without a level the panorama would draw first, which is not a GUI drawing.
-            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
-            background.setAccessible(true);
-            background.invoke(shown, screen.graphics());
+            minecraft.options.menuBackgroundBlurriness().set(row.has("blurriness") ? row.get("blurriness").getAsInt() : 5);
+            if (row.get("in_world").getAsBoolean()) {
+                // With a level the background blurs the frame behind first.
+                shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            } else {
+                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
+                background.setAccessible(true);
+                background.invoke(shown, screen.graphics());
+            }
             shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
+            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
+            blurField.setAccessible(true);
+            out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             var events = new JsonArray();
             gui.events.forEach(events::add);
             out.add("events", events);

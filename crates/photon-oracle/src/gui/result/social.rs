@@ -28,15 +28,9 @@ fn players(list: &Value) -> Result<Vec<SocialPlayer>, String> {
         .collect()
 }
 
-/// `social_interactions_screen`: the player list over a server of the row's players, some
-/// hidden or gone, on one of its pages, after a search was typed.
-pub(super) fn social_interactions_screen_case(
-    ctx: &mut GuiContext,
-    row: &Value,
-) -> Result<Value, String> {
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let lang = photon_game::text::Lang::load(&ctx.root);
-    let roster = Roster {
+/// The players, the hidden and the server a row describes.
+fn roster(row: &Value) -> Result<Roster, String> {
+    Ok(Roster {
         server: row["server"].as_str().unwrap_or_default().to_owned(),
         online: players(&row["players"])?,
         gone: players(&row["gone"])?,
@@ -48,7 +42,18 @@ pub(super) fn social_interactions_screen_case(
             .collect::<Result<_, _>>()?,
         local: uuid(row["local"].as_str().ok_or("local")?)?,
         reporting: row["reporting"].as_bool().unwrap_or(false),
-    };
+    })
+}
+
+/// `social_interactions_screen`: the player list over a server of the row's players, some
+/// hidden or gone, on one of its pages, after a search was typed.
+pub(super) fn social_interactions_screen_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+) -> Result<Value, String> {
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let lang = photon_game::text::Lang::load(&ctx.root);
+    let roster = roster(row)?;
     let page = match row["page"].as_str() {
         Some("hidden") => Page::Hidden,
         Some("blocked") => Page::Blocked,
@@ -62,13 +67,19 @@ pub(super) fn social_interactions_screen_case(
         page,
     );
     screen.type_search(row["search"].as_str().unwrap_or_default(), &ctx.font);
+    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
     // The frames before the one recorded: the blocking hint shows only in the first.
     for _ in 1..row["frames"].as_u64().unwrap_or(1) {
-        screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
+        screen.draw(
+            &mut GuiFrame::default(),
+            (&ctx.atlas, &ctx.font),
+            mouse,
+            blurriness,
+        );
     }
     // The steps, each followed by a frame, and what the screen asked of the game.
     let mut events = Vec::new();
@@ -138,16 +149,22 @@ pub(super) fn social_interactions_screen_case(
             }
             Some(SocialEvent::Report(_)) | None => {}
         }
-        screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
+        screen.draw(
+            &mut GuiFrame::default(),
+            (&ctx.atlas, &ctx.font),
+            mouse,
+            blurriness,
+        );
     }
     events.extend(chat);
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    screen.draw(&mut frame, &ctx.atlas, &ctx.font, mouse);
+    screen.draw(&mut frame, (&ctx.atlas, &ctx.font), mouse, blurriness);
     Ok(json!({
         "label": row["label"],
+        "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
         "events": events,
     }))

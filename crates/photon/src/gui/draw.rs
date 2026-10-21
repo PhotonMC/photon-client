@@ -47,7 +47,7 @@ impl Gui {
             if layer.size() != gui_size {
                 *layer = layer.resized(font, lang, gui_size);
             }
-            layer.draw(frame, (atlas, font), item, mouse);
+            layer.draw(frame, (atlas, font), item, (mouse, blurriness));
         } else if controls.confirm.is_some() {
             Self::draw_confirm((atlas, font, lang), controls, frame, gui_size);
         } else {

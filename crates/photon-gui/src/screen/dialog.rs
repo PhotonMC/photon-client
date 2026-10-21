@@ -345,6 +345,15 @@ impl DialogScreen {
         }
     }
 
+    /// The texture the background is tiled with; over a game, the frame is blurred first.
+    fn background(&self, frame: &mut GuiFrame, blurriness: i32) -> &'static str {
+        if !self.in_world {
+            return "menu_background";
+        }
+        frame.blur_before_this_stratum(blurriness);
+        "inworld_menu_background"
+    }
+
     /// The background, the title, the body in its box, the buttons, the warning button, and the
     /// tooltip of the one the mouse is on (or the keyboard has).
     pub fn draw(
@@ -352,14 +361,10 @@ impl DialogScreen {
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         item: &mut ItemDrawer<'_>,
-        mouse: (i32, i32),
+        (mouse, blurriness): ((i32, i32), i32),
     ) {
-        let background = if self.in_world {
-            "inworld_menu_background"
-        } else {
-            "menu_background"
-        };
         let (width, height) = self.size;
+        let background = self.background(frame, blurriness);
         frame.tile_texture(atlas, background, (32, 32), (0, 0, width, height));
         self.title.draw(frame, atlas, font, &self.arena, false);
         let c = self.container;

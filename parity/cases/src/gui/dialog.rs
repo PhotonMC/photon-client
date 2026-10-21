@@ -388,7 +388,23 @@ fn list_rows() -> Vec<Value> {
 /// warning button, the body in a scrolling box (wheel, scrollbar, Tab into
 /// view), the buttons and what they tell the connection, Escape, and the
 /// screen about custom screens; and `WaitingForResponseScreen`.
+/// The blur is asked for from a blurriness of one, by a dialog and by the waiting screen over a
+/// game.
+fn blur_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for blurriness in [0, 10] {
+        for mut base in [notice_rows().remove(0), waiting("waiting", vec![], (0, 0), true, (427, 240))] {
+            base["in_world"] = json!(true);
+            base["label"] = json!(format!("{}-blur-{blurriness}", base["label"].as_str().unwrap_or_default()));
+            base["blurriness"] = json!(blurriness);
+            rows.push(base);
+        }
+    }
+    rows
+}
+
 pub fn dialog_screen() -> Value {
-    let rows = [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows()].concat();
+    let mut rows = [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows()].concat();
+    rows.extend(blur_rows());
     gui("dialog-screen", "dialog_screen", rows)
 }

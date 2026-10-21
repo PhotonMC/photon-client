@@ -7,10 +7,20 @@ use super::*;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 impl DebugOptionsScreen {
-    /// The menu background over the world, then the widgets in the order they were added: the
-    /// title, the search box, the warning, the list and the footer.
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+    /// The blurred world, the menu background over it, then the widgets in the order they were
+    /// added: the title, the search box, the warning, the list and the footer. `under` draws what
+    /// `extractBlurredBackground` puts in the screen's own stratum (the debug overlay), which the
+    /// blur does not cover.
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        mouse: (i32, i32),
+        (blurriness, under): (i32, impl FnOnce(&mut GuiFrame)),
+    ) {
         let (width, height) = self.size;
+        frame.blur_before_this_stratum(blurriness);
+        under(frame);
         frame.tile_texture(
             atlas,
             "inworld_menu_background",

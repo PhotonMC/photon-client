@@ -65,11 +65,13 @@ impl DialogLayer {
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font): (&photon_render::gui::GuiAtlas, &Font),
         item: &mut photon_render::gui::ItemDrawer<'_>,
-        mouse: (i32, i32),
+        (mouse, blurriness): ((i32, i32), i32),
     ) {
         match self {
-            Self::Dialog { screen, .. } => screen.draw(frame, (atlas, font), item, mouse),
-            Self::Waiting(waiting) => waiting.draw(frame, atlas, font, mouse),
+            Self::Dialog { screen, .. } => {
+                screen.draw(frame, (atlas, font), item, (mouse, blurriness));
+            }
+            Self::Waiting(waiting) => waiting.draw(frame, (atlas, font), mouse, blurriness),
         }
     }
 }

@@ -24,6 +24,7 @@ pub(super) fn debug_options_screen_case(
     if let Some(dy) = row["scroll"].as_f64() {
         screen.scrolled((f64::from(size.0) / 2.0, f64::from(size.1) / 2.0), dy);
     }
+    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
@@ -35,15 +36,26 @@ pub(super) fn debug_options_screen_case(
         .unwrap_or_default()
     {
         asked.record(run_step(&mut screen, step, ctx)?, &mut entries);
-        screen.draw(&mut GuiFrame::default(), &ctx.atlas, &ctx.font, mouse);
+        screen.draw(
+            &mut GuiFrame::default(),
+            (&ctx.atlas, &ctx.font),
+            mouse,
+            (blurriness, |_: &mut GuiFrame| {}),
+        );
     }
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    screen.draw(&mut frame, &ctx.atlas, &ctx.font, mouse);
+    screen.draw(
+        &mut frame,
+        (&ctx.atlas, &ctx.font),
+        mouse,
+        (blurriness, |_: &mut GuiFrame| {}),
+    );
     let mut out = json!({
         "label": row["label"],
+        "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
         "events": asked.events,
     });

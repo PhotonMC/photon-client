@@ -200,5 +200,13 @@ fn input_rows() -> Vec<Social> {
 /// and several screen sizes.
 pub fn social_interactions_screen() -> Value {
     let rows = [view_rows(), input_rows()].concat();
-    gui("social-interactions-screen", "social_interactions_screen", rows.into_iter().map(Social::row).collect())
+    let mut rows: Vec<Value> = rows.into_iter().map(Social::row).collect();
+    // The blur is asked for from a blurriness of one.
+    for blurriness in [0, 10] {
+        let mut blur = row("blur").row();
+        blur["label"] = json!(format!("blur-{blurriness}"));
+        blur["blurriness"] = json!(blurriness);
+        rows.push(blur);
+    }
+    gui("social-interactions-screen", "social_interactions_screen", rows)
 }

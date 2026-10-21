@@ -98,6 +98,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
                 new net.minecraft.client.multiplayer.chat.ChatLog(16)));
             var page = net.minecraft.client.gui.screens.social.SocialInteractionsScreen.Page.valueOf(
                 row.get("page").getAsString().toUpperCase());
+            minecraft.options.menuBackgroundBlurriness().set(row.has("blurriness") ? row.get("blurriness").getAsInt() : 5);
             var social_screen = new net.minecraft.client.gui.screens.social.SocialInteractionsScreen();
             set(social_screen, "page", page);
             set(social_screen, "minecraft", minecraft);
@@ -145,6 +146,9 @@ class GuiSocialOracle extends GuiCreditsOracle {
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
+            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
+            blurField.setAccessible(true);
+            out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             // What the screen asked of the game, and the chat it was told.
             var events = new JsonArray();
@@ -212,6 +216,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             var options = new net.minecraft.client.gui.screens.debug.DebugOptionsScreen();
             set(options, "minecraft", minecraft);
             set(options, "font", minecraft.font);
+            minecraft.options.menuBackgroundBlurriness().set(row.has("blurriness") ? row.get("blurriness").getAsInt() : 5);
             options.init(width, height);
             var box = (net.minecraft.client.gui.components.EditBox) get(options, "searchBox");
             for (var cp : (Iterable<Integer>) row.get("search").getAsString().codePoints()::iterator) {
@@ -271,6 +276,9 @@ class GuiSocialOracle extends GuiCreditsOracle {
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
+            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
+            blurField.setAccessible(true);
+            out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             var events = new JsonArray();
             for (var event : recording.events) {

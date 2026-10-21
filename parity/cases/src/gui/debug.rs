@@ -313,6 +313,9 @@ pub fn debug_options_screen() -> Value {
         with(with(row("unreduced-name", (427, 240)), "mouse", json!([150, 112])), "scroll", json!(-3.0)),
         // A few rows only, so no scroll bar.
         with(row("search-fps", (427, 240)), "search", json!("fps")),
+        // The blur is asked for from a blurriness of one.
+        with(row("blur-0", (427, 240)), "blurriness", json!(0)),
+        with(row("blur-10", (427, 240)), "blurriness", json!(10)),
     ];
     let rows = [rows, debug_options_step_rows(&row, &with)].concat();
     gui("debug-options-screen", "debug_options_screen", rows)

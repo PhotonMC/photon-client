@@ -10,21 +10,24 @@ impl Gui {
         (session, controls, gui_size): (&PlaySession, &mut Controls, (i32, i32)),
     ) {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        let blurriness = controls.options.menu_background_blurriness;
         let columns = Self::debug_columns(session, controls);
         if let Some(options) = controls.debug_options.as_mut() {
             if options.size() != gui_size {
                 options.resize(gui_size);
             }
             // `DebugOptionsScreen.extractBlurredBackground`: the overlay sits under the widgets.
-            if let Some((left, right)) = columns.as_ref() {
-                photon_gui::hud::debug::draw(frame, atlas, font, gui_size.0, (left, right));
-            }
-            options.draw(frame, atlas, font, mouse);
+            let overlay = |frame: &mut photon_render::gui::GuiFrame| {
+                if let Some((left, right)) = columns.as_ref() {
+                    photon_gui::hud::debug::draw(frame, atlas, font, gui_size.0, (left, right));
+                }
+            };
+            options.draw(frame, (atlas, font), mouse, (blurriness, overlay));
         } else if let Some(social) = controls.social.as_mut() {
             if social.size() != gui_size {
                 *social = social.resized(font, lang, gui_size);
             }
-            social.draw(frame, atlas, font, mouse);
+            social.draw(frame, (atlas, font), mouse, blurriness);
         }
     }
 }

@@ -7,9 +7,10 @@ use photon_game::text::{Run, Style};
 use super::*;
 
 impl SocialInteractionsScreen {
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+    /// `extractBackground` in a game: the blurred world behind, dimmed, then the window.
+    fn draw_background(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, blurriness: i32) {
         let (width, height) = self.size;
-        // `extractBackground` in a game: the dimmed world behind, then the window.
+        frame.blur_before_this_stratum(blurriness);
         frame.tile_texture(
             atlas,
             "inworld_menu_background",
@@ -26,6 +27,16 @@ impl SocialInteractionsScreen {
             self.window_height() + 16,
         );
         frame.sprite(atlas, "icon/search", window_x + 10, 76, 12, 12);
+    }
+
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        mouse: (i32, i32),
+        blurriness: i32,
+    ) {
+        self.draw_background(frame, atlas, blurriness);
         self.buttons.draw(frame, atlas, font, mouse);
         self.title
             .draw(frame, atlas, font, &self.buttons.arena, false);
@@ -94,7 +105,7 @@ impl SocialInteractionsScreen {
                 Some(&self.empty[0])
             };
             if let Some(text) = empty {
-                let x = width / 2 - font.width_of_runs(text) / 2;
+                let x = self.size.0 / 2 - font.width_of_runs(text) / 2;
                 frame.styled_text(
                     atlas,
                     font,

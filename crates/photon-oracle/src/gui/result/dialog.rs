@@ -117,6 +117,33 @@ fn press_events(dialog: &Dialog, press: Press, events: &mut Vec<String>) {
     events.push(screen.to_owned());
 }
 
+/// The steps of a row for the waiting screen; leaving it is an event.
+fn wait_steps(
+    screen: &mut WaitingScreen,
+    row: &Value,
+    lang: &photon_game::text::Lang,
+    events: &mut Vec<String>,
+) -> Result<(), String> {
+    for step in row["steps"].as_array().ok_or("steps")? {
+        let closed = match step["do"].as_str().unwrap_or_default() {
+            "tick" => {
+                (0..step["count"].as_i64().unwrap_or(0)).for_each(|_| screen.tick(lang));
+                false
+            }
+            "click" => screen.clicked((
+                step["x"].as_f64().unwrap_or(0.0) as i32,
+                step["y"].as_f64().unwrap_or(0.0) as i32,
+            )),
+            "key" => step["key"] == "escape" && screen.escape(),
+            other => return Err(format!("unknown step {other}")),
+        };
+        if closed {
+            events.push("PreviousScreen".to_owned());
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let font = &ctx.font;
@@ -133,30 +160,15 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
+    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
     let mut events: Vec<String> = Vec::new();
     // The reference records no items: the screen's draw asks for none.
     let mut no_items = no_items;
     let shown = &row["dialog"];
     if shown["kind"] == "waiting" {
         let mut screen = WaitingScreen::new(font, &lang, size, in_world);
-        for step in row["steps"].as_array().ok_or("steps")? {
-            let closed = match step["do"].as_str().unwrap_or_default() {
-                "tick" => {
-                    (0..step["count"].as_i64().unwrap_or(0)).for_each(|_| screen.tick(&lang));
-                    false
-                }
-                "click" => screen.clicked((
-                    step["x"].as_f64().unwrap_or(0.0) as i32,
-                    step["y"].as_f64().unwrap_or(0.0) as i32,
-                )),
-                "key" => step["key"] == "escape" && screen.escape(),
-                other => return Err(format!("unknown step {other}")),
-            };
-            if closed {
-                events.push("PreviousScreen".to_owned());
-            }
-        }
-        screen.draw(&mut frame, atlas, font, mouse);
+        wait_steps(&mut screen, row, &lang, &mut events)?;
+        screen.draw(&mut frame, (atlas, font), mouse, blurriness);
     } else {
         let dialog = dialog(shown);
         let mut screen =
@@ -173,7 +185,12 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                         millis: step["ms"].as_u64().unwrap_or(0),
                         ..GuiFrame::default()
                     };
-                    screen.draw(&mut thrown, (atlas, font), &mut no_items, mouse);
+                    screen.draw(
+                        &mut thrown,
+                        (atlas, font),
+                        &mut no_items,
+                        (mouse, blurriness),
+                    );
                     None
                 }
                 "key" => match step["key"].as_str().unwrap_or_default() {
@@ -209,11 +226,17 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
             }
         }
         frame.millis = row["ms"].as_u64().unwrap_or(0);
-        screen.draw(&mut frame, (atlas, font), &mut no_items, mouse);
+        screen.draw(
+            &mut frame,
+            (atlas, font),
+            &mut no_items,
+            (mouse, blurriness),
+        );
     }
     Ok(json!({
         "label": row["label"],
         "events": events,
+        "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }

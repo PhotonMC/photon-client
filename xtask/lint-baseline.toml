@@ -251,7 +251,7 @@
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 23
 "crates/photon-gui/src/screen/container.rs::slot_key_clicks" = 17
 "crates/photon-gui/src/screen/creative/tab.rs::CreativeScreen::build_tooltip" = 19
-"crates/photon-gui/src/screen/dialog.rs::DialogScreen::draw" = 14
+"crates/photon-gui/src/screen/dialog.rs::DialogScreen::draw" = 13
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::build" = 18
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::mouse_clicked" = 14
 "crates/photon-gui/src/screen/generic.rs::slot_position" = 23
@@ -309,7 +309,7 @@
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 21
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 20
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 13
-"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 20
+"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 14
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 17
 "crates/photon-oracle/src/gui/result/screens.rs::confirm_screen_case" = 12
 "crates/photon-oracle/src/gui/result/settings.rs::chat_options_screen_case" = 14
@@ -681,7 +681,7 @@
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 98
 "crates/photon-gui/src/screen/creative.rs::CreativeScreen::build" = 71
 "crates/photon-gui/src/screen/creative/tab.rs::CreativeScreen::build_tooltip" = 69
-"crates/photon-gui/src/screen/dialog.rs::DialogScreen::draw" = 89
+"crates/photon-gui/src/screen/dialog.rs::DialogScreen::draw" = 85
 "crates/photon-gui/src/screen/dialog.rs::DialogScreen::new" = 100
 "crates/photon-gui/src/screen/game_mode.rs::GameModeSwitcherScreen::draw" = 74
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::build" = 82
@@ -703,7 +703,7 @@
 "crates/photon-gui/src/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 103
 "crates/photon-gui/src/screen/social.rs::SocialInteractionsScreen::new" = 62
 "crates/photon-gui/src/screen/social.rs::layout" = 70
-"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 102
+"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 92
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 106
 "crates/photon-gui/src/screen/title.rs::TitleScreen::new" = 104
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 95
@@ -759,7 +759,7 @@
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 75
 "crates/photon-oracle/src/gui/result/chat.rs::suggestions_case" = 63
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 165
-"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 98
+"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 94
 "crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/screens.rs::confirm_screen_case" = 67

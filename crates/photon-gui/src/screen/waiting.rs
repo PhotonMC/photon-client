@@ -111,9 +111,16 @@ impl WaitingScreen {
         }
     }
 
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        mouse: (i32, i32),
+        blurriness: i32,
+    ) {
         let (width, height) = self.size;
         let background = if self.in_world {
+            frame.blur_before_this_stratum(blurriness);
             "inworld_menu_background"
         } else {
             "menu_background"
