@@ -669,7 +669,7 @@
 "crates/photon-gui/src/options/video.rs::quality_options_first" = 69
 "crates/photon-gui/src/options/video.rs::quality_options_rest" = 80
 "crates/photon-gui/src/screen/book.rs::BookScreen::build" = 64
-"crates/photon-gui/src/screen/bundle_tooltip.rs::image" = 94
+"crates/photon-gui/src/screen/bundle_tooltip.rs::image" = 92
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::build" = 78
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 98
 "crates/photon-gui/src/screen/creative.rs::CreativeScreen::build" = 71

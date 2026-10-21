@@ -186,15 +186,13 @@ fn image(
                     SLOT,
                 );
                 let stack = &view.items[index];
-                draw.frame.item_with_count(
+                draw.frame.item_with_count_seeded(
                     draw.atlas,
                     draw.font,
                     draw.item,
                     stack,
-                    stack.item_count(),
-                    None,
-                    draw_x + 4,
-                    draw_y + 4,
+                    (stack.item_count(), None),
+                    (draw_x + 4, draw_y + 4, slot_number as i32),
                 );
                 if highlight {
                     draw.frame.nine_slice(
