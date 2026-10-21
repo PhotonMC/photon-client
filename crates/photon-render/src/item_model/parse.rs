@@ -281,8 +281,14 @@ pub fn parse_item_model(object: &JsonObject) -> ItemModelDef {
 
 /// A `range_dispatch` node: its property, scale, entries by threshold, and fallback.
 fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
+    let property = object.text("property").unwrap_or_default();
+    // `use_cycle` has a `period` of its own; it is kept in the name.
+    let property = match property.as_str() {
+        "minecraft:use_cycle" => format!("{USE_CYCLE}{}", object.f32("period").unwrap_or(1.0)),
+        _ => property,
+    };
     ItemModelDef::RangeDispatch {
-        property: object.text("property").unwrap_or_default(),
+        property,
         scale: object.f32("scale").unwrap_or(1.0),
         remaining: object.bool("remaining").unwrap_or(false),
         entries: object

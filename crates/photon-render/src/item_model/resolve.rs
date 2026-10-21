@@ -9,7 +9,12 @@ use super::*;
 pub struct ItemUse {
     pub ticks: i32,
     pub charge_duration: i32,
+    /// `ItemStack.getUseDuration`, which the ticks left of a use count down from.
+    pub duration: i32,
 }
+
+/// What a `use_cycle` range's property is named in front of: its `period`.
+pub const USE_CYCLE: &str = "minecraft:use_cycle/";
 
 /// `CrossbowItem.ChargeType`: what a crossbow holds.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -113,6 +118,11 @@ impl Walk {
         };
         match property {
             "minecraft:use_duration" => item_use.ticks as f32,
+            // `UseCycle`: the ticks left of the use, within the period.
+            _ if property.starts_with(USE_CYCLE) => {
+                let period: f32 = property[USE_CYCLE.len()..].parse().unwrap_or(1.0);
+                (item_use.duration - item_use.ticks) as f32 % period
+            }
             // `CrossbowPull`: nothing while it holds a projectile; the share of the charge.
             "minecraft:crossbow/pull" if self.state.charge == Charge::None => {
                 item_use.ticks as f32 / item_use.charge_duration as f32
@@ -210,7 +220,7 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             entries,
             fallback,
             ..
-        } if READ_RANGES.contains(&property.as_str()) => Some(
+        } if READ_RANGES.contains(&property.as_str()) || property.starts_with(USE_CYCLE) => Some(
             entries
                 .iter()
                 .map(|(_, model)| model)
@@ -416,6 +426,7 @@ mod tests {
         Some(ItemUse {
             ticks,
             charge_duration: 25,
+            duration: 72000,
         })
     }
 
@@ -456,6 +467,7 @@ mod tests {
             item_use: Some(ItemUse {
                 ticks,
                 charge_duration,
+                duration: 72000,
             }),
             charge,
             ..ItemState::default()
@@ -657,5 +669,40 @@ mod tests {
         // Another property, or none at all, takes the fallback.
         assert_eq!(at(Some(intern_key("other=7"))), "minecraft:item/light_15");
         assert_eq!(at(None), "minecraft:item/light_15");
+    }
+
+    const BRUSH: &str = r#"{"model":{"type":"minecraft:range_dispatch","property":"minecraft:use_cycle",
+        "period":10.0,"scale":0.1,
+        "entries":[{"threshold":0.25,"model":{"type":"minecraft:model","model":"minecraft:item/brush_brushing_0"}},
+                   {"threshold":0.5,"model":{"type":"minecraft:model","model":"minecraft:item/brush_brushing_1"}},
+                   {"threshold":0.75,"model":{"type":"minecraft:model","model":"minecraft:item/brush_brushing_2"}}],
+        "fallback":{"type":"minecraft:model","model":"minecraft:item/brush"}}}"#;
+
+    #[test]
+    fn a_brush_cycles_its_models_as_the_use_runs_down() {
+        let at = |item_use| {
+            drawn_by(
+                BRUSH,
+                ItemState {
+                    item_use,
+                    ..ItemState::default()
+                },
+            )
+            .0
+        };
+        let using = |ticks| {
+            Some(ItemUse {
+                ticks,
+                charge_duration: 0,
+                duration: 200,
+            })
+        };
+        assert_eq!(at(None), "minecraft:item/brush");
+        // 200 left is a whole cycle, so zero; 3 left is 0.3 of it, and so on.
+        assert_eq!(at(using(0)), "minecraft:item/brush");
+        assert_eq!(at(using(197)), "minecraft:item/brush_brushing_0");
+        assert_eq!(at(using(194)), "minecraft:item/brush_brushing_1");
+        assert_eq!(at(using(191)), "minecraft:item/brush_brushing_2");
+        assert_eq!(at(using(190)), "minecraft:item/brush");
     }
 }

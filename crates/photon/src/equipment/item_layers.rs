@@ -208,6 +208,7 @@ impl ItemLayerCache {
             item_use: ticks.map(|ticks| ItemUse {
                 ticks,
                 charge_duration: self.charge_duration(stack),
+                duration: super::arm_poses::use_duration(stack),
             }),
             charge: super::crossbow::charge_type(stack),
             broken: stack.breaks_on_next_damage(),
