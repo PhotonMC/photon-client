@@ -45,7 +45,7 @@ pub fn remote_nautiluses(
     let partial = view.partial as f32;
     let nautilus = photon_data::entity_type::id("minecraft:nautilus");
     let zombie = photon_data::entity_type::id("minecraft:zombie_nautilus");
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let is_zombie = Some(entity.type_id) == zombie;
         if !is_zombie && Some(entity.type_id) != nautilus {
             continue;
@@ -70,7 +70,7 @@ pub fn remote_nautiluses(
         );
         model.setup_nautilus(&state);
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         worn_layers(armor, entity, textures, &state, &placed, vertices);
     }
 }
