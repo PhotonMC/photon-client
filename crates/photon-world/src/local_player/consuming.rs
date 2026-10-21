@@ -81,6 +81,10 @@ impl LocalPlayer {
         if let Some(cue) = self.consume_cue() {
             self.emit_consume_effects(cue, 16);
         }
+        // `SpyglassItem.finishUsingItem`.
+        if self.is_scoping() {
+            self.play_own_sound("minecraft:item.spyglass.stop_using", (1.0, 1.0));
+        }
         self.release_using_item();
     }
 
@@ -278,5 +282,18 @@ mod tests {
         });
         sounded(&mut bare, 33);
         assert!(bare.take_particles().is_empty());
+    }
+
+    /// A spyglass whose use the server completes is lowered with its sound.
+    #[test]
+    fn a_spyglass_completed_by_the_server_sounds_as_it_is_lowered() {
+        let mut player = using(bread());
+        player.hands.main_consume = None;
+        player.hands.main_item = photon_data::item::registry::named("minecraft:spyglass");
+        player.use_edge.item = Some(player.hands.main_item);
+        player.complete_using_item();
+        let sounds = player.take_sounds();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, "minecraft:item.spyglass.stop_using");
     }
 }
