@@ -104,11 +104,12 @@ impl Play {
     /// What the hands draw, nothing with the HUD hidden.
     fn first_person_hands(&mut self, view: FrameView) -> overlays::HandVertices {
         let player = self.session.player();
+        let cast = self.local_casts();
         match player {
             Some(player) if !self.controls.hud_hidden => hands(
                 player,
                 &self.item_in_hand,
-                &mut self.held_item_layers,
+                (&mut self.held_item_layers, cast),
                 (&self.block_renderer, &self.biome_tints),
                 &mut self.player_model,
                 view,

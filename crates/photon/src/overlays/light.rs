@@ -42,7 +42,7 @@ pub fn packed_light(world: &photon_world::ClientWorld, at: Vec3) -> i32 {
 pub fn hands(
     player: &LocalPlayer,
     item_in_hand: &ItemInHand,
-    held_layers: &mut [ItemLayerCache; 2],
+    (held_layers, cast): (&mut [ItemLayerCache; 2], [bool; 2]),
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     model: &mut PlayerModel,
     view: FrameView,
@@ -77,6 +77,7 @@ pub fn hands(
             continue;
         };
         let cache = &mut held_layers[usize::from(!right)];
+        cache.set_cast(cast[usize::from(!right)]);
         let ticks = player.use_ticks_of(right);
         let hit_feedback = player.ticks_since_kinetic_hit(partial);
         let charge = cache.charge_duration(stack);
@@ -334,7 +335,7 @@ pub fn player_model(
         head: worn.head_item(armor),
         head_transforms: HEAD_TRANSFORMS,
         eye: None,
-        motions: HandActions::new(spears.motions, player.arm_uses()),
+        motions: HandActions::of_local(spears.motions, (session, player), stacks.0),
     };
     hands.collect(held);
     let skull = hands.skull();

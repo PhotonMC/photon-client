@@ -55,6 +55,8 @@ pub struct ItemState {
     pub needles: Needles,
     /// The key of the level's dimension (`context_dimension`).
     pub dimension: Option<&'static str>,
+    /// The holder's bobber is out and this stack is in the arm that holds the rod.
+    pub cast: bool,
 }
 
 /// What a `block_state` select's property is named in front of: the state property it reads.
@@ -82,6 +84,7 @@ impl ItemState {
         match property {
             "minecraft:using_item" => self.item_use.is_some(),
             "minecraft:broken" => self.broken,
+            "minecraft:fishing_rod/cast" => self.cast,
             "minecraft:bundle/has_selected_item" => self.selected.is_some(),
             "minecraft:has_component" => match component.map(|(name, _)| name.as_str()) {
                 Some("minecraft:dyed_color") => self.components.dyed_color,
@@ -271,7 +274,8 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
 }
 
 /// The conditions decided here.
-const READ_CONDITIONS: [&str; 4] = [
+const READ_CONDITIONS: [&str; 5] = [
+    "minecraft:fishing_rod/cast",
     "minecraft:using_item",
     "minecraft:broken",
     "minecraft:bundle/has_selected_item",
@@ -781,6 +785,23 @@ mod tests {
             wanted("minecraft:the_nether"),
             [(NeedleSource::TimeRandom, true)]
         );
+    }
+
+    const ROD_MODEL: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:fishing_rod/cast",
+        "on_true":{"type":"minecraft:model","model":"minecraft:item/rod_cast"},
+        "on_false":{"type":"minecraft:model","model":"minecraft:item/rod"}}}"#;
+
+    #[test]
+    fn a_rod_with_its_bobber_out_draws_the_cast_model() {
+        let drawn = |cast| {
+            let state = ItemState {
+                cast,
+                ..ItemState::default()
+            };
+            drawn_by(ROD_MODEL, state).0
+        };
+        assert_eq!(drawn(false), "minecraft:item/rod");
+        assert_eq!(drawn(true), "minecraft:item/rod_cast");
     }
 
     const LIGHT: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:block_state",

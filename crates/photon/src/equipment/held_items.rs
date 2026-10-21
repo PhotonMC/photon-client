@@ -54,6 +54,8 @@ pub struct HeldItem {
     pub light: i32,
     /// The use of the stack by its holder, which picks the model's branches.
     pub item_use: Option<i32>,
+    /// The stack is the rod whose bobber is out.
+    pub cast: bool,
 }
 
 impl HeldItem {
@@ -65,6 +67,7 @@ impl HeldItem {
             place,
             light,
             item_use: None,
+            cast: false,
         }
     }
 
@@ -76,6 +79,7 @@ impl HeldItem {
             place: Place::Head,
             light,
             item_use: None,
+            cast: false,
         }
     }
 }
@@ -132,11 +136,47 @@ pub struct Hands<'a> {
 pub struct HandActions {
     motions: [HandMotion; 2],
     uses: [Option<i32>; 2],
+    /// Whether the arm holds a rod whose bobber is out.
+    cast: [bool; 2],
 }
 
 impl HandActions {
     pub fn new(motions: [HandMotion; 2], uses: [Option<i32>; 2]) -> Self {
-        Self { motions, uses }
+        Self {
+            motions,
+            uses,
+            cast: [false; 2],
+        }
+    }
+
+    /// The actions of a world entity's hands.
+    pub fn of_entity(
+        motions: [HandMotion; 2],
+        session: &photon_net::connection::PlaySession,
+        entity: &photon_world::ClientEntity,
+    ) -> Self {
+        Self::new(motions, super::arm_poses::entity_uses(entity))
+            .with_cast(crate::objects::fishing_hooks::entity_casts(session, entity))
+    }
+
+    /// The actions of the local player's hands, `main` being the stack in the main hand.
+    pub fn of_local(
+        motions: [HandMotion; 2],
+        (session, player): (
+            &photon_net::connection::PlaySession,
+            &photon_world::local_player::LocalPlayer,
+        ),
+        main: Option<&ClientItemStackState>,
+    ) -> Self {
+        Self::new(motions, player.arm_uses()).with_cast(crate::objects::fishing_hooks::local_casts(
+            session, player, main,
+        ))
+    }
+
+    /// The arms that hold a rod with its bobber out (`FishingRodCast`).
+    pub fn with_cast(mut self, cast: [bool; 2]) -> Self {
+        self.cast = cast;
+        self
     }
 }
 
@@ -170,6 +210,23 @@ impl Hands<'_> {
         self.root.children().iter().find(|part| part.name() == name)
     }
 
+    /// A stack in an arm, with the use and the cast of that arm.
+    fn held(
+        &self,
+        index: usize,
+        stack: &ClientItemStackState,
+        (pose, place): (Pose, Place),
+    ) -> HeldItem {
+        HeldItem {
+            stack: Carried::Stack(stack.clone()),
+            pose,
+            place,
+            light: self.light,
+            item_use: self.motions.uses[index],
+            cast: self.motions.cast[index],
+        }
+    }
+
     /// Adds each held stack, the right arm's first.
     pub fn collect(&self, out: &mut Vec<HeldItem>) {
         for (index, (side, stack)) in [(Arm::Right, self.right), (Arm::Left, self.left)]
@@ -187,14 +244,7 @@ impl Hands<'_> {
             let Some(arm) = self.part(name) else {
                 continue;
             };
-            let item_use = self.motions.uses[index];
-            let held = |pose, place| HeldItem {
-                stack: Carried::Stack(stack.clone()),
-                pose,
-                place,
-                light: self.light,
-                item_use,
-            };
+            let held = |pose, place| self.held(index, stack, (pose, place));
             if self.eye == Some(side)
                 && let Some(head) = self.part("head")
             {
@@ -229,6 +279,7 @@ impl Hands<'_> {
                 place: Place::Head,
                 light: self.light,
                 item_use: None,
+                cast: false,
             });
         }
     }
@@ -259,6 +310,7 @@ pub fn held_item_vertices(
                 continue;
             }
         };
+        cache.set_cast(item.cast);
         let item_layers = cache.get_in_use(stack, item.item_use, (renderer, tints));
         let drawn = item_layer_vertices(
             item_layers,

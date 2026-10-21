@@ -26,6 +26,8 @@ pub struct ItemLayerCache {
     needles: Option<super::needle::SharedNeedles>,
     /// Who holds the stacks drawn next, when it is not the local player.
     owner: Option<super::needle::Owner>,
+    /// Whether the stacks drawn next are a rod with its bobber out (`FishingRodCast`).
+    cast: bool,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -92,6 +94,7 @@ impl ItemLayerCache {
             trim_materials: std::sync::Arc::default(),
             needles: None,
             owner: None,
+            cast: false,
         }
     }
 
@@ -113,6 +116,11 @@ impl ItemLayerCache {
                 | DisplayContext::Ground
         )
         .then(|| frame.needles.clone());
+    }
+
+    /// Whether the stacks drawn next are held by the arm of a player whose bobber is out.
+    pub fn set_cast(&mut self, cast: bool) {
+        self.cast = cast;
     }
 
     /// The entity that holds the stacks drawn next (`ItemOwner`); none for the local player.
@@ -240,6 +248,7 @@ impl ItemLayerCache {
             trim_material: self.trim_material(stack),
             block_state: block_state_lines(stack),
             dimension: None,
+            cast: self.cast,
             needles: photon_render::item_model::Needles::default(),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),

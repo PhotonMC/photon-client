@@ -80,7 +80,7 @@ pub fn remote_players(
             head: worn.head_item(armor),
             head_transforms: HEAD_TRANSFORMS,
             eye: arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
-            motions: HandActions::new(spears.motions, arm_poses::entity_uses(entity)),
+            motions: HandActions::of_entity(spears.motions, session, entity),
         };
         hands.collect(held);
         let skull = hands.skull();

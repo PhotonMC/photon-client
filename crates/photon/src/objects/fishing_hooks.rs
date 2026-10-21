@@ -42,7 +42,7 @@ pub struct HookView<'a> {
 }
 
 /// `FishingRodItem`: whether the stack is a rod.
-fn is_rod(stack: Option<&ClientItemStackState>) -> bool {
+pub(crate) fn is_rod(stack: Option<&ClientItemStackState>) -> bool {
     stack.is_some_and(|stack| {
         photon_world::block::rules::item(stack.item_registry_id())
             .is_some_and(|item| item.class == ItemClass::FishingRodItem)
@@ -56,6 +56,36 @@ fn holds_with_right_arm(main_arm_left: bool, rod_in_main_hand: bool) -> bool {
     } else {
         main_arm_left
     }
+}
+
+/// `FishingRodCast`: which of a player's arms hold a rod whose bobber is out, the right arm's
+/// first. `player.fishing` is the bobber that names the player its owner.
+pub fn casting_arms(
+    session: &PlaySession,
+    owner: EntityId,
+    (main_arm_left, rod_in_main_hand): (bool, bool),
+) -> [bool; 2] {
+    let out = session.world().entities().all().any(|entity| {
+        entity.data == owner.0
+            && photon_data::entity_type::name(entity.type_id) == Some("minecraft:fishing_bobber")
+    });
+    let right = holds_with_right_arm(main_arm_left, rod_in_main_hand);
+    [out && right, out && !right]
+}
+
+/// [`casting_arms`] of an entity.
+pub fn entity_casts(session: &PlaySession, entity: &photon_world::ClientEntity) -> [bool; 2] {
+    let rod = is_rod(entity.equipment(EquipmentSlot::MainHand));
+    casting_arms(session, entity.id(), (entity.main_arm_is_left(), rod))
+}
+
+/// [`casting_arms`] of the local player, whose main arm is the right (`ClientInformation`).
+pub fn local_casts(
+    session: &PlaySession,
+    player: &LocalPlayer,
+    main_hand: Option<&ClientItemStackState>,
+) -> [bool; 2] {
+    casting_arms(session, player.entity_id(), (false, is_rod(main_hand)))
 }
 
 /// `Mth.sin(Mth.sqrt(attackAnim) * PI)`.

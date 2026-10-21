@@ -13,6 +13,14 @@ impl Play {
             .set_glint_strength(options.glint_strength as f32);
     }
 
+    /// The arms of the local player that hold a rod with its bobber out.
+    pub(super) fn local_casts(&self) -> [bool; 2] {
+        let main = self.item_in_hand.item(photon_game::game_mode::MAIN_HAND);
+        self.session.player().map_or([false; 2], |player| {
+            crate::objects::fishing_hooks::local_casts(&self.session, player, main)
+        })
+    }
+
     /// How this frame's item glints move, where their texture is and the server's item tags.
     pub(super) fn glint_frame(&self) -> GlintFrame {
         self.set_needle_frame();
