@@ -756,6 +756,33 @@ mod tests {
         assert_eq!(drawn_by(COMPASS_MODEL, state).0, "minecraft:item/spawn_1");
     }
 
+    const CLOCK_MODEL: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:context_dimension",
+        "cases":[{"when":"minecraft:overworld","model":{"type":"minecraft:range_dispatch",
+            "property":"minecraft:time","source":"daytime","scale":64.0,
+            "entries":[{"threshold":0.0,"model":{"type":"minecraft:model","model":"minecraft:item/clock_00"}}]}}],
+        "fallback":{"type":"minecraft:range_dispatch","property":"minecraft:time","source":"random","scale":64.0,
+            "entries":[{"threshold":0.0,"model":{"type":"minecraft:model","model":"minecraft:item/clock_00"}}]}}}"#;
+
+    #[test]
+    fn a_clock_reads_the_sun_in_the_overworld_and_chance_elsewhere() {
+        let item = parse_client_item(CLOCK_MODEL).expect("a client item");
+        let wanted = |dimension| {
+            let state = ItemState {
+                dimension: Some(intern_key(dimension)),
+                ..ItemState::default()
+            };
+            needles_wanted(&item.model, DisplayContext::Gui, state)
+        };
+        assert_eq!(
+            wanted("minecraft:overworld"),
+            [(NeedleSource::TimeDaytime, true)]
+        );
+        assert_eq!(
+            wanted("minecraft:the_nether"),
+            [(NeedleSource::TimeRandom, true)]
+        );
+    }
+
     const LIGHT: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:block_state",
         "block_state_property":"level",
         "cases":[{"model":{"type":"minecraft:model","model":"minecraft:item/light_00"},"when":"0"},
