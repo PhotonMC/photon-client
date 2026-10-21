@@ -395,14 +395,16 @@ impl ContainerMenu {
     }
 }
 
-/// `BundleItem.getSelectedItem`: the item of the bundle's selected contents, if there are any.
-pub fn selected_item(stack: &Stack) -> Option<photon_core::ids::ItemId> {
+/// `BundleItem.getSelectedItem`: the selected contents of the bundle, if there are any.
+pub fn selected_stack(stack: &Stack) -> Option<Stack> {
     let contents = Contents::of(stack)?;
     let index = usize::try_from(contents.selected).ok()?;
-    contents
-        .items
-        .get(index)
-        .map(|item| item.item_registry_id())
+    contents.items.get(index).cloned()
+}
+
+/// The item of [`selected_stack`].
+pub fn selected_item(stack: &Stack) -> Option<photon_core::ids::ItemId> {
+    selected_stack(stack).map(|item| item.item_registry_id())
 }
 
 /// What a bundle's tooltip image shows (`BundleItem.getTooltipImage`,

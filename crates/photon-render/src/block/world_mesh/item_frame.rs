@@ -18,7 +18,13 @@ impl BlockRenderer {
         (item, state): (ItemId, crate::item_model::ItemState),
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
-        values: &dyn crate::item_model::ItemTints,
+        (values, selected): (
+            &dyn crate::item_model::ItemTints,
+            Option<(
+                crate::item_model::ItemState,
+                &dyn crate::item_model::ItemTints,
+            )>,
+        ),
     ) -> Vec<ItemLayer> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()
@@ -31,8 +37,9 @@ impl BlockRenderer {
         let mut out = Vec::new();
         for layer in layers {
             if let Some(nested) = layer.nested {
-                let state = crate::item_model::ItemState::default();
-                out.extend(self.item_layers((nested, state), context, grass, values));
+                if let Some((state, tints)) = selected {
+                    out.extend(self.item_layers((nested, state), context, grass, (tints, None)));
+                }
                 continue;
             }
             let Some(model) = self.models.get(&layer.model.as_string()) else {
@@ -47,35 +54,45 @@ impl BlockRenderer {
                 out.extend(self.special_layers(special, &layer.local, context, model));
                 continue;
             }
-            let geometry;
-            let model = if model.generated {
-                let mut flat = model.clone();
-                flat.elements = crate::item_model::generated_elements(&model.textures, &|sprite| {
-                    self.layer_alpha.get(&sprite.as_string()).cloned()
-                });
-                geometry = flat;
-                &geometry
-            } else {
-                model
-            };
-            let Ok(mut mesh) = crate::resolve::build_mesh(
-                model,
-                &self.atlas,
-                None,
-                &tints,
-                |_| crate::block::rotation::FLAT_IDENTITY,
-                |_| false,
-            ) else {
-                continue;
-            };
-            apply_local(&mut mesh, &layer.local);
-            out.push(ItemLayer {
-                mesh,
-                side_lit: model.gui_light == crate::model::GuiLight::Side,
-                transform: model.display.get(context),
-            });
+            out.extend(self.flat_layer(model, &tints, &layer.local, context));
         }
         out
+    }
+
+    /// The layer a model draws: a generated one flattened from its textures first.
+    fn flat_layer(
+        &self,
+        model: &ResolvedModel,
+        tints: &[u32],
+        local: &crate::item_model::Matrix4,
+        context: crate::model::DisplayContext,
+    ) -> Option<ItemLayer> {
+        let geometry;
+        let model = if model.generated {
+            let mut flat = model.clone();
+            flat.elements = crate::item_model::generated_elements(&model.textures, &|sprite| {
+                self.layer_alpha.get(&sprite.as_string()).cloned()
+            });
+            geometry = flat;
+            &geometry
+        } else {
+            model
+        };
+        let mut mesh = crate::resolve::build_mesh(
+            model,
+            &self.atlas,
+            None,
+            tints,
+            |_| crate::block::rotation::FLAT_IDENTITY,
+            |_| false,
+        )
+        .ok()?;
+        apply_local(&mut mesh, local);
+        Some(ItemLayer {
+            mesh,
+            side_lit: model.gui_light == crate::model::GuiLight::Side,
+            transform: model.display.get(context),
+        })
     }
 
     /// The layers of a special renderer's parts, each drawn from the base model's transforms.

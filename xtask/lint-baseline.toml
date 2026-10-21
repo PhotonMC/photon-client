@@ -849,7 +849,6 @@
 "crates/photon-render/src/block/light.rs::Lighter::light_quad" = 136
 "crates/photon-render/src/block/light.rs::adjacency" = 99
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::tesselate" = 180
-"crates/photon-render/src/block/world_mesh/item_frame.rs::BlockRenderer::item_layers" = 64
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 74
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 134
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 80

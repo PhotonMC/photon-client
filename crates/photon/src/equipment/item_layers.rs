@@ -4,7 +4,7 @@ use photon_core::ids::BlockStateId;
 use photon_data::item::component_types::{DYED_COLOR, LODESTONE_TRACKER};
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::{BlockRenderer, ItemLayer};
-use photon_render::item_model::{ItemState, ItemUse};
+use photon_render::item_model::{ItemState, ItemTints, ItemUse};
 use photon_render::model::DisplayContext;
 use photon_render::objects::item::item_glint_vertices;
 use photon_render::scene::Vertex;
@@ -229,13 +229,14 @@ impl ItemLayerCache {
         } else {
             renderer.item_branches(item, context, state)
         };
-        // The selected item is not in the patch, and decides the nested layers.
-        branches.extend(
-            state
-                .selected
-                .into_iter()
-                .flat_map(|item| item.0.to_le_bytes()),
-        );
+        // The selected contents decide the nested layers, and the selection is not in the patch.
+        let selected = photon_game::menus::container::bundle_selected_stack(stack);
+        let selected_state = selected.as_ref().map(|inner| self.item_state(inner, None));
+        if let (Some(inner), Some(inner_state)) = (&selected, selected_state) {
+            branches.extend(inner.item_registry_id().0.to_le_bytes());
+            branches.extend(inner.patch_bytes());
+            branches.extend(renderer.item_branches(inner.item_registry_id(), context, inner_state));
+        }
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
             .iter()
@@ -243,14 +244,21 @@ impl ItemLayerCache {
         {
             index
         } else {
+            let own = stack_tints(item, stack);
+            let nested = selected
+                .as_ref()
+                .map(|inner| stack_tints(inner.item_registry_id(), inner));
             let layers = renderer.item_layers(
                 (item, state),
                 context,
                 &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
-                &StackTints(photon_game::item::values::Values::new(
-                    item,
-                    stack.patch_bytes(),
-                )),
+                (
+                    &own,
+                    nested
+                        .as_ref()
+                        .zip(selected_state)
+                        .map(|(tints, state)| (state, tints as &dyn ItemTints)),
+                ),
             );
             variants.push(((stack.patch_bytes().to_vec(), branches), layers));
             variants.len() - 1
@@ -262,6 +270,14 @@ impl ItemLayerCache {
         .filter(|corners| !corners.is_empty());
         layers
     }
+}
+
+/// The tints of a stack's components.
+fn stack_tints(item: photon_core::ids::ItemId, stack: &ClientItemStackState) -> StackTints {
+    StackTints(photon_game::item::values::Values::new(
+        item,
+        stack.patch_bytes(),
+    ))
 }
 
 /// The tints' view of a stack's components.
