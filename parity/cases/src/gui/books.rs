@@ -259,6 +259,12 @@ pub fn book_view() -> Value {
         Book { mouse: (213, 205), ..view("hover done", three()) },
         view("long page", long_page),
         view("empty book", vec![json!("")]),
+        view(
+            "effects",
+            vec![json!({"text": "under ", "underlined": true, "extra": [
+                {"text": "child"}, {"text": " both", "strikethrough": true, "color": "red"}
+            ]})],
+        ),
     ];
     gui("book-view", "book_view", rows.into_iter().map(Book::row).collect())
 }
