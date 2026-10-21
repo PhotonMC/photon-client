@@ -2,7 +2,7 @@
 
 use super::*;
 use photon_gui::hud::debug::{
-    self, CameraEntity, Clouds, Filtering, FooterKeys, Impactors, Input, ServerInfo,
+    self, CameraEntity, Clouds, Filtering, FooterKeys, Impactors, Input, ServerInfo, TargetedBlock,
 };
 
 /// The two columns of the overlay's lines, or none when nothing is shown: no entry is on, or the
@@ -20,9 +20,10 @@ impl Gui {
         if list.enabled(reduced).is_empty() || controls.hud_hidden && !controls.any_screen_open() {
             return None;
         }
-        let camera = session
-            .player()
-            .map(|player| Self::camera_entity(session, player.position(), player.rotation()));
+        let camera = session.player().map(|player| {
+            let target = Self::targeted_block(session, player);
+            Self::camera_entity(session, player.position(), player.rotation(), target)
+        });
         let input = Input {
             system: controls.debug.system.clone(),
             memory: controls.debug.memory.usage(),
@@ -80,6 +81,7 @@ impl Gui {
         session: &PlaySession,
         position: photon_core::math::Vec3,
         (yaw, pitch): (f32, f32),
+        target: Option<TargetedBlock>,
     ) -> CameraEntity {
         let world = session.world();
         let bounds = world.dimension();
@@ -90,12 +92,34 @@ impl Gui {
             pitch,
             dimension: world.dimension_key().to_owned(),
             build_height: (bounds.min_y, bounds.height),
+            target,
             light: (
                 i32::from(world.sky_brightness(x, y, z)),
                 i32::from(world.block_brightness(x, y, z)),
             ),
             biome: Self::feet_biome(session, position),
         }
+    }
+
+    /// `Entity.pick(20.0, 0.0F, false)`: the block outline the view meets within 20 blocks, from
+    /// the eyes as they were a tick ago, and what the level holds there.
+    fn targeted_block(
+        session: &PlaySession,
+        player: &photon_world::local_player::LocalPlayer,
+    ) -> Option<TargetedBlock> {
+        const RANGE: f64 = 20.0;
+        let eye = crate::view::eye_position(player, 0.0);
+        let (yaw, pitch) = player.rotation();
+        let look = photon_core::math::Vec3::direction_from_rotation_components(pitch, yaw);
+        let to = photon_core::math::Vec3::new(
+            eye.x + look.x * RANGE,
+            eye.y + look.y * RANGE,
+            eye.z + look.z * RANGE,
+        );
+        let world = session.world();
+        let hit = world.clip_outlines(eye, to)?;
+        let pos = (hit.block_pos.x, hit.block_pos.y, hit.block_pos.z);
+        TargetedBlock::of(pos, world.block_state_or_air(pos.0, pos.1, pos.2))
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

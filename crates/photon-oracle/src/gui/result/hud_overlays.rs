@@ -329,6 +329,23 @@ fn debug_system(each: &Value) -> photon_gui::hud::debug::SystemSpecs {
     }
 }
 
+/// The block a row put in the view: its place and a state such as `minecraft:oak_stairs[half=top]`.
+fn debug_target(row: &Value) -> Option<photon_gui::hud::debug::TargetedBlock> {
+    let target = row.get("target")?;
+    let coordinate = |key: &str| target[key].as_i64().map(|value| value as i32);
+    let position = (coordinate("x")?, coordinate("y")?, coordinate("z")?);
+    let text = target["state"].as_str()?;
+    let (name, properties) = text.split_once('[').unwrap_or((text, "]"));
+    let chosen = properties
+        .trim_end_matches(']')
+        .split(',')
+        .filter_map(|pair| pair.split_once('='))
+        .map(|(key, value)| (key.to_owned(), value.to_owned()))
+        .collect();
+    let block = photon_data::block::registry::block(name)?;
+    photon_gui::hud::debug::TargetedBlock::of(position, block.state_id(&chosen)?)
+}
+
 /// What the entries read, from a `hud_debug_overlay` row.
 fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
     use photon_gui::hud::debug::{self, CameraEntity, FrameStats, Input, PresentMode, ServerInfo};
@@ -377,6 +394,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             pitch: crate::f32_field(row, "pitch")?,
             dimension: "minecraft:overworld".to_owned(),
             build_height: (-64, 384),
+            target: debug_target(row),
             light: (int("sky"), int("block")),
             biome: "minecraft:plains".to_owned(),
         }),

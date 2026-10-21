@@ -1120,6 +1120,15 @@ class GuiHudOracle extends GuiCommandOracle {
                 kept.add("gpu_utilization");
                 MovementOracle.setField(minecraft, "gpuUtilization", Oracle.f64(row, "gpu"));
             }
+            if (row.has("target")) {
+                // The block the view lands on, put in the level.
+                var target = row.getAsJsonObject("target");
+                var parsed = net.minecraft.commands.arguments.blocks.BlockStateParser.parseForBlock(
+                    scene.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BLOCK),
+                    target.get("state").getAsString(), false);
+                scene.level().setBlock(new net.minecraft.core.BlockPos(target.get("x").getAsInt(),
+                    target.get("y").getAsInt(), target.get("z").getAsInt()), parsed.blockState(), 3);
+            }
             if (row.has("sky")) {
                 // The light at the feet: the section holds one value in each layer.
                 var engine = scene.level().getChunkSource().getLightEngine();

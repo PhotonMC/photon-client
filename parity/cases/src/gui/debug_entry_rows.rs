@@ -103,3 +103,32 @@ pub(super) fn gpu_rows() -> Vec<Value> {
     ));
     rows
 }
+
+/// The targeted block entry: a block with no properties, with mixed ones (booleans in both colours,
+/// an enumeration and a number; a block the view's ray must meet, so no thin ones), nothing in view, the group with
+/// another one, and reduced debug info.
+pub(super) fn looking_at_rows() -> Vec<Value> {
+    let aim = |label: &str, state: Option<(&str, i64)>, more: Value| {
+        let mut options = json!({"extra": ["looking_at_block_state"]});
+        if let Some((state, z)) = state {
+            options["target"] = json!({"x": 0, "y": 65, "z": z, "state": state});
+        }
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-looking-at-{label}"), ((0.5, 64.0, 0.5), (0.0, 0.0)), options)
+    };
+    vec![
+        aim("stone", Some(("minecraft:stone", 4)), json!({})),
+        aim("stairs", Some(("minecraft:oak_stairs[facing=east,half=top,waterlogged=true]", 4)), json!({})),
+        aim("fence", Some(("minecraft:oak_fence[east=true,north=false,south=true,west=false]", 4)), json!({})),
+        aim("beehive", Some(("minecraft:beehive[facing=west,honey_level=3]", 4)), json!({})),
+        aim("nothing", None, json!({})),
+        aim("reduced", Some(("minecraft:stone", 4)), json!({"reduced": true})),
+        aim(
+            "with-light",
+            Some(("minecraft:stone", 4)),
+            json!({"extra": ["looking_at_block_state", "light_levels"], "sky": 12, "block": 1}),
+        ),
+    ]
+}

@@ -23,10 +23,38 @@ pub struct CameraEntity {
     pub dimension: String,
     /// The level's lowest block row and its height (`isInsideBuildHeight`).
     pub build_height: (i32, i32),
+    /// The block the view ends on within 20 blocks, fluids looked through.
+    pub target: Option<TargetedBlock>,
     /// The sky and block light at the feet's block (`Level.getBrightness`).
     pub light: (i32, i32),
     /// The biome at the feet's quart position, `minecraft:plains` where the chunk is not there.
     pub biome: String,
+}
+
+/// A block position and what the level holds there (`DebugEntryLookingAt`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TargetedBlock {
+    pub position: (i32, i32, i32),
+    /// The block's registered name, such as `minecraft:oak_stairs`.
+    pub name: String,
+    /// Each property with its value's name, in the order the block lists them.
+    pub properties: Vec<(String, String)>,
+}
+
+impl TargetedBlock {
+    /// The block a state number belongs to; none for a number the registry lacks.
+    pub fn of(position: (i32, i32, i32), state: photon_core::ids::BlockStateId) -> Option<Self> {
+        let (block, offset) = photon_data::block::registry::block_for_state(state)?;
+        Some(Self {
+            position,
+            name: block.name.to_owned(),
+            properties: block
+                .properties_at(offset)?
+                .into_iter()
+                .map(|(name, value)| (name.to_owned(), value.to_owned()))
+                .collect(),
+        })
+    }
 }
 
 /// How the window surface presents (`GpuSurface.PresentMode`).
@@ -142,6 +170,7 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "player_section_position" => section(camera),
         "biome" => biome(camera).into_iter().collect(),
         "light_levels" => light(camera),
+        "looking_at_block_state" => looking_at_block(camera),
         _ => Vec::new(),
     }
 }
@@ -176,6 +205,30 @@ fn day(count: Option<i32>) -> Vec<Line> {
         .map(|day| Line::Regular(format!("Day #{day}")))
         .into_iter()
         .collect()
+}
+
+/// `DebugEntryLookingAt.BlockStateInfo`: where the view lands and the block's state, a boolean
+/// property green when true and red when false.
+fn looking_at_block(camera: &CameraEntity) -> Vec<Line> {
+    let Some(target) = &camera.target else {
+        return vec![Line::Group(LOOKING_AT_BLOCK_GROUP, Vec::new())];
+    };
+    let (x, y, z) = target.position;
+    let mut lines = vec![
+        format!("\u{a7}nTargeted Block: {x}, {y}, {z}"),
+        target.name.clone(),
+    ];
+    lines.extend(
+        target
+            .properties
+            .iter()
+            .map(|(name, value)| match value.as_str() {
+                "true" => format!("{name}: \u{a7}atrue"),
+                "false" => format!("{name}: \u{a7}cfalse"),
+                _ => format!("{name}: {value}"),
+            }),
+    );
+    vec![Line::Group(LOOKING_AT_BLOCK_GROUP, lines)]
 }
 
 /// `DebugEntryLight`: the light at the feet, the brighter of the two layers first.
@@ -230,6 +283,7 @@ fn tps(server: &ServerInfo) -> Vec<Line> {
 
 const POSITION_GROUP: &str = "minecraft:position";
 const LIGHT_GROUP: &str = "minecraft:light";
+const LOOKING_AT_BLOCK_GROUP: &str = "minecraft:looking_at_block";
 
 fn feet(camera: &CameraEntity) -> (i32, i32, i32) {
     let (x, y, z) = camera.position;
