@@ -3,6 +3,7 @@
 //! (the map's colours in a texture of its own, its decorations over them).
 
 use photon_core::direction::Direction;
+use photon_core::ids::BlockStateId;
 use photon_core::math::{Vec3, floor_f64};
 use photon_game::item::values::Values;
 use photon_net::connection::PlaySession;
@@ -17,7 +18,9 @@ use photon_render::scene::Vertex;
 use photon_world::map::{MAP_SIDE, MapData};
 
 use crate::equipment::item_layers::ItemLayerCache;
+use crate::equipment::needle::Owner;
 use crate::overlays::{FrameView, packed_light};
+use photon_render::item_model::Holder;
 
 /// `ItemFrameRenderer.getLightCoords`' light for the item of a glow frame
 /// (`LightCoordsUtil.FULL_BRIGHT`): full block and sky light.
@@ -114,6 +117,7 @@ impl FrameState {
         pose: Pose,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
     ) -> (Vec<Vertex>, Vec<Vertex>) {
+        self.layers.set_owner(None);
         let drawn = item_layer_vertices(
             self.layers.get(stack, renderer, tints),
             &[pose],
@@ -154,6 +158,28 @@ fn framed_map_id(stack: &photon_world::ClientItemStackState) -> Option<i32> {
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
     let mut raw = values.raw(photon_data::item::component_types::MAP_ID)?;
     photon_core::wire::read_varint(&mut raw).ok()
+}
+
+/// The frame as the holder of its item (`ItemFrame.getVisualRotationYInDegrees`): where its
+/// entity is, and the heading its facing and the item's turn make.
+fn frame_owner(entity: &photon_world::ClientEntity, direction: Direction) -> Owner {
+    let vertical = direction.axis().is_vertical();
+    let correction = if vertical {
+        90 * direction.get_step_y()
+    } else {
+        0
+    };
+    let yaw = photon_core::math::wrap_degrees_i32(
+        180 + direction.data2d() * 90 + entity.item_frame_rotation() * 45 + correction,
+    );
+    let (x, y, z) = entity.position();
+    Owner {
+        holder: Holder {
+            position: [x, y, z],
+            yaw: yaw as f32,
+        },
+        seed: entity.id().0,
+    }
 }
 
 /// The triangles of every item frame the server added, with the frame's model and the item in it;
@@ -203,18 +229,8 @@ pub fn item_frames(
             .and_then(framed_map_id)
             .and_then(|id| world.map_data(id).map(|data| (id, data)));
         if let Some(pose) = poses.frame {
-            // `updateForItemFrame`: the map's own model while a map is shown.
             let model = renderer.item_frame_state(glowing, map.is_some());
-            if let Some((layer, block_light)) = state.layers.block(model, renderer) {
-                vertices.extend(entity_block_vertices(
-                    layer,
-                    &pose,
-                    (
-                        photon_render::entity::block::submit_light(light, *block_light),
-                        0.0,
-                    ),
-                ));
-            }
+            frame_model(state, (model, &pose), (renderer, light), vertices);
         }
         if let Some((id, data)) = map {
             let map_light = if glowing { GLOW_MAP_LIGHT } else { light };
@@ -222,10 +238,30 @@ pub fn item_frames(
             frame_map(state, (&poses.map, data), (slot, map_light), textures);
         } else if let Some(stack) = stack {
             let item_light = if glowing { GLOW_ITEM_LIGHT } else { light };
+            state.layers.set_owner(Some(frame_owner(entity, direction)));
             let layers = state.layers.get(stack, renderer, tints);
             let drawn = item_layer_vertices(layers, &[poses.item], item_light, false);
             state.layers.extend_with_glint(stack, drawn, vertices);
         }
+    }
+}
+
+/// The frame's own model on the wall (`updateForItemFrame`: the map's model while a map shows).
+fn frame_model(
+    state: &mut FrameState,
+    (model, pose): (BlockStateId, &Pose),
+    (renderer, light): (&BlockRenderer, i32),
+    vertices: &mut Vec<Vertex>,
+) {
+    if let Some((layer, block_light)) = state.layers.block(model, renderer) {
+        vertices.extend(entity_block_vertices(
+            layer,
+            pose,
+            (
+                photon_render::entity::block::submit_light(light, *block_light),
+                0.0,
+            ),
+        ));
     }
 }
 

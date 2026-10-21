@@ -1007,7 +1007,6 @@
 "crates/photon/src/objects/displays.rs::display_texts" = 75
 "crates/photon/src/objects/dropped_items.rs::dropped_items" = 63
 "crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 70
-"crates/photon/src/objects/item_frames.rs::item_frames" = 65
 "crates/photon/src/objects/leashes.rs::leashes" = 98
 "crates/photon/src/objects/minecarts.rs::remote_minecarts" = 87
 "crates/photon/src/overlays/light.rs::player_model" = 109

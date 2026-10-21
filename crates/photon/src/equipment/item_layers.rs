@@ -24,6 +24,8 @@ pub struct ItemLayerCache {
     trim_materials: std::sync::Arc<Vec<String>>,
     /// The compass needles, for the contexts the local player holds the stack in.
     needles: Option<super::needle::SharedNeedles>,
+    /// Who holds the stacks drawn next, when it is not the local player.
+    owner: Option<super::needle::Owner>,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -89,6 +91,7 @@ impl ItemLayerCache {
             quick_charge: None,
             trim_materials: std::sync::Arc::default(),
             needles: None,
+            owner: None,
         }
     }
 
@@ -99,15 +102,22 @@ impl ItemLayerCache {
         self.glint.tags = Some(frame.tags.clone());
         self.quick_charge = frame.quick_charge;
         self.trim_materials = frame.trim_materials.clone();
-        // The GUI and the first-person hand show the local player's own stacks; in the others the
-        // holder is another entity, whose needle is not worked out yet.
+        // The GUI and the first-person hand show the local player's own stacks; a frame or the
+        // ground shows another entity's, which the caller names with `set_owner`.
         self.needles = matches!(
             self.context,
             DisplayContext::Gui
                 | DisplayContext::FirstPersonLeftHand
                 | DisplayContext::FirstPersonRightHand
+                | DisplayContext::Fixed
+                | DisplayContext::Ground
         )
         .then(|| frame.needles.clone());
+    }
+
+    /// The entity that holds the stacks drawn next (`ItemOwner`); none for the local player.
+    pub fn set_owner(&mut self, owner: Option<super::needle::Owner>) {
+        self.owner = owner;
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
@@ -248,6 +258,16 @@ impl ItemLayerCache {
         let Some(needles) = &self.needles else {
             return;
         };
+        // Outside the local player's own views a stack needs the entity that holds it.
+        let own_view = matches!(
+            self.context,
+            DisplayContext::Gui
+                | DisplayContext::FirstPersonLeftHand
+                | DisplayContext::FirstPersonRightHand
+        );
+        if !own_view && self.owner.is_none() {
+            return;
+        }
         // `context_dimension` picks a clock's source, so the walk needs it.
         state.dimension = Some(photon_render::item_model::intern_key(
             store_dimension(needles).as_str(),
@@ -263,7 +283,7 @@ impl ItemLayerCache {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         for (target, wobble) in wanted {
-            let angle = store.angle((item, target, wobble), lodestone.clone(), 0);
+            let angle = store.angle((item, target, wobble), lodestone.clone(), self.owner);
             state.needles.0[target.index()] = Some(angle.to_bits());
         }
     }
@@ -297,6 +317,7 @@ impl ItemLayerCache {
         // The trim's key comes from the registry, which the patch alone does not name.
         branches.extend(state.trim_material.map(str::as_bytes).unwrap_or_default());
         branches.extend(state.block_state.map(str::as_bytes).unwrap_or_default());
+        branches.extend(state.dimension.map(str::as_bytes).unwrap_or_default());
         // The selected contents decide the nested layers, and the selection is not in the patch.
         let selected = photon_game::menus::container::bundle_selected_stack(stack);
         let selected_state = selected.as_ref().map(|inner| self.item_state(inner, None));
