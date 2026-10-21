@@ -20,19 +20,9 @@ impl Gui {
         if list.enabled(reduced).is_empty() || controls.hud_hidden && !controls.any_screen_open() {
             return None;
         }
-        let bounds = session.world().dimension();
-        let camera = session.player().map(|player| {
-            let position = player.position();
-            let (yaw, pitch) = player.rotation();
-            CameraEntity {
-                position: (position.x, position.y, position.z),
-                yaw,
-                pitch,
-                dimension: session.world().dimension_key().to_owned(),
-                build_height: (bounds.min_y, bounds.height),
-                biome: Self::feet_biome(session, position),
-            }
-        });
+        let camera = session
+            .player()
+            .map(|player| Self::camera_entity(session, player.position(), player.rotation()));
         let input = Input {
             system: controls.debug.system.clone(),
             memory: controls.debug.memory.usage(),
@@ -82,6 +72,29 @@ impl Gui {
             .iter()
             .any(|name| name == "minecraft:day")
             .then(|| (session.clock_ticks("minecraft:overworld").unwrap_or(0) / DAY_PERIOD) as i32)
+    }
+
+    /// What the entries read of the camera entity: where it is and what is around its feet.
+    fn camera_entity(
+        session: &PlaySession,
+        position: photon_core::math::Vec3,
+        (yaw, pitch): (f32, f32),
+    ) -> CameraEntity {
+        let world = session.world();
+        let bounds = world.dimension();
+        let [x, y, z] = [position.x, position.y, position.z].map(|axis| axis.floor() as i32);
+        CameraEntity {
+            position: (position.x, position.y, position.z),
+            yaw,
+            pitch,
+            dimension: world.dimension_key().to_owned(),
+            build_height: (bounds.min_y, bounds.height),
+            light: (
+                i32::from(world.sky_brightness(x, y, z)),
+                i32::from(world.block_brightness(x, y, z)),
+            ),
+            biome: Self::feet_biome(session, position),
+        }
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

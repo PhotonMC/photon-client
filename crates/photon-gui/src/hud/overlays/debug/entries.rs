@@ -23,6 +23,8 @@ pub struct CameraEntity {
     pub dimension: String,
     /// The level's lowest block row and its height (`isInsideBuildHeight`).
     pub build_height: (i32, i32),
+    /// The sky and block light at the feet's block (`Level.getBrightness`).
+    pub light: (i32, i32),
     /// The biome at the feet's quart position, `minecraft:plains` where the chunk is not there.
     pub biome: String,
 }
@@ -136,6 +138,7 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "player_position" => position(camera),
         "player_section_position" => section(camera),
         "biome" => biome(camera).into_iter().collect(),
+        "light_levels" => light(camera),
         _ => Vec::new(),
     }
 }
@@ -146,6 +149,18 @@ fn day(count: Option<i32>) -> Vec<Line> {
         .map(|day| Line::Regular(format!("Day #{day}")))
         .into_iter()
         .collect()
+}
+
+/// `DebugEntryLight`: the light at the feet, the brighter of the two layers first.
+fn light(camera: &CameraEntity) -> Vec<Line> {
+    let (sky, block) = camera.light;
+    vec![Line::Group(
+        LIGHT_GROUP,
+        vec![format!(
+            "Client Light: {} ({sky} sky, {block} block)",
+            sky.max(block)
+        )],
+    )]
 }
 
 /// `DebugEntryBiome`: the biome at the feet, while they are inside the build height.
@@ -187,6 +202,7 @@ fn tps(server: &ServerInfo) -> Vec<Line> {
 }
 
 const POSITION_GROUP: &str = "minecraft:position";
+const LIGHT_GROUP: &str = "minecraft:light";
 
 fn feet(camera: &CameraEntity) -> (i32, i32, i32) {
     let (x, y, z) = camera.position;

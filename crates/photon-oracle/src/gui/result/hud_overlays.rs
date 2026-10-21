@@ -374,6 +374,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             pitch: crate::f32_field(row, "pitch")?,
             dimension: "minecraft:overworld".to_owned(),
             build_height: (-64, 384),
+            light: (int("sky"), int("block")),
             biome: "minecraft:plains".to_owned(),
         }),
     })

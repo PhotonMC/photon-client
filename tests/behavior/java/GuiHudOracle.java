@@ -1115,6 +1115,18 @@ class GuiHudOracle extends GuiCommandOracle {
                     statuses.put(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.IN_OVERLAY);
                 }
             }
+            if (row.has("sky")) {
+                // The light at the feet: the section holds one value in each layer.
+                var engine = scene.level().getChunkSource().getLightEngine();
+                var section = net.minecraft.core.SectionPos.of(local.blockPosition());
+                engine.updateSectionStatus(section, false);
+                engine.queueSectionData(net.minecraft.world.level.LightLayer.SKY, section,
+                    new net.minecraft.world.level.chunk.DataLayer(row.get("sky").getAsInt()));
+                engine.queueSectionData(net.minecraft.world.level.LightLayer.BLOCK, section,
+                    new net.minecraft.world.level.chunk.DataLayer(row.get("block").getAsInt()));
+                engine.setLightEnabled(section.chunk(), true);
+                engine.runLightUpdates();
+            }
             if (row.has("day")) {
                 // The overworld clock's total ticks, which the day count entry divides by the day's period.
                 var clock = scene.level().registryAccess()

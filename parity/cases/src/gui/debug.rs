@@ -40,6 +40,7 @@ pub fn hud_debug_overlay() -> Value {
     rows.extend(system_rows());
     rows.extend(biome_rows());
     rows.extend(day_rows());
+    rows.extend(light_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
 
@@ -153,6 +154,25 @@ fn day_rows() -> Vec<Value> {
             json!({"extra": ["day_count"], "day": 48_000, "reduced": true}),
         )])
         .collect()
+}
+
+/// The light entry: each layer ahead, behind and level, the ends, and not with reduced debug info.
+fn light_rows() -> Vec<Value> {
+    let row = |label: &str, sky: i32, block: i32, reduced: bool| {
+        row(
+            format!("debug-light-{label}"),
+            ((1.0, 64.0, 3.0), (0.0, 0.0)),
+            json!({"extra": ["light_levels"], "sky": sky, "block": block, "reduced": reduced}),
+        )
+    };
+    vec![
+        row("sky-ahead", 15, 3, false),
+        row("block-ahead", 2, 11, false),
+        row("level", 7, 7, false),
+        row("dark", 0, 0, false),
+        row("full", 15, 15, false),
+        row("reduced", 15, 3, true),
+    ]
 }
 
 /// The performance options entry: each cloud status and filtering method, the blend radius at its
