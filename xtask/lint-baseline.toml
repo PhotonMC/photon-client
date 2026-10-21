@@ -15,7 +15,7 @@
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-world/src/particles/firework.rs" = 540
 "crates/photon/src/menu.rs" = 643
-"crates/photon/src/mobs/animals/farm_animals.rs" = 515
+"crates/photon/src/mobs/animals/farm_animals.rs" = 514
 
 [file-name]
 "crates/photon-dev/examples/block_break_rejection_probe.rs" = 1

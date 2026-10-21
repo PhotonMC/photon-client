@@ -3,7 +3,7 @@
 //! its brow until it is ridden. The ropes of a leashed one are not drawn.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{mob_vertices, mob_vertices_coloured};
+use photon_render::entity::mob_model::mob_vertices_coloured;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -35,7 +35,7 @@ pub fn remote_happy_ghasts(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == ghast)
     {
         let baby = entity.is_baby();
@@ -63,7 +63,7 @@ pub fn remote_happy_ghasts(
         let body_item = entity.equipment(EquipmentSlot::Body);
         model.setup_happy_ghast(age_in_ticks, body_item.is_some());
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         if let Some(stack) = body_item {
             let ridden = entity.is_vehicle();
             vertices.extend(armor.simple_layer(

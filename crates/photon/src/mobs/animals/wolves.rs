@@ -6,9 +6,7 @@
 //! tracked.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    QuadrupedState, WolfState, mob_vertices, mob_vertices_coloured,
-};
+use photon_render::entity::mob_model::{QuadrupedState, WolfState, mob_vertices_coloured};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -47,7 +45,7 @@ pub fn remote_wolves(
     let (partial, game_time) = (view.partial as f32, world.game_time());
     for entity in world
         .entities()
-        .drawn()
+        .drawn_with_invisible()
         .filter(|entity| entity.type_id == wolf)
     {
         let name = match entity.variant() {
@@ -95,7 +93,7 @@ pub fn remote_wolves(
             age_scale: if baby { 0.5 } else { 1.0 },
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         // The collar of a tame wolf, over the model as it is posed.
         if tame
             && !entity.is_invisible()

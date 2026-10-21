@@ -466,6 +466,23 @@ fn animal_kinds() -> Vec<(photon_core::ids::EntityTypeId, Animal)> {
     .collect()
 }
 
+/// `HorseMarkingLayer`: the markings over the coat, not on an invisible horse.
+fn horse_markings(
+    model: &MobModel,
+    (animal, entity): (Animal, &ClientEntity),
+    (placed, textures): (&MobPlacement, &EntityTextures),
+) -> Vec<Vertex> {
+    if animal != Animal::Horse || entity.is_invisible() {
+        return Vec::new();
+    }
+    usize::try_from(entity.horse_look().1)
+        .ok()
+        .and_then(|index| MARKINGS[index])
+        .and_then(|markings| textures.rect(markings[usize::from(entity.is_baby())]))
+        .map(|marking| mob_vertices(model, placed, marking))
+        .unwrap_or_default()
+}
+
 /// `GoatRenderer`, `MushroomCowRenderer` and `RabbitRenderer` for the goats,
 /// mooshrooms and rabbits the server added. A mooshroom's mushrooms on an
 /// invisible animal that glows would be drawn as outlines only, which is not
@@ -480,7 +497,7 @@ pub fn remote_farm_animals(
     let kinds = animal_kinds();
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(animal) = kinds
             .iter()
             .find(|(id, _)| *id == entity.type_id)
@@ -503,20 +520,12 @@ pub fn remote_farm_animals(
         };
         pose(model, animal, entity, (look, partial, world.game_time()));
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
-        if animal == Animal::Mooshroom {
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        // `MushroomCowMushroomLayer` skips an invisible one (but for the outline of a glowing one).
+        if animal == Animal::Mooshroom && !entity.is_invisible() {
             mushrooms(model, entity, &placed, held);
         }
-        // `HorseMarkingLayer`: the markings over the coat, not on an invisible horse.
-        if animal == Animal::Horse
-            && !entity.is_invisible()
-            && let Some(markings) = usize::try_from(entity.horse_look().1)
-                .ok()
-                .and_then(|index| MARKINGS[index])
-            && let Some(marking) = textures.rect(markings[usize::from(entity.is_baby())])
-        {
-            vertices.extend(mob_vertices(model, &placed, marking));
-        }
+        vertices.extend(horse_markings(model, (animal, entity), (&placed, textures)));
         gear::layers(
             armor,
             textures,
@@ -561,15 +570,7 @@ pub fn gui_preview(
         ..MobPlacement::default()
     };
     let mut vertices = mob_vertices(model, &placed, rect);
-    if animal == Animal::Horse
-        && !entity.is_invisible()
-        && let Some(markings) = usize::try_from(entity.horse_look().1)
-            .ok()
-            .and_then(|index| MARKINGS[index])
-        && let Some(marking) = textures.rect(markings[usize::from(entity.is_baby())])
-    {
-        vertices.extend(mob_vertices(model, &placed, marking));
-    }
+    vertices.extend(horse_markings(model, (animal, entity), (&placed, textures)));
     gear::layers(
         armor,
         textures,
