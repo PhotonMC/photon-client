@@ -10,7 +10,7 @@ mod profile_file;
 
 pub use entries::{
     CameraEntity, Clouds, DeviceType, Filtering, FrameStats, Impactors, Input, MemoryUsage,
-    PresentMode, ServerInfo, SystemSpecs, TargetedBlock, vendor_name,
+    PresentMode, ServerInfo, SoundMood, SystemSpecs, TargetedBlock, vendor_name,
 };
 pub use format::fixed;
 pub use layout::{Line, columns};

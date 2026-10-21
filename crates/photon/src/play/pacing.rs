@@ -27,6 +27,7 @@ impl Play {
             Instant::now(),
         );
         self.controls.debug.memory.update(Instant::now());
+        self.controls.debug.sound_mood = self.session.player().map(|_| self.sound_mood());
         // `Minecraft.pauseIfInactive`.
         self.controls
             .pause_if_inactive(&mut self.surface, &self.screen_assets, Instant::now());
@@ -41,5 +42,19 @@ impl Play {
             described.extent.width as i32,
             described.extent.height as i32,
         );
+    }
+
+    /// `DebugEntrySoundMood`'s reading: the channels the sound engine has in use (none without a
+    /// device, as the library has no pools then) and the biome handler's mood.
+    fn sound_mood(&self) -> photon_gui::hud::debug::SoundMood {
+        let channels = self
+            .sound
+            .as_ref()
+            .map_or([(0, 0); 2], |sound| sound.channel_usage())
+            .map(|(used, size)| (used as i32, size as i32));
+        photon_gui::hud::debug::SoundMood {
+            channels,
+            mood: self.ambient.moodiness(),
+        }
     }
 }

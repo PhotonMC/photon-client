@@ -413,6 +413,8 @@ pub struct DebugKeys {
     pub system: Option<photon_gui::hud::debug::SystemSpecs>,
     pub memory: crate::system_info::MemorySampler,
     pub gpu: crate::gpu_meter::GpuMeter,
+    /// The sound channels in use and the player's mood, as the frame loop last read them.
+    pub sound_mood: Option<photon_gui::hud::debug::SoundMood>,
 }
 
 impl DebugKeys {

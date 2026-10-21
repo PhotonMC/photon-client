@@ -382,6 +382,20 @@ fn debug_targets(
     Ok(photon_gui::hud::debug::targets(&world, eye, rotation))
 }
 
+/// What `sound_mood` reads, from a row's `mood` and the pools of its `channels`.
+fn debug_sound_mood(row: &Value) -> Option<photon_gui::hud::debug::SoundMood> {
+    row.get("mood")?;
+    // The pools of the row's device, or none, and what is in use in them.
+    let channels = row["channels"].as_array().map_or([(0, 0); 2], |each| {
+        let at = |index: usize| each[index].as_i64().unwrap_or(0) as i32;
+        [(at(2), at(0)), (at(3), at(1))]
+    });
+    Some(photon_gui::hud::debug::SoundMood {
+        channels,
+        mood: crate::f32_field(row, "mood").unwrap_or(0.0),
+    })
+}
+
 /// What the entries read, from a `hud_debug_overlay` row.
 fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
     use photon_gui::hud::debug::{self, CameraEntity, FrameStats, Input, PresentMode, ServerInfo};
@@ -394,6 +408,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
         system: row.get("system").map(debug_system),
         // The game's own memory is the machine's, which a row cannot pin.
         memory: None,
+        sound_mood: debug_sound_mood(row),
         crosshair_entity: row["entity"].as_str().map(str::to_owned),
         gpu_utilization: row
             .get("gpu")

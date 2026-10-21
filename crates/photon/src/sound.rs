@@ -153,6 +153,11 @@ impl SoundSystem {
         }
     }
 
+    /// The channels in use in each pool and the pools' sizes (`Library.getChannelDebugString`).
+    pub fn channel_usage(&self) -> [(usize, usize); 2] {
+        self.engine.channels().usage()
+    }
+
     /// How many sounds the local player has made.
     pub fn local_sound_count(&self) -> u32 {
         self.local_sounds

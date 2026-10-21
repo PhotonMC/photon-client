@@ -42,6 +42,7 @@ impl Gui {
             },
             crosshair_entity: Self::crosshair_entity(session),
             gpu_utilization: Some(controls.debug.gpu.utilization()),
+            sound_mood: controls.debug.sound_mood,
             day_count: Self::day_count(session),
             camera,
             frame: controls.debug.frame,

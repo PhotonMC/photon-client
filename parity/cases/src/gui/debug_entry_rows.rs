@@ -161,6 +161,35 @@ pub(super) fn looking_at_tag_rows() -> Vec<Value> {
     ]
 }
 
+/// The sound and mood entry: the mood as a percentage, rounded half up (zero, a half, an eighth, a
+/// value just under a whole percent, a whole, a half percent), and with reduced info. One row gives the
+/// pools a device has and some channels in use; the others have none.
+pub(super) fn sound_mood_rows() -> Vec<Value> {
+    let moods = [0.0_f32, 0.5, 0.125, 0.994, 1.0, 0.005, 0.0049, 0.87, 0.2549];
+    let mut rows: Vec<Value> = moods
+        .into_iter()
+        .map(|mood| {
+            row(
+                format!("debug-sound-mood-{mood}"),
+                ((0.5, 64.0, 0.5), (0.0, 0.0)),
+                json!({"extra": ["sound_mood"], "mood": crate::bits::f32_bits(mood)}),
+            )
+        })
+        .collect();
+    // A device's pools with channels in use (the pools of thirty sources).
+    rows.push(row(
+        "debug-sound-mood-channels".to_owned(),
+        ((0.5, 64.0, 0.5), (0.0, 0.0)),
+        json!({"extra": ["sound_mood"], "mood": crate::bits::f32_bits(0.5), "channels": [25, 5, 7, 2]}),
+    ));
+    rows.push(row(
+        "debug-sound-mood-reduced".to_owned(),
+        ((0.5, 64.0, 0.5), (0.0, 0.0)),
+        json!({"extra": ["sound_mood"], "mood": crate::bits::f32_bits(0.5), "reduced": true}),
+    ));
+    rows
+}
+
 /// The targeted fluid entries: a source, a flowing and a falling fluid the view meets, a flowing
 /// one it passes over (to the stone behind, which holds the empty fluid), stone in front of water,
 /// waterlogged stairs, a look down at a surface, lava with its level, nothing in view, reduced

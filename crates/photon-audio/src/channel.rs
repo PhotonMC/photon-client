@@ -198,6 +198,15 @@ impl MixerChannels {
     }
 }
 
+impl MixerChannels {
+    /// `Library.getChannelDebugString`: how many of each pool's channels are in use and how many
+    /// it has, the sounds loaded whole first, then the streams.
+    pub fn usage(&self) -> [(usize, usize); 2] {
+        let used = self.used.lock().map_or([0, 0], |used| *used);
+        [(used[0], self.limits[0]), (used[1], self.limits[1])]
+    }
+}
+
 impl ChannelSource for MixerChannels {
     type Channel = MixerChannel;
 

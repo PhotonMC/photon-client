@@ -58,6 +58,11 @@ impl GameAmbient {
         }
     }
 
+    /// `LocalPlayer.getCurrentMood`.
+    pub fn moodiness(&self) -> f32 {
+        self.handler.moodiness()
+    }
+
     /// One client tick of the player's ambient sounds.
     pub fn tick(&mut self, session: &PlaySession, sound: &mut SoundSystem) {
         let Some(player) = session.player() else {

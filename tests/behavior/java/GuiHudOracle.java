@@ -1127,6 +1127,32 @@ class GuiHudOracle extends GuiCommandOracle {
                 kept.add("gpu_utilization");
                 MovementOracle.setField(minecraft, "gpuUtilization", Oracle.f64(row, "gpu"));
             }
+            if (row.has("mood")) {
+                // The sound library as it is with no device (empty pools), and the mood the player's
+                // biome sounds handler has built up.
+                var engine = unsafe.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
+                var library = new com.mojang.blaze3d.audio.Library();
+                if (row.has("channels")) {
+                    // The pools of a device and the channels in use in them.
+                    var channels = row.getAsJsonArray("channels");
+                    library.setPools(channels.get(0).getAsInt(), channels.get(1).getAsInt());
+                    for (int i = 0; i < channels.get(2).getAsInt(); i++) {
+                        library.acquireChannel(com.mojang.blaze3d.audio.Library.Pool.STATIC);
+                    }
+                    for (int i = 0; i < channels.get(3).getAsInt(); i++) {
+                        library.acquireChannel(com.mojang.blaze3d.audio.Library.Pool.STREAMING);
+                    }
+                }
+                set(engine, "library", library);
+                var manager = unsafe.allocateInstance(net.minecraft.client.sounds.SoundManager.class);
+                set(manager, "soundEngine", engine);
+                set(minecraft, "soundManager", manager);
+                for (var handler : (java.util.List<?>) MovementOracle.getField(local, "ambientSoundHandlers")) {
+                    if (handler instanceof net.minecraft.client.resources.sounds.BiomeAmbientSoundsHandler) {
+                        MovementOracle.setField(handler, "moodiness", Oracle.f32(row, "mood"));
+                    }
+                }
+            }
             // The blocks the view meets, put in the level: the one target and any others.
             var placed = new java.util.ArrayList<JsonObject>();
             if (row.has("target")) {

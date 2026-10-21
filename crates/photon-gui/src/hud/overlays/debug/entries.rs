@@ -124,6 +124,14 @@ pub struct ServerInfo {
     pub received: f32,
 }
 
+/// What `sound_mood` reads: the channels in use and their count in the pool of sounds loaded whole
+/// and in the pool of streams, and `LocalPlayer.getCurrentMood`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SoundMood {
+    pub channels: [(i32, i32); 2],
+    pub mood: f32,
+}
+
 /// What the entries read.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Input {
@@ -140,6 +148,8 @@ pub struct Input {
     pub memory: Option<MemoryUsage>,
     /// `Minecraft.getGpuUtilization`, none where the frame loop does not measure it.
     pub gpu_utilization: Option<f64>,
+    /// `sound_mood`: the sound channels in use and the player's mood, none without a player.
+    pub sound_mood: Option<SoundMood>,
     /// The registered name of the entity type under the crosshair (`crosshairPickEntity`).
     pub crosshair_entity: Option<String>,
     /// The overworld day timeline's period count, none without the timeline in the registry.
@@ -169,6 +179,14 @@ pub fn display(id: &str, input: &Input) -> Vec<Line> {
         "game_version" => vec![Line::Priority(input.version.clone())],
         "day_count" => day(input.day_count),
         "gpu_utilization" => gpu(input.gpu_utilization),
+        "sound_mood" => sound_mood(input.sound_mood),
+        _ => from_surroundings(id, input),
+    }
+}
+
+/// The entries that read the crosshair or the camera entity.
+fn from_surroundings(id: &str, input: &Input) -> Vec<Line> {
+    match id {
         "looking_at_entity" => looking_at_entity(input.crosshair_entity.as_deref()),
         _ => input
             .camera
@@ -213,6 +231,19 @@ fn gpu(utilization: Option<f64>) -> Vec<Line> {
         format!("{}%", java_round(share))
     };
     vec![Line::Regular(format!("GPU: {shown}"))]
+}
+
+/// `DebugEntrySoundMood`: `Sounds: used/size + used/size (Mood n%)`.
+fn sound_mood(shown: Option<SoundMood>) -> Vec<Line> {
+    let Some(SoundMood { channels, mood }) = shown else {
+        return Vec::new();
+    };
+    // `Math.round(float * 100.0F)`.
+    let percent = java_round(f64::from(mood * 100.0));
+    vec![Line::Regular(format!(
+        "Sounds: {}/{} + {}/{} (Mood {percent}%)",
+        channels[0].0, channels[0].1, channels[1].0, channels[1].1,
+    ))]
 }
 
 /// `Math.round(double)`: the nearest whole number, halves up, NaN zero.

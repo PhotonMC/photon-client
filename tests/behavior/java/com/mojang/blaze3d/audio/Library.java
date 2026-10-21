@@ -20,6 +20,18 @@ public class Library {
         this.streamingChannels = new Library.CountingChannelPool(streamingCount);
     }
 
+    /** The reference's own text of the pools in use. */
+    public String getChannelDebugString() {
+        return String.format(
+            java.util.Locale.ROOT,
+            "Sounds: %d/%d + %d/%d",
+            this.staticChannels.getUsedCount(),
+            this.staticChannels.getMaxCount(),
+            this.streamingChannels.getUsedCount(),
+            this.streamingChannels.getMaxCount()
+        );
+    }
+
     public @Nullable Channel acquireChannel(final Library.Pool pool) {
         return (pool == Library.Pool.STREAMING ? this.streamingChannels : this.staticChannels).acquire();
     }
@@ -39,6 +51,10 @@ public class Library {
         @Nullable Channel acquire();
 
         boolean release(Channel channel);
+
+        int getUsedCount();
+
+        int getMaxCount();
     }
 
     private static class CountingChannelPool implements Library.ChannelPool {
@@ -57,6 +73,16 @@ public class Library {
             Channel channel = Channel.create();
             this.activeChannels.add(channel);
             return channel;
+        }
+
+        @Override
+        public int getUsedCount() {
+            return this.activeChannels.size();
+        }
+
+        @Override
+        public int getMaxCount() {
+            return this.limit;
         }
 
         @Override

@@ -46,6 +46,7 @@ pub fn hud_debug_overlay() -> Value {
     rows.extend(entry_rows::looking_at_rows());
     rows.extend(entry_rows::looking_at_tag_rows());
     rows.extend(entry_rows::looking_at_fluid_rows());
+    rows.extend(entry_rows::sound_mood_rows());
     rows.extend(entry_rows::looking_at_entity_rows());
     gui("hud-debug-overlay", "hud_debug_overlay", rows)
 }
