@@ -5,6 +5,8 @@
 use std::sync::Arc;
 
 use photon_game::commands::{CommandTree, SuggestContext, format_text, usage_lines};
+
+mod gate;
 use photon_game::text::{Lang, Style};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
@@ -90,6 +92,9 @@ pub struct CommandSuggestions {
     /// What the tree suggested for the text, while the server's answer on
     /// its own arguments is awaited.
     local: Vec<String>,
+    /// `setRestrictions`: whether the player may send messages and commands.
+    messages_allowed: bool,
+    commands_allowed: bool,
 }
 
 /// The command a text holds: whether it is one, and where it starts after its slash.
@@ -116,6 +121,8 @@ impl CommandSuggestions {
             selected_entities: Vec::new(),
             selectors: true,
             local: Vec::new(),
+            messages_allowed: true,
+            commands_allowed: true,
         }
     }
 
@@ -374,11 +381,14 @@ impl CommandSuggestions {
         atlas: &GuiAtlas,
         mouse: (i32, i32),
         (edit, parsed): (&mut EditBox, Option<&Parsed<'_>>),
+        lang: &Lang,
     ) {
         if let Some(list) = &mut self.list {
             list.draw(frame, atlas, &self.font, mouse);
         } else if let (Some(parsed), false) = (parsed, self.stale) {
             self.draw_usage(frame, atlas, edit, parsed);
+        } else if parsed.is_none() {
+            self.draw_message_usage(frame, atlas, &edit.value(), lang);
         }
         self.update_ghost(edit);
     }
@@ -392,6 +402,8 @@ impl CommandSuggestions {
     ) {
         let text = edit.value();
         let view = usage_lines(parsed.tree, &parsed.parse, self.usage_cursor, true);
+        let mut view = view;
+        view.lines.extend(self.restriction_lines(&text));
         let lines: Vec<String> = view
             .lines
             .iter()

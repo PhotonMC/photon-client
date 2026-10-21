@@ -59,6 +59,12 @@ use crate::script::HeldKeys;
 
 use crate::view::CameraType;
 
+/// `Minecraft.computeChatAbilities`. The launcher and the account allow chat: Photon has neither
+/// to ask (the sign-in is #31).
+pub(crate) fn chat_abilities(options: &Options) -> photon_game::chat_abilities::ChatAbilities {
+    photon_game::chat_abilities::ChatAbilities::compute(options.chat_visibility, (true, true))
+}
+
 pub(super) type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
 /// What the player is holding and pointing at between events.
@@ -385,7 +391,8 @@ impl Controls {
             camera_type,
             captured,
             creative_tab: photon_game::menus::creative::default_tab(),
-            chat_log: ChatLog::with_settings(ChatSettings::from(&options)),
+            chat_log: ChatLog::with_settings(ChatSettings::from(&options))
+                .with_abilities(chat_abilities(&options)),
             options,
             debug: DebugKeys {
                 entries: debug_profile::load_debug_entries(),

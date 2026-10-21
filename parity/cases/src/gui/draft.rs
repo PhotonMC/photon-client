@@ -77,6 +77,46 @@ fn draft(label: &str, events: Vec<Value>, save: bool) -> Value {
     json!({"label": label, "width": 427, "height": 240, "save": save, "events": events})
 }
 
+/// Rows for a player the chat is restricted for: what the box says of text that may not be sent,
+/// and Enter, which leaves it in the box.
+fn restricted_rows() -> Vec<Value> {
+    let restricted = |label: &str, restrictions: &[&str], events: Vec<Value>| {
+        let mut row = draft(label, events, false);
+        row["restrictions"] = json!(restrictions);
+        row
+    };
+    let with_say = |label: &str, restrictions: &[&str], events: Vec<Value>| {
+        let mut row = restricted(label, restrictions, events);
+        row["say"] = json!(true);
+        row
+    };
+    let hidden = ["CHAT_AND_COMMANDS_DISABLED_BY_OPTIONS"];
+    let commands_only = ["CHAT_DISABLED_BY_OPTIONS"];
+    vec![
+        restricted("no-message-allowed", &hidden, vec![message(), typed("hello"), draw()]),
+        restricted("blank-message-says-nothing", &commands_only, vec![message(), typed("   "), draw()]),
+        restricted(
+            "message-clears-with-the-text",
+            &commands_only,
+            vec![message(), typed("hi"), key("backspace"), key("backspace"), draw()],
+        ),
+        restricted("slash-text-is-no-message", &commands_only, vec![message(), typed("/gamemode"), draw()]),
+        restricted("command-box-no-commands", &hidden, vec![open("command"), typed("gamemode"), draw()]),
+        restricted("enter-stays", &commands_only, vec![message(), typed("hello"), key("enter")]),
+        restricted("enter-stays-for-a-command", &hidden, vec![message(), typed("/gamemode"), key("enter")]),
+        restricted(
+            "profile-takes-messages",
+            &["DISABLED_BY_PROFILE"],
+            vec![message(), typed("hello"), draw(), key("enter")],
+        ),
+        with_say("say-is-a-message", &commands_only, vec![message(), typed("/say hello"), draw(), key("enter")]),
+        with_say("say-is-a-message-hidden", &hidden, vec![message(), typed("/say hello"), draw()]),
+        with_say("say-by-profile", &["DISABLED_BY_PROFILE"], vec![message(), typed("/say hi"), draw(), key("enter")]),
+        with_say("say-unfinished-is-no-message", &commands_only, vec![message(), typed("/say"), draw()]),
+        restricted("both-reasons", &hidden, vec![message(), typed("hello there"), draw(), typed("!"), draw()]),
+    ]
+}
+
 /// A draft kept by an interruption, then `more`.
 fn kept(more: Vec<Value>) -> Vec<Value> {
     [vec![message(), typed("hello"), close("interrupted")], more].concat()
@@ -181,5 +221,5 @@ fn drawing_rows() -> Vec<Value> {
 /// it was when it is not edited, one Backspace wiping it, and a draft drawn
 /// grey and slanted until it is edited.
 pub fn chat_draft() -> Value {
-    gui("chat-draft", "chat_draft", [closing_rows(), editing_rows(), drawing_rows()].concat())
+    gui("chat-draft", "chat_draft", [closing_rows(), editing_rows(), drawing_rows(), restricted_rows()].concat())
 }

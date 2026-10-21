@@ -29,10 +29,17 @@ impl Controls {
         if draft {
             screen = screen.as_draft();
         }
+        self.restrict_chat(&mut screen);
         self.chat = Some(if keyed { screen } else { screen.without_key() });
         self.captured = false;
         self.release_keys();
         surface.set_cursor_captured(false);
+    }
+
+    /// `ChatScreen.init`: what the player may send, which the box says and keeps to.
+    fn restrict_chat(&self, screen: &mut ChatScreen) {
+        let abilities = self.chat_log.abilities();
+        screen.set_restrictions(abilities.can_send_messages(), abilities.can_send_commands());
     }
 
     /// Whether the social interactions screen or the debug options screen is up.
@@ -104,12 +111,13 @@ impl Controls {
     fn open_chat_with(&mut self, text: &str, surface: &mut WindowSurface, assets: &ScreenAssets) {
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
-        let screen = ChatScreen::new(
+        let mut screen = ChatScreen::new(
             assets.creative.font.clone(),
             size,
             text,
             self.chat_history.clone(),
         );
+        self.restrict_chat(&mut screen);
         self.chat = Some(screen.without_key());
         self.captured = false;
         self.release_keys();

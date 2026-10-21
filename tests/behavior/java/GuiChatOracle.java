@@ -54,6 +54,15 @@ class GuiChatOracle extends GuiLanguageOracle {
         }
     }
 
+    /** The abilities a list of restriction names leaves. */
+    static net.minecraft.client.multiplayer.chat.ChatAbilities abilities(JsonArray names) {
+        var builder = new net.minecraft.client.multiplayer.chat.ChatAbilities.Builder();
+        for (var name : names) {
+            builder.addRestriction(net.minecraft.client.multiplayer.chat.ChatRestriction.valueOf(name.getAsString()));
+        }
+        return builder.build();
+    }
+
     static JsonObject chat(JsonObject request) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
@@ -64,6 +73,10 @@ class GuiChatOracle extends GuiLanguageOracle {
             var chat = new net.minecraft.client.gui.components.ChatComponent(screen.minecraft());
             if (row.has("options")) {
                 chatOptions(screen.minecraft().options, row.getAsJsonObject("options"));
+            }
+            var restrictedFilter = row.has("restrictions") && row.getAsJsonArray("restrictions").size() > 0;
+            if (row.has("restrictions")) {
+                chat.setVisibleMessageFilter(abilities(row.getAsJsonArray("restrictions")).visibleMessagesFilter());
             }
             // The messages and the deletions, each at its tick, the chat's own
             // tick after each.
@@ -117,6 +130,11 @@ class GuiChatOracle extends GuiLanguageOracle {
                 chatOptions(screen.minecraft().options, row.getAsJsonObject("rescale"));
                 chat.rescaleChat();
             }
+            if (row.has("restrictions_after")) {
+                var after = abilities(row.getAsJsonArray("restrictions_after"));
+                restrictedFilter = after.hasAnyRestrictions();
+                chat.setVisibleMessageFilter(after.visibleMessagesFilter());
+            }
             boolean focused = row.has("focused") && row.get("focused").getAsBoolean();
             if (focused) {
                 // The chat is focused while the chat screen is the open one.
@@ -139,7 +157,9 @@ class GuiChatOracle extends GuiLanguageOracle {
                 }
             }
             chat.extractRenderState(screen.graphics(), font, row.get("tick").getAsInt(), chatMouseX, chatMouseY,
-                focused ? net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND
+                focused ? (restrictedFilter
+                        ? net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND_RESTRICTED
+                        : net.minecraft.client.gui.components.ChatComponent.DisplayMode.FOREGROUND)
                     : net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);
             screen.graphics().extractDeferredElements(chatMouseX, chatMouseY, 0.0F);
             var out = new JsonObject();
@@ -306,12 +326,23 @@ class GuiChatOracle extends GuiLanguageOracle {
             set(screen.hud(), "chat", chat);
             set(minecraft, "fontFilterFishy", font);
             var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
-            set(listener, "commands", new com.mojang.brigadier.CommandDispatcher<
-                net.minecraft.client.multiplayer.ClientSuggestionProvider>());
+            var dispatcher = new com.mojang.brigadier.CommandDispatcher<
+                net.minecraft.client.multiplayer.ClientSuggestionProvider>();
+            if (row.has("say")) {
+                // One command that takes a message.
+                dispatcher.register(com.mojang.brigadier.builder.LiteralArgumentBuilder
+                    .<net.minecraft.client.multiplayer.ClientSuggestionProvider>literal("say")
+                    .then(com.mojang.brigadier.builder.RequiredArgumentBuilder
+                        .<net.minecraft.client.multiplayer.ClientSuggestionProvider, net.minecraft.commands.arguments.MessageArgument.Message>argument(
+                            "message", net.minecraft.commands.arguments.MessageArgument.message())
+                        .executes(context -> 1)));
+            }
+            set(listener, "commands", dispatcher);
             set(listener, "suggestionsProvider", new OracleSource(java.util.List.of(), java.util.List.of(), true));
             var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
             set(player, "connection", listener);
-            set(player, "chatAbilities", net.minecraft.client.multiplayer.chat.ChatAbilities.NO_RESTRICTIONS);
+            set(player, "chatAbilities", row.has("restrictions") ? abilities(row.getAsJsonArray("restrictions"))
+                : net.minecraft.client.multiplayer.chat.ChatAbilities.NO_RESTRICTIONS);
             set(minecraft, "player", player);
             net.minecraft.client.gui.screens.ChatScreen current = null;
             var events = new JsonArray();
@@ -345,6 +376,7 @@ class GuiChatOracle extends GuiLanguageOracle {
                             case "delete" -> 261;
                             case "up" -> 265;
                             case "down" -> 264;
+                            case "enter" -> 257;
                             default -> throw new IllegalArgumentException(event.get("key").getAsString());
                         };
                         current.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));

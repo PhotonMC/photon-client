@@ -557,4 +557,4 @@ mod arguments;
 mod suggest;
 mod usage;
 pub use suggest::{LocalSuggestions, SuggestContext, sort_suggestions};
-pub use usage::{CommandSuggestionsView, format_text, usage_lines};
+pub use usage::{CommandSuggestionsView, format_text, has_message_arguments, usage_lines};

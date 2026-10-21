@@ -17,6 +17,7 @@ use photon_game::text::{Component, HoverEvent, Lang, Run, Style};
 use crate::chat::command_suggestions::{CommandSuggestions, Place, SuggestionSettings};
 use crate::chat::suggestions::ListKey;
 use crate::widgets::edit_box::{Clipboard, EditBox, edit_key};
+use photon_game::chat_abilities::{ChatAbilities, MessageSource};
 use photon_game::commands::CommandTree;
 use photon_render::gui::GuiAtlas;
 use photon_render::gui::GuiFrame;
@@ -134,6 +135,7 @@ struct Message {
     runs: Vec<Run>,
     /// What the runs were made of, if it is known, to be worded again.
     source: Option<Component>,
+    origin: MessageSource,
     added: u64,
     signature: Option<Vec<u8>>,
     tag: Option<Tag>,
@@ -266,6 +268,10 @@ pub struct ChatLog {
     /// F3+D pressed: the game flushes the queue and then clears the lines.
     clear_requested: bool,
     settings: ChatSettings,
+    /// `visibleMessageFilter`: what the player may see of the chat.
+    abilities: ChatAbilities,
+    /// Clicks on that prompt the game has not yet answered.
+    restrictions_requested: bool,
 }
 
 /// A point of the screen in the chat's own units: the pose, which scales
@@ -426,7 +432,9 @@ mod screen;
 
 mod log;
 mod queue_line;
+mod restricted;
 pub use queue_line::QUEUE_EXPAND_ID;
+pub use restricted::GO_TO_RESTRICTIONS_ID;
 
 #[cfg(test)]
 mod tests {
@@ -448,7 +456,13 @@ mod tests {
         )
         .expect("component");
         let mut log = ChatLog::default();
-        log.add_component(&component, &Lang::default(), (None, None), &font, true);
+        log.add_component(
+            &component,
+            &Lang::default(),
+            (MessageSource::SystemServer, None, None),
+            &font,
+            true,
+        );
         let gui = (427, 240);
         // The line's text starts at x 4, 192 down.
         let clicked = log.clicked_style(&font, &Lang::default(), gui, (8, 196), false);

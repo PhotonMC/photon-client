@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::binary::Uuid;
+use photon_game::chat_abilities::MessageSource;
 use photon_game::text::Component;
 use photon_gui::chat::Tag;
 use photon_gui::screen::social::{Page, Roster, SocialEvent, SocialInteractionsScreen};
@@ -157,7 +158,11 @@ impl Controls {
         self.chat_log.add_component(
             &message,
             &assets.lang,
-            (None, Some(Tag::SystemSinglePlayer)),
+            (
+                MessageSource::SystemClient,
+                None,
+                Some(Tag::SystemSinglePlayer),
+            ),
             &assets.creative.font,
             false,
         );

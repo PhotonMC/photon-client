@@ -3,6 +3,7 @@
 
 use super::game_mode_switcher::debug_feedback;
 use super::*;
+use photon_game::chat_abilities::MessageSource;
 use photon_gui::chat::Tag;
 use photon_world::ClientPlayerGameMode;
 
@@ -143,7 +144,11 @@ impl Controls {
         self.chat_log.add_component(
             &debug_feedback(key),
             &assets.lang,
-            (None, Some(Tag::SystemSinglePlayer)),
+            (
+                MessageSource::SystemClient,
+                None,
+                Some(Tag::SystemSinglePlayer),
+            ),
             &assets.creative.font,
             false,
         );

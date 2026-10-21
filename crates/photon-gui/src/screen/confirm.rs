@@ -63,7 +63,7 @@ pub struct ConfirmScreen {
 }
 
 /// `Font.substrByWidth`: the start of `runs` that fits in `width`.
-fn head_by_width(runs: &[Run], font: &Font, width: i32) -> Vec<Run> {
+pub(crate) fn head_by_width(runs: &[Run], font: &Font, width: i32) -> Vec<Run> {
     let mut left = width as f32;
     let mut head = Vec::new();
     for run in runs {

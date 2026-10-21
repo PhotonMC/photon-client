@@ -65,6 +65,12 @@ impl ChatScreen {
     }
 
     /// Whether the player's permissions allow entity selectors.
+    /// `ChatScreen.init`'s `setRestrictions`: what the player may send.
+    pub fn set_restrictions(&mut self, messages_allowed: bool, commands_allowed: bool) {
+        self.suggest
+            .set_restrictions(messages_allowed, commands_allowed);
+    }
+
     pub fn set_selectors(&mut self, allowed: bool) {
         self.suggest.set_selectors(allowed);
     }
@@ -217,19 +223,7 @@ impl ChatScreen {
         }
         match key {
             Key::Escape => return ChatKey::Close,
-            Key::Enter | Key::KpEnter => {
-                let text = normalize(&self.edit.value());
-                if !text.is_empty() {
-                    if self.history.last() != Some(&text) {
-                        self.history.push(text.clone());
-                        if self.history.len() > MAX_LINES {
-                            self.history.remove(0);
-                        }
-                    }
-                    return ChatKey::Send(text);
-                }
-                return ChatKey::Done;
-            }
+            Key::Enter | Key::KpEnter => return self.enter_pressed(),
             Key::Tab => {}
             Key::Up => self.move_in_history(-1),
             Key::Down => self.move_in_history(1),
@@ -248,6 +242,25 @@ impl ChatScreen {
             }
         }
         ChatKey::None
+    }
+
+    /// Enter: the line is sent when the player may send it, and put in the history.
+    fn enter_pressed(&mut self) -> ChatKey {
+        // `hasAllowedInput`: what may not be sent stays in the box.
+        if !self.suggest.has_allowed_input(&self.edit.value()) {
+            return ChatKey::None;
+        }
+        let text = normalize(&self.edit.value());
+        if text.is_empty() {
+            return ChatKey::Done;
+        }
+        if self.history.last() != Some(&text) {
+            self.history.push(text.clone());
+            if self.history.len() > MAX_LINES {
+                self.history.remove(0);
+            }
+        }
+        ChatKey::Send(text)
     }
 
     /// `charTyped`: a character the chat allows.
@@ -300,13 +313,13 @@ impl ChatScreen {
         frame: &mut GuiFrame,
         atlas: &GuiAtlas,
         mouse: (i32, i32),
-        commands: Option<(&CommandTree, &Lang)>,
+        (commands, lang): (Option<&CommandTree>, &Lang),
     ) {
         let (width, height) = self.size;
         frame.fill(atlas, (2, height - 14, width - 2, height - 2), 0x8000_0000);
         let text = self.edit.value();
         // `updateCommandInfo`: a command is read against the tree.
-        let parsed = self.suggest.parse(&text, commands);
+        let parsed = self.suggest.parse(&text, commands.map(|tree| (tree, lang)));
         // `formatChat`: a restored draft is grey and slanted until it is
         // edited, which comes before the colours of a command.
         let draft = self.draft;
@@ -328,6 +341,6 @@ impl ChatScreen {
             buttons.draw(frame, atlas, &self.font, mouse);
         }
         self.suggest
-            .draw(frame, atlas, mouse, (&mut self.edit, parsed.as_ref()));
+            .draw(frame, atlas, mouse, (&mut self.edit, parsed.as_ref()), lang);
     }
 }

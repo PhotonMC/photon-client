@@ -385,8 +385,13 @@ impl CommandBlockScreen {
             Some(&format),
         );
         self.draw_previous((frame, atlas, font), lang);
-        self.suggest
-            .draw(frame, atlas, mouse, (&mut self.command, parsed.as_ref()));
+        self.suggest.draw(
+            frame,
+            atlas,
+            mouse,
+            (&mut self.command, parsed.as_ref()),
+            lang,
+        );
     }
 
     fn draw_buttons(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {

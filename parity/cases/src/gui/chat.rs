@@ -23,6 +23,8 @@ struct Chat {
     lang_after: Option<&'static str>,
     mouse: Option<(i64, i64)>,
     queued: Option<i64>,
+    restrictions: Option<Vec<&'static str>>,
+    restrictions_after: Option<Vec<&'static str>>,
 }
 
 impl Chat {
@@ -35,26 +37,21 @@ impl Chat {
                 self.deletions.iter().map(|(signature, at)| json!({"delete": signature, "tick": at})).collect();
             row["deletions"] = json!(deletions);
         }
-        if self.focused {
-            row["focused"] = json!(true);
-        }
-        if let Some(scroll) = self.scroll {
-            row["scroll"] = json!(scroll);
-        }
-        if let Some(options) = self.options {
-            row["options"] = options;
-        }
-        if let Some(rescale) = self.rescale {
-            row["rescale"] = rescale;
-        }
-        if let Some(language) = self.lang_after {
-            row["lang_after"] = json!(language);
-        }
-        if let Some((x, y)) = self.mouse {
-            row["mouse"] = json!([x, y]);
-        }
-        if let Some(queued) = self.queued {
-            row["queued"] = json!(queued);
+        let optional = [
+            ("focused", self.focused.then_some(json!(true))),
+            ("scroll", self.scroll.map(|scroll| json!(scroll))),
+            ("options", self.options),
+            ("rescale", self.rescale),
+            ("lang_after", self.lang_after.map(|language| json!(language))),
+            ("mouse", self.mouse.map(|(x, y)| json!([x, y]))),
+            ("queued", self.queued.map(|queued| json!(queued))),
+            ("restrictions", self.restrictions.map(|names| json!(names))),
+            ("restrictions_after", self.restrictions_after.map(|names| json!(names))),
+        ];
+        for (key, value) in optional {
+            if let Some(value) = value {
+                row[key] = value;
+            }
         }
         row
     }
@@ -330,6 +327,58 @@ fn queue_rows() -> Vec<Value> {
     ]
 }
 
+const COMMANDS_ONLY: &str = "CHAT_DISABLED_BY_OPTIONS";
+const HIDDEN: &str = "CHAT_AND_COMMANDS_DISABLED_BY_OPTIONS";
+
+/// What a player's restrictions do to the chat: the line an open chat shows, and the messages of
+/// the kinds they take away.
+fn restricted_rows() -> Vec<Value> {
+    let restricted = |messages: Vec<Value>, restrictions: &[&'static str]| Chat {
+        restrictions: Some(restrictions.to_vec()),
+        ..chat(messages, 3)
+    };
+    let open = |messages: Vec<Value>, restrictions: &[&'static str]| Chat {
+        focused: true,
+        ..restricted(messages, restrictions)
+    };
+    let mixed = || {
+        vec![
+            json!({"text": "from the server", "tick": 0}),
+            json!({"text": "<Steve> hello", "tick": 1, "signature": 1}),
+            json!({"text": "<Alex> hi", "tick": 1, "tag": "system"}),
+        ]
+    };
+    let narrow = |mouse: Option<(i64, i64)>| Chat {
+        options: Some(json!({"width": 0.0})),
+        mouse,
+        ..open(texts(&[("hello", 0)]), &[HIDDEN])
+    };
+    vec![
+        open(Vec::new(), &[COMMANDS_ONLY]).row("restricted-open-empty"),
+        open(texts(&[("hello", 0), ("world", 1)]), &[HIDDEN]).row("restricted-open"),
+        restricted(texts(&[("hello", 0)]), &[HIDDEN]).row("restricted-closed"),
+        Chat { mouse: Some((10, 195)), ..open(Vec::new(), &[HIDDEN]) }.row("restricted-hover-prompt"),
+        Chat { mouse: Some((10, 150)), ..open(Vec::new(), &[HIDDEN]) }.row("restricted-mouse-elsewhere"),
+        narrow(None).row("restricted-narrow-clipped"),
+        narrow(Some((10, 195))).row("restricted-narrow-hover"),
+        Chat {
+            options: Some(json!({"scale": 0.5, "line_spacing": 1.0, "background_opacity": 0.8})),
+            ..open(texts(&[("hello", 0)]), &[COMMANDS_ONLY])
+        }
+        .row("restricted-scaled"),
+        Chat { scroll: Some(2), ..open(numbered(30), &[COMMANDS_ONLY]) }.row("restricted-scrolled"),
+        open(mixed(), &[COMMANDS_ONLY]).row("filter-commands-only"),
+        open(mixed(), &[HIDDEN]).row("filter-hidden"),
+        open(mixed(), &["DISABLED_BY_PROFILE"]).row("filter-profile"),
+        open(mixed(), &["DISABLED_BY_LAUNCHER", COMMANDS_ONLY]).row("filter-launcher"),
+        Chat { restrictions_after: Some(vec![HIDDEN]), ..chat(mixed(), 3) }.row("filter-applied-later"),
+        Chat { restrictions: Some(Vec::new()), restrictions_after: Some(vec![COMMANDS_ONLY]), ..chat(mixed(), 3) }
+            .row("filter-from-none-to-commands-only"),
+        Chat { restrictions_after: Some(Vec::new()), ..restricted(mixed(), &[HIDDEN]) }
+            .row("filter-lifted-keeps-the-unseen-out"),
+    ]
+}
+
 /// A language change words the translatable messages again, and wraps them.
 fn language_rows() -> Vec<Value> {
     let warning = |tick: i64| json!({"key": "options.languageAccuracyWarning", "tick": tick});
@@ -365,6 +414,7 @@ pub fn chat_case() -> Value {
         placed_hover_rows(),
         event_hover_rows(),
         queue_rows(),
+        restricted_rows(),
         language_rows(),
     ]
     .concat();

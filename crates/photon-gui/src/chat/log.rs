@@ -38,6 +38,12 @@ impl ChatLog {
         }
     }
 
+    /// The same chat for a player with these abilities.
+    pub fn with_abilities(mut self, abilities: ChatAbilities) -> Self {
+        self.abilities = abilities;
+        self
+    }
+
     /// The options changed: `rescaleChat` takes the chat back to the bottom
     /// and wraps its messages again for the new width and scale.
     pub fn set_settings(&mut self, settings: ChatSettings, font: &Font) {
@@ -72,7 +78,12 @@ impl ChatLog {
     /// `ChatComponent.addMessage`: the message kept and wrapped, newest
     /// first. A chat that is scrolled back keeps what it shows.
     pub fn add(&mut self, runs: &[Run], font: &Font, focused: bool) {
-        self.add_message(runs, None, None, font, focused);
+        self.add_message(
+            runs,
+            (MessageSource::SystemServer, None, None),
+            font,
+            focused,
+        );
     }
 
     /// `addMessage` of a component, which is worded in `lang` now and again
@@ -81,18 +92,17 @@ impl ChatLog {
         &mut self,
         component: &Component,
         lang: &Lang,
-        (signature, tag): (Option<Vec<u8>>, Option<Tag>),
+        post: (MessageSource, Option<Vec<u8>>, Option<Tag>),
         font: &Font,
         focused: bool,
     ) {
-        self.add_message(
+        if self.add_message(
             &lang.runs(component, &Style::default()),
-            signature,
-            tag,
+            post,
             font,
             focused,
-        );
-        if let Some(message) = self.messages.front_mut() {
+        ) && let Some(message) = self.messages.front_mut()
+        {
             message.source = Some(component.clone());
         }
     }
@@ -108,18 +118,22 @@ impl ChatLog {
         self.rescale(font);
     }
 
-    /// `addMessage` with a signature and a tag.
+    /// `addMessage` with where it came from, a signature and a tag: whether the chat took it,
+    /// which it does not when the player may not see messages of that kind.
     pub fn add_message(
         &mut self,
         runs: &[Run],
-        signature: Option<Vec<u8>>,
-        tag: Option<Tag>,
+        (origin, signature, tag): (MessageSource, Option<Vec<u8>>, Option<Tag>),
         font: &Font,
         focused: bool,
-    ) {
+    ) -> bool {
+        if !self.abilities.shows(origin) {
+            return false;
+        }
         let message = Message {
             runs: runs.to_vec(),
             source: None,
+            origin,
             added: self.ticks,
             signature,
             tag,
@@ -127,6 +141,7 @@ impl ChatLog {
         self.add_to_display(&message, font, focused);
         self.messages.push_front(message);
         self.messages.truncate(MAX_LINES);
+        true
     }
 
     /// `addMessageToDisplayQueue`: the message's lines, the width short of a
@@ -174,6 +189,7 @@ impl ChatLog {
             self.messages[place] = Message {
                 runs: marker.to_vec(),
                 source: None,
+                origin: MessageSource::SystemServer,
                 added: self.messages[place].added,
                 signature: None,
                 tag: Some(Tag::System),
@@ -190,8 +206,22 @@ impl ChatLog {
         self.lines.clear();
         let messages: Vec<Message> = self.messages.iter().rev().cloned().collect();
         for message in &messages {
-            self.add_to_display(message, font, false);
+            if self.abilities.shows(message.origin) {
+                self.add_to_display(message, font, false);
+            }
         }
+    }
+
+    /// `setVisibleMessageFilter`: what the player may see changed; the lines are made again.
+    pub fn set_abilities(&mut self, abilities: ChatAbilities, font: &Font) {
+        if abilities != self.abilities {
+            self.abilities = abilities;
+            self.refresh(font);
+        }
+    }
+
+    pub fn abilities(&self) -> &ChatAbilities {
+        &self.abilities
     }
 
     /// `scrollChat`, in lines.
@@ -225,6 +255,77 @@ impl ChatLog {
         self.draw_with(frame, atlas, font, gui, focused, None, &Lang::default());
     }
 
+    /// `forEachLine`'s first pass: each visible line's background.
+    fn line_backgrounds(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        visible: &[(usize, f32)],
+        (chat_bottom, max_width): (i32, i32),
+    ) {
+        let entry_height = self.entry_height();
+        let background_opacity = self.settings.background_opacity as f32;
+        for &(i, alpha) in visible {
+            let entry_bottom = chat_bottom - i as i32 * entry_height;
+            let background = ((alpha * background_opacity * 255.0) as u32) << 24;
+            frame.fill(
+                atlas,
+                (
+                    -4,
+                    entry_bottom - entry_height,
+                    max_width + 4 + 4,
+                    entry_bottom,
+                ),
+                background,
+            );
+        }
+    }
+
+    /// `forEachLine`'s second pass: each visible line's text and tag. Gives the tag tooltip and
+    /// the style with a hover event the mouse is over, the last one drawn (`hoveredTextStyle`).
+    fn line_texts<'a>(
+        &'a self,
+        (frame, atlas, font, lang): (&mut GuiFrame, &GuiAtlas, &Font, &Lang),
+        visible: &[(usize, f32)],
+        (chat_bottom, text_opacity): (i32, f32),
+        local: Option<(f32, f32)>,
+    ) -> (Option<Vec<Run>>, Option<&'a Style>) {
+        let entry_height = self.entry_height();
+        let spacing = self.settings.line_spacing;
+        // `Math.round`.
+        let entry_bottom_to_message_y =
+            (8.0 * (spacing + 1.0) - 4.0 * spacing + 0.5).floor() as i32;
+        let mut tooltip = None;
+        let mut hovered = None;
+        for &(i, alpha) in visible {
+            let entry_bottom = chat_bottom - i as i32 * entry_height;
+            let entry_top = entry_bottom - entry_height;
+            let text_top = entry_bottom - entry_bottom_to_message_y;
+            let opacity = alpha * text_opacity;
+            let text = ((opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
+            let line = &self.lines[i + self.scroll];
+            frame.styled_text(atlas, font, &line.runs, 0, text_top, text, true);
+            if let Some(point) = local
+                && let Some(style) =
+                    crate::text_hit::style_under(font, &line.runs, (0, text_top), point)
+                && style.hover.is_some()
+            {
+                hovered = Some(style);
+            }
+            let Some(tag) = &line.tag else {
+                continue;
+            };
+            let spot = TagSpot {
+                rows: (entry_top, entry_bottom),
+                text_top,
+                opacity,
+                local,
+            };
+            tooltip = tag_overlay(frame, (atlas, font, lang), (&line.runs, tag), &spot).or(tooltip);
+        }
+        (tooltip, hovered)
+    }
+
     /// [`Self::draw`] with the mouse, for the tooltip of a tag it is over.
     /// Everything is drawn in the chat's own units, under a pose that scales
     /// by the option and moves 4 right.
@@ -247,12 +348,6 @@ impl ChatLog {
         let max_width = (width_of(self.settings.width) as f32 / scale).ceil() as i32;
         let chat_bottom = ((gui_height - BOTTOM_MARGIN) as f32 / scale).floor() as i32;
         let text_opacity = self.settings.opacity as f32 * 0.9 + 0.1;
-        let background_opacity = self.settings.background_opacity as f32;
-        let spacing = self.settings.line_spacing;
-        let entry_height = self.entry_height();
-        // `Math.round`.
-        let entry_bottom_to_message_y =
-            (8.0 * (spacing + 1.0) - 4.0 * spacing + 0.5).floor() as i32;
         let per_page = self.lines_per_page(focused);
         let shown = self.lines.len().saturating_sub(self.scroll).min(per_page);
         // `forEachLine`: from the oldest of the page to the newest, the ones
@@ -269,53 +364,21 @@ impl ChatLog {
                 (alpha > 1.0e-5).then_some((i, alpha))
             })
             .collect();
-        for &(i, alpha) in &visible {
-            let entry_bottom = chat_bottom - i as i32 * entry_height;
-            let background = ((alpha * background_opacity * 255.0) as u32) << 24;
-            frame.fill(
-                atlas,
-                (
-                    -4,
-                    entry_bottom - entry_height,
-                    max_width + 4 + 4,
-                    entry_bottom,
-                ),
-                background,
-            );
-        }
+        self.line_backgrounds(frame, atlas, &visible, (chat_bottom, max_width));
         self.queue_background(frame, atlas, chat_bottom);
+        self.prompt_background(
+            frame,
+            atlas,
+            (chat_bottom, visible.len()),
+            (max_width, focused),
+        );
         let local = mouse.map(|mouse| pose_undone(scale, mouse));
-        let mut tooltip = None;
-        // The style with a hover event that the mouse is over, the last one
-        // drawn (`hoveredTextStyle`).
-        let mut hovered: Option<&Style> = None;
-        for &(i, alpha) in &visible {
-            let entry_bottom = chat_bottom - i as i32 * entry_height;
-            let entry_top = entry_bottom - entry_height;
-            let text_top = entry_bottom - entry_bottom_to_message_y;
-            let opacity = alpha * text_opacity;
-            let text = ((opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
-            let line = &self.lines[i + self.scroll];
-            frame.styled_text(atlas, font, &line.runs, 0, text_top, text, true);
-            if let Some(point) = local
-                && focused
-                && let Some(style) =
-                    crate::text_hit::style_under(font, &line.runs, (0, text_top), point)
-                && style.hover.is_some()
-            {
-                hovered = Some(style);
-            }
-            let Some(tag) = &line.tag else {
-                continue;
-            };
-            let spot = TagSpot {
-                rows: (entry_top, entry_bottom),
-                text_top,
-                opacity,
-                local: local.filter(|_| focused),
-            };
-            tooltip = tag_overlay(frame, (atlas, font, lang), (&line.runs, tag), &spot).or(tooltip);
-        }
+        let (tooltip, mut hovered) = self.line_texts(
+            (frame, atlas, font, lang),
+            &visible,
+            (chat_bottom, text_opacity),
+            local.filter(|_| focused),
+        );
         let queue_hover = self.queue_text(
             (frame, atlas, font, lang),
             (chat_bottom, text_opacity),
@@ -323,6 +386,18 @@ impl ChatLog {
         );
         if queue_hover.is_some() {
             hovered = queue_hover.as_ref();
+        }
+        let prompt_hover = self.prompt_text(
+            (frame, atlas, font, lang),
+            (chat_bottom, visible.len(), max_width),
+            (text_opacity, local.filter(|_| focused)),
+            focused,
+        );
+        if prompt_hover
+            .as_ref()
+            .is_some_and(|style| style.hover.is_some())
+        {
+            hovered = prompt_hover.as_ref();
         }
         self.scroll_bar(
             frame,
@@ -381,6 +456,11 @@ impl ChatLog {
             )
         {
             found = Some(style.clone());
+        }
+        let max_width = (width_of(self.settings.width) as f32 / scale).ceil() as i32;
+        if let Some(style) = self.prompt_style((font, lang), (chat_bottom, shown, max_width), point)
+        {
+            found = Some(style);
         }
         found
     }

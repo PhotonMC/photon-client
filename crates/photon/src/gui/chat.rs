@@ -1,4 +1,5 @@
 use super::*;
+use photon_game::chat_abilities::MessageSource;
 
 impl Gui {
     /// The chat's messages are worded in the language now loaded.
@@ -83,7 +84,7 @@ impl Gui {
         log.add_component(
             &shown,
             &self.lang,
-            (packet.signature.clone(), tag),
+            (MessageSource::Player, packet.signature.clone(), tag),
             &self.font,
             focused,
         );
@@ -108,7 +109,11 @@ impl Gui {
         log.add_component(
             &decorated,
             &self.lang,
-            (None, Some(photon_gui::chat::Tag::Error)),
+            (
+                MessageSource::Player,
+                None,
+                Some(photon_gui::chat::Tag::Error),
+            ),
             &self.font,
             focused,
         );
@@ -124,7 +129,11 @@ impl Gui {
         log.add_component(
             content,
             &self.lang,
-            (None, Some(photon_gui::chat::Tag::SystemSinglePlayer)),
+            (
+                MessageSource::SystemClient,
+                None,
+                Some(photon_gui::chat::Tag::SystemSinglePlayer),
+            ),
             &self.font,
             focused,
         );
@@ -150,13 +159,7 @@ impl Gui {
                     let runs = self.lang.runs(&content, &Style::default());
                     self.titles.set_overlay(runs);
                 }
-                ChatEvent::System { content, .. } => log.add_component(
-                    &content,
-                    &self.lang,
-                    (None, Some(photon_gui::chat::Tag::SystemSinglePlayer)),
-                    &self.font,
-                    view.focused,
-                ),
+                ChatEvent::System { content, .. } => self.show_system(&content, log, view.focused),
                 // `handleDeleteChat`: a message still waiting is dropped from the queue.
                 ChatEvent::Delete(signature) => {
                     if !self.chat_queue.remove(&signature) {
@@ -245,6 +248,61 @@ impl Gui {
         processed
     }
 
+    /// `handleSystemMessage`: left out where the player may not see system messages.
+    fn show_system(
+        &self,
+        content: &photon_game::text::Component,
+        log: &mut ChatLog,
+        focused: bool,
+    ) {
+        if !log.abilities().can_receive_system_messages() {
+            return;
+        }
+        log.add_component(
+            content,
+            &self.lang,
+            (
+                MessageSource::SystemServer,
+                None,
+                Some(photon_gui::chat::Tag::SystemSinglePlayer),
+            ),
+            &self.font,
+            focused,
+        );
+    }
+
+    /// A signed player message: whether it set the chat clock, with the message noted for the
+    /// server.
+    fn show_player(
+        &self,
+        packet: photon_net::connection::PlayerChatPacket,
+        (sender_known, sender_is_local): (bool, bool),
+        (log, view): (&mut ChatLog, ChatView<'_>),
+        processed: &mut Vec<(Vec<u8>, bool)>,
+    ) -> bool {
+        let signature = packet.signature.clone();
+        // `Minecraft.isBlocked`: what a player the local player hid says is not shown
+        // (the local player's own words always are).
+        let hidden = !sender_is_local
+            && view.hidden.contains(&photon_core::binary::Uuid::new(
+                packet.sender.0,
+                packet.sender.1,
+            ));
+        let allowed = log.abilities().can_receive_player_messages();
+        let shown = if hidden || !allowed {
+            false
+        } else if sender_known {
+            self.show_player_chat(packet, sender_is_local, log, view.focused)
+        } else {
+            // `handleChatMessageError`: shown as an error, and not as a message.
+            self.show_chat_error(&packet.bound, log, view.focused);
+            false
+        };
+        processed.extend(signature.map(|signature| (signature, shown)));
+        // The error line sets the clock as a shown message does.
+        shown || (!hidden && allowed && !sender_known)
+    }
+
     /// A player's or a disguised message shown, or left out for a hidden player: whether it was
     /// shown, with a signed player message noted for the server.
     fn show_chat(
@@ -256,12 +314,13 @@ impl Gui {
     ) -> bool {
         use photon_gui::chat::Tag;
         match event {
+            ChatEvent::Disguised { .. } if !log.abilities().can_receive_player_messages() => false,
             ChatEvent::Disguised { content, bound } => {
                 let decorated = self.decorate(content, &bound);
                 log.add_component(
                     &decorated,
                     &self.lang,
-                    (None, Some(Tag::System)),
+                    (MessageSource::Player, None, Some(Tag::System)),
                     &self.font,
                     view.focused,
                 );
@@ -271,28 +330,12 @@ impl Gui {
                 packet,
                 sender_known,
                 sender_is_local,
-            } => {
-                let signature = packet.signature.clone();
-                // `Minecraft.isBlocked`: what a player the local player hid says is not shown
-                // (the local player's own words always are).
-                let hidden = !sender_is_local
-                    && view.hidden.contains(&photon_core::binary::Uuid::new(
-                        packet.sender.0,
-                        packet.sender.1,
-                    ));
-                let shown = if hidden {
-                    false
-                } else if sender_known {
-                    self.show_player_chat(packet, sender_is_local, log, view.focused)
-                } else {
-                    // `handleChatMessageError`: shown as an error, and not as a message.
-                    self.show_chat_error(&packet.bound, log, view.focused);
-                    false
-                };
-                processed.extend(signature.map(|signature| (signature, shown)));
-                // The error line sets the clock as a shown message does.
-                shown || (!hidden && !sender_known)
-            }
+            } => self.show_player(
+                packet,
+                (sender_known, sender_is_local),
+                (log, view),
+                processed,
+            ),
             ChatEvent::System { .. } | ChatEvent::Delete(_) => false,
         }
     }

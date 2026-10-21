@@ -46,6 +46,26 @@ pub fn format_text(parse: &ParseResults, text: &str, offset: usize) -> Vec<(Stri
     parts
 }
 
+/// `CommandSuggestions.hasMessageArguments`: whether the command read has a message in it
+/// (`minecraft:message`, which the tree keeps as the rest of the text).
+pub fn has_message_arguments(tree: &CommandTree, parse: &ParseResults) -> bool {
+    let mut context = Some(&parse.context);
+    while let Some(each) = context {
+        let found = each.nodes.iter().any(|(node, _)| {
+            matches!(
+                &tree.node(*node).kind,
+                NodeKind::Argument { name, kind: super::ArgumentKind::Greedy }
+                    if each.arguments.iter().any(|(read, _)| read == name)
+            )
+        });
+        if found {
+            return true;
+        }
+        context = each.child.as_deref();
+    }
+    false
+}
+
 /// `getExceptionMessage`.
 fn exception_line(error: &super::CommandSyntaxException) -> Component {
     match error.context_text() {

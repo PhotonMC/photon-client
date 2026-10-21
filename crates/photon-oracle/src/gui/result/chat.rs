@@ -1,7 +1,102 @@
 use super::*;
 use photon_gui::FrameRuns;
 
+use photon_game::chat_abilities::{ChatAbilities, ChatRestriction, MessageSource};
 use photon_gui::chat::{ChatLog, ChatSettings};
+
+/// The abilities a row's restriction names leave.
+fn abilities(names: &Value) -> Result<ChatAbilities, String> {
+    names
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|name| match name.as_str() {
+            Some("CHAT_AND_COMMANDS_DISABLED_BY_OPTIONS") => {
+                Ok(ChatRestriction::ChatAndCommandsDisabledByOptions)
+            }
+            Some("CHAT_DISABLED_BY_OPTIONS") => Ok(ChatRestriction::ChatDisabledByOptions),
+            Some("DISABLED_BY_LAUNCHER") => Ok(ChatRestriction::DisabledByLauncher),
+            Some("DISABLED_BY_PROFILE") => Ok(ChatRestriction::DisabledByProfile),
+            other => Err(format!("restriction {other:?}")),
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(ChatAbilities::of)
+}
+
+/// The command tree of the reference's player: nothing in it, or the one command `say`, which
+/// takes a message.
+fn commands_of(say: bool) -> photon_game::commands::CommandTree {
+    use photon_game::commands::{ArgumentKind, CommandTree, NodeKind, NodeStub};
+    let stub = |kind, children: Vec<usize>, executable| NodeStub {
+        kind,
+        children,
+        redirect: None,
+        executable,
+        custom_suggestions: false,
+        type_id: 0,
+    };
+    let mut nodes = vec![stub(NodeKind::Root, Vec::new(), false)];
+    if say {
+        nodes[0].children = vec![1];
+        nodes.push(stub(NodeKind::Literal("say".into()), vec![2], false));
+        let message = NodeKind::Argument {
+            name: "message".into(),
+            kind: ArgumentKind::Greedy,
+        };
+        nodes.push(stub(message, Vec::new(), true));
+    }
+    CommandTree::build(nodes, 0).expect("a tree of nodes")
+}
+
+/// The chat options a row sets, before the messages and again after them (which wraps them anew).
+fn chat_settings(options: &Value, base: ChatSettings) -> ChatSettings {
+    let option = |key: &str, default: f64| options[key].as_f64().unwrap_or(default);
+    ChatSettings {
+        scale: option("scale", base.scale),
+        opacity: option("opacity", base.opacity),
+        width: option("width", base.width),
+        height_focused: option("height_focused", base.height_focused),
+        height_unfocused: option("height_unfocused", base.height_unfocused),
+        line_spacing: option("line_spacing", base.line_spacing),
+        background_opacity: option("background_opacity", base.background_opacity),
+    }
+}
+
+/// The text a message event carries: a translation key, a JSON component or plain text.
+fn event_component(event: &Value) -> Result<photon_game::text::Component, String> {
+    use photon_game::text::Component;
+    if let Some(key) = event["key"].as_str() {
+        return Ok(Component::translatable(key));
+    }
+    if let Some(json) = event["json"].as_str() {
+        let parsed = photon_core::json::parse(json).map_err(|error| format!("{error:?}"))?;
+        return Component::from_json(&parsed).ok_or_else(|| "component".to_owned());
+    }
+    Ok(Component::literal(event["text"].as_str().ok_or("text")?))
+}
+
+/// The tag a message event names and where it came from: a message with neither a tag nor a
+/// signature is the server's system message.
+fn event_origin(event: &Value, signed: bool) -> (MessageSource, Option<photon_gui::chat::Tag>) {
+    use photon_gui::chat::Tag;
+    let tag = match event["tag"].as_str() {
+        None if !signed => Some(Tag::SystemSinglePlayer),
+        None => None,
+        Some("system") => Some(Tag::System),
+        Some("system_single_player") => Some(Tag::SystemSinglePlayer),
+        Some("not_secure") => Some(Tag::NotSecure),
+        Some("error") => Some(Tag::Error),
+        Some(other) => Some(Tag::Modified(
+            other.trim_start_matches("modified:").to_owned(),
+        )),
+    };
+    let origin = if event["tag"].is_null() && !signed {
+        MessageSource::SystemServer
+    } else {
+        MessageSource::Player
+    };
+    (origin, tag)
+}
 
 pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
@@ -13,28 +108,11 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::chat::Tag;
     let mut log = ChatLog::default();
-    // The chat options a row sets, before the messages and again
-    // after them (which wraps them anew).
-    let settings = |options: &Value, base: ChatSettings| ChatSettings {
-        scale: options["scale"].as_f64().unwrap_or(base.scale),
-        opacity: options["opacity"].as_f64().unwrap_or(base.opacity),
-        width: options["width"].as_f64().unwrap_or(base.width),
-        height_focused: options["height_focused"]
-            .as_f64()
-            .unwrap_or(base.height_focused),
-        height_unfocused: options["height_unfocused"]
-            .as_f64()
-            .unwrap_or(base.height_unfocused),
-        line_spacing: options["line_spacing"]
-            .as_f64()
-            .unwrap_or(base.line_spacing),
-        background_opacity: options["background_opacity"]
-            .as_f64()
-            .unwrap_or(base.background_opacity),
-    };
-    log.set_settings(settings(&row["options"], log.settings()), font);
+    log.set_settings(chat_settings(&row["options"], log.settings()), font);
+    if row["restrictions"].is_array() {
+        log.set_abilities(abilities(&row["restrictions"])?, font);
+    }
     let lang = photon_game::text::Lang::load(root);
     let marker_style = photon_game::text::Style {
         colour: photon_game::text::named_colour("gray"),
@@ -66,28 +144,10 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
             log.delete(&signature(id), font, &marker);
             continue;
         }
-        let component = match event["key"].as_str() {
-            Some(key) => photon_game::text::Component::translatable(key),
-            None if event["json"].is_string() => photon_game::text::Component::from_json(
-                &photon_core::json::parse(event["json"].as_str().unwrap_or_default())
-                    .map_err(|error| format!("{error:?}"))?,
-            )
-            .ok_or("component")?,
-            None => photon_game::text::Component::literal(event["text"].as_str().ok_or("text")?),
-        };
+        let component = event_component(event)?;
         let sig = event["signature"].as_u64().map(signature);
-        let tag = match event["tag"].as_str() {
-            None if sig.is_none() => Some(Tag::SystemSinglePlayer),
-            None => None,
-            Some("system") => Some(Tag::System),
-            Some("system_single_player") => Some(Tag::SystemSinglePlayer),
-            Some("not_secure") => Some(Tag::NotSecure),
-            Some("error") => Some(Tag::Error),
-            Some(other) => Some(Tag::Modified(
-                other.trim_start_matches("modified:").to_owned(),
-            )),
-        };
-        log.add_component(&component, &lang, (sig, tag), font, false);
+        let (origin, tag) = event_origin(event, sig.is_some());
+        log.add_component(&component, &lang, (origin, sig, tag), font, false);
     }
     while log.ticks() < row["tick"].as_u64().unwrap_or(0) {
         log.tick(font, &marker);
@@ -101,7 +161,10 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         log.set_lang(&source.lang(code), font);
     }
     if row["rescale"].is_object() {
-        log.set_settings(settings(&row["rescale"], log.settings()), font);
+        log.set_settings(chat_settings(&row["rescale"], log.settings()), font);
+    }
+    if row["restrictions_after"].is_array() {
+        log.set_abilities(abilities(&row["restrictions_after"])?, font);
     }
     let focused = row["focused"].as_bool().unwrap_or(false);
     log.set_queue_size(row["queued"].as_u64().unwrap_or(0));
@@ -127,11 +190,65 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
     }))
 }
 
+/// The key a suggestion row presses, and whether Shift is down.
+fn suggestion_key(name: &str) -> Result<(glfw::Key, bool), String> {
+    match name {
+        "tab" => Ok((glfw::Key::Tab, false)),
+        "shift+tab" => Ok((glfw::Key::Tab, true)),
+        "up" => Ok((glfw::Key::Up, false)),
+        "down" => Ok((glfw::Key::Down, false)),
+        "escape" => Ok((glfw::Key::Escape, false)),
+        _ => Err("unknown key".into()),
+    }
+}
+
+/// The key a draft row presses.
+fn draft_key(name: &str) -> Result<glfw::Key, String> {
+    Ok(match name {
+        "backspace" => glfw::Key::Backspace,
+        "left" => glfw::Key::Left,
+        "right" => glfw::Key::Right,
+        "home" => glfw::Key::Home,
+        "end" => glfw::Key::End,
+        "delete" => glfw::Key::Delete,
+        "up" => glfw::Key::Up,
+        "down" => glfw::Key::Down,
+        "enter" => glfw::Key::Enter,
+        other => return Err(format!("unknown key {other}")),
+    })
+}
+
+fn close_reason(name: &str) -> photon_gui::chat::ExitReason {
+    use photon_gui::chat::ExitReason;
+    match name {
+        "intentional" => ExitReason::Intentional,
+        "interrupted" => ExitReason::Interrupted,
+        _ => ExitReason::Done,
+    }
+}
+
+/// The ops a chat box draws, focused, with the command tree.
+fn draw_box(
+    screen: &mut photon_gui::chat::ChatScreen,
+    atlas: &GuiAtlas,
+    tree: &photon_game::commands::CommandTree,
+    lang: &photon_game::text::Lang,
+) -> Vec<Value> {
+    let mut drawn = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    screen.refocus();
+    screen.draw(&mut drawn, atlas, (0, 0), (Some(tree), lang));
+    gui_ops(&drawn.log.take().unwrap_or_default())
+}
+
 pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     use photon_gui::chat::ChatScreen;
+    let lang = photon_game::text::Lang::load(root);
     let width = int("width");
     let height = int("height");
     let text = row["text"].as_str().ok_or("text")?;
@@ -165,14 +282,7 @@ pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
     let mut steps = Vec::new();
     for key in keys {
         if !key.is_empty() {
-            let (glfw_key, shift) = match key.as_str() {
-                "tab" => (glfw::Key::Tab, false),
-                "shift+tab" => (glfw::Key::Tab, true),
-                "up" => (glfw::Key::Up, false),
-                "down" => (glfw::Key::Down, false),
-                "escape" => (glfw::Key::Escape, false),
-                _ => return Err("unknown key".into()),
-            };
+            let (glfw_key, shift) = suggestion_key(&key)?;
             screen.key_pressed(glfw_key, (false, shift), &mut NoClipboard);
         }
         let mut drawn = GuiFrame {
@@ -180,7 +290,7 @@ pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
             ..GuiFrame::default()
         };
         screen.refocus();
-        screen.draw(&mut drawn, atlas, (0, 0), None);
+        screen.draw(&mut drawn, atlas, (0, 0), (None, &lang));
         steps.push(json!({
             "key": key,
             "value": screen.value(),
@@ -220,10 +330,13 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let root = &ctx.root;
     let atlas = &ctx.atlas;
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    use photon_gui::chat::{ChatDrafts, ChatMethod, ChatScreen, ExitReason};
+    use photon_gui::chat::{ChatDrafts, ChatMethod, ChatScreen};
     let (width, height) = (int("width"), int("height"));
     let save = row["save"].as_bool().unwrap_or(false);
     let font = std::sync::Arc::new(Font::load(root).ok_or("font")?);
+    let lang = photon_game::text::Lang::load(root);
+    let allowed = abilities(&row["restrictions"])?;
+    let say = row["say"].as_bool().unwrap_or(false);
     let mut drafts = ChatDrafts::default();
     let mut screen: Option<ChatScreen> = None;
     let mut events = Vec::new();
@@ -231,7 +344,11 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
         let mut entry = json!({"do": event["do"]});
         match event["do"].as_str().unwrap_or_default() {
             "open" => {
-                let opened = open_draft_screen(event, &mut drafts, &font, (width, height), root);
+                let mut opened =
+                    open_draft_screen(event, &mut drafts, &font, (width, height), root);
+                opened.set_restrictions(allowed.can_send_messages(), allowed.can_send_commands());
+                // The reference's player has a command dispatcher with no commands in it.
+                opened.set_commands(Some(std::sync::Arc::new(commands_of(say))));
                 screen = Some(opened);
             }
             "type" => {
@@ -240,17 +357,7 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
                 }
             }
             "key" => {
-                let key = match event["key"].as_str().unwrap_or_default() {
-                    "backspace" => glfw::Key::Backspace,
-                    "left" => glfw::Key::Left,
-                    "right" => glfw::Key::Right,
-                    "home" => glfw::Key::Home,
-                    "end" => glfw::Key::End,
-                    "delete" => glfw::Key::Delete,
-                    "up" => glfw::Key::Up,
-                    "down" => glfw::Key::Down,
-                    other => return Err(format!("unknown key {other}")),
-                };
+                let key = draft_key(event["key"].as_str().unwrap_or_default())?;
                 screen
                     .as_mut()
                     .ok_or("no box")?
@@ -258,22 +365,12 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
             }
             "close" => {
                 let closed = screen.take().ok_or("no box")?;
-                let reason = match event["reason"].as_str().unwrap_or_default() {
-                    "intentional" => ExitReason::Intentional,
-                    "interrupted" => ExitReason::Interrupted,
-                    _ => ExitReason::Done,
-                };
+                let reason = close_reason(event["reason"].as_str().unwrap_or_default());
                 drafts.removed(&closed.value(), closed.is_draft(), reason, save);
             }
             "draw" => {
-                let mut drawn = GuiFrame {
-                    log: Some(Vec::new()),
-                    ..GuiFrame::default()
-                };
                 let shown = screen.as_mut().ok_or("no box")?;
-                shown.refocus();
-                shown.draw(&mut drawn, atlas, (0, 0), None);
-                entry["ops"] = json!(gui_ops(&drawn.log.take().unwrap_or_default()));
+                entry["ops"] = json!(draw_box(shown, atlas, &commands_of(say), &lang));
             }
             other => return Err(format!("unknown event {other}")),
         }

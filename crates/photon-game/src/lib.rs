@@ -2,6 +2,7 @@
 
 pub mod advancements;
 pub mod chat;
+pub mod chat_abilities;
 pub mod commands;
 pub mod dialog;
 pub mod game_mode;

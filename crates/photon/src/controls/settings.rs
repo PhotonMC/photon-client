@@ -87,6 +87,8 @@ impl Controls {
         options.chat_height_unfocused = choices.settings.height_unfocused;
         self.chat_log
             .set_settings(choices.settings, &assets.creative.font);
+        self.chat_log
+            .set_abilities(chat_abilities(&self.options), &assets.creative.font);
     }
 
     /// An event for the open chat settings.
