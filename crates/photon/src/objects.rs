@@ -10,6 +10,7 @@ pub(crate) mod dropped_items;
 pub(crate) mod end_crystals;
 pub(crate) mod falling_blocks;
 pub(crate) mod fishing_hooks;
+pub(crate) mod flames;
 pub(crate) mod item_frames;
 pub(crate) mod leashes;
 pub(crate) mod lightning_bolts;

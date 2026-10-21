@@ -245,6 +245,7 @@ pub fn world_items(
         items,
     );
     block_entity_items(session, layers, (renderer, tints), view, items);
+    super::flames::flames(session, renderer, view, items);
     displays::displays(
         session,
         &mut layers.displays,

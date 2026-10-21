@@ -49,6 +49,30 @@ pub const fn serializer_named(name: &str) -> i32 {
     panic!("the entity data serializer registry has no such name");
 }
 
+/// The types registered with `fireImmune` (`EntityType.fireImmune`): they never burn.
+const FIRE_IMMUNE: [&str; 15] = [
+    "minecraft:area_effect_cloud",
+    "minecraft:blaze",
+    "minecraft:ender_dragon",
+    "minecraft:end_crystal",
+    "minecraft:ghast",
+    "minecraft:magma_cube",
+    "minecraft:shulker",
+    "minecraft:strider",
+    "minecraft:tnt",
+    "minecraft:vex",
+    "minecraft:warden",
+    "minecraft:wither",
+    "minecraft:wither_skeleton",
+    "minecraft:zoglin",
+    "minecraft:zombified_piglin",
+];
+
+/// `EntityType.fireImmune` of the type with this id.
+pub fn fire_immune(id: EntityTypeId) -> bool {
+    name(id).is_some_and(|name| FIRE_IMMUNE.contains(&name))
+}
+
 /// A pig or cow variant of the data pack: the textures (`entity/pig/pig_cold`
 /// with its namespace) and the model family it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

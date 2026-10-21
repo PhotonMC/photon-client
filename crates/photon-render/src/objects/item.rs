@@ -184,7 +184,7 @@ pub fn apply_display_transform(pose: &mut Pose, layer: &ItemLayer, left_hand: bo
 
 /// `minecraft_mix_light` with the level's two lights, which the entity
 /// shader applies to a face's normal.
-fn entity_light(normal: [f32; 3]) -> f32 {
+pub(crate) fn entity_light(normal: [f32; 3]) -> f32 {
     let light = |direction: [f32; 3]| {
         let direction = normalize(direction);
         (direction[0] * normal[0] + direction[1] * normal[1] + direction[2] * normal[2]).max(0.0)

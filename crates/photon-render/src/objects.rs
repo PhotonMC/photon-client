@@ -5,6 +5,7 @@ pub mod crystal_beam;
 pub mod display;
 pub mod dragon_rays;
 pub mod fishing;
+pub mod flame;
 pub mod guardian_beam;
 pub mod item;
 pub mod item_frame;

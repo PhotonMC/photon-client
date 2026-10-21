@@ -246,6 +246,21 @@ impl ClientEntity {
         self.spectator
     }
 
+    /// `Entity.isOnFire` on the client: the shared flag, for a type that can burn (a heart-bound
+    /// creaking cannot). Not carried: an item whose stack resists fire.
+    pub fn is_burning(&self) -> bool {
+        self.is_on_fire()
+            && !photon_data::entity_type::fire_immune(self.type_id)
+            && !self
+                .creaking()
+                .is_some_and(|creaking| creaking.is_heart_bound())
+    }
+
+    /// `Entity.displayFireAnimation`: the flames a burning entity wears, except for a spectator.
+    pub fn displays_fire(&self) -> bool {
+        self.is_burning() && !self.is_spectator()
+    }
+
     pub fn is_invisible(&self) -> bool {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_INVISIBLE)
     }
