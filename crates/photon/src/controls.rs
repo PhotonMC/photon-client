@@ -412,6 +412,7 @@ pub struct DebugKeys {
     /// The machine the system entry names, taken from the backend.
     pub system: Option<photon_gui::hud::debug::SystemSpecs>,
     pub memory: crate::system_info::MemorySampler,
+    pub gpu: crate::gpu_meter::GpuMeter,
 }
 
 impl DebugKeys {

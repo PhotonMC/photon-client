@@ -4,6 +4,7 @@ mod bench;
 mod controls;
 mod equipment;
 mod frame_limiter;
+mod gpu_meter;
 mod gui;
 mod hud_input;
 mod logger;

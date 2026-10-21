@@ -22,6 +22,10 @@ impl Play {
                 self.backend.description().present_mode.as_raw(),
             ),
         };
+        self.controls.debug.gpu.frame(
+            self.backend.gpu_timings().map(|timings| timings.scene_ms),
+            Instant::now(),
+        );
         self.controls.debug.memory.update(Instant::now());
         // `Minecraft.pauseIfInactive`.
         self.controls
