@@ -16,7 +16,7 @@ pub(super) fn remote_humanoids(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(kind) = models.humanoids.get(&entity.type_id).copied() else {
             continue;
         };
@@ -79,7 +79,7 @@ pub(super) fn remote_humanoids(
                 hands.collect(held);
                 skull = hands.skull();
             }
-            vertices.extend(mob_vertices(model, &placement, rect));
+            vertices.extend(visible_body(entity, model, (&placement, rect)));
         }
         vertices.extend(armor.skull_vertices(
             skull,
@@ -174,7 +174,8 @@ pub(super) fn profession_layers(
     placement: &MobPlacement,
     vertices: &mut Vec<Vertex>,
 ) {
-    let Some(folder) = kind.profession_folder else {
+    // `VillagerProfessionLayer` draws nothing over an invisible body.
+    let Some(folder) = kind.profession_folder.filter(|_| !entity.is_invisible()) else {
         return;
     };
     for pass in villagers::profession_layer(entity, folder, baby) {
@@ -357,4 +358,17 @@ pub(super) fn pose_humanoid(
 pub(crate) fn is_item(stack: &photon_world::ClientItemStackState, name: &str) -> bool {
     photon_data::item::registry::index(name)
         .is_some_and(|index| usize::try_from(stack.item_registry_id().0) == Ok(index))
+}
+
+/// `LivingEntityRenderer.isBodyVisible`: an invisible mob's model, and the clothing layers drawn
+/// with it, are left out.
+fn visible_body(
+    entity: &photon_world::ClientEntity,
+    model: &MobModel,
+    (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
+) -> Vec<Vertex> {
+    if entity.is_invisible() {
+        return Vec::new();
+    }
+    mob_vertices(model, placement, rect)
 }
