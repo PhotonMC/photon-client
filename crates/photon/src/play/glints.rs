@@ -25,6 +25,7 @@ impl Play {
                 .item_tags()
                 .clone(),
             quick_charge: crate::equipment::crossbow::quick_charge_id(&self.session),
+            trim_materials: self.armor.trim_materials(),
         }
     }
 }

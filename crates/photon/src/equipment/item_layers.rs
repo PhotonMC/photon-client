@@ -20,6 +20,8 @@ pub struct ItemLayerCache {
     glint: Glint,
     /// The quick charge enchantment's registry id, for a crossbow's charge time.
     quick_charge: Option<i32>,
+    /// The server's trim materials, in the order a `trim` component numbers them.
+    trim_materials: std::sync::Arc<Vec<String>>,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -44,6 +46,8 @@ pub struct GlintFrame {
     pub tags: std::sync::Arc<photon_world::block::tags::ItemTags>,
     /// The registry id of the quick charge enchantment, which sets a crossbow's charge time.
     pub quick_charge: Option<i32>,
+    /// The server's trim materials, in the order a `trim` component numbers them.
+    pub trim_materials: std::sync::Arc<Vec<String>>,
 }
 
 /// `CuboidItemModelWrapper.hasSpecialAnimatedTexture`: the clock and the items of the compasses
@@ -79,6 +83,7 @@ impl ItemLayerCache {
             blocks: std::collections::HashMap::new(),
             glint: Glint::default(),
             quick_charge: None,
+            trim_materials: std::sync::Arc::default(),
         }
     }
 
@@ -88,6 +93,7 @@ impl ItemLayerCache {
         self.glint.moving = frame.texture.map(|texture| (frame.matrix, texture));
         self.glint.tags = Some(frame.tags.clone());
         self.quick_charge = frame.quick_charge;
+        self.trim_materials = frame.trim_materials.clone();
     }
 
     /// `ItemFeatureRenderer.prepareFoilSubmit`: the glint over the triangles a stack drew, if it
@@ -187,6 +193,15 @@ impl ItemLayerCache {
         super::crossbow::charge_duration(self.quick_charge, stack)
     }
 
+    /// The key of the material of a stack's trim (`TrimMaterialProperty`), if it has one.
+    fn trim_material(&self, stack: &ClientItemStackState) -> Option<&'static str> {
+        let id =
+            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+                .trim_material()?;
+        let name = self.trim_materials.get(usize::try_from(id).ok()?)?;
+        Some(photon_render::item_model::intern_key(name))
+    }
+
     /// What the item models read of a stack: the ticks it was used for and what a crossbow holds.
     fn item_state(&self, stack: &ClientItemStackState, ticks: Option<i32>) -> ItemState {
         ItemState {
@@ -197,6 +212,7 @@ impl ItemLayerCache {
             charge: super::crossbow::charge_type(stack),
             broken: stack.breaks_on_next_damage(),
             selected: photon_game::menus::container::bundle_selected_item(stack),
+            trim_material: self.trim_material(stack),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
                 lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
@@ -229,6 +245,8 @@ impl ItemLayerCache {
         } else {
             renderer.item_branches(item, context, state)
         };
+        // The trim's key comes from the registry, which the patch alone does not name.
+        branches.extend(state.trim_material.map(str::as_bytes).unwrap_or_default());
         // The selected contents decide the nested layers, and the selection is not in the patch.
         let selected = photon_game::menus::container::bundle_selected_stack(stack);
         let selected_state = selected.as_ref().map(|inner| self.item_state(inner, None));

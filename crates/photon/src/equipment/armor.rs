@@ -85,7 +85,7 @@ pub struct Armor {
     /// The trim patterns and materials of the data pack, and the order the server named them in
     /// (a `trim` component holds registry numbers).
     trims: TrimData,
-    trim_names: Option<(Vec<String>, Vec<String>)>,
+    trim_names: Option<(Vec<String>, std::sync::Arc<Vec<String>>)>,
     /// The glints of the enchanted pieces drawn since they were last taken
     /// (`RenderTypes.armorEntityGlint`), for the renderer's glint pass.
     pub glint: Vec<Vertex>,
@@ -147,7 +147,14 @@ impl Armor {
 
     /// The server's trim patterns and materials, in the order a `trim` component numbers them.
     pub fn set_trim_registries(&mut self, patterns: Vec<String>, materials: Vec<String>) {
-        self.trim_names = Some((patterns, materials));
+        self.trim_names = Some((patterns, std::sync::Arc::new(materials)));
+    }
+
+    /// The server's trim materials, in the order a `trim` component numbers them.
+    pub fn trim_materials(&self) -> std::sync::Arc<Vec<String>> {
+        self.trim_names
+            .as_ref()
+            .map_or_else(Default::default, |(_, materials)| materials.clone())
     }
 
     /// The pictures of the `armor_trims` atlas: each pattern's grey picture recoloured by each

@@ -407,6 +407,16 @@ impl Values {
         (material > 0 && pattern > 0).then_some((material - 1, pattern - 1))
     }
 
+    /// `trim`'s material alone, as its registry id: the pattern may be an inline one, and a
+    /// material that is inline has no key (`0`).
+    pub fn trim_material(&self) -> Option<i32> {
+        let mut cursor = Cursor {
+            data: self.raw(ids::TRIM)?,
+        };
+        let material = cursor.varint().ok()?;
+        (material > 0).then_some(material - 1)
+    }
+
     /// `suspicious_stew_effects`: effect registry ids and durations.
     pub fn suspicious_stew(&self) -> Vec<(i32, i32)> {
         let Some(data) = self.raw(ids::SUSPICIOUS_STEW_EFFECTS) else {

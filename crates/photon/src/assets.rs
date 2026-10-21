@@ -20,6 +20,37 @@ impl FolderAssets {
     }
 }
 
+impl FolderAssets {
+    /// A picture of the item atlas that `atlases/items.json` makes by recolouring another with a
+    /// palette (the trims on an armor's icon), as PNG bytes.
+    fn permuted_texture(&self, name: &photon_core::identifier::Identifier) -> Option<Vec<u8>> {
+        let atlas = photon_core::json::read_object(
+            &self.root.join(name.namespace()).join("atlases/items.json"),
+        )?;
+        let source = photon_render::entity::trim::PalettedPermutations::parse(&atlas)?;
+        let (texture, suffix) = source.textures.iter().find_map(|texture| {
+            let suffix = name
+                .path()
+                .strip_prefix(texture.as_str())?
+                .strip_prefix('_')?;
+            Some((texture, suffix))
+        })?;
+        let load = |path: &str| {
+            let id =
+                photon_core::identifier::Identifier::parse(&format!("{}:{path}", name.namespace()))
+                    .ok()?;
+            let bytes = std::fs::read(self.path(&id, "textures", ".png")).ok()?;
+            photon_render::texture::png::decode_rgba(&bytes).ok()
+        };
+        let mapped = photon_render::entity::trim::permute(
+            &load(texture)?,
+            &load(&source.palette_key)?,
+            &load(source.permutations.get(suffix)?)?,
+        )?;
+        Some(photon_render::texture::png_encode::encode_rgba(&mapped))
+    }
+}
+
 impl photon_render::AssetSource for FolderAssets {
     fn model(&self, name: &photon_core::identifier::Identifier) -> Option<String> {
         std::fs::read_to_string(self.path(name, "models", ".json")).ok()
@@ -30,7 +61,9 @@ impl photon_render::AssetSource for FolderAssets {
     }
 
     fn texture(&self, name: &photon_core::identifier::Identifier) -> Option<Vec<u8>> {
-        std::fs::read(self.path(name, "textures", ".png")).ok()
+        std::fs::read(self.path(name, "textures", ".png"))
+            .ok()
+            .or_else(|| self.permuted_texture(name))
     }
 
     fn block_state(&self, name: &photon_core::identifier::Identifier) -> Option<String> {

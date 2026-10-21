@@ -41,6 +41,23 @@ pub struct ItemState {
     pub selected: Option<photon_core::ids::ItemId>,
     /// The components `has_component` asks about in the item definitions.
     pub components: TestedComponents,
+    /// The key of the stack's trim material, if it names one (`trim_material`).
+    pub trim_material: Option<&'static str>,
+}
+
+/// A key held for good, so a state can stay `Copy`: the materials of a registry are few.
+pub fn intern_key(key: &str) -> &'static str {
+    static KEYS: std::sync::Mutex<std::collections::BTreeSet<&'static str>> =
+        std::sync::Mutex::new(std::collections::BTreeSet::new());
+    let mut keys = KEYS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(known) = keys.get(key) {
+        return known;
+    }
+    let leaked: &'static str = Box::leak(key.to_owned().into_boxed_str());
+    keys.insert(leaked);
+    leaked
 }
 
 impl ItemState {
@@ -198,7 +215,7 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             property,
             cases,
             fallback,
-        } if property == "minecraft:charge_type" => Some(
+        } if READ_SELECTS.contains(&property.as_str()) => Some(
             cases
                 .iter()
                 .map(|(_, model)| model)
@@ -216,6 +233,9 @@ const READ_CONDITIONS: [&str; 4] = [
     "minecraft:bundle/has_selected_item",
     "minecraft:has_component",
 ];
+
+/// The selects decided here besides the display context.
+const READ_SELECTS: [&str; 2] = ["minecraft:charge_type", "minecraft:trim_material"];
 
 /// The numeric properties a range dispatch is decided from here.
 const READ_RANGES: [&str; 2] = ["minecraft:use_duration", "minecraft:crossbow/pull"];
@@ -262,11 +282,12 @@ fn leaf(def: &ItemModelDef, local: &Matrix4) -> Option<ItemLayerRef> {
 fn select_case<'a>(
     property: &str,
     cases: &'a [(Vec<String>, ItemModelDef)],
-    (context, charge): (DisplayContext, Charge),
+    (context, state): (DisplayContext, &ItemState),
 ) -> Option<&'a ItemModelDef> {
     let value = match property {
         "minecraft:display_context" => context.name(),
-        "minecraft:charge_type" => charge.name(),
+        "minecraft:charge_type" => state.charge.name(),
+        "minecraft:trim_material" => state.trim_material?,
         _ => return None,
     };
     cases
@@ -297,7 +318,7 @@ fn chosen_child<'a>(
             property,
             cases,
             fallback,
-        } => select_case(property, cases, (context, walk.state.charge)).or(fallback.as_deref()),
+        } => select_case(property, cases, (context, &walk.state)).or(fallback.as_deref()),
         ItemModelDef::RangeDispatch {
             property,
             scale,
@@ -556,6 +577,39 @@ mod tests {
         assert_eq!(
             open[2].model.as_string(),
             "minecraft:item/bundle_open_front"
+        );
+    }
+
+    const TRIMMED: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:trim_material",
+        "cases":[{"model":{"type":"minecraft:model","model":"minecraft:item/iron_chestplate_gold_trim"},"when":"minecraft:gold"},
+                 {"model":{"type":"minecraft:model","model":"minecraft:item/iron_chestplate_iron_trim"},"when":"minecraft:iron"}],
+        "fallback":{"type":"minecraft:model","model":"minecraft:item/iron_chestplate"}}}"#;
+
+    #[test]
+    fn a_trimmed_armor_draws_the_model_of_its_material() {
+        let at = |trim_material| {
+            drawn_by(
+                TRIMMED,
+                ItemState {
+                    trim_material,
+                    ..ItemState::default()
+                },
+            )
+            .0
+        };
+        assert_eq!(at(None), "minecraft:item/iron_chestplate");
+        assert_eq!(
+            at(Some(intern_key("minecraft:gold"))),
+            "minecraft:item/iron_chestplate_gold_trim"
+        );
+        assert_eq!(
+            at(Some(intern_key("minecraft:iron"))),
+            "minecraft:item/iron_chestplate_iron_trim"
+        );
+        // A material with no case of its own takes the fallback.
+        assert_eq!(
+            at(Some(intern_key("minecraft:custom"))),
+            "minecraft:item/iron_chestplate"
         );
     }
 }
