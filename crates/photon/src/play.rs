@@ -26,7 +26,7 @@ use crate::objects::dropped_items::{WorldItemLayers, world_items};
 use crate::objects::falling_blocks::falling_blocks;
 use crate::objects::fishing_hooks::{HookView, fishing_hooks};
 use crate::objects::piston_blocks::piston_blocks;
-use crate::overlays::{self, FrameView, cracks, hands, hud_fov, outline, packed_light, tick_hands};
+use crate::overlays::{self, FrameView, cracks, hands, hud_fov, packed_light, tick_hands};
 use crate::ppm;
 use crate::profile::{self, FrameProfile, Span};
 use crate::screens::ScreenAssets;

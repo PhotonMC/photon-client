@@ -112,3 +112,13 @@ pub(super) enum Json<'a> {
     Text(String),
     Other,
 }
+
+impl Json<'_> {
+    /// The boolean, if that is what the value is.
+    pub(super) fn as_bool(&self) -> Option<bool> {
+        match self {
+            Json::Bool(value) => Some(*value),
+            _ => None,
+        }
+    }
+}

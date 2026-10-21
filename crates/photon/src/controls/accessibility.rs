@@ -44,6 +44,7 @@ impl Controls {
         options.screen_effect_scale = choices.screen_effect_scale;
         options.hide_lightning_flashes = choices.hide_lightning_flashes;
         options.view_bobbing = choices.view_bobbing;
+        options.high_contrast_block_outline = choices.high_contrast_block_outline;
         options.fov_effect_scale = choices.fov_effect_scale;
         options.darkness_effect_scale = choices.darkness_effect_scale;
         options.damage_tilt_strength = choices.damage_tilt_strength;

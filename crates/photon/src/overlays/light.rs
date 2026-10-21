@@ -159,7 +159,7 @@ pub fn outline(
     player: &LocalPlayer,
     view: FrameView,
     eye: [f32; 3],
-    line_width: f32,
+    (line_width, high_contrast): (f32, bool),
 ) -> Vec<LineVertex> {
     if matches!(
         session.game_mode(),
@@ -177,13 +177,28 @@ pub fn outline(
         return Vec::new();
     };
     let shape = photon_world::outline_shape(state, [x, y, z]);
-    photon_render::block::outline::outline_vertices(
-        &shape,
-        view.relative([x, y, z]),
-        eye,
-        photon_render::block::outline::OUTLINE_COLOUR,
-        line_width,
-    )
+    use photon_render::block::outline::{
+        HIGH_CONTRAST_BACKING, HIGH_CONTRAST_COLOUR, OUTLINE_COLOUR, outline_vertices,
+    };
+    let block = view.relative([x, y, z]);
+    // `submitBlockOutline`: the black backing first, then the line over it.
+    let (backing, colour) = if high_contrast {
+        (
+            outline_vertices(
+                &shape,
+                block,
+                eye,
+                HIGH_CONTRAST_BACKING.0,
+                HIGH_CONTRAST_BACKING.1,
+            ),
+            HIGH_CONTRAST_COLOUR,
+        )
+    } else {
+        (Vec::new(), OUTLINE_COLOUR)
+    };
+    let mut lines = backing;
+    lines.extend(outline_vertices(&shape, block, eye, colour, line_width));
+    lines
 }
 
 /// `extractBlockDestroyAnimation`: each cracked block near the camera, at

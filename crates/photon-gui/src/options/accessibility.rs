@@ -44,6 +44,7 @@ const DAMAGE_TILT: u8 = 17;
 const GLINT_SPEED: u8 = 18;
 const GLINT_STRENGTH: u8 = 19;
 const MENU_BLURRINESS: u8 = 20;
+const BLOCK_OUTLINE: u8 = 21;
 
 /// `notificationDisplayTime`'s value set: tenths of a second from 0.5 to 10.
 type TimeValues =
@@ -110,6 +111,7 @@ pub struct AccessibilityChoices {
     pub screen_effect_scale: f64,
     pub hide_lightning_flashes: bool,
     pub view_bobbing: bool,
+    pub high_contrast_block_outline: bool,
     pub fov_effect_scale: f64,
     pub darkness_effect_scale: f64,
     pub damage_tilt_strength: f64,
@@ -204,6 +206,7 @@ impl AccessibilityScreen {
             screen_effect_scale: share(SCREEN_EFFECTS),
             hide_lightning_flashes: flag(LIGHTNING),
             view_bobbing: flag(VIEW_BOBBING),
+            high_contrast_block_outline: flag(BLOCK_OUTLINE),
             fov_effect_scale: squares(FOV_EFFECTS),
             darkness_effect_scale: squares(DARKNESS_EFFECTS),
             damage_tilt_strength: share(DAMAGE_TILT),
@@ -293,7 +296,7 @@ fn rows(options: &Options) -> Vec<(u8, Build)> {
     rows.extend(chat_options(options));
     rows.extend(effect_options(options));
     rows.extend(other_options(options));
-    rows.extend(last_options());
+    rows.extend(last_options(options));
     rows
 }
 
@@ -480,7 +483,7 @@ fn other_options(options: &Options) -> Vec<(u8, Build)> {
     ]
 }
 
-fn last_options() -> Vec<(u8, Build)> {
+fn last_options(options: &Options) -> Vec<(u8, Build)> {
     vec![
         (
             PLAIN,
@@ -499,10 +502,10 @@ fn last_options() -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            BLOCK_OUTLINE,
             boolean_tip(
                 "options.accessibility.high_contrast_block_outline",
-                false,
+                options.high_contrast_block_outline,
                 "options.accessibility.high_contrast_block_outline.tooltip",
             ),
         ),

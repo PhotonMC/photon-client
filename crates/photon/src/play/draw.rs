@@ -56,10 +56,7 @@ impl Play {
         let line_width =
             photon_render::block::outline::appropriate_line_width(self.backend.extent().0);
         let (hook_sprites, hook_lines) = self.fishing_hooks(player, view, line_width);
-        let mut lines = outline(&self.session, player, view, frame.relative, line_width);
-        lines.extend(hook_lines);
-        lines.extend(self.chunk_borders(player, view, frame.relative));
-        lines.extend(self.entity_hitboxes(view, frame.relative));
+        let lines = self.world_lines((player, view, frame.relative), (line_width, hook_lines));
         self.backend.set_outline(&lines)?;
         self.backend.set_breaking(&cracks(
             &self.session,

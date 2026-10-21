@@ -30,6 +30,12 @@ pub fn appropriate_line_width(window_width: u32) -> f32 {
 /// `ARGB.black(102)`.
 pub const OUTLINE_COLOUR: [f32; 4] = [0.0, 0.0, 0.0, 102.0 / 255.0];
 
+/// `-11010079`: the aimed block's outline with `highContrastBlockOutline`.
+pub const HIGH_CONTRAST_COLOUR: [f32; 4] = [0x57 as f32 / 255.0, 1.0, 0xE1 as f32 / 255.0, 1.0];
+
+/// What the high contrast outline is backed with: opaque black, seven wide whatever the window.
+pub const HIGH_CONTRAST_BACKING: ([f32; 4], f32) = ([0.0, 0.0, 0.0, 1.0], 7.0);
+
 /// The view-space shrink the lines get: the render type's layering
 /// transform, then the line shader's own.
 const VIEW_SHRINK: f32 = (1.0 - 1.0 / 4096.0) * (1.0 - 1.0 / 256.0);

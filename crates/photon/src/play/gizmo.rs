@@ -29,6 +29,31 @@ impl Play {
         Ok(())
     }
 
+    /// Every line of the frame in one buffer: the aimed block's outline, the bobbers' lines and
+    /// the debug boxes.
+    pub(super) fn world_lines(
+        &self,
+        (player, view, camera): (
+            &photon_world::local_player::LocalPlayer,
+            crate::overlays::FrameView,
+            [f32; 3],
+        ),
+        (line_width, hook_lines): (f32, Vec<photon_render::block::outline::LineVertex>),
+    ) -> Vec<photon_render::block::outline::LineVertex> {
+        let high_contrast = self.controls.options.high_contrast_block_outline;
+        let mut lines = crate::overlays::outline(
+            &self.session,
+            player,
+            view,
+            camera,
+            (line_width, high_contrast),
+        );
+        lines.extend(hook_lines);
+        lines.extend(self.chunk_borders(player, view, camera));
+        lines.extend(self.entity_hitboxes(view, camera));
+        lines
+    }
+
     /// F3+G: the chunk borders round the player's chunk, when their entry is shown.
     pub(super) fn chunk_borders(
         &self,

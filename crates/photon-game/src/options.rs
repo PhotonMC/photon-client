@@ -81,6 +81,8 @@ pub struct Options {
     pub directional_audio: bool,
     /// `bobView`: the view and the hand sway with the walk.
     pub view_bobbing: bool,
+    /// `highContrastBlockOutline`: the aimed block's outline is bright with a black backing.
+    pub high_contrast_block_outline: bool,
     /// `fovEffectScale`, 0 to 1: how far speed and effects change the field of view.
     pub fov_effect_scale: f64,
     /// `darknessEffectScale`, 0 to 1: how far the darkness effect dims the view.
@@ -144,6 +146,7 @@ impl Default for Options {
             show_subtitles: false,
             directional_audio: false,
             view_bobbing: true,
+            high_contrast_block_outline: false,
             fov_effect_scale: 1.0,
             darkness_effect_scale: 1.0,
             glint_speed: 0.5,

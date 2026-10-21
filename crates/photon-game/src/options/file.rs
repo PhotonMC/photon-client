@@ -169,10 +169,7 @@ impl Options {
             Json::Bool(value) => Some(if value { 1.0 } else { 0.0 }),
             Json::Text(_) | Json::Other => None,
         };
-        let boolean = || match json {
-            Json::Bool(value) => Some(value),
-            _ => None,
-        };
+        let boolean = || json.as_bool();
         match key {
             Key::Fov | Key::FovEffectScale | Key::DarknessEffectScale | Key::GuiScale => {
                 self.read_scale(key, &json);
@@ -187,7 +184,8 @@ impl Options {
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
-            | Key::ViewBobbing => self.read_flag(key, boolean()),
+            | Key::ViewBobbing
+            | Key::HighContrastBlockOutline => self.read_flag(key, boolean()),
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::AttackIndicator | Key::ChatVisibility => self.read_choice(key, &json),
             Key::ShowSubtitles
@@ -258,6 +256,7 @@ impl Options {
             Key::AdvancedItemTooltips => &mut self.advanced_item_tooltips,
             Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
             Key::ViewBobbing => &mut self.view_bobbing,
+            Key::HighContrastBlockOutline => &mut self.high_contrast_block_outline,
             _ => &mut self.background_for_chat_only,
         };
         *flag = value.unwrap_or(*flag);
@@ -269,6 +268,7 @@ impl Options {
             Key::AdvancedItemTooltips => self.advanced_item_tooltips,
             Key::PauseOnLostFocus => self.pause_on_lost_focus,
             Key::ViewBobbing => self.view_bobbing,
+            Key::HighContrastBlockOutline => self.high_contrast_block_outline,
             _ => self.background_for_chat_only,
         }
     }
@@ -390,7 +390,8 @@ impl Options {
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
-            | Key::ViewBobbing => self.flag(key).to_string(),
+            | Key::ViewBobbing
+            | Key::HighContrastBlockOutline => self.flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
             Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => self.server_state(key),
@@ -676,6 +677,15 @@ mod tests {
         let options = loaded("pauseOnLostFocus:false\nadvancedItemTooltips:true");
         assert!(!options.pause_on_lost_focus && options.advanced_item_tooltips);
         assert_eq!(options.write(Key::PauseOnLostFocus), "false");
+    }
+
+    #[test]
+    fn the_block_outline_contrast_is_a_switch_that_is_off_by_default() {
+        assert!(!loaded("").high_contrast_block_outline);
+        let options = loaded("highContrastBlockOutline:true");
+        assert!(options.high_contrast_block_outline);
+        assert_eq!(options.write(Key::HighContrastBlockOutline), "true");
+        assert!(!loaded("highContrastBlockOutline:1").high_contrast_block_outline);
     }
 
     #[test]
