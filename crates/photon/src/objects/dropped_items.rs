@@ -14,10 +14,12 @@ use photon_render::scene::Vertex;
 use photon_world::particles::{ItemPickup, PickedUp};
 
 use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
+use crate::equipment::needle::Owner;
 use crate::objects::displays;
 use crate::objects::item_frames;
 use crate::objects::thrown_items;
 use crate::overlays::{FrameView, packed_light};
+use photon_render::item_model::Holder;
 
 /// The triangles of every dropped item in the world. Which damage a stack
 /// has is not read from its components yet, so every stack seeds its
@@ -61,6 +63,7 @@ pub fn dropped_items(
                 snapshot.position.2,
             ),
         );
+        layers.set_owner(Some(ground_owner(entity)));
         draw_item(
             item,
             snapshot.position,
@@ -70,8 +73,22 @@ pub fn dropped_items(
             vertices,
         );
     }
-    // `ItemPickupParticleGroup`: the items flying to whoever took them, as they were when taken,
-    // lit where they were.
+    layers.set_owner(None);
+    picked_up_items(session, pickups, layers, (renderer, tints), view, vertices);
+}
+
+/// `ItemPickupParticleGroup`: the items flying to whoever took them, as they were when taken,
+/// lit where they were.
+fn picked_up_items(
+    session: &PlaySession,
+    pickups: &[&ItemPickup],
+    layers: &mut ItemLayerCache,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let world = session.world();
+    let partial = view.partial as f32;
     for pickup in pickups {
         if let PickedUp::Item {
             stack,
@@ -85,6 +102,20 @@ pub fn dropped_items(
             let item = (stack, *age_in_ticks, *bob_offset);
             draw_item(item, at, light, (layers, renderer, tints), view, vertices);
         }
+    }
+}
+
+/// A dropped item as the holder of its stack (`ItemEntity.getVisualRotationYInDegrees`): where
+/// its entity is and the heading its spin has, without the frame's partial tick.
+fn ground_owner(entity: &photon_world::ClientEntity) -> Owner {
+    let spin = (entity.tick_count() as f32 + 0.5) / 20.0 + entity.bob_offset();
+    let (x, y, z) = entity.position();
+    Owner {
+        holder: Holder {
+            position: [x, y, z],
+            yaw: 180.0 - spin / (std::f32::consts::PI * 2.0) * 360.0,
+        },
+        seed: entity.id().0,
     }
 }
 
