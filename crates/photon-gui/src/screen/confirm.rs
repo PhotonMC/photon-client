@@ -186,6 +186,37 @@ impl ConfirmScreen {
         Self::new(font, lang, size, &title, &message, &yes, &no)
     }
 
+    /// `ClientPacketListener.openSendConfirmationWindow`: the message `message_key` names with the
+    /// command in yellow, the accept button's key, and a way back (`GUI_BACK` over a screen,
+    /// `GUI_CANCEL` over none).
+    pub fn command(
+        font: &Font,
+        lang: &Lang,
+        size: (i32, i32),
+        (message_key, command, accept): (&str, &str, &str),
+        screen_below: bool,
+    ) -> Self {
+        let translated = Component::translatable;
+        let message = Component::translatable_with(
+            message_key,
+            vec![Component::literal(command).with_colour("yellow")],
+        );
+        let back = translated(if screen_below {
+            "gui.back"
+        } else {
+            "gui.cancel"
+        });
+        Self::new(
+            font,
+            lang,
+            size,
+            &translated("multiplayer.confirm_command.title"),
+            &message,
+            &translated(accept),
+            &back,
+        )
+    }
+
     /// `new ConfirmLinkScreen(callback, url, trusted)`: the link asked
     /// about, with "Copy to Clipboard" between the answers, and a warning
     /// when the link is not trusted.

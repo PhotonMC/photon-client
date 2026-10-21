@@ -404,7 +404,7 @@ impl Controls {
             // `Commands.trimOptionalPrefix`, then the command as typed.
             ClickEvent::RunCommand(command) => {
                 let command = command.strip_prefix('/').unwrap_or(command);
-                self.send_unattended(command, session, surface, assets)?;
+                self.send_unattended(command, None, session, surface, assets)?;
             }
             ClickEvent::SuggestCommand(command) => {
                 if let Some(chat) = self.chat.as_mut() {
@@ -444,8 +444,7 @@ impl Controls {
     pub(super) fn link_event(
         &mut self,
         event: glfw::WindowEvent,
-        session: &mut PlaySession,
-        surface: &mut WindowSurface,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
     ) -> Result {
         use glfw::{Action, Key, WindowEvent};
         if let WindowEvent::CursorPos(x, y) = event {
@@ -476,6 +475,6 @@ impl Controls {
         let Some((_, target)) = self.link_confirm.take() else {
             return Ok(());
         };
-        self.answer_confirm(action, &target, session, surface)
+        self.answer_confirm(action, &target, session, surface, assets)
     }
 }

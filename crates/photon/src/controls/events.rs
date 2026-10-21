@@ -262,7 +262,7 @@ impl Controls {
             return Ok(self.game_mode_switcher_event(event, session, surface, assets));
         }
         if self.link_confirm.is_some() {
-            return Ok(self.link_event(event, session, surface));
+            return Ok(self.link_event(event, (session, surface, assets)));
         }
         if self.dialog_warning.is_some() {
             self.dialog_warning_event(event, session, surface);

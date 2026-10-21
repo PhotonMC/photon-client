@@ -268,6 +268,18 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 no = required ? net.minecraft.network.chat.CommonComponents.GUI_DISCONNECT
                     : net.minecraft.network.chat.CommonComponents.GUI_NO;
             }
+            if (row.has("command")) {
+                // ClientPacketListener.openSendConfirmationWindow, which is private.
+                var command = row.getAsJsonObject("command");
+                title = Component.translatable("multiplayer.confirm_command.title");
+                message = Component.translatable(command.get("key").getAsString(),
+                    Component.literal(command.get("command").getAsString())
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+                yes = Component.translatable(command.get("accept").getAsString());
+                no = command.get("back").getAsBoolean()
+                    ? net.minecraft.network.chat.CommonComponents.GUI_BACK
+                    : net.minecraft.network.chat.CommonComponents.GUI_CANCEL;
+            }
             net.minecraft.client.gui.screens.ConfirmScreen confirm =
                 row.has("link")
                     ? new net.minecraft.client.gui.screens.ConfirmLinkScreen(callback,

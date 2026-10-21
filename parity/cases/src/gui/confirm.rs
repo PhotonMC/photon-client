@@ -21,6 +21,7 @@ struct Confirm {
     in_world: bool,
     link: Option<Value>,
     pack: Option<Value>,
+    command: Option<Value>,
 }
 
 fn confirm() -> Confirm {
@@ -39,6 +40,7 @@ fn confirm() -> Confirm {
         in_world: false,
         link: None,
         pack: None,
+        command: None,
     }
 }
 
@@ -54,6 +56,9 @@ impl Confirm {
         }
         if let Some(pack) = self.pack {
             row["pack"] = pack;
+        }
+        if let Some(command) = self.command {
+            row["command"] = command;
         }
         row
     }
@@ -194,6 +199,28 @@ fn pack_rows() -> Vec<Value> {
     ]
 }
 
+/// The question about a command the player did not type: each wording, with the command in
+/// yellow, and Back or Cancel by whether a screen lies below.
+fn command_rows() -> Vec<Value> {
+    let asking = |key: &str, accept: &str, back: bool| {
+        let command = json!({
+            "key": key, "command": "give @s stone 64", "accept": accept, "back": back,
+        });
+        Confirm { in_world: true, command: Some(command), ..confirm() }
+    };
+    let run = "multiplayer.confirm_command.run_command";
+    vec![
+        asking("multiplayer.confirm_command.parse_errors", run, true).row("command-parse-errors"),
+        asking("multiplayer.confirm_command.permissions_required", run, true).row("command-permissions"),
+        asking("multiplayer.confirm_command.permissions_required", run, false).row("command-cancel"),
+        asking("multiplayer.confirm_command.signature_required", "chat.copy", true).row("command-signed-copy"),
+        asking("multiplayer.confirm_command.signature_required", "multiplayer.confirm_command.suggest_command", false)
+            .row("command-signed-suggest"),
+        Confirm { size: (320, 240), ..asking("multiplayer.confirm_command.permissions_required", run, true) }
+            .row("command-small"),
+    ]
+}
+
 /// Over a game the background blurs from a blurriness of one; the death screen's does not.
 fn blur_rows() -> Vec<Value> {
     [("blur-in-world-0", 0, false), ("blur-in-world-10", 10, false), ("blur-death", 5, true)]
@@ -214,6 +241,6 @@ pub fn confirm_screen() -> Value {
     gui(
         "confirm-screen",
         "confirm_screen",
-        [message_rows(), input_rows(), link_rows(), pack_rows(), blur_rows()].concat(),
+        [message_rows(), input_rows(), link_rows(), pack_rows(), command_rows(), blur_rows()].concat(),
     )
 }

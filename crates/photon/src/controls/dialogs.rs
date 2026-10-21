@@ -1,6 +1,6 @@
 use super::*;
 use photon_game::dialog::{Dialog, DialogRef, Next, run_action};
-use photon_game::text::{Component, Lang};
+use photon_game::text::{ClickEvent, Component, Lang};
 use photon_gui::screen::dialog::{DialogScreen, Press};
 use photon_gui::screen::waiting::WaitingScreen;
 use photon_net::connection::DialogEvent;
@@ -274,7 +274,27 @@ impl Controls {
             _ => (dialog.on_cancel(), photon_game::dialog::AfterAction::Close),
         };
         let outcome = run_action(action, after);
-        match outcome.next {
+        // A command is checked before the screen changes (`handleDialogClickEvent` leaves it to
+        // `sendUnattendedCommand`); the other events act on the screen it leaves.
+        if let Some(ClickEvent::RunCommand(command)) = &outcome.event {
+            let command = command.strip_prefix('/').unwrap_or(command);
+            return self.send_unattended(command, Some(outcome.next), session, surface, assets);
+        }
+        self.leave_dialog(outcome.next, surface, assets);
+        match &outcome.event {
+            Some(event) => self.click_event(event, session, surface, assets),
+            None => Ok(()),
+        }
+    }
+
+    /// The screen a used button leaves (`DialogScreen.runAction`).
+    pub(super) fn leave_dialog(
+        &mut self,
+        next: Next,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        match next {
             Next::Previous => self.dialog = None,
             // `setScreen(this)` starts the screen over.
             Next::Same => {
@@ -291,10 +311,6 @@ impl Controls {
                     true,
                 ))));
             }
-        }
-        match &outcome.event {
-            Some(event) => self.click_event(event, session, surface, assets),
-            None => Ok(()),
         }
     }
 }

@@ -59,6 +59,17 @@ fn confirm_screen(
     use photon_gui::screen::confirm::ConfirmScreen;
     let text =
         |key: &str| photon_game::text::Component::literal(row[key].as_str().unwrap_or_default());
+    if let Some(command) = row["command"].as_object() {
+        let field = |key: &str| command[key].as_str().unwrap_or_default();
+        return ConfirmScreen::command(
+            font,
+            lang,
+            size,
+            (field("key"), field("command"), field("accept")),
+            command["back"].as_bool().unwrap_or(false),
+        )
+        .with_background(background);
+    }
     match (row["link"].as_object(), row["pack"].as_object()) {
         (Some(link), _) => ConfirmScreen::link(
             font,
