@@ -228,6 +228,9 @@ pub fn hud_debug_lines() -> Value {
         json!({"label": "narrow-overlap", "width": 160, "height": 90,
             "left": [long, "", long], "right": [long, "", "Chunk: 0 4 0 [0 0 in r.0.0.mca]"]}),
         json!({"label": "right-only", "width": 427, "height": 240, "left": [], "right": ["a", "", "bb"]}),
+        json!({"label": "effects", "width": 427, "height": 240,
+            "left": ["\u{a7}nTargeted Block: 0, 65, 4", "\u{a7}nAB", "\u{a7}nA\u{a7}lB", "C\u{a7}nD", "\u{a7}mE \u{a7}n F"],
+            "right": ["\u{a7}nRight"]}),
         json!({"label": "left-only", "width": 427, "height": 240, "left": ["a", "", "bb"], "right": []}),
     ];
     gui("hud-debug-lines", "hud_debug_lines", rows)

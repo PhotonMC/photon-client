@@ -32,6 +32,28 @@ pub(super) fn num(value: f32) -> f64 {
     }
 }
 
+/// One run of a text op as the oracle writes it.
+fn run_json(run: &photon_render::gui::LoggedRun) -> Value {
+    let mut json = json!({
+        "text": run.text, "bold": run.bold, "italic": run.italic,
+        "underlined": run.underlined, "strikethrough": run.strikethrough,
+        "obfuscated": run.obfuscated,
+    });
+    if let Some(rgb) = run.colour {
+        json["rgb"] = json!(rgb);
+    }
+    json
+}
+
+/// One underline or strikethrough rectangle of a text op.
+fn effect_json(effect: &photon_render::gui::text_effect::TextEffect) -> Value {
+    json!({
+        "x0": num(effect.rect.0), "y0": num(effect.rect.1),
+        "x1": num(effect.rect.2), "y1": num(effect.rect.3),
+        "color": effect.colour as i32, "shadowColor": effect.shadow_colour as i32,
+    })
+}
+
 /// The recorded drawing calls as the reference's oracle writes them.
 pub(super) fn gui_ops(ops: &[photon_render::gui::DrawOp]) -> Vec<Value> {
     use photon_render::gui::DrawOp;
@@ -63,7 +85,7 @@ pub(super) fn gui_ops(ops: &[photon_render::gui::DrawOp]) -> Vec<Value> {
             } => (
                 2,
                 [f64::from(*y), f64::from(*x), 0.0, 0.0],
-                runs.iter().map(|run| run.0.as_str()).collect::<String>(),
+                runs.iter().map(|run| run.text.as_str()).collect::<String>(),
                 i64::from(*colour as i32),
             ),
         }
@@ -106,17 +128,13 @@ pub(super) fn gui_ops(ops: &[photon_render::gui::DrawOp]) -> Vec<Value> {
                 colour,
                 shadow,
                 runs,
+                effects,
                 ..
             } => json!({
                 "op": "text", "x": num(*x), "y": num(*y), "scale": num(*scale), "color": *colour as i32,
                 "shadow": shadow,
-                "runs": runs.iter().map(|(text, rgb, bold, italic)| {
-                    let mut run = json!({"text": text, "bold": bold, "italic": italic});
-                    if let Some(rgb) = rgb {
-                        run["rgb"] = json!(rgb);
-                    }
-                    run
-                }).collect::<Vec<_>>(),
+                "runs": runs.iter().map(run_json).collect::<Vec<_>>(),
+                "effects": effects.iter().map(effect_json).collect::<Vec<_>>(),
             }),
         })
         .collect()

@@ -80,9 +80,24 @@ pub enum DrawOp {
         /// The box its glyphs fill, which decides whether a scissor leaves
         /// any of it.
         bounds: (i32, i32, i32, i32),
-        /// Each run: its text, its colour if it has one, bold, italic.
-        runs: Vec<(String, Option<u32>, bool, bool)>,
+        /// Each run: its text and look.
+        runs: Vec<LoggedRun>,
+        /// The rectangles of its underlines and strikethrough, in the text's own coordinates.
+        effects: Vec<crate::gui::text_effect::TextEffect>,
     },
+}
+
+/// A stretch of a logged text in one style.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LoggedRun {
+    pub text: String,
+    /// `0xRRGGBB`, when the style names a colour.
+    pub colour: Option<u32>,
+    pub bold: bool,
+    pub italic: bool,
+    pub underlined: bool,
+    pub strikethrough: bool,
+    pub obfuscated: bool,
 }
 
 /// `ScreenRectangle`: where a widget is, and how big.
@@ -203,12 +218,20 @@ pub type ItemDrawer<'a> = dyn FnMut(
 
 /// The runs as the reference's character sequence yields them: neighbours in
 /// one style are one stretch.
-fn merged_runs(runs: &[TextRun]) -> Vec<(String, Option<u32>, bool, bool)> {
-    let mut merged: Vec<(String, Option<u32>, bool, bool)> = Vec::new();
+fn merged_runs(runs: &[TextRun]) -> Vec<LoggedRun> {
+    let mut merged: Vec<LoggedRun> = Vec::new();
     for run in runs {
         match merged.last_mut() {
-            Some(previous) if run.joins_previous => previous.0.push_str(&run.text),
-            _ => merged.push((run.text.to_string(), run.colour, run.bold, run.italic)),
+            Some(previous) if run.joins_previous => previous.text.push_str(&run.text),
+            _ => merged.push(LoggedRun {
+                text: run.text.to_string(),
+                colour: run.colour,
+                bold: run.bold,
+                italic: run.italic,
+                underlined: run.underlined,
+                strikethrough: run.strikethrough,
+                obfuscated: run.obfuscated,
+            }),
         }
     }
     merged
@@ -231,17 +254,8 @@ pub(crate) fn glyph_quads(
     let mut quads = Vec::new();
     let mut pen = x;
     for run in runs {
-        let colour = run
-            .colour
-            .map_or(default_colour, |rgb| (default_colour & 0xFF00_0000) | rgb);
-        // `ARGB.scaleRGB(colour, 0.25)`.
-        let shadow_colour = [16, 8, 0]
-            .map(|shift| ((((colour >> shift) & 0xFF) as f32 * 0.25) as u32) << shift)
-            .into_iter()
-            .fold(colour & 0xFF00_0000, |sum, channel| sum | channel);
-        // A style that names its shadow colour has that one; a clear one has none.
-        let shadow_colour = run.shadow.unwrap_or(shadow_colour);
-        let shadow_drawn = shadow && shadow_colour >> 24 != 0;
+        let (colour, shadow_colour) = crate::gui::text_effect::paint(run, default_colour, shadow);
+        let shadow_drawn = shadow_colour != 0;
         let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
         let bold = run.bold;
         let italic = run.italic;

@@ -9,6 +9,14 @@ pub struct TextRun<'a> {
     pub colour: Option<u32>,
     pub bold: bool,
     pub italic: bool,
+    pub underlined: bool,
+    pub strikethrough: bool,
+    /// Each glyph is drawn as a random one of the same width, a new one every frame.
+    pub obfuscated: bool,
+    /// Whether the run starts a piece of text, where the reference's character position is zero:
+    /// an underline or strikethrough there reaches a unit further left. A string of `\u{a7}`
+    /// codes is one piece; a component's literals are one each.
+    pub piece_start: bool,
     /// `0xAARRGGBB` of the shadow, when the style names one (zero alpha: none).
     pub shadow: Option<u32>,
     /// Whether the style equals the previous run's whole style, so the two are one stretch.
@@ -23,6 +31,10 @@ impl<'a> TextRun<'a> {
             colour: self.colour,
             bold: self.bold,
             italic: self.italic,
+            underlined: self.underlined,
+            strikethrough: self.strikethrough,
+            obfuscated: self.obfuscated,
+            piece_start: self.piece_start,
             shadow: self.shadow,
             joins_previous: self.joins_previous,
         }
@@ -35,6 +47,10 @@ impl<'a> TextRun<'a> {
             colour: None,
             bold: false,
             italic: false,
+            underlined: false,
+            strikethrough: false,
+            obfuscated: false,
+            piece_start: true,
             shadow: None,
             joins_previous: false,
         }

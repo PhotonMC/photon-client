@@ -16,7 +16,7 @@ pub use layout::{Line, columns};
 pub use list::{Category, ENTRIES, Entry, EntryList, Profile, Status, entry, listed_entries};
 pub use profile_file::{parse_profile, profile_text};
 
-use crate::{FontRuns, FrameRuns};
+use crate::FontRuns;
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -162,7 +162,11 @@ fn draw_line(
     (x, y): (i32, i32),
 ) {
     if line.contains('\u{a7}') {
-        frame.styled_text(atlas, font, &crate::legacy_runs(line), x, y, TEXT, false);
+        // The client's language reorders the string into pieces, so every run restarts its
+        // character position.
+        let runs = crate::legacy_runs(line);
+        let drawn = crate::draw_runs(&runs);
+        frame.styled_text_runs(atlas, font, &drawn, (x, y), TEXT, false);
     } else {
         frame.text(atlas, font, line, x, y, TEXT);
     }

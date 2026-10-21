@@ -7,11 +7,12 @@ pub mod font;
 pub mod frame;
 pub mod items;
 pub mod run;
+pub mod text_effect;
 pub mod text_hit;
 
 pub use atlas::GuiAtlas;
 pub use frame::{
-    DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, Positioner, ScreenRect,
+    DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, LoggedRun, Positioner, ScreenRect,
 };
 pub use items::GuiItemVertex;
 pub use run::TextRun;

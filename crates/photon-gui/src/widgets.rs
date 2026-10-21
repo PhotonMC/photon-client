@@ -11,7 +11,7 @@ pub mod text_area;
 pub mod text_field;
 
 use crate::{FontRuns, FrameRuns};
-use photon_game::text::Run;
+use photon_game::text::{Run, Style};
 
 use crate::layout::Arena;
 use photon_render::gui::font::Font;
@@ -26,8 +26,7 @@ pub enum Kind {
     Icon { sprite: String, size: (i32, i32) },
     /// `StringWidget`: text, not drawn over a button.
     Text { text: Vec<Run> },
-    /// `PlainTextButton`: text that is pressed like a button (underlined when asked about, which
-    /// this text drawing does not show).
+    /// `PlainTextButton`: text that is pressed like a button, underlined when hovered or focused.
     PlainText { text: Vec<Run> },
 }
 
@@ -96,6 +95,18 @@ impl Widget {
                 frame.styled_text(atlas, font, text, rect.x, y, 0xFFFF_FFFF, true);
             }
             Kind::PlainText { text } => {
+                // `PlainTextButton`: hovered or focused, the message merged with an underline.
+                let underlined: Vec<Run> = text
+                    .iter()
+                    .map(|run| Run {
+                        text: run.text.clone(),
+                        style: Style {
+                            underlined: run.style.underlined.or(Some(true)),
+                            ..run.style.clone()
+                        },
+                    })
+                    .collect();
+                let text = if highlighted { &underlined } else { text };
                 frame.styled_text(atlas, font, text, rect.x, rect.y, 0xFFFF_FFFF, true);
             }
         }

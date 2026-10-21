@@ -987,12 +987,19 @@ class GuiHudOracle extends GuiCommandOracle {
             var method = net.minecraft.client.gui.components.DebugScreenOverlay.class.getDeclaredMethod(
                 "extractLines", GuiGraphicsExtractor.class, java.util.List.class, boolean.class);
             method.setAccessible(true);
-            for (var side : new String[] {"left", "right"}) {
-                var lines = new java.util.ArrayList<String>();
-                for (var line : row.getAsJsonArray(side)) {
-                    lines.add(line.getAsString());
+            // The game's own language reorders each string into pieces, as it does in the game.
+            var languageBefore = net.minecraft.locale.Language.getInstance();
+            net.minecraft.locale.Language.inject(clientLanguage("en_us"));
+            try {
+                for (var side : new String[] {"left", "right"}) {
+                    var lines = new java.util.ArrayList<String>();
+                    for (var line : row.getAsJsonArray(side)) {
+                        lines.add(line.getAsString());
+                    }
+                    method.invoke(overlay, scene.screen().graphics(), lines, side.equals("left"));
                 }
-                method.invoke(overlay, scene.screen().graphics(), lines, side.equals("left"));
+            } finally {
+                net.minecraft.locale.Language.inject(languageBefore);
             }
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

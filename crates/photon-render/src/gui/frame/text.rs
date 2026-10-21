@@ -1,4 +1,5 @@
 use super::*;
+use crate::gui::text_effect::{TextEffect, effects};
 
 impl GuiFrame {
     /// `GuiGraphics.blitSprite` of a nine-slice sprite: the corners as they
@@ -216,6 +217,7 @@ impl GuiFrame {
         colour: u32,
         shadow: bool,
         bounds: Option<(i32, i32, i32, i32)>,
+        effects: Vec<TextEffect>,
     ) {
         let Some(log) = &mut self.log else {
             return;
@@ -232,12 +234,13 @@ impl GuiFrame {
             shadow,
             bounds,
             runs: merged_runs(runs),
+            effects,
         });
     }
 
     /// `GuiGraphics.text` of styled text: each run in its colour, with the
-    /// bold glyphs drawn twice a unit apart and the italic ones sheared.
-    /// Underlines, strikethrough and obfuscation are not drawn.
+    /// bold glyphs drawn twice a unit apart and the italic ones sheared, then
+    /// the underlines and strikethrough over them. Obfuscation is not drawn.
     pub fn styled_text_runs(
         &mut self,
         atlas: &GuiAtlas,
@@ -247,12 +250,14 @@ impl GuiFrame {
         default_colour: u32,
         shadow: bool,
     ) {
+        let effects = effects(font, runs, (x as f32, y as f32), (default_colour, shadow));
         self.log_text(
             (x, y),
             runs,
             default_colour,
             shadow,
             crate::gui::text_hit::bounds(font, runs, (x, y), shadow),
+            effects.clone(),
         );
         for corners in glyph_quads(
             atlas,
@@ -262,14 +267,40 @@ impl GuiFrame {
             default_colour,
             shadow,
         ) {
-            let first = self.vertices.len() as u32;
-            for index in [0, 1, 2, 0, 2, 3] {
-                self.vertices.push(corners[index]);
+            self.push_text_quad(corners);
+        }
+        let [u0, v0, u1, v1] = atlas.sprite("white");
+        let uv = [(u0 + u1) / 2.0, (v0 + v1) / 2.0];
+        for effect in effects {
+            let (x0, y0, x1, y1) = effect.rect;
+            // `BakedSheetGlyph.renderEffect`: the shadow's copy first, a unit right and down.
+            let copies = [(effect.shadow_colour, 1.0), (effect.colour, 0.0)];
+            for (colour, offset) in copies.into_iter().filter(|(colour, _)| *colour != 0) {
+                let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+                let corner = |px: f32, py: f32| GuiVertex {
+                    position: [px + offset, py + offset],
+                    uv,
+                    colour,
+                };
+                self.push_text_quad([
+                    corner(x0, y0),
+                    corner(x0, y1),
+                    corner(x1, y1),
+                    corner(x1, y0),
+                ]);
             }
-            match self.batches.last_mut() {
-                Some((GuiBlend::Translucent, _, count)) => *count += 6,
-                _ => self.batches.push((GuiBlend::Translucent, first, 6)),
-            }
+        }
+    }
+
+    /// A quad of translucent text triangles.
+    fn push_text_quad(&mut self, corners: [GuiVertex; 4]) {
+        let first = self.vertices.len() as u32;
+        for index in [0, 1, 2, 0, 2, 3] {
+            self.vertices.push(corners[index]);
+        }
+        match self.batches.last_mut() {
+            Some((GuiBlend::Translucent, _, count)) => *count += 6,
+            _ => self.batches.push((GuiBlend::Translucent, first, 6)),
         }
     }
 

@@ -13,6 +13,10 @@ pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
             colour: run.style.colour,
             bold: run.style.bold == Some(true),
             italic: run.style.italic == Some(true),
+            underlined: run.style.underlined == Some(true),
+            strikethrough: run.style.strikethrough == Some(true),
+            obfuscated: run.style.obfuscated == Some(true),
+            piece_start: true,
             shadow: run.style.shadow,
             joins_previous: index > 0 && runs[index - 1].style == run.style,
         })

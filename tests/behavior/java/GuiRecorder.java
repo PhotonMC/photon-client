@@ -125,6 +125,45 @@ class GuiRecorder extends GuiFonts {
         }
     }
 
+    /** An underline or strikethrough: what the game asks of the effect glyph, and its bounds. */
+    record Effect(float x0, float y0, float x1, float y1, int color, int shadowColor, float shadowOffset)
+            implements TextRenderable {
+        public float left() {
+            return x0;
+        }
+
+        public float top() {
+            return y0;
+        }
+
+        public float right() {
+            return x1 + (shadowColor != 0 ? shadowOffset : 0.0F);
+        }
+
+        public float bottom() {
+            return y1 + (shadowColor != 0 ? shadowOffset : 0.0F);
+        }
+
+        @Override
+        public void render(org.joml.Matrix4fc pose, com.mojang.blaze3d.vertex.VertexConsumer buffer,
+                int light, boolean flat) {}
+
+        @Override
+        public net.minecraft.client.renderer.rendertype.RenderType renderType(Font.DisplayMode mode) {
+            return null;
+        }
+
+        @Override
+        public com.mojang.blaze3d.textures.GpuTextureView textureView() {
+            return null;
+        }
+
+        @Override
+        public com.mojang.blaze3d.pipeline.RenderPipeline guiPipeline() {
+            return null;
+        }
+    }
+
     /** The game around the screen: a window of the given GUI size, options, a HUD with a tick. */
     record Screen(net.minecraft.client.Minecraft minecraft, Object hud, GuiRenderState state,
                   GuiGraphicsExtractor graphics) {}
@@ -214,6 +253,28 @@ class GuiRecorder extends GuiFonts {
      * kind in a fixed order. The game layers what overlaps above what it
      * overlaps, which is an order for the GPU and not for what is drawn.
      */
+
+    /// The rectangles a text draws for its underlines and strikethrough, as the font prepared them:
+    /// where, in what colour and with which shadow colour (zero for none).
+    static JsonArray effects(net.minecraft.client.renderer.state.gui.GuiTextRenderState text) throws Exception {
+        var out = new JsonArray();
+        text.ensurePrepared().visit(new net.minecraft.client.gui.Font.GlyphVisitor() {
+            @Override
+            public void acceptEffect(net.minecraft.client.gui.font.TextRenderable effect) {
+                var box = (Effect) effect;
+                var rect = new JsonObject();
+                rect.addProperty("x0", box.x0());
+                rect.addProperty("y0", box.y0());
+                rect.addProperty("x1", box.x1());
+                rect.addProperty("y1", box.y1());
+                rect.addProperty("color", box.color());
+                rect.addProperty("shadowColor", box.shadowColor());
+                out.add(rect);
+            }
+        });
+        return out;
+    }
+
     static JsonArray record(GuiRenderState state) {
         var ops = new JsonArray();
         state.forEachElement(element -> {
@@ -288,6 +349,9 @@ class GuiRecorder extends GuiFonts {
                         }
                         run.addProperty("bold", style.isBold());
                         run.addProperty("italic", style.isItalic());
+                        run.addProperty("underlined", style.isUnderlined());
+                        run.addProperty("strikethrough", style.isStrikethrough());
+                        run.addProperty("obfuscated", style.isObfuscated());
                         runs.add(run);
                         current.setLength(0);
                     }
@@ -302,6 +366,7 @@ class GuiRecorder extends GuiFonts {
                 });
                 flush.run();
                 op.add("runs", runs);
+                op.add("effects", effects(text));
                 ops.add(op);
             } catch (Exception error) {
                 throw new IllegalStateException(error);

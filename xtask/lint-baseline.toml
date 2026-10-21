@@ -394,7 +394,7 @@
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 11
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 19
 "crates/photon-render/src/entity/player_renderer.rs::placement_pose" = 11
-"crates/photon-render/src/gui/frame.rs::glyph_quads" = 12
+"crates/photon-render/src/gui/frame.rs::glyph_quads" = 11
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 11
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 19
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 12
@@ -772,7 +772,7 @@
 "crates/photon-oracle/src/gui/result/social.rs::social_interactions_screen_case" = 120
 "crates/photon-oracle/src/gui/result/title.rs::join_multiplayer_screen_case" = 83
 "crates/photon-oracle/src/gui/result/title.rs::server_form_case" = 73
-"crates/photon-oracle/src/gui/scoreboard.rs::gui_ops" = 85
+"crates/photon-oracle/src/gui/scoreboard.rs::gui_ops" = 81
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result" = 276
 "crates/photon-oracle/src/humanoid_models.rs::held_item_pose_result::held_poses" = 128
 "crates/photon-oracle/src/information.rs::configuration_misc_result" = 65
@@ -887,7 +887,7 @@
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
 "crates/photon-render/src/entity/special_models.rs::head" = 90
 "crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 81
-"crates/photon-render/src/gui/frame.rs::glyph_quads" = 93
+"crates/photon-render/src/gui/frame.rs::glyph_quads" = 86
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 119
