@@ -30,6 +30,8 @@ pub struct ClientBlockStateRegistry {
     pub(crate) banner_pattern_tags: Arc<ItemTags>,
     /// The entity type tags the server last sent.
     pub(crate) entity_type_tags: Arc<ItemTags>,
+    /// The fluid tags the server last sent, by fluid registry id.
+    pub(crate) fluid_tags: Arc<ItemTags>,
 }
 
 impl ClientBlockStateRegistry {
@@ -109,6 +111,27 @@ impl ClientBlockStateRegistry {
         if let Some(tags) = ItemTags::of_registry(registries, "minecraft:entity_type") {
             self.entity_type_tags = Arc::new(tags);
         }
+        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:fluid") {
+            self.fluid_tags = Arc::new(tags);
+        }
+    }
+
+    /// The tags the server last sent that hold a fluid, by id without the leading `#`.
+    pub fn fluid_tags_of(&self, fluid: photon_data::block::definition::Fluid) -> Vec<String> {
+        use photon_data::block::definition::Fluid;
+        // The fluid registry's order.
+        let id = match fluid {
+            Fluid::Empty => 0,
+            Fluid::FlowingWater => 1,
+            Fluid::Water => 2,
+            Fluid::FlowingLava => 3,
+            Fluid::Lava => 4,
+        };
+        self.fluid_tags
+            .iter()
+            .filter(|(_, members)| members.contains(&id))
+            .map(|(tag, _)| tag.to_owned())
+            .collect()
     }
 
     /// The tags the server last sent that hold the state's block.

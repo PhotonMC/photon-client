@@ -1127,9 +1127,17 @@ class GuiHudOracle extends GuiCommandOracle {
                 kept.add("gpu_utilization");
                 MovementOracle.setField(minecraft, "gpuUtilization", Oracle.f64(row, "gpu"));
             }
+            // The blocks the view meets, put in the level: the one target and any others.
+            var placed = new java.util.ArrayList<JsonObject>();
             if (row.has("target")) {
-                // The block the view lands on, put in the level.
-                var target = row.getAsJsonObject("target");
+                placed.add(row.getAsJsonObject("target"));
+            }
+            if (row.has("blocks")) {
+                for (var each : row.getAsJsonArray("blocks")) {
+                    placed.add(each.getAsJsonObject());
+                }
+            }
+            for (var target : placed) {
                 var parsed = net.minecraft.commands.arguments.blocks.BlockStateParser.parseForBlock(
                     scene.level().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BLOCK),
                     target.get("state").getAsString(), false);

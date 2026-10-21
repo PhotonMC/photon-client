@@ -389,6 +389,18 @@ pub(super) fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String
     })
 }
 
+/// The vanilla fluid tags, resolved as the server would send them, by fluid registry id.
+pub(super) fn vanilla_fluid_tags() -> Result<ClientboundUpdateTagsPacket, String> {
+    vanilla_tags_of("fluid", "minecraft:fluid", &|name| match name {
+        "minecraft:empty" => Some(0),
+        "minecraft:flowing_water" => Some(1),
+        "minecraft:water" => Some(2),
+        "minecraft:flowing_lava" => Some(3),
+        "minecraft:lava" => Some(4),
+        _ => None,
+    })
+}
+
 /// The item tags of the data pack, as a tag packet would carry them.
 pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags, String> {
     let packet = vanilla_tags_of("item", "minecraft:item", &|name| {

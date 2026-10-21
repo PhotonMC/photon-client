@@ -21,8 +21,9 @@ impl Gui {
             return None;
         }
         let camera = session.player().map(|player| {
-            let target = Self::targeted_block(session, player);
-            Self::camera_entity(session, player.position(), player.rotation(), target)
+            let eye = crate::view::eye_position(player, 0.0);
+            let targets = debug::targets(session.world(), eye, player.rotation());
+            Self::camera_entity(session, player.position(), player.rotation(), targets)
         });
         let input = Input {
             system: controls.debug.system.clone(),
@@ -82,7 +83,7 @@ impl Gui {
         session: &PlaySession,
         position: photon_core::math::Vec3,
         (yaw, pitch): (f32, f32),
-        target: Option<TargetedBlock>,
+        (target, fluid_target): (Option<TargetedBlock>, Option<TargetedBlock>),
     ) -> CameraEntity {
         let world = session.world();
         let bounds = world.dimension();
@@ -94,6 +95,7 @@ impl Gui {
             dimension: world.dimension_key().to_owned(),
             build_height: (bounds.min_y, bounds.height),
             target,
+            fluid_target,
             light: (
                 i32::from(world.sky_brightness(x, y, z)),
                 i32::from(world.block_brightness(x, y, z)),
@@ -118,29 +120,6 @@ impl Gui {
             .all()
             .find(|entity| entity.id() == id)?;
         photon_data::entity_type::name(entity.type_id).map(str::to_owned)
-    }
-
-    /// `Entity.pick(20.0, 0.0F, false)`: the block outline the view meets within 20 blocks, from
-    /// the eyes as they were a tick ago, and what the level holds there.
-    fn targeted_block(
-        session: &PlaySession,
-        player: &photon_world::local_player::LocalPlayer,
-    ) -> Option<TargetedBlock> {
-        const RANGE: f64 = 20.0;
-        let eye = crate::view::eye_position(player, 0.0);
-        let (yaw, pitch) = player.rotation();
-        let look = photon_core::math::Vec3::direction_from_rotation_components(pitch, yaw);
-        let to = photon_core::math::Vec3::new(
-            eye.x + look.x * RANGE,
-            eye.y + look.y * RANGE,
-            eye.z + look.z * RANGE,
-        );
-        let world = session.world();
-        let hit = world.clip_outlines(eye, to)?;
-        let pos = (hit.block_pos.x, hit.block_pos.y, hit.block_pos.z);
-        let state = world.block_state_or_air(pos.0, pos.1, pos.2);
-        let tags = world.block_state_registry().state_tags(state);
-        TargetedBlock::of(pos, state).map(|block| block.with_tags(tags))
     }
 
     /// `Level.getBiome` at the feet: the biome of the quart position the feet are in, the plains

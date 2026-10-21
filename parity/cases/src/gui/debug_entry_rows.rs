@@ -161,6 +161,52 @@ pub(super) fn looking_at_tag_rows() -> Vec<Value> {
     ]
 }
 
+/// The targeted fluid entries: a source, a flowing and a falling fluid the view meets, a flowing
+/// one it passes over (to the stone behind, which holds the empty fluid), stone in front of water,
+/// waterlogged stairs, a look down at a surface, lava with its level, nothing in view, reduced
+/// info, and the block and fluid entries together. Water has several tags, listed in an order
+/// that changes between launches, so the tags are pinned on lava and on stone.
+pub(super) fn looking_at_fluid_rows() -> Vec<Value> {
+    let block = |x: i64, y: i64, z: i64, state: &str| json!({"x": x, "y": y, "z": z, "state": state});
+    let aim = |label: &str, blocks: Vec<Value>, rotation: (f64, f64), more: Value| {
+        let mut options = json!({"extra": ["looking_at_fluid_state"], "blocks": blocks});
+        if let (Some(options), Some(more)) = (options.as_object_mut(), more.as_object()) {
+            options.extend(more.clone());
+        }
+        row(format!("debug-looking-at-fluid-{label}"), ((0.5, 64.0, 0.5), rotation), options)
+    };
+    let tags = json!({"extra": ["looking_at_fluid_tags"]});
+    let both = json!({"extra": ["looking_at_block_state", "looking_at_fluid_state"]});
+    let level = |state: &str| vec![block(0, 65, 4, state)];
+    vec![
+        aim("source", level("minecraft:water"), (0.0, 0.0), json!({})),
+        aim("flowing", level("minecraft:water[level=1]"), (0.0, 0.0), json!({})),
+        aim("falling", level("minecraft:water[level=8]"), (0.0, 0.0), json!({})),
+        aim(
+            "passes-over",
+            vec![block(0, 65, 4, "minecraft:water[level=5]"), block(0, 65, 6, "minecraft:stone")],
+            (0.0, 0.0),
+            json!({}),
+        ),
+        aim(
+            "stone-in-front",
+            vec![block(0, 65, 3, "minecraft:stone"), block(0, 65, 6, "minecraft:water")],
+            (0.0, 0.0),
+            json!({}),
+        ),
+        aim("waterlogged", level("minecraft:oak_stairs[half=top,waterlogged=true]"), (0.0, 0.0), json!({})),
+        aim("down", vec![block(0, 63, 0, "minecraft:water")], (0.0, 90.0), json!({})),
+        aim("lava", level("minecraft:lava[level=1]"), (0.0, 0.0), json!({})),
+        aim("nothing", Vec::new(), (0.0, 0.0), json!({})),
+        aim("reduced", level("minecraft:water"), (0.0, 0.0), json!({"reduced": true})),
+        aim("with-block", level("minecraft:water"), (0.0, 0.0), both),
+        aim("tags-lava", level("minecraft:lava"), (0.0, 0.0), tags.clone()),
+        aim("tags-flowing-lava", level("minecraft:lava[level=1]"), (0.0, 0.0), tags.clone()),
+        aim("tags-stone", level("minecraft:stone"), (0.0, 0.0), tags.clone()),
+        aim("tags-nothing", Vec::new(), (0.0, 0.0), tags),
+    ]
+}
+
 /// The targeted entity entry: a type with an underscore in its name, none under the crosshair, with
 /// the block entry (one group after the other), and reduced debug info.
 pub(super) fn looking_at_entity_rows() -> Vec<Value> {

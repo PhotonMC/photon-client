@@ -329,26 +329,57 @@ fn debug_system(each: &Value) -> photon_gui::hud::debug::SystemSpecs {
     }
 }
 
-/// The block a row put in the view: its place and a state such as `minecraft:oak_stairs[half=top]`.
-fn debug_target(row: &Value) -> Option<photon_gui::hud::debug::TargetedBlock> {
-    let target = row.get("target")?;
-    let coordinate = |key: &str| target[key].as_i64().map(|value| value as i32);
-    let position = (coordinate("x")?, coordinate("y")?, coordinate("z")?);
-    let text = target["state"].as_str()?;
-    let (name, properties) = text.split_once('[').unwrap_or((text, "]"));
-    let chosen = properties
-        .trim_end_matches(']')
-        .split(',')
-        .filter_map(|pair| pair.split_once('='))
-        .map(|(key, value)| (key.to_owned(), value.to_owned()))
-        .collect();
-    let block = photon_data::block::registry::block(name)?;
-    // The tags the server would have sent: the pack's own, through the world that holds them.
-    let mut world = photon_world::ClientWorld::new(photon_world::DimensionBounds::new(-64, 384));
-    world.apply_update_tags_packet(&crate::vanilla_block_tags().ok()?);
-    let state = block.state_id(&chosen)?;
-    let listed = world.block_state_registry().state_tags(state);
-    Some(photon_gui::hud::debug::TargetedBlock::of(position, state)?.with_tags(listed))
+/// The blocks a row put in the level: its `target` and each of its `blocks`, as a state such as
+/// `minecraft:oak_stairs[half=top]` at a place.
+fn debug_blocks(row: &Value) -> Vec<Value> {
+    let placed = row["blocks"].as_array().into_iter().flatten();
+    row.get("target")
+        .into_iter()
+        .chain(placed)
+        .map(|each| {
+            let text = each["state"].as_str().unwrap_or_default();
+            let (name, properties) = text.split_once('[').unwrap_or((text, "]"));
+            let chosen: serde_json::Map<String, Value> = properties
+                .trim_end_matches(']')
+                .split(',')
+                .filter_map(|pair| pair.split_once('='))
+                .map(|(key, value)| (key.to_owned(), json!(value)))
+                .collect();
+            json!({"block": name, "properties": chosen, "x": each["x"], "y": each["y"], "z": each["z"]})
+        })
+        .collect()
+}
+
+/// What the view lands on, by the world's own clip over the blocks a row put in a level with the
+/// tags the server would have sent: the targeted block and the targeted fluid.
+fn debug_targets(
+    row: &Value,
+) -> Result<
+    (
+        Option<photon_gui::hud::debug::TargetedBlock>,
+        Option<photon_gui::hud::debug::TargetedBlock>,
+    ),
+    String,
+> {
+    let blocks = debug_blocks(row);
+    if blocks.is_empty() {
+        return Ok((None, None));
+    }
+    let scene = json!({"blocks": blocks, "chunk_radius": 1});
+    let mut world = crate::ticks::movement_world(&scene)?;
+    world.apply_update_tags_packet(&crate::vanilla_block_tags()?);
+    world.apply_update_tags_packet(&crate::vanilla_fluid_tags()?);
+    // The eyes of a standing player, a tick ago.
+    let eye = photon_core::math::Vec3::new(
+        crate::f64_field(row, "x")?,
+        crate::f64_field(row, "y")? + 1.62,
+        crate::f64_field(row, "z")?,
+    );
+    let rotation = (
+        crate::f32_field(row, "yaw")?,
+        crate::f32_field(row, "pitch")?,
+    );
+    Ok(photon_gui::hud::debug::targets(&world, eye, rotation))
 }
 
 /// What the entries read, from a `hud_debug_overlay` row.
@@ -357,6 +388,7 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let flag = |key: &str| row[key].as_bool().unwrap_or(false);
     let launched = row["launched"].as_str().ok_or("launched")?;
+    let (target, fluid_target) = debug_targets(row)?;
     Ok(Input {
         impactors: row.get("impactors").map(debug_impactors),
         system: row.get("system").map(debug_system),
@@ -400,7 +432,8 @@ fn debug_input(row: &Value) -> Result<photon_gui::hud::debug::Input, String> {
             pitch: crate::f32_field(row, "pitch")?,
             dimension: "minecraft:overworld".to_owned(),
             build_height: (-64, 384),
-            target: debug_target(row),
+            target,
+            fluid_target,
             light: (int("sky"), int("block")),
             biome: "minecraft:plains".to_owned(),
         }),

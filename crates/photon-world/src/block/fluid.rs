@@ -70,6 +70,30 @@ impl FluidState {
         }
     }
 
+    /// The fluid's registered name (`Fluids.EMPTY` and the four others).
+    pub fn registered_name(self) -> &'static str {
+        match self.fluid {
+            Fluid::Empty => "minecraft:empty",
+            Fluid::Water => "minecraft:water",
+            Fluid::FlowingWater => "minecraft:flowing_water",
+            Fluid::Lava => "minecraft:lava",
+            Fluid::FlowingLava => "minecraft:flowing_lava",
+        }
+    }
+
+    /// The state's properties and their values as `StateHolder.getValues` lists them (sorted by
+    /// name): `falling` for any fluid, and the amount as `level` for a flowing one.
+    pub fn properties(self) -> Vec<(&'static str, String)> {
+        match self.fluid {
+            Fluid::Empty => Vec::new(),
+            Fluid::Water | Fluid::Lava => vec![("falling", self.falling.to_string())],
+            Fluid::FlowingWater | Fluid::FlowingLava => vec![
+                ("falling", self.falling.to_string()),
+                ("level", self.amount.to_string()),
+            ],
+        }
+    }
+
     /// `FluidState.createLegacyBlock`: the liquid block state that stands for
     /// this fluid, or air for none.
     pub fn legacy_block(self) -> BlockStateId {

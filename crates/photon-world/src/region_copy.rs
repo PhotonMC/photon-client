@@ -177,8 +177,12 @@ impl ClientWorld {
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::math::Vec3> {
         let registry = &self.block_state_registry;
-        self.clip_with(from, to, |state, at| registry.collision_shape_at(state, at))
-            .map(|hit| hit.location)
+        self.clip_with(from, to, |state, at, position| {
+            registry
+                .collision_shape_at(state, at)
+                .clip(from, to, position)
+        })
+        .map(|hit| hit.location)
     }
 
     /// `BlockGetter.clip` against block outlines, fluids passed through, as
@@ -188,9 +192,61 @@ impl ClientWorld {
         from: photon_core::math::Vec3,
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::aabb::BlockHitResult> {
-        self.clip_with(from, to, |state, position| {
-            crate::outline_shape(state, position)
+        self.clip_with(from, to, |state, at, position| {
+            crate::outline_shape(state, at).clip(from, to, position)
         })
+    }
+
+    /// `BlockGetter.clip` against block outlines and the shapes of fluids
+    /// (`ClipContext.Fluid.ANY`): in each block the nearer of the two hits.
+    pub fn clip_outlines_and_fluids(
+        &self,
+        from: photon_core::math::Vec3,
+        to: photon_core::math::Vec3,
+    ) -> Option<photon_core::aabb::BlockHitResult> {
+        self.clip_with(from, to, |state, at, position| {
+            let block = crate::outline_shape(state, at).clip(from, to, position);
+            let fluid = self.fluid_shape(state, at).clip(from, to, position);
+            let distance = |hit: &Option<photon_core::aabb::BlockHitResult>| {
+                hit.as_ref()
+                    .map_or(f64::MAX, |hit| from.distance_to_sqr(hit.location))
+            };
+            if distance(&block) <= distance(&fluid) {
+                block
+            } else {
+                fluid
+            }
+        })
+    }
+
+    /// The fluid in a block position (`getFluidState`).
+    pub fn fluid_at(&self, [x, y, z]: [i32; 3]) -> crate::block::fluid::FluidState {
+        self.block_state_at(x, y, z)
+            .and_then(photon_data::block::registry::block_for_state)
+            .map_or(crate::block::fluid::FluidState::EMPTY, |(block, offset)| {
+                crate::block::fluid::fluid_state(block, offset)
+            })
+    }
+
+    /// `FlowingFluid.getShape`: a box up to the fluid's height, a full block under
+    /// the same fluid; nothing where the fluid is empty.
+    fn fluid_shape(&self, state: BlockStateId, at: [i32; 3]) -> photon_core::shape::VoxelShape {
+        use photon_core::shape::Shapes;
+        let fluid = photon_data::block::registry::block_for_state(state)
+            .map_or(crate::block::fluid::FluidState::EMPTY, |(block, offset)| {
+                crate::block::fluid::fluid_state(block, offset)
+            });
+        if fluid.is_empty() {
+            return Shapes::empty();
+        }
+        let above = self.fluid_at([at[0], at[1] + 1, at[2]]);
+        let height = if !above.is_empty() && fluid.is_same(above.fluid) {
+            1.0
+        } else {
+            fluid.own_height()
+        };
+        Shapes::box_shape(0.0, 0.0, 0.0, 1.0, f64::from(height), 1.0)
+            .unwrap_or_else(|_| Shapes::empty())
     }
 
     /// `BlockGetter.traverseBlocks` along a segment, clipping each block's
@@ -199,9 +255,13 @@ impl ClientWorld {
         &self,
         from: photon_core::math::Vec3,
         to: photon_core::math::Vec3,
-        shape: impl Fn(BlockStateId, [i32; 3]) -> photon_core::shape::VoxelShape,
+        hit: impl Fn(
+            BlockStateId,
+            [i32; 3],
+            crate::BlockPos,
+        ) -> Option<photon_core::aabb::BlockHitResult>,
     ) -> Option<photon_core::aabb::BlockHitResult> {
-        use photon_core::math::{floor_f64, frac_f64};
+        use photon_core::math::floor_f64;
         if from.x == to.x && from.y == to.y && from.z == to.z {
             return None;
         }
@@ -216,37 +276,14 @@ impl ClientWorld {
         let hit_at = |block: [i32; 3]| {
             let state = self.block_state_at(block[0], block[1], block[2])?;
             let position = crate::BlockPos::new(block[0], block[1], block[2]);
-            shape(state, block).clip(from, to, position)
+            hit(state, block, position)
         };
         if let Some(hit) = hit_at(block) {
             return Some(hit);
         }
         let delta = [to_x - from_x, to_y - from_y, to_z - from_z];
         let start = [from_x, from_y, from_z];
-        let sign = delta.map(|value| {
-            if value > 0.0 {
-                1
-            } else if value < 0.0 {
-                -1
-            } else {
-                0
-            }
-        });
-        let step = [0, 1, 2].map(|axis| {
-            if sign[axis] == 0 {
-                f64::MAX
-            } else {
-                f64::from(sign[axis]) / delta[axis]
-            }
-        });
-        let mut t = [0, 1, 2].map(|axis| {
-            step[axis]
-                * if sign[axis] > 0 {
-                    1.0 - frac_f64(start[axis])
-                } else {
-                    frac_f64(start[axis])
-                }
-        });
+        let (sign, step, mut t) = voxel_walk(start, delta);
         while t[0] <= 1.0 || t[1] <= 1.0 || t[2] <= 1.0 {
             let axis = if t[0] < t[1] {
                 if t[0] < t[2] { 0 } else { 2 }
@@ -263,4 +300,35 @@ impl ClientWorld {
         }
         None
     }
+}
+
+/// The signs, the steps along each axis per unit of the segment and the first crossings of a
+/// walk through blocks (`BlockGetter.traverseBlocks`).
+fn voxel_walk(start: [f64; 3], delta: [f64; 3]) -> ([i32; 3], [f64; 3], [f64; 3]) {
+    use photon_core::math::frac_f64;
+    let sign = delta.map(|value| {
+        if value > 0.0 {
+            1
+        } else if value < 0.0 {
+            -1
+        } else {
+            0
+        }
+    });
+    let step = [0, 1, 2].map(|axis| {
+        if sign[axis] == 0 {
+            f64::MAX
+        } else {
+            f64::from(sign[axis]) / delta[axis]
+        }
+    });
+    let t = [0, 1, 2].map(|axis| {
+        step[axis]
+            * if sign[axis] > 0 {
+                1.0 - frac_f64(start[axis])
+            } else {
+                frac_f64(start[axis])
+            }
+    });
+    (sign, step, t)
 }

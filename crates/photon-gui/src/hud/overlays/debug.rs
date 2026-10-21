@@ -5,6 +5,7 @@ mod entries;
 mod format;
 mod layout;
 mod list;
+mod pick;
 mod profile_file;
 
 pub use entries::{
@@ -14,6 +15,7 @@ pub use entries::{
 pub use format::fixed;
 pub use layout::{Line, columns};
 pub use list::{Category, ENTRIES, Entry, EntryList, Profile, Status, entry, listed_entries};
+pub use pick::targets;
 pub use profile_file::{parse_profile, profile_text};
 
 use crate::FontRuns;

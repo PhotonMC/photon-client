@@ -25,6 +25,9 @@ pub struct CameraEntity {
     pub build_height: (i32, i32),
     /// The block the view ends on within 20 blocks, fluids looked through.
     pub target: Option<TargetedBlock>,
+    /// The block or fluid the view ends on within 20 blocks, fluids included, and the fluid
+    /// there (`Entity.pick(20.0, 0.0F, true)`).
+    pub fluid_target: Option<TargetedBlock>,
     /// The sky and block light at the feet's block (`Level.getBrightness`).
     pub light: (i32, i32),
     /// The biome at the feet's quart position, `minecraft:plains` where the chunk is not there.
@@ -184,6 +187,8 @@ fn at_camera(id: &str, camera: &CameraEntity) -> Vec<Line> {
         "light_levels" => light(camera),
         "looking_at_block_state" => looking_at_block(camera),
         "looking_at_block_tags" => looking_at_tags(camera),
+        "looking_at_fluid_state" => looking_at_fluid(camera),
+        "looking_at_fluid_tags" => looking_at_fluid_tags(camera),
         _ => Vec::new(),
     }
 }
@@ -231,12 +236,31 @@ fn day(count: Option<i32>) -> Vec<Line> {
 /// `DebugEntryLookingAt.BlockStateInfo`: where the view lands and the block's state, a boolean
 /// property green when true and red when false.
 fn looking_at_block(camera: &CameraEntity) -> Vec<Line> {
-    let Some(target) = &camera.target else {
-        return vec![Line::Group(LOOKING_AT_BLOCK_GROUP, Vec::new())];
+    state_lines(
+        camera.target.as_ref(),
+        "Targeted Block",
+        LOOKING_AT_BLOCK_GROUP,
+    )
+}
+
+/// `DebugEntryLookingAt.FluidStateInfo`: the same for the fluid where the view lands.
+fn looking_at_fluid(camera: &CameraEntity) -> Vec<Line> {
+    state_lines(
+        camera.fluid_target.as_ref(),
+        "Targeted Fluid",
+        LOOKING_AT_FLUID_GROUP,
+    )
+}
+
+/// `DebugEntryLookingAtState.extractInfo`: the underlined title with the position, the registered
+/// name and each property.
+fn state_lines(target: Option<&TargetedBlock>, title: &str, group: &'static str) -> Vec<Line> {
+    let Some(target) = target else {
+        return vec![Line::Group(group, Vec::new())];
     };
     let (x, y, z) = target.position;
     let mut lines = vec![
-        format!("\u{a7}nTargeted Block: {x}, {y}, {z}"),
+        format!("\u{a7}n{title}: {x}, {y}, {z}"),
         target.name.clone(),
     ];
     lines.extend(
@@ -249,16 +273,24 @@ fn looking_at_block(camera: &CameraEntity) -> Vec<Line> {
                 _ => format!("{name}: {value}"),
             }),
     );
-    vec![Line::Group(LOOKING_AT_BLOCK_GROUP, lines)]
+    vec![Line::Group(group, lines)]
 }
 
 /// `DebugEntryLookingAt.BlockTagInfo`: a `#tag` line for each tag of the block in view.
 fn looking_at_tags(camera: &CameraEntity) -> Vec<Line> {
-    let lines = camera
-        .target
+    tag_lines(camera.target.as_ref(), LOOKING_AT_BLOCK_GROUP)
+}
+
+/// `DebugEntryLookingAt.FluidTagInfo`: the same for the fluid.
+fn looking_at_fluid_tags(camera: &CameraEntity) -> Vec<Line> {
+    tag_lines(camera.fluid_target.as_ref(), LOOKING_AT_FLUID_GROUP)
+}
+
+fn tag_lines(target: Option<&TargetedBlock>, group: &'static str) -> Vec<Line> {
+    let lines = target
         .iter()
         .flat_map(|target| target.tags.iter().map(|tag| format!("#{tag}")));
-    vec![Line::Group(LOOKING_AT_BLOCK_GROUP, lines.collect())]
+    vec![Line::Group(group, lines.collect())]
 }
 
 /// `DebugEntryLight`: the light at the feet, the brighter of the two layers first.
@@ -315,6 +347,7 @@ const POSITION_GROUP: &str = "minecraft:position";
 const LIGHT_GROUP: &str = "minecraft:light";
 const LOOKING_AT_ENTITY_GROUP: &str = "minecraft:looking_at_entity";
 const LOOKING_AT_BLOCK_GROUP: &str = "minecraft:looking_at_block";
+const LOOKING_AT_FLUID_GROUP: &str = "minecraft:looking_at_fluid";
 
 fn feet(camera: &CameraEntity) -> (i32, i32, i32) {
     let (x, y, z) = camera.position;
