@@ -20,16 +20,10 @@ public class Library {
         this.streamingChannels = new Library.CountingChannelPool(streamingCount);
     }
 
-    /** The reference's own text of the pools in use. */
+    /** Test glue: the debug overlay's text of the pools, `Sounds: used/size + used/size`. */
     public String getChannelDebugString() {
-        return String.format(
-            java.util.Locale.ROOT,
-            "Sounds: %d/%d + %d/%d",
-            this.staticChannels.getUsedCount(),
-            this.staticChannels.getMaxCount(),
-            this.streamingChannels.getUsedCount(),
-            this.streamingChannels.getMaxCount()
-        );
+        return "Sounds: " + this.staticChannels.getUsedCount() + "/" + this.staticChannels.getMaxCount()
+            + " + " + this.streamingChannels.getUsedCount() + "/" + this.streamingChannels.getMaxCount();
     }
 
     public @Nullable Channel acquireChannel(final Library.Pool pool) {
