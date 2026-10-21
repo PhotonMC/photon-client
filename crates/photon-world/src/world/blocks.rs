@@ -223,50 +223,17 @@ impl ClientWorld {
         true
     }
 
-    /// Return the resolved global block-state ID at a world coordinate.
     /// `Level.getHeight(MOTION_BLOCKING, x, z)`: one above the highest
     /// state in the column that blocks motion or holds a fluid, or the
     /// bottom of the world where there is none or no chunk.
     pub fn motion_blocking_height(&self, x: i32, z: i32) -> i32 {
-        let bottom = self.dimension().min_y;
-        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
-            return bottom;
-        };
-        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
-        for (section_y, section) in chunk.sections.iter().rev() {
-            for local_y in (0..16).rev() {
-                let Some(state) = section.block_states.get(local_y * 256 + column) else {
-                    continue;
-                };
-                if motion_blocking(state) {
-                    return section_y * 16 + local_y as i32 + 1;
-                }
-            }
-        }
-        bottom
+        self.level_height(HeightmapType::MotionBlocking, x, z)
     }
 
     /// `Heightmap.Types.MOTION_BLOCKING_NO_LEAVES` at a column: like
     /// [`Self::motion_blocking_height`], but leaves do not count.
     pub fn motion_blocking_no_leaves_height(&self, x: i32, z: i32) -> i32 {
-        let bottom = self.dimension().min_y;
-        let Some(chunk) = self.chunk_for_query(x.div_euclid(16), z.div_euclid(16)) else {
-            return bottom;
-        };
-        let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
-        for (section_y, section) in chunk.sections.iter().rev() {
-            for local_y in (0..16).rev() {
-                let Some(state) = section.block_states.get(local_y * 256 + column) else {
-                    continue;
-                };
-                if motion_blocking(state)
-                    && !block::state_or_air(state).block().name.ends_with("_leaves")
-                {
-                    return section_y * 16 + local_y as i32 + 1;
-                }
-            }
-        }
-        bottom
+        self.level_height(HeightmapType::MotionBlockingNoLeaves, x, z)
     }
 
     /// How far the dragon egg's place on the End's podium is from a point

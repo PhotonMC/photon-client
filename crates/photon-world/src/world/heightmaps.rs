@@ -49,4 +49,15 @@ impl ClientWorld {
         let column = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
         Some(chunk.heightmaps.get(kind).first_available(column) - 1)
     }
+
+    /// `Level.getHeight`: one above the highest block a type counts at a column, the bottom of
+    /// the world where the chunk is not loaded and above the sea beyond the world's edge.
+    pub fn level_height(&self, kind: HeightmapType, x: i32, z: i32) -> i32 {
+        const EDGE: i32 = 30_000_000;
+        if !(-EDGE..EDGE).contains(&x) || !(-EDGE..EDGE).contains(&z) {
+            return self.sea_level() + 1;
+        }
+        self.chunk_height(kind, x, z)
+            .map_or(self.dimension().min_y, |height| height + 1)
+    }
 }

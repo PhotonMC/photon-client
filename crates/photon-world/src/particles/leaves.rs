@@ -161,24 +161,10 @@ fn raining_at(
 ) -> bool {
     world.is_raining()
         && world.sky_brightness(x, y, z) >= 15
-        && motion_blocking_height(world, x, z) <= y
+        && world.motion_blocking_height(x, z) <= y
         && materials.is_some_and(|materials| {
             materials.rains_at(world, photon_core::binary::BlockPos::new(x, y, z))
         })
-}
-
-/// `Heightmap.Types.MOTION_BLOCKING`: one above the highest block that stops motion or holds a
-/// fluid in the column.
-fn motion_blocking_height(world: &ClientWorld, x: i32, z: i32) -> i32 {
-    let bounds = world.dimension();
-    let top = bounds.min_y + bounds.height - 1;
-    (bounds.min_y..=top)
-        .rev()
-        .find(|&y| {
-            let info = crate::block::state_or_air(world.block_state_or_air(x, y, z));
-            info.blocks_motion || !info.fluid.is_empty()
-        })
-        .map_or(bounds.min_y, |y| y + 1)
 }
 
 impl ParticleEngine {

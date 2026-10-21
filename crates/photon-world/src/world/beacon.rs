@@ -163,16 +163,7 @@ impl ClientWorld {
     /// `Level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z)`: one above the highest block in the
     /// column that is not air.
     pub fn world_surface_height(&self, x: i32, z: i32) -> i32 {
-        let bounds = self.dimension();
-        let top = bounds.min_y + bounds.height - 1;
-        (bounds.min_y..=top)
-            .rev()
-            .find(|&y| {
-                !block::state_or_air(self.block_state_or_air(x, y, z))
-                    .block()
-                    .air
-            })
-            .map_or(bounds.min_y, |y| y + 1)
+        self.level_height(crate::HeightmapType::WorldSurface, x, z)
     }
 
     /// The beacons the level ticks, as `BeaconRenderer.extractRenderState` takes them.

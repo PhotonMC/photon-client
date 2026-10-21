@@ -38,16 +38,7 @@ pub(super) fn in_tag(world: &ClientWorld, state: BlockStateId, tag: &str) -> boo
 
 /// `Heightmap.Types.WORLD_SURFACE`: one above the highest block that is not air in the column.
 pub(super) fn world_surface(world: &ClientWorld, x: i32, z: i32) -> i32 {
-    let bounds = world.dimension();
-    let top = bounds.min_y + bounds.height - 1;
-    (bounds.min_y..=top)
-        .rev()
-        .find(|&y| {
-            !crate::block::state_or_air(state_at(world, (x, y, z)))
-                .block()
-                .air
-        })
-        .map_or(bounds.min_y, |y| y + 1)
+    world.world_surface_height(x, z)
 }
 
 /// `columnContainsTriggeringBlock`: sand under open sky in the column, near the block's height or
