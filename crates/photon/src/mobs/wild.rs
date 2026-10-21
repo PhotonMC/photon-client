@@ -184,6 +184,7 @@ pub(crate) fn placement(
         flip_degrees: photon_render::entity::mob_model::FLIP_DEGREES,
         red_overlay: snapshot.red_overlay,
         shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
+        ghost: view.spectating.then_some(view.camera),
         ..MobPlacement::default()
     }
 }

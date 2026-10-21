@@ -46,6 +46,8 @@ pub struct FrameView {
     pub view_bobbing: bool,
     /// The `damageTiltStrength` option.
     pub damage_tilt: f64,
+    /// The local player is a spectator, who sees invisible entities as ghosts.
+    pub spectating: bool,
 }
 
 impl FrameView {

@@ -69,6 +69,9 @@ pub struct MobPlacement {
     /// `ShulkerRenderer.setupRotations`: the data value of the face the shulker
     /// is attached to, which turns the pose about the middle of its box.
     pub attach_face: Option<i32>,
+    /// The camera, from the mesh origin, when the viewer sees an invisible mob as a ghost
+    /// (`isInvisibleTo` is false for a spectator); none when it sees nothing of the body.
+    pub ghost: Option<[f32; 3]>,
 }
 
 impl Default for MobPlacement {
@@ -95,6 +98,7 @@ impl Default for MobPlacement {
             fish: None,
             cube_mob: None,
             attach_face: None,
+            ghost: None,
         }
     }
 }

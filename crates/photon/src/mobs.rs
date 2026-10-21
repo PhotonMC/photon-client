@@ -330,17 +330,29 @@ impl Default for MobModels {
 }
 
 /// `LivingEntityRenderer.isBodyVisible`: an invisible mob's model, and the clothing layers drawn
-/// with it, are left out.
+/// with it, are left out; a spectator sees it as a ghost instead (`forceTransparent`, the colour
+/// `0x26FFFFFF`).
 pub(crate) fn visible_body(
     entity: &photon_world::ClientEntity,
     model: &MobModel,
     (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
 ) -> Vec<Vertex> {
-    if entity.is_invisible() {
-        return Vec::new();
+    if !entity.is_invisible() {
+        return mob_vertices(model, placement, rect);
     }
-    mob_vertices(model, placement, rect)
+    placement.ghost.map_or_else(Vec::new, |camera| {
+        photon_render::entity::mob_model::mob_vertices_blended(
+            model,
+            &placement_pose(placement),
+            rect,
+            (placement.light, GHOST_ALPHA),
+            camera,
+        )
+    })
 }
+
+/// The alpha byte of `0x26FFFFFF`, the colour a ghost's model is drawn with.
+const GHOST_ALPHA: u8 = 0x26;
 
 mod wild;
 pub use wild::*;

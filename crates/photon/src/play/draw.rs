@@ -38,6 +38,7 @@ impl Play {
             skin: self.skin_rect,
             view_bobbing: options.view_bobbing,
             damage_tilt: options.damage_tilt_strength,
+            spectating: self.session.game_mode().is_spectator(),
         }
     }
 
