@@ -61,7 +61,8 @@ impl GenericScreen {
                 draw,
                 menu,
                 index,
-                (left + x, top + y),
+                &self.layout,
+                (x, y),
                 transform::empty_icon(self.kind, index),
             );
         }

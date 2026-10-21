@@ -308,7 +308,7 @@ impl Screen for InventoryScreen {
         for index in 0..SLOT_COUNT {
             let (x, y) = slot_position(index);
             self.mouse
-                .draw_slot(draw, menu, index, (left + x, top + y), empty_icon(index));
+                .draw_slot(draw, menu, index, &self.layout, (x, y), empty_icon(index));
         }
         if let Some(slot) = self.hovered {
             self.layout.highlight(draw, slot_position(slot), true);

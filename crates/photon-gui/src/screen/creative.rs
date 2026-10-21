@@ -372,7 +372,7 @@ impl Screen for CreativeScreen {
                 inventory,
             };
             self.mouse
-                .draw_slot(draw, &view, index, (left + x, top + y), icon);
+                .draw_slot(draw, &view, index, &self.layout, (x, y), icon);
         }
         if CREATIVE_TABS[selected].show_title {
             draw.frame.text(

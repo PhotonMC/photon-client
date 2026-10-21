@@ -143,6 +143,17 @@ pub trait ItemSlots {
 
     /// `GuiGraphics.item` and `itemDecorations`: an item in the slot at `(x, y)`, then its count
     /// (or the given text) in the given colour when it is not one.
+    fn item_with_count_seeded(
+        &mut self,
+        atlas: &photon_render::gui::GuiAtlas,
+        font: &photon_render::gui::font::Font,
+        draw: &mut photon_render::gui::ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        shown: (i32, Option<(&str, u32)>),
+        place: (i32, i32, i32),
+    );
+
+    /// [`Self::item_with_count_seeded`] with the seed of an item drawn outside a slot.
     #[expect(
         clippy::too_many_arguments,
         reason = "mirrors the parameters of the reference's `GuiGraphics` call"
@@ -161,6 +172,20 @@ pub trait ItemSlots {
 }
 
 impl ItemSlots for photon_render::gui::GuiFrame {
+    fn item_with_count(
+        &mut self,
+        atlas: &photon_render::gui::GuiAtlas,
+        font: &photon_render::gui::font::Font,
+        draw: &mut photon_render::gui::ItemDrawer<'_>,
+        stack: &photon_world::ClientItemStackState,
+        count: i32,
+        text: Option<(&str, u32)>,
+        x: i32,
+        y: i32,
+    ) {
+        self.item_with_count_seeded(atlas, font, draw, stack, (count, text), (x, y, 0));
+    }
+
     fn item_bar(
         &mut self,
         atlas: &photon_render::gui::GuiAtlas,
@@ -183,18 +208,20 @@ impl ItemSlots for photon_render::gui::GuiFrame {
         self.item_cooldown_group(atlas, (x, y), &photon_game::item::cooldowns::group(stack));
     }
 
-    fn item_with_count(
+    fn item_with_count_seeded(
         &mut self,
         atlas: &photon_render::gui::GuiAtlas,
         font: &photon_render::gui::font::Font,
         draw: &mut photon_render::gui::ItemDrawer<'_>,
         stack: &photon_world::ClientItemStackState,
-        count: i32,
-        text: Option<(&str, u32)>,
-        x: i32,
-        y: i32,
+        (count, text): (i32, Option<(&str, u32)>),
+        (x, y, seed): (i32, i32, i32),
     ) {
-        self.item(draw, stack, x, y);
+        let holding = photon_render::gui::ItemHolding {
+            seed,
+            ..Default::default()
+        };
+        self.item_in_use(draw, stack, (x as f32, y as f32), holding);
         self.item_bar(atlas, stack, x, y);
         self.item_cooldown(atlas, stack, x, y);
         let count_text = count.to_string();
