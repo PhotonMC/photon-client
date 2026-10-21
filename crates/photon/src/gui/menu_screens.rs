@@ -10,6 +10,24 @@ type ProgressArgs<'a> = (
 );
 
 impl Gui {
+    /// The open confirmation screen, laid out again for the window.
+    pub(super) fn draw_confirm(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        gui_size: (i32, i32),
+    ) {
+        let blurriness = controls.options.menu_background_blurriness;
+        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        let Some(confirm) = controls.confirm.as_mut() else {
+            return;
+        };
+        if confirm.size() != gui_size {
+            *confirm = confirm.resized(font, lang, gui_size);
+        }
+        confirm.draw(frame, (atlas, font), mouse, blurriness);
+    }
+
     /// The settings screen that is open, the topmost of those over the
     /// options, or the options screen, or the pause menu.
     pub(super) fn draw_menu(

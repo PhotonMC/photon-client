@@ -48,38 +48,28 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     }))
 }
 
-pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    let root = &ctx.root;
-    let font = &ctx.font;
-    let atlas = &ctx.atlas;
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground, ConfirmScreen};
-    let lang = photon_game::text::Lang::load(root);
-    let size = (int("width"), int("height"));
+/// The screen a row describes: a link, a server pack or a plain message.
+fn confirm_screen(
+    font: &photon_render::gui::font::Font,
+    lang: &photon_game::text::Lang,
+    size: (i32, i32),
+    row: &Value,
+    background: photon_gui::screen::confirm::ConfirmBackground,
+) -> photon_gui::screen::confirm::ConfirmScreen {
+    use photon_gui::screen::confirm::ConfirmScreen;
     let text =
         |key: &str| photon_game::text::Component::literal(row[key].as_str().unwrap_or_default());
-    let background = if row["death"].as_bool().unwrap_or(false) {
-        ConfirmBackground::Death
-    } else {
-        ConfirmBackground::Menu {
-            in_world: row["in_world"].as_bool().unwrap_or(false),
-        }
-    };
-    let mut screen = match (row["link"].as_object(), row["pack"].as_object()) {
+    match (row["link"].as_object(), row["pack"].as_object()) {
         (Some(link), _) => ConfirmScreen::link(
             font,
-            &lang,
+            lang,
             size,
             link["url"].as_str().unwrap_or_default(),
             link["trusted"].as_bool().unwrap_or(false),
         ),
         (None, Some(pack)) => ConfirmScreen::server_pack(
             font,
-            &lang,
+            lang,
             size,
             pack.get("required")
                 .and_then(Value::as_bool)
@@ -91,7 +81,7 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         ),
         (None, None) => ConfirmScreen::new(
             font,
-            &lang,
+            lang,
             size,
             &text("title"),
             &text("message"),
@@ -99,7 +89,29 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
             &text("no"),
         ),
     }
-    .with_background(background);
+    .with_background(background)
+}
+
+pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    let root = &ctx.root;
+    let font = &ctx.font;
+    let atlas = &ctx.atlas;
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground};
+    let lang = photon_game::text::Lang::load(root);
+    let size = (int("width"), int("height"));
+    let background = if row["death"].as_bool().unwrap_or(false) {
+        ConfirmBackground::Death
+    } else {
+        ConfirmBackground::Menu {
+            in_world: row["in_world"].as_bool().unwrap_or(false),
+        }
+    };
+    let mut screen = confirm_screen(font, &lang, size, row, background);
     if int("delay") > 0 {
         screen.set_delay(int("delay"));
     }
@@ -130,7 +142,8 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     if row["click"].as_bool().unwrap_or(false) {
         callbacks.extend(screen.clicked(mouse));
     }
-    screen.draw(&mut frame, atlas, font, mouse);
+    let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
+    screen.draw(&mut frame, (atlas, font), mouse, blurriness);
     let callbacks: Vec<&str> = callbacks
         .iter()
         .map(|action| match action {
@@ -142,6 +155,7 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     Ok(json!({
         "label": row["label"],
         "callbacks": callbacks,
+        "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
 }

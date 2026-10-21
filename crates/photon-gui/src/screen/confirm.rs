@@ -343,10 +343,20 @@ impl ConfirmScreen {
         }
     }
 
-    /// The background, the title, the message, then the buttons.
-    pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {
+    /// The background (over a game, with the frame behind it blurred first), the title, the
+    /// message, then the buttons.
+    pub fn draw(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        mouse: (i32, i32),
+        blurriness: i32,
+    ) {
         match self.background {
             ConfirmBackground::Menu { in_world } => {
+                if in_world {
+                    frame.blur_before_this_stratum(blurriness);
+                }
                 let texture = if in_world {
                     "inworld_menu_background"
                 } else {

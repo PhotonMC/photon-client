@@ -194,10 +194,26 @@ fn pack_rows() -> Vec<Value> {
     ]
 }
 
+/// Over a game the background blurs from a blurriness of one; the death screen's does not.
+fn blur_rows() -> Vec<Value> {
+    [("blur-in-world-0", 0, false), ("blur-in-world-10", 10, false), ("blur-death", 5, true)]
+        .into_iter()
+        .map(|(label, blurriness, death)| {
+            let mut row = Confirm { in_world: true, death, ..confirm() }.row(label);
+            row["blurriness"] = json!(blurriness);
+            row
+        })
+        .collect()
+}
+
 /// The confirmation screen (and the death screen's own): the message
 /// wrapped and clipped to fifteen lines, the delay that keeps the buttons
 /// asleep and Escape shut, Tab, Enter and clicks, and what the callback was
 /// told.
 pub fn confirm_screen() -> Value {
-    gui("confirm-screen", "confirm_screen", [message_rows(), input_rows(), link_rows(), pack_rows()].concat())
+    gui(
+        "confirm-screen",
+        "confirm_screen",
+        [message_rows(), input_rows(), link_rows(), pack_rows(), blur_rows()].concat(),
+    )
 }

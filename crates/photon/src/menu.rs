@@ -290,7 +290,8 @@ impl Menu {
                     Screen::Title(screen) => screen.draw(frame, atlas, font, mouse),
                     Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
                     Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
-                    Screen::Confirm(screen, _) => screen.draw(frame, atlas, font, mouse),
+                    // Not over a level, so the panorama is what blurs, not this screen.
+                    Screen::Confirm(screen, _) => screen.draw(frame, (atlas, font), mouse, 0),
                     // In the level: `LevelLoadingScreen` until it has loaded.
                     Screen::Connecting(screen, task) if task.status.loading() => {
                         draw_level_loading(frame, atlas, font, lang, screen.size());

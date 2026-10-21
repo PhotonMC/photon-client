@@ -23,8 +23,8 @@ impl Gui {
         )
     }
 
-    /// The link question or the dialog a server put over the game (or the question about it):
-    /// whether one is up.
+    /// The link question, the dialog a server put over the game (or the question about it) or a
+    /// confirmation: whether one is up.
     fn draw_server_dialog(
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
@@ -32,21 +32,24 @@ impl Gui {
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
     ) -> bool {
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        let blurriness = controls.options.menu_background_blurriness;
         if let Some((link, _)) = controls.link_confirm.as_mut() {
             if link.size() != gui_size {
                 *link = link.resized(font, lang, gui_size);
             }
-            link.draw(frame, atlas, font, mouse);
+            link.draw(frame, (atlas, font), mouse, blurriness);
         } else if let Some(warning) = controls.dialog_warning.as_mut() {
             if warning.size() != gui_size {
                 *warning = warning.resized(font, lang, gui_size);
             }
-            warning.draw(frame, atlas, font, mouse);
+            warning.draw(frame, (atlas, font), mouse, blurriness);
         } else if let Some(layer) = controls.dialog.as_mut() {
             if layer.size() != gui_size {
                 *layer = layer.resized(font, lang, gui_size);
             }
             layer.draw(frame, (atlas, font), item, mouse);
+        } else if controls.confirm.is_some() {
+            Self::draw_confirm((atlas, font, lang), controls, frame, gui_size);
         } else {
             return false;
         }
@@ -254,12 +257,6 @@ impl Gui {
             &mut frame,
             (gui_size, &mut draw_item),
         ) {
-        } else if let Some(confirm) = controls.confirm.as_mut() {
-            if confirm.size() != gui_size {
-                *confirm = confirm.resized(&self.font, &self.lang, gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            confirm.draw(&mut frame, &self.atlas, &self.font, mouse);
         } else if let Some(credits) = controls.credits.as_mut() {
             // `deltaTracker.getGameTimeDeltaPartialTick`: the time since the last frame in ticks.
             let delta = now.saturating_sub(last_frame) as f32 / 50.0;

@@ -306,6 +306,10 @@ class GuiScreenOracle extends GuiOverlayOracle {
             }
             if (row.get("death").getAsBoolean()) {
                 confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
+            } else if (row.get("in_world").getAsBoolean()) {
+                // With a level there is no panorama: the background is the blur and the tiles.
+                minecraft.options.menuBackgroundBlurriness().set(row.has("blurriness") ? row.get("blurriness").getAsInt() : 5);
+                confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             } else {
                 // Without a level the panorama would draw first, which is not a GUI drawing.
                 var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod(
@@ -317,6 +321,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("callbacks", callbacks);
+            var blurField = GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
+            blurField.setAccessible(true);
+            out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             rows.add(out);
         }
