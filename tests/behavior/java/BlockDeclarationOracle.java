@@ -389,6 +389,9 @@ class BlockDeclarationOracle extends BlockItemOracle {
             described.addProperty("kinetic_weapon",
                 data.has(net.minecraft.core.component.DataComponents.KINETIC_WEAPON));
             var kinetic = data.get(net.minecraft.core.component.DataComponents.KINETIC_WEAPON);
+            if (kinetic != null && kinetic.sound().isPresent()) {
+                described.addProperty("kinetic_sound", kinetic.sound().get().getRegisteredName());
+            }
             if (kinetic != null && kinetic.hitSound().isPresent()) {
                 described.addProperty("kinetic_hit_sound", kinetic.hitSound().get().getRegisteredName());
             }

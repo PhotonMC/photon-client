@@ -121,10 +121,25 @@ pub(super) fn base_item_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
         BaseUse::Fail => UseResult::Fail,
         BaseUse::Start => {
             ctx.player.start_using_item(hand != super::MAIN_HAND);
+            if let Some(sound) = kinetic_start_sound(&values, item) {
+                ctx.player.play_own_sound(sound, (1.0, 1.0));
+            }
             UseResult::Success { swing: false }
         }
         BaseUse::Unported => UseResult::Success { swing: false },
     }
+}
+
+/// `KineticWeapon.makeSound`, which `Item.use` makes for a kinetic weapon that does not block
+/// attacks and is not consumed.
+fn kinetic_start_sound(values: &Values, item: photon_core::ids::ItemId) -> Option<&'static str> {
+    if values.has(CONSUMABLE) || swappable(values, item) || values.has(BLOCKS_ATTACKS) {
+        return None;
+    }
+    if !values.has(KINETIC_WEAPON) {
+        return None;
+    }
+    rules::item(item)?.kinetic_sound
 }
 
 /// `Player.getProjectile` for the arrows: one in any slot of the inventory, armor or off hand
@@ -260,5 +275,17 @@ mod tests {
             decided("minecraft:carved_pumpkin", 20, false),
             BaseUse::Pass
         );
+    }
+
+    /// `Item.use` makes the kinetic weapon's sound as the use starts; a shield and bread make none.
+    #[test]
+    fn a_spear_sounds_as_its_use_starts() {
+        let (spear, item) = values("minecraft:iron_spear");
+        let sound = kinetic_start_sound(&spear, item).expect("sound");
+        assert!(sound.starts_with("minecraft:item.spear"), "{sound}");
+        for name in ["minecraft:shield", "minecraft:bread", "minecraft:stick"] {
+            let (values, item) = values(name);
+            assert_eq!(kinetic_start_sound(&values, item), None, "{name}");
+        }
     }
 }

@@ -217,6 +217,9 @@ fn describe_consume(item: &photon_data::item::definition::Item, described: &mut 
         described["consume_sound"] = json!(consume.sound);
         described["consume_particles"] = json!(consume.particles);
     }
+    if let Some(sound) = item.kinetic_sound {
+        described["kinetic_sound"] = json!(sound);
+    }
     if let Some(sound) = item.kinetic_hit_sound {
         described["kinetic_hit_sound"] = json!(sound);
     }

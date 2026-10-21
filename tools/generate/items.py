@@ -144,6 +144,8 @@ def items_file(items):
         for flag in ("blocks_attacks", "kinetic_weapon", "glider"):
             if item[flag]:
                 calls.append(f"{flag}()")
+        if item.get("kinetic_sound"):
+            calls.append(f"kinetic_sound({rust_str(item['kinetic_sound'])})")
         if item.get("kinetic_hit_sound"):
             calls.append(f"kinetic_hit_sound({rust_str(item['kinetic_hit_sound'])})")
         if item.get("minimum_attack_charge"):
