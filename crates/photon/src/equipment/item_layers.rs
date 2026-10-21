@@ -112,6 +112,9 @@ impl ItemLayerCache {
             DisplayContext::Gui
                 | DisplayContext::FirstPersonLeftHand
                 | DisplayContext::FirstPersonRightHand
+                | DisplayContext::ThirdPersonLeftHand
+                | DisplayContext::ThirdPersonRightHand
+                | DisplayContext::Head
                 | DisplayContext::Fixed
                 | DisplayContext::Ground
         )

@@ -13,6 +13,8 @@ use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
 use crate::equipment::item_layers::ItemLayerCache;
+use crate::equipment::needle::Owner;
+use photon_render::item_model::Holder;
 
 /// Where a stack is carried: in a hand, or on the head.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -26,6 +28,16 @@ pub enum Place {
 }
 
 impl Place {
+    /// `ItemDisplayContext.ordinal()` of the place's display context.
+    fn context_ordinal(self) -> i32 {
+        match self {
+            Place::Left => 1,
+            Place::Right => 2,
+            Place::Head => 5,
+            Place::Ground => 7,
+        }
+    }
+
     /// The index of the layer cache of the place's display context.
     pub fn index(self) -> usize {
         self as usize
@@ -56,6 +68,8 @@ pub struct HeldItem {
     pub item_use: Option<i32>,
     /// The stack is the rod whose bobber is out.
     pub cast: bool,
+    /// The entity that holds the stack when it is not the local player.
+    pub owner: Option<Owner>,
 }
 
 impl HeldItem {
@@ -68,6 +82,7 @@ impl HeldItem {
             light,
             item_use: None,
             cast: false,
+            owner: None,
         }
     }
 
@@ -80,6 +95,7 @@ impl HeldItem {
             light,
             item_use: None,
             cast: false,
+            owner: None,
         }
     }
 }
@@ -138,6 +154,8 @@ pub struct HandActions {
     uses: [Option<i32>; 2],
     /// Whether the arm holds a rod whose bobber is out.
     cast: [bool; 2],
+    /// Who holds the stacks when it is a world entity, with its id as the seed.
+    owner: Option<Owner>,
 }
 
 impl HandActions {
@@ -146,6 +164,7 @@ impl HandActions {
             motions,
             uses,
             cast: [false; 2],
+            owner: None,
         }
     }
 
@@ -155,8 +174,18 @@ impl HandActions {
         session: &photon_net::connection::PlaySession,
         entity: &photon_world::ClientEntity,
     ) -> Self {
-        Self::new(motions, super::arm_poses::entity_uses(entity))
-            .with_cast(crate::objects::fishing_hooks::entity_casts(session, entity))
+        let (x, y, z) = entity.position();
+        let mut actions = Self::new(motions, super::arm_poses::entity_uses(entity))
+            .with_cast(crate::objects::fishing_hooks::entity_casts(session, entity));
+        // `LivingEntity.getVisualRotationYInDegrees` is the body's.
+        actions.owner = Some(Owner {
+            holder: Holder {
+                position: [x, y, z],
+                yaw: entity.y_body_rot(),
+            },
+            seed: entity.id().0,
+        });
+        actions
     }
 
     /// The actions of the local player's hands, `main` being the stack in the main hand.
@@ -171,6 +200,15 @@ impl HandActions {
         Self::new(motions, player.arm_uses()).with_cast(crate::objects::fishing_hooks::local_casts(
             session, player, main,
         ))
+    }
+
+    /// The owner of a stack drawn at a place: `ItemModelResolver.updateForLiving` seeds a spinning
+    /// needle with the holder's id plus the ordinal of the display context.
+    fn owner_at(&self, place: Place) -> Option<Owner> {
+        self.owner.map(|owner| Owner {
+            seed: owner.seed + place.context_ordinal(),
+            ..owner
+        })
     }
 
     /// The arms that hold a rod with its bobber out (`FishingRodCast`).
@@ -224,6 +262,7 @@ impl Hands<'_> {
             light: self.light,
             item_use: self.motions.uses[index],
             cast: self.motions.cast[index],
+            owner: self.motions.owner_at(place),
         }
     }
 
@@ -280,6 +319,7 @@ impl Hands<'_> {
                 light: self.light,
                 item_use: None,
                 cast: false,
+                owner: self.motions.owner_at(Place::Head),
             });
         }
     }
@@ -311,6 +351,7 @@ pub fn held_item_vertices(
             }
         };
         cache.set_cast(item.cast);
+        cache.set_owner(item.owner);
         let item_layers = cache.get_in_use(stack, item.item_use, (renderer, tints));
         let drawn = item_layer_vertices(
             item_layers,
@@ -321,4 +362,26 @@ pub fn held_item_vertices(
         cache.extend_with_glint(stack, drawn, &mut vertices);
     }
     vertices
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_hand_seeds_its_needle_by_the_holders_id_and_the_display_context() {
+        let mut actions = HandActions::default();
+        assert!(actions.owner_at(Place::Left).is_none());
+        actions.owner = Some(Owner {
+            holder: Holder {
+                position: [0.0; 3],
+                yaw: 0.0,
+            },
+            seed: 40,
+        });
+        let seed = |place| actions.owner_at(place).map(|owner| owner.seed);
+        assert_eq!(seed(Place::Left), Some(41));
+        assert_eq!(seed(Place::Right), Some(42));
+        assert_eq!(seed(Place::Head), Some(45));
+    }
 }
