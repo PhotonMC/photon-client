@@ -42,6 +42,7 @@ impl Play {
                 yaw: player.rotation().0,
             }
         });
+        let (sun_angle, moon_phase) = self.sky.clock();
         self.armor
             .needles
             .lock()
@@ -53,6 +54,8 @@ impl Play {
                 last_death: session.last_death().cloned(),
                 holder,
                 runs_normally: session.runs_normally(),
+                sun_angle,
+                moon_phase,
             });
     }
 }

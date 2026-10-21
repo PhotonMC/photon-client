@@ -93,6 +93,11 @@ impl Sky {
     }
 
     /// The angles of a flash that started since the last call, for its sound.
+    /// The sun angle and moon phase at the camera that a clock reads.
+    pub fn clock(&self) -> (f32, u8) {
+        self.next.clock()
+    }
+
     pub fn take_flash_start(&mut self) -> Option<(f32, f32)> {
         self.flash_start.take()
     }

@@ -99,10 +99,11 @@ pub fn item_select() -> Value {
 
 /// The needle's wobbler over a run of game ticks: still on a tick, moving on the next.
 fn wobble_rows() -> Vec<Value> {
-    let run = |label: &str, wobble: bool, steps: &[(i64, f64)]| {
+    let run_with = |label: &str, (wobble, factor): (bool, f64), steps: &[(i64, f64)]| {
         let steps: Vec<Value> = steps.iter().map(|(tick, target)| json!({"tick": tick, "target": target})).collect();
-        json!({"label": label, "kind": "wobble", "wobble": wobble, "steps": steps})
+        json!({"label": label, "kind": "wobble", "wobble": wobble, "factor": factor, "steps": steps})
     };
+    let run = |label: &str, wobble: bool, steps: &[(i64, f64)]| run_with(label, (wobble, 0.8), steps);
     let climb: Vec<(i64, f64)> = (1..=12).map(|tick| (tick, 0.3)).collect();
     vec![
         run("wobble-climbs-to-the-target", true, &climb),
@@ -110,6 +111,7 @@ fn wobble_rows() -> Vec<Value> {
         run("wobble-starts-at-tick-zero", true, &[(0, 0.4), (1, 0.4)]),
         run("wobble-wraps-the-short-way", true, &[(1, 0.95), (2, 0.95), (3, 0.95), (4, 0.95)]),
         run("plain-follows-every-call", false, &[(4, 0.9), (4, 0.1), (5, 0.6)]),
+        run_with("clock-factor-climbs", (true, 0.9), &climb),
         run("wobble-long-gap", true, &[(1, 0.5), (900, 0.5), (901, 0.2)]),
     ]
 }

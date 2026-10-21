@@ -159,6 +159,16 @@ pub struct Attributes {
     pub(super) values: BTreeMap<Attribute, Value>,
 }
 
+impl Attributes {
+    /// What the clock models read: the `sun_angle` in degrees and the `moon_phase` index.
+    pub fn clock(&self) -> (f32, u8) {
+        (
+            self.get(Attribute::SunAngle).float(),
+            self.get(Attribute::MoonPhase).phase(),
+        )
+    }
+}
+
 /// What one attribute is: its name, the type of its values and what it is without any layer.
 struct Definition {
     name: &'static str,

@@ -4,7 +4,7 @@
 use photon_core::ids::ItemId;
 use photon_net::connection::GlobalBlock;
 use photon_render::item_model::{
-    CompassTarget, Holder, Wobbler, is_valid_target, rotation_towards, spinning_rotation,
+    Holder, NeedleSource, Wobbler, is_valid_target, rotation_towards, spinning_rotation,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,14 @@ pub struct NeedleFrame {
     pub holder: Option<Holder>,
     /// `tickRateManager().runsNormally()`.
     pub runs_normally: bool,
+    /// The `sun_angle` attribute at the holder, in degrees.
+    pub sun_angle: f32,
+    /// The index of the `moon_phase` attribute at the holder.
+    pub moon_phase: u8,
 }
+
+/// The moon's phases (`MoonPhase.COUNT`).
+const MOON_PHASES: f32 = 8.0;
 
 /// One model's needle state: its wobbler for a target, and the spin when there is none.
 struct Node {
@@ -30,10 +37,21 @@ struct Node {
     no_target: Wobbler,
 }
 
+fn node_of(
+    nodes: &mut HashMap<(ItemId, NeedleSource), Node>,
+    key: (ItemId, NeedleSource),
+    wobble: bool,
+) -> &mut Node {
+    nodes.entry(key).or_insert_with(|| Node {
+        wobbler: Wobbler::new(wobble, key.1.factor()),
+        no_target: Wobbler::new(wobble, key.1.factor()),
+    })
+}
+
 /// The needles of every compass model, which a draw moves at most once per game tick.
 pub struct NeedleStore {
     frame: NeedleFrame,
-    nodes: HashMap<(ItemId, CompassTarget), Node>,
+    nodes: HashMap<(ItemId, NeedleSource), Node>,
     /// `CompassAngleState.random`, unseeded as the reference's is.
     random: photon_core::random::RandomSource,
 }
@@ -59,6 +77,11 @@ impl NeedleStore {
         }
     }
 
+    /// The dimension a holder stands in (`context_dimension`).
+    pub fn dimension(&self) -> &str {
+        &self.frame.dimension
+    }
+
     pub fn set_frame(&mut self, frame: NeedleFrame) {
         self.frame = frame;
     }
@@ -67,46 +90,58 @@ impl NeedleStore {
     /// is the target the stack's tracker holds.
     pub fn angle(
         &mut self,
-        (item, target, wobble): (ItemId, CompassTarget, bool),
+        (item, target, wobble): (ItemId, NeedleSource, bool),
         lodestone: Option<(String, [i32; 3])>,
         seed: i32,
     ) -> f32 {
         let Some(holder) = self.frame.holder else {
             return 0.0;
         };
-        let aim = self.aim(target, lodestone);
-        let node = self.nodes.entry((item, target)).or_insert_with(|| Node {
-            wobbler: Wobbler::new(wobble),
-            no_target: Wobbler::new(wobble),
-        });
         let tick = self.frame.game_time;
+        if target.is_time() {
+            let time = self.time_of(target);
+            let node = node_of(&mut self.nodes, (item, target), wobble);
+            if node.wobbler.should_update(tick) {
+                node.wobbler.update(tick, time);
+            }
+            return node.wobbler.rotation();
+        }
+        let aim = self.aim(target, lodestone);
+        let runs_normally = self.frame.runs_normally;
+        let spin = self.random.next_float();
+        let node = node_of(&mut self.nodes, (item, target), wobble);
         if let Some(block) = aim.filter(|block| is_valid_target(&holder, *block)) {
-            let local = self
-                .frame
-                .runs_normally
-                .then_some((&mut node.wobbler, tick));
+            let local = runs_normally.then_some((&mut node.wobbler, tick));
             return rotation_towards(&holder, block, local);
         }
         if node.no_target.should_update(tick) {
-            node.no_target.update(tick, self.random.next_float());
+            node.no_target.update(tick, spin);
         }
         spinning_rotation(node.no_target.rotation(), seed)
     }
 
-    /// The block a target points at in the holder's dimension (`CompassTarget.get`).
-    fn aim(
-        &self,
-        target: CompassTarget,
-        lodestone: Option<(String, [i32; 3])>,
-    ) -> Option<[i32; 3]> {
+    /// `Time.TimeSource.get`: what a clock follows, in turns.
+    fn time_of(&mut self, source: NeedleSource) -> f32 {
+        match source {
+            NeedleSource::TimeDaytime => self.frame.sun_angle / 360.0,
+            NeedleSource::TimeMoonPhase => f32::from(self.frame.moon_phase) / MOON_PHASES,
+            _ => self.random.next_float(),
+        }
+    }
+
+    /// The block a target points at in the holder's dimension (`NeedleSource.get`).
+    fn aim(&self, target: NeedleSource, lodestone: Option<(String, [i32; 3])>) -> Option<[i32; 3]> {
         let (dimension, block) = match target {
-            CompassTarget::None => return None,
-            CompassTarget::Lodestone => lodestone?,
-            CompassTarget::Spawn => {
+            NeedleSource::None
+            | NeedleSource::TimeRandom
+            | NeedleSource::TimeDaytime
+            | NeedleSource::TimeMoonPhase => return None,
+            NeedleSource::Lodestone => lodestone?,
+            NeedleSource::Spawn => {
                 let spawn = self.frame.respawn.as_ref()?;
                 (spawn.dimension.clone(), spawn.block)
             }
-            CompassTarget::Recovery => {
+            NeedleSource::Recovery => {
                 let death = self.frame.last_death.as_ref()?;
                 (death.dimension.clone(), death.block)
             }
@@ -143,7 +178,7 @@ mod tests {
     fn a_needle_eases_once_per_tick_towards_the_spawn() {
         let mut store = store([0.5, 64.0, 20.5], 0.0);
         let at =
-            |store: &mut NeedleStore| store.angle((compass(), CompassTarget::Spawn, true), None, 0);
+            |store: &mut NeedleStore| store.angle((compass(), NeedleSource::Spawn, true), None, 0);
         let first = at(&mut store);
         // The same game tick does not move the needle again.
         assert_eq!(at(&mut store), first);
@@ -158,13 +193,22 @@ mod tests {
             dimension: "minecraft:the_nether".to_owned(),
             block: [0, 64, 0],
         });
-        let angle = store.angle((compass(), CompassTarget::Spawn, true), None, 3);
+        let angle = store.angle((compass(), NeedleSource::Spawn, true), None, 3);
         assert!((0.0..1.0).contains(&angle));
         // Nothing to hold, nothing to point.
         store.frame.holder = None;
         assert_eq!(
-            store.angle((compass(), CompassTarget::Spawn, true), None, 3),
+            store.angle((compass(), NeedleSource::Spawn, true), None, 3),
             0.0
         );
+    }
+
+    #[test]
+    fn a_clock_follows_the_sun_angle_without_easing() {
+        let mut store = store([0.5, 64.0, 0.5], 0.0);
+        store.frame.sun_angle = 90.0;
+        let clock = photon_game::item::id_of("minecraft:clock").expect("a clock");
+        let angle = store.angle((clock, NeedleSource::TimeDaytime, false), None, 0);
+        assert_eq!(angle, 0.25);
     }
 }

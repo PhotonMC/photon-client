@@ -146,7 +146,7 @@ impl BlockRenderer {
         item: ItemId,
         context: crate::model::DisplayContext,
         state: crate::item_model::ItemState,
-    ) -> Vec<(crate::item_model::CompassTarget, bool)> {
+    ) -> Vec<(crate::item_model::NeedleSource, bool)> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()
             .and_then(|index| self.items.get(index))

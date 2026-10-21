@@ -53,6 +53,8 @@ pub struct ItemState {
     pub block_state: Option<&'static str>,
     /// The compass needles the holder's draw works out (`compass` range dispatches).
     pub needles: Needles,
+    /// The key of the level's dimension (`context_dimension`).
+    pub dimension: Option<&'static str>,
 }
 
 /// What a `block_state` select's property is named in front of: the state property it reads.
@@ -105,7 +107,7 @@ struct Walk {
     state: ItemState,
     trace: Vec<u8>,
     /// The compass needles the state did not hold when a range asked for them.
-    wanted: Vec<(CompassTarget, bool)>,
+    wanted: Vec<(NeedleSource, bool)>,
 }
 
 impl Walk {
@@ -117,7 +119,7 @@ impl Walk {
     /// The numeric property of a range dispatch, before its scale. Properties this client does
     /// not read give zero.
     fn number(&mut self, property: &str, remaining: bool) -> f32 {
-        if let Some((target, wobble)) = CompassTarget::from_property(property) {
+        if let Some((target, wobble)) = NeedleSource::from_property(property) {
             if let Some(bits) = self.state.needles.0[target.index()] {
                 return f32::from_bits(bits);
             }
@@ -218,6 +220,14 @@ pub fn layers_any_use(
     }
 }
 
+/// Whether a range dispatch's property is one this client reads.
+fn is_read_range(property: &str) -> bool {
+    READ_RANGES.contains(&property)
+        || [USE_CYCLE, COMPASS, TIME]
+            .iter()
+            .any(|prefix| property.starts_with(prefix))
+}
+
 /// The children of a node whose property this client reads, all of them: both sides of a
 /// `using_item` condition, every entry and the fallback of a `use_duration` or `crossbow/pull`
 /// range, every case and the fallback of a `charge_type` select.
@@ -234,18 +244,13 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             entries,
             fallback,
             ..
-        } if READ_RANGES.contains(&property.as_str())
-            || property.starts_with(USE_CYCLE)
-            || property.starts_with(COMPASS) =>
-        {
-            Some(
-                entries
-                    .iter()
-                    .map(|(_, model)| model)
-                    .chain(fallback.as_deref())
-                    .collect(),
-            )
-        }
+        } if is_read_range(property) => Some(
+            entries
+                .iter()
+                .map(|(_, model)| model)
+                .chain(fallback.as_deref())
+                .collect(),
+        ),
         ItemModelDef::Select {
             property,
             cases,
@@ -274,7 +279,11 @@ const READ_CONDITIONS: [&str; 4] = [
 ];
 
 /// The selects decided here besides the display context.
-const READ_SELECTS: [&str; 2] = ["minecraft:charge_type", "minecraft:trim_material"];
+const READ_SELECTS: [&str; 3] = [
+    "minecraft:charge_type",
+    "minecraft:trim_material",
+    "minecraft:context_dimension",
+];
 
 /// The numeric properties a range dispatch is decided from here.
 const READ_RANGES: [&str; 2] = ["minecraft:use_duration", "minecraft:crossbow/pull"];
@@ -302,7 +311,7 @@ pub fn needles_wanted(
     def: &ItemModelDef,
     context: DisplayContext,
     state: ItemState,
-) -> Vec<(CompassTarget, bool)> {
+) -> Vec<(NeedleSource, bool)> {
     let mut walk = Walk {
         state,
         trace: Vec::new(),
@@ -362,6 +371,7 @@ pub fn select_value<'a>(
         "minecraft:display_context" => context.name(),
         "minecraft:charge_type" => state.charge.name(),
         "minecraft:trim_material" => state.trim_material?,
+        "minecraft:context_dimension" => state.dimension?,
         other => state_value(state.block_state?, other.strip_prefix(BLOCK_STATE_SELECT)?)?,
     })
 }
@@ -734,10 +744,10 @@ mod tests {
             };
             needles_wanted(&item.model, DisplayContext::Gui, state)
         };
-        assert_eq!(wanted(false), [(CompassTarget::Spawn, false)]);
-        assert_eq!(wanted(true), [(CompassTarget::Lodestone, true)]);
+        assert_eq!(wanted(false), [(NeedleSource::Spawn, false)]);
+        assert_eq!(wanted(true), [(NeedleSource::Lodestone, true)]);
         let mut needles = Needles::default();
-        needles.0[CompassTarget::Spawn.index()] = Some(0.75_f32.to_bits());
+        needles.0[NeedleSource::Spawn.index()] = Some(0.75_f32.to_bits());
         let state = ItemState {
             needles,
             ..ItemState::default()

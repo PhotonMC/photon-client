@@ -229,6 +229,7 @@ impl ItemLayerCache {
             selected: photon_game::menus::container::bundle_selected_item(stack),
             trim_material: self.trim_material(stack),
             block_state: block_state_lines(stack),
+            dimension: None,
             needles: photon_render::item_model::Needles::default(),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
@@ -247,8 +248,13 @@ impl ItemLayerCache {
         let Some(needles) = &self.needles else {
             return;
         };
+        // `context_dimension` picks a clock's source, so the walk needs it.
+        state.dimension = Some(photon_render::item_model::intern_key(
+            store_dimension(needles).as_str(),
+        ));
         let wanted = renderer.item_needles_wanted(item, self.context, *state);
         if wanted.is_empty() {
+            state.dimension = None;
             return;
         }
         let lodestone =
@@ -369,6 +375,15 @@ impl photon_render::item_model::ItemTints for StackTints {
     fn firework_colors(&self) -> Vec<i32> {
         self.0.firework_colors()
     }
+}
+
+/// The dimension the needle store's frame holds.
+fn store_dimension(needles: &super::needle::SharedNeedles) -> String {
+    needles
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .dimension()
+        .to_owned()
 }
 
 #[cfg(test)]

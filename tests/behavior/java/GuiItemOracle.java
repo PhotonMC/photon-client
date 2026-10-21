@@ -100,7 +100,7 @@ class GuiItemOracle extends GuiDialogOracle {
             out.addProperty("label", row.get("label").getAsString());
             if (row.get("kind").getAsString().equals("wobble")) {
                 var wobbler = row.get("wobble").getAsBoolean()
-                    ? net.minecraft.client.renderer.item.properties.numeric.NeedleDirectionHelper.standardWobbler(0.8F)
+                    ? net.minecraft.client.renderer.item.properties.numeric.NeedleDirectionHelper.standardWobbler(row.get("factor").getAsFloat())
                     : net.minecraft.client.renderer.item.properties.numeric.NeedleDirectionHelper.nonWobbler();
                 var steps = new JsonArray();
                 for (var step : row.getAsJsonArray("steps")) {

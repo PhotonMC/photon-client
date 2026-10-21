@@ -148,7 +148,10 @@ pub(super) fn item_needle_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         let mut out = json!({"label": row["label"]});
         if row["kind"] == "wobble" {
-            let mut wobbler = Wobbler::new(row["wobble"].as_bool().ok_or("wobble")?);
+            let mut wobbler = Wobbler::new(
+                row["wobble"].as_bool().ok_or("wobble")?,
+                row["factor"].as_f64().ok_or("factor")? as f32,
+            );
             let mut steps = Vec::new();
             for step in row["steps"].as_array().ok_or("steps")? {
                 let tick = step["tick"].as_i64().ok_or("tick")?;

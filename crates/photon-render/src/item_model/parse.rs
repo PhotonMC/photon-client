@@ -286,9 +286,16 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
     let property = match property.as_str() {
         "minecraft:use_cycle" => format!("{USE_CYCLE}{}", object.f32("period").unwrap_or(1.0)),
         // `compass` has a `target` and a `wobble` of its own; they are kept in the name.
-        "minecraft:compass" => CompassTarget::parse(&object.text("target").unwrap_or_default())
-            .map_or(property, |target| {
-                target.property(object.bool("wobble").unwrap_or(true))
+        "minecraft:compass" => {
+            NeedleSource::parse(&object.text("target").unwrap_or_default(), false)
+                .map_or(property, |target| {
+                    target.property(object.bool("wobble").unwrap_or(true))
+                })
+        }
+        // A clock names its `source` the same way.
+        "minecraft:time" => NeedleSource::parse(&object.text("source").unwrap_or_default(), true)
+            .map_or(property, |source| {
+                source.property(object.bool("wobble").unwrap_or(true))
             }),
         _ => property,
     };
@@ -339,7 +346,10 @@ fn parse_select(object: &JsonObject) -> ItemModelDef {
         _ => property,
     };
     // The trim material is a resource key; a case names it with or without the namespace.
-    let identifiers = property == "minecraft:trim_material";
+    let identifiers = matches!(
+        property.as_str(),
+        "minecraft:trim_material" | "minecraft:context_dimension"
+    );
     let normalize = move |name: String| match Identifier::parse(&name) {
         Ok(id) if identifiers => id.as_string(),
         _ => name,

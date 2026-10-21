@@ -3,23 +3,47 @@
 
 use photon_core::math::positive_modulo_f32;
 
-/// `CompassAngleState.CompassTarget`: what a compass needle points at.
+/// What a needle points at or follows: a compass's target (`CompassAngleState.CompassTarget`) or
+/// a clock's time source (`Time.TimeSource`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CompassTarget {
+pub enum NeedleSource {
     None,
     Lodestone,
     Spawn,
     Recovery,
+    TimeRandom,
+    TimeDaytime,
+    TimeMoonPhase,
 }
 
 /// What a `compass` range's property is named in front of: its target and `wobble`.
 pub const COMPASS: &str = "minecraft:compass/";
+/// What a `time` range's property is named in front of: its source and `wobble`.
+pub const TIME: &str = "minecraft:time/";
 
-impl CompassTarget {
-    pub const ALL: [Self; 4] = [Self::None, Self::Lodestone, Self::Spawn, Self::Recovery];
+impl NeedleSource {
+    pub const ALL: [Self; 7] = [
+        Self::None,
+        Self::Lodestone,
+        Self::Spawn,
+        Self::Recovery,
+        Self::TimeRandom,
+        Self::TimeDaytime,
+        Self::TimeMoonPhase,
+    ];
 
-    pub fn parse(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|target| target.name() == name)
+    pub fn is_time(self) -> bool {
+        matches!(
+            self,
+            Self::TimeRandom | Self::TimeDaytime | Self::TimeMoonPhase
+        )
+    }
+
+    /// The source a compass `target` or a clock `source` names.
+    pub fn parse(name: &str, time: bool) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|source| source.is_time() == time && source.name() == name)
     }
 
     pub fn name(self) -> &'static str {
@@ -28,6 +52,9 @@ impl CompassTarget {
             Self::Lodestone => "lodestone",
             Self::Spawn => "spawn",
             Self::Recovery => "recovery",
+            Self::TimeRandom => "random",
+            Self::TimeDaytime => "daytime",
+            Self::TimeMoonPhase => "moon_phase",
         }
     }
 
@@ -35,39 +62,49 @@ impl CompassTarget {
         self as usize
     }
 
-    /// The property a range dispatch is named by, for a target and its `wobble`.
+    /// The property a range dispatch is named by, for a source and its `wobble`.
     pub fn property(self, wobble: bool) -> String {
-        format!("{COMPASS}{}/{}", self.name(), u8::from(wobble))
+        let prefix = if self.is_time() { TIME } else { COMPASS };
+        format!("{prefix}{}/{}", self.name(), u8::from(wobble))
     }
 
-    /// The target and `wobble` a range dispatch's property names.
+    /// The source and `wobble` a range dispatch's property names.
     pub fn from_property(property: &str) -> Option<(Self, bool)> {
-        let (target, wobble) = property.strip_prefix(COMPASS)?.split_once('/')?;
-        Some((Self::parse(target)?, wobble == "1"))
+        let (rest, time) = match property.strip_prefix(COMPASS) {
+            Some(rest) => (rest, false),
+            None => (property.strip_prefix(TIME)?, true),
+        };
+        let (source, wobble) = rest.split_once('/')?;
+        Some((Self::parse(source, time)?, wobble == "1"))
+    }
+
+    /// What the wobbler multiplies its speed by (`newWobbler`): a compass is quicker.
+    pub fn factor(self) -> f32 {
+        if self.is_time() { 0.9 } else { 0.8 }
     }
 }
 
 /// The needle angles a draw reads, by target, as `f32` bits (a turn, from 0 to 1).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Needles(pub [Option<u32>; 4]);
+pub struct Needles(pub [Option<u32>; 7]);
 
 /// `NeedleDirectionHelper.Wobbler`: eases a rotation towards a target, once per game tick.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Wobbler {
     /// Whether it eases (`standardWobbler`) or follows its target (`nonWobbler`).
     wobble: bool,
+    factor: f32,
     rotation: f32,
     delta_rotation: f32,
     last_update_tick: i64,
 }
 
-/// What the easing multiplies the speed by each update (`newWobbler(0.8F)`).
-const FACTOR: f32 = 0.8;
-
 impl Wobbler {
-    pub fn new(wobble: bool) -> Self {
+    /// A wobbler that multiplies the speed by `factor` each update (`newWobbler`).
+    pub fn new(wobble: bool, factor: f32) -> Self {
         Self {
             wobble,
+            factor,
             ..Self::default()
         }
     }
@@ -89,7 +126,7 @@ impl Wobbler {
         self.last_update_tick = tick;
         let step = positive_modulo_f32(target - self.rotation + 0.5, 1.0) - 0.5;
         self.delta_rotation += step * 0.1;
-        self.delta_rotation *= FACTOR;
+        self.delta_rotation *= self.factor;
         self.rotation = positive_modulo_f32(self.rotation + self.delta_rotation, 1.0);
     }
 }
@@ -114,7 +151,7 @@ fn wrapped_yaw(holder: &Holder) -> f32 {
     positive_modulo_f32(holder.yaw / 360.0, 1.0)
 }
 
-/// `getRotationTowardsCompassTarget`: the needle turn towards a block. The local player's needle
+/// `getRotationTowardsNeedleSource`: the needle turn towards a block. The local player's needle
 /// eases through its wobbler; anyone else's follows the heading at once.
 pub fn rotation_towards(
     holder: &Holder,
@@ -135,7 +172,7 @@ pub fn rotation_towards(
     positive_modulo_f32(target, 1.0)
 }
 
-/// `isValidCompassTargetPos`, past the dimension: a block the holder is not standing in the
+/// `isValidNeedleSourcePos`, past the dimension: a block the holder is not standing in the
 /// centre of.
 pub fn is_valid_target(holder: &Holder, block: [i32; 3]) -> bool {
     let distance = (0..3)
@@ -161,11 +198,11 @@ mod tests {
 
     #[test]
     fn a_plain_needle_follows_at_once_and_a_wobbling_one_waits_for_the_next_tick() {
-        let mut plain = Wobbler::new(false);
+        let mut plain = Wobbler::new(false, 0.8);
         plain.update(5, 0.25);
         assert!(plain.should_update(5));
         assert_eq!(plain.rotation(), 0.25);
-        let mut wobbling = Wobbler::new(true);
+        let mut wobbling = Wobbler::new(true, 0.8);
         assert!(!wobbling.should_update(0));
         wobbling.update(7, 0.25);
         assert!(!wobbling.should_update(7));
