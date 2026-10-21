@@ -305,19 +305,38 @@ fn state_value<'a>(lines: &'a str, name: &str) -> Option<&'a str> {
         .map(|(_, value)| value)
 }
 
-/// `SelectItemModel`: the case of the value of the properties this client reads, the display
-/// context and what a crossbow holds.
-fn select_case<'a>(
+/// The `name=value` lines of a stack's `block_state` properties, as an [`ItemState`] holds them.
+pub fn block_state_key(properties: &[(String, String)]) -> Option<&'static str> {
+    (!properties.is_empty()).then(|| {
+        let lines: Vec<String> = properties
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect();
+        intern_key(&lines.join("\n"))
+    })
+}
+
+/// The value a select reads from the holder: the properties this client reads, the display
+/// context and what a crossbow holds. `None` takes the fallback.
+pub fn select_value<'a>(
     property: &str,
-    cases: &'a [(Vec<String>, ItemModelDef)],
     (context, state): (DisplayContext, &ItemState),
-) -> Option<&'a ItemModelDef> {
-    let value = match property {
+) -> Option<&'a str> {
+    Some(match property {
         "minecraft:display_context" => context.name(),
         "minecraft:charge_type" => state.charge.name(),
         "minecraft:trim_material" => state.trim_material?,
         other => state_value(state.block_state?, other.strip_prefix(BLOCK_STATE_SELECT)?)?,
-    };
+    })
+}
+
+/// `SelectItemModel`: the case of the value the property reads.
+fn select_case<'a>(
+    property: &str,
+    cases: &'a [(Vec<String>, ItemModelDef)],
+    holder: (DisplayContext, &ItemState),
+) -> Option<&'a ItemModelDef> {
+    let value = select_value(property, holder)?;
     cases
         .iter()
         .find(|(when, _)| when.iter().any(|name| name == value))

@@ -45,6 +45,7 @@ public final class GuiOracle extends GuiItemOracle {
                 case "command_suggest" -> commandSuggest(request);
                 case "command_verify" -> commandVerify(request);
                 case "item_condition" -> itemCondition(request);
+                case "item_select" -> itemSelect(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "title_screen" -> titleScreen(request);
                 case "join_multiplayer_screen" -> joinMultiplayerScreen(request);

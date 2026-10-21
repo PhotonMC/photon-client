@@ -70,3 +70,29 @@ fn component_rows() -> Vec<Value> {
 pub fn item_condition() -> Value {
     gui("item-condition", "item_condition", [broken_rows(), component_rows()].concat())
 }
+
+/// `block_state` select: the stack's merged `block_state` component, a property it holds or lacks.
+fn select_rows() -> Vec<Value> {
+    let ask = |label: &str, property: &str, item: &str, extra: Value| row(label, json!(property), item, extra);
+    vec![
+        ask("light-default", "level", "minecraft:light", json!({})),
+        ask("light-level-7", "level", "minecraft:light", json!({"block_state": {"level": "7"}})),
+        ask("light-removed", "level", "minecraft:light", json!({"remove_block_state": true})),
+        ask("light-asks-other", "waterlogged", "minecraft:light", json!({})),
+        ask("light-patch-other-key", "level", "minecraft:light", json!({"block_state": {"waterlogged": "true"}})),
+        ask("beehive-plain", "honey_level", "minecraft:beehive", json!({})),
+        ask("beehive-honey-5", "honey_level", "minecraft:beehive", json!({"block_state": {"honey_level": "5"}})),
+        ask("stone-nothing", "level", "minecraft:stone", json!({})),
+        ask(
+            "statue-pose",
+            "copper_golem_pose",
+            "minecraft:oxidized_copper_golem_statue",
+            json!({"block_state": {"copper_golem_pose": "sitting"}}),
+        ),
+    ]
+}
+
+/// The value the `block_state` select reads from a stack.
+pub fn item_select() -> Value {
+    gui("item-select", "item_select", select_rows())
+}

@@ -25,6 +25,17 @@ class GuiItemOracle extends GuiDialogOracle {
         if (row.has("unbreakable") && row.get("unbreakable").getAsBoolean()) {
             stack.set(net.minecraft.core.component.DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
         }
+        if (row.has("block_state")) {
+            var properties = new java.util.HashMap<String, String>();
+            for (var entry : row.getAsJsonObject("block_state").entrySet()) {
+                properties.put(entry.getKey(), entry.getValue().getAsString());
+            }
+            stack.set(net.minecraft.core.component.DataComponents.BLOCK_STATE,
+                new net.minecraft.world.item.component.BlockItemStateProperties(properties));
+        }
+        if (row.has("remove_block_state")) {
+            stack.remove(net.minecraft.core.component.DataComponents.BLOCK_STATE);
+        }
         for (var name : row.getAsJsonArray("components")) {
             switch (name.getAsString()) {
                 case "minecraft:dyed_color" -> stack.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
@@ -50,6 +61,25 @@ class GuiItemOracle extends GuiDialogOracle {
             var property = net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperties.MAP_CODEC
                 .codec().parse(JsonOps.INSTANCE, row.get("property")).getOrThrow();
             boolean value = property.get(itemStack(row), null, null, 0, net.minecraft.world.item.ItemDisplayContext.GUI);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("value", value);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The `block_state` select's value for a stack: the property it reads, or null. */
+    static JsonObject itemSelect(JsonObject request) {
+        Oracle.bootstrap();
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var property = new net.minecraft.client.renderer.item.properties.select.ItemBlockState(
+                row.get("property").getAsString());
+            var value = property.get(itemStack(row), null, null, 0, net.minecraft.world.item.ItemDisplayContext.GUI);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.addProperty("value", value);

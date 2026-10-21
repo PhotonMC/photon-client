@@ -295,16 +295,10 @@ impl ItemLayerCache {
 
 /// A stack's `block_state` properties as `name=value` lines, held for good.
 fn block_state_lines(stack: &ClientItemStackState) -> Option<&'static str> {
-    let properties =
-        photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
-            .block_state();
-    (!properties.is_empty()).then(|| {
-        let lines: Vec<String> = properties
-            .iter()
-            .map(|(name, value)| format!("{name}={value}"))
-            .collect();
-        photon_render::item_model::intern_key(&lines.join("\n"))
-    })
+    photon_render::item_model::block_state_key(
+        &photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+            .block_state(),
+    )
 }
 
 /// The tints of a stack's components.
