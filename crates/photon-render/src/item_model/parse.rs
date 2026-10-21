@@ -191,11 +191,10 @@ pub(super) fn parse_special(model: &JsonObject) -> Option<SpecialModel> {
             color: dye_colour(&model.text("color")?)?,
         },
         "minecraft:copper_golem_statue" => {
-            if model.text("pose")? != "standing" {
-                return None;
-            }
+            let pose = model.text("pose")?;
             let path = model.text("texture")?;
             SpecialModel::CopperGolemStatue {
+                pose,
                 texture: path
                     .trim_start_matches("minecraft:textures/")
                     .trim_end_matches(".png")
@@ -322,8 +321,14 @@ fn parse_condition(object: &JsonObject) -> ItemModelDef {
 
 /// A `minecraft:select` node: the cases by what they test, and the fallback.
 fn parse_select(object: &JsonObject) -> ItemModelDef {
+    let property = object.text("property").unwrap_or_default();
+    // `block_state` names the property it reads in a field of its own; it is kept in the name.
+    let property = match (property.as_str(), object.text("block_state_property")) {
+        ("minecraft:block_state", Some(name)) => format!("{BLOCK_STATE_SELECT}{name}"),
+        _ => property,
+    };
     ItemModelDef::Select {
-        property: object.text("property").unwrap_or_default(),
+        property,
         cases: object
             .array("cases")
             .unwrap_or(&[])

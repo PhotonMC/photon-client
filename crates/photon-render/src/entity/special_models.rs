@@ -41,8 +41,9 @@ pub enum SpecialKind {
     Trident,
     /// A decorated pot with no decorations.
     DecoratedPot,
-    /// A standing copper golem statue with its texture.
-    CopperGolemStatue { texture: String },
+    /// A copper golem statue in a pose (`standing`, `sitting`, `running` or `star`) with its
+    /// texture.
+    CopperGolemStatue { texture: String, pose: String },
 }
 
 const WHITE: u32 = 0xFFFF_FFFF;
@@ -94,7 +95,7 @@ pub fn layers(kind: &SpecialKind) -> Vec<ModelLayer> {
         SpecialKind::Conduit => conduit(),
         SpecialKind::Trident => trident(),
         SpecialKind::DecoratedPot => decorated_pot(),
-        SpecialKind::CopperGolemStatue { texture } => copper_golem(texture),
+        SpecialKind::CopperGolemStatue { texture, pose } => copper_golem(texture, pose),
     }
 }
 
@@ -393,63 +394,19 @@ fn decorated_pot() -> Vec<ModelLayer> {
     ]
 }
 
-/// `CopperGolemModel.createBodyLayer` as the statue poses it: standing, the
-/// whole model turned over by `zRot = pi` at the origin.
-fn copper_golem(texture: &str) -> Vec<ModelLayer> {
-    let size = (64.0, 64.0);
-    let head = Part::new(
-        "head",
-        vec![
-            grown(size, (0, 0), [-4.0, -5.0, -5.0], [8.0, 5.0, 10.0], 0.015),
-            cube(size, (56, 0), [-1.0, -2.0, -6.0], [2.0, 3.0, 2.0]),
-            grown(size, (37, 8), [-1.0, -9.0, -1.0], [2.0, 4.0, 2.0], -0.015),
-            grown(size, (37, 0), [-2.0, -13.0, -2.0], [4.0, 4.0, 4.0], -0.015),
-        ],
-        [0.0, -6.0, 0.0],
-        Vec::new(),
+/// A copper golem statue in a pose: the pose's model layer with the root set down and turned
+/// over (`CopperGolemStatueModel.setupAnim`).
+fn copper_golem(texture: &str, pose: &str) -> Vec<ModelLayer> {
+    let id = crate::block_entity::copper_golem_statue::layer(pose);
+    let Some(definition) = photon_data::entity_model::layer(id) else {
+        return Vec::new();
+    };
+    let mut model = Part::baked(
+        &definition.root,
+        (definition.texture_width, definition.texture_height),
     );
-    let body = Part::new(
-        "body",
-        vec![cube(size, (0, 15), [-4.0, -6.0, -3.0], [8.0, 6.0, 6.0])],
-        [0.0, -5.0, 0.0],
-        vec![
-            head,
-            Part::new(
-                "right_arm",
-                vec![cube(size, (36, 16), [-3.0, -1.0, -2.0], [3.0, 10.0, 4.0])],
-                [-4.0, -6.0, 0.0],
-                Vec::new(),
-            ),
-            Part::new(
-                "left_arm",
-                vec![cube(size, (50, 16), [0.0, -1.0, -2.0], [3.0, 10.0, 4.0])],
-                [4.0, -6.0, 0.0],
-                Vec::new(),
-            ),
-        ],
-    );
-    let model = Part::posed(
-        "root",
-        Vec::new(),
-        [0.0; 3],
-        [0.0, 0.0, std::f32::consts::PI],
-        [1.0; 3],
-        vec![
-            body,
-            Part::new(
-                "right_leg",
-                vec![cube(size, (0, 27), [-4.0, 0.0, -2.0], [4.0, 5.0, 4.0])],
-                [0.0, -5.0, 0.0],
-                Vec::new(),
-            ),
-            Part::new(
-                "left_leg",
-                vec![cube(size, (16, 27), [0.0, 0.0, -2.0], [4.0, 5.0, 4.0])],
-                [0.0, -5.0, 0.0],
-                Vec::new(),
-            ),
-        ],
-    );
+    model.y = 0.0;
+    model.z_rot = std::f32::consts::PI;
     vec![layer(&model, texture, WHITE)]
 }
 
@@ -489,6 +446,19 @@ mod tests {
             SpecialKind::DecoratedPot,
             SpecialKind::CopperGolemStatue {
                 texture: "entity/copper_golem/copper_golem".into(),
+                pose: "standing".into(),
+            },
+            SpecialKind::CopperGolemStatue {
+                texture: "entity/copper_golem/copper_golem".into(),
+                pose: "running".into(),
+            },
+            SpecialKind::CopperGolemStatue {
+                texture: "entity/copper_golem/copper_golem".into(),
+                pose: "sitting".into(),
+            },
+            SpecialKind::CopperGolemStatue {
+                texture: "entity/copper_golem/copper_golem".into(),
+                pose: "star".into(),
             },
         ];
         for kind in kinds {

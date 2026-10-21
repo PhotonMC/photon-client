@@ -213,6 +213,7 @@ impl ItemLayerCache {
             broken: stack.breaks_on_next_damage(),
             selected: photon_game::menus::container::bundle_selected_item(stack),
             trim_material: self.trim_material(stack),
+            block_state: block_state_lines(stack),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
                 lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
@@ -247,6 +248,7 @@ impl ItemLayerCache {
         };
         // The trim's key comes from the registry, which the patch alone does not name.
         branches.extend(state.trim_material.map(str::as_bytes).unwrap_or_default());
+        branches.extend(state.block_state.map(str::as_bytes).unwrap_or_default());
         // The selected contents decide the nested layers, and the selection is not in the patch.
         let selected = photon_game::menus::container::bundle_selected_stack(stack);
         let selected_state = selected.as_ref().map(|inner| self.item_state(inner, None));
@@ -288,6 +290,20 @@ impl ItemLayerCache {
         .filter(|corners| !corners.is_empty());
         layers
     }
+}
+
+/// A stack's `block_state` properties as `name=value` lines, held for good.
+fn block_state_lines(stack: &ClientItemStackState) -> Option<&'static str> {
+    let properties =
+        photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+            .block_state();
+    (!properties.is_empty()).then(|| {
+        let lines: Vec<String> = properties
+            .iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect();
+        photon_render::item_model::intern_key(&lines.join("\n"))
+    })
 }
 
 /// The tints of a stack's components.

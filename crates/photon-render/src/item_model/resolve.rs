@@ -43,7 +43,13 @@ pub struct ItemState {
     pub components: TestedComponents,
     /// The key of the stack's trim material, if it names one (`trim_material`).
     pub trim_material: Option<&'static str>,
+    /// The properties of the stack's `block_state` component, as `name=value` lines
+    /// (`BlockState` select).
+    pub block_state: Option<&'static str>,
 }
+
+/// What a `block_state` select's property is named in front of: the state property it reads.
+pub const BLOCK_STATE_SELECT: &str = "minecraft:block_state/";
 
 /// A key held for good, so a state can stay `Copy`: the materials of a registry are few.
 pub fn intern_key(key: &str) -> &'static str {
@@ -215,13 +221,17 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             property,
             cases,
             fallback,
-        } if READ_SELECTS.contains(&property.as_str()) => Some(
-            cases
-                .iter()
-                .map(|(_, model)| model)
-                .chain(fallback.as_deref())
-                .collect(),
-        ),
+        } if READ_SELECTS.contains(&property.as_str())
+            || property.starts_with(BLOCK_STATE_SELECT) =>
+        {
+            Some(
+                cases
+                    .iter()
+                    .map(|(_, model)| model)
+                    .chain(fallback.as_deref())
+                    .collect(),
+            )
+        }
         _ => None,
     }
 }
@@ -277,6 +287,14 @@ fn leaf(def: &ItemModelDef, local: &Matrix4) -> Option<ItemLayerRef> {
     }
 }
 
+/// The value of a property in `name=value` lines.
+fn state_value<'a>(lines: &'a str, name: &str) -> Option<&'a str> {
+    lines
+        .lines()
+        .find_map(|line| line.split_once('=').filter(|(key, _)| *key == name))
+        .map(|(_, value)| value)
+}
+
 /// `SelectItemModel`: the case of the value of the properties this client reads, the display
 /// context and what a crossbow holds.
 fn select_case<'a>(
@@ -288,7 +306,7 @@ fn select_case<'a>(
         "minecraft:display_context" => context.name(),
         "minecraft:charge_type" => state.charge.name(),
         "minecraft:trim_material" => state.trim_material?,
-        _ => return None,
+        other => state_value(state.block_state?, other.strip_prefix(BLOCK_STATE_SELECT)?)?,
     };
     cases
         .iter()
@@ -611,5 +629,33 @@ mod tests {
             at(Some(intern_key("minecraft:custom"))),
             "minecraft:item/iron_chestplate"
         );
+    }
+
+    const LIGHT: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:block_state",
+        "block_state_property":"level",
+        "cases":[{"model":{"type":"minecraft:model","model":"minecraft:item/light_00"},"when":"0"},
+                 {"model":{"type":"minecraft:model","model":"minecraft:item/light_07"},"when":"7"}],
+        "fallback":{"type":"minecraft:model","model":"minecraft:item/light_15"}}}"#;
+
+    #[test]
+    fn a_light_block_draws_the_model_of_its_level() {
+        let at = |block_state| {
+            drawn_by(
+                LIGHT,
+                ItemState {
+                    block_state,
+                    ..ItemState::default()
+                },
+            )
+            .0
+        };
+        assert_eq!(at(Some(intern_key("level=7"))), "minecraft:item/light_07");
+        assert_eq!(
+            at(Some(intern_key("other=1\nlevel=0"))),
+            "minecraft:item/light_00"
+        );
+        // Another property, or none at all, takes the fallback.
+        assert_eq!(at(Some(intern_key("other=7"))), "minecraft:item/light_15");
+        assert_eq!(at(None), "minecraft:item/light_15");
     }
 }

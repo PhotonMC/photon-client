@@ -396,7 +396,7 @@
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 12
 "crates/photon-render/src/item_model/parse.rs::dye_colour" = 17
 "crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 11
-"crates/photon-render/src/item_model/parse.rs::parse_special" = 14
+"crates/photon-render/src/item_model/parse.rs::parse_special" = 13
 "crates/photon-render/src/model/parse.rs::parse_model" = 15
 "crates/photon-render/src/model/parse.rs::parse_rotation" = 13
 "crates/photon-render/src/objects/xp_orb.rs::icon" = 11
