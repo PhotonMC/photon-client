@@ -17,8 +17,8 @@ pub fn remote_players(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world.entities().drawn() {
-        // A player who only watches, or who is invisible, is not drawn.
-        if !entity.is_player() || entity.is_spectator() || entity.is_invisible() {
+        // A player who only watches is not drawn.
+        if !entity.is_player() || entity.is_spectator() {
             continue;
         }
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
@@ -90,9 +90,7 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        vertices.extend(photon_render::entity::player_renderer::player_vertices(
-            model, &placement,
-        ));
+        vertices.extend(body(model, &placement, entity.is_invisible()));
         vertices.extend(wear(
             armor,
             worn,
@@ -111,6 +109,14 @@ pub fn remote_players(
             },
         ));
     }
+}
+
+/// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body.
+fn body(model: &PlayerModel, placement: &Placement, invisible: bool) -> Vec<Vertex> {
+    if invisible {
+        return Vec::new();
+    }
+    photon_render::entity::player_renderer::player_vertices(model, placement)
 }
 
 /// What a player wears, drawn over its model: the armor models of its build,
