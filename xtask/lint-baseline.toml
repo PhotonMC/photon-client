@@ -990,7 +990,6 @@
 "crates/photon/src/mobs/aquatic/frogs.rs::remote_frogs" = 69
 "crates/photon/src/mobs/humanoids/armor_stands.rs::remote_armor_stands" = 75
 "crates/photon/src/mobs/humanoids/golems.rs::remote_golems" = 104
-"crates/photon/src/mobs/humanoids/illagers.rs::remote_illagers" = 67
 "crates/photon/src/mobs/humanoids/villagers.rs::remote_villagers" = 94
 "crates/photon/src/mobs/monsters/cube_mobs.rs::remote_sulfur_cubes" = 63
 "crates/photon/src/mobs/monsters/ender_dragons.rs::remote_ender_dragons" = 79

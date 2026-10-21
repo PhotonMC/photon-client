@@ -359,16 +359,3 @@ pub(crate) fn is_item(stack: &photon_world::ClientItemStackState, name: &str) ->
     photon_data::item::registry::index(name)
         .is_some_and(|index| usize::try_from(stack.item_registry_id().0) == Ok(index))
 }
-
-/// `LivingEntityRenderer.isBodyVisible`: an invisible mob's model, and the clothing layers drawn
-/// with it, are left out.
-fn visible_body(
-    entity: &photon_world::ClientEntity,
-    model: &MobModel,
-    (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
-) -> Vec<Vertex> {
-    if entity.is_invisible() {
-        return Vec::new();
-    }
-    mob_vertices(model, placement, rect)
-}

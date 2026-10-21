@@ -5,9 +5,7 @@
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::held_item::{crossed_arms_item_pose, head_item_pose, witch_potion_pose};
-use photon_render::entity::mob_model::{
-    QuadrupedState, VillagerState, WitchState, mob_vertices, placement_pose,
-};
+use photon_render::entity::mob_model::{QuadrupedState, VillagerState, WitchState, placement_pose};
 use photon_render::entity::player_model::Part;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::entity::villager::{Pass, profession_passes, profession_textures};
@@ -86,7 +84,7 @@ pub fn remote_villagers(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let is_villager = entity.type_id == villager;
         if !is_villager && entity.type_id != trader {
             continue;
@@ -137,7 +135,7 @@ pub fn remote_villagers(
                 continue;
             };
             model.setup_villager(&state);
-            vertices.extend(mob_vertices(model, &placed, rect));
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         }
         let Some(model) = models.model(&main_layer) else {
             continue;
@@ -187,7 +185,7 @@ pub fn remote_witches(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let (true, Some(snapshot), Some(rect), Some(model)) = (
             entity.type_id == witch,
             world.entity_snapshot(entity.id(), partial),
@@ -210,7 +208,7 @@ pub fn remote_witches(
             holding_item: entity.equipment(EquipmentSlot::MainHand).is_some(),
         });
         let placed = placement(world, &snapshot, view, entity.scale());
-        vertices.extend(mob_vertices(model, &placed, rect));
+        vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
         let Some(stack) = entity.equipment(EquipmentSlot::MainHand) else {
             continue;
         };

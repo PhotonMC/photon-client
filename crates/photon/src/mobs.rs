@@ -329,6 +329,19 @@ impl Default for MobModels {
     }
 }
 
+/// `LivingEntityRenderer.isBodyVisible`: an invisible mob's model, and the clothing layers drawn
+/// with it, are left out.
+pub(crate) fn visible_body(
+    entity: &photon_world::ClientEntity,
+    model: &MobModel,
+    (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
+) -> Vec<Vertex> {
+    if entity.is_invisible() {
+        return Vec::new();
+    }
+    mob_vertices(model, placement, rect)
+}
+
 mod wild;
 pub use wild::*;
 mod pose;

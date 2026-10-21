@@ -127,7 +127,7 @@ pub fn remote_illagers(
         .iter()
         .filter_map(|illager| Some((photon_data::entity_type::id(illager.type_name)?, illager)))
         .collect();
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_with_invisible() {
         let Some(illager) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)
@@ -142,26 +142,7 @@ pub fn remote_illagers(
         ) else {
             continue;
         };
-        let main_arm_left = entity.main_arm_is_left();
-        model.setup_illager(&IllagerState {
-            quadruped: QuadrupedState {
-                head_y_rot: photon_core::math::wrap_degrees_f32(
-                    snapshot.head_yaw - snapshot.body_yaw,
-                ),
-                x_rot: snapshot.pitch,
-                walk_position: snapshot.walk_position,
-                walk_speed: snapshot.walk_speed,
-            },
-            age_in_ticks: entity.tick_count() as f32 + partial,
-            riding: entity.vehicle_id().is_some(),
-            arm_pose: arm_pose(illager.kind, entity),
-            main_arm_left,
-            attack_time: snapshot.attack_time,
-            has_item: entity.item_held_by_arm(main_arm_left).is_some(),
-            max_crossbow_charge: 0,
-            ticks_using_item: 0.0,
-            hat_visible: illager.kind == Kind::Illusioner,
-        });
+        model.setup_illager(&illager_state(illager, entity, &snapshot, partial));
         let placed = placement(world, &snapshot, view, entity.scale());
         let hands = shows_hand_items(illager.kind, entity);
         Hands {
@@ -178,6 +159,38 @@ pub fn remote_illagers(
             motions: Default::default(),
         }
         .collect(held);
-        vertices.extend(mob_vertices(model, &placed, rect));
+        // `IllusionerRenderer.isBodyVisible` is always true.
+        if illager.kind == Kind::Illusioner {
+            vertices.extend(mob_vertices(model, &placed, rect));
+        } else {
+            vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        }
+    }
+}
+
+/// What the illager's model is posed from.
+fn illager_state(
+    illager: &Illager,
+    entity: &photon_world::ClientEntity,
+    snapshot: &photon_world::EntitySnapshot,
+    partial: f32,
+) -> IllagerState {
+    let main_arm_left = entity.main_arm_is_left();
+    IllagerState {
+        quadruped: QuadrupedState {
+            head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+        },
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        riding: entity.vehicle_id().is_some(),
+        arm_pose: arm_pose(illager.kind, entity),
+        main_arm_left,
+        attack_time: snapshot.attack_time,
+        has_item: entity.item_held_by_arm(main_arm_left).is_some(),
+        max_crossbow_charge: 0,
+        ticks_using_item: 0.0,
+        hat_visible: illager.kind == Kind::Illusioner,
     }
 }
