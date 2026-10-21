@@ -403,8 +403,11 @@ impl GameMode {
             Some((item, _)) if rules::item_use_owner(item) == ItemClass::Item => {
                 super::base_use::base_item_use(ctx, hand)
             }
-            // The items whose class overrides `use` are not predicted yet.
-            Some(_) => UseResult::Success { swing: false },
+            Some((item, _)) => {
+                super::base_use::class_item_use(ctx, hand, rules::item_use_owner(item))
+                    // The other classes that override `use` are not predicted yet.
+                    .unwrap_or(UseResult::Success { swing: false })
+            }
             None => UseResult::Pass,
         };
         out.push(Outgoing::UseItem {

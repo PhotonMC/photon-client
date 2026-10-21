@@ -127,6 +127,47 @@ pub(super) fn base_item_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     }
 }
 
+/// `BowItem.use`: refused unless a projectile is found (the arrows in any hand or slot of the
+/// inventory, which the item tag `arrows` names) or the player's materials are infinite.
+fn bow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    let found = ctx.world.local_player().is_some_and(|state| {
+        // `Inventory.getContainerSize`: the main slots, the armor and the off hand, not the crafting grid.
+        (5..=45).any(|slot| {
+            state.inventory_slot(slot).is_some_and(|stack| {
+                stack.item_count() > 0
+                    && ctx
+                        .world
+                        .block_state_registry()
+                        .item_tags()
+                        .contains(stack.item_registry_id().0, "minecraft:arrows")
+            })
+        })
+    });
+    if !found && !ctx.instabuild() {
+        return UseResult::Fail;
+    }
+    ctx.player.start_using_item(hand != super::MAIN_HAND);
+    UseResult::Success { swing: false }
+}
+
+/// `Item.use` for the classes that override it and are predicted: the bow and the spyglass (which
+/// starts using at once; its sound is not played). `None` for the rest.
+pub(super) fn class_item_use(
+    ctx: &mut Context<'_>,
+    hand: u8,
+    class: photon_data::item::classes::ItemClass,
+) -> Option<UseResult> {
+    use photon_data::item::classes::ItemClass;
+    match class {
+        ItemClass::BowItem => Some(bow_use(ctx, hand)),
+        ItemClass::SpyglassItem => {
+            ctx.player.start_using_item(hand != super::MAIN_HAND);
+            Some(UseResult::Success { swing: false })
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
