@@ -44,29 +44,58 @@ fn can_always_eat(values: &Values, item: photon_core::ids::ItemId) -> bool {
     }
 }
 
-/// `Player.canEat`: the player cannot be hurt, or the food always can be eaten, or some hunger is
-/// left.
-fn can_eat(ctx: &Context<'_>, always: bool) -> bool {
-    let food = ctx.world.local_player().map_or(20, |state| state.food());
-    ctx.player.abilities().invulnerable() || always || food < 20
+/// What the prediction of `Item.use` comes to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BaseUse {
+    /// Nothing happens, and the next hand tries.
+    Pass,
+    /// Refused, and the next hand tries.
+    Fail,
+    /// A use starts that goes on until released or finished.
+    Start,
+    /// What the item does is not predicted (a swap with the equipment slot, a meal eaten at once):
+    /// the click counts as done.
+    Unported,
 }
 
-/// `Consumable.startConsuming`: refused when the food cannot be eaten, a use that goes on over
-/// time otherwise.
-fn start_consuming(
-    ctx: &mut Context<'_>,
-    hand: u8,
+/// `Item.use` of the stack: the components decide, in order `consumable`, a swappable
+/// `equippable`, `blocks_attacks`, `kinetic_weapon`. `can_eat` is `Player.canEat` for food that
+/// cannot always be eaten.
+fn decide(
     values: &Values,
     item: photon_core::ids::ItemId,
-) -> UseResult {
-    if values.has(FOOD) && !can_eat(ctx, can_always_eat(values, item)) {
-        return UseResult::Fail;
+    can_eat: impl Fn(bool) -> bool,
+) -> BaseUse {
+    if values.has(CONSUMABLE) {
+        if values.has(FOOD) && !can_eat(can_always_eat(values, item)) {
+            return BaseUse::Fail;
+        }
+        // Consumed at once (no ticks): the eaten item's effects and its leftover are not predicted.
+        return match consume_ticks(values, item) {
+            Some(ticks) if ticks > 0 => BaseUse::Start,
+            _ => BaseUse::Unported,
+        };
     }
-    // Consumed at once (no ticks): the eaten item's effects and its leftover are not predicted.
-    if consume_ticks(values, item).is_some_and(|ticks| ticks > 0) {
-        ctx.player.start_using_item(hand != super::MAIN_HAND);
+    if swappable(values, item) {
+        return BaseUse::Unported;
     }
-    UseResult::Success { swing: false }
+    if values.has(BLOCKS_ATTACKS) || values.has(KINETIC_WEAPON) {
+        return BaseUse::Start;
+    }
+    BaseUse::Pass
+}
+
+/// Whether the stack has a swappable `equippable`: the item's own, unless the patch touches the
+/// component, whose value is not decoded here (a patched one counts as swappable).
+fn swappable(values: &Values, item: photon_core::ids::ItemId) -> bool {
+    if !values.has(EQUIPPABLE) {
+        return false;
+    }
+    let defaults = Values::new(item, &[0, 0]);
+    values.raw(EQUIPPABLE) != defaults.raw(EQUIPPABLE)
+        || rules::item(item)
+            .and_then(|row| row.equippable)
+            .is_some_and(|equippable| equippable.swappable)
 }
 
 /// The client's prediction of `Item.use` for the stack in a hand. A use that starts is started
@@ -82,18 +111,20 @@ pub(super) fn base_item_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     };
     let item = stack.item_registry_id();
     let values = Values::new(item, stack.patch_bytes());
-    if values.has(CONSUMABLE) {
-        return start_consuming(ctx, hand, &values, item);
+    // `Player.canEat`: the player cannot be hurt, or the food always can be eaten, or some hunger
+    // is left.
+    let food = ctx.world.local_player().map_or(20, |state| state.food());
+    let invulnerable = ctx.player.abilities().invulnerable();
+    let result = decide(&values, item, |always| invulnerable || always || food < 20);
+    match result {
+        BaseUse::Pass => UseResult::Pass,
+        BaseUse::Fail => UseResult::Fail,
+        BaseUse::Start => {
+            ctx.player.start_using_item(hand != super::MAIN_HAND);
+            UseResult::Success { swing: false }
+        }
+        BaseUse::Unported => UseResult::Success { swing: false },
     }
-    // A swappable equippable changes the slots, which is not predicted yet.
-    if values.has(EQUIPPABLE) && rules::item(item).is_none_or(|row| row.use_does_nothing()) {
-        return UseResult::Success { swing: false };
-    }
-    if values.has(BLOCKS_ATTACKS) || values.has(KINETIC_WEAPON) {
-        ctx.player.start_using_item(hand != super::MAIN_HAND);
-        return UseResult::Success { swing: false };
-    }
-    UseResult::Pass
 }
 
 #[cfg(test)]
@@ -124,5 +155,31 @@ mod tests {
         assert_eq!(consume_ticks(&bread, item), Some(32));
         let (honey, item) = values("minecraft:honey_bottle");
         assert_eq!(consume_ticks(&honey, item), Some(40));
+    }
+
+    fn decided(name: &str, food: i32, invulnerable: bool) -> BaseUse {
+        let (values, item) = values(name);
+        decide(&values, item, |always| invulnerable || always || food < 20)
+    }
+
+    /// `Consumable.startConsuming` and the rest of `Item.use`, by the default stacks.
+    #[test]
+    fn the_default_use_of_each_kind_of_item() {
+        assert_eq!(decided("minecraft:bread", 20, false), BaseUse::Fail);
+        assert_eq!(decided("minecraft:bread", 19, false), BaseUse::Start);
+        assert_eq!(decided("minecraft:bread", 20, true), BaseUse::Start);
+        assert_eq!(decided("minecraft:golden_apple", 20, false), BaseUse::Start);
+        assert_eq!(decided("minecraft:shield", 20, false), BaseUse::Start);
+        assert_eq!(decided("minecraft:iron_spear", 20, false), BaseUse::Start);
+        assert_eq!(
+            decided("minecraft:iron_helmet", 20, false),
+            BaseUse::Unported
+        );
+        assert_eq!(decided("minecraft:stick", 20, false), BaseUse::Pass);
+        // A carved pumpkin is worn, but not by using it.
+        assert_eq!(
+            decided("minecraft:carved_pumpkin", 20, false),
+            BaseUse::Pass
+        );
     }
 }
