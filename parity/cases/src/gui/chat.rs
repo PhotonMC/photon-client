@@ -269,11 +269,12 @@ fn placed_hover_rows() -> Vec<Value> {
     let me = || vec![component(&hover("hover me", "tooltip text"), 0)];
     let two = || vec![component(&hover("upper", "upper tip"), 0), component(&hover("lower", "lower tip"), 1)];
     let wrapped = || vec![component(&hover(LONG_TEXT, "wrapped tip"), 0)];
-    let tagged = || {
+    let tagged_with = |tag: &str| {
         let mut message = component(&hover("tagged", "tooltip text"), 0);
-        message["tag"] = json!("system");
+        message["tag"] = json!(tag);
         vec![message]
     };
+    let tagged = || tagged_with("system");
     let scaled = |mouse: (i64, i64)| Chat { options: Some(json!({"scale": 0.5})), ..hovered(mouse, me()) };
     vec![
         hovered((10, 187), two()).row("hover-two-lines-upper"),
@@ -282,6 +283,10 @@ fn placed_hover_rows() -> Vec<Value> {
         hovered((10, 178), wrapped()).row("hover-wrapped-first-line"),
         hovered((10, 196), tagged()).row("hover-with-tag-text"),
         hovered((0, 196), tagged()).row("hover-with-tag-bar"),
+        hovered((0, 196), tagged_with("system_single_player")).row("hover-tag-bar-single-player"),
+        hovered((0, 196), tagged_with("not_secure")).row("hover-tag-bar-not-secure"),
+        hovered((0, 196), tagged_with("modified:the original")).row("hover-tag-bar-modified"),
+        hovered((0, 196), tagged_with("error")).row("hover-tag-bar-error"),
         scaled((5, 198)).row("hover-scaled"),
         scaled((5, 150)).row("hover-scaled-miss"),
         Chat { options: Some(json!({"line_spacing": 0.5})), ..hovered((10, 196), me()) }.row("hover-spaced"),
