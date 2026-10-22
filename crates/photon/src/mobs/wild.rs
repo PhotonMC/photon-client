@@ -135,7 +135,12 @@ pub fn hand_layers(
     models: &mut MobModels,
     backend: &mut photon_render::VulkanBackend,
     armor: &mut armor::Armor,
+    session: &photon_net::connection::PlaySession,
 ) -> Result<(), photon_render::VulkanError> {
+    backend.set_draw(
+        photon_render::vulkan::DrawKind::EntityOutline,
+        &super::take_outlines(session.scoreboard()),
+    )?;
     backend.set_draw(
         photon_render::vulkan::DrawKind::EntityGlint,
         &std::mem::take(&mut armor.glint),

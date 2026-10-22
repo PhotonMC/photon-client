@@ -75,6 +75,9 @@ pub(super) enum PipelineKind {
     /// A dissolving entity (`ENTITY_CUTOUT_DISSOLVE`): the entity's shaders, each
     /// texel dropped by a mask.
     Dissolve,
+    /// An entity's silhouette in its outline colour (`RenderTypes.outline`): the entity's vertex
+    /// shader, the colour from each vertex's tint, cut out by the texture.
+    EntityOutline,
     /// The dying dragon's rays (`DRAGON_RAYS`): coloured triangles added to what is behind.
     Rays,
     /// The world border overlay (`WORLD_BORDER`): the forcefield texture, tinted and blended by
@@ -208,6 +211,7 @@ pub(super) struct GuiPipelines {
 pub(super) struct Backdrop {
     pub(super) panorama: Option<super::panorama::PanoramaScene>,
     pub(super) blur: Option<super::blur::BlurScene>,
+    pub(super) outline: Option<super::entity_outline::OutlineScene>,
 }
 
 pub(super) struct SceneResources {

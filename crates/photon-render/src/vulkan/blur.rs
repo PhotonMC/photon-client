@@ -29,7 +29,7 @@ pub(super) struct BlurScene {
     targets: Option<Targets>,
 }
 
-const COLOUR_RANGE: vk::ImageSubresourceRange = vk::ImageSubresourceRange {
+pub(super) const COLOUR_RANGE: vk::ImageSubresourceRange = vk::ImageSubresourceRange {
     aspect_mask: vk::ImageAspectFlags::COLOR,
     base_mip_level: 0,
     level_count: 1,
@@ -54,19 +54,19 @@ impl VulkanBackend {
                 layout,
                 (&PANORAMA_VERTEX_SHADER, &PANORAMA_FRAGMENT_SHADER),
                 (vk::ShaderStageFlags::VERTEX, 64),
-                false,
+                (false, false),
             )?;
             let blur = self.create_plain_pipeline(
                 layout,
                 (&SCREENQUAD_VERTEX_SHADER, &BLUR_FRAGMENT_SHADER),
                 (vk::ShaderStageFlags::FRAGMENT, 24),
-                false,
+                (false, false),
             )?;
             let copy = self.create_plain_pipeline(
                 layout,
                 (&SCREENQUAD_VERTEX_SHADER, &COPY_FRAGMENT_SHADER),
                 (vk::ShaderStageFlags::FRAGMENT, 0),
-                true,
+                (true, false),
             )?;
             // The chain's inputs are filtered linearly (`"bilinear": true`).
             let sampler = self
@@ -201,7 +201,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Live handles.
-    unsafe fn colour_target(&self, extent: vk::Extent2D) -> Result<Image, VulkanError> {
+    pub(super) unsafe fn colour_target(&self, extent: vk::Extent2D) -> Result<Image, VulkanError> {
         // SAFETY: the image's memory is bound before the view is made, and the result owns all
         // three.
         unsafe {
@@ -431,7 +431,7 @@ impl VulkanBackend {
     /// # Safety
     ///
     /// Recording outside a rendering scope; `target` is live and `draw` records only draws.
-    unsafe fn offscreen_pass(
+    pub(super) unsafe fn offscreen_pass(
         &self,
         target: &Image,
         extent: vk::Extent2D,

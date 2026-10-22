@@ -49,6 +49,7 @@ mod blur;
 mod bytes;
 mod device;
 mod draws;
+mod entity_outline;
 mod frame;
 mod gui_blur;
 mod memory;

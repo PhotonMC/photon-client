@@ -337,6 +337,9 @@ pub(crate) fn visible_body(
     model: &MobModel,
     (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
 ) -> Vec<Vertex> {
+    if entity.is_glowing() {
+        outline::record(entity, mob_vertices(model, placement, rect));
+    }
     if !entity.is_invisible() {
         return mob_vertices(model, placement, rect);
     }
@@ -354,6 +357,8 @@ pub(crate) fn visible_body(
 /// The alpha byte of `0x26FFFFFF`, the colour a ghost's model is drawn with.
 const GHOST_ALPHA: u8 = 0x26;
 
+mod outline;
+pub(crate) use outline::take as take_outlines;
 mod wild;
 pub use wild::*;
 mod pose;

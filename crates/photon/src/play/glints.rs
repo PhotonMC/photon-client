@@ -21,6 +21,25 @@ impl Play {
         })
     }
 
+    /// Hand the layers the mobs and the items drew this frame, and the moving blocks, to the
+    /// renderer.
+    pub(super) fn hand_over_layers(&mut self, view: crate::overlays::FrameView) -> Result<()> {
+        take_item_glints(
+            &mut self.armor,
+            (&mut self.item_layers, &mut self.worn_layers),
+        );
+        crate::mobs::hand_layers(
+            &mut self.mob_models,
+            &mut self.backend,
+            &mut self.armor,
+            &self.session,
+        )?;
+        self.item_layers
+            .hand_over(&mut self.backend, &self.item_vertices)?;
+        let tints = (&*self.block_renderer, &*self.biome_tints);
+        set_moving_blocks(&mut self.backend, &self.session, tints, view)
+    }
+
     /// How this frame's item glints move, where their texture is and the server's item tags.
     pub(super) fn glint_frame(&self) -> GlintFrame {
         self.set_needle_frame();

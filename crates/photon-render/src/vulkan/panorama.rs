@@ -256,7 +256,7 @@ impl VulkanBackend {
                 descriptor_layout,
                 (&PANORAMA_VERTEX_SHADER, &PANORAMA_FRAGMENT_SHADER),
                 (vk::ShaderStageFlags::VERTEX, 64),
-                true,
+                (true, false),
             )
         }
     }
@@ -273,7 +273,7 @@ impl VulkanBackend {
         descriptor_layout: vk::DescriptorSetLayout,
         (vertex, fragment): (&Shader, &Shader),
         (push_stage, push_size): (vk::ShaderStageFlags, u32),
-        with_depth: bool,
+        (with_depth, blended): (bool, bool),
     ) -> Result<Pipeline, VulkanError> {
         // SAFETY: the shader modules are made from the embedded SPIR-V and destroyed once the
         // pipeline is built, and every create-info points at locals that outlive its call.
@@ -313,8 +313,7 @@ impl VulkanBackend {
             let multisample = vk::PipelineMultisampleStateCreateInfo::default()
                 .rasterization_samples(vk::SampleCountFlags::TYPE_1);
             let depth_state = vk::PipelineDepthStencilStateCreateInfo::default();
-            let blends = [vk::PipelineColorBlendAttachmentState::default()
-                .color_write_mask(vk::ColorComponentFlags::RGBA)];
+            let blends = [plain_blend(blended)];
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
             let push_ranges = [vk::PushConstantRange::default()
                 .stage_flags(push_stage)
@@ -365,4 +364,18 @@ impl VulkanBackend {
             }
         }
     }
+}
+
+/// The one colour attachment of a plain pipeline: written as it is, or with the ordinary alpha
+/// blend (`BlendFunction.TRANSLUCENT`).
+fn plain_blend(blended: bool) -> vk::PipelineColorBlendAttachmentState {
+    vk::PipelineColorBlendAttachmentState::default()
+        .color_write_mask(vk::ColorComponentFlags::RGBA)
+        .blend_enable(blended)
+        .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+        .color_blend_op(vk::BlendOp::ADD)
+        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+        .dst_alpha_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+        .alpha_blend_op(vk::BlendOp::ADD)
 }

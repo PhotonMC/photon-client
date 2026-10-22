@@ -1,4 +1,4 @@
-use super::glints::{set_item_glints, take_item_glints};
+use super::glints::set_item_glints;
 use super::*;
 use crate::objects::displays;
 use crate::objects::leashes;
@@ -113,14 +113,7 @@ impl Play {
             );
         }
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
-        take_item_glints(
-            &mut self.armor,
-            (&mut self.item_layers, &mut self.worn_layers),
-        );
-        mobs::hand_layers(&mut self.mob_models, &mut self.backend, &mut self.armor)?;
-        self.item_layers
-            .hand_over(&mut self.backend, &self.item_vertices)?;
-        set_moving_blocks(&mut self.backend, &self.session, tints, view)
+        self.hand_over_layers(view)
     }
 
     /// What the hands draw, nothing with the HUD hidden.

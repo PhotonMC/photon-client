@@ -29,7 +29,7 @@ impl VulkanBackend {
         let rays = kind == PipelineKind::Rays;
         let portal = kind == PipelineKind::Portal;
         let world_border = kind == PipelineKind::WorldBorder;
-        let entity = kind == PipelineKind::Entity || dissolve;
+        let entity = matches!(kind, PipelineKind::Entity | PipelineKind::EntityOutline) || dissolve;
         let shadow = kind == PipelineKind::Shadow;
         let swirl = kind == PipelineKind::Swirl;
         let gui_glint = kind == PipelineKind::GuiGlint;
@@ -363,6 +363,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Translucent
             | PipelineKind::Clouds
             | PipelineKind::Entity
+            | PipelineKind::EntityOutline
             | PipelineKind::Held
             | PipelineKind::Dissolve
             | PipelineKind::Rays
@@ -422,6 +423,11 @@ const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
         PipelineKind::Entity,
         &ENTITY_VERTEX_SHADER,
         &ENTITY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::EntityOutline,
+        &ENTITY_VERTEX_SHADER,
+        &ENTITY_OUTLINE_FRAGMENT_SHADER,
     ),
     (
         PipelineKind::Swirl,

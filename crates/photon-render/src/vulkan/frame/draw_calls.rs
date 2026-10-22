@@ -269,6 +269,44 @@ impl VulkanBackend {
         }
     }
 
+    /// Draw the glowing entities' silhouettes with `pipeline`, over the entity textures, as
+    /// the entities are drawn.
+    ///
+    /// # Safety
+    ///
+    /// `command_buffer` must be recording inside a rendering scope over the outline chain's
+    /// image, and `scene` must be the live scene.
+    pub(in super::super) unsafe fn draw_silhouettes(
+        &self,
+        (scene, pipeline, list): (&SceneResources, &Pipeline, &DrawList),
+        base: &[f32; 46],
+    ) {
+        let (Some(buffer), Some(set)) = (list.buffer.as_ref(), scene.entity_set) else {
+            return;
+        };
+        let mut push = [0.0_f32; 47];
+        push[..40].copy_from_slice(&base[..40]);
+        push[44] = base[44];
+        push[45] = base[45];
+        // SAFETY: recording (see `# Safety`); the pipeline, set and buffer are live, and the push
+        // constants are a prefix of `push`.
+        unsafe {
+            self.draw_vertices(
+                pipeline,
+                (
+                    Some(set),
+                    &[(
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        &as_bytes(&push)[..184],
+                    )],
+                ),
+                buffer,
+                (0, list.count),
+            );
+        }
+    }
+
     /// Clear the depth of the whole target.
     ///
     /// # Safety

@@ -43,8 +43,9 @@ impl VulkanBackend {
             if self.gui_only && self.blur_active() {
                 self.record_blurred_panorama(scene);
             }
-            self.begin_rendering(self.image_views[index], depth.view);
             let terrain_push = self.terrain_push(view_projection);
+            self.record_outline_chain(scene, &terrain_push);
+            self.begin_rendering(self.image_views[index], depth.view);
             for pass in PASSES {
                 if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui) {
                     continue;
@@ -75,6 +76,8 @@ impl VulkanBackend {
                         // pass, right after the rain and snow
                         // (`LevelRenderer.addWeatherPass`).
                         self.record_world_border(scene, &terrain_push);
+                        // The outlines of the glowing entities go over all of it.
+                        self.draw_entity_outlines(scene);
                     }
                     Pass::Hand => self.record_hand(scene, &terrain_push),
                     Pass::Panorama => self.record_panorama(scene),

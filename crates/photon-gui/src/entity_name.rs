@@ -15,6 +15,17 @@ fn scoreboard_name(entity: &ClientEntity, player_name: Option<&str>) -> String {
     }
 }
 
+/// `Entity.getTeamColor`: the colour of the entity's team, white for none or a team without one.
+/// The outline of a glowing entity is drawn in it. `holder` is its scoreboard name.
+pub fn team_colour(holder: &str, board: &Scoreboard) -> u32 {
+    board
+        .team_of(holder)
+        .and_then(|(_, team)| team.colour)
+        .and_then(|colour| photon_game::scoreboard::TEAM_COLOURS.get(usize::from(colour)))
+        .and_then(|name| photon_game::text::named_colour(name))
+        .unwrap_or(0xFF_FFFF)
+}
+
 /// The teams a tag's decision looks at, from the scoreboard: the entity's (by its scoreboard
 /// name) and the viewer's (by the local player's name).
 fn teams_of(board: &Scoreboard, entity_name: &str, viewer_name: &str) -> Teams {

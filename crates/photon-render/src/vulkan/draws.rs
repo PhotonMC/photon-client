@@ -12,6 +12,10 @@ pub enum DrawKind {
     /// The next frame's glowing layers, as triangles that sample the
     /// entity textures, each vertex's tint its colour.
     EntityGlow,
+    /// The next frame's entity silhouettes in their outline colours, which the outline chain
+    /// turns into the glowing entities' outlines: the entity textures' triangles, each vertex's
+    /// fourth tint component the colour as `0xRRGGBB`, or minus one for black.
+    EntityOutline,
     /// The next frame's energy swirls: each vertex carries its
     /// texture's place, the offset and the colour (see [`SWIRL_VERTEX_SHADER`]).
     EntitySwirl,
@@ -138,6 +142,9 @@ impl VulkanBackend {
 
     /// Hand over the next frame's triangles of one kind of draw.
     pub fn set_draw(&mut self, kind: DrawKind, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        if kind == DrawKind::EntityOutline {
+            return self.set_silhouettes(vertices);
+        }
         let mut list = std::mem::take(self.draw_list_mut(kind));
         let filled = self.fill_vertex_buffer(&mut list.buffer, vertices);
         list.count = vertices.len() as u32;
@@ -149,6 +156,7 @@ impl VulkanBackend {
         match kind {
             DrawKind::Entities => &mut self.entity,
             DrawKind::EntityGlow => &mut self.glow,
+            DrawKind::EntityOutline => unreachable!("set_draw hands these to the outline chain"),
             DrawKind::EntitySwirl => &mut self.swirl,
             DrawKind::EntityGlint => &mut self.glint,
             DrawKind::DragonRays => &mut self.rays,

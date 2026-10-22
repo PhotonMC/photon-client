@@ -176,6 +176,36 @@ impl VulkanBackend {
     ///
     /// No frame may be recording: it submits setup work and waits for the queue.
     pub(super) unsafe fn create_depth_target(&self) -> Result<Image, VulkanError> {
+        // SAFETY: live handles; no frame is recording (see `# Safety`).
+        unsafe {
+            let depth_image = self.depth_image()?;
+            let image = depth_image.image;
+            // The scene's rendering expects the depth image in its attachment layout, and clears
+            // it on load, so nothing needs to survive from the first use.
+            let depth = vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::DEPTH)
+                .level_count(1)
+                .layer_count(1);
+            self.run_once(|command| {
+                transition(
+                    &self.device,
+                    command,
+                    image,
+                    depth,
+                    vk::ImageLayout::UNDEFINED,
+                    vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+                );
+            })?;
+            Ok(depth_image)
+        }
+    }
+
+    /// A depth image of the frame's size, in no layout yet.
+    ///
+    /// # Safety
+    ///
+    /// Live handles.
+    pub(super) unsafe fn depth_image(&self) -> Result<Image, VulkanError> {
         // SAFETY: live handles; the image's memory is bound before the view is made, and the
         // target owns all three.
         unsafe {
@@ -222,24 +252,7 @@ impl VulkanBackend {
                     None,
                 )
                 .map_err(|result| VulkanError::Call("vkCreateImageView", result))?;
-            let depth_image = Image::new(&self.device, (image, memory, view), format);
-            // The scene's rendering expects the depth image in its attachment layout, and clears
-            // it on load, so nothing needs to survive from the first use.
-            let depth = vk::ImageSubresourceRange::default()
-                .aspect_mask(vk::ImageAspectFlags::DEPTH)
-                .level_count(1)
-                .layer_count(1);
-            self.run_once(|command| {
-                transition(
-                    &self.device,
-                    command,
-                    image,
-                    depth,
-                    vk::ImageLayout::UNDEFINED,
-                    vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
-                );
-            })?;
-            Ok(depth_image)
+            Ok(Image::new(&self.device, (image, memory, view), format))
         }
     }
 }

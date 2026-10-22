@@ -890,11 +890,10 @@
 "crates/photon-render/src/vulkan/device/sync.rs::create_sync" = 86
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 205
 "crates/photon-render/src/vulkan/memory.rs::VulkanBackend::arena_upload" = 91
-"crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 95
+"crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 94
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 299
 "crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 126
-"crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::create_depth_target" = 63
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 101
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::update_atlas" = 69
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::upload_texture" = 105
