@@ -143,7 +143,8 @@ impl SpecialModel {
     /// The transformation the built-in model draws its renderer through, for the three that
     /// have a fixed one (`BuiltInBlockModels`), with `base` the pose of the block's corner.
     pub fn item_pose(&self, base: &Pose) -> Option<Pose> {
-        let mut pose = *base;
+        // `PoseStack.mulPose` of the wrapper's matrix, built from the identity.
+        let mut pose = Pose::default();
         match self {
             Self::Table => {
                 pose.translate(0.5, 0.8125, 0.5);
@@ -156,10 +157,12 @@ impl SpecialModel {
             }
             // `ConduitRenderer.DEFAULT_TRANSFORMATION`.
             Self::Conduit => pose.translate(0.5, 0.5, 0.5),
-            Self::EndCube { portal: true } => return Some(end_portal::portal_pose(base)),
+            Self::EndCube { portal: true } => pose = end_portal::portal_pose(&pose),
             _ => return None,
         }
-        Some(pose)
+        let mut placed = *base;
+        placed.mul_matrix(&pose.pose);
+        Some(placed)
     }
 
     /// What the reference calls the model, as the check against it prints it.
