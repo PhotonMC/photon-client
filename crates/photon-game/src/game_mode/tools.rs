@@ -82,10 +82,15 @@ fn stripped(name: &str) -> Option<String> {
     strippable.then(|| format!("minecraft:stripped_{path}"))
 }
 
-/// A block the axe scrapes or waxes off (`WeatheringCopper`, `HoneycombItem`), whose tables are
-/// not ported: the click counts as done.
+/// A block the axe scrapes or waxes off (the keys of `WeatheringCopper.PREVIOUS_BY_BLOCK` and
+/// `HoneycombItem.WAX_OFF_BY_BLOCK`: every copper block that is exposed, weathered, oxidized or
+/// waxed), whose tables are not ported: the click counts as done.
 fn weathering_copper(name: &str) -> bool {
-    name.contains("copper") && !name.contains("ore") && !name.starts_with("minecraft:raw_")
+    name.strip_prefix("minecraft:").is_some_and(|path| {
+        ["exposed_", "weathered_", "oxidized_", "waxed_"]
+            .iter()
+            .any(|prefix| path.starts_with(prefix))
+    })
 }
 
 /// `AxeItem.useOn` for the client: not with a blocking item in the off hand unless sneaking; a
@@ -201,8 +206,21 @@ mod tests {
         );
         assert_eq!(stripped("minecraft:stripped_oak_log"), None);
         assert_eq!(stripped("minecraft:oak_planks"), None);
-        assert!(weathering_copper("minecraft:waxed_cut_copper"));
-        assert!(!weathering_copper("minecraft:copper_ore"));
+        for name in [
+            "minecraft:waxed_cut_copper",
+            "minecraft:exposed_lightning_rod",
+            "minecraft:waxed_lightning_rod",
+        ] {
+            assert!(weathering_copper(name), "{name}");
+        }
+        for name in [
+            "minecraft:copper_block",
+            "minecraft:copper_torch",
+            "minecraft:raw_copper_block",
+            "minecraft:copper_ore",
+        ] {
+            assert!(!weathering_copper(name), "{name}");
+        }
     }
 
     #[test]
