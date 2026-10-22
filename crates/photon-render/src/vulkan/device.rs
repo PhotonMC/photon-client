@@ -14,6 +14,8 @@ impl Drop for VulkanBackend {
             self.cloud_buffer = None;
             self.sky_buffer.clear();
             self.weather_buffer.clear();
+            self.world_border_buffer.clear();
+            self.screen_effect_buffer.clear();
             self.entity.buffer.clear();
             self.ground.buffer.clear();
             self.name_tag_see.buffer.clear();
