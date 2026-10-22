@@ -1,8 +1,9 @@
 use super::*;
 
 use photon_game::dialog::{
-    Action, ActionButton, AfterAction, Body, CommonData, Dialog, DialogContext, DialogRef,
-    DialogSet, ListSource, Next, PlainMessage, run_action,
+    Action, ActionButton, AfterAction, Body, BooleanInput, CommonData, Control, Dialog,
+    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, PlainMessage,
+    Template, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
@@ -26,11 +27,35 @@ fn button(value: &Value) -> ActionButton {
         width: value["width"].as_i64().unwrap_or(150) as i32,
         action: value.get("action").map(|action| {
             let value = action["value"].as_str().unwrap_or_default();
-            Action::Static(match action["type"].as_str() {
-                Some("run_command") => ClickEvent::RunCommand(value.to_owned()),
-                _ => ClickEvent::Custom(value.to_owned(), None),
-            })
+            match action["type"].as_str() {
+                Some("run_command") => Action::Static(ClickEvent::RunCommand(value.to_owned())),
+                Some("template") => Action::CommandTemplate(
+                    Template::parse(value).expect("a template with a variable"),
+                ),
+                Some("custom_all") => Action::CustomAll {
+                    id: value.to_owned(),
+                    additions: None,
+                },
+                _ => Action::Static(ClickEvent::Custom(value.to_owned(), None)),
+            }
         }),
+    }
+}
+
+fn input(value: &Value) -> Input {
+    let flag = |key: &str| value[key].as_bool().unwrap_or(false);
+    let string = |key: &str, default: &str| value[key].as_str().unwrap_or(default).to_owned();
+    Input {
+        key: string("key", ""),
+        control: match value["type"].as_str() {
+            Some("boolean") => Control::Boolean(BooleanInput {
+                label: text(&value["label"]),
+                initial: flag("initial"),
+                on_true: string("on_true", "true"),
+                on_false: string("on_false", "false"),
+            }),
+            other => panic!("unknown input {other:?}"),
+        },
     }
 }
 
@@ -64,7 +89,9 @@ fn dialog(value: &Value) -> Dialog {
         body: value["body"]
             .as_array()
             .map_or_else(Vec::new, |items| items.iter().map(body).collect()),
-        has_inputs: false,
+        inputs: value["inputs"]
+            .as_array()
+            .map_or_else(Vec::new, |items| items.iter().map(input).collect()),
     });
     let buttons: Vec<ActionButton> = value["buttons"]
         .as_array()
@@ -158,7 +185,7 @@ fn sub_dialog(value: &Value) -> Dialog {
         pause: false,
         after_action: AfterAction::Close,
         body: Vec::new(),
-        has_inputs: false,
+        inputs: Vec::new(),
     });
     Dialog::Other(common)
 }
@@ -177,7 +204,11 @@ fn screen_name(dialog: &Dialog, kind: &Value, next: Next) -> &'static str {
 
 /// What the game's side of a press did, as the reference's recording gui and connection write it:
 /// `Next` is the screen it was left on.
-fn press_events(dialog: &Dialog, (kind, press): (&Value, Press), events: &mut Vec<String>) {
+fn press_events(
+    dialog: &Dialog,
+    (kind, press, values): (&Value, Press, &[InputValue]),
+    events: &mut Vec<String>,
+) {
     let common = dialog.common();
     let (action, after) = match press {
         Press::Warning => {
@@ -190,14 +221,14 @@ fn press_events(dialog: &Dialog, (kind, press): (&Value, Press), events: &mut Ve
             common.after_action,
         ),
     };
-    let outcome = run_action(action, after);
+    let outcome = run_action(action, after, values);
     let screen = screen_name(dialog, kind, outcome.next);
     match outcome.event {
         Some(ClickEvent::RunCommand(command)) => {
             let command = command.strip_prefix('/').unwrap_or(&command);
             events.push(format!("run_command:{command}:{screen}"));
         }
-        Some(ClickEvent::Custom(id, _)) => events.push(format!("custom:{id}")),
+        Some(ClickEvent::Custom(id, payload)) => events.push(custom_event(&id, payload.as_ref())),
         // These two leave the screen to what they open: the question about an address, or the
         // dialog.
         Some(ClickEvent::ShowDialog(_)) => {
@@ -211,6 +242,29 @@ fn press_events(dialog: &Dialog, (kind, press): (&Value, Press), events: &mut Ve
         _ => {}
     }
     events.push(screen.to_owned());
+}
+
+/// `custom:<id>`, and for a payload its entries in key order, each as the reference writes a tag.
+fn custom_event(id: &str, payload: Option<&photon_core::nbt::FieldValue>) -> String {
+    use photon_core::nbt::FieldValue;
+    let Some(FieldValue::Compound(fields)) = payload else {
+        return format!("custom:{id}");
+    };
+    let entries: std::collections::BTreeMap<&str, String> = fields
+        .iter()
+        .map(|field| {
+            let tag = match &field.value {
+                FieldValue::Byte(value) => format!("{value}b"),
+                other => panic!("tag {other:?} is not written yet"),
+            };
+            (field.key.as_str(), tag)
+        })
+        .collect();
+    let entries: Vec<String> = entries
+        .iter()
+        .map(|(key, tag)| format!("{key}={tag}"))
+        .collect();
+    format!("custom:{id}:{{{}}}", entries.join(", "))
 }
 
 /// The steps of a row for the waiting screen; leaving it is an event.
@@ -238,6 +292,19 @@ fn wait_steps(
         }
     }
     Ok(())
+}
+
+/// A key the reference's screen was given.
+fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, String> {
+    Ok(match key {
+        "tab" | "shift+tab" => {
+            screen.tab(key == "tab");
+            None
+        }
+        "enter" | "space" => screen.pressed(),
+        "escape" => screen.escape(),
+        other => return Err(format!("unknown key {other}")),
+    })
 }
 
 pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
@@ -289,19 +356,7 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                     );
                     None
                 }
-                "key" => match step["key"].as_str().unwrap_or_default() {
-                    "tab" => {
-                        screen.tab(true);
-                        None
-                    }
-                    "shift+tab" => {
-                        screen.tab(false);
-                        None
-                    }
-                    "enter" | "space" => screen.pressed(),
-                    "escape" => screen.escape(),
-                    other => return Err(format!("unknown key {other}")),
-                },
+                "key" => key_press(&mut screen, step["key"].as_str().unwrap_or_default())?,
                 "click" => screen.clicked((x as i32, y as i32)),
                 "drag" => {
                     screen.dragged(y, step["dy"].as_f64().unwrap_or(0.0));
@@ -318,7 +373,11 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                 other => return Err(format!("unknown step {other}")),
             };
             if let Some(press) = press {
-                press_events(&dialog, (&shown["kind"], press), &mut events);
+                press_events(
+                    &dialog,
+                    (&shown["kind"], press, &screen.values()),
+                    &mut events,
+                );
             }
         }
         frame.millis = row["ms"].as_u64().unwrap_or(0);

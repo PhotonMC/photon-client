@@ -131,7 +131,7 @@ impl Dialog {
                 pause: true,
                 after_action: AfterAction::Close,
                 body: Vec::new(),
-                has_inputs: false,
+                inputs: Vec::new(),
             }),
             source,
             exit: Some(Box::new(ActionButton {

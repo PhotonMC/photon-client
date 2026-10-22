@@ -81,6 +81,7 @@ struct Dialog {
     links: Option<Vec<Value>>,
     subs: Option<Vec<Value>>,
     button_width: Option<i64>,
+    inputs: Option<Vec<Value>>,
 }
 
 fn row(label: &'static str) -> Dialog {
@@ -102,6 +103,7 @@ fn row(label: &'static str) -> Dialog {
         links: None,
         subs: None,
         button_width: None,
+        inputs: None,
     }
 }
 
@@ -122,6 +124,9 @@ impl Dialog {
             dialog["subs"] = json!(subs);
             dialog["button_width"] = json!(self.button_width.unwrap_or(150));
         }
+        if let Some(inputs) = self.inputs {
+            dialog["inputs"] = json!(inputs);
+        }
         if let Some(links) = self.links {
             dialog["links"] = json!(links);
             dialog["button_width"] = json!(self.button_width.unwrap_or(150));
@@ -137,6 +142,8 @@ impl Dialog {
 macro_rules! rows {
     ($($dialog:expr),* $(,)?) => { vec![$($dialog.into_row()),*] };
 }
+
+mod inputs;
 
 fn waiting(label: &str, steps: Vec<Value>, mouse: (i64, i64), in_world: bool, size: (i64, i64)) -> Value {
     json!({
@@ -508,8 +515,17 @@ fn blur_rows() -> Vec<Value> {
 }
 
 pub fn dialog_screen() -> Value {
-    let mut rows =
-        [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows(), link_rows(), sublist_rows()].concat();
+    let mut rows = [
+        notice_rows(),
+        scroll_rows(),
+        press_rows(),
+        waiting_rows(),
+        list_rows(),
+        link_rows(),
+        sublist_rows(),
+        inputs::rows(),
+    ]
+    .concat();
     rows.extend(blur_rows());
     gui("dialog-screen", "dialog_screen", rows)
 }

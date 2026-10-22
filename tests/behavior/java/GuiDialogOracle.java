@@ -46,7 +46,16 @@ class GuiDialogOracle extends GuiSocialOracle {
         @Override
         public void sendCustomAction(net.minecraft.resources.Identifier id,
                 java.util.Optional<net.minecraft.nbt.Tag> payload) {
-            events.add("custom:" + id);
+            // A payload is written as its entries in key order, so that no formatting is compared.
+            String tail = "";
+            if (payload.isPresent() && payload.get() instanceof net.minecraft.nbt.CompoundTag compound) {
+                var entries = new java.util.TreeMap<String, String>();
+                for (String key : compound.keySet()) {
+                    entries.put(key, compound.get(key).toString());
+                }
+                tail = ":" + entries;
+            }
+            events.add("custom:" + id + tail);
         }
 
         @Override
@@ -66,7 +75,16 @@ class GuiDialogOracle extends GuiSocialOracle {
                 : java.util.Optional.empty(),
             json.get("width").getAsInt());
         java.util.Optional<net.minecraft.server.dialog.action.Action> action = java.util.Optional.empty();
-        if (json.has("action")) {
+        if (json.has("action") && json.getAsJsonObject("action").get("type").getAsString().equals("template")) {
+            action = java.util.Optional.of(new net.minecraft.server.dialog.action.CommandTemplate(
+                net.minecraft.server.dialog.action.ParsedTemplate.CODEC
+                    .parse(com.mojang.serialization.JsonOps.INSTANCE, json.getAsJsonObject("action").get("value"))
+                    .getOrThrow()));
+        } else if (json.has("action") && json.getAsJsonObject("action").get("type").getAsString().equals("custom_all")) {
+            action = java.util.Optional.of(new net.minecraft.server.dialog.action.CustomAll(
+                net.minecraft.resources.Identifier.parse(json.getAsJsonObject("action").get("value").getAsString()),
+                java.util.Optional.empty()));
+        } else if (json.has("action")) {
             var event = json.getAsJsonObject("action");
             action = java.util.Optional.of(new net.minecraft.server.dialog.action.StaticAction(
                 switch (event.get("type").getAsString()) {
@@ -79,6 +97,18 @@ class GuiDialogOracle extends GuiSocialOracle {
                 }));
         }
         return new net.minecraft.server.dialog.ActionButton(data, action);
+    }
+
+    private static net.minecraft.server.dialog.Input input(JsonObject json) {
+        var label = Component.literal(json.get("label").getAsString());
+        net.minecraft.server.dialog.input.InputControl control = switch (json.get("type").getAsString()) {
+            case "boolean" -> new net.minecraft.server.dialog.input.BooleanInput(label,
+                json.has("initial") && json.get("initial").getAsBoolean(),
+                json.has("on_true") ? json.get("on_true").getAsString() : "true",
+                json.has("on_false") ? json.get("on_false").getAsString() : "false");
+            default -> throw new IllegalArgumentException(json.toString());
+        };
+        return new net.minecraft.server.dialog.Input(json.get("key").getAsString(), control);
     }
 
     private static net.minecraft.server.dialog.body.DialogBody body(JsonObject json) {
@@ -99,6 +129,7 @@ class GuiDialogOracle extends GuiSocialOracle {
     static JsonObject dialogScreen(JsonObject request) throws Exception {
         // The game registers the body handlers when it starts.
         net.minecraft.client.gui.screens.dialog.body.DialogBodyHandlers.bootstrap();
+        net.minecraft.client.gui.screens.dialog.input.InputControlHandlers.bootstrap();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
@@ -132,11 +163,17 @@ class GuiDialogOracle extends GuiSocialOracle {
                 for (var item : json.getAsJsonArray("body")) {
                     bodies.add(body(item.getAsJsonObject()));
                 }
+                var inputs = new java.util.ArrayList<net.minecraft.server.dialog.Input>();
+                if (json.has("inputs")) {
+                    for (var item : json.getAsJsonArray("inputs")) {
+                        inputs.add(input(item.getAsJsonObject()));
+                    }
+                }
                 var common = new net.minecraft.server.dialog.CommonDialogData(
                     Component.literal(json.get("title").getAsString()), java.util.Optional.empty(),
                     json.get("can_close").getAsBoolean(), false,
                     net.minecraft.server.dialog.DialogAction.valueOf(json.get("after").getAsString()),
-                    bodies, java.util.List.of());
+                    bodies, inputs);
                 var buttons = json.getAsJsonArray("buttons");
                 var links = net.minecraft.server.ServerLinks.EMPTY;
                 if (json.get("kind").getAsString().equals("server_links")) {

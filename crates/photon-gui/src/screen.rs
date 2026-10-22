@@ -13,6 +13,7 @@ pub mod death;
 pub mod debug_options;
 pub mod dialog;
 mod dialog_body;
+mod dialog_input;
 pub mod disconnected;
 pub mod game_mode;
 pub mod jigsaw;

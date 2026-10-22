@@ -38,9 +38,25 @@ impl DialogLayer {
         })
     }
 
-    /// The screen again for a screen of another size (`rebuildWidgets`): the waiting screen keeps
-    /// its count.
+    /// The screen again for a screen of another size (`repositionElements`): the controls keep
+    /// what they hold, and the waiting screen its count.
     pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
+        match self {
+            Self::Dialog { dialog, screen } => {
+                let mut again = DialogScreen::new(font, lang, size, dialog, true)
+                    .expect("a dialog that had a screen has one");
+                again.keep_inputs_of(screen);
+                Self::Dialog {
+                    screen: Box::new(again),
+                    dialog: dialog.clone(),
+                }
+            }
+            Self::Waiting(waiting) => Self::Waiting(Box::new(waiting.resized(font, lang, size))),
+        }
+    }
+
+    /// `setScreen(this)`: the screen starts over, its controls as the dialog first gave them.
+    fn restarted(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
         match self {
             Self::Dialog { dialog, .. } => Self::Dialog {
                 screen: Box::new(
@@ -49,7 +65,7 @@ impl DialogLayer {
                 ),
                 dialog: dialog.clone(),
             },
-            Self::Waiting(waiting) => Self::Waiting(Box::new(waiting.resized(font, lang, size))),
+            Self::Waiting(_) => self.resized(font, lang, size),
         }
     }
 
@@ -267,9 +283,10 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        let Some(DialogLayer::Dialog { dialog, .. }) = self.dialog.as_ref() else {
+        let Some(DialogLayer::Dialog { dialog, screen }) = self.dialog.as_ref() else {
             return Ok(());
         };
+        let values = screen.values();
         let (action, after) = match press {
             Press::Button(index) => (
                 dialog.main_actions()[index].action.as_ref(),
@@ -277,7 +294,7 @@ impl Controls {
             ),
             _ => (dialog.on_cancel(), photon_game::dialog::AfterAction::Close),
         };
-        let outcome = run_action(action, after);
+        let outcome = run_action(action, after, &values);
         // A command is checked before the screen changes (`handleDialogClickEvent` leaves it to
         // `sendUnattendedCommand`); the other events act on the screen it leaves.
         if let Some(ClickEvent::RunCommand(command)) = &outcome.event {
@@ -303,8 +320,11 @@ impl Controls {
             // `setScreen(this)` starts the screen over.
             Next::Same => {
                 if let Some(layer) = self.dialog.take() {
-                    self.dialog =
-                        Some(layer.resized(&assets.creative.font, &assets.lang, gui_size(surface)));
+                    self.dialog = Some(layer.restarted(
+                        &assets.creative.font,
+                        &assets.lang,
+                        gui_size(surface),
+                    ));
                 }
             }
             Next::Waiting => {

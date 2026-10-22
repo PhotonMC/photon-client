@@ -1,9 +1,16 @@
 //! Server dialogs (`net.minecraft.server.dialog`): the data the server sends, as far as the
 //! notice, confirmation, multi-action and button list screens use it. Inputs are T106.
 
+mod input;
 mod list;
+mod template;
 
+pub use input::{
+    BooleanInput, Control, Input, InputValue, Multiline, NumberRangeInput, OptionEntry, RangeInfo,
+    SingleOptionInput, TextInput,
+};
 pub use list::{DialogContext, DialogSet, ListSource};
+pub use template::Template;
 
 use photon_core::nbt::{Field, FieldValue};
 
@@ -55,12 +62,17 @@ pub enum Body {
     },
 }
 
-/// What a button does: the click event it runs. `dynamic_*` actions fill a command template from
-/// the dialog's inputs and belong to T106.
+/// What a button does: the click event it runs, or one made from the dialog's inputs.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     Static(ClickEvent),
-    Dynamic,
+    /// `CommandTemplate`: a command with the inputs filled in.
+    CommandTemplate(Template),
+    /// `CustomAll`: a custom event whose payload holds every input.
+    CustomAll {
+        id: String,
+        additions: Option<Vec<Field>>,
+    },
 }
 
 /// `ActionButton`.
@@ -81,8 +93,7 @@ pub struct CommonData {
     pub pause: bool,
     pub after_action: AfterAction,
     pub body: Vec<Body>,
-    /// Whether the dialog asks for inputs; they are not read yet.
-    pub has_inputs: bool,
+    pub inputs: Vec<Input>,
 }
 
 /// A dialog, as far as it is read.
@@ -233,19 +244,42 @@ pub struct Outcome {
     pub event: Option<ClickEvent>,
 }
 
-/// `DialogScreen.runAction(closeAction, afterAction)`. A `dynamic_*` action is not read, so it
-/// runs nothing (T106).
-pub fn run_action(action: Option<&Action>, after: AfterAction) -> Outcome {
+/// `DialogScreen.runAction(closeAction, afterAction)` with what the inputs hold.
+pub fn run_action(action: Option<&Action>, after: AfterAction, values: &[InputValue]) -> Outcome {
     Outcome {
         next: match after {
             AfterAction::Close => Next::Previous,
             AfterAction::None => Next::Same,
             AfterAction::WaitForResponse => Next::Waiting,
         },
-        event: match action {
-            Some(Action::Static(event)) => Some(event.clone()),
-            Some(Action::Dynamic) | None => None,
-        },
+        event: action.map(|action| action.create(values)),
+    }
+}
+
+impl Action {
+    /// `Action.createAction`.
+    fn create(&self, values: &[InputValue]) -> ClickEvent {
+        match self {
+            Self::Static(event) => event.clone(),
+            Self::CommandTemplate(template) => {
+                let arguments = values
+                    .iter()
+                    .map(|value| (value.key.as_str(), value.substitution.as_str()))
+                    .collect();
+                ClickEvent::RunCommand(template.instantiate(&arguments))
+            }
+            Self::CustomAll { id, additions } => {
+                let mut payload = additions.clone().unwrap_or_default();
+                for value in values {
+                    payload.retain(|field| field.key != value.key);
+                    payload.push(Field {
+                        key: value.key.clone(),
+                        value: value.tag.clone(),
+                    });
+                }
+                ClickEvent::Custom(id.clone(), Some(FieldValue::Compound(payload)))
+            }
+        }
     }
 }
 
@@ -294,7 +328,7 @@ impl CommonData {
                 Some(single) => vec![Body::from_nbt(single)?],
                 None => Vec::new(),
             },
-            has_inputs: matches!(get(fields, "inputs"), Some(FieldValue::List(items)) if !items.is_empty()),
+            inputs: inputs(fields)?,
         })
     }
 }
@@ -371,7 +405,17 @@ impl Action {
     /// `Action.CODEC`: the click events a server may send, and the templated kinds.
     fn from_fields(fields: &[Field]) -> Option<Self> {
         match strip_namespace(text(fields, "type")?) {
-            "dynamic/run_command" | "dynamic/custom" => Some(Self::Dynamic),
+            "dynamic/run_command" => Some(Self::CommandTemplate(Template::parse(text(
+                fields, "template",
+            )?)?)),
+            "dynamic/custom" => Some(Self::CustomAll {
+                id: text(fields, "id")?.to_owned(),
+                additions: match get(fields, "additions") {
+                    None => None,
+                    Some(FieldValue::Compound(additions)) => Some(additions.clone()),
+                    Some(_) => return None,
+                },
+            }),
             _ => Some(Self::Static(ClickEvent::from_nbt_fields(fields, "type")?)),
         }
     }
@@ -389,6 +433,16 @@ pub(crate) fn text<'a>(fields: &'a [Field], key: &str) -> Option<&'a str> {
         Some(FieldValue::Str(text)) => Some(text),
         _ => None,
     }
+}
+
+/// `inputs`: a list of inputs with different keys (`Input.CODEC.listOf()`).
+fn inputs(fields: &[Field]) -> Option<Vec<Input>> {
+    let items = match get(fields, "inputs") {
+        None => return Some(Vec::new()),
+        Some(FieldValue::List(items)) => items,
+        Some(_) => return None,
+    };
+    items.iter().map(Input::from_nbt).collect()
 }
 
 pub(crate) fn strip_namespace(name: &str) -> &str {
@@ -505,5 +559,77 @@ mod tests {
             field("after_action", string("none")),
         ]);
         assert_eq!(Dialog::from_nbt(&dialog), None);
+    }
+
+    #[test]
+    fn a_boolean_input_and_the_dynamic_actions_read_and_fill_from_the_inputs() {
+        let compound = FieldValue::Compound;
+        let input = compound(vec![
+            field("type", string("minecraft:boolean")),
+            field("key", string("agree")),
+            field("label", string("Agree")),
+            field("initial", FieldValue::Byte(1)),
+        ]);
+        let notice = |action: FieldValue| {
+            compound(vec![
+                field("type", string("notice")),
+                field("title", string("T")),
+                field("inputs", FieldValue::List(vec![input.clone()])),
+                field(
+                    "action",
+                    compound(vec![field("label", string("Go")), field("action", action)]),
+                ),
+            ])
+        };
+        let template = compound(vec![
+            field("type", string("dynamic/run_command")),
+            field("template", string("say $(agree)")),
+        ]);
+        let Some(Dialog::Notice { common, action }) = Dialog::from_nbt(&notice(template)) else {
+            panic!("notice with a template");
+        };
+        let Control::Boolean(boolean) = &common.inputs[0].control else {
+            panic!("boolean");
+        };
+        assert!(boolean.initial);
+        assert_eq!(
+            (boolean.on_true.as_str(), boolean.on_false.as_str()),
+            ("true", "false")
+        );
+        let value = InputValue {
+            key: "agree".to_owned(),
+            substitution: "true".to_owned(),
+            tag: FieldValue::Byte(1),
+        };
+        let outcome = run_action(
+            action.action.as_ref(),
+            AfterAction::Close,
+            std::slice::from_ref(&value),
+        );
+        assert_eq!(
+            outcome.event,
+            Some(ClickEvent::RunCommand("say true".to_owned()))
+        );
+
+        let custom = compound(vec![
+            field("type", string("dynamic/custom")),
+            field("id", string("minecraft:answer")),
+            field(
+                "additions",
+                compound(vec![field("extra", FieldValue::Int(7))]),
+            ),
+        ]);
+        let Some(Dialog::Notice { action, .. }) = Dialog::from_nbt(&notice(custom)) else {
+            panic!("notice with a custom action");
+        };
+        let outcome = run_action(action.action.as_ref(), AfterAction::Close, &[value]);
+        let Some(ClickEvent::Custom(id, Some(FieldValue::Compound(payload)))) = outcome.event
+        else {
+            panic!("custom event");
+        };
+        assert_eq!(id, "minecraft:answer");
+        assert_eq!(payload.len(), 2);
+        assert_eq!(get(&payload, "extra"), Some(&FieldValue::Int(7)));
+        assert_eq!(get(&payload, "agree"), Some(&FieldValue::Byte(1)));
     }
 }
