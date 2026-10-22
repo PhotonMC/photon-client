@@ -343,6 +343,11 @@ fn parse_select(object: &JsonObject) -> ItemModelDef {
     // `block_state` names the property it reads in a field of its own; it is kept in the name.
     let property = match (property.as_str(), object.text("block_state_property")) {
         ("minecraft:block_state", Some(name)) => format!("{BLOCK_STATE_SELECT}{name}"),
+        // The date pattern the clock is formatted by is kept in the name.
+        ("minecraft:local_time", _) => match object.text("pattern") {
+            Some(pattern) => format!("{LOCAL_TIME_SELECT}{pattern}"),
+            None => property,
+        },
         _ => property,
     };
     // The trim material is a resource key; a case names it with or without the namespace.

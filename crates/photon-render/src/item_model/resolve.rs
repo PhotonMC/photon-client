@@ -62,6 +62,9 @@ pub struct ItemState {
 /// What a `block_state` select's property is named in front of: the state property it reads.
 pub const BLOCK_STATE_SELECT: &str = "minecraft:block_state/";
 
+/// The prefix of a `local_time` select's property, which carries the date pattern after it.
+pub const LOCAL_TIME_SELECT: &str = "minecraft:local_time/";
+
 /// A key held for good, so a state can stay `Copy`: the materials of a registry are few.
 pub fn intern_key(key: &str) -> &'static str {
     static KEYS: std::sync::Mutex<std::collections::BTreeSet<&'static str>> =
@@ -376,8 +379,21 @@ pub fn select_value<'a>(
         "minecraft:charge_type" => state.charge.name(),
         "minecraft:trim_material" => state.trim_material?,
         "minecraft:context_dimension" => state.dimension?,
+        other if other.starts_with(LOCAL_TIME_SELECT) => {
+            return local_time(other.strip_prefix(LOCAL_TIME_SELECT)?);
+        }
         other => state_value(state.block_state?, other.strip_prefix(BLOCK_STATE_SELECT)?)?,
     })
+}
+
+/// `LocalTime` for the one pattern the game's items use, month and day (`MM-dd`), in the zone
+/// `SpecialDates` reads (UTC here); another pattern takes the fallback.
+fn local_time<'a>(pattern: &str) -> Option<&'a str> {
+    if pattern != "MM-dd" {
+        return None;
+    }
+    let (month, day) = photon_core::calendar::today();
+    Some(intern_key(&format!("{month:02}-{day:02}")))
 }
 
 /// `SelectItemModel`: the case of the value the property reads.

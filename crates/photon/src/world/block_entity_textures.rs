@@ -4,10 +4,13 @@
 use photon_render::block_entity::skull::SkullKind;
 
 /// The paths (under `textures/`) of every chest and shulker box texture.
-const TEXTURES: [&str; 40] = [
+const TEXTURES: [&str; 43] = [
     "entity/chest/normal",
     "entity/chest/normal_left",
     "entity/chest/normal_right",
+    "entity/chest/christmas",
+    "entity/chest/christmas_left",
+    "entity/chest/christmas_right",
     "entity/chest/trapped",
     "entity/chest/trapped_left",
     "entity/chest/trapped_right",

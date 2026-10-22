@@ -205,6 +205,21 @@ mod special_tests {
     }
 
     #[test]
+    fn a_local_time_select_reads_today_as_month_and_day() {
+        let (month, day) = photon_core::calendar::today();
+        let text = format!(
+            r#"{{"model":{{"type":"minecraft:select","property":"minecraft:local_time",
+            "pattern":"MM-dd","cases":[{{"when":"{month:02}-{day:02}","model":
+            {{"type":"minecraft:model","model":"minecraft:item/today"}}}}],
+            "fallback":{{"type":"minecraft:model","model":"minecraft:item/other"}}}}}}"#
+        );
+        let item = parse_client_item(&text).expect("a client item");
+        let mut layers = Vec::new();
+        layers_for(&item.model, DisplayContext::ALL[0], &mut layers);
+        assert_eq!(layers[0].model.as_string(), "minecraft:item/today");
+    }
+
+    #[test]
     fn other_special_renderers_draw_nothing() {
         let text = r#"{"model":{"type":"minecraft:special","base":"minecraft:item/trident",
             "model":{"type":"minecraft:not_a_renderer"}}}"#;

@@ -23,7 +23,6 @@ use crate::overlays::{FrameView, packed_light};
 fn material_of(name: &str) -> ChestMaterial {
     match name {
         "minecraft:ender_chest" => ChestMaterial::Ender,
-        "minecraft:trapped_chest" => ChestMaterial::Trapped,
         "minecraft:copper_chest" | "minecraft:waxed_copper_chest" => {
             ChestMaterial::CopperUnaffected
         }
@@ -36,6 +35,9 @@ fn material_of(name: &str) -> ChestMaterial {
         "minecraft:oxidized_copper_chest" | "minecraft:waxed_oxidized_copper_chest" => {
             ChestMaterial::CopperOxidized
         }
+        // `xmasTextures` outranks the trapped chest's own.
+        _ if photon_core::calendar::is_extended_christmas() => ChestMaterial::Christmas,
+        "minecraft:trapped_chest" => ChestMaterial::Trapped,
         _ => ChestMaterial::Regular,
     }
 }
