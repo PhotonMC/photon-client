@@ -552,6 +552,33 @@ class MovementSupport {
                         net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
             }
         }
+        if (row.has("spawners")) {
+            // Spawners with what the update tag carries; the display entity is made once, as the
+            // block entity renderer does on its first frame.
+            for (var element : row.getAsJsonArray("spawners")) {
+                var described = element.getAsJsonObject();
+                var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
+                    described.get("z").getAsInt());
+                var tag = new net.minecraft.nbt.CompoundTag();
+                if (described.has("entity")) {
+                    var entity = new net.minecraft.nbt.CompoundTag();
+                    entity.putString("id", described.get("entity").getAsString());
+                    var data = new net.minecraft.nbt.CompoundTag();
+                    data.put("entity", entity);
+                    tag.put("SpawnData", data);
+                }
+                if (described.has("range")) {
+                    tag.putShort("RequiredPlayerRange", described.get("range").getAsShort());
+                }
+                if (described.has("delay")) {
+                    tag.putShort("Delay", described.get("delay").getAsShort());
+                }
+                var spawner = (net.minecraft.world.level.block.entity.SpawnerBlockEntity) level.getBlockEntity(pos);
+                spawner.loadWithComponents(net.minecraft.world.level.storage.TagValueInput.create(
+                    net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+                spawner.getSpawner().getOrCreateDisplayEntity(level, pos);
+            }
+        }
         if (row.has("vaults")) {
             for (var element : row.getAsJsonArray("vaults")) {
                 var described = element.getAsJsonObject();
@@ -620,7 +647,8 @@ class MovementSupport {
             } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndPortalBlockEntity portal) {
                 held = "portal," + faceMask(portal);
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
-                held = "spawner," + getField(spawner.getSpawner(), "spawnDelay");
+                held = "spawner," + getField(spawner.getSpawner(), "spawnDelay") + ","
+                    + Oracle.bits(spawner.getSpawner().getOSpin()) + "," + Oracle.bits(spawner.getSpawner().getSpin());
             } else if (entity instanceof net.minecraft.world.level.block.entity.BeaconBlockEntity beacon) {
                 var sections = new java.util.ArrayList<String>();
                 @SuppressWarnings("unchecked")

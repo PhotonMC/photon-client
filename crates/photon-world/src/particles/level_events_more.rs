@@ -57,6 +57,20 @@ impl ParticleEngine {
         }
     }
 
+    /// `BaseSpawner.clientTick` with a player near: smoke and flame at a random place in the block.
+    pub(super) fn spawner_tick<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let random = &mut *context.level_random;
+        let x = f64::from(pos.0) + random.next_double();
+        let y = f64::from(pos.1) + random.next_double();
+        let z = f64::from(pos.2) + random.next_double();
+        self.level_add(context, "smoke", (x, y, z), (0.0, 0.0, 0.0));
+        self.level_add(context, "flame", (x, y, z), (0.0, 0.0, 0.0));
+    }
+
     /// `ComposterBlock.handleFill`: its sound, and ten specks over its contents.
     fn composter_fill<F: FnMut() -> RandomSource>(
         &mut self,

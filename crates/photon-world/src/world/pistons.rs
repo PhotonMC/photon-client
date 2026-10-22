@@ -363,6 +363,7 @@ impl ClientWorld {
             id::BEACON => self.tick_beacon(pos),
             id::CONDUIT => self.tick_conduit(pos),
             id::VAULT => self.tick_vault(pos),
+            id::SPAWNER => self.tick_spawner(pos),
             _ => self.tick_end_gateway(pos),
         }
     }

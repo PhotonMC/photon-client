@@ -69,17 +69,26 @@ pub(super) fn place(world: &mut ClientWorld, row: &Value) -> Result<(), String> 
         let uuid = Uuid::new(8, 300 + index as u64);
         put_entity(world, (string(mob, "type")?, 300 + index as i32, uuid), mob)?;
     }
-    for gateway in row["gateways"].as_array().into_iter().flatten() {
-        place_gateway(world, gateway)?;
-    }
-    for vault in row["vaults"].as_array().into_iter().flatten() {
-        share_vault(world, vault)?;
-    }
+    place_tagged_entities(world, row)?;
     if let Some(seed) = row["book_seed"].as_i64() {
         world.seed_book_random(seed);
     }
     place_block_entities(world, row)?;
     place_conduit_targets(world, row)?;
+    Ok(())
+}
+
+/// The end gateways, spawners and vaults a row gives, by the tag the server sends for each.
+fn place_tagged_entities(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+    for gateway in row["gateways"].as_array().into_iter().flatten() {
+        place_gateway(world, gateway)?;
+    }
+    for spawner in row["spawners"].as_array().into_iter().flatten() {
+        place_spawner(world, spawner)?;
+    }
+    for vault in row["vaults"].as_array().into_iter().flatten() {
+        share_vault(world, vault)?;
+    }
     Ok(())
 }
 
@@ -186,6 +195,49 @@ fn place_block_entities(world: &mut ClientWorld, row: &Value) -> Result<(), Stri
         world.apply_block_entities(x.div_euclid(16), z.div_euclid(16), [input]);
     }
     Ok(())
+}
+
+/// A spawner as its update tag describes it: the entity it shows, its range and its delay.
+fn place_spawner(world: &mut ClientWorld, spawner: &Value) -> Result<(), String> {
+    let spawner_type = photon_data::block_entity_type::id("minecraft:mob_spawner")
+        .ok_or("no spawner block entity")?;
+    let mut tag = Vec::new();
+    if let Some(entity) = spawner["entity"].as_str() {
+        let id = Field {
+            key: "id".into(),
+            value: FieldValue::Str(entity.to_owned()),
+        };
+        let data = Field {
+            key: "entity".into(),
+            value: FieldValue::Compound(vec![id]),
+        };
+        tag.push(Field {
+            key: "SpawnData".into(),
+            value: FieldValue::Compound(vec![data]),
+        });
+    }
+    for (key, name) in [("range", "RequiredPlayerRange"), ("delay", "Delay")] {
+        if let Some(value) = spawner[key].as_i64() {
+            tag.push(Field {
+                key: name.into(),
+                value: FieldValue::Short(value as i16),
+            });
+        }
+    }
+    let mut bytes = Vec::new();
+    photon_core::nbt::write_nbt(Some(&tag), &mut bytes);
+    let placed = world.apply_block_entity_update(BlockEntityInput {
+        x: i32_field(spawner, "x")?,
+        y: i32_field(spawner, "y")?,
+        z: i32_field(spawner, "z")?,
+        type_id: spawner_type,
+        tag: Some(&bytes),
+    });
+    if placed {
+        Ok(())
+    } else {
+        Err("a spawner was rejected".into())
+    }
 }
 
 /// The shared data of a vault: the players connected to it and, if the row says, its reach.
@@ -370,7 +422,12 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
         "minecraft:end_portal" => format!("portal,{}", face_mask(world, (x, y, z))),
         "minecraft:mob_spawner" => {
             let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
-            format!("spawner,{delay}")
+            let spin = &events.spawner;
+            format!(
+                "spawner,{delay},{:016x},{:016x}",
+                spin.previous().to_bits(),
+                spin.current().to_bits()
+            )
         }
         "minecraft:enchanting_table" => book_line(&events.book),
         "minecraft:beacon" => beacon_line(&events.beacon),

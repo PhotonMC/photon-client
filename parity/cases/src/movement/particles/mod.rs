@@ -20,6 +20,7 @@ mod piston_rows;
 mod portal_rows;
 mod quads;
 mod scene;
+mod spawner_rows;
 mod sulfur_rows;
 mod terrain;
 mod ticks;

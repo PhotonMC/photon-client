@@ -9,6 +9,9 @@ pub struct ClientSpawnerState {
     pub(crate) max_nearby_entities: i32,
     pub(crate) required_player_range: i32,
     pub(crate) spawn_range: i32,
+    /// The `id` of the entity of `SpawnData`, the one the spawner shows spinning; none when the
+    /// spawner names no entity.
+    pub(crate) entity_id: Option<String>,
 }
 
 impl Default for ClientSpawnerState {
@@ -22,6 +25,7 @@ impl Default for ClientSpawnerState {
             max_nearby_entities: 6,
             required_player_range: 16,
             spawn_range: 4,
+            entity_id: None,
         }
     }
 }
@@ -53,6 +57,41 @@ impl ClientSpawnerState {
 
     pub fn spawn_range(&self) -> i32 {
         self.spawn_range
+    }
+
+    /// The type of the entity the spawner shows (`SpawnData.entity.id`).
+    pub fn entity_id(&self) -> Option<&str> {
+        self.entity_id.as_deref()
+    }
+}
+
+/// `BaseSpawner.oSpin` and `spin`, in degrees, kept as bits so the block entity stays `Eq`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SpawnerSpin {
+    previous: u64,
+    current: u64,
+}
+
+impl SpawnerSpin {
+    pub fn previous(&self) -> f64 {
+        f64::from_bits(self.previous)
+    }
+
+    pub fn current(&self) -> f64 {
+        f64::from_bits(self.current)
+    }
+
+    /// One tick of `BaseSpawner.clientTick` with a player near: the spin turns by a rate that
+    /// quickens as the delay runs down (float arithmetic, as in the reference).
+    pub fn turn(&mut self, delay: i32) {
+        self.previous = self.current;
+        let step = 1000.0_f32 / (delay as f32 + 200.0_f32);
+        self.current = ((self.current() + f64::from(step)) % 360.0).to_bits();
+    }
+
+    /// A tick with no player near: the old spin catches up.
+    pub fn rest(&mut self) {
+        self.previous = self.current;
     }
 }
 
@@ -210,6 +249,8 @@ pub struct BlockEntityEvents {
     pub conduit: ConduitState,
     /// A vault's display item.
     pub vault: VaultSpin,
+    /// A spawner's spinning mob.
+    pub spawner: SpawnerSpin,
 }
 
 impl Default for BlockEntityEvents {
@@ -224,6 +265,7 @@ impl Default for BlockEntityEvents {
             beacon: BeaconState::default(),
             conduit: ConduitState::default(),
             vault: VaultSpin::default(),
+            spawner: SpawnerSpin::default(),
         }
     }
 }
@@ -326,6 +368,23 @@ pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<Cl
         max_nearby_entities: spawner_int_number(&fields, "MaxNearbyEntities", 6),
         required_player_range: spawner_int_number(&fields, "RequiredPlayerRange", 16),
         spawn_range: spawner_int_number(&fields, "SpawnRange", 4),
+        entity_id: spawn_data_entity(&fields),
+    })
+}
+
+/// `SpawnData.entityToSpawn`'s `id`: none when `SpawnData` or its `entity` is missing or has no id.
+fn spawn_data_entity(fields: &[photon_core::nbt::Field]) -> Option<String> {
+    use photon_core::nbt::FieldValue;
+    let compound = |fields: &[photon_core::nbt::Field], key: &str| {
+        fields.iter().find_map(|field| match &field.value {
+            FieldValue::Compound(inner) if field.key == key => Some(inner.clone()),
+            _ => None,
+        })
+    };
+    let entity = compound(&compound(fields, "SpawnData")?, "entity")?;
+    entity.iter().find_map(|field| match &field.value {
+        FieldValue::Str(id) if field.key == "id" && !id.is_empty() => Some(id.clone()),
+        _ => None,
     })
 }
 

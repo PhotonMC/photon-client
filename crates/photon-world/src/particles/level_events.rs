@@ -196,6 +196,10 @@ impl ParticleEngine {
                 self.vault_tick(pos, context, &mut sounds);
                 sounds
             }
+            LevelEvent::SpawnerTick { pos } => {
+                self.spawner_tick(pos, context);
+                Vec::new()
+            }
             LevelEvent::Geyser { at, water_blocks } => {
                 self.add_geyser(context, at, water_blocks);
                 Vec::new()
@@ -232,6 +236,7 @@ impl ParticleEngine {
             LevelEvent::NoxiousGasCloud { .. }
             | LevelEvent::ConduitSpecks { .. }
             | LevelEvent::VaultTick { .. }
+            | LevelEvent::SpawnerTick { .. }
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
