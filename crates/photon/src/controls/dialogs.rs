@@ -3,7 +3,7 @@ use photon_game::dialog::{Dialog, DialogRef, Next, run_action};
 use photon_game::text::{ClickEvent, Component, Lang};
 use photon_gui::screen::dialog::{DialogScreen, Press};
 use photon_gui::screen::waiting::WaitingScreen;
-use photon_gui::widgets::edit_box::{Clipboard, edit_key};
+use photon_gui::widgets::edit_box::Clipboard;
 use photon_net::connection::DialogEvent;
 use photon_render::gui::font::Font;
 
@@ -108,7 +108,7 @@ fn text_event(
         {
             let control = modifiers.intersects(Modifiers::Control | Modifiers::Super);
             let shift = modifiers.contains(Modifiers::Shift);
-            edit_key(key).is_some_and(|key| screen.edit_key(font, key, (control, shift), clipboard))
+            screen.edit_key(font, key, (control, shift), clipboard)
         }
         WindowEvent::Char(character) => screen.char_typed(font, character),
         _ => false,
@@ -141,7 +141,7 @@ fn screen_event(
             None
         }
         WindowEvent::CursorPos(..) => {
-            screen.dragged(gui_mouse.0, gui_mouse.1, gui_mouse.1 - previous_y);
+            screen.dragged(gui_mouse, gui_mouse.1 - previous_y, font);
             None
         }
         WindowEvent::Scroll(_, y) => {

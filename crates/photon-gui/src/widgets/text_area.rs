@@ -1,8 +1,11 @@
 //! `MultiLineEditBox` (an `AbstractTextAreaWidget`) as the book's page uses it: no border, no
 //! character count, the text scrolled to keep the cursor in view.
 
+use std::cell::Cell;
+
 use crate::widgets::edit_box::Clipboard;
 use crate::widgets::multiline::MultilineTextField;
+use crate::{FontRuns, FrameRuns};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -23,7 +26,7 @@ pub struct MultiLineEditBox {
     scroll: f64,
     focused: bool,
     /// `focusedTime`, on the frame's clock: the first frame's when focused before one was drawn.
-    focused_at: Option<u64>,
+    focused_at: Cell<Option<u64>>,
 }
 
 impl MultiLineEditBox {
@@ -42,7 +45,7 @@ impl MultiLineEditBox {
             text_shadow,
             scroll: 0.0,
             focused: false,
-            focused_at: None,
+            focused_at: Cell::new(None),
         }
     }
 
@@ -53,7 +56,7 @@ impl MultiLineEditBox {
     /// `setFocused`: focusing starts the cursor's blink over, at `now` or the next frame.
     pub fn set_focused(&mut self, focused: bool, now: Option<u64>) {
         if focused && !self.focused {
-            self.focused_at = now;
+            self.focused_at.set(now);
         }
         self.focused = focused;
     }
@@ -155,24 +158,33 @@ impl MultiLineEditBox {
     }
 
     /// `withinContentAreaTopBottom`.
-    fn within(&self, top: i32, bottom: i32) -> bool {
-        f64::from(bottom) - self.scroll >= f64::from(self.rect.1)
-            && f64::from(top) - self.scroll <= f64::from(self.rect.1 + self.rect.3)
+    fn within(&self, rect: (i32, i32, i32, i32), top: i32, bottom: i32) -> bool {
+        f64::from(bottom) - self.scroll >= f64::from(rect.1)
+            && f64::from(top) - self.scroll <= f64::from(rect.1 + rect.3)
     }
 
     /// `extractWidgetRenderState` without background, scroll bar or decorations: the contents
     /// moved up by the scroll.
     pub fn draw(&mut self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
-        if self.focused {
-            self.focused_at.get_or_insert(frame.millis);
-        }
+        self.start_blink(frame);
         let mark = frame.mark();
-        self.draw_contents(frame, atlas, font);
+        self.draw_contents(frame, (atlas, font), self.rect);
         if self.scroll != 0.0 {
             frame.transform_from(mark, [1.0, 0.0, 0.0, 1.0, 0.0, -(self.scroll as f32)]);
         }
-        // `extractScrollbar`, right of the box.
-        let (x, y, width, height) = self.rect;
+        self.draw_scrollbar(frame, atlas, self.rect);
+    }
+
+    /// The blink starts at the first frame drawn while focused.
+    fn start_blink(&self, frame: &GuiFrame) {
+        if self.focused && self.focused_at.get().is_none() {
+            self.focused_at.set(Some(frame.millis));
+        }
+    }
+
+    /// `extractScrollbar`, right of the box.
+    fn draw_scrollbar(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, rect: (i32, i32, i32, i32)) {
+        let (x, y, width, height) = rect;
         let place = crate::widgets::scroll_area::Place {
             y,
             width,
@@ -182,9 +194,51 @@ impl MultiLineEditBox {
         place.draw_scrollbar(frame, atlas, x + width, self.scroll, self.content_height());
     }
 
+    /// `extractWidgetRenderState` with the background (`showBackground`): the box at `rect`, the
+    /// contents cut to its inside, the scroll bar, and the count of characters under it (the
+    /// decorations) when `count` has one.
+    pub fn draw_framed(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        rect: (i32, i32, i32, i32),
+        count: Option<&[photon_game::text::Run]>,
+    ) {
+        self.start_blink(frame);
+        let (x, y, width, height) = rect;
+        let sprite = if self.focused {
+            "widget/text_field_highlighted"
+        } else {
+            "widget/text_field"
+        };
+        frame.nine_slice(atlas, sprite, (200, 20), 1, false, x, y, width, height);
+        let mark = frame.mark();
+        self.draw_contents(frame, (atlas, font), rect);
+        if self.scroll != 0.0 {
+            frame.transform_from(mark, [1.0, 0.0, 0.0, 1.0, 0.0, -(self.scroll as f32)]);
+        }
+        frame.clip_from(mark, (x + 1, y + 1, x + width - 1, y + height - 1));
+        self.draw_scrollbar(frame, atlas, rect);
+        if let Some(runs) = count {
+            let at = x + width - font.width_of_runs(runs);
+            frame.styled_text(atlas, font, runs, at, y + height + 4, 0xFFA0_A0A0, true);
+        }
+    }
+
+    /// Where the box stands, for the mouse (`setX`, `setY`).
+    pub fn place(&mut self, x: i32, y: i32) {
+        self.rect.0 = x;
+        self.rect.1 = y;
+    }
+
     /// `extractContents`: the lines, the cursor while it blinks on, the selection over them. An
     /// empty box that is not focused shows its placeholder, which the page has none of.
-    fn draw_contents(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
+    fn draw_contents(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        rect: (i32, i32, i32, i32),
+    ) {
         let value = self.field.chars();
         if value.is_empty() && !self.focused {
             return;
@@ -195,13 +249,14 @@ impl MultiLineEditBox {
         let show_cursor = self.focused
             && self
                 .focused_at
+                .get()
                 .is_some_and(|at| (frame.millis.saturating_sub(at) / 300).is_multiple_of(2));
         let insert = cursor < value.len();
-        let (left, top) = (self.rect.0 + PADDING, self.rect.1 + PADDING);
+        let (left, top) = (rect.0 + PADDING, rect.1 + PADDING);
         let (mut cursor_x, mut cursor_y) = (0, 0);
         let mut drawn_cursor = false;
         let mut draw_top = top;
-        let put = |frame: &mut GuiFrame, line: &str, x: i32, y: i32| {
+        let put = |frame: &mut GuiFrame, line: &str, x: i32, y: i32, colour: u32| {
             if self.text_shadow {
                 frame.text_with_shadow(atlas, font, line, x, y, colour);
             } else {
@@ -209,13 +264,13 @@ impl MultiLineEditBox {
             }
         };
         for &(begin, end) in self.field.lines() {
-            let visible = self.within(draw_top, draw_top + LINE);
+            let visible = self.within(rect, draw_top, draw_top + LINE);
             if !drawn_cursor && show_cursor && insert && cursor >= begin && cursor <= end {
                 if visible {
                     let before = text(&value[begin..cursor]);
                     let right = left + font.width(&before);
-                    put(frame, &before, left, draw_top);
-                    put(frame, &text(&value[cursor..end]), right, draw_top);
+                    put(frame, &before, left, draw_top, colour);
+                    put(frame, &text(&value[cursor..end]), right, draw_top, colour);
                     (cursor_x, cursor_y) = (right, draw_top);
                     frame.fill(
                         atlas,
@@ -226,41 +281,55 @@ impl MultiLineEditBox {
                 }
             } else if visible {
                 let line = text(&value[begin..end]);
-                put(frame, &line, left, draw_top);
+                put(frame, &line, left, draw_top, colour);
                 if show_cursor && !insert {
                     (cursor_x, cursor_y) = (left + font.width(&line), draw_top);
                 }
             }
             draw_top += LINE;
         }
-        if show_cursor && !insert && self.within(cursor_y, cursor_y + LINE) {
-            put(frame, "_", cursor_x, cursor_y);
+        if show_cursor && !insert && self.within(rect, cursor_y, cursor_y + LINE) {
+            put(frame, "_", cursor_x, cursor_y, self.cursor_colour);
         }
-        if self.field.has_selection() {
-            let (from, to) = self.field.selected();
-            let mut draw_top = top;
-            for &(begin, end) in self.field.lines() {
-                if from > end {
-                    draw_top += LINE;
-                    continue;
-                }
-                if begin > to {
-                    break;
-                }
-                if self.within(draw_top, draw_top + LINE) {
-                    let start = font.width(&text(&value[begin..from.max(begin)]));
-                    let stop = if to > end {
-                        self.rect.2 - PADDING
-                    } else {
-                        font.width(&text(&value[begin..to]))
-                    };
-                    frame.text_highlight(
-                        atlas,
-                        (left + start, draw_top, left + stop, draw_top + LINE),
-                    );
-                }
+        self.draw_selection(frame, (atlas, font), rect);
+    }
+
+    /// The selection's highlight over the lines it covers.
+    fn draw_selection(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &Font),
+        rect: (i32, i32, i32, i32),
+    ) {
+        if !self.field.has_selection() {
+            return;
+        }
+        let value = self.field.chars();
+        let text = |range: &[char]| range.iter().collect::<String>();
+        let (left, top) = (rect.0 + PADDING, rect.1 + PADDING);
+        let (from, to) = self.field.selected();
+        let mut draw_top = top;
+        for &(begin, end) in self.field.lines() {
+            if from > end {
                 draw_top += LINE;
+                continue;
             }
+            if begin > to {
+                break;
+            }
+            if self.within(rect, draw_top, draw_top + LINE) {
+                let start = font.width(&text(&value[begin..from.max(begin)]));
+                let stop = if to > end {
+                    rect.2 - PADDING
+                } else {
+                    font.width(&text(&value[begin..to]))
+                };
+                frame.text_highlight(
+                    atlas,
+                    (left + start, draw_top, left + stop, draw_top + LINE),
+                );
+            }
+            draw_top += LINE;
         }
     }
 }

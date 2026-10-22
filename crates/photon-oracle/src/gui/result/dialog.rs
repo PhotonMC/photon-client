@@ -1,14 +1,17 @@
 use super::*;
 
+mod keys;
+use keys::key_press;
+
 use photon_game::dialog::{
     Action, ActionButton, AfterAction, Body, BooleanInput, CommonData, Control, Dialog,
-    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, NumberRangeInput,
-    OptionEntry, PlainMessage, RangeInfo, SingleOptionInput, Template, TextInput, run_action,
+    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Multiline, Next,
+    NumberRangeInput, OptionEntry, PlainMessage, RangeInfo, SingleOptionInput, Template, TextInput,
+    run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
 use photon_gui::screen::waiting::WaitingScreen;
-use photon_gui::widgets::edit_box::{Clipboard, EditKey};
 use photon_render::gui::font::Font;
 
 fn text(value: &Value) -> Component {
@@ -88,7 +91,10 @@ fn input(value: &Value) -> Input {
                 label_visible: value["label_visible"].as_bool().unwrap_or(true),
                 initial: string("initial", ""),
                 max_length: value["max_length"].as_i64().unwrap_or(32) as i32,
-                multiline: None,
+                multiline: value.get("multiline").map(|options| Multiline {
+                    max_lines: options["max_lines"].as_i64().map(|lines| lines as i32),
+                    height: options["height"].as_i64().map(|height| height as i32),
+                }),
             }),
             other => panic!("unknown input {other:?}"),
         },
@@ -371,71 +377,6 @@ fn click_step(
     press
 }
 
-/// What a box does with the clipboard: nothing the reference can be asked about.
-struct NoClip;
-
-impl Clipboard for NoClip {
-    fn get(&mut self) -> String {
-        String::new()
-    }
-
-    fn set(&mut self, _: &str) {}
-}
-
-/// The edit key a key name stands for.
-fn edit_of(base: &str) -> Option<EditKey> {
-    Some(match base {
-        "backspace" => EditKey::Backspace,
-        "delete" => EditKey::Delete,
-        "left" => EditKey::Left,
-        "right" => EditKey::Right,
-        "home" => EditKey::Home,
-        "end" => EditKey::End,
-        "a" => EditKey::A,
-        _ => return None,
-    })
-}
-
-/// A key the reference's screen was given, with the modifiers its name carries
-/// (`shift+`, `ctrl+`): the focused box takes it first.
-fn key_press(screen: &mut DialogScreen, font: &Font, key: &str) -> Result<Option<Press>, String> {
-    let base = key.rsplit('+').next().unwrap_or(key);
-    let modifiers = (key.contains("ctrl+"), key.contains("shift+"));
-    if let Some(edit) = edit_of(base) {
-        if screen.edit_key(font, edit, modifiers, &mut NoClip) {
-            return Ok(None);
-        }
-        // A key the box would have edited with, and none has the focus: nothing happens.
-        if base != "left" && base != "right" {
-            return Ok(None);
-        }
-    }
-    plain_key(screen, key)
-}
-
-/// A key the screen itself takes.
-fn plain_key(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, String> {
-    Ok(match key {
-        "tab" | "shift+tab" => {
-            screen.tab(key == "tab");
-            None
-        }
-        "enter" | "space" => screen.pressed(),
-        "shift+enter" => {
-            screen.set_shift(true);
-            let press = screen.pressed();
-            screen.set_shift(false);
-            press
-        }
-        "escape" => screen.escape(),
-        "left" | "right" => {
-            screen.arrow(key == "right");
-            None
-        }
-        other => return Err(format!("unknown key {other}")),
-    })
-}
-
 /// A step that is the keyboard or the mouse; what it pressed.
 fn input_step(
     screen: &mut DialogScreen,
@@ -456,7 +397,7 @@ fn input_step(
         }
         "click" => click_step(screen, font, (x as i32, y as i32), &step["shift"]),
         "drag" => {
-            screen.dragged(x, y, step["dy"].as_f64().unwrap_or(0.0));
+            screen.dragged((x, y), step["dy"].as_f64().unwrap_or(0.0), font);
             None
         }
         "release" => {

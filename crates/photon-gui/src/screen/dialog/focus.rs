@@ -57,7 +57,7 @@ impl DialogScreen {
         if let Some(index) = control {
             self.set_focus(Some(Focus::Input(index)));
             let rect = self.control_rect(index);
-            self.controls[index].clicked(mouse.0, rect, (self.shift.get(), font));
+            self.controls[index].clicked(mouse, rect, (self.shift.get(), font));
             return true;
         }
         false
@@ -86,7 +86,7 @@ impl DialogScreen {
     pub fn edit_key(
         &mut self,
         font: &Font,
-        key: EditKey,
+        key: glfw::Key,
         modifiers: (bool, bool),
         clipboard: &mut dyn Clipboard,
     ) -> bool {
@@ -128,10 +128,10 @@ impl DialogScreen {
 
     /// The mouse moved with the primary button down: `x` and `y` are where it is, `dy` how far it
     /// went up or down.
-    pub fn dragged(&mut self, x: f64, y: f64, dy: f64) {
+    pub fn dragged(&mut self, (x, y): (f64, f64), dy: f64, font: &Font) {
         for index in 0..self.controls.len() {
             let rect = self.control_rect(index);
-            self.controls[index].dragged(x as i32, rect);
+            self.controls[index].dragged((x as i32, y as i32), rect, (font, self.shift.get()));
         }
         if self.dragging {
             let scroll = self
@@ -210,11 +210,16 @@ impl DialogScreen {
         self.controls.iter().map(Control::value).collect()
     }
 
-    /// The controls of the screen this one replaces on a resize keep what they held.
+    /// The widgets of the screen this one replaces on a resize live on (`repositionElements` only
+    /// arranges them again): the controls keep what they held, the focus stays where it was and
+    /// the scroll is clamped to the new box.
     pub fn keep_inputs_of(&mut self, old: &Self) {
         for (control, before) in self.controls.iter_mut().zip(&old.controls) {
             control.keep(before);
         }
+        self.focus = old.focus;
+        self.input.set(old.input.get());
+        self.set_scroll(old.scroll);
     }
 
     /// Escape, when the dialog lets it close.

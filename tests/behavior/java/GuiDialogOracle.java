@@ -99,6 +99,12 @@ class GuiDialogOracle extends GuiSocialOracle {
         return new net.minecraft.server.dialog.ActionButton(data, action);
     }
 
+    private static net.minecraft.server.dialog.input.TextInput.MultilineOptions multiline(JsonObject json) {
+        return new net.minecraft.server.dialog.input.TextInput.MultilineOptions(
+            json.has("max_lines") ? java.util.Optional.of(json.get("max_lines").getAsInt()) : java.util.Optional.empty(),
+            json.has("height") ? java.util.Optional.of(json.get("height").getAsInt()) : java.util.Optional.empty());
+    }
+
     private static net.minecraft.server.dialog.Input input(JsonObject json) {
         var label = Component.literal(json.get("label").getAsString());
         net.minecraft.server.dialog.input.InputControl control = switch (json.get("type").getAsString()) {
@@ -127,7 +133,9 @@ class GuiDialogOracle extends GuiSocialOracle {
             case "text" -> new net.minecraft.server.dialog.input.TextInput(json.get("width").getAsInt(), label,
                 !json.has("label_visible") || json.get("label_visible").getAsBoolean(),
                 json.has("initial") ? json.get("initial").getAsString() : "",
-                json.has("max_length") ? json.get("max_length").getAsInt() : 32, java.util.Optional.empty());
+                json.has("max_length") ? json.get("max_length").getAsInt() : 32,
+                json.has("multiline") ? java.util.Optional.of(multiline(json.getAsJsonObject("multiline")))
+                    : java.util.Optional.empty());
             default -> throw new IllegalArgumentException(json.toString());
         };
         return new net.minecraft.server.dialog.Input(json.get("key").getAsString(), control);
@@ -293,6 +301,10 @@ class GuiDialogOracle extends GuiSocialOracle {
                             case "home" -> 268;
                             case "end" -> 269;
                             case "a" -> 65;
+                            case "up" -> 265;
+                            case "down" -> 264;
+                            case "pageup" -> 266;
+                            case "pagedown" -> 267;
                             default -> throw new IllegalArgumentException(name);
                         };
                         if (code == 258) {

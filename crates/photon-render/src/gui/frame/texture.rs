@@ -117,9 +117,19 @@ impl GuiFrame {
             let from = mark.log.min(log.len());
             for op in &mut log[from..] {
                 match op {
-                    DrawOp::Text { x, y, scale, .. } => {
+                    DrawOp::Text {
+                        x,
+                        y,
+                        scale,
+                        bounds,
+                        ..
+                    } => {
                         (*x, *y) = place(*x, *y);
                         *scale *= m[0];
+                        // The text's bounds move with it.
+                        let (x0, y0) = place(bounds.0 as f32, bounds.1 as f32);
+                        let (x1, y1) = place(bounds.2 as f32, bounds.3 as f32);
+                        *bounds = (x0 as i32, y0 as i32, x1 as i32, y1 as i32);
                     }
                     DrawOp::Fill { rect, .. }
                     | DrawOp::Sprite { rect, .. }

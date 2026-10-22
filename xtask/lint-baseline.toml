@@ -277,7 +277,7 @@
 "crates/photon-gui/src/widgets/edit_box.rs::edit_key" = 11
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 31
 "crates/photon-gui/src/widgets/multiline.rs::split_lines" = 11
-"crates/photon-gui/src/widgets/text_area.rs::MultiLineEditBox::draw_contents" = 24
+"crates/photon-gui/src/widgets/text_area.rs::MultiLineEditBox::draw_contents" = 18
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 23
 "crates/photon-gui/src/widgets/text_field.rs::word_position" = 11
 "crates/photon-net/src/connection/open.rs::configure_connection" = 24
@@ -691,7 +691,6 @@
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 95
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
-"crates/photon-gui/src/widgets/text_area.rs::MultiLineEditBox::draw_contents" = 79
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
 "crates/photon-net/src/connection/open.rs::configure_connection" = 198
 "crates/photon-net/src/connection/open.rs::log_in" = 94

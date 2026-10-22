@@ -2,9 +2,11 @@
 //! mouse or the keyboard changes it, and the value a button takes from it.
 
 use photon_core::nbt::FieldValue;
+mod area;
 mod slider;
 mod text;
 
+use area::Area;
 use slider::Slider;
 use text::Text;
 
@@ -16,7 +18,7 @@ use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 use crate::layout::Arena;
-use crate::widgets::edit_box::{Clipboard, EditKey};
+use crate::widgets::edit_box::{Clipboard, edit_key};
 use crate::widgets::navigation::Rectangle;
 use crate::widgets::{Kind, Widget};
 use crate::{FontRuns, FrameRuns};
@@ -28,6 +30,7 @@ const GAP: i32 = 4;
 enum State {
     Slider(Box<Slider>),
     Text(Box<Text>),
+    Area(Box<Area>),
     /// A `CycleButton`: the text of the button for each value, and the value ids.
     Cycle {
         labels: Vec<Vec<Run>>,
@@ -50,17 +53,13 @@ pub(super) struct Control {
 }
 
 impl Control {
-    /// The control for `input`, or none for a kind that is not built yet.
-    pub(super) fn new(
-        arena: &mut Arena,
-        (font, lang): (&Font, &Lang),
-        input: &Input,
-    ) -> Option<Self> {
+    /// The control for `input`.
+    pub(super) fn new(arena: &mut Arena, (font, lang): (&Font, &Lang), input: &Input) -> Self {
         match &input.control {
             Spec::Boolean(boolean) => {
                 let label = lang.runs(&boolean.label, &Style::default());
                 let width = BOX + GAP + font.width_of_runs(&label);
-                Some(Self {
+                Self {
                     rect: arena.add(width, BOX),
                     key: input.key.clone(),
                     state: State::Check {
@@ -69,28 +68,35 @@ impl Control {
                         on_true: boolean.on_true.clone(),
                         on_false: boolean.on_false.clone(),
                     },
-                })
+                }
             }
-            Spec::SingleOption(option) => Some(Self {
+            Spec::SingleOption(option) => Self {
                 rect: arena.add(option.width, 20),
                 key: input.key.clone(),
                 state: cycle(lang, option),
-            }),
-            Spec::NumberRange(range) => Some(Self {
+            },
+            Spec::NumberRange(range) => Self {
                 rect: arena.add(range.width, 20),
                 key: input.key.clone(),
                 state: State::Slider(Box::new(Slider::new(lang, range))),
-            }),
-            Spec::Text(text) if text.multiline.is_none() => {
-                let (state, (width, height)) = Text::new(font, lang, text);
-                Some(Self {
+            },
+            Spec::Text(text) => {
+                let (state, (width, height)) = match &text.multiline {
+                    None => {
+                        let (text, size) = Text::new(font, lang, text);
+                        (State::Text(Box::new(text)), size)
+                    }
+                    Some(multiline) => {
+                        let (area, size) = Area::new(font, lang, (text, multiline));
+                        (State::Area(Box::new(area)), size)
+                    }
+                };
+                Self {
                     rect: arena.add(width, height),
                     key: input.key.clone(),
-                    state: State::Text(Box::new(state)),
-                })
+                    state,
+                }
             }
-            // The multi-line box is not built yet.
-            Spec::Text(_) => None,
         }
     }
 
@@ -104,7 +110,7 @@ impl Control {
                 *index = (*index + if shift { count - 1 } else { 1 }) % count;
             }
             State::Slider(slider) => slider.select(),
-            State::Text(_) => {}
+            State::Text(_) | State::Area(_) => {}
         }
     }
 
@@ -112,6 +118,7 @@ impl Control {
     pub(super) fn hit_rect(&self, rect: Rectangle) -> Rectangle {
         match &self.state {
             State::Text(text) => text.box_rect(rect),
+            State::Area(area) => area.box_rect(rect),
             _ => rect,
         }
     }
@@ -120,12 +127,15 @@ impl Control {
     pub(super) fn edit(
         &mut self,
         font: &Font,
-        key: EditKey,
+        key: glfw::Key,
         modifiers: (bool, bool),
         clipboard: &mut dyn Clipboard,
     ) -> bool {
         match &mut self.state {
-            State::Text(text) => text.key(font, key, modifiers, clipboard),
+            State::Text(text) => {
+                edit_key(key).is_some_and(|key| text.key(font, key, modifiers, clipboard))
+            }
+            State::Area(area) => area.key(font, key, modifiers, clipboard),
             _ => false,
         }
     }
@@ -134,28 +144,44 @@ impl Control {
     pub(super) fn char_typed(&mut self, font: &Font, character: char) -> bool {
         match &mut self.state {
             State::Text(text) => text.char_typed(font, character),
+            State::Area(area) => area.char_typed(font, character),
             _ => false,
         }
     }
 
     /// A press of the primary button on the control at `rect`.
-    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle, (shift, font): (bool, &Font)) {
+    pub(super) fn clicked(
+        &mut self,
+        (x, y): (i32, i32),
+        rect: Rectangle,
+        (shift, font): (bool, &Font),
+    ) {
         match &mut self.state {
             State::Slider(slider) => slider.clicked(x, rect),
             State::Text(text) => text.clicked(x, rect, font),
+            State::Area(area) => area.clicked(font, (x, y), (rect, shift)),
             _ => self.press(shift),
         }
     }
 
-    pub(super) fn dragged(&mut self, x: i32, rect: Rectangle) {
-        if let State::Slider(slider) = &mut self.state {
-            slider.dragged(x, rect);
+    pub(super) fn dragged(
+        &mut self,
+        at: (i32, i32),
+        rect: Rectangle,
+        (font, shift): (&Font, bool),
+    ) {
+        match &mut self.state {
+            State::Slider(slider) => slider.dragged(at.0, rect),
+            State::Area(area) => area.dragged(font, at, (rect, shift)),
+            _ => {}
         }
     }
 
     pub(super) fn released(&mut self) {
-        if let State::Slider(slider) = &mut self.state {
-            slider.released();
+        match &mut self.state {
+            State::Slider(slider) => slider.released(),
+            State::Area(area) => area.released(),
+            _ => {}
         }
     }
 
@@ -163,6 +189,7 @@ impl Control {
         match &mut self.state {
             State::Slider(slider) => slider.focus(gained),
             State::Text(text) => text.focus(gained),
+            State::Area(area) => area.focus(gained),
             _ => {}
         }
     }
@@ -185,6 +212,14 @@ impl Control {
             },
             State::Text(text) => {
                 let value = text.value();
+                InputValue {
+                    key: self.key.clone(),
+                    substitution: escape_without_quotes(&value),
+                    tag: FieldValue::Str(value),
+                }
+            }
+            State::Area(area) => {
+                let value = area.value();
                 InputValue {
                     key: self.key.clone(),
                     substitution: escape_without_quotes(&value),
@@ -223,6 +258,7 @@ impl Control {
             (State::Cycle { index, .. }, State::Cycle { index: before, .. }) => *index = *before,
             (State::Slider(slider), State::Slider(before)) => slider.copy_from(before),
             (State::Text(text), State::Text(before)) => text.copy_from(before),
+            (State::Area(area), State::Area(before)) => area.copy_from(before),
             _ => {}
         }
     }
@@ -237,6 +273,7 @@ impl Control {
         match &self.state {
             State::Slider(slider) => slider.draw(frame, (atlas, font), rect, (focused, hovered)),
             State::Text(text) => text.draw(frame, (atlas, font), rect, focused),
+            State::Area(area) => area.draw(frame, (atlas, font), rect),
             State::Cycle { labels, index, .. } => {
                 let mut arena = Arena::default();
                 let leaf = arena.add(rect.width, rect.height);

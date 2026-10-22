@@ -22,7 +22,7 @@ use crate::layout::{Arena, Grid, Item, horizontal, place_in_frame};
 use photon_render::gui::font::Font;
 
 use crate::tooltip::{Holder, Pending};
-use crate::widgets::edit_box::{Clipboard, EditKey};
+use crate::widgets::edit_box::Clipboard;
 use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::{Place, SCROLLBAR_WIDTH};
 use crate::widgets::slider::InputType;
@@ -121,11 +121,10 @@ fn add_controls(
     body: &mut Grid,
     common: &photon_game::dialog::CommonData,
 ) -> Vec<Control> {
-    // A kind that is not built yet is left out; the dialog still shows.
     let controls: Vec<Control> = common
         .inputs
         .iter()
-        .filter_map(|input| Control::new(arena, (font, lang), input))
+        .map(|input| Control::new(arena, (font, lang), input))
         .collect();
     for (row, control) in controls.iter().enumerate() {
         body.add(
