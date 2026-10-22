@@ -206,6 +206,11 @@ fn tick(mut play: NonSendMut<Play>, input: Res<TickInput>) -> Result<()> {
 }
 
 fn draw_frame(mut play: NonSendMut<Play>, clock: Res<Clock>, mut stop: ResMut<Stop>) -> Result<()> {
+    // A reconfiguration or a transfer has the screen, not the level.
+    if let Some(kind) = play.session.switching() {
+        play.draw_switch(kind)?;
+        return Ok(());
+    }
     if let Flow::Stop = play.draw([clock.start, clock.ticked], clock.ticks, clock.script_done)? {
         stop.0 = true;
     }

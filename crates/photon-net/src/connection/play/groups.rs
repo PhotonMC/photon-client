@@ -19,6 +19,10 @@ pub(super) struct Link {
     pub(super) warned: Option<String>,
     /// `Connection`'s packet counts and their averages.
     pub(super) traffic: super::traffic::Traffic,
+    /// The switch to another configuration or server that runs on its own thread.
+    pub(super) switching: Option<super::reconfigure::Switch>,
+    /// Whether the connection ended because a transfer could not be made.
+    pub(super) transfer_failed: bool,
 }
 
 /// The local player and what the server last said of it.
@@ -220,6 +224,8 @@ impl Link {
             disconnect: None,
             warned: None,
             traffic: super::traffic::Traffic::default(),
+            switching: None,
+            transfer_failed: false,
         }
     }
 }

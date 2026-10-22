@@ -39,6 +39,11 @@ impl Transport {
         *locked(&self.decrypt) = Some(StreamCipher::decryptor(secret));
     }
 
+    /// Ends the connection for every clone, so a read waiting on it fails at once.
+    pub fn shutdown(&self) {
+        let _ = self.tcp.shutdown(std::net::Shutdown::Both);
+    }
+
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.tcp.set_read_timeout(timeout)
     }

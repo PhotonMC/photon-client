@@ -241,6 +241,9 @@ impl Play {
             if is_input(&event) {
                 self.limiter.input_received(frame_start);
             }
+            if self.switch_event(&event) {
+                continue;
+            }
             self.controls.handle(
                 event,
                 &mut self.session,
@@ -287,32 +290,6 @@ impl Play {
     /// The mouse's movement of the frame turns the player.
     pub(super) fn turn_player(&mut self) {
         self.controls.turn_frame(&mut self.session, Instant::now());
-    }
-
-    /// The configuration phase again, a respawn or a change of dimension: what was open over the
-    /// old level is closed, and nothing of the old level stays.
-    pub(super) fn reset_level(&mut self) -> Result<()> {
-        if self.session.take_reconfigured() {
-            self.controls.screen = None;
-            self.controls.chat = None;
-            self.controls.dialog = None;
-            self.controls.dialog_warning = None;
-            // `Hud.onDisconnected`: the toasts go with the level.
-            self.gui.clear_toasts();
-        }
-        if self.session.take_level_reset() {
-            self.backend.clear_sections()?;
-            self.sections.clear();
-            self.sky.reset(&self.session);
-            self.particles.clear();
-        }
-        if self.session.take_level_swapped() {
-            self.particles.forget_jukeboxes();
-            if let Some(sound) = self.sound.as_mut() {
-                sound.reset_level();
-            }
-        }
-        Ok(())
     }
 
     /// The window and what was loaded for it, back from an ended game, with whether to quit.
@@ -386,6 +363,10 @@ impl Play {
     /// The next tick the time since the last frame owes, with the keys a person or the script
     /// holds; none once the time is spent. `script_done` is set once the script has ended.
     pub(super) fn begin_tick(&mut self, script_done: &mut bool) -> Result<Option<HeldKeys>> {
+        // A reconfiguration or a transfer has no level to tick.
+        if self.tick_switch() {
+            return Ok(None);
+        }
         if self.accumulated < TICK_LENGTH {
             return Ok(None);
         }

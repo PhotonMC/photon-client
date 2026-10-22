@@ -216,7 +216,7 @@ impl PlaySession {
         F: FnOnce(&mut Vec<u8>) -> Result<(), ConnectionError>,
     {
         // Nothing is sent over a connection that is over.
-        if self.link.disconnect.is_some() {
+        if self.link.disconnect.is_some() || self.link.switching.is_some() {
             return Ok(());
         }
         self.link
@@ -396,6 +396,10 @@ impl PlaySession {
             if self.link.disconnect.is_some() {
                 return Ok(());
             }
+            // The reader stopped at the terminal packet; the switch is what the connection does.
+            if self.link.switching.is_some() {
+                return self.poll_switch(Duration::ZERO);
+            }
             match self.link.incoming.try_recv() {
                 Ok(Ok(packet)) => self.handle_incoming(packet)?,
                 // `ClientCommonPacketListenerImpl.onDisconnect`: a failure to
@@ -433,6 +437,9 @@ impl PlaySession {
 
     /// Wait up to `limit` for the next packet and handle it.
     pub fn wait(&mut self, limit: Duration) -> Result<(), ConnectionError> {
+        if self.link.switching.is_some() {
+            return self.poll_switch(limit);
+        }
         match self.link.incoming.recv_timeout(limit) {
             Ok(packet) => self.handle_incoming(packet?),
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(()),

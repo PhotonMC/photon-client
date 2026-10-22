@@ -47,6 +47,7 @@ mod recipes;
 mod reconfigure;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
 pub use groups::GlobalBlock;
+pub use reconfigure::SwitchKind;
 mod jigsaw_blocks;
 mod signs;
 pub use jigsaw_blocks::JigsawBlockSettings;

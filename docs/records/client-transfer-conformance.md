@@ -11,7 +11,10 @@ sunucu el sıkışmasında `TRANSFER` niyetini, adı ve portu görür). Gerçek 
 
 ## Sapmalar (açık)
 
-- Bağlantı ana iş parçacığında bloklayarak kurulur (en çok 30 sn); Java `ConnectScreen` gösterir.
+- Bağlantı ayrı bir iş parçacığında kurulur ve `ConnectScreen` ("Transferring to new server...")
+  görünür; İptal başlık ekranına döner, hata `connect.failed.transfer` başlıklı
+  `DisconnectedScreen`'e gider. Gerçek vanilla `/transfer` ile (kendi kendine ve ulaşılamayan adrese)
+  denendi. Java eski seviyeyi hemen siler; burada başarısız aktarımda eski dünya ekranın arkasında kalır.
 - Ad çözümü yalnız sistemin adres çözümlemesidir (`SRV` kaydı aranmaz).
 - Çerezlerin saklandığı yer bellektir; diske yazılmaz (Java'da da yok).
 - Sohbet durumu ve görülen oyuncular taşınmaz (`TransferState` bunları taşır).

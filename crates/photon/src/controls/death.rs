@@ -17,10 +17,17 @@ impl Controls {
         }
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
-        self.disconnected = Some(DisconnectedScreen::new(
+        // `ConnectScreen.connectFailedTitle` of a transfer.
+        let heading = photon_game::text::Component::translatable(if session.transfer_failed() {
+            "connect.failed.transfer"
+        } else {
+            "disconnect.lost"
+        });
+        self.disconnected = Some(DisconnectedScreen::titled(
             &assets.creative.font,
             &assets.lang,
             size,
+            &heading,
             reason,
         ));
         self.chat = None;

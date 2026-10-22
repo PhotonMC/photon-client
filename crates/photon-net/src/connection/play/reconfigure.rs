@@ -2,6 +2,7 @@
 //! (`ClientPacketListener.handleConfigurationStart`): the world is let go, the configuration is
 //! run again and a new play phase starts.
 
+use std::sync::mpsc;
 use std::time::Duration;
 
 use super::lifecycle::{self, spawn_reader};
@@ -41,36 +42,47 @@ impl PlaySession {
     }
 
     /// `handleTransfer`: the connection is let go and another made to the host the server names,
-    /// as a transfer, with the cookies kept. The new session starts over like a reconfigured one.
+    /// as a transfer, with the cookies kept, on its own thread so the window goes on. The new
+    /// session starts over like a reconfigured one when it arrives ([`Self::poll_switch`]).
     pub(super) fn transfer(
         &mut self,
         packet: photon_protocol::cookie::ClientboundTransferPacket,
     ) -> Result<(), ConnectionError> {
-        let address = lifecycle::resolve_host(&packet.host, packet.port)?;
         let carried = ConnectionState {
             account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
             transferring: true,
             ..ConnectionState::default()
         };
-        let mut fresh = Self::connect_through(
-            (address, Some(packet.host)),
-            (&self.link.username, self.link.auto_jump),
-            RECONFIGURATION_TIMEOUT,
-            self.link.client_information.clone(),
-            carried,
-        )?;
-        fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
-        fresh.level_info.level_reset = true;
-        fresh.level_info.level_swapped = true;
-        fresh.level_info.reconfigured = true;
-        *self = fresh;
+        // `Connection.disconnect`: the old connection ends before the new one is made.
+        self.link.writer.flush()?;
+        self.link.writer.stream()?.shutdown();
+        let username = self.link.username.clone();
+        let auto_jump = self.link.auto_jump;
+        let information = self.link.client_information.clone();
+        let (send, result) = mpsc::channel();
+        std::thread::Builder::new()
+            .name("Server Connector".to_owned())
+            .spawn(move || {
+                let _ = send.send(transfer_to(
+                    (packet.host, packet.port),
+                    (&username, auto_jump),
+                    information,
+                    carried,
+                ));
+            })?;
+        self.link.switching = Some(Switch {
+            kind: SwitchKind::Transferring,
+            result,
+            abort: None,
+        });
         Ok(())
     }
 
-    /// Acknowledge the server, run the configuration phase on the connection and start over in
-    /// the play phase with a world of nothing yet known. The reader thread has stopped by the
-    /// terminal packet, so the connection is this call's alone until it ends.
+    /// Acknowledge the server and run the configuration phase on the connection on its own
+    /// thread, so the window goes on; a new play phase with a world of nothing yet known starts
+    /// when it is done ([`Self::poll_switch`]). The reader thread has stopped by the terminal
+    /// packet, so the connection is the thread's alone until it ends.
     pub(super) fn reconfigure(&mut self) -> Result<(), ConnectionError> {
         self.send(
             PLAY_SERVERBOUND_CONFIGURATION_ACKNOWLEDGED_PACKET_ID,
@@ -78,11 +90,12 @@ impl PlaySession {
         )?;
         // The acknowledgement is on the wire before the connection is used directly.
         self.link.writer.flush()?;
-        let mut stream = self.link.writer.stream()?;
-        stream.set_read_timeout(Some(RECONFIGURATION_TIMEOUT))?;
+        let stream = self.link.writer.stream()?;
+        let abort = stream.try_clone()?;
         // What the connection learned at login stays; the registries, tags and features are the
         // new configuration's.
-        let mut state = ConnectionState {
+        let state = ConnectionState {
+            account: self.state.account.clone(),
             profile_id: self.state.profile_id,
             profile_name: self.state.profile_name.clone(),
             cookies: self.state.cookies.clone(),
@@ -92,30 +105,174 @@ impl PlaySession {
             server_links: self.state.server_links.clone(),
             ..ConnectionState::default()
         };
-        configure_connection(
-            &mut stream,
-            self.link.compression_threshold,
-            (RECONFIGURATION_TIMEOUT, true),
-            (&mut state, &mut NoRecorder),
-        )?;
-        stream.set_read_timeout(None)?;
-        let incoming = spawn_reader(stream, self.link.compression_threshold);
-        let mut fresh = Self::assemble(
-            self.link.writer.stream()?,
-            self.link.compression_threshold,
-            incoming,
-            state,
-            (&self.link.username, self.link.auto_jump),
-        );
-        fresh.link.client_information = self.link.client_information.clone();
-        fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
-        // Nothing of the old level stays.
-        fresh.level_info.level_reset = true;
-        fresh.level_info.level_swapped = true;
-        fresh.level_info.reconfigured = true;
-        *self = fresh;
+        let writer = self.link.writer.stream()?;
+        let threshold = self.link.compression_threshold;
+        let username = self.link.username.clone();
+        let auto_jump = self.link.auto_jump;
+        let information = self.link.client_information.clone();
+        let (send, result) = mpsc::channel();
+        std::thread::Builder::new()
+            .name("Reconfiguration".to_owned())
+            .spawn(move || {
+                let _ = send.send(configure_again(
+                    (stream, writer, threshold),
+                    state,
+                    (&username, auto_jump),
+                    information,
+                ));
+            })?;
+        self.link.switching = Some(Switch {
+            kind: SwitchKind::Reconfiguring,
+            result,
+            abort: Some(abort),
+        });
         Ok(())
     }
+
+    /// What the connection is doing besides playing, while it is.
+    pub fn switching(&self) -> Option<SwitchKind> {
+        self.link.switching.as_ref().map(|switch| switch.kind)
+    }
+
+    /// Whether the connection ended because a transfer could not be made.
+    pub fn transfer_failed(&self) -> bool {
+        self.link.transfer_failed
+    }
+
+    /// The player ends a reconfiguration or a transfer (`ABORT_CONNECTION`): the thread's
+    /// connection is cut and its outcome is no longer waited for.
+    pub fn abort_switch(&mut self) {
+        let Some(switch) = self.link.switching.take() else {
+            return;
+        };
+        if let Some(stream) = switch.abort {
+            stream.shutdown();
+        }
+        self.link.transfer_failed = switch.kind == SwitchKind::Transferring;
+        self.disconnect(photon_game::text::Component::translatable(
+            "connect.aborted",
+        ));
+    }
+
+    /// Wait up to `limit` for the switch to end; a new session replaces this one when it has, and
+    /// a failure ends the connection with what went wrong.
+    pub(super) fn poll_switch(&mut self, limit: Duration) -> Result<(), ConnectionError> {
+        let Some(switch) = self.link.switching.as_ref() else {
+            return Ok(());
+        };
+        let kind = switch.kind;
+        match switch.result.recv_timeout(limit) {
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Ok(Ok(mut fresh)) => {
+                fresh.social.lang = std::sync::Arc::clone(&self.social.lang);
+                // Nothing of the old level stays.
+                fresh.level_info.level_reset = true;
+                fresh.level_info.level_swapped = true;
+                fresh.level_info.reconfigured = true;
+                *self = fresh;
+            }
+            Ok(Err(error)) => self.end_switch(kind, &error),
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                self.end_switch(kind, &ConnectionError::ServerDisconnected);
+            }
+        }
+        Ok(())
+    }
+
+    /// `ClientCommonPacketListenerImpl.onDisconnect` for a switch that failed.
+    fn end_switch(&mut self, kind: SwitchKind, error: &ConnectionError) {
+        use photon_game::text::Component;
+        self.link.switching = None;
+        self.link.transfer_failed = kind == SwitchKind::Transferring;
+        let message = match (kind, error) {
+            (_, ConnectionError::ServerDisconnected) => {
+                self.link.disconnect = Some(Component::translatable("disconnect.endOfStream"));
+                return;
+            }
+            (SwitchKind::Transferring, error) => error.to_string(),
+            (SwitchKind::Reconfiguring, error) => format!("Internal Exception: {error}"),
+        };
+        self.link.disconnect = Some(Component::translatable_with(
+            "disconnect.genericReason",
+            vec![Component::literal(message)],
+        ));
+    }
+}
+
+/// What a play connection in a switch is called.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SwitchKind {
+    /// `ServerReconfigScreen`: the configuration phase runs again.
+    Reconfiguring,
+    /// `ConnectScreen` with `connect.transferring`: another server is being joined.
+    Transferring,
+}
+
+/// A reconfiguration or a transfer on its own thread.
+pub(super) struct Switch {
+    kind: SwitchKind,
+    result: mpsc::Receiver<Result<PlaySession, ConnectionError>>,
+    /// The connection the thread reads, to be cut where the player gives up.
+    abort: Option<Transport>,
+}
+
+/// The configuration phase again on a connection, then a play phase on it.
+fn configure_again(
+    (mut stream, writer, compression_threshold): (Transport, Transport, Option<usize>),
+    mut state: ConnectionState,
+    (username, auto_jump): (&str, bool),
+    information: photon_protocol::configuration::ClientInformation,
+) -> Result<PlaySession, ConnectionError> {
+    stream.set_read_timeout(Some(RECONFIGURATION_TIMEOUT))?;
+    let configured = configure_connection(
+        &mut stream,
+        compression_threshold,
+        (RECONFIGURATION_TIMEOUT, true),
+        (&mut state, &mut NoRecorder),
+    );
+    match configured {
+        // A transfer in the configuration phase is followed like one in the play phase.
+        Err(ConnectionError::Transfer { host, port }) => {
+            let carried = ConnectionState {
+                account: state.account,
+                cookies: state.cookies,
+                transferring: true,
+                ..ConnectionState::default()
+            };
+            transfer_to((host, port), (username, auto_jump), information, carried)
+        }
+        Err(error) => Err(error),
+        Ok(_) => {
+            stream.set_read_timeout(None)?;
+            let incoming = spawn_reader(stream, compression_threshold);
+            let mut fresh = PlaySession::assemble(
+                writer,
+                compression_threshold,
+                incoming,
+                state,
+                (username, auto_jump),
+            );
+            fresh.link.client_information = information;
+            Ok(fresh)
+        }
+    }
+}
+
+/// The connection to the host a transfer names, with what is carried over.
+fn transfer_to(
+    (host, port): (String, i32),
+    (username, auto_jump): (&str, bool),
+    information: photon_protocol::configuration::ClientInformation,
+    carried: ConnectionState,
+) -> Result<PlaySession, ConnectionError> {
+    let address = lifecycle::resolve_host(&host, port)?;
+    PlaySession::connect_through(
+        (address, Some(host)),
+        (username, auto_jump),
+        RECONFIGURATION_TIMEOUT,
+        information,
+        carried,
+    )
 }
 
 #[cfg(test)]
@@ -164,8 +321,79 @@ mod tests {
             ("Tester", false),
         );
         session.wait(Duration::from_secs(5)).expect("handled");
+        assert_eq!(session.switching(), Some(SwitchKind::Reconfiguring));
+        session.wait(Duration::from_secs(5)).expect("reconfigured");
+        assert_eq!(session.switching(), None);
         assert!(session.take_level_reset());
         server.join().expect("server");
+    }
+
+    /// A session whose server asks for the configuration phase and then does `then` with the
+    /// connection after the acknowledgement.
+    fn reconfiguring_against(then: fn(Transport)) -> PlaySession {
+        use std::io::Write;
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+        let address = listener.local_addr().expect("address");
+        std::thread::spawn(move || {
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
+            stream
+                .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
+                .expect("start configuration");
+            read_packet(&mut stream, None).expect("acknowledgement");
+            then(stream);
+        });
+        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
+        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let mut session = PlaySession::assemble(
+            stream,
+            None,
+            incoming,
+            ConnectionState::default(),
+            ("Tester", false),
+        );
+        session.wait(Duration::from_secs(5)).expect("started");
+        assert_eq!(session.switching(), Some(SwitchKind::Reconfiguring));
+        session
+    }
+
+    #[test]
+    fn the_frame_goes_on_while_the_configuration_waits_for_the_server() {
+        let mut session = reconfiguring_against(|stream| {
+            std::thread::sleep(Duration::from_millis(400));
+            drop(stream);
+        });
+        // Draining does not wait: the caller is back at once with the switch still going.
+        let before = std::time::Instant::now();
+        session.drain().expect("drained");
+        assert!(before.elapsed() < Duration::from_millis(200));
+        assert_eq!(session.switching(), Some(SwitchKind::Reconfiguring));
+    }
+
+    #[test]
+    fn a_server_hanging_up_during_the_configuration_ends_the_connection_with_a_reason() {
+        let mut session = reconfiguring_against(drop);
+        session.wait(Duration::from_secs(5)).expect("ended");
+        assert_eq!(session.switching(), None);
+        assert!(session.disconnected().is_some());
+        assert!(!session.transfer_failed());
+        // Nothing is read or sent over it any more.
+        session.drain().expect("drained");
+    }
+
+    #[test]
+    fn the_player_giving_up_on_the_configuration_ends_the_connection_aborted() {
+        let mut session = reconfiguring_against(|stream| {
+            std::thread::sleep(Duration::from_secs(2));
+            drop(stream);
+        });
+        session.abort_switch();
+        assert_eq!(session.switching(), None);
+        assert_eq!(
+            session.disconnected(),
+            Some(&photon_game::text::Component::translatable(
+                "connect.aborted"
+            ))
+        );
     }
 
     fn framed(id: i32, body: &[u8]) -> Vec<u8> {
@@ -269,6 +497,7 @@ mod tests {
             ..ConnectionState::default()
         };
         let mut session = PlaySession::assemble(stream, None, incoming, first, ("Tester", false));
+        session.wait(Duration::from_secs(5)).expect("started");
         session.wait(Duration::from_secs(5)).expect("reconfigured");
         session.wait(Duration::from_secs(5)).expect("logged in");
         session
@@ -394,7 +623,12 @@ mod tests {
             ("Tester", false),
         );
         // The destination hangs up before it logs the player in, so the transfer fails there.
-        assert!(session.wait(Duration::from_secs(5)).is_err());
+        session.wait(Duration::from_secs(5)).expect("started");
+        assert_eq!(session.switching(), Some(SwitchKind::Transferring));
+        session.wait(Duration::from_secs(5)).expect("ended");
+        assert_eq!(session.switching(), None);
+        assert!(session.disconnected().is_some());
+        assert!(session.transfer_failed());
         destination.join().expect("destination");
         origin.join().expect("origin");
     }

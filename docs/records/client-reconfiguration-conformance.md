@@ -13,8 +13,12 @@ denenmedi; Java oracle'ı yok. `client-parity` değildir.
 
 ## Sapmalar (açık)
 
-- Yapılandırma ana iş parçacığında bloklayarak çalışır (en çok 30 sn); Java eşzamansızdır ve
-  `ServerReconfigScreen` gösterir. Bu sürede kare durur.
+- Yapılandırma ayrı bir iş parçacığında çalışır (en çok 30 sn okuma beklemesi); pencere çizilmeye ve
+  girdi almaya devam eder ve `ServerReconfigScreen` görünür (yerleşimi Java oracle'ıyla sınanır,
+  `gui/connect-screen`). Bu sürede oyun tikleri durur. Bağlantıyı kesen sunucu ya da hata
+  `DisconnectedScreen`'e gider ("Aborted" düğmeden, 600 tik sonra etkin). Yapılandırma evresindeki
+  `Transfer` izlenir. Sunucunun yapılandırmadaki kopma nedeni (`Disconnect` paketinin metni) okunmaz;
+  ekran "Disconnected" (`disconnect.endOfStream`) der.
 - Sohbet durumu (`storeState`) ve görülen oyuncular korunmaz; sohbet kayıtları yeni oturumla boşalır.
 - Yapılandırmadaki özel yük, çerez, kaynak paketi ve diyalog paketleri yok sayılır (T100, T103, T105).
 - Yeniden yapılandırmada marka ve istemci bilgisi yeniden gönderilmez (Java'da da yok).

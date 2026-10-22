@@ -171,6 +171,8 @@ pub struct Controls {
     pub pause_additions: Option<photon_game::dialog::Dialog>,
     /// The server resource packs the player is being asked about; the question is `confirm`.
     pub pack_prompt: Option<pack_prompt::PackPrompt>,
+    /// The screen of a reconfiguration or a transfer that goes on.
+    pub(crate) switch: Option<crate::play::SwitchView>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the
