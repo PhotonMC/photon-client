@@ -97,6 +97,8 @@ pub(super) enum Run {
     NameTag,
     /// The aimed block's outline: lines, with the window's size in the push constants.
     Outline,
+    /// The black backing of the high contrast outline, which writes no depth.
+    OutlineBacking,
     /// The F3 3D crosshair: lines like the outline, in the hand's view.
     Gizmo,
     Cracks,
@@ -170,7 +172,7 @@ impl Run {
             Self::Orb | Self::MapDecoration => &scene.text_translucent_pipeline,
             Self::Map | Self::NameTag => &scene.text_pipeline,
             Self::NameTagSeeThrough => &scene.text_see_through_pipeline,
-            Self::Outline | Self::Gizmo => &scene.lines_pipeline,
+            Self::Outline | Self::OutlineBacking | Self::Gizmo => scene.lines_pipeline(self),
             Self::Cracks => &scene.crumbling_pipeline,
         }
     }
@@ -181,7 +183,7 @@ impl Run {
             Self::Ground | Self::Held | Self::BlockParticle => Sampled::Atlas,
             Self::Map => Sampled::Map,
             Self::NameTagSeeThrough | Self::NameTag => Sampled::Gui,
-            Self::Outline | Self::Gizmo => Sampled::Unbound,
+            Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
             Self::Entity
             | Self::Shadow
@@ -196,6 +198,13 @@ impl Run {
             | Self::Hand
             | Self::HandGlint => Sampled::Entity,
         }
+    }
+}
+
+impl SceneResources {
+    /// The pipeline of a line run: the backing of the outline writes no depth.
+    fn lines_pipeline(&self, run: Run) -> &Pipeline {
+        &self.lines_pipelines[usize::from(run == Run::OutlineBacking)]
     }
 }
 

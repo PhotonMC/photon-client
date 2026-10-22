@@ -231,12 +231,14 @@ impl VulkanBackend {
     pub fn set_outline(
         &mut self,
         vertices: &[crate::block::outline::LineVertex],
+        backing: usize,
     ) -> Result<(), VulkanError> {
         let mut buffer = std::mem::take(&mut self.lines.outline.buffer);
         let bytes = as_bytes(vertices);
         self.fill_bytes(&mut buffer, bytes)?;
         self.lines.outline.buffer = buffer;
         self.lines.outline.count = vertices.len() as u32;
+        self.lines.backing = backing.min(vertices.len()) as u32;
         Ok(())
     }
 

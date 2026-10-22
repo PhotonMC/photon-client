@@ -146,7 +146,7 @@ impl VulkanBackend {
                 push[40..42].copy_from_slice(&self.dissolve_mask_offset);
                 184
             }
-            Run::Outline | Run::Gizmo => {
+            Run::Outline | Run::OutlineBacking | Run::Gizmo => {
                 let extent = self.description.extent;
                 push[16] = extent.width as f32;
                 push[17] = extent.height as f32;
@@ -261,7 +261,7 @@ impl VulkanBackend {
             Run::MapDecoration => list(&self.map_decoration),
             Run::NameTagSeeThrough => list(&self.name_tag_see),
             Run::NameTag => list(&self.name_tag),
-            Run::Outline | Run::Gizmo => list(self.lines.of(run)),
+            Run::Outline | Run::OutlineBacking | Run::Gizmo => self.lines.range(run),
             Run::Cracks => list(&self.breaking),
             Run::Hand => list(&self.hand),
             // The items follow the arm in the hand's buffer.
@@ -338,11 +338,15 @@ impl VulkanBackend {
 }
 
 impl LineDraws {
-    /// The list a line run draws.
-    fn of(&self, run: Run) -> &DrawList {
+    /// The buffer a line run draws from, and which of its vertices: the backing leads the
+    /// outline's.
+    fn range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
+        let outline = &self.outline;
+        let buffer = outline.buffer.as_ref();
         match run {
-            Run::Gizmo => &self.gizmo,
-            _ => &self.outline,
+            Run::OutlineBacking => (buffer, 0, self.backing),
+            Run::Outline => (buffer, self.backing, outline.count - self.backing),
+            _ => (self.gizmo.buffer.as_ref(), 0, self.gizmo.count),
         }
     }
 }

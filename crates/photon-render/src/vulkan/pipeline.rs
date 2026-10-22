@@ -44,7 +44,7 @@ impl VulkanBackend {
                 | PipelineKind::GuiVignette
         );
         let gui_item = kind == PipelineKind::GuiItem || gui_glint;
-        let lines = kind == PipelineKind::Lines;
+        let lines = matches!(kind, PipelineKind::Lines | PipelineKind::LinesBacking);
         let crumbling = kind == PipelineKind::Crumbling;
         let screen_effect = kind == PipelineKind::ScreenEffect;
         let section = matches!(kind, PipelineKind::Terrain | PipelineKind::Translucent);
@@ -487,6 +487,11 @@ const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
     ),
     (
         PipelineKind::Lines,
+        &LINE_VERTEX_SHADER,
+        &LINE_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::LinesBacking,
         &LINE_VERTEX_SHADER,
         &LINE_FRAGMENT_SHADER,
     ),

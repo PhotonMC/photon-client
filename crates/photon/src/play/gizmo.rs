@@ -39,9 +39,9 @@ impl Play {
             [f32; 3],
         ),
         (line_width, hook_lines): (f32, Vec<photon_render::block::outline::LineVertex>),
-    ) -> Vec<photon_render::block::outline::LineVertex> {
+    ) -> (Vec<photon_render::block::outline::LineVertex>, usize) {
         let high_contrast = self.controls.options.high_contrast_block_outline;
-        let mut lines = crate::overlays::outline(
+        let (mut lines, backing) = crate::overlays::outline(
             &self.session,
             player,
             view,
@@ -51,7 +51,7 @@ impl Play {
         lines.extend(hook_lines);
         lines.extend(self.chunk_borders(player, view, camera));
         lines.extend(self.entity_hitboxes(view, camera));
-        lines
+        (lines, backing)
     }
 
     /// F3+G: the chunk borders round the player's chunk, when their entry is shown.

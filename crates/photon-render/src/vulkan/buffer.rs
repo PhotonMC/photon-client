@@ -29,6 +29,8 @@ pub(super) const DEFAULT_LIGHTMAP: [f32; 15] = [
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum PipelineKind {
     Terrain,
+    /// The lines that back the high contrast outline: they test the depth and do not write it.
+    LinesBacking,
     Translucent,
     SkyTranslucent,
     SkyOverlay,
@@ -229,7 +231,7 @@ pub(super) struct SceneResources {
     pub(super) weather_sampler: Option<Sampler>,
     pub(super) weather_sets: Vec<vk::DescriptorSet>,
     pub(super) entity_pipeline: Pipeline,
-    pub(super) lines_pipeline: Pipeline,
+    pub(super) lines_pipelines: [Pipeline; 2],
     pub(super) crumbling_pipeline: Pipeline,
     pub(super) held_pipeline: Pipeline,
     pub(super) text_pipeline: Pipeline,
@@ -524,5 +526,7 @@ pub(super) struct DrawList {
 #[derive(Default)]
 pub(super) struct LineDraws {
     pub(super) outline: DrawList,
+    /// How many of the outline's first vertices are the black backing.
+    pub(super) backing: u32,
     pub(super) gizmo: DrawList,
 }

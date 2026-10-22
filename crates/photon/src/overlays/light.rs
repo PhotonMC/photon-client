@@ -162,21 +162,21 @@ pub fn outline(
     view: FrameView,
     eye: [f32; 3],
     (line_width, high_contrast): (f32, bool),
-) -> Vec<LineVertex> {
+) -> (Vec<LineVertex>, usize) {
     if matches!(
         session.game_mode(),
         photon_world::ClientPlayerGameMode::Adventure
             | photon_world::ClientPlayerGameMode::Spectator
     ) {
-        return Vec::new();
+        return (Vec::new(), 0);
     }
     let Aim::Block { x, y, z, .. } =
         pick(session.world(), player, eye_position(player, view.partial))
     else {
-        return Vec::new();
+        return (Vec::new(), 0);
     };
     let Some(state) = session.world().block_state_at(x, y, z) else {
-        return Vec::new();
+        return (Vec::new(), 0);
     };
     let shape = photon_world::outline_shape(state, [x, y, z]);
     use photon_render::block::outline::{
@@ -198,9 +198,10 @@ pub fn outline(
     } else {
         (Vec::new(), OUTLINE_COLOUR)
     };
+    let backing_len = backing.len();
     let mut lines = backing;
     lines.extend(outline_vertices(&shape, block, eye, colour, line_width));
-    lines
+    (lines, backing_len)
 }
 
 /// `extractBlockDestroyAnimation`: each cracked block near the camera, at
