@@ -217,7 +217,7 @@ pub(super) fn server_form_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
 
 /// `connect_screen`: the connecting screen with a status, or the terrain loading screen.
 pub(super) fn connect_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_gui::screen::connect::{ConnectScreen, draw_level_loading};
+    use photon_gui::screen::connect::{ConnectScreen, ReconfigScreen, draw_level_loading};
     let (font, atlas) = (&ctx.font, &ctx.atlas);
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let lang = photon_game::text::Lang::load(&ctx.root);
@@ -232,6 +232,10 @@ pub(super) fn connect_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     };
     if row["screen"] == "loading" {
         draw_level_loading(&mut frame, atlas, font, &lang, size);
+    } else if row["screen"] == "reconfiguring" {
+        let mut screen = ReconfigScreen::new(&lang, font, size);
+        screen.set_ticks(int("ticks") as u32);
+        screen.draw(&mut frame, atlas, font, mouse);
     } else {
         let mut screen = ConnectScreen::new(&lang, size);
         screen.set_status(&lang, row["status"].as_str().unwrap_or_default());

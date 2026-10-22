@@ -386,6 +386,22 @@ class GuiTitleOracle extends GuiSettingsOracle {
                 shown = new net.minecraft.client.gui.screens.LevelLoadingScreen(
                     new net.minecraft.client.multiplayer.LevelLoadTracker(),
                     net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.OTHER);
+            } else if (row.get("screen").getAsString().equals("reconfiguring")) {
+                var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
+                var reconfig = new net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen(
+                    net.minecraft.network.chat.Component.translatable("connect.reconfiguring"), connection);
+                shown = reconfig;
+                shown.init(width, height);
+                for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
+                    var delay = net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class.getDeclaredField("delayTicker");
+                    delay.setAccessible(true);
+                    delay.setInt(reconfig, tick + 1);
+                    if (tick + 1 == 600) {
+                        var button = net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class.getDeclaredField("disconnectButton");
+                        button.setAccessible(true);
+                        ((net.minecraft.client.gui.components.Button) button.get(reconfig)).active = true;
+                    }
+                }
             } else {
                 var constructor = net.minecraft.client.gui.screens.ConnectScreen.class.getDeclaredConstructor(
                     net.minecraft.client.gui.screens.Screen.class, net.minecraft.network.chat.Component.class);
@@ -396,7 +412,9 @@ class GuiTitleOracle extends GuiSettingsOracle {
                 update.setAccessible(true);
                 update.invoke(shown, net.minecraft.network.chat.Component.translatable(row.get("status").getAsString()));
             }
-            shown.init(width, height);
+            if (!row.get("screen").getAsString().equals("reconfiguring")) {
+                shown.init(width, height);
+            }
             shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);

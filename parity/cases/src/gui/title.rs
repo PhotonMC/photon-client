@@ -259,8 +259,20 @@ pub fn connect_screen() -> Value {
     let connect =
         |label: &str, status: &str, size: (i64, i64), mouse: (i64, i64)| row(label, "connect", status, size, mouse);
     let loading = |label: &str, size: (i64, i64)| row(label, "loading", "connect.connecting", size, (0, 0));
+    let reconfiguring = |label: &str, size: (i64, i64), mouse: (i64, i64), ticks: i64| {
+        let mut value = row(label, "reconfiguring", "connect.reconfiguring", size, mouse);
+        value["ticks"] = json!(ticks);
+        value
+    };
     let rows = vec![
+        reconfiguring("reconfiguring", (427, 240), (0, 0), 0),
+        reconfiguring("reconfiguring-small", (320, 240), (0, 0), 0),
+        reconfiguring("reconfiguring-wide", (640, 360), (0, 0), 0),
+        reconfiguring("reconfiguring-active", (427, 240), (0, 0), 600),
+        reconfiguring("reconfiguring-hover", (427, 240), (213, 130), 600),
+        reconfiguring("reconfiguring-hover-early", (427, 240), (213, 130), 599),
         connect("connecting", "connect.connecting", (427, 240), (0, 0)),
+        connect("transferring", "connect.transferring", (427, 240), (0, 0)),
         connect("joining", "connect.joining", (427, 240), (0, 0)),
         connect("negotiating", "connect.negotiating", (427, 240), (0, 0)),
         connect("connecting-small", "connect.connecting", (320, 240), (0, 0)),
