@@ -1350,4 +1350,66 @@ class EntityBlockOracle extends EntityAquaticOracle {
         var name = value.getClass().getName();
         return name.substring(name.lastIndexOf('.') + 1) + "(" + String.join(",", parts) + ")";
     }
+
+    /** An entity renderer dispatcher that keeps the pose an entity is submitted through. */
+    static class CageDispatcher extends net.minecraft.client.renderer.entity.EntityRenderDispatcher {
+        float[] matrix;
+
+        CageDispatcher() {
+            super(null, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        @Override
+        public <E extends net.minecraft.world.entity.Entity> net.minecraft.client.renderer.entity.state.EntityRenderState
+            extractEntity(final E entity, final float partialTicks) {
+            return new net.minecraft.client.renderer.entity.state.EntityRenderState();
+        }
+
+        @Override
+        public <S extends net.minecraft.client.renderer.entity.state.EntityRenderState> void submit(
+            final S renderState, final net.minecraft.client.renderer.state.level.CameraRenderState camera,
+            final double x, final double y, final double z, final com.mojang.blaze3d.vertex.PoseStack poseStack,
+            final net.minecraft.client.renderer.SubmitNodeCollector collector) {
+            matrix = new float[16];
+            poseStack.last().pose().get(matrix);
+        }
+    }
+
+    /** The spin, scale and pose a spawner shows its mob through, for entity types and spins. */
+    static JsonObject spawnerCage(final JsonObject request) throws Exception {
+        MovementSupport.bootstrap();
+        var sceneRow = new JsonObject();
+        sceneRow.add("blocks", new JsonArray());
+        sceneRow.addProperty("chunk_radius", 0);
+        var scene = MovementSupport.buildScene(sceneRow);
+        // Monsters are made only where the difficulty is not peaceful.
+        scene.level().getLevelData().setDifficulty(net.minecraft.world.Difficulty.NORMAL);
+        var dispatcher = (CageDispatcher) MovementSupport.unsafe.allocateInstance(CageDispatcher.class);
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+                net.minecraft.resources.Identifier.parse(row.get("type").getAsString()));
+            var entity = type.create(scene.level(), net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            var state = new net.minecraft.client.renderer.blockentity.state.SpawnerRenderState();
+            net.minecraft.client.renderer.blockentity.TrialSpawnerRenderer.extractSpawnerData(
+                state, Oracle.f32(row, "partial"), entity, dispatcher, Oracle.f64(row, "o_spin"), Oracle.f64(row, "spin"));
+            net.minecraft.client.renderer.blockentity.SpawnerRenderer.submitEntityInSpawner(
+                new com.mojang.blaze3d.vertex.PoseStack(), null, state.displayEntity, dispatcher, state.spin, state.scale,
+                null);
+            var out = new JsonObject();
+            out.add("label", row.get("label"));
+            out.addProperty("spin", Oracle.bits(state.spin));
+            out.addProperty("scale", Oracle.bits(state.scale));
+            var matrix = new JsonArray();
+            for (float value : dispatcher.matrix) {
+                matrix.add(Oracle.bits(value));
+            }
+            out.add("matrix", matrix);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

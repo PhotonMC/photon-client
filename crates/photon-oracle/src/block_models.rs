@@ -3,8 +3,54 @@
 use super::*;
 
 /// The built-in block model operation; none for an operation of another kind.
-pub(super) fn block_models_result(operation: &str) -> Option<Result<Value, String>> {
-    (operation == "builtin_block_models").then(|| Ok(builtin_block_models_result()))
+pub(super) fn block_models_result(
+    operation: &str,
+    request: &Value,
+) -> Option<Result<Value, String>> {
+    match operation {
+        "builtin_block_models" => Some(Ok(builtin_block_models_result())),
+        "spawner_cage" => Some(spawner_cage_result(request)),
+        _ => None,
+    }
+}
+
+/// `spawner_cage`: the spin, scale and pose a spawner shows a mob through.
+fn spawner_cage_result(request: &Value) -> Result<Value, String> {
+    use photon_render::entity::mob_model::SpawnerCage;
+    use photon_world::SpawnerDisplayPose;
+    let bits = |value: f32| format!("{:08x}", value.to_bits());
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let id = photon_data::entity_type::id(string(row, "type")?).ok_or("entity type")?;
+        let (width, height, _) = photon_data::entity_type::pick(id).ok_or("pick")?.size;
+        let o_spin = f64::from_bits(
+            u64::from_str_radix(string(row, "o_spin")?, 16).map_err(|e| e.to_string())?,
+        );
+        let spin = f64::from_bits(
+            u64::from_str_radix(string(row, "spin")?, 16).map_err(|e| e.to_string())?,
+        );
+        let partial = f32::from_bits(
+            u32::from_str_radix(string(row, "partial")?, 16).map_err(|e| e.to_string())?,
+        );
+        let shown = SpawnerDisplayPose::of((0, 0, 0), (o_spin, spin), partial, (width, height));
+        let cage = SpawnerCage {
+            origin: [0.0; 3],
+            spin: shown.spin,
+            scale: shown.scale,
+        };
+        let matrix: Vec<String> = cage
+            .pose()
+            .pose
+            .m
+            .iter()
+            .flatten()
+            .map(|v| bits(*v))
+            .collect();
+        rows.push(serde_json::json!({
+            "label": row["label"], "spin": bits(shown.spin), "scale": bits(shown.scale), "matrix": matrix,
+        }));
+    }
+    Ok(serde_json::json!({ "rows": rows }))
 }
 
 /// `BuiltInBlockModels.createBlockModels`: every state that has a model of its own, by the name

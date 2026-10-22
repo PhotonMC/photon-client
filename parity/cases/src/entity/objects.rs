@@ -562,3 +562,21 @@ pub fn elder_guardian_particle() -> Vec<Value> {
     }
     vec![entity("elder-guardian-particle-pose", "elder_guardian_particle_pose", rows)]
 }
+
+/// Where a spawner puts the mob it shows: the spin between two ticks, the scale that fits the
+/// mob's box in the cage and the pose, for mobs that are small, tall, wide and huge.
+pub fn spawner_cage() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for mob in ["pig", "zombie", "spider", "enderman", "ghast", "chicken", "iron_golem"] {
+        for partial in [0.0, 0.5, 1.0] {
+            rows.push(json!({
+                "label": format!("{mob} at {}", float_text(partial)),
+                "type": format!("minecraft:{mob}"),
+                "o_spin": f64_bits(1234.5),
+                "spin": f64_bits(1238.25),
+                "partial": f32_bits(partial),
+            }));
+        }
+    }
+    vec![entity("spawner-cage", "spawner_cage", rows)]
+}

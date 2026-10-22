@@ -92,7 +92,7 @@ pub struct SpawnerCage {
 
 impl SpawnerCage {
     /// The pose the mob is drawn in: up in the block, turned, tipped back and scaled.
-    fn pose(self) -> Pose {
+    pub fn pose(self) -> Pose {
         let mut pose = Pose::default();
         pose.translate(
             self.origin[0] + 0.5,

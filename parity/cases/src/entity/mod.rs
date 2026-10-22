@@ -119,6 +119,7 @@ const ORDER: &[Cases] = &[
     objects::chest_cases,
     objects::shulker_box,
     objects::builtin_block_models,
+    objects::spawner_cage,
     objects::bell,
     objects::enchant_table,
     objects::lectern,

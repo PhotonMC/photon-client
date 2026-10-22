@@ -254,6 +254,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("enchant_table_pose")) {
             return enchantTablePose(request);
         }
+        if (operation.equals("spawner_cage")) {
+            return spawnerCage(request);
+        }
         if (operation.equals("builtin_block_models")) {
             return builtInBlockModels(request);
         }

@@ -139,19 +139,13 @@ impl ClientWorld {
             .block_entity_at(shown.pos.0, shown.pos.1, shown.pos.2)?
             .events
             .spawner;
-        let (previous, current) = (spin.previous(), spin.current());
-        let turn = (previous + f64::from(partial_tick) * (current - previous)) as f32 * 10.0;
         let dimensions = shown.entity.dimensions();
-        let longest = dimensions.width().max(dimensions.height());
-        let mut scale = 0.53125_f32;
-        if longest > 1.0 {
-            scale /= longest;
-        }
-        Some(SpawnerDisplayPose {
-            block: shown.pos,
-            spin: turn,
-            scale,
-        })
+        Some(SpawnerDisplayPose::of(
+            shown.pos,
+            (spin.previous(), spin.current()),
+            partial_tick,
+            (dimensions.width(), dimensions.height()),
+        ))
     }
 
     /// `BaseSpawner.clientTick`: with a player within the required range and a mob to show, the

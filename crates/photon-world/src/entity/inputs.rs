@@ -61,6 +61,25 @@ pub struct SpawnerDisplayPose {
     pub scale: f32,
 }
 
+impl SpawnerDisplayPose {
+    /// `TrialSpawnerRenderer.extractSpawnerData`: the spin between two ticks, ten times as far
+    /// round, and the scale that fits a mob of a box in the cage.
+    pub fn of(
+        block: (i32, i32, i32),
+        (previous, current): (f64, f64),
+        partial_tick: f32,
+        (width, height): (f32, f32),
+    ) -> Self {
+        let spin = (previous + f64::from(partial_tick) * (current - previous)) as f32 * 10.0;
+        let longest = width.max(height);
+        let mut scale = 0.53125_f32;
+        if longest > 1.0 {
+            scale /= longest;
+        }
+        Self { block, spin, scale }
+    }
+}
+
 /// The entities a tick looks up in the world: what a guardian's beam aims at and
 /// what a wither's side heads look at.
 #[derive(Debug, Clone, Copy, Default)]

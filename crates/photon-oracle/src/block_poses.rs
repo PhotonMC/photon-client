@@ -30,7 +30,7 @@ fn beam_pose_result(operation: &str, request: &Value) -> Option<Result<Value, St
         "vault_pose" => Some(vault_pose_result(request)),
         "copper_statue_pose" => Some(copper_statue_pose_result(request)),
         "end_portal_cube" => Some(end_portal_cube_result(request)),
-        _ => super::block_models::block_models_result(operation)
+        _ => super::block_models::block_models_result(operation, request)
             .or_else(|| super::view_state::view_state_result(operation, request)),
     }
 }
