@@ -37,15 +37,15 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
             entity_tag(entity, row, (viewer, (&lang, &board)))
         } else {
             let name = string(row, "name")?;
-            let (runs, teams) = photon_gui::entity_name::tag_inputs(
+            let inputs = photon_gui::entity_name::tag_inputs(
                 entity,
                 Some(name),
                 (&lang, &board),
                 LOCAL_NAME,
             );
-            name_tag(entity, name, (viewer, teams), 0.0).map(|mut tag| {
-                tag.runs = runs;
-                tag
+            name_tag(entity, name, (viewer, inputs.teams), 0.0).map(|mut tag| {
+                tag.runs = inputs.runs;
+                tag.with_score(entity, viewer, inputs.score)
             })
         };
         out.push(described_tag(row, tag.as_ref(), &font)?);
@@ -105,7 +105,6 @@ fn described_tag(
         described["submits"] = json!([]);
         return Ok(described);
     };
-    let hex32 = |value: f32| format!("{:08x}", value.to_bits());
     let orientation = camera_orientation(
         f32_field(row, "camera_y_rot")?,
         f32_field(row, "camera_x_rot")?,
@@ -120,35 +119,28 @@ fn described_tag(
         f64_field(row, "y")? - f64_field(row, "camera_y")?,
         f64_field(row, "z")? - f64_field(row, "camera_z")?,
     );
-    let placed = submits(
+    let widths = (
+        font.width_of_text_runs(&tag.runs),
+        tag.score
+            .as_ref()
+            .map_or(0, |score| font.width_of_text_runs(score)),
+    );
+    let mut placed = submits(
         tag,
         placement,
-        font.width_of_text_runs(&tag.runs),
-        i32_field(row, "light")?,
+        widths,
+        (i32_field(row, "light")?, opacity),
         &orientation,
-        opacity,
     );
+    // The reference keeps the plain submits of a tag, then the see-through ones.
+    placed.sort_by_key(|submit| submit.mode == DisplayMode::SeeThrough);
     described["shown"] = json!(true);
     described["text"] = json!(tag.text());
-    described["colours"] = json!(character_colours(tag));
     described["attachment_y"] = json!(format!("{:016x}", tag.attachment.y.to_bits()));
     described["submits"] = json!(
         placed
             .iter()
-            .map(|submit| json!({
-                "phase": if submit.mode == DisplayMode::SeeThrough { "see_through" } else { "normal" },
-                "pose": (0..4)
-                    .flat_map(|column| (0..4).map(move |row| (column, row)))
-                    .map(|(column, row)| hex32(submit.pose.m[column][row]))
-                    .collect::<Vec<_>>(),
-                "x": hex32(submit.x),
-                "y": hex32(submit.y),
-                "text": tag.text(),
-                "light": submit.light,
-                "color": submit.color,
-                "background": submit.background,
-                "mode": if submit.mode == DisplayMode::SeeThrough { "SEE_THROUGH" } else { "NORMAL" },
-            }))
+            .map(|submit| described_submit(tag, submit))
             .collect::<Vec<_>>()
     );
     Ok(described)
@@ -221,6 +213,7 @@ fn changed_attributes(row: &Value) -> Result<Vec<photon_world::ClientAttributeSt
     for (key, name) in [
         ("scale", "minecraft:scale"),
         ("name_tag_distance", "minecraft:name_tag_distance"),
+        ("below_name_distance", "minecraft:below_name_distance"),
     ] {
         if row.get(key).is_some() {
             let (id, _) = photon_data::entity_type::attribute(name).ok_or("attribute")?;
@@ -259,8 +252,9 @@ fn entity_tag(
     }
     let rules = rules?;
     let picked = row["picked"].as_bool().unwrap_or(false);
-    let (runs, teams) = photon_gui::entity_name::tag_inputs(entity, None, assets, LOCAL_NAME);
-    entity_name_tag(entity, runs, (rules, picked), (viewer, teams))
+    let inputs = photon_gui::entity_name::tag_inputs(entity, None, assets, LOCAL_NAME);
+    let tag = entity_name_tag(entity, inputs.runs, (rules, picked), (viewer, inputs.teams))?;
+    Some(tag.with_score(entity, viewer, inputs.score))
 }
 
 /// `entity_shadows`: the pieces of an entity's shadow over a lit scene and
@@ -341,9 +335,37 @@ pub(super) fn entity_shadows_result(request: &Value) -> Result<Value, String> {
 }
 
 /// The colour of each character of a name, as its runs style them (-1: none).
-fn character_colours(tag: &photon_render::entity::name_tag::NameTag) -> Vec<i64> {
-    tag.runs
-        .iter()
+fn character_colours(runs: &[photon_render::gui::TextRun]) -> Vec<i64> {
+    runs.iter()
         .flat_map(|run| run.text.chars().map(|_| run.colour.map_or(-1, i64::from)))
         .collect()
+}
+
+/// One submit of a tag: where it sits, how it is lit and which line it writes.
+fn described_submit(
+    tag: &photon_render::entity::name_tag::NameTag,
+    submit: &photon_render::entity::name_tag::Submit,
+) -> Value {
+    use photon_render::entity::name_tag::DisplayMode;
+    let hex32 = |value: f32| format!("{:08x}", value.to_bits());
+    let runs = match (&tag.score, submit.score) {
+        (Some(score), true) => score.as_slice(),
+        _ => tag.runs.as_slice(),
+    };
+    let see_through = submit.mode == DisplayMode::SeeThrough;
+    json!({
+        "phase": if see_through { "see_through" } else { "normal" },
+        "pose": (0..4)
+            .flat_map(|column| (0..4).map(move |row| (column, row)))
+            .map(|(column, row)| hex32(submit.pose.m[column][row]))
+            .collect::<Vec<_>>(),
+        "x": hex32(submit.x),
+        "y": hex32(submit.y),
+        "text": runs.iter().map(|run| run.text.as_ref()).collect::<String>(),
+        "colours": character_colours(runs),
+        "light": submit.light,
+        "color": submit.color,
+        "background": submit.background,
+        "mode": if see_through { "SEE_THROUGH" } else { "NORMAL" },
+    })
 }

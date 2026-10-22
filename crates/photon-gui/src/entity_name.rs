@@ -35,22 +35,41 @@ fn teams_of(board: &Scoreboard, entity_name: &str, viewer_name: &str) -> Teams {
     }
 }
 
-/// What a name tag is decided and written from: the runs of the entity's display name and the
-/// teams its rules look at. `player_name` is the profile name of a player; the one place the
-/// client and the oracle both build a tag's inputs.
+/// What a name tag is decided and written from.
+pub struct TagInputs {
+    /// The entity's display name.
+    pub runs: Vec<TextRun<'static>>,
+    /// The teams its rules look at.
+    pub teams: Teams,
+    /// The score line under the name (`Entity.belowNameDisplay`).
+    pub score: Option<Vec<TextRun<'static>>>,
+}
+
+/// The inputs of an entity's tag; `player_name` is the profile name of a player. The one place
+/// the client and the oracle both build them.
 pub fn tag_inputs(
     entity: &ClientEntity,
     player_name: Option<&str>,
     (lang, board): (&Lang, &Scoreboard),
     viewer_name: &str,
-) -> (Vec<TextRun<'static>>, Teams) {
+) -> TagInputs {
     let own = scoreboard_name(entity, player_name);
-    let teams = teams_of(board, &own, viewer_name);
     let runs = match player_name {
         Some(name) if entity.is_player() => player_name_runs(name, (lang, board)),
         _ => entity_name_runs(entity, (lang, board, &own)),
     };
-    (runs, teams)
+    let score = board.below_name(&own).map(|score| {
+        let runs = lang.runs(&score, &Style::default());
+        crate::draw_runs(&runs)
+            .into_iter()
+            .map(TextRun::into_owned)
+            .collect()
+    });
+    TagInputs {
+        runs,
+        teams: teams_of(board, &own, viewer_name),
+        score,
+    }
 }
 
 /// A player's name over their head, dressed by their team (`Player.getDisplayName`).

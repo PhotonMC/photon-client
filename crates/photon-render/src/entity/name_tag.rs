@@ -1,6 +1,6 @@
 //! An entity's name tag (`EntityRenderer.submitNameDisplay`): whether it shows, and the pose,
-//! light and colours of what is submitted for it. Teams and the scoreboard text below the name
-//! are not carried: nobody is on a team.
+//! light and colours of what is submitted for it, with the team rules and the score line under
+//! the name.
 
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 use photon_world::{ClientEntity, ClientEntityPose};
@@ -13,6 +13,8 @@ use crate::scene::Vertex;
 
 /// `Attributes.NAME_TAG_DISTANCE`'s default.
 const NAME_TAG_DISTANCE: f64 = 64.0;
+/// `Attributes.BELOW_NAME_DISTANCE`'s default.
+const BELOW_NAME_DISTANCE: f64 = 10.0;
 
 /// What the viewer contributes to the decision.
 #[derive(Debug, Clone, Copy)]
@@ -37,9 +39,28 @@ pub struct NameTag {
     pub see_through: bool,
     /// `AvatarRenderer.getRenderOffset`: the crouching player is drawn lower.
     pub render_offset: Vec3,
+    /// The score line under the name (`Entity.belowNameDisplay`), when one is near enough.
+    pub score: Option<Vec<TextRun<'static>>>,
 }
 
 impl NameTag {
+    /// The tag with the score line `score` if the entity is within the below-name distance of
+    /// the viewer.
+    pub fn with_score(
+        mut self,
+        entity: &ClientEntity,
+        viewer: Viewer,
+        score: Option<Vec<TextRun<'static>>>,
+    ) -> Self {
+        let reach = entity
+            .attribute_value("minecraft:below_name_distance")
+            .unwrap_or(BELOW_NAME_DISTANCE);
+        if distance_sq(entity, viewer) < reach * reach {
+            self.score = score;
+        }
+        self
+    }
+
     /// The name without its styling (`Component.getString`).
     pub fn text(&self) -> String {
         self.runs.iter().map(|run| run.text.as_ref()).collect()
@@ -178,6 +199,7 @@ pub fn name_tag(
         } else {
             Vec3::ZERO
         },
+        score: None,
     })
 }
 
@@ -199,6 +221,8 @@ pub struct Submit {
     pub color: i32,
     pub background: i32,
     pub mode: DisplayMode,
+    /// The line is the score under the name, not the name.
+    pub score: bool,
 }
 
 /// `Camera.setRotation`'s orientation.
@@ -225,10 +249,9 @@ fn light_with_emission(light: i32, emission: i32) -> i32 {
 pub fn submits(
     tag: &NameTag,
     placement: Vec3,
-    text_width: i32,
-    light: i32,
+    widths: (i32, i32),
+    (light, background_opacity): (i32, f32),
     orientation: &Quaternion,
-    background_opacity: f32,
 ) -> Vec<Submit> {
     let mut pose = Pose::default();
     pose.translate(
@@ -236,6 +259,32 @@ pub fn submits(
         (placement.y + tag.render_offset.y) as f32,
         (placement.z + tag.render_offset.z) as f32,
     );
+    let line = |pose: &Pose, width: i32, score: bool| {
+        line_submits(
+            tag,
+            (pose, width, score),
+            (light, background_opacity),
+            orientation,
+        )
+    };
+    let mut out = Vec::new();
+    if tag.score.is_some() {
+        out.extend(line(&pose, widths.1, true));
+        // `EntityRenderer.submitNameDisplay`: the name sits a line above the score.
+        pose.translate(0.0, 9.0_f32 * 1.15_f32 * 0.025_f32, 0.0);
+    }
+    out.extend(line(&pose, widths.0, false));
+    out
+}
+
+/// One line of a tag (`SubmitNodeCollection.submitNameTag`) at the pose of the entity.
+fn line_submits(
+    tag: &NameTag,
+    (entity_pose, width, score): (&Pose, i32, bool),
+    (light, background_opacity): (i32, f32),
+    orientation: &Quaternion,
+) -> Vec<Submit> {
+    let mut pose = *entity_pose;
     pose.translate(
         tag.attachment.x as f32,
         (tag.attachment.y + 0.5) as f32,
@@ -243,42 +292,28 @@ pub fn submits(
     );
     pose.rotate(orientation);
     pose.scale(0.025, -0.025, 0.025);
-    let x = -(text_width as f32) / 2.0;
+    let x = -(width as f32) / 2.0;
     let y = tag.offset as f32;
     // `ARGB.color(opacity, 0xFF000000)`: the alpha channel of the opacity.
     let background = ((background_opacity * 255.0).floor() as i32) << 24;
     let translucent = -2_130_706_433;
+    let submit = |light, color, background, mode| Submit {
+        pose: pose.pose,
+        x,
+        y,
+        light,
+        color,
+        background,
+        mode,
+        score,
+    };
     if tag.see_through {
         vec![
-            Submit {
-                pose: pose.pose,
-                x,
-                y,
-                light: light_with_emission(light, 2),
-                color: -1,
-                background: 0,
-                mode: DisplayMode::Normal,
-            },
-            Submit {
-                pose: pose.pose,
-                x,
-                y,
-                light,
-                color: translucent,
-                background,
-                mode: DisplayMode::SeeThrough,
-            },
+            submit(light_with_emission(light, 2), -1, 0, DisplayMode::Normal),
+            submit(light, translucent, background, DisplayMode::SeeThrough),
         ]
     } else {
-        vec![Submit {
-            pose: pose.pose,
-            x,
-            y,
-            light,
-            color: translucent,
-            background,
-            mode: DisplayMode::Normal,
-        }]
+        vec![submit(light, translucent, background, DisplayMode::Normal)]
     }
 }
 

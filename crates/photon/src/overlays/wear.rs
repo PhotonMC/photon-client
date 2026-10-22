@@ -190,9 +190,18 @@ impl Tags<'_> {
             feet.y - camera.position.y,
             feet.z - camera.position.z,
         );
-        let width = font.width_of_text_runs(&tag.runs);
-        for submit in submits(tag, placement, width, light, &self.orientation, 0.25) {
-            let vertices = submit_vertices(&submit, &tag.runs, font, atlas, camera.relative);
+        let widths = (
+            font.width_of_text_runs(&tag.runs),
+            tag.score
+                .as_ref()
+                .map_or(0, |score| font.width_of_text_runs(score)),
+        );
+        for submit in submits(tag, placement, widths, (light, 0.25), &self.orientation) {
+            let runs = match (&tag.score, submit.score) {
+                (Some(score), true) => score,
+                _ => &tag.runs,
+            };
+            let vertices = submit_vertices(&submit, runs, font, atlas, camera.relative);
             match submit.mode {
                 DisplayMode::SeeThrough => self.see_through.extend(vertices),
                 DisplayMode::Normal => self.normal.extend(vertices),
@@ -248,18 +257,22 @@ fn player_tags(
         let Some(name) = session.player_name(entity.uuid) else {
             continue;
         };
-        let (runs, teams) = photon_gui::entity_name::tag_inputs(
+        let inputs = photon_gui::entity_name::tag_inputs(
             entity,
             Some(name),
             (lang, session.scoreboard()),
             session.local_name(),
         );
-        let Some(mut tag) =
-            photon_render::entity::name_tag::name_tag(entity, name, (viewer, teams), partial)
-        else {
+        let Some(mut tag) = photon_render::entity::name_tag::name_tag(
+            entity,
+            name,
+            (viewer, inputs.teams),
+            partial,
+        ) else {
             continue;
         };
-        tag.runs = runs;
+        tag.runs = inputs.runs;
+        let tag = tag.with_score(entity, viewer, inputs.score);
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
@@ -288,16 +301,19 @@ fn entity_tags(
         let Some(rules) = rules_of(entity) else {
             continue;
         };
-        let (runs, teams) = photon_gui::entity_name::tag_inputs(
+        let inputs = photon_gui::entity_name::tag_inputs(
             entity,
             None,
             (lang, session.scoreboard()),
             session.local_name(),
         );
         let picked = picked == Some(entity.id());
-        let Some(tag) = entity_name_tag(entity, runs, (rules, picked), (viewer, teams)) else {
+        let Some(tag) =
+            entity_name_tag(entity, inputs.runs, (rules, picked), (viewer, inputs.teams))
+        else {
             continue;
         };
+        let tag = tag.with_score(entity, viewer, inputs.score);
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };

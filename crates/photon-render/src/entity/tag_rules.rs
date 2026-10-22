@@ -106,5 +106,6 @@ pub fn entity_name_tag(
         offset: 0,
         see_through: !entity.is_shift_key_down(),
         render_offset: Vec3::ZERO,
+        score: None,
     })
 }

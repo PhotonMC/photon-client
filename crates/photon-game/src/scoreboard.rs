@@ -11,6 +11,7 @@ use crate::text::{Component, Style};
 /// for each team colour.
 pub const SLOT_LIST: u8 = 0;
 pub const SLOT_SIDEBAR: u8 = 1;
+pub const SLOT_BELOW_NAME: u8 = 2;
 const SLOT_COUNT: usize = 19;
 
 /// `DisplaySlot`'s names, in id order.
@@ -400,6 +401,24 @@ impl Scoreboard {
     pub fn display_objective(&self, slot: u8) -> Option<(&str, &Objective)> {
         let name = self.display.get(usize::from(slot))?.as_deref()?;
         self.objectives.get(name).map(|objective| (name, objective))
+    }
+
+    /// `Entity.belowNameDisplay`: the owner's score on the below-name objective, written, then
+    /// a space and the objective's name.
+    pub fn below_name(&self, owner: &str) -> Option<Component> {
+        let (name, objective) = self.display_objective(SLOT_BELOW_NAME)?;
+        let score = self.score(owner, name)?;
+        // `StyledFormat.NO_STYLE`.
+        let default = objective
+            .number_format
+            .clone()
+            .unwrap_or(NumberFormat::Styled(Style::default()));
+        Some(
+            Component::empty()
+                .append(score.format_value(&default))
+                .append(Component::literal(" "))
+                .append(objective.display_name.clone()),
+        )
     }
 
     /// `getPlayerScoreInfo`.

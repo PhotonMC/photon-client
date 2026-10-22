@@ -22,6 +22,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         out.addProperty("x", Oracle.bits(submit.x()));
         out.addProperty("y", Oracle.bits(submit.y()));
         out.addProperty("text", submit.text().getString());
+        out.add("colours", characterColours(submit.text()));
         out.addProperty("light", submit.lightCoords());
         out.addProperty("color", submit.color());
         out.addProperty("background", submit.backgroundColor());
@@ -129,6 +130,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         var renderer = (net.minecraft.client.renderer.entity.player.AvatarRenderer<?>)
             unsafe.allocateInstance(net.minecraft.client.renderer.entity.player.AvatarRenderer.class);
         MovementOracle.setField(renderer, "entityRenderDispatcher", dispatcher);
+        MovementOracle.setField(renderer, "font", loadedFont());
 
         // The remote player.
         var profile = new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes(new byte[] {2}),
@@ -164,7 +166,6 @@ class GuiOverlayOracle extends GuiHudOracle {
         var submits = new JsonArray();
         if (state.nameTag != null) {
             entry.addProperty("text", state.nameTag.getString());
-            entry.add("colours", characterColours(state.nameTag));
             entry.addProperty("attachment_y", Oracle.bits(state.nameTagAttachment.y));
             var storage = new net.minecraft.client.renderer.SubmitNodeStorage();
             var collection = storage.order(0);
@@ -228,6 +229,11 @@ class GuiOverlayOracle extends GuiHudOracle {
                 net.minecraft.world.entity.ai.attributes.Attributes.NAME_TAG_DISTANCE).setBaseValue(
                     Oracle.f64(row, "name_tag_distance"));
         }
+        if (row.has("below_name_distance")) {
+            ((net.minecraft.world.entity.LivingEntity) entity).getAttribute(
+                net.minecraft.world.entity.ai.attributes.Attributes.BELOW_NAME_DISTANCE).setBaseValue(
+                    Oracle.f64(row, "below_name_distance"));
+        }
         if (row.get("vehicle").getAsBoolean()) {
             var rider = new net.minecraft.client.player.RemotePlayer(level, new com.mojang.authlib.GameProfile(
                 java.util.UUID.nameUUIDFromBytes(new byte[] {3}), "Rider"));
@@ -255,6 +261,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         }
         var renderer = unsafe.allocateInstance(rendererClass);
         MovementOracle.setField(renderer, "entityRenderDispatcher", dispatcher);
+        MovementOracle.setField(renderer, "font", loadedFont());
         var state = (net.minecraft.client.renderer.entity.state.EntityRenderState) stateClass.getDeclaredConstructor().newInstance();
         state.isDiscrete = entity.isDiscrete();
         state.lightCoords = row.get("light").getAsInt();
@@ -271,7 +278,6 @@ class GuiOverlayOracle extends GuiHudOracle {
         var submits = new JsonArray();
         if (state.nameTag != null) {
             entry.addProperty("text", state.nameTag.getString());
-            entry.add("colours", characterColours(state.nameTag));
             entry.addProperty("attachment_y", Oracle.bits(state.nameTagAttachment.y));
             var storage = new net.minecraft.client.renderer.SubmitNodeStorage();
             var collection = storage.order(0);

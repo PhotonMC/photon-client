@@ -18,6 +18,7 @@ struct Mob {
     baby: bool,
     scale: Option<f64>,
     reach: Option<f64>,
+    below: Option<f64>,
     tag: Tag,
 }
 
@@ -30,6 +31,7 @@ const MOB: Mob = Mob {
     baby: false,
     scale: None,
     reach: None,
+    below: None,
     tag: TAG,
 };
 
@@ -45,6 +47,9 @@ fn mob(label: &str, mob: Mob) -> Value {
     }
     if let Some(scale) = mob.scale {
         row["scale"] = json!(f64_bits(scale));
+    }
+    if let Some(reach) = mob.below {
+        row["below_name_distance"] = json!(f64_bits(reach));
     }
     if let Some(reach) = mob.reach {
         row["name_tag_distance"] = json!(f64_bits(reach));
@@ -277,6 +282,71 @@ fn team_dress_rows() -> Vec<Value> {
     ]
 }
 
+/// A scoreboard of one objective shown below the name, scoring `owner`, with the number format
+/// the objective names.
+fn scored(mut row: Value, owner: &str, format: Option<&str>) -> Value {
+    let mut objective = json!({"name": "kills", "title": "Kills"});
+    if let Some(format) = format {
+        objective["format"] = json!(format);
+    }
+    row["objectives"] = json!([objective]);
+    row["scores"] = json!([{"objective": "kills", "owner": owner, "value": 7}]);
+    row["slots"] = json!({"2": "kills"});
+    row
+}
+
+/// The score line under a name: for a player and a mob, near and far, in each number format,
+/// beside the name's own rules.
+fn score_rows() -> Vec<Value> {
+    let near = at(5.0);
+    let mut rows = Vec::new();
+    for (word, format) in
+        [("plain", None), ("blank", Some("blank")), ("gold", Some("style:gold")), ("fixed", Some("fixed:many"))]
+    {
+        rows.push(scored(mob(&format!("score-mob-{word}"), Mob { tag: near, ..MOB }), MOB_NAME, format));
+        rows.push(scored(
+            tag(&format!("score-player-{word}"), Tag { position: [5.5, 64.0, 0.5], ..TAG }),
+            TAG.name,
+            format,
+        ));
+    }
+    for distance in [9.5, 10.1] {
+        rows.push(scored(
+            mob(&format!("score-mob-{}", float_text(distance)), Mob { tag: at(distance), ..MOB }),
+            MOB_NAME,
+            None,
+        ));
+    }
+    for (word, below) in [("short", 3.0), ("long", 20.0)] {
+        for distance in [5.0, 15.0] {
+            let label = format!("score-mob-below-{word}-{}", float_text(distance));
+            rows.push(scored(mob(&label, Mob { tag: at(distance), below: Some(below), ..MOB }), MOB_NAME, None));
+        }
+    }
+    rows.push(scored(mob("score-mob-other-owner", Mob { tag: near, ..MOB }), "someone", None));
+    rows.push(scored(mob("score-mob-sneaking", Mob { tag: Tag { shift: true, ..near }, ..MOB }), MOB_NAME, None));
+    rows.push(scored(mob("score-mob-hidden-name", Mob { tag: near, visible: false, ..MOB }), MOB_NAME, None));
+    rows.push(scored(
+        mob("score-entity", Mob { kind: "minecraft:minecart", renderer: "entity", tag: near, ..MOB }),
+        MOB_NAME,
+        None,
+    ));
+    rows.push(scored(
+        tag("score-player-crouching", Tag { position: [5.5, 64.0, 0.5], crouching: true, shift: true, ..TAG }),
+        TAG.name,
+        None,
+    ));
+    rows.push(scored(
+        tag("score-player-deadmau5", Tag { name: "deadmau5", position: [5.5, 64.0, 0.5], ..TAG }),
+        "deadmau5",
+        None,
+    ));
+    let mut sidebar = scored(mob("score-mob-sidebar-only", Mob { tag: near, ..MOB }), MOB_NAME, None);
+    sidebar["slots"] = json!({"1": "kills"});
+    rows.push(sidebar);
+    rows
+}
+
 /// The rows for entities that are not players.
 pub fn rows() -> Vec<Value> {
     [
@@ -287,6 +357,7 @@ pub fn rows() -> Vec<Value> {
         team_gate_rows(),
         team_dress_rows(),
         team_plain_rows(),
+        score_rows(),
     ]
     .concat()
 }
