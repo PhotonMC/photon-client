@@ -65,16 +65,26 @@ fn failure_for(status: u16, body: &str) -> LoginFailure {
 /// The join address for a session host. The token travels in the request, so a host that is not
 /// reached over TLS is only taken on this machine.
 fn join_url(host: &str) -> Result<String, ConnectionError> {
-    let loopback = ["http://127.0.0.1", "http://localhost", "http://[::1]"]
-        .iter()
-        .any(|prefix| host.starts_with(prefix));
-    if !host.starts_with("https://") && !loopback {
+    if !host.starts_with("https://") && !is_this_machine(host) {
         return Err(ConnectionError::InvalidArgument("session host needs https"));
     }
     Ok(format!(
         "{}/session/minecraft/join",
         host.trim_end_matches('/')
     ))
+}
+
+/// Whether a plain `http://` host names this machine, by its exact host name.
+fn is_this_machine(host: &str) -> bool {
+    let Some(rest) = host.strip_prefix("http://") else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    let name = match authority.strip_prefix('[') {
+        Some(inner) => inner.split(']').next().map(|ip| format!("[{ip}]")),
+        None => authority.split(':').next().map(str::to_owned),
+    };
+    matches!(name.as_deref(), Some("127.0.0.1" | "localhost" | "[::1]"))
 }
 
 fn json_string(text: &str) -> String {
@@ -126,7 +136,12 @@ mod tests {
     fn plain_http_is_only_for_this_machine() {
         assert!(join_url("https://sessionserver.mojang.com").is_ok());
         assert!(join_url("http://127.0.0.1:9000/").is_ok());
+        assert!(join_url("http://[::1]:9000").is_ok());
+        assert!(join_url("http://localhost/x").is_ok());
         assert!(join_url("http://example.com").is_err());
+        assert!(join_url("http://localhost.example.com").is_err());
+        assert!(join_url("http://127.0.0.1.nip.io").is_err());
+        assert!(join_url("http://127.0.0.1@example.com").is_err());
     }
 
     #[test]

@@ -54,6 +54,12 @@ The test server is offline, peaceful, seed 776, view distance 32, with RCON on 2
 
 The hooks run the same commands. The rules themselves are in the [coding standards](coding-standards.md).
 
+## Joining an online-mode server
+
+`cargo xtask server` runs an offline server, which skips encryption. To exercise the encrypted login, run a vanilla server with `online-mode=true` and `enforce-secure-profile=false`, keep its standard input open (it stops on end of input), and point its session lookups at a stub host with `-Dminecraft.api.session.host=URL -Dminecraft.api.services.host=URL -Dminecraft.api.profiles.host=URL` (all three are needed). The stub answers `POST /session/minecraft/join` by remembering the server hash, `GET /session/minecraft/hasJoined` by returning the profile for a remembered hash (204 otherwise), and the server's `GET /publickeys` at startup with a 204.
+
+The client takes its account from `PHOTON_UUID`, `PHOTON_ACCESS_TOKEN` and, for a host other than Mojang's, `PHOTON_SESSION_HOST` (plain `http://` is only accepted for this machine). The ignored test `cargo test -p photon-net --test online_join -- --ignored` joins with them as well as `PHOTON_LIVE_ADDRESS` and `PHOTON_LIVE_NAME`.
+
 ## Platform notes
 
 - **The `math` family** carries NaN bit patterns recorded on x86-64 Linux; arm64 Java produces differently signed NaNs in some operations, so a few `math` cases differ there.
