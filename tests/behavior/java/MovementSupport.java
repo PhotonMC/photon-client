@@ -586,7 +586,9 @@ class MovementSupport {
                 var spawner = (net.minecraft.world.level.block.entity.SpawnerBlockEntity) level.getBlockEntity(pos);
                 spawner.loadWithComponents(net.minecraft.world.level.storage.TagValueInput.create(
                     net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
-                spawner.getSpawner().getOrCreateDisplayEntity(level, pos);
+                if (!described.has("unseen")) {
+                    spawner.getSpawner().getOrCreateDisplayEntity(level, pos);
+                }
             }
         }
         if (row.has("vaults")) {

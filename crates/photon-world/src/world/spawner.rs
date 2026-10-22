@@ -16,6 +16,38 @@ pub(crate) struct SpawnerDisplayEntry {
 }
 
 impl ClientWorld {
+    /// `SpawnerRenderer.extractRenderState`: the renderer draws the spawner at a place, which
+    /// makes the mob it shows; until then its client tick does nothing but keep the old spin.
+    /// Gives back whether a spawner is there.
+    pub fn extract_spawner(&self, pos: Pos) -> bool {
+        let is_spawner = self
+            .block_state_at(pos.0, pos.1, pos.2)
+            .is_some_and(crate::block::chest::is_spawner_state);
+        if is_spawner {
+            self.spawners_extracted
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .insert(pos);
+        }
+        is_spawner
+    }
+
+    /// Whether the renderer has drawn the spawner at a place.
+    fn spawner_extracted(&self, pos: Pos) -> bool {
+        self.spawners_extracted
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .contains(&pos)
+    }
+
+    /// The spawners the renderer will have to draw again: those at the places that match.
+    pub(super) fn forget_spawner_extractions(&mut self, matches: impl Fn(Pos) -> bool) {
+        self.spawners_extracted
+            .get_mut()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain(|pos| !matches(*pos));
+    }
+
     /// `EntityGetter.hasNearbyAlivePlayer`: a player that is not a spectator and still lives
     /// within `range` of the point (a negative range reaches everywhere).
     fn has_nearby_alive_player(&self, (x, y, z): (f64, f64, f64), range: f64) -> bool {
@@ -188,9 +220,14 @@ impl ClientWorld {
             return;
         };
         let state = entity.spawner_state().cloned().unwrap_or_default();
+        // Only the renderer makes the mob, so a spawner it has not drawn has none.
+        let drawn = self.spawner_extracted(pos);
         self.sync_spawner_display(
             pos,
-            (state.entity_id.as_deref(), state.entity_traits),
+            (
+                state.entity_id.as_deref().filter(|_| drawn),
+                state.entity_traits,
+            ),
             false,
         );
         let centre = (
@@ -199,7 +236,7 @@ impl ClientWorld {
             f64::from(pos.2) + 0.5,
         );
         let near = self.has_nearby_alive_player(centre, f64::from(state.required_player_range));
-        let shows = near && state.entity_id.is_some();
+        let shows = near && self.spawner_displays.iter().any(|shown| shown.pos == pos);
         let Some(entity) = self.block_entity_mut_at(pos) else {
             return;
         };
@@ -215,6 +252,17 @@ impl ClientWorld {
             self.level_events.0.push(LevelEvent::SpawnerTick { pos });
         }
     }
+}
+
+/// A place the renderer has to draw again to make its spawner's mob.
+pub(super) fn forget_extracted(
+    extracted: &mut std::sync::Mutex<std::collections::HashSet<Pos>>,
+    pos: Pos,
+) {
+    extracted
+        .get_mut()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .remove(&pos);
 }
 
 /// `TrialSpawnerState.spinningMobSpeed`: the speed of the spin in a state that shows a mob.

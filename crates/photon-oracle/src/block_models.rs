@@ -123,6 +123,8 @@ fn spawned_mob_size(row: &Value) -> Result<(f32, f32), String> {
     if !world.apply_block_entity_update(input) {
         return Err("the spawner was rejected".into());
     }
+    // The renderer draws it, which makes the mob the tick then keeps.
+    world.extract_spawner((1, 1, 1));
     world
         .tick_block_entities(None)
         .map_err(|_| "the spawner failed to tick".to_owned())?;

@@ -35,6 +35,7 @@ impl ClientWorld {
             minecart_track_output: BTreeMap::new(),
             block_tickers: crate::world::BlockTickers::default(),
             spawner_displays: Vec::new(),
+            spawners_extracted: Default::default(),
             tables: crate::world::Tables::default(),
         }
     }
@@ -125,6 +126,7 @@ impl ClientWorld {
             self.destroying_blocks.clear();
             self.block_tickers = crate::world::BlockTickers::default();
             self.spawner_displays.clear();
+            self.forget_spawner_extractions(|_| true);
         }
         changed
     }

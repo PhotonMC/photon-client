@@ -193,6 +193,7 @@ fn is_other_drawn_state(state_id: BlockStateId) -> bool {
         || is_shelf_state(state_id)
         || is_campfire_state(state_id)
         || is_vault_state(state_id)
+        || is_spawner_state(state_id)
         || is_copper_statue_state(state_id)
         || is_portal_state(state_id)
 }
@@ -245,6 +246,12 @@ pub struct CopperStatueView {
 pub(crate) fn is_vault_state(state_id: BlockStateId) -> bool {
     static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
     is_of_classes(state_id, &[BlockClass::VaultBlock], &BLOCKS)
+}
+
+/// Whether a block state is a spawner's (the trial spawner is another class).
+pub(crate) fn is_spawner_state(state_id: BlockStateId) -> bool {
+    static BLOCKS: OnceLock<Vec<bool>> = OnceLock::new();
+    is_of_classes(state_id, &[BlockClass::SpawnerBlock], &BLOCKS)
 }
 
 /// What a vault shows, for drawing it.

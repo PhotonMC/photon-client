@@ -49,6 +49,15 @@ pub(crate) fn in_view(world: &photon_world::ClientWorld, view: FrameView) -> Vec
         .collect()
 }
 
+/// `SpawnerRenderer.extractRenderState` for the spawners in view: drawing one makes the mob it
+/// shows, which its client tick waits for.
+pub fn extract_spawners(session: &PlaySession, view: FrameView) {
+    let world = session.world();
+    for pos in in_view(world, view) {
+        world.extract_spawner(pos);
+    }
+}
+
 /// The triangles of the items suspicious blocks hold, once they have been brushed, in `fixed`'s
 /// display context.
 pub fn brushable_items(

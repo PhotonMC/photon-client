@@ -269,6 +269,7 @@ fn block_entity_items(
     view: FrameView,
     items: &mut Vec<Vertex>,
 ) {
+    super::block_entity_items::extract_spawners(session, view);
     super::block_entity_items::brushable_items(
         session,
         &mut layers.frames.layers,

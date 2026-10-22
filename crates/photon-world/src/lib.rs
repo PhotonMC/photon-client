@@ -147,6 +147,8 @@ pub struct ClientWorld {
     /// The mobs spawners show (`BaseSpawner.displayEntity`): made on their own, never added to the
     /// level, so nothing ticks, picks or counts them.
     spawner_displays: Vec<world::SpawnerDisplayEntry>,
+    /// The spawners the renderer has drawn: only those make their mob (`getOrCreateDisplayEntity`).
+    spawners_extracted: std::sync::Mutex<std::collections::HashSet<block::piston::Pos>>,
     /// What the enchanting tables' ticks read of the level.
     tables: world::Tables,
 }

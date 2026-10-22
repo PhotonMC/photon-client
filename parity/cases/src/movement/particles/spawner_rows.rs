@@ -12,7 +12,8 @@ use crate::movement::world::put_with;
 type Spawner = (i64, Option<&'static str>, Option<i64>, Option<i64>);
 
 fn spawner_row(label: &str) -> Value {
-    let spawners: [Spawner; 8] = [
+    // The two at negative x are never drawn, so they make no mob and do not tick.
+    let spawners: [Spawner; 10] = [
         (0, Some("minecraft:zombie"), None, None),
         (3, None, None, None),
         (6, Some("minecraft:zombie"), None, Some(0)),
@@ -21,6 +22,8 @@ fn spawner_row(label: &str) -> Value {
         (30, Some("minecraft:zombie"), None, None),
         (15, Some("minecraft:zombie"), None, Some(-1)),
         (18, Some("minecraft:zombie"), Some(-1), Some(200)),
+        (-3, Some("minecraft:zombie"), None, None),
+        (-6, Some("minecraft:skeleton"), None, Some(5)),
     ];
     let mut blocks = Vec::new();
     let mut places = Vec::new();
@@ -31,6 +34,9 @@ fn spawner_row(label: &str) -> Value {
         let mut spawner = json!({"x": x, "y": 64, "z": 0});
         if let Some(entity) = entity {
             spawner["entity"] = json!(entity);
+        }
+        if x < 0 {
+            spawner["unseen"] = json!(true);
         }
         if let Some(range) = range {
             spawner["range"] = json!(range);

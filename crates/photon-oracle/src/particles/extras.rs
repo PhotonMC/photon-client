@@ -244,11 +244,19 @@ fn place_spawner(world: &mut ClientWorld, spawner: &Value) -> Result<(), String>
         type_id: spawner_type,
         tag: Some(&bytes),
     });
-    if placed {
-        Ok(())
-    } else {
-        Err("a spawner was rejected".into())
+    if !placed {
+        return Err("a spawner was rejected".into());
     }
+    // The renderer draws it, as the reference's setup does, unless the row keeps it unseen.
+    if !trial && spawner["unseen"].as_bool() != Some(true) {
+        let at = (
+            i32_field(spawner, "x")?,
+            i32_field(spawner, "y")?,
+            i32_field(spawner, "z")?,
+        );
+        world.extract_spawner(at);
+    }
+    Ok(())
 }
 
 /// The shared data of a vault: the players connected to it and, if the row says, its reach.
