@@ -84,6 +84,7 @@ pub struct DialogScreen {
     scroll: f64,
     dragging: bool,
     focus: Option<Focus>,
+    shift: Cell<bool>,
     input: Cell<InputType>,
 }
 
@@ -102,6 +103,14 @@ fn place_header(arena: &mut Arena, (title, warning): (&Widget, &Widget), width: 
         (0, 0, header_width, header_height),
         (0.5, 0.5),
     );
+}
+
+/// The tooltip of the warning button.
+fn warning_tooltip(lang: &Lang) -> Holder {
+    Holder::of(
+        lang,
+        &Component::translatable("menu.custom_screen_info.tooltip"),
+    )
 }
 
 /// The controls of the dialog, in the body after its elements.
@@ -255,10 +264,7 @@ impl DialogScreen {
             can_close: common.can_close_with_escape,
             title,
             warning,
-            warning_tooltip: Holder::of(
-                lang,
-                &Component::translatable("menu.custom_screen_info.tooltip"),
-            ),
+            warning_tooltip: warning_tooltip(lang),
             parts,
             controls,
             buttons,
@@ -268,6 +274,7 @@ impl DialogScreen {
             scroll: 0.0,
             dragging: false,
             focus: None,
+            shift: Cell::new(false),
             input: Cell::new(InputType::Mouse),
             arena,
         })

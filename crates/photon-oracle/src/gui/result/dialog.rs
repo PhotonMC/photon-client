@@ -324,6 +324,14 @@ fn wait_steps(
     Ok(())
 }
 
+/// A click, with Shift down if the step says so.
+fn click_step(screen: &mut DialogScreen, at: (i32, i32), shift: &Value) -> Option<Press> {
+    screen.set_shift(shift.as_bool().unwrap_or(false));
+    let press = screen.clicked(at);
+    screen.set_shift(false);
+    press
+}
+
 /// A key the reference's screen was given.
 fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, String> {
     Ok(match key {
@@ -332,6 +340,12 @@ fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, Stri
             None
         }
         "enter" | "space" => screen.pressed(),
+        "shift+enter" => {
+            screen.set_shift(true);
+            let press = screen.pressed();
+            screen.set_shift(false);
+            press
+        }
         "escape" => screen.escape(),
         "left" | "right" => {
             screen.arrow(key == "right");
@@ -391,7 +405,7 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                     None
                 }
                 "key" => key_press(&mut screen, step["key"].as_str().unwrap_or_default())?,
-                "click" => screen.clicked((x as i32, y as i32)),
+                "click" => click_step(&mut screen, (x as i32, y as i32), &step["shift"]),
                 "drag" => {
                     screen.dragged(x, y, step["dy"].as_f64().unwrap_or(0.0));
                     None

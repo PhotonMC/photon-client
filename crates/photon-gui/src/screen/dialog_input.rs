@@ -80,19 +80,23 @@ impl Control {
     }
 
     /// The mouse or the keyboard used the control (`AbstractButton.onPress`).
-    pub(super) fn press(&mut self) {
+    /// With Shift down a cycle button goes back.
+    pub(super) fn press(&mut self, shift: bool) {
         match &mut self.state {
             State::Check { selected, .. } => *selected = !*selected,
-            State::Cycle { labels, index, .. } => *index = (*index + 1) % labels.len(),
+            State::Cycle { labels, index, .. } => {
+                let count = labels.len();
+                *index = (*index + if shift { count - 1 } else { 1 }) % count;
+            }
             State::Slider(slider) => slider.select(),
         }
     }
 
     /// A press of the primary button on the control at `rect`.
-    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle) {
+    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle, shift: bool) {
         match &mut self.state {
             State::Slider(slider) => slider.clicked(x, rect),
-            _ => self.press(),
+            _ => self.press(shift),
         }
     }
 

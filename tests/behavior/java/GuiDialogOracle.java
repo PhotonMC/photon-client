@@ -279,7 +279,7 @@ class GuiDialogOracle extends GuiSocialOracle {
                         int code = switch (name) {
                             case "tab", "shift+tab" -> 258;
                             case "escape" -> 256;
-                            case "enter" -> 257;
+                            case "enter", "shift+enter" -> 257;
                             case "space" -> 32;
                             case "left" -> 263;
                             case "right" -> 262;
@@ -292,8 +292,10 @@ class GuiDialogOracle extends GuiSocialOracle {
                     }
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                        var clickInfo = step.has("shift") && step.get("shift").getAsBoolean()
+                            ? new net.minecraft.client.input.MouseButtonInfo(0, 1) : info;
                         shown.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
-                            step.get("x").getAsDouble(), step.get("y").getAsDouble(), info), false);
+                            step.get("x").getAsDouble(), step.get("y").getAsDouble(), clickInfo), false);
                     }
                     case "drag" -> shown.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
                         step.get("x").getAsDouble(), step.get("y").getAsDouble(), info),

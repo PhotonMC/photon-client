@@ -58,7 +58,7 @@ impl DialogScreen {
         if let Some(index) = control {
             self.set_focus(Some(Focus::Input(index)));
             let rect = self.control_rect(index);
-            self.controls[index].clicked(mouse.0, rect);
+            self.controls[index].clicked(mouse.0, rect, self.shift.get());
             return true;
         }
         false
@@ -76,6 +76,11 @@ impl DialogScreen {
             self.controls[index].focus(true);
         }
         self.focus = focus;
+    }
+
+    /// Whether Shift is down for the next key or click.
+    pub fn set_shift(&self, shift: bool) {
+        self.shift.set(shift);
     }
 
     /// An arrow key: the focused control moves, if it takes it.
@@ -168,7 +173,7 @@ impl DialogScreen {
             Focus::Warning => Some(Press::Warning),
             Focus::Part(_) => None,
             Focus::Input(index) => {
-                self.controls[index].press();
+                self.controls[index].press(self.shift.get());
                 None
             }
         }

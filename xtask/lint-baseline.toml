@@ -664,7 +664,7 @@
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 98
 "crates/photon-gui/src/screen/creative.rs::CreativeScreen::build" = 71
 "crates/photon-gui/src/screen/creative/tab.rs::CreativeScreen::build_tooltip" = 69
-"crates/photon-gui/src/screen/dialog.rs::DialogScreen::new" = 86
+"crates/photon-gui/src/screen/dialog.rs::DialogScreen::new" = 84
 "crates/photon-gui/src/screen/game_mode.rs::GameModeSwitcherScreen::draw" = 74
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::build" = 82
 "crates/photon-gui/src/screen/generic.rs::slot_position" = 64

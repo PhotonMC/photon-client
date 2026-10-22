@@ -105,7 +105,8 @@ fn screen_event(
             screen.tab(!modifiers.contains(glfw::Modifiers::Shift));
             None
         }
-        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, modifiers) => {
+            screen.set_shift(modifiers.contains(glfw::Modifiers::Shift));
             screen.pressed()
         }
         WindowEvent::Key(key @ (Key::Left | Key::Right), _, Action::Press | Action::Repeat, _) => {
@@ -120,7 +121,8 @@ fn screen_event(
             screen.scrolled(mouse, y);
             None
         }
-        WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+        WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, modifiers) => {
+            screen.set_shift(modifiers.contains(glfw::Modifiers::Shift));
             screen.clicked(mouse)
         }
         WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Release, _) => {

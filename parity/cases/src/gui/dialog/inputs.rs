@@ -44,6 +44,16 @@ fn option_rows() -> Vec<Value> {
         Dialog { inputs: Some(vec![modes()]), steps: vec![click(200, 98), click(200, 98)], ..row("option-wraps") },
         Dialog {
             inputs: Some(vec![modes()]),
+            steps: vec![json!({"do": "click", "x": 200, "y": 98, "shift": true})],
+            ..row("option-shift-click")
+        },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            steps: [times(key("tab"), 3), vec![key("shift+enter"), key("shift+enter")]].concat(),
+            ..row("option-shift-enter")
+        },
+        Dialog {
+            inputs: Some(vec![modes()]),
             buttons: send(),
             steps: vec![click(213, 223)],
             ..row("option-template-initial")
