@@ -321,6 +321,7 @@ impl MerchantPanel {
         for index in 0..SHOWN {
             let at = Self::button_origin(index, origin);
             if left_button && self.visible[index] && Self::over(mouse, at, BUTTON) {
+                crate::ui_sound::play_down_sound();
                 self.shop_item = index + self.scroll_off;
                 return Some(vec![ScreenAction::SelectTrade(self.shop_item as i32)]);
             }

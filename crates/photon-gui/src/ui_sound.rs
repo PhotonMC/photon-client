@@ -31,6 +31,15 @@ pub fn play_down_sound() {
     });
 }
 
+/// `SimpleSoundInstance.forUI(sound, 1.0F)`: a sound of the interface at the default volume.
+pub fn play_ui(event: &'static str) {
+    ask(UiSound {
+        event,
+        pitch: 1.0,
+        volume: UI_VOLUME,
+    });
+}
+
 /// Queue a sound of the interface.
 pub fn ask(sound: UiSound) {
     QUEUE.with(|queue| queue.borrow_mut().push(sound));

@@ -191,6 +191,7 @@ impl BeaconPanel {
             .iter()
             .position(|button| Self::over(button, origin, mouse))?;
         let button = self.buttons[index].clone();
+        crate::ui_sound::play_down_sound();
         match button.role {
             Role::Power { primary: true, .. } if !button.selected => {
                 self.primary = Some(button.effect);

@@ -195,13 +195,14 @@ impl Screen for GenericScreen {
         if let Some(entry) = self.stone_click(mouse, menu) {
             // `clickMenuButton`: one that is not the chosen one, and is an entry.
             let chosen = i32::from(menu.data.first().copied().unwrap_or(-1));
-            return if entry == chosen {
-                Vec::new()
-            } else {
-                vec![ScreenAction::Button(entry)]
-            };
+            if entry == chosen {
+                return Vec::new();
+            }
+            crate::ui_sound::play_ui("minecraft:ui.stonecutter.select_recipe");
+            return vec![ScreenAction::Button(entry)];
         }
         if let Some(entry) = self.loom_click(mouse, menu) {
+            crate::ui_sound::play_ui("minecraft:ui.loom.select_pattern");
             return vec![ScreenAction::Button(entry)];
         }
         if let Some(row) = self.enchant_click(mouse, menu) {

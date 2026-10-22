@@ -238,6 +238,7 @@ impl Screen for BookScreen {
         // The buttons are the screen's widgets, which take the click first.
         for (widget, press) in &self.buttons {
             if widget.contains(&self.arena, (mouse.0 as i32, mouse.1 as i32)) {
+                crate::ui_sound::play_down_sound();
                 return vec![match press {
                     Press::Done => ScreenAction::Close,
                     Press::Take => ScreenAction::Button(3),
@@ -247,6 +248,11 @@ impl Screen for BookScreen {
         let (pages, page) = self.book(menu);
         for (forward, visible) in [(true, page + 1 < pages.len()), (false, page > 0)] {
             if visible && Self::over(mouse, self.page_button_origin(forward), PAGE_BUTTON) {
+                // `PageButton.playDownSound`: only a book in the hand turns with a sound; the
+                // lectern's screen is made without it.
+                if self.held.is_some() {
+                    crate::ui_sound::play_ui("minecraft:item.book.page_turn");
+                }
                 return self.turn(if forward { 2 } else { 1 });
             }
         }
@@ -434,6 +440,23 @@ mod tests {
         // Without the right to build there is one wide Done button, and nothing to take.
         let mut visitor = screen(false);
         assert_eq!(press(&mut visitor, &menu, take), vec![ScreenAction::Close]);
+    }
+
+    #[test]
+    fn only_a_book_in_the_hand_turns_its_pages_with_a_sound() {
+        let menu = book_menu(3, 0);
+        let mut lectern = screen(true);
+        crate::ui_sound::take();
+        let at = (f64::from(lectern.left() + 116 + 5), 164.0);
+        press(&mut lectern, &menu, at);
+        assert!(crate::ui_sound::take().is_empty());
+        let pages = vec![Component::literal("a"), Component::literal("b")];
+        let mut held = BookScreen::held((427, 240), Arc::default(), Arc::default(), pages);
+        let at = (f64::from(held.left() + 116 + 5), 164.0);
+        press(&mut held, &menu, at);
+        let sounds = crate::ui_sound::take();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, "minecraft:item.book.page_turn");
     }
 
     #[test]
