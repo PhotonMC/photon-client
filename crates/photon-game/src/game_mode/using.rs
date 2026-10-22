@@ -349,6 +349,7 @@ impl GameMode {
             item: Some(item),
             horizontal_direction: photon_core::direction::Direction::from_y_rot(f64::from(y_rot)),
             replace_clicked: true,
+            tags: world.block_state_registry().tags(),
         };
         // `BlockPlaceContext`: the clicked block is replaced if it may be.
         place_ctx.replace_clicked = match rules::can_be_replaced(state_at(x, y, z), &place_ctx) {
@@ -375,15 +376,7 @@ impl GameMode {
             Rule::Known(false) => return UseResult::Fail,
             Rule::Unported => return UseResult::Success { swing: true },
         }
-        let block_pos = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
-        let obstructed = !ctx
-            .world
-            .block_state_registry()
-            .collision_shape(state)
-            .is_empty()
-            && !ctx.player.spectating()
-            && ctx.player.is_colliding(ctx.world, block_pos, state);
-        if obstructed {
+        if obstructs_player(ctx, pos, state) {
             return UseResult::Fail;
         }
         let position = ctx.player.position();
@@ -559,6 +552,22 @@ impl GameMode {
             sequence,
         }
     }
+}
+
+/// `BlockItem.canPlace`'s collision check: a state with a collision shape may not go where the
+/// player (unless spectating) stands.
+fn obstructs_player(
+    ctx: &Context<'_>,
+    pos: (i32, i32, i32),
+    state: photon_core::ids::BlockStateId,
+) -> bool {
+    let block_pos = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
+    !ctx.world
+        .block_state_registry()
+        .collision_shape(state)
+        .is_empty()
+        && !ctx.player.spectating()
+        && ctx.player.is_colliding(ctx.world, block_pos, state)
 }
 
 #[cfg(test)]

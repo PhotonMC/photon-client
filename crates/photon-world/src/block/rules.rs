@@ -116,6 +116,8 @@ pub struct PlaceContext<'a> {
     pub horizontal_direction: Direction,
     /// Whether the clicked block itself is replaced (`replaceClicked`).
     pub replace_clicked: bool,
+    /// The block tags the server sent.
+    pub tags: &'a super::tags::BlockTags,
 }
 
 impl PlaceContext<'_> {
@@ -178,17 +180,9 @@ pub fn can_be_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<bool
 /// refusal.
 pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
     let default = default_state(block);
-    let pos = ctx.clicked_pos();
-    #[expect(
-        clippy::neg_cmp_op_on_partial_ord,
-        reason = "the reference's `!(y > 0.5)`, which a NaN also passes"
-    )]
-    let lower_half = |ctx: &PlaceContext<'_>| {
-        ctx.face != Direction::Down
-            && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
-    };
     match owner(&BLOCKS[block], Method::GetStateForPlacement) {
         Some(BlockClass::Block) => Rule::Known(Some(default)),
+        Some(BlockClass::SnowyBlock) => Rule::Known(snowy_placement(default, ctx)),
         Some(BlockClass::RotatedPillarBlock) => {
             let axis = match ctx.face.axis() {
                 Axis::X => "x",
@@ -197,42 +191,65 @@ pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<
             };
             Rule::Known(with_property(default, "axis", axis))
         }
-        Some(BlockClass::SlabBlock) => {
-            let replaced = ctx.state(pos);
-            if block_index(replaced).map(|(index, _)| index) == Some(block) {
-                let double = with_property(replaced, "type", "double")
-                    .and_then(|state| with_property(state, "waterlogged", "false"));
-                return Rule::Known(double);
-            }
-            let water = if is_water_source(replaced) {
-                "true"
-            } else {
-                "false"
-            };
-            let half = if lower_half(ctx) { "bottom" } else { "top" };
-            Rule::Known(
-                with_property(default, "type", half)
-                    .and_then(|state| with_property(state, "waterlogged", water)),
-            )
-        }
-        Some(BlockClass::StairBlock) => {
-            let water = if is_water_source(ctx.state(pos)) {
-                "true"
-            } else {
-                "false"
-            };
-            let half = if lower_half(ctx) { "bottom" } else { "top" };
-            let Some(state) = with_property(default, "facing", ctx.horizontal_direction.name())
-                .and_then(|state| with_property(state, "half", half))
-                .and_then(|state| with_property(state, "waterlogged", water))
-            else {
-                return Rule::Known(None);
-            };
-            let shape = stairs_shape(state, ctx.state_at, pos);
-            Rule::Known(with_property(state, "shape", shape))
-        }
+        Some(BlockClass::SlabBlock) => Rule::Known(slab_placement(block, default, ctx)),
+        Some(BlockClass::StairBlock) => Rule::Known(stair_placement(default, ctx)),
         _ => Rule::Unported,
     }
+}
+
+/// `"true"` or `"false"`, as a boolean property's value.
+fn flag(value: bool) -> &'static str {
+    if value { "true" } else { "false" }
+}
+
+/// Whether a slab or stair goes in the lower half: not against a downward face, and an upward
+/// face or a hit in the lower half of the block.
+#[expect(
+    clippy::neg_cmp_op_on_partial_ord,
+    reason = "the reference's `!(y > 0.5)`, which a NaN also passes"
+)]
+fn lower_half(ctx: &PlaceContext<'_>) -> bool {
+    let pos = ctx.clicked_pos();
+    ctx.face != Direction::Down
+        && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
+}
+
+/// `SnowyBlock.getStateForPlacement`: snowy when the block above is in the snow tag
+/// (`isSnowySetting`).
+fn snowy_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let (x, y, z) = ctx.clicked_pos();
+    let above = ctx.state((x, y + 1, z));
+    let snowy =
+        block_index(above).is_some_and(|(index, _)| ctx.tags.contains(index, "minecraft:snow"));
+    with_property(default, "snowy", flag(snowy))
+}
+
+/// `SlabBlock.getStateForPlacement`: a slab of the same block becomes a double one.
+fn slab_placement(
+    block: usize,
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Option<BlockStateId> {
+    let replaced = ctx.state(ctx.clicked_pos());
+    if block_index(replaced).map(|(index, _)| index) == Some(block) {
+        return with_property(replaced, "type", "double")
+            .and_then(|state| with_property(state, "waterlogged", "false"));
+    }
+    let half = if lower_half(ctx) { "bottom" } else { "top" };
+    with_property(default, "type", half)
+        .and_then(|state| with_property(state, "waterlogged", flag(is_water_source(replaced))))
+}
+
+/// `StairBlock.getStateForPlacement`.
+fn stair_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let water = flag(is_water_source(ctx.state(pos)));
+    let half = if lower_half(ctx) { "bottom" } else { "top" };
+    let state = with_property(default, "facing", ctx.horizontal_direction.name())
+        .and_then(|state| with_property(state, "half", half))
+        .and_then(|state| with_property(state, "waterlogged", water))?;
+    let shape = stairs_shape(state, ctx.state_at, pos);
+    with_property(state, "shape", shape)
 }
 
 /// `BlockBehaviour.canSurvive` as the block's class decides it.
@@ -380,4 +397,64 @@ pub fn item_use_owner(item_id: ItemId) -> ItemClass {
 /// Whether a state is air, for `updateOrDestroy`.
 pub fn state_is_air(state: BlockStateId) -> bool {
     is_air(state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::block::tags::BlockTags;
+    use photon_core::identifier::Identifier;
+    use photon_core::tags::{RegistryTags, TagEntry};
+
+    fn snow_tag(blocks: &[&str]) -> BlockTags {
+        let id = |text: &str| Identifier::parse(text).expect("an identifier");
+        let members = blocks
+            .iter()
+            .map(|name| registry::block_index(name).expect("a block") as i32)
+            .collect();
+        BlockTags::from_registries(&[RegistryTags::new(
+            id("minecraft:block"),
+            vec![TagEntry::new(id("minecraft:snow"), members)],
+        )])
+        .expect("the block registry")
+    }
+
+    /// Grass placed on stone, under `above`, as the client predicts it.
+    fn place_grass(above: &str, tags: &BlockTags) -> Option<&'static str> {
+        let above = default_state(registry::block_index(above).expect("a block"));
+        let state_at = |_: i32, y: i32, _: i32| {
+            if y == 65 {
+                above
+            } else {
+                crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+            }
+        };
+        let ctx = PlaceContext {
+            state_at: &state_at,
+            hit_pos: (0, 63, 0),
+            face: Direction::Up,
+            location: (0.5, 64.0, 0.5),
+            item: None,
+            horizontal_direction: Direction::North,
+            replace_clicked: false,
+            tags,
+        };
+        let grass = registry::block_index("minecraft:grass_block").expect("grass");
+        match state_for_placement(grass, &ctx) {
+            Rule::Known(Some(state)) => property(state, "snowy"),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_snowy_block_is_snowy_under_a_block_of_the_snow_tag() {
+        let tags = snow_tag(&["minecraft:snow", "minecraft:snow_block"]);
+        assert_eq!(place_grass("minecraft:snow", &tags), Some("true"));
+        assert_eq!(place_grass("minecraft:stone", &tags), Some("false"));
+        // Before the server sent tags, nothing is in the snow tag.
+        assert_eq!(
+            place_grass("minecraft:snow", &BlockTags::default()),
+            Some("false")
+        );
+    }
 }
