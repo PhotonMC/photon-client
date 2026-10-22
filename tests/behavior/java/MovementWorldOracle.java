@@ -436,6 +436,14 @@ class MovementWorldOracle extends MovementLivingOracle {
         }
     }
 
+    /** Where the name tag hangs (`EntityAttachment.NAME_TAG`, not yet turned); absent for none. */
+    static void nameTagAttachment(JsonObject out, net.minecraft.world.entity.EntityDimensions size, String prefix) {
+        var point = size.attachments().getNullable(net.minecraft.world.entity.EntityAttachment.NAME_TAG, 0, 0.0F);
+        if (point != null) {
+            out.add(prefix + "name_tag", vectorBits(point));
+        }
+    }
+
     /**
      * Every entity type as a new entity of it answers the crosshair:
      * `isPickable`, `getPickRadius`, `canBePickedFromInside`, and its size in
@@ -486,6 +494,7 @@ class MovementWorldOracle extends MovementLivingOracle {
                     seats.add(vectorBits(point));
                 }
                 out.add("passengers", seats);
+                nameTagAttachment(out, size, "");
                 leashSupport(out, entity, "");
                 if (entity instanceof net.minecraft.world.entity.Mob mob) {
                     mob.setBaby(true);
@@ -494,6 +503,7 @@ class MovementWorldOracle extends MovementLivingOracle {
                         out.addProperty("baby_width", Oracle.bits(baby.width()));
                         out.addProperty("baby_height", Oracle.bits(baby.height()));
                         out.addProperty("baby_eye_height", Oracle.bits(baby.eyeHeight()));
+                        nameTagAttachment(out, baby, "baby_");
                         leashSupport(out, entity, "baby_");
                     }
                 }

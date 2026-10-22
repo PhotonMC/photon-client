@@ -301,6 +301,10 @@ pub struct EntityPick {
     pub quad_holder: bool,
     /// Where each passenger sits (`EntityAttachment.PASSENGER`), before the entity's turn.
     pub passengers: &'static [(f64, f64, f64)],
+    /// Where the name tag hangs (`EntityAttachment.NAME_TAG`), before the entity's turn, for a
+    /// grown one and a baby; none for a type without the attachment.
+    pub name_tag: Option<(f64, f64, f64)>,
+    pub baby_name_tag: Option<(f64, f64, f64)>,
 }
 
 /// How a leashable type takes a leash.

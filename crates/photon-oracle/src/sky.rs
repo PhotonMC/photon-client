@@ -34,6 +34,14 @@ pub(super) fn leash_fields(
     }
 }
 
+/// The point a name tag hangs at, as the reference's row writes it (absent for none).
+fn name_tag_field(out: &mut Value, point: Option<(f64, f64, f64)>, prefix: &str) {
+    if let Some((x, y, z)) = point {
+        out[format!("{prefix}name_tag")] =
+            json!([x, y, z].map(|value| format!("{:016x}", value.to_bits())));
+    }
+}
+
 /// `entity_pick_table`: the generated table of what the crosshair needs of
 /// every entity type, answered as the reference's rows are.
 pub(super) fn entity_pick_table_result(request: &Value) -> Value {
@@ -72,11 +80,13 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
                                 .map(|value| format!("{:016x}", value.to_bits())))
                             .collect::<Vec<_>>()
                     );
+                    name_tag_field(&mut out, pick.name_tag, "");
                     leash_fields(&mut out, name, pick, pick.size, false, "");
                     if let Some((width, height, eye_height)) = pick.baby {
                         out["baby_width"] = json!(hex(width));
                         out["baby_height"] = json!(hex(height));
                         out["baby_eye_height"] = json!(hex(eye_height));
+                        name_tag_field(&mut out, pick.baby_name_tag, "baby_");
                         leash_fields(
                             &mut out,
                             name,
