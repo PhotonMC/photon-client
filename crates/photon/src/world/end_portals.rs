@@ -1,6 +1,7 @@
 //! The surfaces of the end portals and end gateways (`AbstractEndPortalRenderer`): the cube of
 //! each, with the faces that show, drawn by the portal pipeline over where it is on the screen.
 
+use photon_core::direction::Direction;
 use photon_net::connection::PlaySession;
 use photon_render::block_entity::end_portal::{cube_quads, portal_pose};
 use photon_render::joml::Pose;
@@ -17,8 +18,8 @@ const RADIUS_CHUNKS: i32 = 16;
 const GATEWAY_VIEW_DISTANCE: f64 = 256.0;
 
 /// How many layers a portal and a gateway lay over the sky (`PORTAL_LAYERS` of their pipelines).
-const PORTAL_LAYERS: f32 = 15.0;
-const GATEWAY_LAYERS: f32 = 16.0;
+pub(crate) const PORTAL_LAYERS: f32 = 15.0;
+pub(crate) const GATEWAY_LAYERS: f32 = 16.0;
 
 /// The triangles of every portal and gateway surface in view, kept in `models` for the frame.
 pub fn end_portals(session: &PlaySession, models: &mut MobModels, view: FrameView) {
@@ -64,16 +65,21 @@ pub fn end_portals(session: &PlaySession, models: &mut MobModels, view: FrameVie
         } else {
             PORTAL_LAYERS
         };
-        for quad in cube_quads(&pose, &surface.faces) {
-            for index in [0, 1, 2, 0, 2, 3] {
-                models.portals.push(Vertex {
-                    position: quad[index],
-                    uv: [0.0; 2],
-                    shade: 1.0,
-                    tint: [layers, 0.0, 0.0, 0.0],
-                    light: [0.0; 2],
-                });
-            }
+        push_cube(models, (&pose, layers), &surface.faces);
+    }
+}
+
+/// The faces of a portal or gateway cube, drawn by the portal pipeline with `layers` over the sky.
+pub(crate) fn push_cube(models: &mut MobModels, (pose, layers): (&Pose, f32), faces: &[Direction]) {
+    for quad in cube_quads(pose, faces) {
+        for index in [0, 1, 2, 0, 2, 3] {
+            models.portals.push(Vertex {
+                position: quad[index],
+                uv: [0.0; 2],
+                shade: 1.0,
+                tint: [layers, 0.0, 0.0, 0.0],
+                light: [0.0; 2],
+            });
         }
     }
 }

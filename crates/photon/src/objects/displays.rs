@@ -137,6 +137,7 @@ pub fn special_displays(
         };
         let at = (block, &shown.pose, shown.light);
         vertices.extend(special_block_vertices(models, textures, at).unwrap_or_default());
+        end_cube(models, block, &shown.pose);
     }
 }
 
@@ -306,4 +307,19 @@ pub fn display_texts(
 /// Whether a block state is the conduit.
 fn is_conduit(state: photon_core::ids::BlockStateId) -> bool {
     photon_world::block::state_or_air(state).block().name == "minecraft:conduit"
+}
+
+/// `EndCubeSpecialRenderer`: the whole cube of an end gateway, or the slab of an end portal, for
+/// the portal pipeline.
+fn end_cube(models: &mut MobModels, state: photon_core::ids::BlockStateId, pose: &Pose) {
+    use crate::world::end_portals::{GATEWAY_LAYERS, PORTAL_LAYERS, push_cube};
+    let faces: Vec<_> = photon_core::direction::Direction::stream().collect();
+    match photon_world::block::state_or_air(state).block().name {
+        "minecraft:end_gateway" => push_cube(models, (pose, GATEWAY_LAYERS), &faces),
+        "minecraft:end_portal" => {
+            let slab = photon_render::block_entity::end_portal::portal_pose(pose);
+            push_cube(models, (&slab, PORTAL_LAYERS), &faces);
+        }
+        _ => {}
+    }
 }
