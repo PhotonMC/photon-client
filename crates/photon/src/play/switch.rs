@@ -196,4 +196,29 @@ impl Play {
         }
         Ok(Flow::Next)
     }
+
+    /// A frame of the disconnected screen with no level behind it (`Minecraft.disconnect` clears
+    /// the level before the screen is shown).
+    pub(super) fn draw_disconnected(&mut self) -> Result<()> {
+        let scale = self.surface.scale();
+        let size = (scale.gui_scaled_width(), scale.gui_scaled_height());
+        let mouse = (
+            self.controls.gui_mouse.0 as i32,
+            self.controls.gui_mouse.1 as i32,
+        );
+        let Some(screen) = self.controls.disconnected.as_mut() else {
+            return Ok(());
+        };
+        let lang = self.gui.lang();
+        let (font, _) = self.gui.text_assets();
+        if screen.size() != size {
+            *screen = screen.resized(font, lang, size);
+        }
+        self.gui
+            .draw_menu_screen(&mut self.backend, &self.surface, |frame, atlas, font| {
+                screen.draw(frame, atlas, font, mouse);
+            })?;
+        self.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY)?;
+        Ok(())
+    }
 }

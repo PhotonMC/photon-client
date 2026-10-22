@@ -211,6 +211,11 @@ fn draw_frame(mut play: NonSendMut<Play>, clock: Res<Clock>, mut stop: ResMut<St
         play.draw_switch(kind)?;
         return Ok(());
     }
+    // A lost connection has the disconnected screen alone: the level is gone.
+    if play.controls.disconnected.is_some() {
+        play.draw_disconnected()?;
+        return Ok(());
+    }
     if let Flow::Stop = play.draw([clock.start, clock.ticked], clock.ticks, clock.script_done)? {
         stop.0 = true;
     }
