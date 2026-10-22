@@ -83,67 +83,19 @@ impl OptionWidget {
         arena: &photon_gui::layout::Arena,
         step: &Value,
     ) -> Result<(), String> {
-        use photon_gui::widgets::slider::{InputType, SliderKey};
         let number = |key: &str| step[key].as_f64().unwrap_or(0.0);
         let shift = step["shift"].as_bool().unwrap_or(false);
-        let key = match step["key"].as_str() {
-            Some("left") => Some(SliderKey::Left),
-            Some("right") => Some(SliderKey::Right),
-            Some("enter" | "space") => Some(SliderKey::Select),
-            _ => None,
-        };
         match step["do"].as_str().unwrap_or_default() {
-            "focus" => {
-                let input = match step["input"].as_str().unwrap_or_default() {
-                    "MOUSE" => InputType::Mouse,
-                    "KEYBOARD_TAB" => InputType::KeyboardTab,
-                    "KEYBOARD_ARROW" => InputType::KeyboardArrow,
-                    _ => InputType::None,
-                };
-                match self {
-                    Self::Fov(slider) => slider.set_focused(true, input),
-                    Self::Unit(slider) => slider.set_focused(true, input),
-                    Self::Boolean(button) => button.set_focused(true),
-                    Self::Visibility(button) => button.set_focused(true),
-                }
-            }
-            "unfocus" => match self {
-                Self::Fov(slider) => slider.set_focused(false, InputType::None),
-                Self::Unit(slider) => slider.set_focused(false, InputType::None),
-                Self::Boolean(button) => button.set_focused(false),
-                Self::Visibility(button) => button.set_focused(false),
-            },
-            "click" => {
-                let (x, y) = (number("x"), number("y"));
-                let at = (x as i32, y as i32);
-                match self {
-                    Self::Fov(slider) => ignore(slider.clicked(lang, arena, (x, y))),
-                    Self::Unit(slider) => ignore(slider.clicked(lang, arena, (x, y))),
-                    Self::Boolean(button) => ignore(button.clicked(lang, arena, at, shift)),
-                    Self::Visibility(button) => ignore(button.clicked(lang, arena, at, shift)),
-                }
-            }
+            "focus" => self.focus(step["input"].as_str().unwrap_or_default()),
+            "unfocus" => self.unfocus(),
+            "click" => self.click(lang, arena, (number("x"), number("y")), shift),
             "drag" => match self {
                 Self::Fov(slider) => ignore(slider.dragged(lang, arena, number("x"))),
                 Self::Unit(slider) => ignore(slider.dragged(lang, arena, number("x"))),
                 _ => {}
             },
-            "release" => match self {
-                Self::Fov(slider) => slider.released(lang),
-                Self::Unit(slider) => slider.released(lang),
-                _ => {}
-            },
-            "key" => match (self, key) {
-                (Self::Fov(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
-                (Self::Unit(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
-                (Self::Boolean(button), Some(SliderKey::Select)) => {
-                    ignore(button.selected(lang, shift));
-                }
-                (Self::Visibility(button), Some(SliderKey::Select)) => {
-                    ignore(button.selected(lang, shift));
-                }
-                _ => {}
-            },
+            "release" => self.release(lang),
+            "key" => self.key(lang, arena, step["key"].as_str(), shift),
             "scroll" => match self {
                 Self::Boolean(button) => ignore(button.scrolled(lang, number("dy"))),
                 Self::Visibility(button) => ignore(button.scrolled(lang, number("dy"))),
@@ -152,6 +104,94 @@ impl OptionWidget {
             other => return Err(format!("unknown step {other}")),
         }
         Ok(())
+    }
+
+    fn focus(&mut self, input: &str) {
+        use photon_gui::widgets::slider::InputType;
+        let input = match input {
+            "MOUSE" => InputType::Mouse,
+            "KEYBOARD_TAB" => InputType::KeyboardTab,
+            "KEYBOARD_ARROW" => InputType::KeyboardArrow,
+            _ => InputType::None,
+        };
+        match self {
+            Self::Fov(slider) => slider.set_focused(true, input),
+            Self::Unit(slider) => slider.set_focused(true, input),
+            Self::Boolean(button) => button.set_focused(true),
+            Self::Visibility(button) => button.set_focused(true),
+        }
+    }
+
+    fn unfocus(&mut self) {
+        use photon_gui::widgets::slider::InputType;
+        match self {
+            Self::Fov(slider) => slider.set_focused(false, InputType::None),
+            Self::Unit(slider) => slider.set_focused(false, InputType::None),
+            Self::Boolean(button) => button.set_focused(false),
+            Self::Visibility(button) => button.set_focused(false),
+        }
+    }
+
+    fn click(
+        &mut self,
+        lang: &photon_game::text::Lang,
+        arena: &photon_gui::layout::Arena,
+        (x, y): (f64, f64),
+        shift: bool,
+    ) {
+        let at = (x as i32, y as i32);
+        match self {
+            Self::Fov(slider) => ignore(slider.clicked(lang, arena, (x, y))),
+            Self::Unit(slider) => ignore(slider.clicked(lang, arena, (x, y))),
+            Self::Boolean(button) => {
+                click_sound(button.clicked(lang, arena, at, shift).is_some());
+            }
+            Self::Visibility(button) => {
+                click_sound(button.clicked(lang, arena, at, shift).is_some());
+            }
+        }
+    }
+
+    /// `AbstractSliderButton.onRelease` clicks on the widget it is called on.
+    fn release(&mut self, lang: &photon_game::text::Lang) {
+        match self {
+            Self::Fov(slider) => {
+                photon_gui::ui_sound::play_down_sound();
+                slider.released(lang);
+            }
+            Self::Unit(slider) => {
+                photon_gui::ui_sound::play_down_sound();
+                slider.released(lang);
+            }
+            _ => {}
+        }
+    }
+
+    fn key(
+        &mut self,
+        lang: &photon_game::text::Lang,
+        arena: &photon_gui::layout::Arena,
+        key: Option<&str>,
+        shift: bool,
+    ) {
+        use photon_gui::widgets::slider::SliderKey;
+        let key = match key {
+            Some("left") => Some(SliderKey::Left),
+            Some("right") => Some(SliderKey::Right),
+            Some("enter" | "space") => Some(SliderKey::Select),
+            _ => None,
+        };
+        match (self, key) {
+            (Self::Fov(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
+            (Self::Unit(slider), Some(key)) => ignore(slider.key_pressed(lang, arena, key)),
+            (Self::Boolean(button), Some(SliderKey::Select)) => {
+                click_sound(button.selected(lang, shift).is_some());
+            }
+            (Self::Visibility(button), Some(SliderKey::Select)) => {
+                click_sound(button.selected(lang, shift).is_some());
+            }
+            _ => {}
+        }
     }
 
     pub(super) fn draw(
@@ -179,5 +219,12 @@ impl OptionWidget {
             Self::Boolean(button) => button.value().to_string(),
             Self::Visibility(button) => button.value().id().to_string(),
         }
+    }
+}
+
+/// `AbstractButton.mouseClicked`: a press clicks.
+fn click_sound(pressed: bool) {
+    if pressed {
+        photon_gui::ui_sound::play_down_sound();
     }
 }

@@ -297,7 +297,7 @@
 "crates/photon-oracle/src/entity.rs::entity_result" = 111
 "crates/photon-oracle/src/error.rs::common_packet_result" = 12
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 36
-"crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 33
+"crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 12
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 36
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 13
@@ -729,7 +729,6 @@
 "crates/photon-oracle/src/frog.rs::airborne_model_result" = 268
 "crates/photon-oracle/src/guardian.rs::banner_pose_result" = 96
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
-"crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 76
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 65
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 78
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 87

@@ -17,6 +17,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
             var scoreField = net.minecraft.world.entity.player.Player.class.getDeclaredField("DATA_SCORE_ID");
             scoreField.setAccessible(true);
@@ -50,6 +52,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -68,6 +73,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             set(minecraft, "allowsMultiplayer", true);
             set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
                 com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
@@ -87,6 +94,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -104,6 +114,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             // The clock the tooltips wait by is the row's to move.
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
@@ -171,6 +183,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             blurField.setAccessible(true);
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -377,6 +392,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var screen = screen(427, 240, mouseX, mouseY);
             var minecraft = screen.minecraft();
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             var options = minecraft.options;
             String kind = row.get("kind").getAsString();
             net.minecraft.client.OptionInstance instance = switch (kind) {
@@ -442,6 +458,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 default -> String.format("%016x", Double.doubleToRawLongBits((Double) result));
             });
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -464,6 +483,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             set(minecraft, "userPropertiesFuture", java.util.concurrent.CompletableFuture.completedFuture(
                 com.mojang.authlib.minecraft.UserApiService.OFFLINE_PROPERTIES));
             boolean inWorld = row.get("in_world").getAsBoolean();
@@ -524,6 +544,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             out.addProperty("label", row.get("label").getAsString());
             out.addProperty("fov", minecraft.options.fov().get());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
