@@ -560,12 +560,22 @@ class MovementSupport {
                 var pos = new BlockPos(described.get("x").getAsInt(), described.get("y").getAsInt(),
                     described.get("z").getAsInt());
                 var tag = new net.minecraft.nbt.CompoundTag();
+                var trial = described.has("trial");
                 if (described.has("entity")) {
                     var entity = new net.minecraft.nbt.CompoundTag();
                     entity.putString("id", described.get("entity").getAsString());
                     var data = new net.minecraft.nbt.CompoundTag();
                     data.put("entity", entity);
-                    tag.put("SpawnData", data);
+                    tag.put(trial ? "spawn_data" : "SpawnData", data);
+                }
+                if (trial) {
+                    tag.putLong("next_mob_spawns_at", described.get("next").getAsLong());
+                    var block = (net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity) level.getBlockEntity(pos);
+                    block.loadWithComponents(net.minecraft.world.level.storage.TagValueInput.create(
+                        net.minecraft.util.ProblemReporter.DISCARDING, level.registryAccess(), tag));
+                    var trialSpawner = block.getTrialSpawner();
+                    trialSpawner.getStateData().getOrCreateDisplayEntity(trialSpawner, level, block.getState());
+                    continue;
                 }
                 if (described.has("range")) {
                     tag.putShort("RequiredPlayerRange", described.get("range").getAsShort());
@@ -646,6 +656,9 @@ class MovementSupport {
                     + faceMask(gateway);
             } else if (entity instanceof net.minecraft.world.level.block.entity.TheEndPortalBlockEntity portal) {
                 held = "portal," + faceMask(portal);
+            } else if (entity instanceof net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity trial) {
+                held = "trial," + Oracle.bits(trial.getTrialSpawner().getStateData().getOSpin()) + ","
+                    + Oracle.bits(trial.getTrialSpawner().getStateData().getSpin());
             } else if (entity instanceof net.minecraft.world.level.block.entity.SpawnerBlockEntity spawner) {
                 held = "spawner," + getField(spawner.getSpawner(), "spawnDelay") + ","
                     + Oracle.bits(spawner.getSpawner().getOSpin()) + "," + Oracle.bits(spawner.getSpawner().getSpin());

@@ -53,6 +53,45 @@ fn spawner_row(label: &str) -> Value {
         .row()
 }
 
+/// Trial spawners in each state, with a mob to show and the next spawn near and far, and one that
+/// names no mob.
+fn trial_row(label: &str) -> Value {
+    let states = [
+        "inactive",
+        "waiting_for_players",
+        "active",
+        "waiting_for_reward_ejection",
+        "ejecting_reward",
+        "cooldown",
+        "active",
+        "waiting_for_players",
+    ];
+    let mut blocks = Vec::new();
+    let mut places = Vec::new();
+    let mut described = Vec::new();
+    for (index, state) in states.into_iter().enumerate() {
+        let x = 3 * index as i64;
+        let ominous = if index >= 6 { "true" } else { "false" };
+        let props = [("trial_spawner_state", state), ("ominous", ominous)];
+        blocks.push(put_with(x, 64, 0, "minecraft:trial_spawner", &props));
+        places.push(json!({"x": x, "y": 64, "z": 0}));
+        let mut spawner = json!({"x": x, "y": 64, "z": 0, "trial": true, "next": 40 * index as i64});
+        if index != 7 {
+            spawner["entity"] = json!("minecraft:zombie");
+        }
+        described.push(spawner);
+    }
+    engine_row(label, vec![])
+        .blocks(blocks)
+        .set("spawners", json!(described))
+        .set("watch", json!(places))
+        .set("tick_block_entities", json!(true))
+        .ticks(60)
+        .seeds(3000)
+        .describe(6)
+        .row()
+}
+
 pub fn rows() -> Vec<Value> {
-    vec![spawner_row("spawner-ticks")]
+    vec![spawner_row("spawner-ticks"), trial_row("trial-spawner-ticks")]
 }

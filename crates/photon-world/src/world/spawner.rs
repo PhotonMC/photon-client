@@ -191,5 +191,8 @@ impl ClientWorld {
         if let (Some(speed), Some(entity)) = (speed, self.block_entity_mut_at(pos)) {
             entity.events.spawner.turn_trial(speed, delay);
         }
+        self.level_events
+            .0
+            .push(LevelEvent::TrialSpawnerTick { pos });
     }
 }

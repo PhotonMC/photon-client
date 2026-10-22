@@ -316,6 +316,9 @@ pub enum LevelEvent {
     VaultTick { pos: (i32, i32, i32) },
     /// A spawner's tick with a player near (`BaseSpawner.clientTick`): a puff of smoke and flame.
     SpawnerTick { pos: (i32, i32, i32) },
+    /// A trial spawner's tick (`TrialSpawner.tickClient`), less its spin: the particles of its
+    /// state and its ambient sound.
+    TrialSpawnerTick { pos: (i32, i32, i32) },
     /// A conduit's tick (`ConduitBlockEntity.animationTick`): its frame sends nautilus specks
     /// up to it.
     ConduitSpecks {

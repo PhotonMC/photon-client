@@ -196,6 +196,11 @@ impl ParticleEngine {
                 self.vault_tick(pos, context, &mut sounds);
                 sounds
             }
+            LevelEvent::TrialSpawnerTick { pos } => {
+                let mut sounds = Vec::new();
+                self.trial_spawner_tick(pos, context, &mut sounds);
+                sounds
+            }
             LevelEvent::SpawnerTick { pos } => {
                 self.spawner_tick(pos, context);
                 Vec::new()
@@ -237,6 +242,7 @@ impl ParticleEngine {
             | LevelEvent::ConduitSpecks { .. }
             | LevelEvent::VaultTick { .. }
             | LevelEvent::SpawnerTick { .. }
+            | LevelEvent::TrialSpawnerTick { .. }
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),

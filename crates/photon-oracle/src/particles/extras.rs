@@ -199,9 +199,20 @@ fn place_block_entities(world: &mut ClientWorld, row: &Value) -> Result<(), Stri
 
 /// A spawner as its update tag describes it: the entity it shows, its range and its delay.
 fn place_spawner(world: &mut ClientWorld, spawner: &Value) -> Result<(), String> {
-    let spawner_type = photon_data::block_entity_type::id("minecraft:mob_spawner")
-        .ok_or("no spawner block entity")?;
+    let trial = spawner.get("trial").is_some();
+    let kind = if trial {
+        "minecraft:trial_spawner"
+    } else {
+        "minecraft:mob_spawner"
+    };
+    let spawner_type = photon_data::block_entity_type::id(kind).ok_or("no spawner block entity")?;
     let mut tag = Vec::new();
+    if let Some(next) = spawner["next"].as_i64() {
+        tag.push(Field {
+            key: "next_mob_spawns_at".into(),
+            value: FieldValue::Long(next),
+        });
+    }
     if let Some(entity) = spawner["entity"].as_str() {
         let id = Field {
             key: "id".into(),
@@ -212,7 +223,7 @@ fn place_spawner(world: &mut ClientWorld, spawner: &Value) -> Result<(), String>
             value: FieldValue::Compound(vec![id]),
         };
         tag.push(Field {
-            key: "SpawnData".into(),
+            key: if trial { "spawn_data" } else { "SpawnData" }.into(),
             value: FieldValue::Compound(vec![data]),
         });
     }
@@ -335,18 +346,21 @@ pub(super) fn watch_lines(world: &ClientWorld, row: &Value) -> Vec<String> {
 
 /// The type of block entity a block keeps, were it asked for one.
 fn entity_type_of(block_name: &str) -> Option<&'static str> {
-    match block_name {
-        "minecraft:decorated_pot" => Some("minecraft:decorated_pot"),
-        "minecraft:end_gateway" => Some("minecraft:end_gateway"),
-        "minecraft:spawner" => Some("minecraft:mob_spawner"),
-        "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
-        "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
-        "minecraft:beacon" => Some("minecraft:beacon"),
-        "minecraft:conduit" => Some("minecraft:conduit"),
-        "minecraft:vault" => Some("minecraft:vault"),
-        "minecraft:end_portal" => Some("minecraft:end_portal"),
-        _ => None,
+    const KEPT: [&str; 9] = [
+        "minecraft:decorated_pot",
+        "minecraft:end_gateway",
+        "minecraft:trial_spawner",
+        "minecraft:potent_sulfur",
+        "minecraft:enchanting_table",
+        "minecraft:beacon",
+        "minecraft:conduit",
+        "minecraft:vault",
+        "minecraft:end_portal",
+    ];
+    if block_name == "minecraft:spawner" {
+        return Some("minecraft:mob_spawner");
     }
+    KEPT.into_iter().find(|kept| *kept == block_name)
 }
 
 /// A beacon's beam: its levels, how high up its column it has looked, and each stretch of the beam
@@ -396,6 +410,17 @@ fn face_mask(world: &ClientWorld, at: (i32, i32, i32)) -> u32 {
     })
 }
 
+/// A spawner's delay (a mob spawner's only) and its old and new spin.
+fn spawner_line(kind: &str, entity: &photon_world::ClientBlockEntity) -> String {
+    let spin = &entity.events().spawner;
+    let bits = (spin.previous().to_bits(), spin.current().to_bits());
+    if kind == "minecraft:trial_spawner" {
+        return format!("trial,{:016x},{:016x}", bits.0, bits.1);
+    }
+    let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
+    format!("spawner,{delay},{:016x},{:016x}", bits.0, bits.1)
+}
+
 /// What the block entity at a place holds, as the reference reads it: one it has not made yet is
 /// made as it is asked for, with the defaults.
 fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
@@ -420,15 +445,7 @@ fn held_at(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> String {
             face_mask(world, (x, y, z))
         ),
         "minecraft:end_portal" => format!("portal,{}", face_mask(world, (x, y, z))),
-        "minecraft:mob_spawner" => {
-            let delay = entity.spawner_state().map_or(20, |spawner| spawner.delay());
-            let spin = &events.spawner;
-            format!(
-                "spawner,{delay},{:016x},{:016x}",
-                spin.previous().to_bits(),
-                spin.current().to_bits()
-            )
-        }
+        "minecraft:mob_spawner" | "minecraft:trial_spawner" => spawner_line(kind, entity),
         "minecraft:enchanting_table" => book_line(&events.book),
         "minecraft:beacon" => beacon_line(&events.beacon),
         "minecraft:vault" => format!("vault,{},{}", events.vault.previous, events.vault.current),

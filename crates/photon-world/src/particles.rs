@@ -49,6 +49,7 @@ mod sprites;
 mod sulfur;
 mod terrain;
 mod tracking;
+mod trial_tick;
 mod vibration;
 mod water;
 
