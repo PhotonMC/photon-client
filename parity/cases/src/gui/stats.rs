@@ -192,7 +192,28 @@ fn item_rows() -> Vec<Value> {
     rows.push(sorted("items-sort-scrolled-far", vec![header(3), scroll(-100.0)], [0, 0]));
     rows.extend(item_header_rows());
     rows.extend(item_focus_rows());
+    rows.extend(item_hover_rows());
     rows
+}
+
+/// The mouse over a row's item, over the numbers, and over the tabs of lists with nothing in them.
+fn item_hover_rows() -> Vec<Value> {
+    let nothing = json!([["minecraft:custom", "minecraft:jump", 1]]);
+    let on_tab = |label: &str, tab: Value, stats: &Value, mouse: [i64; 2]| {
+        with(screen_row(label, (427, 240), stats, true), json!({"steps": [tab], "mouse": mouse}))
+    };
+    let mobs_tab = json!({"do": "click", "x": 300, "y": 10});
+    vec![
+        sorted("items-hover-first-item", settle(vec![]), [80, 56]),
+        sorted("items-hover-second-item", settle(vec![]), [80, 78]),
+        sorted("items-hover-numbers", settle(vec![]), [200, 56]),
+        sorted("items-hover-name", settle(vec![]), [110, 56]),
+        sorted("items-hover-scrolled-item", settle(vec![scroll(-3.0)]), [80, 56]),
+        on_tab("items-none-hover-items-tab", items_tab(), &nothing, [200, 10]),
+        on_tab("items-none-hover-mobs-tab", items_tab(), &nothing, [300, 10]),
+        on_tab("mobs-none-hover-mobs-tab", mobs_tab.clone(), &nothing, [300, 10]),
+        on_tab("mobs-none-hover-items-tab", mobs_tab, &nothing, [200, 10]),
+    ]
 }
 
 /// The header scrolled up under the tab bar: where a press and the pointer count.

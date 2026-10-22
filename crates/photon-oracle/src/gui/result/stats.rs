@@ -23,11 +23,39 @@ fn value_id(stat_type: &str, name: &str) -> Result<i32, String> {
         .ok_or_else(|| format!("unknown stat value {name}"))
 }
 
-/// `stats_screen`: the screen over a counter, loading or loaded, after its steps.
-pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_gui::screen::stats::StatsScreen;
-    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
-    let lang = photon_game::text::Lang::load(&ctx.root);
+fn vanilla_registries() -> photon_game::registries::Registries {
+    photon_game::registries::Registries::vanilla(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.data/minecraft/assets/jar/data"),
+    )
+}
+
+/// A stack's tooltip as the screen asks for it: with a player, in the default language.
+fn default_tooltip<'a>(
+    lang: &'a photon_game::text::Lang,
+    registries: &'a photon_game::registries::Registries,
+) -> impl FnMut(&photon_world::ClientItemStackState, bool) -> Vec<Vec<photon_game::text::Run>> + 'a
+{
+    move |stack, _| {
+        photon_game::tooltip::lines(
+            stack,
+            true,
+            photon_game::tooltip::Flags::default(),
+            registries,
+            &photon_game::tooltip::no_maps,
+        )
+        .iter()
+        .map(|line| lang.runs(line, &photon_game::text::Style::default()))
+        .collect()
+    }
+}
+
+fn int_at(value: &Value, index: usize) -> i32 {
+    value[index].as_i64().unwrap_or(0) as i32
+}
+
+/// The counter a row lists its stats as.
+fn counter_from(row: &Value) -> Result<HashMap<StatKey, i32>, String> {
     let mut counter = HashMap::new();
     for stat in row["stats"].as_array().ok_or("stats")? {
         let stat_type = stat[0].as_str().ok_or("stat type")?;
@@ -41,6 +69,15 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         };
         counter.insert(key, stat[2].as_i64().ok_or("stat count")? as i32);
     }
+    Ok(counter)
+}
+
+/// `stats_screen`: the screen over a counter, loading or loaded, after its steps.
+pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
+    use photon_gui::screen::stats::StatsScreen;
+    let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
+    let lang = photon_game::text::Lang::load(&ctx.root);
+    let counter = counter_from(row)?;
     let size = (int("width"), int("height"));
     let mut screen = StatsScreen::new(&lang, size, true, &counter);
     if row["loaded"].as_bool().unwrap_or(false) {
@@ -65,19 +102,22 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
             _ => return Err("unknown step".into()),
         }
     }
-    let mouse = (
-        row["mouse"][0].as_i64().unwrap_or(0) as i32,
-        row["mouse"][1].as_i64().unwrap_or(0) as i32,
-    );
+    let mouse = (int_at(&row["mouse"], 0), int_at(&row["mouse"], 1));
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
+    let registries = vanilla_registries();
+    let mut tooltip = default_tooltip(&lang, &registries);
     screen.draw(
         &mut frame,
         (&ctx.atlas, &ctx.font),
         mouse,
-        (row["now"].as_u64().unwrap_or(0), &mut no_items),
+        (
+            row["now"].as_u64().unwrap_or(0),
+            &mut no_items,
+            &mut tooltip,
+        ),
     );
     Ok(json!({
         "label": row["label"],

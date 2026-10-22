@@ -533,7 +533,7 @@
 "crates/photon/src/equipment/arm_poses.rs::hand_pose" = 15
 "crates/photon/src/equipment/arm_poses.rs::use_animation" = 12
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 14
-"crates/photon/src/gui/draw.rs::Gui::draw" = 20
+"crates/photon/src/gui/draw.rs::Gui::draw" = 17
 "crates/photon/src/gui/hud.rs::Gui::receive_hud" = 13
 "crates/photon/src/menu.rs::Menu::form_result" = 11
 "crates/photon/src/menu.rs::Menu::handle" = 22
@@ -961,7 +961,7 @@
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
-"crates/photon/src/gui/draw.rs::Gui::draw" = 271
+"crates/photon/src/gui/draw.rs::Gui::draw" = 263
 "crates/photon/src/menu.rs::Menu::handle" = 87
 "crates/photon/src/menu.rs::Menu::run" = 79
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75

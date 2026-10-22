@@ -7,6 +7,7 @@ type ProgressArgs<'a> = (
     ((i32, i32), (i32, i32)),
     i32,
     &'a mut photon_render::gui::ItemDrawer<'a>,
+    &'a mut photon_gui::screen::TooltipLines<'a>,
 );
 
 impl Gui {
@@ -34,7 +35,11 @@ impl Gui {
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
-        (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
+        (gui_size, item, tooltip): (
+            (i32, i32),
+            &mut photon_render::gui::ItemDrawer<'_>,
+            &mut photon_gui::screen::TooltipLines<'_>,
+        ),
     ) {
         // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
         // parent), and so does a dialog (`setScreen` replaces the menu it was opened from).
@@ -48,7 +53,7 @@ impl Gui {
             (atlas, font, lang),
             controls,
             frame,
-            ((gui_size, mouse), blurriness, item),
+            ((gui_size, mouse), blurriness, item, tooltip),
         ) {
             return;
         }
@@ -93,7 +98,7 @@ impl Gui {
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
         controls: &mut Controls,
         frame: &mut photon_render::gui::GuiFrame,
-        ((gui_size, mouse), blurriness, item): ProgressArgs<'_>,
+        ((gui_size, mouse), blurriness, item, tooltip): ProgressArgs<'_>,
     ) -> bool {
         if let Some(open) = controls.advancements.as_mut() {
             frame.blur_before_this_stratum(blurriness);
@@ -107,7 +112,7 @@ impl Gui {
                 stats.resize(gui_size);
             }
             let millis = frame.millis;
-            stats.draw(frame, (atlas, font), mouse, (millis, item));
+            stats.draw(frame, (atlas, font), mouse, (millis, item, tooltip));
         } else {
             return false;
         }

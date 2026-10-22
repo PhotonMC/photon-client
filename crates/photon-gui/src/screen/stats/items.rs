@@ -285,6 +285,28 @@ impl ItemsList {
         }
     }
 
+    /// `ItemDisplayWidget.extractTooltip`: the stack of the slot the mouse is over and where its
+    /// tooltip goes (below and right of the slot's corner).
+    pub(super) fn hovered_stack(
+        &self,
+        mouse: (i32, i32),
+    ) -> Option<(photon_world::ClientItemStackState, (i32, i32))> {
+        let (entry, Focus::Slot(index)) = self.widget_at(mouse)? else {
+            return None;
+        };
+        let place = self.view.place;
+        if entry == 0 || mouse.1 < place.y || mouse.1 >= place.bottom() {
+            return None;
+        }
+        let row = self.rows.get(index)?;
+        let at = (
+            self.view.row_left() + PADDING + 18,
+            self.view.row_y(index + 1) + PADDING + 18,
+        );
+        let stack = photon_world::ClientItemStackState::new(1, photon_core::ids::ItemId(row.item));
+        Some((stack, at))
+    }
+
     /// The header and the rows that show, then the scroll bar.
     pub(super) fn draw(
         &self,

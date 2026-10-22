@@ -296,29 +296,21 @@ impl Gui {
             let assets = (&self.atlas, &self.font, &self.lang);
             Self::draw_light_screen(&mut frame, assets, (session, controls, gui_size));
         }
-        if let Some(switcher) = controls.game_mode_switcher.as_mut() {
-            switcher.resize(gui_size);
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            switcher.draw(
-                &mut frame,
-                (&self.atlas, &self.font, &self.lang),
-                &mut draw_item,
-                mouse,
-                "F4",
-            );
-        }
-        if let Some(disconnected) = controls.disconnected.as_mut() {
-            if disconnected.size() != gui_size {
-                *disconnected = disconnected.resized(&self.font, &self.lang, gui_size);
-            }
-            let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
-            disconnected.draw(&mut frame, &self.atlas, &self.font, mouse);
-        }
-        Self::draw_menu(
+        Self::draw_switcher_and_disconnect(
             (&self.atlas, &self.font, &self.lang),
             controls,
             &mut frame,
             (gui_size, &mut draw_item),
+        );
+        let mut menu_tooltip = Self::stack_tooltip_lines(
+            (&self.lang, &self.registries),
+            controls.options.advanced_item_tooltips,
+        );
+        Self::draw_menu(
+            (&self.atlas, &self.font, &self.lang),
+            controls,
+            &mut frame,
+            (gui_size, &mut draw_item, &mut menu_tooltip),
         );
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let skin = self.player_skin;
@@ -461,6 +453,52 @@ fn player_preview(
         mouse,
         skin,
     )
+}
+
+impl Gui {
+    /// The game mode switcher and the disconnected screen, when one is open.
+    fn draw_switcher_and_disconnect(
+        (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
+    ) {
+        let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
+        if let Some(switcher) = controls.game_mode_switcher.as_mut() {
+            switcher.resize(gui_size);
+            switcher.draw(frame, (atlas, font, lang), item, mouse, "F4");
+        }
+        if let Some(disconnected) = controls.disconnected.as_mut() {
+            if disconnected.size() != gui_size {
+                *disconnected = disconnected.resized(font, lang, gui_size);
+            }
+            disconnected.draw(frame, atlas, font, mouse);
+        }
+    }
+}
+
+impl Gui {
+    /// A stack's tooltip in words for the menus drawn over the game, which have no map data.
+    fn stack_tooltip_lines<'a>(
+        (lang, registries): (
+            &'a photon_game::text::Lang,
+            &'a photon_game::registries::Registries,
+        ),
+        advanced: bool,
+    ) -> impl FnMut(&ClientItemStackState, bool) -> Vec<Vec<photon_game::text::Run>> + 'a {
+        move |stack, creative| {
+            photon_game::tooltip::lines(
+                stack,
+                true,
+                photon_game::tooltip::Flags { creative, advanced },
+                registries,
+                &photon_game::tooltip::no_maps,
+            )
+            .iter()
+            .map(|line| lang.runs(line, &Style::default()))
+            .collect()
+        }
+    }
 }
 
 /// What a map's tooltip reads of the map with this id.

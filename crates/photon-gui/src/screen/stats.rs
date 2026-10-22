@@ -208,7 +208,7 @@ impl StatsScreen {
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         mouse: (i32, i32),
-        (millis, item): (u64, &mut ItemDrawer<'_>),
+        (millis, item, tooltip): (u64, &mut ItemDrawer<'_>, &mut super::TooltipLines<'_>),
     ) {
         let (width, height) = self.size;
         // `extractMenuBackground`: the tab header's picture, then the menu's from under it.
@@ -253,6 +253,14 @@ impl StatsScreen {
         );
         let highlighted = self.done.contains(&self.arena, mouse);
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
+        // Widget tooltips are drawn last (`GuiGraphicsExtractor.setTooltipForNextFrame`).
+        if self.selected == 1
+            && let Some(lists) = &self.lists
+            && let Some((stack, at)) = lists.items.hovered_stack(mouse)
+        {
+            let lines = tooltip(&stack, false);
+            frame.tooltip(atlas, font, &lines, at, self.size);
+        }
     }
 
     /// `MenuTabBar.extractWidgetRenderState`: the header's line either side of the tabs, then each
