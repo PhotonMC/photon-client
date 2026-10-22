@@ -22,7 +22,60 @@ pub(crate) fn special_block_vertices(
     if let Some(color) = shulker_color(name) {
         return shulker_box(models, textures, (state, base, light), color);
     }
+    if let Some(vertices) = other_special(models, textures, name, (state, base, light)) {
+        return Some(vertices);
+    }
     super::block_entities::chest_state_vertices(models, textures, (state, base, light))
+}
+
+/// The bell, the heads, the banners and the decorated pot, each as its item shows it.
+fn other_special(
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    name: &str,
+    (state, base, light): (BlockStateId, &Pose, i32),
+) -> Option<Vec<Vertex>> {
+    use super::block_entities::{banner_vertices, bell_vertices, pot_vertices, skull_vertices};
+    let property = |key| photon_world::block::rules::property(state, key);
+    let facing = || photon_core::direction::Direction::from_name(property("facing")?);
+    let rotation = || property("rotation")?.parse::<i32>().ok();
+    let short = name.strip_prefix("minecraft:")?;
+    if short == "bell" {
+        return Some(bell_vertices(models, textures, (base, light), (0.0, None)));
+    }
+    if short == "decorated_pot" {
+        let pot = photon_world::PotView {
+            facing: facing()?,
+            sherds: Default::default(),
+            wobble: -1.0,
+        };
+        return Some(pot_vertices(models, textures, (base, light), &pot));
+    }
+    if short.ends_with("_head") || short.ends_with("_skull") {
+        let wall = short.contains("_wall_");
+        let skull = photon_world::SkullBlockView {
+            name: photon_world::block::state_or_air(state).block().name,
+            wall: if wall { Some(facing()?) } else { None },
+            rotation: if wall { 0 } else { rotation()? },
+            animation: 0.0,
+        };
+        return Some(skull_vertices(models, textures, (base, light), skull));
+    }
+    let wall = short.ends_with("_wall_banner");
+    let dye = short
+        .strip_suffix("_wall_banner")
+        .or_else(|| short.strip_suffix("_banner"))?;
+    let banner = photon_world::BannerView {
+        color: photon_world::DYES
+            .iter()
+            .find(|candidate| **candidate == dye)?,
+        wall: if wall { Some(facing()?) } else { None },
+        rotation: if wall { 0 } else { rotation()? },
+        patterns: Vec::new(),
+    };
+    let mut vertices = Vec::new();
+    banner_vertices(models, textures, (base, light, 0.0), &banner, &mut vertices);
+    Some(vertices)
 }
 
 /// The dye of a shulker box block (`Some(None)` for the undyed one), none for any other block.
@@ -53,5 +106,12 @@ fn shulker_box(
 /// Whether a state has a special model, which draws in place of its baked one.
 pub(crate) fn is_special_block(state: BlockStateId) -> bool {
     let name = photon_world::block::state_or_air(state).block().name;
-    shulker_color(name).is_some() || name == "minecraft:chest" || name.ends_with("_chest")
+    let short = name.strip_prefix("minecraft:").unwrap_or(name);
+    shulker_color(name).is_some()
+        || short.ends_with("_chest")
+        || short == "chest"
+        || matches!(short, "bell" | "decorated_pot")
+        || short.ends_with("_head")
+        || short.ends_with("_skull")
+        || short.ends_with("_banner")
 }

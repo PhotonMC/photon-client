@@ -1102,7 +1102,6 @@
 "crates/photon-world/src/particles/smoke.rs::Particle::ash_smoke" = 7
 "crates/photon/src/view.rs::player_camera" = 7
 "crates/photon/src/world/atmosphere.rs::world_border" = 7
-"crates/photon/src/world/block_entities.rs::banner_vertices" = 7
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1
