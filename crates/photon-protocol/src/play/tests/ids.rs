@@ -21,6 +21,14 @@ fn compression_uses_java_boundary_and_round_trips() {
 #[test]
 fn play_packet_ids_match_java_26_2_dispatch_order() {
     assert_eq!(super::super::ids::PLAY_SERVERBOUND_CHAT_ACK_PACKET_ID, 6);
+    assert_eq!(
+        super::super::ids::PLAY_SERVERBOUND_TEST_INSTANCE_BLOCK_ACTION_PACKET_ID,
+        65
+    );
+    assert_eq!(
+        super::super::ids::PLAY_CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS_PACKET_ID,
+        126
+    );
     assert_eq!(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, 1);
     assert_eq!(PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID, 35);
     assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, 53);
