@@ -80,6 +80,10 @@ fn is_this_machine(host: &str) -> bool {
         return false;
     };
     let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    // Before an `@` comes a user name, and the host is what follows it.
+    if authority.contains('@') {
+        return false;
+    }
     let name = match authority.strip_prefix('[') {
         Some(inner) => inner.split(']').next().map(|ip| format!("[{ip}]")),
         None => authority.split(':').next().map(str::to_owned),
@@ -142,6 +146,8 @@ mod tests {
         assert!(join_url("http://localhost.example.com").is_err());
         assert!(join_url("http://127.0.0.1.nip.io").is_err());
         assert!(join_url("http://127.0.0.1@example.com").is_err());
+        assert!(join_url("http://localhost:1@example.com").is_err());
+        assert!(join_url("http://[::1]@example.com").is_err());
     }
 
     #[test]
