@@ -443,31 +443,9 @@ impl GuiFrame {
         w: i32,
         h: i32,
     ) {
-        if let Some(log) = &mut self.log {
-            let (tw, th) = (texture_size.0 as f32, texture_size.1 as f32);
-            log.push(DrawOp::Texture {
-                name: name.to_owned(),
-                rect: (x as f32, y as f32, (x + w) as f32, (y + h) as f32),
-                uv: (
-                    uv.0 as f32 / tw,
-                    uv.0 as f32 / tw + w as f32 / tw,
-                    uv.1 as f32 / th,
-                    uv.1 as f32 / th + h as f32 / th,
-                ),
-                colour: 0xFFFF_FFFF,
-            });
-        }
-        self.blit_part(
-            atlas,
-            GuiBlend::Translucent,
-            &format!("texture/{name}"),
-            texture_size,
-            uv,
-            x,
-            y,
-            w,
-            h,
-        );
+        // A region wider or taller than the texture repeats it, as the reference's sampler does;
+        // an atlas cannot, so it is drawn in pieces (one when it fits).
+        self.tile_texture_from(atlas, name, texture_size, uv, (x, y, w, h));
     }
 
     /// `GuiGraphics.blit` of a region `(u, v, width, height)` of a whole texture stretched over
