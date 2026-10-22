@@ -157,6 +157,12 @@ pub fn remote_sulfur_cubes(
             // `SulfurCubeInnerLayer`: the overlay of the inner body's draw, so a lit fuse
             // flashes the block white.
             let overlay = overlay_code(inner_placed.red_overlay, inner_placed.white_overlay);
+            // `BlockModelResolver`: a block with a special model draws it as well.
+            let at = (state, &pose, placed.light);
+            vertices.extend(
+                crate::world::special_models::special_block_vertices(models, textures, at)
+                    .unwrap_or_default(),
+            );
             held.push(HeldItem::block(state, pose, placed.light, overlay));
         } else if !entity.is_invisible()
             && let Some(inner) = models.model(SULFUR_INNER_LAYERS[baby])
