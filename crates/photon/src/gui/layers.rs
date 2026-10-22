@@ -374,6 +374,11 @@ impl Gui {
         self.layers.toasts.add(Box::new(toast));
     }
 
+    /// `ToastManager.clear`.
+    pub fn clear_toasts(&mut self) {
+        self.layers.toasts.clear();
+    }
+
     /// `TutorialToast.hide` or `updateProgress` of the toast with the icon.
     pub fn tutorial_toast(
         &mut self,

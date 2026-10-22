@@ -212,7 +212,7 @@ impl Controls {
     }
 
     /// `Options.save`, after which the session tells the server what changed.
-    pub(super) fn save_options(&mut self) {
+    pub(crate) fn save_options(&mut self) {
         let _ = self.options.save(&options_path());
         self.options_saved = true;
     }

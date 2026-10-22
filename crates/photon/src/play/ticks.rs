@@ -10,6 +10,7 @@ impl Play {
             size,
             block_renderer,
             animated_atlas,
+            tutorial,
         } = client;
         let root =
             env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
@@ -41,15 +42,7 @@ impl Play {
             position.y.floor() as i32,
             position.z.floor() as i32,
         ];
-        // The chunk fade option, 0.75 seconds by default and
-        // `PHOTON_CHUNK_FADE` seconds if given; a scripted run shows every
-        // section at once unless asked, so its captures do not catch one
-        // mid-fade.
-        let chunk_fade = match env::var("PHOTON_CHUNK_FADE") {
-            Ok(seconds) => Duration::from_secs_f64(seconds.parse::<f64>()?.clamp(0.0, 2.0)),
-            Err(_) if script.is_some() => Duration::ZERO,
-            Err(_) => Duration::from_millis(750),
-        };
+        let chunk_fade = pacing::chunk_fade(script.is_some())?;
         let sections = SectionMeshes::new(
             &mut session,
             Arc::clone(&block_renderer),
@@ -192,7 +185,7 @@ impl Play {
                 ItemLayerCache::new(photon_render::model::DisplayContext::FirstPersonLeftHand),
             ],
             camera: photon_render::camera::Camera::new(),
-            tutorial: photon_gui::tutorial::Tutorial::new(controls.options.tutorial_step),
+            tutorial,
             controls,
             capture_frames,
             captured_frames: 0,
@@ -308,6 +301,8 @@ impl Play {
             self.controls.chat = None;
             self.controls.dialog = None;
             self.controls.dialog_warning = None;
+            // `Hud.onDisconnected`: the toasts go with the level.
+            self.gui.clear_toasts();
         }
         if self.session.take_level_reset() {
             self.backend.clear_sections()?;
@@ -337,6 +332,7 @@ impl Play {
             sized_for,
             block_renderer,
             animated_atlas,
+            tutorial,
             ..
         } = self;
         backend.clear_sections()?;
@@ -347,6 +343,7 @@ impl Play {
                 size: sized_for,
                 block_renderer,
                 animated_atlas,
+                tutorial,
             },
             exit,
         ))

@@ -2,6 +2,17 @@
 
 use super::*;
 
+/// The chunk fade option, 0.75 seconds by default and `PHOTON_CHUNK_FADE` seconds if given; a
+/// scripted run shows every section at once unless asked, so its captures do not catch one
+/// mid-fade.
+pub(super) fn chunk_fade(scripted: bool) -> Result<Duration> {
+    Ok(match env::var("PHOTON_CHUNK_FADE") {
+        Ok(seconds) => Duration::from_secs_f64(seconds.parse::<f64>()?.clamp(0.0, 2.0)),
+        Err(_) if scripted => Duration::ZERO,
+        Err(_) => Duration::from_millis(750),
+    })
+}
+
 impl Play {
     /// The frame limiter holds the frame for what the options ask.
     pub(super) fn limit_frame(&mut self) {

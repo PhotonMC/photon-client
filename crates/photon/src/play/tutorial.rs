@@ -37,9 +37,8 @@ impl Play {
     /// The tutorial's share of one client tick before the player ticks, in `Minecraft.tick`'s
     /// order: the block looked at, what the keys did to blocks, and the input of the player.
     pub(super) fn tutorial_before_tick(&mut self, aim: &Aim, held: &HeldKeys) {
+        // Nothing in the game stops the tutorial: while there is no level it only waits.
         if self.session.player().is_none() {
-            let commands = self.tutorial.stop();
-            self.run_tutorial(commands);
             return;
         }
         if let Aim::Block { x, y, z, .. } = *aim {
@@ -114,7 +113,7 @@ impl Play {
                 Command::Progress(icon, progress) => self.gui.tutorial_toast(icon, Some(progress)),
                 Command::SetStep(step) => {
                     self.controls.options.tutorial_step = step;
-                    let _ = self.controls.options.save(&crate::controls::options_path());
+                    self.controls.save_options();
                 }
             }
         }
