@@ -182,7 +182,7 @@ pub use bundle::{
 };
 mod clicks;
 mod components;
-pub use components::{damage, max_damage};
+pub use components::{damage, is_damageable, max_damage};
 mod grindstone;
 mod kinds;
 pub use kinds::*;

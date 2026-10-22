@@ -1,10 +1,9 @@
 //! The wolf (`WolfRenderer`, `WolfArmorLayer`, `WolfCollarLayer`): the texture of its variant
 //! and state, its pose, the armor of a grown one and the collar of a tame one.
 //!
-//! The armor's cracks and the darkening of a wet wolf are not drawn: the cracks
-//! overlay is not ported and whether a mob is in water is not tracked.
+//! The darkening of a wet wolf is not drawn: whether a mob is in water is not tracked.
 
-use photon_game::menus::container::{damage, max_damage};
+use photon_game::menus::container::{damage, is_damageable, max_damage};
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
     Crackiness, MobModel, QuadrupedState, WolfState, mob_vertices_coloured, wolf_armor_crackiness,
@@ -96,7 +95,12 @@ impl Layers<'_> {
             return;
         }
         out.extend(worn);
-        let level = wolf_armor_crackiness(damage(stack), max_damage(stack));
+        // `Crackiness.byDamage(ItemStack)`: only an item that can wear down cracks.
+        let level = if is_damageable(stack) {
+            wolf_armor_crackiness(damage(stack), max_damage(stack))
+        } else {
+            Crackiness::None
+        };
         if let Some(texture) = crack_texture(level) {
             out.extend(self.armor.texture_layer(
                 (ARMOR_MODEL, texture),

@@ -115,7 +115,7 @@ pub(super) fn set_damage(stack: &mut Stack, damage: i32) {
 }
 
 /// `ItemStack.isDamageableItem`.
-pub(super) fn is_damageable(stack: &Stack) -> bool {
+pub fn is_damageable(stack: &Stack) -> bool {
     has(stack, ids::MAX_DAMAGE) && !has(stack, ids::UNBREAKABLE) && has(stack, ids::DAMAGE)
 }
 
