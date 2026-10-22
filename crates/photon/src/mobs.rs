@@ -357,7 +357,7 @@ pub(crate) fn visible_body(
 /// The alpha byte of `0x26FFFFFF`, the colour a ghost's model is drawn with.
 const GHOST_ALPHA: u8 = 0x26;
 
-mod outline;
+pub(crate) mod outline;
 pub(crate) use outline::take as take_outlines;
 mod wild;
 pub use wild::*;

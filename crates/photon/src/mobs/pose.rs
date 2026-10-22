@@ -162,7 +162,7 @@ pub(super) fn worn_layers(
         textures,
         &|model, rect, colour| mob_vertices_coloured(model, placement, rect, colour),
     ));
-    vertices
+    super::outline::record_worn(entity, vertices)
 }
 
 /// A villager's profession and level layers over its model, posed as it is.

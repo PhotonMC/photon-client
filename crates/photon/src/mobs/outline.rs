@@ -18,6 +18,15 @@ pub(crate) fn record(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
     SILHOUETTES.with(|list| list.borrow_mut().push((holder, body)));
 }
 
+/// Remember what a mob wears, when it glows: its armor and wings draw in the outline too
+/// (`AFFECTS_OUTLINE`).
+pub(crate) fn record_worn(entity: &photon_world::ClientEntity, worn: Vec<Vertex>) -> Vec<Vertex> {
+    if entity.is_glowing() {
+        record(entity, worn.clone());
+    }
+    worn
+}
+
 /// The silhouettes recorded, each in its team's colour, and the list emptied. A black outline is
 /// a negative colour, because zero is none.
 pub(crate) fn take(board: &Scoreboard) -> Vec<Vertex> {

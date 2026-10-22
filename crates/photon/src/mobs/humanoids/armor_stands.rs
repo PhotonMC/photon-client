@@ -2,7 +2,9 @@
 //! turned to the stand's rotations, with the armor and the items it holds.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{ArmorStandState, mob_vertices_coloured, placement_pose};
+use photon_render::entity::mob_model::{
+    ArmorStandState, MobPlacement, mob_vertices_coloured, placement_pose,
+};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -85,12 +87,28 @@ pub fn remote_armor_stands(
                 (placed.light, false),
             ));
         }
-        vertices.extend(armor.vertices(
-            worn,
-            (prefix, false),
-            textures,
-            &|model| model.setup_armor_stand(&state, false),
-            &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
+        vertices.extend(stand_armor(
+            armor,
+            (worn, prefix),
+            (textures, entity),
+            (&state, &placed),
         ));
     }
+}
+
+/// What a stand wears, posed as the stand is; it draws in the outline of a glowing stand too.
+fn stand_armor(
+    armor: &mut Armor,
+    (worn, prefix): (Worn, &str),
+    (textures, entity): (&EntityTextures, &photon_world::ClientEntity),
+    (state, placed): (&ArmorStandState, &MobPlacement),
+) -> Vec<Vertex> {
+    let triangles = armor.vertices(
+        worn,
+        (prefix, false),
+        textures,
+        &|model| model.setup_armor_stand(state, false),
+        &|model, rect, colour| mob_vertices_coloured(model, placed, rect, colour),
+    );
+    crate::mobs::outline::record_worn(entity, triangles)
 }

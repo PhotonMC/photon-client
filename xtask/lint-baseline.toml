@@ -975,7 +975,7 @@
 "crates/photon/src/mobs/animals/wolves.rs::remote_wolves" = 63
 "crates/photon/src/mobs/aquatic/axolotls.rs::remote_axolotls" = 61
 "crates/photon/src/mobs/aquatic/frogs.rs::remote_frogs" = 69
-"crates/photon/src/mobs/humanoids/armor_stands.rs::remote_armor_stands" = 75
+"crates/photon/src/mobs/humanoids/armor_stands.rs::remote_armor_stands" = 74
 "crates/photon/src/mobs/humanoids/golems.rs::remote_golems" = 104
 "crates/photon/src/mobs/humanoids/villagers.rs::remote_villagers" = 94
 "crates/photon/src/mobs/monsters/ender_dragons.rs::remote_ender_dragons" = 75
