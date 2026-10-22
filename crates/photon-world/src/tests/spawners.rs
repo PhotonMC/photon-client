@@ -62,7 +62,7 @@ fn a_trial_spawner_keeps_its_mob_only_while_its_block_entity_lives() {
     .unwrap();
     let air = BlockStateId(0);
     place_trial_spawner(&mut world, "minecraft:zombie", waiting);
-    world.tick_block_entities();
+    world.tick_block_entities(None).unwrap();
     assert_eq!(shown_type(&world), Some("minecraft:zombie"));
 
     // The update tag changes: the reference keeps the mob it made first.
@@ -75,13 +75,13 @@ fn a_trial_spawner_keeps_its_mob_only_while_its_block_entity_lives() {
         type_id,
         tag: Some(&tag),
     });
-    world.tick_block_entities();
+    world.tick_block_entities(None).unwrap();
     assert_eq!(shown_type(&world), Some("minecraft:zombie"));
 
     // A new block entity makes a new mob.
     let player = photon_core::math::Vec3::new(0.0, 0.0, 0.0);
     assert!(world.set_block_predicted(1, -60, 3, air, player));
     place_trial_spawner(&mut world, "minecraft:skeleton", waiting);
-    world.tick_block_entities();
+    world.tick_block_entities(None).unwrap();
     assert_eq!(shown_type(&world), Some("minecraft:skeleton"));
 }

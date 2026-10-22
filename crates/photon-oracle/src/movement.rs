@@ -281,7 +281,14 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         }
         let mut ticks = Vec::new();
         let mut failure = None;
-        for tick in row["ticks"].as_array().ok_or("ticks must be an array")? {
+        let block_events = row.get("block_events").and_then(Value::as_array);
+        for (index, tick) in row["ticks"]
+            .as_array()
+            .ok_or("ticks must be an array")?
+            .iter()
+            .enumerate()
+        {
+            apply_block_events(&mut world, block_events, index)?;
             let keys = photon_world::input::Input::new(
                 flag(tick, "forward")?,
                 flag(tick, "backward")?,
@@ -442,6 +449,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 }
             };
             after_tick(&mut world, &mut player, breaking);
+            failure = failure.or(tick_block_entities(&mut world, &mut player, block_events).err());
             let position = player.position();
             let motion = player.delta_movement();
             let (y_rot, x_rot) = player.rotation();
@@ -532,36 +540,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 described["vehicle"] = vehicle_report(&world, vehicle_id)?;
             }
             if let Some(attack) = tick.get("attack") {
-                let stage = world
-                    .destroying_blocks()
-                    .get(&player.entity_id())
-                    .map_or(-1, |progress| progress.stage);
-                let mut watched = Vec::new();
-                for place in attack["watch"].as_array().ok_or("watch must be an array")? {
-                    watched.push(
-                        world
-                            .block_state_at(
-                                i32_field(place, "x")?,
-                                i32_field(place, "y")?,
-                                i32_field(place, "z")?,
-                            )
-                            .map_or(0, |state| state.0),
-                    );
-                }
-                described["breaking"] = json!({
-                    "destroying": game_mode.is_destroying(),
-                    "progress": format!("{:08x}", game_mode.destroy_progress().to_bits()),
-                    "destroy_ticks": format!("{:08x}", game_mode.destroy_ticks().to_bits()),
-                    "delay": game_mode.destroy_delay(),
-                    "miss_time": game_mode.miss_time(),
-                    "stage": stage,
-                    "sequence": world.prediction_sequence(),
-                    "attack_strength_ticker": player.attack_strength_ticker(),
-                    "right_click_delay": game_mode.right_click_delay(),
-                    "main_hand_count": hand_count(&world, 36),
-                    "off_hand_count": hand_count(&world, 45),
-                    "watched_states": watched,
-                });
+                described["breaking"] = breaking_report(&world, &player, &game_mode, attack)?;
             }
             ticks.push(with_rockets(described, &world, breaking));
         }

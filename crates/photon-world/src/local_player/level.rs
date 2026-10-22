@@ -160,7 +160,7 @@ impl Level<'_> {
                 powder_snow_collision_shape(fall_distance)
             } else if is_block(state, "minecraft:moving_piston") {
                 self.world
-                    .moving_piston_collision_shape((at[0], at[1], at[2]), None)
+                    .moving_piston_collision_shape((at[0], at[1], at[2]), self.no_clip)
             } else if let Some(bottom) = self.lava_stand
                 && let Some(shape) = self.lava_surface_shape(state, at, bottom)
             {
@@ -443,6 +443,9 @@ pub(crate) struct Level<'a> {
     /// The height of the feet of an entity that can stand on lava (`EntityCollisionContext` of a
     /// strider): the lava's source blocks below it then hold it up.
     pub(crate) lava_stand: Option<f64>,
+    /// The way a piston is moving the entity (`PistonMovingBlockEntity.NOCLIP`): the moving block
+    /// it moves with lets it through.
+    pub(crate) no_clip: Option<photon_core::direction::Direction>,
 }
 
 impl<'a> Level<'a> {
@@ -450,6 +453,7 @@ impl<'a> Level<'a> {
         Self {
             world,
             lava_stand: None,
+            no_clip: None,
         }
     }
 
@@ -457,6 +461,14 @@ impl<'a> Level<'a> {
     pub(crate) fn standing_on_lava_at(self, bottom: f64) -> Self {
         Self {
             lava_stand: Some(bottom),
+            ..self
+        }
+    }
+
+    /// The level as an entity a piston moves along `direction` sees it.
+    pub(crate) fn moved_by_piston(self, direction: photon_core::direction::Direction) -> Self {
+        Self {
+            no_clip: Some(direction),
             ..self
         }
     }

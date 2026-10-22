@@ -113,21 +113,26 @@ impl PlaySession {
                         self.send_movement(packet)?;
                     }
                 }
-                Err(unsupported) => {
-                    let message = unsupported.to_string();
-                    if self.link.warned.as_deref() != Some(message.as_str()) {
-                        log::warn!("movement: {message}");
-                        self.link.warned = Some(message);
-                    }
-                }
+                Err(unsupported) => self.warn_unsupported(&unsupported),
             }
         }
         self.tell_world_where_the_player_is();
         self.tick_level_entities(ridden.is_none());
-        self.world.tick_after_entities();
+        if let Err(unsupported) = self.world.tick_after_entities(self.local.player.as_mut()) {
+            self.warn_unsupported(&unsupported);
+        }
         // ClientLevel.tickTime: the game time and the clocks move on.
         self.tick_clocks(self.level_info.game_time + 1);
         self.send(PLAY_SERVERBOUND_CLIENT_TICK_END_PACKET_ID, |_| Ok(()))
+    }
+
+    /// A branch of the movement the port does not carry yet, said once.
+    fn warn_unsupported(&mut self, unsupported: &photon_world::local_player::Unsupported) {
+        let message = unsupported.to_string();
+        if self.link.warned.as_deref() != Some(message.as_str()) {
+            log::warn!("movement: {message}");
+            self.link.warned = Some(message);
+        }
     }
 
     /// What the rider steers with: its input, its look, and the stick in its hands.

@@ -190,6 +190,19 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 player.setYHeadRot(vehicle.getYRot());
             }
         }
+        boolean pistons = row.has("block_events");
+        if (pistons) {
+            // Block events of pistons move the blocks around the player, and the level's block
+            // entities push it: the player is one of the level's entities.
+            if (!breaking && vehicle == null) {
+                level.addEntity(player);
+                setField(minecraft, "level", level);
+                setField(minecraft, "particleEngine", unsafe.allocateInstance(DroppingParticleEngine.class));
+            }
+            setField(listener, "enabledFeatures", net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            level.setTimeFromServer(1000L);
+        }
+        int tickIndex = 0;
         var startAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod("startAttack");
         startAttack.setAccessible(true);
         var continueAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod(
@@ -215,6 +228,17 @@ class MovementPlayerOracle extends MovementWorldOracle {
             wire.sent.clear();
             // Sounds of the setup (and of earlier scenes) are not this tick's.
             SilentSoundManager.PLAYED.clear();
+            if (pistons) {
+                for (var eventElement : row.getAsJsonArray("block_events")) {
+                    var event = eventElement.getAsJsonObject();
+                    if (event.get("tick").getAsInt() == tickIndex) {
+                        var at = new BlockPos(event.get("x").getAsInt(), event.get("y").getAsInt(),
+                            event.get("z").getAsInt());
+                        level.blockEvent(at, level.getBlockState(at).getBlock(), event.get("b0").getAsInt(),
+                            event.get("b1").getAsInt());
+                    }
+                }
+            }
             if (input.has("damage")) {
                 var type = net.minecraft.resources.ResourceKey.create(
                     net.minecraft.core.registries.Registries.DAMAGE_TYPE,
@@ -237,6 +261,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
             for (var rocket : rockets) {
                 level.tickNonPassenger(rocket);
             }
+            if (pistons) {
+                // `Minecraft.tick`: the block entities tick after the entities, and the level's
+                // clock moves on with the tick.
+                level.tickBlockEntities();
+                level.setTimeFromServer(level.getGameTime() + 1L);
+            }
+            tickIndex++;
             var described = describe(player, wire.sent);
             var rocketPositions = new JsonArray();
             for (var rocket : rockets) {

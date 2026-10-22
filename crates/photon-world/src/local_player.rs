@@ -197,7 +197,7 @@ pub struct LocalPlayer {
     pub(super) no_physics: bool,
     pub(super) auto_jump_option: bool,
     pub(super) auto_jump_enabled: bool,
-    pub(super) movements_this_tick: Vec<Movement>,
+    pub(super) trace: MoveTrace,
     pub(super) x_last: f64,
     pub(super) y_last: f64,
     pub(super) z_last: f64,
@@ -225,6 +225,8 @@ mod inside_blocks;
 pub(crate) use inside_blocks::*;
 mod level;
 pub(crate) use level::*;
+mod piston;
+use piston::MoverType;
 mod pose;
 pub use pose::*;
 mod rotation;

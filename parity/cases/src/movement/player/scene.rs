@@ -50,6 +50,7 @@ pub struct Scene {
     game_mode: &'static str,
     auto_jump: bool,
     border: Option<(f64, f64, f64)>,
+    block_events: Vec<Value>,
 }
 
 impl Scene {
@@ -64,6 +65,7 @@ impl Scene {
             game_mode: "survival",
             auto_jump: false,
             border: None,
+            block_events: Vec::new(),
         }
     }
 
@@ -96,6 +98,11 @@ impl Scene {
         Self { border: Some((x, z, size)), ..self }
     }
 
+    /// Block events the server sends (a piston's push) before the tick they name.
+    pub fn block_events(self, block_events: Vec<Value>) -> Self {
+        Self { block_events, ..self }
+    }
+
     pub fn row(self) -> Value {
         let mut row = json!({
             "label": self.label, "blocks": self.blocks, "chunk_radius": 1, "entity_id": 7,
@@ -103,6 +110,9 @@ impl Scene {
             "y_rot": f32_bits(self.y_rot), "x_rot": f32_bits(self.x_rot), "game_mode": self.game_mode,
             "auto_jump": self.auto_jump, "ticks": self.ticks,
         });
+        if !self.block_events.is_empty() {
+            row["block_events"] = Value::Array(self.block_events);
+        }
         if let Some((x, z, size)) = self.border {
             row["border"] = json!({"x": f64_bits(x), "z": f64_bits(z), "size": f64_bits(size)});
         }

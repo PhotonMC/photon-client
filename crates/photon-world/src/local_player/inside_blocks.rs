@@ -5,7 +5,7 @@ impl LocalPlayer {
         &mut self,
         level: &Level<'_>,
     ) -> Result<(), Unsupported> {
-        let mut movements = std::mem::take(&mut self.movements_this_tick);
+        let mut movements = std::mem::take(&mut self.trace.movements);
         match movements.last() {
             None => movements.push(Movement {
                 from: self.old_position,
@@ -24,6 +24,15 @@ impl LocalPlayer {
             }
             Some(_) => {}
         }
+        self.apply_effects_from_movements(level, &movements)
+    }
+
+    /// `Entity.applyEffectsFromBlocks(List)`: the step-on and inside effects of the movements.
+    pub(super) fn apply_effects_from_movements(
+        &mut self,
+        level: &Level<'_>,
+        movements: &[Movement],
+    ) -> Result<(), Unsupported> {
         if self.no_physics {
             return Ok(());
         }
@@ -37,7 +46,7 @@ impl LocalPlayer {
                 }
             }
         }
-        self.check_inside_blocks(level, &movements)
+        self.check_inside_blocks(level, movements)
     }
 
     /// `Entity.checkInsideBlocks` for the player: the shared walk, with the blocks that act on a

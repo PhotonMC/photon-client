@@ -275,7 +275,7 @@ pub(super) fn tick_block_entities(
         world.tick_entities();
     }
     if row["tick_block_entities"].as_bool() == Some(true) {
-        world.tick_block_entities();
+        let _ = world.tick_block_entities(None);
     }
     engine.pending_count()
 }

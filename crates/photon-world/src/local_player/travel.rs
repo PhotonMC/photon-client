@@ -68,9 +68,19 @@ impl LocalPlayer {
 
     /// `LocalPlayer.move`: the entity move, then the auto-jump look-ahead.
     pub(super) fn move_self(&mut self, level: &Level<'_>, delta: Vec3) -> Result<(), Unsupported> {
+        self.move_as(level, MoverType::SelfMove, delta)
+    }
+
+    /// `LocalPlayer.move` for a kind of mover.
+    pub(super) fn move_as(
+        &mut self,
+        level: &Level<'_>,
+        mover: MoverType,
+        delta: Vec3,
+    ) -> Result<(), Unsupported> {
         let previous_x = self.position.x;
         let previous_z = self.position.z;
-        self.entity_move(level, delta)?;
+        self.entity_move(level, mover, delta)?;
         let delta_x = (self.position.x - previous_x) as f32;
         let delta_z = (self.position.z - previous_z) as f32;
         self.update_auto_jump(level, delta_x, delta_z)?;
@@ -84,6 +94,7 @@ impl LocalPlayer {
     pub(super) fn entity_move(
         &mut self,
         level: &Level<'_>,
+        mover: MoverType,
         delta: Vec3,
     ) -> Result<(), Unsupported> {
         if self.no_physics {
@@ -95,14 +106,9 @@ impl LocalPlayer {
             return Ok(());
         }
 
-        let mut delta = delta;
-        if self.stuck_speed_multiplier.length_squared() > 1.0e-7 {
-            let stuck = self.stuck_speed_multiplier;
-            delta = delta.multiply_components(stuck.x, stuck.y, stuck.z);
-            self.stuck_speed_multiplier = Vec3::ZERO;
-            self.delta = Vec3::ZERO;
-        }
-        let delta = self.maybe_back_off_from_edge(level, delta)?;
+        let Some(delta) = self.delta_to_collide(level, mover, delta)? else {
+            return Ok(());
+        };
         let movement = self.collide(level, delta)?;
         let movement_length = movement.length_squared();
         if movement_length > 1.0e-7 || delta.length_squared() - movement_length < 1.0e-7 {
@@ -111,7 +117,7 @@ impl LocalPlayer {
             }
             let from = self.position;
             let to = from.add_vec3(movement);
-            self.movements_this_tick.push(Movement {
+            self.trace.movements.push(Movement {
                 from,
                 to,
                 original: Some(delta),
@@ -152,6 +158,37 @@ impl LocalPlayer {
             .delta
             .multiply_components(speed_factor, 1.0, speed_factor);
         Ok(())
+    }
+
+    /// What `Entity.move` makes of a move before it collides: a piston's is limited, the stuck
+    /// multiplier slows what is not a piston's, and a sneaking player does not walk off an edge.
+    /// `None` when nothing is left of it.
+    fn delta_to_collide(
+        &mut self,
+        level: &Level<'_>,
+        mover: MoverType,
+        delta: Vec3,
+    ) -> Result<Option<Vec3>, Unsupported> {
+        let piston = mover == MoverType::Piston;
+        let mut delta = delta;
+        if piston {
+            delta = self.limit_piston_movement(level, delta);
+            if delta.x == 0.0 && delta.y == 0.0 && delta.z == 0.0 {
+                return Ok(None);
+            }
+        }
+        if self.stuck_speed_multiplier.length_squared() > 1.0e-7 {
+            let stuck = self.stuck_speed_multiplier;
+            if !piston {
+                delta = delta.multiply_components(stuck.x, stuck.y, stuck.z);
+            }
+            self.stuck_speed_multiplier = Vec3::ZERO;
+            self.delta = Vec3::ZERO;
+        }
+        if piston {
+            return Ok(Some(delta));
+        }
+        self.maybe_back_off_from_edge(level, delta).map(Some)
     }
 
     pub(super) fn block_speed_factor(&self, level: &Level<'_>) -> f32 {

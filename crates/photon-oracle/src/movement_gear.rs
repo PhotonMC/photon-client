@@ -105,3 +105,82 @@ pub(super) fn with_rockets(
 fn hex_bits(value: f64) -> String {
     format!("{:016x}", value.to_bits())
 }
+
+/// The block events a row sends before the tick `index`; the first tick sets the game's clock.
+pub(super) fn apply_block_events(
+    world: &mut photon_world::ClientWorld,
+    events: Option<&Vec<Value>>,
+    index: usize,
+) -> Result<(), String> {
+    if index == 0 && events.is_some() {
+        world.set_game_time(1000);
+    }
+    for event in events.into_iter().flatten() {
+        if i32_field(event, "tick")? as usize == index {
+            world.apply_block_event(
+                (
+                    i32_field(event, "x")?,
+                    i32_field(event, "y")?,
+                    i32_field(event, "z")?,
+                ),
+                i32_field(event, "b0")? as u8,
+                i32_field(event, "b1")? as u8,
+            );
+        }
+    }
+    Ok(())
+}
+
+/// `Minecraft.tick` after the entities, for a row with block events: the block entities tick (the
+/// moving pistons push the player), and the clock moves on.
+pub(super) fn tick_block_entities(
+    world: &mut photon_world::ClientWorld,
+    player: &mut photon_world::local_player::LocalPlayer,
+    events: Option<&Vec<Value>>,
+) -> Result<(), String> {
+    if events.is_none() {
+        return Ok(());
+    }
+    let pushed = world.tick_after_entities(Some(player));
+    world.set_game_time(world.game_time() + 1);
+    pushed.map_err(|unsupported| unsupported.to_string())
+}
+
+/// What the tick's attack left of the breaking of blocks.
+pub(super) fn breaking_report(
+    world: &photon_world::ClientWorld,
+    player: &photon_world::local_player::LocalPlayer,
+    game_mode: &photon_game::game_mode::GameMode,
+    attack: &Value,
+) -> Result<Value, String> {
+    let stage = world
+        .destroying_blocks()
+        .get(&player.entity_id())
+        .map_or(-1, |progress| progress.stage);
+    let mut watched = Vec::new();
+    for place in attack["watch"].as_array().ok_or("watch must be an array")? {
+        watched.push(
+            world
+                .block_state_at(
+                    i32_field(place, "x")?,
+                    i32_field(place, "y")?,
+                    i32_field(place, "z")?,
+                )
+                .map_or(0, |state| state.0),
+        );
+    }
+    Ok(json!({
+        "destroying": game_mode.is_destroying(),
+        "progress": format!("{:08x}", game_mode.destroy_progress().to_bits()),
+        "destroy_ticks": format!("{:08x}", game_mode.destroy_ticks().to_bits()),
+        "delay": game_mode.destroy_delay(),
+        "miss_time": game_mode.miss_time(),
+        "stage": stage,
+        "sequence": world.prediction_sequence(),
+        "attack_strength_ticker": player.attack_strength_ticker(),
+        "right_click_delay": game_mode.right_click_delay(),
+        "main_hand_count": hand_count(world, 36),
+        "off_hand_count": hand_count(world, 45),
+        "watched_states": watched,
+    }))
+}

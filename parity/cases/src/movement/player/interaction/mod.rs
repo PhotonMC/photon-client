@@ -5,6 +5,7 @@
 mod aiming;
 mod digging;
 mod gliding;
+mod pistons;
 mod placing;
 
 use serde_json::{Value, json};
@@ -152,5 +153,6 @@ pub fn cases() -> Vec<Value> {
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),
         local("movement/gliding", gliding::rows()),
+        local("movement/pistons", pistons::rows()),
     ]
 }

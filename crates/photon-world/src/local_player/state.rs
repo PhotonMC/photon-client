@@ -120,7 +120,7 @@ impl LocalPlayer {
             no_physics: false,
             auto_jump_option,
             auto_jump_enabled: true,
-            movements_this_tick: Vec::new(),
+            trace: Default::default(),
             x_last: 0.0,
             y_last: 0.0,
             z_last: 0.0,
@@ -200,6 +200,26 @@ pub(super) const GRAVITY: f64 = 0.08;
 pub(super) const SNEAKING_SPEED: f64 = 0.3;
 
 pub(super) const SPRINT_WINDOW: i32 = 7;
+
+/// What the player's moves leave behind: the stretches for the block-effects pass, and (as
+/// `Entity.pistonDeltas` and `pistonDeltasGameTime`) how far pistons moved the player on each
+/// axis during one game tick.
+#[derive(Debug, Clone)]
+pub(crate) struct MoveTrace {
+    pub(crate) movements: Vec<Movement>,
+    pub(crate) piston_deltas: [f64; 3],
+    pub(crate) piston_time: i64,
+}
+
+impl Default for MoveTrace {
+    fn default() -> Self {
+        Self {
+            movements: Vec::new(),
+            piston_deltas: [0.0; 3],
+            piston_time: i64::MIN,
+        }
+    }
+}
 
 /// A stretch of movement recorded for the block-effects pass.
 #[derive(Debug, Clone, Copy)]

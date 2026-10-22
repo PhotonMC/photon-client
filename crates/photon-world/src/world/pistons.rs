@@ -13,6 +13,7 @@ use super::sounds::LevelEvent;
 use crate::block::entity::MovingPiston;
 use crate::block::piston::{self, Pos};
 use crate::block::{self, rules};
+use crate::local_player::{LocalPlayer, Unsupported};
 use crate::*;
 
 /// `Level.setBlock`'s reach for the shapes it updates in turn.
@@ -29,7 +30,7 @@ const SHAPE_ORDER: [Direction; 6] = [
 ];
 
 /// The state of a block named by its properties; air where it has no such state.
-fn state_of(block: usize, properties: &[(&str, &str)]) -> BlockStateId {
+pub(super) fn state_of(block: usize, properties: &[(&str, &str)]) -> BlockStateId {
     let chosen = properties
         .iter()
         .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
@@ -64,7 +65,7 @@ fn moving(
 }
 
 /// The collision shape of a state at a place.
-fn shape_at(state: BlockStateId, pos: Pos) -> VoxelShape {
+pub(super) fn shape_at(state: BlockStateId, pos: Pos) -> VoxelShape {
     block::registry::collision_shape_at(state, [pos.0, pos.1, pos.2])
 }
 
@@ -328,15 +329,25 @@ impl ClientWorld {
 
     /// What `Minecraft.tick` does after the entities: the block entities tick, then the level's own
     /// tick runs its sky flash down.
-    pub fn tick_after_entities(&mut self) {
-        self.tick_block_entities();
+    ///
+    /// A piston's push of the player that the port does not carry is reported; the rest ticks.
+    pub fn tick_after_entities(
+        &mut self,
+        player: Option<&mut LocalPlayer>,
+    ) -> Result<(), Unsupported> {
+        let pushed = self.tick_block_entities(player);
         self.tick_sky_flash();
+        pushed
     }
 
     /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set
     /// up. The moving pistons, the end gateways, the potent sulfur blocks, the enchanting tables, the
     /// beacons, the conduits and the vaults tick.
-    pub fn tick_block_entities(&mut self) {
+    pub fn tick_block_entities(
+        &mut self,
+        mut player: Option<&mut LocalPlayer>,
+    ) -> Result<(), Unsupported> {
+        let mut first_failure = Ok(());
         self.block_tickers.begin_pass();
         let mut index = 0;
         while let Some(pos) = self.block_tickers.next_to_tick(&mut index) {
@@ -344,16 +355,21 @@ impl ClientWorld {
             if !self.border_holds(pos) {
                 continue;
             }
-            self.tick_block_entity(pos);
+            let ticked = self.tick_block_entity(pos, player.as_deref_mut());
+            first_failure = first_failure.and(ticked);
         }
         self.block_tickers.end_pass();
+        first_failure
     }
 
     /// One block entity's ticker, by the block it belongs to.
-    fn tick_block_entity(&mut self, pos: Pos) {
+    fn tick_block_entity(
+        &mut self,
+        pos: Pos,
+        player: Option<&mut LocalPlayer>,
+    ) -> Result<(), Unsupported> {
         if self.moving_piston_at(pos).is_some() {
-            self.tick_moving_piston(pos);
-            return;
+            return self.tick_moving_piston(pos, player);
         }
         let block =
             usize::from(block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2)).block);
@@ -367,19 +383,24 @@ impl ClientWorld {
             id::TRIAL_SPAWNER => self.tick_trial_spawner(pos),
             _ => self.tick_end_gateway(pos),
         }
+        Ok(())
     }
 
     /// `PistonMovingBlockEntity.tick`: a block on its way moves half the way on each tick; one that
     /// arrived waits a few more and settles as the block it is.
-    fn tick_moving_piston(&mut self, pos: Pos) {
+    fn tick_moving_piston(
+        &mut self,
+        pos: Pos,
+        player: Option<&mut LocalPlayer>,
+    ) -> Result<(), Unsupported> {
         let here = block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2));
         let Some(mut moving) = self.moving_piston_at(pos).cloned() else {
             // The entity is gone (its chunk, or it was replaced by another's): no ticker for it.
             self.block_tickers.unregister(pos);
-            return;
+            return Ok(());
         };
         if here.block != id::MOVING_PISTON as u16 {
-            return;
+            return Ok(());
         }
         moving.progress_old = moving.progress;
         if moving.progress_old >= 1.0 {
@@ -389,10 +410,16 @@ impl ClientWorld {
             } else {
                 self.settle_moving_piston(pos, &moving);
             }
-        } else {
-            moving.progress = (moving.progress + 0.5).min(1.0);
-            self.store_moving_piston(pos, moving);
+            return Ok(());
         }
+        let new_progress = moving.progress + 0.5;
+        let pushed = match player {
+            Some(player) => player.pushed_by_piston(self, (pos, &moving), new_progress),
+            None => Ok(()),
+        };
+        moving.progress = new_progress.min(1.0);
+        self.store_moving_piston(pos, moving);
+        pushed
     }
 
     /// `TheEndGatewayBlockEntity.beamAnimationTick`: the entity grows older, and its cooldown runs
