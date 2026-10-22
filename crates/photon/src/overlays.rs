@@ -119,6 +119,7 @@ pub const SHARED_TEXTURES: [&str; 3] = [
     photon_render::render_types::ITEM_GLINT_TEXTURE,
 ];
 
+mod frame_tag;
 mod hand_use;
 mod light;
 pub use light::*;

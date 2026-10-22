@@ -53,9 +53,14 @@ pub(super) fn potion_name(
     Component::translatable(format!("{prefix}{suffix}"))
 }
 
+/// `ItemStack.getCustomName`: the custom name, else a written book's title.
+pub fn custom_name(values: &Values) -> Option<Component> {
+    values.custom_name().or_else(|| book_title(values))
+}
+
 /// `ItemStack.getHoverName`.
 pub fn hover_name(stack: &Stack, values: &Values) -> Component {
-    if let Some(name) = values.custom_name().or_else(|| book_title(values)) {
+    if let Some(name) = custom_name(values) {
         return name;
     }
     let item = item_name_of(stack);

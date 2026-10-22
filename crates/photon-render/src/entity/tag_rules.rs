@@ -20,6 +20,9 @@ pub enum NameRules {
     Mob,
     /// `ArmorStandRenderer`: a visible custom name.
     ArmorStand,
+    /// `ItemFrameRenderer`: the crosshair is on it and the HUD is up (the item's custom name is
+    /// what the tag says).
+    ItemFrame,
 }
 
 /// `Entity.getAttachments().getNullable(NAME_TAG, 0, yRot)` before the entity's scale: the
@@ -47,8 +50,6 @@ pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
     match name {
         "minecraft:player"
         | "minecraft:mannequin"
-        | "minecraft:item_frame"
-        | "minecraft:glow_item_frame"
         | "minecraft:lightning_bolt"
         | "minecraft:ominous_item_spawner" => None,
         "minecraft:item" | "minecraft:falling_block" | "minecraft:villager"
@@ -57,10 +58,21 @@ pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
             None
         }
         "minecraft:armor_stand" => Some(NameRules::ArmorStand),
-        "minecraft:ender_dragon" => Some(NameRules::Entity),
-        _ if entity.is_mob() => Some(NameRules::Mob),
-        _ if entity.is_living_entity() => None,
-        _ => Some(NameRules::Entity),
+        "minecraft:item_frame" | "minecraft:glow_item_frame" => Some(NameRules::ItemFrame),
+        _ => class_rules(entity, name),
+    }
+}
+
+/// The rules of the renderer class an entity's type falls under.
+fn class_rules(entity: &ClientEntity, name: &str) -> Option<NameRules> {
+    if name == "minecraft:ender_dragon" {
+        Some(NameRules::Entity)
+    } else if entity.is_mob() {
+        Some(NameRules::Mob)
+    } else if entity.is_living_entity() {
+        None
+    } else {
+        Some(NameRules::Entity)
     }
 }
 
@@ -96,6 +108,7 @@ pub fn entity_name_tag(
         NameRules::Entity => named,
         NameRules::Mob => living_shows(entity, viewer, teams, distance_sq) && named,
         NameRules::ArmorStand => entity.is_custom_name_visible(),
+        NameRules::ItemFrame => picked && !viewer.hud_hidden,
     };
     if !shows {
         return None;

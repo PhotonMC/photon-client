@@ -2,7 +2,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
-use photon_render::entity::tag_rules::{entity_name_tag, eye_height, rules_of};
+use photon_render::entity::tag_rules::{NameRules, entity_name_tag, eye_height, rules_of};
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -298,19 +298,12 @@ fn entity_tags(
     let world = session.world();
     let picked = crate::view::crosshair_entity(session);
     for entity in world.entities().drawn_with_invisible() {
-        // Only an entity with a name of its own, or whose name shows, can have a tag.
-        if !entity.has_custom_name() && !entity.is_custom_name_visible() {
-            continue;
-        }
         let Some(rules) = rules_of(entity) else {
             continue;
         };
-        let inputs = photon_gui::entity_name::tag_inputs(
-            entity,
-            None,
-            (lang, session.scoreboard()),
-            session.local_name(),
-        );
+        let Some(inputs) = frame_tag::inputs_of(entity, rules, (lang, session)) else {
+            continue;
+        };
         let picked = picked == Some(entity.id());
         let Some(tag) =
             entity_name_tag(entity, inputs.runs, (rules, picked), (viewer, inputs.teams))
@@ -324,6 +317,12 @@ fn entity_tags(
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + eye_height(entity).unwrap_or(0.0), z);
         let light = packed_light(world, eye);
+        let light = if rules == NameRules::ItemFrame && is_glow_frame(entity) {
+            // `ItemFrameRenderer.getBlockLightLevel`: a glow frame is lit to 5 at least.
+            (light & !0xFFFF) | (((light >> 4) & 15).max(5) << 4)
+        } else {
+            light
+        };
         let light = if snapshot.burning {
             (light & !0xFFFF) | (15 << 4)
         } else {
@@ -520,4 +519,9 @@ fn burning_light(light: i32, burning: bool) -> i32 {
     } else {
         light
     }
+}
+
+/// Whether the entity is a glow item frame.
+fn is_glow_frame(entity: &photon_world::ClientEntity) -> bool {
+    photon_data::entity_type::name(entity.type_id) == Some("minecraft:glow_item_frame")
 }
