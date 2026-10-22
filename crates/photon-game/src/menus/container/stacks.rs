@@ -361,4 +361,14 @@ mod tests {
         assert!(menu.may_place(0, &plain));
         assert!(!menu.may_place(0, &unbreakable));
     }
+
+    #[test]
+    fn a_worn_wolf_armor_reads_its_durability_from_the_stack() {
+        let mut armor = stack("minecraft:wolf_armor", 1);
+        assert_eq!(max_damage(&armor), 64);
+        // `Item.Properties.durability` gives the stack its max damage; the damage comes with the wear.
+        components::set_damage(&mut armor, 63);
+        assert_eq!(damage(&armor), 63);
+        assert!(components::is_damageable(&armor));
+    }
 }
