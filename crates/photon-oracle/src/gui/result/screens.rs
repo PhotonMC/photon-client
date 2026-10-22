@@ -180,7 +180,7 @@ fn callback_names(callbacks: &[photon_gui::screen::confirm::ConfirmAction]) -> V
 
 /// What the widgets asked of the sound manager since the queue was last emptied, as the Java
 /// oracle writes it: the event, the pitch and the volume.
-fn asked_sounds() -> Vec<String> {
+pub(super) fn asked_sounds() -> Vec<String> {
     photon_gui::ui_sound::take()
         .iter()
         .map(|sound| format!("{} {:?} {:?}", sound.event, sound.pitch, sound.volume))

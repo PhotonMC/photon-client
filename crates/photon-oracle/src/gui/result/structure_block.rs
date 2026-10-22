@@ -215,9 +215,11 @@ pub(super) fn structure_block_screen_case(
         restored: None,
     };
     let mut screen = StructureBlockScreen::new((&font, &lang), &contents_of(row), size);
+    photon_gui::ui_sound::take();
     for each in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         step(&mut screen, &lang, each, &mut outcome)?;
     }
+    let sounds = super::screens::asked_sounds();
     let mouse = (int(&row["mouse"][0]), int(&row["mouse"][1]));
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
@@ -230,6 +232,7 @@ pub(super) fn structure_block_screen_case(
         "label": row["label"],
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
         "closed": outcome.closed,
+        "sounds": sounds,
         "packets": outcome.packets,
         "held": held_json(held),
     }))

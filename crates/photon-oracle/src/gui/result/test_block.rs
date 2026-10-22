@@ -105,9 +105,11 @@ pub(super) fn test_block_screen_case(ctx: &mut GuiContext, row: &Value) -> Resul
         packets: Vec::new(),
     };
     let mut screen = TestBlockScreen::new((&font, &lang), &contents, size);
+    photon_gui::ui_sound::take();
     for each in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         step(&mut screen, &lang, each, &mut outcome)?;
     }
+    let sounds = super::screens::asked_sounds();
     let mouse = (int(&row["mouse"][0]), int(&row["mouse"][1]));
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
@@ -120,6 +122,7 @@ pub(super) fn test_block_screen_case(ctx: &mut GuiContext, row: &Value) -> Resul
         "label": row["label"],
         "ops": gui_ops(&log),
         "closed": outcome.closed,
+        "sounds": sounds,
         "packets": outcome.packets,
     }))
 }

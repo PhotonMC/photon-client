@@ -121,6 +121,7 @@ class GuiJigsawOracle extends GuiStructureBlockOracle {
             var edit = new net.minecraft.client.gui.screens.inventory.JigsawBlockEditScreen(jigsawBlock(row));
             edit.init(width, height);
             withoutAlt(edit);
+            SilentSounds.ASKED.clear();
             for (var step : row.getAsJsonArray("steps")) {
                 jigsawStep(edit, step.getAsJsonObject(), minecraft);
             }
@@ -138,6 +139,9 @@ class GuiJigsawOracle extends GuiStructureBlockOracle {
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
             out.addProperty("closed", gui.closed);
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var packets = new JsonArray();
             for (var packet : sent.packets) {
                 var json = new JsonObject();

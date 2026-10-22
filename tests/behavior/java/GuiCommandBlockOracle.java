@@ -71,6 +71,7 @@ class GuiCommandBlockOracle extends GuiSignOracle {
             net.minecraft.client.gui.screens.inventory.AbstractCommandBlockEditScreen edit = row.has("minecart")
                 ? minecartScreen(row) : blockScreen(row);
             edit.init(width, height);
+            SilentSounds.ASKED.clear();
             var steps = new JsonArray();
             for (var stepElement : row.getAsJsonArray("steps")) {
                 var step = stepElement.getAsJsonObject();
@@ -97,6 +98,9 @@ class GuiCommandBlockOracle extends GuiSignOracle {
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
             out.addProperty("closed", gui.closed);
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var packets = new JsonArray();
             for (var packet : sent.packets) {
                 var json = new JsonObject();

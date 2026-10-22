@@ -142,9 +142,11 @@ pub(super) fn jigsaw_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
         packets: Vec::new(),
     };
     let mut screen = JigsawScreen::new((&font, &lang), &contents_of(row), size);
+    photon_gui::ui_sound::take();
     for each in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
         step(&mut screen, &lang, each, &mut outcome)?;
     }
+    let sounds = super::screens::asked_sounds();
     let mouse = (int(&row["mouse"][0]), int(&row["mouse"][1]));
     let ms = row["ms"].as_u64().unwrap_or(0);
     let mut frame = GuiFrame {
@@ -161,6 +163,7 @@ pub(super) fn jigsaw_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
         "label": row["label"],
         "ops": gui_ops(&log[first..]),
         "closed": outcome.closed,
+        "sounds": sounds,
         "packets": outcome.packets,
     }))
 }
