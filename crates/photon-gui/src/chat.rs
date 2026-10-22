@@ -166,6 +166,15 @@ pub fn split(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
 }
 
 fn break_lines(runs: &[Run], max: i32, font: &Font, indent_soft: bool) -> Vec<Vec<Run>> {
+    // The codes of the text style it and take no room (`StringSplitter` goes through
+    // `iterateFormatted`).
+    let coded;
+    let runs = if runs.iter().any(|run| run.text.contains('\u{a7}')) {
+        coded = crate::legacy_styled_runs(runs);
+        &coded[..]
+    } else {
+        runs
+    };
     let chars: Vec<(char, usize)> = runs
         .iter()
         .enumerate()

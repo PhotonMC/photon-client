@@ -169,7 +169,7 @@ impl ChatLog {
         } else {
             message.runs.clone()
         };
-        for line in wrap(&crate::legacy_styled_runs(&runs), width, font) {
+        for line in wrap(&runs, width, font) {
             self.lines.push_front(ChatLine {
                 runs: line,
                 added: message.added,

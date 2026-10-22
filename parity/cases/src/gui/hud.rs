@@ -61,6 +61,18 @@ pub fn titles() -> Value {
         titles_row("subtitle-without-title", Titles { title: None, subtitle: Some("lonely"), ..TITLES }),
         titles_row("action-bar", Titles { overlay_elapsed: 10, ..bar }),
         titles_row("action-bar-fading", Titles { overlay_elapsed: 50, partial: 0.5, ..bar }),
+        // Literal section-sign codes style the text and take no room.
+        titles_row("coded-title", Titles { elapsed: 30, title: Some("\u{a7}cRed \u{a7}lbold\u{a7}r plain"), ..TITLES }),
+        titles_row(
+            "coded-subtitle-and-bar",
+            Titles {
+                elapsed: 30,
+                subtitle: Some("\u{a7}nunder \u{a7}g kept? \u{a7}"),
+                overlay: Some("\u{a7}6gold \u{a7}kobf\u{a7}r end"),
+                overlay_elapsed: 5,
+                ..TITLES
+            },
+        ),
         titles_row(
             "both",
             Titles { elapsed: 20, subtitle: Some("sub"), overlay: Some("bar"), overlay_elapsed: 5, ..TITLES },

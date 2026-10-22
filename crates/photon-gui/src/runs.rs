@@ -4,23 +4,64 @@
 use photon_game::text::{Run, Style};
 use photon_render::gui::TextRun;
 
-/// A component's runs as the draw layer takes them.
+/// A component's runs as the draw layer takes them. A literal's `\u{a7}` codes style it and take
+/// no room, as `Font` draws and measures every string (`StringDecomposer.iterateFormatted`).
 pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
+    if runs.iter().any(|run| run.text.contains('\u{a7}')) {
+        return coded_runs(runs);
+    }
     runs.iter()
         .enumerate()
-        .map(|(index, run)| TextRun {
-            text: run.text.as_str().into(),
-            colour: run.style.colour,
-            bold: run.style.bold == Some(true),
-            italic: run.style.italic == Some(true),
-            underlined: run.style.underlined == Some(true),
-            strikethrough: run.style.strikethrough == Some(true),
-            obfuscated: run.style.obfuscated == Some(true),
-            piece_start: true,
-            shadow: run.style.shadow,
-            joins_previous: index > 0 && runs[index - 1].style == run.style,
+        .map(|(index, run)| {
+            text_run(
+                run,
+                run.text.as_str().into(),
+                true,
+                index > 0 && runs[index - 1].style == run.style,
+            )
         })
         .collect()
+}
+
+/// The draw runs of text that has codes: each literal is one piece, whose first stretch starts it.
+fn coded_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
+    let mut out: Vec<TextRun> = Vec::new();
+    let mut previous: Option<Style> = None;
+    for run in runs {
+        let expanded = legacy_expanded(&run.text, &run.style);
+        for (index, part) in expanded.iter().enumerate() {
+            let joins = if index == 0 {
+                previous.as_ref() == Some(&part.style)
+            } else {
+                false
+            };
+            // An underline reaches a unit left only of the string's own first character.
+            let starts = index == 0 && !run.text.starts_with('\u{a7}');
+            out.push(text_run(part, part.text.clone().into(), starts, joins));
+        }
+        previous = expanded.last().map(|part| part.style.clone()).or(previous);
+    }
+    out
+}
+
+fn text_run<'a>(
+    run: &Run,
+    text: std::borrow::Cow<'a, str>,
+    piece_start: bool,
+    joins_previous: bool,
+) -> TextRun<'a> {
+    TextRun {
+        text,
+        colour: run.style.colour,
+        bold: run.style.bold == Some(true),
+        italic: run.style.italic == Some(true),
+        underlined: run.style.underlined == Some(true),
+        strikethrough: run.style.strikethrough == Some(true),
+        obfuscated: run.style.obfuscated == Some(true),
+        piece_start,
+        shadow: run.style.shadow,
+        joins_previous,
+    }
 }
 
 /// Measuring text components' runs; the screens' view of [`photon_render::gui::font::Font`].
