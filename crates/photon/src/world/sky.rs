@@ -32,6 +32,8 @@ pub struct SkyCamera {
     /// `Options.darknessEffectScale` and `Options.gamma`, which the lightmap extractor reads
     /// each frame.
     pub lightmap_options: (f32, f32),
+    /// `Options.hideLightningFlash`, read by the same extractor.
+    pub hide_flashes: bool,
 }
 
 pub struct Sky {
@@ -50,8 +52,6 @@ pub struct Sky {
     clouds: Clouds,
     /// `ClientLevel.endFlashState`: the End's flashes (`DimensionType.hasEndFlashes`).
     end_flash: Option<photon_world::end_flash::EndFlashState>,
-    /// The option that hides the lightning flashes, as the last tick saw it.
-    hide_flashes: bool,
     /// The angles of a flash that started, until its sound is asked for.
     flash_start: Option<(f32, f32)>,
 }
@@ -157,7 +157,6 @@ impl Sky {
                 &cloud_image,
             )),
             end_flash,
-            hide_flashes: false,
             flash_start: None,
         })
     }
@@ -186,7 +185,6 @@ impl Sky {
     pub fn tick(&mut self, session: &PlaySession, options: &photon_game::options::Options) {
         let hide_lightning_flashes = options.hide_lightning_flashes;
         self.flicker.tick();
-        self.hide_flashes = hide_lightning_flashes;
         self.tick_end_flash(session);
         if session.player().is_some() {
             let next = probe(
@@ -270,7 +268,7 @@ impl Sky {
             self.end_flash
                 .as_ref()
                 .map(|flash| flash.intensity(partial)),
-            self.hide_flashes,
+            camera.hide_flashes,
             camera.fog.boss_fog,
         );
         let view = super::fog::lightmap_view(

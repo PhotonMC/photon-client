@@ -369,6 +369,7 @@ impl Play {
             frame_ticks,
             origin: self.origin,
             lightmap_options: (options.darkness_effect_scale as f32, options.gamma as f32),
+            hide_flashes: options.hide_lightning_flashes,
         }
     }
 
