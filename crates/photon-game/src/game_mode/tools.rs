@@ -168,6 +168,78 @@ pub(super) fn shears_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
     UseResult::Success { swing: true }
 }
 
+/// `CampfireBlock.canLight`, `CandleBlock.canLight` and `CandleCakeBlock.canLight`: an unlit
+/// campfire or candle that is not under water, or an unlit candle cake.
+fn lightable(state: photon_core::ids::BlockStateId) -> bool {
+    use photon_world::block::rules::property;
+    let path = block(state).name.trim_start_matches("minecraft:");
+    let unlit = property(state, "lit") == Some("false");
+    let dry = property(state, "waterlogged") == Some("false");
+    match path {
+        "campfire" | "soul_campfire" | "candle" => unlit && dry,
+        _ if path.ends_with("candle_cake") => unlit,
+        _ if path.ends_with("_candle") => unlit && dry,
+        _ => false,
+    }
+}
+
+/// `FlintAndSteelItem.useOn` for the client: lighting a campfire, candle or candle cake, or fire
+/// in the empty place beside the face (not the nether portal case), sounds the flint with a
+/// pitch from the level's random and succeeds; where no fire fits it fails.
+pub(super) fn flint_and_steel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
+    let Aim::Block { x, y, z, face, .. } = aim else {
+        return UseResult::Pass;
+    };
+    let clicked = ctx.state_at((x, y, z));
+    let (target, placed) = if lightable(clicked) {
+        let lit = photon_world::block::rules::with_property(clicked, "lit", "true");
+        ((x, y, z), lit)
+    } else {
+        let (dx, dy, dz) =
+            photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
+        let beside = (x + dx, y + dy, z + dz);
+        let world = &*ctx.world;
+        let at = |(x, y, z)| world.block_state_or_air(x, y, z);
+        if !is_air(ctx.state_at(beside)) || !photon_world::block::fire::survives_at(at, beside) {
+            return UseResult::Fail;
+        }
+        (
+            beside,
+            photon_world::block::fire::placement_state(at, beside),
+        )
+    };
+    let pitch = ctx.player.next_level_float() * 0.4 + 0.8;
+    ctx.world.push_sound(LocalSound::at(
+        "minecraft:item.flintandsteel.use",
+        LocalSoundSource::Blocks,
+        (1.0, pitch),
+        (
+            f64::from(target.0) + 0.5,
+            f64::from(target.1) + 0.5,
+            f64::from(target.2) + 0.5,
+        ),
+    ));
+    if let Some(state) = placed {
+        let position = ctx.player.position();
+        ctx.world
+            .set_block_with_updates(target, state, 11, 512, position);
+    }
+    UseResult::Success { swing: true }
+}
+
+/// `useItemOn` of a campfire, candle or candle cake with flint and steel in hand: the cake passes
+/// (`CandleCakeBlock.useItemOn`), the others leave it to the item (`TRY_WITH_EMPTY_HAND` from
+/// `BlockBehaviour`, as a held stack is no food for the campfire and no empty hand for the candle).
+pub(super) fn flint_over_lightable(state: photon_core::ids::BlockStateId) -> Option<UseResult> {
+    let path = block(state).name.trim_start_matches("minecraft:");
+    match path {
+        _ if path.ends_with("candle_cake") => Some(UseResult::Pass),
+        "campfire" | "soul_campfire" | "candle" => Some(UseResult::TryEmptyHand),
+        _ if path.ends_with("_candle") => Some(UseResult::TryEmptyHand),
+        _ => None,
+    }
+}
+
 /// `HoeItem.useOn` for the client: a tillable block with its predicate met sounds the hoe and
 /// succeeds; any other passes.
 pub(super) fn hoe_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
@@ -234,6 +306,32 @@ mod tests {
         }
         assert!(!super::flattenable("minecraft:dirt_path"));
         assert!(!super::flattenable("minecraft:stone"));
+    }
+
+    fn named(name: &str) -> photon_core::ids::BlockStateId {
+        let index = photon_data::block::registry::block_index(name).expect(name);
+        photon_data::block::registry::BLOCKS[index].default_state_id()
+    }
+
+    #[test]
+    fn flint_lights_what_is_unlit_and_dry() {
+        use photon_world::block::rules::with_property;
+        let lit = named("minecraft:campfire");
+        assert!(!super::lightable(lit));
+        assert!(super::lightable(
+            with_property(lit, "lit", "false").unwrap()
+        ));
+        let wet = with_property(lit, "lit", "false")
+            .and_then(|s| with_property(s, "waterlogged", "true"));
+        assert!(!super::lightable(wet.unwrap()));
+        assert!(super::lightable(named("minecraft:red_candle")));
+        assert!(super::lightable(named("minecraft:candle")));
+        assert!(!super::lightable(named("minecraft:stone")));
+        let cake = named("minecraft:white_candle_cake");
+        assert!(super::lightable(cake));
+        assert!(!super::lightable(
+            with_property(cake, "lit", "true").unwrap()
+        ));
     }
 
     #[test]

@@ -359,6 +359,12 @@ impl LocalPlayer {
         self.play_player_sound("minecraft:entity.player.swim", speed, pitch);
     }
 
+    /// A float of the level's random, which the reference seeds from the clock: any generator
+    /// stands in for it, so this player's does.
+    pub fn next_level_float(&mut self) -> f32 {
+        self.random.next_float()
+    }
+
     /// `1.0F + (random.nextFloat() - random.nextFloat()) * 0.4F`.
     fn random_pitch(&mut self) -> f32 {
         let first = self.random.next_float();

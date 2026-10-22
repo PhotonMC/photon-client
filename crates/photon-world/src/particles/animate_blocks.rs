@@ -38,12 +38,7 @@ fn step(facing: Option<&str>) -> (f64, f64) {
     }
 }
 
-/// `FireBlock.canBurn`: a block with ignite odds that is not under water.
-fn can_burn(state: BlockStateId) -> bool {
-    let name = crate::block::state_or_air(state).block().name;
-    crate::block::rules::property(state, "waterlogged") != Some("true")
-        && photon_data::fire::odds(name).is_some_and(|(ignite, _)| ignite > 0)
-}
+use crate::block::fire::can_burn;
 
 impl ParticleEngine {
     /// `Block.animateTick` for the state at a block: its particles go through the level, its
