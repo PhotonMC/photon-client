@@ -36,6 +36,7 @@ const RENDER_DISTANCE: u8 = CUSTOMISING | 3;
 const AMBIENT_OCCLUSION: u8 = CUSTOMISING | 4;
 const MENU_BLURRINESS: u8 = CUSTOMISING | 5;
 const GAMMA: u8 = 9;
+const PARTICLES: u8 = CUSTOMISING | 6;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -118,6 +119,8 @@ pub struct VideoValues {
     pub menu_blurriness: i32,
     /// `gamma`, the brightness.
     pub gamma: f64,
+    /// `particles`.
+    pub particles: photon_game::options::ParticleStatus,
 }
 
 impl Default for VideoValues {
@@ -131,6 +134,7 @@ impl Default for VideoValues {
             render_distance: 12,
             menu_blurriness: 5,
             gamma: 0.5,
+            particles: photon_game::options::ParticleStatus::All,
         }
     }
 }
@@ -341,7 +345,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            PARTICLES,
             named(
                 "options.particles",
                 &[
@@ -349,7 +353,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
                     "options.particles.decreased",
                     "options.particles.minimal",
                 ],
-                "options.particles.all",
+                display.particles.caption_key(),
             ),
         ),
         (
@@ -533,9 +537,15 @@ mod tests {
         let Some((font, lang)) = assets() else { return };
         let shown = VideoValues {
             gamma: 0.8,
+            particles: photon_game::options::ParticleStatus::Minimal,
             ..VideoValues::default()
         };
         let screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, shown);
-        assert_eq!(screen.values(VideoValues::default()).gamma, 0.8);
+        let back = screen.values(VideoValues::default());
+        assert_eq!(back.gamma, 0.8);
+        assert_eq!(
+            back.particles,
+            photon_game::options::ParticleStatus::Minimal
+        );
     }
 }

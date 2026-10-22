@@ -77,6 +77,7 @@ impl Controls {
         let options = &mut self.options;
         options.chat_visibility = choices.visibility;
         options.save_chat_drafts = choices.save_drafts;
+        options.chat_colors = choices.colors;
         options.chat_delay = choices.delay;
         options.chat_width = choices.settings.width;
         options.chat_scale = choices.settings.scale;

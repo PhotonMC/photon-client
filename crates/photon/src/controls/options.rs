@@ -190,6 +190,7 @@ impl Controls {
         self.options.render_distance = shown.render_distance;
         self.options.menu_background_blurriness = shown.menu_blurriness;
         self.options.gamma = shown.gamma;
+        self.options.particles = shown.particles;
     }
 
     /// The options the video screen shows, as the options hold them.
@@ -203,6 +204,7 @@ impl Controls {
             render_distance: options.render_distance,
             menu_blurriness: options.menu_background_blurriness,
             gamma: options.gamma,
+            particles: options.particles,
         }
     }
 

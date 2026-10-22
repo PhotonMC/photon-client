@@ -33,6 +33,12 @@ pub struct Options {
     pub invert_mouse_x: bool,
     /// `saveChatDrafts`: a chat box closed with Escape keeps its text.
     pub save_chat_drafts: bool,
+    /// `chatColors`: formatting codes of chat text are applied; the server is told.
+    pub chat_colors: bool,
+    /// `allowServerListing`: the server may list the player; the server is told.
+    pub allow_server_listing: bool,
+    /// `particles`.
+    pub particles: ParticleStatus,
     /// `invertYMouse`.
     pub invert_mouse_y: bool,
     /// `mouseSensitivity`, 0 to 1.
@@ -117,6 +123,9 @@ impl Default for Options {
             gui_scale: 0,
             invert_mouse_x: false,
             save_chat_drafts: false,
+            chat_colors: true,
+            allow_server_listing: true,
+            particles: ParticleStatus::All,
             invert_mouse_y: false,
             sensitivity: 0.5,
             mouse_wheel_sensitivity: log_mouse(0),

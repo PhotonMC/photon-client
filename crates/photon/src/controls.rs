@@ -252,9 +252,8 @@ pub(crate) fn game_directory() -> std::path::PathBuf {
         .map_or_else(|| std::path::PathBuf::from(".data/client"), Into::into)
 }
 
-/// `Options.buildPlayerInformation`: what the server is told of the client. The chat is in colour,
-/// nothing is filtered, the player may be listed and every particle is made, as the default
-/// options have them; the skin's parts and the main hand are the options'.
+/// `Options.buildPlayerInformation`: what the server is told of the client. Nothing is filtered, as
+/// with the default options; the rest is the options'.
 pub(crate) fn client_information(
     options: &Options,
 ) -> photon_net::configuration::ClientInformation {
@@ -262,15 +261,25 @@ pub(crate) fn client_information(
         options.language_code.encode_utf16().collect(),
         options.render_distance,
         options.chat_visibility,
-        true,
+        options.chat_colors,
         options.model_parts,
         match options.main_hand {
             photon_game::options::MainHand::Left => photon_net::configuration::MainHand::Left,
             photon_game::options::MainHand::Right => photon_net::configuration::MainHand::Right,
         },
         false,
-        true,
-        photon_net::configuration::ParticleStatus::All,
+        options.allow_server_listing,
+        match options.particles {
+            photon_game::options::ParticleStatus::All => {
+                photon_net::configuration::ParticleStatus::All
+            }
+            photon_game::options::ParticleStatus::Decreased => {
+                photon_net::configuration::ParticleStatus::Decreased
+            }
+            photon_game::options::ParticleStatus::Minimal => {
+                photon_net::configuration::ParticleStatus::Minimal
+            }
+        },
     )
 }
 

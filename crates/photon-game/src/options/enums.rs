@@ -100,6 +100,48 @@ impl ChatVisibility {
     }
 }
 
+/// `ParticleStatus`: how many particles the client makes, and tells the server it wants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParticleStatus {
+    All,
+    Decreased,
+    Minimal,
+}
+
+impl ParticleStatus {
+    pub const fn id(self) -> i32 {
+        match self {
+            Self::All => 0,
+            Self::Decreased => 1,
+            Self::Minimal => 2,
+        }
+    }
+
+    /// The caption's translation key, which is also the cycle button's value.
+    pub const fn caption_key(self) -> &'static str {
+        match self {
+            Self::All => "options.particles.all",
+            Self::Decreased => "options.particles.decreased",
+            Self::Minimal => "options.particles.minimal",
+        }
+    }
+
+    pub fn from_caption_key(key: &str) -> Option<Self> {
+        [Self::All, Self::Decreased, Self::Minimal]
+            .into_iter()
+            .find(|value| value.caption_key() == key)
+    }
+
+    pub const fn from_id(id: i32) -> Option<Self> {
+        match id {
+            0 => Some(Self::All),
+            1 => Some(Self::Decreased),
+            2 => Some(Self::Minimal),
+            _ => None,
+        }
+    }
+}
+
 impl InactivityFpsLimit {
     pub const ALL: [Self; 2] = [Self::Minimized, Self::Afk];
 

@@ -139,6 +139,13 @@ impl VideoSettingsScreen {
                 .find(MENU_BLURRINESS)
                 .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
                 .map_or(fallback.menu_blurriness, |slider| *slider.value()),
+            particles: list
+                .find(PARTICLES)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<Named>>())
+                .and_then(|button| {
+                    photon_game::options::ParticleStatus::from_caption_key(button.value())
+                })
+                .unwrap_or(fallback.particles),
             gamma: list
                 .find(GAMMA)
                 .and_then(|control| {

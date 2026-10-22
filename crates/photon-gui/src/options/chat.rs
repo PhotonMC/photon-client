@@ -29,6 +29,7 @@ const HEIGHT_UNFOCUSED: u8 = 8;
 const NARRATOR: u8 = 9;
 const SAVE_DRAFTS: u8 = 10;
 const DELAY: u8 = 11;
+const CHAT_COLORS: u8 = 12;
 
 /// `chatDelay`'s value set: tenths of a second from 0 to 6.
 pub(super) type DelayValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
@@ -95,12 +96,22 @@ pub(super) fn unit(
     slider(key, UnitDouble, label, initial)
 }
 
+/// `chatColors`' button.
+fn colours_entry(options: &Options) -> (u8, Build) {
+    (
+        CHAT_COLORS,
+        boolean("options.chat.color", options.chat_colors),
+    )
+}
+
 /// What the screen's options say, for the options and the chat to take.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChatChoices {
     pub visibility: ChatVisibility,
     pub settings: ChatSettings,
     pub save_drafts: bool,
+    /// `chatColors`.
+    pub colors: bool,
     /// `chatDelay`, in seconds.
     pub delay: f64,
 }
@@ -135,7 +146,7 @@ impl ChatOptionsScreen {
                             options.chat_visibility,
                         ),
                     ),
-                    (PLAIN, boolean("options.chat.color", true)),
+                    colours_entry(options),
                     (PLAIN, boolean("options.chat.links", true)),
                     (PLAIN, boolean("options.chat.links.prompt", true)),
                     (
@@ -256,6 +267,10 @@ impl ChatOptionsScreen {
             .find(SAVE_DRAFTS)
             .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
             .is_some_and(|button| *button.value());
+        let colors = list
+            .find(CHAT_COLORS)
+            .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+            .is_none_or(|button| *button.value());
         let delay = list
             .find(DELAY)
             .and_then(|control| control.as_any().downcast_ref::<OptionSlider<DelayValues>>())
@@ -263,6 +278,7 @@ impl ChatOptionsScreen {
         ChatChoices {
             visibility,
             save_drafts,
+            colors,
             delay,
             settings: ChatSettings {
                 width: share(WIDTH),
@@ -316,5 +332,25 @@ impl ChatOptionsScreen {
 
     pub fn scroll_amount(&self) -> f64 {
         self.screen.list.scroll_amount()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_chat_colours_button_shows_and_hands_back_the_option() {
+        let Ok(root) = std::env::var("PHOTON_ASSETS") else {
+            return;
+        };
+        let root = std::path::PathBuf::from(root);
+        let (Some(font), lang) = (Font::load(&root), Lang::load(&root)) else {
+            return;
+        };
+        let mut options = Options::default();
+        options.chat_colors = false;
+        let screen = ChatOptionsScreen::new(&font, &lang, (427, 240), true, &options);
+        assert!(!screen.choices().colors);
     }
 }

@@ -193,13 +193,17 @@ impl Options {
             Key::InactivityFpsLimit => self.read_inactivity_limit(&json),
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
             Key::SaveChatDrafts
+            | Key::ChatColors
+            | Key::AllowServerListing
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
             | Key::ViewBobbing
             | Key::HighContrastBlockOutline => self.read_flag(key, boolean()),
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
-            Key::AttackIndicator | Key::ChatVisibility => self.read_choice(key, &json),
+            Key::AttackIndicator | Key::ChatVisibility | Key::Particles => {
+                self.read_choice(key, &json);
+            }
             Key::ShowSubtitles
             | Key::HideLightningFlashes
             | Key::DirectionalAudio
@@ -261,6 +265,8 @@ impl Options {
     fn read_flag(&mut self, key: Key, value: Option<bool>) {
         let flag = match key {
             Key::SaveChatDrafts => &mut self.save_chat_drafts,
+            Key::ChatColors => &mut self.chat_colors,
+            Key::AllowServerListing => &mut self.allow_server_listing,
             Key::AdvancedItemTooltips => &mut self.advanced_item_tooltips,
             Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
             Key::ViewBobbing => &mut self.view_bobbing,
@@ -273,6 +279,8 @@ impl Options {
     fn flag(&self, key: Key) -> bool {
         match key {
             Key::SaveChatDrafts => self.save_chat_drafts,
+            Key::ChatColors => self.chat_colors,
+            Key::AllowServerListing => self.allow_server_listing,
             Key::AdvancedItemTooltips => self.advanced_item_tooltips,
             Key::PauseOnLostFocus => self.pause_on_lost_focus,
             Key::ViewBobbing => self.view_bobbing,
@@ -331,19 +339,32 @@ impl Options {
     }
 
     /// The options that are one of a few, by their id.
+    /// The id of an option that is one of three choices.
+    fn choice_id(&self, key: Key) -> i32 {
+        match key {
+            Key::AttackIndicator => self.attack_indicator.id(),
+            Key::Particles => self.particles.id(),
+            _ => self.chat_visibility.id(),
+        }
+    }
+
     fn read_choice(&mut self, key: Key, json: &Json) {
         let Json::Number(number) = json else {
             return;
         };
         // `ByIdMap` wraps an id out of range.
         let id = int_value(number).rem_euclid(3);
-        if key == Key::AttackIndicator {
-            self.attack_indicator = AttackIndicator::ALL
-                .into_iter()
-                .find(|value| value.id() == id)
-                .unwrap_or(self.attack_indicator);
-        } else {
-            self.chat_visibility = ChatVisibility::from_id(id).unwrap_or(self.chat_visibility);
+        match key {
+            Key::AttackIndicator => {
+                self.attack_indicator = AttackIndicator::ALL
+                    .into_iter()
+                    .find(|value| value.id() == id)
+                    .unwrap_or(self.attack_indicator);
+            }
+            Key::Particles => {
+                self.particles = ParticleStatus::from_id(id).unwrap_or(self.particles);
+            }
+            _ => self.chat_visibility = ChatVisibility::from_id(id).unwrap_or(self.chat_visibility),
         }
     }
 
@@ -395,6 +416,8 @@ impl Options {
             Key::GuiScale => self.gui_scale.to_string(),
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
             Key::SaveChatDrafts
+            | Key::ChatColors
+            | Key::AllowServerListing
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
@@ -403,7 +426,9 @@ impl Options {
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
             Key::LastServer | Key::JoinedFirstServer | Key::TutorialStep => self.server_state(key),
-            Key::ChatVisibility => self.chat_visibility.id().to_string(),
+            Key::ChatVisibility | Key::Particles | Key::AttackIndicator => {
+                self.choice_id(key).to_string()
+            }
             Key::MouseSensitivity
             | Key::ChatOpacity
             | Key::Gamma
@@ -425,7 +450,6 @@ impl Options {
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 java_double(self.range_value(key))
             }
-            Key::AttackIndicator => self.attack_indicator.id().to_string(),
             Key::ShowSubtitles => self.show_subtitles.to_string(),
             Key::HideLightningFlashes => self.hide_lightning_flashes.to_string(),
             Key::DirectionalAudio => self.directional_audio.to_string(),
@@ -653,6 +677,35 @@ mod tests {
             loaded("chatVisibility:-1").chat_visibility,
             ChatVisibility::Hidden
         );
+    }
+
+    #[test]
+    fn the_information_options_read_wrap_and_write_back() {
+        let options = loaded("chatColors:false\nallowServerListing:false\nparticles:4\n");
+        assert!(!options.chat_colors);
+        assert!(!options.allow_server_listing);
+        // The id wraps round, as `ByIdMap` does.
+        assert_eq!(options.particles, ParticleStatus::Decreased);
+        assert_eq!(loaded("particles:-1").particles, ParticleStatus::Minimal);
+        assert!(loaded("chatColors:nonsense").chat_colors);
+        let path = std::env::temp_dir().join(format!("photon-info-{}.txt", std::process::id()));
+        let fresh = Options {
+            chat_colors: false,
+            allow_server_listing: false,
+            particles: ParticleStatus::Decreased,
+            ..Options::default()
+        };
+        fresh.save(&path).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        let line = |key: &str| text.lines().position(|line| line.starts_with(key)).unwrap();
+        assert!(text.contains("particles:1\n"));
+        assert!(text.contains("chatColors:false\n"));
+        assert!(text.contains("allowServerListing:false\n"));
+        // The write order is `processOptions`'s.
+        assert!(line("particles:") < line("chatColors:"));
+        assert!(line("chatColors:") < line("invertXMouse:"));
+        assert!(line("joinedFirstServer:") < line("allowServerListing:"));
+        assert!(line("allowServerListing:") < line("saveChatDrafts:"));
     }
 
     #[test]

@@ -18,6 +18,8 @@ pub(super) enum Key {
     MaxFps,
     RenderDistance,
     InactivityFpsLimit,
+    Particles,
+    ChatColors,
     InvertXMouse,
     InvertYMouse,
     MouseSensitivity,
@@ -41,6 +43,7 @@ pub(super) enum Key {
     MainHand,
     MouseWheelSensitivity,
     JoinedFirstServer,
+    AllowServerListing,
     SaveChatDrafts,
     AttackIndicator,
     TutorialStep,
@@ -59,7 +62,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 65] = [
+pub(super) const KEYS: [(&str, Key); 68] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -72,6 +75,8 @@ pub(super) const KEYS: [(&str, Key); 65] = [
     ("maxFps", Key::MaxFps),
     ("renderDistance", Key::RenderDistance),
     ("inactivityFpsLimit", Key::InactivityFpsLimit),
+    ("particles", Key::Particles),
+    ("chatColors", Key::ChatColors),
     ("invertXMouse", Key::InvertXMouse),
     ("invertYMouse", Key::InvertYMouse),
     ("mouseSensitivity", Key::MouseSensitivity),
@@ -93,6 +98,7 @@ pub(super) const KEYS: [(&str, Key); 65] = [
     ("mainHand", Key::MainHand),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("joinedFirstServer", Key::JoinedFirstServer),
+    ("allowServerListing", Key::AllowServerListing),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
     ("tutorialStep", Key::TutorialStep),
