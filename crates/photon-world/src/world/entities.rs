@@ -56,11 +56,27 @@ impl ClientWorld {
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
             upside_down: None,
+            sleeping: self.sleeping_lie(entity),
         };
         if let Some(height) = upside_down {
             snapshot.turn_upside_down(height);
         }
         Some(snapshot)
+    }
+
+    /// How a living entity in the sleeping pose lies (`LivingEntity.getBedOrientation`).
+    fn sleeping_lie(&self, entity: &ClientEntity) -> Option<(Option<(i32, i32)>, f32)> {
+        if entity.pose() != ClientEntityPose::Sleeping {
+            return None;
+        }
+        let step = entity
+            .sleeping_pos()
+            .and_then(|pos| crate::block::bed::bed_orientation(self, (pos.x, pos.y, pos.z)))
+            .map(|facing| {
+                let (x, _, z) = facing.step();
+                (x, z)
+            });
+        Some((step, entity.leash_size().eye_height))
     }
 
     /// The entities the server has sent.

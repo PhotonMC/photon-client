@@ -270,6 +270,40 @@ mod tests {
     }
 
     #[test]
+    fn a_sleeping_mob_does_not_face_away_and_is_shifted_from_the_head_end() {
+        use crate::entity::sleep::Sleep;
+        let mut model = pig();
+        model.setup_quadruped(&QuadrupedState::default());
+        let rect = [0.0, 0.0, 1.0, 1.0];
+        let extent = |placement: &MobPlacement, axis: usize| {
+            mob_vertices(&model, placement, rect)
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(low, high), v| {
+                    (low.min(v.position[axis]), high.max(v.position[axis]))
+                })
+        };
+        let lying = |sleep: Sleep, body_rot: f32| MobPlacement {
+            sleeping: Some(sleep),
+            body_rot,
+            ..MobPlacement::default()
+        };
+        // The body's facing does not turn a sleeper: the bed's direction does.
+        let bed = Sleep::in_bed(Some((0, 1)), 1.0, 0.0);
+        assert_eq!(extent(&lying(bed, 0.0), 2), extent(&lying(bed, 77.0), 2));
+        // The shift moves it a tenth less than its eye height away from the head end (z, here).
+        let (low, high) = extent(&lying(bed, 0.0), 2);
+        let unshifted = Sleep {
+            shift: [0.0; 2],
+            ..bed
+        };
+        let (flat_low, flat_high) = extent(&lying(unshifted, 0.0), 2);
+        assert!((low - (flat_low - 0.9)).abs() < 1e-5 && (high - (flat_high - 0.9)).abs() < 1e-5);
+        // It is no longer the height it stood: it lies on its side.
+        let (_, upright) = extent(&MobPlacement::default(), 1);
+        assert!(extent(&lying(bed, 0.0), 1).1 < upright);
+    }
+
+    #[test]
     fn a_pig_stands_on_the_ground_and_reaches_the_height_of_its_head() {
         let mut model = pig();
         model.setup_quadruped(&QuadrupedState::default());

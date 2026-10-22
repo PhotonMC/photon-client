@@ -1,4 +1,4 @@
-//! How a player lies in a bed.
+//! How a living entity lies in a bed.
 
 /// How a sleeper lies: the turn that puts its head on the pillow and the shift of its body away
 /// from the head's end of the bed (`LivingEntityRenderer.submit` and `sleepDirectionToRotation`).

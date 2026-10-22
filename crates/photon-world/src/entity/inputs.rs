@@ -37,6 +37,9 @@ pub struct EntitySnapshot {
     /// `LivingEntityRenderState.isUpsideDown`: the height of the bounding box of a living entity
     /// named Dinnerbone or Grumm, whose pitch and head turn are already mirrored here.
     pub upside_down: Option<f32>,
+    /// `Pose.SLEEPING`: the step in x and z of the direction of the bed it lies in (none without
+    /// one) and its eye height standing.
+    pub sleeping: Option<(Option<(i32, i32)>, f32)>,
 }
 
 impl EntitySnapshot {

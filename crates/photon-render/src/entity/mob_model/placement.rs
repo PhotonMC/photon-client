@@ -78,6 +78,8 @@ pub struct MobPlacement {
     /// `LivingEntityRenderState.isUpsideDown` (a mob named Dinnerbone or Grumm): the height of its
     /// bounding box, which the flip lifts the mob by, or none for one that stands as usual.
     pub upside_down: Option<f32>,
+    /// `Pose.SLEEPING`: how a mob lies in its bed.
+    pub sleeping: Option<crate::entity::sleep::Sleep>,
 }
 
 /// Where a spawner puts the mob it shows.
@@ -136,6 +138,7 @@ impl Default for MobPlacement {
             ghost: None,
             spawner: None,
             upside_down: None,
+            sleeping: None,
         }
     }
 }
@@ -236,15 +239,36 @@ pub fn shake_degrees(age_in_ticks: f32) -> f32 {
 }
 
 /// What `LivingEntityRenderer.setupRotations` does after the turn to face away: the fall of a dead
-/// mob, or else the flip of one named Dinnerbone or Grumm, lifted by the height of its box and a
+/// mob, else the lying of a sleeper, or else the flip of one named Dinnerbone or Grumm, lifted by the height of its box and a
 /// little more, then turned over.
 fn fall_or_flip(pose: &mut Pose, placement: &MobPlacement) {
     let degrees = Quaternion::degrees_to_radians;
     if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
         pose.rotate(&Quaternion::rotation_z(degrees(roll)));
+    } else if let Some(sleep) = placement.sleeping {
+        pose.rotate(&Quaternion::rotation_y(degrees(sleep.angle)));
+        pose.rotate(&Quaternion::rotation_z(degrees(placement.flip_degrees)));
+        pose.rotate(&Quaternion::rotation_y(degrees(270.0)));
     } else if let Some(height) = placement.upside_down {
         pose.translate(0.0, (height + 0.1) / placement.scale, 0.0);
         pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+    }
+}
+
+/// The feet, and for a sleeper the shift away from the head end of its bed, which
+/// `LivingEntityRenderer.submit` makes before it scales.
+fn lying_feet(placement: &MobPlacement) -> [f32; 3] {
+    let [x, y, z] = placement.feet;
+    let [dx, dz] = placement.sleeping.map_or([0.0; 2], |sleep| sleep.shift);
+    [x + dx, y, z + dz]
+}
+
+/// The turn to face away from the body's facing, which a sleeper does not make.
+fn face_away(pose: &mut Pose, placement: &MobPlacement) {
+    if placement.sleeping.is_none() {
+        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+            180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
+        )));
     }
 }
 
@@ -267,7 +291,8 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
     let mut pose = placement
         .spawner
         .map_or_else(Pose::default, SpawnerCage::pose);
-    pose.translate(placement.feet[0], placement.feet[1], placement.feet[2]);
+    let [x, y, z] = lying_feet(placement);
+    pose.translate(x, y, z);
     pose.scale(placement.scale, placement.scale, placement.scale);
     if let Some(fish) = placement.fish {
         pose.translate(0.0, fish.bob, 0.0);
@@ -282,9 +307,7 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
         pose.translate(0.0, if squid.baby { -0.6 } else { -1.2 }, 0.0);
         return pose;
     }
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
-    )));
+    face_away(&mut pose, placement);
     fall_or_flip(&mut pose, placement);
     if let Some(fish) = placement.fish {
         fish_rotate(&mut pose, &fish);

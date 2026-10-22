@@ -80,8 +80,7 @@ pub struct FallFlying {
     pub y_rot: Option<f32>,
 }
 
-mod sleep;
-pub use sleep::Sleep;
+pub use super::sleep::Sleep;
 
 /// Where and how a posed player model is placed.
 #[derive(Debug, Clone, Copy, PartialEq)]

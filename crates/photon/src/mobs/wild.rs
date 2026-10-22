@@ -238,6 +238,9 @@ pub(crate) fn placement(
         shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
         ghost: (view.spectating || snapshot.friendly_ghost).then_some(view.camera),
         upside_down: snapshot.upside_down,
+        sleeping: snapshot.sleeping.map(|(bed, eye)| {
+            photon_render::entity::sleep::Sleep::in_bed(bed, eye, snapshot.body_yaw)
+        }),
         ..MobPlacement::default()
     }
 }
