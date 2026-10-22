@@ -114,6 +114,9 @@ impl StructureBlockScreen {
     /// A press of a button: Done, Save, Load and Detect send and close, Cancel closes, a turn sets
     /// the rotation, the others cycle.
     fn press(&mut self, lang: &Lang, slot: Slot, shift: bool) -> StructureBlockAction {
+        if box_index(slot).is_none() {
+            crate::ui_sound::play_down_sound();
+        }
         match slot {
             Slot::Done => return self.done(UpdateType::UpdateData),
             Slot::Cancel => return self.cancel(),

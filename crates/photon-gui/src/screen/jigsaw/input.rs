@@ -102,6 +102,9 @@ impl JigsawScreen {
     /// A press of a button: Done and Generate send and close (the first when valid), Cancel
     /// closes, the cycles take the next value.
     fn press(&mut self, lang: &Lang, slot: Slot, shift: bool) -> JigsawAction {
+        if !matches!(slot, Slot::Levels) && box_index(slot).is_none() {
+            crate::ui_sound::play_down_sound();
+        }
         match slot {
             Slot::Done => JigsawAction::Done(Box::new(self.current())),
             Slot::Generate => JigsawAction::Generate(

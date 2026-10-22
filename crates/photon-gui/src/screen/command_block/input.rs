@@ -105,6 +105,9 @@ impl CommandBlockScreen {
 
     /// The focused button pressed (`onPress`): Done sends, Cancel closes, the others cycle.
     fn press(&mut self, lang: &Lang, shift: bool) -> CommandBlockAction {
+        if !matches!(self.focus, Focus::Command | Focus::Previous) {
+            crate::ui_sound::play_down_sound();
+        }
         let buttons = &mut self.buttons;
         match self.focus {
             Focus::Output => {

@@ -73,6 +73,9 @@ impl TestBlockScreen {
 
     /// A press of a button: Done sends and closes, Cancel closes, the mode cycles.
     fn press(&mut self, lang: &Lang, slot: Slot, shift: bool) -> TestBlockAction {
+        if matches!(slot, Slot::Done | Slot::Cancel | Slot::Mode) {
+            crate::ui_sound::play_down_sound();
+        }
         match slot {
             Slot::Done => return TestBlockAction::Done(self.current()),
             Slot::Cancel => return TestBlockAction::Cancel,
