@@ -12,20 +12,23 @@ pub(super) fn parse_json(text: &str) -> Json<'_> {
 
 /// A word without quotes, which the lenient parser reads as a string: it ends at any of these.
 fn bare_word(text: &str) -> Option<String> {
-    let ends = |c: char| c.is_whitespace() || "/\\;#=\"'{}[],:".contains(c);
-    (!text.is_empty() && text != "null" && !text.contains(ends)).then(|| text.to_owned())
+    let ends = |c: char| c.is_whitespace() || "/\\;#={}[],:".contains(c);
+    let quoted = text.starts_with(['"', '\'']);
+    (!text.is_empty() && !quoted && text != "null" && !text.contains(ends)).then(|| text.to_owned())
 }
 
 /// A JSON string with the escapes a name can carry.
 pub(super) fn json_string(text: &str) -> Option<String> {
-    let inner = text.strip_prefix('"')?.strip_suffix('"')?;
+    // The lenient reader takes single quotes as well.
+    let quote = text.chars().next().filter(|c| matches!(c, '"' | '\''))?;
+    let inner = text.strip_prefix(quote)?.strip_suffix(quote)?;
     let mut out = String::new();
     let mut chars = inner.chars();
     while let Some(c) = chars.next() {
         match c {
-            '"' => return None,
+            _ if c == quote => return None,
             '\\' => match chars.next()? {
-                '"' => out.push('"'),
+                escaped if escaped == quote => out.push(quote),
                 '\\' => out.push('\\'),
                 '/' => out.push('/'),
                 _ => return None,
