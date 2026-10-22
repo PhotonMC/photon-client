@@ -124,6 +124,10 @@ class GuiDialogOracle extends GuiSocialOracle {
                     json.get("end").getAsFloat(),
                     json.has("initial") ? java.util.Optional.of(json.get("initial").getAsFloat()) : java.util.Optional.empty(),
                     json.has("step") ? java.util.Optional.of(json.get("step").getAsFloat()) : java.util.Optional.empty()));
+            case "text" -> new net.minecraft.server.dialog.input.TextInput(json.get("width").getAsInt(), label,
+                !json.has("label_visible") || json.get("label_visible").getAsBoolean(),
+                json.has("initial") ? json.get("initial").getAsString() : "",
+                json.has("max_length") ? json.get("max_length").getAsInt() : 32, java.util.Optional.empty());
             default -> throw new IllegalArgumentException(json.toString());
         };
         return new net.minecraft.server.dialog.Input(json.get("key").getAsString(), control);
@@ -276,20 +280,28 @@ class GuiDialogOracle extends GuiSocialOracle {
                     }
                     case "key" -> {
                         String name = step.get("key").getAsString();
-                        int code = switch (name) {
-                            case "tab", "shift+tab" -> 258;
+                        int modifiers = (name.contains("shift+") ? 1 : 0) | (name.contains("ctrl+") ? 2 : 0);
+                        int code = switch (name.substring(name.lastIndexOf('+') + 1)) {
+                            case "tab" -> 258;
                             case "escape" -> 256;
-                            case "enter", "shift+enter" -> 257;
+                            case "enter" -> 257;
                             case "space" -> 32;
                             case "left" -> 263;
                             case "right" -> 262;
+                            case "backspace" -> 259;
+                            case "delete" -> 261;
+                            case "home" -> 268;
+                            case "end" -> 269;
+                            case "a" -> 65;
                             default -> throw new IllegalArgumentException(name);
                         };
                         if (code == 258) {
                             minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
                         }
-                        shown.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        shown.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, modifiers));
                     }
+                    case "type" -> step.get("text").getAsString().codePoints()
+                        .forEach(point -> shown.charTyped(new net.minecraft.client.input.CharacterEvent(point)));
                     case "click" -> {
                         minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                         var clickInfo = step.has("shift") && step.get("shift").getAsBoolean()

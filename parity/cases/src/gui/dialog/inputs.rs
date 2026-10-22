@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 
 use super::super::setting::{key, times};
 use super::{Dialog, button, click, release, row};
+mod text;
 
 fn checkbox(name: &str, label: &str, initial: bool) -> Value {
     json!({"type": "boolean", "key": name, "label": label, "initial": initial, "on_true": "yes", "on_false": "no"})
@@ -188,7 +189,7 @@ fn range_rows() -> Vec<Value> {
 }
 
 pub(super) fn rows() -> Vec<Value> {
-    [checkbox_rows(), action_rows(), option_rows(), slider_rows(), range_rows()].concat()
+    [checkbox_rows(), action_rows(), option_rows(), slider_rows(), range_rows(), text::rows()].concat()
 }
 
 fn checkbox_rows() -> Vec<Value> {

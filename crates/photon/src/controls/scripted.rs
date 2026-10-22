@@ -73,7 +73,7 @@ impl Controls {
                 self.open_chat(ChatMethod::Message, false, surface, assets);
             }
         }
-        self.scripted_typing(held.typed);
+        self.scripted_typing(held.typed, &assets.creative.font);
         self.send_suggestion_request(session)?;
         if held.complete
             && let Some(chat) = self.chat.as_mut()
@@ -129,8 +129,9 @@ impl Controls {
         }
     }
 
-    /// Scripted text typed into the chat box, the command block's box or the container screen.
-    fn scripted_typing(&mut self, typed: Option<&str>) {
+    /// Scripted text typed into the chat box, the command block's box, the container screen or a
+    /// dialog's text box.
+    fn scripted_typing(&mut self, typed: Option<&str>, font: &photon_render::gui::font::Font) {
         for character in typed.unwrap_or_default().chars() {
             if let Some(chat) = self.chat.as_mut() {
                 chat.char_typed(character);
@@ -149,6 +150,9 @@ impl Controls {
             }
             if let Some(screen) = self.screen.as_mut() {
                 screen.char_typed(character);
+            }
+            if let Some(DialogLayer::Dialog { screen, .. }) = self.dialog.as_mut() {
+                screen.char_typed(font, character);
             }
         }
     }

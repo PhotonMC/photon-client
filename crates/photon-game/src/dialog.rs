@@ -10,7 +10,7 @@ pub use input::{
     SingleOptionInput, TextInput, range_text,
 };
 pub use list::{DialogContext, DialogSet, ListSource};
-pub use template::Template;
+pub use template::{Template, escape_without_quotes};
 
 use photon_core::nbt::{Field, FieldValue};
 

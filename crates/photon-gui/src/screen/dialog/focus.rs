@@ -20,12 +20,12 @@ fn next_in(len: usize, at: Option<usize>, forward: bool) -> usize {
 impl DialogScreen {
     /// A press of the primary button: the scrollbar taken hold of, a part of the body or a button
     /// (which takes the focus), and for the buttons what they do.
-    pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<Press> {
+    pub fn clicked(&mut self, mouse: (i32, i32), font: &Font) -> Option<Press> {
         self.input.set(InputType::Mouse);
         let c = self.container;
         if self.in_container(mouse) {
             self.dragging = self.max_scroll() > 0 && mouse.0 >= c.x + c.width - SCROLLBAR_WIDTH;
-            if self.clicked_body(mouse) {
+            if self.clicked_body(mouse, font) {
                 return None;
             }
         }
@@ -44,7 +44,7 @@ impl DialogScreen {
     }
 
     /// A click on a part or a control of the body, which takes the focus (and a control changes).
-    fn clicked_body(&mut self, mouse: (i32, i32)) -> bool {
+    fn clicked_body(&mut self, mouse: (i32, i32), font: &Font) -> bool {
         if let Some(index) = self
             .parts
             .iter()
@@ -53,12 +53,11 @@ impl DialogScreen {
             self.set_focus(Some(Focus::Part(index)));
             return true;
         }
-        let control =
-            (0..self.controls.len()).find(|&index| contains(self.control_rect(index), mouse));
+        let control = (0..self.controls.len()).find(|&index| contains(self.hit_rect(index), mouse));
         if let Some(index) = control {
             self.set_focus(Some(Focus::Input(index)));
             let rect = self.control_rect(index);
-            self.controls[index].clicked(mouse.0, rect, self.shift.get());
+            self.controls[index].clicked(mouse.0, rect, (self.shift.get(), font));
             return true;
         }
         false
@@ -76,6 +75,33 @@ impl DialogScreen {
             self.controls[index].focus(true);
         }
         self.focus = focus;
+    }
+
+    /// Where the mouse and the focus find control `index`, scrolled.
+    fn hit_rect(&self, index: usize) -> Rectangle {
+        self.controls[index].hit_rect(self.control_rect(index))
+    }
+
+    /// A key the focused text box edits with: it takes the key before the screen does.
+    pub fn edit_key(
+        &mut self,
+        font: &Font,
+        key: EditKey,
+        modifiers: (bool, bool),
+        clipboard: &mut dyn Clipboard,
+    ) -> bool {
+        match self.focus {
+            Some(Focus::Input(index)) => self.controls[index].edit(font, key, modifiers, clipboard),
+            _ => false,
+        }
+    }
+
+    /// A character typed into the focused text box. Whether it took it.
+    pub fn char_typed(&mut self, font: &Font, character: char) -> bool {
+        match self.focus {
+            Some(Focus::Input(index)) => self.controls[index].char_typed(font, character),
+            _ => false,
+        }
     }
 
     /// Whether Shift is down for the next key or click.
@@ -150,7 +176,7 @@ impl DialogScreen {
     fn scroll_focus_into_view(&mut self) {
         let shown = match self.focus {
             Some(Focus::Part(index)) => Some(self.part_rect(&self.parts[index])),
-            Some(Focus::Input(index)) => Some(self.control_rect(index)),
+            Some(Focus::Input(index)) => Some(self.hit_rect(index)),
             Some(Focus::Button(index)) if index < self.listed => Some(self.button_rect(index)),
             _ => None,
         };

@@ -3,15 +3,20 @@
 
 use photon_core::nbt::FieldValue;
 mod slider;
+mod text;
 
 use slider::Slider;
+use text::Text;
 
-use photon_game::dialog::{Control as Spec, Input, InputValue, SingleOptionInput};
+use photon_game::dialog::{
+    Control as Spec, Input, InputValue, SingleOptionInput, escape_without_quotes,
+};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 use crate::layout::Arena;
+use crate::widgets::edit_box::{Clipboard, EditKey};
 use crate::widgets::navigation::Rectangle;
 use crate::widgets::{Kind, Widget};
 use crate::{FontRuns, FrameRuns};
@@ -22,6 +27,7 @@ const GAP: i32 = 4;
 
 enum State {
     Slider(Box<Slider>),
+    Text(Box<Text>),
     /// A `CycleButton`: the text of the button for each value, and the value ids.
     Cycle {
         labels: Vec<Vec<Run>>,
@@ -75,6 +81,15 @@ impl Control {
                 key: input.key.clone(),
                 state: State::Slider(Box::new(Slider::new(lang, range))),
             }),
+            Spec::Text(text) if text.multiline.is_none() => {
+                let (state, (width, height)) = Text::new(font, lang, text);
+                Some(Self {
+                    rect: arena.add(width, height),
+                    key: input.key.clone(),
+                    state: State::Text(Box::new(state)),
+                })
+            }
+            // The multi-line box is not built yet.
             Spec::Text(_) => None,
         }
     }
@@ -89,13 +104,45 @@ impl Control {
                 *index = (*index + if shift { count - 1 } else { 1 }) % count;
             }
             State::Slider(slider) => slider.select(),
+            State::Text(_) => {}
+        }
+    }
+
+    /// Where the mouse and the focus find the control: a text box is the box under its label.
+    pub(super) fn hit_rect(&self, rect: Rectangle) -> Rectangle {
+        match &self.state {
+            State::Text(text) => text.box_rect(rect),
+            _ => rect,
+        }
+    }
+
+    /// A key the focused text box edits with. Whether it took the key.
+    pub(super) fn edit(
+        &mut self,
+        font: &Font,
+        key: EditKey,
+        modifiers: (bool, bool),
+        clipboard: &mut dyn Clipboard,
+    ) -> bool {
+        match &mut self.state {
+            State::Text(text) => text.key(font, key, modifiers, clipboard),
+            _ => false,
+        }
+    }
+
+    /// A character typed into the focused text box. Whether it took it.
+    pub(super) fn char_typed(&mut self, font: &Font, character: char) -> bool {
+        match &mut self.state {
+            State::Text(text) => text.char_typed(font, character),
+            _ => false,
         }
     }
 
     /// A press of the primary button on the control at `rect`.
-    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle, shift: bool) {
+    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle, (shift, font): (bool, &Font)) {
         match &mut self.state {
             State::Slider(slider) => slider.clicked(x, rect),
+            State::Text(text) => text.clicked(x, rect, font),
             _ => self.press(shift),
         }
     }
@@ -113,8 +160,10 @@ impl Control {
     }
 
     pub(super) fn focus(&mut self, gained: bool) {
-        if let State::Slider(slider) = &mut self.state {
-            slider.focus(gained);
+        match &mut self.state {
+            State::Slider(slider) => slider.focus(gained),
+            State::Text(text) => text.focus(gained),
+            _ => {}
         }
     }
 
@@ -134,6 +183,14 @@ impl Control {
                 substitution: slider.text(),
                 tag: FieldValue::Float(slider.scaled()),
             },
+            State::Text(text) => {
+                let value = text.value();
+                InputValue {
+                    key: self.key.clone(),
+                    substitution: escape_without_quotes(&value),
+                    tag: FieldValue::Str(value),
+                }
+            }
             State::Cycle { ids, index, .. } => InputValue {
                 key: self.key.clone(),
                 substitution: ids[*index].clone(),
@@ -165,6 +222,7 @@ impl Control {
             }
             (State::Cycle { index, .. }, State::Cycle { index: before, .. }) => *index = *before,
             (State::Slider(slider), State::Slider(before)) => slider.copy_from(before),
+            (State::Text(text), State::Text(before)) => text.copy_from(before),
             _ => {}
         }
     }
@@ -178,6 +236,7 @@ impl Control {
     ) {
         match &self.state {
             State::Slider(slider) => slider.draw(frame, (atlas, font), rect, (focused, hovered)),
+            State::Text(text) => text.draw(frame, (atlas, font), rect, focused),
             State::Cycle { labels, index, .. } => {
                 let mut arena = Arena::default();
                 let leaf = arena.add(rect.width, rect.height);

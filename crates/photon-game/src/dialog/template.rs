@@ -14,6 +14,28 @@ pub fn is_valid_variable_name(name: &str) -> bool {
     name.chars().all(|c| c.is_alphanumeric() || c == '_')
 }
 
+/// `StringTag.escapeWithoutQuotes`: quotes and backslashes get a backslash, control characters
+/// their SNBT escape.
+pub fn escape_without_quotes(input: &str) -> String {
+    let mut result = String::new();
+    for c in input.chars() {
+        match c {
+            '"' | '\'' | '\\' => {
+                result.push('\\');
+                result.push(c);
+            }
+            '\u{8}' => result.push_str("\\b"),
+            '\t' => result.push_str("\\t"),
+            '\n' => result.push_str("\\n"),
+            '\u{c}' => result.push_str("\\f"),
+            '\r' => result.push_str("\\r"),
+            c if c < ' ' => result.push_str(&format!("\\x{:02X}", c as u32)),
+            c => result.push(c),
+        }
+    }
+    result
+}
+
 impl Template {
     /// `StringTemplate.fromString`: none when a hole is open, badly named, or there are none.
     pub fn parse(input: &str) -> Option<Self> {
@@ -95,5 +117,15 @@ mod tests {
     fn a_dollar_without_a_bracket_is_text_and_a_missing_value_is_empty() {
         let template = Template::parse("cost $5 $(x)!").unwrap();
         assert_eq!(template.instantiate(&arguments(&[])), "cost $5 !");
+    }
+
+    #[test]
+    fn escaping_covers_quotes_backslashes_and_control_characters() {
+        assert_eq!(escape_without_quotes("a\"b'c\\d"), "a\\\"b\\'c\\\\d");
+        assert_eq!(
+            escape_without_quotes("\t\n\r\u{8}\u{c}\u{1}\u{1f}"),
+            "\\t\\n\\r\\b\\f\\x01\\x1F"
+        );
+        assert_eq!(escape_without_quotes("\u{e9}\u{20ac}"), "\u{e9}\u{20ac}");
     }
 }

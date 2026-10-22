@@ -3,11 +3,13 @@ use super::*;
 use photon_game::dialog::{
     Action, ActionButton, AfterAction, Body, BooleanInput, CommonData, Control, Dialog,
     DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, NumberRangeInput,
-    OptionEntry, PlainMessage, RangeInfo, SingleOptionInput, Template, run_action,
+    OptionEntry, PlainMessage, RangeInfo, SingleOptionInput, Template, TextInput, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
 use photon_gui::screen::waiting::WaitingScreen;
+use photon_gui::widgets::edit_box::{Clipboard, EditKey};
+use photon_render::gui::font::Font;
 
 fn text(value: &Value) -> Component {
     Component::literal(value.as_str().unwrap_or_default())
@@ -79,6 +81,14 @@ fn input(value: &Value) -> Input {
                     initial: value["initial"].as_f64().map(|v| v as f32),
                     step: value["step"].as_f64().map(|v| v as f32),
                 },
+            }),
+            Some("text") => Control::Text(TextInput {
+                width: value["width"].as_i64().unwrap_or(200) as i32,
+                label: text(&value["label"]),
+                label_visible: value["label_visible"].as_bool().unwrap_or(true),
+                initial: string("initial", ""),
+                max_length: value["max_length"].as_i64().unwrap_or(32) as i32,
+                multiline: None,
             }),
             other => panic!("unknown input {other:?}"),
         },
@@ -270,6 +280,30 @@ fn press_events(
     events.push(screen.to_owned());
 }
 
+/// `StringTag.quoteAndEscape`: the quote is the one the string does not have first.
+fn quote_and_escape(input: &str) -> String {
+    let mut body = String::new();
+    let mut quote = None;
+    for c in input.chars() {
+        match c {
+            '\\' => body.push_str("\\\\"),
+            '"' | '\'' => {
+                let mark = *quote.get_or_insert(if c == '"' { '\'' } else { '"' });
+                if mark == c {
+                    body.push('\\');
+                }
+                body.push(c);
+            }
+            c => {
+                let escaped = photon_game::dialog::escape_without_quotes(&c.to_string());
+                body.push_str(&escaped);
+            }
+        }
+    }
+    let quote = quote.unwrap_or('"');
+    format!("{quote}{body}{quote}")
+}
+
 /// `custom:<id>`, and for a payload its entries in key order, each as the reference writes a tag.
 fn custom_event(id: &str, payload: Option<&photon_core::nbt::FieldValue>) -> String {
     use photon_core::nbt::FieldValue;
@@ -281,7 +315,7 @@ fn custom_event(id: &str, payload: Option<&photon_core::nbt::FieldValue>) -> Str
         .map(|field| {
             let tag = match &field.value {
                 FieldValue::Byte(value) => format!("{value}b"),
-                FieldValue::Str(value) => format!("\"{value}\""),
+                FieldValue::Str(value) => quote_and_escape(value),
                 FieldValue::Float(value) => {
                     format!("{}f", photon_game::commands::reader::java_float(*value))
                 }
@@ -325,15 +359,62 @@ fn wait_steps(
 }
 
 /// A click, with Shift down if the step says so.
-fn click_step(screen: &mut DialogScreen, at: (i32, i32), shift: &Value) -> Option<Press> {
+fn click_step(
+    screen: &mut DialogScreen,
+    font: &Font,
+    at: (i32, i32),
+    shift: &Value,
+) -> Option<Press> {
     screen.set_shift(shift.as_bool().unwrap_or(false));
-    let press = screen.clicked(at);
+    let press = screen.clicked(at, font);
     screen.set_shift(false);
     press
 }
 
-/// A key the reference's screen was given.
-fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, String> {
+/// What a box does with the clipboard: nothing the reference can be asked about.
+struct NoClip;
+
+impl Clipboard for NoClip {
+    fn get(&mut self) -> String {
+        String::new()
+    }
+
+    fn set(&mut self, _: &str) {}
+}
+
+/// The edit key a key name stands for.
+fn edit_of(base: &str) -> Option<EditKey> {
+    Some(match base {
+        "backspace" => EditKey::Backspace,
+        "delete" => EditKey::Delete,
+        "left" => EditKey::Left,
+        "right" => EditKey::Right,
+        "home" => EditKey::Home,
+        "end" => EditKey::End,
+        "a" => EditKey::A,
+        _ => return None,
+    })
+}
+
+/// A key the reference's screen was given, with the modifiers its name carries
+/// (`shift+`, `ctrl+`): the focused box takes it first.
+fn key_press(screen: &mut DialogScreen, font: &Font, key: &str) -> Result<Option<Press>, String> {
+    let base = key.rsplit('+').next().unwrap_or(key);
+    let modifiers = (key.contains("ctrl+"), key.contains("shift+"));
+    if let Some(edit) = edit_of(base) {
+        if screen.edit_key(font, edit, modifiers, &mut NoClip) {
+            return Ok(None);
+        }
+        // A key the box would have edited with, and none has the focus: nothing happens.
+        if base != "left" && base != "right" {
+            return Ok(None);
+        }
+    }
+    plain_key(screen, key)
+}
+
+/// A key the screen itself takes.
+fn plain_key(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, String> {
     Ok(match key {
         "tab" | "shift+tab" => {
             screen.tab(key == "tab");
@@ -352,6 +433,41 @@ fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, Stri
             None
         }
         other => return Err(format!("unknown key {other}")),
+    })
+}
+
+/// A step that is the keyboard or the mouse; what it pressed.
+fn input_step(
+    screen: &mut DialogScreen,
+    font: &Font,
+    step: &Value,
+) -> Result<Option<Press>, String> {
+    let (x, y) = (
+        step["x"].as_f64().unwrap_or(0.0),
+        step["y"].as_f64().unwrap_or(0.0),
+    );
+    Ok(match step["do"].as_str().unwrap_or_default() {
+        "key" => key_press(screen, font, step["key"].as_str().unwrap_or_default())?,
+        "type" => {
+            for character in step["text"].as_str().unwrap_or_default().chars() {
+                screen.char_typed(font, character);
+            }
+            None
+        }
+        "click" => click_step(screen, font, (x as i32, y as i32), &step["shift"]),
+        "drag" => {
+            screen.dragged(x, y, step["dy"].as_f64().unwrap_or(0.0));
+            None
+        }
+        "release" => {
+            screen.released();
+            None
+        }
+        "scroll" => {
+            screen.scrolled((x as i32, y as i32), step["amount"].as_f64().unwrap_or(0.0));
+            None
+        }
+        other => return Err(format!("unknown step {other}")),
     })
 }
 
@@ -385,40 +501,21 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
         let mut screen =
             DialogScreen::new(font, &lang, size, &dialog, in_world).ok_or("dialog screen")?;
         for step in row["steps"].as_array().ok_or("steps")? {
-            let (x, y) = (
-                step["x"].as_f64().unwrap_or(0.0),
-                step["y"].as_f64().unwrap_or(0.0),
-            );
-            let press = match step["do"].as_str().unwrap_or_default() {
-                "frame" => {
-                    // A frame drawn and thrown away, at a time.
-                    let mut thrown = GuiFrame {
-                        millis: step["ms"].as_u64().unwrap_or(0),
-                        ..GuiFrame::default()
-                    };
-                    screen.draw(
-                        &mut thrown,
-                        (atlas, font),
-                        &mut no_items,
-                        (mouse, blurriness),
-                    );
-                    None
-                }
-                "key" => key_press(&mut screen, step["key"].as_str().unwrap_or_default())?,
-                "click" => click_step(&mut screen, (x as i32, y as i32), &step["shift"]),
-                "drag" => {
-                    screen.dragged(x, y, step["dy"].as_f64().unwrap_or(0.0));
-                    None
-                }
-                "release" => {
-                    screen.released();
-                    None
-                }
-                "scroll" => {
-                    screen.scrolled((x as i32, y as i32), step["amount"].as_f64().unwrap_or(0.0));
-                    None
-                }
-                other => return Err(format!("unknown step {other}")),
+            let press = if step["do"] == "frame" {
+                // A frame drawn and thrown away, at a time.
+                let mut thrown = GuiFrame {
+                    millis: step["ms"].as_u64().unwrap_or(0),
+                    ..GuiFrame::default()
+                };
+                screen.draw(
+                    &mut thrown,
+                    (atlas, font),
+                    &mut no_items,
+                    (mouse, blurriness),
+                );
+                None
+            } else {
+                input_step(&mut screen, font, step)?
             };
             if let Some(press) = press {
                 press_events(

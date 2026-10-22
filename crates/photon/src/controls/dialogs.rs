@@ -3,6 +3,7 @@ use photon_game::dialog::{Dialog, DialogRef, Next, run_action};
 use photon_game::text::{ClickEvent, Component, Lang};
 use photon_gui::screen::dialog::{DialogScreen, Press};
 use photon_gui::screen::waiting::WaitingScreen;
+use photon_gui::widgets::edit_box::{Clipboard, edit_key};
 use photon_net::connection::DialogEvent;
 use photon_render::gui::font::Font;
 
@@ -92,13 +93,39 @@ impl DialogLayer {
     }
 }
 
+/// A key or character the focused text box takes before the screen does (Escape is the
+/// screen's first). Whether it did.
+fn text_event(
+    screen: &mut DialogScreen,
+    event: &glfw::WindowEvent,
+    font: &Font,
+    clipboard: &mut dyn Clipboard,
+) -> bool {
+    use glfw::{Action, Modifiers, WindowEvent};
+    match *event {
+        WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers)
+            if key != glfw::Key::Escape =>
+        {
+            let control = modifiers.intersects(Modifiers::Control | Modifiers::Super);
+            let shift = modifiers.contains(Modifiers::Shift);
+            edit_key(key).is_some_and(|key| screen.edit_key(font, key, (control, shift), clipboard))
+        }
+        WindowEvent::Char(character) => screen.char_typed(font, character),
+        _ => false,
+    }
+}
+
 /// An event for the screen of a dialog: what it makes of a key or the mouse.
 fn screen_event(
     screen: &mut DialogScreen,
     event: glfw::WindowEvent,
     (mouse, gui_mouse, previous_y): ((i32, i32), (f64, f64), f64),
+    (font, clipboard): (&Font, &mut dyn Clipboard),
 ) -> Option<Press> {
     use glfw::{Action, Key, WindowEvent};
+    if text_event(screen, &event, font, clipboard) {
+        return None;
+    }
     match event {
         WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
         WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
@@ -123,7 +150,7 @@ fn screen_event(
         }
         WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, modifiers) => {
             screen.set_shift(modifiers.contains(glfw::Modifiers::Shift));
-            screen.clicked(mouse)
+            screen.clicked(mouse, font)
         }
         WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Release, _) => {
             screen.released();
@@ -265,9 +292,12 @@ impl Controls {
             self.move_gui_mouse((x, y), surface);
         }
         let press = match (self.dialog.as_mut(), event) {
-            (Some(DialogLayer::Dialog { screen, .. }), event) => {
-                screen_event(screen, event, (mouse, self.gui_mouse, previous_y))
-            }
+            (Some(DialogLayer::Dialog { screen, .. }), event) => screen_event(
+                screen,
+                event,
+                (mouse, self.gui_mouse, previous_y),
+                (&assets.creative.font, &mut WindowClipboard(surface)),
+            ),
             (Some(DialogLayer::Waiting(waiting)), event) => {
                 let closed = match event {
                     WindowEvent::Key(Key::Escape, _, Action::Press, _) => waiting.escape(),

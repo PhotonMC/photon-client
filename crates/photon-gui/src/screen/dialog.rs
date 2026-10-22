@@ -22,6 +22,7 @@ use crate::layout::{Arena, Grid, Item, horizontal, place_in_frame};
 use photon_render::gui::font::Font;
 
 use crate::tooltip::{Holder, Pending};
+use crate::widgets::edit_box::{Clipboard, EditKey};
 use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::{Place, SCROLLBAR_WIDTH};
 use crate::widgets::slider::InputType;

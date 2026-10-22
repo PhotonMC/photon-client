@@ -740,7 +740,7 @@
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 87
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 157
-"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 86
+"crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 67
 "crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/screens.rs::confirm_screen_case" = 67
