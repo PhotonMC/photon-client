@@ -180,6 +180,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
 
     /** A sound manager that plays nothing, for the buttons that click when pressed. */
     static final class SilentSounds extends net.minecraft.client.sounds.SoundManager {
+        /** What was asked of the manager since a row began: the event, pitch and volume. */
+        static final java.util.List<String> ASKED = new java.util.ArrayList<>();
+
         SilentSounds() {
             super(null);
         }
@@ -187,6 +190,17 @@ class GuiScreenOracle extends GuiOverlayOracle {
         @Override
         public net.minecraft.client.sounds.SoundEngine.PlayResult play(
                 net.minecraft.client.resources.sounds.SoundInstance instance) {
+            // The sound itself is not resolved here, so the fields are read as the instance was made.
+            try {
+                var base = net.minecraft.client.resources.sounds.AbstractSoundInstance.class;
+                var pitch = base.getDeclaredField("pitch");
+                var volume = base.getDeclaredField("volume");
+                pitch.setAccessible(true);
+                volume.setAccessible(true);
+                ASKED.add(instance.getIdentifier() + " " + pitch.get(instance) + " " + volume.get(instance));
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
             return null;
         }
 
@@ -301,6 +315,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
                 confirm.tick();
             }
+            SilentSounds.ASKED.clear();
             for (var key : row.getAsJsonArray("keys")) {
                 String name = key.getAsString();
                 int code = switch (name) {
@@ -333,6 +348,9 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("callbacks", callbacks);
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var blurField = GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
             blurField.setAccessible(true);
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);

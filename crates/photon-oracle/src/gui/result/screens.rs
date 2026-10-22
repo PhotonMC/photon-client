@@ -112,7 +112,7 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::screen::confirm::{ConfirmAction, ConfirmBackground};
+    use photon_gui::screen::confirm::ConfirmBackground;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let background = if row["death"].as_bool().unwrap_or(false) {
@@ -134,6 +134,7 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
     let mut callbacks = Vec::new();
+    photon_gui::ui_sound::take();
     for key in row["keys"].as_array().ok_or("keys")? {
         let action = match key.as_str().unwrap_or_default() {
             "tab" => {
@@ -155,20 +156,35 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
     }
     let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
     screen.draw(&mut frame, (atlas, font), mouse, blurriness);
-    let callbacks: Vec<&str> = callbacks
-        .iter()
-        .map(|action| match action {
-            ConfirmAction::Yes => "yes",
-            ConfirmAction::No => "no",
-            ConfirmAction::Copy => "copy",
-        })
-        .collect();
+    let (callbacks, sounds) = (callback_names(&callbacks), asked_sounds());
     Ok(json!({
         "label": row["label"],
         "callbacks": callbacks,
+        "sounds": sounds,
         "blur": frame.blur.is_some(),
         "ops": gui_ops(&frame.log.take().unwrap_or_default()),
     }))
+}
+
+/// The names the Java callbacks of the confirm screen go by.
+fn callback_names(callbacks: &[photon_gui::screen::confirm::ConfirmAction]) -> Vec<&'static str> {
+    callbacks
+        .iter()
+        .map(|action| match action {
+            photon_gui::screen::confirm::ConfirmAction::Yes => "yes",
+            photon_gui::screen::confirm::ConfirmAction::No => "no",
+            photon_gui::screen::confirm::ConfirmAction::Copy => "copy",
+        })
+        .collect()
+}
+
+/// What the widgets asked of the sound manager since the queue was last emptied, as the Java
+/// oracle writes it: the event, the pitch and the volume.
+fn asked_sounds() -> Vec<String> {
+    photon_gui::ui_sound::take()
+        .iter()
+        .map(|sound| format!("{} {:?} {:?}", sound.event, sound.pitch, sound.volume))
+        .collect()
 }
 
 pub(super) fn widgets_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
