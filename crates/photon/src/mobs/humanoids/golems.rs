@@ -69,7 +69,7 @@ pub fn remote_golems(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let is_iron = entity.type_id == iron;
         if !is_iron && entity.type_id != snow {
             continue;

@@ -171,17 +171,52 @@ pub(crate) fn placement(
     scale: f32,
 ) -> MobPlacement {
     let (x, y, z) = snapshot.position;
+    let cage = snapshot.spawner_display.map(|display| {
+        // `SpawnerRenderState.lightCoords`: the light of the spawner's block, which the mob takes.
+        let (bx, by, bz) = display.block;
+        let light = packed_light(
+            world,
+            Vec3::new(
+                f64::from(bx) + 0.5,
+                f64::from(by) + 0.5,
+                f64::from(bz) + 0.5,
+            ),
+        );
+        (
+            photon_render::entity::mob_model::SpawnerCage {
+                origin: [
+                    (f64::from(bx) - f64::from(view.origin[0])) as f32,
+                    (f64::from(by) - f64::from(view.origin[1])) as f32,
+                    (f64::from(bz) - f64::from(view.origin[2])) as f32,
+                ],
+                spin: display.spin,
+                scale: display.scale,
+            },
+            light,
+        )
+    });
     MobPlacement {
-        feet: [
-            (x - f64::from(view.origin[0])) as f32,
-            (y - f64::from(view.origin[1])) as f32,
-            (z - f64::from(view.origin[2])) as f32,
-        ],
+        spawner: cage.map(|(cage, _)| cage),
+        // The cage's pose already stands at the block.
+        feet: if cage.is_some() {
+            [0.0; 3]
+        } else {
+            [
+                (x - f64::from(view.origin[0])) as f32,
+                (y - f64::from(view.origin[1])) as f32,
+                (z - f64::from(view.origin[2])) as f32,
+            ]
+        },
         body_rot: snapshot.body_yaw,
         scale,
-        light: burning_light(
-            packed_light(world, Vec3::new(x, y + 0.5, z)),
-            snapshot.burning,
+        light: cage.map_or_else(
+            || {
+                burning_light(
+                    packed_light(world, Vec3::new(x, y + 0.5, z)),
+                    snapshot.burning,
+                )
+            },
+            |(_, light)| light,
         ),
         death_time: snapshot.death_time,
         flip_degrees: photon_render::entity::mob_model::FLIP_DEGREES,
@@ -216,7 +251,7 @@ pub fn remote_mobs(
     models.swirl.clear();
     models.dissolve.clear();
     models.rays.clear();
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;
         };

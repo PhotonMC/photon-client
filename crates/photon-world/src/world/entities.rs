@@ -23,7 +23,10 @@ impl ClientWorld {
         entity_id: EntityId,
         partial_tick: f32,
     ) -> Option<EntitySnapshot> {
-        let entity = self.entities.at(entity_id)?;
+        let entity = self
+            .entities
+            .at(entity_id)
+            .or_else(|| self.spawner_display_entity(entity_id))?;
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
         Some(EntitySnapshot {
             position: entity.interpolated_position(partial_tick),
@@ -49,6 +52,7 @@ impl ClientWorld {
             shaking: entity.is_shaking(self.level.dimension_environment.piglins_zombify),
             burning: entity.is_burning(),
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
+            spawner_display: self.spawner_display_pose(entity_id, partial_tick),
         })
     }
 

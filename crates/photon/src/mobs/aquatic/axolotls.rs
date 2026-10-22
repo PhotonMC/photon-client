@@ -53,8 +53,7 @@ pub fn remote_axolotls(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == axolotl)
     {
         let baby = entity.is_baby();

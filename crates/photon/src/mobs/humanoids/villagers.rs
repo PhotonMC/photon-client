@@ -84,7 +84,7 @@ pub fn remote_villagers(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let is_villager = entity.type_id == villager;
         if !is_villager && entity.type_id != trader {
             continue;
@@ -185,7 +185,7 @@ pub fn remote_witches(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let (true, Some(snapshot), Some(rect), Some(model)) = (
             entity.type_id == witch,
             world.entity_snapshot(entity.id(), partial),

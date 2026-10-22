@@ -144,6 +144,9 @@ pub struct ClientWorld {
     minecart_track_output: BTreeMap<EntityId, bool>,
     /// The block entities the level ticks, in the order they were set up.
     block_tickers: world::BlockTickers,
+    /// The mobs spawners show (`BaseSpawner.displayEntity`): made on their own, never added to the
+    /// level, so nothing ticks, picks or counts them.
+    spawner_displays: Vec<world::SpawnerDisplayEntry>,
     /// What the enchanting tables' ticks read of the level.
     tables: world::Tables,
 }

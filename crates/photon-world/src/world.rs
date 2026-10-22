@@ -6,6 +6,7 @@ mod beacon;
 pub use beacon::BeaconView;
 mod conduit;
 mod spawner;
+pub(crate) use spawner::SpawnerDisplayEntry;
 mod vault;
 pub use conduit::ConduitView;
 mod gateway_beam;

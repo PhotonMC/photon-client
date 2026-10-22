@@ -127,7 +127,7 @@ pub fn remote_illagers(
         .iter()
         .filter_map(|illager| Some((photon_data::entity_type::id(illager.type_name)?, illager)))
         .collect();
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let Some(illager) = ids
             .iter()
             .find(|(id, _)| *id == entity.type_id)

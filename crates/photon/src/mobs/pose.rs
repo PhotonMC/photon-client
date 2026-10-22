@@ -16,7 +16,7 @@ pub(super) fn remote_humanoids(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let Some(kind) = models.humanoids.get(&entity.type_id).copied() else {
             continue;
         };

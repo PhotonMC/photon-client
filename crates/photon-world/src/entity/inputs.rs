@@ -32,6 +32,17 @@ pub struct EntitySnapshot {
     pub burning: bool,
     /// An invisible entity the local player sees as a ghost because of a team.
     pub friendly_ghost: bool,
+    /// A mob a spawner shows: where it is put and how it turns (`SpawnerRenderer`).
+    pub spawner_display: Option<SpawnerDisplayPose>,
+}
+
+/// How a spawner shows its mob: the block's corner, the turn in degrees (the lerped spin times
+/// ten) and the scale that fits the mob in the cage.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpawnerDisplayPose {
+    pub block: (i32, i32, i32),
+    pub spin: f32,
+    pub scale: f32,
 }
 
 /// The entities a tick looks up in the world: what a guardian's beam aims at and

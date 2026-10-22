@@ -47,8 +47,7 @@ pub fn remote_hoglins(
             continue;
         };
         for entity in world
-            .entities()
-            .drawn_with_invisible()
+            .drawn_mobs()
             .filter(|entity| entity.type_id == type_id)
         {
             let baby = entity.is_baby();

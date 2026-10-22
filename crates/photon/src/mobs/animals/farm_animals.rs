@@ -497,7 +497,7 @@ pub fn remote_farm_animals(
     let kinds = animal_kinds();
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let Some(animal) = kinds
             .iter()
             .find(|(id, _)| *id == entity.type_id)

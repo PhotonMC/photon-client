@@ -31,8 +31,7 @@ pub fn remote_sniffers(
         return;
     };
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == sniffer)
     {
         let (layer, texture) = if entity.is_baby() { BABY } else { ADULT };

@@ -31,8 +31,7 @@ pub fn remote_bears(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == polar_bear)
     {
         let baby = entity.is_baby();

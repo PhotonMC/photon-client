@@ -64,8 +64,7 @@ pub fn remote_cube_mobs(
         };
         let magma = name == MAGMA_CUBE;
         for entity in world
-            .entities()
-            .drawn_with_invisible()
+            .drawn_mobs()
             .filter(|entity| entity.type_id == type_id)
         {
             let (Some(snapshot), Some(rect)) = (
@@ -126,8 +125,7 @@ pub fn remote_sulfur_cubes(
         return;
     };
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == type_id)
     {
         let baby = usize::from(entity.is_baby());

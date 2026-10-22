@@ -40,11 +40,7 @@ pub fn remote_pandas(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world
-        .entities()
-        .drawn_with_invisible()
-        .filter(|entity| entity.type_id == panda)
-    {
+    for entity in world.drawn_mobs().filter(|entity| entity.type_id == panda) {
         let baby = entity.is_baby();
         let own = entity.panda();
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {

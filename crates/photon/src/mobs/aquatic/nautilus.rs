@@ -45,7 +45,7 @@ pub fn remote_nautiluses(
     let partial = view.partial as f32;
     let nautilus = photon_data::entity_type::id("minecraft:nautilus");
     let zombie = photon_data::entity_type::id("minecraft:zombie_nautilus");
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let is_zombie = Some(entity.type_id) == zombie;
         if !is_zombie && Some(entity.type_id) != nautilus {
             continue;

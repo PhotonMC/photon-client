@@ -60,8 +60,7 @@ pub fn remote_shulkers(
         return;
     };
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == type_id)
     {
         let (Some(snapshot), Some(rect), Some(model)) = (

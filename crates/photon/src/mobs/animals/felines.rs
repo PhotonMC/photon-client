@@ -71,8 +71,7 @@ pub fn remote_felines(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world
-        .entities()
-        .drawn_with_invisible()
+        .drawn_mobs()
         .filter(|entity| entity.type_id == cat || entity.type_id == ocelot)
     {
         let is_cat = entity.type_id == cat;

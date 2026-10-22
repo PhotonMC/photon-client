@@ -39,7 +39,7 @@ pub fn remote_frogs(
     let partial = view.partial as f32;
     let frog = photon_data::entity_type::id("minecraft:frog");
     let tadpole = photon_data::entity_type::id("minecraft:tadpole");
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world.drawn_mobs() {
         let is_frog = Some(entity.type_id) == frog;
         if !is_frog && Some(entity.type_id) != tadpole {
             continue;

@@ -72,6 +72,38 @@ pub struct MobPlacement {
     /// The camera, from the mesh origin, when the viewer sees an invisible mob as a ghost
     /// (`isInvisibleTo` is false for a spectator); none when it sees nothing of the body.
     pub ghost: Option<[f32; 3]>,
+    /// A mob a spawner shows (`SpawnerRenderer.submitEntityInSpawner`): the block's corner from
+    /// the mesh origin, the turn in degrees and the scale that fits the mob in the cage.
+    pub spawner: Option<SpawnerCage>,
+}
+
+/// Where a spawner puts the mob it shows.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpawnerCage {
+    pub origin: [f32; 3],
+    pub spin: f32,
+    pub scale: f32,
+}
+
+impl SpawnerCage {
+    /// The pose the mob is drawn in: up in the block, turned, tipped back and scaled.
+    fn pose(self) -> Pose {
+        let mut pose = Pose::default();
+        pose.translate(
+            self.origin[0] + 0.5,
+            self.origin[1] + 0.4,
+            self.origin[2] + 0.5,
+        );
+        pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+            self.spin,
+        )));
+        pose.translate(0.0, -0.2, 0.0);
+        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+            -30.0,
+        )));
+        pose.scale(self.scale, self.scale, self.scale);
+        pose
+    }
 }
 
 impl Default for MobPlacement {
@@ -99,6 +131,7 @@ impl Default for MobPlacement {
             cube_mob: None,
             attach_face: None,
             ghost: None,
+            spawner: None,
         }
     }
 }
@@ -198,11 +231,25 @@ pub fn shake_degrees(age_in_ticks: f32) -> f32 {
         as f32
 }
 
+/// The swing of a fish's body and its flop on land.
+fn fish_rotate(pose: &mut Pose, fish: &FishTurns) {
+    let degrees = Quaternion::degrees_to_radians;
+    if let Some(swing) = fish.swing {
+        pose.rotate(&Quaternion::rotation_y(degrees(swing)));
+    }
+    if let Some([x, y, z]) = fish.on_land {
+        pose.translate(x, y, z);
+        pose.rotate(&Quaternion::rotation_z(degrees(90.0)));
+    }
+}
+
 /// What `LivingEntityRenderer.submit` has done by the end of the renderer's
 /// `setupRotations`: the feet, the scale, the turn to face away from the
 /// body's facing, the fall of a dead mob and the renderer's own turns.
 pub fn placement_rotations(placement: &MobPlacement) -> Pose {
-    let mut pose = Pose::default();
+    let mut pose = placement
+        .spawner
+        .map_or_else(Pose::default, SpawnerCage::pose);
     pose.translate(placement.feet[0], placement.feet[1], placement.feet[2]);
     pose.scale(placement.scale, placement.scale, placement.scale);
     if let Some(fish) = placement.fish {
@@ -227,17 +274,7 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
         )));
     }
     if let Some(fish) = placement.fish {
-        if let Some(swing) = fish.swing {
-            pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-                swing,
-            )));
-        }
-        if let Some([x, y, z]) = fish.on_land {
-            pose.translate(x, y, z);
-            pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-                90.0,
-            )));
-        }
+        fish_rotate(&mut pose, &fish);
     }
     if let Some([x, y, z]) = placement.shift {
         pose.translate(x, y, z);
