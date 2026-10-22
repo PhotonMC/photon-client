@@ -268,10 +268,27 @@ pub(super) fn local_arms(
     (arms, attack_arm)
 }
 
+/// `isUpsideDown` for the local player (the cape shows and the profile is named Dinnerbone or
+/// Grumm): the height of its box, its pitch as the model sees it, and the sign its head turn
+/// takes (`extractRenderState` mirrors both).
+fn local_flip(session: &PlaySession, player: &LocalPlayer) -> (Option<f32>, f32, f32) {
+    let (_, x_rot) = player.rotation();
+    let named = matches!(session.local_name(), "Dinnerbone" | "Grumm");
+    let cape = session
+        .world()
+        .local_player()
+        .is_some_and(|state| state.model_customisation() & 1 != 0);
+    if named && cape {
+        (Some(player.bb_height()), -x_rot, -1.0)
+    } else {
+        (None, x_rot, 1.0)
+    }
+}
+
 /// Where the local player's model stands in the frame.
 fn local_placement(
     player: &LocalPlayer,
-    (view, x_rot): (FrameView, f32),
+    (view, x_rot, upside_down): (FrameView, f32, Option<f32>),
     (pose, glide): (&photon_world::local_player::ModelPose, Option<Glide>),
 ) -> Placement {
     let feet = player.interpolated_position(view.partial);
@@ -293,7 +310,7 @@ fn local_placement(
         red_overlay: false,
         fall_flying: glide.map(|glide| glide.flight),
         auto_spin: None,
-        upside_down: None,
+        upside_down,
     }
 }
 
@@ -311,7 +328,7 @@ pub fn player_model(
     invisible: bool,
 ) -> Vec<Vertex> {
     let partial = view.partial as f32;
-    let (_, x_rot) = player.rotation();
+    let (flip, x_rot, side) = local_flip(session, player);
     let pose = player.model_pose(partial);
     let attack_time = player.attack_anim(partial);
     let (arms, attack_arm) = local_arms(session, player, stacks, partial);
@@ -330,7 +347,7 @@ pub fn player_model(
     let state = PlayerRenderState {
         is_fall_flying: glide.is_some(),
         speed_value: glide.map_or(1.0, |glide| glide.speed_value),
-        head_y_rot: photon_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
+        head_y_rot: side * photon_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
         x_rot,
         walk_position: pose.walk_position,
         walk_speed: pose.walk_speed,
@@ -352,7 +369,7 @@ pub fn player_model(
         ..Default::default()
     };
     model.setup_anim(&state);
-    let placement = local_placement(player, (view, x_rot), (&pose, glide));
+    let placement = local_placement(player, (view, x_rot, flip), (&pose, glide));
     let hands = Hands {
         base: &photon_render::entity::player_renderer::placement_pose(&placement),
         root: &model.root,
