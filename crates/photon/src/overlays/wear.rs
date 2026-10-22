@@ -280,9 +280,10 @@ fn player_tags(
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
         let (x, y, z) = snapshot.position;
-        let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
+        // `Entity.getEyePosition`: the pose's eye height, scaled.
+        let eye_height = f64::from(snapshot.pose.player_dimensions().eye_height() * entity.scale());
+        let eye = Vec3::new(x, y + eye_height, z);
         tags.submit(&tag, (Vec3::new(x, y, z), packed_light(world, eye)));
     }
 }
