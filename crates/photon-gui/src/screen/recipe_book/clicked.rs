@@ -171,7 +171,7 @@ impl RecipeBookPanel {
             return self.overlay_clicked(mouse, button, shift);
         }
         let (bx, by) = self.button_corner(left);
-        if Self::in_rect(mouse, (bx, by, 20, 18)) {
+        if button == 0 && Self::in_rect(mouse, (bx, by, 20, 18)) {
             click_sound(button, false);
             self.queued
                 .push(self.settings_action(!self.visible, self.filtering));
@@ -190,7 +190,8 @@ impl RecipeBookPanel {
     /// `RecipeBookPage.mouseClicked`: the arrows.
     fn page_arrow_clicked(&mut self, mouse: (f64, f64), button: i32, (xo, yo): (i32, i32)) -> bool {
         let pages = self.total_pages();
-        if pages > 1
+        if button == 0
+            && pages > 1
             && self.model.page + 1 < pages
             && Self::in_rect(mouse, (xo + 93, yo + 137, 12, 17))
         {
@@ -198,7 +199,7 @@ impl RecipeBookPanel {
             self.model.page += 1;
             return true;
         }
-        if self.model.page > 0 && Self::in_rect(mouse, (xo + 38, yo + 137, 12, 17)) {
+        if button == 0 && self.model.page > 0 && Self::in_rect(mouse, (xo + 38, yo + 137, 12, 17)) {
             click_sound(button, false);
             self.model.page -= 1;
             return true;
@@ -241,7 +242,7 @@ impl RecipeBookPanel {
             return true;
         }
         self.focused = false;
-        if Self::in_rect(mouse, (xo + 110, yo + 12, 26, 16)) {
+        if button == 0 && Self::in_rect(mouse, (xo + 110, yo + 12, 26, 16)) {
             click_sound(button, false);
             self.queued
                 .push(self.settings_action(self.visible, !self.filtering));
@@ -249,7 +250,7 @@ impl RecipeBookPanel {
             return true;
         }
         for (index, tab) in self.visible_tabs().into_iter().enumerate() {
-            if Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27)) {
+            if button == 0 && Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27)) {
                 click_sound(button, false);
                 if self.model.tab != tab {
                     self.model.tab = tab;
@@ -420,6 +421,7 @@ impl RecipeBookPanel {
             glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space
         ) && let Some((id, _)) = self.last_recipe
         {
+            crate::ui_sound::play_down_sound();
             self.retry(id, shift);
             return true;
         }

@@ -268,8 +268,15 @@ impl BookEditScreen {
     ) -> Option<BookEditAction> {
         use glfw::Key;
         match key {
-            Key::PageUp => return self.press(Focus::Back, font, lang),
-            Key::PageDown => return self.press(Focus::Forward, font, lang),
+            // `backButton.onPress`: called directly, so it makes no sound.
+            Key::PageUp => {
+                self.page_back(font, lang);
+                return None;
+            }
+            Key::PageDown => {
+                self.page_forward(font, lang);
+                return None;
+            }
             Key::Escape => return Some(BookEditAction::Close),
             _ => {}
         }
@@ -387,5 +394,36 @@ impl BookEditScreen {
             0xFFFF_FFFF,
             true,
         );
+    }
+}
+
+#[cfg(test)]
+mod click_tests {
+    use super::*;
+
+    struct NoClip;
+    impl Clipboard for NoClip {
+        fn get(&mut self) -> String {
+            String::new()
+        }
+        fn set(&mut self, _: &str) {}
+    }
+
+    #[test]
+    fn page_keys_are_silent_and_the_buttons_click() {
+        let (font, lang) = (Font::default(), Lang::default());
+        let mut screen = BookEditScreen::new((&font, &lang), vec![String::new()], (320, 240), None);
+        crate::ui_sound::take();
+        screen.key_pressed(
+            (&font, &lang),
+            glfw::Key::PageDown,
+            (false, false),
+            &mut NoClip,
+        );
+        assert!(crate::ui_sound::take().is_empty());
+        screen.press(Focus::Forward, &font, &lang);
+        let sounds = crate::ui_sound::take();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, "minecraft:item.book.page_turn");
     }
 }
