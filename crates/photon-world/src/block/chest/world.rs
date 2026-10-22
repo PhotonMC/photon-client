@@ -165,11 +165,12 @@ impl ClientWorld {
         }
         let facing = Direction::from_name(crate::local_player::property(Some(state), "facing")?)?;
         let tag = self.block_entity_at(pos.0, pos.1, pos.2)?.tag.as_deref()?;
-        let (align_to_bottom, items) = shelf_tag(tag);
+        let (align_to_bottom, items, components) = shelf_tag(tag);
         Some(ShelfView {
             facing,
             align_to_bottom,
             items,
+            components,
         })
     }
 

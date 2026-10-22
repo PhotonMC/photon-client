@@ -65,9 +65,7 @@ pub(crate) fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultSha
     }
     if let Some(FieldValue::Compound(held)) = field(data, "display_item") {
         shared.display_item = crate::block::chest::tag_stack(held);
-        if let Some(FieldValue::Compound(components)) = field(held, "components") {
-            shared.display_components.clone_from(components);
-        }
+        shared.display_components = crate::block::chest::stack_components(held);
     }
     if let Some(FieldValue::Double(range)) = field(data, "connected_particles_range") {
         shared.connected_particles_range = *range;

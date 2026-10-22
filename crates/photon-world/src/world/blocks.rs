@@ -181,6 +181,10 @@ impl ClientWorld {
             ticking.push((key, entity.type_id));
             applied += 1;
         }
+        // `BaseSpawner.load`: a spawner that is loaded again has to be drawn again.
+        for (key, _) in &ticking {
+            super::spawner::forget_extracted(&mut self.spawners_extracted, *key);
+        }
         // `LevelChunk.addAndRegisterBlockEntity`: a ticker for each, in the order they came.
         for (key, type_id) in ticking {
             if self.has_ticker(type_id, key) {
@@ -215,6 +219,7 @@ impl ClientWorld {
             updated.events.conduit.target = target;
         }
         chunk.block_entities.insert(key, updated);
+        super::spawner::forget_extracted(&mut self.spawners_extracted, key);
         if !existed && self.has_ticker(entity.type_id, key) {
             self.block_tickers.register(key);
         }

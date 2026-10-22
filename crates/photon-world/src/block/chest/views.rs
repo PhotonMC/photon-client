@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::{BlockStateId, ItemId};
+use photon_core::nbt::Field;
 
 /// The dyes, in `DyeColor.getId` order.
 pub const DYES: [&str; 16] = [
@@ -280,11 +281,17 @@ pub struct ShelfView {
     pub align_to_bottom: bool,
     /// The item in each slot and how many, none for an empty one.
     pub items: [Option<(ItemId, i32)>; 3],
+    /// The `components` of each slot's stack, as the tag writes them.
+    pub components: [Vec<photon_core::nbt::Field>; 3],
 }
 
 /// `ContainerHelper.loadAllItems`: the stacks of a tag's `Items`, each in its `Slot`, in an array
 /// of any length; a slot the tag does not name, or names past the end, is left as it is.
-fn fill_slots(fields: &[photon_core::nbt::Field], items: &mut [Option<(ItemId, i32)>]) {
+fn fill_slots<T>(
+    fields: &[photon_core::nbt::Field],
+    items: &mut [T],
+    read: impl Fn(&[photon_core::nbt::Field]) -> T,
+) {
     use photon_core::nbt::FieldValue;
     let Some(FieldValue::List(held)) = fields
         .iter()
@@ -306,7 +313,7 @@ fn fill_slots(fields: &[photon_core::nbt::Field], items: &mut [Option<(ItemId, i
             .ok()
             .and_then(|slot| items.get_mut(slot))
         {
-            *place = tag_stack(stack);
+            *place = read(stack);
         }
     }
 }
@@ -317,7 +324,7 @@ pub(super) fn campfire_tag(tag: &[u8]) -> [Option<(ItemId, i32)>; 4] {
     let mut input = tag;
     let mut items = [None; 4];
     if let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) {
-        fill_slots(&fields, &mut items);
+        fill_slots(&fields, &mut items, tag_stack);
     }
     items
 }
@@ -337,21 +344,37 @@ pub(crate) fn is_campfire_state(state_id: BlockStateId) -> bool {
     is_of_classes(state_id, &[BlockClass::CampfireBlock], &BLOCKS)
 }
 
+/// What a shelf's tag holds: whether the items stand on it, the items and their components.
+pub(super) type ShelfTag = (bool, [Option<(ItemId, i32)>; 3], [Vec<Field>; 3]);
+
 /// `ShelfBlockEntity.loadAdditional` as the client's update tag has it: the items by slot, and
 /// whether they stand on the shelf.
-pub(super) fn shelf_tag(tag: &[u8]) -> (bool, [Option<(ItemId, i32)>; 3]) {
+pub(super) fn shelf_tag(tag: &[u8]) -> ShelfTag {
     let mut input = tag;
     let mut items = [None; 3];
+    let mut components: [Vec<Field>; 3] = Default::default();
     let Ok(Some(fields)) = photon_core::nbt::read_nbt(&mut input) else {
-        return (false, items);
+        return (false, items, components);
     };
     let align = fields
         .iter()
         .find(|field| field.key == "align_items_to_bottom")
         .and_then(|field| crate::block::entity::numeric_nbt_value(&field.value))
         .is_some_and(|value| value != 0);
-    fill_slots(&fields, &mut items);
-    (align, items)
+    fill_slots(&fields, &mut items, tag_stack);
+    fill_slots(&fields, &mut components, stack_components);
+    (align, items, components)
+}
+
+/// The `components` compound of a stack's tag, empty for a stack that has none.
+pub(crate) fn stack_components(stack: &[Field]) -> Vec<Field> {
+    match stack.iter().find(|field| field.key == "components") {
+        Some(Field {
+            value: photon_core::nbt::FieldValue::Compound(components),
+            ..
+        }) => components.clone(),
+        _ => Vec::new(),
+    }
 }
 
 /// What a suspicious block holds, for drawing it.

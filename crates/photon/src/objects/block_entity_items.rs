@@ -119,7 +119,11 @@ pub fn shelf_items(
             let Some((item, count)) = item else {
                 continue;
             };
-            let stack = ClientItemStackState::new(*count, *item);
+            let mut stack = ClientItemStackState::new(*count, *item);
+            stack.set_patch(&photon_world::item_components::tag::patch_from_tag(
+                &shelf.components[slot],
+                session.registry_names("minecraft:enchantment"),
+            ));
             let layers = on_shelf.get(&stack, renderer, tints);
             let pose = shelf::item_pose(&base, slot, turn, model_extent(layers));
             let drawn = item_layer_vertices(layers, &[pose], light, false);
