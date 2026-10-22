@@ -151,6 +151,7 @@ pub struct Controls {
     pub jigsaw_block: Option<JigsawEdit>,
     /// The test block the player is editing, while its screen is up.
     pub test_block: Option<TestBlockEdit>,
+    pub test_instance_block: Option<TestInstanceBlockEdit>,
     /// The book and quill being written in, while its screen is up.
     pub book_edit: Option<BookEdit>,
     /// "Title Screen" asks first (`deathScreen.quit.confirm`), over the death
@@ -357,6 +358,7 @@ mod structure_block;
 mod jigsaw;
 
 mod test_block;
+mod test_instance_block;
 
 mod sign;
 
@@ -375,6 +377,7 @@ pub use jigsaw::JigsawEdit;
 pub use sign::SignEdit;
 pub use structure_block::StructureBlockEdit;
 pub use test_block::TestBlockEdit;
+pub use test_instance_block::TestInstanceBlockEdit;
 
 mod book;
 pub use book::BookEdit;

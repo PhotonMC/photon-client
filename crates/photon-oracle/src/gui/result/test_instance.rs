@@ -1,7 +1,7 @@
 use super::*;
 use photon_game::structure_block::Rotation;
 use photon_game::test_instance::TestInstanceContents;
-use photon_game::text::Lang;
+use photon_game::text::{Component, Lang};
 use photon_gui::screen::test_instance_block::{InstanceOutcome, TestInstanceBlockScreen};
 
 /// The keys a row may name.
@@ -29,7 +29,14 @@ fn key_of(name: &str) -> Result<glfw::Key, String> {
 }
 
 /// One step of a row: text, a key, a click, the wheel or a new size. Whether the screen closed.
-fn step(screen: &mut TestInstanceBlockScreen, lang: &Lang, step: &Value) -> Result<bool, String> {
+fn step(
+    (screen, error): (&mut TestInstanceBlockScreen, &mut Option<String>),
+    lang: &Lang,
+    step: &Value,
+) -> Result<bool, String> {
+    if status_step((screen, error), lang, step) {
+        return Ok(false);
+    }
     let at = (
         step["x"].as_f64().unwrap_or(0.0) as i32,
         step["y"].as_f64().unwrap_or(0.0) as i32,
@@ -62,6 +69,37 @@ fn step(screen: &mut TestInstanceBlockScreen, lang: &Lang, step: &Value) -> Resu
         other => return Err(format!("unknown step {other:?}")),
     };
     Ok(outcome == InstanceOutcome::Close)
+}
+
+/// The steps that carry the server's side: a status line, and the mouse dragging the bar or
+/// letting it go. Whether the step was one of them.
+fn status_step(
+    (screen, error): (&mut TestInstanceBlockScreen, &mut Option<String>),
+    lang: &Lang,
+    step: &Value,
+) -> bool {
+    let number = |key: &str| step[key].as_f64().unwrap_or(0.0);
+    match step["do"].as_str() {
+        Some("status") => {
+            if let Some(text) = step["error"].as_str() {
+                *error = Some(text.to_owned());
+            }
+            let size = step["size"].as_array().map(|size| {
+                (
+                    size[0].as_i64().unwrap_or(0) as i32,
+                    size[1].as_i64().unwrap_or(0) as i32,
+                    size[2].as_i64().unwrap_or(0) as i32,
+                )
+            });
+            let error = error.as_deref().map(Component::literal);
+            let text = Component::literal(step["text"].as_str().unwrap_or_default());
+            screen.set_status(lang, error.as_ref(), &text, size);
+        }
+        Some("drag") => screen.dragged(number("y"), number("dy")),
+        Some("release") => screen.released(),
+        _ => return false,
+    }
+    true
 }
 
 fn rotation_named(name: &str) -> Result<Rotation, String> {
@@ -101,8 +139,9 @@ pub(super) fn test_instance_screen_case(
     };
     let mut screen = TestInstanceBlockScreen::new((&font, &lang), &contents, size);
     let mut closed = false;
+    let mut error = None;
     for each in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
-        closed |= step(&mut screen, &lang, each)?;
+        closed |= step((&mut screen, &mut error), &lang, each)?;
     }
     let mouse = (int(&row["mouse"][0]), int(&row["mouse"][1]));
     let mut frame = GuiFrame {

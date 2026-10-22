@@ -138,6 +138,8 @@ impl Gui {
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
         } else if let Some(edit) = controls.test_block.as_mut() {
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
+        } else if let Some(edit) = controls.test_instance_block.as_mut() {
+            edit.draw(frame, (atlas, font, lang), (mouse, gui_size));
         } else if let Some(edit) = controls.command_block.as_mut() {
             let commands = session.commands().map(|tree| &**tree);
             edit.draw(frame, (atlas, font, lang), (mouse, gui_size, commands));

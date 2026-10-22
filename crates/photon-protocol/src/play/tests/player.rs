@@ -178,3 +178,25 @@ fn player_abilities_parser_matches_java_flag_and_float_order() {
     trailing.push(0);
     assert!(parse_player_abilities_packet(&trailing).is_err());
 }
+
+#[test]
+fn test_instance_status_carries_the_words_and_an_optional_size() {
+    let with_size = [8, 0, 2, b'h', b'i', 1, 3, 4, 5];
+    let packet =
+        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&with_size).unwrap();
+    assert_eq!(packet.status, photon_game::text::Component::literal("hi"));
+    assert_eq!(packet.size, Some((3, 4, 5)));
+    let without = [8, 0, 2, b'h', b'i', 0];
+    assert_eq!(
+        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&without)
+            .unwrap()
+            .size,
+        None
+    );
+    assert!(
+        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&[
+            8, 0, 2, b'h', b'i', 0, 0
+        ])
+        .is_err()
+    );
+}

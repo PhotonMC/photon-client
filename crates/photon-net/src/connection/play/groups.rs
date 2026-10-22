@@ -98,6 +98,8 @@ pub(super) struct Menus {
     pub(super) sign_editor: Option<((i32, i32, i32), bool)>,
     /// The hand whose book the server last opened, until the client shows it.
     pub(super) opened_book: Option<u8>,
+    /// Status lines the server sent for a test instance block, until the open screen shows them.
+    pub(super) test_instance_statuses: Vec<photon_protocol::play::TestInstanceBlockStatus>,
     /// A command block's data came in since the client last looked: its open screen updates.
     pub(super) command_block_data: bool,
     /// What menus read of the enchantments, from the data pack.

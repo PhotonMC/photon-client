@@ -21,6 +21,7 @@ mod structure_block;
 pub use command_block::{CommandBlockMode, CommandBlockView, CommandMinecartView};
 pub use jigsaw::JigsawBlockView;
 mod test_block;
+mod test_instance_block;
 pub use test_block::TestBlockView;
 mod dimension;
 mod enchanting;

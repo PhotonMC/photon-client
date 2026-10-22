@@ -76,7 +76,8 @@ class GuiTestInstanceOracle extends GuiTestBlockOracle {
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             SilentSounds.ASKED.clear();
-            var edit = new net.minecraft.client.gui.screens.inventory.TestInstanceBlockEditScreen(testInstance(row));
+            var block = testInstance(row);
+            var edit = new net.minecraft.client.gui.screens.inventory.TestInstanceBlockEditScreen(block);
             edit.init(width, height);
             withoutAlt(edit);
             var steps = new JsonArray();
@@ -87,6 +88,22 @@ class GuiTestInstanceOracle extends GuiTestBlockOracle {
                         edit.resize(step.get("width").getAsInt(), step.get("height").getAsInt());
                         withoutAlt(edit);
                     }
+                    case "status" -> {
+                        if (step.has("error")) {
+                            block.setErrorMessage(net.minecraft.network.chat.Component.literal(step.get("error").getAsString()));
+                        }
+                        var size = step.has("size") ? step.getAsJsonArray("size") : null;
+                        edit.setStatus(net.minecraft.network.chat.Component.literal(step.get("text").getAsString()),
+                            size == null ? java.util.Optional.empty() : java.util.Optional.of(new net.minecraft.core.Vec3i(
+                                size.get(0).getAsInt(), size.get(1).getAsInt(), size.get(2).getAsInt())));
+                    }
+                    case "drag" -> edit.mouseDragged(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0)),
+                        step.get("dx").getAsDouble(), step.get("dy").getAsDouble());
+                    case "release" -> edit.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(
+                        step.get("x").getAsDouble(), step.get("y").getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0)));
                     case "wheel" -> edit.mouseScrolled(step.get("x").getAsDouble(), step.get("y").getAsDouble(),
                         0.0, step.get("amount").getAsDouble());
                     default -> {

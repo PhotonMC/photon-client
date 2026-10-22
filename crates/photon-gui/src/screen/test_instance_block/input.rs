@@ -75,6 +75,9 @@ impl TestInstanceBlockScreen {
             self.after_edit(lang, before);
             return taken.then_some(InstanceOutcome::Stay);
         }
+        if self.focus == Slot::Info {
+            return self.info_key(key).then_some(InstanceOutcome::Stay);
+        }
         let select = matches!(
             key,
             glfw::Key::Enter | glfw::Key::KpEnter | glfw::Key::Space
@@ -169,6 +172,7 @@ impl TestInstanceBlockScreen {
                 && mouse.0 < rect.x + rect.width
                 && mouse.1 < rect.y + rect.height
         });
+        let hit = hit.or_else(|| self.over_info(mouse).then(|| rect_of(Slot::Info)));
         let Some(hit) = hit else {
             return InstanceOutcome::Stay;
         };
@@ -180,6 +184,7 @@ impl TestInstanceBlockScreen {
             return InstanceOutcome::Stay;
         }
         if slot == Slot::Info {
+            self.grab_info_bar(mouse);
             return InstanceOutcome::Stay;
         }
         self.press(lang, slot, shift)
@@ -193,6 +198,8 @@ impl TestInstanceBlockScreen {
             self.update_save_state();
         } else if self.entities.is_mouse_over(&self.arena, over) {
             self.entities.scrolled(lang, scroll_y);
+        } else if self.over_info(mouse) {
+            self.scroll_info(scroll_y);
         }
     }
 }

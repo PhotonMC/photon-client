@@ -8,6 +8,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
     ),
     (PLAY_CLIENTBOUND_TRANSFER_PACKET_ID, typed::<Transfer>),
     (
+        PLAY_CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS_PACKET_ID,
+        typed::<TestInstanceBlockStatus>,
+    ),
+    (
         PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID,
         typed::<ResourcePackPush>,
     ),
@@ -68,6 +72,14 @@ impl ClientboundPacket for ResourcePackPush {
 /// Nothing was loaded, so there is nothing to take off.
 impl ClientboundPacket for ResourcePackPop {
     fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+        Ok(())
+    }
+}
+
+/// `handleTestInstanceBlockStatus`: the open screen shows it.
+impl ClientboundPacket for TestInstanceBlockStatus {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.menus.test_instance_statuses.push(*self);
         Ok(())
     }
 }

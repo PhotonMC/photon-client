@@ -52,6 +52,7 @@ mod signs;
 pub use jigsaw_blocks::JigsawBlockSettings;
 mod structure_blocks;
 mod test_blocks;
+mod test_instances;
 pub use structure_blocks::{StructureBlockSettings, StructureFlags};
 mod state;
 mod traffic;

@@ -33,13 +33,8 @@ impl SubtitlePass {
     /// The pass the subtitles are drawn in now, and whether the screen up (if any) is part of the
     /// game's own interface.
     fn of(controls: &Controls) -> (Self, bool) {
-        let over_screen = controls.screen.is_some()
-            || controls.sign_edit.is_some()
-            || controls.command_block.is_some()
-            || controls.structure_block.is_some()
-            || controls.jigsaw_block.is_some()
-            || controls.test_block.is_some()
-            || controls.book_edit.is_some();
+        let over_screen =
+            controls.screen.is_some() || controls.text_edit_open() || controls.book_edit.is_some();
         let pass = if !controls.any_screen_open() {
             Self::AfterToasts
         } else if over_screen {

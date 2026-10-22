@@ -81,6 +81,8 @@ mod resource_pack;
 pub use resource_pack::*;
 mod scoreboard;
 pub use scoreboard::*;
+mod test_instance;
+pub use test_instance::*;
 mod serverbound;
 pub use serverbound::*;
 mod sound;

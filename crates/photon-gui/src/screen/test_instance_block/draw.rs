@@ -83,48 +83,4 @@ impl TestInstanceBlockScreen {
             None,
         );
     }
-
-    /// `FittingMultiLineTextWidget`: the frame, then the words wrapped inside it.
-    fn draw_info(&self, (frame, atlas, font): (&mut GuiFrame, &GuiAtlas, &Font)) {
-        let focused = self.focus == Slot::Info;
-        let sprite = if focused {
-            "widget/text_field_highlighted"
-        } else {
-            "widget/text_field"
-        };
-        let at = self.rectangle(Slot::Info);
-        frame.nine_slice(
-            atlas,
-            sprite,
-            (200, 20),
-            1,
-            false,
-            at.x,
-            at.y,
-            at.width,
-            at.height,
-        );
-        let mark = frame.mark();
-        let lines = crate::chat::split(&self.info, at.width - 8, font);
-        for (row, line) in lines.iter().enumerate() {
-            frame.styled_text(
-                atlas,
-                font,
-                line,
-                at.x + 4,
-                at.y + 4 + 9 * row as i32,
-                0xFFFF_FFFF,
-                true,
-            );
-        }
-        frame.clip_from(
-            mark,
-            (
-                at.x + 1,
-                at.y + 1,
-                at.x + at.width - 1,
-                at.y + at.height - 1,
-            ),
-        );
-    }
 }

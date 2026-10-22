@@ -23,6 +23,11 @@ impl GameMode {
         self.opened_test_block.take()
     }
 
+    /// The position of the test instance block used, whose screen is to open.
+    pub fn take_opened_test_instance_block(&mut self) -> Option<(i32, i32, i32)> {
+        self.opened_test_instance_block.take()
+    }
+
     /// The position of the structure block used, whose screen is to open.
     pub fn take_opened_structure_block(&mut self) -> Option<(i32, i32, i32)> {
         self.opened_structure_block.take()
@@ -249,6 +254,10 @@ impl GameMode {
             "minecraft:test_block" => (
                 ctx.world.test_block_view(pos).is_some(),
                 &mut self.opened_test_block,
+            ),
+            "minecraft:test_instance_block" => (
+                ctx.world.test_instance_block_view(pos).is_some(),
+                &mut self.opened_test_instance_block,
             ),
             _ => return None,
         };

@@ -45,6 +45,8 @@ pub struct GameMode {
     pub(super) opened_jigsaw_block: Option<(i32, i32, i32)>,
     /// The test block whose screen is to open (`Player.openTestBlock`).
     pub(super) opened_test_block: Option<(i32, i32, i32)>,
+    /// The test instance block whose screen is to open (`Player.openTestInstanceBlock`).
+    pub(super) opened_test_instance_block: Option<(i32, i32, i32)>,
     /// The command block minecart whose screen is to open (`Player.openMinecartCommandBlock`).
     pub(super) opened_command_minecart: Option<photon_core::ids::EntityId>,
     /// The block states of the breaks the tutorial is told of, and how far each was.
@@ -68,6 +70,7 @@ impl Default for GameMode {
             opened_structure_block: None,
             opened_jigsaw_block: None,
             opened_test_block: None,
+            opened_test_instance_block: None,
             opened_command_minecart: None,
             destroyed: Vec::new(),
         }

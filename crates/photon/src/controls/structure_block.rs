@@ -18,6 +18,7 @@ impl Controls {
             || self.structure_block.is_some()
             || self.jigsaw_block.is_some()
             || self.test_block.is_some()
+            || self.test_instance_block.is_some()
     }
 
     /// Whether a sign's or a block's text screen is up.
@@ -35,6 +36,8 @@ impl Controls {
         self.open_structure_block(session, surface, assets);
         self.open_jigsaw_block(session, surface, assets);
         self.open_test_block(session, surface, assets);
+        self.open_test_instance_block(session, surface, assets);
+        self.show_test_instance_statuses(session, assets);
         self.open_command_block(session, surface, assets);
     }
 
@@ -52,6 +55,8 @@ impl Controls {
             self.jigsaw_block_event(event, session, surface, assets)
         } else if self.test_block.is_some() {
             self.test_block_event(event, session, surface, assets)
+        } else if self.test_instance_block.is_some() {
+            self.test_instance_block_event(event, session, surface, assets)
         } else {
             self.command_block_event(event, session, surface, assets)
         }

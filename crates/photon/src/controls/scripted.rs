@@ -73,7 +73,7 @@ impl Controls {
                 self.open_chat(ChatMethod::Message, false, surface, assets);
             }
         }
-        self.scripted_typing(held.typed, &assets.creative.font);
+        self.scripted_typing(held.typed, (&assets.creative.font, &assets.lang));
         self.send_suggestion_request(session)?;
         if held.complete
             && let Some(chat) = self.chat.as_mut()
@@ -131,7 +131,11 @@ impl Controls {
 
     /// Scripted text typed into the chat box, the command block's box, the container screen or a
     /// dialog's text box.
-    fn scripted_typing(&mut self, typed: Option<&str>, font: &photon_render::gui::font::Font) {
+    fn scripted_typing(
+        &mut self,
+        typed: Option<&str>,
+        (font, lang): (&photon_render::gui::font::Font, &photon_game::text::Lang),
+    ) {
         for character in typed.unwrap_or_default().chars() {
             if let Some(chat) = self.chat.as_mut() {
                 chat.char_typed(character);
@@ -147,6 +151,9 @@ impl Controls {
             }
             if let Some(edit) = self.test_block.as_mut() {
                 edit.screen.char_typed(character);
+            }
+            if let Some(edit) = self.test_instance_block.as_mut() {
+                edit.screen.char_typed(lang, character);
             }
             if let Some(screen) = self.screen.as_mut() {
                 screen.char_typed(character);
@@ -206,6 +213,13 @@ impl Controls {
                 glfw::Modifiers::empty(),
             );
             self.test_block_event(press, session, surface, assets)?;
+        } else if self.test_instance_block.is_some() {
+            let press = glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                glfw::Modifiers::empty(),
+            );
+            self.test_instance_block_event(press, session, surface, assets)?;
         } else {
             return Ok(false);
         }

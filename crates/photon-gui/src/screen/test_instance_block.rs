@@ -3,6 +3,7 @@
 //! to the server.
 
 mod draw;
+mod info;
 mod input;
 
 use std::sync::Arc;
@@ -195,6 +196,9 @@ pub struct TestInstanceBlockScreen {
     cancel: Widget,
     /// The words in the description area: the red note for an identifier that does not parse.
     info: Vec<Run>,
+    /// How far the words are scrolled, and whether the bar is held.
+    info_scroll: f64,
+    info_scrolling: bool,
     focus: Slot,
     focused_at: Instant,
     /// Whether the last input was a key's (`InputType.isKeyboard`).
@@ -253,6 +257,8 @@ impl TestInstanceBlockScreen {
             done: button(Slot::Done, words("gui.done")),
             cancel: button(Slot::Cancel, words("gui.cancel")),
             info: Vec::new(),
+            info_scroll: 0.0,
+            info_scrolling: false,
             // `setInitialFocus` focuses the first widget after a key, and none after the mouse.
             focus: if keyboard { Slot::Id } else { Slot::Nowhere },
             focused_at: Instant::now(),

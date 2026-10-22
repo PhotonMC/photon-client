@@ -65,6 +65,7 @@ impl Controls {
             self.structure_block.is_some(),
             self.jigsaw_block.is_some(),
             self.test_block.is_some(),
+            self.test_instance_block.is_some(),
             self.book_edit.is_some(),
             self.confirm.is_some(),
             self.link_confirm.is_some(),

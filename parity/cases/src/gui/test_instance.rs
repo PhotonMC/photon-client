@@ -53,6 +53,10 @@ impl Case {
         Self { test, ..self }
     }
 
+    fn screen_of(self, screen: (i64, i64)) -> Self {
+        Self { screen, ..self }
+    }
+
     fn turned(self, rotation: &'static str) -> Self {
         Self { rotation, ..self }
     }
@@ -80,6 +84,31 @@ fn wheel(at: (i64, i64), amount: i64) -> Value {
 
 fn resize(width: i64, height: i64) -> Value {
     json!({"do": "resize", "width": width, "height": height})
+}
+
+fn status(text: &str) -> Value {
+    json!({"do": "status", "text": text})
+}
+
+fn failed(error: &str, text: &str) -> Value {
+    json!({"do": "status", "text": text, "error": error})
+}
+
+fn sized(text: &str, size: (i64, i64, i64)) -> Value {
+    json!({"do": "status", "text": text, "size": [size.0, size.1, size.2]})
+}
+
+fn drag(at: (i64, i64), dy: i64) -> Value {
+    json!({"do": "drag", "x": at.0, "y": at.1, "dx": 0, "dy": dy})
+}
+
+fn release(at: (i64, i64)) -> Value {
+    json!({"do": "release", "x": at.0, "y": at.1})
+}
+
+/// Twenty lines, which the area has to scroll.
+fn long() -> String {
+    (1..=20).map(|n| format!("line {n}")).collect::<Vec<_>>().join("\n")
 }
 
 const ID: (i64, i64) = (100, 50);
@@ -355,11 +384,98 @@ fn resized() -> Vec<Case> {
     ]
 }
 
+const BAR: (i64, i64) = (373, 80);
+
+fn statuses() -> Vec<Case> {
+    let long = long();
+    vec![
+        case("status").after(vec![status("Running")]),
+        case("status empty").after(vec![status("")]),
+        case("status wraps").after(vec![status(&"word ".repeat(60))]),
+        case("status one long word").after(vec![status(&"W".repeat(120))]),
+        case("status newline").after(vec![status("one\ntwo")]),
+        case("status failed").after(vec![failed("It broke", "Finished")]),
+        case("status failed long").after(vec![failed(&"bad ".repeat(30), &long)]),
+        case("status twice failed").after(vec![failed("one", "a"), status("b")]),
+        case("status size").after(vec![sized("Sized", (7, 8, 9))]),
+        case("status size typed").after(vec![click(SIZE_X), text("5"), sized("Sized", (7, 8, 9))]),
+        case("status size done").after(vec![sized("Sized", (7, 8, 9)), click(DONE)]),
+        case("status size zero").after(vec![sized("Sized", (0, -4, 100))]),
+    ]
+}
+
+fn scrolling() -> Vec<Case> {
+    let long = long();
+    vec![
+        case("status long").after(vec![status(&long)]),
+        case("status long focused").after(vec![status(&long), click(INFO)]),
+        case("status long hovered bar").after(vec![status(&long)]).at(BAR),
+        case("status long wheel").after(vec![status(&long), wheel(INFO, -1)]),
+        case("status long wheel up").after(vec![status(&long), wheel(INFO, 1)]),
+        case("status long wheel five").after(vec![status(&long), wheel(INFO, -5)]),
+        case("status long wheel end").after(vec![status(&long), wheel(INFO, -30)]),
+        case("status long wheel back").after(vec![status(&long), wheel(INFO, -3), wheel(INFO, 1)]),
+        case("status long wheel bar").after(vec![status(&long), wheel(BAR, -2)]),
+        case("status long wheel beside").after(vec![status(&long), wheel((378, 100), -2)]),
+        case("status short wheel").after(vec![status("Short"), wheel(INFO, -2)]),
+        case("status long wheel elsewhere").after(vec![status(&long), wheel(ID, -2)]),
+        case("status long keys down").after(vec![status(&long), click(INFO), key("down"), key("down")]),
+        case("status long keys up").after(vec![status(&long), click(INFO), key("down"), key("up")]),
+        case("status long key up at top").after(vec![status(&long), click(INFO), key("up")]),
+        case("status long key end").after(vec![status(&long), click(INFO), wheel(INFO, -30), key("down")]),
+        case("status short key down").after(vec![status("Short"), click(INFO), key("down")]),
+        case("status short key down moves").after(vec![status("Short"), click(INFO), key("down"), key("tab")]),
+        case("status long tab keys").after(vec![status(&long), key("tab"), key("down")]),
+        case("status long drag bar").after(vec![status(&long), click(BAR), drag((373, 100), 20)]),
+        case("status long drag released").after(vec![
+            status(&long),
+            click(BAR),
+            drag((373, 100), 20),
+            release((373, 100)),
+            drag((373, 120), 20),
+        ]),
+        case("status long drag without click").after(vec![status(&long), drag((373, 100), 20)]),
+        case("status long drag above").after(vec![status(&long), click(BAR), drag((373, 40), 20)]),
+        case("status long drag below").after(vec![status(&long), click(BAR), drag((373, 200), 20)]),
+        case("status long drag back").after(vec![
+            status(&long),
+            click(BAR),
+            drag((373, 100), 20),
+            drag((373, 90), -10),
+        ]),
+        case("status long drag big").after(vec![status(&long), click(BAR), drag((373, 100), 500)]),
+        case("status long drag text").after(vec![status(&long), click(INFO), drag((373, 100), 20)]),
+        case("status long click bar then key").after(vec![status(&long), click(BAR), key("down")]),
+        case("status long click bar low").after(vec![status(&long), click((373, 141))]),
+        case("status long click below bar").after(vec![status(&long), click((373, 142))]),
+        case("status short click bar").after(vec![status("Short"), click(BAR), drag((373, 100), 20)]),
+        case("status long click bar focus").after(vec![status(&long), click(BAR), key("tab")]),
+        case("status long resize").after(vec![status(&long), wheel(INFO, -3), resize(640, 360)]),
+        case("status long id edit").after(vec![status(&long), wheel(INFO, -3), text("Z")]),
+        case("status long id edit valid").after(vec![status(&long), wheel(INFO, -3), text("x")]),
+        case("status shrinks").after(vec![status(&long), wheel(INFO, -30), status("Short")]),
+        case("status shrinks then wheel").after(vec![status(&long), wheel(INFO, -30), status("Short"), wheel(INFO, 1)]),
+        case("status long small screen").after(vec![status(&long), wheel(INFO, -2)]).screen_of((320, 240)),
+    ]
+}
+
 /// The test instance block's screen: the test, size, rotation and entities of a block, the
 /// packets the screen sends on opening, on every edit of the identifier and on each action, the
 /// save button that waits for a name that parses and no rotation, the sizes a number is clamped
 /// to, and a screen made again at another size.
 pub fn test_instance_screen() -> Value {
-    let rows = [opened(), hovered(), focus(), identifier(), sizes(), rotating(), pressing(), resized()].concat();
+    let rows = [
+        opened(),
+        hovered(),
+        focus(),
+        identifier(),
+        sizes(),
+        rotating(),
+        pressing(),
+        resized(),
+        statuses(),
+        scrolling(),
+    ]
+    .concat();
     gui("test-instance-screen", "test_instance_screen", rows.into_iter().map(Case::row).collect())
 }
