@@ -30,7 +30,7 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 | | |
 | --- | --- |
 | **Reference** | Java Edition 26.2, protocol 776 |
-| **Parity cases** | 4,600+ scenarios compared against the Java client on every push |
+| **Parity cases** | 4,600+ scenarios compared against the Java client before every push (pre-push hook) |
 | **Code** | ~395k lines of Rust in 12 crates |
 | **Started** | 2026-09-07 |
 
@@ -45,7 +45,7 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 - **Screens.** HUD, chat, every container and inventory with click prediction, recipe book, advancements, statistics, the F3 debug overlay, options screens, toasts, tutorial, dialogs, and the command, structure and jigsaw block screens.
 - **Sound.** Positioned sound, music, subtitles, block, entity and UI sounds.
 
-Not there yet: Microsoft account sign-in inside the client, server resource packs, the loading and reconfiguring screens, local placement of many block types, fallback fonts (unifont, bidi, IME), other protocol versions, mods and packaged releases. Each one has an issue.
+Not there yet: Microsoft account sign-in inside the client, server resource packs, the screens shown while a server moves the player to another, local placement of many block types, fallback fonts (unifont, bidi, IME), other protocol versions, mods and packaged releases. Each one has an issue.
 
 ## Progress
 
@@ -84,10 +84,10 @@ Status per milestone, with its issue counts on GitHub. Features finished before 
 
 Work is picked by priority label, not by size:
 
-- **[P0](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP0): playable on real servers.** Start flow and loading screens, server switching through proxies, block placement, Microsoft sign-in.
+- **[P0](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP0): playable on real servers.** Start flow and reconfiguring screens, server switching through proxies, block placement, Microsoft sign-in.
 - **[P1](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP1): visible bugs, and the infrastructure every new feature is written against.** Typed packets and a packet listener, entities as ECS components, typed ids, parity in CI, the portable oracle, server resource packs.
 - **[P2](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP2): parity leftovers and feature completion.**
-- **[P3](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP3): additive work, deferred.** Rendering performance (the client already runs at about 500 fps in a typical scene), the mod platform, the launcher, other versions, packaging.
+- **[P3](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP3): additive work, deferred.** Rendering performance (about 500 fps today in a typical scene on an RX 9060 XT at 1280x720), the mod platform, the launcher, other versions, packaging.
 
 ## Build and run
 
