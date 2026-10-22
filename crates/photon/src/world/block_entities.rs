@@ -105,17 +105,13 @@ pub(crate) fn chest_state_vertices(
     models: &mut MobModels,
     textures: &EntityTextures,
     (state, base, light): (photon_core::ids::BlockStateId, &Pose, i32),
+    (material, kind): (ChestMaterial, ChestKind),
 ) -> Option<Vec<Vertex>> {
-    let name = photon_world::block::state_or_air(state).block().name;
-    if !(name == "minecraft:chest" || name.ends_with("_chest")) {
-        return None;
-    }
-    let property = |key| photon_world::block::rules::property(state, key);
-    let facing = Direction::from_name(property("facing")?)?;
-    let material = material_of(name);
-    let kind = match property("type").and_then(ChestKind::from_name) {
-        Some(kind) if material != ChestMaterial::Ender => kind,
-        _ => ChestKind::Single,
+    let facing = Direction::from_name(photon_world::block::rules::property(state, "facing")?)?;
+    let material = if xmas_textures() && material.has_christmas_variant() {
+        ChestMaterial::Christmas
+    } else {
+        material
     };
     let rect = textures.rect(&material.texture(kind))?;
     let model = models.model(kind.layer())?;

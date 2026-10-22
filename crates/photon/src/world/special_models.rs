@@ -25,12 +25,11 @@ pub(crate) fn special_block_vertices(
     textures: &EntityTextures,
     (state, base, light): (BlockStateId, &Pose, i32),
 ) -> Option<Vec<Vertex>> {
-    let name = photon_world::block::state_or_air(state).block().name;
     let placed = (state, base, light);
     match SpecialModel::of(state)? {
         SpecialModel::Shulker { color } => shulker_box(models, textures, placed, color),
-        SpecialModel::Chest { .. } => {
-            super::block_entities::chest_state_vertices(models, textures, placed)
+        SpecialModel::Chest { material, kind } => {
+            super::block_entities::chest_state_vertices(models, textures, placed, (material, kind))
         }
         // The petals are drawn from their baked model, and the end cubes and the conduit by the
         // entities that hold them.
@@ -38,7 +37,7 @@ pub(crate) fn special_block_vertices(
         | SpecialModel::Conduit
         | SpecialModel::EndCube { .. }
         | SpecialModel::FlowerBed => None,
-        _ => other_special(models, textures, name, placed),
+        other => other_special(models, textures, other, placed),
     }
 }
 
@@ -68,16 +67,15 @@ impl Props {
 fn other_special(
     models: &mut MobModels,
     textures: &EntityTextures,
-    name: &str,
+    special: SpecialModel,
     (state, base, light): (BlockStateId, &Pose, i32),
 ) -> Option<Vec<Vertex>> {
-    let short = name.strip_prefix("minecraft:")?;
     let placed = (base, light);
     let props = Props(state);
-    match short {
-        "enchanting_table" => Some(table_book(models, textures, placed)),
-        "bell" => Some(bell_vertices(models, textures, placed, (0.0, None))),
-        "decorated_pot" => {
+    match special {
+        SpecialModel::Table => Some(table_book(models, textures, placed)),
+        SpecialModel::Bell => Some(bell_vertices(models, textures, placed, (0.0, None))),
+        SpecialModel::Pot => {
             let pot = photon_world::PotView {
                 facing: props.facing()?,
                 sherds: Default::default(),
@@ -85,11 +83,16 @@ fn other_special(
             };
             Some(pot_vertices(models, textures, placed, &pot))
         }
-        _ if short.ends_with("copper_golem_statue") => {
-            statue(models, textures, placed, (&props, short))
+        SpecialModel::Statue { weathering, pose } => {
+            let statue = photon_world::CopperStatueView {
+                facing: props.facing()?,
+                pose: pose.to_owned(),
+                weathering,
+            };
+            Some(statue_vertices(models, textures, placed, &statue))
         }
-        _ if short.ends_with("_head") || short.ends_with("_skull") => {
-            let (wall, rotation) = props.wall_and_rotation(short.contains("_wall_"))?;
+        SpecialModel::Skull { wall, .. } | SpecialModel::PlayerHead { wall } => {
+            let (wall, rotation) = props.wall_and_rotation(wall)?;
             let skull = photon_world::SkullBlockView {
                 name: photon_world::block::state_or_air(state).block().name,
                 wall,
@@ -98,51 +101,20 @@ fn other_special(
             };
             Some(skull_vertices(models, textures, placed, skull))
         }
-        _ => banner(models, textures, placed, (&props, short)),
+        SpecialModel::Banner { color, wall } => {
+            let (wall, rotation) = props.wall_and_rotation(wall)?;
+            let banner = photon_world::BannerView {
+                color,
+                wall,
+                rotation,
+                patterns: Vec::new(),
+            };
+            let mut vertices = Vec::new();
+            banner_vertices(models, textures, (base, light, 0.0), &banner, &mut vertices);
+            Some(vertices)
+        }
+        _ => None,
     }
-}
-
-/// `CopperGolemStatueSpecialRenderer`: the pose and weathering the state names.
-fn statue(
-    models: &mut MobModels,
-    textures: &EntityTextures,
-    placed: (&Pose, i32),
-    (props, short): (&Props, &str),
-) -> Option<Vec<Vertex>> {
-    let statue = photon_world::CopperStatueView {
-        facing: props.facing()?,
-        pose: props.get("copper_golem_pose")?.to_owned(),
-        weathering: ["exposed", "weathered", "oxidized"]
-            .iter()
-            .position(|stage| short.contains(stage))
-            .map_or(0, |index| index as u8 + 1),
-    };
-    Some(statue_vertices(models, textures, placed, &statue))
-}
-
-/// `BannerSpecialRenderer`: the cloth of the block's dye, with no patterns.
-fn banner(
-    models: &mut MobModels,
-    textures: &EntityTextures,
-    (base, light): (&Pose, i32),
-    (props, short): (&Props, &str),
-) -> Option<Vec<Vertex>> {
-    let wall = short.ends_with("_wall_banner");
-    let dye = short
-        .strip_suffix("_wall_banner")
-        .or_else(|| short.strip_suffix("_banner"))?;
-    let (wall, rotation) = props.wall_and_rotation(wall)?;
-    let banner = photon_world::BannerView {
-        color: photon_world::DYES
-            .iter()
-            .find(|candidate| **candidate == dye)?,
-        wall,
-        rotation,
-        patterns: Vec::new(),
-    };
-    let mut vertices = Vec::new();
-    banner_vertices(models, textures, (base, light, 0.0), &banner, &mut vertices);
-    Some(vertices)
 }
 
 /// `ShulkerBoxSpecialRenderer`: the box shut, turned to the state's facing.

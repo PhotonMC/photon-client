@@ -33,8 +33,12 @@ pub enum SpecialModel {
     /// A head or skull of a mob, by the name the skull type gives it.
     Skull {
         kind: String,
+        wall: bool,
     },
-    PlayerHead,
+    /// The player's head, which wears the skin of whoever it is of.
+    PlayerHead {
+        wall: bool,
+    },
     Pot,
     Table,
     /// The end gateway (`portal` is false) or the end portal (true).
@@ -59,7 +63,6 @@ impl SpecialModel {
             "end_gateway" => Self::EndCube { portal: false },
             "end_portal" => Self::EndCube { portal: true },
             "pink_petals" | "wildflowers" => Self::FlowerBed,
-            "player_head" | "player_wall_head" => Self::PlayerHead,
             _ => Self::of_family(state, short)?,
         })
     }
@@ -67,6 +70,13 @@ impl SpecialModel {
     /// The models that come in families of colours, materials or kinds.
     fn of_family(state: BlockStateId, short: &str) -> Option<Self> {
         let property = |key| photon_world::block::rules::property(state, key);
+        if let Some(wall) = match short {
+            "player_head" => Some(false),
+            "player_wall_head" => Some(true),
+            _ => None,
+        } {
+            return Some(Self::PlayerHead { wall });
+        }
         if short == "shulker_box" {
             return Some(Self::Shulker { color: None });
         }
@@ -108,6 +118,7 @@ impl SpecialModel {
         let kind = kind.trim_end_matches("_head").trim_end_matches("_skull");
         (SKULL_KINDS.contains(&kind) && kind.len() < short.len()).then(|| Self::Skull {
             kind: kind.to_owned(),
+            wall: short.contains("_wall_"),
         })
     }
 
@@ -139,7 +150,7 @@ impl SpecialModel {
             Self::Bell
             | Self::Conduit
             | Self::Pot
-            | Self::PlayerHead
+            | Self::PlayerHead { .. }
             | Self::Table
             | Self::EndCube { .. } => self.describe_plain(),
             Self::Chest { material, kind } => describe_chest(*material, *kind),
@@ -153,7 +164,7 @@ impl SpecialModel {
             Self::Bell => wrap("BellSpecialRenderer$Unbaked()", false),
             Self::Conduit => wrap("ConduitSpecialRenderer$Unbaked()", true),
             Self::Pot => wrap("DecoratedPotSpecialRenderer$Unbaked()", true),
-            Self::PlayerHead => wrap("PlayerHeadSpecialRenderer$Unbaked()", true),
+            Self::PlayerHead { .. } => wrap("PlayerHeadSpecialRenderer$Unbaked()", true),
             Self::Table => wrap(
                 "BookSpecialRenderer$Unbaked(openAngle=0.0,page1=0.0,page2=0.0)",
                 true,
@@ -195,7 +206,7 @@ impl SpecialModel {
                 ),
                 true,
             ),
-            Self::Skull { kind } => wrap(
+            Self::Skull { kind, .. } => wrap(
                 &format!(
                     "SkullSpecialRenderer$Unbaked(kind={kind},textureOverride=none,animation=0.0)"
                 ),
