@@ -5,7 +5,8 @@
 use photon_core::ids::BlockStateId;
 
 use super::chest::{ChestKind, ChestMaterial};
-use super::{copper_golem_statue, shulker_box};
+use super::{copper_golem_statue, end_portal, shulker_box};
+use crate::joml::{Pose, Quaternion};
 
 /// The renderer a state's built-in model draws with.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +138,28 @@ impl SpecialModel {
             material: chest_material(short),
             kind,
         })
+    }
+
+    /// The transformation the built-in model draws its renderer through, for the three that
+    /// have a fixed one (`BuiltInBlockModels`), with `base` the pose of the block's corner.
+    pub fn item_pose(&self, base: &Pose) -> Option<Pose> {
+        let mut pose = *base;
+        match self {
+            Self::Table => {
+                pose.translate(0.5, 0.8125, 0.5);
+                pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+                    180.0,
+                )));
+                pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
+                    90.0,
+                )));
+            }
+            // `ConduitRenderer.DEFAULT_TRANSFORMATION`.
+            Self::Conduit => pose.translate(0.5, 0.5, 0.5),
+            Self::EndCube { portal: true } => return Some(end_portal::portal_pose(base)),
+            _ => return None,
+        }
+        Some(pose)
     }
 
     /// What the reference calls the model, as the check against it prints it.

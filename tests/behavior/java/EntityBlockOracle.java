@@ -1251,17 +1251,31 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var models = net.minecraft.client.renderer.block.BuiltInBlockModels.createBlockModels(
             net.minecraft.client.color.block.BlockColors.createDefault());
-        var sorted = new java.util.TreeMap<String, String>();
+        var sorted = new java.util.TreeMap<String, JsonObject>();
         for (var entry : models.entrySet()) {
-            sorted.put(net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(entry.getKey()),
-                describeEntry(entry.getKey(), entry.getValue()));
+            var reduced = reduceEntry(entry.getKey(), entry.getValue());
+            var row = new JsonObject();
+            row.addProperty("state", net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(entry.getKey()));
+            row.addProperty("model", describeModel(reduced));
+            // The matrices of the three transformations a block of this kind is drawn through.
+            if (reduced instanceof net.minecraft.client.renderer.block.model.SpecialBlockModelWrapper.Unbaked<?> special
+                && special.transformation().isPresent()
+                && (entry.getKey().is(net.minecraft.world.level.block.Blocks.ENCHANTING_TABLE)
+                    || entry.getKey().is(net.minecraft.world.level.block.Blocks.CONDUIT)
+                    || entry.getKey().is(net.minecraft.world.level.block.Blocks.END_PORTAL))) {
+                var matrix = new float[16];
+                special.transformation().get().getMatrix().get(matrix);
+                var described = new JsonArray();
+                for (float value : matrix) {
+                    described.add(Oracle.bits(value));
+                }
+                row.add("matrix", described);
+            }
+            sorted.put(row.get("state").getAsString(), row);
         }
         var rows = new JsonArray();
-        for (var entry : sorted.entrySet()) {
-            var row = new JsonObject();
-            row.addProperty("state", entry.getKey());
-            row.addProperty("model", entry.getValue());
-            rows.add(row);
+        for (var entry : sorted.values()) {
+            rows.add(entry);
         }
         var result = new JsonObject();
         result.add("states", rows);
@@ -1272,16 +1286,16 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * A table entry. Most are a composite of the state's own baked model, untransformed, and the
      * model that stands in for it; those are written as the second alone, and the rest in full.
      */
-    private static String describeEntry(
+    private static net.minecraft.client.renderer.block.model.BlockModel.Unbaked reduceEntry(
         final net.minecraft.world.level.block.state.BlockState state,
         final net.minecraft.client.renderer.block.model.BlockModel.Unbaked model) {
         if (model instanceof net.minecraft.client.renderer.block.model.CompositeBlockModel.Unbaked composite
             && composite.transformation().isEmpty()
             && composite.normal() instanceof net.minecraft.client.renderer.block.model.BlockStateModelWrapper.Unbaked normal
             && normal.model() == state && normal.transformation().isEmpty()) {
-            return describeModel(composite.custom());
+            return composite.custom();
         }
-        return describeModel(model);
+        return model;
     }
 
     /** A value written for the table's comparison: records, optionals, lists and enums walked. */

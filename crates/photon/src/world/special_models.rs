@@ -141,7 +141,6 @@ fn table_book(
     (base, light): (&Pose, i32),
 ) -> Vec<Vertex> {
     use photon_render::block_entity::enchant_table;
-    use photon_render::joml::Quaternion;
     let (Some(rect), Some(model)) = (
         textures.rect(enchant_table::TEXTURE),
         models.model(enchant_table::LAYER),
@@ -149,13 +148,6 @@ fn table_book(
         return Vec::new();
     };
     model.setup_book(0.0, (0.0, 0.0));
-    let mut pose = *base;
-    pose.translate(0.5, 0.8125, 0.5);
-    pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-        180.0,
-    )));
-    pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-        90.0,
-    )));
+    let pose = SpecialModel::Table.item_pose(base).unwrap_or(*base);
     mob_vertices_posed(model, &pose, rect, (light, false))
 }

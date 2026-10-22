@@ -12,19 +12,34 @@ pub(super) fn block_models_result(operation: &str) -> Option<Result<Value, Strin
 fn builtin_block_models_result() -> Value {
     use photon_core::ids::BlockStateId;
     use photon_render::block_entity::special_model::SpecialModel;
-    let mut states: Vec<(String, String)> = (0..)
+    use photon_render::joml::Pose;
+    let mut states: Vec<(String, String, Option<Vec<String>>)> = (0..)
         .map(BlockStateId)
         .take_while(|state| photon_world::block::state(*state).is_some())
         .filter_map(|state| {
             let model = SpecialModel::of(state)?;
             let name = photon_world::block::rules::serialize_state(state);
-            Some((name, model.describe(state)))
+            let matrix = model.item_pose(&Pose::default()).map(|pose| {
+                pose.pose
+                    .m
+                    .iter()
+                    .flatten()
+                    .map(|v| format!("{:08x}", v.to_bits()))
+                    .collect::<Vec<_>>()
+            });
+            Some((name, model.describe(state), matrix))
         })
         .collect();
     states.sort();
     let states: Vec<Value> = states
         .into_iter()
-        .map(|(state, model)| serde_json::json!({"state": state, "model": model}))
+        .map(|(state, model, matrix)| {
+            let mut row = serde_json::json!({"state": state, "model": model});
+            if let Some(matrix) = matrix {
+                row["matrix"] = serde_json::json!(matrix);
+            }
+            row
+        })
         .collect();
     serde_json::json!({ "states": states })
 }

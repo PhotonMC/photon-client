@@ -161,8 +161,7 @@ pub fn displays(
         if let Some(block) = display.block_state() {
             if let Some(shell) = conduit.filter(|_| is_conduit(block)) {
                 // `BuiltInBlockModels` with `ConduitRenderer.DEFAULT_TRANSFORMATION`.
-                let mut at = pose;
-                at.translate(0.5, 0.5, 0.5);
+                let at = SpecialModel::Conduit.item_pose(&pose).unwrap_or(pose);
                 if let Some(layer) = shell.get(Piece::Shell) {
                     vertices.extend(entity_block_vertices(layer, &at, (light, 0.0)));
                 }
@@ -320,7 +319,9 @@ fn end_cube(models: &mut MobModels, state: photon_core::ids::BlockStateId, pose:
             push_cube(models, (pose, GATEWAY_LAYERS), &faces);
         }
         Some(SpecialModel::EndCube { portal: true }) => {
-            let slab = photon_render::block_entity::end_portal::portal_pose(pose);
+            let slab = SpecialModel::EndCube { portal: true }
+                .item_pose(pose)
+                .unwrap_or(*pose);
             push_cube(models, (&slab, PORTAL_LAYERS), &faces);
         }
         _ => {}
