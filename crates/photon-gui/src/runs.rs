@@ -10,6 +10,12 @@ pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
     if runs.iter().any(|run| run.text.contains('\u{a7}')) {
         return coded_runs(runs);
     }
+    literal_runs(runs)
+}
+
+/// The runs as they read, a `\u{a7}` drawn as the glyph it is: the text of an edit box, which the
+/// reference draws through `FormattedCharSequence.forward`, not `iterateFormatted`.
+pub fn literal_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
     runs.iter()
         .enumerate()
         .map(|(index, run)| {
@@ -364,4 +370,39 @@ fn styled_by(mut style: Style, code: char, reset: &Style) -> Style {
         _ => {}
     }
     style
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(text: &str) -> Run {
+        Run {
+            text: text.to_owned(),
+            style: Style::default(),
+        }
+    }
+
+    #[test]
+    fn codes_style_the_drawn_text_but_an_edit_box_keeps_them_as_glyphs() {
+        let runs = [run("a\u{a7}cb\u{a7}r c")];
+        let drawn = draw_runs(&runs);
+        assert_eq!(drawn.len(), 3);
+        assert_eq!(drawn[0].text, "a");
+        assert_eq!(drawn[1].text, "b");
+        assert_eq!(drawn[1].colour, Style::coloured("red").colour);
+        assert!(drawn[0].piece_start && !drawn[1].piece_start);
+        let literal = literal_runs(&runs);
+        assert_eq!(literal.len(), 1);
+        assert_eq!(literal[0].text, "a\u{a7}cb\u{a7}r c");
+    }
+
+    #[test]
+    fn text_that_starts_with_a_code_is_not_at_its_first_character() {
+        let runs = [run("\u{a7}nunder")];
+        let drawn = draw_runs(&runs);
+        assert_eq!(drawn.len(), 1);
+        assert!(!drawn[0].piece_start);
+        assert!(drawn[0].underlined);
+    }
 }

@@ -5,7 +5,6 @@
 //! characters, where the reference counts UTF-16 units; the two agree for
 //! what fits a search box.
 
-use crate::{FontRuns, FrameRuns};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -478,9 +477,9 @@ impl EditBox {
                             },
                         })
                         .collect();
-                    frame.styled_text(atlas, font, &runs, x, text_y, colour, shadow);
-                    let at = x + font.width_of_runs(&runs);
-                    at - x
+                    let drawn = crate::runs::literal_runs(&runs);
+                    frame.styled_text_runs(atlas, font, &drawn, (x, text_y), colour, shadow);
+                    font.width_of_text_runs(&drawn)
                 } else {
                     plain(frame, text, x, colour);
                     font.width(text)
