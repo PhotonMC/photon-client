@@ -88,8 +88,11 @@ impl SoundSystem {
             log::warn!("sound off: sounds.json is not valid");
             return None;
         }
-        // `Library.init`: a device gives its own count of sources; thirty when it cannot say.
-        let channels = MixerChannels::with_total(Arc::clone(&output.mixer), assets, 30);
+        // `Library.init` sizes the pools from the device's count of mono sources. The reference
+        // plays through OpenAL Soft, whose devices give 255 (247 sounds and 8 streams); the mixer
+        // here has no limit of its own, so it takes that count. Thirty, the fallback for a device
+        // that cannot say, left 25 sounds at once, and a busy scene dropped new ones.
+        let channels = MixerChannels::with_total(Arc::clone(&output.mixer), assets, 255);
         let mut engine = SoundEngine::new(registry, channels);
         for source in SoundSource::ALL {
             engine
