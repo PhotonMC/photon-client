@@ -17,6 +17,7 @@ mod particles;
 mod play;
 mod ppm;
 mod profile;
+mod profile_login;
 mod screens;
 mod screenshot;
 mod script;

@@ -10,6 +10,8 @@ use photon_world::{ClientWorld, DimensionBounds, DimensionEnvironment};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ConnectionState {
+    /// The account the connection logs in with, where the server checks accounts.
+    pub account: Option<crate::account::Account>,
     /// The profile id the server logged the player in with.
     pub profile_id: Option<Uuid>,
     /// The name of that profile, which can differ in case from the one the client asked for.

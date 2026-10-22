@@ -3,25 +3,27 @@
 use photon_protocol::crypto;
 use photon_protocol::login::{ClientboundHelloPacket, ServerboundKeyPacket};
 use photon_protocol::phase::ConnectionProtocol;
-use photon_protocol::play::{ConnectionError, LOGIN_KEY_PACKET_ID};
+use photon_protocol::play::{ConnectionError, LOGIN_KEY_PACKET_ID, LoginFailure};
 
+use std::time::Duration;
+
+use super::join::join_server;
 use super::session::send_packet;
 use super::transport::Transport;
+use crate::account::Account;
 
 /// Answer the server's key request: send a fresh secret and the challenge under the server's
 /// public key, then wrap the connection in the stream cipher (the key packet itself goes out in
 /// plain, as the server decrypts it with its private key).
 ///
-/// A server that wants the client's session proof (`should_authenticate`) needs an account the
-/// client does not have yet, and is refused before anything is sent.
+/// A server that wants the client's session proof (`should_authenticate`) first gets the join
+/// posted to the session server; without an account the client refuses before anything is sent.
 pub(super) fn answer_hello(
     stream: &mut Transport,
     hello: &ClientboundHelloPacket,
+    (account, timeout): (Option<&Account>, Duration),
     compression_threshold: Option<usize>,
 ) -> Result<(), ConnectionError> {
-    if hello.should_authenticate {
-        return Err(ConnectionError::AccountRequired);
-    }
     let failed = |_| ConnectionError::Codec("login key exchange");
     let secret = crypto::generate_secret().map_err(failed)?;
     let key = ServerboundKeyPacket {
@@ -30,6 +32,11 @@ pub(super) fn answer_hello(
         encrypted_challenge: crypto::encrypt_with_public_key(&hello.public_key, &hello.challenge)
             .map_err(failed)?,
     };
+    if hello.should_authenticate {
+        let account = account.ok_or(ConnectionError::LoginFailed(LoginFailure::AccountRequired))?;
+        let hash = crypto::server_hash(&hello.server_id, &secret, &hello.public_key);
+        join_server(account, &hash, timeout)?;
+    }
     send_packet(
         stream,
         ConnectionProtocol::Login,
@@ -93,7 +100,7 @@ mod tests {
             assert_eq!(answer, [2, 0x55, 0x66]);
         });
 
-        answer_hello(&mut client, &hello, None).expect("answer");
+        answer_hello(&mut client, &hello, (None, Duration::from_secs(5)), None).expect("answer");
         let body = read_packet(&mut client, None).expect("encrypted packet");
         assert_eq!(body, [0x7f, 0x01]);
         client.write_all(&[2, 0x55, 0x66]).unwrap();
@@ -106,9 +113,18 @@ mod tests {
         let mut client =
             Transport::from(TcpStream::connect(listener.local_addr().unwrap()).unwrap());
         let (mut server, _) = listener.accept().unwrap();
-        let hello = ClientboundHelloPacket::new(vec![], vec![1], vec![2], true);
-        let result = answer_hello(&mut client, &hello, None);
-        assert!(matches!(result, Err(ConnectionError::AccountRequired)));
+        let private = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
+        let public_key = private
+            .to_public_key()
+            .to_public_key_der()
+            .unwrap()
+            .to_vec();
+        let hello = ClientboundHelloPacket::new(vec![], public_key, vec![2], true);
+        let result = answer_hello(&mut client, &hello, (None, Duration::from_secs(5)), None);
+        assert!(matches!(
+            result,
+            Err(ConnectionError::LoginFailed(LoginFailure::AccountRequired))
+        ));
         drop(client);
         let mut rest = Vec::new();
         server.read_to_end(&mut rest).unwrap();

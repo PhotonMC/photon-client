@@ -3,6 +3,7 @@
 
 mod encrypt;
 pub mod entities;
+mod join;
 mod open;
 mod play;
 mod record;

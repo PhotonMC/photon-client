@@ -2,6 +2,7 @@
 //! The wire format is in `photon-protocol`; its modules are re-exported here for the existing
 //! callers.
 
+pub mod account;
 pub mod connection;
 
 pub use photon_protocol::phase as protocol;

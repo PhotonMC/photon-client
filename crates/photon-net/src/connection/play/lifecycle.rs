@@ -242,6 +242,27 @@ impl PlaySession {
         )
     }
 
+    /// Like [`Self::connect`], as an account that the server may check with the session server.
+    pub fn connect_signed_in(
+        address: SocketAddr,
+        account: crate::account::Account,
+        timeout: Duration,
+        auto_jump: bool,
+        information: photon_protocol::configuration::ClientInformation,
+    ) -> Result<Self, ConnectionError> {
+        let username = account.name.clone();
+        Self::connect_through(
+            (address, None),
+            (&username, auto_jump),
+            timeout,
+            information,
+            ConnectionState {
+                account: Some(account),
+                ..ConnectionState::default()
+            },
+        )
+    }
+
     /// Connect to `address` (and the host name a handshake gives, where it is not the address's
     /// own) with what `first` carries over (`cookies`, `transferring`), following the
     /// server where it sends the client on to another.
@@ -255,6 +276,7 @@ impl PlaySession {
         let mut carried = first;
         for _ in 0..=MAX_TRANSFERS {
             let mut state = ConnectionState {
+                account: carried.account.clone(),
                 cookies: carried.cookies.clone(),
                 handshake_host: host.clone(),
                 transferring: carried.transferring,
@@ -275,6 +297,7 @@ impl PlaySession {
                     address = resolve_host(&next_host, port)?;
                     host = Some(next_host);
                     carried = ConnectionState {
+                        account: state.account,
                         cookies: state.cookies,
                         transferring: true,
                         ..ConnectionState::default()

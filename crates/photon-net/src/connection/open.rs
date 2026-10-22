@@ -63,7 +63,11 @@ fn log_in(
     information: &configuration::ClientInformation,
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
 ) -> Result<Option<usize>, ConnectionError> {
-    let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), Uuid::new(0, 1));
+    let profile_id = state
+        .account
+        .as_ref()
+        .map_or(Uuid::new(0, 1), |account| account.profile_id);
+    let hello = ServerboundHelloPacket::new(username.encode_utf16().collect(), profile_id);
     send_packet(
         stream,
         ConnectionProtocol::Login,
@@ -113,19 +117,7 @@ fn log_in(
                 break;
             }
             LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID => {
-                // `handleCustomQuery`: nothing to answer with.
-                let query = cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
-                    .map_err(|_| ConnectionError::Codec("login custom query"))?;
-                send_packet(
-                    stream,
-                    ConnectionProtocol::Login,
-                    LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID,
-                    |output| {
-                        cookie::encode_unanswered_query(query.transaction_id, output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
+                answer_custom_query(stream, payload, compression_threshold)?;
             }
             LOGIN_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
                 answer_cookie_request(
@@ -142,7 +134,12 @@ fn log_in(
             LOGIN_CLIENTBOUND_HELLO_PACKET_ID => {
                 let hello = login::ClientboundHelloPacket::decode(&mut &payload[..])
                     .map_err(|_| ConnectionError::Codec("login hello"))?;
-                encrypt::answer_hello(stream, &hello, compression_threshold)?;
+                encrypt::answer_hello(
+                    stream,
+                    &hello,
+                    (state.account.as_ref(), timeout),
+                    compression_threshold,
+                )?;
             }
             _ => {}
         }
@@ -155,6 +152,26 @@ fn log_in(
         }
     }
     Ok(compression_threshold)
+}
+
+/// `handleCustomQuery`: nothing to answer with.
+fn answer_custom_query(
+    stream: &mut Transport,
+    payload: &[u8],
+    compression_threshold: Option<usize>,
+) -> Result<(), ConnectionError> {
+    let query = cookie::ClientboundCustomQueryPacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("login custom query"))?;
+    send_packet(
+        stream,
+        ConnectionProtocol::Login,
+        LOGIN_SERVERBOUND_CUSTOM_QUERY_ANSWER_PACKET_ID,
+        |output| {
+            cookie::encode_unanswered_query(query.transaction_id, output);
+            Ok(())
+        },
+        compression_threshold,
+    )
 }
 
 /// Run the configuration exchange up to the server's finish, which is answered: registries, tags

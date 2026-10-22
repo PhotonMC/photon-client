@@ -402,13 +402,13 @@ pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
     let information = crate::controls::client_information(&crate::controls::load_options());
-    let mut session = PlaySession::connect(
-        server,
-        &username,
-        Duration::from_secs(30),
-        auto_jump,
-        information,
-    )?;
+    let timeout = Duration::from_secs(30);
+    let mut session = match crate::profile_login::from_environment(&username)? {
+        Some(account) => {
+            PlaySession::connect_signed_in(server, account, timeout, auto_jump, information)?
+        }
+        None => PlaySession::connect(server, &username, timeout, auto_jump, information)?,
+    };
     status.0.store(true, std::sync::atomic::Ordering::Relaxed);
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();

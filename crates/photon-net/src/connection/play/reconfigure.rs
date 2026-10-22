@@ -48,6 +48,7 @@ impl PlaySession {
     ) -> Result<(), ConnectionError> {
         let address = lifecycle::resolve_host(&packet.host, packet.port)?;
         let carried = ConnectionState {
+            account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
             transferring: true,
             ..ConnectionState::default()

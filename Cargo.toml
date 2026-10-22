@@ -27,6 +27,7 @@ cfb8 = "0.8"
 getrandom = "0.2"
 rsa = "0.9"
 sha1 = "0.10"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 log = { version = "0.4.34", features = ["std"] }
 glfw = { version = "0.62.0", default-features = false, features = ["raw-window-handle-v0-6", "vulkan", "wayland", "x11", "src-build"] }

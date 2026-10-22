@@ -692,7 +692,7 @@
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
 "crates/photon-net/src/connection/open.rs::configure_connection" = 198
-"crates/photon-net/src/connection/open.rs::log_in" = 93
+"crates/photon-net/src/connection/open.rs::log_in" = 91
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
