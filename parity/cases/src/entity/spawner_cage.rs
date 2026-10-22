@@ -25,6 +25,11 @@ pub fn spawner_cage() -> Vec<Value> {
     for (mob, extra) in [
         ("zombie", json!({"baby": true})),
         ("husk", json!({"baby": true})),
+        ("piglin", json!({"baby": true})),
+        ("zoglin", json!({"baby": true})),
+        // Types whose loader does not read `IsBaby` stay adults.
+        ("pig", json!({"baby": true})),
+        ("piglin_brute", json!({"baby": true})),
         ("slime", json!({"size": 0})),
         ("slime", json!({"size": 1})),
         ("slime", json!({"size": 2})),

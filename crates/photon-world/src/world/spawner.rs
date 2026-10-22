@@ -100,7 +100,7 @@ impl ClientWorld {
         }
         let mut entity = self.entities.remove(id).filter(|_| placed)?;
         // `loadEntityRecursive`: the tag sets the mob up before it is shown.
-        entity.baby = traits.baby;
+        entity.baby = traits.baby && reads_is_baby(type_name);
         if let Some(size) = traits.cube_size.filter(|_| entity.is_cube_mob()) {
             entity.set_cube_size(size);
         }
@@ -248,4 +248,19 @@ impl ClientWorld {
             .0
             .push(LevelEvent::TrialSpawnerTick { pos });
     }
+}
+
+/// Whether a type's loader reads `IsBaby`: the zombies, the piglin and the zoglin do, other mobs
+/// take their age from `Age`.
+fn reads_is_baby(type_name: &str) -> bool {
+    matches!(
+        type_name,
+        "minecraft:zombie"
+            | "minecraft:husk"
+            | "minecraft:drowned"
+            | "minecraft:zombie_villager"
+            | "minecraft:zombified_piglin"
+            | "minecraft:piglin"
+            | "minecraft:zoglin"
+    )
 }
