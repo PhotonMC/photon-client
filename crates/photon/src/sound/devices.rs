@@ -16,6 +16,8 @@ use super::SoundSystem;
 struct Idle {
     tracker: DeviceTracker,
     assets: std::path::PathBuf,
+    /// The device and directional audio options the engine last tried to start under.
+    tried: (String, bool),
 }
 
 /// The sound engine with what watches for a device in its place when it has none; it reads as
@@ -46,6 +48,7 @@ impl SoundSlot {
         let idle = system.is_none().then(|| Idle {
             tracker: DeviceTracker::new(),
             assets: assets.to_path_buf(),
+            tried: (options.sound_device.clone(), options.directional_audio),
         });
         Self { system, idle }
     }
@@ -175,6 +178,7 @@ impl SoundSystem {
             .as_ref()
             .map(|sound| (sound.device.0.clone(), sound.directional))
         else {
+            Self::retry_idle(sound, idle, options);
             return;
         };
         match option_reload(&opened, options) {
@@ -186,6 +190,23 @@ impl SoundSystem {
             }
             Some(Click::Option) => Self::reload(sound, idle, options),
             None => {}
+        }
+    }
+
+    /// `SoundManager.reload` with no engine: a changed option tries to start it again, and the
+    /// device option's click plays once it runs.
+    fn retry_idle(sound: &mut Option<Self>, idle: &mut Option<Idle>, options: &Options) {
+        let Some(waiting) = idle.as_ref() else {
+            return;
+        };
+        let Some(click) = option_reload(&waiting.tried, options) else {
+            return;
+        };
+        if let Some(waiting) = idle.take() {
+            Self::start(sound, idle, (waiting.tracker, waiting.assets), options);
+        }
+        if let (Click::Engine, Some(sound)) = (click, sound.as_mut()) {
+            sound.play_ui("minecraft:ui.button.click", 1.0, 0.25);
         }
     }
 
@@ -246,7 +267,13 @@ impl SoundSystem {
         *sound = Self::open(&assets, options);
         match sound.as_mut() {
             Some(sound) => sound.tracker = tracker,
-            None => *idle = Some(Idle { tracker, assets }),
+            None => {
+                *idle = Some(Idle {
+                    tracker,
+                    assets,
+                    tried: (options.sound_device.clone(), options.directional_audio),
+                });
+            }
         }
     }
 }
@@ -264,5 +291,29 @@ mod tests {
         assert_eq!(option_reload(&opened, &options), Some(Click::Option));
         options.sound_device = "elsewhere".to_owned();
         assert_eq!(option_reload(&opened, &options), Some(Click::Engine));
+    }
+
+    #[test]
+    fn a_changed_option_with_no_engine_tries_to_start_it_again() {
+        let mut options = Options::default();
+        let mut sound = None;
+        let mut idle = Some(Idle {
+            tracker: DeviceTracker::new(),
+            assets: std::path::PathBuf::from("/nonexistent"),
+            tried: (options.sound_device.clone(), options.directional_audio),
+        });
+        // Nothing changed: no new attempt, the tracker stays.
+        SoundSystem::retry_idle(&mut sound, &mut idle, &options);
+        assert!(
+            idle.as_ref()
+                .is_some_and(|waiting| waiting.tried.1 == options.directional_audio)
+        );
+        options.directional_audio = !options.directional_audio;
+        SoundSystem::retry_idle(&mut sound, &mut idle, &options);
+        // The attempt was made under the new option (it fails here, so the tracker is kept).
+        assert_eq!(
+            idle.map(|waiting| waiting.tried.1),
+            Some(options.directional_audio)
+        );
     }
 }
