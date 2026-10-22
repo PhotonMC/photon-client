@@ -152,7 +152,7 @@ impl Menu {
         client.backend.set_gui_only(true);
         client
             .backend
-            .load_panorama(&photon_render::panorama::layers(&panorama_faces(
+            .load_panorama(&photon_render::panorama::layers(&panorama::faces(
                 &root.to_string_lossy(),
             )?))?;
         let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
@@ -675,15 +675,3 @@ const IDENTITY: [[f32; 4]; 4] = [
     [0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
-
-/// `panorama_0` to `panorama_5` of the title screen's background.
-fn panorama_faces(root: &str) -> Result<[photon_render::DecodedImage; 6]> {
-    let face = |index: usize| {
-        play::texture(
-            root,
-            &format!("gui/title/background/panorama_{index}"),
-            "panorama",
-        )
-    };
-    Ok([face(0)?, face(1)?, face(2)?, face(3)?, face(4)?, face(5)?])
-}

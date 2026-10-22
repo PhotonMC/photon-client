@@ -7,6 +7,7 @@ mod frame_limiter;
 mod gpu_meter;
 mod gui;
 mod hud_input;
+mod indexed;
 mod logger;
 mod menu;
 mod mobs;
