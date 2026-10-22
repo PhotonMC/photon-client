@@ -29,6 +29,9 @@ pub struct SkyCamera {
     pub frame_ticks: f32,
     /// The point meshes are measured from.
     pub origin: [i32; 3],
+    /// `Options.darknessEffectScale` and `Options.gamma`, which the lightmap extractor reads
+    /// each frame.
+    pub lightmap_options: (f32, f32),
 }
 
 pub struct Sky {
@@ -49,10 +52,6 @@ pub struct Sky {
     end_flash: Option<photon_world::end_flash::EndFlashState>,
     /// The option that hides the lightning flashes, as the last tick saw it.
     hide_flashes: bool,
-    /// `Options.darknessEffectScale`.
-    darkness_scale: f32,
-    /// `Options.gamma`.
-    brightness: f32,
     /// The angles of a flash that started, until its sound is asked for.
     flash_start: Option<(f32, f32)>,
 }
@@ -159,8 +158,6 @@ impl Sky {
             )),
             end_flash,
             hide_flashes: false,
-            darkness_scale: 1.0,
-            brightness: 0.5,
             flash_start: None,
         })
     }
@@ -190,8 +187,6 @@ impl Sky {
         let hide_lightning_flashes = options.hide_lightning_flashes;
         self.flicker.tick();
         self.hide_flashes = hide_lightning_flashes;
-        self.darkness_scale = options.darkness_effect_scale as f32;
-        self.brightness = options.gamma as f32;
         self.tick_end_flash(session);
         if session.player().is_some() {
             let next = probe(
@@ -243,7 +238,7 @@ impl Sky {
             &self.sprites,
             self.environment.skybox(),
         );
-        self.set_lightmap(backend, session, (partial, &camera.fog));
+        self.set_lightmap(backend, session, (partial, camera));
         self.clouds.draw(
             backend,
             &sky,
@@ -268,7 +263,7 @@ impl Sky {
         &self,
         backend: &mut VulkanBackend,
         session: &PlaySession,
-        (partial, fog): (f32, &photon_render::sky::FogView),
+        (partial, camera): (f32, &SkyCamera),
     ) {
         let lightmap = self.next.lightmap();
         let flash = photon_render::sky::end_flash_boost(
@@ -276,13 +271,13 @@ impl Sky {
                 .as_ref()
                 .map(|flash| flash.intensity(partial)),
             self.hide_flashes,
-            fog.boss_fog,
+            camera.fog.boss_fog,
         );
         let view = super::fog::lightmap_view(
             session,
             partial,
-            (fog.darken_world, flash),
-            (self.darkness_scale, self.brightness),
+            (camera.fog.darken_world, flash),
+            camera.lightmap_options,
         );
         let effects = lightmap.effects(&view, partial);
         backend.set_level_lighting(

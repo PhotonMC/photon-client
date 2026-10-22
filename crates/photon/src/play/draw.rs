@@ -356,6 +356,22 @@ impl Play {
         Ok(())
     }
 
+    /// Where the sky is seen from this frame, with the options its lightmap reads.
+    fn sky_camera(&self, frame: &FrameCamera, frame_ticks: f32) -> SkyCamera {
+        let options = &self.controls.options;
+        SkyCamera {
+            eye: frame.eye,
+            rotation: frame.rotation,
+            view_projection: frame.sky_view_projection,
+            render_distance: frame.render_distance,
+            fog: frame.fog,
+            partial: frame.partial,
+            frame_ticks,
+            origin: self.origin,
+            lightmap_options: (options.darkness_effect_scale as f32, options.gamma as f32),
+        }
+    }
+
     /// One frame: the overlays, the sections, the atlas, the sky, then the
     /// GUI and the scene. A finished script captures its frames and stops.
     pub(super) fn draw(
@@ -404,20 +420,12 @@ impl Play {
         self.backend.set_sort_origin(frame.relative);
         self.backend
             .update_atlas(&self.animated_atlas.changed_regions())?;
+        let sky_camera = self.sky_camera(&frame, frame_ticks);
         let colour = self.sky.draw(
             &mut self.backend,
             &self.session,
             &self.biome_tints,
-            &SkyCamera {
-                eye: frame.eye,
-                rotation: frame.rotation,
-                view_projection: frame.sky_view_projection,
-                render_distance: frame.render_distance,
-                fog: frame.fog,
-                partial: frame.partial,
-                frame_ticks,
-                origin: self.origin,
-            },
+            &sky_camera,
         )?;
         if script_done {
             return self.finish_script(colour, &frame);
