@@ -4,7 +4,7 @@
 
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
-use photon_core::math::{Vec3, floor_f64};
+use photon_core::math::Vec3;
 use photon_game::item::values::Values;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
@@ -173,8 +173,7 @@ fn frame_owner(entity: &photon_world::ClientEntity, direction: Direction) -> Own
         180 + direction.data2d() * 90 + entity.item_frame_rotation() * 45 + correction,
     );
     // `HangingEntity.recalculateBoundingBox`: the holder is where the frame's box is centred.
-    let middle = entity.bounding_box().center();
-    let (x, y, z) = (middle.x, middle.y, middle.z);
+    let (x, y, z) = entity.position();
     Owner {
         holder: Holder {
             position: [x, y, z],
@@ -203,8 +202,7 @@ pub fn item_frames(
             photon_data::entity_type::name(entity.type_id) == Some("minecraft:glow_item_frame");
         // `ClientboundAddEntityPacket.getData`: the way it faces; the block is its position.
         let direction = Direction::from_3d_data_value(entity.data);
-        let (x, y, z) = entity.position();
-        let (x, y, z) = item_frame_position((floor_f64(x), floor_f64(y), floor_f64(z)), direction);
+        let (x, y, z) = item_frame_position(entity.start_block(), direction);
         // `Entity.getLightProbePosition`: the eyes, which an item frame has at its feet; a glow
         // frame has at least a little block light (`getBlockLightLevel`).
         let mut light = packed_light(world, Vec3::new(x, y, z));

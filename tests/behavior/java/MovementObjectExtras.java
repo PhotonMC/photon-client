@@ -189,6 +189,8 @@ class MovementObjectExtras extends MovementMobExtras {
         box.setAccessible(true);
         boolean culled = (boolean) affected.invoke(renderer, entity);
         described.addProperty("culled", culled);
+        described.addProperty("culling_position", Oracle.bits(entity.getX()) + "," + Oracle.bits(entity.getY()) + ","
+            + Oracle.bits(entity.getZ()));
         if (culled) {
             var aabb = (net.minecraft.world.phys.AABB) box.invoke(renderer, entity);
             described.addProperty("culling_box", Oracle.bits(aabb.minX) + "," + Oracle.bits(aabb.minY) + ","

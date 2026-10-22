@@ -322,12 +322,10 @@ fn entity_tags(
             continue;
         };
         let mut tag = tag;
-        let (x, y, z) = if rules == NameRules::ItemFrame {
+        if rules == NameRules::ItemFrame {
             tag.render_offset = frame_tag::render_offset(entity);
-            frame_tag::centre(entity)
-        } else {
-            snapshot.position
-        };
+        }
+        let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + eye_height(entity).unwrap_or(0.0), z);
         let light = packed_light(world, eye);
         let light = if rules == NameRules::ItemFrame && is_glow_frame(entity) {

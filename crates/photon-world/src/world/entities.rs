@@ -237,8 +237,7 @@ impl ClientWorld {
                 attached_target: None,
             },
         );
-        self.entities_mut()
-            .add_to_section(entity.entity_id, (entity.x, entity.y, entity.z));
+        self.entities_mut().enter_world(entity.entity_id);
         if let Some(shulker) = self
             .entities
             .at_mut(entity.entity_id)
@@ -345,6 +344,17 @@ impl Entities {
 
     pub fn metadata(&self, entity_id: EntityId) -> Option<&[u8]> {
         self.get(&entity_id).and_then(|entity| entity.metadata())
+    }
+
+    /// A new entity takes its place in its section; an item frame or a painting first moves to the
+    /// centre of its box (`HangingEntity.recalculateBoundingBox`).
+    pub(crate) fn enter_world(&mut self, entity_id: EntityId) {
+        let Some(entity) = self.at_mut(entity_id) else {
+            return;
+        };
+        entity.recentre_hanging();
+        let position = entity.position();
+        self.add_to_section(entity_id, position);
     }
 
     pub(crate) fn add_to_section(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {

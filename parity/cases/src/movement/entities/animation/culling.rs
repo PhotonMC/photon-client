@@ -57,7 +57,23 @@ fn culling_3() -> Vec<Value> {
         cull("item-frame", "item_frame", vec![]).data(4).row(),
         cull("glow-item-frame", "glow_item_frame", vec![]).data(2).row(),
         cull("phantom", "phantom", vec![]).row(),
+        // The other directions, and paintings whose variant arrives after the add packet; the
+        // position is the box's centre, which an even size puts on a block boundary.
+        cull("item-frame-down", "item_frame", vec![]).data(0).row(),
+        cull("item-frame-up", "item_frame", vec![]).data(1).row(),
+        cull("item-frame-north", "item_frame", vec![]).data(2).row(),
+        cull("item-frame-south", "item_frame", vec![]).data(3).row(),
+        cull("item-frame-east", "item_frame", vec![]).data(5).row(),
+        painting("painting-1x1-north", "minecraft:alban", 2),
+        painting("painting-2x1-west", "minecraft:courbet", 4),
+        painting("painting-2x1-south", "minecraft:courbet", 3),
+        painting("painting-4x4-east", "minecraft:burning_skull", 5),
+        painting("painting-3x4-north", "minecraft:backyard", 2),
     ]
+}
+
+fn painting(name: &str, variant: &str, direction: i64) -> Value {
+    cull(name, "painting", vec![json!({"tick": 1, "type": "painting_data", "variant": variant})]).data(direction).row()
 }
 
 fn culling_4() -> Vec<Value> {

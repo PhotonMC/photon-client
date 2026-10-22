@@ -342,6 +342,7 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
 /// What the data of a boat, a parrot, a bat, a vex, an allay, a ghast, a phantom, a
 /// guardian or an axolotl says of it (each when it holds that species' fields).
 fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
+    entity.recentre_hanging();
     if entity.is_boat() {
         entity.set_boat_data(boat_data_from_metadata(metadata));
     }

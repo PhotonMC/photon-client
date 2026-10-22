@@ -25,6 +25,11 @@ pub(crate) fn cull_extra(
         );
     }
     let (x, y, z) = entity.position();
+    described["culling_position"] = json!(
+        [x, y, z]
+            .map(|value| format!("{:016x}", value.to_bits()))
+            .join(",")
+    );
     for (key, scale) in VIEW_SCALES {
         let near: String = DISTANCES
             .iter()

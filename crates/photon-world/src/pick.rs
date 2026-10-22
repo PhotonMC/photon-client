@@ -11,7 +11,7 @@
 use photon_core::aabb::Aabb;
 use photon_core::direction::{Axis, Direction};
 use photon_core::ids::EntityId;
-use photon_core::math::{Vec3, floor_f64};
+use photon_core::math::Vec3;
 
 use crate::{ClientEntity, ClientEntityDimensions, ClientWorld};
 
@@ -138,6 +138,16 @@ impl ClientEntity {
         self.dimensions().make_bounding_box(Vec3::new(x, y, z))
     }
 
+    /// `HangingEntity.recalculateBoundingBox`: the position of an item frame or a painting is the
+    /// centre of its box (`setPosRaw`), so the box is built from the block kept apart. A painting
+    /// whose variant has not come yet keeps the packet's position.
+    pub(crate) fn recentre_hanging(&mut self) {
+        if let Some(centre) = self.hanging_bounding_box().map(|aabb| aabb.center()) {
+            self.position = photon_core::java_float::DVec3::new(centre.x, centre.y, centre.z);
+            self.old_position = self.position;
+        }
+    }
+
     /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
     /// painting's box, centred `0.46875` off the wall it is attached to (`ClientboundAddEntityPacket.
     /// getData()`'s 3D direction value, `this.data`) and sized by that direction's axis; a framed
@@ -152,8 +162,8 @@ impl ClientEntity {
             return None;
         }
         let direction = Direction::from_3d_data_value(self.data);
-        let (x, y, z) = self.position();
-        let block = (floor_f64(x), floor_f64(y), floor_f64(z));
+        // The block the packet named (`BlockAttachedEntity.setPos`, `BlockPos.containing`).
+        let block = self.start_block;
         // `Vec3.atCenterOf(block).relative(direction, -0.46875)`.
         const WALL_SHIFT: f64 = 0.46875;
         let (step_x, step_y, step_z) = direction.step();
@@ -175,10 +185,10 @@ impl ClientEntity {
             let size = if has_framed_map { 1.0 } else { 0.75 };
             (wall_center, size, size)
         } else {
-            let variant = self
-                .living
-                .variant
-                .and_then(|id| photon_data::entity_type::painting_variants().nth(id as usize))?;
+            // `Painting.DATA_PAINTING_VARIANT_ID`'s default is the registry's first entry
+            // (`VariantUtils.getAny`); the server leaves a default out of the packet.
+            let variant = photon_data::entity_type::painting_variants()
+                .nth(self.living.variant.unwrap_or(0) as usize)?;
             let offset_for = |size: i32| if size % 2 == 0 { 0.5 } else { 0.0 };
             let left = direction.counter_clockwise_y().unwrap_or(direction);
             let (left_x, _, left_z) = left.step();

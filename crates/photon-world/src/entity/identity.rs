@@ -128,7 +128,8 @@ impl ClientEntity {
         self.metadata.as_deref()
     }
 
-    /// The block the entity was added in (`FallingBlockEntity.getStartPos`).
+    /// The block the entity was added in (`FallingBlockEntity.getStartPos`); for an item frame or
+    /// a painting, the block it is attached to (`BlockAttachedEntity.getPos`).
     pub fn start_block(&self) -> (i32, i32, i32) {
         self.start_block
     }

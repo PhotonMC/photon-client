@@ -88,9 +88,8 @@ pub fn remote_paintings(
         }
         // `ClientboundAddEntityPacket.getData`: the way it faces; the block is its position.
         let direction = Direction::from_3d_data_value(entity.data);
-        let Some(variant) = entity
-            .variant()
-            .and_then(|id| usize::try_from(id).ok())
+        let Some(variant) = usize::try_from(entity.variant().unwrap_or(0))
+            .ok()
             .and_then(|id| names.get(id))
             .and_then(|name| photon_data::entity_type::painting_variant(name))
         else {
@@ -102,9 +101,8 @@ pub fn remote_paintings(
         let Some(front) = textures.rect(variant.texture) else {
             continue;
         };
-        let (x, y, z) = entity.position();
         let size = (variant.width, variant.height);
-        let center = painting_center((floor_f64(x), floor_f64(y), floor_f64(z)), direction, size);
+        let center = painting_center(entity.start_block(), direction, size);
         let mut base = Pose::default();
         base.translate(
             (center.0 - f64::from(view.origin[0])) as f32,

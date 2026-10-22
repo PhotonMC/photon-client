@@ -134,6 +134,7 @@ class MovementLivingOracle extends MovementObjectExtras {
                     case "arrow_data" -> eventArrowData(ctx, event);
                     case "minecart_data" -> eventMinecartData(ctx, event);
                     case "crystal_data" -> eventCrystalData(ctx, event);
+                    case "painting_data" -> eventPaintingData(ctx, event);
                     case "dragon_data" -> eventDragonData(ctx, event);
                     case "move_rot" -> eventMoveRot(ctx, event);
                     case "wither_data" -> eventWitherData(ctx, event);

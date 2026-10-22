@@ -176,4 +176,18 @@ class MovementMobEvents extends MovementAnimalEvents {
         listener.handleSetEntityData(
             new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(entityId, data));
     }
+
+    /** A painting's variant arriving in the entity data, after the add packet. */
+    static void eventPaintingData(LivingRow ctx, JsonObject event) throws Exception {
+        var key = net.minecraft.resources.ResourceKey.create(
+            net.minecraft.core.registries.Registries.PAINTING_VARIANT,
+            net.minecraft.resources.Identifier.parse(event.get("variant").getAsString()));
+        var holder = Oracle.vanillaRegistries()
+            .lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).getOrThrow(key);
+        var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
+        data.add(wolfData(net.minecraft.world.entity.decoration.painting.Painting.class,
+            "DATA_PAINTING_VARIANT_ID", holder));
+        ctx.listener().handleSetEntityData(
+            new net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket(ctx.entityId(), data));
+    }
 }

@@ -114,7 +114,7 @@ pub(super) fn living_entity_ticks_result(request: &Value) -> Result<Value, Strin
                     "frog_data" => frog_data_event(&mut world, entity_id, event)?,
                     "arrow_data" => arrow_data_event(&mut world, entity_id, event)?,
                     "minecart_data" => minecart_data_event(&mut world, entity_id, event)?,
-                    "crystal_data" => crystal_data_event(&mut world, entity_id, event)?,
+                    "crystal_data" | "painting_data" => object_event(&mut world, entity_id, event)?,
                     "dragon_data" => dragon_data_event(&mut world, entity_id, event)?,
                     "display_data" => display_data_event(&mut world, entity_id, event)?,
                     "minecart_steps" => minecart_steps_event(&mut world, entity_id, event)?,

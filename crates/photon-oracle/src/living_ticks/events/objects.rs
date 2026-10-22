@@ -97,6 +97,18 @@ pub(crate) fn minecart_data_event(
     Ok(())
 }
 
+/// The data of an end crystal or a painting arriving.
+pub(crate) fn object_event(
+    world: &mut ClientWorld,
+    entity_id: EntityId,
+    event: &Value,
+) -> Result<(), String> {
+    match event["type"].as_str() {
+        Some("painting_data") => painting_data_event(world, entity_id, event),
+        _ => crystal_data_event(world, entity_id, event),
+    }
+}
+
 pub(crate) fn crystal_data_event(
     world: &mut ClientWorld,
     entity_id: EntityId,
@@ -134,6 +146,26 @@ pub(crate) fn crystal_data_event(
             u8::from(bottom),
         ]);
     }
+    data.push(255);
+    world.apply_entity_metadata(entity_id, &data);
+    Ok(())
+}
+
+pub(crate) fn painting_data_event(
+    world: &mut ClientWorld,
+    entity_id: EntityId,
+    event: &Value,
+) -> Result<(), String> {
+    // `Painting.DATA_PAINTING_VARIANT_ID`, a holder: the registry id plus one.
+    let name = event["variant"].as_str().ok_or("missing variant")?;
+    let id = photon_data::entity_type::painting_variants()
+        .position(|variant| variant.name == name)
+        .ok_or("unknown painting variant")?;
+    let mut data = vec![
+        photon_world::PAINTING_VARIANT_DATA_ID,
+        photon_world::PAINTING_VARIANT_SERIALIZER_ID as u8,
+    ];
+    photon_core::wire::write_varint(id as i32 + 1, &mut data);
     data.push(255);
     world.apply_entity_metadata(entity_id, &data);
     Ok(())

@@ -54,13 +54,6 @@ fn frame_item_runs(
         .collect()
 }
 
-/// Where a frame is: the middle of its box, the position `HangingEntity.recalculateBoundingBox`
-/// gives the entity (the one the server's packet names is the block's).
-pub(super) fn centre(entity: &photon_world::ClientEntity) -> (f64, f64, f64) {
-    let middle = entity.bounding_box().center();
-    (middle.x, middle.y, middle.z)
-}
-
 /// `ItemFrameRenderer.getRenderOffset`, which the dispatcher moves the tag by as well.
 pub(super) fn render_offset(entity: &photon_world::ClientEntity) -> photon_core::math::Vec3 {
     let (step_x, _, step_z) =
