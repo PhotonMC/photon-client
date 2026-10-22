@@ -197,7 +197,12 @@ impl GameMode {
         if !suppress_using_block {
             let state = ctx.state_at((x, y, z));
             let flint = item.is_some_and(|(item, _)| {
-                rules::item(item).is_some_and(|row| row.class == ItemClass::FlintAndSteelItem)
+                rules::item(item).is_some_and(|row| {
+                    matches!(
+                        row.class,
+                        ItemClass::FlintAndSteelItem | ItemClass::FireChargeItem
+                    )
+                })
             });
             let item_use = match flint
                 .then(|| super::tools::flint_over_lightable(state))
@@ -294,12 +299,8 @@ impl GameMode {
             {
                 self.place(ctx, hand, item, aim)
             }
-            ItemClass::HoeItem => super::tools::hoe_use_on(ctx, aim),
-            ItemClass::FlintAndSteelItem => super::tools::flint_and_steel_use_on(ctx, aim),
-            ItemClass::ShearsItem => super::tools::shears_use_on(ctx, aim),
-            ItemClass::AxeItem => super::tools::axe_use_on(ctx, hand, aim),
-            ItemClass::ShovelItem => super::tools::shovel_use_on(ctx, aim),
-            _ => UseResult::Success { swing: true },
+            class => super::tools::use_on(ctx, (hand, class), aim)
+                .unwrap_or(UseResult::Success { swing: true }),
         }
     }
 

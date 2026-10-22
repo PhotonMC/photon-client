@@ -168,6 +168,24 @@ pub(super) fn shears_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
     UseResult::Success { swing: true }
 }
 
+/// `Item.useOn` of the tools whose class the client decides: `None` for any other class.
+pub(super) fn use_on(
+    ctx: &mut Context<'_>,
+    (hand, class): (u8, photon_data::item::classes::ItemClass),
+    aim: Aim,
+) -> Option<UseResult> {
+    use photon_data::item::classes::ItemClass as C;
+    Some(match class {
+        C::HoeItem => hoe_use_on(ctx, aim),
+        C::FlintAndSteelItem => flint_and_steel_use_on(ctx, aim),
+        C::FireChargeItem => fire_charge_use_on(ctx, aim),
+        C::ShearsItem => shears_use_on(ctx, aim),
+        C::AxeItem => axe_use_on(ctx, hand, aim),
+        C::ShovelItem => shovel_use_on(ctx, aim),
+        _ => return None,
+    })
+}
+
 /// `CampfireBlock.canLight`, `CandleBlock.canLight` and `CandleCakeBlock.canLight`: an unlit
 /// campfire or candle that is not under water, or an unlit candle cake.
 fn lightable(state: photon_core::ids::BlockStateId) -> bool {
@@ -183,30 +201,40 @@ fn lightable(state: photon_core::ids::BlockStateId) -> bool {
     }
 }
 
-/// `FlintAndSteelItem.useOn` for the client: lighting a campfire, candle or candle cake, or fire
-/// in the empty place beside the face (not the nether portal case), sounds the flint with a
-/// pitch from the level's random and succeeds; where no fire fits it fails.
+/// Where flint and steel or a fire charge lights something and the state it leaves there: the
+/// clicked campfire, candle or candle cake, or fire in the empty place beside the face when it
+/// would survive (not the nether portal case). `None` where nothing lights.
+fn ignition(
+    ctx: &Context<'_>,
+    (x, y, z, face): (i32, i32, i32, u8),
+) -> Option<((i32, i32, i32), Option<photon_core::ids::BlockStateId>)> {
+    let clicked = ctx.state_at((x, y, z));
+    if lightable(clicked) {
+        let lit = photon_world::block::rules::with_property(clicked, "lit", "true");
+        return Some(((x, y, z), lit));
+    }
+    let (dx, dy, dz) =
+        photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
+    let beside = (x + dx, y + dy, z + dz);
+    let at = |(x, y, z)| ctx.world.block_state_or_air(x, y, z);
+    if !is_air(ctx.state_at(beside)) || !photon_world::block::fire::survives_at(at, beside) {
+        return None;
+    }
+    Some((
+        beside,
+        photon_world::block::fire::placement_state(at, beside),
+    ))
+}
+
+/// `FlintAndSteelItem.useOn` for the client: lights what `ignition` finds with the flint's sound
+/// (a pitch from the level's random) and the block set at once (flags 11); fails where nothing
+/// lights.
 pub(super) fn flint_and_steel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
     let Aim::Block { x, y, z, face, .. } = aim else {
         return UseResult::Pass;
     };
-    let clicked = ctx.state_at((x, y, z));
-    let (target, placed) = if lightable(clicked) {
-        let lit = photon_world::block::rules::with_property(clicked, "lit", "true");
-        ((x, y, z), lit)
-    } else {
-        let (dx, dy, dz) =
-            photon_core::direction::Direction::from_3d_data_value(i32::from(face)).step();
-        let beside = (x + dx, y + dy, z + dz);
-        let world = &*ctx.world;
-        let at = |(x, y, z)| world.block_state_or_air(x, y, z);
-        if !is_air(ctx.state_at(beside)) || !photon_world::block::fire::survives_at(at, beside) {
-            return UseResult::Fail;
-        }
-        (
-            beside,
-            photon_world::block::fire::placement_state(at, beside),
-        )
+    let Some((target, placed)) = ignition(ctx, (x, y, z, face)) else {
+        return UseResult::Fail;
     };
     let pitch = ctx.player.next_level_float() * 0.4 + 0.8;
     ctx.world.push_sound(LocalSound::at(
@@ -227,7 +255,25 @@ pub(super) fn flint_and_steel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResu
     UseResult::Success { swing: true }
 }
 
-/// `useItemOn` of a campfire, candle or candle cake with flint and steel in hand: the cake passes
+/// `FireChargeItem.useOn` for the client: the same places as flint, set with `setBlockAndUpdate`
+/// (flags 3). Its sound is played by the server for everyone (the call names no player), and the
+/// stack shrink is not predicted here.
+pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
+    let Aim::Block { x, y, z, face, .. } = aim else {
+        return UseResult::Pass;
+    };
+    let Some((target, placed)) = ignition(ctx, (x, y, z, face)) else {
+        return UseResult::Fail;
+    };
+    if let Some(state) = placed {
+        let position = ctx.player.position();
+        ctx.world
+            .set_block_with_updates(target, state, 3, 512, position);
+    }
+    UseResult::Success { swing: true }
+}
+
+/// `useItemOn` of a campfire, candle or candle cake with flint and steel or a fire charge in hand: the cake passes
 /// (`CandleCakeBlock.useItemOn`), the others leave it to the item (`TRY_WITH_EMPTY_HAND` from
 /// `BlockBehaviour`, as a held stack is no food for the campfire and no empty hand for the candle).
 pub(super) fn flint_over_lightable(state: photon_core::ids::BlockStateId) -> Option<UseResult> {
