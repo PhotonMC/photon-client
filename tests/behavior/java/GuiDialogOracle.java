@@ -15,10 +15,12 @@ class GuiDialogOracle extends GuiSocialOracle {
     static final class Access implements net.minecraft.client.gui.screens.dialog.DialogConnectionAccess {
         final java.util.List<String> events;
         final net.minecraft.client.gui.Gui gui;
+        final net.minecraft.server.ServerLinks links;
 
-        Access(RecordingGui gui) {
+        Access(RecordingGui gui, net.minecraft.server.ServerLinks links) {
             this.events = gui.events;
             this.gui = gui;
+            this.links = links;
         }
 
         private static String name(net.minecraft.client.gui.screens.Screen screen) {
@@ -49,7 +51,7 @@ class GuiDialogOracle extends GuiSocialOracle {
 
         @Override
         public net.minecraft.server.ServerLinks serverLinks() {
-            return net.minecraft.server.ServerLinks.EMPTY;
+            return links;
         }
     }
 
@@ -136,7 +138,24 @@ class GuiDialogOracle extends GuiSocialOracle {
                     net.minecraft.server.dialog.DialogAction.valueOf(json.get("after").getAsString()),
                     bodies, java.util.List.of());
                 var buttons = json.getAsJsonArray("buttons");
-                if (json.get("kind").getAsString().equals("multi_action")) {
+                var links = net.minecraft.server.ServerLinks.EMPTY;
+                if (json.get("kind").getAsString().equals("server_links")) {
+                    var entries = new java.util.ArrayList<net.minecraft.server.ServerLinks.Entry>();
+                    for (var item : json.getAsJsonArray("links")) {
+                        var link = item.getAsJsonObject();
+                        var uri = java.net.URI.create(link.get("link").getAsString());
+                        entries.add(link.has("known")
+                            ? net.minecraft.server.ServerLinks.KnownLinkType.values()[link.get("known").getAsInt()].create(uri)
+                            : net.minecraft.server.ServerLinks.Entry.custom(Component.literal(link.get("text").getAsString()), uri));
+                    }
+                    links = new net.minecraft.server.ServerLinks(entries);
+                    var linked = new net.minecraft.server.dialog.ServerLinksDialog(common,
+                        json.has("exit") ? java.util.Optional.of(button(json.getAsJsonObject("exit")))
+                            : java.util.Optional.empty(),
+                        json.get("columns").getAsInt(), json.get("button_width").getAsInt());
+                    shown = new net.minecraft.client.gui.screens.dialog.ServerLinksDialogScreen(new PreviousScreen(), linked,
+                        new Access(gui, links));
+                } else if (json.get("kind").getAsString().equals("multi_action")) {
                     var actions = new java.util.ArrayList<net.minecraft.server.dialog.ActionButton>();
                     for (var item : buttons) {
                         actions.add(button(item.getAsJsonObject()));
@@ -146,14 +165,14 @@ class GuiDialogOracle extends GuiSocialOracle {
                             : java.util.Optional.empty(),
                         json.get("columns").getAsInt());
                     shown = new net.minecraft.client.gui.screens.dialog.MultiButtonDialogScreen(new PreviousScreen(), list,
-                        new Access(gui));
+                        new Access(gui, links));
                 } else {
                     net.minecraft.server.dialog.SimpleDialog dialog = buttons.size() == 2
                         ? new net.minecraft.server.dialog.ConfirmationDialog(common, button(buttons.get(0).getAsJsonObject()),
                             button(buttons.get(1).getAsJsonObject()))
                         : new net.minecraft.server.dialog.NoticeDialog(common, button(buttons.get(0).getAsJsonObject()));
                     shown = new net.minecraft.client.gui.screens.dialog.SimpleDialogScreen<>(new PreviousScreen(), dialog,
-                        new Access(gui));
+                        new Access(gui, links));
                 }
             }
             set(shown, "width", width);

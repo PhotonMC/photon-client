@@ -100,6 +100,13 @@ pub enum Dialog {
         exit: Option<Box<ActionButton>>,
         columns: i32,
     },
+    /// `ServerLinksDialog`: a `MultiAction` of the server's links, once `resolved`.
+    ServerLinks {
+        common: Box<CommonData>,
+        exit: Option<Box<ActionButton>>,
+        columns: i32,
+        button_width: i32,
+    },
     /// A type whose screen is not built yet.
     Other(Box<CommonData>),
 }
@@ -110,6 +117,7 @@ impl Dialog {
             Self::Notice { common, .. }
             | Self::Confirmation { common, .. }
             | Self::MultiAction { common, .. }
+            | Self::ServerLinks { common, .. }
             | Self::Other(common) => common,
         }
     }
@@ -119,7 +127,9 @@ impl Dialog {
         match self {
             Self::Notice { action, .. } => action.action.as_ref(),
             Self::Confirmation { no, .. } => no.action.as_ref(),
-            Self::MultiAction { exit, .. } => exit.as_ref().and_then(|exit| exit.action.as_ref()),
+            Self::MultiAction { exit, .. } | Self::ServerLinks { exit, .. } => {
+                exit.as_ref().and_then(|exit| exit.action.as_ref())
+            }
             Self::Other(_) => None,
         }
     }
@@ -132,7 +142,38 @@ impl Dialog {
             Self::MultiAction { actions, exit, .. } => {
                 actions.iter().chain(exit.as_deref()).collect()
             }
+            Self::ServerLinks { exit, .. } => exit.as_deref().into_iter().collect(),
             Self::Other(_) => Vec::new(),
+        }
+    }
+
+    /// `ServerLinksDialogScreen.createListActions`: each link is a button that opens its address.
+    /// Any other dialog stays as it is.
+    pub fn resolved(self, links: &crate::server_links::ServerLinks) -> Self {
+        let Self::ServerLinks {
+            common,
+            exit,
+            columns,
+            button_width,
+        } = self
+        else {
+            return self;
+        };
+        let actions = links
+            .entries()
+            .iter()
+            .map(|entry| ActionButton {
+                label: entry.link_type.display_name(),
+                tooltip: None,
+                width: button_width,
+                action: Some(Action::Static(ClickEvent::OpenUrl(entry.link.clone()))),
+            })
+            .collect();
+        Self::MultiAction {
+            common,
+            actions,
+            exit,
+            columns,
         }
     }
 
@@ -144,6 +185,36 @@ impl Dialog {
             } => Some((actions.len(), *columns)),
             _ => None,
         }
+    }
+
+    /// `MultiActionDialog` from its fields.
+    fn multi_action(common: Box<CommonData>, fields: &[Field]) -> Option<Self> {
+        let Some(FieldValue::List(items)) = get(fields, "actions") else {
+            return None;
+        };
+        // `ExtraCodecs.nonEmptyList`.
+        if items.is_empty() {
+            return None;
+        }
+        Some(Self::MultiAction {
+            common,
+            actions: items
+                .iter()
+                .map(ActionButton::from_nbt)
+                .collect::<Option<_>>()?,
+            exit: exit_action(fields)?,
+            columns: columns(fields)?,
+        })
+    }
+
+    /// `ServerLinksDialog` from its fields.
+    fn server_links(common: Box<CommonData>, fields: &[Field]) -> Option<Self> {
+        Some(Self::ServerLinks {
+            common,
+            exit: exit_action(fields)?,
+            columns: columns(fields)?,
+            button_width: width(fields, "button_width", 150, 1024)?,
+        })
     }
 
     /// `Dialog.DIRECT_CODEC` from the tag.
@@ -170,27 +241,8 @@ impl Dialog {
                 yes: Box::new(ActionButton::from_nbt(get(fields, "yes")?)?),
                 no: Box::new(ActionButton::from_nbt(get(fields, "no")?)?),
             },
-            "multi_action" => {
-                let Some(FieldValue::List(items)) = get(fields, "actions") else {
-                    return None;
-                };
-                // `ExtraCodecs.nonEmptyList`.
-                if items.is_empty() {
-                    return None;
-                }
-                Self::MultiAction {
-                    common,
-                    actions: items
-                        .iter()
-                        .map(ActionButton::from_nbt)
-                        .collect::<Option<_>>()?,
-                    exit: match get(fields, "exit_action") {
-                        Some(value) => Some(Box::new(ActionButton::from_nbt(value)?)),
-                        None => None,
-                    },
-                    columns: columns(fields)?,
-                }
-            }
+            "multi_action" => Self::multi_action(common, fields)?,
+            "server_links" => Self::server_links(common, fields)?,
             _ => Self::Other(common),
         })
     }
@@ -377,6 +429,14 @@ fn strip_namespace(name: &str) -> &str {
 }
 
 /// `ExtraCodecs.POSITIVE_INT.optionalFieldOf("columns", 2)`.
+/// The optional `exit_action` button: `Some(None)` for none, `None` for one that does not read.
+fn exit_action(fields: &[Field]) -> Option<Option<Box<ActionButton>>> {
+    match get(fields, "exit_action") {
+        Some(value) => ActionButton::from_nbt(value).map(|button| Some(Box::new(button))),
+        None => Some(None),
+    }
+}
+
 fn columns(fields: &[Field]) -> Option<i32> {
     match get(fields, "columns") {
         None => Some(2),

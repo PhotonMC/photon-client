@@ -6,7 +6,19 @@ impl Controls {
     pub(super) fn open_pause(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) {
         let size = surface.scale();
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
-        self.pause = Some(PauseScreen::new(&assets.creative.font, &assets.lang, size));
+        let custom = self.pause_additions.as_ref().map(|dialog| {
+            let common = dialog.common();
+            common
+                .external_title
+                .clone()
+                .unwrap_or_else(|| common.title.clone())
+        });
+        self.pause = Some(PauseScreen::new(
+            &assets.creative.font,
+            &assets.lang,
+            size,
+            custom.as_ref(),
+        ));
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);
@@ -36,6 +48,13 @@ impl Controls {
             PauseAction::Options => self.open_options(surface, assets),
             PauseAction::Statistics => self.open_stats(surface, assets),
             PauseAction::Advancements => self.open_advancements(session, surface, assets),
+            // `minecraft.player.connection.showDialog(dialog, this)`: over the menu.
+            PauseAction::Custom => {
+                if let Some(dialog) = self.pause_additions.clone() {
+                    let dialog = dialog.resolved(session.server_links());
+                    self.show_dialog(dialog, surface, assets);
+                }
+            }
             _ => {}
         }
     }

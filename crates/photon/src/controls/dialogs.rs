@@ -84,9 +84,15 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
+        if self.pause.is_none() {
+            self.pause_additions = session.pause_screen_additions();
+        }
         for event in session.take_dialog_events() {
             match event {
-                DialogEvent::Show(dialog) => self.show_dialog(*dialog, surface, assets),
+                DialogEvent::Show(dialog) => {
+                    let dialog = dialog.resolved(session.server_links());
+                    self.show_dialog(dialog, surface, assets);
+                }
                 DialogEvent::Clear => self.clear_dialog(),
             }
         }
@@ -102,6 +108,7 @@ impl Controls {
             DialogRef::Inline(dialog) => Some((**dialog).clone()),
             DialogRef::Registry(name) => session.dialog_by_name(name),
         }
+        .map(|dialog| dialog.resolved(session.server_links()))
     }
 
     /// `ClientCommonPacketListenerImpl.showDialog`: the dialog takes the place of the screen it

@@ -246,8 +246,8 @@ impl Controls {
     /// now loaded.
     pub fn rebuild_menus(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         let size = Self::gui_size(surface);
-        if self.pause.is_some() {
-            self.pause = Some(PauseScreen::new(&assets.creative.font, &assets.lang, size));
+        if let Some(pause) = self.pause.as_ref() {
+            self.pause = Some(pause.resized(&assets.creative.font, &assets.lang, size));
         }
         if self.options_screen.is_some() {
             self.open_options(surface, assets);

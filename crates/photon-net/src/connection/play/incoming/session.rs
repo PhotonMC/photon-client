@@ -37,6 +37,10 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<CustomReportDetails>,
     ),
     (
+        PLAY_CLIENTBOUND_SERVER_LINKS_PACKET_ID,
+        typed::<ServerLinksPacket>,
+    ),
+    (
         PLAY_CLIENTBOUND_OPEN_SIGN_EDITOR_PACKET_ID,
         typed::<OpenSignEditor>,
     ),
@@ -108,6 +112,14 @@ impl ClientboundPacket for CustomPayload {
 impl ClientboundPacket for CustomReportDetails {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.state.custom_report_details = self.0.details;
+        Ok(())
+    }
+}
+
+/// `handleServerLinks`: the entries that pass the address check replace the links.
+impl ClientboundPacket for ServerLinksPacket {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.state.server_links = photon_game::server_links::ServerLinks::trusted(self.0);
         Ok(())
     }
 }

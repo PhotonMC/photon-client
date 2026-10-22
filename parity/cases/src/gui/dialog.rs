@@ -78,6 +78,8 @@ struct Dialog {
     kind: Option<&'static str>,
     columns: Option<i64>,
     exit: Option<Value>,
+    links: Option<Vec<Value>>,
+    button_width: Option<i64>,
 }
 
 fn row(label: &'static str) -> Dialog {
@@ -96,6 +98,8 @@ fn row(label: &'static str) -> Dialog {
         kind: None,
         columns: None,
         exit: None,
+        links: None,
+        button_width: None,
     }
 }
 
@@ -111,6 +115,10 @@ impl Dialog {
         }
         if let Some(exit) = self.exit {
             dialog["exit"] = exit;
+        }
+        if let Some(links) = self.links {
+            dialog["links"] = json!(links);
+            dialog["button_width"] = json!(self.button_width.unwrap_or(150));
         }
         json!({
             "label": self.label, "width": self.size.0, "height": self.size.1, "mouse": [self.mouse.0, self.mouse.1],
@@ -384,6 +392,57 @@ fn list_rows() -> Vec<Value> {
     ]
 }
 
+/// A `ServerLinksDialog` with the links given.
+fn linked(label: &'static str, links: Vec<Value>, columns: i64) -> Dialog {
+    Dialog {
+        kind: Some("server_links"),
+        columns: Some(columns),
+        links: Some(links),
+        buttons: vec![],
+        title: "Server Links",
+        body: vec![],
+        ..row(label)
+    }
+}
+
+fn site(n: usize) -> Value {
+    json!({"known": n % 10, "link": format!("https://example.com/{n}")})
+}
+
+fn sites(count: usize) -> Vec<Value> {
+    (0..count).map(site).collect()
+}
+
+/// `ServerLinksDialogScreen`: the buttons from the links, labelled by a known type's translation or
+/// the server's own words, in the dialog's button width; a click asks about the address.
+fn link_rows() -> Vec<Value> {
+    let named = vec![
+        json!({"text": "Our Wiki", "link": "https://wiki.example.com"}),
+        json!({"known": 2, "link": "http://support.example.com/help?a=b"}),
+        json!({"text": "Forum & Chat", "link": "https://forum.example.com"}),
+    ];
+    rows![
+        linked("links-none", vec![], 2),
+        linked("links-one", sites(1), 2),
+        linked("links-two", sites(2), 2),
+        linked("links-all-known", sites(10), 2),
+        linked("links-named", named.clone(), 2),
+        linked("links-one-column", sites(4), 1),
+        linked("links-three-columns", sites(7), 3),
+        linked("links-many", sites(25), 2).leave(),
+        linked("links-exit", sites(3), 2).leave(),
+        Dialog { button_width: Some(80), ..linked("links-narrow", sites(4), 2) },
+        Dialog { button_width: Some(300), ..linked("links-wide", sites(4), 2) },
+        linked("links-hover", sites(4), 2).at(150, 90),
+        linked("links-tab", sites(4), 2).steps(times(key("tab"), 3)),
+        linked("links-click", named.clone(), 2).steps(vec![click(150, 90)]).at(150, 90),
+        linked("links-enter", sites(4), 2).steps([times(key("tab"), 2), vec![key("enter")]].concat()),
+        linked("links-click-exit", sites(3), 2).leave().steps(vec![click(213, 224)]).at(213, 224),
+        linked("links-escape", sites(3), 2).steps(vec![key("escape")]),
+        linked("links-escape-exit", sites(3), 2).leave().steps(vec![key("escape")]),
+    ]
+}
+
 /// `SimpleDialogScreen` for a notice and a confirmation: the title with its
 /// warning button, the body in a scrolling box (wheel, scrollbar, Tab into
 /// view), the buttons and what they tell the connection, Escape, and the
@@ -404,7 +463,7 @@ fn blur_rows() -> Vec<Value> {
 }
 
 pub fn dialog_screen() -> Value {
-    let mut rows = [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows()].concat();
+    let mut rows = [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows(), link_rows()].concat();
     rows.extend(blur_rows());
     gui("dialog-screen", "dialog_screen", rows)
 }

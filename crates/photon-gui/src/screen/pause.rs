@@ -28,6 +28,8 @@ pub enum PauseAction {
     Feedback,
     Friends,
     PlayerReporting,
+    /// The button a dialog of the server's puts in the menu.
+    Custom,
 }
 
 pub struct PauseScreen {
@@ -42,6 +44,8 @@ pub struct PauseScreen {
     /// tooltip.
     input: Cell<InputType>,
     size: (i32, i32),
+    /// The title of the dialog button, if the menu has one.
+    custom: Option<Component>,
 }
 
 fn runs(lang: &Lang, key: &str) -> Vec<Run> {
@@ -51,10 +55,33 @@ fn runs(lang: &Lang, key: &str) -> Vec<Run> {
     )
 }
 
+/// The icon buttons say what they are when the mouse is on them, and the dialog button what it is.
+fn tooltips(lang: &Lang, widgets: &[(Widget, Option<PauseAction>)]) -> Vec<Option<Holder>> {
+    widgets
+        .iter()
+        .map(|(_, action)| {
+            let key = match action {
+                Some(PauseAction::ReportBugs) => "menu.reportBugs",
+                Some(PauseAction::Feedback) => "menu.sendFeedback",
+                Some(PauseAction::Friends) => "gui.friends.open.tooltip",
+                Some(PauseAction::PlayerReporting) => "menu.playerReporting",
+                Some(PauseAction::Custom) => "menu.custom_options.tooltip",
+                _ => return None,
+            };
+            Some(Holder::of(lang, &Component::translatable(key)))
+        })
+        .collect()
+}
+
 impl PauseScreen {
     /// `PauseScreen.init` and `createPauseMenu`, for a server (not a local
     /// one) in a screen of `width` by `height` units.
-    pub fn new(font: &Font, lang: &Lang, (width, height): (i32, i32)) -> Self {
+    pub fn new(
+        font: &Font,
+        lang: &Lang,
+        (width, height): (i32, i32),
+        custom: Option<&Component>,
+    ) -> Self {
         let mut arena = Arena::default();
         let mut widgets: Vec<(Widget, Option<PauseAction>)> = Vec::new();
         let mut add = |arena: &mut Arena, w: i32, kind: Kind, action: PauseAction| -> usize {
@@ -127,6 +154,11 @@ impl PauseScreen {
             2,
             grid.defaults.align_horizontally(0.5),
         );
+        if let Some(title) = custom {
+            let label = lang.runs(title, &Style::default());
+            let custom = add(&mut arena, 204, Kind::Button { label }, PauseAction::Custom);
+            grid.add_in_row(Item::Leaf(custom), 2, 2, grid.defaults);
+        }
         let options = add(
             &mut arena,
             204,
@@ -154,20 +186,7 @@ impl PauseScreen {
             active: false,
             kind: Kind::Text { text },
         };
-        // The icon buttons say what they are when the mouse is on them.
-        let tooltips = widgets
-            .iter()
-            .map(|(_, action)| {
-                let key = match action {
-                    Some(PauseAction::ReportBugs) => "menu.reportBugs",
-                    Some(PauseAction::Feedback) => "menu.sendFeedback",
-                    Some(PauseAction::Friends) => "gui.friends.open.tooltip",
-                    Some(PauseAction::PlayerReporting) => "menu.playerReporting",
-                    _ => return None,
-                };
-                Some(Holder::of(lang, &Component::translatable(key)))
-            })
-            .collect();
+        let tooltips = tooltips(lang, &widgets);
         Self {
             arena,
             widgets,
@@ -176,7 +195,13 @@ impl PauseScreen {
             tooltips,
             input: Cell::new(InputType::Mouse),
             size: (width, height),
+            custom: custom.cloned(),
         }
+    }
+
+    /// The screen again for another size, with the same button.
+    pub fn resized(&self, font: &Font, lang: &Lang, size: (i32, i32)) -> Self {
+        Self::new(font, lang, size, self.custom.as_ref())
     }
 
     /// The screen size the layout was made for.

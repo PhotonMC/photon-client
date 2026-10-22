@@ -222,6 +222,34 @@ impl PlaySession {
             .push(DialogEvent::Show(Box::new(dialog)));
     }
 
+    /// `ClientCommonPacketListenerImpl.serverLinks`: the addresses the server offers.
+    pub fn server_links(&self) -> &photon_game::server_links::ServerLinks {
+        &self.state.server_links
+    }
+
+    /// `PauseScreen.getCustomAdditions`: the dialog the pause menu offers a button for. The
+    /// `pause_screen_additions` tag of the dialog registry wins (one entry is the dialog, more
+    /// are the custom options list); with it empty, the server's links are the dialog.
+    pub fn pause_screen_additions(&self) -> Option<photon_game::dialog::Dialog> {
+        let added = self
+            .state
+            .tags
+            .iter()
+            .flat_map(|packet| &packet.registries)
+            .filter(|registry| registry.registry.as_string() == "minecraft:dialog")
+            .flat_map(|registry| &registry.tags)
+            .filter(|tag| tag.id.as_string() == "minecraft:pause_screen_additions")
+            .flat_map(|tag| tag.values.iter().copied())
+            .collect::<Vec<_>>();
+        let entry = |index: usize| self.state.dialog_registry.get(index).cloned().flatten();
+        match added.as_slice() {
+            [] if self.state.server_links.is_empty() => None,
+            [] => self.dialog_by_name("minecraft:server_links"),
+            [only] => entry(usize::try_from(*only).ok()?),
+            _ => self.dialog_by_name("minecraft:custom_options"),
+        }
+    }
+
     /// The dialog entry a registry name stands for (`ClickEvent.ShowDialog` by name).
     pub fn dialog_by_name(&self, name: &str) -> Option<photon_game::dialog::Dialog> {
         let position = self

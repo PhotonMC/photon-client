@@ -53,6 +53,15 @@ cookie_packet!(
     "transfer"
 );
 
+/// `ClientboundServerLinksPacket`: the links as the server wrote them.
+pub struct ServerLinksPacket(pub Vec<photon_game::server_links::UntrustedEntry>);
+
+impl Decode for ServerLinksPacket {
+    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+        crate::server_links::parse_server_links(payload).map(Self)
+    }
+}
+
 /// `ClientboundOpenSignEditorPacket`: the sign's position and which side is edited.
 pub struct OpenSignEditor {
     pub pos: photon_core::binary::BlockPos,

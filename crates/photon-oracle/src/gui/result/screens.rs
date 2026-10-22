@@ -13,7 +13,7 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
-    let mut screen = photon_gui::screen::pause::PauseScreen::new(font, &lang, size);
+    let mut screen = photon_gui::screen::pause::PauseScreen::new(font, &lang, size, None);
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,
         row["mouse"][1].as_i64().unwrap_or(0) as i32,

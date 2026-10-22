@@ -24,6 +24,8 @@ pub struct ConnectionState {
     pub server_brand: Option<String>,
     /// `ClientboundCustomReportDetailsPacket`: what the server wants a crash report to carry.
     pub custom_report_details: Vec<(String, String)>,
+    /// `ClientboundServerLinksPacket`: the addresses the server offers, once checked.
+    pub server_links: photon_game::server_links::ServerLinks,
     /// Every synchronised registry's entry names, in the order the server numbered them.
     pub registry_entry_names: BTreeMap<String, Vec<String>>,
     /// The dialog registry's entries, in network order; one without data (a known pack's own) is

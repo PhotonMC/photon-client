@@ -317,8 +317,8 @@ pub fn configure_connection(
             CONFIG_CLIENTBOUND_CUSTOM_PAYLOAD_PACKET_ID => {
                 take_custom_payload(state, payload)?;
             }
-            CONFIG_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID => {
-                take_report_details(state, payload)?;
+            CONFIG_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID | SERVER_LINKS => {
+                take_server_notes(state, (packet_id, payload))?;
             }
             2 => return Err(ConnectionError::ServerDisconnected),
             CONFIG_CLIENTBOUND_TRANSFER_PACKET_ID => {
@@ -410,6 +410,22 @@ pub(crate) fn take_custom_payload(
         state.server_brand = Some(brand);
     }
     Ok(())
+}
+
+const SERVER_LINKS: i32 = CONFIG_CLIENTBOUND_SERVER_LINKS_PACKET_ID;
+
+/// The configuration packets that leave a note on the state: the report details, and the links
+/// the server offers (`handleServerLinks`).
+fn take_server_notes(
+    state: &mut ConnectionState,
+    (packet_id, payload): (i32, &[u8]),
+) -> Result<(), ConnectionError> {
+    if packet_id == SERVER_LINKS {
+        let links = photon_protocol::server_links::parse_server_links(payload)?;
+        state.server_links = photon_game::server_links::ServerLinks::trusted(links);
+        return Ok(());
+    }
+    take_report_details(state, payload)
 }
 
 /// `handleCustomReportDetails`.

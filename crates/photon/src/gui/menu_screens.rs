@@ -82,7 +82,7 @@ impl Gui {
             options_screen.draw(frame, atlas, font, mouse);
         } else if let Some(pause) = controls.pause.as_mut() {
             if pause.size() != gui_size {
-                *pause = PauseScreen::new(font, lang, gui_size);
+                *pause = pause.resized(font, lang, gui_size);
             }
             pause.draw(frame, atlas, font, mouse, gui_size, Some(blurriness));
         }

@@ -163,6 +163,9 @@ pub struct Controls {
     /// The screen a server dialog puts over the game, and the question about it.
     pub dialog: Option<DialogLayer>,
     pub dialog_warning: Option<ConfirmScreen>,
+    /// The dialog the pause menu has a button for (`PauseScreen.getCustomAdditions`), as the
+    /// session last had it.
+    pub pause_additions: Option<photon_game::dialog::Dialog>,
     /// The server resource packs the player is being asked about; the question is `confirm`.
     pub pack_prompt: Option<pack_prompt::PackPrompt>,
     /// The screen a lost connection leaves, which nothing replaces.

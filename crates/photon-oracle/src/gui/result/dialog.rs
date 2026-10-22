@@ -68,6 +68,9 @@ fn dialog(value: &Value) -> Dialog {
     let buttons: Vec<ActionButton> = value["buttons"]
         .as_array()
         .map_or_else(Vec::new, |items| items.iter().map(button).collect());
+    if value["kind"] == "server_links" {
+        return linked(common, value);
+    }
     if value["kind"] == "multi_action" {
         return Dialog::MultiAction {
             common,
@@ -82,6 +85,30 @@ fn dialog(value: &Value) -> Dialog {
         (Some(action), None) => Dialog::Notice { common, action },
         _ => Dialog::Other(common),
     }
+}
+
+/// A `ServerLinksDialog` with the links the row lists, as the screen builds its buttons from them.
+fn linked(common: Box<CommonData>, value: &Value) -> Dialog {
+    use photon_game::server_links::{LinkType, ServerLinks, UntrustedEntry};
+    let entries = value["links"].as_array().map_or_else(Vec::new, |links| {
+        links
+            .iter()
+            .map(|link| UntrustedEntry {
+                link_type: match link["known"].as_i64() {
+                    Some(id) => LinkType::known(id as i32),
+                    None => LinkType::Custom(text(&link["text"])),
+                },
+                link: link["link"].as_str().unwrap_or_default().to_owned(),
+            })
+            .collect()
+    });
+    Dialog::ServerLinks {
+        common,
+        exit: value.get("exit").map(|exit| Box::new(button(exit))),
+        columns: value["columns"].as_i64().unwrap_or(2) as i32,
+        button_width: value["button_width"].as_i64().unwrap_or(150) as i32,
+    }
+    .resolved(&ServerLinks::trusted(entries))
 }
 
 /// What the game's side of a press did, as the reference's recording gui and connection write it:
@@ -112,6 +139,11 @@ fn press_events(dialog: &Dialog, press: Press, events: &mut Vec<String>) {
             events.push(format!("run_command:{command}:{screen}"));
         }
         Some(ClickEvent::Custom(id, _)) => events.push(format!("custom:{id}")),
+        // `clickUrlAction` asks first and leaves the screen to the question.
+        Some(ClickEvent::OpenUrl(_)) => {
+            events.push("link".to_owned());
+            return;
+        }
         _ => {}
     }
     events.push(screen.to_owned());

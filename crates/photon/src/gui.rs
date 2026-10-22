@@ -13,7 +13,6 @@ use photon_gui::hud::sidebar::{self, SidebarLine};
 use photon_gui::hud::tab_list::{self, HealthStates, TabEntry, TabObjective, TabPlayer, TabScores};
 use photon_gui::hud::titles::Titles;
 use photon_gui::screen::ScreenDraw;
-use photon_gui::screen::pause::PauseScreen;
 use photon_net::connection::{BossOperation, ChatEvent, ChatHolder, HudEvent, PlaySession};
 use photon_render::VulkanBackend;
 use photon_render::block::biome_tint::BiomeTints;
