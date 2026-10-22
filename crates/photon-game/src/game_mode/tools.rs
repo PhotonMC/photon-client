@@ -134,6 +134,35 @@ pub(super) fn axe_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult
     UseResult::Success { swing: true }
 }
 
+/// `ShearsItem.useOn` for the client: a growing plant's head that is not at its full age (kelp,
+/// twisting, weeping and cave vines) sounds the shears and takes the full age at once; anything
+/// else passes (`Item.useOn`).
+pub(super) fn shears_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
+    let Aim::Block { x, y, z, .. } = aim else {
+        return UseResult::Pass;
+    };
+    let state = ctx.state_at((x, y, z));
+    let head = matches!(
+        block(state).name,
+        "minecraft:kelp"
+            | "minecraft:twisting_vines"
+            | "minecraft:weeping_vines"
+            | "minecraft:cave_vines"
+    );
+    let age = photon_world::block::rules::property(state, "age");
+    if !head || age == Some("25") {
+        return UseResult::Pass;
+    }
+    let Some(grown) = photon_world::block::rules::with_property(state, "age", "25") else {
+        return UseResult::Success { swing: true };
+    };
+    play_at_block(ctx, "minecraft:block.growing_plant.crop", (x, y, z));
+    let position = ctx.player.position();
+    ctx.world
+        .set_block_with_updates((x, y, z), grown, 3, 512, position);
+    UseResult::Success { swing: true }
+}
+
 /// `HoeItem.useOn` for the client: a tillable block with its predicate met sounds the hoe and
 /// succeeds; any other passes.
 pub(super) fn hoe_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {

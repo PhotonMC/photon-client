@@ -288,6 +288,7 @@ impl GameMode {
                 self.place(ctx, hand, item, aim)
             }
             ItemClass::HoeItem => super::tools::hoe_use_on(ctx, aim),
+            ItemClass::ShearsItem => super::tools::shears_use_on(ctx, aim),
             ItemClass::AxeItem => super::tools::axe_use_on(ctx, hand, aim),
             ItemClass::ShovelItem => super::tools::shovel_use_on(ctx, aim),
             _ => UseResult::Success { swing: true },
