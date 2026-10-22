@@ -2,6 +2,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
+use photon_render::entity::tag_rules::{NameRules, entity_name_tag, eye_height};
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -161,31 +162,84 @@ pub(super) fn wear(
     )
 }
 
-/// `EntityRenderer.submitNameDisplay` for the other players: the text seen
-/// through blocks, and the text tested against the depth, each as triangles
-/// from the mesh origin. The background is the options' default for chat
-/// only, as the option that changes it is not carried.
+/// What the name tags of a frame are made with, and the triangles made so far.
+struct Tags<'a> {
+    text: (
+        &'a photon_render::gui::font::Font,
+        &'a photon_render::gui::GuiAtlas,
+    ),
+    camera: &'a TagCamera,
+    orientation: photon_render::joml::Quaternion,
+    see_through: Vec<Vertex>,
+    normal: Vec<Vertex>,
+}
+
+impl Tags<'_> {
+    /// `SubmitNodeCollection.submitNameTag` for a tag over an entity at `feet`, lit as at
+    /// `light`.
+    fn submit(
+        &mut self,
+        tag: &photon_render::entity::name_tag::NameTag,
+        (feet, light): (Vec3, i32),
+    ) {
+        use photon_render::entity::name_tag::{DisplayMode, submit_vertices, submits};
+        let (font, atlas) = self.text;
+        let camera = self.camera;
+        let placement = Vec3::new(
+            feet.x - camera.position.x,
+            feet.y - camera.position.y,
+            feet.z - camera.position.z,
+        );
+        let width = font.width_of_text_runs(&tag.runs);
+        for submit in submits(tag, placement, width, light, &self.orientation, 0.25) {
+            let vertices = submit_vertices(&submit, &tag.runs, font, atlas, camera.relative);
+            match submit.mode {
+                DisplayMode::SeeThrough => self.see_through.extend(vertices),
+                DisplayMode::Normal => self.normal.extend(vertices),
+            }
+        }
+    }
+}
+
+/// `EntityRenderer.submitNameDisplay` for the other players, then for the other entities: the
+/// text seen through blocks, and the text tested against the depth, each as triangles from the
+/// mesh origin. The background is the options' default for chat only, as the option that
+/// changes it is not carried.
 pub fn name_tags(
     session: &PlaySession,
-    (font, atlas): (
+    (lang, font, atlas): (
+        &photon_game::text::Lang,
         &photon_render::gui::font::Font,
         &photon_render::gui::GuiAtlas,
     ),
     camera: &TagCamera,
     view: FrameView,
 ) -> (Vec<Vertex>, Vec<Vertex>) {
-    use photon_render::entity::name_tag::{
-        DisplayMode, Viewer, camera_orientation, name_tag, submits,
-    };
-    let world = session.world();
-    let partial = view.partial as f32;
+    use photon_render::entity::name_tag::{Viewer, camera_orientation};
     let viewer = Viewer {
         camera_position: camera.position,
         spectator: camera.spectating,
         hud_hidden: camera.hud_hidden,
     };
-    let orientation = camera_orientation(camera.rotation.0, camera.rotation.1);
-    let (mut see_through, mut normal) = (Vec::new(), Vec::new());
+    let mut tags = Tags {
+        text: (font, atlas),
+        camera,
+        orientation: camera_orientation(camera.rotation.0, camera.rotation.1),
+        see_through: Vec::new(),
+        normal: Vec::new(),
+    };
+    player_tags(session, &mut tags, viewer, view.partial as f32);
+    entity_tags(session, (&mut tags, lang), viewer, view.partial as f32);
+    (tags.see_through, tags.normal)
+}
+
+fn player_tags(
+    session: &PlaySession,
+    tags: &mut Tags,
+    viewer: photon_render::entity::name_tag::Viewer,
+    partial: f32,
+) {
+    let world = session.world();
     for entity in world.entities().all() {
         if !entity.is_player() || entity.is_spectator() {
             continue;
@@ -194,7 +248,8 @@ pub fn name_tags(
         let Some(name) = session.player_name(entity.uuid) else {
             continue;
         };
-        let Some(tag) = name_tag(entity, name, viewer, partial) else {
+        let Some(tag) = photon_render::entity::name_tag::name_tag(entity, name, viewer, partial)
+        else {
             continue;
         };
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
@@ -203,33 +258,61 @@ pub fn name_tags(
         let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
         let (x, y, z) = snapshot.position;
         let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
-        let placement = Vec3::new(
-            x - camera.position.x,
-            y - camera.position.y,
-            z - camera.position.z,
-        );
-        for submit in submits(
-            &tag,
-            placement,
-            font.width(&tag.text),
-            packed_light(world, eye),
-            &orientation,
-            0.25,
-        ) {
-            let vertices = photon_render::entity::name_tag::submit_vertices(
-                &submit,
-                &tag.text,
-                font,
-                atlas,
-                camera.relative,
-            );
-            match submit.mode {
-                DisplayMode::SeeThrough => see_through.extend(vertices),
-                DisplayMode::Normal => normal.extend(vertices),
-            }
-        }
+        tags.submit(&tag, (Vec3::new(x, y, z), packed_light(world, eye)));
     }
-    (see_through, normal)
+}
+
+/// Which renderer's rules name an entity of the type, or none where the tag is not made yet: an
+/// item frame names itself by the item in it, a player by its profile.
+fn name_rules(entity: &photon_world::ClientEntity) -> Option<NameRules> {
+    match photon_data::entity_type::name(entity.type_id)? {
+        "minecraft:player"
+        | "minecraft:mannequin"
+        | "minecraft:item_frame"
+        | "minecraft:glow_item_frame" => None,
+        "minecraft:armor_stand" => Some(NameRules::ArmorStand),
+        _ if entity.is_mob() => Some(NameRules::Mob),
+        _ if entity.is_living_entity() => None,
+        _ => Some(NameRules::Entity),
+    }
+}
+
+/// `EntityRenderer.extractNameTags` for the entities that are not players: the ones a name shows
+/// over (a custom name that is visible, or under the crosshair).
+fn entity_tags(
+    session: &PlaySession,
+    (tags, lang): (&mut Tags, &photon_game::text::Lang),
+    viewer: photon_render::entity::name_tag::Viewer,
+    partial: f32,
+) {
+    let world = session.world();
+    let picked = crate::view::crosshair_entity(session);
+    for entity in world.entities().drawn_with_invisible() {
+        // Only an entity with a name of its own, or whose name shows, can have a tag.
+        if !entity.has_custom_name() && !entity.is_custom_name_visible() {
+            continue;
+        }
+        let Some(rules) = name_rules(entity) else {
+            continue;
+        };
+        let runs = photon_gui::entity_name::entity_name_runs(entity, lang);
+        let Some(tag) = entity_name_tag(entity, runs, (rules, picked == Some(entity.id())), viewer)
+        else {
+            continue;
+        };
+        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+            continue;
+        };
+        let (x, y, z) = snapshot.position;
+        let eye = Vec3::new(x, y + eye_height(entity).unwrap_or(0.0), z);
+        let light = packed_light(world, eye);
+        let light = if snapshot.burning {
+            (light & !0xFFFF) | (15 << 4)
+        } else {
+            light
+        };
+        tags.submit(&tag, (Vec3::new(x, y, z), light));
+    }
 }
 
 /// `ExperienceOrbRenderer` for the orbs the server added: a quad each, turned

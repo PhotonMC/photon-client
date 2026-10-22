@@ -231,23 +231,24 @@ pub fn locator_bar() -> Value {
 }
 
 /// A remote player's name tag scenario.
-struct Tag {
-    name: &'static str,
-    position: [f64; 3],
-    y_rot: f64,
-    crouching: bool,
-    shift: bool,
-    invisible: bool,
-    vehicle: bool,
-    camera_rot: (f64, f64),
-    spectator: bool,
-    hud_hidden: bool,
-    light: i64,
-    chat_only: bool,
-    opacity: f64,
+#[derive(Clone, Copy)]
+pub(super) struct Tag {
+    pub(super) name: &'static str,
+    pub(super) position: [f64; 3],
+    pub(super) y_rot: f64,
+    pub(super) crouching: bool,
+    pub(super) shift: bool,
+    pub(super) invisible: bool,
+    pub(super) vehicle: bool,
+    pub(super) camera_rot: (f64, f64),
+    pub(super) spectator: bool,
+    pub(super) hud_hidden: bool,
+    pub(super) light: i64,
+    pub(super) chat_only: bool,
+    pub(super) opacity: f64,
 }
 
-const TAG: Tag = Tag {
+pub(super) const TAG: Tag = Tag {
     name: "Steve",
     position: [10.5, 64.0, 5.5],
     y_rot: 0.0,
@@ -263,7 +264,7 @@ const TAG: Tag = Tag {
     opacity: 0.25,
 };
 
-fn tag(label: &str, tag: Tag) -> Value {
+pub(super) fn tag(label: &str, tag: Tag) -> Value {
     let camera = [0.5, 65.62, 0.5];
     json!({
         "label": label, "blocks": [], "chunk_radius": 0, "name": tag.name,
@@ -299,6 +300,7 @@ pub fn name_tags() -> Value {
         rows.push(tag(&format!("sneaking-{}", float_text(distance)), Tag { position, shift: true, ..TAG }));
     }
     rows.extend(rule_tags());
+    rows.extend(super::mob_tags::rows());
     gui("name-tags", "name_tags", rows)
 }
 

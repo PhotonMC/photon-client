@@ -1,14 +1,13 @@
-//! A remote player's name tag (`EntityRenderer.submitNameDisplay`): whether
-//! it shows, and the pose, light and colours of what is submitted for it.
-//! Teams, scoreboard text below the name and attribute changes are not
-//! carried: nobody is on a team, the name shows at the default distance.
+//! An entity's name tag (`EntityRenderer.submitNameDisplay`): whether it shows, and the pose,
+//! light and colours of what is submitted for it. Teams and the scoreboard text below the name
+//! are not carried: nobody is on a team.
 
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
 use photon_world::{ClientEntity, ClientEntityPose};
 
-use crate::gui::GuiAtlas;
 use crate::gui::font::Font;
 use crate::gui::frame::glyph_quads;
+use crate::gui::{GuiAtlas, TextRun};
 use crate::joml::{Matrix4, Pose, Quaternion};
 use crate::scene::Vertex;
 
@@ -28,7 +27,8 @@ pub struct Viewer {
 /// A name that shows, with where it hangs.
 #[derive(Debug, Clone)]
 pub struct NameTag {
-    pub text: String,
+    /// The name, one run per style.
+    pub runs: Vec<TextRun<'static>>,
     /// `EntityAttachment.NAME_TAG` of the entity, turned by its facing.
     pub attachment: Vec3,
     /// The line's offset in the name tag's own units (`showExtraEars`).
@@ -37,6 +37,13 @@ pub struct NameTag {
     pub see_through: bool,
     /// `AvatarRenderer.getRenderOffset`: the crouching player is drawn lower.
     pub render_offset: Vec3,
+}
+
+impl NameTag {
+    /// The name without its styling (`Component.getString`).
+    pub fn text(&self) -> String {
+        self.runs.iter().map(|run| run.text.as_ref()).collect()
+    }
 }
 
 /// `Entity.getYRot(partialTicks)`.
@@ -91,7 +98,7 @@ pub fn name_tag(
     let pose = entity.pose();
     let crouching = pose == ClientEntityPose::Crouching;
     Some(NameTag {
-        text: name.to_owned(),
+        runs: vec![TextRun::plain(name).into_owned()],
         attachment: attachment(pose, y_rot(entity, partial)),
         offset: if name == "deadmau5" { -10 } else { 0 },
         see_through: !discrete,
@@ -215,7 +222,7 @@ fn argb(color: i32) -> [f32; 4] {
 /// shifted by where the pose's origin lies from the world's origin.
 pub fn submit_vertices(
     submit: &Submit,
-    text: &str,
+    runs: &[TextRun],
     font: &Font,
     atlas: &GuiAtlas,
     shift: [f32; 3],
@@ -237,14 +244,10 @@ pub fn submit_vertices(
             vertices.push(corners[index]);
         }
     };
-    let runs = [crate::gui::TextRun::plain(text)];
     if submit.background >> 24 & 0xFF != 0 {
         // `markBackground`: from a unit before the line's start to its end,
         // a unit above the line to the nine its cells take.
-        let mut end = submit.x;
-        for glyph in text.chars().filter_map(|codepoint| font.glyph(codepoint)) {
-            end += glyph.advance(false);
-        }
+        let end = submit.x + font.width_of_text_runs(runs) as f32;
         let (left, top, right, bottom) = (submit.x - 1.0, submit.y - 1.0, end, submit.y + 9.0);
         let tint = argb(submit.background);
         // No texel: a negative coordinate tells the shader.
@@ -259,7 +262,7 @@ pub fn submit_vertices(
     for corners in glyph_quads(
         atlas,
         font,
-        &runs,
+        runs,
         (submit.x, submit.y),
         submit.color as u32,
         false,

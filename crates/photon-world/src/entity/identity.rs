@@ -86,6 +86,13 @@ impl ClientEntity {
         self.living_kind().is_some()
     }
 
+    /// Whether the type is a `Mob`: a living entity that is not a player, an armor stand or a
+    /// mannequin.
+    pub fn is_mob(&self) -> bool {
+        self.living_kind() == Some(LivingKind::Mob)
+            && photon_data::entity_type::name(self.type_id) != Some("minecraft:mannequin")
+    }
+
     /// Whether this is an invisible mob: not a player and not an armor stand, which are drawn
     /// by their own rules.
     pub fn is_invisible_mob(&self) -> bool {

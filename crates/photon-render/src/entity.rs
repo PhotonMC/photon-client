@@ -13,6 +13,7 @@ pub mod player_renderer;
 pub mod shadow;
 pub mod spear_animation;
 pub mod special_models;
+pub mod tag_rules;
 pub mod textures;
 pub mod trim;
 pub mod villager;

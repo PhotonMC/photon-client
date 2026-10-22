@@ -108,19 +108,8 @@ impl Gui {
 
     /// `Minecraft.crosshairPickEntity`: the type of the entity the crosshair is on.
     fn crosshair_entity(session: &PlaySession) -> Option<String> {
-        let player = session.player()?;
-        let photon_game::game_mode::Aim::Entity { id, .. } = photon_game::input::pick::pick(
-            session.world(),
-            player,
-            crate::view::eye_position(player, 1.0),
-        ) else {
-            return None;
-        };
-        let entity = session
-            .world()
-            .entities()
-            .all()
-            .find(|entity| entity.id() == id)?;
+        let id = crate::view::crosshair_entity(session)?;
+        let entity = session.world().entities().at(id)?;
         photon_data::entity_type::name(entity.type_id).map(str::to_owned)
     }
 

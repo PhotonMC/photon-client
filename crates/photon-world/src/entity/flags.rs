@@ -156,6 +156,11 @@ impl ClientEntity {
         self.custom_name_present
     }
 
+    /// `Entity.getCustomName`: the component the server sent, as its NBT tag.
+    pub fn custom_name(&self) -> Option<photon_core::nbt::FieldValue> {
+        crate::metadata::custom_name_from_metadata(self.metadata.as_deref()?)?
+    }
+
     pub fn is_custom_name_visible(&self) -> bool {
         self.custom_name_visible
     }

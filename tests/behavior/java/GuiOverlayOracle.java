@@ -111,6 +111,9 @@ class GuiOverlayOracle extends GuiHudOracle {
         var dispatcher = (net.minecraft.client.renderer.entity.EntityRenderDispatcher)
             unsafe.allocateInstance(net.minecraft.client.renderer.entity.EntityRenderDispatcher.class);
         MovementOracle.setField(dispatcher, "camera", camera);
+        if (row.has("type")) {
+            return mobNameTag(row, entry, level, camera, dispatcher);
+        }
         var renderer = (net.minecraft.client.renderer.entity.player.AvatarRenderer<?>)
             unsafe.allocateInstance(net.minecraft.client.renderer.entity.player.AvatarRenderer.class);
         MovementOracle.setField(renderer, "entityRenderDispatcher", dispatcher);
@@ -166,6 +169,109 @@ class GuiOverlayOracle extends GuiHudOracle {
                 remote.getZ() - camera.position().z + offset.z);
             var display = net.minecraft.client.renderer.entity.player.AvatarRenderer.class.getDeclaredMethod(
                 "submitNameDisplay", net.minecraft.client.renderer.entity.state.AvatarRenderState.class,
+                com.mojang.blaze3d.vertex.PoseStack.class,
+                net.minecraft.client.renderer.SubmitNodeCollector.class,
+                net.minecraft.client.renderer.state.level.CameraRenderState.class);
+            display.setAccessible(true);
+            display.invoke(renderer, state, poseStack, storage, cameraState);
+            poseStack.popPose();
+            submits.addAll(normal.kept);
+            submits.addAll(seeThrough.kept);
+        }
+        entry.add("submits", submits);
+        return entry;
+    }
+
+    /**
+     * The name tag of an entity that is not a player, as the renderer of its kind decides and
+     * submits it: a `MobRenderer`, an `ArmorStandRenderer` or the plain `EntityRenderer`.
+     */
+    static JsonObject mobNameTag(JsonObject row, JsonObject entry, net.minecraft.client.multiplayer.ClientLevel level,
+            net.minecraft.client.Camera camera,
+            net.minecraft.client.renderer.entity.EntityRenderDispatcher dispatcher) throws Exception {
+        var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
+            net.minecraft.resources.Identifier.parse(row.get("type").getAsString()));
+        var entity = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+            net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+        entity.setId(2);
+        entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), Oracle.f32(row, "y_rot"), 0.0F);
+        if (row.has("custom_name")) {
+            entity.setCustomName(Component.literal(row.get("custom_name").getAsString()));
+        }
+        entity.setCustomNameVisible(row.get("custom_name_visible").getAsBoolean());
+        entity.setInvisible(row.get("invisible").getAsBoolean());
+        entity.setShiftKeyDown(row.get("shift_key_down").getAsBoolean());
+        if (row.get("baby").getAsBoolean() && entity instanceof net.minecraft.world.entity.Mob mob) {
+            mob.setBaby(true);
+        }
+        if (row.has("scale")) {
+            ((net.minecraft.world.entity.LivingEntity) entity).getAttribute(
+                net.minecraft.world.entity.ai.attributes.Attributes.SCALE).setBaseValue(Oracle.f64(row, "scale"));
+            entity.refreshDimensions();
+        }
+        if (row.has("name_tag_distance")) {
+            ((net.minecraft.world.entity.LivingEntity) entity).getAttribute(
+                net.minecraft.world.entity.ai.attributes.Attributes.NAME_TAG_DISTANCE).setBaseValue(
+                    Oracle.f64(row, "name_tag_distance"));
+        }
+        if (row.get("vehicle").getAsBoolean()) {
+            var rider = new net.minecraft.client.player.RemotePlayer(level, new com.mojang.authlib.GameProfile(
+                java.util.UUID.nameUUIDFromBytes(new byte[] {3}), "Rider"));
+            rider.startRiding(entity, true, false);
+        }
+        if (row.get("picked").getAsBoolean()) {
+            MovementOracle.setField(dispatcher, "crosshairPickEntity", entity);
+        }
+        // The renderer of the kind: the rules are the class's, so one of each stands for its kind.
+        Class<?> rendererClass;
+        Class<?> stateClass;
+        switch (row.get("renderer").getAsString()) {
+            case "mob" -> {
+                rendererClass = net.minecraft.client.renderer.entity.ZombieRenderer.class;
+                stateClass = net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class;
+            }
+            case "armor_stand" -> {
+                rendererClass = net.minecraft.client.renderer.entity.ArmorStandRenderer.class;
+                stateClass = net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class;
+            }
+            default -> {
+                rendererClass = net.minecraft.client.renderer.entity.TntRenderer.class;
+                stateClass = net.minecraft.client.renderer.entity.state.EntityRenderState.class;
+            }
+        }
+        var renderer = unsafe.allocateInstance(rendererClass);
+        MovementOracle.setField(renderer, "entityRenderDispatcher", dispatcher);
+        var state = (net.minecraft.client.renderer.entity.state.EntityRenderState) stateClass.getDeclaredConstructor().newInstance();
+        state.isDiscrete = entity.isDiscrete();
+        state.lightCoords = row.get("light").getAsInt();
+        boolean living = entity instanceof net.minecraft.world.entity.LivingEntity;
+        var extract = (living
+            ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class
+            : net.minecraft.client.renderer.entity.EntityRenderer.class).getDeclaredMethod("extractNameTags",
+                living ? net.minecraft.world.entity.LivingEntity.class : net.minecraft.world.entity.Entity.class,
+                living ? net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class
+                    : net.minecraft.client.renderer.entity.state.EntityRenderState.class, float.class);
+        extract.setAccessible(true);
+        extract.invoke(renderer, entity, state, 0.0F);
+        entry.addProperty("shown", state.nameTag != null);
+        var submits = new JsonArray();
+        if (state.nameTag != null) {
+            entry.addProperty("text", state.nameTag.getString());
+            entry.addProperty("attachment_y", Oracle.bits(state.nameTagAttachment.y));
+            var storage = new net.minecraft.client.renderer.SubmitNodeStorage();
+            var collection = storage.order(0);
+            var normal = new KeptNormal();
+            var seeThrough = new KeptSeeThrough();
+            MovementOracle.setField(collection, "nameTags", normal);
+            MovementOracle.setField(collection, "seeThroughNameTags", seeThrough);
+            var cameraState = new net.minecraft.client.renderer.state.level.CameraRenderState();
+            cameraState.orientation.set(camera.rotation());
+            var poseStack = new com.mojang.blaze3d.vertex.PoseStack();
+            poseStack.pushPose();
+            poseStack.translate(entity.getX() - camera.position().x, entity.getY() - camera.position().y,
+                entity.getZ() - camera.position().z);
+            var display = net.minecraft.client.renderer.entity.EntityRenderer.class.getDeclaredMethod(
+                "submitNameDisplay", net.minecraft.client.renderer.entity.state.EntityRenderState.class,
                 com.mojang.blaze3d.vertex.PoseStack.class,
                 net.minecraft.client.renderer.SubmitNodeCollector.class,
                 net.minecraft.client.renderer.state.level.CameraRenderState.class);

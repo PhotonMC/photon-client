@@ -297,17 +297,17 @@ impl Play {
             spectating,
             hud_hidden: self.controls.hud_hidden,
         };
-        let (mut see_through, mut normal) =
-            overlays::name_tags(&self.session, self.gui.text_assets(), &camera, view);
         let (font, atlas) = self.gui.text_assets();
-        let (shown_through, shown) =
-            displays::display_texts(&self.session, (self.gui.lang(), font, atlas), view);
+        let assets = (self.gui.lang(), font, atlas);
+        let (mut see_through, mut normal) =
+            overlays::name_tags(&self.session, assets, &camera, view);
+        let (shown_through, shown) = displays::display_texts(&self.session, assets, view);
         see_through.extend(shown_through);
         normal.extend(shown);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
         normal.extend(crate::world::signs::sign_texts(
             &self.session,
-            (self.gui.lang(), font, atlas),
+            assets,
             view,
             (
                 first_person,

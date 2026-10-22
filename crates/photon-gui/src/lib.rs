@@ -2,6 +2,7 @@
 //! turned into draw calls on `photon-render`'s `GuiFrame`.
 
 pub mod chat;
+pub mod entity_name;
 pub mod favicon;
 pub mod hud;
 pub mod layout;

@@ -101,15 +101,22 @@ pub(crate) fn sleeping_pos_from_metadata(
     Some(Some(value))
 }
 
-pub(crate) fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool> {
+/// The custom name field's component, as the NBT tag the server sent: `Some(None)` for a field
+/// that says there is no name.
+pub(crate) fn custom_name_from_metadata(
+    metadata: &[u8],
+) -> Option<Option<photon_core::nbt::FieldValue>> {
     let (serializer_id, value_input) = find_metadata_field(metadata, ENTITY_CUSTOM_NAME_DATA_ID)?;
     if serializer_id != ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID {
         return None;
     }
     let (&present, mut rest) = value_input.split_first()?;
     if present == 0 {
-        return Some(false);
+        return Some(None);
     }
-    let component = photon_core::nbt::read_any_nbt(&mut rest).ok()?;
-    Some(component.is_some())
+    photon_core::nbt::read_any_nbt(&mut rest).ok()
+}
+
+pub(crate) fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool> {
+    custom_name_from_metadata(metadata).map(|name| name.is_some())
 }

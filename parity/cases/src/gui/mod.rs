@@ -21,6 +21,7 @@ mod jigsaw;
 mod keybinds;
 mod language;
 mod locator;
+mod mob_tags;
 mod options;
 mod panels;
 mod panorama;

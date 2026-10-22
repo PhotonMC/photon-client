@@ -13,6 +13,18 @@ pub fn eye_position(
     photon_core::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
 }
 
+/// `Minecraft.crosshairPickEntity`: the entity the crosshair is on, as the nearest thing along
+/// the aim.
+pub fn crosshair_entity(
+    session: &photon_net::connection::PlaySession,
+) -> Option<photon_core::ids::EntityId> {
+    let player = session.player()?;
+    match photon_game::input::pick::pick(session.world(), player, eye_position(player, 1.0)) {
+        photon_game::game_mode::Aim::Entity { id, .. } => Some(id),
+        _ => None,
+    }
+}
+
 /// Where the camera looks from.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum CameraType {

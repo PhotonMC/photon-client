@@ -802,7 +802,6 @@
 "crates/photon-oracle/src/resource.rs::clamping_lazy_max_int_range_result" = 73
 "crates/photon-oracle/src/resource.rs::resources_result" = 85
 "crates/photon-oracle/src/shadows.rs::entity_shadows_result" = 74
-"crates/photon-oracle/src/shadows.rs::name_tags_result" = 113
 "crates/photon-oracle/src/shape.rs::shape_result" = 78
 "crates/photon-oracle/src/shape/border.rs::client_world_border_state_case" = 61
 "crates/photon-oracle/src/shape/border.rs::world_border_collision_shape_moving_case" = 89
@@ -1000,7 +999,6 @@
 "crates/photon/src/objects/minecarts.rs::remote_minecarts" = 87
 "crates/photon/src/overlays/light.rs::player_model" = 109
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 101
-"crates/photon/src/overlays/wear.rs::name_tags" = 65
 "crates/photon/src/overlays/wear.rs::remote_players" = 102
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 62
