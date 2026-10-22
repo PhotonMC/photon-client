@@ -7,7 +7,7 @@ use crate::*;
 /// The mob a spawner shows, made once for the entity type its tag names.
 #[derive(Debug)]
 pub(crate) struct SpawnerDisplayEntry {
-    pos: Pos,
+    pub(super) pos: Pos,
     type_name: String,
     /// A trial spawner makes its mob once and keeps it while the block entity lives.
     trial: bool,
@@ -105,6 +105,16 @@ impl ClientWorld {
             trial_spin_speed(crate::block::rules::property(block, "trial_spawner_state")).is_some()
         };
         self.block_entity_at(x, y, z).is_some() && (!shown.trial || spins())
+    }
+
+    /// The type of the mob a spawner at a place has made.
+    #[cfg(test)]
+    pub(crate) fn spawner_display_type_at(&self, pos: Pos) -> Option<&str> {
+        let shown = self
+            .spawner_displays
+            .iter()
+            .find(|shown| shown.pos == pos)?;
+        Some(shown.type_name.as_str())
     }
 
     /// The mob a spawner shows, by the id it was made with.

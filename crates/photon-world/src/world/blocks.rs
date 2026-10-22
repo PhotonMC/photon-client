@@ -32,6 +32,7 @@ impl ClientWorld {
             chunk.block_entities.remove(&(x, y, z));
         }
         self.block_tickers.unregister((x, y, z));
+        self.spawner_displays.retain(|shown| shown.pos != (x, y, z));
     }
 
     /// The block entity at a place, made as the block's own type when the chunk holds none
@@ -93,6 +94,7 @@ impl ClientWorld {
         if block::state_or_air(previous_state_id).block != block::state_or_air(state_id).block {
             chunk.block_entities.remove(&(x, y, z));
             self.block_tickers.unregister((x, y, z));
+            self.spawner_displays.retain(|shown| shown.pos != (x, y, z));
         }
         chunk.mark_chest((x, y, z), state_id);
         if was_empty != is_empty {

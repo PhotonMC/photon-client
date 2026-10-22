@@ -107,3 +107,4 @@ mod entities;
 mod local_player;
 mod passengers;
 mod presentation;
+mod spawners;
