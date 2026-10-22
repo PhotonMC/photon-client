@@ -265,7 +265,7 @@ struct Play {
     /// The sound packets that have arrived.
     sounds_heard: usize,
     /// The sound engine, if there is a device to play on.
-    sound: Option<SoundSystem>,
+    sound: crate::sound::SoundSlot,
     /// The music of the dimension and its biomes.
     music: crate::music::GameMusic,
     /// The sounds of the place the player is in.

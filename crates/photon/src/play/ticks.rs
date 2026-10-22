@@ -143,7 +143,7 @@ impl Play {
             session.dimension_type().unwrap_or("minecraft:overworld"),
             session.registry_names("minecraft:worldgen/biome"),
         );
-        let sound = SoundSystem::open(std::path::Path::new(&root), &controls.options);
+        let sound = crate::sound::SoundSlot::open(std::path::Path::new(&root), &controls.options);
         let mut gui = Gui::load(
             std::path::Path::new(&root),
             registries,

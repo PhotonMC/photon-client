@@ -44,6 +44,9 @@ impl DeviceList {
     }
 }
 
+/// What the library calls the device while none is open (`Library.currentDeviceName`).
+pub const NO_DEVICE: &str = "(None)";
+
 /// `SoundEngine.shouldChangeDevice` after the device is known not to be lost: whether the engine
 /// goes to another device, given the device it is on, the lists last seen and now, and the sound
 /// device option (empty for the system default).
@@ -213,6 +216,10 @@ mod tests {
             (&before, &after),
             "Headset"
         ));
+        // Nothing is open: any change of the lists sends the engine to look again.
+        assert!(device_should_change(NO_DEVICE, (&before, &after), ""));
+        assert!(device_should_change(NO_DEVICE, (&before, &after), "Dock"));
+        assert!(!device_should_change(NO_DEVICE, (&after, &after), ""));
         // A preferred device that is not listed stays unwanted.
         assert!(!device_should_change("Speakers", (&before, &after), "Dock"));
     }

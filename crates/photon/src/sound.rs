@@ -66,6 +66,7 @@ impl SoundAssets for IndexedAssets {
 type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 mod devices;
+pub use devices::SoundSlot;
 
 pub struct SoundSystem {
     engine: SoundEngine<MixerChannels>,
@@ -124,7 +125,7 @@ impl SoundSystem {
                 .volumes
                 .set(source, options.sound_category_volume(source));
         }
-        log::info!("sound on");
+        log::info!("sound on: {}", output.name);
         Some(Self {
             engine,
             mixer: Arc::clone(&output.mixer),
