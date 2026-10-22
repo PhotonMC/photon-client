@@ -248,6 +248,32 @@ fn read_properties(input: &mut &[u8]) -> Result<Vec<ProfileProperty>, ReadError>
     Ok(properties)
 }
 
+/// The key exchange answer: the shared secret and the server's challenge, each encrypted with
+/// the server's public key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerboundKeyPacket {
+    pub encrypted_secret: Vec<u8>,
+    pub encrypted_challenge: Vec<u8>,
+}
+
+impl ServerboundKeyPacket {
+    /// Encode the two length-prefixed byte arrays.
+    pub fn encode(&self, output: &mut Vec<u8>) -> Result<(), WriteError> {
+        write_byte_array(&self.encrypted_secret, output)?;
+        write_byte_array(&self.encrypted_challenge, output)
+    }
+
+    /// Decode the secret and the challenge.
+    pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let encrypted_secret = read_byte_array(input)?;
+        let encrypted_challenge = read_byte_array(input)?;
+        Ok(Self {
+            encrypted_secret,
+            encrypted_challenge,
+        })
+    }
+}
+
 fn write_byte_array(value: &[u8], output: &mut Vec<u8>) -> Result<(), WriteError> {
     let length = i32::try_from(value.len()).map_err(|_| WriteError::EncoderError)?;
     wire::write_varint(length, output);

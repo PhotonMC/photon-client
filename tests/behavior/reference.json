@@ -500,6 +500,7 @@
       ],
       "extra_sources": [
         "WireConfigurationOracle.java",
+        "WireCryptoOracle.java",
         "WireFrameOracle.java",
         "WireLoginOracle.java",
         "WireRegistryOracle.java",

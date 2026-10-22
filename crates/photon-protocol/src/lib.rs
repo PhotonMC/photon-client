@@ -4,6 +4,7 @@
 pub mod common;
 pub mod configuration;
 pub mod cookie;
+pub mod crypto;
 pub mod frame;
 pub mod handshake;
 pub mod login;

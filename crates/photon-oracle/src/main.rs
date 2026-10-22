@@ -100,6 +100,7 @@ use std::rc::Rc;
 
 mod hex;
 mod music;
+mod wire_crypto;
 use hex::*;
 mod information;
 use information::*;

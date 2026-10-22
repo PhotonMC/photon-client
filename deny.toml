@@ -7,6 +7,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # Marvin leaks a private key through the timing of RSA decryption. The client only encrypts
+    # with the server's public key (login key exchange) and never holds a private key.
+    "RUSTSEC-2023-0071",
+]
 
 [licenses]
 version = 2

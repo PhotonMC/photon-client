@@ -52,6 +52,12 @@ const WIRE_OPERATIONS: &[(&str, WireOperation)] = &[
     ("frame_decode", frame_decode_result),
     ("handshake_intention", handshake_intention_result),
     ("login_hello", login_hello_result),
+    (
+        "crypto_server_hash",
+        crate::wire_crypto::crypto_server_hash_result,
+    ),
+    ("crypto_stream", crate::wire_crypto::crypto_stream_result),
+    ("login_key", crate::wire_crypto::login_key_result),
     ("login_compression", login_compression_result),
     ("login_server_hello", login_server_hello_result),
     ("login_acknowledged", login_acknowledged_result),

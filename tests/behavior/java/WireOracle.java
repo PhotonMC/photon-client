@@ -21,6 +21,15 @@ public final class WireOracle extends WireRegistryOracle {
         if (operation.equals("login_hello")) {
             return loginHelloResult(request);
         }
+        if (operation.equals("crypto_server_hash")) {
+            return WireCryptoOracle.serverHashResult(request);
+        }
+        if (operation.equals("crypto_stream")) {
+            return WireCryptoOracle.streamResult(request);
+        }
+        if (operation.equals("login_key")) {
+            return WireCryptoOracle.keyPacketResult(request);
+        }
         if (operation.equals("login_compression")) {
             return loginCompressionResult(request);
         }

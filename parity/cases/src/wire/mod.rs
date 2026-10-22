@@ -4,6 +4,7 @@
 mod advancements;
 mod codec;
 mod configuration;
+mod crypto;
 mod finished;
 mod framing;
 mod login;
@@ -18,6 +19,7 @@ pub fn cases() -> Vec<Value> {
     let mut cases = configuration::cases();
     cases.extend(framing::cases());
     cases.extend(login::cases());
+    cases.extend(crypto::cases());
     cases.extend(advancements::cases());
     cases.extend(stats::cases());
     cases.extend(status::cases());
