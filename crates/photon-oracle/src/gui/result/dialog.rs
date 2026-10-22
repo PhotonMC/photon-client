@@ -1,7 +1,8 @@
 use super::*;
 
 use photon_game::dialog::{
-    Action, ActionButton, AfterAction, Body, CommonData, Dialog, Next, PlainMessage, run_action,
+    Action, ActionButton, AfterAction, Body, CommonData, Dialog, DialogContext, DialogRef,
+    DialogSet, ListSource, Next, PlainMessage, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
@@ -68,8 +69,8 @@ fn dialog(value: &Value) -> Dialog {
     let buttons: Vec<ActionButton> = value["buttons"]
         .as_array()
         .map_or_else(Vec::new, |items| items.iter().map(button).collect());
-    if value["kind"] == "server_links" {
-        return linked(common, value);
+    if value["kind"] == "server_links" || value["kind"] == "dialog_list" {
+        return listed(common, value);
     }
     if value["kind"] == "multi_action" {
         return Dialog::MultiAction {
@@ -87,8 +88,28 @@ fn dialog(value: &Value) -> Dialog {
     }
 }
 
-/// A `ServerLinksDialog` with the links the row lists, as the screen builds its buttons from them.
-fn linked(common: Box<CommonData>, value: &Value) -> Dialog {
+/// What the row's list dialogs take their buttons from: the links it lists. It has no registry.
+struct RowContext(photon_game::server_links::ServerLinks);
+
+impl DialogContext for RowContext {
+    fn server_links(&self) -> &photon_game::server_links::ServerLinks {
+        &self.0
+    }
+
+    fn tag_members(&self, _tag: &str) -> Vec<DialogRef> {
+        Vec::new()
+    }
+
+    fn dialog(&self, reference: &DialogRef) -> Option<Dialog> {
+        match reference {
+            DialogRef::Inline(dialog) => Some((**dialog).clone()),
+            DialogRef::Registry(_) => None,
+        }
+    }
+}
+
+/// The links a row lists.
+fn row_links(value: &Value) -> photon_game::server_links::ServerLinks {
     use photon_game::server_links::{LinkType, ServerLinks, UntrustedEntry};
     let entries = value["links"].as_array().map_or_else(Vec::new, |links| {
         links
@@ -102,18 +123,61 @@ fn linked(common: Box<CommonData>, value: &Value) -> Dialog {
             })
             .collect()
     });
-    Dialog::ServerLinks {
+    ServerLinks::trusted(entries)
+}
+
+/// A `ServerLinksDialog` or a `DialogListDialog` of the sub-dialogs the row lists, as the screen
+/// builds its buttons from them.
+fn listed(common: Box<CommonData>, value: &Value) -> Dialog {
+    let source = if value["kind"] == "server_links" {
+        ListSource::ServerLinks
+    } else {
+        let subs = value["subs"].as_array().map_or_else(Vec::new, |subs| {
+            subs.iter()
+                .map(|sub| DialogRef::Inline(Box::new(sub_dialog(sub))))
+                .collect()
+        });
+        ListSource::Dialogs(DialogSet::Entries(subs))
+    };
+    Dialog::List {
         common,
+        source,
         exit: value.get("exit").map(|exit| Box::new(button(exit))),
         columns: value["columns"].as_i64().unwrap_or(2) as i32,
         button_width: value["button_width"].as_i64().unwrap_or(150) as i32,
     }
-    .resolved(&ServerLinks::trusted(entries))
+    .resolved(&RowContext(row_links(value)))
+}
+
+/// A dialog a list opens: a notice with a title and maybe a name for the button.
+fn sub_dialog(value: &Value) -> Dialog {
+    let common = Box::new(CommonData {
+        title: text(&value["title"]),
+        external_title: value.get("external").map(text),
+        can_close_with_escape: true,
+        pause: false,
+        after_action: AfterAction::Close,
+        body: Vec::new(),
+        has_inputs: false,
+    });
+    Dialog::Other(common)
+}
+
+/// The class the reference names the screen a press left, by the kind of dialog the row made.
+fn screen_name(dialog: &Dialog, kind: &Value, next: Next) -> &'static str {
+    match next {
+        Next::Previous => "PreviousScreen",
+        Next::Waiting => "WaitingForResponseScreen",
+        Next::Same if kind == "dialog_list" => "DialogListDialogScreen",
+        Next::Same if kind == "server_links" => "ServerLinksDialogScreen",
+        Next::Same if dialog.button_list().is_some() => "MultiButtonDialogScreen",
+        Next::Same => "SimpleDialogScreen",
+    }
 }
 
 /// What the game's side of a press did, as the reference's recording gui and connection write it:
 /// `Next` is the screen it was left on.
-fn press_events(dialog: &Dialog, press: Press, events: &mut Vec<String>) {
+fn press_events(dialog: &Dialog, (kind, press): (&Value, Press), events: &mut Vec<String>) {
     let common = dialog.common();
     let (action, after) = match press {
         Press::Warning => {
@@ -127,19 +191,19 @@ fn press_events(dialog: &Dialog, press: Press, events: &mut Vec<String>) {
         ),
     };
     let outcome = run_action(action, after);
-    let screen = match outcome.next {
-        Next::Previous => "PreviousScreen",
-        Next::Same if dialog.button_list().is_some() => "MultiButtonDialogScreen",
-        Next::Same => "SimpleDialogScreen",
-        Next::Waiting => "WaitingForResponseScreen",
-    };
+    let screen = screen_name(dialog, kind, outcome.next);
     match outcome.event {
         Some(ClickEvent::RunCommand(command)) => {
             let command = command.strip_prefix('/').unwrap_or(&command);
             events.push(format!("run_command:{command}:{screen}"));
         }
         Some(ClickEvent::Custom(id, _)) => events.push(format!("custom:{id}")),
-        // `clickUrlAction` asks first and leaves the screen to the question.
+        // These two leave the screen to what they open: the question about an address, or the
+        // dialog.
+        Some(ClickEvent::ShowDialog(_)) => {
+            events.push(format!("open_dialog:{screen}"));
+            return;
+        }
         Some(ClickEvent::OpenUrl(_)) => {
             events.push("link".to_owned());
             return;
@@ -254,7 +318,7 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                 other => return Err(format!("unknown step {other}")),
             };
             if let Some(press) = press {
-                press_events(&dialog, press, &mut events);
+                press_events(&dialog, (&shown["kind"], press), &mut events);
             }
         }
         frame.millis = row["ms"].as_u64().unwrap_or(0);

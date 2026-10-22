@@ -155,6 +155,28 @@ class GuiDialogOracle extends GuiSocialOracle {
                         json.get("columns").getAsInt(), json.get("button_width").getAsInt());
                     shown = new net.minecraft.client.gui.screens.dialog.ServerLinksDialogScreen(new PreviousScreen(), linked,
                         new Access(gui, links));
+                } else if (json.get("kind").getAsString().equals("dialog_list")) {
+                    var holders = new java.util.ArrayList<net.minecraft.core.Holder<net.minecraft.server.dialog.Dialog>>();
+                    for (var item : json.getAsJsonArray("subs")) {
+                        var sub = item.getAsJsonObject();
+                        var subCommon = new net.minecraft.server.dialog.CommonDialogData(
+                            Component.literal(sub.get("title").getAsString()),
+                            sub.has("external") ? java.util.Optional.of(Component.literal(sub.get("external").getAsString()))
+                                : java.util.Optional.empty(),
+                            true, false, net.minecraft.server.dialog.DialogAction.CLOSE, java.util.List.of(),
+                            java.util.List.of());
+                        holders.add(net.minecraft.core.Holder.direct(
+                            new net.minecraft.server.dialog.NoticeDialog(subCommon, new net.minecraft.server.dialog.ActionButton(
+                                new net.minecraft.server.dialog.CommonButtonData(Component.literal("OK"), 150),
+                                java.util.Optional.empty()))));
+                    }
+                    var listed = new net.minecraft.server.dialog.DialogListDialog(common,
+                        net.minecraft.core.HolderSet.direct(holders),
+                        json.has("exit") ? java.util.Optional.of(button(json.getAsJsonObject("exit")))
+                            : java.util.Optional.empty(),
+                        json.get("columns").getAsInt(), json.get("button_width").getAsInt());
+                    shown = new net.minecraft.client.gui.screens.dialog.DialogListDialogScreen(new PreviousScreen(), listed,
+                        new Access(gui, links));
                 } else if (json.get("kind").getAsString().equals("multi_action")) {
                     var actions = new java.util.ArrayList<net.minecraft.server.dialog.ActionButton>();
                     for (var item : buttons) {

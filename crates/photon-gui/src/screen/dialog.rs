@@ -140,7 +140,7 @@ impl DialogScreen {
         in_world: bool,
     ) -> Option<Self> {
         let common = dialog.common();
-        if matches!(dialog, Dialog::Other(_) | Dialog::ServerLinks { .. }) {
+        if matches!(dialog, Dialog::Other(_) | Dialog::List { .. }) {
             return None;
         }
         let (width, height) = size;

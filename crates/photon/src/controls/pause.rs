@@ -51,7 +51,7 @@ impl Controls {
             // `minecraft.player.connection.showDialog(dialog, this)`: over the menu.
             PauseAction::Custom => {
                 if let Some(dialog) = self.pause_additions.clone() {
-                    let dialog = dialog.resolved(session.server_links());
+                    let dialog = dialog.resolved(&*session);
                     self.show_dialog(dialog, surface, assets);
                 }
             }

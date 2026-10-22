@@ -79,6 +79,7 @@ struct Dialog {
     columns: Option<i64>,
     exit: Option<Value>,
     links: Option<Vec<Value>>,
+    subs: Option<Vec<Value>>,
     button_width: Option<i64>,
 }
 
@@ -99,6 +100,7 @@ fn row(label: &'static str) -> Dialog {
         columns: None,
         exit: None,
         links: None,
+        subs: None,
         button_width: None,
     }
 }
@@ -115,6 +117,10 @@ impl Dialog {
         }
         if let Some(exit) = self.exit {
             dialog["exit"] = exit;
+        }
+        if let Some(subs) = self.subs {
+            dialog["subs"] = json!(subs);
+            dialog["button_width"] = json!(self.button_width.unwrap_or(150));
         }
         if let Some(links) = self.links {
             dialog["links"] = json!(links);
@@ -443,6 +449,45 @@ fn link_rows() -> Vec<Value> {
     ]
 }
 
+/// A `DialogListDialog` of the sub-dialogs given.
+fn sublist(label: &'static str, subs: Vec<Value>, columns: i64) -> Dialog {
+    Dialog {
+        kind: Some("dialog_list"),
+        columns: Some(columns),
+        subs: Some(subs),
+        buttons: vec![],
+        title: "Choose",
+        body: vec![],
+        ..row(label)
+    }
+}
+
+fn sub(title: &str, external: Option<&str>) -> Value {
+    match external {
+        Some(external) => json!({"title": title, "external": external}),
+        None => json!({"title": title}),
+    }
+}
+
+/// `DialogListDialogScreen`: a button per sub-dialog, named by its external title or else its
+/// title; a click asks to open it.
+fn sublist_rows() -> Vec<Value> {
+    let few = || vec![sub("First", None), sub("Second", Some("Second (outer)")), sub("Third", None)];
+    rows![
+        sublist("sublist-none", vec![], 2),
+        sublist("sublist-one", vec![sub("Only", None)], 2),
+        sublist("sublist-three", few(), 2),
+        sublist("sublist-one-column", few(), 1),
+        sublist("sublist-exit", few(), 2).leave(),
+        Dialog { button_width: Some(80), ..sublist("sublist-narrow", few(), 2) },
+        sublist("sublist-hover", few(), 2).at(150, 90),
+        sublist("sublist-click", few(), 2).steps(vec![click(150, 90)]).at(150, 90),
+        sublist("sublist-click-second", few(), 2).steps(vec![click(270, 90)]).at(270, 90),
+        sublist("sublist-click-none", few(), 2).steps(vec![click(150, 90)]).after("NONE"),
+        sublist("sublist-escape-exit", few(), 2).leave().steps(vec![key("escape")]),
+    ]
+}
+
 /// `SimpleDialogScreen` for a notice and a confirmation: the title with its
 /// warning button, the body in a scrolling box (wheel, scrollbar, Tab into
 /// view), the buttons and what they tell the connection, Escape, and the
@@ -463,7 +508,8 @@ fn blur_rows() -> Vec<Value> {
 }
 
 pub fn dialog_screen() -> Value {
-    let mut rows = [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows(), link_rows()].concat();
+    let mut rows =
+        [notice_rows(), scroll_rows(), press_rows(), waiting_rows(), list_rows(), link_rows(), sublist_rows()].concat();
     rows.extend(blur_rows());
     gui("dialog-screen", "dialog_screen", rows)
 }

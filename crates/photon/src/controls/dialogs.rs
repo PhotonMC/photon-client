@@ -90,7 +90,7 @@ impl Controls {
         for event in session.take_dialog_events() {
             match event {
                 DialogEvent::Show(dialog) => {
-                    let dialog = dialog.resolved(session.server_links());
+                    let dialog = dialog.resolved(&*session);
                     self.show_dialog(dialog, surface, assets);
                 }
                 DialogEvent::Clear => self.clear_dialog(),
@@ -104,11 +104,8 @@ impl Controls {
         dialog: &DialogRef,
         session: &PlaySession,
     ) -> Option<Dialog> {
-        match dialog {
-            DialogRef::Inline(dialog) => Some((**dialog).clone()),
-            DialogRef::Registry(name) => session.dialog_by_name(name),
-        }
-        .map(|dialog| dialog.resolved(session.server_links()))
+        photon_game::dialog::DialogContext::dialog(session, dialog)
+            .map(|dialog| dialog.resolved(session))
     }
 
     /// `ClientCommonPacketListenerImpl.showDialog`: the dialog takes the place of the screen it

@@ -1,5 +1,9 @@
 //! Server dialogs (`net.minecraft.server.dialog`): the data the server sends, as far as the
-//! notice, confirmation and multi-action screens use it. Dialog lists, links and inputs are T106.
+//! notice, confirmation, multi-action and button list screens use it. Inputs are T106.
+
+mod list;
+
+pub use list::{DialogContext, DialogSet, ListSource};
 
 use photon_core::nbt::{Field, FieldValue};
 
@@ -100,9 +104,11 @@ pub enum Dialog {
         exit: Option<Box<ActionButton>>,
         columns: i32,
     },
-    /// `ServerLinksDialog`: a `MultiAction` of the server's links, once `resolved`.
-    ServerLinks {
+    /// `ServerLinksDialog` and `DialogListDialog`: a `MultiAction` of what `source` names, once
+    /// `resolved`.
+    List {
         common: Box<CommonData>,
+        source: ListSource,
         exit: Option<Box<ActionButton>>,
         columns: i32,
         button_width: i32,
@@ -117,7 +123,7 @@ impl Dialog {
             Self::Notice { common, .. }
             | Self::Confirmation { common, .. }
             | Self::MultiAction { common, .. }
-            | Self::ServerLinks { common, .. }
+            | Self::List { common, .. }
             | Self::Other(common) => common,
         }
     }
@@ -127,7 +133,7 @@ impl Dialog {
         match self {
             Self::Notice { action, .. } => action.action.as_ref(),
             Self::Confirmation { no, .. } => no.action.as_ref(),
-            Self::MultiAction { exit, .. } | Self::ServerLinks { exit, .. } => {
+            Self::MultiAction { exit, .. } | Self::List { exit, .. } => {
                 exit.as_ref().and_then(|exit| exit.action.as_ref())
             }
             Self::Other(_) => None,
@@ -142,38 +148,8 @@ impl Dialog {
             Self::MultiAction { actions, exit, .. } => {
                 actions.iter().chain(exit.as_deref()).collect()
             }
-            Self::ServerLinks { exit, .. } => exit.as_deref().into_iter().collect(),
+            Self::List { exit, .. } => exit.as_deref().into_iter().collect(),
             Self::Other(_) => Vec::new(),
-        }
-    }
-
-    /// `ServerLinksDialogScreen.createListActions`: each link is a button that opens its address.
-    /// Any other dialog stays as it is.
-    pub fn resolved(self, links: &crate::server_links::ServerLinks) -> Self {
-        let Self::ServerLinks {
-            common,
-            exit,
-            columns,
-            button_width,
-        } = self
-        else {
-            return self;
-        };
-        let actions = links
-            .entries()
-            .iter()
-            .map(|entry| ActionButton {
-                label: entry.link_type.display_name(),
-                tooltip: None,
-                width: button_width,
-                action: Some(Action::Static(ClickEvent::OpenUrl(entry.link.clone()))),
-            })
-            .collect();
-        Self::MultiAction {
-            common,
-            actions,
-            exit,
-            columns,
         }
     }
 
@@ -207,44 +183,6 @@ impl Dialog {
         })
     }
 
-    /// `ServerLinksDialog` from its fields.
-    fn server_links(common: Box<CommonData>, fields: &[Field]) -> Option<Self> {
-        Some(Self::ServerLinks {
-            common,
-            exit: exit_action(fields)?,
-            columns: columns(fields)?,
-            button_width: width(fields, "button_width", 150, 1024)?,
-        })
-    }
-
-    /// The dialog a registry entry of the game's own data pack stands for, when the server left
-    /// its data out because the client knows the pack (`Dialogs.bootstrap`). Only the server
-    /// links dialog has a screen here.
-    pub fn built_in(name: &str) -> Option<Self> {
-        if name != "minecraft:server_links" {
-            return None;
-        }
-        Some(Self::ServerLinks {
-            common: Box::new(CommonData {
-                title: Component::translatable("menu.server_links.title"),
-                external_title: Some(Component::translatable("menu.server_links")),
-                can_close_with_escape: true,
-                pause: true,
-                after_action: AfterAction::Close,
-                body: Vec::new(),
-                has_inputs: false,
-            }),
-            exit: Some(Box::new(ActionButton {
-                label: Component::translatable("gui.back"),
-                tooltip: None,
-                width: 200,
-                action: None,
-            })),
-            columns: 1,
-            button_width: 310,
-        })
-    }
-
     /// `Dialog.DIRECT_CODEC` from the tag.
     pub fn from_nbt(value: &FieldValue) -> Option<Self> {
         let FieldValue::Compound(fields) = value else {
@@ -271,6 +209,7 @@ impl Dialog {
             },
             "multi_action" => Self::multi_action(common, fields)?,
             "server_links" => Self::server_links(common, fields)?,
+            "dialog_list" => Self::dialog_list(common, fields)?,
             _ => Self::Other(common),
         })
     }
@@ -438,34 +377,34 @@ impl Action {
     }
 }
 
-fn get<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
+pub(crate) fn get<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
     fields
         .iter()
         .find(|field| field.key == key)
         .map(|field| &field.value)
 }
 
-fn text<'a>(fields: &'a [Field], key: &str) -> Option<&'a str> {
+pub(crate) fn text<'a>(fields: &'a [Field], key: &str) -> Option<&'a str> {
     match get(fields, key) {
         Some(FieldValue::Str(text)) => Some(text),
         _ => None,
     }
 }
 
-fn strip_namespace(name: &str) -> &str {
+pub(crate) fn strip_namespace(name: &str) -> &str {
     name.strip_prefix("minecraft:").unwrap_or(name)
 }
 
 /// `ExtraCodecs.POSITIVE_INT.optionalFieldOf("columns", 2)`.
 /// The optional `exit_action` button: `Some(None)` for none, `None` for one that does not read.
-fn exit_action(fields: &[Field]) -> Option<Option<Box<ActionButton>>> {
+pub(crate) fn exit_action(fields: &[Field]) -> Option<Option<Box<ActionButton>>> {
     match get(fields, "exit_action") {
         Some(value) => ActionButton::from_nbt(value).map(|button| Some(Box::new(button))),
         None => Some(None),
     }
 }
 
-fn columns(fields: &[Field]) -> Option<i32> {
+pub(crate) fn columns(fields: &[Field]) -> Option<i32> {
     match get(fields, "columns") {
         None => Some(2),
         Some(FieldValue::Int(value)) if *value >= 1 => Some(*value),
@@ -474,7 +413,7 @@ fn columns(fields: &[Field]) -> Option<i32> {
 }
 
 /// An `intRange(1, max)` field with a default.
-fn width(fields: &[Field], key: &str, default: i32, max: i32) -> Option<i32> {
+pub(crate) fn width(fields: &[Field], key: &str, default: i32, max: i32) -> Option<i32> {
     match get(fields, key) {
         None => Some(default),
         Some(FieldValue::Int(value)) if (1..=max).contains(value) => Some(*value),

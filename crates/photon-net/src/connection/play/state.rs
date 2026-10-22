@@ -229,21 +229,14 @@ impl PlaySession {
     /// `pause_screen_additions` tag of the dialog registry wins (one entry is the dialog, more
     /// are the custom options list); with it empty, the server's links are the dialog.
     pub fn pause_screen_additions(&self) -> Option<photon_game::dialog::Dialog> {
-        let added = self
-            .state
-            .tags
-            .iter()
-            .flat_map(|packet| &packet.registries)
-            .filter(|registry| registry.registry.as_string() == "minecraft:dialog")
-            .flat_map(|registry| &registry.tags)
-            .filter(|tag| tag.id.as_string() == "minecraft:pause_screen_additions")
-            .flat_map(|tag| tag.values.iter().copied())
-            .collect::<Vec<_>>();
-        let entry = |index: usize| self.registry_dialog(index);
+        let added = photon_game::dialog::DialogContext::tag_members(
+            self,
+            "minecraft:pause_screen_additions",
+        );
         match added.as_slice() {
             [] if self.state.server_links.is_empty() => None,
             [] => self.dialog_by_name("minecraft:server_links"),
-            [only] => entry(usize::try_from(*only).ok()?),
+            [only] => photon_game::dialog::DialogContext::dialog(self, only),
             _ => self.dialog_by_name("minecraft:custom_options"),
         }
     }
@@ -335,5 +328,43 @@ impl PlaySession {
     /// `Level.getThunderLevel`: the thunder level scaled by the rain.
     pub fn thunder_level(&self) -> f32 {
         self.level_info.thunder_level * self.level_info.rain_level
+    }
+}
+
+/// What a button list dialog takes its buttons from: the links and the dialog registry the
+/// server sent.
+impl photon_game::dialog::DialogContext for PlaySession {
+    fn server_links(&self) -> &photon_game::server_links::ServerLinks {
+        &self.state.server_links
+    }
+
+    fn tag_members(&self, tag: &str) -> Vec<photon_game::dialog::DialogRef> {
+        let tag = if tag.contains(':') {
+            tag.to_owned()
+        } else {
+            format!("minecraft:{tag}")
+        };
+        let names = self.registry_names("minecraft:dialog");
+        self.state
+            .tags
+            .iter()
+            .flat_map(|packet| &packet.registries)
+            .filter(|registry| registry.registry.as_string() == "minecraft:dialog")
+            .flat_map(|registry| &registry.tags)
+            .filter(|entry| entry.id.as_string() == tag)
+            .flat_map(|entry| entry.values.iter())
+            .filter_map(|value| names.get(usize::try_from(*value).ok()?))
+            .map(|name| photon_game::dialog::DialogRef::Registry(name.clone()))
+            .collect()
+    }
+
+    fn dialog(
+        &self,
+        reference: &photon_game::dialog::DialogRef,
+    ) -> Option<photon_game::dialog::Dialog> {
+        match reference {
+            photon_game::dialog::DialogRef::Inline(dialog) => Some((**dialog).clone()),
+            photon_game::dialog::DialogRef::Registry(name) => self.dialog_by_name(name),
+        }
     }
 }
