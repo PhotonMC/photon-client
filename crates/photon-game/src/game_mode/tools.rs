@@ -178,7 +178,7 @@ pub(super) fn use_on(
     Some(match class {
         C::HoeItem => hoe_use_on(ctx, aim),
         C::FlintAndSteelItem => flint_and_steel_use_on(ctx, aim),
-        C::FireChargeItem => fire_charge_use_on(ctx, aim),
+        C::FireChargeItem => fire_charge_use_on(ctx, hand, aim),
         C::ShearsItem => shears_use_on(ctx, aim),
         C::AxeItem => axe_use_on(ctx, hand, aim),
         C::ShovelItem => shovel_use_on(ctx, aim),
@@ -256,9 +256,9 @@ pub(super) fn flint_and_steel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResu
 }
 
 /// `FireChargeItem.useOn` for the client: the same places as flint, set with `setBlockAndUpdate`
-/// (flags 3). Its sound is played by the server for everyone (the call names no player), and the
-/// stack shrink is not predicted here.
-pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
+/// (flags 3). Its sound is played by the server for everyone (the call names no player). One
+/// charge is used up whatever the game mode (`ItemStack.shrink`, not `consume`).
+pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult {
     let Aim::Block { x, y, z, face, .. } = aim else {
         return UseResult::Pass;
     };
@@ -270,6 +270,8 @@ pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
         ctx.world
             .set_block_with_updates(target, state, 3, 512, position);
     }
+    let slot = ctx.hand_slot(hand);
+    ctx.world.shrink_local_player_slot(slot, 1);
     UseResult::Success { swing: true }
 }
 
