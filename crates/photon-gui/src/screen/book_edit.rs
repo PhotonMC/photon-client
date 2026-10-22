@@ -235,10 +235,23 @@ impl BookEditScreen {
     /// A widget pressed (`onPress`).
     fn press(&mut self, focus: Focus, font: &Font, lang: &Lang) -> Option<BookEditAction> {
         match focus {
-            Focus::Back => self.page_back(font, lang),
-            Focus::Forward => self.page_forward(font, lang),
-            Focus::Sign => return Some(BookEditAction::Sign),
-            Focus::Done => return Some(BookEditAction::Done),
+            Focus::Back | Focus::Forward => {
+                // `PageButton.playDownSound`: the page turn replaces the click.
+                crate::ui_sound::play_ui("minecraft:item.book.page_turn");
+                if focus == Focus::Back {
+                    self.page_back(font, lang);
+                } else {
+                    self.page_forward(font, lang);
+                }
+            }
+            Focus::Sign => {
+                crate::ui_sound::play_down_sound();
+                return Some(BookEditAction::Sign);
+            }
+            Focus::Done => {
+                crate::ui_sound::play_down_sound();
+                return Some(BookEditAction::Done);
+            }
             Focus::Page => {}
         }
         None

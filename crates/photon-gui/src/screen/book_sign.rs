@@ -137,6 +137,9 @@ impl BookSignScreen {
     }
 
     fn press(&self, focus: Focus) -> Option<BookSignAction> {
+        if matches!(focus, Focus::Cancel) || (focus == Focus::Finalize && self.finalize.active) {
+            crate::ui_sound::play_down_sound();
+        }
         match focus {
             Focus::Finalize if self.finalize.active => {
                 Some(BookSignAction::Finalize(java_trim(&self.title.value())))

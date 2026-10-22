@@ -86,6 +86,10 @@ impl LevelsSlider {
     }
 
     pub fn released(&mut self) {
+        // `AbstractSliderButton.onRelease`: the click comes when the button lets go.
+        if self.dragging {
+            crate::ui_sound::play_down_sound();
+        }
         self.dragging = false;
     }
 
@@ -169,5 +173,22 @@ impl LevelsSlider {
             (rect.x + 2, rect.x + rect.width - 2),
             (rect.y, rect.y + rect.height),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_slider_clicks_when_a_drag_lets_go() {
+        let lang = Lang::default();
+        let mut slider = LevelsSlider::new(&lang, 0, 7);
+        crate::ui_sound::take();
+        slider.released();
+        assert!(crate::ui_sound::take().is_empty());
+        slider.dragging = true;
+        slider.released();
+        assert_eq!(crate::ui_sound::take().len(), 1);
     }
 }
