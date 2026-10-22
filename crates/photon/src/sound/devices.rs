@@ -144,19 +144,48 @@ impl DeviceTracker {
     }
 }
 
+/// Who plays the click that follows an option's reload of the sound manager.
+#[derive(Debug, PartialEq, Eq)]
+enum Click {
+    /// The engine does, after the reload (the device option).
+    Engine,
+    /// The option's own widget queued it, and it plays after the reload (the directional audio
+    /// option).
+    Option,
+}
+
+/// Whether the options differ from what the engine opened under in a way that reloads the sound
+/// manager (`Options.soundDevice` and `directionalAudio` both do), and who clicks after it.
+fn option_reload((device, directional): &(String, bool), options: &Options) -> Option<Click> {
+    if *device != options.sound_device {
+        Some(Click::Engine)
+    } else if *directional != options.directional_audio {
+        Some(Click::Option)
+    } else {
+        None
+    }
+}
+
 impl SoundSystem {
     /// `SoundManager.reload` after the sound device option changed: every sound stops and the
     /// engine starts on the device now chosen, with a UI click (`forUI` defaults the volume to 0.25) as its first sound. Nothing
     /// happens while the option is as the engine was opened for.
     fn reload_for_device(sound: &mut Option<Self>, idle: &mut Option<Idle>, options: &Options) {
-        let Some(device) = sound.as_ref().map(|sound| sound.device.0.clone()) else {
+        let Some(opened) = sound
+            .as_ref()
+            .map(|sound| (sound.device.0.clone(), sound.directional))
+        else {
             return;
         };
-        if device != options.sound_device {
-            Self::reload(sound, idle, options);
-            if let Some(sound) = sound.as_mut() {
-                sound.play_ui("minecraft:ui.button.click", 1.0, 0.25);
+        match option_reload(&opened, options) {
+            Some(Click::Engine) => {
+                Self::reload(sound, idle, options);
+                if let Some(sound) = sound.as_mut() {
+                    sound.play_ui("minecraft:ui.button.click", 1.0, 0.25);
+                }
             }
+            Some(Click::Option) => Self::reload(sound, idle, options),
+            None => {}
         }
     }
 
@@ -219,5 +248,21 @@ impl SoundSystem {
             Some(sound) => sound.tracker = tracker,
             None => *idle = Some(Idle { tracker, assets }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_changed_option_reloads_and_the_device_clicks_for_itself() {
+        let mut options = Options::default();
+        let opened = (options.sound_device.clone(), options.directional_audio);
+        assert_eq!(option_reload(&opened, &options), None);
+        options.directional_audio = !options.directional_audio;
+        assert_eq!(option_reload(&opened, &options), Some(Click::Option));
+        options.sound_device = "elsewhere".to_owned();
+        assert_eq!(option_reload(&opened, &options), Some(Click::Engine));
     }
 }

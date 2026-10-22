@@ -76,6 +76,8 @@ pub struct SoundSystem {
     tracker: devices::DeviceTracker,
     /// The sound device option the output was opened for, and where the assets are.
     device: (String, std::path::PathBuf),
+    /// The directional audio option the engine was opened under.
+    directional: bool,
     followed: Followed,
     /// Where the listener is, which the sounds that hang at an angle from it follow.
     camera: Arc<Mutex<Vec3>>,
@@ -132,6 +134,7 @@ impl SoundSystem {
             output,
             tracker: devices::DeviceTracker::new(),
             device: (options.sound_device.clone(), jar_assets.to_path_buf()),
+            directional: options.directional_audio,
             followed: Arc::new(Mutex::new(HashMap::new())),
             camera: Arc::new(Mutex::new(Vec3::ZERO)),
             local_sounds: 0,
