@@ -468,6 +468,34 @@ impl Armor {
         self.asset_layer(asset, (layer_type, model, 0), textures, pose, place)
     }
 
+    /// A model of `model` posed by `pose` and drawn in the plain texture `texture`: a crack
+    /// overlay (`RenderTypes.armorTranslucent`).
+    pub fn texture_layer(
+        &mut self,
+        (model, texture): (&str, &str),
+        textures: &EntityTextures,
+        pose: &dyn Fn(&mut MobModel),
+        place: Place,
+    ) -> Vec<Vertex> {
+        let Some(rect) = textures.rect(texture) else {
+            return Vec::new();
+        };
+        let Some(model) = self.baked(model) else {
+            return Vec::new();
+        };
+        pose(model);
+        place(model, rect, None)
+    }
+
+    /// The baked model of the layer `name`, built on first use.
+    fn baked(&mut self, name: &str) -> Option<&mut MobModel> {
+        if !self.models.contains_key(name) {
+            let layer = photon_data::entity_model::layer(name)?;
+            self.models.insert(name.to_owned(), MobModel::bake(layer));
+        }
+        self.models.get_mut(name)
+    }
+
     fn asset_layer(
         &mut self,
         asset: &str,
@@ -484,16 +512,9 @@ impl Armor {
             .iter()
             .map(|layer| (layer.texture_path(layer_type), layer.colour(dye)))
             .collect();
-        if !self.models.contains_key(model) {
-            let Some(layer) = photon_data::entity_model::layer(model) else {
-                return Vec::new();
-            };
-            self.models.insert(model.to_owned(), MobModel::bake(layer));
-        }
-        let model = self
-            .models
-            .get_mut(model)
-            .expect("the model was just built");
+        let Some(model) = self.baked(model) else {
+            return Vec::new();
+        };
         pose(model);
         layers
             .iter()

@@ -1,17 +1,34 @@
 use super::*;
 
-/// `Crackiness.GOLEM.byFraction`: how cracked an iron golem with this
-/// fraction of its health left looks.
-pub fn golem_crackiness(fraction: f32) -> Crackiness {
-    if fraction < 0.25 {
+/// `Crackiness.byFraction` for the thresholds `(low, medium, high)` of one kind.
+pub fn crackiness((low, medium, high): (f32, f32, f32), fraction: f32) -> Crackiness {
+    if fraction < high {
         Crackiness::High
-    } else if fraction < 0.5 {
+    } else if fraction < medium {
         Crackiness::Medium
-    } else if fraction < 0.75 {
+    } else if fraction < low {
         Crackiness::Low
     } else {
         Crackiness::None
     }
+}
+
+/// `Crackiness.GOLEM.byFraction`: how cracked an iron golem with this
+/// fraction of its health left looks.
+pub fn golem_crackiness(fraction: f32) -> Crackiness {
+    crackiness((0.75, 0.5, 0.25), fraction)
+}
+
+/// `Crackiness.WOLF_ARMOR.byDamage`: how cracked wolf armor with `damage` of `max_damage` looks;
+/// an item that does not wear down is not cracked.
+pub fn wolf_armor_crackiness(damage: i32, max_damage: i32) -> Crackiness {
+    if max_damage <= 0 {
+        return Crackiness::None;
+    }
+    crackiness(
+        (0.95, 0.69, 0.32),
+        (max_damage - damage) as f32 / max_damage as f32,
+    )
 }
 
 /// What `IronGolemRenderer.setupRotations` rolls the pose by while the golem
@@ -191,5 +208,23 @@ impl MobModel {
                 self.animate(definition, running.time_in_millis(state.age_in_ticks), 1.0);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod crackiness_tests {
+    use super::*;
+
+    #[test]
+    fn wolf_armor_cracks_below_each_fraction_of_its_durability_left() {
+        let level = |damage| wolf_armor_crackiness(damage, 100);
+        assert_eq!(level(0), Crackiness::None);
+        assert_eq!(level(5), Crackiness::None);
+        assert_eq!(level(6), Crackiness::Low);
+        assert_eq!(level(31), Crackiness::Low);
+        assert_eq!(level(32), Crackiness::Medium);
+        assert_eq!(level(68), Crackiness::Medium);
+        assert_eq!(level(69), Crackiness::High);
+        assert_eq!(wolf_armor_crackiness(9, 0), Crackiness::None);
     }
 }

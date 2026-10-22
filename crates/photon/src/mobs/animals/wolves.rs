@@ -4,8 +4,11 @@
 //! The armor's cracks and the darkening of a wet wolf are not drawn: the cracks
 //! overlay is not ported and whether a mob is in water is not tracked.
 
+use photon_game::menus::container::{damage, max_damage};
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, WolfState, mob_vertices_coloured};
+use photon_render::entity::mob_model::{
+    Crackiness, MobModel, QuadrupedState, WolfState, mob_vertices_coloured, wolf_armor_crackiness,
+};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -14,6 +17,13 @@ use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 use photon_world::EquipmentSlot;
 
+const ARMOR_MODEL: &str = "minecraft:wolf_armor#main";
+/// The textures of the armor's cracks, low to high.
+const CRACKS: [&str; 3] = [
+    "entity/wolf/wolf_armor_crackiness_low",
+    "entity/wolf/wolf_armor_crackiness_medium",
+    "entity/wolf/wolf_armor_crackiness_high",
+];
 const REGISTRY: &str = "minecraft:wolf_variant";
 /// The variant of a wolf the server has said nothing of (`WolfVariants.DEFAULT`).
 const DEFAULT_VARIANT: &str = "minecraft:pale";
@@ -29,6 +39,17 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     photon_data::entity_type::wolf_variants()
         .flat_map(|variant| variant.assets.into_iter().map(texture_path))
         .chain(COLLARS)
+        .chain(CRACKS)
+}
+
+/// `WolfArmorLayer.ARMOR_CRACK_LOCATIONS`.
+fn crack_texture(level: Crackiness) -> Option<&'static str> {
+    match level {
+        Crackiness::None => None,
+        Crackiness::Low => Some(CRACKS[0]),
+        Crackiness::Medium => Some(CRACKS[1]),
+        Crackiness::High => Some(CRACKS[2]),
+    }
 }
 
 /// The variant a wolf wears, from the registry the server sent.
@@ -61,13 +82,29 @@ impl Layers<'_> {
             return;
         };
         let (state, placed) = (self.state, self.placed);
-        out.extend(self.armor.simple_layer(
+        let pose = |model: &mut MobModel| model.setup_wolf(state);
+        let place =
+            |model: &MobModel, rect, colour| mob_vertices_coloured(model, placed, rect, colour);
+        let worn = self.armor.simple_layer(
             stack,
-            ("body", "wolf_body", "minecraft:wolf_armor#main"),
+            ("body", "wolf_body", ARMOR_MODEL),
             self.textures,
-            &|model| model.setup_wolf(state),
-            &|model, rect, colour| mob_vertices_coloured(model, placed, rect, colour),
-        ));
+            &pose,
+            &place,
+        );
+        if worn.is_empty() {
+            return;
+        }
+        out.extend(worn);
+        let level = wolf_armor_crackiness(damage(stack), max_damage(stack));
+        if let Some(texture) = crack_texture(level) {
+            out.extend(self.armor.texture_layer(
+                (ARMOR_MODEL, texture),
+                self.textures,
+                &pose,
+                &place,
+            ));
+        }
     }
 
     /// The collar of a tame wolf, over the model as it is posed.
