@@ -13,7 +13,9 @@ use photon_render::objects::projectile::{firework_pose, thrown_item_pose};
 use photon_render::scene::Vertex;
 
 use crate::equipment::item_layers::ItemLayerCache;
+use crate::equipment::needle::Owner;
 use crate::overlays::{FrameView, full_block_light, packed_light};
+use photon_render::item_model::Holder;
 
 /// The items of the entities that draw as an item facing the camera, as the ground shows them
 /// (`ItemDisplayContext.GROUND`), each lit by where it is (fully, for those the renderer lights so).
@@ -58,8 +60,18 @@ pub fn thrown_items(
         if look.is_some_and(|(_, full)| full) {
             light = full_block_light(light);
         }
+        // `updateForNonLiving`: the thrown entity holds its stack, at its own heading.
+        let (px, py, pz) = entity.position();
+        layers.set_owner(Some(Owner {
+            holder: Holder {
+                position: [px, py, pz],
+                yaw: entity.rotation().0,
+            },
+            seed: entity.id().0,
+        }));
         let item_layers = layers.get(stack, renderer, tints);
         let drawn = item_entity_vertices(item_layers, &[pose], light);
         layers.extend_with_glint(stack, drawn, vertices);
     }
+    layers.set_owner(None);
 }
