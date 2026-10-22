@@ -1,17 +1,18 @@
-//! The wolf (`WolfRenderer`, `WolfCollarLayer`): the texture of its variant
-//! and state, its pose, and the collar of a tame one.
+//! The wolf (`WolfRenderer`, `WolfArmorLayer`, `WolfCollarLayer`): the texture of its variant
+//! and state, its pose, the armor of a grown one and the collar of a tame one.
 //!
-//! The wolf's armor layer and the darkening of a wet wolf are not drawn: the
-//! equipment is not read for mobs yet and whether a mob is in water is not
-//! tracked.
+//! The armor's cracks and the darkening of a wet wolf are not drawn: the cracks
+//! overlay is not ported and whether a mob is in water is not tracked.
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{QuadrupedState, WolfState, mob_vertices_coloured};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
+use crate::equipment::armor::Armor;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
+use photon_world::EquipmentSlot;
 
 const REGISTRY: &str = "minecraft:wolf_variant";
 /// The variant of a wolf the server has said nothing of (`WolfVariants.DEFAULT`).
@@ -30,10 +31,74 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
         .chain(COLLARS)
 }
 
+/// The variant a wolf wears, from the registry the server sent.
+fn variant_of(
+    session: &PlaySession,
+    entity: &photon_world::ClientEntity,
+) -> Option<&'static photon_data::entity_type::WolfVariant> {
+    let name = match entity.variant() {
+        None => Some(DEFAULT_VARIANT),
+        Some(id) => usize::try_from(id)
+            .ok()
+            .and_then(|id| session.registry_names(REGISTRY).get(id))
+            .map(String::as_str),
+    };
+    name.and_then(photon_data::entity_type::wolf_variant)
+}
+
+/// What the layers over a posed wolf share.
+struct Layers<'a> {
+    textures: &'a EntityTextures,
+    armor: &'a mut Armor,
+    placed: &'a photon_render::entity::mob_model::MobPlacement,
+    state: &'a WolfState,
+}
+
+impl Layers<'_> {
+    /// `WolfArmorLayer`: the body armor of a grown wolf, on the armor model posed as it is.
+    fn armor(&mut self, entity: &photon_world::ClientEntity, baby: bool, out: &mut Vec<Vertex>) {
+        let (false, Some(stack)) = (baby, entity.equipment(EquipmentSlot::Body)) else {
+            return;
+        };
+        let (state, placed) = (self.state, self.placed);
+        out.extend(self.armor.simple_layer(
+            stack,
+            ("body", "wolf_body", "minecraft:wolf_armor#main"),
+            self.textures,
+            &|model| model.setup_wolf(state),
+            &|model, rect, colour| mob_vertices_coloured(model, placed, rect, colour),
+        ));
+    }
+
+    /// The collar of a tame wolf, over the model as it is posed.
+    fn collar(
+        &self,
+        entity: &photon_world::ClientEntity,
+        (baby, tame): (bool, bool),
+        model: &photon_render::entity::mob_model::MobModel,
+        out: &mut Vec<Vertex>,
+    ) {
+        if tame
+            && !entity.is_invisible()
+            && let Some(rect) = self.textures.rect(COLLARS[usize::from(baby)])
+            && let Some(colour) = photon_data::entity_type::dye_texture_colour(
+                usize::try_from(entity.collar_dye()).unwrap_or(14),
+            )
+        {
+            out.extend(mob_vertices_coloured(
+                model,
+                self.placed,
+                rect,
+                Some(colour & 0x00FF_FFFF),
+            ));
+        }
+    }
+}
+
 /// `WolfRenderer` and `WolfCollarLayer` for the wolves the server added.
 pub fn remote_wolves(
     session: &PlaySession,
-    models: &mut MobModels,
+    (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
     view: FrameView,
     vertices: &mut Vec<Vertex>,
@@ -48,14 +113,7 @@ pub fn remote_wolves(
         .drawn_with_invisible()
         .filter(|entity| entity.type_id == wolf)
     {
-        let name = match entity.variant() {
-            None => Some(DEFAULT_VARIANT),
-            Some(id) => usize::try_from(id)
-                .ok()
-                .and_then(|id| session.registry_names(REGISTRY).get(id))
-                .map(String::as_str),
-        };
-        let Some(variant) = name.and_then(photon_data::entity_type::wolf_variant) else {
+        let Some(variant) = variant_of(session, entity) else {
             continue;
         };
         let baby = entity.is_baby();
@@ -75,7 +133,7 @@ pub fn remote_wolves(
             continue;
         };
         let own = entity.wolf();
-        model.setup_wolf(&WolfState {
+        let state = WolfState {
             quadruped: QuadrupedState {
                 head_y_rot: photon_core::math::wrap_degrees_f32(
                     snapshot.head_yaw - snapshot.body_yaw,
@@ -91,23 +149,17 @@ pub fn remote_wolves(
             head_roll_angle: own.head_roll_angle(partial),
             shake_anim: own.shake_anim(partial),
             age_scale: if baby { 0.5 } else { 1.0 },
-        });
+        };
+        model.setup_wolf(&state);
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
-        // The collar of a tame wolf, over the model as it is posed.
-        if tame
-            && !entity.is_invisible()
-            && let Some(rect) = textures.rect(COLLARS[usize::from(baby)])
-            && let Some(colour) = photon_data::entity_type::dye_texture_colour(
-                usize::try_from(entity.collar_dye()).unwrap_or(14),
-            )
-        {
-            vertices.extend(mob_vertices_coloured(
-                model,
-                &placed,
-                rect,
-                Some(colour & 0x00FF_FFFF),
-            ));
-        }
+        let mut layers = Layers {
+            textures,
+            armor,
+            placed: &placed,
+            state: &state,
+        };
+        layers.armor(entity, baby, vertices);
+        layers.collar(entity, (baby, tame), model, vertices);
     }
 }

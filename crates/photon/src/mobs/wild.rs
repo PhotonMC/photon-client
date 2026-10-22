@@ -329,7 +329,13 @@ pub(super) fn remote_families(
     sheep::remote_sheep(session, models, textures, view, vertices);
     remote_hostiles(session, models, textures, (view, &mut *held), vertices);
     villagers::remote_villagers(session, models, textures, (view, &mut *held), vertices);
-    wolves::remote_wolves(session, models, textures, view, vertices);
+    wolves::remote_wolves(
+        session,
+        (&mut *models, &mut *armor),
+        textures,
+        view,
+        vertices,
+    );
     remote_wild_animals(session, models, textures, view, vertices);
     foxes::remote_foxes(session, models, textures, (view, &mut *held), vertices);
     pandas::remote_pandas(session, models, textures, (view, &mut *held), vertices);
