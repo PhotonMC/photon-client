@@ -241,6 +241,18 @@ impl PlaySession {
         }
     }
 
+    /// `Minecraft.getQuickActionsDialog`: the `quick_actions` tag of the dialog registry; one
+    /// entry is the dialog, more are the list, none is no dialog.
+    pub fn quick_actions_dialog(&self) -> Option<photon_game::dialog::Dialog> {
+        let added =
+            photon_game::dialog::DialogContext::tag_members(self, "minecraft:quick_actions");
+        match added.as_slice() {
+            [] => None,
+            [only] => photon_game::dialog::DialogContext::dialog(self, only),
+            _ => self.dialog_by_name("minecraft:quick_actions"),
+        }
+    }
+
     /// The dialog entry a registry name stands for (`ClickEvent.ShowDialog` by name).
     pub fn dialog_by_name(&self, name: &str) -> Option<photon_game::dialog::Dialog> {
         let position = self

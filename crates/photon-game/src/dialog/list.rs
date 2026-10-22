@@ -111,7 +111,7 @@ impl Dialog {
 
     /// The dialog a registry entry of the game's own data pack stands for, when the server left
     /// its data out because the client knows the pack (`Dialogs.bootstrap`): the server links
-    /// dialog and the list of the pause menu's additions.
+    /// dialog, the list of the pause menu's additions and the quick actions list.
     pub fn built_in(name: &str) -> Option<Self> {
         let (title, source) = match name {
             "minecraft:server_links" => ("server_links", ListSource::ServerLinks),
@@ -120,6 +120,10 @@ impl Dialog {
                 ListSource::Dialogs(DialogSet::Tag(
                     "minecraft:pause_screen_additions".to_owned(),
                 )),
+            ),
+            "minecraft:quick_actions" => (
+                "quick_actions",
+                ListSource::Dialogs(DialogSet::Tag("minecraft:quick_actions".to_owned())),
             ),
             _ => return None,
         };
@@ -185,6 +189,17 @@ mod tests {
             };
             (name == "a:one").then(|| Dialog::built_in("minecraft:server_links").expect("built in"))
         }
+    }
+
+    #[test]
+    fn quick_actions_is_a_built_in_list_of_its_tag() {
+        let Some(Dialog::List { source, .. }) = Dialog::built_in("minecraft:quick_actions") else {
+            panic!("a list");
+        };
+        assert!(matches!(
+            source,
+            ListSource::Dialogs(DialogSet::Tag(tag)) if tag == "minecraft:quick_actions"
+        ));
     }
 
     #[test]

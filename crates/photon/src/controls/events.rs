@@ -152,6 +152,7 @@ impl Controls {
                     self.turning.inventory_opened = true;
                     self.release_keys();
                 }
+                "key.quickActions" => self.open_quick_actions(press, session, surface, assets),
                 screen
                     if press
                         && self.captured
@@ -162,16 +163,29 @@ impl Controls {
                 "key.toggleGui" if press && self.captured => self.hud_hidden = !self.hud_hidden,
                 "key.playerlist" => self.tab_held = down && self.captured,
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
-                    let slot = hotbar["key.hotbar.".len()..]
-                        .parse::<i32>()
-                        .map(|slot| slot - 1);
-                    if let (false, Ok(slot)) = (spectating, slot) {
-                        session.select_slot(slot);
-                    }
+                    select_hotbar(session, hotbar, spectating);
                 }
                 moving if self.captured || !down => self.keys.set_mapping(moving, down),
                 _ => {}
             }
+        }
+    }
+
+    /// `Minecraft.handleKeybinds` for the quick actions key: the dialog of the `quick_actions`
+    /// tag opens, when there is one.
+    fn open_quick_actions(
+        &mut self,
+        press: bool,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if !(press && self.captured) {
+            return;
+        }
+        if let Some(dialog) = session.quick_actions_dialog() {
+            let dialog = dialog.resolved(&*session);
+            self.show_dialog(dialog, surface, assets);
         }
     }
 
@@ -502,5 +516,15 @@ impl Controls {
             }
             _ => {}
         }
+    }
+}
+
+/// A `key.hotbar.N` press: the slot is selected, but not by a spectator.
+fn select_hotbar(session: &mut PlaySession, name: &str, spectating: bool) {
+    let slot = name["key.hotbar.".len()..]
+        .parse::<i32>()
+        .map(|slot| slot - 1);
+    if let (false, Ok(slot)) = (spectating, slot) {
+        session.select_slot(slot);
     }
 }
