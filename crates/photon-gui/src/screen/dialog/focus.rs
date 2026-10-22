@@ -31,6 +31,7 @@ impl DialogScreen {
         }
         if let Some(index) = (0..self.buttons.len()).find(|&index| self.button_hit(index, mouse)) {
             self.set_focus(Some(Focus::Button(index)));
+            crate::ui_sound::play_down_sound();
             return Some(Press::Button(index));
         }
         if self.in_container(mouse) {
@@ -38,6 +39,7 @@ impl DialogScreen {
         }
         if self.warning.contains(&self.arena, mouse) {
             self.set_focus(Some(Focus::Warning));
+            crate::ui_sound::play_down_sound();
             return Some(Press::Warning);
         }
         None
@@ -195,8 +197,14 @@ impl DialogScreen {
     /// Enter or Space: the focused button, or a control changed.
     pub fn pressed(&mut self) -> Option<Press> {
         match self.focus? {
-            Focus::Button(index) => Some(Press::Button(index)),
-            Focus::Warning => Some(Press::Warning),
+            Focus::Button(index) => {
+                crate::ui_sound::play_down_sound();
+                Some(Press::Button(index))
+            }
+            Focus::Warning => {
+                crate::ui_sound::play_down_sound();
+                Some(Press::Warning)
+            }
             Focus::Part(_) => None,
             Focus::Input(index) => {
                 self.controls[index].press(self.shift.get());

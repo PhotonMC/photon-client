@@ -81,6 +81,7 @@ impl SocialInteractionsScreen {
         let at = (mouse.0.floor() as i32, mouse.1.floor() as i32);
         let hit = self.buttons.button_at(at);
         if let Some((index, SocialAction::Page(page))) = hit {
+            crate::ui_sound::play_down_sound();
             self.set_focus(Focus::Button(index));
             self.show_page(page);
             self.relabel_tabs();
@@ -94,6 +95,7 @@ impl SocialInteractionsScreen {
         }
         if self.hint_visible.get() && self.blocking_hint.contains(&self.buttons.arena, at) {
             self.set_focus(Focus::Hint);
+            crate::ui_sound::play_down_sound();
             return Some(SocialEvent::BlockingHelp);
         }
         if self.place.contains(mouse) {
@@ -102,6 +104,7 @@ impl SocialInteractionsScreen {
         match hit {
             Some((index, SocialAction::Done)) => {
                 self.set_focus(Focus::Button(index));
+                crate::ui_sound::play_down_sound();
                 Some(SocialEvent::Close)
             }
             _ => None,
@@ -122,6 +125,7 @@ impl SocialInteractionsScreen {
         let (index, Some(report)) = entry? else {
             return None;
         };
+        crate::ui_sound::play_down_sound();
         let player = self.entries[index].player.clone();
         if report {
             return Some(SocialEvent::Report(player.id));

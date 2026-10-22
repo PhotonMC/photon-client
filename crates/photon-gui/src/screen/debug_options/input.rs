@@ -45,7 +45,6 @@ impl DebugOptionsScreen {
             .into_iter()
             .find(|(_, widget)| widget.is_active() && widget.contains(&self.arena, at));
         if let Some((index, _)) = hit {
-            crate::ui_sound::play_down_sound();
             self.set_focus(Focus::Profile(index));
             return Some(self.press_profile(Profile::ALL[index], index));
         }
@@ -60,6 +59,7 @@ impl DebugOptionsScreen {
     /// `addProfileButton`'s action: the profile is loaded, the rows show it, and only its button
     /// cannot be pressed.
     fn press_profile(&mut self, profile: Profile, index: usize) -> DebugOptionsEvent {
+        crate::ui_sound::play_down_sound();
         self.entries.load_profile(profile);
         self.refresh_rows();
         for widget in &mut self.profiles {
@@ -100,6 +100,7 @@ impl DebugOptionsScreen {
 
     /// An entry's button pressed, by the mouse or by Enter: it takes the focus and sets the status.
     fn press_entry_button(&mut self, id: &'static str, slot: usize) -> DebugOptionsEvent {
+        crate::ui_sound::play_down_sound();
         self.set_focus(Focus::Button(id, slot));
         let status = BUTTON_STATUSES[slot];
         self.entries.set_status(id, status);
@@ -198,7 +199,10 @@ impl DebugOptionsScreen {
             Focus::Profile(index) if self.profiles[index].is_active() => {
                 Some(self.press_profile(Profile::ALL[index], index))
             }
-            Focus::Done if self.done.is_active() => Some(DebugOptionsEvent::Close),
+            Focus::Done if self.done.is_active() => {
+                crate::ui_sound::play_down_sound();
+                Some(DebugOptionsEvent::Close)
+            }
             _ => None,
         }
     }

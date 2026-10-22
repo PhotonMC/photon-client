@@ -16,6 +16,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -78,6 +80,9 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -211,6 +216,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -268,6 +275,9 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -288,6 +298,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -343,6 +355,9 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -360,6 +375,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             var panorama = menu(screen);
             var last = plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false));
@@ -386,6 +403,9 @@ class GuiTitleOracle extends GuiSettingsOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();

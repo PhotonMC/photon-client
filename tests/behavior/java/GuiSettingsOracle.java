@@ -153,6 +153,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 focus.invoke(video);
             }
             video.tick();
+            SilentSounds.ASKED.clear();
             var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
             double lastX = 0;
             double lastY = 0;
@@ -258,6 +259,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             out.addProperty("height", window.getGuiScaledHeight());
             out.addProperty("gui_scale", minecraft.options.guiScale().get());
             out.addProperty("scroll", scrollAmount);
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             if (kind.equals("language")) {
                 var searchField = video.getClass().getDeclaredField("search");
                 searchField.setAccessible(true);

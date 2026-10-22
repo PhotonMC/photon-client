@@ -104,8 +104,12 @@ impl Control {
     /// With Shift down a cycle button goes back.
     pub(super) fn press(&mut self, shift: bool) {
         match &mut self.state {
-            State::Check { selected, .. } => *selected = !*selected,
+            State::Check { selected, .. } => {
+                crate::ui_sound::play_down_sound();
+                *selected = !*selected;
+            }
             State::Cycle { labels, index, .. } => {
+                crate::ui_sound::play_down_sound();
                 let count = labels.len();
                 *index = (*index + if shift { count - 1 } else { 1 }) % count;
             }

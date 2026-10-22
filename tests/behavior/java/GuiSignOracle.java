@@ -18,6 +18,8 @@ class GuiSignOracle extends GuiTitleOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
             var clockBefore = clockField.get(null);
@@ -100,6 +102,9 @@ class GuiSignOracle extends GuiTitleOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var messages = new JsonArray();
             for (int i = 0; i < 4; i++) {
                 messages.add(sign.getText(front).getMessage(i, false).getString());
@@ -127,6 +132,8 @@ class GuiSignOracle extends GuiTitleOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             menu(screen);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -144,6 +151,9 @@ class GuiSignOracle extends GuiTitleOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var written = new JsonArray();
             ((java.util.List<?>) get(edit, "pages")).forEach(page -> written.add((String) page));
             out.add("pages", written);
@@ -235,6 +245,8 @@ class GuiSignOracle extends GuiTitleOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             menu(screen);
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
             clockField.setAccessible(true);
@@ -254,6 +266,9 @@ class GuiSignOracle extends GuiTitleOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             out.addProperty("title", ((net.minecraft.client.gui.components.EditBox) get(sign, "titleBox")).getValue());
             rows.add(out);
         }
@@ -277,6 +292,8 @@ class GuiSignOracle extends GuiTitleOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             menu(screen);
             var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<net.minecraft.network.chat.Component>>();
             for (var page : row.getAsJsonArray("pages")) {
@@ -298,6 +315,9 @@ class GuiSignOracle extends GuiTitleOracle {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             out.addProperty("page", (Integer) get(view, "currentPage"));
             rows.add(out);
         }

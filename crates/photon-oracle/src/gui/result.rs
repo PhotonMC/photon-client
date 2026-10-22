@@ -67,6 +67,22 @@ pub(super) struct GuiContext {
     pub(super) languages: Option<photon_game::language::LanguageSource>,
 }
 
+impl GuiContext {
+    /// The font, the alternate font and the atlas drawn from the assets under `root`.
+    fn load(root: std::path::PathBuf) -> Result<Self, String> {
+        let font = Font::load(&root).ok_or("font")?;
+        let alt = Font::load_alt(&root).ok_or("alt font")?;
+        let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
+        Ok(Self {
+            root,
+            font,
+            atlas,
+            atlas_image,
+            languages: None,
+        })
+    }
+}
+
 /// The operations that need none of the shared context.
 fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, String>> {
     Some(match request["operation"].as_str()? {
@@ -102,73 +118,108 @@ fn editing_case(
     })
 }
 
+/// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
+/// them after the row's steps).
+const SOUND_OPERATIONS: [&str; 25] = [
+    "test_block_screen",
+    "command_block_screen",
+    "structure_block_screen",
+    "jigsaw_screen",
+    "sign_edit_screen",
+    "book_edit_screen",
+    "book_sign_screen",
+    "book_view",
+    "title_screen",
+    "join_multiplayer_screen",
+    "server_form",
+    "connect_screen",
+    "dialog_screen",
+    "restrictions_screen",
+    "social_interactions_screen",
+    "debug_options_screen",
+    "video_settings_screen",
+    "chat_options_screen",
+    "accessibility_options_screen",
+    "mouse_settings_screen",
+    "sound_options_screen",
+    "skin_customization_screen",
+    "controls_screen",
+    "key_binds_screen",
+    "language_screen",
+];
+
+/// A row's result with the sounds the interface asked for while it ran, for the operations whose
+/// Java rows carry them; the queue is emptied after every row.
+fn with_sounds(operation: &str, mut result: Value) -> Value {
+    let sounds = asked_sounds();
+    if SOUND_OPERATIONS.contains(&operation) {
+        result["sounds"] = json!(sounds);
+    }
+    result
+}
+
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets");
     if let Some(result) = standalone(request, &root) {
         return result;
     }
-    let font = Font::load(&root).ok_or("font")?;
-    let alt = Font::load_alt(&root).ok_or("alt font")?;
-    let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
     let rows = request["rows"]
         .as_array()
         .ok_or("gui rows must be an array")?;
     let mut out = Vec::new();
-    let mut ctx = GuiContext {
-        root,
-        font,
-        atlas,
-        atlas_image,
-        languages: None,
-    };
+    let mut ctx = GuiContext::load(root)?;
     let operation = crate::string(request, "operation")?;
     for row in rows {
-        out.push(match operation {
-            "chat" => chat_case(&mut ctx, row)?,
-            "suggestions" => suggestions_case(&mut ctx, row)?,
-            "chat_draft" => chat_draft_case(&mut ctx, row)?,
-            "titles" => titles_case(&mut ctx, row)?,
-            "sidebar" => sidebar_case(&mut ctx, row)?,
-            "pause_screen" => pause_screen_case(&mut ctx, row)?,
-            "title_screen" => title_screen_case(&mut ctx, row)?,
-            "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
-            "server_form" => server_form_case(&mut ctx, row)?,
-            "connect_screen" => connect_screen_case(&mut ctx, row)?,
-            "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
-            "dialog_screen" | "restrictions_screen" => dialog_case(&mut ctx, row, operation)?,
-            "widgets" => widgets_case(&mut ctx, row)?,
-            "options_screen" => options_screen_case(&mut ctx, row)?,
-            "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,
-            "chat_options_screen"
-            | "accessibility_options_screen"
-            | "mouse_settings_screen"
-            | "controls_screen"
-            | "skin_customization_screen"
-            | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
-            "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
-            "language_screen" => language_screen_case(&mut ctx, row)?,
-            "death_screen" => death_screen_case(&mut ctx, row)?,
-            "credits_screen" => credits_screen_case(&mut ctx, row)?,
-            "music_manager" => crate::music::music_manager_result(&json!({"rows": [row.clone()]}))?
-                ["rows"][0]
-                .clone(),
-            "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
-            "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
-            "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,
-            "boss_bar" => boss_bar_case(&mut ctx, row)?,
-            "locator_bar" => locator_bar_case(&mut ctx, row)?,
-            "tab_list" => tab_list_case(&mut ctx, row)?,
-            "container_screen" => container_screen_case(&mut ctx, row)?,
-            "game_mode_switcher" => game_mode_switcher_case(&mut ctx, row)?,
-            "sign_texts" => sign_texts_case(&mut ctx, row)?,
-            "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
-            "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
-            other => match editing_case(&mut ctx, row, other) {
-                Some(result) => result?,
-                None => hud_ops(&mut ctx, row, other)?,
+        out.push(with_sounds(
+            operation,
+            match operation {
+                "chat" => chat_case(&mut ctx, row)?,
+                "suggestions" => suggestions_case(&mut ctx, row)?,
+                "chat_draft" => chat_draft_case(&mut ctx, row)?,
+                "titles" => titles_case(&mut ctx, row)?,
+                "sidebar" => sidebar_case(&mut ctx, row)?,
+                "pause_screen" => pause_screen_case(&mut ctx, row)?,
+                "title_screen" => title_screen_case(&mut ctx, row)?,
+                "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
+                "server_form" => server_form_case(&mut ctx, row)?,
+                "connect_screen" => connect_screen_case(&mut ctx, row)?,
+                "confirm_screen" => confirm_screen_case(&mut ctx, row)?,
+                "dialog_screen" | "restrictions_screen" => dialog_case(&mut ctx, row, operation)?,
+                "widgets" => widgets_case(&mut ctx, row)?,
+                "options_screen" => options_screen_case(&mut ctx, row)?,
+                "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,
+                "chat_options_screen"
+                | "accessibility_options_screen"
+                | "mouse_settings_screen"
+                | "controls_screen"
+                | "skin_customization_screen"
+                | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
+                "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
+                "language_screen" => language_screen_case(&mut ctx, row)?,
+                "death_screen" => death_screen_case(&mut ctx, row)?,
+                "credits_screen" => credits_screen_case(&mut ctx, row)?,
+                "music_manager" => {
+                    crate::music::music_manager_result(&json!({"rows": [row.clone()]}))?["rows"][0]
+                        .clone()
+                }
+                "social_interactions_screen" => social_interactions_screen_case(&mut ctx, row)?,
+                "disconnected_screen" => disconnected_screen_case(&mut ctx, row)?,
+                "hud_hotbar" => hud_hotbar_case(&mut ctx, row)?,
+                "boss_bar" => boss_bar_case(&mut ctx, row)?,
+                "locator_bar" => locator_bar_case(&mut ctx, row)?,
+                "tab_list" => tab_list_case(&mut ctx, row)?,
+                "container_screen" => container_screen_case(&mut ctx, row)?,
+                "game_mode_switcher" => game_mode_switcher_case(&mut ctx, row)?,
+                "sign_texts" => sign_texts_case(&mut ctx, row)?,
+                "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
+                "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
+                other => match editing_case(&mut ctx, row, other) {
+                    Some(result) => result?,
+                    None => hud_ops(&mut ctx, row, other)?,
+                },
             },
-        });
+        ));
     }
     Ok(json!({"rows": out}))
 }

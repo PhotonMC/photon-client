@@ -68,6 +68,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             set(minecraft, "player", player);
             // The buttons click when pressed, heard by no one.
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             // The game that hears of the screens opened and the chat it is told.
             var recording = (RecordingGui) unsafe.allocateInstance(RecordingGui.class);
             var hud = get(get(minecraft, "gui"), "hud");
@@ -150,6 +151,9 @@ class GuiSocialOracle extends GuiCreditsOracle {
             blurField.setAccessible(true);
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             // What the screen asked of the game, and the chat it was told.
             var events = new JsonArray();
             for (var event : recording.events) {
@@ -187,6 +191,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             var minecraft = screen.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
             minecraft.options.reducedDebugInfo().set(row.get("reduced").getAsBoolean());
             var directory = java.nio.file.Files.createTempDirectory("debug-options").toFile();
@@ -280,6 +285,9 @@ class GuiSocialOracle extends GuiCreditsOracle {
             blurField.setAccessible(true);
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             var events = new JsonArray();
             for (var event : recording.events) {
                 events.add(event);

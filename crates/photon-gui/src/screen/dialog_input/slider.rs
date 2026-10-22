@@ -78,6 +78,10 @@ impl Slider {
     }
 
     pub(super) fn released(&mut self) {
+        // `AbstractSliderButton.onRelease`: the click comes when the button lets go.
+        if self.dragging {
+            crate::ui_sound::play_down_sound();
+        }
         self.dragging = false;
     }
 

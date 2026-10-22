@@ -730,7 +730,7 @@
 "crates/photon-oracle/src/guardian.rs::banner_pose_result" = 96
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 76
-"crates/photon-oracle/src/gui/result.rs::gui_result" = 70
+"crates/photon-oracle/src/gui/result.rs::gui_result" = 65
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 78
 "crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 87
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61

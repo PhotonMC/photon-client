@@ -235,7 +235,9 @@ impl SoundOptionsScreen {
     }
 
     pub fn clicked(&mut self, lang: &Lang, mouse: (f64, f64), shift: bool) -> SubScreenInput {
-        self.screen.clicked(lang, mouse, shift)
+        let input = self.screen.clicked(lang, mouse, shift);
+        directional_click(&input);
+        input
     }
 
     pub fn dragged(&mut self, lang: &Lang, mouse: (f64, f64), dy: f64) {
@@ -249,7 +251,9 @@ impl SoundOptionsScreen {
 
     /// An arrow, Enter or Space.
     pub fn key_pressed(&mut self, lang: &Lang, key: SliderKey, shift: bool) -> SubScreenInput {
-        self.screen.key_pressed(lang, key, shift)
+        let input = self.screen.key_pressed(lang, key, shift);
+        directional_click(&input);
+        input
     }
 
     pub fn released(&mut self, lang: &Lang) {
@@ -262,5 +266,13 @@ impl SoundOptionsScreen {
 
     pub fn scroll_amount(&self) -> f64 {
         self.screen.list.scroll_amount()
+    }
+}
+
+/// The directional audio option's change: `Options` reloads the sound manager and plays a click
+/// of its own (the button's click comes with the press).
+fn directional_click(input: &SubScreenInput) {
+    if input.changed == Some(DIRECTIONAL) {
+        crate::ui_sound::play_down_sound();
     }
 }

@@ -170,6 +170,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             set(minecraft, "itemModelResolver", unsafe.allocateInstance(NoItems.class));
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             if (row.get("in_world").getAsBoolean()) {
@@ -354,6 +355,9 @@ class GuiDialogOracle extends GuiSocialOracle {
             gui.events.forEach(events::add);
             out.add("events", events);
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();
@@ -376,6 +380,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             var screen = screen(width, height, mouseX, mouseY);
             var minecraft = screen.minecraft();
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
+            SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             if (row.get("in_world").getAsBoolean()) {
                 set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
@@ -441,6 +446,9 @@ class GuiDialogOracle extends GuiSocialOracle {
             gui.events.forEach(events::add);
             out.add("events", events);
             out.add("ops", record(screen.state()));
+            var asked = new JsonArray();
+            SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
             rows.add(out);
         }
         var result = new JsonObject();

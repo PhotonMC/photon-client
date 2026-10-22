@@ -257,6 +257,7 @@ impl RestrictionsScreen {
         }
         let index = (0..self.buttons.len()).find(|&index| self.button_hit(index, mouse))?;
         self.focus = Some(Focus::Button(index));
+        crate::ui_sound::play_down_sound();
         Some(self.press_of(index))
     }
 
@@ -325,7 +326,10 @@ impl RestrictionsScreen {
     /// Enter or Space: the focused button.
     pub fn pressed(&self) -> Option<Press> {
         match self.focus? {
-            Focus::Button(index) => Some(self.press_of(index)),
+            Focus::Button(index) => {
+                crate::ui_sound::play_down_sound();
+                Some(self.press_of(index))
+            }
             Focus::Part(_) => None,
         }
     }
