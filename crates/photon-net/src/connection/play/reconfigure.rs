@@ -168,6 +168,130 @@ mod tests {
         server.join().expect("server");
     }
 
+    fn framed(id: i32, body: &[u8]) -> Vec<u8> {
+        let mut packet = Vec::new();
+        wire::write_varint(id, &mut packet);
+        packet.extend_from_slice(body);
+        let mut out = Vec::new();
+        wire::write_varint(packet.len() as i32, &mut out);
+        out.extend_from_slice(&packet);
+        out
+    }
+
+    /// A dimension type entry with the fields the client reads.
+    fn dimension_type_registry(min_y: i32, height: i32) -> Vec<u8> {
+        use photon_core::nbt::{Field, FieldValue};
+        let field = |key: &str, value| Field {
+            key: key.to_owned(),
+            value,
+        };
+        let entry = photon_protocol::registry_data::PackedRegistryEntry::new(
+            photon_core::identifier::Identifier::parse("example:lobby").expect("id"),
+            Some(FieldValue::Compound(vec![
+                field("min_y", FieldValue::Int(min_y)),
+                field("height", FieldValue::Int(height)),
+                field("has_skylight", FieldValue::Byte(1)),
+                field("has_ceiling", FieldValue::Byte(0)),
+                field("has_ender_dragon_fight", FieldValue::Byte(0)),
+                field("coordinate_scale", FieldValue::Double(1.0)),
+                field("logical_height", FieldValue::Int(height)),
+                field("ambient_light", FieldValue::Float(0.0)),
+            ])),
+        );
+        let mut body = Vec::new();
+        photon_protocol::registry_data::ClientboundRegistryDataPacket::new(
+            photon_core::identifier::Identifier::parse("minecraft:dimension_type").expect("id"),
+            vec![entry],
+        )
+        .encode(&mut body)
+        .expect("registry");
+        framed(CONFIG_REGISTRY_DATA_PACKET_ID, &body)
+    }
+
+    fn login_into(dimension_type_id: i32) -> Vec<u8> {
+        let identifier = |body: &mut Vec<u8>, text: &str| {
+            photon_core::identifier::write_identifier(
+                &photon_core::identifier::Identifier::parse(text).expect("id"),
+                body,
+            )
+            .expect("identifier");
+        };
+        let mut body = Vec::new();
+        body.extend_from_slice(&7_i32.to_be_bytes());
+        body.push(0);
+        wire::write_varint(1, &mut body);
+        identifier(&mut body, "example:lobby");
+        for value in [20, 8, 8] {
+            wire::write_varint(value, &mut body);
+        }
+        body.extend_from_slice(&[0, 1, 0]);
+        wire::write_varint(dimension_type_id, &mut body);
+        identifier(&mut body, "example:lobby");
+        body.extend_from_slice(&1_i64.to_be_bytes());
+        body.extend_from_slice(&[1, u8::MAX, 0, 0, 0]);
+        wire::write_varint(0, &mut body);
+        wire::write_varint(63, &mut body);
+        body.extend_from_slice(&[0, 0]);
+        framed(PLAY_CLIENTBOUND_LOGIN_PACKET_ID, &body)
+    }
+
+    /// A session that has the first server's two dimension types logs in again after the
+    /// second server's configuration, which has one type of another height.
+    fn log_in_again_into(dimension_type_id: i32) -> PlaySession {
+        use std::io::Write;
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+        let address = listener.local_addr().expect("address");
+        std::thread::spawn(move || {
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
+            stream
+                .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
+                .expect("start configuration");
+            read_packet(&mut stream, None).expect("acknowledgement");
+            stream
+                .write_all(&dimension_type_registry(0, 128))
+                .expect("registry");
+            stream
+                .write_all(&frame(CONFIG_FINISH_PACKET_ID))
+                .expect("finish");
+            read_packet(&mut stream, None).expect("finish answer");
+            stream
+                .write_all(&login_into(dimension_type_id))
+                .expect("login");
+            std::thread::sleep(Duration::from_millis(500));
+        });
+        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
+        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let first = ConnectionState {
+            dimension_type_registry_bounds: vec![
+                Some(photon_world::DimensionBounds::new(-64, 384)),
+                Some(photon_world::DimensionBounds::new(0, 256)),
+            ],
+            ..ConnectionState::default()
+        };
+        let mut session = PlaySession::assemble(stream, None, incoming, first, ("Tester", false));
+        session.wait(Duration::from_secs(5)).expect("reconfigured");
+        session.wait(Duration::from_secs(5)).expect("logged in");
+        session
+    }
+
+    #[test]
+    fn a_second_login_uses_the_new_configurations_dimension_types() {
+        let mut session = log_in_again_into(0);
+        assert_eq!(session.state.dimension_type_registry_bounds.len(), 1);
+        let bounds = session.world().dimension();
+        assert_eq!((bounds.min_y, bounds.height), (0, 128));
+        assert!(session.take_reconfigured());
+        assert!(session.take_level_reset());
+    }
+
+    #[test]
+    fn a_second_login_naming_a_type_the_first_configuration_had_does_not_panic() {
+        // Id 1 existed in the first configuration only; the built-in extent stands in.
+        let session = log_in_again_into(1);
+        assert_eq!(session.state.dimension_type_registry_bounds.len(), 1);
+        assert!(session.world().dimension().height > 0);
+    }
+
     #[test]
     fn a_cookie_the_server_stored_is_given_back_when_it_asks() {
         use std::io::Write;

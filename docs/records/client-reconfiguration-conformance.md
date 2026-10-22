@@ -7,8 +7,9 @@ pakette durur, istemci `ServerboundConfigurationAcknowledged` gönderir, yapıla
 açık ekran ve sohbet kapanır. Yapılandırma döngüsü açılışla ortaktır (`probe/open.rs`).
 
 Kanıt: `connection::play::reconfigure` testi, loopback üzerinde sahte sunucuyla: terminal paket, onay
-(`16`), bitiş (`3`) ve bitiş yanıtını doğrular. Gerçek bir sunucuyla (Velocity gibi) denenmedi; Java
-oracle'ı yok. `client-parity` değildir.
+(`16`), bitiş (`3`) ve bitiş yanıtını doğrular. İkinci girişin başka bir boyut türü kimliği ve yüksekliğiyle gelmesi de sahte sunucu testiyle
+sınanır. Vanilla `/transfer` ile gerçek sunucuda denendi (dünya yeniden kuruldu, çökme yok); Velocity ile
+denenmedi; Java oracle'ı yok. `client-parity` değildir.
 
 ## Sapmalar (açık)
 
