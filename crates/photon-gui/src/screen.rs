@@ -26,6 +26,7 @@ pub mod social;
 pub mod stats;
 pub mod structure_block;
 pub mod test_block;
+pub mod test_instance_block;
 pub mod title;
 pub mod waiting;
 

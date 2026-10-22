@@ -44,7 +44,9 @@ use jigsaw::*;
 mod structure_block;
 use structure_block::*;
 mod test_block;
+mod test_instance;
 use test_block::*;
+use test_instance::*;
 mod debug_options;
 mod social;
 use social::*;
@@ -111,6 +113,7 @@ fn editing_case(
         "structure_block_screen" => structure_block_screen_case(ctx, row),
         "jigsaw_screen" => jigsaw_screen_case(ctx, row),
         "test_block_screen" => test_block_screen_case(ctx, row),
+        "test_instance_screen" => test_instance_screen_case(ctx, row),
         "book_edit_screen" => book_edit_screen_case(ctx, row),
         "book_sign_screen" => book_sign_screen_case(ctx, row),
         "book_view" => book_view_case(ctx, row),
@@ -120,13 +123,14 @@ fn editing_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 30] = [
+const SOUND_OPERATIONS: [&str; 31] = [
     "death_screen",
     "disconnected_screen",
     "pause_screen",
     "widgets",
     "options_screen",
     "test_block_screen",
+    "test_instance_screen",
     "command_block_screen",
     "structure_block_screen",
     "jigsaw_screen",

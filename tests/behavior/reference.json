@@ -592,6 +592,7 @@
         "GuiStructureBlockOracle.java",
         "GuiJigsawOracle.java",
         "GuiTestBlockOracle.java",
+        "GuiTestInstanceOracle.java",
         "GuiSignOracle.java",
         "GuiCreditsOracle.java",
         "GuiSocialOracle.java",

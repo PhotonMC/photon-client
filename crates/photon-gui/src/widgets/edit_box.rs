@@ -55,6 +55,8 @@ pub struct EditBox {
     shadow: bool,
     /// `setEditable`: a box that is not shows its text in `textColorUneditable` and takes no edit.
     editable: bool,
+    /// How often `onValueChange` ran, which a responder would hear.
+    changes: u32,
 }
 
 /// `Font.plainSubstrByWidth`: the longest head of the text that fits.
@@ -101,7 +103,14 @@ impl EditBox {
             suggestion: None,
             shadow: true,
             editable: true,
+            changes: 0,
         }
+    }
+
+    /// How many times the text was changed through `setValue`, `insertText` or a deletion
+    /// (`onValueChange`), the way a responder counts them.
+    pub fn changes(&self) -> u32 {
+        self.changes
     }
 
     /// `setTextShadow(false)`.
@@ -168,6 +177,7 @@ impl EditBox {
         self.value = text.chars().take(self.max_length).collect();
         self.move_cursor_to(self.value.len(), false, font);
         self.set_highlight(self.cursor, font);
+        self.changes += 1;
     }
 
     /// `getHighlighted`.
@@ -200,6 +210,7 @@ impl EditBox {
         self.value.splice(start..end, text);
         self.set_cursor(start + length, font);
         self.set_highlight(self.cursor, font);
+        self.changes += 1;
     }
 
     fn delete_to(&mut self, position: usize, font: &Font) {
@@ -214,6 +225,7 @@ impl EditBox {
         if start != end {
             self.value.drain(start..end);
             self.set_cursor(start, font);
+            self.changes += 1;
             self.move_cursor_to(start, false, font);
         }
     }

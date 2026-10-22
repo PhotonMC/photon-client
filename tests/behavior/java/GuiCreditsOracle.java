@@ -2,7 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 /** The credits screen (`WinScreen`): the end poem and the credits roll. */
-class GuiCreditsOracle extends GuiTestBlockOracle {
+class GuiCreditsOracle extends GuiTestInstanceOracle {
     /** The game's own credits screen, scrolled, with keys pressed and released, drawn once. */
     static JsonObject creditsScreen(JsonObject request) throws Exception {
         var rows = new JsonArray();
