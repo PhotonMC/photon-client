@@ -106,6 +106,18 @@ class GuiDialogOracle extends GuiSocialOracle {
                 json.has("initial") && json.get("initial").getAsBoolean(),
                 json.has("on_true") ? json.get("on_true").getAsString() : "true",
                 json.has("on_false") ? json.get("on_false").getAsString() : "false");
+            case "single_option" -> {
+                var entries = new java.util.ArrayList<net.minecraft.server.dialog.input.SingleOptionInput.Entry>();
+                for (var item : json.getAsJsonArray("options")) {
+                    var entry = item.getAsJsonObject();
+                    entries.add(new net.minecraft.server.dialog.input.SingleOptionInput.Entry(entry.get("id").getAsString(),
+                        entry.has("display") ? java.util.Optional.of(Component.literal(entry.get("display").getAsString()))
+                            : java.util.Optional.empty(),
+                        entry.has("initial") && entry.get("initial").getAsBoolean()));
+                }
+                yield new net.minecraft.server.dialog.input.SingleOptionInput(json.get("width").getAsInt(), entries, label,
+                    json.get("label_visible").getAsBoolean());
+            }
             default -> throw new IllegalArgumentException(json.toString());
         };
         return new net.minecraft.server.dialog.Input(json.get("key").getAsString(), control);

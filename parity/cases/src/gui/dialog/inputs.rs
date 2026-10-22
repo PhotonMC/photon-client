@@ -9,8 +9,67 @@ fn checkbox(name: &str, label: &str, initial: bool) -> Value {
     json!({"type": "boolean", "key": name, "label": label, "initial": initial, "on_true": "yes", "on_false": "no"})
 }
 
+fn option(name: &str, label_visible: bool, options: &[(&str, Option<&str>, bool)]) -> Value {
+    let options: Vec<Value> = options
+        .iter()
+        .map(|(id, display, initial)| {
+            let mut entry = json!({"id": id, "initial": initial});
+            if let Some(display) = display {
+                entry["display"] = json!(display);
+            }
+            entry
+        })
+        .collect();
+    json!({"type": "single_option", "key": name, "label": "Mode", "width": 200, "label_visible": label_visible, "options": options})
+}
+
+fn option_rows() -> Vec<Value> {
+    let modes = || option("mode", true, &[("a", Some("Alpha"), false), ("b", None, true), ("c", Some("Gamma"), false)]);
+    let send = || vec![button("Send", 150, None, Some(json!({"type": "template", "value": "say $(mode)"})))];
+    let all = || vec![button("Send", 150, None, Some(json!({"type": "custom_all", "value": "minecraft:answer"})))];
+    rows![
+        Dialog { inputs: Some(vec![modes()]), ..row("option") },
+        Dialog {
+            inputs: Some(vec![option("mode", false, &[("a", Some("Alpha"), false), ("b", None, false)])]),
+            ..row("option-value-only")
+        },
+        Dialog { inputs: Some(vec![modes()]), steps: vec![click(200, 98)], ..row("option-click") },
+        Dialog { inputs: Some(vec![modes()]), mouse: (200, 98), ..row("option-hover") },
+        Dialog { inputs: Some(vec![modes()]), steps: times(key("tab"), 3), ..row("option-focus") },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            steps: [times(key("tab"), 3), vec![key("enter")]].concat(),
+            ..row("option-enter")
+        },
+        Dialog { inputs: Some(vec![modes()]), steps: vec![click(200, 98), click(200, 98)], ..row("option-wraps") },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            buttons: send(),
+            steps: vec![click(213, 223)],
+            ..row("option-template-initial")
+        },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            buttons: send(),
+            steps: vec![click(200, 98), click(213, 223)],
+            ..row("option-template-cycled")
+        },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            buttons: all(),
+            steps: vec![click(200, 98), click(213, 223)],
+            ..row("option-custom-all")
+        },
+        Dialog {
+            inputs: Some(vec![modes()]),
+            steps: vec![json!({"do": "scroll", "x": 200, "y": 98, "amount": 1})],
+            ..row("option-scroll")
+        },
+    ]
+}
+
 pub(super) fn rows() -> Vec<Value> {
-    [checkbox_rows(), action_rows()].concat()
+    [checkbox_rows(), action_rows(), option_rows()].concat()
 }
 
 fn checkbox_rows() -> Vec<Value> {

@@ -2,8 +2,8 @@ use super::*;
 
 use photon_game::dialog::{
     Action, ActionButton, AfterAction, Body, BooleanInput, CommonData, Control, Dialog,
-    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, PlainMessage,
-    Template, run_action,
+    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, OptionEntry,
+    PlainMessage, SingleOptionInput, Template, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
@@ -53,6 +53,21 @@ fn input(value: &Value) -> Input {
                 initial: flag("initial"),
                 on_true: string("on_true", "true"),
                 on_false: string("on_false", "false"),
+            }),
+            Some("single_option") => Control::SingleOption(SingleOptionInput {
+                width: value["width"].as_i64().unwrap_or(200) as i32,
+                entries: value["options"].as_array().map_or_else(Vec::new, |items| {
+                    items
+                        .iter()
+                        .map(|entry| OptionEntry {
+                            id: entry["id"].as_str().unwrap_or_default().to_owned(),
+                            display: entry.get("display").map(text),
+                            initial: entry["initial"].as_bool().unwrap_or(false),
+                        })
+                        .collect()
+                }),
+                label: text(&value["label"]),
+                label_visible: value["label_visible"].as_bool().unwrap_or(true),
             }),
             other => panic!("unknown input {other:?}"),
         },
@@ -255,6 +270,7 @@ fn custom_event(id: &str, payload: Option<&photon_core::nbt::FieldValue>) -> Str
         .map(|field| {
             let tag = match &field.value {
                 FieldValue::Byte(value) => format!("{value}b"),
+                FieldValue::Str(value) => format!("\"{value}\""),
                 other => panic!("tag {other:?} is not written yet"),
             };
             (field.key.as_str(), tag)

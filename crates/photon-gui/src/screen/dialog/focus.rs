@@ -3,7 +3,7 @@
 use super::*;
 
 /// Whether `mouse` is inside `rect`.
-fn contains(rect: Rectangle, (x, y): (i32, i32)) -> bool {
+pub(super) fn contains(rect: Rectangle, (x, y): (i32, i32)) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }
 

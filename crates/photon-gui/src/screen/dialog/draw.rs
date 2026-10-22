@@ -1,5 +1,6 @@
 //! Drawing the dialog screen.
 
+use super::focus::contains;
 use super::*;
 
 impl DialogScreen {
@@ -96,7 +97,9 @@ impl DialogScreen {
         self.draw_parts(frame, (atlas, font), item);
         for (index, control) in self.controls.iter().enumerate() {
             let focused = self.focus == Some(Focus::Input(index));
-            control.draw(frame, (atlas, font), self.control_rect(index), focused);
+            let rect = self.control_rect(index);
+            let hovered = self.in_container(mouse) && contains(rect, mouse);
+            control.draw(frame, (atlas, font), rect, (focused, hovered));
         }
         // The body's buttons are drawn where the scrolling puts them, inside the box.
         let mut shifted = self.arena.clone();

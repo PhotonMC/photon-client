@@ -2,13 +2,14 @@
 //! mouse or the keyboard changes it, and the value a button takes from it.
 
 use photon_core::nbt::FieldValue;
-use photon_game::dialog::{Control as Spec, Input, InputValue};
-use photon_game::text::{Lang, Run, Style};
+use photon_game::dialog::{Control as Spec, Input, InputValue, SingleOptionInput};
+use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 use crate::layout::Arena;
 use crate::widgets::navigation::Rectangle;
+use crate::widgets::{Kind, Widget};
 use crate::{FontRuns, FrameRuns};
 
 /// `Checkbox.getBoxSize` and the gap before its text.
@@ -16,6 +17,12 @@ const BOX: i32 = 17;
 const GAP: i32 = 4;
 
 enum State {
+    /// A `CycleButton`: the text of the button for each value, and the value ids.
+    Cycle {
+        labels: Vec<Vec<Run>>,
+        ids: Vec<String>,
+        index: usize,
+    },
     Check {
         label: Vec<Run>,
         selected: bool,
@@ -38,33 +45,46 @@ impl Control {
         (font, lang): (&Font, &Lang),
         input: &Input,
     ) -> Option<Self> {
-        let Spec::Boolean(boolean) = &input.control else {
-            return None;
-        };
-        let label = lang.runs(&boolean.label, &Style::default());
-        let width = BOX + GAP + font.width_of_runs(&label);
-        Some(Self {
-            rect: arena.add(width, BOX),
-            key: input.key.clone(),
-            state: State::Check {
-                label,
-                selected: boolean.initial,
-                on_true: boolean.on_true.clone(),
-                on_false: boolean.on_false.clone(),
-            },
-        })
+        match &input.control {
+            Spec::Boolean(boolean) => {
+                let label = lang.runs(&boolean.label, &Style::default());
+                let width = BOX + GAP + font.width_of_runs(&label);
+                Some(Self {
+                    rect: arena.add(width, BOX),
+                    key: input.key.clone(),
+                    state: State::Check {
+                        label,
+                        selected: boolean.initial,
+                        on_true: boolean.on_true.clone(),
+                        on_false: boolean.on_false.clone(),
+                    },
+                })
+            }
+            Spec::SingleOption(option) => Some(Self {
+                rect: arena.add(option.width, 20),
+                key: input.key.clone(),
+                state: cycle(lang, option),
+            }),
+            _ => None,
+        }
     }
 
     /// The mouse or the keyboard used the control (`AbstractButton.onPress`).
     pub(super) fn press(&mut self) {
         match &mut self.state {
             State::Check { selected, .. } => *selected = !*selected,
+            State::Cycle { labels, index, .. } => *index = (*index + 1) % labels.len(),
         }
     }
 
     /// `Action.ValueGetter`: the text a template takes and the tag a payload takes.
     pub(super) fn value(&self) -> InputValue {
         match &self.state {
+            State::Cycle { ids, index, .. } => InputValue {
+                key: self.key.clone(),
+                substitution: ids[*index].clone(),
+                tag: FieldValue::Str(ids[*index].clone()),
+            },
             State::Check {
                 selected,
                 on_true,
@@ -89,6 +109,8 @@ impl Control {
             ) => {
                 *selected = *before;
             }
+            (State::Cycle { index, .. }, State::Cycle { index: before, .. }) => *index = *before,
+            _ => {}
         }
     }
 
@@ -97,9 +119,23 @@ impl Control {
         frame: &mut GuiFrame,
         (atlas, font): (&GuiAtlas, &Font),
         rect: Rectangle,
-        focused: bool,
+        (focused, hovered): (bool, bool),
     ) {
         match &self.state {
+            State::Cycle { labels, index, .. } => {
+                let mut arena = Arena::default();
+                let leaf = arena.add(rect.width, rect.height);
+                arena.0[leaf].x = rect.x;
+                arena.0[leaf].y = rect.y;
+                let button = Widget {
+                    rect: leaf,
+                    active: true,
+                    kind: Kind::Button {
+                        label: labels[*index].clone(),
+                    },
+                };
+                button.draw(frame, atlas, font, &arena, focused || hovered);
+            }
             State::Check {
                 label, selected, ..
             } => {
@@ -114,5 +150,39 @@ impl Control {
                 frame.styled_text(atlas, font, label, x, y, 0xFFFF_FFFF, true);
             }
         }
+    }
+}
+
+/// `SingleOptionHandler`: a cycle button on the first entry marked, else the first.
+fn cycle(lang: &Lang, option: &SingleOptionInput) -> State {
+    let labels = option
+        .entries
+        .iter()
+        .map(|entry| {
+            let value = entry
+                .display
+                .clone()
+                .unwrap_or_else(|| Component::literal(entry.id.as_str()));
+            // `CommonComponents.optionNameValue` unless the label is hidden.
+            let shown = if option.label_visible {
+                Component::translatable_with(
+                    "options.generic_value",
+                    vec![option.label.clone(), value],
+                )
+            } else {
+                value
+            };
+            lang.runs(&shown, &Style::default())
+        })
+        .collect();
+    let initial = option.initial_index();
+    State::Cycle {
+        labels,
+        ids: option
+            .entries
+            .iter()
+            .map(|entry| entry.id.clone())
+            .collect(),
+        index: initial,
     }
 }
