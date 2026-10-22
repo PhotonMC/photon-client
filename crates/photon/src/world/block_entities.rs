@@ -19,6 +19,13 @@ use photon_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
 
+/// `ChestRenderer.xmasTextures`, which the renderer reads once when it is made: the date at the
+/// first chest drawn, kept until the program ends (the reference keeps it until a reload).
+fn xmas_textures() -> bool {
+    static XMAS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *XMAS.get_or_init(photon_core::calendar::is_extended_christmas)
+}
+
 /// `ChestRenderer.getChestMaterial` from the block's name.
 fn material_of(name: &str) -> ChestMaterial {
     match name {
@@ -36,7 +43,7 @@ fn material_of(name: &str) -> ChestMaterial {
             ChestMaterial::CopperOxidized
         }
         // `xmasTextures` outranks the trapped chest's own.
-        _ if photon_core::calendar::is_extended_christmas() => ChestMaterial::Christmas,
+        _ if xmas_textures() => ChestMaterial::Christmas,
         "minecraft:trapped_chest" => ChestMaterial::Trapped,
         _ => ChestMaterial::Regular,
     }
