@@ -142,6 +142,14 @@ class GuiOverlayOracle extends GuiHudOracle {
         if (row.get("crouching").getAsBoolean()) {
             remote.setPose(net.minecraft.world.entity.Pose.CROUCHING);
         }
+        if (row.has("pose")) {
+            remote.setPose(net.minecraft.world.entity.Pose.valueOf(row.get("pose").getAsString().toUpperCase()));
+        }
+        if (row.has("scale")) {
+            remote.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.SCALE)
+                .setBaseValue(Oracle.f64(row, "scale"));
+            remote.refreshDimensions();
+        }
         remote.setShiftKeyDown(row.get("shift_key_down").getAsBoolean());
         remote.setInvisible(row.get("invisible").getAsBoolean());
         if (row.get("vehicle").getAsBoolean()) {

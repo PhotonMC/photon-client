@@ -237,6 +237,8 @@ pub(super) struct Tag {
     pub(super) position: [f64; 3],
     pub(super) y_rot: f64,
     pub(super) crouching: bool,
+    pub(super) pose: Option<&'static str>,
+    pub(super) scale: Option<f64>,
     pub(super) shift: bool,
     pub(super) invisible: bool,
     pub(super) vehicle: bool,
@@ -253,6 +255,8 @@ pub(super) const TAG: Tag = Tag {
     position: [10.5, 64.0, 5.5],
     y_rot: 0.0,
     crouching: false,
+    pose: None,
+    scale: None,
     shift: false,
     invisible: false,
     vehicle: false,
@@ -266,7 +270,7 @@ pub(super) const TAG: Tag = Tag {
 
 pub(super) fn tag(label: &str, tag: Tag) -> Value {
     let camera = [0.5, 65.62, 0.5];
-    json!({
+    let mut row = json!({
         "label": label, "blocks": [], "chunk_radius": 0, "name": tag.name,
         "x": f64_bits(tag.position[0]), "y": f64_bits(tag.position[1]), "z": f64_bits(tag.position[2]),
         "y_rot": f32_bits(tag.y_rot), "crouching": tag.crouching, "shift_key_down": tag.shift,
@@ -274,7 +278,14 @@ pub(super) fn tag(label: &str, tag: Tag) -> Value {
         "camera_y": f64_bits(camera[1]), "camera_z": f64_bits(camera[2]), "camera_y_rot": f32_bits(tag.camera_rot.0),
         "camera_x_rot": f32_bits(tag.camera_rot.1), "local_spectator": tag.spectator, "hud_hidden": tag.hud_hidden,
         "light": tag.light, "background_for_chat_only": tag.chat_only, "background_opacity": f32_bits(tag.opacity),
-    })
+    });
+    if let Some(pose) = tag.pose {
+        row["pose"] = json!(pose);
+    }
+    if let Some(scale) = tag.scale {
+        row["scale"] = json!(f64_bits(scale));
+    }
+    row
 }
 
 /// A remote player's name tag as the reference's own renderer shows and
@@ -306,6 +317,11 @@ pub fn name_tags() -> Value {
 
 fn rule_tags() -> Vec<Value> {
     vec![
+        tag("sleeping-pose", Tag { pose: Some("sleeping"), ..TAG }),
+        tag("swimming-pose", Tag { pose: Some("swimming"), ..TAG }),
+        tag("gliding-pose", Tag { pose: Some("fall_flying"), ..TAG }),
+        tag("scaled-player", Tag { scale: Some(2.0), ..TAG }),
+        tag("scaled-sleeping-player", Tag { pose: Some("sleeping"), scale: Some(2.0), ..TAG }),
         tag("crouching-pose", Tag { crouching: true, shift: true, ..TAG }),
         tag("crouching-pose-no-key", Tag { crouching: true, ..TAG }),
         tag("invisible", Tag { invisible: true, ..TAG }),

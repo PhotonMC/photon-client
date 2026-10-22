@@ -282,7 +282,13 @@ fn player_tags(
         };
         let (x, y, z) = snapshot.position;
         // `Entity.getEyePosition`: the pose's eye height, scaled.
-        let eye_height = f64::from(snapshot.pose.player_dimensions().eye_height() * entity.scale());
+        let eye_height = f64::from(
+            snapshot
+                .pose
+                .player_dimensions()
+                .scale(entity.scale(), entity.scale())
+                .eye_height(),
+        );
         let eye = Vec3::new(x, y + eye_height, z);
         tags.submit(&tag, (Vec3::new(x, y, z), packed_light(world, eye)));
     }

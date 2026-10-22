@@ -82,14 +82,28 @@ fn add_player(
     // carries them.
     let flags =
         u8::from(flag(row, "shift_key_down")) * 0x02 + u8::from(flag(row, "invisible")) * 0x20;
-    let pose = if flag(row, "crouching") { 5 } else { 0 };
+    let pose = pose_id(row);
     if !world.apply_entity_metadata(entity_id, &[0, 0, flags, 6, 20, pose, 255]) {
         return Err("name tag metadata was rejected".into());
     }
+    world
+        .entities_mut()
+        .apply_attributes(entity_id, &changed_attributes(row)?);
     if flag(row, "vehicle") && !world.apply_entity_passengers(entity_id, &[rider_id]) {
         return Err("name tag passengers were rejected".into());
     }
     Ok(())
+}
+
+/// The pose a row names, as the entity data's id of it.
+fn pose_id(row: &Value) -> u8 {
+    match row["pose"].as_str() {
+        Some("fall_flying") => 1,
+        Some("sleeping") => 2,
+        Some("swimming") => 4,
+        _ if flag(row, "crouching") => 5,
+        _ => 0,
+    }
 }
 
 /// What a row answers: whether the tag shows, and what is submitted for it.

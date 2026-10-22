@@ -79,8 +79,8 @@ fn y_rot(entity: &ClientEntity, partial: f32) -> f32 {
 
 /// `Entity.getAttachments().getNullable(NAME_TAG, 0, yRot)` of an avatar: the
 /// point above its head the pose's dimensions give, turned by its facing.
-fn attachment(pose: ClientEntityPose, y_rot: f32) -> Vec3 {
-    let height = f64::from(pose.player_dimensions().height());
+fn attachment(pose: ClientEntityPose, (scale, y_rot): (f32, f32)) -> Vec3 {
+    let height = f64::from(pose.player_dimensions().scale(scale, scale).height());
     // `Vec3.yRot(-rotY * (float) (Math.PI / 180.0))`.
     let angle = -y_rot * (std::f64::consts::PI / 180.0) as f32;
     let cos = f64::from(mth_cos_f64(f64::from(angle)));
@@ -191,7 +191,7 @@ pub fn name_tag(
     let crouching = pose == ClientEntityPose::Crouching;
     Some(NameTag {
         runs: vec![TextRun::plain(name).into_owned()],
-        attachment: attachment(pose, y_rot(entity, partial)),
+        attachment: attachment(pose, (entity.scale(), y_rot(entity, partial))),
         offset: if name == "deadmau5" { -10 } else { 0 },
         see_through: !discrete,
         render_offset: if crouching {
