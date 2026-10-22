@@ -51,6 +51,8 @@ pub struct Sky {
     hide_flashes: bool,
     /// `Options.darknessEffectScale`.
     darkness_scale: f32,
+    /// `Options.gamma`.
+    brightness: f32,
     /// The angles of a flash that started, until its sound is asked for.
     flash_start: Option<(f32, f32)>,
 }
@@ -158,6 +160,7 @@ impl Sky {
             end_flash,
             hide_flashes: false,
             darkness_scale: 1.0,
+            brightness: 0.5,
             flash_start: None,
         })
     }
@@ -188,6 +191,7 @@ impl Sky {
         self.flicker.tick();
         self.hide_flashes = hide_lightning_flashes;
         self.darkness_scale = options.darkness_effect_scale as f32;
+        self.brightness = options.gamma as f32;
         self.tick_end_flash(session);
         if session.player().is_some() {
             let next = probe(
@@ -278,7 +282,7 @@ impl Sky {
             session,
             partial,
             (fog.darken_world, flash),
-            self.darkness_scale,
+            (self.darkness_scale, self.brightness),
         );
         let effects = lightmap.effects(&view, partial);
         backend.set_level_lighting(

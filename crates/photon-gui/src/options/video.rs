@@ -35,6 +35,7 @@ const INACTIVITY_FPS_LIMIT: u8 = 8;
 const RENDER_DISTANCE: u8 = CUSTOMISING | 3;
 const AMBIENT_OCCLUSION: u8 = CUSTOMISING | 4;
 const MENU_BLURRINESS: u8 = CUSTOMISING | 5;
+const GAMMA: u8 = 9;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -103,7 +104,7 @@ fn framerate_values() -> FramerateValues {
 }
 
 /// The options the screen shows and hands back; the default is the game's own.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VideoValues {
     pub attack_indicator: AttackIndicator,
     pub framerate_limit: i32,
@@ -115,6 +116,8 @@ pub struct VideoValues {
     pub render_distance: i32,
     /// `menuBackgroundBlurriness`.
     pub menu_blurriness: i32,
+    /// `gamma`, the brightness.
+    pub gamma: f64,
 }
 
 impl Default for VideoValues {
@@ -127,6 +130,7 @@ impl Default for VideoValues {
             inactivity_fps_limit: InactivityFpsLimit::Afk,
             render_distance: 12,
             menu_blurriness: 5,
+            gamma: 0.5,
         }
     }
 }
@@ -240,12 +244,12 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
             ),
         ),
         (
-            PLAIN,
+            GAMMA,
             slider(
                 "options.gamma",
                 photon_game::options::values::UnitDouble,
                 gamma,
-                0.5,
+                display.gamma,
             ),
         ),
         (

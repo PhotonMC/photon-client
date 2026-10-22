@@ -139,6 +139,14 @@ impl VideoSettingsScreen {
                 .find(MENU_BLURRINESS)
                 .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
                 .map_or(fallback.menu_blurriness, |slider| *slider.value()),
+            gamma: list
+                .find(GAMMA)
+                .and_then(|control| {
+                    control
+                        .as_any()
+                        .downcast_ref::<OptionSlider<photon_game::options::values::UnitDouble>>()
+                })
+                .map_or(fallback.gamma, |slider| *slider.value()),
         }
     }
 

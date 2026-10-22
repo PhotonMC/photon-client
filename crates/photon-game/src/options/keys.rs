@@ -25,6 +25,7 @@ pub(super) enum Key {
     LastServer,
     ChatVisibility,
     ChatOpacity,
+    Gamma,
     ScreenEffectScale,
     ChatLineSpacing,
     TextBackgroundOpacity,
@@ -58,7 +59,7 @@ pub(super) enum Key {
     ModelPart(usize),
 }
 
-pub(super) const KEYS: [(&str, Key); 64] = [
+pub(super) const KEYS: [(&str, Key); 65] = [
     ("ao", Key::AmbientOcclusion),
     ("enableVsync", Key::EnableVsync),
     ("fov", Key::Fov),
@@ -66,6 +67,7 @@ pub(super) const KEYS: [(&str, Key); 64] = [
     ("darknessEffectScale", Key::DarknessEffectScale),
     ("glintSpeed", Key::GlintSpeed),
     ("glintStrength", Key::GlintStrength),
+    ("gamma", Key::Gamma),
     ("guiScale", Key::GuiScale),
     ("maxFps", Key::MaxFps),
     ("renderDistance", Key::RenderDistance),

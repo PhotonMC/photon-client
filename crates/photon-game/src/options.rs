@@ -55,6 +55,8 @@ pub struct Options {
     pub pause_on_lost_focus: bool,
     pub chat_visibility: ChatVisibility,
     pub chat_opacity: f64,
+    /// `gamma`, 0 to 1: the brightness option, how far dark places are lifted.
+    pub gamma: f64,
     /// `screenEffectScale`, 0 to 1: how far nausea and portals distort the view.
     pub screen_effect_scale: f64,
     pub chat_line_spacing: f64,
@@ -127,6 +129,7 @@ impl Default for Options {
             pause_on_lost_focus: true,
             chat_visibility: ChatVisibility::Full,
             chat_opacity: 1.0,
+            gamma: 0.5,
             screen_effect_scale: 1.0,
             chat_line_spacing: 0.0,
             text_background_opacity: 0.5,

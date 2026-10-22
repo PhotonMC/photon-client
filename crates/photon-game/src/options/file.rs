@@ -76,10 +76,11 @@ impl Options {
     /// `option.codec().parse` and `set`: a value its codec refuses leaves
     /// the option as it was; one its value set refuses falls to the default.
     /// The options that are a number from zero to one, with the field each is kept in.
-    fn unit_slots(&mut self) -> [(Key, &mut f64); 12] {
+    fn unit_slots(&mut self) -> [(Key, &mut f64); 13] {
         [
             (Key::MouseSensitivity, &mut self.sensitivity),
             (Key::ChatOpacity, &mut self.chat_opacity),
+            (Key::Gamma, &mut self.gamma),
             (Key::ScreenEffectScale, &mut self.screen_effect_scale),
             (Key::ChatLineSpacing, &mut self.chat_line_spacing),
             (
@@ -97,10 +98,11 @@ impl Options {
     }
 
     /// [`Self::unit_slots`]'s values.
-    fn unit_values(&self) -> [(Key, f64); 12] {
+    fn unit_values(&self) -> [(Key, f64); 13] {
         [
             (Key::MouseSensitivity, self.sensitivity),
             (Key::ChatOpacity, self.chat_opacity),
+            (Key::Gamma, self.gamma),
             (Key::ScreenEffectScale, self.screen_effect_scale),
             (Key::ChatLineSpacing, self.chat_line_spacing),
             (Key::TextBackgroundOpacity, self.text_background_opacity),
@@ -162,13 +164,23 @@ impl Options {
         *field = int_in(json, range).unwrap_or(*field);
     }
 
-    pub(super) fn read(&mut self, key: Key, text: &str) {
-        let json = parse_json(text);
-        let unit = || match json {
+    /// The options that are a number from zero to one.
+    fn read_unit(&mut self, key: Key, json: &Json) {
+        let value = match *json {
             Json::Number(number) => UnitDouble::validate_value(double_value(number)),
             Json::Bool(value) => Some(if value { 1.0 } else { 0.0 }),
             Json::Text(_) | Json::Other => None,
         };
+        if let (Some(value), Some((_, slot))) = (
+            value,
+            self.unit_slots().into_iter().find(|(own, _)| *own == key),
+        ) {
+            *slot = value;
+        }
+    }
+
+    pub(super) fn read(&mut self, key: Key, text: &str) {
+        let json = parse_json(text);
         let boolean = || json.as_bool();
         match key {
             Key::Fov | Key::FovEffectScale | Key::DarknessEffectScale | Key::GuiScale => {
@@ -201,6 +213,7 @@ impl Options {
             }
             Key::MouseSensitivity
             | Key::ChatOpacity
+            | Key::Gamma
             | Key::ScreenEffectScale
             | Key::ChatLineSpacing
             | Key::TextBackgroundOpacity
@@ -211,12 +224,7 @@ impl Options {
             | Key::GlintSpeed
             | Key::GlintStrength
             | Key::DamageTiltStrength => {
-                if let (Some(value), Some((_, slot))) = (
-                    unit(),
-                    self.unit_slots().into_iter().find(|(own, _)| *own == key),
-                ) {
-                    *slot = value;
-                }
+                self.read_unit(key, &json);
             }
             Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
@@ -398,6 +406,7 @@ impl Options {
             Key::ChatVisibility => self.chat_visibility.id().to_string(),
             Key::MouseSensitivity
             | Key::ChatOpacity
+            | Key::Gamma
             | Key::ScreenEffectScale
             | Key::ChatLineSpacing
             | Key::TextBackgroundOpacity
@@ -620,6 +629,8 @@ mod tests {
         assert_eq!(loaded("mouseSensitivity:true").sensitivity, 1.0);
         assert_eq!(loaded("chatOpacity:false").chat_opacity, 0.0);
         assert_eq!(loaded("chatOpacity:nonsense").chat_opacity, 1.0);
+        assert_eq!(loaded("gamma:0.25").gamma, 0.25);
+        assert_eq!(loaded("gamma:1.5").gamma, 0.5);
         assert_eq!(loaded("screenEffectScale:0.25").screen_effect_scale, 0.25);
         assert_eq!(loaded("screenEffectScale:2.0").screen_effect_scale, 1.0);
     }

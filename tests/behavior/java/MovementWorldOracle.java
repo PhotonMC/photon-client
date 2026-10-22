@@ -219,8 +219,8 @@ class MovementWorldOracle extends MovementLivingOracle {
         time.setInt(player, row.get("water_vision_time").getAsInt());
         setField(minecraft, "player", player);
         var options = (net.minecraft.client.Options) unsafe.allocateInstance(net.minecraft.client.Options.class);
-        setField(options, "gamma", optionValue(0.5));
-        setField(options, "darknessEffectScale", optionValue(1.0));
+        setField(options, "gamma", optionValue(row.has("gamma") ? row.get("gamma").getAsDouble() : 0.5));
+        setField(options, "darknessEffectScale", optionValue(row.has("darkness_scale") ? row.get("darkness_scale").getAsDouble() : 1.0));
         setField(options, "hideLightningFlash", optionValue(row.get("hide_flash").getAsBoolean()));
         setField(minecraft, "options", options);
         // The End's flash, ticked through the row's clock times, and a boss bar with world fog.

@@ -210,6 +210,25 @@ fn lightmap_row_with_boss(
     })
 }
 
+/// The brightness option, alone and against the darkness effect's reduction of it.
+fn brightness_rows() -> Vec<Value> {
+    let dark = "minecraft:darkness";
+    let options = |label: &str, gamma: f64, scale: f64, effects: &[(&str, i64, bool, i64)]| {
+        let mut row = lightmap_row(label, effects, 57, false, 0);
+        row["gamma"] = json!(gamma);
+        row["darkness_scale"] = json!(scale);
+        row
+    };
+    vec![
+        options("brightness dark", 0.0, 1.0, &[]),
+        options("brightness bright", 1.0, 1.0, &[]),
+        options("brightness quarter", 0.25, 1.0, &[]),
+        options("brightness under darkness", 0.75, 1.0, &[(dark, 400, true, 30)]),
+        options("brightness under scaled darkness", 0.75, 0.5, &[(dark, 400, true, 30)]),
+        options("darkness cancels dark", 0.0, 1.0, &[(dark, 400, true, 100)]),
+    ]
+}
+
 /// `lightmap_data`: what the lightmap extractor makes of the player's darkness and night vision.
 pub fn lightmap_data() -> Value {
     let night = "minecraft:night_vision";
@@ -245,6 +264,7 @@ pub fn lightmap_data() -> Value {
     let boss = |label, old, now| lightmap_row_with_boss(label, &[], (100, false, 0), (old, now));
     let rows = [
         rows,
+        brightness_rows(),
         vec![
             // The End's flash: before it, rising, at its middle and ending, hidden by the option, and
             // a third of it under a boss bar's world fog.

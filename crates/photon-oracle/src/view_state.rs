@@ -392,6 +392,23 @@ pub(super) fn lightmap_data_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// The lightmap attributes a row carries.
+fn lightmap_attributes(row: &Value) -> Result<photon_render::sky::LightmapInputs, String> {
+    let colour = |key: &str| -> Result<[f32; 3], String> {
+        let packed = row["attributes"][key]
+            .as_i64()
+            .ok_or_else(|| key.to_owned())? as u32;
+        Ok([16, 8, 0].map(|shift| ((packed >> shift) & 255) as f32 / 255.0))
+    };
+    Ok(photon_render::sky::LightmapInputs {
+        sky_colour: colour("sky_light_color")?,
+        sky_factor: float_of(&row["attributes"], "sky_light_factor")?,
+        block_tint: colour("block_light_tint")?,
+        ambient: colour("ambient_light_color")?,
+        night_vision_colour: colour("night_vision_color")?,
+    })
+}
+
 /// One row of `lightmap_data`.
 fn lightmap_row(row: &Value) -> Result<Value, String> {
     let bits = |values: &[f32]| -> Vec<String> {
@@ -399,12 +416,6 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
             .iter()
             .map(|value| format!("{:08x}", value.to_bits()))
             .collect()
-    };
-    let colour = |key: &str| -> Result<[f32; 3], String> {
-        let packed = row["attributes"][key]
-            .as_i64()
-            .ok_or_else(|| key.to_owned())? as u32;
-        Ok([16, 8, 0].map(|shift| ((packed >> shift) & 255) as f32 / 255.0))
     };
     let partial = float_of(row, "partial")?;
     let mut view = effects_only_fog_view();
@@ -420,17 +431,12 @@ fn lightmap_row(row: &Value) -> Result<Value, String> {
         .any(|effect| effect["name"] == "minecraft:conduit_power");
     let intensity =
         photon_render::sky::night_vision_intensity(view.night_vision, conduit, water_vision);
-    let inputs = photon_render::sky::LightmapInputs {
-        sky_colour: colour("sky_light_color")?,
-        sky_factor: float_of(&row["attributes"], "sky_light_factor")?,
-        block_tint: colour("block_light_tint")?,
-        ambient: colour("ambient_light_color")?,
-        night_vision_colour: colour("night_vision_color")?,
-    };
+    let inputs = lightmap_attributes(row)?;
     let effects = inputs.effects(
         &photon_render::sky::LightmapView {
             darkness_blend: view.darkness.unwrap_or(0.0),
-            darkness_scale: 1.0,
+            darkness_scale: row["darkness_scale"].as_f64().unwrap_or(1.0) as f32,
+            brightness_option: row["gamma"].as_f64().unwrap_or(0.5) as f32,
             tick_count: i32_field(row, "tick_count")?,
             night_vision: intensity,
             boss_darkening: photon_render::camera::BossDarkening {

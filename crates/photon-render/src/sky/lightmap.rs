@@ -33,9 +33,6 @@ impl Attributes {
     }
 }
 
-/// The brightness option's default (`Options.gamma`).
-const GAMMA: f32 = 0.5;
-
 /// What the local player gives the lightmap besides the attributes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LightmapView {
@@ -43,6 +40,8 @@ pub struct LightmapView {
     pub darkness_blend: f32,
     /// `Options.darknessEffectScale`.
     pub darkness_scale: f32,
+    /// `Options.gamma`, the brightness.
+    pub brightness_option: f32,
     /// The player's `tickCount`.
     pub tick_count: i32,
     /// `nightVisionEffectIntensity`: the night vision scale, the water vision under conduit
@@ -104,7 +103,7 @@ impl LightmapInputs {
         LightmapEffects {
             base: std::array::from_fn(|i| self.ambient[i].max(night[i])),
             darkness: pulse.max(0.0) * view.darkness_scale,
-            brightness: (GAMMA - modifier).max(0.0),
+            brightness: (view.brightness_option - modifier).max(0.0),
             boss_darkening: view.boss_darkening,
             sky_factor: self.sky_factor + view.end_flash_boost,
         }
