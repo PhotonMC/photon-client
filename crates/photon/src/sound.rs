@@ -513,6 +513,11 @@ impl SoundSystem {
         self.engine.tick(paused);
     }
 
+    /// The engine's tick with no level: the sounds of the menus.
+    pub fn tick_menu(&mut self) {
+        self.engine.tick(false);
+    }
+
     /// Whether the subtitles listen (`SoundEngine.addEventListener`).
     pub fn set_listening(&mut self, listening: bool) {
         self.engine.set_listening(listening);

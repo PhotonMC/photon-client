@@ -168,10 +168,12 @@ impl<A: Copy> ButtonSet<A> {
     /// A press of the primary button at `mouse`: what the active button there asks for.
     pub fn clicked(&self, mouse: (i32, i32)) -> Option<A> {
         self.mouse_input();
-        self.buttons
+        let (_, action, _) = self
+            .buttons
             .iter()
-            .find(|(widget, _, _)| widget.is_active() && widget.contains(&self.arena, mouse))
-            .map(|(_, action, _)| *action)
+            .find(|(widget, _, _)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+        crate::ui_sound::play_down_sound();
+        Some(*action)
     }
 
     /// The index and action of the first active button under `mouse`, in the order they were
@@ -196,9 +198,66 @@ impl<A: Copy> ButtonSet<A> {
 
     /// Enter or Space: what the focused button asks for.
     pub fn pressed(&self) -> Option<A> {
-        self.focus
+        let (_, action, _) = self
+            .focus
             .and_then(|index| self.buttons.get(index))
-            .filter(|(widget, _, _)| widget.is_active())
-            .map(|(_, action, _)| *action)
+            .filter(|(widget, _, _)| widget.is_active())?;
+        crate::ui_sound::play_down_sound();
+        Some(*action)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui_sound::{self, BUTTON_CLICK};
+
+    fn set() -> ButtonSet<u8> {
+        let mut set = ButtonSet::new((200, 100));
+        set.add(
+            (10, 10, 50, 20),
+            (Kind::Button { label: Vec::new() }, true),
+            1,
+            None,
+        );
+        set.add(
+            (10, 40, 50, 20),
+            (Kind::Button { label: Vec::new() }, false),
+            2,
+            None,
+        );
+        set
+    }
+
+    #[test]
+    fn a_press_on_an_awake_button_clicks_once() {
+        ui_sound::take();
+        assert_eq!(set().clicked((20, 20)), Some(1));
+        let sounds = ui_sound::take();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].event, BUTTON_CLICK);
+    }
+
+    #[test]
+    fn a_press_on_nothing_or_a_sleeping_button_is_silent() {
+        ui_sound::take();
+        let set = set();
+        assert_eq!(set.clicked((150, 80)), None);
+        assert_eq!(set.clicked((20, 50)), None);
+        assert!(ui_sound::take().is_empty());
+    }
+
+    #[test]
+    fn enter_on_the_focused_button_clicks_and_without_focus_is_silent() {
+        ui_sound::take();
+        let mut set = set();
+        assert_eq!(set.pressed(), None);
+        assert!(ui_sound::take().is_empty());
+        set.set_focus(Some(0));
+        assert_eq!(set.pressed(), Some(1));
+        assert_eq!(ui_sound::take().len(), 1);
+        set.set_focus(Some(1));
+        assert_eq!(set.pressed(), None);
+        assert!(ui_sound::take().is_empty());
     }
 }

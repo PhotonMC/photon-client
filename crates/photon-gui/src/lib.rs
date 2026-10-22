@@ -14,6 +14,7 @@ pub mod text_hit;
 pub mod toasts;
 pub mod tooltip;
 pub mod tutorial;
+pub mod ui_sound;
 pub mod widgets;
 
 pub use hud::{HeartType, Hud, HudInput};

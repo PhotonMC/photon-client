@@ -127,7 +127,11 @@ impl DisconnectedScreen {
 
     /// A press of the primary button: whether it was on the button.
     pub fn clicked(&self, mouse: (i32, i32)) -> bool {
-        self.button.contains(&self.arena, mouse)
+        let hit = self.button.contains(&self.arena, mouse);
+        if hit {
+            crate::ui_sound::play_down_sound();
+        }
+        hit
     }
 
     /// Tab focuses the button, the only one.
@@ -137,6 +141,9 @@ impl DisconnectedScreen {
 
     /// Enter or Space on the focused button.
     pub fn pressed(&self) -> bool {
+        if self.focused {
+            crate::ui_sound::play_down_sound();
+        }
         self.focused
     }
 }

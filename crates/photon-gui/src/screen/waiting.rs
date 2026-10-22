@@ -135,7 +135,12 @@ impl WaitingScreen {
 
     /// A press at `mouse`: whether it closes the screen (the button, once it is awake).
     pub fn clicked(&self, mouse: (i32, i32)) -> bool {
-        self.visible && self.button.is_active() && self.button.contains(&self.arena, mouse)
+        let hit =
+            self.visible && self.button.is_active() && self.button.contains(&self.arena, mouse);
+        if hit {
+            crate::ui_sound::play_down_sound();
+        }
+        hit
     }
 
     /// Escape closes the screen once the button is awake.

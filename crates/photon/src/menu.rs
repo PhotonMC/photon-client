@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
-use photon_game::server_status::{Pinged, ServerStatus};
+use photon_game::server_status::Pinged;
 use photon_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
 use photon_game::text::Component;
 use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
@@ -23,6 +23,7 @@ use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
 mod icons;
+mod pings;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -114,6 +115,10 @@ struct Menu {
     icons_shown: Vec<Option<Vec<u8>>>,
     /// Whether the entries' icons are to be checked again.
     icons_dirty: bool,
+    /// The sound engine of the menus, which plays the buttons' clicks.
+    sound: crate::sound::SoundSlot,
+    /// The options as the menu opened.
+    options: photon_game::options::Options,
     /// `Panorama.spin`, in degrees, and when it last advanced.
     spin: f32,
     last_spin: Instant,
@@ -161,8 +166,10 @@ impl Menu {
             gui_size(client),
             splash.as_deref(),
         ));
+        let sound = crate::sound::SoundSlot::open(root, &options);
         Ok(Self {
             gui,
+            sound,
             splash,
             servers: ServerList::load(&game_directory),
             game_directory,
@@ -175,6 +182,7 @@ impl Menu {
             spin: 0.0,
             last_spin: Instant::now(),
             blurriness: options.menu_background_blurriness,
+            options,
         })
     }
 
@@ -220,7 +228,7 @@ impl Menu {
     /// `JoinMultiplayerScreen`, the saved servers read again.
     fn server_list(&mut self, size: (i32, i32)) -> Screen {
         self.servers = ServerList::load(&self.game_directory);
-        self.pings = Some(ping_all(&self.servers));
+        self.pings = Some(pings::ping_all(&self.servers));
         self.gui.atlas.clear_favicons();
         self.icons_shown.clear();
         self.icons_dirty = true;
@@ -236,6 +244,22 @@ impl Menu {
 
     /// Frames until a menu chooses or the window closes. `PHOTON_CAPTURE_PPM`: the tenth frame is
     /// saved there and the client stops.
+    /// The title and the list follow the window's size; the forms, the question and the join keep
+    /// the size they were opened in.
+    fn fit_screen(&mut self, size: (i32, i32)) {
+        let current = match &self.screen {
+            Screen::Title(screen) => Some(screen.size()),
+            Screen::Servers(screen) => Some(screen.size()),
+            _ => None,
+        };
+        if current.is_some_and(|current| current != size) {
+            self.screen = match self.screen {
+                Screen::Servers(_) => self.server_list(size),
+                _ => self.title(size),
+            };
+        }
+    }
+
     fn run(mut self, client: &mut Client) -> Result<Choice> {
         let capture = env::var("PHOTON_CAPTURE_PPM").ok();
         let mut frames = 0;
@@ -249,6 +273,7 @@ impl Menu {
             play::fit_swapchain(client)?;
             let size = gui_size(client);
             self.receive_pings();
+            self.sound.frame_in_menu(&self.options);
             self.sync_icons(client)?;
             if let Screen::Connecting(_, task) = &self.screen
                 && let Some(result) = task.finished()
@@ -267,18 +292,7 @@ impl Menu {
                     }
                 }
             }
-            // The forms, the question and the join keep the size they were opened in.
-            let current = match &self.screen {
-                Screen::Title(screen) => Some(screen.size()),
-                Screen::Servers(screen) => Some(screen.size()),
-                _ => None,
-            };
-            if current.is_some_and(|current| current != size) {
-                self.screen = match self.screen {
-                    Screen::Servers(_) => self.server_list(size),
-                    _ => self.title(size),
-                };
-            }
+            self.fit_screen(size);
             self.spin_panorama(client);
             let mouse = self.mouse;
             let screen = &self.screen;
@@ -621,41 +635,6 @@ fn title_event(
         }
         _ => None,
     }
-}
-
-/// `ServerSelectionList.OnlineServerEntry`'s pings, each on a thread of its own: what each saved
-/// server answers, by its address.
-fn ping_all(servers: &ServerList) -> std::sync::mpsc::Receiver<(String, Pinged)> {
-    let (send, receive) = std::sync::mpsc::channel();
-    for server in &servers.servers {
-        let (ip, send) = (server.ip.clone(), send.clone());
-        let _ = std::thread::Builder::new()
-            .name("Server Pinger".to_owned())
-            .spawn(move || {
-                let pinged = ping(&ip);
-                let _ = send.send((ip, pinged));
-            });
-    }
-    receive
-}
-
-/// `ServerStatusPinger.pingServer`: an unknown name, a server that does not answer or answers in a
-/// way that does not read is unreachable.
-fn ping(ip: &str) -> Pinged {
-    let Some(address) = address_with_port(ip)
-        .to_socket_addrs()
-        .ok()
-        .and_then(|mut addresses| addresses.next())
-    else {
-        return Pinged::unreachable(true);
-    };
-    photon_net::connection::query_status_and_ping(address, Duration::from_secs(30))
-        .ok()
-        .and_then(|trace| {
-            let status = ServerStatus::parse(&trace.status_response)?;
-            Some(Pinged::answered(&status, trace.round_trip_ms))
-        })
-        .unwrap_or_else(|| Pinged::unreachable(false))
 }
 
 /// An event for the failed join's screen: whether its button was pressed.

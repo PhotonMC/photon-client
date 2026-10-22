@@ -10,6 +10,7 @@ impl Play {
     fn place_listener(&mut self, frame: &FrameCamera) {
         self.sound.reload_for_device(&self.controls.options);
         self.sound.track_device(&self.controls.options);
+        self.sound.play_ui_queue();
         if let Some(sound) = self.sound.as_ref() {
             let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
             sound.set_listener(frame.camera, forward, up);

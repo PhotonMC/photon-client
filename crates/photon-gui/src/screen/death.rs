@@ -143,6 +143,7 @@ impl DeathScreen {
             .iter()
             .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))
             .map(|(_, action)| *action)?;
+        crate::ui_sound::play_down_sound();
         self.pressed_action(action)
     }
 
@@ -163,6 +164,7 @@ impl DeathScreen {
             return None;
         }
         let action = *action;
+        crate::ui_sound::play_down_sound();
         self.pressed_action(action)
     }
 

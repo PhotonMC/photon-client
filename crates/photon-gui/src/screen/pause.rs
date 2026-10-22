@@ -312,10 +312,12 @@ impl PauseScreen {
     /// A press of the primary button at `mouse`: what it asks for.
     pub fn clicked(&self, mouse: (i32, i32)) -> Option<PauseAction> {
         self.mouse_input();
-        self.widgets
+        let (_, action) = self
+            .widgets
             .iter()
-            .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))
-            .and_then(|(_, action)| *action)
+            .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+        crate::ui_sound::play_down_sound();
+        *action
     }
 
     /// Tab (and Shift+Tab): the focus moves to the next button.
@@ -333,9 +335,11 @@ impl PauseScreen {
 
     /// Enter or Space: what the focused button asks for.
     pub fn pressed(&self) -> Option<PauseAction> {
-        self.focus
+        let (_, action) = self
+            .focus
             .and_then(|index| self.widgets.get(index))
-            .filter(|(widget, _)| widget.is_active())
-            .and_then(|(_, action)| *action)
+            .filter(|(widget, _)| widget.is_active())?;
+        crate::ui_sound::play_down_sound();
+        *action
     }
 }

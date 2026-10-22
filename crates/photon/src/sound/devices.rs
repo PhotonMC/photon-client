@@ -59,6 +59,27 @@ impl SoundSlot {
     pub fn track_device(&mut self, options: &Options) {
         SoundSystem::track_device(&mut self.system, &mut self.idle, options);
     }
+
+    /// Play what the widgets asked of the interface's sounds since the last call; with no engine
+    /// they are dropped, as the manager drops a sound it cannot play.
+    pub fn play_ui_queue(&mut self) {
+        for sound in photon_gui::ui_sound::take() {
+            if let Some(system) = self.system.as_mut() {
+                system.play_ui(sound.event, sound.pitch, sound.volume);
+            }
+        }
+    }
+
+    /// One frame of the menus: the devices are checked, the interface's sounds played and the
+    /// engine ticked.
+    pub fn frame_in_menu(&mut self, options: &Options) {
+        self.reload_for_device(options);
+        self.track_device(options);
+        self.play_ui_queue();
+        if let Some(system) = self.system.as_mut() {
+            system.tick_menu();
+        }
+    }
 }
 
 /// `PollingDeviceTracker.DEFAULT_DEVICE_CHECK_INTERVAL_MS`.
@@ -125,7 +146,7 @@ impl DeviceTracker {
 
 impl SoundSystem {
     /// `SoundManager.reload` after the sound device option changed: every sound stops and the
-    /// engine starts on the device now chosen, with a UI click as its first sound. Nothing
+    /// engine starts on the device now chosen, with a UI click (`forUI` defaults the volume to 0.25) as its first sound. Nothing
     /// happens while the option is as the engine was opened for.
     fn reload_for_device(sound: &mut Option<Self>, idle: &mut Option<Idle>, options: &Options) {
         let Some(device) = sound.as_ref().map(|sound| sound.device.0.clone()) else {
@@ -134,7 +155,7 @@ impl SoundSystem {
         if device != options.sound_device {
             Self::reload(sound, idle, options);
             if let Some(sound) = sound.as_mut() {
-                sound.play_ui("minecraft:ui.button.click", 1.0, 1.0);
+                sound.play_ui("minecraft:ui.button.click", 1.0, 0.25);
             }
         }
     }

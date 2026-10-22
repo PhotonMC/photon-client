@@ -419,10 +419,12 @@ impl ConfirmScreen {
     /// A press of the primary button at `mouse`: the button it was on, if
     /// it was awake.
     pub fn clicked(&self, mouse: (i32, i32)) -> Option<ConfirmAction> {
-        self.buttons
+        let (_, action) = self
+            .buttons
             .iter()
-            .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))
-            .map(|(_, action)| *action)
+            .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+        crate::ui_sound::play_down_sound();
+        Some(*action)
     }
 
     /// Tab (and Shift+Tab): the focus moves to the next awake button.
@@ -447,7 +449,11 @@ impl ConfirmScreen {
     /// Enter or Space: the focused button, if it is awake.
     pub fn pressed(&self) -> Option<ConfirmAction> {
         let (widget, action) = self.buttons.get(self.focus?)?;
-        widget.is_active().then_some(*action)
+        if !widget.is_active() {
+            return None;
+        }
+        crate::ui_sound::play_down_sound();
+        Some(*action)
     }
 
     /// Escape: "No", once the delay has run out.
