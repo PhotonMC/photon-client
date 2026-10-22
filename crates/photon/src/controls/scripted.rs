@@ -161,7 +161,14 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
-        if self.advancements.is_some() {
+        if self.dialog.is_some() {
+            let press = glfw::WindowEvent::MouseButton(
+                glfw::MouseButton::Button1,
+                glfw::Action::Press,
+                glfw::Modifiers::empty(),
+            );
+            self.dialog_event(press, session, surface, assets)?;
+        } else if self.advancements.is_some() {
             self.advancements_pressed(session, surface, assets);
         } else if self.stats.is_some() {
             self.stats_pressed((self.gui_mouse.0 as i32, self.gui_mouse.1 as i32));

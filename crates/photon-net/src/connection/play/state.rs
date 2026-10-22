@@ -209,13 +209,11 @@ impl PlaySession {
     pub(super) fn on_show_dialog(&mut self, holder: DialogHolder) {
         let dialog = match holder {
             DialogHolder::Direct(dialog) => *dialog,
-            DialogHolder::Registry(index) => {
-                match self.state.dialog_registry.get(index).cloned().flatten() {
-                    Some(dialog) => dialog,
-                    // A known pack's entry carries no data, and there is none to look it up in.
-                    None => return,
-                }
-            }
+            DialogHolder::Registry(index) => match self.registry_dialog(index) {
+                Some(dialog) => dialog,
+                // A known pack's entry with no screen built has nothing to show.
+                None => return,
+            },
         };
         self.social
             .dialog_events
@@ -241,7 +239,7 @@ impl PlaySession {
             .filter(|tag| tag.id.as_string() == "minecraft:pause_screen_additions")
             .flat_map(|tag| tag.values.iter().copied())
             .collect::<Vec<_>>();
-        let entry = |index: usize| self.state.dialog_registry.get(index).cloned().flatten();
+        let entry = |index: usize| self.registry_dialog(index);
         match added.as_slice() {
             [] if self.state.server_links.is_empty() => None,
             [] => self.dialog_by_name("minecraft:server_links"),
@@ -256,7 +254,21 @@ impl PlaySession {
             .registry_names("minecraft:dialog")
             .iter()
             .position(|entry| entry == name)?;
-        self.state.dialog_registry.get(position).cloned().flatten()
+        self.registry_dialog(position)
+    }
+
+    /// A dialog registry entry by number: what the server sent, or for an entry of a pack the
+    /// client knows, the game's own.
+    fn registry_dialog(&self, index: usize) -> Option<photon_game::dialog::Dialog> {
+        self.state
+            .dialog_registry
+            .get(index)
+            .cloned()
+            .flatten()
+            .or_else(|| {
+                let name = self.registry_names("minecraft:dialog").get(index)?;
+                photon_game::dialog::Dialog::built_in(name)
+            })
     }
 
     /// The dialogs the server showed or cleared since the last call.

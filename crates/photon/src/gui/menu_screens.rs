@@ -37,8 +37,8 @@ impl Gui {
         (gui_size, item): ((i32, i32), &mut photon_render::gui::ItemDrawer<'_>),
     ) {
         // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
-        // parent).
-        if controls.link_confirm.is_some() {
+        // parent), and so does a dialog (`setScreen` replaces the menu it was opened from).
+        if controls.link_confirm.is_some() || controls.dialog.is_some() {
             return;
         }
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);

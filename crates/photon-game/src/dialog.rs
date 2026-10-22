@@ -217,6 +217,34 @@ impl Dialog {
         })
     }
 
+    /// The dialog a registry entry of the game's own data pack stands for, when the server left
+    /// its data out because the client knows the pack (`Dialogs.bootstrap`). Only the server
+    /// links dialog has a screen here.
+    pub fn built_in(name: &str) -> Option<Self> {
+        if name != "minecraft:server_links" {
+            return None;
+        }
+        Some(Self::ServerLinks {
+            common: Box::new(CommonData {
+                title: Component::translatable("menu.server_links.title"),
+                external_title: Some(Component::translatable("menu.server_links")),
+                can_close_with_escape: true,
+                pause: true,
+                after_action: AfterAction::Close,
+                body: Vec::new(),
+                has_inputs: false,
+            }),
+            exit: Some(Box::new(ActionButton {
+                label: Component::translatable("gui.back"),
+                tooltip: None,
+                width: 200,
+                action: None,
+            })),
+            columns: 1,
+            button_width: 310,
+        })
+    }
+
     /// `Dialog.DIRECT_CODEC` from the tag.
     pub fn from_nbt(value: &FieldValue) -> Option<Self> {
         let FieldValue::Compound(fields) = value else {
