@@ -36,6 +36,34 @@ fn attachment(entity: &ClientEntity) -> Option<Vec3> {
     Some(Vec3::new(x * scale, y * scale, z * scale))
 }
 
+/// Which renderer's rules name an entity, or none where it makes no tag (yet): a player names
+/// itself by its profile, an item frame by the item in it, an item, a falling block and a
+/// villager by what they are rather than their type (unless they carry a custom name), and a
+/// lightning bolt or an ominous item spawner submits no name at all. Read from the renderer
+/// classes: the ender dragon's extends `EntityRenderer` itself, so it follows the plain rules
+/// though it is a mob.
+pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
+    let name = photon_data::entity_type::name(entity.type_id)?;
+    match name {
+        "minecraft:player"
+        | "minecraft:mannequin"
+        | "minecraft:item_frame"
+        | "minecraft:glow_item_frame"
+        | "minecraft:lightning_bolt"
+        | "minecraft:ominous_item_spawner" => None,
+        "minecraft:item" | "minecraft:falling_block" | "minecraft:villager"
+            if !entity.has_custom_name() =>
+        {
+            None
+        }
+        "minecraft:armor_stand" => Some(NameRules::ArmorStand),
+        "minecraft:ender_dragon" => Some(NameRules::Entity),
+        _ if entity.is_mob() => Some(NameRules::Mob),
+        _ if entity.is_living_entity() => None,
+        _ => Some(NameRules::Entity),
+    }
+}
+
 /// `Entity.getEyeHeight()` of a standing entity: the table's eye height of its type (a baby's
 /// for a baby) in its scale.
 pub fn eye_height(entity: &ClientEntity) -> Option<f64> {

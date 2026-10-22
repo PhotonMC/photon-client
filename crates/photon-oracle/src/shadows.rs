@@ -227,12 +227,18 @@ fn entity_tag(
         &photon_game::text::Lang,
     ),
 ) -> Option<photon_render::entity::name_tag::NameTag> {
-    use photon_render::entity::tag_rules::{NameRules, entity_name_tag};
-    let rules = match row["renderer"].as_str() {
-        Some("mob") => NameRules::Mob,
-        Some("armor_stand") => NameRules::ArmorStand,
-        _ => NameRules::Entity,
+    use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
+    // The renderer the reference stands in with, and the rules the client classes the type by.
+    let rules = rules_of(entity);
+    let stands_in = match row["renderer"].as_str() {
+        Some("mob") => Some(NameRules::Mob),
+        Some("armor_stand") => Some(NameRules::ArmorStand),
+        _ => Some(NameRules::Entity),
     };
+    if rules != stands_in {
+        return None;
+    }
+    let rules = rules?;
     let picked = row["picked"].as_bool().unwrap_or(false);
     let runs = photon_gui::entity_name::entity_name_runs(entity, lang);
     entity_name_tag(entity, runs, (rules, picked), viewer)

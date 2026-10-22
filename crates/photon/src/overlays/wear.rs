@@ -2,7 +2,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
-use photon_render::entity::tag_rules::{NameRules, entity_name_tag, eye_height};
+use photon_render::entity::tag_rules::{entity_name_tag, eye_height, rules_of};
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -262,21 +262,6 @@ fn player_tags(
     }
 }
 
-/// Which renderer's rules name an entity of the type, or none where the tag is not made yet: an
-/// item frame names itself by the item in it, a player by its profile.
-fn name_rules(entity: &photon_world::ClientEntity) -> Option<NameRules> {
-    match photon_data::entity_type::name(entity.type_id)? {
-        "minecraft:player"
-        | "minecraft:mannequin"
-        | "minecraft:item_frame"
-        | "minecraft:glow_item_frame" => None,
-        "minecraft:armor_stand" => Some(NameRules::ArmorStand),
-        _ if entity.is_mob() => Some(NameRules::Mob),
-        _ if entity.is_living_entity() => None,
-        _ => Some(NameRules::Entity),
-    }
-}
-
 /// `EntityRenderer.extractNameTags` for the entities that are not players: the ones a name shows
 /// over (a custom name that is visible, or under the crosshair).
 fn entity_tags(
@@ -292,7 +277,7 @@ fn entity_tags(
         if !entity.has_custom_name() && !entity.is_custom_name_visible() {
             continue;
         }
-        let Some(rules) = name_rules(entity) else {
+        let Some(rules) = rules_of(entity) else {
             continue;
         };
         let runs = photon_gui::entity_name::entity_name_runs(entity, lang);

@@ -75,6 +75,15 @@ fn visibility_rows() -> Vec<Value> {
         mob("entity-ridden", Mob { tag: Tag { vehicle: true, ..TAG }, ..plain }),
         mob("entity-invisible", Mob { tag: Tag { invisible: true, ..TAG }, ..plain }),
         mob("entity-hud-hidden", Mob { tag: Tag { hud_hidden: true, ..TAG }, ..plain }),
+        mob("dragon-visible", Mob { kind: "minecraft:ender_dragon", renderer: "entity", ..MOB }),
+        mob(
+            "dragon-ridden",
+            Mob { kind: "minecraft:ender_dragon", renderer: "entity", tag: Tag { vehicle: true, ..TAG }, ..MOB },
+        ),
+        mob(
+            "dragon-invisible",
+            Mob { kind: "minecraft:ender_dragon", renderer: "entity", tag: Tag { invisible: true, ..TAG }, ..MOB },
+        ),
         mob("stand-visible", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", ..MOB }),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(
@@ -130,7 +139,9 @@ fn attachment_rows() -> Vec<Value> {
         "minecraft:squid",
         "minecraft:allay",
     ] {
-        rows.push(mob(&format!("kind-{kind}"), Mob { kind, ..MOB }));
+        // The dragon's renderer is a plain `EntityRenderer`.
+        let renderer = if kind == "minecraft:ender_dragon" { "entity" } else { "mob" };
+        rows.push(mob(&format!("kind-{kind}"), Mob { kind, renderer, ..MOB }));
     }
     for kind in ["minecraft:zombie", "minecraft:cow", "minecraft:villager", "minecraft:pig", "minecraft:wolf"] {
         rows.push(mob(&format!("baby-{kind}"), Mob { kind, baby: true, ..MOB }));
