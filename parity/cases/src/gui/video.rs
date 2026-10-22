@@ -3,7 +3,7 @@
 //! pressed, Control and the wheel through the GUI scales, and the preset
 //! turning to Custom when a quality option changes.
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::gui;
 use super::setting::{at, click, ctrl_wheel, drag, frame, release, shift_click, slide, times, wheel, wheel_at};
@@ -138,6 +138,30 @@ fn preset_rows() -> Vec<Value> {
     ]
 }
 
+/// The screen opens with the options the file stored: the widgets show them, not the preset's.
+fn stored_rows() -> Vec<Value> {
+    let stored = |label: &str, quality: Value, steps: Vec<Value>| {
+        at(label).options(json!({ "quality": quality })).steps(steps).row()
+    };
+    let everything = || {
+        json!({
+            "preset": "custom", "blend": 5, "priority": 2, "simulation": 20, "clouds": 1, "mipmaps": 1,
+            "shadows": false, "entity_distance": 0.8, "cloud_range": 40, "leaves": false,
+            "transparency": true, "weather": 4, "anisotropy": 3, "filtering": 2,
+        })
+    };
+    vec![
+        stored("stored-fast-simulation", json!({"preset": "fast", "simulation": 20}), vec![wheel(-9)]),
+        stored("stored-fabulous", json!({"preset": "fabulous"}), vec![wheel(-9)]),
+        stored("stored-everything-top", everything(), vec![wheel(-9)]),
+        stored("stored-everything-middle", everything(), vec![wheel(-12)]),
+        stored("stored-everything-bottom", everything(), vec![wheel(-100)]),
+        stored("stored-fancy-then-ao", json!({"preset": "fancy", "shadows": false}), vec![wheel(-10), click(100, 170)]),
+        stored("stored-fast-then-preset-fancy", json!({"preset": "fast"}), vec![wheel(-9), click(145, 108)]),
+        stored("stored-filtering-awake", json!({"filtering": 2}), vec![wheel(-100)]),
+    ]
+}
+
 /// Steps after scrolling to the end of the list.
 fn bottom(steps: Vec<Value>) -> Vec<Value> {
     [vec![wheel(-100)], steps].concat()
@@ -261,6 +285,7 @@ pub fn video_settings_screen() -> Value {
         gui_scale_rows(),
         press_rows(),
         preset_rows(),
+        stored_rows(),
         bottom_rows(),
         ctrl_rows(),
         tip_rows(),

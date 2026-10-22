@@ -52,6 +52,36 @@ class GuiSettingsOracle extends GuiScreenOracle {
      * what it draws. A screen is drawn between steps, as the game does, since the widgets
      * take their places as they are drawn.
      */
+    /// The quality options as `options.txt` would have loaded them: the game is not running yet, so
+    /// a set neither applies the preset nor turns it to Custom.
+    static void storedQuality(StubGame minecraft, JsonObject values) throws Exception {
+        var options = minecraft.options;
+        set(minecraft, "running", false);
+        if (values.has("preset")) {
+            for (var preset : net.minecraft.client.GraphicsPreset.values()) {
+                if (preset.getSerializedName().equals(values.get("preset").getAsString())) options.graphicsPreset().set(preset);
+            }
+        }
+        if (values.has("blend")) options.biomeBlendRadius().set(values.get("blend").getAsInt());
+        if (values.has("priority")) {
+            options.prioritizeChunkUpdates().set(net.minecraft.client.PrioritizeChunkUpdates.values()[values.get("priority").getAsInt()]);
+        }
+        if (values.has("simulation")) options.simulationDistance().set(values.get("simulation").getAsInt());
+        if (values.has("clouds")) options.cloudStatus().set(net.minecraft.client.CloudStatus.values()[values.get("clouds").getAsInt()]);
+        if (values.has("mipmaps")) options.mipmapLevels().set(values.get("mipmaps").getAsInt());
+        if (values.has("shadows")) options.entityShadows().set(values.get("shadows").getAsBoolean());
+        if (values.has("entity_distance")) options.entityDistanceScaling().set(values.get("entity_distance").getAsDouble());
+        if (values.has("cloud_range")) options.cloudRange().set(values.get("cloud_range").getAsInt());
+        if (values.has("leaves")) options.cutoutLeaves().set(values.get("leaves").getAsBoolean());
+        if (values.has("transparency")) options.improvedTransparency().set(values.get("transparency").getAsBoolean());
+        if (values.has("weather")) options.weatherRadius().set(values.get("weather").getAsInt());
+        if (values.has("anisotropy")) options.maxAnisotropyBit().set(values.get("anisotropy").getAsInt());
+        if (values.has("filtering")) {
+            options.textureFiltering().set(net.minecraft.client.TextureFilteringMethod.values()[values.get("filtering").getAsInt()]);
+        }
+        set(minecraft, "running", true);
+    }
+
     static JsonObject settingsScreen(JsonObject request, String kind) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
@@ -110,6 +140,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options));
             if (row.has("options")) {
                 chatOptions(minecraft.options, row.getAsJsonObject("options"));
+                if (row.getAsJsonObject("options").has("quality")) {
+                    storedQuality(minecraft, row.getAsJsonObject("options").getAsJsonObject("quality"));
+                }
             }
             if (row.has("bindings")) {
                 // Keys bound before the screen opens, as `options.txt` would have them.

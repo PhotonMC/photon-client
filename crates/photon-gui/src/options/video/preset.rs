@@ -2,6 +2,10 @@
 //! of those options show them. The change is not the user's, so the preset stays as chosen
 //! (`isApplyingGraphicsPreset`).
 
+use photon_game::options::{
+    CloudStatus, GraphicsPreset, PrioritizeChunkUpdates, QualityOptions, TextureFiltering,
+};
+
 use super::*;
 
 /// A value a preset gives to the widget of one option.
@@ -181,5 +185,79 @@ impl VideoSettingsScreen {
                 }
             }
         }
+    }
+}
+
+impl VideoSettingsScreen {
+    /// What the sliders and buttons of the quality options say, over `fallback`.
+    pub(super) fn quality(&self, fallback: QualityOptions) -> QualityOptions {
+        QualityOptions {
+            graphics_preset: self
+                .name_of(GRAPHICS_PRESET, GraphicsPreset::from_caption_key)
+                .unwrap_or(fallback.graphics_preset),
+            biome_blend_radius: self.int_of(BIOME_BLEND, fallback.biome_blend_radius),
+            prioritize_chunk_updates: self
+                .name_of(
+                    PRIORITIZE_CHUNK_UPDATES,
+                    PrioritizeChunkUpdates::from_caption_key,
+                )
+                .unwrap_or(fallback.prioritize_chunk_updates),
+            simulation_distance: self.int_of(SIMULATION_DISTANCE, fallback.simulation_distance),
+            cloud_status: self
+                .name_of(CLOUDS, CloudStatus::from_caption_key)
+                .unwrap_or(fallback.cloud_status),
+            mipmap_levels: self.int_of(MIPMAPS, fallback.mipmap_levels),
+            entity_shadows: self.flag_of(ENTITY_SHADOWS, fallback.entity_shadows),
+            entity_distance_scaling: self
+                .screen
+                .list
+                .find(ENTITY_DISTANCE)
+                .and_then(|control| {
+                    control
+                        .as_any()
+                        .downcast_ref::<OptionSlider<EntityDistanceValues>>()
+                })
+                .map_or(fallback.entity_distance_scaling, |slider| *slider.value()),
+            cloud_range: self.int_of(CLOUD_RANGE, fallback.cloud_range),
+            cutout_leaves: self.flag_of(CUTOUT_LEAVES, fallback.cutout_leaves),
+            improved_transparency: self
+                .flag_of(IMPROVED_TRANSPARENCY, fallback.improved_transparency),
+            weather_radius: self.int_of(WEATHER_RADIUS, fallback.weather_radius),
+            max_anisotropy_bit: self.int_of(MAX_ANISOTROPY, fallback.max_anisotropy_bit),
+            texture_filtering: self
+                .name_of(TEXTURE_FILTERING, TextureFiltering::from_caption_key)
+                .unwrap_or(fallback.texture_filtering),
+        }
+    }
+
+    fn int_of(&self, tag: u8, fallback: i32) -> i32 {
+        self.screen
+            .list
+            .find(tag)
+            .and_then(|control| control.as_any().downcast_ref::<OptionSlider<IntRange>>())
+            .map_or(fallback, |slider| *slider.value())
+    }
+
+    fn flag_of(&self, tag: u8, fallback: bool) -> bool {
+        self.screen
+            .list
+            .find(tag)
+            .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+            .map_or(fallback, |button| *button.value())
+    }
+
+    /// The value a named button or the preset slider shows, by `parse` of its caption key.
+    fn name_of<T>(&self, tag: u8, parse: fn(&str) -> Option<T>) -> Option<T> {
+        let control = self.screen.list.find(tag)?;
+        if let Some(slider) = control
+            .as_any()
+            .downcast_ref::<OptionSlider<SliderableEnum<Named>>>()
+        {
+            return parse(slider.value());
+        }
+        control
+            .as_any()
+            .downcast_ref::<CycleButton<Named>>()
+            .and_then(|button| parse(button.value()))
     }
 }

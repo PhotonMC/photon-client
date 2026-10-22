@@ -191,6 +191,7 @@ impl Controls {
         self.options.menu_background_blurriness = shown.menu_blurriness;
         self.options.gamma = shown.gamma;
         self.options.particles = shown.particles;
+        self.options.quality = shown.quality;
     }
 
     /// The options the video screen shows, as the options hold them.
@@ -205,6 +206,7 @@ impl Controls {
             menu_blurriness: options.menu_background_blurriness,
             gamma: options.gamma,
             particles: options.particles,
+            quality: options.quality,
         }
     }
 

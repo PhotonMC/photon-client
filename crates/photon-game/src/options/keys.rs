@@ -60,22 +60,57 @@ pub(super) enum Key {
     SoundCategory(SoundSource),
     /// `modelPart_<id>`, by the bit of the part.
     ModelPart(usize),
+    Quality(QualityKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 68] = [
+pub(super) const KEYS: [(&str, Key); 82] = [
     ("ao", Key::AmbientOcclusion),
+    (
+        "biomeBlendRadius",
+        Key::Quality(QualityKey::BiomeBlendRadius),
+    ),
+    ("cutoutLeaves", Key::Quality(QualityKey::CutoutLeaves)),
     ("enableVsync", Key::EnableVsync),
+    (
+        "entityDistanceScaling",
+        Key::Quality(QualityKey::EntityDistanceScaling),
+    ),
+    ("entityShadows", Key::Quality(QualityKey::EntityShadows)),
     ("fov", Key::Fov),
     ("fovEffectScale", Key::FovEffectScale),
     ("darknessEffectScale", Key::DarknessEffectScale),
     ("glintSpeed", Key::GlintSpeed),
     ("glintStrength", Key::GlintStrength),
+    ("graphicsPreset", Key::Quality(QualityKey::GraphicsPreset)),
+    (
+        "prioritizeChunkUpdates",
+        Key::Quality(QualityKey::PrioritizeChunkUpdates),
+    ),
     ("gamma", Key::Gamma),
     ("guiScale", Key::GuiScale),
+    (
+        "maxAnisotropyBit",
+        Key::Quality(QualityKey::MaxAnisotropyBit),
+    ),
+    (
+        "textureFiltering",
+        Key::Quality(QualityKey::TextureFiltering),
+    ),
     ("maxFps", Key::MaxFps),
+    (
+        "improvedTransparency",
+        Key::Quality(QualityKey::ImprovedTransparency),
+    ),
     ("renderDistance", Key::RenderDistance),
+    (
+        "simulationDistance",
+        Key::Quality(QualityKey::SimulationDistance),
+    ),
     ("inactivityFpsLimit", Key::InactivityFpsLimit),
+    ("mipmapLevels", Key::Quality(QualityKey::MipmapLevels)),
     ("particles", Key::Particles),
+    ("renderClouds", Key::Quality(QualityKey::CloudStatus)),
+    ("cloudRange", Key::Quality(QualityKey::CloudRange)),
     ("chatColors", Key::ChatColors),
     ("invertXMouse", Key::InvertXMouse),
     ("invertYMouse", Key::InvertYMouse),
@@ -104,6 +139,7 @@ pub(super) const KEYS: [(&str, Key); 68] = [
     ("tutorialStep", Key::TutorialStep),
     ("hideLightningFlashes", Key::HideLightningFlashes),
     ("soundDevice", Key::SoundDevice),
+    ("weatherRadius", Key::Quality(QualityKey::WeatherRadius)),
     ("screenEffectScale", Key::ScreenEffectScale),
     ("showSubtitles", Key::ShowSubtitles),
     ("directionalAudio", Key::DirectionalAudio),

@@ -30,6 +30,7 @@ mod restrictions;
 use restrictions::*;
 mod item_condition;
 mod settings;
+mod stored;
 use settings::*;
 mod container;
 use container::*;

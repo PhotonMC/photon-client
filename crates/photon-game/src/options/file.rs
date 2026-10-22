@@ -61,6 +61,22 @@ impl Options {
     }
 
     /// `read` for the main hand and the skin's parts.
+    /// The options that come in groups: the skin's and the quality options.
+    fn read_group(&mut self, key: Key, json: &Json) {
+        match key {
+            Key::Quality(key) => self.quality.read(key, json),
+            _ => self.read_skin(key, json),
+        }
+    }
+
+    fn write_group(&self, key: Key) -> String {
+        match key {
+            Key::Quality(key) => self.quality.write(key),
+            Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
+            _ => String::new(),
+        }
+    }
+
     fn read_skin(&mut self, key: Key, json: &Json) {
         match (key, json) {
             (Key::MainHand, Json::Text(name)) => {
@@ -230,7 +246,7 @@ impl Options {
             | Key::DamageTiltStrength => {
                 self.read_unit(key, &json);
             }
-            Key::MainHand | Key::ModelPart(_) => self.read_skin(key, &json),
+            Key::MainHand | Key::ModelPart(_) | Key::Quality(_) => self.read_group(key, &json),
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 self.read_range(key, &json);
             }
@@ -446,7 +462,7 @@ impl Options {
                 java_double(value.map_or(0.0, |(_, value)| value))
             }
             Key::MainHand => write_string(self.main_hand.serialized()),
-            Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
+            Key::ModelPart(_) | Key::Quality(_) => self.write_group(key),
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 java_double(self.range_value(key))
             }

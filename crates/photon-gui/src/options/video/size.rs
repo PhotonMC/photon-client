@@ -39,7 +39,7 @@ impl VideoSettingsScreen {
                         "options.graphics.custom",
                     ]),
                     graphics_preset,
-                    "options.graphics.fancy",
+                    values.quality.graphics_preset.caption_key(),
                     constant_tip("options.graphics.preset.tooltip"),
                 ),
             );
@@ -154,6 +154,7 @@ impl VideoSettingsScreen {
                         .downcast_ref::<OptionSlider<photon_game::options::values::UnitDouble>>()
                 })
                 .map_or(fallback.gamma, |slider| *slider.value()),
+            quality: self.quality(fallback.quality),
         }
     }
 

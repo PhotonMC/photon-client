@@ -99,7 +99,7 @@ pub(super) fn video_settings_screen_case(
         row["in_world"].as_bool().unwrap_or(false),
         gui_scale,
         max_scale,
-        photon_gui::options::video::VideoValues::default(),
+        super::stored::stored_values(row),
     );
     let mut last = (0.0, 0.0);
     let mut clock = 0_u64;

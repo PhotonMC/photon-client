@@ -143,6 +143,8 @@ pub struct VideoValues {
     pub gamma: f64,
     /// `particles`.
     pub particles: photon_game::options::ParticleStatus,
+    /// The other options a graphics preset controls, and the preset.
+    pub quality: photon_game::options::QualityOptions,
 }
 
 impl Default for VideoValues {
@@ -157,6 +159,7 @@ impl Default for VideoValues {
             menu_blurriness: 5,
             gamma: 0.5,
             particles: photon_game::options::ParticleStatus::All,
+            quality: photon_game::options::QualityOptions::default(),
         }
     }
 }
@@ -315,7 +318,7 @@ fn ambient_occlusion(display: &VideoValues) -> (u8, Build) {
     (AMBIENT_OCCLUSION, boolean("options.ao", initial))
 }
 
-/// `qualityOptions`, the first nine.
+/// `qualityOptions`, the distances and smooth lighting.
 fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
@@ -324,7 +327,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.biomeBlendRadius",
                 IntRange::with_apply_value_immediately(0, 7, false),
                 biome_blend,
-                2,
+                display.quality.biome_blend_radius,
             ),
         ),
         (
@@ -345,7 +348,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
                     "options.prioritizeChunkUpdates.byPlayer",
                     "options.prioritizeChunkUpdates.nearby",
                 ],
-                "options.prioritizeChunkUpdates.none",
+                display.quality.prioritize_chunk_updates.caption_key(),
             ),
         ),
         (
@@ -354,16 +357,22 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.simulationDistance",
                 IntRange::with_apply_value_immediately(5, 32, false),
                 chunks,
-                12,
+                display.quality.simulation_distance,
             ),
         ),
         ambient_occlusion(display),
+    ]
+}
+
+/// `qualityOptions`, the clouds, particles, mipmaps and shadows.
+fn quality_options_visuals(display: &VideoValues) -> Vec<(u8, Build)> {
+    vec![
         (
             CLOUDS,
             named(
                 "options.renderClouds",
                 &["options.off", "options.clouds.fast", "options.clouds.fancy"],
-                "options.clouds.fancy",
+                display.quality.cloud_status.caption_key(),
             ),
         ),
         (
@@ -380,9 +389,17 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
         ),
         (
             MIPMAPS,
-            slider("options.mipmapLevels", IntRange::new(0, 4), mipmaps, 4),
+            slider(
+                "options.mipmapLevels",
+                IntRange::new(0, 4),
+                mipmaps,
+                display.quality.mipmap_levels,
+            ),
         ),
-        (ENTITY_SHADOWS, boolean("options.entityShadows", true)),
+        (
+            ENTITY_SHADOWS,
+            boolean("options.entityShadows", display.quality.entity_shadows),
+        ),
     ]
 }
 
@@ -395,7 +412,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.entityDistanceScaling",
                 entity_distance_values(),
                 entity_distance,
-                1.0,
+                display.quality.entity_distance_scaling,
             ),
         ),
         (
@@ -414,21 +431,31 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.renderCloudsDistance",
                 IntRange::with_apply_value_immediately(2, 128, true),
                 chunks,
-                128,
+                display.quality.cloud_range,
             ),
         ),
         (
             CUTOUT_LEAVES,
-            boolean_tip("options.cutoutLeaves", true, "options.cutoutLeaves.tooltip"),
+            boolean_tip(
+                "options.cutoutLeaves",
+                display.quality.cutout_leaves,
+                "options.cutoutLeaves.tooltip",
+            ),
         ),
         (
             IMPROVED_TRANSPARENCY,
             boolean_tip(
                 "options.improvedTransparency",
-                false,
+                display.quality.improved_transparency,
                 "options.improvedTransparency.tooltip",
             ),
         ),
+    ]
+}
+
+/// `qualityOptions`, the filtering and the weather.
+fn quality_options_filtering(display: &VideoValues) -> Vec<(u8, Build)> {
+    vec![
         (
             TEXTURE_FILTERING,
             named_tip(
@@ -438,7 +465,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
                     "options.textureFiltering.rgss",
                     "options.textureFiltering.anisotropic",
                 ],
-                "options.textureFiltering.none",
+                display.quality.texture_filtering.caption_key(),
             ),
         ),
         (
@@ -447,7 +474,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.maxAnisotropy",
                 IntRange::new(1, 3),
                 anisotropy,
-                2,
+                display.quality.max_anisotropy_bit,
                 constant_tip("options.maxAnisotropy.tooltip"),
             ),
         ),
@@ -457,7 +484,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
                 "options.weatherRadius",
                 IntRange::new(3, 10),
                 blocks,
-                10,
+                display.quality.weather_radius,
                 constant_tip("options.weatherRadius.tooltip"),
             ),
         ),
@@ -467,7 +494,9 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
 /// `qualityOptions`.
 fn quality_options(display: &VideoValues) -> Vec<(u8, Build)> {
     let mut options = quality_options_first(display);
+    options.extend(quality_options_visuals(display));
     options.extend(quality_options_rest(display));
+    options.extend(quality_options_filtering(display));
     options
 }
 
@@ -593,6 +622,27 @@ mod tests {
             photon_game::options::ParticleStatus::Decreased
         );
         assert_eq!(values.menu_blurriness, 2);
+        assert_eq!(
+            values.quality.graphics_preset,
+            photon_game::options::GraphicsPreset::Fast
+        );
+        assert_eq!(values.quality.simulation_distance, 6);
+        assert_eq!(
+            values.quality.cloud_status,
+            photon_game::options::CloudStatus::Fast
+        );
+        assert_eq!(values.quality.entity_distance_scaling, 0.75);
+        assert!(!values.quality.entity_shadows);
+        // The screen shows what is stored, and hands it back.
+        let stored = VideoValues {
+            quality: values.quality,
+            ..VideoValues::default()
+        };
+        let reopened = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, stored);
+        assert_eq!(
+            reopened.values(VideoValues::default()).quality,
+            values.quality
+        );
         // The preset stays as chosen: only a change the user made turns it to Custom.
         let preset = screen
             .screen
