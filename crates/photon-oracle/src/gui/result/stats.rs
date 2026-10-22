@@ -72,6 +72,47 @@ fn counter_from(row: &Value) -> Result<HashMap<StatKey, i32>, String> {
     Ok(counter)
 }
 
+/// The screen drawn once, with no items, and the log of what was drawn.
+fn draw_screen(
+    ctx: &GuiContext,
+    lang: &photon_game::text::Lang,
+    (screen, mouse): (&photon_gui::screen::stats::StatsScreen, (i32, i32)),
+    now: u64,
+) -> Vec<photon_render::gui::DrawOp> {
+    let mut frame = GuiFrame {
+        log: Some(Vec::new()),
+        ..GuiFrame::default()
+    };
+    let registries = vanilla_registries();
+    let mut tooltip = default_tooltip(lang, &registries);
+    let mut item = no_items;
+    let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
+    let mut entity =
+        |_: EntityId, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
+    let (book, tags) = (
+        photon_world::RecipeBook::default(),
+        photon_world::block::tags::ItemTags::default(),
+    );
+    let mut draw = photon_gui::screen::ScreenDraw {
+        held: (0, [false; 2]),
+        frame: &mut frame,
+        atlas: &ctx.atlas,
+        font: &ctx.font,
+        item: &mut item,
+        player: &mut player,
+        entity: &mut entity,
+        tooltip: &mut tooltip,
+        lang,
+        book: &book,
+        tags: &tags,
+        control_held: false,
+        partial: 0.0,
+        widget_tooltips: true,
+    };
+    screen.draw(&mut draw, mouse, now);
+    frame.log.take().unwrap_or_default()
+}
+
 /// `stats_screen`: the screen over a counter, loading or loaded, after its steps.
 pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_gui::screen::stats::StatsScreen;
@@ -103,25 +144,15 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         }
     }
     let mouse = (int_at(&row["mouse"], 0), int_at(&row["mouse"], 1));
-    let mut frame = GuiFrame {
-        log: Some(Vec::new()),
-        ..GuiFrame::default()
-    };
-    let registries = vanilla_registries();
-    let mut tooltip = default_tooltip(&lang, &registries);
-    screen.draw(
-        &mut frame,
-        (&ctx.atlas, &ctx.font),
-        mouse,
-        (
-            row["now"].as_u64().unwrap_or(0),
-            &mut no_items,
-            &mut tooltip,
-        ),
+    let log = draw_screen(
+        ctx,
+        &lang,
+        (&screen, mouse),
+        row["now"].as_u64().unwrap_or(0),
     );
     Ok(json!({
         "label": row["label"],
-        "ops": gui_ops(&frame.log.take().unwrap_or_default()),
+        "ops": gui_ops(&log),
     }))
 }
 

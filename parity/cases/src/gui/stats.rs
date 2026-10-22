@@ -203,7 +203,9 @@ fn item_hover_rows() -> Vec<Value> {
         with(screen_row(label, (427, 240), stats, true), json!({"steps": [tab], "mouse": mouse}))
     };
     let mobs_tab = json!({"do": "click", "x": 300, "y": 10});
+    let bundle = json!([["minecraft:picked_up", "minecraft:bundle", 1]]);
     vec![
+        on_tab("items-hover-bundle", items_tab(), &bundle, [80, 56]),
         sorted("items-hover-first-item", settle(vec![]), [80, 56]),
         sorted("items-hover-second-item", settle(vec![]), [80, 78]),
         sorted("items-hover-numbers", settle(vec![]), [200, 56]),

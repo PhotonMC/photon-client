@@ -112,7 +112,33 @@ impl Gui {
                 stats.resize(gui_size);
             }
             let millis = frame.millis;
-            stats.draw(frame, (atlas, font), mouse, (millis, item, tooltip));
+            let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
+            let mut entity = |_: photon_core::ids::EntityId,
+                              _: (i32, i32, i32, i32),
+                              _: f32,
+                              _: f32,
+                              _: (f32, f32)| Vec::new();
+            let (book, tags) = (
+                photon_world::RecipeBook::default(),
+                photon_world::block::tags::ItemTags::default(),
+            );
+            let mut draw = photon_gui::screen::ScreenDraw {
+                held: (0, [false; 2]),
+                frame,
+                atlas,
+                font,
+                item,
+                player: &mut player,
+                entity: &mut entity,
+                tooltip,
+                lang,
+                book: &book,
+                tags: &tags,
+                control_held: false,
+                partial: 0.0,
+                widget_tooltips: true,
+            };
+            stats.draw(&mut draw, mouse, millis);
         } else {
             return false;
         }

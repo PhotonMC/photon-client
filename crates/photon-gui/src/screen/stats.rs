@@ -16,7 +16,7 @@ use crate::{FontRuns, FrameRuns};
 use photon_data::stat::StatKey;
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
-use photon_render::gui::{GuiAtlas, GuiFrame, ItemDrawer};
+use photon_render::gui::{GuiAtlas, GuiFrame};
 
 use general::GeneralList;
 use items::ItemsList;
@@ -203,13 +203,9 @@ impl StatsScreen {
     }
 
     /// The background, the tab bar, the content of the tab and Done over the footer's line.
-    pub fn draw(
-        &self,
-        frame: &mut GuiFrame,
-        (atlas, font): (&GuiAtlas, &Font),
-        mouse: (i32, i32),
-        (millis, item, tooltip): (u64, &mut ItemDrawer<'_>, &mut super::TooltipLines<'_>),
-    ) {
+    pub fn draw(&self, draw: &mut super::ScreenDraw<'_, '_>, mouse: (i32, i32), millis: u64) {
+        let (atlas, font) = (draw.atlas, draw.font);
+        let frame = &mut *draw.frame;
         let (width, height) = self.size;
         // `extractMenuBackground`: the tab header's picture, then the menu's from under it.
         frame.tile_texture(
@@ -236,7 +232,7 @@ impl StatsScreen {
                 0 => lists.general.draw(frame, (atlas, font), &self.stats),
                 1 => lists
                     .items
-                    .draw(frame, (atlas, font), (&self.stats, item), mouse),
+                    .draw(frame, (atlas, font), (&self.stats, &mut *draw.item), mouse),
                 2 => lists.mobs.draw(frame, (atlas, font)),
                 _ => {}
             },
@@ -258,8 +254,10 @@ impl StatsScreen {
             && let Some(lists) = &self.lists
             && let Some((stack, at)) = lists.items.hovered_stack(mouse)
         {
-            let lines = tooltip(&stack, false);
-            frame.tooltip(atlas, font, &lines, at, self.size);
+            let layout = super::container::ContainerLayout::new(width, height, (0, 0));
+            let lines = (draw.tooltip)(&stack, false);
+            let at = (f64::from(at.0), f64::from(at.1));
+            super::bundle_tooltip::stack_tooltip(&layout, draw, &stack, &lines, at);
         }
     }
 
