@@ -527,4 +527,15 @@ mod tests {
         assert!(input.done);
         assert_eq!(asked, [0]);
     }
+
+    #[test]
+    fn the_brightness_slider_shows_and_hands_back_the_option() {
+        let Some((font, lang)) = assets() else { return };
+        let shown = VideoValues {
+            gamma: 0.8,
+            ..VideoValues::default()
+        };
+        let screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, shown);
+        assert_eq!(screen.values(VideoValues::default()).gamma, 0.8);
+    }
 }
