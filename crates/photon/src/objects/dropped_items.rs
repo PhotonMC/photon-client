@@ -246,10 +246,15 @@ pub fn world_items(
     );
     block_entity_items(session, layers, (renderer, tints), view, items);
     super::flames::flames(session, renderer, view, items);
+    let conduit = layers
+        .conduit
+        .get_or_insert_with(|| renderer.conduit_meshes())
+        .as_ref();
     displays::displays(
         session,
         &mut layers.displays,
         (renderer, tints),
+        conduit,
         view,
         items,
     );

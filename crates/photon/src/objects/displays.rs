@@ -5,7 +5,8 @@
 use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
-use photon_render::block::world_mesh::BlockRenderer;
+use photon_render::block::world_mesh::{BlockRenderer, ConduitMeshes};
+use photon_render::block_entity::conduit::Piece;
 use photon_render::joml::Pose;
 use photon_render::model::DisplayContext;
 use photon_render::objects::display::{
@@ -144,6 +145,7 @@ pub fn displays(
     session: &PlaySession,
     layers: &mut DisplayLayers,
     (renderer, tints): (&BlockRenderer, &BiomeTints),
+    conduit: Option<&ConduitMeshes>,
     view: FrameView,
     vertices: &mut Vec<Vertex>,
 ) {
@@ -155,6 +157,14 @@ pub fn displays(
     } in shown(session, view)
     {
         if let Some(block) = display.block_state() {
+            if let Some(shell) = conduit.filter(|_| is_conduit(block)) {
+                // `BuiltInBlockModels` with `ConduitRenderer.DEFAULT_TRANSFORMATION`.
+                let mut at = pose;
+                at.translate(0.5, 0.5, 0.5);
+                if let Some(layer) = shell.get(Piece::Shell) {
+                    vertices.extend(entity_block_vertices(layer, &at, (light, 0.0)));
+                }
+            }
             let cache = &mut layers.contexts[0];
             if let Some((layer, block_light)) = cache.block(block, renderer) {
                 vertices.extend(entity_block_vertices(
@@ -291,4 +301,9 @@ pub fn display_texts(
         }
     }
     (see_through, normal)
+}
+
+/// Whether a block state is the conduit.
+fn is_conduit(state: photon_core::ids::BlockStateId) -> bool {
+    photon_world::block::state_or_air(state).block().name == "minecraft:conduit"
 }
