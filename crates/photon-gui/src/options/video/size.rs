@@ -209,6 +209,7 @@ impl VideoSettingsScreen {
     ) -> SubScreenInput {
         let input = self.screen.clicked(lang, mouse, shift);
         self.customise(lang, input.changed);
+        self.apply_preset(lang, input.changed);
         self.follow_gui_scale(resize);
         self.tick();
         input
@@ -230,6 +231,7 @@ impl VideoSettingsScreen {
     ) -> SubScreenInput {
         let input = self.screen.key_pressed(lang, key, shift);
         self.customise(lang, input.changed);
+        self.apply_preset(lang, input.changed);
         self.follow_gui_scale(resize);
         self.tick();
         input
@@ -238,6 +240,7 @@ impl VideoSettingsScreen {
     pub fn dragged(&mut self, lang: &Lang, mouse: (f64, f64), dy: f64) {
         let changed = self.screen.dragged(lang, mouse, dy);
         self.customise(lang, changed);
+        self.apply_preset(lang, changed);
         self.tick();
     }
 

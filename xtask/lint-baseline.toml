@@ -654,7 +654,7 @@
 "crates/photon-gui/src/options/sound.rs::SoundOptionsScreen::new" = 90
 "crates/photon-gui/src/options/video.rs::display_options" = 94
 "crates/photon-gui/src/options/video.rs::quality_options_first" = 69
-"crates/photon-gui/src/options/video.rs::quality_options_rest" = 80
+"crates/photon-gui/src/options/video.rs::quality_options_rest" = 76
 "crates/photon-gui/src/screen/book.rs::BookScreen::build" = 64
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::build" = 78
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 98

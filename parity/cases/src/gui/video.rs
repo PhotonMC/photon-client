@@ -119,6 +119,25 @@ fn press_rows() -> Vec<Value> {
     ]
 }
 
+/// The preset slider puts the options it controls to its values.
+fn preset_rows() -> Vec<Value> {
+    let press = |label: &str, steps: Vec<Value>| at(label).steps(steps).row();
+    let fast = || vec![wheel(-9), click(60, 108)];
+    let fancy = || vec![wheel(-9), click(60, 108), click(145, 108)];
+    vec![
+        press("preset-fast", fast()),
+        press("preset-fast-quality", [fast(), vec![wheel(-3)]].concat()),
+        press("preset-fast-bottom", [fast(), vec![wheel(-100)]].concat()),
+        press("preset-fancy", fancy()),
+        press("preset-fancy-quality", [fancy(), vec![wheel(-3)]].concat()),
+        press("preset-fancy-bottom", [fancy(), vec![wheel(-100)]].concat()),
+        press("preset-fast-then-ao", [fast(), vec![wheel(-1), click(100, 170)]].concat()),
+        press("preset-fast-then-custom-filtering", [fast(), vec![wheel(-100), click(100, 86)]].concat()),
+        press("preset-fast-drag", vec![wheel(-9), click(145, 108), drag(60, 108)]),
+        press("preset-click-release", vec![wheel(-9), click(60, 108), release(60, 108)]),
+    ]
+}
+
 /// Steps after scrolling to the end of the list.
 fn bottom(steps: Vec<Value>) -> Vec<Value> {
     [vec![wheel(-100)], steps].concat()
@@ -236,7 +255,16 @@ fn pressed_tips() -> Vec<Value> {
 }
 
 pub fn video_settings_screen() -> Value {
-    let rows =
-        [layout_rows(), scroll_rows(), gui_scale_rows(), press_rows(), bottom_rows(), ctrl_rows(), tip_rows()].concat();
+    let rows = [
+        layout_rows(),
+        scroll_rows(),
+        gui_scale_rows(),
+        press_rows(),
+        preset_rows(),
+        bottom_rows(),
+        ctrl_rows(),
+        tip_rows(),
+    ]
+    .concat();
     gui("video-settings-screen", "video_settings_screen", rows)
 }

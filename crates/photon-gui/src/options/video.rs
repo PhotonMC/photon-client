@@ -37,6 +37,17 @@ const AMBIENT_OCCLUSION: u8 = CUSTOMISING | 4;
 const MENU_BLURRINESS: u8 = CUSTOMISING | 5;
 const GAMMA: u8 = 9;
 const PARTICLES: u8 = CUSTOMISING | 6;
+const BIOME_BLEND: u8 = CUSTOMISING | 7;
+const PRIORITIZE_CHUNK_UPDATES: u8 = CUSTOMISING | 8;
+const SIMULATION_DISTANCE: u8 = CUSTOMISING | 9;
+const CLOUDS: u8 = CUSTOMISING | 10;
+const MIPMAPS: u8 = CUSTOMISING | 11;
+const ENTITY_SHADOWS: u8 = CUSTOMISING | 12;
+const ENTITY_DISTANCE: u8 = CUSTOMISING | 13;
+const CLOUD_RANGE: u8 = CUSTOMISING | 14;
+const CUTOUT_LEAVES: u8 = CUSTOMISING | 15;
+const IMPROVED_TRANSPARENCY: u8 = CUSTOMISING | 16;
+const WEATHER_RADIUS: u8 = CUSTOMISING | 17;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -61,6 +72,17 @@ fn biome_blend(caption: &Component, value: &i32) -> Component {
     generic_value(
         caption,
         Component::translatable(format!("options.biomeBlendRadius.{}", value * 2 + 1)),
+    )
+}
+
+/// `entityDistanceScaling`'s slider steps: quarters, from a half to five.
+type EntityDistanceValues = MappedIntRange<f64, fn(i32) -> f64, fn(&f64) -> i32>;
+
+fn entity_distance_values() -> EntityDistanceValues {
+    IntRange::new(2, 20).xmap(
+        (|value| f64::from(value) / 4.0) as fn(i32) -> f64,
+        (|value: &f64| (*value * 4.0) as i32) as fn(&f64) -> i32,
+        true,
     )
 }
 
@@ -297,7 +319,7 @@ fn ambient_occlusion(display: &VideoValues) -> (u8, Build) {
 fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
-            CUSTOMISING,
+            BIOME_BLEND,
             slider(
                 "options.biomeBlendRadius",
                 IntRange::with_apply_value_immediately(0, 7, false),
@@ -315,7 +337,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            PRIORITIZE_CHUNK_UPDATES,
             named_tip(
                 "options.prioritizeChunkUpdates",
                 &[
@@ -327,7 +349,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            SIMULATION_DISTANCE,
             slider(
                 "options.simulationDistance",
                 IntRange::with_apply_value_immediately(5, 32, false),
@@ -337,7 +359,7 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
         ),
         ambient_occlusion(display),
         (
-            CUSTOMISING,
+            CLOUDS,
             named(
                 "options.renderClouds",
                 &["options.off", "options.clouds.fast", "options.clouds.fancy"],
@@ -357,10 +379,10 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            MIPMAPS,
             slider("options.mipmapLevels", IntRange::new(0, 4), mipmaps, 4),
         ),
-        (CUSTOMISING, boolean("options.entityShadows", true)),
+        (ENTITY_SHADOWS, boolean("options.entityShadows", true)),
     ]
 }
 
@@ -368,14 +390,10 @@ fn quality_options_first(display: &VideoValues) -> Vec<(u8, Build)> {
 fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
     vec![
         (
-            CUSTOMISING,
+            ENTITY_DISTANCE,
             slider(
                 "options.entityDistanceScaling",
-                IntRange::new(2, 20).xmap(
-                    |value| f64::from(value) / 4.0,
-                    |value: &f64| (*value * 4.0) as i32,
-                    true,
-                ),
+                entity_distance_values(),
                 entity_distance,
                 1.0,
             ),
@@ -391,7 +409,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            CLOUD_RANGE,
             slider(
                 "options.renderCloudsDistance",
                 IntRange::with_apply_value_immediately(2, 128, true),
@@ -400,11 +418,11 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            CUTOUT_LEAVES,
             boolean_tip("options.cutoutLeaves", true, "options.cutoutLeaves.tooltip"),
         ),
         (
-            CUSTOMISING,
+            IMPROVED_TRANSPARENCY,
             boolean_tip(
                 "options.improvedTransparency",
                 false,
@@ -434,7 +452,7 @@ fn quality_options_rest(display: &VideoValues) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            CUSTOMISING,
+            WEATHER_RADIUS,
             slider_tip(
                 "options.weatherRadius",
                 IntRange::new(3, 10),
@@ -500,6 +518,7 @@ pub struct VideoSettingsScreen {
     restart: (Vec<Run>, i32),
 }
 
+mod preset;
 mod size;
 
 #[cfg(test)]
@@ -546,6 +565,47 @@ mod tests {
         assert_eq!(
             back.particles,
             photon_game::options::ParticleStatus::Minimal
+        );
+    }
+
+    #[test]
+    fn a_preset_puts_the_options_it_controls_to_its_values() {
+        let Some((font, lang)) = assets() else { return };
+        let mut screen =
+            VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, VideoValues::default());
+        screen
+            .screen
+            .list
+            .find_mut(GRAPHICS_PRESET)
+            .and_then(|control| {
+                control
+                    .as_any_mut()
+                    .downcast_mut::<OptionSlider<SliderableEnum<Named>>>()
+            })
+            .expect("the preset slider")
+            .set_current(&lang, "options.graphics.fast");
+        screen.apply_preset(&lang, Some(GRAPHICS_PRESET));
+        let values = screen.values(VideoValues::default());
+        assert_eq!(values.render_distance, 8);
+        assert!(!values.ambient_occlusion);
+        assert_eq!(
+            values.particles,
+            photon_game::options::ParticleStatus::Decreased
+        );
+        assert_eq!(values.menu_blurriness, 2);
+        // The preset stays as chosen: only a change the user made turns it to Custom.
+        let preset = screen
+            .screen
+            .list
+            .find(GRAPHICS_PRESET)
+            .and_then(|control| {
+                control
+                    .as_any()
+                    .downcast_ref::<OptionSlider<SliderableEnum<Named>>>()
+            });
+        assert_eq!(
+            preset.map(|slider| *slider.value()),
+            Some("options.graphics.fast")
         );
     }
 }
