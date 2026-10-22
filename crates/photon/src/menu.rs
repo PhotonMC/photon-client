@@ -11,7 +11,8 @@ use photon_game::server_status::Pinged;
 use photon_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
 use photon_game::text::Component;
 use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
-use photon_gui::screen::connect::{ConnectScreen, draw_level_loading};
+use photon_gui::screen::connect::ConnectScreen;
+use photon_gui::screen::credits::CreditsScreen;
 use photon_gui::screen::disconnected::DisconnectedScreen;
 use photon_gui::screen::server_form::{FormKind, FormResult, ServerFormScreen};
 use photon_gui::screen::servers::{JoinMultiplayerScreen, ServersAction};
@@ -19,10 +20,13 @@ use photon_gui::screen::title::{TitleAction, TitleScreen};
 use photon_gui::widgets::navigation::Direction;
 use photon_net::connection::PlaySession;
 
+use self::draw::draw_screen;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
 mod audio;
+mod credits;
+mod draw;
 mod icons;
 mod panorama;
 mod pings;
@@ -53,6 +57,8 @@ enum Screen {
     Connecting(ConnectScreen, JoinTask),
     /// A join that failed (`DisconnectedScreen` with `connect.failed`).
     Failed(DisconnectedScreen),
+    /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
+    Credits(CreditsScreen, Instant),
 }
 
 /// `photon` or `photon menu [server [width height]]`: the title screen, the server list from its
@@ -231,8 +237,12 @@ impl Menu {
         let current = match &self.screen {
             Screen::Title(screen) => Some(screen.size()),
             Screen::Servers(screen) => Some(screen.size()),
+            Screen::Credits(screen, _) => Some(screen.size()),
             _ => None,
         };
+        if self.refit_credits(size) {
+            return;
+        }
         if current.is_some_and(|current| current != size) {
             self.screen = match self.screen {
                 Screen::Servers(_) => self.server_list(size),
@@ -273,27 +283,16 @@ impl Menu {
                     }
                 }
             }
+            self.credits_ticked(size);
             self.fit_screen(size);
             self.spin_panorama(client);
             let mouse = self.mouse;
-            let screen = &self.screen;
+            let screen = &mut self.screen;
             let lang = self.gui.lang();
             self.gui.draw_menu_screen(
                 &mut client.backend,
                 &client.surface,
-                |frame, atlas, font| match screen {
-                    Screen::Title(screen) => screen.draw(frame, atlas, font, mouse),
-                    Screen::Servers(screen) => screen.draw(frame, atlas, font, mouse),
-                    Screen::Form(screen, _) => screen.draw(frame, atlas, font, mouse),
-                    // Not over a level, so the panorama is what blurs, not this screen.
-                    Screen::Confirm(screen, _) => screen.draw(frame, (atlas, font), mouse, 0),
-                    // In the level: `LevelLoadingScreen` until it has loaded.
-                    Screen::Connecting(screen, task) if task.status.loading() => {
-                        draw_level_loading(frame, atlas, font, lang, screen.size());
-                    }
-                    Screen::Connecting(screen, _) => screen.draw(frame, atlas, font, mouse),
-                    Screen::Failed(screen) => screen.draw(frame, atlas, font, mouse),
-                },
+                |frame, atlas, font| draw_screen(screen, (frame, atlas, font), (lang, mouse)),
             )?;
             // A join's screens are not what a capture waits for.
             if !matches!(self.screen, Screen::Connecting(..)) {
@@ -329,13 +328,8 @@ impl Menu {
         let mouse = self.mouse;
         let action = match &mut self.screen {
             Screen::Title(screen) => {
-                match title_event(screen, event, mouse) {
-                    Some(TitleAction::Multiplayer) => self.screen = self.server_list(size),
-                    Some(TitleAction::Quit) => return Ok(Some(Choice::Quit)),
-                    // The other screens are not here yet.
-                    _ => {}
-                }
-                return Ok(None);
+                let chosen = title_event(screen, event, mouse);
+                return Ok(self.title_chosen(chosen, size));
             }
             Screen::Servers(screen) => match event {
                 WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
@@ -392,6 +386,7 @@ impl Menu {
                 }
                 return Ok(None);
             }
+            Screen::Credits(..) => return Ok(self.credits_event(event, size)),
             Screen::Failed(screen) => {
                 if failed_event(screen, event, mouse) {
                     self.screen = self.server_list(size);
