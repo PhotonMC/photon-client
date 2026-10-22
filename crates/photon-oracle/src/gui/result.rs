@@ -22,6 +22,7 @@ use hud::*;
 mod debug_entries;
 mod hud_overlays;
 mod screens;
+mod tutorial;
 use screens::*;
 mod dialog;
 use dialog::*;

@@ -267,9 +267,8 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
         "hud_debug_lines" => super::hud_overlays::hud_debug_lines_case(ctx, row),
         "hud_debug_overlay" => super::hud_overlays::hud_debug_overlay_case(ctx, row),
         "subtitles" => super::hud_overlays::subtitles_case(ctx, row),
-        "toasts" => super::hud_overlays::toasts_case(ctx, row),
         op if super::TEXT_OPERATIONS.contains(&op) => super::texts_case(ctx, row, op),
-        _ => Err("unknown gui operation".into()),
+        other => super::tutorial::toast_case(ctx, row, other),
     }
 }
 

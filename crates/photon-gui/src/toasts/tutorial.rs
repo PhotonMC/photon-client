@@ -99,6 +99,15 @@ impl TutorialToast {
         self.icon
     }
 
+    /// What `updateProgress` last set.
+    pub fn progress(&self) -> f32 {
+        self.progress
+    }
+
+    pub fn progressable(&self) -> bool {
+        self.progressable
+    }
+
     fn content_height(&self) -> i32 {
         self.lines.len().max(2) as i32 * 11
     }
@@ -152,6 +161,10 @@ impl Toast for TutorialToast {
     }
 
     fn as_tutorial_mut(&mut self) -> Option<&mut TutorialToast> {
+        Some(self)
+    }
+
+    fn as_tutorial(&self) -> Option<&TutorialToast> {
         Some(self)
     }
 }

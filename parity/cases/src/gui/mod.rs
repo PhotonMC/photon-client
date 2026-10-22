@@ -39,6 +39,7 @@ mod title;
 mod toasts;
 mod tooltips;
 mod tree;
+mod tutorial;
 mod video;
 mod widgets;
 
@@ -96,6 +97,7 @@ const ORDER: &[Generator] = &[
     || vec![advancements::advancements_screen()],
     || vec![status::subtitles()],
     || vec![toasts::toasts()],
+    || vec![tutorial::tutorial()],
     || vec![status::hud_status()],
     language::language_cases,
     || vec![locator::locator_bar()],

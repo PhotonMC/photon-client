@@ -110,6 +110,11 @@ pub trait Toast: Any {
         None
     }
 
+    /// The tutorial toast this is, to read.
+    fn as_tutorial(&self) -> Option<&TutorialToast> {
+        None
+    }
+
     /// The system toast this is, to be found by its id.
     fn as_system_mut(&mut self) -> Option<&mut SystemToast> {
         None
@@ -435,21 +440,38 @@ impl ToastManager {
             .map(|toast| toast.displayed_index())
     }
 
-    /// The tutorial toast with this icon, shown or waiting (`TutorialToast` held by a step).
+    /// The tutorial toast with this icon that was added last, shown or waiting: a step holds
+    /// the toast it made, and the toast of the step before it, with the same icon, may still be
+    /// sliding out.
     pub fn tutorial_mut(&mut self, icon: TutorialIcon) -> Option<&mut TutorialToast> {
-        self.visible
+        self.queued
             .iter_mut()
-            .find_map(|instance| {
-                instance
-                    .toast
-                    .as_tutorial_mut()
-                    .filter(|toast| toast.icon() == icon)
-            })
+            .rev()
+            .find_map(|toast| toast.as_tutorial_mut().filter(|toast| toast.icon() == icon))
             .or_else(|| {
-                self.queued
-                    .iter_mut()
-                    .find_map(|toast| toast.as_tutorial_mut().filter(|toast| toast.icon() == icon))
+                self.visible.iter_mut().rev().find_map(|instance| {
+                    instance
+                        .toast
+                        .as_tutorial_mut()
+                        .filter(|toast| toast.icon() == icon)
+                })
             })
+    }
+
+    /// The tutorial toasts in the order they were added, each with whether it still waits for
+    /// room.
+    pub fn tutorial_toasts(&self) -> Vec<(bool, &TutorialToast)> {
+        let shown = self
+            .visible
+            .iter()
+            .filter_map(|instance| instance.toast.as_tutorial())
+            .map(|toast| (false, toast));
+        let waiting = self
+            .queued
+            .iter()
+            .filter_map(|toast| toast.as_tutorial())
+            .map(|toast| (true, toast));
+        shown.chain(waiting).collect()
     }
 
     /// `SystemToast.forceHide`.
