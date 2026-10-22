@@ -285,9 +285,20 @@ fn local_flip(session: &PlaySession, player: &LocalPlayer) -> (Option<f32>, f32,
     }
 }
 
+/// The lying of the local player while it sleeps.
+fn local_sleep(
+    session: &PlaySession,
+    player: &LocalPlayer,
+    body_rot: f32,
+) -> Option<photon_render::entity::player_renderer::Sleep> {
+    let state = session.world().local_player()?;
+    (player.pose() == photon_world::ClientEntityPose::Sleeping)
+        .then(|| super::remote_placement::in_bed(session.world(), state.sleeping_pos(), body_rot))
+}
+
 /// Where the local player's model stands in the frame.
 fn local_placement(
-    player: &LocalPlayer,
+    (session, player): (&PlaySession, &LocalPlayer),
     (view, x_rot, upside_down): (FrameView, f32, Option<f32>),
     (pose, glide): (&photon_world::local_player::ModelPose, Option<Glide>),
 ) -> Placement {
@@ -311,6 +322,7 @@ fn local_placement(
         fall_flying: glide.map(|glide| glide.flight),
         auto_spin: None,
         upside_down,
+        sleeping: local_sleep(session, player, pose.body_rot),
     }
 }
 
@@ -369,7 +381,7 @@ pub fn player_model(
         ..Default::default()
     };
     model.setup_anim(&state);
-    let placement = local_placement(player, (view, x_rot, flip), (&pose, glide));
+    let placement = local_placement((session, player), (view, x_rot, flip), (&pose, glide));
     let hands = Hands {
         base: &photon_render::entity::player_renderer::placement_pose(&placement),
         root: &model.root,

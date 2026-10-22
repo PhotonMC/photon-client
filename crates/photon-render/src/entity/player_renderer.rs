@@ -80,6 +80,9 @@ pub struct FallFlying {
     pub y_rot: Option<f32>,
 }
 
+mod sleep;
+pub use sleep::Sleep;
+
 /// Where and how a posed player model is placed.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
@@ -108,18 +111,29 @@ pub struct Placement {
     pub auto_spin: Option<f32>,
     /// `isUpsideDown`: the height of the bounding box of a player named Dinnerbone or Grumm.
     pub upside_down: Option<f32>,
+    /// The pose of a player in a bed (`Pose.SLEEPING`).
+    pub sleeping: Option<Sleep>,
 }
 
-/// `LivingEntityRenderer.setupRotations`: an upside-down player is lifted and turned over.
-fn lift_upside_down(pose: &mut Pose, placement: &Placement) {
-    if placement.death_time <= 0.0
-        && placement.auto_spin.is_none()
-        && let Some(height) = placement.upside_down
-    {
+/// What `LivingEntityRenderer.setupRotations` does after the turn to face away: the fall of a
+/// dying player, else a riptide spin, else the lying of a sleeper, else the flip of one named
+/// Dinnerbone or Grumm.
+fn fall_or_turn(pose: &mut Pose, placement: &Placement) {
+    let degrees = Quaternion::degrees_to_radians;
+    if placement.death_time > 0.0 {
+        if let Some(roll) = crate::entity::mob_model::death_roll(placement.death_time, 90.0) {
+            pose.rotate(&Quaternion::rotation_z(degrees(roll)));
+        }
+    } else if let Some(age) = placement.auto_spin {
+        pose.rotate(&Quaternion::rotation_x(degrees(-90.0 - placement.x_rot)));
+        pose.rotate(&Quaternion::rotation_y(degrees(age * -75.0)));
+    } else if let Some(sleep) = placement.sleeping {
+        pose.rotate(&Quaternion::rotation_y(degrees(sleep.angle)));
+        pose.rotate(&Quaternion::rotation_z(degrees(90.0)));
+        pose.rotate(&Quaternion::rotation_y(degrees(270.0)));
+    } else if let Some(height) = placement.upside_down {
         pose.translate(0.0, height + 0.1, 0.0);
-        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            180.0,
-        )));
+        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
     }
 }
 
@@ -138,28 +152,16 @@ pub fn placement_pose(placement: &Placement) -> Pose {
         placement.feet[1] + lower,
         placement.feet[2],
     );
+    if let Some(sleep) = placement.sleeping {
+        pose.translate(sleep.shift[0], 0.0, sleep.shift[1]);
+    }
     pose.scale(1.0, 1.0, 1.0);
-    pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-        180.0 - placement.body_rot,
-    )));
-    // `LivingEntityRenderer.setupRotations`: a dying player falls over.
-    if let Some(roll) = crate::entity::mob_model::death_roll(placement.death_time, 90.0) {
-        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            roll,
-        )));
-    }
-    // `LivingEntityRenderer.setupRotations`: a riptide spin, unless the player is dying.
-    if placement.death_time <= 0.0
-        && let Some(age) = placement.auto_spin
-    {
-        pose.rotate(&Quaternion::rotation_x(Quaternion::degrees_to_radians(
-            -90.0 - placement.x_rot,
-        )));
+    if placement.sleeping.is_none() {
         pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
-            age * -75.0,
+            180.0 - placement.body_rot,
         )));
     }
-    lift_upside_down(&mut pose, placement);
+    fall_or_turn(&mut pose, placement);
     // `AvatarRenderer.setupRotations`: a glider tips forward, else a swimmer does.
     if let Some(flying) = placement.fall_flying {
         if placement.auto_spin.is_none() {
@@ -414,6 +416,7 @@ pub fn gui_player_vertices(
         fall_flying: None,
         auto_spin: None,
         upside_down: None,
+        sleeping: None,
     });
     let mut vertices = Vec::new();
     for corners in model.quads(&pose) {
@@ -631,6 +634,45 @@ mod tests {
     }
 
     #[test]
+    fn a_sleeper_lies_flat_with_its_head_toward_the_pillow() {
+        let mut model = PlayerModel::new(false);
+        model.setup_anim(&Default::default());
+        let placement = Placement {
+            feet: [0.0; 3],
+            body_rot: 0.0,
+            x_rot: 0.0,
+            swim_amount: 0.0,
+            in_water: false,
+            visually_swimming: false,
+            crouching: false,
+            light: 0,
+            skin: [0.0, 0.0, 1.0, 1.0],
+            death_time: 0.0,
+            red_overlay: false,
+            fall_flying: None,
+            auto_spin: None,
+            upside_down: None,
+            sleeping: Some(Sleep::in_bed(Some((0, 1)), 1.62, 0.0)),
+        };
+        let vertices = player_vertices(&model, &placement);
+        let extent = |axis: usize| {
+            vertices
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(low, high), v| {
+                    (low.min(v.position[axis]), high.max(v.position[axis]))
+                })
+        };
+        // Lying on its back: no higher than the width of its body and legs' depth, and as long
+        // as it was tall, running along z (the bed faces south, the head end is toward it).
+        let (_, height) = extent(1);
+        assert!(height < 0.5, "{height}");
+        let (back, front) = extent(2);
+        assert!(front - back > 1.7, "{back} {front}");
+        // The shift puts the body 1.52 blocks away from the head end's side.
+        assert!(back < -1.0 && front < 0.8, "{back} {front}");
+    }
+
+    #[test]
     fn an_upside_down_player_is_lifted_by_its_height_and_turned_over() {
         let mut model = PlayerModel::new(false);
         model.setup_anim(&Default::default());
@@ -649,6 +691,7 @@ mod tests {
             fall_flying: None,
             auto_spin: None,
             upside_down: None,
+            sleeping: None,
         };
         let range = |placement: &Placement| {
             player_vertices(&model, placement)
@@ -687,6 +730,7 @@ mod tests {
                 fall_flying: None,
                 auto_spin: None,
                 upside_down: None,
+                sleeping: None,
             },
         );
         let lowest = vertices

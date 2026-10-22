@@ -2,6 +2,7 @@ use super::light::packed_light;
 use super::wear::burning_light;
 use super::*;
 use crate::equipment::arm_poses;
+use photon_render::entity::player_renderer::Sleep;
 
 /// Whether a player is upside down: the cape shows and the profile is named Dinnerbone or Grumm.
 pub(super) fn flipped(session: &PlaySession, entity: &photon_world::ClientEntity) -> bool {
@@ -23,6 +24,8 @@ pub(super) fn remote_placement(
     let (x, y, z) = snapshot.position;
     let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
     let partial = view.partial as f32;
+    let sleeping = (snapshot.pose == photon_world::ClientEntityPose::Sleeping)
+        .then(|| in_bed(session.world(), entity.sleeping_pos(), snapshot.body_yaw));
     Placement {
         feet: [
             (x - f64::from(view.origin[0])) as f32,
@@ -44,8 +47,23 @@ pub(super) fn remote_placement(
             .is_auto_spin_attack()
             .then(|| entity.tick_count() as f32 + partial),
         // A sleeper keeps the mirrored look but lies down instead of turning over.
-        upside_down: snapshot
-            .upside_down
-            .filter(|_| snapshot.pose != photon_world::ClientEntityPose::Sleeping),
+        upside_down: snapshot.upside_down.filter(|_| sleeping.is_none()),
+        sleeping,
     }
+}
+
+/// A sleeper's lying (`Entity.getBedOrientation` for the bed it sleeps in).
+pub(super) fn in_bed(
+    world: &photon_world::ClientWorld,
+    bed: Option<photon_core::binary::BlockPos>,
+    body_rot: f32,
+) -> Sleep {
+    let facing =
+        bed.and_then(|pos| photon_world::block::bed::bed_orientation(world, (pos.x, pos.y, pos.z)));
+    let step = facing.map(|facing| {
+        let (x, _, z) = facing.step();
+        (x, z)
+    });
+    // `getEyeHeight(Pose.STANDING)` of a player.
+    Sleep::in_bed(step, 1.62, body_rot)
 }

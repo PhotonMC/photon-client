@@ -385,7 +385,6 @@
 "crates/photon-render/src/entity/player_model.rs::ArmPose::named" = 12
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 11
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 19
-"crates/photon-render/src/entity/player_renderer.rs::placement_pose" = 11
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 11
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 11
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 19
