@@ -75,6 +75,9 @@ pub struct MobPlacement {
     /// A mob a spawner shows (`SpawnerRenderer.submitEntityInSpawner`): the block's corner from
     /// the mesh origin, the turn in degrees and the scale that fits the mob in the cage.
     pub spawner: Option<SpawnerCage>,
+    /// `LivingEntityRenderState.isUpsideDown` (a mob named Dinnerbone or Grumm): the height of its
+    /// bounding box, which the flip lifts the mob by, or none for one that stands as usual.
+    pub upside_down: Option<f32>,
 }
 
 /// Where a spawner puts the mob it shows.
@@ -132,6 +135,7 @@ impl Default for MobPlacement {
             attach_face: None,
             ghost: None,
             spawner: None,
+            upside_down: None,
         }
     }
 }
@@ -231,6 +235,19 @@ pub fn shake_degrees(age_in_ticks: f32) -> f32 {
         as f32
 }
 
+/// What `LivingEntityRenderer.setupRotations` does after the turn to face away: the fall of a dead
+/// mob, or else the flip of one named Dinnerbone or Grumm, lifted by the height of its box and a
+/// little more, then turned over.
+fn fall_or_flip(pose: &mut Pose, placement: &MobPlacement) {
+    let degrees = Quaternion::degrees_to_radians;
+    if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
+        pose.rotate(&Quaternion::rotation_z(degrees(roll)));
+    } else if let Some(height) = placement.upside_down {
+        pose.translate(0.0, (height + 0.1) / placement.scale, 0.0);
+        pose.rotate(&Quaternion::rotation_z(degrees(180.0)));
+    }
+}
+
 /// The swing of a fish's body and its flop on land.
 fn fish_rotate(pose: &mut Pose, fish: &FishTurns) {
     let degrees = Quaternion::degrees_to_radians;
@@ -268,11 +285,7 @@ pub fn placement_rotations(placement: &MobPlacement) -> Pose {
     pose.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
         180.0 - (placement.body_rot + placement.shaking.map_or(0.0, shake_degrees)),
     )));
-    if let Some(roll) = death_roll(placement.death_time, placement.flip_degrees) {
-        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
-            roll,
-        )));
-    }
+    fall_or_flip(&mut pose, placement);
     if let Some(fish) = placement.fish {
         fish_rotate(&mut pose, &fish);
     }

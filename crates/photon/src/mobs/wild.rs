@@ -168,16 +168,14 @@ pub fn hand_layers(
     )
 }
 
-/// Where a mob is drawn and how it is lit, from where it is between two ticks.
-pub(crate) fn placement(
+/// Where a spawner puts the mob it shows, and the light of the spawner's block, which the mob
+/// takes (`SpawnerRenderState.lightCoords`).
+fn spawner_cage(
     world: &photon_world::ClientWorld,
     snapshot: &photon_world::EntitySnapshot,
     view: FrameView,
-    scale: f32,
-) -> MobPlacement {
-    let (x, y, z) = snapshot.position;
-    let cage = snapshot.spawner_display.map(|display| {
-        // `SpawnerRenderState.lightCoords`: the light of the spawner's block, which the mob takes.
+) -> Option<(photon_render::entity::mob_model::SpawnerCage, i32)> {
+    snapshot.spawner_display.map(|display| {
         let (bx, by, bz) = display.block;
         let light = packed_light(
             world,
@@ -199,7 +197,18 @@ pub(crate) fn placement(
             },
             light,
         )
-    });
+    })
+}
+
+/// Where a mob is drawn and how it is lit, from where it is between two ticks.
+pub(crate) fn placement(
+    world: &photon_world::ClientWorld,
+    snapshot: &photon_world::EntitySnapshot,
+    view: FrameView,
+    scale: f32,
+) -> MobPlacement {
+    let (x, y, z) = snapshot.position;
+    let cage = spawner_cage(world, snapshot, view);
     MobPlacement {
         spawner: cage.map(|(cage, _)| cage),
         // The cage's pose already stands at the block.
@@ -228,6 +237,7 @@ pub(crate) fn placement(
         red_overlay: snapshot.red_overlay,
         shaking: snapshot.shaking.then_some(snapshot.age_in_ticks),
         ghost: (view.spectating || snapshot.friendly_ghost).then_some(view.camera),
+        upside_down: snapshot.upside_down,
         ..MobPlacement::default()
     }
 }

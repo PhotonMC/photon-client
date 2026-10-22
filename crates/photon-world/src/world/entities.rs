@@ -28,12 +28,23 @@ impl ClientWorld {
             .at(entity_id)
             .or_else(|| self.spawner_display_entity(entity_id))?;
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
+        let body_yaw = entity.interpolated_body_y_rotation(partial_tick);
+        let upside_down = entity.is_upside_down().then(|| entity.leash_size().height);
+        // `extractRenderState`: an upside-down mob looks the other way up and aside.
+        let (pitch, head_yaw) = if upside_down.is_some() {
+            (
+                -pitch,
+                body_yaw - photon_core::math::wrap_degrees_f32(head_yaw - body_yaw),
+            )
+        } else {
+            (pitch, head_yaw)
+        };
         Some(EntitySnapshot {
             position: entity.interpolated_position(partial_tick),
             yaw,
             pitch,
             head_yaw,
-            body_yaw: entity.interpolated_body_y_rotation(partial_tick),
+            body_yaw,
             walk_position: entity.walk_animation().position_at(partial_tick),
             walk_speed: entity.walk_animation().speed_at(partial_tick),
             swim_amount: entity.swim_amount(partial_tick),
@@ -53,6 +64,7 @@ impl ClientWorld {
             burning: entity.is_burning(),
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
+            upside_down,
         })
     }
 

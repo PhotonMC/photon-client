@@ -380,7 +380,7 @@
 "crates/photon-render/src/entity/mob_model/marine.rs::MobModel::setup_guardian" = 13
 "crates/photon-render/src/entity/mob_model/monsters.rs::MobModel::setup_armadillo" = 12
 "crates/photon-render/src/entity/mob_model/nether.rs::MobModel::setup_ravager" = 14
-"crates/photon-render/src/entity/mob_model/placement.rs::placement_rotations" = 13
+"crates/photon-render/src/entity/mob_model/placement.rs::placement_rotations" = 12
 "crates/photon-render/src/entity/mob_model/villagers.rs::illager_arms" = 12
 "crates/photon-render/src/entity/player_model.rs::ArmPose::named" = 12
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 11

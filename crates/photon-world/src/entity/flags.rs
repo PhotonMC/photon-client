@@ -161,6 +161,17 @@ impl ClientEntity {
         crate::metadata::custom_name_from_metadata(self.metadata.as_deref()?)?
     }
 
+    /// `LivingEntityRenderer.isEntityUpsideDown` for the entities that are not players: a living
+    /// entity named Dinnerbone or Grumm (the text of its name, whatever its style).
+    pub fn is_upside_down(&self) -> bool {
+        self.is_living_entity()
+            && !self.is_player()
+            && self.custom_name().is_some_and(|name| {
+                let text = literal_text(&name);
+                text == "Dinnerbone" || text == "Grumm"
+            })
+    }
+
     pub fn is_custom_name_visible(&self) -> bool {
         self.custom_name_visible
     }
@@ -437,5 +448,21 @@ impl EntityState {
         if let Some(end) = wolf.anger_end {
             self.anger_end = end;
         }
+    }
+}
+
+/// `Component.getString` of a component with no translations or keys: its own text and then its
+/// extra components' (a plain string is a text component).
+fn literal_text(component: &photon_core::nbt::FieldValue) -> String {
+    use photon_core::nbt::FieldValue;
+    match component {
+        FieldValue::Str(text) => text.clone(),
+        FieldValue::List(parts) => parts.iter().map(literal_text).collect(),
+        FieldValue::Compound(fields) => fields
+            .iter()
+            .filter(|field| field.key == "text" || field.key == "extra")
+            .map(|field| literal_text(&field.value))
+            .collect(),
+        _ => String::new(),
     }
 }

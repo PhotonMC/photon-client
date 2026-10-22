@@ -34,6 +34,9 @@ pub struct EntitySnapshot {
     pub friendly_ghost: bool,
     /// A mob a spawner shows: where it is put and how it turns (`SpawnerRenderer`).
     pub spawner_display: Option<SpawnerDisplayPose>,
+    /// `LivingEntityRenderState.isUpsideDown`: the height of the bounding box of a living entity
+    /// named Dinnerbone or Grumm, whose pitch and head turn are already mirrored here.
+    pub upside_down: Option<f32>,
 }
 
 /// How a spawner shows its mob: the block's corner, the turn in degrees (the lerped spin times

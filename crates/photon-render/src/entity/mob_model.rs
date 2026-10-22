@@ -246,6 +246,30 @@ mod tests {
     }
 
     #[test]
+    fn a_mob_named_dinnerbone_hangs_from_a_height_a_tenth_above_its_box() {
+        // `setupRotations` lifts by the box's height plus a tenth and turns about z, so each
+        // height y becomes that lift minus y, and its feet are on top.
+        let mut model = pig();
+        model.setup_quadruped(&QuadrupedState::default());
+        let rect = [0.0, 0.0, 1.0, 1.0];
+        let heights = |placement: &MobPlacement| -> (f32, f32) {
+            mob_vertices(&model, placement, rect)
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(low, high), v| {
+                    (low.min(v.position[1]), high.max(v.position[1]))
+                })
+        };
+        let (low, high) = heights(&MobPlacement::default());
+        let flipped = MobPlacement {
+            upside_down: Some(0.9),
+            ..MobPlacement::default()
+        };
+        let (flipped_low, flipped_high) = heights(&flipped);
+        assert!((flipped_high - (1.0 - low)).abs() < 1e-5);
+        assert!((flipped_low - (1.0 - high)).abs() < 1e-5);
+    }
+
+    #[test]
     fn a_pig_stands_on_the_ground_and_reaches_the_height_of_its_head() {
         let mut model = pig();
         model.setup_quadruped(&QuadrupedState::default());

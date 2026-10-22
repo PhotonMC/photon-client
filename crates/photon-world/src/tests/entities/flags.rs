@@ -284,3 +284,55 @@ fn entity_custom_name_presence_follows_java_optional_component_metadata() {
     assert!(entity.is_custom_name_visible());
     assert!(entity.should_show_name());
 }
+
+#[test]
+fn a_living_entity_named_dinnerbone_or_grumm_is_drawn_upside_down_and_looks_the_other_way() {
+    let mut world = ClientWorld::default();
+    let pig = photon_data::entity_type::id("minecraft:pig").expect("pig");
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(41),
+        uuid: Uuid::new(3, 4),
+        type_id: pig,
+        x: 0.0,
+        y: 80.0,
+        z: 0.0,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 20.0, 30.0),
+        data: 0,
+    }));
+    let named = |text: &str| {
+        let mut metadata = vec![
+            2,
+            crate::ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID as u8,
+            1,
+        ];
+        photon_core::nbt::write_any_nbt(
+            Some(&photon_core::nbt::FieldValue::Str(text.to_owned())),
+            &mut metadata,
+        );
+        metadata.push(255);
+        metadata
+    };
+    let upside_down =
+        |world: &ClientWorld| world.entities().at(EntityId(41)).unwrap().is_upside_down();
+    assert!(!upside_down(&world));
+    assert!(world.apply_entity_metadata(EntityId(41), &named("Grumm")));
+    assert!(upside_down(&world));
+    assert!(world.apply_entity_metadata(EntityId(41), &named("dinnerbone")));
+    assert!(!upside_down(&world));
+    assert!(world.apply_entity_metadata(EntityId(41), &named("Dinnerbone")));
+    let snapshot = world.entity_snapshot(EntityId(41), 1.0).expect("snapshot");
+    assert!(snapshot.upside_down.is_some_and(|height| height > 0.0));
+    // `extractRenderState` negates the pitch and the head's turn from the body.
+    let upright = {
+        assert!(world.apply_entity_metadata(EntityId(41), &named("Pig")));
+        world.entity_snapshot(EntityId(41), 1.0).expect("snapshot")
+    };
+    assert_eq!(snapshot.pitch, -upright.pitch);
+    assert!(
+        (photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw)
+            + photon_core::math::wrap_degrees_f32(upright.head_yaw - upright.body_yaw))
+        .abs()
+            < 1e-4
+    );
+}
