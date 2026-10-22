@@ -63,6 +63,23 @@ fn chat_settings(options: &Value, base: ChatSettings) -> ChatSettings {
     }
 }
 
+/// The chat options a row sets under `key`: `chatColors`, which a later set keeps when it says
+/// nothing of it, and the shape of the chat.
+fn apply_options(log: &mut ChatLog, row: &Value, key: &str, font: &Font) {
+    if let Some(colors) = row[key]["colors"].as_bool() {
+        log.set_colors(colors);
+    }
+    log.set_settings(chat_settings(&row[key], log.settings()), font);
+}
+
+/// `rescaleChat` after the options a row names under `rescale`.
+fn apply_rescale(log: &mut ChatLog, row: &Value, font: &Font) {
+    if row["rescale"].is_object() {
+        apply_options(log, row, "rescale", font);
+        log.rescale(font);
+    }
+}
+
 /// The text a message event carries: a translation key, a JSON component or plain text.
 fn event_component(event: &Value) -> Result<photon_game::text::Component, String> {
     use photon_game::text::Component;
@@ -110,7 +127,7 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         ..GuiFrame::default()
     };
     let mut log = ChatLog::default();
-    log.set_settings(chat_settings(&row["options"], log.settings()), font);
+    apply_options(&mut log, row, "options", font);
     if row["restrictions"].is_array() {
         log.set_abilities(abilities(&row["restrictions"])?, font);
     }
@@ -161,9 +178,7 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
         };
         log.set_lang(&source.lang(code), font);
     }
-    if row["rescale"].is_object() {
-        log.set_settings(chat_settings(&row["rescale"], log.settings()), font);
-    }
+    apply_rescale(&mut log, row, font);
     if row["restrictions_after"].is_array() {
         log.set_abilities(abilities(&row["restrictions_after"])?, font);
     }

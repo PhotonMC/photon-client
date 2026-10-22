@@ -412,6 +412,7 @@ impl Controls {
             captured,
             creative_tab: photon_game::menus::creative::default_tab(),
             chat_log: ChatLog::with_settings(ChatSettings::from(&options))
+                .with_colors(options.chat_colors)
                 .with_abilities(chat_abilities(&options)),
             options,
             debug: DebugKeys {

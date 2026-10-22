@@ -268,6 +268,8 @@ pub struct ChatLog {
     /// F3+D pressed: the game flushes the queue and then clears the lines.
     clear_requested: bool,
     settings: ChatSettings,
+    /// `chatColors` is off: the text of the lines loses its formatting codes.
+    strip_formatting: bool,
     /// `visibleMessageFilter`: what the player may see of the chat.
     abilities: ChatAbilities,
 }
@@ -428,6 +430,7 @@ pub fn plain_runs(text: &str) -> Vec<Run> {
 
 mod screen;
 
+mod formatting;
 mod log;
 mod queue_line;
 mod restricted;

@@ -38,6 +38,12 @@ impl ChatLog {
         }
     }
 
+    /// The same chat with `chatColors` set.
+    pub fn with_colors(mut self, colors: bool) -> Self {
+        self.set_colors(colors);
+        self
+    }
+
     /// The same chat for a player with these abilities.
     pub fn with_abilities(mut self, abilities: ChatAbilities) -> Self {
         self.abilities = abilities;
@@ -51,6 +57,12 @@ impl ChatLog {
             self.settings = settings;
             self.rescale(font);
         }
+    }
+
+    /// `chatColors`, which `stripColor` reads whenever lines are made: the lines already there
+    /// stay as they are.
+    pub fn set_colors(&mut self, colors: bool) {
+        self.strip_formatting = !colors;
     }
 
     /// `rescaleChat`.
@@ -152,7 +164,12 @@ impl ChatLog {
         if message.tag.as_ref().is_some_and(Tag::has_icon) {
             width -= 9 + 4 + 2;
         }
-        for line in wrap(&message.runs, width, font) {
+        let runs = if self.strip_formatting {
+            formatting::stripped_runs(&message.runs)
+        } else {
+            message.runs.clone()
+        };
+        for line in wrap(&crate::legacy_styled_runs(&runs), width, font) {
             self.lines.push_front(ChatLine {
                 runs: line,
                 added: message.added,

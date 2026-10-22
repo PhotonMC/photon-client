@@ -13,6 +13,7 @@ class GuiChatOracle extends GuiLanguageOracle {
         if (values.has("wheel")) options.mouseWheelSensitivity().set(values.get("wheel").getAsDouble());
         if (values.has("invert_x")) options.invertMouseX().set(values.get("invert_x").getAsBoolean());
         if (values.has("invert_y")) options.invertMouseY().set(values.get("invert_y").getAsBoolean());
+        if (values.has("colors")) options.chatColors().set(values.get("colors").getAsBoolean());
         if (values.has("scale")) options.chatScale().set(values.get("scale").getAsDouble());
         if (values.has("opacity")) options.chatOpacity().set(values.get("opacity").getAsDouble());
         if (values.has("width")) options.chatWidth().set(values.get("width").getAsDouble());

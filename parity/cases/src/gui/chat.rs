@@ -207,6 +207,33 @@ fn height_rows() -> Vec<Value> {
     ]
 }
 
+/// `chatColors`: the formatting codes that are literal text, kept or stripped as the lines are made.
+fn colour_rows() -> Vec<Value> {
+    let coded = [("a \u{a7}cred \u{a7}Lbold\u{a7}r plain", 0), ("kept \u{a7}g \u{a7}x end \u{a7}", 1)];
+    let wide = "\u{a7}c0123456789 \u{a7}a0123456789 \u{a7}b0123456789 \u{a7}d0123456789 \u{a7}e0123456789 \u{a7}f0123456789 tail";
+    let styled = vec![
+        json!({"json": "{\"text\":\"red \u{a7}lbold \u{a7}rback\",\"color\":\"red\",\"italic\":true}", "tick": 0}),
+    ];
+    let pieces = vec![json!({"json": "{\"text\":\"half \u{a7}\",\"extra\":[{\"text\":\"c split\"}]}", "tick": 0})];
+    vec![
+        with_options(texts(&coded), 3, json!({"colors": true})).row("colours-on"),
+        with_options(texts(&coded), 3, json!({"colors": false})).row("colours-off"),
+        with_options(texts(&[(wide, 0)]), 3, json!({"colors": false})).row("colours-off-wraps-shorter"),
+        with_options(texts(&[(wide, 0)]), 3, json!({"colors": true})).row("colours-on-wraps-wider"),
+        with_options(pieces, 3, json!({"colors": false})).row("colours-off-split-pieces"),
+        with_options(texts(&[("x \u{a7}\u{a7}cc y \u{a7}\u{a7}cX z", 0)]), 3, json!({"colors": false}))
+            .row("colours-off-doubled-sign"),
+        with_options(styled, 3, json!({"colors": true})).row("colours-on-reset-to-run-style"),
+        Chat { rescale: Some(json!({"colors": false})), ..chat(texts(&coded), 3) }.row("colours-off-on-rescale"),
+        Chat {
+            options: Some(json!({"colors": false})),
+            rescale: Some(json!({"colors": true})),
+            ..chat(texts(&coded), 3)
+        }
+        .row("colours-on-on-rescale"),
+    ]
+}
+
 /// A text component with `text` and further fields in this order.
 fn show(text: &str) -> Ordered {
     object(vec![("text", text.into())])
@@ -421,6 +448,7 @@ pub fn chat_case() -> Value {
         queue_rows(),
         restricted_rows(),
         language_rows(),
+        colour_rows(),
     ]
     .concat();
     gui("chat", "chat", rows)

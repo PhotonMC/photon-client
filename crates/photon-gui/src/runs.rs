@@ -248,14 +248,27 @@ impl ItemSlots for photon_render::gui::GuiFrame {
 
 /// `StringDecomposer.iterateFormatted` over a plain string: the `\u{a7}` codes become styles.
 pub fn legacy_runs(text: &str) -> Vec<Run> {
+    legacy_expanded(text, &Style::default())
+}
+
+/// `StringDecomposer.iterateFormatted` over each run's text, a reset going back to the run's own
+/// style: the codes become styles and take no room.
+pub fn legacy_styled_runs(runs: &[Run]) -> Vec<Run> {
+    runs.iter()
+        .flat_map(|run| legacy_expanded(&run.text, &run.style))
+        .collect()
+}
+
+/// `iterateFormatted` of one text that starts, and resets, to `base`.
+fn legacy_expanded(text: &str, base: &Style) -> Vec<Run> {
     let mut runs: Vec<Run> = Vec::new();
-    let mut style = Style::default();
+    let mut style = base.clone();
     let mut chars = text.chars();
     while let Some(c) = chars.next() {
         if c == '\u{a7}' {
             // A lone `\u{a7}` at the end is dropped; an unknown code is skipped with its letter.
             let Some(code) = chars.next() else { break };
-            style = styled_by(style, code.to_ascii_lowercase());
+            style = styled_by(style, code.to_ascii_lowercase(), base);
             continue;
         }
         match runs.last_mut() {
@@ -270,7 +283,7 @@ pub fn legacy_runs(text: &str) -> Vec<Run> {
 }
 
 /// The style after a `\u{a7}` code: a colour clears the formats, a format adds one, `r` resets.
-fn styled_by(mut style: Style, code: char) -> Style {
+fn styled_by(mut style: Style, code: char, reset: &Style) -> Style {
     const COLOURS: [&str; 16] = [
         "black",
         "dark_blue",
@@ -296,7 +309,8 @@ fn styled_by(mut style: Style, code: char) -> Style {
             strikethrough: Some(false),
             underlined: Some(false),
             italic: Some(false),
-            ..Style::coloured(COLOURS[index as usize])
+            colour: Style::coloured(COLOURS[index as usize]).colour,
+            ..style
         };
     }
     match code {
@@ -305,7 +319,7 @@ fn styled_by(mut style: Style, code: char) -> Style {
         'm' => style.strikethrough = Some(true),
         'n' => style.underlined = Some(true),
         'o' => style.italic = Some(true),
-        'r' => style = Style::default(),
+        'r' => style = reset.clone(),
         _ => {}
     }
     style

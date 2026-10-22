@@ -300,7 +300,7 @@
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::step" = 12
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 36
 "crates/photon-oracle/src/gui/result/books.rs::step_key" = 15
-"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 13
+"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 12
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 11
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 17
 "crates/photon-oracle/src/gui/result/settings.rs::chat_options_screen_case" = 14
@@ -730,7 +730,7 @@
 "crates/photon-oracle/src/gui/option_widget_active.rs::OptionWidget::new" = 65
 "crates/photon-oracle/src/gui/result.rs::gui_result" = 65
 "crates/photon-oracle/src/gui/result/books.rs::book_view_case" = 78
-"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 87
+"crates/photon-oracle/src/gui/result/chat.rs::chat_case" = 85
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 157
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 67
