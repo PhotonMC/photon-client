@@ -58,6 +58,97 @@ pub(crate) fn data_file(root: &Path, folder: &str, name: &str) -> Option<JsonObj
     )
 }
 
+fn new_manager() -> MusicManager {
+    MusicManager::new(
+        RandomSource::create(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| elapsed.as_nanos() as i64),
+        ),
+        MusicFrequency::Default,
+    )
+}
+
+/// What the menus and the games hand each other, so one engine and one music manager serve the
+/// whole run (`Minecraft.soundManager` and `musicManager` outlive the level).
+pub struct Carried {
+    pub sound: crate::sound::SoundSlot,
+    pub manager: MusicManager,
+}
+
+impl Carried {
+    /// The engine and the game's music manager, to hand to the menus.
+    pub fn new(mut sound: crate::sound::SoundSlot, music: GameMusic) -> Self {
+        // `Minecraft.disconnect`: leaving the level stops every sound.
+        if let Some(system) = sound.as_mut() {
+            system.reset_level();
+        }
+        Self {
+            sound,
+            manager: music.into_manager(),
+        }
+    }
+
+    /// The parts, each absent when nothing was carried.
+    pub fn split(carried: Option<Self>) -> (Option<crate::sound::SoundSlot>, Option<MusicManager>) {
+        match carried {
+            Some(Self { sound, manager }) => (Some(sound), Some(manager)),
+            None => (None, None),
+        }
+    }
+}
+
+/// The music of the menus: `Musics.MENU` whenever there is no level, ticked at the client's rate.
+pub struct MenuMusic {
+    manager: MusicManager,
+    last: std::time::Instant,
+    owed: std::time::Duration,
+}
+
+/// `Minecraft.TICKS_PER_SECOND` as a duration, and how many ticks one frame may owe.
+const TICK: std::time::Duration = std::time::Duration::from_millis(50);
+const MAX_OWED_TICKS: u32 = 10;
+
+impl MenuMusic {
+    pub fn new(manager: Option<MusicManager>) -> Self {
+        Self {
+            manager: manager.unwrap_or_else(new_manager),
+            last: std::time::Instant::now(),
+            owed: std::time::Duration::ZERO,
+        }
+    }
+
+    pub fn into_manager(self) -> MusicManager {
+        self.manager
+    }
+
+    /// The client ticks the real time has owed: the manager asks for `Musics.MENU`; a level
+    /// that is loading holds the next song back.
+    pub fn tick(
+        &mut self,
+        sound: &mut SoundSystem,
+        options: &photon_game::options::Options,
+        loading: bool,
+    ) {
+        let now = std::time::Instant::now();
+        self.owed = (self.owed + now.duration_since(self.last)).min(TICK * MAX_OWED_TICKS);
+        self.last = now;
+        while self.owed >= TICK {
+            self.owed -= TICK;
+            let mut host = Host {
+                sound,
+                situation: Some(Music::new("minecraft:music.menu", 20, 600, true)),
+                volume: 1.0,
+                toast: Vec::new(),
+                loading,
+            };
+            self.manager
+                .set_frequency_if_changed(options.music_frequency, &host);
+            self.manager.tick(&mut host);
+        }
+    }
+}
+
 pub struct GameMusic {
     manager: MusicManager,
     dimension: Attributes,
@@ -75,6 +166,8 @@ struct Host<'a> {
     volume: f32,
     /// What the manager asked of the now-playing toast: shown (true) or hidden.
     toast: Vec<bool>,
+    /// `LevelLoadingScreen` is up.
+    loading: bool,
 }
 
 impl MusicHost for Host<'_> {
@@ -85,7 +178,7 @@ impl MusicHost for Host<'_> {
         self.situation.clone()
     }
     fn loading_screen(&self) -> bool {
-        false
+        self.loading
     }
     fn is_active(&self) -> bool {
         self.sound.music_active()
@@ -109,16 +202,14 @@ impl MusicHost for Host<'_> {
 
 impl GameMusic {
     /// The dimension's and the biomes' music from the data pack.
-    pub fn load(data_root: &Path, dimension_type: &str, biome_names: &[String]) -> Self {
+    pub fn load(
+        data_root: &Path,
+        dimension_type: &str,
+        biome_names: &[String],
+        manager: Option<MusicManager>,
+    ) -> Self {
         Self {
-            manager: MusicManager::new(
-                RandomSource::create(
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_or(0, |elapsed| elapsed.as_nanos() as i64),
-                ),
-                MusicFrequency::Default,
-            ),
+            manager: manager.unwrap_or_else(new_manager),
             dimension: read_attributes(
                 data_file(data_root, "dimension_type", dimension_type).as_ref(),
             ),
@@ -128,6 +219,11 @@ impl GameMusic {
                 .collect(),
             sliders: None,
         }
+    }
+
+    /// The music manager, which the menus take over when the game ends.
+    pub fn into_manager(self) -> MusicManager {
+        self.manager
     }
 
     /// `Minecraft.getSituationalMusic` and `getMusicVolume` for the player: the biome at the
@@ -180,6 +276,7 @@ impl GameMusic {
             situation,
             volume,
             toast: Vec::new(),
+            loading: false,
         };
         self.manager.set_frequency_if_changed(frequency, &host);
         // A change of the master or music slider that leaves the music audible shows the toast of

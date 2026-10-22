@@ -22,7 +22,9 @@ use photon_net::connection::PlaySession;
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
+mod audio;
 mod icons;
+mod panorama;
 mod pings;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -82,7 +84,9 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         if std::mem::take(&mut scripted_join) {
             menu.connect(server, gui_size(&client));
         }
-        match menu.run(&mut client)? {
+        let choice = menu.run(&mut client)?;
+        client.audio = Some(menu.into_audio());
+        match choice {
             Choice::Quit => return Ok(()),
             Choice::Play(session) => {
                 client.backend.set_gui_only(false);
@@ -117,6 +121,8 @@ struct Menu {
     icons_dirty: bool,
     /// The sound engine of the menus, which plays the buttons' clicks.
     sound: crate::sound::SoundSlot,
+    /// The menu music (`Musics.MENU`).
+    music: crate::music::MenuMusic,
     /// The options as the menu opened.
     options: photon_game::options::Options,
     /// `Panorama.spin`, in degrees, and when it last advanced.
@@ -166,10 +172,11 @@ impl Menu {
             gui_size(client),
             splash.as_deref(),
         ));
-        let sound = crate::sound::SoundSlot::open(root, &options);
+        let (sound, music) = audio::take(client, root, &options);
         Ok(Self {
             gui,
             sound,
+            music,
             splash,
             servers: ServerList::load(&game_directory),
             game_directory,
@@ -184,32 +191,6 @@ impl Menu {
             blurriness: options.menu_background_blurriness,
             options,
         })
-    }
-
-    /// `Panorama.extractRenderState`: turn the cube by the frame's real time and show it.
-    fn spin_panorama(&mut self, client: &mut Client) {
-        let now = Instant::now();
-        let ticks = photon_render::panorama::real_delta_ticks(
-            now.duration_since(self.last_spin).as_secs_f32(),
-        );
-        self.last_spin = now;
-        // `panoramaScrollSpeed` is not read yet; its default is a full speed.
-        self.spin = photon_render::panorama::spin_after(self.spin, ticks, 1.0);
-        let extent = client.backend.description().extent;
-        // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
-        // background of its own.
-        let title = matches!(self.screen, Screen::Title(_));
-        let blur = if title { 0 } else { self.blurriness as u32 };
-        if let Err(error) = client.backend.set_panorama_blur(blur) {
-            log::warn!("panorama blur: {error:?}");
-        }
-        client
-            .backend
-            .set_panorama(Some(photon_render::panorama::view_projection(
-                -self.spin,
-                extent.width,
-                extent.height,
-            )));
     }
 
     fn title(&self, size: (i32, i32)) -> Screen {
@@ -260,7 +241,7 @@ impl Menu {
         }
     }
 
-    fn run(mut self, client: &mut Client) -> Result<Choice> {
+    fn run(&mut self, client: &mut Client) -> Result<Choice> {
         let capture = env::var("PHOTON_CAPTURE_PPM").ok();
         let mut frames = 0;
         while !client.surface.should_close() {
@@ -273,7 +254,7 @@ impl Menu {
             play::fit_swapchain(client)?;
             let size = gui_size(client);
             self.receive_pings();
-            self.sound.frame_in_menu(&self.options);
+            self.frame_audio();
             self.sync_icons(client)?;
             if let Screen::Connecting(_, task) = &self.screen
                 && let Some(result) = task.finished()

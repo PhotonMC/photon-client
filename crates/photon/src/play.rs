@@ -87,6 +87,8 @@ pub(crate) struct Client {
     pub animated_atlas: AnimatedAtlas,
     /// `Minecraft.tutorial`: made with the game, so it goes on across the games played.
     pub tutorial: photon_gui::tutorial::Tutorial,
+    /// The sound engine and music manager, passed between the menu and the game.
+    pub audio: Option<crate::music::Carried>,
 }
 
 impl Client {
@@ -105,6 +107,7 @@ impl Client {
             tutorial: photon_gui::tutorial::Tutorial::new(
                 crate::controls::load_options().tutorial_step,
             ),
+            audio: None,
         })
     }
 }
@@ -511,6 +514,7 @@ fn set_moving_blocks(
     Ok(())
 }
 
+mod audio;
 mod camera;
 mod chat;
 mod cull;

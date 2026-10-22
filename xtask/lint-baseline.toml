@@ -14,7 +14,7 @@
 "crates/photon-oracle/src/player_input.rs" = 527
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-world/src/particles/firework.rs" = 540
-"crates/photon/src/menu.rs" = 624
+"crates/photon/src/menu.rs" = 609
 "crates/photon/src/mobs/animals/farm_animals.rs" = 514
 
 [file-name]
@@ -989,7 +989,7 @@
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 62
 "crates/photon/src/play/draw.rs::Play::draw" = 96
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 189
+"crates/photon/src/play/ticks.rs::Play::start" = 185
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 74
 "crates/photon/src/window_probe/version.rs::run_window" = 61

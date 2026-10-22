@@ -11,6 +11,7 @@ impl Play {
             block_renderer,
             animated_atlas,
             tutorial,
+            audio,
         } = client;
         let root =
             env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
@@ -126,17 +127,12 @@ impl Play {
         {
             controls.options.framerate_limit = limit;
         }
-        let music = crate::music::GameMusic::load(
-            &data_root,
-            session.dimension_type().unwrap_or("minecraft:overworld"),
-            session.registry_names("minecraft:worldgen/biome"),
+        let (sound, music, ambient) = super::audio::load(
+            audio,
+            &session,
+            (&data_root, std::path::Path::new(&root)),
+            &controls.options,
         );
-        let ambient = crate::ambient::GameAmbient::load(
-            &data_root,
-            session.dimension_type().unwrap_or("minecraft:overworld"),
-            session.registry_names("minecraft:worldgen/biome"),
-        );
-        let sound = crate::sound::SoundSlot::open(std::path::Path::new(&root), &controls.options);
         let mut gui = Gui::load(
             std::path::Path::new(&root),
             registries,
@@ -333,6 +329,8 @@ impl Play {
             block_renderer,
             animated_atlas,
             tutorial,
+            sound,
+            music,
             ..
         } = self;
         backend.clear_sections()?;
@@ -344,6 +342,7 @@ impl Play {
                 block_renderer,
                 animated_atlas,
                 tutorial,
+                audio: Some(crate::music::Carried::new(sound, music)),
             },
             exit,
         ))
