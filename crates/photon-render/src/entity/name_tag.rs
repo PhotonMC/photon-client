@@ -67,34 +67,105 @@ fn attachment(pose: ClientEntityPose, y_rot: f32) -> Vec3 {
     Vec3::new(0.0 * cos + 0.0 * sin, height, 0.0 * cos - 0.0 * sin)
 }
 
-/// `EntityRenderer.extractNameTags` for an avatar, with the rules of
-/// `LivingEntityRenderer.shouldShowName` for an entity on no team.
-pub fn name_tag(
+/// `Team.Visibility`: whom a team's name tags show for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagVisibility {
+    Always,
+    Never,
+    HideForOtherTeams,
+    HideForOwnTeam,
+}
+
+/// What a team says of the tags of its members.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TeamRule {
+    pub visibility: TagVisibility,
+    /// `canSeeFriendlyInvisibles`.
+    pub sees_friendly_invisibles: bool,
+}
+
+/// The teams a tag's decision looks at: the entity's, and whether the viewer is on one, and the
+/// same one.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Teams {
+    pub entity: Option<TeamRule>,
+    pub viewer_has_team: bool,
+    /// Both are on a team and it is the same (`isAlliedTo` of the teams).
+    pub same_team: bool,
+}
+
+/// `Entity.isInvisibleTo(player)`.
+fn invisible_to_viewer(entity: &ClientEntity, viewer: Viewer, teams: Teams) -> bool {
+    if viewer.spectator {
+        return false;
+    }
+    let sees_friendly = teams.same_team
+        && teams
+            .entity
+            .is_some_and(|rule| rule.sees_friendly_invisibles);
+    !sees_friendly && entity.is_invisible()
+}
+
+/// `LivingEntityRenderer.shouldShowName` (a viewer that is not the entity itself): the team's
+/// visibility when the entity is on one, else the HUD, the invisibility and the riders.
+pub(super) fn living_shows(
     entity: &ClientEntity,
-    name: &str,
     viewer: Viewer,
-    partial: f32,
-) -> Option<NameTag> {
+    teams: Teams,
+    distance_sq: f64,
+) -> bool {
+    // `isDiscrete`: sneaking.
+    if entity.is_shift_key_down() && distance_sq >= 1024.0 {
+        return false;
+    }
+    let visible = !invisible_to_viewer(entity, viewer, teams);
+    let Some(rule) = teams.entity else {
+        return !viewer.hud_hidden && visible && entity.passenger_ids().is_empty();
+    };
+    team_allows(rule, teams, visible)
+}
+
+/// The switch over a team's name tag visibility.
+fn team_allows(rule: TeamRule, teams: Teams, visible: bool) -> bool {
+    match (rule.visibility, teams.viewer_has_team) {
+        (TagVisibility::Always, _) => visible,
+        (TagVisibility::Never, _) => false,
+        (TagVisibility::HideForOtherTeams, true) => {
+            teams.same_team && (rule.sees_friendly_invisibles || visible)
+        }
+        (TagVisibility::HideForOwnTeam, true) => !teams.same_team && visible,
+        (TagVisibility::HideForOtherTeams | TagVisibility::HideForOwnTeam, false) => visible,
+    }
+}
+
+/// The squared distance from the viewer's camera.
+pub(super) fn distance_sq(entity: &ClientEntity, viewer: Viewer) -> f64 {
     let (x, y, z) = entity.position();
     let (dx, dy, dz) = (
         viewer.camera_position.x - x,
         viewer.camera_position.y - y,
         viewer.camera_position.z - z,
     );
-    let distance_sq = dx * dx + dy * dy + dz * dz;
-    let discrete = entity.is_shift_key_down();
+    dx * dx + dy * dy + dz * dz
+}
+
+/// `EntityRenderer.extractNameTags` for an avatar, with the rules of
+/// `LivingEntityRenderer.shouldShowName`.
+pub fn name_tag(
+    entity: &ClientEntity,
+    name: &str,
+    (viewer, teams): (Viewer, Teams),
+    partial: f32,
+) -> Option<NameTag> {
+    let distance_sq = distance_sq(entity, viewer);
+    let reach = entity
+        .attribute_value("minecraft:name_tag_distance")
+        .unwrap_or(NAME_TAG_DISTANCE);
     // `Mth.square(nameTagDistance)`.
-    if distance_sq >= NAME_TAG_DISTANCE * NAME_TAG_DISTANCE {
+    if distance_sq >= reach * reach || !living_shows(entity, viewer, teams, distance_sq) {
         return None;
     }
-    if discrete && distance_sq >= 1024.0 {
-        return None;
-    }
-    // `isInvisibleTo(player)`: a spectator sees everyone.
-    let visible = viewer.spectator || !entity.is_invisible();
-    if viewer.hud_hidden || !visible || !entity.passenger_ids().is_empty() {
-        return None;
-    }
+    let discrete = entity.is_shift_key_down();
     let pose = entity.pose();
     let crouching = pose == ClientEntityPose::Crouching;
     Some(NameTag {

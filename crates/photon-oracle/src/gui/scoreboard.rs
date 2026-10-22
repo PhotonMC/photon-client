@@ -158,8 +158,8 @@ pub(super) fn number_format(spec: &str) -> photon_game::scoreboard::NumberFormat
 
 /// The scoreboard a gui request describes, built the way the packets build
 /// the game's.
-pub(super) fn scoreboard_from(row: &Value) -> Result<photon_game::scoreboard::Scoreboard, String> {
-    use photon_game::scoreboard::{Scoreboard, ScoreboardEvent, TeamParameters};
+pub(crate) fn scoreboard_from(row: &Value) -> Result<photon_game::scoreboard::Scoreboard, String> {
+    use photon_game::scoreboard::{Scoreboard, ScoreboardEvent};
     use photon_game::text::Component;
     let literal = |value: &Value| Component::literal(value.as_str().unwrap_or_default());
     let mut board = Scoreboard::default();
@@ -195,6 +195,15 @@ pub(super) fn scoreboard_from(row: &Value) -> Result<photon_game::scoreboard::Sc
             });
         }
     }
+    add_teams(&mut board, row)?;
+    Ok(board)
+}
+
+/// The teams of a request, added the way the packets add them.
+fn add_teams(board: &mut photon_game::scoreboard::Scoreboard, row: &Value) -> Result<(), String> {
+    use photon_game::scoreboard::{NameTagVisibility, ScoreboardEvent, TeamParameters};
+    use photon_game::text::Component;
+    let literal = |value: &Value| Component::literal(value.as_str().unwrap_or_default());
     for team in row["teams"].as_array().into_iter().flatten() {
         board.apply(ScoreboardEvent::Team {
             name: team["name"].as_str().ok_or("team name")?.to_owned(),
@@ -204,6 +213,11 @@ pub(super) fn scoreboard_from(row: &Value) -> Result<photon_game::scoreboard::Sc
                 prefix: literal(&team["prefix"]),
                 suffix: literal(&team["suffix"]),
                 colour: team["color"].as_u64().map(|colour| colour as u8),
+                name_tag_visibility: NameTagVisibility::from_id(
+                    team["visibility"].as_i64().unwrap_or(0) as i32,
+                ),
+                // `PlayerTeam`'s default: the flag is on until the packet's options say.
+                sees_friendly_invisibles: team["friendly"].as_bool().unwrap_or(true),
             }),
             players: team["players"]
                 .as_array()
@@ -213,5 +227,5 @@ pub(super) fn scoreboard_from(row: &Value) -> Result<photon_game::scoreboard::Sc
                 .collect(),
         });
     }
-    Ok(board)
+    Ok(())
 }

@@ -1,6 +1,9 @@
 use super::*;
 use photon_core::ids::EntityId;
 
+/// The name of the local player of the reference scene.
+const LOCAL_NAME: &str = "Parity";
+
 /// `name_tags`: a name tag over a remote player or another entity, whether it shows and what is
 /// submitted for it, with the viewer the scene names.
 pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
@@ -29,9 +32,21 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
             spectator: flag(row, "local_spectator"),
             hud_hidden: flag(row, "hud_hidden"),
         };
-        let tag = match kind {
-            Some(_) => entity_tag(entity, row, (viewer, &lang)),
-            None => name_tag(entity, string(row, "name")?, viewer, 0.0),
+        let board = crate::gui::scoreboard::scoreboard_from(row)?;
+        let tag = if kind.is_some() {
+            entity_tag(entity, row, (viewer, (&lang, &board)))
+        } else {
+            let name = string(row, "name")?;
+            let (runs, teams) = photon_gui::entity_name::tag_inputs(
+                entity,
+                Some(name),
+                (&lang, &board),
+                LOCAL_NAME,
+            );
+            name_tag(entity, name, (viewer, teams), 0.0).map(|mut tag| {
+                tag.runs = runs;
+                tag
+            })
         };
         out.push(described_tag(row, tag.as_ref(), &font)?);
     }
@@ -222,9 +237,12 @@ fn changed_attributes(row: &Value) -> Result<Vec<photon_world::ClientAttributeSt
 fn entity_tag(
     entity: &photon_world::ClientEntity,
     row: &Value,
-    (viewer, lang): (
+    (viewer, assets): (
         photon_render::entity::name_tag::Viewer,
-        &photon_game::text::Lang,
+        (
+            &photon_game::text::Lang,
+            &photon_game::scoreboard::Scoreboard,
+        ),
     ),
 ) -> Option<photon_render::entity::name_tag::NameTag> {
     use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
@@ -240,8 +258,8 @@ fn entity_tag(
     }
     let rules = rules?;
     let picked = row["picked"].as_bool().unwrap_or(false);
-    let runs = photon_gui::entity_name::entity_name_runs(entity, lang);
-    entity_name_tag(entity, runs, (rules, picked), viewer)
+    let (runs, teams) = photon_gui::entity_name::tag_inputs(entity, None, assets, LOCAL_NAME);
+    entity_name_tag(entity, runs, (rules, picked), (viewer, teams))
 }
 
 /// `entity_shadows`: the pieces of an entity's shadow over a lit scene and

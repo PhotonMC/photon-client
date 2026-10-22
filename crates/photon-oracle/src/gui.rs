@@ -30,7 +30,7 @@ enum OptionWidget {
 
 mod option_widget_active;
 
-mod scoreboard;
+pub(crate) mod scoreboard;
 use scoreboard::*;
 mod result;
 pub(crate) use result::*;

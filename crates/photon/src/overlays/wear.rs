@@ -228,14 +228,14 @@ pub fn name_tags(
         see_through: Vec::new(),
         normal: Vec::new(),
     };
-    player_tags(session, &mut tags, viewer, view.partial as f32);
+    player_tags(session, (&mut tags, lang), viewer, view.partial as f32);
     entity_tags(session, (&mut tags, lang), viewer, view.partial as f32);
     (tags.see_through, tags.normal)
 }
 
 fn player_tags(
     session: &PlaySession,
-    tags: &mut Tags,
+    (tags, lang): (&mut Tags, &photon_game::text::Lang),
     viewer: photon_render::entity::name_tag::Viewer,
     partial: f32,
 ) {
@@ -248,10 +248,18 @@ fn player_tags(
         let Some(name) = session.player_name(entity.uuid) else {
             continue;
         };
-        let Some(tag) = photon_render::entity::name_tag::name_tag(entity, name, viewer, partial)
+        let (runs, teams) = photon_gui::entity_name::tag_inputs(
+            entity,
+            Some(name),
+            (lang, session.scoreboard()),
+            session.local_name(),
+        );
+        let Some(mut tag) =
+            photon_render::entity::name_tag::name_tag(entity, name, (viewer, teams), partial)
         else {
             continue;
         };
+        tag.runs = runs;
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
@@ -280,9 +288,14 @@ fn entity_tags(
         let Some(rules) = rules_of(entity) else {
             continue;
         };
-        let runs = photon_gui::entity_name::entity_name_runs(entity, lang);
-        let Some(tag) = entity_name_tag(entity, runs, (rules, picked == Some(entity.id())), viewer)
-        else {
+        let (runs, teams) = photon_gui::entity_name::tag_inputs(
+            entity,
+            None,
+            (lang, session.scoreboard()),
+            session.local_name(),
+        );
+        let picked = picked == Some(entity.id());
+        let Some(tag) = entity_name_tag(entity, runs, (rules, picked), (viewer, teams)) else {
             continue;
         };
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {

@@ -5,7 +5,7 @@ pub fn parse_scoreboard_packet(
     id: i32,
     input: &[u8],
 ) -> Result<Option<photon_game::scoreboard::ScoreboardEvent>, ConnectionError> {
-    use photon_game::scoreboard::{ScoreboardEvent, TeamParameters};
+    use photon_game::scoreboard::ScoreboardEvent;
     let mut input = input;
     let input = &mut input;
     let string = |input: &mut &[u8], name| read_chat_string(input, 32767, name);
@@ -62,23 +62,7 @@ pub fn parse_scoreboard_packet(
             let name = string(input, "team name")?;
             let method = read_byte(input, "team method")?;
             let parameters = if method == 0 || method == 2 {
-                let display_name = read_chat_component(input, "team display name")?;
-                let prefix = read_chat_component(input, "team prefix")?;
-                let suffix = read_chat_component(input, "team suffix")?;
-                read_varint(input, "team name tag visibility")?;
-                read_varint(input, "team collision rule")?;
-                let colour = if read_bool(input, "team colour present")? {
-                    Some(read_varint(input, "team colour")?.clamp(0, 15) as u8)
-                } else {
-                    None
-                };
-                read_byte(input, "team options")?;
-                Some(TeamParameters {
-                    display_name,
-                    prefix,
-                    suffix,
-                    colour,
-                })
+                Some(read_team_parameters(input)?)
             } else {
                 None
             };
@@ -97,6 +81,33 @@ pub fn parse_scoreboard_packet(
         }
         _ => return Ok(None),
     }))
+}
+
+/// A team's display name, dressing, name tag visibility, colour and options.
+fn read_team_parameters(
+    input: &mut &[u8],
+) -> Result<photon_game::scoreboard::TeamParameters, ConnectionError> {
+    use photon_game::scoreboard::{NameTagVisibility, TeamParameters};
+    let display_name = read_chat_component(input, "team display name")?;
+    let prefix = read_chat_component(input, "team prefix")?;
+    let suffix = read_chat_component(input, "team suffix")?;
+    let visibility = read_varint(input, "team name tag visibility")?;
+    read_varint(input, "team collision rule")?;
+    let colour = if read_bool(input, "team colour present")? {
+        Some(read_varint(input, "team colour")?.clamp(0, 15) as u8)
+    } else {
+        None
+    };
+    let options = read_byte(input, "team options")?;
+    Ok(TeamParameters {
+        display_name,
+        prefix,
+        suffix,
+        colour,
+        name_tag_visibility: NameTagVisibility::from_id(visibility),
+        // `PlayerTeam.unpackOptions`: bit 1.
+        sees_friendly_invisibles: options & 2 != 0,
+    })
 }
 
 /// `NumberFormatTypes.OPTIONAL_STREAM_CODEC`: absent, or a type (blank,

@@ -353,7 +353,7 @@
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 16
 "crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 16
 "crates/photon-protocol/src/play/recipe.rs::read_slot_display" = 15
-"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 15
+"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 14
 "crates/photon-protocol/src/play/tests.rs::write_component_fixture" = 13
 "crates/photon-protocol/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 11
 "crates/photon-protocol/src/registry_data.rs::piglins_zombify" = 17
@@ -834,7 +834,7 @@
 "crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68
 "crates/photon-protocol/src/play/merchant.rs::parse_merchant_offers_packet" = 61
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 72
-"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 97
+"crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 81
 "crates/photon-protocol/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 68
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::biome_at" = 64
 "crates/photon-render/src/block/biome_tint.rs::BiomeTints::load" = 76

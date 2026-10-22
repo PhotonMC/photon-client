@@ -1,14 +1,75 @@
 //! The name an entity shows over its head (`Entity.getDisplayName` without a team): its custom
 //! name, or the name of its type.
 
+use photon_game::scoreboard::{NameTagVisibility, Scoreboard};
 use photon_game::text::{Component, Lang, Style};
+use photon_render::entity::name_tag::{TagVisibility, TeamRule, Teams};
 use photon_render::gui::TextRun;
 use photon_world::ClientEntity;
+
+/// `Entity.getScoreboardName`: a player's profile name, the unique id of anything else.
+fn scoreboard_name(entity: &ClientEntity, player_name: Option<&str>) -> String {
+    match player_name {
+        Some(name) if entity.is_player() => name.to_owned(),
+        _ => entity.uuid.to_string_java(),
+    }
+}
+
+/// The teams a tag's decision looks at, from the scoreboard: the entity's (by its scoreboard
+/// name) and the viewer's (by the local player's name).
+fn teams_of(board: &Scoreboard, entity_name: &str, viewer_name: &str) -> Teams {
+    let entity = board.team_of(entity_name);
+    let viewer = board.team_of(viewer_name);
+    Teams {
+        entity: entity.map(|(_, team)| TeamRule {
+            visibility: match team.name_tag_visibility {
+                NameTagVisibility::Always => TagVisibility::Always,
+                NameTagVisibility::Never => TagVisibility::Never,
+                NameTagVisibility::HideForOtherTeams => TagVisibility::HideForOtherTeams,
+                NameTagVisibility::HideForOwnTeam => TagVisibility::HideForOwnTeam,
+            },
+            sees_friendly_invisibles: team.sees_friendly_invisibles,
+        }),
+        viewer_has_team: viewer.is_some(),
+        same_team: matches!((entity, viewer), (Some((a, _)), Some((b, _))) if a == b),
+    }
+}
+
+/// What a name tag is decided and written from: the runs of the entity's display name and the
+/// teams its rules look at. `player_name` is the profile name of a player; the one place the
+/// client and the oracle both build a tag's inputs.
+pub fn tag_inputs(
+    entity: &ClientEntity,
+    player_name: Option<&str>,
+    (lang, board): (&Lang, &Scoreboard),
+    viewer_name: &str,
+) -> (Vec<TextRun<'static>>, Teams) {
+    let own = scoreboard_name(entity, player_name);
+    let teams = teams_of(board, &own, viewer_name);
+    let runs = match player_name {
+        Some(name) if entity.is_player() => player_name_runs(name, (lang, board)),
+        _ => entity_name_runs(entity, (lang, board, &own)),
+    };
+    (runs, teams)
+}
+
+/// A player's name over their head, dressed by their team (`Player.getDisplayName`).
+fn player_name_runs(name: &str, (lang, board): (&Lang, &Scoreboard)) -> Vec<TextRun<'static>> {
+    let component = board.team_formatted(name, &Component::literal(name));
+    let runs = lang.runs(&component, &Style::default());
+    crate::draw_runs(&runs)
+        .into_iter()
+        .map(TextRun::into_owned)
+        .collect()
+}
 
 /// `Entity.getName`: the custom name the server sent, else the type's name (`getTypeName`;
 /// the types that name themselves otherwise, like a villager by its profession, are not told
 /// apart). Styled the way the component says, in words of `lang`.
-pub fn entity_name_runs(entity: &ClientEntity, lang: &Lang) -> Vec<TextRun<'static>> {
+fn entity_name_runs(
+    entity: &ClientEntity,
+    (lang, board, scoreboard_name): (&Lang, &Scoreboard, &str),
+) -> Vec<TextRun<'static>> {
     let component = entity
         .custom_name()
         .and_then(|tag| Component::from_nbt(&tag))
@@ -24,6 +85,8 @@ pub fn entity_name_runs(entity: &ClientEntity, lang: &Lang) -> Vec<TextRun<'stat
     let Some(component) = component else {
         return Vec::new();
     };
+    // `Entity.getDisplayName`: dressed by the team.
+    let component = board.team_formatted(scoreboard_name, &component);
     let runs = lang.runs(&component, &Style::default());
     crate::draw_runs(&runs)
         .into_iter()

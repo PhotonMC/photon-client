@@ -63,8 +63,8 @@ class GuiOverlayOracle extends GuiHudOracle {
         var scene = MovementOracle.buildScene(row);
         var level = scene.level();
         var minecraft = scene.minecraft();
-        // Nobody is on a team, as on a server that has set none up.
-        MovementOracle.setField(scene.listener(), "scoreboard", new net.minecraft.world.scores.Scoreboard());
+        // The teams the row names; none, as on a server that has set none up, when it names none.
+        MovementOracle.setField(scene.listener(), "scoreboard", scoreboard(row));
         MovementOracle.setField(minecraft, "font", loadedFont());
 
         // The local player: whether it watches from the spectator's seat.
@@ -194,6 +194,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         var entity = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
             net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
         entity.setId(2);
+        entity.setUUID(new java.util.UUID(0L, 2L));
         entity.snapTo(Oracle.f64(row, "x"), Oracle.f64(row, "y"), Oracle.f64(row, "z"), Oracle.f32(row, "y_rot"), 0.0F);
         if (row.has("custom_name")) {
             entity.setCustomName(Component.literal(row.get("custom_name").getAsString()));
@@ -355,6 +356,13 @@ class GuiOverlayOracle extends GuiHudOracle {
                 }
                 if (described.has("color")) {
                     team.setColor(java.util.Optional.of(net.minecraft.world.scores.TeamColor.values()[described.get("color").getAsInt()]));
+                }
+                if (described.has("visibility")) {
+                    team.setNameTagVisibility(
+                        net.minecraft.world.scores.Team.Visibility.values()[described.get("visibility").getAsInt()]);
+                }
+                if (described.has("friendly")) {
+                    team.setSeeFriendlyInvisibles(described.get("friendly").getAsBoolean());
                 }
                 for (var player : described.getAsJsonArray("players")) {
                     scoreboard.addPlayerToTeam(player.getAsString(), team);

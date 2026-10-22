@@ -158,7 +158,110 @@ fn attachment_rows() -> Vec<Value> {
     rows
 }
 
+/// The scoreboard name of the entity of a row (`Entity.getScoreboardName`): its unique id.
+const MOB_NAME: &str = "00000000-0000-0000-0000-000000000002";
+/// The local player of the reference scene.
+const LOCAL: &str = "Parity";
+
+/// How the viewer stands to the team of the entity.
+#[derive(Clone, Copy)]
+enum Standing {
+    Alone,
+    Same,
+    Other,
+}
+
+/// A team holding the entity, and the viewer as `viewer` says.
+fn teams(subject: &str, viewer: Standing, look: (u8, bool), dress: [&str; 3]) -> Value {
+    let mut own = vec![json!(subject)];
+    let mut teams = Vec::new();
+    match viewer {
+        Standing::Same => own.push(json!(LOCAL)),
+        Standing::Other => teams.push(json!({"name": "other", "players": [LOCAL]})),
+        Standing::Alone => {}
+    }
+    let mut team = json!({
+        "name": "own", "players": own, "visibility": look.0, "friendly": look.1,
+    });
+    let [prefix, suffix, colour] = dress;
+    if !prefix.is_empty() {
+        team["prefix"] = json!(prefix);
+    }
+    if !suffix.is_empty() {
+        team["suffix"] = json!(suffix);
+    }
+    if let Ok(colour) = colour.parse::<u8>() {
+        team["color"] = json!(colour);
+    }
+    teams.push(team);
+    json!(teams)
+}
+
+fn with_teams(mut row: Value, teams: Value) -> Value {
+    row["teams"] = teams;
+    row
+}
+
+/// Every visibility against every standing of the viewer, for a player and for a mob.
+fn team_visibility_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for visibility in 0..4_u8 {
+        for (viewer, word) in [(Standing::Alone, "none"), (Standing::Same, "same"), (Standing::Other, "other")] {
+            let look = (visibility, true);
+            let label = format!("{visibility}-{word}");
+            rows.push(with_teams(mob(&format!("team-mob-{label}"), MOB), teams(MOB_NAME, viewer, look, ["", "", ""])));
+            rows.push(with_teams(
+                tag(&format!("team-player-{label}"), TAG),
+                teams(TAG.name, viewer, look, ["", "", ""]),
+            ));
+        }
+    }
+    rows
+}
+
+/// Where the team's answer replaces the plain gates, and where it does not.
+fn team_gate_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (word, tag) in [
+        ("invisible", Tag { invisible: true, ..TAG }),
+        ("hud-hidden", Tag { hud_hidden: true, ..TAG }),
+        ("ridden", Tag { vehicle: true, ..TAG }),
+        ("far-sneaking", Tag { shift: true, position: [40.5, 64.0, 0.5], ..TAG }),
+    ] {
+        for (visibility, friendly) in [(0_u8, true), (0, false), (2, true), (2, false)] {
+            let look = (visibility, friendly);
+            let label = format!("{word}-{visibility}-{friendly}");
+            for viewer in [Standing::Same, Standing::Other] {
+                let kind = if matches!(viewer, Standing::Same) { "same" } else { "other" };
+                rows.push(with_teams(
+                    mob(&format!("team-mob-{label}-{kind}"), Mob { tag, ..MOB }),
+                    teams(MOB_NAME, viewer, look, ["", "", ""]),
+                ));
+                rows.push(with_teams(
+                    super::locator::tag(&format!("team-player-{label}-{kind}"), tag),
+                    teams(tag.name, viewer, look, ["", "", ""]),
+                ));
+            }
+        }
+    }
+    rows
+}
+
+/// The team's prefix, suffix and colour on the name.
+fn team_dress_rows() -> Vec<Value> {
+    let dress = ["[", "] suffix", "12"];
+    vec![
+        with_teams(mob("team-mob-dressed", MOB), teams(MOB_NAME, Standing::Alone, (0, true), dress)),
+        with_teams(tag("team-player-dressed", TAG), teams(TAG.name, Standing::Alone, (0, true), dress)),
+        with_teams(
+            mob("team-mob-unnamed-dressed", Mob { name: None, ..MOB }),
+            teams(MOB_NAME, Standing::Alone, (0, true), dress),
+        ),
+    ]
+}
+
 /// The rows for entities that are not players.
 pub fn rows() -> Vec<Value> {
-    [visibility_rows(), distance_rows(), attachment_rows()].concat()
+    [visibility_rows(), distance_rows(), attachment_rows(), team_visibility_rows(), team_gate_rows(), team_dress_rows()]
+        .concat()
 }

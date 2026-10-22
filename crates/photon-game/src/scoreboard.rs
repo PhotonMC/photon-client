@@ -110,6 +110,28 @@ impl Score {
     }
 }
 
+/// `Team.Visibility`: whom a team's name tags show for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NameTagVisibility {
+    #[default]
+    Always,
+    Never,
+    HideForOtherTeams,
+    HideForOwnTeam,
+}
+
+impl NameTagVisibility {
+    /// `Team.Visibility.STREAM_CODEC`: an id out of range is the first.
+    pub fn from_id(id: i32) -> Self {
+        match id {
+            1 => Self::Never,
+            2 => Self::HideForOtherTeams,
+            3 => Self::HideForOwnTeam,
+            _ => Self::Always,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Team {
     pub display_name: Component,
@@ -117,6 +139,9 @@ pub struct Team {
     pub suffix: Component,
     /// A `TeamColor` id.
     pub colour: Option<u8>,
+    pub name_tag_visibility: NameTagVisibility,
+    /// `canSeeFriendlyInvisibles`.
+    pub sees_friendly_invisibles: bool,
 }
 
 impl Team {
@@ -141,6 +166,8 @@ pub struct TeamParameters {
     pub prefix: Component,
     pub suffix: Component,
     pub colour: Option<u8>,
+    pub name_tag_visibility: NameTagVisibility,
+    pub sees_friendly_invisibles: bool,
 }
 
 /// A packet that changes the scoreboard.
@@ -310,6 +337,8 @@ impl Scoreboard {
                 prefix: Component::empty(),
                 suffix: Component::empty(),
                 colour: None,
+                name_tag_visibility: NameTagVisibility::Always,
+                sees_friendly_invisibles: true,
             });
         }
         let Some(team) = self.teams.get_mut(&name) else {
@@ -320,6 +349,8 @@ impl Scoreboard {
             team.prefix = parameters.prefix;
             team.suffix = parameters.suffix;
             team.colour = parameters.colour;
+            team.name_tag_visibility = parameters.name_tag_visibility;
+            team.sees_friendly_invisibles = parameters.sees_friendly_invisibles;
         }
         match method {
             0 | 3 => {
@@ -513,6 +544,8 @@ mod tests {
                 prefix: Component::literal("["),
                 suffix: Component::literal("]"),
                 colour: Some(12),
+                name_tag_visibility: NameTagVisibility::Always,
+                sees_friendly_invisibles: true,
             }),
             players: vec!["al".to_owned()],
         });

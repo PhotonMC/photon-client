@@ -5,7 +5,7 @@
 use photon_core::math::Vec3;
 use photon_world::ClientEntity;
 
-use super::name_tag::{NameTag, Viewer};
+use super::name_tag::{NameTag, Teams, Viewer, distance_sq, living_shows};
 use crate::gui::TextRun;
 
 /// `Attributes.NAME_TAG_DISTANCE`'s default, and what an entity without the attribute uses.
@@ -76,32 +76,15 @@ pub fn eye_height(entity: &ClientEntity) -> Option<f64> {
     Some(f64::from(eye) * f64::from(entity.scale()))
 }
 
-/// `LivingEntityRenderer.shouldShowName` for an entity on no team.
-fn living_shows(entity: &ClientEntity, viewer: Viewer, distance_sq: f64) -> bool {
-    // `isDiscrete`: sneaking.
-    if entity.is_shift_key_down() && distance_sq >= 1024.0 {
-        return false;
-    }
-    // `isInvisibleTo(player)`: a spectator sees everyone.
-    let visible = viewer.spectator || !entity.is_invisible();
-    !viewer.hud_hidden && visible && entity.passenger_ids().is_empty()
-}
-
 /// `EntityRenderer.extractNameTags` for an entity that is not a player, with the name it would
 /// show; `picked` is whether the crosshair is on it (`crosshairPickEntity`).
 pub fn entity_name_tag(
     entity: &ClientEntity,
     runs: Vec<TextRun<'static>>,
     (rules, picked): (NameRules, bool),
-    viewer: Viewer,
+    (viewer, teams): (Viewer, Teams),
 ) -> Option<NameTag> {
-    let (x, y, z) = entity.position();
-    let (dx, dy, dz) = (
-        viewer.camera_position.x - x,
-        viewer.camera_position.y - y,
-        viewer.camera_position.z - z,
-    );
-    let distance_sq = dx * dx + dy * dy + dz * dz;
+    let distance_sq = distance_sq(entity, viewer);
     let reach = entity
         .attribute_value("minecraft:name_tag_distance")
         .unwrap_or(NAME_TAG_DISTANCE);
@@ -111,7 +94,7 @@ pub fn entity_name_tag(
     let named = entity.should_show_name() || entity.has_custom_name() && picked;
     let shows = match rules {
         NameRules::Entity => named,
-        NameRules::Mob => living_shows(entity, viewer, distance_sq) && named,
+        NameRules::Mob => living_shows(entity, viewer, teams, distance_sq) && named,
         NameRules::ArmorStand => entity.is_custom_name_visible(),
     };
     if !shows {
