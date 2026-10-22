@@ -223,6 +223,15 @@ mod tests {
     }
 
     #[test]
+    fn only_the_music_flag_asks_for_boss_music() {
+        let mut bars = BossBars::default();
+        bars.add(1, Vec::new(), 0.0, 0, 0, 1, 0);
+        assert!(!bars.plays_music());
+        bars.add(2, Vec::new(), 0.0, 0, 0, 2, 0);
+        assert!(bars.plays_music());
+    }
+
+    #[test]
     fn re_adding_keeps_the_place() {
         let mut bars = BossBars::default();
         bars.add(1, Vec::new(), 0.0, 0, 0, 0, 0);

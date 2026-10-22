@@ -132,7 +132,7 @@ impl GameMusic {
 
     /// `Minecraft.getSituationalMusic` and `getMusicVolume` for the player: the biome at the
     /// player's feet over the dimension.
-    fn situation(&self, session: &PlaySession) -> (Option<Music>, f32) {
+    fn situation(&self, session: &PlaySession, boss_music: bool) -> (Option<Music>, f32) {
         let Some(player) = session.player() else {
             return (None, 1.0);
         };
@@ -156,6 +156,13 @@ impl GameMusic {
         let abilities = player.abilities();
         let creative = abilities.instabuild() && abilities.may_fly();
         let selected = music.and_then(|music| music.select(creative, player.is_under_water()));
+        // `Musics.END_BOSS`: the dragon fight's track while a boss bar asks for music in the End.
+        if boss_music && session.dimension() == "minecraft:the_end" {
+            return (
+                Some(Music::new("minecraft:music.dragon", 0, 0, true)),
+                volume,
+            );
+        }
         (selected.cloned(), volume)
     }
 
@@ -167,7 +174,7 @@ impl GameMusic {
         gui: &mut crate::gui::Gui,
     ) {
         let frequency = options.music_frequency;
-        let (situation, volume) = self.situation(session);
+        let (situation, volume) = self.situation(session, gui.boss_bars.plays_music());
         let mut host = Host {
             sound,
             situation,
