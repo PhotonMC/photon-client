@@ -91,14 +91,10 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        vertices.extend(body(model, &placement, ghosted(entity, view, &snapshot)));
-        vertices.extend(wear(
-            armor,
-            worn,
-            model.slim,
-            textures,
-            (&state, &placement),
-        ));
+        let shown = body(model, &placement, ghosted(entity, view, &snapshot));
+        vertices.extend(glowing(session, entity, shown));
+        let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));
+        vertices.extend(glowing(session, entity, wearing));
         vertices.extend(armor.wings(
             worn.chest,
             (false, crouching, entity.elytra_rotations(partial)),
@@ -110,6 +106,19 @@ pub fn remote_players(
             },
         ));
     }
+}
+
+/// The triangles of a player, which join the outline when the player glows: the colour is its
+/// team's, found by its profile name.
+fn glowing(
+    session: &PlaySession,
+    entity: &photon_world::ClientEntity,
+    triangles: Vec<Vertex>,
+) -> Vec<Vertex> {
+    if let (true, Some(name)) = (entity.is_glowing(), session.player_name(entity.uuid)) {
+        crate::mobs::outline::record_holder(name.to_owned(), triangles.clone());
+    }
+    triangles
 }
 
 /// Whether the body of a player is hidden: none when it shows, else the camera a spectating

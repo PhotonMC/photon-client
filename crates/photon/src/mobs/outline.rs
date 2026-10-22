@@ -14,7 +14,11 @@ thread_local! {
 
 /// Remember a glowing mob's body, as the vertices of its model.
 pub(crate) fn record(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
-    let holder = entity.uuid.to_string_java();
+    record_holder(entity.uuid.to_string_java(), body);
+}
+
+/// Remember the triangles of whatever has the scoreboard name `holder` and glows.
+pub(crate) fn record_holder(holder: String, body: Vec<Vertex>) {
     SILHOUETTES.with(|list| list.borrow_mut().push((holder, body)));
 }
 
