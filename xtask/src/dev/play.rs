@@ -1,4 +1,5 @@
-//! `cargo xtask play`: build and start the client.
+//! `cargo xtask play`: build and start the client on its title screen, or with `--direct` joined
+//! to the server at once.
 
 use std::process::Command;
 
@@ -7,7 +8,7 @@ use super::layout::{build_client, client_binary, client_environment, default_add
 use crate::process;
 
 const SPEC: Spec = Spec {
-    flags: &["--fullscreen", "--profile", "--no-build"],
+    flags: &["--fullscreen", "--profile", "--no-build", "--direct"],
     options: &[("--user", 1), ("--size", 2), ("--camera", 1)],
 };
 
@@ -35,7 +36,13 @@ pub fn play(args: &[String]) -> Result<(), String> {
     if parsed.flag("--profile") {
         command.env("PHOTON_PROFILE", "1");
     }
-    command.arg("play").arg(parsed.address(&default_address()));
+    // The menu takes the address only for a scripted join; the player picks a server there.
+    let mode = if parsed.flag("--direct") {
+        "play"
+    } else {
+        "menu"
+    };
+    command.arg(mode).arg(parsed.address(&default_address()));
     command.args(parsed.group("--size").unwrap_or(&[]));
     let status = command
         .status()

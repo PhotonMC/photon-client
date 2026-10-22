@@ -26,7 +26,8 @@ cargo xtask setup               # pinned game into .data/ from Mojang's servers
 
 ```sh
 cargo xtask server --accept-eula --background   # test server on port 25600
-cargo xtask play --user Walker
+cargo xtask play --user Walker               # title screen; Multiplayer lists servers
+cargo xtask play --user Walker --direct      # join the test server at once
 cargo xtask rcon "time set noon" "weather clear"
 cargo xtask server --stop
 ```
