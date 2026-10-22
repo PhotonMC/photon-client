@@ -210,6 +210,9 @@ impl AdvancementsScreen {
             self.sync(advancements, fonts);
         }
         out.close = self.done.contains(&self.arena, mouse);
+        if out.close {
+            crate::ui_sound::play_down_sound();
+        }
         out
     }
 

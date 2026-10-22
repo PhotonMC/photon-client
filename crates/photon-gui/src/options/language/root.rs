@@ -205,7 +205,10 @@ impl LanguageSelectScreen {
                 return LanguageInput::default();
             }
             (Some(Focus::List), _) if selection && self.entry_focused => return self.finish(),
-            (Some(Focus::Done), _) if selection => return self.finish(),
+            (Some(Focus::Done), _) if selection => {
+                crate::ui_sound::play_down_sound();
+                return self.finish();
+            }
             _ => {}
         }
         match key {

@@ -391,6 +391,7 @@ impl StatsScreen {
     /// tab takes nothing.
     pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<StatsAction> {
         if self.done.contains(&self.arena, mouse) {
+            crate::ui_sound::play_down_sound();
             return Some(StatsAction::Close);
         }
         if let Some(tab) = self.tab_at(mouse) {

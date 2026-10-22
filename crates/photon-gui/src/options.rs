@@ -282,7 +282,10 @@ impl OptionsScreen {
         };
         match hit {
             Focus::Fov => input.fov = self.fov.clicked(lang, &self.arena, mouse),
-            Focus::Button(index) => input.action = Some(self.buttons[index].1),
+            Focus::Button(index) => {
+                crate::ui_sound::play_down_sound();
+                input.action = Some(self.buttons[index].1);
+            }
         }
         self.focus_on(Some(hit), InputType::Mouse);
         self.dragging = true;
@@ -303,6 +306,8 @@ impl OptionsScreen {
         if self.dragging {
             self.dragging = false;
             if self.focus == Some(Focus::Fov) {
+                // `AbstractSliderButton.onRelease`: the slider clicks as the button lets go.
+                crate::ui_sound::play_down_sound();
                 self.fov.released(lang);
             }
         }
@@ -408,6 +413,7 @@ impl OptionsScreen {
             Some(Focus::Button(index)) if key == SliderKey::Select => {
                 let (widget, action) = &self.buttons[index];
                 if widget.is_active() {
+                    crate::ui_sound::play_down_sound();
                     input.action = Some(*action);
                 }
             }

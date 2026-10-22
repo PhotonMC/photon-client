@@ -185,7 +185,11 @@ impl SignEditScreen {
 
     /// `mouseClicked`: whether Done was pressed.
     pub fn clicked(&self, mouse: (i32, i32)) -> bool {
-        self.done.contains(&self.arena, mouse)
+        let hit = self.done.contains(&self.arena, mouse);
+        if hit {
+            crate::ui_sound::play_down_sound();
+        }
+        hit
     }
 
     /// `extractBackground` and `extractRenderState`: the world dimmed, Done, the title, then the

@@ -185,10 +185,12 @@ impl SubScreen {
             .as_ref()
             .is_some_and(|help| help.is_active() && help.contains(&self.arena, at));
         if help {
+            crate::ui_sound::play_down_sound();
             self.apply(Target::Help, InputType::Mouse);
         }
         let done = self.done.is_active() && self.done.contains(&self.arena, at);
         if done {
+            crate::ui_sound::play_down_sound();
             self.apply(Target::Done, InputType::Mouse);
         }
         SubScreenInput {
@@ -394,6 +396,9 @@ impl SubScreen {
     fn footer_pressed(&self) -> Option<SubScreenInput> {
         let target = self.footer_focus()?;
         let active = self.footer_widget(target).is_some_and(Widget::is_active);
+        if active {
+            crate::ui_sound::play_down_sound();
+        }
         match target {
             Target::Done if active => Some(SubScreenInput {
                 done: true,

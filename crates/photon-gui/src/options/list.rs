@@ -93,6 +93,8 @@ where
     }
 
     fn released(&mut self, lang: &Lang) {
+        // `AbstractSliderButton.onRelease`: the click comes when the button lets go.
+        crate::ui_sound::play_down_sound();
         OptionSlider::released(self, lang);
     }
 
@@ -149,6 +151,7 @@ impl<V: Clone + PartialEq + 'static> Control for CycleButton<V> {
     }
 
     fn pressed(&mut self, lang: &Lang, _arena: &Arena, _mouse: (f64, f64), shift: bool) -> bool {
+        crate::ui_sound::play_down_sound();
         self.press(lang, shift);
         true
     }
@@ -180,6 +183,9 @@ impl<V: Clone + PartialEq + 'static> Control for CycleButton<V> {
     ) -> (bool, bool) {
         // `AbstractButton.keyPressed`: Enter and Space press it.
         let pressed = key == SliderKey::Select && self.selected(lang, shift).is_some();
+        if pressed {
+            crate::ui_sound::play_down_sound();
+        }
         (pressed, pressed)
     }
 
@@ -415,6 +421,7 @@ impl Control for ButtonControl {
     }
 
     fn pressed(&mut self, _lang: &Lang, _arena: &Arena, _mouse: (f64, f64), _shift: bool) -> bool {
+        crate::ui_sound::play_down_sound();
         true
     }
 
@@ -444,6 +451,9 @@ impl Control for ButtonControl {
         _shift: bool,
     ) -> (bool, bool) {
         let pressed = key == SliderKey::Select && self.widget.is_active();
+        if pressed {
+            crate::ui_sound::play_down_sound();
+        }
         (pressed, pressed)
     }
 

@@ -376,6 +376,7 @@ impl LanguageSelectScreen {
             .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, at))
             .map(|(_, which)| which);
         if let Some(which) = hit {
+            crate::ui_sound::play_down_sound();
             self.set_focus(Some(which));
             self.dragging = true;
             if which == Focus::Done {

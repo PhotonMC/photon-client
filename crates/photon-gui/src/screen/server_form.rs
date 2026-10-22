@@ -353,6 +353,14 @@ impl ServerFormScreen {
 
     /// The focused widget pressed (Enter, Space, or a click).
     fn press(&mut self, focus: Focus, lang: &Lang, shift: bool) -> Option<FormResult> {
+        let button = match focus {
+            Focus::Done => self.done.active,
+            Focus::Cancel | Focus::Pack => true,
+            _ => false,
+        };
+        if button {
+            crate::ui_sound::play_down_sound();
+        }
         match focus {
             Focus::Done if self.done.active => Some(self.accept()),
             Focus::Cancel => Some(FormResult::Cancelled),

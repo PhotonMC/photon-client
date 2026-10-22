@@ -201,6 +201,7 @@ impl KeyBindsScreen {
     /// A press of a widget: a mapping's button waits for its key, a row's reset and Reset Keys
     /// bind the defaults again, Done goes back.
     fn press(&mut self, lang: &Lang, target: Target) -> KeyBindsInput {
+        crate::ui_sound::play_down_sound();
         match target {
             Target::List((row, child)) => {
                 let Row::Key { mapping, .. } = self.list.rows[row] else {

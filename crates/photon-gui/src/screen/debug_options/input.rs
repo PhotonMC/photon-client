@@ -45,10 +45,12 @@ impl DebugOptionsScreen {
             .into_iter()
             .find(|(_, widget)| widget.is_active() && widget.contains(&self.arena, at));
         if let Some((index, _)) = hit {
+            crate::ui_sound::play_down_sound();
             self.set_focus(Focus::Profile(index));
             return Some(self.press_profile(Profile::ALL[index], index));
         }
         if self.done.contains(&self.arena, at) {
+            crate::ui_sound::play_down_sound();
             self.set_focus(Focus::Done);
             return Some(DebugOptionsEvent::Close);
         }
