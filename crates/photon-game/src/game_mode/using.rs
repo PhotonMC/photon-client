@@ -340,17 +340,11 @@ impl GameMode {
         };
         let world: &ClientWorld = ctx.world;
         let state_at = |x: i32, y: i32, z: i32| world.block_state_or_air(x, y, z);
-        let (y_rot, _) = ctx.player.rotation();
-        let mut place_ctx = rules::PlaceContext {
-            state_at: &state_at,
-            hit_pos: (x, y, z),
-            face: photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
-            location: (location[0], location[1], location[2]),
-            item: Some(item),
-            horizontal_direction: photon_core::direction::Direction::from_y_rot(f64::from(y_rot)),
-            replace_clicked: true,
-            tags: world.block_state_registry().tags(),
-        };
+        let face = photon_core::direction::Direction::from_3d_data_value(i32::from(face));
+        let aimed = ((x, y, z), face, (location[0], location[1], location[2]));
+        let tags = world.block_state_registry().tags();
+        let mut place_ctx =
+            rules::PlaceContext::new(&state_at, aimed, Some(item), ctx.player.rotation(), tags);
         // `BlockPlaceContext`: the clicked block is replaced if it may be.
         place_ctx.replace_clicked = match rules::can_be_replaced(state_at(x, y, z), &place_ctx) {
             Rule::Known(replaced) => replaced,
@@ -371,7 +365,7 @@ impl GameMode {
             Rule::Unported => return UseResult::Success { swing: true },
         };
         // `BlockItem.canPlace`: it must stand there and not be in the way.
-        match rules::can_survive(state) {
+        match rules::can_survive(state, pos, &place_ctx) {
             Rule::Known(true) => {}
             Rule::Known(false) => return UseResult::Fail,
             Rule::Unported => return UseResult::Success { swing: true },

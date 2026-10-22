@@ -17,6 +17,8 @@ use photon_data::block::registry::{self, BLOCKS, Block};
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
+mod survive;
+
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rule<T> {
@@ -104,6 +106,7 @@ pub fn is_water_source(state: BlockStateId) -> bool {
 }
 
 /// What a block reads of the level and of the use that places it.
+#[derive(Clone, Copy)]
 pub struct PlaceContext<'a> {
     pub state_at: &'a dyn Fn(i32, i32, i32) -> BlockStateId,
     /// Where the aim hit, and on which face.
@@ -114,13 +117,38 @@ pub struct PlaceContext<'a> {
     pub item: Option<ItemId>,
     /// `Player.getDirection`, from the yaw.
     pub horizontal_direction: Direction,
+    /// The player's `(yRot, xRot)` in degrees.
+    pub rotation: (f32, f32),
     /// Whether the clicked block itself is replaced (`replaceClicked`).
     pub replace_clicked: bool,
     /// The block tags the server sent.
     pub tags: &'a super::tags::BlockTags,
 }
 
-impl PlaceContext<'_> {
+impl<'a> PlaceContext<'a> {
+    /// A use of `item` on the block at `aimed.0`, its face `aimed.1` hit at `aimed.2`, by a
+    /// player looking along `rotation`. The clicked block is taken as replaced until
+    /// [`can_be_replaced`] says otherwise.
+    pub fn new(
+        state_at: &'a dyn Fn(i32, i32, i32) -> BlockStateId,
+        aimed: ((i32, i32, i32), Direction, (f64, f64, f64)),
+        item: Option<ItemId>,
+        rotation: (f32, f32),
+        tags: &'a super::tags::BlockTags,
+    ) -> Self {
+        Self {
+            state_at,
+            hit_pos: aimed.0,
+            face: aimed.1,
+            location: aimed.2,
+            item,
+            horizontal_direction: Direction::from_y_rot(f64::from(rotation.0)),
+            rotation,
+            replace_clicked: true,
+            tags,
+        }
+    }
+
     /// `getClickedPos`: the clicked block if it is replaced, otherwise the
     /// one in front of the clicked face.
     pub fn clicked_pos(&self) -> (i32, i32, i32) {
@@ -270,12 +298,13 @@ fn stair_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Bloc
     with_property(state, "shape", shape)
 }
 
-/// `BlockBehaviour.canSurvive` as the block's class decides it.
-pub fn can_survive(state: BlockStateId) -> Rule<bool> {
-    match state_owner(state, Method::CanSurvive) {
-        None => Rule::Known(true),
-        Some(_) => Rule::Unported,
-    }
+/// `BlockBehaviour.canSurvive` as the block's class decides it, for the state standing at `pos`.
+pub fn can_survive(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
+    survive::can_survive(state, pos, ctx)
 }
 
 /// `instanceof StairBlock`.
@@ -454,6 +483,7 @@ mod tests {
             location: (0.5, 64.0, 0.5),
             item: None,
             horizontal_direction: Direction::North,
+            rotation: (0.0, 0.0),
             replace_clicked: false,
             tags,
         };
@@ -479,6 +509,7 @@ mod tests {
             location: (0.5, 64.1, 0.0),
             item: None,
             horizontal_direction: Direction::North,
+            rotation: (0.0, 0.0),
             replace_clicked: true,
             tags: &tags,
         };

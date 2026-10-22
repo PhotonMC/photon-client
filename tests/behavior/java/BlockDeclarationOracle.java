@@ -2,7 +2,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 /** What block and item classes declare, read through their own methods. */
-class BlockDeclarationOracle extends BlockItemOracle {
+class BlockDeclarationOracle extends BlockPlacementOracle {
     /** The block methods the client ports class by class, with their
      * parameters, in the order the declarations list them. */
     static final java.util.Map<String, Class<?>[]> TRACKED_METHODS = trackedMethods();
@@ -31,6 +31,7 @@ class BlockDeclarationOracle extends BlockItemOracle {
         Class<?> context = net.minecraft.world.phys.shapes.CollisionContext.class;
         methods.put("getShape", new Class<?>[] {state, getter, pos, context});
         methods.put("getCollisionShape", new Class<?>[] {state, getter, pos, context});
+        methods.put("mayPlaceOn", new Class<?>[] {state, getter, pos});
         methods.put("getType", new Class<?>[] {});
         methods.put("getParticlePos", new Class<?>[] {pos});
         return methods;

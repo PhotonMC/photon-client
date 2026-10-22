@@ -60,6 +60,7 @@ pub fn cases() -> Vec<Value> {
         "case_id": "block/creative-tag-search", "family": "block",
         "operation": "creative_tag_search", "rows": rows,
     }));
+    cases.extend(crate::block_placement::cases());
     cases.push(table("behaviours", "block_behaviours"));
     cases.push(table("tints", "block_tints"));
     cases

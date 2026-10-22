@@ -144,6 +144,8 @@ mod tooltip;
 use tooltip::*;
 mod block;
 use block::*;
+mod placement;
+use placement::*;
 mod vanilla;
 use vanilla::*;
 mod lighting;

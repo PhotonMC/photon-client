@@ -1063,12 +1063,13 @@ impl BlockClass {
             Self::SnowyBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
             Self::RotatedPillarBlock => &[Method::GetStateForPlacement],
             Self::SaplingBlock => &[Method::GetShape],
-            Self::VegetationBlock => &[Method::CanSurvive, Method::UpdateShape],
+            Self::VegetationBlock => &[Method::CanSurvive, Method::UpdateShape, Method::MayPlaceOn],
             Self::MangrovePropaguleBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::MayPlaceOn,
             ],
             Self::LiquidBlock => &[
                 Method::UpdateShape,
@@ -1101,7 +1102,7 @@ impl BlockClass {
             ],
             Self::PistonBaseBlock => &[Method::GetStateForPlacement, Method::GetShape],
             Self::TallGrassBlock => &[Method::GetShape],
-            Self::DryVegetationBlock => &[Method::GetShape],
+            Self::DryVegetationBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::BushBlock => &[Method::GetShape],
             Self::ShortDryGrassBlock => &[Method::GetShape],
             Self::TallDryGrassBlock => &[Method::GetShape],
@@ -1109,11 +1110,13 @@ impl BlockClass {
                 Method::GetStateForPlacement,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::MayPlaceOn,
             ],
             Self::TallSeagrassBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
                 Method::GetShape,
+                Method::MayPlaceOn,
             ],
             Self::DoublePlantBlock => &[
                 Method::GetStateForPlacement,
@@ -1127,7 +1130,8 @@ impl BlockClass {
                 Method::GetCollisionShape,
             ],
             Self::FlowerBlock => &[Method::GetShape],
-            Self::MushroomBlock => &[Method::CanSurvive, Method::GetShape],
+            Self::WitherRoseBlock => &[Method::MayPlaceOn],
+            Self::MushroomBlock => &[Method::CanSurvive, Method::GetShape, Method::MayPlaceOn],
             Self::TntBlock => &[Method::UseItemOn],
             Self::ChiseledBookShelfBlock => &[
                 Method::GetStateForPlacement,
@@ -1175,7 +1179,7 @@ impl BlockClass {
                 Method::GetShape,
             ],
             Self::CraftingTableBlock => &[Method::UseWithoutItem],
-            Self::CropBlock => &[Method::CanSurvive, Method::GetShape],
+            Self::CropBlock => &[Method::CanSurvive, Method::GetShape, Method::MayPlaceOn],
             Self::FarmlandBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
@@ -1258,7 +1262,7 @@ impl BlockClass {
                 Method::GetShape,
                 Method::GetCollisionShape,
             ],
-            Self::CactusFlowerBlock => &[Method::GetShape],
+            Self::CactusFlowerBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::SugarCaneBlock => &[Method::CanSurvive, Method::UpdateShape, Method::GetShape],
             Self::JukeboxBlock => &[Method::UseWithoutItem, Method::UseItemOn],
             Self::FenceBlock => &[
@@ -1302,8 +1306,8 @@ impl BlockClass {
                 Method::GetShape,
             ],
             Self::PumpkinBlock => &[Method::UseItemOn],
-            Self::AttachedStemBlock => &[Method::UpdateShape, Method::GetShape],
-            Self::StemBlock => &[Method::GetShape],
+            Self::AttachedStemBlock => &[Method::UpdateShape, Method::GetShape, Method::MayPlaceOn],
+            Self::StemBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::VineBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanBeReplaced,
@@ -1325,7 +1329,7 @@ impl BlockClass {
                 Method::GetShape,
                 Method::GetCollisionShape,
             ],
-            Self::LilyPadBlock => &[Method::GetShape],
+            Self::LilyPadBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::SlabBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanBeReplaced,
@@ -1338,7 +1342,7 @@ impl BlockClass {
                 Method::GetShape,
                 Method::GetCollisionShape,
             ],
-            Self::NetherWartBlock => &[Method::GetShape],
+            Self::NetherWartBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::EnchantingTableBlock => &[Method::UseWithoutItem, Method::GetShape],
             Self::BrewingStandBlock => &[Method::UseWithoutItem, Method::GetShape],
             Self::AbstractCauldronBlock => &[Method::UseItemOn, Method::GetShape],
@@ -1431,6 +1435,7 @@ impl BlockClass {
                 Method::UpdateShape,
                 Method::GetShape,
                 Method::GetCollisionShape,
+                Method::MayPlaceOn,
             ],
             Self::BeetrootBlock => &[Method::GetShape],
             Self::DirtPathBlock => &[
@@ -1491,6 +1496,7 @@ impl BlockClass {
                 Method::CanSurvive,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::MayPlaceOn,
             ],
             Self::ConduitBlock => &[
                 Method::GetStateForPlacement,
@@ -1562,9 +1568,9 @@ impl BlockClass {
                 &[Method::UseWithoutItem, Method::UseItemOn, Method::GetShape]
             }
             Self::NyliumBlock => &[Method::GetType],
-            Self::NetherFungusBlock => &[Method::GetShape],
-            Self::NetherRootsBlock => &[Method::GetShape],
-            Self::NetherSproutsBlock => &[Method::GetShape],
+            Self::NetherFungusBlock => &[Method::GetShape, Method::MayPlaceOn],
+            Self::NetherRootsBlock => &[Method::GetShape, Method::MayPlaceOn],
+            Self::NetherSproutsBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::StructureBlock => &[Method::UseWithoutItem],
             Self::JigsawBlock => &[Method::GetStateForPlacement, Method::UseWithoutItem],
             Self::TestBlock => &[Method::GetStateForPlacement, Method::UseWithoutItem],
@@ -1637,7 +1643,7 @@ impl BlockClass {
             Self::CaveVinesBlock => &[Method::UseWithoutItem],
             Self::CaveVinesPlantBlock => &[Method::UseWithoutItem],
             Self::SporeBlossomBlock => &[Method::CanSurvive, Method::UpdateShape, Method::GetShape],
-            Self::AzaleaBlock => &[Method::GetShape],
+            Self::AzaleaBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::FlowerBedBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanBeReplaced,
@@ -1665,6 +1671,7 @@ impl BlockClass {
                 Method::CanSurvive,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::MayPlaceOn,
             ],
             Self::HangingRootsBlock => &[
                 Method::GetStateForPlacement,
@@ -1713,6 +1720,7 @@ pub enum Method {
     GetShape,
     GetStateForPlacement,
     GetType,
+    MayPlaceOn,
     UpdateShape,
     UseItemOn,
     UseWithoutItem,

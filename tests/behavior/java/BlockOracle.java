@@ -38,6 +38,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
                 case "creative_tag_search" -> rows.add(creativeTagSearch(element.getAsJsonObject()));
                 case "block_behaviours" -> rows.add(blockBehaviours(element.getAsJsonObject()));
                 case "block_declarations" -> rows.add(blockDeclarations(element.getAsJsonObject()));
+                case "placement_rules" -> rows.add(placementRules(element.getAsJsonObject()));
                 case "item_declarations" -> rows.add(itemDeclarations(element.getAsJsonObject()));
                 default -> throw new IllegalArgumentException("Unknown block operation: " + operation);
             }

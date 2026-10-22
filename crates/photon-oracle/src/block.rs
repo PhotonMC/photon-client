@@ -1,10 +1,11 @@
 use super::*;
 
 pub(super) fn block_case(request: &Value) -> Result<Value, String> {
-    if string(request, "operation")? == "registry_names" {
-        return registry_names(request);
+    match string(request, "operation")? {
+        "registry_names" => registry_names(request),
+        "placement_rules" => placement_rules(request),
+        _ => block_result(request),
     }
-    block_result(request)
 }
 
 fn block_result(request: &Value) -> Result<Value, String> {

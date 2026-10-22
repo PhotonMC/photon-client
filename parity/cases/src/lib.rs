@@ -11,6 +11,7 @@ mod atlas;
 mod binary;
 mod bits;
 mod block;
+mod block_placement;
 mod case;
 mod components;
 mod entity;

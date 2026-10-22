@@ -239,6 +239,7 @@
       "extra_sources": [
         "BlockDeclarationOracle.java",
         "BlockItemOracle.java",
+        "BlockPlacementOracle.java",
         "BlockPropertyOracle.java",
         "BlockShapeOracle.java",
         "BlockSupport.java"
