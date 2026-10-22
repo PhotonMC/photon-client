@@ -165,3 +165,31 @@ impl ClientWorld {
         }
     }
 }
+
+/// `TrialSpawnerState.spinningMobSpeed`: the speed of the spin in a state that shows a mob.
+fn trial_spin_speed(state: Option<&str>) -> Option<f64> {
+    match state {
+        Some("waiting_for_players") => Some(200.0),
+        Some("active") => Some(1000.0),
+        _ => None,
+    }
+}
+
+impl ClientWorld {
+    /// `TrialSpawner.tickClient`: in the states that show a mob the spin turns, whoever is near.
+    pub(super) fn tick_trial_spawner(&mut self, pos: Pos) {
+        let Some(entity) = self.block_entity_at(pos.0, pos.1, pos.2) else {
+            self.block_tickers.unregister(pos);
+            self.sync_spawner_display(pos, None);
+            return;
+        };
+        let state = entity.spawner_state().cloned().unwrap_or_default();
+        let block = self.block_state_or_air(pos.0, pos.1, pos.2);
+        let speed = trial_spin_speed(crate::block::rules::property(block, "trial_spawner_state"));
+        self.sync_spawner_display(pos, state.entity_id.as_deref().filter(|_| speed.is_some()));
+        let delay = (state.next_mob_spawns_at - self.game_time() as i64).max(0);
+        if let (Some(speed), Some(entity)) = (speed, self.block_entity_mut_at(pos)) {
+            entity.events.spawner.turn_trial(speed, delay);
+        }
+    }
+}

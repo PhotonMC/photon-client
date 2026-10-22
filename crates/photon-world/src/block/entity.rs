@@ -12,6 +12,8 @@ pub struct ClientSpawnerState {
     /// The `id` of the entity of `SpawnData`, the one the spawner shows spinning; none when the
     /// spawner names no entity.
     pub(crate) entity_id: Option<String>,
+    /// A trial spawner's `nextMobSpawnsAt`, in game time; zero for a mob spawner.
+    pub(crate) next_mob_spawns_at: i64,
 }
 
 impl Default for ClientSpawnerState {
@@ -26,6 +28,7 @@ impl Default for ClientSpawnerState {
             required_player_range: 16,
             spawn_range: 4,
             entity_id: None,
+            next_mob_spawns_at: 0,
         }
     }
 }
@@ -87,6 +90,13 @@ impl SpawnerSpin {
         self.previous = self.current;
         let step = 1000.0_f32 / (delay as f32 + 200.0_f32);
         self.current = ((self.current() + f64::from(step)) % 360.0).to_bits();
+    }
+
+    /// One tick of `TrialSpawner.tickClient` in a state that shows a mob: the spin turns by the
+    /// state's speed over the ticks to the next spawn (double arithmetic).
+    pub fn turn_trial(&mut self, speed: f64, delay: i64) {
+        self.previous = self.current;
+        self.current = ((self.current() + speed / (delay as f64 + 200.0)) % 360.0).to_bits();
     }
 
     /// A tick with no player near: the old spin catches up.
@@ -352,13 +362,31 @@ fn parse_gateway_age(type_id: i32, tag: Option<&[u8]>) -> i64 {
 }
 
 pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<ClientSpawnerState> {
-    if photon_data::block_entity_type::name(type_id) != Some("minecraft:mob_spawner") {
+    let name = photon_data::block_entity_type::name(type_id);
+    if !matches!(
+        name,
+        Some("minecraft:mob_spawner" | "minecraft:trial_spawner")
+    ) {
         return None;
     }
     let mut input = tag?;
     let fields = photon_core::nbt::read_nbt(&mut input).ok()??;
     if !input.is_empty() {
         return None;
+    }
+    if name == Some("minecraft:trial_spawner") {
+        // `TrialSpawnerStateData.getUpdateTag`: the next spawn time while active and the spawn data.
+        let next = fields.iter().find_map(|field| match field.value {
+            photon_core::nbt::FieldValue::Long(time) if field.key == "next_mob_spawns_at" => {
+                Some(time)
+            }
+            _ => None,
+        });
+        return Some(ClientSpawnerState {
+            entity_id: spawn_data_entity(&fields, "spawn_data"),
+            next_mob_spawns_at: next.unwrap_or(0),
+            ..ClientSpawnerState::default()
+        });
     }
     Some(ClientSpawnerState {
         delay: spawner_short_number(&fields, "Delay", 20),
@@ -368,12 +396,13 @@ pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<Cl
         max_nearby_entities: spawner_int_number(&fields, "MaxNearbyEntities", 6),
         required_player_range: spawner_int_number(&fields, "RequiredPlayerRange", 16),
         spawn_range: spawner_int_number(&fields, "SpawnRange", 4),
-        entity_id: spawn_data_entity(&fields),
+        entity_id: spawn_data_entity(&fields, "SpawnData"),
+        next_mob_spawns_at: 0,
     })
 }
 
 /// `SpawnData.entityToSpawn`'s `id`: none when `SpawnData` or its `entity` is missing or has no id.
-fn spawn_data_entity(fields: &[photon_core::nbt::Field]) -> Option<String> {
+fn spawn_data_entity(fields: &[photon_core::nbt::Field], key: &str) -> Option<String> {
     use photon_core::nbt::FieldValue;
     let compound = |fields: &[photon_core::nbt::Field], key: &str| {
         fields.iter().find_map(|field| match &field.value {
@@ -381,7 +410,7 @@ fn spawn_data_entity(fields: &[photon_core::nbt::Field]) -> Option<String> {
             _ => None,
         })
     };
-    let entity = compound(&compound(fields, "SpawnData")?, "entity")?;
+    let entity = compound(&compound(fields, key)?, "entity")?;
     entity.iter().find_map(|field| match &field.value {
         FieldValue::Str(id) if field.key == "id" && !id.is_empty() => Some(id.clone()),
         _ => None,

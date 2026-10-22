@@ -44,14 +44,7 @@ impl ClientWorld {
         let type_id = photon_data::block_entity_type::id(type_name)?;
         let time = self.game_time() as i64;
         let min_y = self.dimension().min_y;
-        let state = self.block_state_or_air(x, y, z);
-        let ticks = type_name == "minecraft:end_gateway"
-            || type_name == "minecraft:enchanting_table"
-            || type_name == "minecraft:beacon"
-            || type_name == "minecraft:conduit"
-            || type_name == "minecraft:vault"
-            || type_name == "minecraft:mob_spawner"
-            || (type_name == "minecraft:potent_sulfur" && super::has_sulfur_ticker(state));
+        let ticks = self.has_ticker(type_id, (x, y, z));
         if ticks && self.block_entity_at(x, y, z).is_none() {
             self.block_tickers.register((x, y, z));
         }
@@ -291,7 +284,8 @@ impl ClientWorld {
                 | "minecraft:beacon"
                 | "minecraft:conduit"
                 | "minecraft:vault"
-                | "minecraft:mob_spawner",
+                | "minecraft:mob_spawner"
+                | "minecraft:trial_spawner",
             ) => true,
             Some("minecraft:potent_sulfur") => {
                 super::has_sulfur_ticker(self.block_state_or_air(x, y, z))
