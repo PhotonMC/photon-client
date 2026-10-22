@@ -330,6 +330,7 @@ impl LanguageSelectScreen {
         LanguageInput {
             done: true,
             language,
+            fonts: false,
         }
     }
 
@@ -382,6 +383,10 @@ impl LanguageSelectScreen {
             if which == Focus::Done {
                 return self.finish();
             }
+            return LanguageInput {
+                fonts: true,
+                ..LanguageInput::default()
+            };
         }
         LanguageInput::default()
     }

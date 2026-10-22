@@ -69,6 +69,7 @@ impl Gui {
                 }
             };
         }
+        sized!(controls.font_screen);
         sized!(controls.language_screen);
         sized!(controls.key_binds_screen);
         sized!(controls.mouse_screen);

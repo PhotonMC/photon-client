@@ -83,6 +83,7 @@ const ORDER: &[Generator] = &[
     || vec![panels::chat_options_screen()],
     || vec![accessibility::accessibility_options_screen()],
     || vec![panels::skin_customization_screen()],
+    || vec![panels::font_options_screen()],
     || vec![crate::sound::music_manager()],
     panels::mouse_and_controls,
     || vec![panels::sound_options_screen()],

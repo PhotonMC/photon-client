@@ -53,6 +53,8 @@ pub(super) enum Key {
     DirectionalAudio,
     ViewBobbing,
     HighContrastBlockOutline,
+    ForceUnicodeFont,
+    JapaneseGlyphVariants,
     DamageTiltStrength,
     MenuBackgroundBlurriness,
     MusicToast,
@@ -63,7 +65,7 @@ pub(super) enum Key {
     Quality(QualityKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 82] = [
+pub(super) const KEYS: [(&str, Key); 84] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -76,6 +78,8 @@ pub(super) const KEYS: [(&str, Key); 82] = [
         Key::Quality(QualityKey::EntityDistanceScaling),
     ),
     ("entityShadows", Key::Quality(QualityKey::EntityShadows)),
+    ("forceUnicodeFont", Key::ForceUnicodeFont),
+    ("japaneseGlyphVariants", Key::JapaneseGlyphVariants),
     ("fov", Key::Fov),
     ("fovEffectScale", Key::FovEffectScale),
     ("darknessEffectScale", Key::DarknessEffectScale),

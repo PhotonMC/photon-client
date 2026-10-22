@@ -67,6 +67,7 @@ pub struct WindowSurface {
     scale: WindowScale,
     /// `Options.guiScale`, which the scale chosen follows.
     gui_scale_option: i32,
+    enforce_unicode: bool,
     /// Where and how big the window was before it went fullscreen.
     windowed: Option<(i32, i32, i32, i32)>,
 }
@@ -128,6 +129,7 @@ impl WindowSurface {
             events,
             scale,
             gui_scale_option: 0,
+            enforce_unicode: false,
             windowed: None,
         })
     }
@@ -136,8 +138,21 @@ impl WindowSurface {
     /// again (0 asks for the largest that fits).
     pub fn set_gui_scale_option(&mut self, option: i32) {
         self.gui_scale_option = option;
-        let chosen = self.scale.calculate_scale(option, false);
+        let chosen = self.scale.calculate_scale(option, self.enforce_unicode);
         self.scale.set_gui_scale(chosen);
+    }
+
+    /// The GUI scale option and `Options.forceUnicodeFont` as they are set at the start.
+    pub fn set_gui_options(&mut self, (option, enforce_unicode): (i32, bool)) {
+        self.enforce_unicode = enforce_unicode;
+        self.set_gui_scale_option(option);
+    }
+
+    /// `Options.forceUnicodeFont` changed (`Minecraft.resizeGui`): the scale stays even, and is
+    /// chosen again.
+    pub fn set_enforce_unicode(&mut self, enforce: bool) {
+        self.enforce_unicode = enforce;
+        self.set_gui_scale_option(self.gui_scale_option);
     }
 
     /// Current sizing state, refreshed on every framebuffer resize.
@@ -176,7 +191,9 @@ impl WindowSurface {
             if let glfw::WindowEvent::FramebufferSize(width, height) = event {
                 self.scale
                     .set_framebuffer_size(framebuffer_extent(width), framebuffer_extent(height));
-                let chosen = self.scale.calculate_scale(self.gui_scale_option, false);
+                let chosen = self
+                    .scale
+                    .calculate_scale(self.gui_scale_option, self.enforce_unicode);
                 self.scale.set_gui_scale(chosen);
             }
             seen.push(event);

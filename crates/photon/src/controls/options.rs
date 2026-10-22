@@ -175,7 +175,7 @@ impl Controls {
             (scale.gui_scaled_width(), scale.gui_scaled_height()),
             true,
             self.options.gui_scale,
-            scale.calculate_scale(0, false),
+            scale.calculate_scale(0, self.options.font.force_unicode),
             Self::video_values(&self.options),
         ));
     }
@@ -269,6 +269,9 @@ impl Controls {
     ) {
         use glfw::{Action, Key, MouseButton, WindowEvent};
         let font = &assets.creative.font;
+        if self.font_screen.is_some() {
+            return self.font_event(event, surface, assets);
+        }
         if let WindowEvent::CursorPos(x, y) = event {
             let before = self.gui_mouse.1;
             self.move_gui_mouse((x, y), surface);
@@ -289,7 +292,7 @@ impl Controls {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                 input = Some(photon_gui::options::language::LanguageInput {
                     done: true,
-                    language: None,
+                    ..Default::default()
                 });
             }
             WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => {
@@ -317,7 +320,27 @@ impl Controls {
             WindowEvent::Scroll(_, y) => screen.scrolled(mouse, y * wheel),
             _ => {}
         }
-        if let Some(input) = input.filter(|input| input.done) {
+        if let Some(input) = input {
+            self.language_input(input, surface, assets);
+        }
+    }
+
+    /// Whether the language screen or the font settings over it are open.
+    pub(super) fn language_open(&self) -> bool {
+        self.language_screen.is_some() || self.font_screen.is_some()
+    }
+
+    /// What the language screen was told: the Font button opens the font settings, Done closes
+    /// the screen, with the language it chose.
+    fn language_input(
+        &mut self,
+        input: photon_gui::options::language::LanguageInput,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if input.fonts {
+            self.open_font(surface, assets);
+        } else if input.done {
             self.language_screen = None;
             if let Some(code) = input.language {
                 self.options.language_code.clone_from(&code);

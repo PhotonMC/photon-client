@@ -205,10 +205,7 @@ impl LanguageSelectScreen {
                 return LanguageInput::default();
             }
             (Some(Focus::List), _) if selection && self.entry_focused => return self.finish(),
-            (Some(Focus::Done), _) if selection => {
-                crate::ui_sound::play_down_sound();
-                return self.finish();
-            }
+            (Some(Focus::Done | Focus::Fonts), _) if selection => return self.press_button(),
             _ => {}
         }
         match key {
@@ -220,6 +217,18 @@ impl LanguageSelectScreen {
             _ => {}
         }
         LanguageInput::default()
+    }
+
+    /// Enter or Space on the focused Done or Font button.
+    fn press_button(&mut self) -> LanguageInput {
+        crate::ui_sound::play_down_sound();
+        if self.focus == Some(Focus::Fonts) {
+            return LanguageInput {
+                fonts: true,
+                ..LanguageInput::default()
+            };
+        }
+        self.finish()
     }
 
     /// `filterEntries`: the languages whose name or region holds the text,

@@ -141,6 +141,22 @@ pub fn skin_customization_screen() -> Value {
     gui("skin-customization-screen", "skin_customization_screen", rows)
 }
 
+/// The font settings screen: the two toggles, each pressed, and the hint of
+/// the glyph variants.
+pub fn font_options_screen() -> Value {
+    let press = |label: &str, steps: Vec<Value>| at(label).steps(steps).row();
+    let rows = vec![
+        at("in-world").row(),
+        at("out-of-world").outside().row(),
+        at("small").window(640, 480).row(),
+        at("hover-variants").mouse(250, 45).row(),
+        press("press-unicode", vec![click(100, 45)]),
+        press("press-variants", vec![click(250, 45)]),
+        press("press-variants-twice", times(click(250, 45), 2)),
+    ];
+    gui("font-options-screen", "font_options_screen", rows)
+}
+
 fn mouse_rows() -> Vec<Value> {
     let press = |label: &str, steps: Vec<Value>| at(label).steps(steps).row();
     let options = |label: &str, options: Value| at(label).options(options).row();

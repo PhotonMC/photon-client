@@ -215,6 +215,8 @@ impl Options {
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
             | Key::ViewBobbing
+            | Key::ForceUnicodeFont
+            | Key::JapaneseGlyphVariants
             | Key::HighContrastBlockOutline => self.read_flag(key, boolean()),
             Key::InvertYMouse => self.invert_mouse_y = boolean().unwrap_or(self.invert_mouse_y),
             Key::AttackIndicator | Key::ChatVisibility | Key::Particles => {
@@ -287,6 +289,8 @@ impl Options {
             Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
             Key::ViewBobbing => &mut self.view_bobbing,
             Key::HighContrastBlockOutline => &mut self.high_contrast_block_outline,
+            Key::ForceUnicodeFont => &mut self.font.force_unicode,
+            Key::JapaneseGlyphVariants => &mut self.font.japanese_glyph_variants,
             _ => &mut self.background_for_chat_only,
         };
         *flag = value.unwrap_or(*flag);
@@ -301,6 +305,8 @@ impl Options {
             Key::PauseOnLostFocus => self.pause_on_lost_focus,
             Key::ViewBobbing => self.view_bobbing,
             Key::HighContrastBlockOutline => self.high_contrast_block_outline,
+            Key::ForceUnicodeFont => self.font.force_unicode,
+            Key::JapaneseGlyphVariants => self.font.japanese_glyph_variants,
             _ => self.background_for_chat_only,
         }
     }
@@ -438,6 +444,8 @@ impl Options {
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
             | Key::ViewBobbing
+            | Key::ForceUnicodeFont
+            | Key::JapaneseGlyphVariants
             | Key::HighContrastBlockOutline => self.flag(key).to_string(),
             Key::InvertYMouse => self.invert_mouse_y.to_string(),
             Key::Lang => self.language_code.clone(),
@@ -919,5 +927,17 @@ mod tests {
         assert!(!options.ambient_occlusion);
         options.ambient_occlusion = true;
         assert_eq!(options.write(Key::AmbientOcclusion), "true");
+    }
+
+    #[test]
+    fn the_font_options_read_and_write_as_flags() {
+        let mut options = loaded("forceUnicodeFont:true\njapaneseGlyphVariants:true\n");
+        assert!(options.font.force_unicode);
+        assert!(options.font.japanese_glyph_variants);
+        options.font.force_unicode = false;
+        assert_eq!(options.write(Key::ForceUnicodeFont), "false");
+        assert_eq!(options.write(Key::JapaneseGlyphVariants), "true");
+        let unset = loaded("");
+        assert!(!unset.font.force_unicode && !unset.font.japanese_glyph_variants);
     }
 }

@@ -147,7 +147,7 @@ impl Menu {
             &mut client.backend,
             &options.language_code,
         )?;
-        client.surface.set_gui_scale_option(options.gui_scale);
+        client.surface.set_gui_options(options.gui_scaling());
         client.surface.set_cursor_captured(false);
         client.backend.set_gui_only(true);
         client

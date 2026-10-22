@@ -145,7 +145,7 @@ impl Play {
             .ok()
             .and_then(|value| value.parse().ok())
             .unwrap_or(0);
-        surface.set_gui_scale_option(controls.options.gui_scale);
+        surface.set_gui_options(controls.options.gui_scaling());
         surface.set_cursor_captured(controls.captured);
         Ok(Self {
             screen_assets: gui.screen_assets(),

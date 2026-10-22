@@ -124,7 +124,7 @@ fn editing_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 31] = [
+const SOUND_OPERATIONS: [&str; 32] = [
     "death_screen",
     "disconnected_screen",
     "pause_screen",
@@ -153,6 +153,7 @@ const SOUND_OPERATIONS: [&str; 31] = [
     "mouse_settings_screen",
     "sound_options_screen",
     "skin_customization_screen",
+    "font_options_screen",
     "controls_screen",
     "key_binds_screen",
     "language_screen",
@@ -168,9 +169,13 @@ fn with_sounds(operation: &str, mut result: Value) -> Value {
     result
 }
 
+/// The extracted reference assets.
+fn assets_root() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar/assets")
+}
+
 pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.data/minecraft/assets/jar/assets");
+    let root = assets_root();
     if let Some(result) = standalone(request, &root) {
         return result;
     }
@@ -204,6 +209,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 | "mouse_settings_screen"
                 | "controls_screen"
                 | "skin_customization_screen"
+                | "font_options_screen"
                 | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
                 "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
                 "language_screen" => language_screen_case(&mut ctx, row)?,

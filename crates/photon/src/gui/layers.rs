@@ -59,6 +59,7 @@ fn pause_on_top(controls: &Controls) -> bool {
             controls.sound_screen.is_some(),
             controls.controls_screen.is_some(),
             controls.language_screen.is_some(),
+            controls.font_screen.is_some(),
             controls.mouse_screen.is_some(),
             controls.key_binds_screen.is_some(),
         ]

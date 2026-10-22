@@ -61,6 +61,8 @@ pub struct LanguageInput {
     pub done: bool,
     /// The language chosen, if it is another than the one in use.
     pub language: Option<String>,
+    /// The Font button was pressed.
+    pub fonts: bool,
 }
 
 pub struct LanguageSelectScreen {

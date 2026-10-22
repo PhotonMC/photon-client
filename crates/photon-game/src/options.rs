@@ -89,6 +89,8 @@ pub struct Options {
     pub directional_audio: bool,
     /// `bobView`: the view and the hand sway with the walk.
     pub view_bobbing: bool,
+    /// `forceUnicodeFont` and `japaneseGlyphVariants`.
+    pub font: FontOptions,
     /// `highContrastBlockOutline`: the aimed block's outline is bright with a black backing.
     pub high_contrast_block_outline: bool,
     /// `fovEffectScale`, 0 to 1: how far speed and effects change the field of view.
@@ -112,6 +114,13 @@ pub struct Options {
     pub(super) key_bindings: Vec<photon_data::keys::InputKey>,
     /// The file's lines as last read, so what is not known is kept.
     pub(super) lines: Vec<(String, String)>,
+}
+
+impl Options {
+    /// The GUI scale option and whether the Unicode font is forced, which the scale follows.
+    pub fn gui_scaling(&self) -> (i32, bool) {
+        (self.gui_scale, self.font.force_unicode)
+    }
 }
 
 impl Default for Options {
@@ -161,6 +170,7 @@ impl Default for Options {
             directional_audio: false,
             view_bobbing: true,
             high_contrast_block_outline: false,
+            font: FontOptions::default(),
             fov_effect_scale: 1.0,
             darkness_effect_scale: 1.0,
             glint_speed: 0.5,
@@ -184,8 +194,10 @@ pub use enums::*;
 mod file;
 mod json;
 pub use json::*;
+mod font;
 mod keys;
 mod quality;
+pub use font::*;
 pub use keys::DATA_VERSION;
 use keys::*;
 pub use quality::*;

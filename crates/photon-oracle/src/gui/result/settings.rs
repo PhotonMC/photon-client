@@ -221,6 +221,75 @@ fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
     Ok(options)
 }
 
+use photon_gui::options::accessibility::AccessibilityScreen;
+use photon_gui::options::chat::ChatOptionsScreen;
+use photon_gui::options::font::FontOptionsScreen;
+use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+use photon_gui::options::skin::SkinCustomizationScreen;
+use photon_gui::options::sound::SoundOptionsScreen;
+
+// The settings screens that have the same inputs.
+enum Shell {
+    Chat(ChatOptionsScreen),
+    Accessibility(AccessibilityScreen),
+    Mouse(MouseSettingsScreen),
+    Controls(ControlsScreen),
+    Sound(SoundOptionsScreen),
+    Skin(SkinCustomizationScreen),
+    Font(FontOptionsScreen),
+}
+macro_rules! each {
+    ($shell:expr, $screen:ident => $body:expr) => {
+        match $shell {
+            Shell::Chat($screen) => $body,
+            Shell::Accessibility($screen) => $body,
+            Shell::Mouse($screen) => $body,
+            Shell::Controls($screen) => $body,
+            Shell::Sound($screen) => $body,
+            Shell::Skin($screen) => $body,
+            Shell::Font($screen) => $body,
+        }
+    };
+}
+
+/// The screen of a settings operation, over the options the row has.
+fn settings_shell(
+    operation: &str,
+    row: &Value,
+    (font, lang): (&photon_render::gui::font::Font, &photon_game::text::Lang),
+    (size, in_world): ((i32, i32), bool),
+) -> Shell {
+    let options = row_options(row).unwrap_or_default();
+    match operation {
+        "skin_customization_screen" => Shell::Skin(SkinCustomizationScreen::new(
+            font, lang, size, in_world, &options,
+        )),
+        "font_options_screen" => {
+            Shell::Font(FontOptionsScreen::new(font, lang, size, in_world, &options))
+        }
+        "chat_options_screen" => {
+            Shell::Chat(ChatOptionsScreen::new(font, lang, size, in_world, &options))
+        }
+        "accessibility_options_screen" => Shell::Accessibility(AccessibilityScreen::new(
+            font,
+            lang,
+            size,
+            in_world,
+            (
+                &options,
+                row["options"]["minecart"].as_bool().unwrap_or(false),
+            ),
+        )),
+        "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
+            font, lang, size, in_world, &options,
+        )),
+        "sound_options_screen" => {
+            Shell::Sound(sound_screen(font, lang, (size, in_world), &options))
+        }
+        _ => Shell::Controls(ControlsScreen::new(font, lang, size, in_world)),
+    }
+}
+
 pub(super) fn chat_options_screen_case(
     ctx: &mut GuiContext,
     row: &Value,
@@ -234,32 +303,6 @@ pub(super) fn chat_options_screen_case(
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::options::accessibility::AccessibilityScreen;
-    use photon_gui::options::chat::ChatOptionsScreen;
-    use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
-    use photon_gui::options::skin::SkinCustomizationScreen;
-    use photon_gui::options::sound::SoundOptionsScreen;
-    // The settings screens that have the same inputs.
-    enum Shell {
-        Chat(ChatOptionsScreen),
-        Accessibility(AccessibilityScreen),
-        Mouse(MouseSettingsScreen),
-        Controls(ControlsScreen),
-        Sound(SoundOptionsScreen),
-        Skin(SkinCustomizationScreen),
-    }
-    macro_rules! each {
-        ($shell:expr, $screen:ident => $body:expr) => {
-            match $shell {
-                Shell::Chat($screen) => $body,
-                Shell::Accessibility($screen) => $body,
-                Shell::Mouse($screen) => $body,
-                Shell::Controls($screen) => $body,
-                Shell::Sound($screen) => $body,
-                Shell::Skin($screen) => $body,
-            }
-        };
-    }
     use photon_render::window::scale::WindowScale;
     let lang = photon_game::text::Lang::load(root);
     let framebuffer = (
@@ -272,34 +315,9 @@ pub(super) fn chat_options_screen_case(
     );
     let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
     window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
-    let options = row_options(row)?;
     let size = (window.gui_scaled_width(), window.gui_scaled_height());
     let in_world = row["in_world"].as_bool().unwrap_or(false);
-    let mut screen = match operation {
-        "skin_customization_screen" => Shell::Skin(SkinCustomizationScreen::new(
-            font, &lang, size, in_world, &options,
-        )),
-        "chat_options_screen" => Shell::Chat(ChatOptionsScreen::new(
-            font, &lang, size, in_world, &options,
-        )),
-        "accessibility_options_screen" => Shell::Accessibility(AccessibilityScreen::new(
-            font,
-            &lang,
-            size,
-            in_world,
-            (
-                &options,
-                row["options"]["minecart"].as_bool().unwrap_or(false),
-            ),
-        )),
-        "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
-            font, &lang, size, in_world, &options,
-        )),
-        "sound_options_screen" => {
-            Shell::Sound(sound_screen(font, &lang, (size, in_world), &options))
-        }
-        _ => Shell::Controls(ControlsScreen::new(font, &lang, size, in_world)),
-    };
+    let mut screen = settings_shell(operation, row, (font, &lang), (size, in_world));
     let mut last = (0.0, 0.0);
     let mut clock = 0_u64;
     for step in row["steps"].as_array().ok_or("steps")? {

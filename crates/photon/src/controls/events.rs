@@ -69,7 +69,7 @@ impl Controls {
         if !for_screen {
             return Err(event);
         }
-        if self.language_screen.is_some() {
+        if self.language_open() {
             self.language_event(event, surface, assets);
             return Ok(());
         }

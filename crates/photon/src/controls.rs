@@ -109,6 +109,8 @@ pub struct Controls {
     pub accessibility_screen: Option<AccessibilityScreen>,
     /// The skin customization, opened the same way.
     pub skin_screen: Option<photon_gui::options::skin::SkinCustomizationScreen>,
+    /// The font settings, opened over the language screen.
+    pub font_screen: Option<photon_gui::options::font::FontOptionsScreen>,
     pub sound_screen: Option<SoundOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,
@@ -371,6 +373,7 @@ mod test_instance_block;
 
 mod sign;
 
+mod font;
 mod skin;
 
 mod advancements;

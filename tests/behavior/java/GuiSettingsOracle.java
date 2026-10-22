@@ -154,6 +154,13 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 }
                 net.minecraft.client.KeyMapping.resetMapping();
             }
+            if (kind.equals("font")) {
+                // The font options tell the font manager (no fonts loaded) and the mouse handler.
+                var fonts = unsafe.allocateInstance(net.minecraft.client.gui.font.FontManager.class);
+                set(fonts, "fontSets", new java.util.HashMap<>());
+                set(minecraft, "fontManager", fonts);
+                set(minecraft, "mouseHandler", unsafe.allocateInstance(net.minecraft.client.MouseHandler.class));
+            }
             minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
             var languageBefore = net.minecraft.locale.Language.getInstance();
             if (kind.equals("language")) {
@@ -169,6 +176,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "keybinds" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, minecraft.options);
                 case "sound" -> new net.minecraft.client.gui.screens.options.SoundOptionsScreen(null, minecraft.options);
                 case "skin" -> new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, minecraft.options);
+                case "font" -> new net.minecraft.client.gui.screens.options.FontOptionsScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 default -> throw new IllegalArgumentException(kind);

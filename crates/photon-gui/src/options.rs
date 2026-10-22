@@ -3,6 +3,7 @@
 //! in two columns, and Done.
 pub mod accessibility;
 pub mod chat;
+pub mod font;
 pub mod keybinds;
 pub mod language;
 pub mod list;

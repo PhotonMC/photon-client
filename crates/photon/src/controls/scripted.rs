@@ -9,7 +9,7 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
-        if self.escape_light_screen(session, surface) {
+        if self.escape_light_screen(session, surface, assets) {
             return Ok(());
         }
         if let Some(confirm) = &self.confirm {
@@ -276,9 +276,12 @@ impl Controls {
         &mut self,
         session: &mut PlaySession,
         surface: &mut WindowSurface,
+        assets: &ScreenAssets,
     ) -> bool {
         if self.advancements.is_some() {
             self.close_advancements(session, surface);
+        } else if self.font_screen.is_some() {
+            self.close_font(surface, assets);
         } else if self.language_screen.is_some() {
             self.language_screen = None;
         } else {
