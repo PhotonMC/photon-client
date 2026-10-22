@@ -87,6 +87,8 @@ impl PlaySession {
             cookies: self.state.cookies.clone(),
             server_brand: self.state.server_brand.clone(),
             custom_report_details: self.state.custom_report_details.clone(),
+            // `CommonListenerCookie.serverLinks` goes on to the configuration listener.
+            server_links: self.state.server_links.clone(),
             ..ConnectionState::default()
         };
         configure_connection(
