@@ -191,11 +191,13 @@ fn carry_block(
     (held, vertices): (&mut Vec<HeldItem>, &mut Vec<Vertex>),
 ) {
     let base = (block, pose, light);
-    if let Some(chest) =
+    if let Some(special) =
         crate::world::special_models::special_block_vertices(models, textures, base)
     {
-        vertices.extend(chest);
-        return;
+        vertices.extend(special);
+        if crate::world::special_models::is_special_block(block) {
+            return;
+        }
     }
     let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
     held.push(HeldItem::block(block, *pose, light, overlay));

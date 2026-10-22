@@ -204,7 +204,7 @@ fn bell_or_book(
 }
 
 /// One copper golem statue, in the pose and the weathering of its block, turned to face.
-fn statue_vertices(
+pub(super) fn statue_vertices(
     models: &mut MobModels,
     textures: &EntityTextures,
     (base, light): (&Pose, i32),
