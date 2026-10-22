@@ -16,6 +16,9 @@ pub struct Entities {
     /// The entities the frame being drawn leaves out because they are wholly outside the view.
     /// Only the renderer sets it; nothing the world does reads it.
     pub(crate) out_of_view: BTreeSet<EntityId>,
+    /// The invisible entities the local player is allowed to see as ghosts (same team, which
+    /// sees its friendly invisibles). Set by the session; the world does not read it.
+    pub(crate) friendly_ghosts: BTreeSet<EntityId>,
 }
 
 impl Entities {
@@ -120,6 +123,16 @@ impl Entities {
             while left_out.next_if(|&out| out < id).is_some() {}
             left_out.next_if_eq(&id).is_none().then_some(entity)
         })
+    }
+
+    /// Set which invisible entities the local player sees as ghosts (`Entity.isInvisibleTo`).
+    pub fn set_friendly_ghosts(&mut self, ids: BTreeSet<EntityId>) {
+        self.friendly_ghosts = ids;
+    }
+
+    /// Whether the local player sees the invisible entity as a ghost because of a team.
+    pub fn is_friendly_ghost(&self, entity_id: EntityId) -> bool {
+        self.friendly_ghosts.contains(&entity_id)
     }
 
     /// Set which entities the next frames leave out as out of view.

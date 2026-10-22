@@ -127,7 +127,7 @@ pub fn remote_monsters(
     let mut glow = Vec::new();
     let mut swirl = Vec::new();
     for entity in world.entities().drawn_with_invisible() {
-        let Some(monster) = monster_drawn(&ids, entity, view.spectating) else {
+        let Some(monster) = monster_drawn(&ids, entity, sees_ghost(world, view, entity)) else {
             continue;
         };
         let shake = creepy_shake(models, monster, entity);
@@ -275,4 +275,10 @@ fn carried_block(pose: Pose, entity: &ClientEntity, placed: &MobPlacement) -> Op
         placed.light,
         0.0,
     ))
+}
+
+/// Whether the local player sees an invisible entity as a ghost: a spectator does, and a
+/// teammate whose team sees its friendly invisibles.
+fn sees_ghost(world: &photon_world::ClientWorld, view: FrameView, entity: &ClientEntity) -> bool {
+    view.spectating || world.entities().is_friendly_ghost(entity.id())
 }

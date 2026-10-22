@@ -30,6 +30,8 @@ pub struct EntitySnapshot {
     pub shaking: bool,
     /// `Entity.isOnFire`: the renderer lights it at full block light.
     pub burning: bool,
+    /// An invisible entity the local player sees as a ghost because of a team.
+    pub friendly_ghost: bool,
 }
 
 /// The entities a tick looks up in the world: what a guardian's beam aims at and

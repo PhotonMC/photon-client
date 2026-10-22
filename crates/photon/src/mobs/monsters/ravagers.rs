@@ -5,7 +5,7 @@
 //! the particles of the stun and the roar are not made.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, RavagerState, mob_vertices};
+use photon_render::entity::mob_model::{QuadrupedState, RavagerState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -69,10 +69,10 @@ pub fn remote_ravagers(
                 0.0
             } / 20.0,
         });
-        vertices.extend(mob_vertices(
+        vertices.extend(crate::mobs::visible_body(
+            entity,
             model,
-            &placement(world, &snapshot, view, entity.scale()),
-            rect,
+            (&placement(world, &snapshot, view, entity.scale()), rect),
         ));
     }
 }

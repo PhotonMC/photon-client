@@ -6,7 +6,7 @@
 //! and `placement` turns it into the body's shudder.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{HoglinState, mob_vertices};
+use photon_render::entity::mob_model::HoglinState;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -69,10 +69,10 @@ pub fn remote_hoglins(
                 attack_ticks: entity.hoglin_attack_ticks(),
                 baby,
             });
-            vertices.extend(mob_vertices(
+            vertices.extend(crate::mobs::visible_body(
+                entity,
                 model,
-                &placement(world, &snapshot, view, entity.scale()),
-                rect,
+                (&placement(world, &snapshot, view, entity.scale()), rect),
             ));
         }
     }

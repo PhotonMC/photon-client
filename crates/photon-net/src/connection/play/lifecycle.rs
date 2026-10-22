@@ -148,6 +148,7 @@ impl PlaySession {
     /// `ClientLevel.tickEntities`: the entities the server added move on. The player's effects
     /// tick with it unless it rides a vehicle, which ticks the player as its passenger.
     fn tick_level_entities(&mut self, player_ticks_itself: bool) {
+        self.refresh_friendly_ghosts();
         if player_ticks_itself {
             self.world.tick_local_player_effects();
             self.world.tick_entities();
@@ -162,6 +163,35 @@ impl PlaySession {
         if let Some(player) = self.local.player.as_mut() {
             self.world.boost_from_rockets(player, hand);
         }
+    }
+
+    /// Which invisible entities a team lets the local player see (`Entity.isInvisibleTo`): the
+    /// ones on its own team when the team sees its friendly invisibles.
+    fn refresh_friendly_ghosts(&mut self) {
+        let board = &self.social.scoreboard;
+        let local_team = board.team_of(self.local_name()).map(|(name, _)| name);
+        let ghosts = local_team.map_or_else(Default::default, |local| {
+            self.world
+                .entities()
+                .all()
+                .filter(|entity| entity.is_invisible())
+                .filter(|entity| {
+                    let name = if entity.is_player() {
+                        self.player_name(entity.uuid).map(str::to_owned)
+                    } else {
+                        Some(entity.uuid.to_string_java())
+                    };
+                    name.and_then(|name| {
+                        board
+                            .team_of(&name)
+                            .map(|(team, rules)| team == local && rules.sees_friendly_invisibles)
+                    })
+                    .unwrap_or(false)
+                })
+                .map(|entity| entity.id())
+                .collect()
+        });
+        self.world.entities_mut().set_friendly_ghosts(ghosts);
     }
 
     /// Where the client's own player stands after it moved this tick, for what the world's own

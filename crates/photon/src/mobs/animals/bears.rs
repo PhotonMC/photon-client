@@ -2,7 +2,7 @@
 //! far it has stood up.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{PolarBearState, QuadrupedState, mob_vertices};
+use photon_render::entity::mob_model::{PolarBearState, QuadrupedState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 
@@ -59,10 +59,10 @@ pub fn remote_bears(
             stand_scale: entity.polar_bear().standing_animation_scale(partial),
             age_scale: if baby { 0.5 } else { 1.0 },
         });
-        vertices.extend(mob_vertices(
+        vertices.extend(crate::mobs::visible_body(
+            entity,
             model,
-            &placement(world, &snapshot, view, entity.scale()),
-            rect,
+            (&placement(world, &snapshot, view, entity.scale()), rect),
         ));
     }
 }

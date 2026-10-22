@@ -48,6 +48,7 @@ impl ClientWorld {
             age_in_ticks: entity.tick_count as f32 + partial_tick,
             shaking: entity.is_shaking(self.level.dimension_environment.piglins_zombify),
             burning: entity.is_burning(),
+            friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
         })
     }
 

@@ -91,7 +91,7 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        vertices.extend(body(model, &placement, hidden_body(entity, view)));
+        vertices.extend(body(model, &placement, ghosted(entity, view, &snapshot)));
         vertices.extend(wear(
             armor,
             worn,
@@ -114,10 +114,14 @@ pub fn remote_players(
 
 /// Whether the body of a player is hidden: none when it shows, else the camera a spectating
 /// viewer sees its ghost from (none when the viewer sees nothing).
-fn hidden_body(entity: &photon_world::ClientEntity, view: FrameView) -> Option<Option<[f32; 3]>> {
+fn ghosted(
+    entity: &photon_world::ClientEntity,
+    view: FrameView,
+    snapshot: &photon_world::EntitySnapshot,
+) -> Option<Option<[f32; 3]>> {
     entity
         .is_invisible()
-        .then_some(view.spectating.then_some(view.camera))
+        .then_some((view.spectating || snapshot.friendly_ghost).then_some(view.camera))
 }
 
 /// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body; a spectator
