@@ -1,6 +1,6 @@
 # ADR 0008: Photon Vanilla and Photon Enhanced
 
-- Status: accepted (2026-10-10), not yet implemented
+- Status: superseded by [ADR 0010](0010-one-product.md) (2026-10-22); never implemented
 
 ## Context
 

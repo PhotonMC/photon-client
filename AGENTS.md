@@ -4,7 +4,7 @@ These rules apply to every agent (Claude, Codex, Gemini, Copilot and others) and
 
 ## Goal and scope
 
-- **Goal.** Photon reimplements the Minecraft: Java Edition client in Rust with exact behavioural parity, on a faster engine. Two products share the engine: Photon Vanilla and Photon Enhanced ([ADR 0008](docs/adr/0008-vanilla-and-enhanced.md)).
+- **Goal.** Photon reimplements the Minecraft: Java Edition client in Rust with exact behavioural parity, on a faster engine. It is one product; features beyond the Java client are opt-in and change nothing when off ([ADR 0010](docs/adr/0010-one-product.md)).
 - **Parity is observable behaviour.** Parity covers packets, state, draw output, timing and sound selection. Internal structure is ours to design well; do not port Java's poor structure or wrong assumptions. Do not "improve" observable behaviour either.
 - **No server.** Do not write a server; test against vanilla or Pumpkin. Do not hide server differences with client workarounds.
 - **Architecture.** Follow the [architecture](docs/architecture/overview.md) and the accepted [ADRs](docs/adr/). New technology choices need an ADR.

@@ -4,7 +4,7 @@
 
 ## Context
 
-Photon Enhanced ([ADR 0008](0008-vanilla-and-enhanced.md)) will support mods. The goals:
+Photon will support mods, off until the player or a server turns them on ([ADR 0010](0010-one-product.md)). The goals:
 
 - **Three audiences.** People who cannot code add assets. People who code a little change behaviour and see the result at once. Experienced developers build complex systems.
 - **Safety without slowdown.** Mods run sandboxed, with permissions and protection against malicious code, and still perform well with 300 or more mods loaded.
