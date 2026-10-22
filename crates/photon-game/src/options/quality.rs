@@ -357,6 +357,19 @@ mod tests {
     }
 
     #[test]
+    fn a_name_without_quotes_reads_as_the_lenient_parser_has_it() {
+        let preset = read(QualityKey::GraphicsPreset, "fabulous");
+        assert_eq!(preset.graphics_preset, GraphicsPreset::Fabulous);
+        // Not a word: it has a separator in it.
+        let split = read(QualityKey::GraphicsPreset, "fast,slow");
+        assert_eq!(split.graphics_preset, GraphicsPreset::Fancy);
+        assert_eq!(
+            read(QualityKey::CloudStatus, "fast").cloud_status,
+            CloudStatus::Fast
+        );
+    }
+
+    #[test]
     fn the_clouds_take_their_names_and_the_older_switch() {
         assert_eq!(
             read(QualityKey::CloudStatus, "\"fast\"").cloud_status,
@@ -376,10 +389,13 @@ mod tests {
         );
         let off = read(QualityKey::CloudStatus, "false");
         assert_eq!(off.write(QualityKey::CloudStatus), "\"false\"");
-        assert_eq!(
-            read(QualityKey::CloudStatus, "\"fancy\"").cloud_status,
-            CloudStatus::Fancy
-        );
+        // The older words are the names; "fancy" is not one, so the option stays as it was.
+        let mut fast = QualityOptions {
+            cloud_status: CloudStatus::Fast,
+            ..QualityOptions::default()
+        };
+        fast.read(QualityKey::CloudStatus, &parse_json("\"fancy\""));
+        assert_eq!(fast.cloud_status, CloudStatus::Fast);
     }
 
     #[test]
@@ -431,7 +447,7 @@ mod tests {
     fn the_switches_read_as_booleans() {
         assert!(!read(QualityKey::EntityShadows, "false").entity_shadows);
         assert!(read(QualityKey::ImprovedTransparency, "true").improved_transparency);
-        // A number is not a boolean to the file's switches.
+        // `JsonOps.getBooleanValue` takes a boolean only, as `getNumberValue` takes a number only.
         assert!(!read(QualityKey::ImprovedTransparency, "1").improved_transparency);
         let off = read(QualityKey::CutoutLeaves, "false");
         assert_eq!(off.write(QualityKey::CutoutLeaves), "false");

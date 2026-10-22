@@ -4,8 +4,16 @@ pub(super) fn parse_json(text: &str) -> Json<'_> {
         "true" => Json::Bool(true),
         "false" => Json::Bool(false),
         _ if is_json_number(text) => Json::Number(text),
-        _ => json_string(text).map_or(Json::Other, Json::Text),
+        _ => json_string(text)
+            .or_else(|| bare_word(text))
+            .map_or(Json::Other, Json::Text),
     }
+}
+
+/// A word without quotes, which the lenient parser reads as a string: it ends at any of these.
+fn bare_word(text: &str) -> Option<String> {
+    let ends = |c: char| c.is_whitespace() || "/\\;#=\"'{}[],:".contains(c);
+    (!text.is_empty() && text != "null" && !text.contains(ends)).then(|| text.to_owned())
 }
 
 /// A JSON string with the escapes a name can carry.
