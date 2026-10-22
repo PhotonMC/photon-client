@@ -3,17 +3,11 @@ use super::wear::burning_light;
 use super::*;
 use crate::equipment::arm_poses;
 
-/// Whether a player hangs upside down: the cape shows and the profile is named Dinnerbone or
-/// Grumm (not asleep, which turns the body its own way).
-pub(super) fn flipped(
-    session: &PlaySession,
-    entity: &photon_world::ClientEntity,
-    snapshot: &photon_world::EntitySnapshot,
-) -> bool {
-    snapshot.pose != photon_world::ClientEntityPose::Sleeping
-        && session
-            .player_name(entity.uuid)
-            .is_some_and(|name| entity.is_upside_down_player(name))
+/// Whether a player is upside down: the cape shows and the profile is named Dinnerbone or Grumm.
+pub(super) fn flipped(session: &PlaySession, entity: &photon_world::ClientEntity) -> bool {
+    session
+        .player_name(entity.uuid)
+        .is_some_and(|name| entity.is_upside_down_player(name))
 }
 
 /// Where another player's model stands in the frame, in the skin that is drawn.
@@ -49,6 +43,9 @@ pub(super) fn remote_placement(
         auto_spin: entity
             .is_auto_spin_attack()
             .then(|| entity.tick_count() as f32 + partial),
-        upside_down: snapshot.upside_down,
+        // A sleeper keeps the mirrored look but lies down instead of turning over.
+        upside_down: snapshot
+            .upside_down
+            .filter(|_| snapshot.pose != photon_world::ClientEntityPose::Sleeping),
     }
 }

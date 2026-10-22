@@ -26,7 +26,7 @@ pub fn remote_players(
         let Some(mut snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        if flipped(session, entity, &snapshot) {
+        if flipped(session, entity) {
             snapshot.turn_upside_down(entity.leash_size().height);
         }
         let skin = photon_render::entity::player_renderer::default_skin(entity.uuid);
