@@ -1,6 +1,7 @@
 //! The sound device (`Library`): the mixer's stereo played by what the system gives, or silence
 //! where it gives nothing.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -24,9 +25,57 @@ pub fn device_choices(devices: Vec<String>) -> Vec<String> {
     std::iter::once(String::new()).chain(devices).collect()
 }
 
+/// The output devices the system offers and the one it defaults to (`DeviceList`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct DeviceList {
+    pub default_device: Option<String>,
+    pub all_devices: Vec<String>,
+}
+
+impl DeviceList {
+    /// `DeviceList.query`.
+    pub fn query() -> Self {
+        Self {
+            default_device: cpal::default_host()
+                .default_output_device()
+                .and_then(|device| device_name(&device)),
+            all_devices: Output::devices(),
+        }
+    }
+}
+
+/// `SoundEngine.shouldChangeDevice` after the device is known not to be lost: whether the engine
+/// goes to another device, given the device it is on, the lists last seen and now, and the sound
+/// device option (empty for the system default).
+pub fn device_should_change(
+    current: &str,
+    (seen, now): (&DeviceList, &DeviceList),
+    option: &str,
+) -> bool {
+    if seen == now {
+        return false;
+    }
+    let listed = |name: &str| now.all_devices.iter().any(|device| device == name);
+    // The device it is on has gone from the list (the system default counts as listed: the
+    // output API names it apart from the devices it lists).
+    let gone = !listed(current) && now.default_device.as_deref() != Some(current);
+    let wanted = if option.is_empty() {
+        // The system default has changed.
+        now.default_device.as_deref() != Some(current)
+    } else {
+        // The preferred device has become available.
+        current != option && listed(option)
+    };
+    gone || wanted
+}
+
 /// An open output: the mixer it plays, and the stream that plays it.
 pub struct Output {
     pub mixer: Arc<Mutex<Mixer>>,
+    /// The name of the device it plays on.
+    pub name: String,
+    /// Set when the system says the device is gone (`Library.isCurrentDeviceDisconnected`).
+    pub lost: Arc<AtomicBool>,
     _stream: cpal::Stream,
 }
 
@@ -60,6 +109,9 @@ impl Output {
         let supported = device
             .default_output_config()
             .map_err(|error| OutputError(error.to_string()))?;
+        let name = device_name(&device).unwrap_or_default();
+        let lost = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&lost);
         let rate = supported.sample_rate();
         let channels = usize::from(supported.channels());
         let mixer = Arc::new(Mutex::new(Mixer::new(rate)));
@@ -72,7 +124,12 @@ impl Output {
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     Self::fill(&shared, &mut stereo, channels, data);
                 },
-                |error| log::error!("sound output: {error}"),
+                move |error| {
+                    log::error!("sound output: {error}");
+                    if error.kind() == cpal::ErrorKind::DeviceNotAvailable {
+                        flag.store(true, Ordering::Relaxed);
+                    }
+                },
                 None,
             ),
             other => return Err(OutputError(format!("unsupported sample format {other:?}"))),
@@ -83,6 +140,8 @@ impl Output {
             .map_err(|error| OutputError(error.to_string()))?;
         Ok(Self {
             mixer,
+            name,
+            lost,
             _stream: stream,
         })
     }
@@ -114,6 +173,49 @@ impl Output {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn list(default: &str, all: &[&str]) -> DeviceList {
+        DeviceList {
+            default_device: Some(default.to_owned()),
+            all_devices: all.iter().map(|name| (*name).to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn the_engine_moves_only_for_the_reasons_the_reference_names() {
+        let seen = list("Speakers", &["Speakers", "Headset"]);
+        // Nothing changed.
+        assert!(!device_should_change("Speakers", (&seen, &seen), ""));
+        // The device it is on is gone.
+        let gone = list("Headset", &["Headset"]);
+        assert!(device_should_change("Speakers", (&seen, &gone), "Speakers"));
+        // The default changed while the option is the default; and not while it is named.
+        let moved = list("Headset", &["Speakers", "Headset"]);
+        assert!(device_should_change("Speakers", (&seen, &moved), ""));
+        assert!(!device_should_change(
+            "Speakers",
+            (&seen, &moved),
+            "Speakers"
+        ));
+        // The default device is not in the list under its own name, and is not gone for that.
+        let named = list("Default Audio Device", &["Speakers"]);
+        let other = list("Default Audio Device", &["Speakers", "Headset"]);
+        assert!(!device_should_change(
+            "Default Audio Device",
+            (&named, &other),
+            ""
+        ));
+        // The preferred device appears.
+        let before = list("Speakers", &["Speakers"]);
+        let after = list("Speakers", &["Speakers", "Headset"]);
+        assert!(device_should_change(
+            "Speakers",
+            (&before, &after),
+            "Headset"
+        ));
+        // A preferred device that is not listed stays unwanted.
+        assert!(!device_should_change("Speakers", (&before, &after), "Dock"));
+    }
 
     #[test]
     fn the_default_device_comes_first() {

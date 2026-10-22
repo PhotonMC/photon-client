@@ -65,10 +65,14 @@ impl SoundAssets for IndexedAssets {
 /// each tick; none once the entity is gone.
 type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
+mod devices;
+
 pub struct SoundSystem {
     engine: SoundEngine<MixerChannels>,
     mixer: Arc<Mutex<photon_audio::mixer::Mixer>>,
-    _output: Output,
+    output: Output,
+    /// The devices the system offers, followed across reloads (`SoundEngine.deviceTracker`).
+    tracker: devices::DeviceTracker,
     /// The sound device option the output was opened for, and where the assets are.
     device: (String, std::path::PathBuf),
     followed: Followed,
@@ -124,7 +128,8 @@ impl SoundSystem {
         Some(Self {
             engine,
             mixer: Arc::clone(&output.mixer),
-            _output: output,
+            output,
+            tracker: devices::DeviceTracker::new(),
             device: (options.sound_device.clone(), jar_assets.to_path_buf()),
             followed: Arc::new(Mutex::new(HashMap::new())),
             camera: Arc::new(Mutex::new(Vec3::ZERO)),
@@ -423,25 +428,6 @@ impl SoundSystem {
         }));
         let id = self.engine.add(instance);
         self.engine.play(id);
-    }
-
-    /// `SoundManager.reload` after the sound device option changed: every sound stops and the
-    /// engine starts on the device now chosen, with a UI click as its first sound. Nothing
-    /// happens while the option is as the engine was opened for.
-    pub fn reload_for_device(sound: &mut Option<Self>, options: &Options) {
-        let Some((device, assets)) = sound.as_ref().map(|sound| sound.device.clone()) else {
-            return;
-        };
-        if device == options.sound_device {
-            return;
-        }
-        // `SoundEngine.reload` destroys the library before it loads the next, so the old stream
-        // lets go of the device first.
-        *sound = None;
-        *sound = Self::open(&assets, options);
-        if let Some(sound) = sound.as_mut() {
-            sound.play_ui("minecraft:ui.button.click", 1.0, 1.0);
-        }
     }
 
     /// `Options`' sound sliders, as the engine plays by them: a category that changed is applied

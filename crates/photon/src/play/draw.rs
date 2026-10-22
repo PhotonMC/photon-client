@@ -9,6 +9,7 @@ impl Play {
     /// last frame goes to the subtitles.
     fn place_listener(&mut self, frame: &FrameCamera) {
         crate::sound::SoundSystem::reload_for_device(&mut self.sound, &self.controls.options);
+        crate::sound::SoundSystem::track_device(&mut self.sound, &self.controls.options);
         if let Some(sound) = &self.sound {
             let (forward, _, up) = crate::view::camera_vectors(frame.rotation);
             sound.set_listener(frame.camera, forward, up);
