@@ -1,5 +1,6 @@
 //! Connection phase transitions and the synchronous transport state machine.
 
+use super::transport::Transport;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
@@ -13,7 +14,7 @@ use photon_protocol::phase::ConnectionProtocol;
 use photon_protocol::play::*;
 
 pub fn send_configuration_start(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     information: &ClientInformation,
     compression_threshold: Option<usize>,
 ) -> Result<(), ConnectionError> {
@@ -53,8 +54,8 @@ pub fn send_configuration_start(
 pub fn connect_stream(
     address: SocketAddr,
     timeout: Duration,
-) -> Result<TcpStream, ConnectionError> {
-    let stream = TcpStream::connect_timeout(&address, timeout)?;
+) -> Result<Transport, ConnectionError> {
+    let stream = Transport::from(TcpStream::connect_timeout(&address, timeout)?);
     stream.set_read_timeout(Some(timeout))?;
     stream.set_write_timeout(Some(timeout))?;
     stream.set_nodelay(true)?;
@@ -62,7 +63,7 @@ pub fn connect_stream(
 }
 
 pub fn send_handshake_intention(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     address: SocketAddr,
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
@@ -72,7 +73,7 @@ pub fn send_handshake_intention(
 /// The handshake for a host name as given (`ClientIntentionPacket`'s host is what the player typed,
 /// which a proxy may route by) and a port.
 pub fn send_handshake_to(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     (host, port): (&str, u16),
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
@@ -112,7 +113,7 @@ where
 }
 
 pub fn send_packet<F>(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     _phase: ConnectionProtocol,
     packet_id: i32,
     encode_payload: F,
@@ -128,14 +129,14 @@ where
 }
 
 pub fn read_packet(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     compression_threshold: Option<usize>,
 ) -> Result<Vec<u8>, ConnectionError> {
     let frame = read_frame(stream)?;
     decode_packet_frame(&frame, compression_threshold)
 }
 
-fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, ConnectionError> {
+fn read_frame(stream: &mut Transport) -> Result<Vec<u8>, ConnectionError> {
     let mut header = Vec::with_capacity(MAX_VARINT21_BYTES);
     for _ in 0..MAX_VARINT21_BYTES {
         let mut byte = [0_u8; 1];

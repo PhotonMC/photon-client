@@ -1,5 +1,6 @@
+use super::transport::Transport;
 use std::io;
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use photon_core::binary::Uuid;
@@ -10,6 +11,7 @@ use photon_protocol::play::*;
 use photon_protocol::resources::KnownPack;
 use photon_protocol::{common, configuration, cookie, login, registry_data};
 
+use super::encrypt;
 use super::record::Recorder;
 use super::session::*;
 use super::state::ConnectionState;
@@ -24,7 +26,7 @@ pub fn open_play_connection(
     select_known_packs: bool,
     information: &configuration::ClientInformation,
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
-) -> Result<(TcpStream, Option<usize>), ConnectionError> {
+) -> Result<(Transport, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
     let host = state
         .handshake_host
@@ -56,7 +58,7 @@ pub fn open_play_connection(
 /// acknowledged and followed by the client's configuration start. The compression threshold the
 /// server chose is returned.
 fn log_in(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     (username, timeout): (&str, Duration),
     information: &configuration::ClientInformation,
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
@@ -137,11 +139,10 @@ fn log_in(
                 )?;
             }
             0 => return Err(ConnectionError::ServerDisconnected),
-            1 => {
-                return Err(ConnectionError::UnsupportedPacket {
-                    phase: ConnectionProtocol::Login,
-                    id: packet_id,
-                });
+            LOGIN_CLIENTBOUND_HELLO_PACKET_ID => {
+                let hello = login::ClientboundHelloPacket::decode(&mut &payload[..])
+                    .map_err(|_| ConnectionError::Codec("login hello"))?;
+                encrypt::answer_hello(stream, &hello, compression_threshold)?;
             }
             _ => {}
         }
@@ -160,7 +161,7 @@ fn log_in(
 /// and features are taken into `state`, known packs are answered and keep-alives are returned.
 /// The connection is in the play phase after it.
 pub fn configure_connection(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     compression_threshold: Option<usize>,
     (timeout, select_known_packs): (Duration, bool),
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
@@ -367,7 +368,7 @@ pub fn configure_connection(
 
 /// Answer a cookie the server asked for with what the client keeps under that key, or nothing.
 pub(crate) fn answer_cookie_request(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     (phase, response_id): (ConnectionProtocol, i32),
     (payload, compression_threshold): (&[u8], Option<usize>),
     cookies: &cookie::CookieStore,

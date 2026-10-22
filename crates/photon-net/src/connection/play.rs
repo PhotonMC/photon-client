@@ -7,7 +7,9 @@
 //! local player and sends what the tick asked for, then the tick-end marker,
 //! as `Minecraft.tick` does.
 
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
+
+use super::transport::Transport;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::Duration;
 
@@ -148,13 +150,13 @@ pub(super) fn rand_salt() -> u32 {
 mod tests {
     use super::*;
     use photon_core::ids::EntityId;
-    use std::net::TcpListener;
+    use std::net::{TcpListener, TcpStream};
 
     /// A session over a loopback socket, and the far end of it, which a
     /// test keeps open so what the session sends has somewhere to go.
     fn detached() -> (PlaySession, TcpStream) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let stream = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let stream = Transport::from(TcpStream::connect(listener.local_addr().unwrap()).unwrap());
         let (far_end, _) = listener.accept().unwrap();
         let (_sender, incoming) = mpsc::channel();
         let session = PlaySession::assemble(

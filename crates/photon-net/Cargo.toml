@@ -17,3 +17,6 @@ photon-protocol.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+rsa.workspace = true

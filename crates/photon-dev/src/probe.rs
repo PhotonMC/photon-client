@@ -3,8 +3,9 @@
 //! The production connection pieces live in `protocol` and `session`; this module
 //! keeps scenario-specific packet sequences and observations at the probe boundary.
 
+use photon_net::connection::Transport;
 use std::io;
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use photon_core::wire;

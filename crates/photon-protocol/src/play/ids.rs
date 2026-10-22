@@ -5,6 +5,10 @@ pub const LOGIN_INTENTION_PACKET_ID: i32 = 0;
 
 pub const LOGIN_HELLO_PACKET_ID: i32 = 0;
 
+pub const LOGIN_CLIENTBOUND_HELLO_PACKET_ID: i32 = 1;
+
+pub const LOGIN_KEY_PACKET_ID: i32 = 1;
+
 pub const LOGIN_ACKNOWLEDGED_PACKET_ID: i32 = 3;
 
 pub const LOGIN_FINISHED_PACKET_ID: i32 = 2;

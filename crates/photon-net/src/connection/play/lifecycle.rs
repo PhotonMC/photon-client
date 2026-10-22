@@ -19,7 +19,7 @@ pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, Connecti
 /// connection ends or the server starts the configuration phase (`Packet.isTerminal`): nothing
 /// after that packet is a play packet.
 pub(super) fn spawn_reader(
-    mut reader: TcpStream,
+    mut reader: Transport,
     compression_threshold: Option<usize>,
 ) -> Receiver<Result<Incoming, ConnectionError>> {
     let (sender, incoming) = mpsc::channel();
@@ -318,7 +318,7 @@ impl PlaySession {
 
     /// A session over a connection already made, with nothing yet known.
     pub(super) fn assemble(
-        writer: TcpStream,
+        writer: Transport,
         compression_threshold: Option<usize>,
         incoming: Receiver<Result<Incoming, ConnectionError>>,
         state: ConnectionState,

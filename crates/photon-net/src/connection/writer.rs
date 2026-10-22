@@ -2,13 +2,14 @@
 //! sent and written in the order it was queued, so the game's thread never waits on the network.
 
 use std::io::{self, Write};
-use std::net::TcpStream;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use photon_protocol::play::ConnectionError;
+
+use super::transport::Transport;
 
 enum Job {
     Packet(Vec<u8>),
@@ -22,14 +23,14 @@ type Failure = Arc<Mutex<Option<(io::ErrorKind, String)>>>;
 pub(super) struct PacketWriter {
     jobs: Option<Sender<Job>>,
     failure: Failure,
-    stream: TcpStream,
+    stream: Transport,
     thread: Option<JoinHandle<()>>,
     /// `Connection.sentPackets`: the packets queued since the count was last taken.
     sent: AtomicU32,
 }
 
 impl PacketWriter {
-    pub(super) fn start(stream: TcpStream) -> io::Result<Self> {
+    pub(super) fn start(stream: Transport) -> io::Result<Self> {
         let (jobs, queue) = mpsc::channel();
         let failure = Failure::default();
         let mut sink = stream.try_clone()?;
@@ -70,7 +71,7 @@ impl PacketWriter {
     }
 
     /// The connection itself, for a phase that is run on it directly.
-    pub(super) fn stream(&self) -> io::Result<TcpStream> {
+    pub(super) fn stream(&self) -> io::Result<Transport> {
         self.stream.try_clone()
     }
 
@@ -105,7 +106,7 @@ impl Drop for PacketWriter {
     }
 }
 
-fn write_until_closed(queue: &mpsc::Receiver<Job>, sink: &mut TcpStream, failure: &Failure) {
+fn write_until_closed(queue: &mpsc::Receiver<Job>, sink: &mut Transport, failure: &Failure) {
     while let Ok(job) = queue.recv() {
         match job {
             Job::Packet(framed) => {

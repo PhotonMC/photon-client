@@ -13,6 +13,8 @@ pub enum ConnectionError {
         id: i32,
     },
     ServerDisconnected,
+    /// The server checks accounts (online mode), and no account was given.
+    AccountRequired,
     InvalidArgument(&'static str),
     /// The server sent the client on to another (`ClientboundTransferPacket`).
     Transfer {
@@ -33,6 +35,9 @@ impl fmt::Display for ConnectionError {
                 write!(formatter, "unsupported packet id {id} in {phase:?}")
             }
             Self::ServerDisconnected => formatter.write_str("server disconnected"),
+            Self::AccountRequired => {
+                formatter.write_str("the server needs a signed-in account (online mode)")
+            }
             Self::InvalidArgument(name) => write!(formatter, "invalid argument: {name}"),
             Self::Transfer { host, port } => write!(formatter, "transferred to {host}:{port}"),
         }

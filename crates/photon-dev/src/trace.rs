@@ -190,7 +190,7 @@ pub(crate) fn open_for_probe(
     (address, username): (std::net::SocketAddr, &str),
     (timeout, select_known_packs): (std::time::Duration, bool),
     trace: &mut PlayConnectionTrace,
-) -> Result<(std::net::TcpStream, Option<usize>), ConnectionError> {
+) -> Result<(photon_net::connection::Transport, Option<usize>), ConnectionError> {
     let mut state = ConnectionState::default();
     let mut login = LoginTrace::default();
     let (stream, compression_threshold) = photon_net::connection::open_play_connection(

@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn send_world_chunk_unload_step(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     player_position: &mut Option<(f64, f64, f64, f32, f32)>,
     trace: &mut PlayConnectionTrace,
     compression_threshold: Option<usize>,

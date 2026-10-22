@@ -1,6 +1,7 @@
 //! Java-protocol connections: the transport, the login and configuration phases, and the play
 //! session. Wire codecs are in `photon-protocol`; the live probes are in `photon-dev`.
 
+mod encrypt;
 pub mod entities;
 mod open;
 mod play;
@@ -8,6 +9,7 @@ mod record;
 mod session;
 mod state;
 mod status;
+mod transport;
 mod writer;
 
 pub use open::{configure_connection, open_play_connection};
@@ -23,3 +25,4 @@ pub use session::{
 };
 pub use state::ConnectionState;
 pub use status::{ServerStatus, query_status_and_ping, query_status_and_ping_recorded};
+pub use transport::Transport;

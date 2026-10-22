@@ -119,7 +119,7 @@ impl PlaySession {
 
 #[cfg(test)]
 mod tests {
-    use std::net::TcpListener;
+    use std::net::{TcpListener, TcpStream};
 
     use super::*;
 
@@ -138,7 +138,7 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let address = listener.local_addr().expect("address");
         let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
             // The terminal play packet, then the configuration's finish.
             stream
                 .write_all(&frame(PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID))
@@ -153,7 +153,7 @@ mod tests {
             let (id, _) = split_packet(&finished).expect("split");
             assert_eq!(id, CONFIG_FINISH_PACKET_ID);
         });
-        let stream = TcpStream::connect(address).expect("connect");
+        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
         let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
         let mut session = PlaySession::assemble(
             stream,
@@ -178,7 +178,7 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let address = listener.local_addr().expect("address");
         let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
             let mut with_id = |id: i32, body: &[u8]| {
                 let mut packet = Vec::new();
                 wire::write_varint(id, &mut packet);
@@ -201,7 +201,7 @@ mod tests {
             assert_eq!(id, PLAY_SERVERBOUND_COOKIE_RESPONSE_PACKET_ID);
             assert!(body.ends_with(&[1, 2, 7, 9]));
         });
-        let stream = TcpStream::connect(address).expect("connect");
+        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
         let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
         let mut session = PlaySession::assemble(
             stream,
@@ -224,7 +224,7 @@ mod tests {
         let origin = TcpListener::bind("127.0.0.1:0").expect("origin");
         let origin_address = origin.local_addr().expect("address");
         let destination = std::thread::spawn(move || {
-            let (mut stream, _) = target.accept().expect("accept");
+            let mut stream = Transport::from(target.accept().expect("accept").0);
             let handshake = read_packet(&mut stream, None).expect("handshake");
             let (id, mut body) = split_packet(&handshake).expect("split");
             assert_eq!(id, LOGIN_INTENTION_PACKET_ID);
@@ -241,7 +241,7 @@ mod tests {
             );
         });
         let origin = std::thread::spawn(move || {
-            let (mut stream, _) = origin.accept().expect("accept");
+            let mut stream = Transport::from(origin.accept().expect("accept").0);
             let mut body = Vec::new();
             photon_core::utf8::write_utf8(
                 &mut body,
@@ -259,7 +259,7 @@ mod tests {
             stream.write_all(&framed).expect("transfer");
             std::thread::sleep(Duration::from_millis(300));
         });
-        let stream = TcpStream::connect(origin_address).expect("connect");
+        let stream = Transport::from(TcpStream::connect(origin_address).expect("connect"));
         let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
         let mut session = PlaySession::assemble(
             stream,
@@ -295,7 +295,7 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let address = listener.local_addr().expect("address");
         let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
             for url in ["https://example.com/pack.zip", "gopher://example.com/pack"] {
                 let mut packet = Vec::new();
                 wire::write_varint(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID, &mut packet);
@@ -314,7 +314,7 @@ mod tests {
             let (_, body) = split_packet(&answer).expect("split");
             assert_eq!(body[16], PackAction::Declined as u8);
         });
-        let stream = TcpStream::connect(address).expect("connect");
+        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
         let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
         let mut session = PlaySession::assemble(
             stream,
@@ -340,7 +340,7 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let address = listener.local_addr().expect("address");
         let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
             let mut packet = Vec::new();
             wire::write_varint(CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID, &mut packet);
             packet.extend_from_slice(&pack_push_body("https://example.com/pack.zip"));
@@ -356,7 +356,7 @@ mod tests {
             assert_eq!(id, CONFIG_SERVERBOUND_RESOURCE_PACK_PACKET_ID);
             assert_eq!(body[16], PackAction::Declined as u8);
         });
-        let mut stream = TcpStream::connect(address).expect("connect");
+        let mut stream = Transport::from(TcpStream::connect(address).expect("connect"));
         let mut state = ConnectionState::default();
         configure_connection(
             &mut stream,

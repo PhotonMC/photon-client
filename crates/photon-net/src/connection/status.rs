@@ -1,6 +1,6 @@
 //! The status exchange (`ServerStatusPacketListener`): a server's status text and its ping.
 
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
 use std::time::Duration;
 
 use photon_protocol::handshake::ClientIntent;
@@ -9,6 +9,7 @@ use photon_protocol::play::*;
 
 use super::record::{NoRecorder, Recorder};
 use super::session::{connect_stream, read_packet, send_handshake_intention, send_packet};
+use super::transport::Transport;
 
 /// What a server answered to a status request and a ping.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,7 +51,7 @@ pub fn query_status_and_ping_recorded(
 
 /// Read the next packet of the status phase, which must have the id wanted.
 fn expect_packet(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     wanted: i32,
     recorder: &mut dyn Recorder,
 ) -> Result<Vec<u8>, ConnectionError> {
@@ -68,7 +69,7 @@ fn expect_packet(
 
 /// `ServerboundStatusRequestPacket`, and the status text the server answers with.
 fn request_status(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     recorder: &mut dyn Recorder,
 ) -> Result<String, ConnectionError> {
     send_packet(
@@ -91,7 +92,7 @@ fn request_status(
 
 /// A ping, and the pong that must echo it: the echoed time, and the round trip in milliseconds.
 fn ping(
-    stream: &mut TcpStream,
+    stream: &mut Transport,
     recorder: &mut dyn Recorder,
 ) -> Result<(i64, i64), ConnectionError> {
     let ping = photon_protocol::status::ServerboundPingRequestPacket::new(STATUS_PROBE_TIME);

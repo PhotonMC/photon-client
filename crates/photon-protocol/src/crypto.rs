@@ -74,17 +74,17 @@ pub fn signed_hex(bytes: &[u8]) -> String {
 pub fn encrypt_with_public_key(public_key_der: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptError> {
     let key =
         RsaPublicKey::from_public_key_der(public_key_der).map_err(|_| CryptError::BadPublicKey)?;
-    let mut random = RandomSource;
+    let mut random = SystemRandom;
     key.encrypt(&mut random, Pkcs1v15Encrypt, data)
         .map_err(|_| CryptError::Rsa)
 }
 
-/// The random source the RSA padding draws from.
-struct RandomSource;
+/// The random source the RSA padding draws from (and the test keys, in the crates above).
+pub struct SystemRandom;
 
-impl rsa::rand_core::CryptoRng for RandomSource {}
+impl rsa::rand_core::CryptoRng for SystemRandom {}
 
-impl rsa::rand_core::RngCore for RandomSource {
+impl rsa::rand_core::RngCore for SystemRandom {
     fn next_u32(&mut self) -> u32 {
         let mut bytes = [0u8; 4];
         self.fill_bytes(&mut bytes);
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn rsa_round_trip_through_der_key() {
-        let private = RsaPrivateKey::new(&mut RandomSource, 1024).expect("key");
+        let private = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
         let der = private
             .to_public_key()
             .to_public_key_der()
