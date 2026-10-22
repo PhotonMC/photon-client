@@ -73,8 +73,8 @@ pub fn remote_players(
             textures,
             (placement.light, snapshot.red_overlay),
         ));
-        let shown = body(model, &placement, ghosted(entity, view, &snapshot));
-        vertices.extend(glowing(session, entity, shown));
+        let ghost = ghosted(entity, view, &snapshot);
+        vertices.extend(shown_body(session, entity, (model, &placement), ghost));
         let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));
         vertices.extend(glowing(session, entity, wearing));
         vertices.extend(armor.wings(
@@ -113,6 +113,21 @@ fn ghosted(
     entity
         .is_invisible()
         .then_some((view.spectating || snapshot.friendly_ghost).then_some(view.camera))
+}
+
+/// The body a player shows, which also joins the outline when it glows: an invisible glowing
+/// player is seen by its outline alone.
+fn shown_body(
+    session: &PlaySession,
+    entity: &photon_world::ClientEntity,
+    (model, placement): (&PlayerModel, &Placement),
+    ghost: Option<Option<[f32; 3]>>,
+) -> Vec<Vertex> {
+    if ghost.is_some() {
+        glowing(session, entity, body(model, placement, None));
+        return body(model, placement, ghost);
+    }
+    glowing(session, entity, body(model, placement, None))
 }
 
 /// `isBodyVisible`: an invisible player keeps what it wears and holds, not its body; a spectator
