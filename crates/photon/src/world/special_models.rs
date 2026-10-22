@@ -1,6 +1,8 @@
 //! A block state drawn on an entity through `BuiltInBlockModels`: the special renderers that
 //! stand in for the baked model (a minecart's contents, a block display, an enderman's block).
 //! Each is drawn in the state it has in the item form: shut, still, undyed unless the block is.
+//! The reference makes each a composite of the baked model and the special one, so the baked
+//! model is drawn as well (it is the frame of a bell, and no more than a particle for the rest).
 
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
@@ -158,20 +160,6 @@ fn shulker_box(
     model.setup_shulker_box(0.0);
     let pose = shulker_box::box_pose(base, facing);
     Some(mob_vertices_posed(model, &pose, rect, (light, false)))
-}
-
-/// Whether a state has a special model, which draws in place of its baked one.
-pub(crate) fn is_special_block(state: BlockStateId) -> bool {
-    let name = photon_world::block::state_or_air(state).block().name;
-    let short = name.strip_prefix("minecraft:").unwrap_or(name);
-    shulker_color(name).is_some()
-        || short.ends_with("_chest")
-        || short == "chest"
-        || short.ends_with("copper_golem_statue")
-        || matches!(short, "bell" | "decorated_pot")
-        || short.ends_with("_head")
-        || short.ends_with("_skull")
-        || short.ends_with("_banner")
 }
 
 /// `BuiltInBlockModels.createEnchantingTable`: a shut book, laid on the table that the baked

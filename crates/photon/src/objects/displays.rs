@@ -17,7 +17,7 @@ use photon_render::scene::Vertex;
 use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
-use crate::world::special_models::{is_special_block, special_block_vertices};
+use crate::world::special_models::special_block_vertices;
 use photon_render::entity::textures::EntityTextures;
 
 /// The layers of the items the displays show, by the `ItemDisplayContext` each names (by its id).
@@ -155,9 +155,6 @@ pub fn displays(
     } in shown(session, view)
     {
         if let Some(block) = display.block_state() {
-            if is_special_block(block) {
-                continue;
-            }
             let cache = &mut layers.contexts[0];
             if let Some((layer, block_light)) = cache.block(block, renderer) {
                 vertices.extend(entity_block_vertices(

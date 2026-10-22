@@ -183,8 +183,8 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
     }
 }
 
-/// The block a minecart carries: a chest by its special model, any other block as a baked model
-/// (a tnt minecart's flashes white while it is lit, `submitWhiteSolidBlock`).
+/// The block a minecart carries: its special model if it has one, and its baked model (a tnt
+/// minecart's flashes white while it is lit, `submitWhiteSolidBlock`).
 fn carry_block(
     (models, textures): (&mut MobModels, &EntityTextures),
     (block, (pose, light, white)): (BlockStateId, (&Pose, i32, bool)),
@@ -195,9 +195,6 @@ fn carry_block(
         crate::world::special_models::special_block_vertices(models, textures, base)
     {
         vertices.extend(special);
-        if crate::world::special_models::is_special_block(block) {
-            return;
-        }
     }
     let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
     held.push(HeldItem::block(block, *pose, light, overlay));
