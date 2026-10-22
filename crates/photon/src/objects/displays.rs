@@ -15,7 +15,10 @@ use photon_render::objects::item::{entity_block_vertices, item_layer_vertices};
 use photon_render::scene::Vertex;
 
 use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
+use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
+use crate::world::special_models::{is_special_block, special_block_vertices};
+use photon_render::entity::textures::EntityTextures;
 
 /// The layers of the items the displays show, by the `ItemDisplayContext` each names (by its id).
 pub struct DisplayLayers {
@@ -67,16 +70,19 @@ fn context_index(id: u8) -> usize {
 /// `Entity.getViewScale`: the entity distance scaling option, which is one.
 pub const VIEW_SCALE: f64 = 1.0;
 
-/// The triangles of every block and item display the server added.
-pub fn displays(
-    session: &PlaySession,
-    layers: &mut DisplayLayers,
-    (renderer, tints): (&BlockRenderer, &BiomeTints),
-    view: FrameView,
-    vertices: &mut Vec<Vertex>,
-) {
+/// Where a display is drawn: its entity, the pose its transformation gives it, and its light.
+struct Shown<'a> {
+    entity: &'a photon_world::ClientEntity,
+    display: &'a photon_world::objects::display::DisplayState,
+    pose: Pose,
+    light: i32,
+}
+
+/// Every display the server added, in the pose it is drawn in this frame.
+fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     let world = session.world();
     let partial = view.partial as f32;
+    let mut out = Vec::new();
     for entity in world.entities().drawn() {
         let Some(display) = entity.display() else {
             continue;
@@ -106,7 +112,52 @@ pub fn displays(
             packed_light(world, Vec3::new(x, y, z)),
             state.brightness_override,
         );
+        out.push(Shown {
+            entity,
+            display,
+            pose,
+            light,
+        });
+    }
+    out
+}
+
+/// The block displays whose state has a special model (`BuiltInBlockModels`), which are drawn
+/// in the entity pass with the entity textures.
+pub fn special_displays(
+    session: &PlaySession,
+    (models, textures): (&mut MobModels, &EntityTextures),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    for shown in shown(session, view) {
+        let Some(block) = shown.display.block_state() else {
+            continue;
+        };
+        let at = (block, &shown.pose, shown.light);
+        vertices.extend(special_block_vertices(models, textures, at).unwrap_or_default());
+    }
+}
+
+/// The triangles of every block and item display the server added.
+pub fn displays(
+    session: &PlaySession,
+    layers: &mut DisplayLayers,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    for Shown {
+        entity,
+        display,
+        pose,
+        light,
+    } in shown(session, view)
+    {
         if let Some(block) = display.block_state() {
+            if is_special_block(block) {
+                continue;
+            }
             let cache = &mut layers.contexts[0];
             if let Some((layer, block_light)) = cache.block(block, renderer) {
                 vertices.extend(entity_block_vertices(

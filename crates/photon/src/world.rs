@@ -11,3 +11,4 @@ pub(crate) mod fog;
 pub(crate) mod sections;
 pub(crate) mod signs;
 pub(crate) mod sky;
+pub(crate) mod special_models;
