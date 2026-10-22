@@ -122,6 +122,7 @@ pub const SHARED_TEXTURES: [&str; 3] = [
 mod frame_tag;
 mod hand_use;
 mod light;
+mod remote_placement;
 pub use light::*;
 mod wear;
 pub use wear::*;

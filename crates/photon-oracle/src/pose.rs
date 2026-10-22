@@ -122,6 +122,7 @@ pub(super) fn avatar_pose_result(request: &Value) -> Result<Value, String> {
                 }
             }),
             auto_spin: flag("spin_attack").then(|| float("age_in_ticks").unwrap_or(0.0)),
+            upside_down: None,
         };
         let pose = placement_pose(&placement);
         out.push(json!({"label": row["label"], "pose": matrix_bits(&pose)}));

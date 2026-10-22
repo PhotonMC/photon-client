@@ -30,16 +30,7 @@ impl ClientWorld {
         let (yaw, pitch, head_yaw) = entity.interpolated_rotation(partial_tick);
         let body_yaw = entity.interpolated_body_y_rotation(partial_tick);
         let upside_down = entity.is_upside_down().then(|| entity.leash_size().height);
-        // `extractRenderState`: an upside-down mob looks the other way up and aside.
-        let (pitch, head_yaw) = if upside_down.is_some() {
-            (
-                -pitch,
-                body_yaw - photon_core::math::wrap_degrees_f32(head_yaw - body_yaw),
-            )
-        } else {
-            (pitch, head_yaw)
-        };
-        Some(EntitySnapshot {
+        let mut snapshot = EntitySnapshot {
             position: entity.interpolated_position(partial_tick),
             yaw,
             pitch,
@@ -64,8 +55,12 @@ impl ClientWorld {
             burning: entity.is_burning(),
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
-            upside_down,
-        })
+            upside_down: None,
+        };
+        if let Some(height) = upside_down {
+            snapshot.turn_upside_down(height);
+        }
+        Some(snapshot)
     }
 
     /// The entities the server has sent.

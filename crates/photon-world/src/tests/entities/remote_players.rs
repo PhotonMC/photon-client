@@ -401,3 +401,36 @@ fn remote_player_position_sync_snaps_when_distance_exceeds_java_threshold() {
     );
     assert_eq!(entity.interpolation_target_rotation(), Some((50.0, 90.0)));
 }
+
+#[test]
+fn a_player_hangs_upside_down_by_profile_name_when_the_cape_shows() {
+    let mut world = ClientWorld::default();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(37),
+        uuid: Uuid::new(1, 2),
+        type_id: VANILLA_PLAYER_ENTITY_TYPE_ID,
+        x: 0.0,
+        y: 80.0,
+        z: 0.0,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 30.0, 0.0),
+        data: 0,
+    }));
+    let parts = |bits: u8| vec![16, crate::ENTITY_DATA_SERIALIZER_BYTE_ID as u8, bits, 255];
+    let flipped = |world: &ClientWorld, name: &str| {
+        world
+            .entities()
+            .at(EntityId(37))
+            .unwrap()
+            .is_upside_down_player(name)
+    };
+    // No skin layers sent yet: the cape does not show.
+    assert!(!flipped(&world, "Dinnerbone"));
+    assert!(world.apply_entity_metadata(EntityId(37), &parts(0x7e)));
+    assert!(!flipped(&world, "Dinnerbone"));
+    assert!(world.apply_entity_metadata(EntityId(37), &parts(0x7f)));
+    assert!(flipped(&world, "Dinnerbone"));
+    assert!(flipped(&world, "Grumm"));
+    assert!(!flipped(&world, "dinnerbone"));
+    assert!(!flipped(&world, "Steve"));
+}

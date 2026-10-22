@@ -1,3 +1,4 @@
+use super::remote_placement::{flipped, remote_placement};
 use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
@@ -22,9 +23,12 @@ pub fn remote_players(
         if !entity.is_player() || entity.is_spectator() {
             continue;
         }
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
+        let Some(mut snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
+        if flipped(session, entity, &snapshot) {
+            snapshot.turn_upside_down(entity.leash_size().height);
+        }
         let skin = photon_render::entity::player_renderer::default_skin(entity.uuid);
         let Some(rect) = textures.rect(skin.texture) else {
             continue;
@@ -41,29 +45,7 @@ pub fn remote_players(
         );
         let (state, spears) = remote_render_state(session, (entity, &snapshot), partial);
         model.setup_anim(&state);
-        let (x, y, z) = snapshot.position;
-        let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
-        let placement = Placement {
-            feet: [
-                (x - f64::from(view.origin[0])) as f32,
-                (y - f64::from(view.origin[1])) as f32,
-                (z - f64::from(view.origin[2])) as f32,
-            ],
-            body_rot: snapshot.body_yaw,
-            x_rot: snapshot.pitch,
-            swim_amount: snapshot.swim_amount,
-            in_water: false,
-            visually_swimming: snapshot.pose == photon_world::ClientEntityPose::Swimming,
-            crouching,
-            light: burning_light(packed_light(world, eye), snapshot.burning),
-            skin: rect,
-            death_time: snapshot.death_time,
-            red_overlay: snapshot.red_overlay,
-            fall_flying: arm_poses::fall_flying(entity, &snapshot, partial),
-            auto_spin: entity
-                .is_auto_spin_attack()
-                .then(|| entity.tick_count() as f32 + partial),
-        };
+        let placement = remote_placement((session, entity, &snapshot), (view, rect));
         let worn = Worn {
             head: entity.equipment(EquipmentSlot::Head),
             chest: entity.equipment(EquipmentSlot::Chest),
@@ -533,7 +515,7 @@ pub fn entity_shadows(
 }
 
 /// `EntityRenderer.getBlockLightLevel`: a burning entity is lit by full block light.
-fn burning_light(light: i32, burning: bool) -> i32 {
+pub(super) fn burning_light(light: i32, burning: bool) -> i32 {
     if burning {
         super::light::full_block_light(light)
     } else {

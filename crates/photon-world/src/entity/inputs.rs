@@ -39,6 +39,16 @@ pub struct EntitySnapshot {
     pub upside_down: Option<f32>,
 }
 
+impl EntitySnapshot {
+    /// `extractRenderState` for an upside-down entity: it looks the other way up and aside.
+    pub fn turn_upside_down(&mut self, height: f32) {
+        self.upside_down = Some(height);
+        self.pitch = -self.pitch;
+        self.head_yaw =
+            self.body_yaw - photon_core::math::wrap_degrees_f32(self.head_yaw - self.body_yaw);
+    }
+}
+
 /// How a spawner shows its mob: the block's corner, the turn in degrees (the lerped spin times
 /// ten) and the scale that fits the mob in the cage.
 #[derive(Debug, Clone, Copy, PartialEq)]

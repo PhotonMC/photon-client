@@ -268,6 +268,35 @@ pub(super) fn local_arms(
     (arms, attack_arm)
 }
 
+/// Where the local player's model stands in the frame.
+fn local_placement(
+    player: &LocalPlayer,
+    (view, x_rot): (FrameView, f32),
+    (pose, glide): (&photon_world::local_player::ModelPose, Option<Glide>),
+) -> Placement {
+    let feet = player.interpolated_position(view.partial);
+    Placement {
+        feet: [
+            (feet.x - f64::from(view.origin[0])) as f32,
+            (feet.y - f64::from(view.origin[1])) as f32,
+            (feet.z - f64::from(view.origin[2])) as f32,
+        ],
+        body_rot: pose.body_rot,
+        x_rot,
+        swim_amount: pose.swim_amount,
+        in_water: player.in_water(),
+        visually_swimming: player.is_visually_swimming(),
+        crouching: pose.crouching,
+        light: view.light,
+        skin: view.skin,
+        death_time: 0.0,
+        red_overlay: false,
+        fall_flying: glide.map(|glide| glide.flight),
+        auto_spin: None,
+        upside_down: None,
+    }
+}
+
 /// The player's own model where it stands, posed for the frame.
 pub fn player_model(
     (session, player): (&PlaySession, &LocalPlayer),
@@ -281,7 +310,6 @@ pub fn player_model(
     ),
     invisible: bool,
 ) -> Vec<Vertex> {
-    let feet = player.interpolated_position(view.partial);
     let partial = view.partial as f32;
     let (_, x_rot) = player.rotation();
     let pose = player.model_pose(partial);
@@ -324,25 +352,7 @@ pub fn player_model(
         ..Default::default()
     };
     model.setup_anim(&state);
-    let placement = Placement {
-        feet: [
-            (feet.x - f64::from(view.origin[0])) as f32,
-            (feet.y - f64::from(view.origin[1])) as f32,
-            (feet.z - f64::from(view.origin[2])) as f32,
-        ],
-        body_rot: pose.body_rot,
-        x_rot,
-        swim_amount: pose.swim_amount,
-        in_water: player.in_water(),
-        visually_swimming: player.is_visually_swimming(),
-        crouching: pose.crouching,
-        light: view.light,
-        skin: view.skin,
-        death_time: 0.0,
-        red_overlay: false,
-        fall_flying: glide.map(|glide| glide.flight),
-        auto_spin: None,
-    };
+    let placement = local_placement(player, (view, x_rot), (&pose, glide));
     let hands = Hands {
         base: &photon_render::entity::player_renderer::placement_pose(&placement),
         root: &model.root,

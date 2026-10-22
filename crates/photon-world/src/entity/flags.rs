@@ -172,6 +172,21 @@ impl ClientEntity {
             })
     }
 
+    /// `Avatar.isModelPartShown(CAPE)`: the cape bit of the skin layers the player's client
+    /// sent (none until it does).
+    pub fn shows_cape(&self) -> bool {
+        self.metadata
+            .as_deref()
+            .and_then(crate::metadata::player_model_customisation_from_metadata)
+            .is_some_and(|parts| parts & 1 != 0)
+    }
+
+    /// `AvatarRenderer.isEntityUpsideDown` for a player: the cape shows and the profile is named
+    /// Dinnerbone or Grumm.
+    pub fn is_upside_down_player(&self, profile_name: &str) -> bool {
+        self.shows_cape() && matches!(profile_name, "Dinnerbone" | "Grumm")
+    }
+
     pub fn is_custom_name_visible(&self) -> bool {
         self.custom_name_visible
     }

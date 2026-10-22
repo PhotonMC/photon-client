@@ -106,6 +106,21 @@ pub struct Placement {
     pub fall_flying: Option<FallFlying>,
     /// `isAutoSpinAttack` (a riptide): the age in ticks the player spins by.
     pub auto_spin: Option<f32>,
+    /// `isUpsideDown`: the height of the bounding box of a player named Dinnerbone or Grumm.
+    pub upside_down: Option<f32>,
+}
+
+/// `LivingEntityRenderer.setupRotations`: an upside-down player is lifted and turned over.
+fn lift_upside_down(pose: &mut Pose, placement: &Placement) {
+    if placement.death_time <= 0.0
+        && placement.auto_spin.is_none()
+        && let Some(height) = placement.upside_down
+    {
+        pose.translate(0.0, height + 0.1, 0.0);
+        pose.rotate(&Quaternion::rotation_z(Quaternion::degrees_to_radians(
+            180.0,
+        )));
+    }
 }
 
 /// The pose the model is drawn from: `LivingEntityRenderer.submit` for a
@@ -144,6 +159,7 @@ pub fn placement_pose(placement: &Placement) -> Pose {
             age * -75.0,
         )));
     }
+    lift_upside_down(&mut pose, placement);
     // `AvatarRenderer.setupRotations`: a glider tips forward, else a swimmer does.
     if let Some(flying) = placement.fall_flying {
         if placement.auto_spin.is_none() {
@@ -397,6 +413,7 @@ pub fn gui_player_vertices(
         red_overlay: false,
         fall_flying: None,
         auto_spin: None,
+        upside_down: None,
     });
     let mut vertices = Vec::new();
     for corners in model.quads(&pose) {
@@ -614,6 +631,42 @@ mod tests {
     }
 
     #[test]
+    fn an_upside_down_player_is_lifted_by_its_height_and_turned_over() {
+        let mut model = PlayerModel::new(false);
+        model.setup_anim(&Default::default());
+        let placement = Placement {
+            feet: [0.0; 3],
+            body_rot: 0.0,
+            x_rot: 0.0,
+            swim_amount: 0.0,
+            in_water: false,
+            visually_swimming: false,
+            crouching: false,
+            light: 0,
+            skin: [0.0, 0.0, 1.0, 1.0],
+            death_time: 0.0,
+            red_overlay: false,
+            fall_flying: None,
+            auto_spin: None,
+            upside_down: None,
+        };
+        let range = |placement: &Placement| {
+            player_vertices(&model, placement)
+                .iter()
+                .fold((f32::MAX, f32::MIN), |(low, high), v| {
+                    (low.min(v.position[1]), high.max(v.position[1]))
+                })
+        };
+        let (low, high) = range(&placement);
+        let (flipped_low, flipped_high) = range(&Placement {
+            upside_down: Some(1.8),
+            ..placement
+        });
+        assert!((flipped_high - (1.9 - low)).abs() < 1e-5);
+        assert!((flipped_low - (1.9 - high)).abs() < 1e-5);
+    }
+
+    #[test]
     fn a_standing_player_reaches_from_the_ground_to_its_head() {
         let mut model = PlayerModel::new(false);
         model.setup_anim(&Default::default());
@@ -633,6 +686,7 @@ mod tests {
                 red_overlay: false,
                 fall_flying: None,
                 auto_spin: None,
+                upside_down: None,
             },
         );
         let lowest = vertices
