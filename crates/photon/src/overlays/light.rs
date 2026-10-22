@@ -384,26 +384,41 @@ pub fn player_model(
         motions: HandActions::of_local(spears.motions, (session, player), stacks.0),
     };
     hands.collect(held);
-    let mut vertices = body(model, &placement, invisible.then_some(None));
+    let mut vertices = local_body(session, (model, &placement), invisible);
     vertices.extend(armor.skull_vertices(
         hands.skull(),
         pose.walk_position,
         textures,
         (placement.light, false),
     ));
-    vertices.extend(wear(
-        armor,
-        worn,
-        model.slim,
-        textures,
-        (&state, &placement),
-    ));
-    vertices.extend(local_wings(
-        armor,
-        (worn.chest, player),
-        (&placement, textures, partial),
-    ));
+    let dressed = wear(armor, worn, model.slim, textures, (&state, &placement));
+    vertices.extend(glowing_local(session, dressed));
+    let wings = local_wings(armor, (worn.chest, player), (&placement, textures, partial));
+    vertices.extend(glowing_local(session, wings));
     vertices
+}
+
+/// The triangles of the local player's own model, which join the outline when it glows
+/// (colour by its profile name).
+fn glowing_local(session: &PlaySession, triangles: Vec<Vertex>) -> Vec<Vertex> {
+    let glowing = session
+        .world()
+        .local_player()
+        .is_some_and(|state| state.is_glowing());
+    if glowing {
+        crate::mobs::outline::record_holder(session.local_name().to_owned(), triangles.clone());
+    }
+    triangles
+}
+
+/// The local player's body: an invisible glowing player is seen by its outline alone.
+fn local_body(
+    session: &PlaySession,
+    (model, placement): (&PlayerModel, &Placement),
+    invisible: bool,
+) -> Vec<Vertex> {
+    let shown = glowing_local(session, body(model, placement, None));
+    if invisible { Vec::new() } else { shown }
 }
 
 /// The model state of a remote player: its arms and what they use, its riding and gliding, and
