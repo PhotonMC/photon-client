@@ -872,7 +872,7 @@
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75
 "crates/photon-render/src/texture/mipmap.rs::generate_mip_levels_with" = 81
 "crates/photon-render/src/texture/png.rs::decode_rgba" = 73
-"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 139
+"crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 136
 "crates/photon-render/src/vulkan/device/instance.rs::create_instance" = 64
 "crates/photon-render/src/vulkan/device/logical.rs::create_logical_device" = 69
 "crates/photon-render/src/vulkan/device/presentation.rs::create_presentation" = 88
@@ -882,7 +882,7 @@
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::create_plain_pipeline" = 94
 "crates/photon-render/src/vulkan/panorama.rs::VulkanBackend::upload_cube" = 95
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 299
-"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 126
+"crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 96
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 101
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::update_atlas" = 69
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::upload_texture" = 105

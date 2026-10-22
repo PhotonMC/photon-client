@@ -16,6 +16,8 @@ impl VulkanBackend {
         push[28..31].copy_from_slice(&self.sort_origin);
         push[31] = self.lightmap[12];
         push[32..40].copy_from_slice(&self.fog);
+        // After the section's visibility at 160: the terrain shader's filtering.
+        push[41] = if self.filtering.rgss { 1.0 } else { 0.0 };
         push[44] = self.lightmap[13];
         push[45] = self.lightmap[14];
         push
@@ -318,7 +320,7 @@ impl VulkanBackend {
         unsafe {
             self.bind_state(
                 pipeline,
-                Some(scene.descriptor_set),
+                Some(scene.terrain.set),
                 &[(BOTH_STAGES, 0, &as_bytes(terrain_push)[..184])],
             );
             for &(section, first, count) in sections {

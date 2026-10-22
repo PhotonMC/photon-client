@@ -17,6 +17,15 @@ pub(super) struct CacheIdentity {
 const HEADER_SIZE: usize = 16 + vk::UUID_SIZE;
 
 impl CacheIdentity {
+    /// The identity of the device `properties` describe.
+    pub(super) fn of(properties: &vk::PhysicalDeviceProperties) -> Self {
+        Self {
+            vendor_id: properties.vendor_id,
+            device_id: properties.device_id,
+            uuid: properties.pipeline_cache_uuid,
+        }
+    }
+
     /// Whether cache data was made by this device and driver. A driver checks this itself, but a
     /// file from another machine or driver is dropped here so it never reaches the driver.
     fn accepts(&self, data: &[u8]) -> bool {

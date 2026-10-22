@@ -62,58 +62,15 @@ impl VulkanBackend {
             self.depth = Some(self.create_depth_target()?);
 
             let texture = self.upload_texture(texture_levels)?;
-            // These are the reference's own values for the terrain sampler,
-            // read from `LevelRenderer`'s chunk layer sampler and from the
-            // Vulkan sampler it builds. Both filters are linear, which reads
-            // as a surprise for a game of pixel art but is consistent with the
-            // atlas reserving padding around every sprite: with nearest
-            // sampling that padding would have nothing to do. The blocky look
-            // comes from the fragment shader instead, which moves each lookup
-            // to its texel's centre before the linear filter sees it.
-            let sampler = self
-                .device
-                .create_sampler(
-                    &vk::SamplerCreateInfo::default()
-                        .mag_filter(vk::Filter::LINEAR)
-                        .min_filter(vk::Filter::LINEAR)
-                        .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-                        .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                        .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                        // The reference leaves the third axis at the default,
-                        // which is repeat, and never samples it.
-                        .address_mode_w(vk::SamplerAddressMode::REPEAT)
-                        .mip_lod_bias(0.0)
-                        .min_lod(0.0)
-                        // An unbounded maximum, which the reference spells as
-                        // one thousand.
-                        .max_lod(1000.0)
-                        .anisotropy_enable(false)
-                        .max_anisotropy(1.0),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
-            let sampler = Sampler::new(&self.device, sampler);
-
+            let sampler = self.atlas_sampler(1.0)?;
             let descriptors = Descriptors::create(&self.device)?;
-            let layouts = [descriptors.layout];
-            let descriptor_set = self
-                .device
-                .allocate_descriptor_sets(
-                    &vk::DescriptorSetAllocateInfo::default()
-                        .descriptor_pool(descriptors.pool)
-                        .set_layouts(&layouts),
-                )
-                .map_err(|result| VulkanError::Call("vkAllocateDescriptorSets", result))?[0];
-            let image_info = [vk::DescriptorImageInfo::default()
-                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .image_view(texture.view)
-                .sampler(sampler.handle)];
-            let write = vk::WriteDescriptorSet::default()
-                .dst_set(descriptor_set)
-                .dst_binding(0)
-                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .image_info(&image_info);
-            self.device.update_descriptor_sets(&[write], &[]);
+            let descriptor_set = self.atlas_set(&descriptors, texture.view, sampler.handle)?;
+            // The terrain's own sampler, anisotropic if the options ask for it.
+            let terrain_sampler = self.atlas_sampler(self.filtering.anisotropy)?;
+            let terrain = super::terrain_filter::TerrainSet {
+                set: self.atlas_set(&descriptors, texture.view, terrain_sampler.handle)?,
+                sampler: terrain_sampler,
+            };
 
             let pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Terrain)?;
             let translucent_pipeline =
@@ -155,6 +112,7 @@ impl VulkanBackend {
                 },
                 descriptors,
                 descriptor_set,
+                terrain,
                 pipeline,
                 translucent_pipeline,
                 sky_pipeline,

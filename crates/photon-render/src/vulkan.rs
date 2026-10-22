@@ -62,6 +62,7 @@ mod scene;
 mod sections;
 mod shaders;
 mod swapchain;
+mod terrain_filter;
 mod texture;
 mod validation;
 mod vertex_attributes;

@@ -45,6 +45,8 @@ pub struct VulkanBackend {
     pub(super) out_of_date: bool,
     /// Draw only the GUI: a menu with no level behind it.
     pub(super) gui_only: bool,
+    /// How the terrain samples the atlas (`textureFiltering`).
+    pub(super) filtering: super::terrain_filter::TerrainFiltering,
     pub(super) scene: Option<SceneResources>,
     pub(super) sky_buffer: DynamicBuffer,
     pub(super) pending_sky: Option<PendingSky>,

@@ -220,6 +220,8 @@ pub(super) struct SceneResources {
     pub(super) texture: Texture,
     pub(super) descriptors: Descriptors,
     pub(super) descriptor_set: vk::DescriptorSet,
+    /// The terrain's set over the same atlas, with its own sampler.
+    pub(super) terrain: super::terrain_filter::TerrainSet,
     pub(super) pipeline: Pipeline,
     pub(super) translucent_pipeline: Pipeline,
     pub(super) sky_pipeline: Pipeline,
