@@ -5,7 +5,7 @@
 //! client world decides that and `placement` draws it.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{QuadrupedState, StriderState, mob_vertices_coloured};
+use photon_render::entity::mob_model::{QuadrupedState, StriderState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -82,7 +82,9 @@ pub fn remote_striders(
                 ("saddle", "strider_saddle", "minecraft:strider#saddle"),
                 textures,
                 &|model| model.setup_strider(&state),
-                &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
+                &|model, rect, colour| {
+                    crate::mobs::outline::coloured(entity, model, &placed, (rect, colour))
+                },
             ));
         }
     }

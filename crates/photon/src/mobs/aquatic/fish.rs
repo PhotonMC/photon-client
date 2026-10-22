@@ -5,8 +5,7 @@
 
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
-    MobPlacement, cod_turns, mob_vertices_coloured, pufferfish_turns, salmon_turns,
-    tropical_fish_turns,
+    MobPlacement, cod_turns, pufferfish_turns, salmon_turns, tropical_fish_turns,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -136,11 +135,11 @@ fn tropical_fish(
             (textures.rect(pattern.base_texture()), models.model(main))
     {
         model.setup_tail_fish("tail", age, in_water);
-        vertices.extend(mob_vertices_coloured(
+        vertices.extend(crate::mobs::outline::coloured(
+            entity,
             model,
             &placed,
-            rect,
-            dye(tropical_base_dye(packed)),
+            (rect, dye(tropical_base_dye(packed))),
         ));
     }
     if !entity.is_invisible()
@@ -150,11 +149,11 @@ fn tropical_fish(
         )
     {
         model.setup_tail_fish("tail", age, in_water);
-        vertices.extend(mob_vertices_coloured(
+        vertices.extend(crate::mobs::outline::coloured(
+            entity,
             model,
             &placed,
-            rect,
-            dye(tropical_pattern_dye(packed)),
+            (rect, dye(tropical_pattern_dye(packed))),
         ));
     }
 }

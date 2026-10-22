@@ -3,7 +3,7 @@
 //! down, and the collar of a tame cat.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{FelineState, QuadrupedState, mob_vertices_coloured};
+use photon_render::entity::mob_model::{FelineState, QuadrupedState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::ClientEntity;
@@ -142,11 +142,11 @@ pub fn remote_felines(
             })
         {
             model.setup_feline(&state);
-            vertices.extend(mob_vertices_coloured(
+            vertices.extend(crate::mobs::outline::coloured(
+                entity,
                 model,
                 &placed,
-                rect,
-                Some(colour & 0x00FF_FFFF),
+                (rect, Some(colour & 0x00FF_FFFF)),
             ));
         }
     }

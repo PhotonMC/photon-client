@@ -3,9 +3,7 @@
 //! `SheepWoolLayer`).
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    MobPlacement, QuadrupedState, SheepState, mob_vertices_coloured,
-};
+use photon_render::entity::mob_model::{MobPlacement, QuadrupedState, SheepState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::entity::wool::wool_colour;
 use photon_render::scene::Vertex;
@@ -139,5 +137,5 @@ fn layer_vertices(
         return crate::mobs::visible_body(entity, model, (placement, rect));
     }
     let colour = layer.coloured.then(|| wool_colour(usize::from(dye)));
-    mob_vertices_coloured(model, placement, rect, colour)
+    crate::mobs::outline::coloured(entity, model, placement, (rect, colour))
 }

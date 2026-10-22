@@ -6,7 +6,7 @@
 use photon_game::menus::container::{damage, is_damageable, max_damage};
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{
-    Crackiness, MobModel, QuadrupedState, WolfState, mob_vertices_coloured, wolf_armor_crackiness,
+    Crackiness, MobModel, QuadrupedState, WolfState, wolf_armor_crackiness,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -82,8 +82,9 @@ impl Layers<'_> {
         };
         let (state, placed) = (self.state, self.placed);
         let pose = |model: &mut MobModel| model.setup_wolf(state);
-        let place =
-            |model: &MobModel, rect, colour| mob_vertices_coloured(model, placed, rect, colour);
+        let place = |model: &MobModel, rect, colour| {
+            crate::mobs::outline::coloured(entity, model, placed, (rect, colour))
+        };
         let worn = self.armor.simple_layer(
             stack,
             ("body", "wolf_body", ARMOR_MODEL),
@@ -126,11 +127,11 @@ impl Layers<'_> {
                 usize::try_from(entity.collar_dye()).unwrap_or(14),
             )
         {
-            out.extend(mob_vertices_coloured(
+            out.extend(crate::mobs::outline::coloured(
+                entity,
                 model,
                 self.placed,
-                rect,
-                Some(colour & 0x00FF_FFFF),
+                (rect, Some(colour & 0x00FF_FFFF)),
             ));
         }
     }

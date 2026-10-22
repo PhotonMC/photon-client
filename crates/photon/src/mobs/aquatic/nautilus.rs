@@ -4,9 +4,7 @@
 //! posed from its look and stride.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::{
-    MobPlacement, NautilusState, QuadrupedState, mob_vertices, mob_vertices_coloured,
-};
+use photon_render::entity::mob_model::{MobPlacement, NautilusState, QuadrupedState, mob_vertices};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
@@ -157,7 +155,9 @@ fn worn_layers(
             (slot, layer_type, model),
             textures,
             &|model| model.setup_nautilus(state),
-            &|model, rect, colour| mob_vertices_coloured(model, placed, rect, colour),
+            &|model, rect, colour| {
+                crate::mobs::outline::coloured(entity, model, placed, (rect, colour))
+            },
         ));
     }
 }

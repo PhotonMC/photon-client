@@ -2,10 +2,8 @@
 //! (`SimpleEquipmentLayer`, `EquineSaddleModel`) and the llama's carpet or the trader's blanket
 //! (`LlamaDecorLayer`).
 
-use photon_render::entity::mob_model::{
-    EquineKind, EquineState, MobPlacement, QuadrupedState, mob_vertices_coloured,
-};
-use photon_render::entity::textures::EntityTextures;
+use photon_render::entity::mob_model::{EquineKind, EquineState, MobPlacement, QuadrupedState};
+use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::scene::Vertex;
 use photon_world::ClientEntity;
 use photon_world::EquipmentSlot;
@@ -45,6 +43,15 @@ pub(super) fn equine_state(
     }
 }
 
+/// What draws a layer of a mob in a colour, which joins the outline when the mob glows.
+fn outlined<'a>(
+    entity: &'a ClientEntity,
+    placed: &'a MobPlacement,
+) -> impl Fn(&photon_render::entity::mob_model::MobModel, TextureRect, Option<u32>) -> Vec<Vertex> + 'a
+{
+    move |model, rect, colour| crate::mobs::outline::coloured(entity, model, placed, (rect, colour))
+}
+
 /// The layers an animal wears, appended to `vertices`; none for another animal. A baby equine
 /// wears neither saddle nor armor.
 pub(super) fn layers(
@@ -55,7 +62,7 @@ pub(super) fn layers(
     placed: &MobPlacement,
     vertices: &mut Vec<Vertex>,
 ) {
-    let place = |model: &_, rect, colour| mob_vertices_coloured(model, placed, rect, colour);
+    let place = outlined(entity, placed);
     match animal {
         Animal::Horse | Animal::Equine(_) if !entity.is_baby() => {
             // The saddle and armor models carry no chests.

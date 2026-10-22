@@ -3,7 +3,6 @@
 //! its brow until it is ridden. The ropes of a leashed one are not drawn.
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::mob_model::mob_vertices_coloured;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
@@ -67,7 +66,9 @@ pub fn remote_happy_ghasts(
                 ("body", "happy_ghast_body", harness),
                 textures,
                 &|model| model.setup_happy_ghast_harness(ridden),
-                &|model, rect, colour| mob_vertices_coloured(model, &placed, rect, colour),
+                &|model, rect, colour| {
+                    crate::mobs::outline::coloured(entity, model, &placed, (rect, colour))
+                },
             ));
         }
     }

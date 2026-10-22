@@ -31,6 +31,20 @@ pub(crate) fn record_worn(entity: &photon_world::ClientEntity, worn: Vec<Vertex>
     worn
 }
 
+/// The vertices of a mob's layer in a model and a colour (a saddle, a collar, wool, a fish's
+/// pattern), which join the outline when the mob glows.
+pub(crate) fn coloured(
+    entity: &photon_world::ClientEntity,
+    model: &photon_render::entity::mob_model::MobModel,
+    placement: &photon_render::entity::mob_model::MobPlacement,
+    (rect, colour): (photon_render::entity::textures::TextureRect, Option<u32>),
+) -> Vec<Vertex> {
+    record_worn(
+        entity,
+        photon_render::entity::mob_model::mob_vertices_coloured(model, placement, rect, colour),
+    )
+}
+
 /// The silhouettes recorded, each in its team's colour, and the list emptied. A black outline is
 /// a negative colour, because zero is none.
 pub(crate) fn take(board: &Scoreboard) -> Vec<Vertex> {
