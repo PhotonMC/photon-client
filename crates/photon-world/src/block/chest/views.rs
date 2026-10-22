@@ -252,6 +252,8 @@ pub(crate) fn is_vault_state(state_id: BlockStateId) -> bool {
 pub struct VaultView {
     /// The item on show and how many (`VaultSharedData.getDisplayItem`).
     pub display_item: (ItemId, i32),
+    /// The components its tag holds, as the tag writes them.
+    pub display_components: Vec<photon_core::nbt::Field>,
     /// `VaultClientData.previousSpin` and `currentSpin`, in degrees.
     pub spin: (i32, i32),
 }

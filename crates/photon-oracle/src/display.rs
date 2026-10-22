@@ -316,6 +316,10 @@ fn item_foil_result(request: &Value) -> Result<Value, String> {
         }
         let item =
             photon_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
+        if let Some(tag) = row.get("tag") {
+            out.push(tag_stack_result(row, tag, item)?);
+            continue;
+        }
         let patch = hex_bytes(string(row, "patch")?)?;
         out.push(json!({
             "label": row["label"],
@@ -477,4 +481,49 @@ pub(super) fn shulker_box_pose_result(request: &Value) -> Result<Value, String> 
         }));
     }
     Ok(json!({"rows": rows}))
+}
+
+/// A stack as a block entity's tag writes it: the glint and the potion tint it is drawn with.
+fn tag_stack_result(row: &Value, tag: &Value, item: usize) -> Result<Value, String> {
+    use photon_game::item::values::Values;
+    let registry: Vec<String> = row["registry"]
+        .as_array()
+        .map(|names| {
+            names
+                .iter()
+                .filter_map(|name| name.as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default();
+    let components = nbt_fields(tag)?;
+    let patch = photon_world::item_components::tag::patch_from_tag(&components, &registry);
+    let bytes = if patch.added.is_empty() {
+        Vec::new()
+    } else {
+        patch.trusted()
+    };
+    let values = Values::new(photon_core::ids::ItemId(item as i32), &bytes);
+    // `ItemTintSource.Potion` with its default colour, made opaque.
+    let tint =
+        (0xFF00_0000_u32 | (values.potion_color_or(-13_083_194) as u32 & 0x00FF_FFFF)) as i32;
+    Ok(json!({"label": row["label"], "foil": values.has_foil(), "tint": tint}))
+}
+
+/// A JSON object as the fields of a compound tag: numbers are ints, strings are strings.
+fn nbt_fields(value: &Value) -> Result<Vec<photon_core::nbt::Field>, String> {
+    use photon_core::nbt::{Field, FieldValue};
+    let mut fields = Vec::new();
+    for (key, member) in value.as_object().ok_or("tag")? {
+        let value = match member {
+            Value::String(text) => FieldValue::Str(text.clone()),
+            Value::Number(number) => FieldValue::Int(number.as_i64().ok_or("number")? as i32),
+            Value::Object(_) => FieldValue::Compound(nbt_fields(member)?),
+            _ => return Err(format!("unsupported tag member {key}")),
+        };
+        fields.push(Field {
+            key: key.clone(),
+            value,
+        });
+    }
+    Ok(fields)
 }

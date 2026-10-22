@@ -22,3 +22,4 @@ pub use components::*;
 mod cursor;
 pub use cursor::*;
 pub mod hash;
+pub mod tag;

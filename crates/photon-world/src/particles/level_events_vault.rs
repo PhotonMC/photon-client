@@ -30,6 +30,8 @@ pub(crate) struct VaultShared {
     connected_particles_range: f64,
     /// `VaultSharedData.getDisplayItem`: what it shows and how many, if it shows any.
     pub(crate) display_item: Option<(photon_core::ids::ItemId, i32)>,
+    /// The `components` compound of the display item's tag.
+    pub(crate) display_components: Vec<Field>,
 }
 
 fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
@@ -46,6 +48,7 @@ pub(crate) fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultSha
         connected_players: Vec::new(),
         connected_particles_range: DEFAULT_CONNECTION_RANGE,
         display_item: None,
+        display_components: Vec::new(),
     };
     let Some(fields) = world
         .block_entity_at(pos.0, pos.1, pos.2)
@@ -62,6 +65,9 @@ pub(crate) fn shared_data(world: &ClientWorld, pos: (i32, i32, i32)) -> VaultSha
     }
     if let Some(FieldValue::Compound(held)) = field(data, "display_item") {
         shared.display_item = crate::block::chest::tag_stack(held);
+        if let Some(FieldValue::Compound(components)) = field(held, "components") {
+            shared.display_components.clone_from(components);
+        }
     }
     if let Some(FieldValue::Double(range)) = field(data, "connected_particles_range") {
         shared.connected_particles_range = *range;

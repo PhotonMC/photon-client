@@ -210,7 +210,11 @@ pub fn vault_items(
             (z - view.origin[2]) as f32,
         );
         let (item, count) = shown.display_item;
-        let stack = ClientItemStackState::new(count, item);
+        let mut stack = ClientItemStackState::new(count, item);
+        stack.set_patch(&photon_world::item_components::tag::patch_from_tag(
+            &shown.display_components,
+            session.registry_names("minecraft:enchantment"),
+        ));
         let layers = ground.get(&stack, renderer, tints);
         let spin = vault::spin(view.partial as f32, shown.spin);
         let poses = vault::item_poses(&base, spin, shown.display_item, model_extent(layers));

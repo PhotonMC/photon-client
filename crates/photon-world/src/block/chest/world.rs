@@ -193,10 +193,12 @@ impl ClientWorld {
         if !is_vault_state(state) {
             return None;
         }
-        let display_item = crate::particles::vault_shared_data(self, pos).display_item?;
+        let shared = crate::particles::vault_shared_data(self, pos);
+        let display_item = shared.display_item?;
         let spin = self.block_entity_at(pos.0, pos.1, pos.2)?.events().vault;
         Some(VaultView {
             display_item,
+            display_components: shared.display_components,
             spin: (spin.previous, spin.current),
         })
     }

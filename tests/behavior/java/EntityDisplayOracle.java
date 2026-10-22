@@ -335,6 +335,21 @@ class EntityDisplayOracle extends EntityDataOracle {
             }
             var item = items.getValue(net.minecraft.resources.Identifier.parse(row.get("item").getAsString()));
             var stack = item.getDefaultInstance();
+            if (row.has("tag")) {
+                // A stack as a block entity's tag writes it, read by the stack's own codec.
+                var written = new JsonObject();
+                written.addProperty("id", row.get("item").getAsString());
+                written.addProperty("count", 1);
+                written.add("components", row.get("tag"));
+                var parsed = net.minecraft.world.item.ItemStack.CODEC.parse(
+                    registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE),
+                    new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, written)
+                        .convert(net.minecraft.nbt.NbtOps.INSTANCE).getValue()).getOrThrow();
+                out.addProperty("foil", parsed.hasFoil());
+                out.addProperty("tint", new net.minecraft.client.color.item.Potion().calculate(parsed, null, null));
+                rows.add(out);
+                continue;
+            }
             // The patch as the wire carries it, applied over the item's own components.
             var patch = row.get("patch").getAsString();
             var bytes = new byte[patch.length() / 2];

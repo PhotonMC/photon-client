@@ -162,6 +162,8 @@ pub fn glint() -> Vec<Value> {
         foil("foil-lodestone-recovery-compass", "minecraft:recovery_compass", "0100430001"),
         foil("foil-enchanted-book-overridden-off", "minecraft:enchanted_book", "01001500"),
     ];
+    let mut rows = rows;
+    rows.extend(tagged_foil_rows());
     let matrices = [
         (0, 0.5),
         (1234, 0.5),
@@ -185,6 +187,51 @@ pub fn glint() -> Vec<Value> {
         entity("glint-layers", "glint_layers", matrices),
         items,
         entity("foil-decal-uv", "foil_decal_uv", foil_decal_rows()),
+    ]
+}
+
+/// Stacks as a block entity's tag writes them (a vault's display item): the glint and the potion
+/// tint they are drawn with.
+fn tagged_foil_rows() -> Vec<Value> {
+    let registry = ["minecraft:unbreaking", "minecraft:sharpness", "minecraft:protection"];
+    let tagged =
+        |label: &str, item: &str, tag: Value| json!({"label": label, "item": item, "tag": tag, "registry": registry});
+    vec![
+        tagged("tag-tipped-arrow", "minecraft:tipped_arrow", json!({"minecraft:potion_contents": "minecraft:poison"})),
+        tagged(
+            "tag-tipped-arrow-strong",
+            "minecraft:tipped_arrow",
+            json!({"minecraft:potion_contents": {"potion": "minecraft:strong_healing"}}),
+        ),
+        tagged(
+            "tag-tipped-arrow-colour",
+            "minecraft:tipped_arrow",
+            json!({"minecraft:potion_contents": {"potion": "minecraft:poison", "custom_color": 3355443}}),
+        ),
+        tagged(
+            "tag-potion-colour-only",
+            "minecraft:potion",
+            json!({"minecraft:potion_contents": {"custom_color": 16711680}}),
+        ),
+        tagged("tag-water-potion", "minecraft:potion", json!({"minecraft:potion_contents": "minecraft:water"})),
+        tagged(
+            "tag-enchanted-sword",
+            "minecraft:diamond_sword",
+            json!({"minecraft:enchantments": {"minecraft:sharpness": 3, "minecraft:unbreaking": 2}}),
+        ),
+        tagged(
+            "tag-enchanted-armor",
+            "minecraft:diamond_chestplate",
+            json!({"minecraft:enchantments": {"minecraft:protection": 4}}),
+        ),
+        tagged(
+            "tag-enchanted-book",
+            "minecraft:enchanted_book",
+            json!({"minecraft:stored_enchantments": {"minecraft:sharpness": 5}}),
+        ),
+        tagged("tag-no-enchantments", "minecraft:diamond_sword", json!({"minecraft:enchantments": {}})),
+        tagged("tag-plain", "minecraft:diamond_sword", json!({})),
+        tagged("tag-unread-component", "minecraft:diamond_sword", json!({"minecraft:repair_cost": 3})),
     ]
 }
 
