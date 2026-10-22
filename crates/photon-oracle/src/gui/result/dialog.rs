@@ -2,8 +2,8 @@ use super::*;
 
 use photon_game::dialog::{
     Action, ActionButton, AfterAction, Body, BooleanInput, CommonData, Control, Dialog,
-    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, OptionEntry,
-    PlainMessage, SingleOptionInput, Template, run_action,
+    DialogContext, DialogRef, DialogSet, Input, InputValue, ListSource, Next, NumberRangeInput,
+    OptionEntry, PlainMessage, RangeInfo, SingleOptionInput, Template, run_action,
 };
 use photon_game::text::{ClickEvent, Component};
 use photon_gui::screen::dialog::{DialogScreen, Press};
@@ -68,6 +68,17 @@ fn input(value: &Value) -> Input {
                 }),
                 label: text(&value["label"]),
                 label_visible: value["label_visible"].as_bool().unwrap_or(true),
+            }),
+            Some("number_range") => Control::NumberRange(NumberRangeInput {
+                width: value["width"].as_i64().unwrap_or(200) as i32,
+                label: text(&value["label"]),
+                label_format: string("label_format", "options.generic_value"),
+                range: RangeInfo {
+                    start: value["start"].as_f64().unwrap_or(0.0) as f32,
+                    end: value["end"].as_f64().unwrap_or(1.0) as f32,
+                    initial: value["initial"].as_f64().map(|v| v as f32),
+                    step: value["step"].as_f64().map(|v| v as f32),
+                },
             }),
             other => panic!("unknown input {other:?}"),
         },
@@ -271,6 +282,9 @@ fn custom_event(id: &str, payload: Option<&photon_core::nbt::FieldValue>) -> Str
             let tag = match &field.value {
                 FieldValue::Byte(value) => format!("{value}b"),
                 FieldValue::Str(value) => format!("\"{value}\""),
+                FieldValue::Float(value) => {
+                    format!("{}f", photon_game::commands::reader::java_float(*value))
+                }
                 other => panic!("tag {other:?} is not written yet"),
             };
             (field.key.as_str(), tag)
@@ -319,6 +333,10 @@ fn key_press(screen: &mut DialogScreen, key: &str) -> Result<Option<Press>, Stri
         }
         "enter" | "space" => screen.pressed(),
         "escape" => screen.escape(),
+        "left" | "right" => {
+            screen.arrow(key == "right");
+            None
+        }
         other => return Err(format!("unknown key {other}")),
     })
 }
@@ -375,7 +393,7 @@ pub(super) fn dialog_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
                 "key" => key_press(&mut screen, step["key"].as_str().unwrap_or_default())?,
                 "click" => screen.clicked((x as i32, y as i32)),
                 "drag" => {
-                    screen.dragged(y, step["dy"].as_f64().unwrap_or(0.0));
+                    screen.dragged(x, y, step["dy"].as_f64().unwrap_or(0.0));
                     None
                 }
                 "release" => {

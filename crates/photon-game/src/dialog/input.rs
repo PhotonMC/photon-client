@@ -288,3 +288,54 @@ impl TextInput {
         })
     }
 }
+
+/// `Math.round(float)`: halves go up.
+fn java_round(value: f32) -> i32 {
+    (f64::from(value) + 0.5).floor() as i32
+}
+
+impl RangeInfo {
+    fn initial_scaled(&self) -> f32 {
+        self.initial.unwrap_or((self.start + self.end) / 2.0)
+    }
+
+    /// `scaledValueToSlider`.
+    fn to_slider(&self, value: f32) -> f32 {
+        if self.start == self.end {
+            0.5
+        } else {
+            (value - self.start) / (self.end - self.start)
+        }
+    }
+
+    /// `initialSliderValue`: where the handle starts, 0 to 1.
+    pub fn initial_slider(&self) -> f32 {
+        self.to_slider(self.initial_scaled())
+    }
+
+    /// `computeScaledValue`: the value the handle stands for, on the steps if there are any.
+    pub fn scaled(&self, slider: f32) -> f32 {
+        let in_range = self.start + slider * (self.end - self.start);
+        let Some(step) = self.step else {
+            return in_range;
+        };
+        let initial = self.initial_scaled();
+        let steps = java_round((in_range - initial) / step);
+        let result = initial + steps as f32 * step;
+        let position = self.to_slider(result);
+        if (0.0..=1.0).contains(&position) {
+            return result;
+        }
+        let one_less = steps - steps.signum();
+        initial + one_less as f32 * step
+    }
+}
+
+/// `valueToString`: a whole number as an integer, else `Float.toString`.
+pub fn range_text(value: f32) -> String {
+    if value as i32 as f32 == value {
+        (value as i32).to_string()
+    } else {
+        crate::commands::reader::java_float(value)
+    }
+}

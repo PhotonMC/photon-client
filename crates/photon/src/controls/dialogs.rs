@@ -92,6 +92,45 @@ impl DialogLayer {
     }
 }
 
+/// An event for the screen of a dialog: what it makes of a key or the mouse.
+fn screen_event(
+    screen: &mut DialogScreen,
+    event: glfw::WindowEvent,
+    (mouse, gui_mouse, previous_y): ((i32, i32), (f64, f64), f64),
+) -> Option<Press> {
+    use glfw::{Action, Key, WindowEvent};
+    match event {
+        WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
+        WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
+            screen.tab(!modifiers.contains(glfw::Modifiers::Shift));
+            None
+        }
+        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
+            screen.pressed()
+        }
+        WindowEvent::Key(key @ (Key::Left | Key::Right), _, Action::Press | Action::Repeat, _) => {
+            screen.arrow(key == Key::Right);
+            None
+        }
+        WindowEvent::CursorPos(..) => {
+            screen.dragged(gui_mouse.0, gui_mouse.1, gui_mouse.1 - previous_y);
+            None
+        }
+        WindowEvent::Scroll(_, y) => {
+            screen.scrolled(mouse, y);
+            None
+        }
+        WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
+            screen.clicked(mouse)
+        }
+        WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Release, _) => {
+            screen.released();
+            None
+        }
+        _ => None,
+    }
+}
+
 impl Controls {
     /// The dialogs the server showed or cleared since the last frame.
     pub fn receive_dialogs(
@@ -224,32 +263,9 @@ impl Controls {
             self.move_gui_mouse((x, y), surface);
         }
         let press = match (self.dialog.as_mut(), event) {
-            (Some(DialogLayer::Dialog { screen, .. }), event) => match event {
-                WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
-                WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
-                    screen.tab(!modifiers.contains(glfw::Modifiers::Shift));
-                    None
-                }
-                WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
-                    screen.pressed()
-                }
-                WindowEvent::CursorPos(..) => {
-                    screen.dragged(self.gui_mouse.1, self.gui_mouse.1 - previous_y);
-                    None
-                }
-                WindowEvent::Scroll(_, y) => {
-                    screen.scrolled(mouse, y);
-                    None
-                }
-                WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Press, _) => {
-                    screen.clicked(mouse)
-                }
-                WindowEvent::MouseButton(glfw::MouseButton::Button1, Action::Release, _) => {
-                    screen.released();
-                    None
-                }
-                _ => None,
-            },
+            (Some(DialogLayer::Dialog { screen, .. }), event) => {
+                screen_event(screen, event, (mouse, self.gui_mouse, previous_y))
+            }
             (Some(DialogLayer::Waiting(waiting)), event) => {
                 let closed = match event {
                     WindowEvent::Key(Key::Escape, _, Action::Press, _) => waiting.escape(),

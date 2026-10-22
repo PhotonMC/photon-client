@@ -7,7 +7,7 @@ mod template;
 
 pub use input::{
     BooleanInput, Control, Input, InputValue, Multiline, NumberRangeInput, OptionEntry, RangeInfo,
-    SingleOptionInput, TextInput,
+    SingleOptionInput, TextInput, range_text,
 };
 pub use list::{DialogContext, DialogSet, ListSource};
 pub use template::Template;

@@ -118,6 +118,12 @@ class GuiDialogOracle extends GuiSocialOracle {
                 yield new net.minecraft.server.dialog.input.SingleOptionInput(json.get("width").getAsInt(), entries, label,
                     json.get("label_visible").getAsBoolean());
             }
+            case "number_range" -> new net.minecraft.server.dialog.input.NumberRangeInput(json.get("width").getAsInt(), label,
+                json.has("label_format") ? json.get("label_format").getAsString() : "options.generic_value",
+                new net.minecraft.server.dialog.input.NumberRangeInput.RangeInfo(json.get("start").getAsFloat(),
+                    json.get("end").getAsFloat(),
+                    json.has("initial") ? java.util.Optional.of(json.get("initial").getAsFloat()) : java.util.Optional.empty(),
+                    json.has("step") ? java.util.Optional.of(json.get("step").getAsFloat()) : java.util.Optional.empty()));
             default -> throw new IllegalArgumentException(json.toString());
         };
         return new net.minecraft.server.dialog.Input(json.get("key").getAsString(), control);
@@ -275,6 +281,8 @@ class GuiDialogOracle extends GuiSocialOracle {
                             case "escape" -> 256;
                             case "enter" -> 257;
                             case "space" -> 32;
+                            case "left" -> 263;
+                            case "right" -> 262;
                             default -> throw new IllegalArgumentException(name);
                         };
                         if (code == 258) {

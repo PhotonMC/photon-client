@@ -2,6 +2,10 @@
 //! mouse or the keyboard changes it, and the value a button takes from it.
 
 use photon_core::nbt::FieldValue;
+mod slider;
+
+use slider::Slider;
+
 use photon_game::dialog::{Control as Spec, Input, InputValue, SingleOptionInput};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
@@ -17,6 +21,7 @@ const BOX: i32 = 17;
 const GAP: i32 = 4;
 
 enum State {
+    Slider(Box<Slider>),
     /// A `CycleButton`: the text of the button for each value, and the value ids.
     Cycle {
         labels: Vec<Vec<Run>>,
@@ -65,7 +70,12 @@ impl Control {
                 key: input.key.clone(),
                 state: cycle(lang, option),
             }),
-            _ => None,
+            Spec::NumberRange(range) => Some(Self {
+                rect: arena.add(range.width, 20),
+                key: input.key.clone(),
+                state: State::Slider(Box::new(Slider::new(lang, range))),
+            }),
+            Spec::Text(_) => None,
         }
     }
 
@@ -74,12 +84,52 @@ impl Control {
         match &mut self.state {
             State::Check { selected, .. } => *selected = !*selected,
             State::Cycle { labels, index, .. } => *index = (*index + 1) % labels.len(),
+            State::Slider(slider) => slider.select(),
+        }
+    }
+
+    /// A press of the primary button on the control at `rect`.
+    pub(super) fn clicked(&mut self, x: i32, rect: Rectangle) {
+        match &mut self.state {
+            State::Slider(slider) => slider.clicked(x, rect),
+            _ => self.press(),
+        }
+    }
+
+    pub(super) fn dragged(&mut self, x: i32, rect: Rectangle) {
+        if let State::Slider(slider) = &mut self.state {
+            slider.dragged(x, rect);
+        }
+    }
+
+    pub(super) fn released(&mut self) {
+        if let State::Slider(slider) = &mut self.state {
+            slider.released();
+        }
+    }
+
+    pub(super) fn focus(&mut self, gained: bool) {
+        if let State::Slider(slider) = &mut self.state {
+            slider.focus(gained);
+        }
+    }
+
+    /// An arrow key, when the control takes it.
+    pub(super) fn arrow(&mut self, right: bool, width: i32) -> bool {
+        match &mut self.state {
+            State::Slider(slider) => slider.arrow(right, width),
+            _ => false,
         }
     }
 
     /// `Action.ValueGetter`: the text a template takes and the tag a payload takes.
     pub(super) fn value(&self) -> InputValue {
         match &self.state {
+            State::Slider(slider) => InputValue {
+                key: self.key.clone(),
+                substitution: slider.text(),
+                tag: FieldValue::Float(slider.scaled()),
+            },
             State::Cycle { ids, index, .. } => InputValue {
                 key: self.key.clone(),
                 substitution: ids[*index].clone(),
@@ -110,6 +160,7 @@ impl Control {
                 *selected = *before;
             }
             (State::Cycle { index, .. }, State::Cycle { index: before, .. }) => *index = *before,
+            (State::Slider(slider), State::Slider(before)) => slider.copy_from(before),
             _ => {}
         }
     }
@@ -122,6 +173,7 @@ impl Control {
         (focused, hovered): (bool, bool),
     ) {
         match &self.state {
+            State::Slider(slider) => slider.draw(frame, (atlas, font), rect, (focused, hovered)),
             State::Cycle { labels, index, .. } => {
                 let mut arena = Arena::default();
                 let leaf = arena.add(rect.width, rect.height);

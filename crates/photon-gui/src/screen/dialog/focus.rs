@@ -30,14 +30,14 @@ impl DialogScreen {
             }
         }
         if let Some(index) = (0..self.buttons.len()).find(|&index| self.button_hit(index, mouse)) {
-            self.focus = Some(Focus::Button(index));
+            self.set_focus(Some(Focus::Button(index)));
             return Some(Press::Button(index));
         }
         if self.in_container(mouse) {
             return None;
         }
         if self.warning.contains(&self.arena, mouse) {
-            self.focus = Some(Focus::Warning);
+            self.set_focus(Some(Focus::Warning));
             return Some(Press::Warning);
         }
         None
@@ -50,26 +50,58 @@ impl DialogScreen {
             .iter()
             .position(|part| contains(self.part_rect(part), mouse))
         {
-            self.focus = Some(Focus::Part(index));
+            self.set_focus(Some(Focus::Part(index)));
             return true;
         }
         let control =
             (0..self.controls.len()).find(|&index| contains(self.control_rect(index), mouse));
         if let Some(index) = control {
-            self.focus = Some(Focus::Input(index));
-            self.controls[index].press();
+            self.set_focus(Some(Focus::Input(index)));
+            let rect = self.control_rect(index);
+            self.controls[index].clicked(mouse.0, rect);
             return true;
         }
         false
     }
 
+    /// `setFocused`: the control that loses the focus and the one that gains it are told.
+    fn set_focus(&mut self, focus: Option<Focus>) {
+        if self.focus == focus {
+            return;
+        }
+        if let Some(Focus::Input(index)) = self.focus {
+            self.controls[index].focus(false);
+        }
+        if let Some(Focus::Input(index)) = focus {
+            self.controls[index].focus(true);
+        }
+        self.focus = focus;
+    }
+
+    /// An arrow key: the focused control moves, if it takes it.
+    pub fn arrow(&mut self, right: bool) -> bool {
+        let Some(Focus::Input(index)) = self.focus else {
+            return false;
+        };
+        let width = self.arena.0[self.controls[index].rect].width;
+        self.controls[index].arrow(right, width)
+    }
+
     /// The primary button is let go.
     pub fn released(&mut self) {
         self.dragging = false;
+        for control in &mut self.controls {
+            control.released();
+        }
     }
 
-    /// The mouse moved with the scrollbar held: `y` is where it is, `dy` how far it went.
-    pub fn dragged(&mut self, y: f64, dy: f64) {
+    /// The mouse moved with the primary button down: `x` and `y` are where it is, `dy` how far it
+    /// went up or down.
+    pub fn dragged(&mut self, x: f64, y: f64, dy: f64) {
+        for index in 0..self.controls.len() {
+            let rect = self.control_rect(index);
+            self.controls[index].dragged(x as i32, rect);
+        }
         if self.dragging {
             let scroll = self
                 .place()
@@ -105,7 +137,7 @@ impl DialogScreen {
         let at = self
             .focus
             .and_then(|focus| order.iter().position(|&other| other == focus));
-        self.focus = Some(order[next_in(order.len(), at, forward)]);
+        self.set_focus(Some(order[next_in(order.len(), at, forward)]));
         self.scroll_focus_into_view();
     }
 
