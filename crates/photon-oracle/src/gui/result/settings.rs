@@ -1,4 +1,6 @@
+use super::shell::{Shell, rescale_font, settings_shell};
 use super::*;
+use photon_render::window::scale::WindowScale;
 
 pub(super) fn options_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
@@ -170,7 +172,7 @@ pub(super) fn video_settings_screen_case(
 }
 
 /// The options a settings row sets.
-fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
+pub(super) fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
     let mut options = photon_game::options::Options::default();
     let set = |key: &str, field: &mut f64| {
         if let Some(value) = row["options"][key].as_f64() {
@@ -218,26 +220,13 @@ fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
         options.main_hand = photon_game::options::MainHand::from_serialized(&hand.to_lowercase())
             .ok_or("main_hand")?;
     }
+    options.font.force_unicode = row["options"]["force_unicode"].as_bool().unwrap_or(false);
+    options.font.japanese_glyph_variants = row["options"]["japanese_variants"]
+        .as_bool()
+        .unwrap_or(false);
     Ok(options)
 }
 
-use photon_gui::options::accessibility::AccessibilityScreen;
-use photon_gui::options::chat::ChatOptionsScreen;
-use photon_gui::options::font::FontOptionsScreen;
-use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
-use photon_gui::options::skin::SkinCustomizationScreen;
-use photon_gui::options::sound::SoundOptionsScreen;
-
-// The settings screens that have the same inputs.
-enum Shell {
-    Chat(ChatOptionsScreen),
-    Accessibility(AccessibilityScreen),
-    Mouse(MouseSettingsScreen),
-    Controls(ControlsScreen),
-    Sound(SoundOptionsScreen),
-    Skin(SkinCustomizationScreen),
-    Font(FontOptionsScreen),
-}
 macro_rules! each {
     ($shell:expr, $screen:ident => $body:expr) => {
         match $shell {
@@ -252,41 +241,11 @@ macro_rules! each {
     };
 }
 
-/// The screen of a settings operation, over the options the row has.
-fn settings_shell(
-    operation: &str,
-    row: &Value,
-    (font, lang): (&photon_render::gui::font::Font, &photon_game::text::Lang),
-    (size, in_world): ((i32, i32), bool),
-) -> Shell {
-    let options = row_options(row).unwrap_or_default();
-    match operation {
-        "skin_customization_screen" => Shell::Skin(SkinCustomizationScreen::new(
-            font, lang, size, in_world, &options,
-        )),
-        "font_options_screen" => {
-            Shell::Font(FontOptionsScreen::new(font, lang, size, in_world, &options))
-        }
-        "chat_options_screen" => {
-            Shell::Chat(ChatOptionsScreen::new(font, lang, size, in_world, &options))
-        }
-        "accessibility_options_screen" => Shell::Accessibility(AccessibilityScreen::new(
-            font,
-            lang,
-            size,
-            in_world,
-            (
-                &options,
-                row["options"]["minecart"].as_bool().unwrap_or(false),
-            ),
-        )),
-        "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(
-            font, lang, size, in_world, &options,
-        )),
-        "sound_options_screen" => {
-            Shell::Sound(sound_screen(font, lang, (size, in_world), &options))
-        }
-        _ => Shell::Controls(ControlsScreen::new(font, lang, size, in_world)),
+/// A frame drawn and thrown away at a time.
+fn timed_frame(millis: u64) -> GuiFrame {
+    GuiFrame {
+        millis,
+        ..GuiFrame::default()
     }
 }
 
@@ -303,7 +262,6 @@ pub(super) fn chat_options_screen_case(
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_render::window::scale::WindowScale;
     let lang = photon_game::text::Lang::load(root);
     let framebuffer = (
         row["framebuffer"][0].as_i64().unwrap_or(0) as i32,
@@ -314,7 +272,8 @@ pub(super) fn chat_options_screen_case(
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
     let mut window = WindowScale::new(framebuffer.0, framebuffer.1);
-    window.set_gui_scale(window.calculate_scale(int("gui_scale"), false));
+    let mut unicode = row["options"]["force_unicode"].as_bool().unwrap_or(false);
+    window.set_gui_scale(window.calculate_scale(int("gui_scale"), unicode));
     let size = (window.gui_scaled_width(), window.gui_scaled_height());
     let in_world = row["in_world"].as_bool().unwrap_or(false);
     let mut screen = settings_shell(operation, row, (font, &lang), (size, in_world));
@@ -323,19 +282,11 @@ pub(super) fn chat_options_screen_case(
     for step in row["steps"].as_array().ok_or("steps")? {
         if step["do"] == "frame" {
             clock = step["ms"].as_u64().unwrap_or(0);
-            let mut thrown = GuiFrame {
-                millis: clock,
-                ..GuiFrame::default()
-            };
-            each!(&screen, s => s.draw(&mut thrown, atlas, font, mouse));
+            each!(&screen, s => s.draw(&mut timed_frame(clock), atlas, font, mouse));
             continue;
         }
         // The reference draws a frame between one event and the next.
-        let mut between = GuiFrame {
-            millis: clock,
-            ..GuiFrame::default()
-        };
-        each!(&screen, s => s.draw(&mut between, atlas, font, mouse));
+        each!(&screen, s => s.draw(&mut timed_frame(clock), atlas, font, mouse));
         let at = (
             step["x"].as_f64().unwrap_or(last.0),
             step["y"].as_f64().unwrap_or(last.1),
@@ -359,6 +310,7 @@ pub(super) fn chat_options_screen_case(
             }
             other => return Err(format!("unknown step {other}")),
         }
+        rescale_font(&mut screen, &mut window, (int("gui_scale"), &mut unicode));
         last = at;
     }
     frame.millis = row["ms"].as_u64().unwrap_or(0);
@@ -495,7 +447,7 @@ pub(super) fn language_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<
 }
 
 /// The sound options screen, offering only the device the options name.
-fn sound_screen(
+pub(super) fn sound_screen(
     font: &photon_render::gui::font::Font,
     lang: &photon_game::text::Lang,
     (size, in_world): ((i32, i32), bool),

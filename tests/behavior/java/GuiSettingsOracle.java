@@ -31,7 +31,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
         public void resizeGui() {
             var window = getWindow();
             window.setGuiScale(window.calculateScale(options.guiScale().get(), isEnforceUnicode()));
-            current.resize(window.getGuiScaledWidth(), window.getGuiScaledHeight());
+            if (current != null) current.resize(window.getGuiScaledWidth(), window.getGuiScaledHeight());
         }
     }
 
@@ -155,11 +155,16 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 net.minecraft.client.KeyMapping.resetMapping();
             }
             if (kind.equals("font")) {
-                // The font options tell the font manager (no fonts loaded) and the mouse handler.
+                // The font options tell the font manager (no fonts loaded).
                 var fonts = unsafe.allocateInstance(net.minecraft.client.gui.font.FontManager.class);
                 set(fonts, "fontSets", new java.util.HashMap<>());
                 set(minecraft, "fontManager", fonts);
-                set(minecraft, "mouseHandler", unsafe.allocateInstance(net.minecraft.client.MouseHandler.class));
+                // The values the row stores; the variants are set whatever the JVM locale says.
+                var stored = row.has("options") ? row.getAsJsonObject("options") : new JsonObject();
+                minecraft.options.japaneseGlyphVariants().set(
+                    stored.has("japanese_variants") && stored.get("japanese_variants").getAsBoolean());
+                minecraft.options.forceUnicodeFont().set(
+                    stored.has("force_unicode") && stored.get("force_unicode").getAsBoolean());
             }
             minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
             var languageBefore = net.minecraft.locale.Language.getInstance();

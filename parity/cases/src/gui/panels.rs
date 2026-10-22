@@ -153,6 +153,9 @@ pub fn font_options_screen() -> Value {
         press("press-unicode", vec![click(100, 45)]),
         press("press-variants", vec![click(250, 45)]),
         press("press-variants-twice", times(click(250, 45), 2)),
+        at("rescales-odd").window(1280, 720).scale(0).steps(vec![click(100, 45)]).row(),
+        at("stored-unicode-odd").window(1280, 720).scale(0).options(json!({"force_unicode": true})).row(),
+        at("stored-variants").options(json!({"japanese_variants": true})).row(),
     ];
     gui("font-options-screen", "font_options_screen", rows)
 }
