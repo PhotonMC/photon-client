@@ -47,6 +47,9 @@ pub struct Sky {
     /// The camera's attribute probe at the last two ticks.
     last: Attributes,
     next: Attributes,
+    /// A reset found no player to probe at (a login or respawn waits for its position): the
+    /// first tick with one starts the probe from its values.
+    unprobed: bool,
     rain_fog: f32,
     flicker: Flicker,
     clouds: Clouds,
@@ -151,6 +154,7 @@ impl Sky {
             dimension,
             last: first.clone(),
             next: first,
+            unprobed: false,
             rain_fog: 0.0,
             flicker: Flicker::new(),
             clouds: Clouds::new(photon_render::sky::clouds::CloudCells::from_image(
@@ -174,10 +178,18 @@ impl Sky {
         }
         self.end_flash = end_flash_of(&self.environment);
         self.dimension = session.world().dimension();
-        let first = probe(&self.environment, self.dimension, session, false);
-        self.last = first.clone();
-        self.next = first;
+        self.start_probe(session);
         self.clouds.reset();
+    }
+
+    /// The probe starts from its values at the camera, or waits for the player that has none yet.
+    fn start_probe(&mut self, session: &PlaySession) {
+        self.unprobed = session.player().is_none();
+        if !self.unprobed {
+            let first = probe(&self.environment, self.dimension, session, false);
+            self.last = first.clone();
+            self.next = first;
+        }
     }
 
     /// One client tick: the block light flicker, and the camera's attribute
@@ -186,7 +198,9 @@ impl Sky {
         let hide_lightning_flashes = options.hide_lightning_flashes;
         self.flicker.tick();
         self.tick_end_flash(session);
-        if session.player().is_some() {
+        if self.unprobed {
+            self.start_probe(session);
+        } else if session.player().is_some() {
             let next = probe(
                 &self.environment,
                 self.dimension,
