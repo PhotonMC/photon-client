@@ -172,7 +172,9 @@ fn frame_owner(entity: &photon_world::ClientEntity, direction: Direction) -> Own
     let yaw = photon_core::math::wrap_degrees_i32(
         180 + direction.data2d() * 90 + entity.item_frame_rotation() * 45 + correction,
     );
-    let (x, y, z) = entity.position();
+    // `HangingEntity.recalculateBoundingBox`: the holder is where the frame's box is centred.
+    let middle = entity.bounding_box().center();
+    let (x, y, z) = (middle.x, middle.y, middle.z);
     Owner {
         holder: Holder {
             position: [x, y, z],
