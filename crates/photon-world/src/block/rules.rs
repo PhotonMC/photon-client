@@ -17,6 +17,7 @@ use photon_data::block::registry::{self, BLOCKS, Block};
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
+mod placement;
 mod survive;
 
 /// A rule's answer, or that the class's rule is not written.
@@ -222,82 +223,6 @@ fn snow_layer_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
     }
 }
 
-/// `Block.getStateForPlacement` for the block the item places; `None` is a
-/// refusal.
-pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
-    let default = default_state(block);
-    match owner(&BLOCKS[block], Method::GetStateForPlacement) {
-        Some(BlockClass::Block) => Rule::Known(Some(default)),
-        Some(BlockClass::SnowyBlock) => Rule::Known(snowy_placement(default, ctx)),
-        Some(BlockClass::RotatedPillarBlock) => {
-            let axis = match ctx.face.axis() {
-                Axis::X => "x",
-                Axis::Y => "y",
-                Axis::Z => "z",
-            };
-            Rule::Known(with_property(default, "axis", axis))
-        }
-        Some(BlockClass::SlabBlock) => Rule::Known(slab_placement(block, default, ctx)),
-        Some(BlockClass::StairBlock) => Rule::Known(stair_placement(default, ctx)),
-        _ => Rule::Unported,
-    }
-}
-
-/// `"true"` or `"false"`, as a boolean property's value.
-fn flag(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
-}
-
-/// Whether a slab or stair goes in the lower half: not against a downward face, and an upward
-/// face or a hit in the lower half of the block.
-#[expect(
-    clippy::neg_cmp_op_on_partial_ord,
-    reason = "the reference's `!(y > 0.5)`, which a NaN also passes"
-)]
-fn lower_half(ctx: &PlaceContext<'_>) -> bool {
-    let pos = ctx.clicked_pos();
-    ctx.face != Direction::Down
-        && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
-}
-
-/// `SnowyBlock.getStateForPlacement`: snowy when the block above is in the snow tag
-/// (`isSnowySetting`).
-fn snowy_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
-    let (x, y, z) = ctx.clicked_pos();
-    let above = ctx.state((x, y + 1, z));
-    let snowy =
-        block_index(above).is_some_and(|(index, _)| ctx.tags.contains(index, "minecraft:snow"));
-    with_property(default, "snowy", flag(snowy))
-}
-
-/// `SlabBlock.getStateForPlacement`: a slab of the same block becomes a double one.
-fn slab_placement(
-    block: usize,
-    default: BlockStateId,
-    ctx: &PlaceContext<'_>,
-) -> Option<BlockStateId> {
-    let replaced = ctx.state(ctx.clicked_pos());
-    if block_index(replaced).map(|(index, _)| index) == Some(block) {
-        return with_property(replaced, "type", "double")
-            .and_then(|state| with_property(state, "waterlogged", "false"));
-    }
-    let half = if lower_half(ctx) { "bottom" } else { "top" };
-    with_property(default, "type", half)
-        .and_then(|state| with_property(state, "waterlogged", flag(is_water_source(replaced))))
-}
-
-/// `StairBlock.getStateForPlacement`.
-fn stair_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
-    let pos = ctx.clicked_pos();
-    let water = flag(is_water_source(ctx.state(pos)));
-    let half = if lower_half(ctx) { "bottom" } else { "top" };
-    let state = with_property(default, "facing", ctx.horizontal_direction.name())
-        .and_then(|state| with_property(state, "half", half))
-        .and_then(|state| with_property(state, "waterlogged", water))?;
-    let shape = stairs_shape(state, ctx.state_at, pos);
-    with_property(state, "shape", shape)
-}
-
 /// `BlockBehaviour.canSurvive` as the block's class decides it, for the state standing at `pos`.
 pub fn can_survive(
     state: BlockStateId,
@@ -305,6 +230,12 @@ pub fn can_survive(
     ctx: &PlaceContext<'_>,
 ) -> Rule<bool> {
     survive::can_survive(state, pos, ctx)
+}
+
+/// `Block.getStateForPlacement` for the block the item places; `None` is a
+/// refusal.
+pub fn state_for_placement(block: usize, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
+    placement::state_for_placement(block, ctx)
 }
 
 /// `instanceof StairBlock`.
@@ -492,6 +423,42 @@ mod tests {
             Rule::Known(Some(state)) => property(state, "snowy"),
             _ => None,
         }
+    }
+
+    /// A trap door put beside `neighbour`, which may power it.
+    fn place_trapdoor_beside(neighbour: &str) -> Rule<Option<BlockStateId>> {
+        let beside = default_state(registry::block_index(neighbour).expect("a block"));
+        let state_at = |x: i32, y: i32, z: i32| {
+            if (x, y, z) == (1, 64, 0) {
+                beside
+            } else {
+                crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+            }
+        };
+        let tags = BlockTags::default();
+        let mut ctx = PlaceContext::new(
+            &state_at,
+            ((0, 63, 0), Direction::Up, (0.5, 64.0, 0.5)),
+            None,
+            (0.0, 0.0),
+            &tags,
+        );
+        // The ground is not replaced, so the trap door goes above it.
+        ctx.replace_clicked = false;
+        let trapdoor = registry::block_index("minecraft:oak_trapdoor").expect("a trap door");
+        state_for_placement(trapdoor, &ctx)
+    }
+
+    #[test]
+    fn a_trap_door_beside_a_signal_source_is_left_to_the_server() {
+        assert_eq!(
+            place_trapdoor_beside("minecraft:redstone_block"),
+            Rule::Unported
+        );
+        assert!(matches!(
+            place_trapdoor_beside("minecraft:stone"),
+            Rule::Known(Some(_))
+        ));
     }
 
     #[test]

@@ -1100,6 +1100,7 @@ impl BlockClass {
                 Method::UpdateShape,
                 Method::GetShape,
             ],
+            Self::DetectorRailBlock => &[Method::OwnSignal, Method::GetDirectSignal],
             Self::PistonBaseBlock => &[Method::GetStateForPlacement, Method::GetShape],
             Self::TallGrassBlock => &[Method::GetShape],
             Self::DryVegetationBlock => &[Method::GetShape, Method::MayPlaceOn],
@@ -1177,6 +1178,9 @@ impl BlockClass {
                 Method::UseWithoutItem,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::GetSignal,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
             ],
             Self::CraftingTableBlock => &[Method::UseWithoutItem],
             Self::CropBlock => &[Method::CanSurvive, Method::GetShape, Method::MayPlaceOn],
@@ -1231,23 +1235,43 @@ impl BlockClass {
                 Method::GetShape,
                 Method::GetCollisionShape,
             ],
-            Self::LeverBlock => &[Method::UseWithoutItem, Method::GetShape],
+            Self::LeverBlock => &[
+                Method::UseWithoutItem,
+                Method::GetShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::FaceAttachedHorizontalDirectionalBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
                 Method::UpdateShape,
             ],
-            Self::BasePressurePlateBlock => {
-                &[Method::CanSurvive, Method::UpdateShape, Method::GetShape]
-            }
+            Self::BasePressurePlateBlock => &[
+                Method::CanSurvive,
+                Method::UpdateShape,
+                Method::GetShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::RedStoneOreBlock => &[Method::UseItemOn],
+            Self::RedstoneTorchBlock => &[
+                Method::GetSignal,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::RedstoneWallTorchBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::GetSignal,
             ],
-            Self::ButtonBlock => &[Method::UseWithoutItem, Method::GetShape],
+            Self::ButtonBlock => &[
+                Method::UseWithoutItem,
+                Method::GetShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::SnowLayerBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanBeReplaced,
@@ -1264,7 +1288,7 @@ impl BlockClass {
             ],
             Self::CactusFlowerBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::SugarCaneBlock => &[Method::CanSurvive, Method::UpdateShape, Method::GetShape],
-            Self::JukeboxBlock => &[Method::UseWithoutItem, Method::UseItemOn],
+            Self::JukeboxBlock => &[Method::UseWithoutItem, Method::UseItemOn, Method::OwnSignal],
             Self::FenceBlock => &[
                 Method::GetStateForPlacement,
                 Method::UseWithoutItem,
@@ -1291,6 +1315,9 @@ impl BlockClass {
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
                 Method::GetShape,
+                Method::GetSignal,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
             ],
             Self::TrapDoorBlock => &[
                 Method::GetStateForPlacement,
@@ -1367,6 +1394,8 @@ impl BlockClass {
                 Method::CanSurvive,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
             ],
             Self::TripWireBlock => &[
                 Method::GetStateForPlacement,
@@ -1392,8 +1421,12 @@ impl BlockClass {
                 Method::UseWithoutItem,
                 Method::GetShape,
             ],
+            Self::TrappedChestBlock => &[Method::OwnSignal, Method::GetDirectSignal],
             Self::ComparatorBlock => &[Method::UseWithoutItem, Method::UpdateShape],
-            Self::DaylightDetectorBlock => &[Method::UseWithoutItem, Method::GetShape],
+            Self::DaylightDetectorBlock => {
+                &[Method::UseWithoutItem, Method::GetShape, Method::OwnSignal]
+            }
+            Self::PoweredBlock => &[Method::OwnSignal],
             Self::HopperBlock => &[
                 Method::GetStateForPlacement,
                 Method::UseWithoutItem,
@@ -1445,7 +1478,13 @@ impl BlockClass {
                 Method::GetShape,
             ],
             Self::StructureVoidBlock => &[Method::GetShape],
-            Self::ObserverBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
+            Self::ObserverBlock => &[
+                Method::GetStateForPlacement,
+                Method::UpdateShape,
+                Method::GetSignal,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::ShulkerBoxBlock => &[
                 Method::GetStateForPlacement,
                 Method::UseWithoutItem,
@@ -1537,6 +1576,8 @@ impl BlockClass {
                 Method::UseItemOn,
                 Method::GetShape,
                 Method::GetCollisionShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
             ],
             Self::SmithingTableBlock => &[Method::UseWithoutItem],
             Self::StonecutterBlock => &[
@@ -1573,7 +1614,11 @@ impl BlockClass {
             Self::NetherSproutsBlock => &[Method::GetShape, Method::MayPlaceOn],
             Self::StructureBlock => &[Method::UseWithoutItem],
             Self::JigsawBlock => &[Method::GetStateForPlacement, Method::UseWithoutItem],
-            Self::TestBlock => &[Method::GetStateForPlacement, Method::UseWithoutItem],
+            Self::TestBlock => &[
+                Method::GetStateForPlacement,
+                Method::UseWithoutItem,
+                Method::OwnSignal,
+            ],
             Self::TestInstanceBlock => &[Method::UseWithoutItem],
             Self::ComposterBlock => &[
                 Method::UseWithoutItem,
@@ -1581,6 +1626,7 @@ impl BlockClass {
                 Method::GetShape,
                 Method::GetCollisionShape,
             ],
+            Self::TargetBlock => &[Method::OwnSignal],
             Self::BeehiveBlock => &[
                 Method::GetStateForPlacement,
                 Method::UseItemOn,
@@ -1615,8 +1661,10 @@ impl BlockClass {
                 Method::GetStateForPlacement,
                 Method::UpdateShape,
                 Method::GetShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
             ],
-            Self::CalibratedSculkSensorBlock => &[Method::GetStateForPlacement],
+            Self::CalibratedSculkSensorBlock => &[Method::GetStateForPlacement, Method::GetSignal],
             Self::SculkShriekerBlock => &[
                 Method::GetStateForPlacement,
                 Method::UpdateShape,
@@ -1633,7 +1681,12 @@ impl BlockClass {
                 Method::UpdateShape,
                 Method::GetShape,
             ],
-            Self::LightningRodBlock => &[Method::GetStateForPlacement, Method::UpdateShape],
+            Self::LightningRodBlock => &[
+                Method::GetStateForPlacement,
+                Method::UpdateShape,
+                Method::OwnSignal,
+                Method::GetDirectSignal,
+            ],
             Self::SpeleothemBlock => &[
                 Method::GetStateForPlacement,
                 Method::CanSurvive,
@@ -1716,11 +1769,14 @@ pub enum Method {
     CanBeReplaced,
     CanSurvive,
     GetCollisionShape,
+    GetDirectSignal,
     GetParticlePos,
     GetShape,
+    GetSignal,
     GetStateForPlacement,
     GetType,
     MayPlaceOn,
+    OwnSignal,
     UpdateShape,
     UseItemOn,
     UseWithoutItem,

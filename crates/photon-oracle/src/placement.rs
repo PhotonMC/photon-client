@@ -91,7 +91,7 @@ fn place(name: &str, ctx: &PlaceContext<'_>) -> Result<Value, String> {
         "can_place": can_place,
     });
     match state {
-        None => described["state"] = Value::Null,
+        None => {}
         Some(state) => {
             described["state"] = json!(rules::serialize_state(state));
             let Rule::Known(survives) = rules::can_survive(state, pos, &ctx) else {

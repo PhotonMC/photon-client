@@ -32,6 +32,10 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
         methods.put("getShape", new Class<?>[] {state, getter, pos, context});
         methods.put("getCollisionShape", new Class<?>[] {state, getter, pos, context});
         methods.put("mayPlaceOn", new Class<?>[] {state, getter, pos});
+        methods.put("getSignal", new Class<?>[] {state, getter, pos, net.minecraft.core.Direction.class});
+        methods.put("ownSignal", new Class<?>[] {state, getter, pos});
+        methods.put("getDirectSignal",
+            new Class<?>[] {state, getter, pos, net.minecraft.core.Direction.class});
         methods.put("getType", new Class<?>[] {});
         methods.put("getParticlePos", new Class<?>[] {pos});
         return methods;

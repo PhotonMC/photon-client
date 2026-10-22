@@ -139,9 +139,8 @@ class BlockPlacementOracle extends BlockItemOracle {
             described.addProperty("replace_clicked", context.replacingClickedOnBlock());
             described.addProperty("can_place", context.canPlace());
             var placed = block.getStateForPlacement(context);
-            if (placed == null) {
-                described.add("state", com.google.gson.JsonNull.INSTANCE);
-            } else {
+            // A refusal has no state.
+            if (placed != null) {
                 described.addProperty("state",
                     net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(placed));
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));

@@ -11,6 +11,10 @@ pub(super) fn can_survive(
     match state_owner(state, Method::CanSurvive) {
         None => Rule::Known(true),
         Some(BlockClass::VegetationBlock) => vegetation(state, pos, ctx),
+        Some(BlockClass::CarpetBlock) => Rule::Known(!is_air(ctx.state((pos.0, pos.1 - 1, pos.2)))),
+        Some(BlockClass::FaceAttachedHorizontalDirectionalBlock) => {
+            Rule::Known(face_attached_survives(state, pos, ctx))
+        }
         _ => Rule::Unported,
     }
 }
@@ -82,4 +86,23 @@ fn vegetation(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>)
     };
     let below = block_index(ctx.state((pos.0, pos.1 - 1, pos.2)));
     Rule::Known(below.is_some_and(|(index, _)| ctx.tags.contains(index, tag)))
+}
+
+/// `FaceAttachedHorizontalDirectionalBlock.canSurvive`: the block it hangs from has a full face
+/// towards it.
+pub(super) fn face_attached_survives(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    let connected = match property(state, "face") {
+        Some("ceiling") => Direction::Down,
+        Some("floor") => Direction::Up,
+        _ => property(state, "facing")
+            .and_then(Direction::from_name)
+            .unwrap_or(Direction::North),
+    };
+    let (dx, dy, dz) = connected.opposite().step();
+    let support = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+    crate::block::state(support).is_some_and(|info| info.is_face_sturdy(connected))
 }

@@ -1,0 +1,312 @@
+//! `Block.getStateForPlacement`: the state a block takes where it is placed.
+
+use super::*;
+use photon_core::math::{mth_cos_f64, mth_sin_f64};
+
+/// What a class's `getStateForPlacement` answers; `None` is a refusal.
+type Placement = fn(usize, BlockStateId, &PlaceContext<'_>) -> Rule<Option<BlockStateId>>;
+
+/// The placement rules written so far, by the class that declares them.
+const PLACEMENTS: &[(BlockClass, Placement)] = &[
+    (BlockClass::Block, |_, default, _| {
+        Rule::Known(Some(default))
+    }),
+    (BlockClass::SnowyBlock, |_, default, ctx| {
+        Rule::Known(snowy_placement(default, ctx))
+    }),
+    (BlockClass::RotatedPillarBlock, |_, default, ctx| {
+        Rule::Known(pillar_placement(default, ctx))
+    }),
+    (BlockClass::SlabBlock, |block, default, ctx| {
+        Rule::Known(slab_placement(block, default, ctx))
+    }),
+    (BlockClass::StairBlock, |_, default, ctx| {
+        Rule::Known(stair_placement(default, ctx))
+    }),
+    (BlockClass::GlazedTerracottaBlock, |_, default, ctx| {
+        Rule::Known(glazed_placement(default, ctx))
+    }),
+    (BlockClass::ConcretePowderBlock, concrete_placement),
+    (BlockClass::TrapDoorBlock, |_, default, ctx| {
+        trapdoor_placement(default, ctx)
+    }),
+    (
+        BlockClass::FaceAttachedHorizontalDirectionalBlock,
+        |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),
+    ),
+];
+
+/// `Block.getStateForPlacement` for the block the item places; `None` is a
+/// refusal.
+pub(super) fn state_for_placement(
+    block: usize,
+    ctx: &PlaceContext<'_>,
+) -> Rule<Option<BlockStateId>> {
+    let owner = owner(&BLOCKS[block], Method::GetStateForPlacement);
+    match PLACEMENTS.iter().find(|(class, _)| Some(*class) == owner) {
+        Some((_, placement)) => placement(block, default_state(block), ctx),
+        None => Rule::Unported,
+    }
+}
+
+/// `RotatedPillarBlock.getStateForPlacement`: the axis of the face clicked.
+fn pillar_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let axis = match ctx.face.axis() {
+        Axis::X => "x",
+        Axis::Y => "y",
+        Axis::Z => "z",
+    };
+    with_property(default, "axis", axis)
+}
+
+/// `"true"` or `"false"`, as a boolean property's value.
+fn flag(value: bool) -> &'static str {
+    if value { "true" } else { "false" }
+}
+
+/// Whether a slab or stair goes in the lower half: not against a downward face, and an upward
+/// face or a hit in the lower half of the block.
+#[expect(
+    clippy::neg_cmp_op_on_partial_ord,
+    reason = "the reference's `!(y > 0.5)`, which a NaN also passes"
+)]
+fn lower_half(ctx: &PlaceContext<'_>) -> bool {
+    let pos = ctx.clicked_pos();
+    ctx.face != Direction::Down
+        && (ctx.face == Direction::Up || !(ctx.location.1 - f64::from(pos.1) > 0.5))
+}
+
+/// `SnowyBlock.getStateForPlacement`: snowy when the block above is in the snow tag
+/// (`isSnowySetting`).
+fn snowy_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let (x, y, z) = ctx.clicked_pos();
+    let above = ctx.state((x, y + 1, z));
+    let snowy =
+        block_index(above).is_some_and(|(index, _)| ctx.tags.contains(index, "minecraft:snow"));
+    with_property(default, "snowy", flag(snowy))
+}
+
+/// `SlabBlock.getStateForPlacement`: a slab of the same block becomes a double one.
+fn slab_placement(
+    block: usize,
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Option<BlockStateId> {
+    let replaced = ctx.state(ctx.clicked_pos());
+    if block_index(replaced).map(|(index, _)| index) == Some(block) {
+        return with_property(replaced, "type", "double")
+            .and_then(|state| with_property(state, "waterlogged", "false"));
+    }
+    let half = if lower_half(ctx) { "bottom" } else { "top" };
+    with_property(default, "type", half)
+        .and_then(|state| with_property(state, "waterlogged", flag(is_water_source(replaced))))
+}
+
+/// `StairBlock.getStateForPlacement`.
+fn stair_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let water = flag(is_water_source(ctx.state(pos)));
+    let half = if lower_half(ctx) { "bottom" } else { "top" };
+    let state = with_property(default, "facing", ctx.horizontal_direction.name())
+        .and_then(|state| with_property(state, "half", half))
+        .and_then(|state| with_property(state, "waterlogged", water))?;
+    let shape = stairs_shape(state, ctx.state_at, pos);
+    with_property(state, "shape", shape)
+}
+
+/// `GlazedTerracottaBlock.getStateForPlacement`: facing the player.
+fn glazed_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    with_property(
+        default,
+        "facing",
+        ctx.horizontal_direction.opposite().name(),
+    )
+}
+
+/// `FluidState.is(FluidTags.WATER)`.
+fn is_water(state: BlockStateId) -> bool {
+    use photon_data::block::definition::Fluid;
+    matches!(
+        crate::block::state_or_air(state).fluid.fluid,
+        Fluid::Water | Fluid::FlowingWater
+    )
+}
+
+/// `ConcretePowderBlock.touchesLiquid`, including the order it reads the neighbours in: the
+/// block below is only looked at when the position itself holds water.
+fn touches_liquid(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+    let mut tested = pos;
+    for direction in Direction::stream() {
+        let mut state = ctx.state(tested);
+        if direction != Direction::Down || is_water(state) {
+            let (dx, dy, dz) = direction.step();
+            tested = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
+            state = ctx.state(tested);
+            let sturdy = crate::block::state(state)
+                .is_some_and(|info| info.is_face_sturdy(direction.opposite()));
+            if is_water(state) && !sturdy {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// `ConcretePowderBlock.getStateForPlacement`: concrete at once where it meets water.
+fn concrete_placement(
+    block: usize,
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Rule<Option<BlockStateId>> {
+    let pos = ctx.clicked_pos();
+    if !is_water(ctx.state(pos)) && !touches_liquid(pos, ctx) {
+        return Rule::Known(Some(default));
+    }
+    let concrete = BLOCKS[block]
+        .name
+        .strip_suffix("_powder")
+        .and_then(registry::block_index);
+    concrete.map_or(Rule::Unported, |index| {
+        Rule::Known(Some(default_state(index)))
+    })
+}
+
+/// `Level.hasNeighborSignal`; unported where a neighbour is a block that gives a signal.
+fn has_neighbor_signal(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+    let next = |at: (i32, i32, i32), direction: Direction| {
+        let (dx, dy, dz) = direction.step();
+        (at.0 + dx, at.1 + dy, at.2 + dz)
+    };
+    for direction in Direction::stream() {
+        let neighbour = next(pos, direction);
+        let state = ctx.state(neighbour);
+        if state_owner(state, Method::GetSignal).is_some()
+            || state_owner(state, Method::OwnSignal).is_some()
+        {
+            return Rule::Unported;
+        }
+        let conductor = crate::block::state(state).is_some_and(|info| info.redstone_conductor);
+        if conductor
+            && Direction::stream().any(|other| {
+                state_owner(ctx.state(next(neighbour, other)), Method::GetDirectSignal).is_some()
+            })
+        {
+            return Rule::Unported;
+        }
+    }
+    Rule::Known(false)
+}
+
+/// `TrapDoorBlock.getStateForPlacement`.
+fn trapdoor_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
+    let pos = ctx.clicked_pos();
+    let (facing, half) = if !ctx.replace_clicked && ctx.face.axis() != Axis::Y {
+        let upper = ctx.location.1 - f64::from(pos.1) > 0.5;
+        (ctx.face, if upper { "top" } else { "bottom" })
+    } else {
+        let half = if ctx.face == Direction::Up {
+            "bottom"
+        } else {
+            "top"
+        };
+        (ctx.horizontal_direction.opposite(), half)
+    };
+    let Rule::Known(powered) = has_neighbor_signal(pos, ctx) else {
+        return Rule::Unported;
+    };
+    let open = flag(powered);
+    let water = flag(is_water_source(ctx.state(pos)));
+    let state = with_property(default, "facing", facing.name())
+        .and_then(|state| with_property(state, "half", half))
+        .and_then(|state| with_property(state, "open", open))
+        .and_then(|state| with_property(state, "powered", open))
+        .and_then(|state| with_property(state, "waterlogged", water));
+    Rule::Known(state)
+}
+
+/// `FaceAttachedHorizontalDirectionalBlock.getStateForPlacement`: the first direction the player
+/// looks along (the face clicked first) that the block can hang from.
+fn face_attached_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    nearest_looking_directions(ctx)
+        .into_iter()
+        .find_map(|direction| {
+            let state = if direction.axis() == Axis::Y {
+                let face = if direction == Direction::Up {
+                    "ceiling"
+                } else {
+                    "floor"
+                };
+                with_property(default, "face", face).and_then(|state| {
+                    with_property(state, "facing", ctx.horizontal_direction.name())
+                })
+            } else {
+                with_property(default, "face", "wall")
+                    .and_then(|state| with_property(state, "facing", direction.opposite().name()))
+            }?;
+            super::survive::face_attached_survives(state, pos, ctx).then_some(state)
+        })
+}
+
+/// The three axis directions, the nearest first, from the sizes of the look vector's parts.
+fn axis_order(
+    [x_yaw, y_mag, z_yaw]: [f32; 3],
+    pitch_cos: f32,
+    [axis_x, axis_y, axis_z]: [Direction; 3],
+) -> (Direction, Direction, Direction) {
+    let (x_mag, z_mag) = (x_yaw * pitch_cos, z_yaw * pitch_cos);
+    if x_yaw > z_yaw {
+        if y_mag > x_mag {
+            (axis_y, axis_x, axis_z)
+        } else if z_mag > y_mag {
+            (axis_x, axis_z, axis_y)
+        } else {
+            (axis_x, axis_y, axis_z)
+        }
+    } else if y_mag > z_mag {
+        (axis_y, axis_z, axis_x)
+    } else if x_mag > y_mag {
+        (axis_z, axis_x, axis_y)
+    } else {
+        (axis_z, axis_y, axis_x)
+    }
+}
+
+/// `Direction.orderedByNearest`: the six directions, the one the player looks along most first.
+fn ordered_by_nearest((y_rot, x_rot): (f32, f32)) -> [Direction; 6] {
+    let radians = (std::f64::consts::PI / 180.0) as f32;
+    let pitch = f64::from(x_rot * radians);
+    let yaw = f64::from(-y_rot * radians);
+    let (pitch_sin, pitch_cos) = (mth_sin_f64(pitch), mth_cos_f64(pitch));
+    let (yaw_sin, yaw_cos) = (mth_sin_f64(yaw), mth_cos_f64(yaw));
+    let x_yaw = yaw_sin.abs();
+    let y_mag = pitch_sin.abs();
+    let z_yaw = yaw_cos.abs();
+    let axis_x = [Direction::West, Direction::East][usize::from(yaw_sin > 0.0)];
+    let axis_y = [Direction::Down, Direction::Up][usize::from(pitch_sin < 0.0)];
+    let axis_z = [Direction::North, Direction::South][usize::from(yaw_cos > 0.0)];
+    let magnitudes = [x_yaw, y_mag, z_yaw];
+    let (first, second, third) = axis_order(magnitudes, pitch_cos, [axis_x, axis_y, axis_z]);
+    [
+        first,
+        second,
+        third,
+        third.opposite(),
+        second.opposite(),
+        first.opposite(),
+    ]
+}
+
+/// `BlockPlaceContext.getNearestLookingDirections`: when the clicked block is not replaced, the
+/// direction into it comes first.
+fn nearest_looking_directions(ctx: &PlaceContext<'_>) -> [Direction; 6] {
+    let mut directions = ordered_by_nearest(ctx.rotation);
+    if !ctx.replace_clicked {
+        let into = ctx.face.opposite();
+        if let Some(index) = directions.iter().position(|direction| *direction == into) {
+            directions.copy_within(0..index, 1);
+            directions[0] = into;
+        }
+    }
+    directions
+}
