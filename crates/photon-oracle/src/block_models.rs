@@ -21,8 +21,7 @@ fn spawner_cage_result(request: &Value) -> Result<Value, String> {
     let bits = |value: f32| format!("{:08x}", value.to_bits());
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
-        let id = photon_data::entity_type::id(string(row, "type")?).ok_or("entity type")?;
-        let (width, height, _) = photon_data::entity_type::pick(id).ok_or("pick")?.size;
+        let size = spawned_mob_size(row)?;
         let o_spin = f64::from_bits(
             u64::from_str_radix(string(row, "o_spin")?, 16).map_err(|e| e.to_string())?,
         );
@@ -32,7 +31,7 @@ fn spawner_cage_result(request: &Value) -> Result<Value, String> {
         let partial = f32::from_bits(
             u32::from_str_radix(string(row, "partial")?, 16).map_err(|e| e.to_string())?,
         );
-        let shown = SpawnerDisplayPose::of((0, 0, 0), (o_spin, spin), partial, (width, height));
+        let shown = SpawnerDisplayPose::of((0, 0, 0), (o_spin, spin), partial, size);
         let cage = SpawnerCage {
             origin: [0.0; 3],
             spin: shown.spin,
@@ -88,4 +87,78 @@ fn builtin_block_models_result() -> Value {
         })
         .collect();
     serde_json::json!({ "states": states })
+}
+
+/// The width and height of the mob a spawner shows, made as the real world makes it from the
+/// spawner's update tag (the entity's `id`, `IsBaby` and `Size`).
+fn spawned_mob_size(row: &Value) -> Result<(f32, f32), String> {
+    use photon_world::{BlockEntityInput, ClientWorld, DimensionBounds, SectionInput};
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let spawner = photon_data::block::registry::block("minecraft:spawner")
+        .ok_or("no spawner block")?
+        .default_state_id();
+    let mut blocks = vec![0; 4_096];
+    // The spawner stands at 1, 1, 1: the section's index runs y, z, x.
+    blocks[256 + 16 + 1] = spawner.0;
+    let biomes = vec![0; 64];
+    let section = SectionInput {
+        non_empty_block_count: 1,
+        fluid_count: 0,
+        block_states: &blocks,
+        biomes: &biomes,
+    };
+    if !world.replace_chunk(0, 0, [section]) {
+        return Err("the spawner chunk was rejected".into());
+    }
+    let bytes = spawner_tag(row)?;
+    let type_id =
+        photon_data::block_entity_type::id("minecraft:mob_spawner").ok_or("no spawner entity")?;
+    let input = BlockEntityInput {
+        x: 1,
+        y: 1,
+        z: 1,
+        type_id,
+        tag: Some(&bytes),
+    };
+    if !world.apply_block_entity_update(input) {
+        return Err("the spawner was rejected".into());
+    }
+    world
+        .tick_block_entities(None)
+        .map_err(|_| "the spawner failed to tick".to_owned())?;
+    world
+        .spawner_display_size_at((1, 1, 1))
+        .ok_or_else(|| "the spawner shows no mob".to_owned())
+}
+
+/// The update tag of a spawner whose `SpawnData` entity has the row's `id`, `IsBaby` and `Size`.
+fn spawner_tag(row: &Value) -> Result<Vec<u8>, String> {
+    use photon_core::nbt::{Field, FieldValue};
+    let mut entity = vec![Field {
+        key: "id".into(),
+        value: FieldValue::Str(string(row, "type")?.to_owned()),
+    }];
+    if row["baby"].as_bool() == Some(true) {
+        entity.push(Field {
+            key: "IsBaby".into(),
+            value: FieldValue::Byte(1),
+        });
+    }
+    if let Some(size) = row["size"].as_i64() {
+        entity.push(Field {
+            key: "Size".into(),
+            value: FieldValue::Int(size as i32),
+        });
+    }
+    let data = Field {
+        key: "entity".into(),
+        value: FieldValue::Compound(entity),
+    };
+    let tag = [Field {
+        key: "SpawnData".into(),
+        value: FieldValue::Compound(vec![data]),
+    }];
+    let mut bytes = Vec::new();
+    photon_core::nbt::write_nbt(Some(&tag), &mut bytes);
+    Ok(bytes)
 }

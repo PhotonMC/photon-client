@@ -20,6 +20,7 @@ mod player;
 pub(crate) mod pose;
 mod projectiles;
 mod shaking;
+mod spawner_cage;
 mod spear;
 mod view_state;
 
@@ -119,7 +120,7 @@ const ORDER: &[Cases] = &[
     objects::chest_cases,
     objects::shulker_box,
     objects::builtin_block_models,
-    objects::spawner_cage,
+    spawner_cage::spawner_cage,
     objects::bell,
     objects::enchant_table,
     objects::lectern,

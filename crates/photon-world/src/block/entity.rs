@@ -12,6 +12,8 @@ pub struct ClientSpawnerState {
     /// The `id` of the entity of `SpawnData`, the one the spawner shows spinning; none when the
     /// spawner names no entity.
     pub(crate) entity_id: Option<String>,
+    /// What else that entity's tag sets of the mob shown: `IsBaby` and a cube mob's `Size`.
+    pub(crate) entity_traits: SpawnedMobTraits,
     /// A trial spawner's `nextMobSpawnsAt`, in game time; zero for a mob spawner.
     pub(crate) next_mob_spawns_at: i64,
 }
@@ -28,6 +30,7 @@ impl Default for ClientSpawnerState {
             required_player_range: 16,
             spawn_range: 4,
             entity_id: None,
+            entity_traits: SpawnedMobTraits::default(),
             next_mob_spawns_at: 0,
         }
     }
@@ -384,6 +387,7 @@ pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<Cl
         });
         return Some(ClientSpawnerState {
             entity_id: spawn_data_entity(&fields, "spawn_data"),
+            entity_traits: spawn_data_traits(&fields, "spawn_data"),
             next_mob_spawns_at: next.unwrap_or(0),
             ..ClientSpawnerState::default()
         });
@@ -397,8 +401,43 @@ pub(crate) fn parse_spawner_state(type_id: i32, tag: Option<&[u8]>) -> Option<Cl
         required_player_range: spawner_int_number(&fields, "RequiredPlayerRange", 16),
         spawn_range: spawner_int_number(&fields, "SpawnRange", 4),
         entity_id: spawn_data_entity(&fields, "SpawnData"),
+        entity_traits: spawn_data_traits(&fields, "SpawnData"),
         next_mob_spawns_at: 0,
     })
+}
+
+/// What the entity tag of a spawner's `SpawnData` sets of the mob it shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SpawnedMobTraits {
+    /// `IsBaby`.
+    pub baby: bool,
+    /// A cube mob's size (`Size` plus one), none when the tag has no `Size`.
+    pub cube_size: Option<i32>,
+}
+
+/// The traits of the entity of `SpawnData` (`EntityType.loadEntityRecursive` reads the rest of the
+/// tag too; these are the keys the vanilla trial spawner configurations use).
+fn spawn_data_traits(fields: &[photon_core::nbt::Field], key: &str) -> SpawnedMobTraits {
+    use photon_core::nbt::FieldValue;
+    let compound = |fields: &[photon_core::nbt::Field], key: &str| {
+        fields.iter().find_map(|field| match &field.value {
+            FieldValue::Compound(inner) if field.key == key => Some(inner.clone()),
+            _ => None,
+        })
+    };
+    let Some(entity) = compound(fields, key).and_then(|data| compound(&data, "entity")) else {
+        return SpawnedMobTraits::default();
+    };
+    let number = |key: &str| {
+        entity
+            .iter()
+            .find(|field| field.key == key)
+            .and_then(|field| numeric_nbt_value(&field.value))
+    };
+    SpawnedMobTraits {
+        baby: number("IsBaby").is_some_and(|value| value != 0),
+        cube_size: number("Size").map(|size| size + 1),
+    }
 }
 
 /// `SpawnData.entityToSpawn`'s `id`: none when `SpawnData` or its `entity` is missing or has no id.

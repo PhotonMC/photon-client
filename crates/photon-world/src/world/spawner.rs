@@ -9,6 +9,7 @@ use crate::*;
 pub(crate) struct SpawnerDisplayEntry {
     pub(super) pos: Pos,
     type_name: String,
+    traits: SpawnedMobTraits,
     /// A trial spawner makes its mob once and keeps it while the block entity lives.
     trial: bool,
     entity: ClientEntity,
@@ -32,14 +33,20 @@ impl ClientWorld {
 
     /// `BaseSpawner.getOrCreateDisplayEntity`: the mob of the type the spawner names is made when it
     /// first shows one and again when the type changes; a spawner that names none shows none.
-    fn sync_spawner_display(&mut self, pos: Pos, type_name: Option<&str>, trial: bool) {
+    fn sync_spawner_display(
+        &mut self,
+        pos: Pos,
+        (type_name, traits): (Option<&str>, SpawnedMobTraits),
+        trial: bool,
+    ) {
         let current = self
             .spawner_displays
             .iter()
             .position(|shown| shown.pos == pos);
         let kept = current.is_some_and(|index| {
             let shown = &self.spawner_displays[index];
-            (trial && shown.trial) || Some(shown.type_name.as_str()) == type_name
+            (trial && shown.trial)
+                || (Some(shown.type_name.as_str()) == type_name && shown.traits == traits)
         });
         if kept {
             return;
@@ -48,9 +55,25 @@ impl ClientWorld {
             self.spawner_displays.remove(index);
         }
         let Some(type_name) = type_name else { return };
-        let Some(type_id) = photon_data::entity_type::id(type_name) else {
-            return;
-        };
+        if let Some(entity) = self.make_display_entity(pos, type_name, traits) {
+            self.spawner_displays.push(SpawnerDisplayEntry {
+                pos,
+                type_name: type_name.to_owned(),
+                traits,
+                trial,
+                entity,
+            });
+        }
+    }
+
+    /// The mob of a type, made on its own and set up by the traits of the spawner's entity tag.
+    fn make_display_entity(
+        &mut self,
+        pos: Pos,
+        type_name: &str,
+        traits: SpawnedMobTraits,
+    ) -> Option<ClientEntity> {
+        let type_id = photon_data::entity_type::id(type_name)?;
         let id = EntityId(
             self.spawner_displays
                 .iter()
@@ -75,15 +98,13 @@ impl ClientWorld {
         if let Some(position) = position {
             self.entities_mut().remove_from_section(id, position);
         }
-        let entity = self.entities.remove(id);
-        if let (true, Some(entity)) = (placed, entity) {
-            self.spawner_displays.push(SpawnerDisplayEntry {
-                pos,
-                type_name: type_name.to_owned(),
-                trial,
-                entity,
-            });
+        let mut entity = self.entities.remove(id).filter(|_| placed)?;
+        // `loadEntityRecursive`: the tag sets the mob up before it is shown.
+        entity.baby = traits.baby;
+        if let Some(size) = traits.cube_size.filter(|_| entity.is_cube_mob()) {
+            entity.set_cube_size(size);
         }
+        Some(entity)
     }
 
     /// The mobs to draw: the entities the server sent and the ones spawners show.
@@ -125,6 +146,16 @@ impl ClientWorld {
             .map(|shown| &shown.entity)
     }
 
+    /// The width and height of the mob the spawner at a place shows.
+    pub fn spawner_display_size_at(&self, pos: Pos) -> Option<(f32, f32)> {
+        let shown = self
+            .spawner_displays
+            .iter()
+            .find(|shown| shown.pos == pos)?;
+        let dimensions = shown.entity.dimensions();
+        Some((dimensions.width(), dimensions.height()))
+    }
+
     /// `TrialSpawnerRenderer.extractSpawnerData`: where and how the mob of a spawner is drawn.
     pub(crate) fn spawner_display_pose(
         &self,
@@ -153,11 +184,15 @@ impl ClientWorld {
     pub(super) fn tick_spawner(&mut self, pos: Pos) {
         let Some(entity) = self.block_entity_at(pos.0, pos.1, pos.2) else {
             self.block_tickers.unregister(pos);
-            self.sync_spawner_display(pos, None, false);
+            self.sync_spawner_display(pos, (None, SpawnedMobTraits::default()), false);
             return;
         };
         let state = entity.spawner_state().cloned().unwrap_or_default();
-        self.sync_spawner_display(pos, state.entity_id.as_deref(), false);
+        self.sync_spawner_display(
+            pos,
+            (state.entity_id.as_deref(), state.entity_traits),
+            false,
+        );
         let centre = (
             f64::from(pos.0) + 0.5,
             f64::from(pos.1) + 0.5,
@@ -196,14 +231,14 @@ impl ClientWorld {
     pub(super) fn tick_trial_spawner(&mut self, pos: Pos) {
         let Some(entity) = self.block_entity_at(pos.0, pos.1, pos.2) else {
             self.block_tickers.unregister(pos);
-            self.sync_spawner_display(pos, None, false);
+            self.sync_spawner_display(pos, (None, SpawnedMobTraits::default()), false);
             return;
         };
         let state = entity.spawner_state().cloned().unwrap_or_default();
         let block = self.block_state_or_air(pos.0, pos.1, pos.2);
         let speed = trial_spin_speed(crate::block::rules::property(block, "trial_spawner_state"));
         if speed.is_some() {
-            self.sync_spawner_display(pos, state.entity_id.as_deref(), true);
+            self.sync_spawner_display(pos, (state.entity_id.as_deref(), state.entity_traits), true);
         }
         let delay = (state.next_mob_spawns_at - self.game_time() as i64).max(0);
         if let (Some(speed), Some(entity)) = (speed, self.block_entity_mut_at(pos)) {

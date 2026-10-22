@@ -1391,6 +1391,13 @@ class EntityBlockOracle extends EntityAquaticOracle {
             var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
                 net.minecraft.resources.Identifier.parse(row.get("type").getAsString()));
             var entity = type.create(scene.level(), net.minecraft.world.entity.EntitySpawnReason.LOAD);
+            // What the entity tag of the spawner's data sets: `IsBaby`, and a cube mob's `Size` plus one.
+            if (row.has("baby") && entity instanceof net.minecraft.world.entity.Mob mob) {
+                mob.setBaby(row.get("baby").getAsBoolean());
+            }
+            if (row.has("size") && entity instanceof net.minecraft.world.entity.monster.cubemob.AbstractCubeMob cube) {
+                cube.setSize(row.get("size").getAsInt() + 1, false);
+            }
             var state = new net.minecraft.client.renderer.blockentity.state.SpawnerRenderState();
             net.minecraft.client.renderer.blockentity.TrialSpawnerRenderer.extractSpawnerData(
                 state, Oracle.f32(row, "partial"), entity, dispatcher, Oracle.f64(row, "o_spin"), Oracle.f64(row, "spin"));
