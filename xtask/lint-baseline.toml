@@ -417,7 +417,6 @@
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 11
 "crates/photon-world/src/block/culling.rs::skip_rendering" = 12
 "crates/photon-world/src/block/fluid.rs::fluid_state" = 11
-"crates/photon-world/src/block/rules.rs::can_be_replaced" = 14
 "crates/photon-world/src/block/rules.rs::stairs_shape" = 16
 "crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 49
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 27

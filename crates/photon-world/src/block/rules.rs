@@ -156,23 +156,41 @@ pub fn can_be_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<bool
     };
     match owner(block, Method::CanBeReplaced) {
         None => Rule::Known(block.replaceable && (ctx.item.is_none() || !ctx.holds_item_of(state))),
-        Some(BlockClass::SlabBlock) => {
-            let kind = property(state, "type");
-            if kind == Some("double") || !ctx.holds_item_of(state) {
-                return Rule::Known(false);
-            }
-            if !ctx.replace_clicked {
-                return Rule::Known(true);
-            }
-            let above = ctx.location.1 - f64::from(ctx.clicked_pos().1) > 0.5;
-            let horizontal = ctx.face.axis() != Axis::Y;
-            Rule::Known(if kind == Some("bottom") {
-                ctx.face == Direction::Up || above && horizontal
-            } else {
-                ctx.face == Direction::Down || !above && horizontal
-            })
-        }
+        Some(BlockClass::SlabBlock) => Rule::Known(slab_replaced(state, ctx)),
+        Some(BlockClass::SnowLayerBlock) => Rule::Known(snow_layer_replaced(state, ctx)),
         _ => Rule::Unported,
+    }
+}
+
+/// `SlabBlock.canBeReplaced`: a single slab gives way to its own item from the side it would
+/// join.
+fn slab_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
+    let kind = property(state, "type");
+    if kind == Some("double") || !ctx.holds_item_of(state) {
+        return false;
+    }
+    if !ctx.replace_clicked {
+        return true;
+    }
+    let above = ctx.location.1 - f64::from(ctx.clicked_pos().1) > 0.5;
+    let horizontal = ctx.face.axis() != Axis::Y;
+    if kind == Some("bottom") {
+        ctx.face == Direction::Up || above && horizontal
+    } else {
+        ctx.face == Direction::Down || !above && horizontal
+    }
+}
+
+/// `SnowLayerBlock.canBeReplaced`: one layer gives way to any block; snow in the hand adds to a
+/// layer that is not full, from above when it is the block clicked.
+fn snow_layer_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
+    let layers: i32 = property(state, "layers")
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(1);
+    if !ctx.holds_item_of(state) || layers >= 8 {
+        layers == 1
+    } else {
+        !ctx.replace_clicked || ctx.face == Direction::Up
     }
 }
 
@@ -444,6 +462,28 @@ mod tests {
             Rule::Known(Some(state)) => property(state, "snowy"),
             _ => None,
         }
+    }
+
+    #[test]
+    fn one_snow_layer_gives_way_and_more_do_not() {
+        let snow = registry::block_index("minecraft:snow").expect("snow");
+        let layers = |count: &str| {
+            with_property(default_state(snow), "layers", count).expect("a layer count")
+        };
+        let state_at = |_: i32, _: i32, _: i32| crate::constants::VANILLA_AIR_BLOCK_STATE_ID;
+        let tags = BlockTags::default();
+        let ctx = PlaceContext {
+            state_at: &state_at,
+            hit_pos: (0, 64, 0),
+            face: Direction::North,
+            location: (0.5, 64.1, 0.0),
+            item: None,
+            horizontal_direction: Direction::North,
+            replace_clicked: true,
+            tags: &tags,
+        };
+        assert_eq!(can_be_replaced(layers("1"), &ctx), Rule::Known(true));
+        assert_eq!(can_be_replaced(layers("2"), &ctx), Rule::Known(false));
     }
 
     #[test]
