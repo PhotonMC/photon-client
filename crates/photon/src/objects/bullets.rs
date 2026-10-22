@@ -25,16 +25,34 @@ const KNOT_LAYER: &str = "minecraft:leash_knot#main";
 const KNOT: &str = "entity/lead_knot/lead_knot";
 const FANGS_LAYER: &str = "minecraft:evoker_fangs#main";
 const FANGS: &str = "entity/illager/evoker_fangs";
+const SKULL_LAYER: &str = "minecraft:wither_skull#main";
+const SKULL: &str = "entity/wither/wither";
+const SKULL_DANGEROUS: &str = "entity/wither/wither_invulnerable";
 
 /// `ShulkerBulletRenderer`'s shell colour, `0x26FFFFFF`: its alpha byte.
 const SHELL_ALPHA: u8 = 0x26;
 
 /// The paths (under `textures/`) of the textures these projectiles wear.
 pub fn textures() -> impl Iterator<Item = &'static str> {
-    [BULLET, SPIT, FANGS, KNOT].into_iter()
+    [BULLET, SPIT, FANGS, KNOT, SKULL, SKULL_DANGEROUS].into_iter()
 }
 
-/// The shulker bullets, llama spit and evoker fangs the server added.
+/// The model layer and the texture of the projectile an entity is, if it is one of these.
+fn look_of(entity: &photon_world::ClientEntity) -> Option<(&'static str, &'static str)> {
+    Some(match photon_data::entity_type::name(entity.type_id)? {
+        "minecraft:shulker_bullet" => (BULLET_LAYER, BULLET),
+        "minecraft:llama_spit" => (SPIT_LAYER, SPIT),
+        "minecraft:evoker_fangs" => (FANGS_LAYER, FANGS),
+        "minecraft:leash_knot" => (KNOT_LAYER, KNOT),
+        "minecraft:wither_skull" if entity.wither_skull_dangerous() => {
+            (SKULL_LAYER, SKULL_DANGEROUS)
+        }
+        "minecraft:wither_skull" => (SKULL_LAYER, SKULL),
+        _ => return None,
+    })
+}
+
+/// The shulker bullets, llama spit, evoker fangs, leash knots and wither skulls the server added.
 pub fn remote_bullets(
     session: &PlaySession,
     models: &mut MobModels,
@@ -45,12 +63,8 @@ pub fn remote_bullets(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world.entities().drawn() {
-        let (layer, texture) = match photon_data::entity_type::name(entity.type_id) {
-            Some("minecraft:shulker_bullet") => (BULLET_LAYER, BULLET),
-            Some("minecraft:llama_spit") => (SPIT_LAYER, SPIT),
-            Some("minecraft:evoker_fangs") => (FANGS_LAYER, FANGS),
-            Some("minecraft:leash_knot") => (KNOT_LAYER, KNOT),
-            _ => continue,
+        let Some((layer, texture)) = look_of(entity) else {
+            continue;
         };
         let (Some(snapshot), Some(rect), Some(model)) = (
             world.entity_snapshot(entity.id(), partial),
@@ -68,40 +82,80 @@ pub fn remote_bullets(
         );
         // `Entity.getLightProbePosition`: the eyes.
         let light = packed_light(world, Vec3::new(x, y + f64::from(entity.eye_height()), z));
-        let (y_rot, x_rot) = (entity.y_rot_at(partial), entity.x_rot_at(partial));
-        if texture == BULLET {
-            let age = entity.tick_count() as f32 + partial;
-            model.setup_shulker_bullet(y_rot, x_rot);
-            let [core, shell] = shulker_bullet_poses(&base, age);
-            // `ShulkerBulletRenderer.getBlockLightLevel`: fifteen.
-            let light = full_block_light(light);
-            vertices.extend(boat_vertices(model, &core, light, rect));
-            vertices.extend(mob_vertices_blended(
-                model,
-                &shell,
-                rect,
-                (light, SHELL_ALPHA),
-                view.camera,
-            ));
-        } else if texture == KNOT {
-            model.setup_leash_knot();
-            let pose = leash_knot_pose(&base);
-            vertices.extend(boat_vertices(model, &pose, light, rect));
-        } else if texture == SPIT {
-            model.setup_llama_spit();
-            let pose = llama_spit_pose(&base, y_rot, x_rot);
-            vertices.extend(boat_vertices(model, &pose, light, rect));
-        } else {
-            // `EvokerFangsRenderer.extractRenderState`: the turn is the current one, not between two.
-            let progress = entity
-                .evoker_fangs()
-                .map_or(0.0, |own| own.animation_progress(partial));
-            if progress == 0.0 {
-                continue;
-            }
-            model.setup_evoker_fangs(progress);
-            let pose = evoker_fangs_pose(&base, entity.rotation().0);
-            vertices.extend(boat_vertices(model, &pose, light, rect));
+        let drawn = Drawn {
+            entity,
+            base,
+            light,
+            partial,
+        };
+        draw(model, texture, (&drawn, rect, view), vertices);
+    }
+}
+
+/// What a projectile is drawn from.
+struct Drawn<'a> {
+    entity: &'a photon_world::ClientEntity,
+    base: Pose,
+    light: i32,
+    partial: f32,
+}
+
+/// One projectile's triangles.
+fn draw(
+    model: &mut photon_render::entity::mob_model::MobModel,
+    texture: &str,
+    (drawn, rect, view): (
+        &Drawn,
+        photon_render::entity::textures::TextureRect,
+        FrameView,
+    ),
+    vertices: &mut Vec<Vertex>,
+) {
+    let Drawn {
+        entity,
+        base,
+        light,
+        partial,
+    } = drawn;
+    let (y_rot, x_rot) = (entity.y_rot_at(*partial), entity.x_rot_at(*partial));
+    if texture == BULLET {
+        let age = entity.tick_count() as f32 + partial;
+        model.setup_shulker_bullet(y_rot, x_rot);
+        let [core, shell] = shulker_bullet_poses(base, age);
+        // `ShulkerBulletRenderer.getBlockLightLevel`: fifteen.
+        let light = full_block_light(*light);
+        vertices.extend(boat_vertices(model, &core, light, rect));
+        vertices.extend(mob_vertices_blended(
+            model,
+            &shell,
+            rect,
+            (light, SHELL_ALPHA),
+            view.camera,
+        ));
+    } else if texture == SKULL || texture == SKULL_DANGEROUS {
+        model.setup_wither_skull(y_rot, x_rot);
+        let mut pose = *base;
+        pose.scale(-1.0, -1.0, 1.0);
+        // `WitherSkullRenderer.getBlockLightLevel`: fifteen.
+        vertices.extend(boat_vertices(model, &pose, full_block_light(*light), rect));
+    } else if texture == KNOT {
+        model.setup_leash_knot();
+        let pose = leash_knot_pose(base);
+        vertices.extend(boat_vertices(model, &pose, *light, rect));
+    } else if texture == SPIT {
+        model.setup_llama_spit();
+        let pose = llama_spit_pose(base, y_rot, x_rot);
+        vertices.extend(boat_vertices(model, &pose, *light, rect));
+    } else {
+        // `EvokerFangsRenderer.extractRenderState`: the turn is the current one, not between two.
+        let progress = entity
+            .evoker_fangs()
+            .map_or(0.0, |own| own.animation_progress(*partial));
+        if progress == 0.0 {
+            return;
         }
+        model.setup_evoker_fangs(progress);
+        let pose = evoker_fangs_pose(base, entity.rotation().0);
+        vertices.extend(boat_vertices(model, &pose, *light, rect));
     }
 }

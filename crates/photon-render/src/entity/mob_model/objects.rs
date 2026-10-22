@@ -93,6 +93,16 @@ impl MobModel {
         self.root.reset();
     }
 
+    /// `SkullModel.setupAnim` for the wither's flying skull: the head turned the way it flies.
+    pub fn setup_wither_skull(&mut self, y_rot: f32, x_rot: f32) {
+        self.root.reset();
+        let degrees = (std::f64::consts::PI / 180.0) as f32;
+        if let Some(head) = self.root.child_mut("head") {
+            head.y_rot = y_rot * degrees;
+            head.x_rot = x_rot * degrees;
+        }
+    }
+
     /// `LeashKnotModel` has no animation: its part stays where the mesh puts it.
     pub fn setup_leash_knot(&mut self) {
         self.root.reset();

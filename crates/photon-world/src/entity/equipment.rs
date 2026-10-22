@@ -9,6 +9,11 @@ impl ClientEntity {
     }
 
     /// The stack a dropped item holds.
+    /// `WitherSkull.isDangerous`: the blue skull the wither shoots now and then.
+    pub fn wither_skull_dangerous(&self) -> bool {
+        self.living.wither_skull_dangerous
+    }
+
     pub fn item_stack(&self) -> Option<&ClientItemStackState> {
         self.item_stack.as_ref()
     }
