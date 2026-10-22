@@ -268,7 +268,7 @@ impl Menu {
                             lang,
                             gui_size(client),
                             &Component::translatable("connect.failed"),
-                            &Component::literal(&reason),
+                            &reason,
                         ));
                     }
                 }

@@ -6,7 +6,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use photon_core::math::Vec3;
-use photon_net::connection::PlaySession;
+use photon_game::text::Component;
+use photon_net::connection::{ConnectionError, PlaySession};
 use photon_render::VulkanBackend;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
@@ -163,7 +164,7 @@ impl Status {
 /// drawing; its session, or why it failed.
 pub(crate) struct JoinTask {
     pub status: Arc<Status>,
-    result: std::sync::mpsc::Receiver<std::result::Result<PlaySession, String>>,
+    result: std::sync::mpsc::Receiver<std::result::Result<PlaySession, Component>>,
 }
 
 impl JoinTask {
@@ -174,19 +175,24 @@ impl JoinTask {
         std::thread::Builder::new()
             .name("Server Connector".to_owned())
             .spawn(move || {
-                let _ = send.send(join(server, &shared).map_err(|error| error.to_string()));
+                let _ = send.send(join(server, &shared).map_err(|error| {
+                    match error.downcast_ref::<ConnectionError>() {
+                        Some(ConnectionError::Disconnected(reason)) => (**reason).clone(),
+                        _ => Component::literal(error.to_string()),
+                    }
+                }));
             })
             .expect("a thread to connect on");
         Self { status, result }
     }
 
     /// The session once the join has finished, or why it failed; none while it goes on.
-    pub(crate) fn finished(&self) -> Option<std::result::Result<PlaySession, String>> {
+    pub(crate) fn finished(&self) -> Option<std::result::Result<PlaySession, Component>> {
         match self.result.try_recv() {
             Ok(result) => Some(result),
             Err(std::sync::mpsc::TryRecvError::Empty) => None,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                Some(Err("the connection thread stopped".to_owned()))
+                Some(Err(Component::literal("the connection thread stopped")))
             }
         }
     }

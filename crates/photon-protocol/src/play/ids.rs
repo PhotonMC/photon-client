@@ -13,6 +13,12 @@ pub const LOGIN_ACKNOWLEDGED_PACKET_ID: i32 = 3;
 
 pub const LOGIN_FINISHED_PACKET_ID: i32 = 2;
 
+/// `ClientboundLoginDisconnectPacket`.
+pub const LOGIN_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 0;
+
+/// `ClientboundDisconnectPacket` in the configuration phase.
+pub const CONFIG_CLIENTBOUND_DISCONNECT_PACKET_ID: i32 = 2;
+
 pub const LOGIN_COMPRESSION_PACKET_ID: i32 = 3;
 
 pub const STATUS_SERVERBOUND_REQUEST_PACKET_ID: i32 = 0;

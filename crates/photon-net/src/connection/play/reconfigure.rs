@@ -185,6 +185,10 @@ impl PlaySession {
         self.link.switching = None;
         self.link.transfer_failed = kind == SwitchKind::Transferring;
         let message = match (kind, error) {
+            (_, ConnectionError::Disconnected(reason)) => {
+                self.link.disconnect = Some((**reason).clone());
+                return;
+            }
             (_, ConnectionError::ServerDisconnected) => {
                 self.link.disconnect = Some(Component::translatable("disconnect.endOfStream"));
                 return;
@@ -378,6 +382,59 @@ mod tests {
         assert!(!session.transfer_failed());
         // Nothing is read or sent over it any more.
         session.drain().expect("drained");
+    }
+
+    #[test]
+    fn the_reason_a_server_disconnects_with_during_the_configuration_is_kept() {
+        use std::io::Write;
+        let mut session = reconfiguring_against(|mut stream| {
+            // A plain string component: the string tag with no name.
+            let mut body = vec![8, 0, 11];
+            body.extend_from_slice(b"Server full");
+            stream
+                .write_all(&framed(CONFIG_CLIENTBOUND_DISCONNECT_PACKET_ID, &body))
+                .expect("disconnect");
+        });
+        session.wait(Duration::from_secs(5)).expect("ended");
+        assert_eq!(session.switching(), None);
+        assert_eq!(
+            session.disconnected(),
+            Some(&photon_game::text::Component::literal("Server full"))
+        );
+    }
+
+    #[test]
+    fn the_reason_a_server_disconnects_with_during_the_login_is_kept() {
+        use std::io::Write;
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+        let address = listener.local_addr().expect("address");
+        std::thread::spawn(move || {
+            let mut stream = Transport::from(listener.accept().expect("accept").0);
+            read_packet(&mut stream, None).expect("handshake");
+            read_packet(&mut stream, None).expect("hello");
+            let mut body = Vec::new();
+            let json = br#"{"text":"You are banned"}"#;
+            wire::write_varint(json.len() as i32, &mut body);
+            body.extend_from_slice(json);
+            stream
+                .write_all(&framed(LOGIN_CLIENTBOUND_DISCONNECT_PACKET_ID, &body))
+                .expect("disconnect");
+        });
+        let error = match PlaySession::connect(
+            address,
+            "Tester",
+            Duration::from_secs(5),
+            false,
+            photon_protocol::configuration::ClientInformation::default(),
+        ) {
+            Err(error) => error,
+            Ok(_) => panic!("the login should have ended"),
+        };
+        assert!(matches!(
+            error,
+            ConnectionError::Disconnected(reason)
+                if *reason == photon_game::text::Component::literal("You are banned")
+        ));
     }
 
     #[test]

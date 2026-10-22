@@ -130,7 +130,7 @@ fn log_in(
                     &state.cookies,
                 )?;
             }
-            0 => return Err(ConnectionError::ServerDisconnected),
+            LOGIN_CLIENTBOUND_DISCONNECT_PACKET_ID => return Err(login_disconnect(payload)),
             LOGIN_CLIENTBOUND_HELLO_PACKET_ID => {
                 let hello = login::ClientboundHelloPacket::decode(&mut &payload[..])
                     .map_err(|_| ConnectionError::Codec("login hello"))?;
@@ -152,6 +152,28 @@ fn log_in(
         }
     }
     Ok(compression_threshold)
+}
+
+/// `ClientboundDisconnectPacket`: the reason goes to the disconnected screen.
+fn config_disconnect(payload: &[u8]) -> ConnectionError {
+    let mut input = payload;
+    match read_disconnect_reason(&mut input) {
+        Ok(reason) => ConnectionError::Disconnected(Box::new(reason)),
+        Err(error) => error,
+    }
+}
+
+/// `ClientboundLoginDisconnectPacket`: the reason is JSON text (`ByteBufCodecs.lenientJson`).
+fn login_disconnect(payload: &[u8]) -> ConnectionError {
+    let mut input = payload;
+    let reason = photon_core::utf8::read_utf8(&mut input, 262_144)
+        .ok()
+        .map(|units| String::from_utf16_lossy(&units))
+        .and_then(|text| photon_core::json::parse(&text).ok())
+        .and_then(|json| photon_game::text::Component::from_json(&json));
+    reason.map_or(ConnectionError::Codec("login disconnect"), |reason| {
+        ConnectionError::Disconnected(Box::new(reason))
+    })
 }
 
 /// `handleCustomQuery`: nothing to answer with.
@@ -338,7 +360,7 @@ pub fn configure_connection(
             CONFIG_CLIENTBOUND_CUSTOM_REPORT_DETAILS_PACKET_ID | SERVER_LINKS => {
                 take_server_notes(state, (packet_id, payload))?;
             }
-            2 => return Err(ConnectionError::ServerDisconnected),
+            CONFIG_CLIENTBOUND_DISCONNECT_PACKET_ID => return Err(config_disconnect(payload)),
             CONFIG_CLIENTBOUND_TRANSFER_PACKET_ID => {
                 // `handleTransfer`: the connection is let go and another is made.
                 let transfer = cookie::ClientboundTransferPacket::decode(&mut &payload[..])

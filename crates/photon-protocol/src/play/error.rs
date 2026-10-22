@@ -13,6 +13,8 @@ pub enum ConnectionError {
         id: i32,
     },
     ServerDisconnected,
+    /// The server ended the connection and said why (a login or configuration `Disconnect`).
+    Disconnected(Box<photon_game::text::Component>),
     /// The session server did not accept the client's join (`authenticateServer`).
     LoginFailed(LoginFailure),
     InvalidArgument(&'static str),
@@ -34,6 +36,7 @@ impl fmt::Display for ConnectionError {
                 write!(formatter, "unsupported packet id {id} in {phase:?}")
             }
             Self::ServerDisconnected => formatter.write_str("server disconnected"),
+            Self::Disconnected(_) => formatter.write_str("server disconnected"),
             Self::LoginFailed(failure) => write!(formatter, "Failed to log in: {failure}"),
             Self::InvalidArgument(name) => write!(formatter, "invalid argument: {name}"),
             Self::Transfer { host, port } => write!(formatter, "transferred to {host}:{port}"),
