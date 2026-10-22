@@ -118,6 +118,7 @@ const ORDER: &[Cases] = &[
     player::end_flash_pose,
     objects::chest_cases,
     objects::shulker_box,
+    objects::builtin_block_models,
     objects::bell,
     objects::enchant_table,
     objects::lectern,

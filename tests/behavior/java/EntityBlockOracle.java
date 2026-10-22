@@ -1239,4 +1239,101 @@ class EntityBlockOracle extends EntityAquaticOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /**
+     * The game's own block model table for entities (`BuiltInBlockModels`): for every block state
+     * it holds, the model it names, written by walking the records it is made of. A state key is
+     * `BlockStateParser.serialize`. Three things are written short: a `Transformation` is the word
+     * "transform" (the matrices are compared elsewhere), the tint sources are left out, and a
+     * `BlockState` is its serialized string.
+     */
+    static JsonObject builtInBlockModels(final JsonObject request) throws Exception {
+        Oracle.vanillaRegistries();
+        var models = net.minecraft.client.renderer.block.BuiltInBlockModels.createBlockModels(
+            net.minecraft.client.color.block.BlockColors.createDefault());
+        var sorted = new java.util.TreeMap<String, String>();
+        for (var entry : models.entrySet()) {
+            sorted.put(net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(entry.getKey()),
+                describeEntry(entry.getKey(), entry.getValue()));
+        }
+        var rows = new JsonArray();
+        for (var entry : sorted.entrySet()) {
+            var row = new JsonObject();
+            row.addProperty("state", entry.getKey());
+            row.addProperty("model", entry.getValue());
+            rows.add(row);
+        }
+        var result = new JsonObject();
+        result.add("states", rows);
+        return result;
+    }
+
+    /**
+     * A table entry. Most are a composite of the state's own baked model, untransformed, and the
+     * model that stands in for it; those are written as the second alone, and the rest in full.
+     */
+    private static String describeEntry(
+        final net.minecraft.world.level.block.state.BlockState state,
+        final net.minecraft.client.renderer.block.model.BlockModel.Unbaked model) {
+        if (model instanceof net.minecraft.client.renderer.block.model.CompositeBlockModel.Unbaked composite
+            && composite.transformation().isEmpty()
+            && composite.normal() instanceof net.minecraft.client.renderer.block.model.BlockStateModelWrapper.Unbaked normal
+            && normal.model() == state && normal.transformation().isEmpty()) {
+            return describeModel(composite.custom());
+        }
+        return describeModel(model);
+    }
+
+    /** A value written for the table's comparison: records, optionals, lists and enums walked. */
+    private static String describeModel(final Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof java.util.Optional<?> optional) {
+            return optional.isPresent() ? describeModel(optional.get()) : "none";
+        }
+        if (value instanceof com.mojang.math.Transformation) {
+            return "transform";
+        }
+        if (value instanceof net.minecraft.world.level.block.state.BlockState state) {
+            return net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(state);
+        }
+        if (value instanceof java.util.List<?> list) {
+            var parts = new java.util.ArrayList<String>();
+            for (var each : list) {
+                parts.add(describeModel(each));
+            }
+            return "[" + String.join(",", parts) + "]";
+        }
+        if (value.getClass().isRecord()) {
+            return describeRecord(value);
+        }
+        if (value instanceof Enum<?> constant) {
+            return constant.name().toLowerCase();
+        }
+        var text = String.valueOf(value);
+        if (text.contains("@")) {
+            var name = value.getClass().getName();
+            return name.substring(name.lastIndexOf('.') + 1);
+        }
+        return text;
+    }
+
+    /** A record as `Name(component=value,...)`, without the tint sources (`tints`). */
+    private static String describeRecord(final Object value) {
+        var parts = new java.util.ArrayList<String>();
+        for (var component : value.getClass().getRecordComponents()) {
+            if (component.getName().equals("tints")) {
+                continue;
+            }
+            try {
+                component.getAccessor().setAccessible(true);
+                parts.add(component.getName() + "=" + describeModel(component.getAccessor().invoke(value)));
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException(error);
+            }
+        }
+        var name = value.getClass().getName();
+        return name.substring(name.lastIndexOf('.') + 1) + "(" + String.join(",", parts) + ")";
+    }
 }

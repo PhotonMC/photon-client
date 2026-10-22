@@ -26,26 +26,16 @@ fn xmas_textures() -> bool {
     *XMAS.get_or_init(photon_core::calendar::is_extended_christmas)
 }
 
-/// `ChestRenderer.getChestMaterial` from the block's name.
+/// `ChestRenderer.getChestMaterial` from the block's name: `xmasTextures` outranks the
+/// materials that have a Christmas texture.
 fn material_of(name: &str) -> ChestMaterial {
-    match name {
-        "minecraft:ender_chest" => ChestMaterial::Ender,
-        "minecraft:copper_chest" | "minecraft:waxed_copper_chest" => {
-            ChestMaterial::CopperUnaffected
-        }
-        "minecraft:exposed_copper_chest" | "minecraft:waxed_exposed_copper_chest" => {
-            ChestMaterial::CopperExposed
-        }
-        "minecraft:weathered_copper_chest" | "minecraft:waxed_weathered_copper_chest" => {
-            ChestMaterial::CopperWeathered
-        }
-        "minecraft:oxidized_copper_chest" | "minecraft:waxed_oxidized_copper_chest" => {
-            ChestMaterial::CopperOxidized
-        }
-        // `xmasTextures` outranks the trapped chest's own.
-        _ if xmas_textures() => ChestMaterial::Christmas,
-        "minecraft:trapped_chest" => ChestMaterial::Trapped,
-        _ => ChestMaterial::Regular,
+    let material = photon_render::block_entity::special_model::chest_material(
+        name.strip_prefix("minecraft:").unwrap_or(name),
+    );
+    if xmas_textures() && material.has_christmas_variant() {
+        ChestMaterial::Christmas
+    } else {
+        material
     }
 }
 

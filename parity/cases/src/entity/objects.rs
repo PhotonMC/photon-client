@@ -3,7 +3,7 @@
 
 use serde_json::{Value, json};
 
-use super::pose::{Fields, entity, fields, row};
+use super::pose::{Fields, entity, fields, row, table};
 use crate::bits::{f32_bits, f64_bits};
 use crate::case::merge;
 use crate::line::float_text;
@@ -371,6 +371,12 @@ pub const DYES: [&str; 16] = [
     "red",
     "black",
 ];
+
+/// The model each block state has in the game's `BuiltInBlockModels` table, which draws blocks on
+/// entities (block displays, minecart contents, held blocks).
+pub fn builtin_block_models() -> Vec<Value> {
+    vec![table("builtin-block-models", "builtin_block_models")]
+}
 
 /// Where the real `ShulkerBoxRenderer` draws a box of each colour, facing
 /// and lid progress, and the model with the lid set for it.

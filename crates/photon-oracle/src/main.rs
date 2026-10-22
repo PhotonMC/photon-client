@@ -168,6 +168,7 @@ mod pose;
 use pose::*;
 mod display;
 use display::*;
+mod block_models;
 mod block_poses;
 mod guardian;
 mod view_state;

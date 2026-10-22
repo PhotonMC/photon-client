@@ -61,6 +61,11 @@ impl ChestMaterial {
         })
     }
 
+    /// Whether `xmasTextures` replaces this material's texture: the plain and trapped chests only.
+    pub const fn has_christmas_variant(self) -> bool {
+        matches!(self, Self::Trapped | Self::Regular)
+    }
+
     /// The texture under `textures/` (`Sheets.chooseSprite`).
     pub fn texture(self, kind: ChestKind) -> String {
         let prefix = match self {

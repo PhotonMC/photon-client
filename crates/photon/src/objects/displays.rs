@@ -19,6 +19,7 @@ use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
 use crate::world::special_models::special_block_vertices;
+use photon_render::block_entity::special_model::SpecialModel;
 use photon_render::entity::textures::EntityTextures;
 
 /// The layers of the items the displays show, by the `ItemDisplayContext` each names (by its id).
@@ -306,7 +307,7 @@ pub fn display_texts(
 
 /// Whether a block state is the conduit.
 fn is_conduit(state: photon_core::ids::BlockStateId) -> bool {
-    photon_world::block::state_or_air(state).block().name == "minecraft:conduit"
+    SpecialModel::of(state) == Some(SpecialModel::Conduit)
 }
 
 /// `EndCubeSpecialRenderer`: the whole cube of an end gateway, or the slab of an end portal, for
@@ -314,9 +315,11 @@ fn is_conduit(state: photon_core::ids::BlockStateId) -> bool {
 fn end_cube(models: &mut MobModels, state: photon_core::ids::BlockStateId, pose: &Pose) {
     use crate::world::end_portals::{GATEWAY_LAYERS, PORTAL_LAYERS, push_cube};
     let faces: Vec<_> = photon_core::direction::Direction::stream().collect();
-    match photon_world::block::state_or_air(state).block().name {
-        "minecraft:end_gateway" => push_cube(models, (pose, GATEWAY_LAYERS), &faces),
-        "minecraft:end_portal" => {
+    match SpecialModel::of(state) {
+        Some(SpecialModel::EndCube { portal: false }) => {
+            push_cube(models, (pose, GATEWAY_LAYERS), &faces);
+        }
+        Some(SpecialModel::EndCube { portal: true }) => {
             let slab = photon_render::block_entity::end_portal::portal_pose(pose);
             push_cube(models, (&slab, PORTAL_LAYERS), &faces);
         }

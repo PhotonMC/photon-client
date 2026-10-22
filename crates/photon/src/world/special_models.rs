@@ -7,6 +7,7 @@
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
 use photon_render::block_entity::shulker_box;
+use photon_render::block_entity::special_model::SpecialModel;
 use photon_render::entity::mob_model::mob_vertices_posed;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
@@ -25,13 +26,20 @@ pub(crate) fn special_block_vertices(
     (state, base, light): (BlockStateId, &Pose, i32),
 ) -> Option<Vec<Vertex>> {
     let name = photon_world::block::state_or_air(state).block().name;
-    if let Some(color) = shulker_color(name) {
-        return shulker_box(models, textures, (state, base, light), color);
+    let placed = (state, base, light);
+    match SpecialModel::of(state)? {
+        SpecialModel::Shulker { color } => shulker_box(models, textures, placed, color),
+        SpecialModel::Chest { .. } => {
+            super::block_entities::chest_state_vertices(models, textures, placed)
+        }
+        // The petals are drawn from their baked model, and the end cubes and the conduit by the
+        // entities that hold them.
+        SpecialModel::Empty
+        | SpecialModel::Conduit
+        | SpecialModel::EndCube { .. }
+        | SpecialModel::FlowerBed => None,
+        _ => other_special(models, textures, name, placed),
     }
-    if let Some(vertices) = other_special(models, textures, name, (state, base, light)) {
-        return Some(vertices);
-    }
-    super::block_entities::chest_state_vertices(models, textures, (state, base, light))
 }
 
 /// What a state's properties give a special model.
@@ -135,15 +143,6 @@ fn banner(
     let mut vertices = Vec::new();
     banner_vertices(models, textures, (base, light, 0.0), &banner, &mut vertices);
     Some(vertices)
-}
-
-/// The dye of a shulker box block (`Some(None)` for the undyed one), none for any other block.
-fn shulker_color(name: &str) -> Option<Option<&str>> {
-    let name = name.strip_prefix("minecraft:")?;
-    if name == "shulker_box" {
-        return Some(None);
-    }
-    name.strip_suffix("_shulker_box").map(Some)
 }
 
 /// `ShulkerBoxSpecialRenderer`: the box shut, turned to the state's facing.
