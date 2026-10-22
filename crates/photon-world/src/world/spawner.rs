@@ -9,6 +9,8 @@ use crate::*;
 pub(crate) struct SpawnerDisplayEntry {
     pos: Pos,
     type_name: String,
+    /// A trial spawner makes its mob once and keeps it while the block entity lives.
+    trial: bool,
     entity: ClientEntity,
 }
 
@@ -30,13 +32,14 @@ impl ClientWorld {
 
     /// `BaseSpawner.getOrCreateDisplayEntity`: the mob of the type the spawner names is made when it
     /// first shows one and again when the type changes; a spawner that names none shows none.
-    fn sync_spawner_display(&mut self, pos: Pos, type_name: Option<&str>) {
+    fn sync_spawner_display(&mut self, pos: Pos, type_name: Option<&str>, trial: bool) {
         let current = self
             .spawner_displays
             .iter()
             .position(|shown| shown.pos == pos);
         let kept = current.is_some_and(|index| {
-            Some(self.spawner_displays[index].type_name.as_str()) == type_name
+            let shown = &self.spawner_displays[index];
+            (trial && shown.trial) || Some(shown.type_name.as_str()) == type_name
         });
         if kept {
             return;
@@ -77,6 +80,7 @@ impl ClientWorld {
             self.spawner_displays.push(SpawnerDisplayEntry {
                 pos,
                 type_name: type_name.to_owned(),
+                trial,
                 entity,
             });
         }
@@ -87,12 +91,20 @@ impl ClientWorld {
         self.entities.drawn_with_invisible().chain(
             self.spawner_displays
                 .iter()
-                .filter(|shown| {
-                    self.block_entity_at(shown.pos.0, shown.pos.1, shown.pos.2)
-                        .is_some()
-                })
+                .filter(|shown| self.spawner_display_shows(shown))
                 .map(|shown| &shown.entity),
         )
+    }
+
+    /// Whether a spawner's block entity is still there and, for a trial spawner, in a state that
+    /// shows its mob.
+    fn spawner_display_shows(&self, shown: &SpawnerDisplayEntry) -> bool {
+        let (x, y, z) = shown.pos;
+        let spins = || {
+            let block = self.block_state_or_air(x, y, z);
+            trial_spin_speed(crate::block::rules::property(block, "trial_spawner_state")).is_some()
+        };
+        self.block_entity_at(x, y, z).is_some() && (!shown.trial || spins())
     }
 
     /// The mob a spawner shows, by the id it was made with.
@@ -137,11 +149,11 @@ impl ClientWorld {
     pub(super) fn tick_spawner(&mut self, pos: Pos) {
         let Some(entity) = self.block_entity_at(pos.0, pos.1, pos.2) else {
             self.block_tickers.unregister(pos);
-            self.sync_spawner_display(pos, None);
+            self.sync_spawner_display(pos, None, false);
             return;
         };
         let state = entity.spawner_state().cloned().unwrap_or_default();
-        self.sync_spawner_display(pos, state.entity_id.as_deref());
+        self.sync_spawner_display(pos, state.entity_id.as_deref(), false);
         let centre = (
             f64::from(pos.0) + 0.5,
             f64::from(pos.1) + 0.5,
@@ -180,13 +192,15 @@ impl ClientWorld {
     pub(super) fn tick_trial_spawner(&mut self, pos: Pos) {
         let Some(entity) = self.block_entity_at(pos.0, pos.1, pos.2) else {
             self.block_tickers.unregister(pos);
-            self.sync_spawner_display(pos, None);
+            self.sync_spawner_display(pos, None, false);
             return;
         };
         let state = entity.spawner_state().cloned().unwrap_or_default();
         let block = self.block_state_or_air(pos.0, pos.1, pos.2);
         let speed = trial_spin_speed(crate::block::rules::property(block, "trial_spawner_state"));
-        self.sync_spawner_display(pos, state.entity_id.as_deref().filter(|_| speed.is_some()));
+        if speed.is_some() {
+            self.sync_spawner_display(pos, state.entity_id.as_deref(), true);
+        }
         let delay = (state.next_mob_spawns_at - self.game_time() as i64).max(0);
         if let (Some(speed), Some(entity)) = (speed, self.block_entity_mut_at(pos)) {
             entity.events.spawner.turn_trial(speed, delay);
