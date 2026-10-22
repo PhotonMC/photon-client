@@ -100,6 +100,31 @@ pub fn block_entities(
     }
 }
 
+/// A chest state drawn on an entity (`ChestSpecialRenderer` through `BuiltInBlockModels`), shut,
+/// from the pose of the block's corner and lit as the entity is; none for any other state.
+pub(crate) fn chest_state_vertices(
+    models: &mut MobModels,
+    textures: &EntityTextures,
+    (state, base, light): (photon_core::ids::BlockStateId, &Pose, i32),
+) -> Option<Vec<Vertex>> {
+    let name = photon_world::block::state_or_air(state).block().name;
+    if !(name == "minecraft:chest" || name.ends_with("_chest")) {
+        return None;
+    }
+    let property = |key| photon_world::block::rules::property(state, key);
+    let facing = Direction::from_name(property("facing")?)?;
+    let material = material_of(name);
+    let kind = match property("type").and_then(ChestKind::from_name) {
+        Some(kind) if material != ChestMaterial::Ender => kind,
+        _ => ChestKind::Single,
+    };
+    let rect = textures.rect(&material.texture(kind))?;
+    let model = models.model(kind.layer())?;
+    model.setup_chest(eased_open(0.0));
+    let pose = chest_pose(base, facing);
+    Some(mob_vertices_posed(model, &pose, rect, (light, false)))
+}
+
 /// A block entity that is no chest: a shulker box, a banner, a head, a bell or a book.
 fn other_block_entity(
     session: &PlaySession,

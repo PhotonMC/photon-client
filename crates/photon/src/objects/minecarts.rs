@@ -2,10 +2,12 @@
 //! the steps along the track put it (the new one), rocked by a hit, with the block it carries.
 //! A spawner minecart shows no mob in its block yet.
 
+use photon_core::ids::BlockStateId;
 use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::overlay_code;
 use photon_render::entity::textures::EntityTextures;
+use photon_render::joml::Pose;
 use photon_render::objects::boat::boat_vertices;
 use photon_render::objects::minecart::{
     MinecartRenderState, RailPlace, minecart_poses, offset_seed, primed_tnt_pose, tnt_is_lit,
@@ -130,10 +132,9 @@ pub fn remote_minecarts(
         let poses = minecart_poses(&base, &state);
         vertices.extend(boat_vertices(model, &poses.model, light, rect));
         if let Some(block) = entity.minecart_display_block() {
-            // A tnt minecart's block flashes white while it is lit (`submitWhiteSolidBlock`).
-            let white = tnt_fuse.is_some_and(tnt_is_lit);
-            let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
-            held.push(HeldItem::block(block, poses.block, light, overlay));
+            let lit = tnt_fuse.is_some_and(tnt_is_lit);
+            let carried = (&poses.block, light, lit);
+            carry_block((models, textures), (block, carried), (held, vertices));
         }
     }
 }
@@ -180,4 +181,21 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
             overlay,
         ));
     }
+}
+
+/// The block a minecart carries: a chest by its special model, any other block as a baked model
+/// (a tnt minecart's flashes white while it is lit, `submitWhiteSolidBlock`).
+fn carry_block(
+    (models, textures): (&mut MobModels, &EntityTextures),
+    (block, (pose, light, white)): (BlockStateId, (&Pose, i32, bool)),
+    (held, vertices): (&mut Vec<HeldItem>, &mut Vec<Vertex>),
+) {
+    let base = (block, pose, light);
+    if let Some(chest) = crate::world::block_entities::chest_state_vertices(models, textures, base)
+    {
+        vertices.extend(chest);
+        return;
+    }
+    let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
+    held.push(HeldItem::block(block, *pose, light, overlay));
 }
