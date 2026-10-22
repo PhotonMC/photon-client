@@ -263,7 +263,6 @@
 "crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::loom_draw" = 17
 "crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::stone_draw" = 13
 "crates/photon-gui/src/screen/recipe_book/clicked.rs::RecipeBookPanel::key_pressed" = 12
-"crates/photon-gui/src/screen/recipe_book/clicked.rs::RecipeBookPanel::mouse_clicked" = 20
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_recipes" = 18
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_tabs" = 12
 "crates/photon-gui/src/screen/recipe_book/ghost.rs::RecipeBookPanel::draw_overlay" = 11
@@ -675,7 +674,6 @@
 "crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::stone_draw" = 64
 "crates/photon-gui/src/screen/inventory.rs::InventoryScreen::build" = 63
 "crates/photon-gui/src/screen/pause.rs::PauseScreen::new" = 121
-"crates/photon-gui/src/screen/recipe_book/clicked.rs::RecipeBookPanel::mouse_clicked" = 72
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw" = 69
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_panel" = 92
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_recipes" = 102

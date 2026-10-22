@@ -172,6 +172,7 @@ impl RecipeBookPanel {
         }
         let (bx, by) = self.button_corner(left);
         if Self::in_rect(mouse, (bx, by, 20, 18)) {
+            click_sound(button, false);
             self.queued
                 .push(self.settings_action(!self.visible, self.filtering));
             self.swallow_release = true;
@@ -181,19 +182,32 @@ impl RecipeBookPanel {
             return false;
         }
         let (xo, yo) = self.origin();
-        // `RecipeBookPage.mouseClicked`: the arrows, then the buttons.
+        self.page_arrow_clicked(mouse, button, (xo, yo))
+            || self.cells_clicked(mouse, button, shift)
+            || self.search_and_tabs_clicked(mouse, button, (xo, yo))
+    }
+
+    /// `RecipeBookPage.mouseClicked`: the arrows.
+    fn page_arrow_clicked(&mut self, mouse: (f64, f64), button: i32, (xo, yo): (i32, i32)) -> bool {
         let pages = self.total_pages();
         if pages > 1
             && self.model.page + 1 < pages
             && Self::in_rect(mouse, (xo + 93, yo + 137, 12, 17))
         {
+            click_sound(button, false);
             self.model.page += 1;
             return true;
         }
         if self.model.page > 0 && Self::in_rect(mouse, (xo + 38, yo + 137, 12, 17)) {
+            click_sound(button, false);
             self.model.page -= 1;
             return true;
         }
+        false
+    }
+
+    /// `RecipeBookPage.mouseClicked`: the recipe buttons.
+    fn cells_clicked(&mut self, mouse: (f64, f64), button: i32, shift: bool) -> bool {
         let first = self.model.page * RECIPES_PER_PAGE;
         for cell in 0..RECIPES_PER_PAGE {
             let Some(&collection) = self.listed.get(first + cell) else {
@@ -201,6 +215,7 @@ impl RecipeBookPanel {
             };
             let (x, y) = self.cell(cell);
             if Self::in_rect(mouse, (x, y, 25, 25)) {
+                click_sound(button, true);
                 if button == 0 {
                     return self.place(collection, shift);
                 }
@@ -210,7 +225,16 @@ impl RecipeBookPanel {
                 return true;
             }
         }
-        // The search box, and the magnifier left of it.
+        false
+    }
+
+    /// The search box, the magnifier left of it, and the tabs.
+    fn search_and_tabs_clicked(
+        &mut self,
+        mouse: (f64, f64),
+        button: i32,
+        (xo, yo): (i32, i32),
+    ) -> bool {
         if Self::in_rect(mouse, (xo + 8, yo + 13, 98, 14)) {
             self.focused = true;
             self.focused_at = Instant::now();
@@ -218,6 +242,7 @@ impl RecipeBookPanel {
         }
         self.focused = false;
         if Self::in_rect(mouse, (xo + 110, yo + 12, 26, 16)) {
+            click_sound(button, false);
             self.queued
                 .push(self.settings_action(self.visible, !self.filtering));
             self.swallow_release = true;
@@ -225,6 +250,7 @@ impl RecipeBookPanel {
         }
         for (index, tab) in self.visible_tabs().into_iter().enumerate() {
             if Self::in_rect(mouse, (xo - 30, yo + 3 + 27 * index as i32, 35, 27)) {
+                click_sound(button, false);
                 if self.model.tab != tab {
                     self.model.tab = tab;
                     self.model.page = 0;
@@ -289,6 +315,7 @@ impl RecipeBookPanel {
         });
         match (button, hit) {
             (0, Some((recipe, craftable))) => {
+                crate::ui_sound::play_down_sound();
                 if self.try_place(recipe, craftable, shift) {
                     self.last_recipe = Some((recipe, recipe));
                     if self.too_narrow() {
@@ -431,5 +458,13 @@ impl RecipeBookPanel {
             .iter()
             .any(|collection| collection.craftable.contains(&recipe));
         self.try_place(recipe, craftable, shift);
+    }
+}
+
+/// `AbstractWidget.mouseClicked`: a widget clicks for the primary button, and a recipe button
+/// for the secondary one too (`isValidClickButton`).
+fn click_sound(button: i32, secondary_too: bool) {
+    if button == 0 || (secondary_too && button == 1) {
+        crate::ui_sound::play_down_sound();
     }
 }
