@@ -29,6 +29,18 @@ class GuiOverlayOracle extends GuiHudOracle {
         return out;
     }
 
+    /** The colour (`0xRRGGBB`, or -1 for none) of each character of a name. */
+    static JsonArray characterColours(Component name) {
+        var colours = new JsonArray();
+        name.visit((style, text) -> {
+            for (int index = 0; index < text.length(); index++) {
+                colours.add(style.getColor() == null ? -1 : style.getColor().getValue());
+            }
+            return java.util.Optional.empty();
+        }, net.minecraft.network.chat.Style.EMPTY);
+        return colours;
+    }
+
     /** A phase that keeps its name tags, as the reference's own would batch them. */
     static final class KeptNormal extends net.minecraft.client.renderer.feature.phase.SimpleFeatureRenderPhase {
         final JsonArray kept = new JsonArray();
@@ -152,6 +164,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         var submits = new JsonArray();
         if (state.nameTag != null) {
             entry.addProperty("text", state.nameTag.getString());
+            entry.add("colours", characterColours(state.nameTag));
             entry.addProperty("attachment_y", Oracle.bits(state.nameTagAttachment.y));
             var storage = new net.minecraft.client.renderer.SubmitNodeStorage();
             var collection = storage.order(0);
@@ -258,6 +271,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         var submits = new JsonArray();
         if (state.nameTag != null) {
             entry.addProperty("text", state.nameTag.getString());
+            entry.add("colours", characterColours(state.nameTag));
             entry.addProperty("attachment_y", Oracle.bits(state.nameTagAttachment.y));
             var storage = new net.minecraft.client.renderer.SubmitNodeStorage();
             var collection = storage.order(0);

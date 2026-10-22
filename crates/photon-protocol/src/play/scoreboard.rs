@@ -132,3 +132,43 @@ pub(super) fn read_number_format(
         _ => return Err(ConnectionError::Codec("number format type")),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photon_game::scoreboard::NameTagVisibility;
+
+    /// A team's parameters on the wire: three plain texts, then the rest.
+    fn parameters(visibility: u8, options: u8) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for _ in 0..3 {
+            // A network text component that is a plain string: a string tag.
+            bytes.extend([8, 0, 1, b'x']);
+        }
+        // Visibility, collision rule, no colour, options.
+        bytes.extend([visibility, 0, 0, options]);
+        bytes
+    }
+
+    fn read(visibility: u8, options: u8) -> photon_game::scoreboard::TeamParameters {
+        let bytes = parameters(visibility, options);
+        read_team_parameters(&mut bytes.as_slice()).expect("parameters")
+    }
+
+    #[test]
+    fn the_visibility_and_the_friendly_invisibles_option_are_read() {
+        assert_eq!(
+            read(2, 0).name_tag_visibility,
+            NameTagVisibility::HideForOtherTeams
+        );
+        assert_eq!(
+            read(3, 0).name_tag_visibility,
+            NameTagVisibility::HideForOwnTeam
+        );
+        // An id out of range is the first (`OutOfBoundsStrategy.ZERO`).
+        assert_eq!(read(7, 0).name_tag_visibility, NameTagVisibility::Always);
+        // Option bit 1 (value 2) is the flag; bit 0 (friendly fire) is not.
+        assert!(read(0, 2).sees_friendly_invisibles);
+        assert!(!read(0, 1).sees_friendly_invisibles);
+    }
+}

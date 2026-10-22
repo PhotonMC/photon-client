@@ -247,6 +247,23 @@ fn team_gate_rows() -> Vec<Value> {
     rows
 }
 
+/// The renderers that do not look at a team's visibility still show its dressing.
+fn team_plain_rows() -> Vec<Value> {
+    let dress = ["[", "] suffix", "12"];
+    let mut rows = Vec::new();
+    for (word, kind, renderer) in
+        [("entity", "minecraft:minecart", "entity"), ("stand", "minecraft:armor_stand", "armor_stand")]
+    {
+        for visibility in [0_u8, 1] {
+            rows.push(with_teams(
+                mob(&format!("team-{word}-{visibility}"), Mob { kind, renderer, ..MOB }),
+                teams(MOB_NAME, Standing::Other, (visibility, true), dress),
+            ));
+        }
+    }
+    rows
+}
+
 /// The team's prefix, suffix and colour on the name.
 fn team_dress_rows() -> Vec<Value> {
     let dress = ["[", "] suffix", "12"];
@@ -262,6 +279,14 @@ fn team_dress_rows() -> Vec<Value> {
 
 /// The rows for entities that are not players.
 pub fn rows() -> Vec<Value> {
-    [visibility_rows(), distance_rows(), attachment_rows(), team_visibility_rows(), team_gate_rows(), team_dress_rows()]
-        .concat()
+    [
+        visibility_rows(),
+        distance_rows(),
+        attachment_rows(),
+        team_visibility_rows(),
+        team_gate_rows(),
+        team_dress_rows(),
+        team_plain_rows(),
+    ]
+    .concat()
 }

@@ -83,6 +83,7 @@ impl PlaySession {
         // new configuration's.
         let mut state = ConnectionState {
             profile_id: self.state.profile_id,
+            profile_name: self.state.profile_name.clone(),
             cookies: self.state.cookies.clone(),
             server_brand: self.state.server_brand.clone(),
             custom_report_details: self.state.custom_report_details.clone(),

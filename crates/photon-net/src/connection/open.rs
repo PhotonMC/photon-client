@@ -98,7 +98,7 @@ fn log_in(
                 let finished = ClientboundLoginFinishedPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("login finished"))?;
                 recorder.login_finished();
-                state.profile_id = Some(finished.game_profile.id);
+                remember_profile(state, &finished.game_profile);
 
                 send_packet(
                     stream,
@@ -421,4 +421,10 @@ pub(crate) fn take_report_details(
         .map_err(|_| ConnectionError::Codec("custom report details"))?;
     state.custom_report_details = packet.details;
     Ok(())
+}
+
+/// What the server's profile says of the player: the id, and the name as the server spells it.
+fn remember_profile(state: &mut ConnectionState, profile: &photon_protocol::login::GameProfile) {
+    state.profile_id = Some(profile.id);
+    state.profile_name = Some(String::from_utf16_lossy(&profile.name));
 }

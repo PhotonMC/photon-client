@@ -130,6 +130,7 @@ fn described_tag(
     );
     described["shown"] = json!(true);
     described["text"] = json!(tag.text());
+    described["colours"] = json!(character_colours(tag));
     described["attachment_y"] = json!(format!("{:016x}", tag.attachment.y.to_bits()));
     described["submits"] = json!(
         placed
@@ -337,4 +338,12 @@ pub(super) fn entity_shadows_result(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
+}
+
+/// The colour of each character of a name, as its runs style them (-1: none).
+fn character_colours(tag: &photon_render::entity::name_tag::NameTag) -> Vec<i64> {
+    tag.runs
+        .iter()
+        .flat_map(|run| run.text.chars().map(|_| run.colour.map_or(-1, i64::from)))
+        .collect()
 }

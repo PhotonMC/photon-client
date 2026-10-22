@@ -12,6 +12,8 @@ use photon_world::{ClientWorld, DimensionBounds, DimensionEnvironment};
 pub struct ConnectionState {
     /// The profile id the server logged the player in with.
     pub profile_id: Option<Uuid>,
+    /// The name of that profile, which can differ in case from the one the client asked for.
+    pub profile_name: Option<String>,
     /// What the server asked the client to keep, which stays through a reconfiguration.
     pub cookies: CookieStore,
     /// The host name the handshake gives, where it is not the address's own, and whether the

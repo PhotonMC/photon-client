@@ -71,9 +71,13 @@ impl PlaySession {
         self.social.commands.as_ref()
     }
 
-    /// The local player's name, which scoreboard teams and scores go by.
+    /// The local player's name, which scoreboard teams and scores go by: the one the server's
+    /// profile has (`getLocalGameProfile`), else the one the client logged in with.
     pub fn local_name(&self) -> &str {
-        &self.link.username
+        self.state
+            .profile_name
+            .as_deref()
+            .unwrap_or(&self.link.username)
     }
 
     /// `ClientSuggestionProvider.getSelectedEntities`: the string UUID of the
