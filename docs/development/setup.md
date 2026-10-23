@@ -43,6 +43,10 @@ The test server is offline, peaceful, seed 776, view distance 32, with RCON on 2
 
 `cargo xtask bench` runs a fixed scripted session against the running server and writes a frame-timing report to `.data/runs/bench/`. `cargo xtask shot` runs a scripted session and saves its first frame as a PNG in `.data/runs/shots/`.
 
+## Switching servers through a proxy
+
+To exercise reconfiguration in play, run Velocity (the stable jar from the PaperMC downloads API, Java 25) in front of two vanilla servers, all under `.data/`. Give each backend `online-mode=false`, its own `level-name` and port (for example 25610 and 25620, the second with `level-type=minecraft\:flat`), and keep each one's standard input open (`sleep infinity | java ...`), because it stops on end of input. In `velocity.toml` set `bind = "127.0.0.1:25577"`, `online-mode = false`, `player-info-forwarding-mode = "none"` (vanilla cannot take modern forwarding), list both backends under `[servers]` and empty `[forced-hosts]`. Feed the proxy console from a FIFO (`tail -f console | java -jar velocity.jar`) and run `send <player> <server>` there, or type `/server <name>` in the client. Join with `photon play 127.0.0.1:25577`.
+
 ## Checks
 
 | Command | What it runs |
