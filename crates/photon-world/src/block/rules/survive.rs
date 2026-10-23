@@ -217,14 +217,19 @@ pub(super) fn face_attached_survives(
     pos: (i32, i32, i32),
     ctx: &PlaceContext<'_>,
 ) -> bool {
-    let connected = match property(state, "face") {
+    let connected = connected_direction(state);
+    let (dx, dy, dz) = connected.opposite().step();
+    let support = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+    crate::block::state(support).is_some_and(|info| info.is_face_sturdy(connected))
+}
+
+/// `FaceAttachedHorizontalDirectionalBlock.getConnectedDirection`: the way the block leans.
+pub(super) fn connected_direction(state: BlockStateId) -> Direction {
+    match property(state, "face") {
         Some("ceiling") => Direction::Down,
         Some("floor") => Direction::Up,
         _ => property(state, "facing")
             .and_then(Direction::from_name)
             .unwrap_or(Direction::North),
-    };
-    let (dx, dy, dz) = connected.opposite().step();
-    let support = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
-    crate::block::state(support).is_some_and(|info| info.is_face_sturdy(connected))
+    }
 }

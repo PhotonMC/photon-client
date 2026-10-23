@@ -178,32 +178,6 @@ fn concrete_placement(
     })
 }
 
-/// `Level.hasNeighborSignal`; unported where a neighbour is a block that gives a signal.
-fn has_neighbor_signal(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
-    let next = |at: (i32, i32, i32), direction: Direction| {
-        let (dx, dy, dz) = direction.step();
-        (at.0 + dx, at.1 + dy, at.2 + dz)
-    };
-    for direction in Direction::stream() {
-        let neighbour = next(pos, direction);
-        let state = ctx.state(neighbour);
-        if state_owner(state, Method::GetSignal).is_some()
-            || state_owner(state, Method::OwnSignal).is_some()
-        {
-            return Rule::Unported;
-        }
-        let conductor = crate::block::state(state).is_some_and(|info| info.redstone_conductor);
-        if conductor
-            && Direction::stream().any(|other| {
-                state_owner(ctx.state(next(neighbour, other)), Method::GetDirectSignal).is_some()
-            })
-        {
-            return Rule::Unported;
-        }
-    }
-    Rule::Known(false)
-}
-
 /// `TrapDoorBlock.getStateForPlacement`.
 fn trapdoor_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {
     let pos = ctx.clicked_pos();
@@ -218,7 +192,7 @@ fn trapdoor_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Opt
         };
         (ctx.horizontal_direction.opposite(), half)
     };
-    let Rule::Known(powered) = has_neighbor_signal(pos, ctx) else {
+    let Rule::Known(powered) = super::signal::has_neighbor_signal(pos, ctx) else {
         return Rule::Unported;
     };
     let open = flag(powered);

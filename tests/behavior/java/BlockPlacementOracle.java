@@ -28,6 +28,12 @@ class BlockPlacementOracle extends BlockItemOracle {
         }
 
         @Override
+        public net.minecraft.world.level.block.entity.BlockEntity getBlockEntity(
+            net.minecraft.core.BlockPos pos) {
+            return null;
+        }
+
+        @Override
         public boolean isClientSide() {
             return true;
         }

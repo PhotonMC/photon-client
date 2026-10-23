@@ -18,6 +18,7 @@ use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
 mod placement;
+mod signal;
 mod survive;
 
 /// A rule's answer, or that the class's rule is not written.
@@ -459,11 +460,13 @@ mod tests {
     }
 
     #[test]
-    fn a_trap_door_beside_a_signal_source_is_left_to_the_server() {
-        assert_eq!(
-            place_trapdoor_beside("minecraft:redstone_block"),
-            Rule::Unported
-        );
+    fn a_trap_door_beside_a_signal_source_opens_unless_it_is_not_written() {
+        let opened = |neighbour| match place_trapdoor_beside(neighbour) {
+            Rule::Known(Some(state)) => property(state, "open"),
+            _ => None,
+        };
+        assert_eq!(opened("minecraft:redstone_block"), Some("true"));
+        assert_eq!(place_trapdoor_beside("minecraft:target"), Rule::Unported);
         assert!(matches!(
             place_trapdoor_beside("minecraft:stone"),
             Rule::Known(Some(_))
