@@ -49,20 +49,13 @@ impl VulkanBackend {
             self.record_outline_chain(scene, &terrain_push);
             self.begin_rendering(self.image_views[index], depth.view);
             for pass in PASSES {
-                if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui) {
+                if self.gui_only && !matches!(pass, Pass::Panorama | Pass::Gui | Pass::Entities) {
                     continue;
                 }
                 match pass {
                     Pass::Sky => self.record_sky(scene),
                     Pass::Terrain => self.record_terrain(scene, &terrain_push, now),
-                    Pass::Entities => {
-                        // The portals are opaque and write the depth, so the entities that stand
-                        // before them are drawn over them.
-                        self.draw_portal(&terrain_push);
-                        for run in ENTITY_RUNS {
-                            self.draw_run(scene, run, &terrain_push);
-                        }
-                    }
+                    Pass::Entities => self.record_entities(scene, &terrain_push),
                     Pass::Outline => {
                         self.draw_run(scene, Run::OutlineBacking, &terrain_push);
                         self.draw_run(scene, Run::Outline, &terrain_push);
@@ -95,6 +88,26 @@ impl VulkanBackend {
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
             self.stamp(8);
+        }
+    }
+
+    /// The entities' pass. A GUI-only frame draws only the end portal's surface, which the level
+    /// loading screen of an end portal hands over (the entities' lists are the old level's).
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope; `scene` is live.
+    unsafe fn record_entities(&self, scene: &SceneResources, terrain_push: &[f32; 46]) {
+        // SAFETY: recording (see `# Safety`).
+        unsafe {
+            // The portals are opaque and write the depth, so the entities that stand before them
+            // are drawn over them.
+            self.draw_portal(terrain_push);
+            if !self.gui_only {
+                for run in ENTITY_RUNS {
+                    self.draw_run(scene, run, terrain_push);
+                }
+            }
         }
     }
 

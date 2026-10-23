@@ -4,6 +4,7 @@
 use crate::world::sections;
 use photon_gui::screen::connect::{LoadingBackground, draw_level_loading_over};
 use photon_net::connection::LoadingReason;
+use photon_render::scene::Vertex;
 
 use super::*;
 
@@ -55,6 +56,7 @@ impl Play {
         self.backend
             .update_atlas(&self.animated_atlas.changed_regions())?;
         self.spin_loading_panorama(reason);
+        self.draw_end_portal_background(reason)?;
         let scale = self.surface.scale();
         let size = (scale.gui_scaled_width(), scale.gui_scaled_height());
         let lang = self.gui.lang();
@@ -66,6 +68,33 @@ impl Play {
         self.backend
             .draw_scene([0.0, 0.0, 0.0, 1.0], super::switch::IDENTITY)
             .map_err(Into::into)
+    }
+
+    /// `Reason.END_PORTAL`: the end portal's surface over the whole window, as the portal pipeline
+    /// draws it for a block with the clip space as the model (15 layers, `END_PORTAL`).
+    fn draw_end_portal_background(&mut self, reason: LoadingReason) -> Result<()> {
+        let on = reason == LoadingReason::EndPortal;
+        let corners = [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]];
+        let vertex = |[x, y]: [f32; 2]| Vertex {
+            position: [x, y, 0.5],
+            uv: [0.0; 2],
+            shade: 1.0,
+            tint: [crate::world::end_portals::PORTAL_LAYERS, 0.0, 0.0, 0.0],
+            light: [0.0; 2],
+        };
+        let quad: Vec<Vertex> = [0, 2, 1, 0, 3, 2]
+            .into_iter()
+            .map(|corner| vertex(corners[corner]))
+            .collect();
+        self.backend.set_draw(
+            photon_render::vulkan::DrawKind::EndPortal,
+            if on { &quad } else { &[] },
+        )?;
+        if on {
+            let ticks = self.session.world().game_time();
+            self.backend.set_portal_time(ticks, 0.0);
+        }
+        Ok(())
     }
 
     /// What the reason shows behind the text.
@@ -139,6 +168,10 @@ impl Play {
     pub(super) fn show_backdrop(&mut self) {
         if self.controls.backdrop.is_none() {
             self.backend.set_gui_only(true);
+            // The surface of an end portal loading screen does not stay.
+            let _ = self
+                .backend
+                .set_draw(photon_render::vulkan::DrawKind::EndPortal, &[]);
             self.load_panorama();
             self.controls.backdrop = Some(LoadingView {
                 spin: 0.0,

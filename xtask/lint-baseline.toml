@@ -410,7 +410,7 @@
 "crates/photon-render/src/visibility/index.rs::visible_sections" = 17
 "crates/photon-render/src/vulkan/frame/draw_calls.rs::VulkanBackend::run_range" = 19
 "crates/photon-render/src/vulkan/frame/passes.rs::Run::pipeline" = 12
-"crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 21
+"crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 20
 "crates/photon-render/src/vulkan/frame/sync.rs::VulkanBackend::render_frame" = 13
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 50
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 11
