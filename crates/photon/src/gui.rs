@@ -60,6 +60,8 @@ pub struct Gui {
     /// Where the assets are read from, and when (in `started_at` milliseconds) the last frame was
     /// drawn: the credits roll by the time between frames.
     pub(super) assets_root: std::path::PathBuf,
+    /// The resource packs the texts are read from.
+    pub(super) resources: Arc<photon_assets::ResourceStack>,
     pub(super) last_frame_ms: u64,
     /// The subtitles, the toasts and what they keep between frames.
     pub(super) layers: layers::Layers,

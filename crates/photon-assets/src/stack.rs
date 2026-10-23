@@ -223,3 +223,17 @@ impl ResourceStack {
         found
     }
 }
+
+impl photon_core::resources::Resources for ResourceStack {
+    fn read(&self, id: &Identifier) -> Option<Vec<u8>> {
+        self.open(id)?.bytes()
+    }
+
+    fn read_stack(&self, id: &Identifier) -> Vec<Vec<u8>> {
+        self.stack(id).iter().filter_map(Resource::bytes).collect()
+    }
+
+    fn namespaces(&self) -> Vec<String> {
+        ResourceStack::namespaces(self).into_iter().collect()
+    }
+}

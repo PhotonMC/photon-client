@@ -118,6 +118,17 @@ impl LanguageSource {
         languages
     }
 
+    /// The same language read from the resource packs, whose files for it add to the jar's and
+    /// the index's (which the vanilla pack of `resources` holds).
+    pub fn lang_from(&self, code: &str, resources: &dyn photon_core::resources::Resources) -> Lang {
+        let codes = if code == "en_us" {
+            vec!["en_us"]
+        } else {
+            vec!["en_us", code]
+        };
+        Lang::load_stack_from(resources, &codes, &self.jar_assets)
+    }
+
     /// A language of a code: `en_us`, with the texts of the code over it
     /// (`ClientLanguage.loadFrom` with the stack `en_us`, code).
     pub fn lang(&self, code: &str) -> Lang {

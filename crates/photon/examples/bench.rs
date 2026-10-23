@@ -6,6 +6,8 @@
 
 #[path = "../src/assets.rs"]
 mod assets;
+#[path = "../src/indexed.rs"]
+mod indexed;
 
 use std::time::Instant;
 

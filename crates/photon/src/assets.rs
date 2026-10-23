@@ -39,8 +39,12 @@ fn texture_of(read: Reader<'_>, name: &photon_core::identifier::Identifier) -> O
     read(name, "textures", ".png").or_else(|| permuted_texture(read, name))
 }
 
-/// A folder that holds the namespaces, seen as a pack whose `assets` folder it is.
-struct AssetsFolder(photon_assets::DirectorySource);
+/// The game's own assets as a pack: the jar's folder, whose `assets` folder is `root`, and the
+/// objects of the asset index around it, which the vanilla pack reads before the jar.
+struct AssetsFolder {
+    jar: photon_assets::DirectorySource,
+    indexed: Option<crate::indexed::IndexedAssets>,
+}
 
 impl AssetsFolder {
     /// The path inside the folder, for a path inside the pack's `assets` folder.
@@ -55,18 +59,39 @@ impl AssetsFolder {
 
 impl photon_assets::Source for AssetsFolder {
     fn read(&self, path: &str) -> Option<Vec<u8>> {
-        self.0.read(Self::inside(path)?)
+        let inside = Self::inside(path)?;
+        let indexed = self.indexed.as_ref().and_then(|index| index.object(inside));
+        indexed.or_else(|| self.jar.read(inside))
     }
 
     fn exists(&self, path: &str) -> bool {
-        Self::inside(path).is_some_and(|path| self.0.exists(path))
+        Self::inside(path).is_some_and(|inside| {
+            self.indexed
+                .as_ref()
+                .is_some_and(|index| index.contains(inside))
+                || self.jar.exists(inside)
+        })
     }
 
     fn files_below(&self, directory: &str) -> Vec<String> {
         let Some(inside) = Self::inside(directory) else {
             return Vec::new();
         };
-        let files = self.0.files_below(inside);
+        let mut files = self.jar.files_below(inside);
+        if let Some(index) = &self.indexed {
+            let prefix = if inside.is_empty() {
+                String::new()
+            } else {
+                format!("{inside}/")
+            };
+            let indexed = index.paths().filter(|path| path.starts_with(&prefix));
+            let known: std::collections::HashSet<String> = files.iter().cloned().collect();
+            files.extend(
+                indexed
+                    .filter(|path| !known.contains(*path))
+                    .map(str::to_owned),
+            );
+        }
         files
             .into_iter()
             .map(|path| format!("assets/{path}"))
@@ -74,8 +99,18 @@ impl photon_assets::Source for AssetsFolder {
     }
 
     fn folders_in(&self, directory: &str) -> Vec<String> {
-        Self::inside(directory).map_or_else(Vec::new, |inside| self.0.folders_in(inside))
+        Self::inside(directory).map_or_else(Vec::new, |inside| self.jar.folders_in(inside))
     }
+}
+
+/// The stack of the game's own assets alone.
+pub(crate) fn vanilla_stack(root: &std::path::Path) -> photon_assets::ResourceStack {
+    let source = AssetsFolder {
+        jar: photon_assets::DirectorySource::new(root),
+        indexed: crate::indexed::IndexedAssets::open(root),
+    };
+    let pack = photon_assets::Pack::built_in("vanilla", Box::new(source));
+    photon_assets::ResourceStack::new(vec![pack])
 }
 
 /// Read models and textures from the stack of resource packs, the topmost pack's file winning
@@ -92,11 +127,7 @@ impl StackAssets {
     /// The game's own assets alone, from the folder `root` that holds the namespaces
     /// (`<jar>/assets`), as the stack's bottom pack.
     pub fn vanilla(root: &std::path::Path) -> Self {
-        let source = AssetsFolder(photon_assets::DirectorySource::new(root));
-        let pack = photon_assets::Pack::built_in("vanilla", Box::new(source));
-        Self::new(std::sync::Arc::new(photon_assets::ResourceStack::new(
-            vec![pack],
-        )))
+        Self::new(std::sync::Arc::new(vanilla_stack(root)))
     }
 
     fn id(

@@ -374,7 +374,7 @@ fn bake_blocks(
     root: &str,
     backend: &mut VulkanBackend,
 ) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {
-    let source = StackAssets::vanilla(std::path::Path::new(root));
+    let source = StackAssets::new(crate::resources::shared(std::path::Path::new(root)));
     // The stitcher reads the saved options when the atlas is built, as the
     // reference's sprite loader does; a change reloads the textures there, here
     // it applies on the next start.

@@ -20,6 +20,7 @@ mod play;
 mod ppm;
 mod profile;
 mod profile_login;
+mod resources;
 mod screens;
 mod screenshot;
 mod script;

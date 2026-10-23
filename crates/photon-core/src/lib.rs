@@ -13,6 +13,7 @@ pub mod json;
 pub mod math;
 pub mod nbt;
 pub mod random;
+pub mod resources;
 pub mod sha1;
 pub mod shape;
 pub mod smooth;

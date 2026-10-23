@@ -14,13 +14,15 @@ impl Gui {
         let (atlas, texture) =
             GuiAtlas::load(root, &[&font, &alt_font]).ok_or("the HUD sprites could not be read")?;
         backend.load_gui_texture(&texture)?;
+        let resources = crate::resources::shared(root);
         let started_at = std::time::Instant::now();
         let mut gui = Self {
             font,
             alt_font,
             atlas,
             atlas_image: texture,
-            lang: Arc::new(Lang::load(root)),
+            lang: Arc::new(Lang::load_from(&*resources, root)),
+            resources,
             languages: photon_game::language::LanguageSource::open(root).map(Arc::new),
             registries: Arc::new(registries),
             hud: Hud::default(),
@@ -93,7 +95,7 @@ impl Gui {
     /// The client's language is another: texts are read again.
     pub fn set_language(&mut self, code: &str) {
         if let Some(source) = &self.languages {
-            self.lang = Arc::new(source.lang(code));
+            self.lang = Arc::new(source.lang_from(code, &*self.resources));
         }
     }
 }

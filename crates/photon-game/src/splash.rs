@@ -11,7 +11,17 @@ const LEFT_OUT_HASH: i32 = 125_780_783;
 
 /// `SplashManager.prepare`: the file's lines, trimmed, but the one left out.
 pub fn read_splashes(assets_root: &std::path::Path) -> Vec<String> {
-    std::fs::read_to_string(assets_root.join("minecraft/texts/splashes.txt"))
+    read_splashes_from(&photon_core::resources::FolderResources::new(assets_root))
+}
+
+/// The same, from the topmost pack that has the file.
+pub fn read_splashes_from(resources: &dyn photon_core::resources::Resources) -> Vec<String> {
+    let Ok(id) = photon_core::identifier::Identifier::parse("minecraft:texts/splashes.txt") else {
+        return Vec::new();
+    };
+    resources
+        .read(&id)
+        .and_then(|bytes| String::from_utf8(bytes).ok())
         .map(|text| {
             text.lines()
                 .map(str::trim)

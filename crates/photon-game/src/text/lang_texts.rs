@@ -1,3 +1,6 @@
+use photon_core::identifier::Identifier;
+use photon_core::resources::Resources;
+
 use super::*;
 
 impl Lang {
@@ -11,8 +14,37 @@ impl Lang {
     /// The default language from `assets/minecraft/lang/en_us.json`, with
     /// the deprecated keys removed and renamed (`Language.loadDefault`).
     pub fn load(assets_root: &std::path::Path) -> Self {
-        let mut texts = Self::load_raw(assets_root).texts;
-        apply_deprecated(assets_root, &mut texts);
+        let folder = photon_core::resources::FolderResources::new(assets_root);
+        Self::load_from(&folder, assets_root)
+    }
+
+    /// The default language as the resource packs have it.
+    pub fn load_from(resources: &dyn Resources, jar_assets: &std::path::Path) -> Self {
+        Self::load_stack_from(resources, &["en_us"], jar_assets)
+    }
+
+    /// `ClientLanguage.loadFrom`: the files of the language codes, the first code first, each
+    /// over the ones before it, of every namespace and every pack from the lowest up. The jar's
+    /// `deprecated.json` is applied to the whole.
+    pub fn load_stack_from(
+        resources: &dyn Resources,
+        codes: &[&str],
+        jar_assets: &std::path::Path,
+    ) -> Self {
+        let mut texts = HashMap::new();
+        for code in codes {
+            for namespace in resources.namespaces() {
+                let Ok(id) = Identifier::parse(&format!("{namespace}:lang/{code}.json")) else {
+                    continue;
+                };
+                for bytes in resources.read_stack(&id) {
+                    if let Ok(text) = String::from_utf8(bytes) {
+                        texts.extend(Self::parse_texts(&text));
+                    }
+                }
+            }
+        }
+        apply_deprecated(jar_assets, &mut texts);
         Self { texts }
     }
 

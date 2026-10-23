@@ -398,7 +398,7 @@ fn pick_splash(root: &Path) -> Option<String> {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |since| since.as_nanos() as i64);
     photon_game::splash::pick(
-        &photon_game::splash::read_splashes(root),
+        &photon_game::splash::read_splashes_from(&*crate::resources::shared(root)),
         photon_game::splash::today(),
         &user,
         &mut photon_core::random::RandomSource::create(seed),

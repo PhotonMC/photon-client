@@ -37,6 +37,11 @@ impl IndexedAssets {
         self.hashes.contains_key(index_path)
     }
 
+    /// The paths the index names (`minecraft/sounds/x.ogg`).
+    pub(crate) fn paths(&self) -> impl Iterator<Item = &str> {
+        self.hashes.keys().map(String::as_str)
+    }
+
     pub(crate) fn object(&self, index_path: &str) -> Option<Vec<u8>> {
         let hash = self.hashes.get(index_path)?;
         std::fs::read(self.root.join("objects").join(&hash[..2]).join(hash)).ok()
