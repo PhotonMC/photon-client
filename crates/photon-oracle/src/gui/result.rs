@@ -125,11 +125,12 @@ fn editing_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 33] = [
+const SOUND_OPERATIONS: [&str; 34] = [
     "death_screen",
     "disconnected_screen",
     "pause_screen",
     "stats_screen",
+    "advancements_screen",
     "widgets",
     "options_screen",
     "test_block_screen",

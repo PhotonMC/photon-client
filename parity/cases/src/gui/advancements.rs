@@ -455,7 +455,13 @@ fn motion_rows(tabs: &[Value]) -> Vec<Value> {
 /// The window's own elements: the tab buttons and Done, pressed and hovered.
 fn window_rows(tabs: &[Value]) -> Vec<Value> {
     let mut rows = Vec::new();
-    for (label, point) in [("click-tab-1", (130, 45)), ("click-tab-2", (160, 45)), ("click-nothing", (10, 10))] {
+    for (label, point) in [
+        ("click-tab-1", (130, 45)),
+        ("click-tab-2", (160, 45)),
+        ("click-nothing", (10, 10)),
+        ("click-done", (213, 215)),
+        ("click-done-edge", (113, 205)),
+    ] {
         let steps = vec![json!({"do": "click", "x": point.0, "y": point.1})];
         rows.push(with_mouse(screen_row(label, tabs.to_vec(), vec![]), point, steps));
     }

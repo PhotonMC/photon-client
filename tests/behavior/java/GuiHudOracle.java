@@ -699,6 +699,8 @@ class GuiHudOracle extends GuiCommandOracle {
             var scene = hudScene(width, height, false, false);
             var minecraft = scene.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+            MovementOracle.setField(minecraft, "soundManager", unsafe.allocateInstance(GuiScreenOracle.SilentSounds.class));
+            GuiScreenOracle.SilentSounds.ASKED.clear();
             var toasts = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
             MovementOracle.setField(minecraft.gui, "toastManager", toasts);
             MovementOracle.setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
@@ -717,6 +719,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     advancements.update(updatePacket(update.getAsJsonObject()));
                 }
                 var screen = new net.minecraft.client.gui.screens.advancements.AdvancementsScreen(advancements);
+                MovementOracle.setField(screen, "minecraft", minecraft);
                 screen.init(width, height);
                 for (var stepElement : row.getAsJsonArray("steps")) {
                     var step = stepElement.getAsJsonObject();
@@ -729,7 +732,11 @@ class GuiHudOracle extends GuiCommandOracle {
                         case "click" -> {
                             var event = new net.minecraft.client.input.MouseButtonEvent(x, y,
                                 new net.minecraft.client.input.MouseButtonInfo(0, 0));
-                            screen.mouseClicked(event, false);
+                            try {
+                                screen.mouseClicked(event, false);
+                            } catch (NullPointerException ignored) {
+                                // Done sounds, then closes the screen, which needs a live game.
+                            }
                             screen.mouseReleased(event);
                         }
                         case "drag" -> {
@@ -768,6 +775,9 @@ class GuiHudOracle extends GuiCommandOracle {
                 var out = new JsonObject();
                 out.addProperty("label", row.get("label").getAsString());
                 out.add("ops", record(frame));
+                var asked = new JsonArray();
+                GuiScreenOracle.SilentSounds.ASKED.forEach(asked::add);
+                out.add("sounds", asked);
                 rows.add(out);
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);
