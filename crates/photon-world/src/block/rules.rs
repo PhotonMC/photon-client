@@ -17,6 +17,7 @@ use photon_data::block::registry::{self, BLOCKS, Block};
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
+mod connect;
 mod placement;
 mod signal;
 mod survive;
@@ -105,6 +106,11 @@ fn is_air(state: BlockStateId) -> bool {
 /// `getFluidState(pos).is(Fluids.WATER)`: a water source, loose or held.
 pub fn is_water_source(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).fluid.fluid == photon_data::block::definition::Fluid::Water
+}
+
+/// `"true"` or `"false"`, as a boolean property's value.
+fn flag(value: bool) -> &'static str {
+    if value { "true" } else { "false" }
 }
 
 /// `FluidState.is(FluidTags.WATER)`.

@@ -359,6 +359,7 @@ fn glazed_rows() -> Vec<Value> {
         .collect()
 }
 
+mod connections;
 mod signals;
 mod supports;
 
@@ -379,6 +380,9 @@ pub fn cases() -> Vec<Value> {
         case("pressure-plates", supports::plate_rows()),
         case("lanterns-bells", supports::lantern_bell_rows()),
         case("diodes", supports::diode_rows()),
+        case("fences", connections::fence_rows()),
+        case("bars", connections::bars_rows()),
+        case("walls", connections::wall_rows()),
         case("trapdoor-signals", signals::signal_rows()),
         case("cactus-flower", supports::cactus_flower_rows()),
     ]

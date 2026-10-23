@@ -30,6 +30,15 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::TrapDoorBlock, |_, default, ctx| {
         trapdoor_placement(default, ctx)
     }),
+    (BlockClass::FenceBlock, |block, default, ctx| {
+        Rule::Known(super::connect::fence_placement(block, default, ctx))
+    }),
+    (BlockClass::IronBarsBlock, |_, default, ctx| {
+        Rule::Known(super::connect::bars_placement(default, ctx))
+    }),
+    (BlockClass::WallBlock, |_, default, ctx| {
+        super::connect::wall_placement(default, ctx)
+    }),
     (BlockClass::LanternBlock, |_, default, ctx| {
         if super::survive::has_dynamic_neighbour(ctx.clicked_pos(), ctx) {
             return Rule::Unported;
@@ -73,11 +82,6 @@ fn pillar_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Blo
         Axis::Z => "z",
     };
     with_property(default, "axis", axis)
-}
-
-/// `"true"` or `"false"`, as a boolean property's value.
-fn flag(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
 }
 
 /// Whether a slab or stair goes in the lower half: not against a downward face, and an upward
