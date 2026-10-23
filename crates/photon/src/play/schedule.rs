@@ -216,6 +216,12 @@ fn draw_frame(mut play: NonSendMut<Play>, clock: Res<Clock>, mut stop: ResMut<St
         play.draw_disconnected()?;
         return Ok(());
     }
+    // A respawn has the loading screen until the level is ready.
+    if !play.session.is_loaded() && play.session.level_loading().is_some() {
+        play.draw_loading()?;
+        return Ok(());
+    }
+    play.end_loading();
     if let Flow::Stop = play.draw([clock.start, clock.ticked], clock.ticks, clock.script_done)? {
         stop.0 = true;
     }

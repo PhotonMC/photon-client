@@ -7,7 +7,7 @@ use photon_net::connection::SwitchKind;
 
 use super::*;
 
-const IDENTITY: [[f32; 4]; 4] = [
+pub(super) const IDENTITY: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
     [0.0, 0.0, 1.0, 0.0],

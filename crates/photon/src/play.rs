@@ -68,7 +68,8 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
-    let session = join(server, &Status::default())?;
+    let mut session = join(server, &Status::default())?;
+    session.use_renderer_sections();
     let client = Client::open((width, height))?;
     Play::start(client, session)?.run()?;
     Ok(())
@@ -146,7 +147,9 @@ pub(crate) enum Exit {
 }
 
 /// Play the joined `session` in `client`'s window until the player leaves or the window closes.
-pub(crate) fn play_in(client: Client, session: PlaySession) -> Result<(Client, Exit)> {
+pub(crate) fn play_in(client: Client, mut session: PlaySession) -> Result<(Client, Exit)> {
+    // From here the renderer says when the player's section is compiled.
+    session.use_renderer_sections();
     Play::start(client, session)?.run()
 }
 
@@ -231,6 +234,8 @@ struct FrameCamera {
 /// draw.
 struct Play {
     session: PlaySession,
+    /// The level loading screen, while a respawn waits for its level.
+    loading: Option<loading::LoadingView>,
     // Fields drop in order: the swapchain goes before the window it presents
     // to, or the driver reaches into a destroyed Wayland surface.
     backend: VulkanBackend,
@@ -428,6 +433,7 @@ pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
     let started = std::time::Instant::now();
     while !session.is_loaded() {
         session.wait(Duration::from_millis(100))?;
+        session.tick_level_load()?;
         if started.elapsed() > Duration::from_secs(30) {
             let world = session.world();
             let cache = world.client_chunk_cache_snapshot();
@@ -529,6 +535,7 @@ mod effects;
 mod fitting;
 mod gizmo;
 mod glints;
+mod loading;
 mod own_model;
 mod pacing;
 mod schedule;

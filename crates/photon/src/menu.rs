@@ -28,7 +28,7 @@ mod audio;
 mod credits;
 mod draw;
 mod icons;
-mod panorama;
+pub(crate) mod panorama;
 mod pings;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;

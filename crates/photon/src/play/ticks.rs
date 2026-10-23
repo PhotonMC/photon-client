@@ -113,20 +113,7 @@ impl Play {
             _ => CameraType::FirstPerson,
         };
         let mut controls = Controls::new(camera_type, script.is_none());
-        // A measuring run is not held to the player's limit, and a test can set either option
-        // without touching the options file.
-        if env::var_os("PHOTON_BENCH").is_some() {
-            controls.options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
-        }
-        if let Ok(value) = env::var("PHOTON_VSYNC") {
-            controls.options.enable_vsync = value != "0";
-        }
-        if let Some(limit) = env::var("PHOTON_MAX_FPS")
-            .ok()
-            .and_then(|text| text.parse().ok())
-        {
-            controls.options.framerate_limit = limit;
-        }
+        apply_env_options(&mut controls.options);
         let (sound, music, ambient) = super::audio::load(
             audio,
             &session,
@@ -149,6 +136,7 @@ impl Play {
         surface.set_cursor_captured(controls.captured);
         Ok(Self {
             screen_assets: gui.screen_assets(),
+            loading: None,
             session,
             surface,
             backend,
@@ -241,7 +229,7 @@ impl Play {
             if is_input(&event) {
                 self.limiter.input_received(frame_start);
             }
-            if self.switch_event(&event) {
+            if self.switch_event(&event) || self.loading_event(&event) {
                 continue;
             }
             self.controls.handle(
@@ -540,4 +528,21 @@ fn load_overlay_textures(backend: &mut photon_render::VulkanBackend, root: &str)
         &texture(root, "entity/end_portal/end_portal", "end_portal")?,
     ))?;
     Ok(())
+}
+
+/// A measuring run is not held to the player's limit, and a test can set either option without
+/// touching the options file.
+fn apply_env_options(options: &mut photon_game::options::Options) {
+    if env::var_os("PHOTON_BENCH").is_some() {
+        options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
+    }
+    if let Ok(value) = env::var("PHOTON_VSYNC") {
+        options.enable_vsync = value != "0";
+    }
+    if let Some(limit) = env::var("PHOTON_MAX_FPS")
+        .ok()
+        .and_then(|text| text.parse().ok())
+    {
+        options.framerate_limit = limit;
+    }
 }

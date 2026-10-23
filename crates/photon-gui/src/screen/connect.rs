@@ -159,6 +159,19 @@ impl ReconfigScreen {
     }
 }
 
+/// What `LevelLoadingScreen.extractBackground` draws for each reason.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LoadingBackground {
+    /// `Reason.OTHER`: the panorama behind the blur and the menu background, the panorama
+    /// itself being the renderer's.
+    Menu,
+    /// `Reason.NETHER_PORTAL`: the nether portal's sprite (`[u0, v0, u1, v1]` in the block
+    /// atlas) over the whole screen.
+    NetherPortal([f32; 4]),
+    /// `Reason.END_PORTAL`: the end portal's look, the renderer's.
+    EndPortal,
+}
+
 /// `LevelLoadingScreen` of a server's level (`Reason.OTHER`, no progress, no chunk map).
 pub fn draw_level_loading(
     frame: &mut GuiFrame,
@@ -167,7 +180,25 @@ pub fn draw_level_loading(
     lang: &Lang,
     size: (i32, i32),
 ) {
-    menu_background(frame, atlas, size);
+    draw_level_loading_over(frame, atlas, font, lang, size, LoadingBackground::Menu);
+}
+
+/// `LevelLoadingScreen` with the background its reason picks.
+pub fn draw_level_loading_over(
+    frame: &mut GuiFrame,
+    atlas: &GuiAtlas,
+    font: &Font,
+    lang: &Lang,
+    size: (i32, i32),
+    background: LoadingBackground,
+) {
+    match background {
+        LoadingBackground::Menu => menu_background(frame, atlas, size),
+        LoadingBackground::NetherPortal(uv) => {
+            frame.block_sprite_overlay(uv, (0, 0, size.0, size.1), 1.0);
+        }
+        LoadingBackground::EndPortal => {}
+    }
     let text = lang.runs(
         &Component::translatable("multiplayer.downloadingTerrain"),
         &Style::default(),
