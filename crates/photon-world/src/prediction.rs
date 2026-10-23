@@ -171,6 +171,7 @@ impl ClientWorld {
             let updated = match crate::block::rules::update_shape(
                 current,
                 &read,
+                self.block_state_registry().tags(),
                 neighbour,
                 direction.opposite(),
             ) {

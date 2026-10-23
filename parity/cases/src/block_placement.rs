@@ -372,6 +372,7 @@ mod furnishings;
 mod growth;
 mod items;
 mod mounted;
+mod shapes;
 mod signals;
 mod stacking;
 mod supports;
@@ -407,6 +408,14 @@ fn furnishing_cases() -> Vec<Value> {
         case("dripleaves", chorus::dripleaf_rows()),
         case("pitcher-pods", chorus::pitcher_rows()),
         case("tripwire-hooks", chorus::hook_rows()),
+        case("shape-fences", shapes::fence_rows()),
+        case("shape-bars", shapes::bars_rows()),
+        case("shape-walls", shapes::wall_rows()),
+        case("shape-gates", shapes::gate_rows()),
+        case("shape-snowy", shapes::snowy_rows()),
+        case("shape-chorus", shapes::chorus_rows()),
+        case("shape-tripwires", shapes::tripwire_rows()),
+        case("shape-dripleaves", shapes::dripleaf_rows()),
     ]
 }
 

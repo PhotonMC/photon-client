@@ -44,6 +44,33 @@ pub(super) fn big_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool
         || tagged(ctx, below(pos), "minecraft:supports_big_dripleaf")
 }
 
+/// `BigDripleafBlock.updateShape`: a leaf with another on top becomes a stem. One that can no
+/// longer stand turns into air.
+pub(super) fn big_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    if direction == Direction::Down && !big_survives(pos, ctx) {
+        return registry::default_state_named("minecraft:air");
+    }
+    let on_top = ctx.state((pos.0, pos.1 + 1, pos.2));
+    if direction != Direction::Up || !named(on_top, "minecraft:big_dripleaf") {
+        return state;
+    }
+    const STEM: BlockStateId = registry::default_state_named("minecraft:big_dripleaf_stem");
+    [
+        ("facing", property(state, "facing")),
+        ("waterlogged", property(state, "waterlogged")),
+    ]
+    .into_iter()
+    .try_fold(STEM, |stem, (name, value)| {
+        with_property(stem, name, value?)
+    })
+    .unwrap_or(state)
+}
+
 /// `SmallDripleafBlock.getStateForPlacement`: a double plant that faces the player and is
 /// waterlogged by any water at the place.
 fn small_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<BlockStateId>> {

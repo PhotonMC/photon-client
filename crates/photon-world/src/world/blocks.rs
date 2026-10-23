@@ -146,6 +146,7 @@ impl ClientWorld {
         let block::rules::Rule::Known(updated_state_id) = block::rules::update_shape(
             state_id,
             &state_at,
+            self.block_state_registry().tags(),
             (x, y, z),
             photon_core::direction::Direction::North,
         ) else {

@@ -256,6 +256,9 @@ class BlockPlacementOracle extends BlockItemOracle {
                 described.addProperty("state",
                     net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(placed));
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));
+                if (row.has("neighbours") && row.get("neighbours").getAsBoolean()) {
+                    described.add("neighbours", neighbourShapes(level, context.getClickedPos(), placed));
+                }
             }
             if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item) {
                 itemPlacement(level, context, stack, item, placed, described);
@@ -264,6 +267,44 @@ class BlockPlacementOracle extends BlockItemOracle {
         }
         entry.add("placements", results);
         return entry;
+    }
+
+    /**
+     * {@code Level.updateNeighbourShapes} after {@code placed} is set at {@code pos}: the
+     * neighbours, in the game's order, that change to another state that is not air.
+     */
+    static JsonArray neighbourShapes(ScriptedLevel level, net.minecraft.core.BlockPos pos,
+            net.minecraft.world.level.block.state.BlockState placed) {
+        var before = level.states.get(pos.asLong());
+        level.states.put(pos.asLong(), placed);
+        var changed = new JsonArray();
+        net.minecraft.core.Direction[] order = {
+            net.minecraft.core.Direction.WEST, net.minecraft.core.Direction.EAST,
+            net.minecraft.core.Direction.NORTH, net.minecraft.core.Direction.SOUTH,
+            net.minecraft.core.Direction.DOWN, net.minecraft.core.Direction.UP};
+        for (var direction : order) {
+            var at = pos.relative(direction);
+            var current = level.getBlockState(at);
+            var updated = current.updateShape(level, level, at, direction.getOpposite(), pos, placed,
+                level.getRandom());
+            if (updated != current && !updated.isAir()) {
+                var entry = new JsonObject();
+                var position = new JsonArray();
+                position.add(at.getX());
+                position.add(at.getY());
+                position.add(at.getZ());
+                entry.add("pos", position);
+                entry.addProperty("state",
+                    net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(updated));
+                changed.add(entry);
+            }
+        }
+        if (before == null) {
+            level.states.remove(pos.asLong());
+        } else {
+            level.states.put(pos.asLong(), before);
+        }
+        return changed;
     }
 
     /**

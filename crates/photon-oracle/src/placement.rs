@@ -48,7 +48,8 @@ fn placement_row(row: &Value, tags: &BlockTags) -> Result<Value, String> {
             .and_then(|n| i32::try_from(n).ok());
         let light = move |_: i32, _: i32, _: i32| raw_light.unwrap_or(0);
         ctx.brightness = raw_light.map(|_| &light as &dyn Fn(i32, i32, i32) -> i32);
-        placements.push(place(name, &ctx)?);
+        let neighbours = row["neighbours"].as_bool().unwrap_or(false);
+        placements.push(place(name, &ctx, neighbours)?);
     }
     Ok(json!({
         "label": string(row, "label")?,
@@ -68,7 +69,7 @@ fn position(value: &Value) -> Result<(i32, i32, i32), String> {
 }
 
 /// The three questions of one block, in the order `BlockItem.place` asks them.
-fn place(name: &str, ctx: &PlaceContext<'_>) -> Result<Value, String> {
+fn place(name: &str, ctx: &PlaceContext<'_>, neighbours: bool) -> Result<Value, String> {
     let unported = || format!("{name}: a placement rule is not written");
     let block = photon_data::block::registry::block_index(name)
         .ok_or_else(|| format!("unknown block {name}"))?;
@@ -106,10 +107,56 @@ fn place(name: &str, ctx: &PlaceContext<'_>) -> Result<Value, String> {
                 return Err(unported());
             };
             described["survives"] = json!(survives);
+            if neighbours {
+                described["neighbours"] = neighbour_shapes(state, pos, &ctx, &unported)?;
+            }
         }
     }
     item_placement(block, &ctx, &mut described, unported)?;
     Ok(described)
+}
+
+/// `Level.updateNeighbourShapes` after `state` is set at `pos`: the neighbours, in the
+/// reference's order, whose state changes to another that is not air.
+fn neighbour_shapes(
+    state: photon_core::ids::BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+    unported: &dyn Fn() -> String,
+) -> Result<Value, String> {
+    use photon_core::direction::Direction;
+    let read = |x: i32, y: i32, z: i32| {
+        if (x, y, z) == pos {
+            state
+        } else {
+            (ctx.state_at)(x, y, z)
+        }
+    };
+    let mut changed = Vec::new();
+    for direction in [
+        Direction::West,
+        Direction::East,
+        Direction::North,
+        Direction::South,
+        Direction::Down,
+        Direction::Up,
+    ] {
+        let (dx, dy, dz) = direction.step();
+        let at = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
+        let current = read(at.0, at.1, at.2);
+        let Rule::Known(updated) =
+            rules::update_shape(current, &read, ctx.tags, at, direction.opposite())
+        else {
+            return Err(unported());
+        };
+        if updated != current && !rules::state_is_air(updated) {
+            changed.push(json!({
+                "pos": [at.0, at.1, at.2],
+                "state": rules::serialize_state(updated),
+            }));
+        }
+    }
+    Ok(json!(changed))
 }
 
 /// What the item classes beyond `BlockItem` add: the state the item chooses and the blocks it

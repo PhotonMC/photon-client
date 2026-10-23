@@ -72,6 +72,44 @@ pub(super) fn plant_survives(
     supports(below)
 }
 
+/// `ChorusPlantBlock.updateShape`: a plant that can no longer stand keeps its state (it is
+/// ticked away); any other joins or leaves the changed neighbour.
+pub(super) fn plant_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    if !plant_survives(state, pos, ctx) {
+        return state;
+    }
+    let at = offset(pos, direction);
+    let there = ctx.state(at);
+    let joined = same_block(there, state)
+        || is_named(there, "minecraft:chorus_flower")
+        || direction == Direction::Down && tagged(ctx, at, "minecraft:supports_chorus_plant");
+    with_property(state, direction.name(), flag(joined)).unwrap_or(state)
+}
+
+/// `TripWireBlock.updateShape`: the side towards the changed neighbour.
+pub(super) fn tripwire_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    if direction.axis() == Axis::Y {
+        return state;
+    }
+    let there = ctx.state(offset(pos, direction));
+    let joined = if is_named(there, "minecraft:tripwire_hook") {
+        property(there, "facing") == Some(direction.opposite().name())
+    } else {
+        same_block(there, state)
+    };
+    with_property(state, direction.name(), flag(joined)).unwrap_or(state)
+}
+
 /// `ChorusFlowerBlock.canSurvive`: on its plant or a block it grows from, or in the air with
 /// exactly one plant beside it and nothing else.
 pub(super) fn flower_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {

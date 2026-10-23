@@ -496,7 +496,13 @@ impl ClientWorld {
         let read = |x: i32, y: i32, z: i32| self.block_state_or_air(x, y, z);
         let mut shaped = state;
         for direction in SHAPE_ORDER {
-            if let rules::Rule::Known(next) = rules::update_shape(shaped, &read, pos, direction) {
+            if let rules::Rule::Known(next) = rules::update_shape(
+                shaped,
+                &read,
+                self.block_state_registry().tags(),
+                pos,
+                direction,
+            ) {
                 shaped = next;
             }
         }

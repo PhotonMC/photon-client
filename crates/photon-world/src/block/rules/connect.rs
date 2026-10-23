@@ -145,16 +145,8 @@ pub(super) fn wall_placement(
 ) -> Rule<Option<BlockStateId>> {
     let pos = ctx.clicked_pos();
     let top = ctx.state(neighbour(pos, Direction::Up));
-    if block(top)
-        .is_some_and(|block| block.dynamic_shape || crate::block::moves_with_position(block))
-    {
+    let Some(above) = above_shape(top) else {
         return Rule::Unported;
-    }
-    let above = {
-        let info = crate::block::state_or_air(top);
-        crate::block::states()
-            .collision(info)
-            .face_shape(Direction::Down)
     };
     let sides = SIDES.map(|side| {
         let beside = ctx.state(neighbour(pos, side));
@@ -165,6 +157,105 @@ pub(super) fn wall_placement(
         with_property(default, "waterlogged", water)
             .and_then(|state| wall_shape(state, top, sides, &above, ctx)),
     )
+}
+
+/// The lower face of the collision shape of the block above a wall; `None` for a block whose
+/// shape depends on where it stands.
+fn above_shape(top: BlockStateId) -> Option<VoxelShape> {
+    if block(top)
+        .is_some_and(|block| block.dynamic_shape || crate::block::moves_with_position(block))
+    {
+        return None;
+    }
+    let info = crate::block::state_or_air(top);
+    Some(
+        crate::block::states()
+            .collision(info)
+            .face_shape(Direction::Down),
+    )
+}
+
+/// `FenceBlock.updateShape`: the side towards the changed neighbour.
+pub(super) fn fence_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    if !SIDES.contains(&direction) {
+        return state;
+    }
+    let Some((index, _)) = block_index(state) else {
+        return state;
+    };
+    let beside = ctx.state(neighbour(pos, direction));
+    let connected = fence_connects(
+        index,
+        beside,
+        face_solid(ctx, pos, direction),
+        direction.opposite(),
+        ctx,
+    );
+    with_property(state, direction.name(), flag(connected)).unwrap_or(state)
+}
+
+/// `IronBarsBlock.updateShape`: the side towards the changed neighbour.
+pub(super) fn bars_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    if !SIDES.contains(&direction) {
+        return state;
+    }
+    let beside = ctx.state(neighbour(pos, direction));
+    let attached = bars_attach(beside, face_solid(ctx, pos, direction), ctx);
+    with_property(state, direction.name(), flag(attached)).unwrap_or(state)
+}
+
+/// `WallBlock.updateShape`: a change above reshapes the arms and the post; one at the side
+/// replaces that arm's connection first. Unported above a block whose shape moves.
+pub(super) fn wall_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    if direction == Direction::Down {
+        return Rule::Known(state);
+    }
+    let top = ctx.state(neighbour(pos, Direction::Up));
+    let Some(above) = above_shape(top) else {
+        return Rule::Unported;
+    };
+    let sides = SIDES.map(|side| {
+        if side == direction {
+            let beside = ctx.state(neighbour(pos, side));
+            wall_connects(beside, face_solid(ctx, pos, side), side.opposite(), ctx)
+        } else {
+            property(state, side.name()).is_some_and(|height| height != "none")
+        }
+    });
+    Rule::Known(wall_shape(state, top, sides, &above, ctx).unwrap_or(state))
+}
+
+/// `FenceGateBlock.updateShape`: in a wall when the block beside it along its line, or the one
+/// opposite, is a wall.
+pub(super) fn gate_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    let along = facing(state).map(|facing| facing.clockwise(Axis::Y).axis());
+    if along != Some(direction.axis()) {
+        return state;
+    }
+    let is_wall = |at| tagged(ctx.state(at), "minecraft:walls", ctx);
+    let in_wall =
+        is_wall(neighbour(pos, direction)) || is_wall(neighbour(pos, direction.opposite()));
+    with_property(state, "in_wall", flag(in_wall)).unwrap_or(state)
 }
 
 /// `WallBlock.updateShape` with the four connections and the shape above.

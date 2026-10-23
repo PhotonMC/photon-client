@@ -28,6 +28,7 @@ mod item;
 mod mounted;
 mod placement;
 mod replace;
+mod shape;
 mod signal;
 mod survive;
 mod tall;
@@ -378,20 +379,18 @@ fn stairs_shape(
 pub fn update_shape(
     state: BlockStateId,
     state_at: &dyn Fn(i32, i32, i32) -> BlockStateId,
+    tags: &super::tags::BlockTags,
     pos: (i32, i32, i32),
     direction: Direction,
 ) -> Rule<BlockStateId> {
-    match state_owner(state, Method::UpdateShape) {
-        None => Rule::Known(state),
-        Some(BlockClass::StairBlock) => {
-            if direction.axis() == Axis::Y {
-                return Rule::Known(state);
-            }
-            let shape = stairs_shape(state, state_at, pos);
-            Rule::Known(with_property(state, "shape", shape).unwrap_or(state))
-        }
-        _ => Rule::Unported,
-    }
+    let ctx = PlaceContext::new(
+        state_at,
+        (pos, direction, (0.0, 0.0, 0.0)),
+        None,
+        (0.0, 0.0),
+        tags,
+    );
+    shape::update_shape(state, pos, direction, &ctx)
 }
 
 /// What a use on a block or with an item came to.
