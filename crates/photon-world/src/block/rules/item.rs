@@ -321,4 +321,47 @@ mod tests {
         assert_eq!(kind_of("minecraft:stick"), None);
         assert_eq!(kind_of("minecraft:scaffolding"), None);
     }
+
+    /// How many block items the rules predict on a click on the top of a stone block. The counts
+    /// are floors: a written class may only raise them.
+    #[test]
+    fn the_block_items_that_are_predicted_are_counted() {
+        let state_at = |_: i32, y: i32, _: i32| {
+            if y < 64 {
+                default_state(registry::block_index("minecraft:stone").expect("stone"))
+            } else {
+                crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+            }
+        };
+        let tags = crate::block::tags::BlockTags::default();
+        let mut ctx = PlaceContext::new(
+            &state_at,
+            ((0, 63, 0), Direction::Up, (0.5, 64.0, 0.5)),
+            None,
+            (0.0, 0.0),
+            &tags,
+        );
+        ctx.replace_clicked = false;
+        // Plain block items, and those of the other written classes: (items, predicted).
+        let (mut plain, mut other) = ((0, 0), (0, 0));
+        for (index, item) in ITEMS.iter().enumerate() {
+            let Some(block) = item.block.and_then(registry::block_index) else {
+                continue;
+            };
+            let Some(kind) = item_placement(ItemId(i32::try_from(index).expect("an index"))) else {
+                continue;
+            };
+            let known = placement_state(kind, block, &ctx) != Rule::Unported;
+            let count = if kind == ItemPlacement::Plain {
+                &mut plain
+            } else {
+                &mut other
+            };
+            count.0 += 1;
+            count.1 += usize::from(known);
+        }
+        assert_eq!(plain.0, 938);
+        assert!(plain.1 >= 840, "plain block items predicted: {}", plain.1);
+        assert!(other.1 >= 104, "other block items predicted: {}", other.1);
+    }
 }
