@@ -31,6 +31,52 @@ class MovementFireOracle extends MovementPickupOracle {
     }
 
     /**
+     * Each entity type's renderer, built from the renderers' own table with a context that only
+     * holds the vanilla model set: the shadow radius and strength it sets in its
+     * constructor (`EntityRenderer.shadowRadius`, `shadowStrength`). A type whose renderer cannot
+     * be built that way is listed by name, never guessed.
+     */
+    @SuppressWarnings("unchecked")
+    static JsonObject rendererShadows(JsonObject row) throws Exception {
+        var context = (net.minecraft.client.renderer.entity.EntityRendererProvider.Context)
+            unsafe.allocateInstance(net.minecraft.client.renderer.entity.EntityRendererProvider.Context.class);
+        setField(context, "modelSet", net.minecraft.client.model.geom.EntityModelSet.vanilla());
+        var providers = (java.util.Map<net.minecraft.world.entity.EntityType<?>,
+            net.minecraft.client.renderer.entity.EntityRendererProvider<?>>)
+            getStaticField(net.minecraft.client.renderer.entity.EntityRenderers.class, "PROVIDERS");
+        var types = new com.google.gson.JsonArray();
+        var failed = new com.google.gson.JsonArray();
+        for (var type : net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE) {
+            var name = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toString();
+            var provider = providers.get(type);
+            if (provider == null) {
+                continue;
+            }
+            try {
+                var renderer = provider.create(context);
+                var entry = new JsonObject();
+                entry.addProperty("name", name);
+                entry.addProperty("radius", Oracle.bits((float) getField(renderer, "shadowRadius")));
+                entry.addProperty("strength", Oracle.bits((float) getField(renderer, "shadowStrength")));
+                types.add(entry);
+            } catch (Throwable error) {
+                failed.add(name);
+            }
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("types", types);
+        entry.add("failed", failed);
+        return entry;
+    }
+
+    static Object getStaticField(Class<?> type, String name) throws Exception {
+        var field = type.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(null);
+    }
+
+    /**
      * Every block's map colour (`BlockState.getMapColor`): its first state's, and each state whose
      * colour is another; a falling block's dust colour (`FallingBlock.getDustColor`).
      */

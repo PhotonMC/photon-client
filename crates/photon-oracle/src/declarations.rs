@@ -340,6 +340,6 @@ fn declared(block: &photon_data::block::definition::Block) -> Value {
 }
 
 /// A float as the hex of its bits.
-fn bits(value: f32) -> String {
+pub(crate) fn bits(value: f32) -> String {
     format!("{:08x}", value.to_bits())
 }

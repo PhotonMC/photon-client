@@ -10,6 +10,7 @@ pub mod entity_attributes;
 pub mod entity_models;
 pub mod entity_picks;
 pub mod entity_serializers;
+pub mod entity_shadows;
 pub mod entity_types;
 pub mod entity_variants;
 pub mod fire;

@@ -43,13 +43,8 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     if string(request, "operation")? == "particle_engine" {
         return particle_engine_result(request);
     }
-    if string(request, "operation")? == "fire_flammability" {
-        // `FireBlock`'s odds, as the data crate carries them.
-        let blocks: Vec<Value> = photon_data::fire::all()
-            .iter()
-            .map(|(name, ignite, burn)| json!({"name": name, "ignite": ignite, "burn": burn}))
-            .collect();
-        return Ok(json!({"rows": [{"label": "all", "blocks": blocks}]}));
+    if let Some(result) = crate::data_tables::table_result(string(request, "operation")?) {
+        return Ok(result);
     }
     if string(request, "operation")? == "block_map_colors" {
         // The map colours and dust colours, as the data crate carries them.
