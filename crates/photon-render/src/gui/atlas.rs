@@ -226,6 +226,43 @@ fn with_edge_border(image: &DecodedImage) -> DecodedImage {
 }
 
 /// One white texel, which fills are drawn with.
+/// The key of the missing texture (`MissingTextureAtlasSprite.getLocation`).
+const MISSING: &str = "minecraft:missingno";
+
+/// `MissingTextureAtlasSprite.generateMissingImage`: 16 by 16, magenta where exactly one of the
+/// row and the column is in the first half, black elsewhere.
+fn missing_image() -> DecodedImage {
+    let mut rgba = Vec::with_capacity(16 * 16 * 4);
+    for y in 0..16 {
+        for x in 0..16 {
+            let pink = (y < 8) ^ (x < 8);
+            rgba.extend_from_slice(if pink {
+                &[0xF8, 0x00, 0xF8, 0xFF]
+            } else {
+                &[0, 0, 0, 0xFF]
+            });
+        }
+    }
+    DecodedImage {
+        width: 16,
+        height: 16,
+        rgba,
+    }
+}
+
+fn register_missing(
+    stitcher: &mut Stitcher,
+    images: &mut BTreeMap<String, DecodedImage>,
+) -> Option<()> {
+    stitcher.register_sprite(SpriteEntry {
+        width: 16,
+        height: 16,
+        name: Identifier::parse(MISSING).ok()?,
+    });
+    images.insert(MISSING.to_owned(), missing_image());
+    Some(())
+}
+
 fn register_white(
     stitcher: &mut Stitcher,
     images: &mut BTreeMap<String, DecodedImage>,
@@ -328,6 +365,7 @@ fn collect_images(
     }
     register_favicon_slots(&mut stitcher, &mut images)?;
     register_white(&mut stitcher, &mut images)?;
+    register_missing(&mut stitcher, &mut images)?;
     Some((stitcher, images, blurred))
 }
 
@@ -480,13 +518,28 @@ impl GuiAtlas {
         } else {
             format!("minecraft:{name}")
         };
-        self.sprites.get(&id).copied().unwrap_or([0.0; 4])
+        // A sprite the atlas lacks is the missing texture, as `SpriteGetter` answers.
+        self.sprites
+            .get(&id)
+            .or_else(|| self.sprites.get(MISSING))
+            .copied()
+            .unwrap_or([0.0; 4])
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_missing_image_is_magenta_and_black_in_quarters() {
+        let image = missing_image();
+        let at = |x: usize, y: usize| image.rgba[(y * 16 + x) * 4..][..4].to_vec();
+        assert_eq!(at(0, 0), [0, 0, 0, 255]);
+        assert_eq!(at(15, 0), [0xF8, 0, 0xF8, 255]);
+        assert_eq!(at(0, 15), [0xF8, 0, 0xF8, 255]);
+        assert_eq!(at(15, 15), [0, 0, 0, 255]);
+    }
 
     #[test]
     fn the_edge_border_repeats_the_nearest_texels() {
