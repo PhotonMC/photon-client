@@ -55,6 +55,9 @@ pub(super) enum PipelineKind {
     /// The held items, which are drawn with the terrain's shaders but from
     /// the wider vertices the entities use.
     Held,
+    /// The held items' quads of sprites with translucent texels (`ITEM_TRANSLUCENT`): blended, the
+    /// depth written.
+    HeldTranslucent,
     /// Text in the world (`TEXT`): the font's glyphs lit by the lightmap and
     /// fogged, tested against the depth.
     Text,
@@ -235,7 +238,9 @@ pub(super) struct SceneResources {
     pub(super) entity_pipeline: Pipeline,
     pub(super) lines_pipelines: [Pipeline; 2],
     pub(super) crumbling_pipeline: Pipeline,
-    pub(super) held_pipeline: Pipeline,
+    /// The pipelines of the held items: opaque, then the quads of translucent sprites
+    /// (`ITEM_TRANSLUCENT`).
+    pub(super) held_pipelines: [Pipeline; 2],
     pub(super) text_pipeline: Pipeline,
     pub(super) text_see_through_pipeline: Pipeline,
     pub(super) text_translucent_pipeline: Pipeline,
@@ -521,6 +526,9 @@ pub(super) struct PendingSky {
 pub(super) struct DrawList {
     pub(super) buffer: DynamicBuffer,
     pub(super) count: u32,
+    /// How many of the last `count` vertices are translucent quads, drawn after the rest
+    /// (dropped items).
+    pub(super) translucent: u32,
 }
 
 /// The line strips: the aimed block's outline, and the F3 3D crosshair, which is in view space and

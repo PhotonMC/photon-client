@@ -40,6 +40,24 @@ impl VulkanBackend {
         }
     }
 
+    /// The held items' pipelines: opaque, then blended for the quads of translucent sprites.
+    ///
+    /// # Safety
+    ///
+    /// The device and the layout must be live.
+    unsafe fn create_held_pipelines(
+        &self,
+        layout: vk::DescriptorSetLayout,
+    ) -> Result<[Pipeline; 2], VulkanError> {
+        // SAFETY: the caller keeps the device and the layout live.
+        unsafe {
+            Ok([
+                self.create_pipeline(layout, PipelineKind::Held)?,
+                self.create_pipeline(layout, PipelineKind::HeldTranslucent)?,
+            ])
+        }
+    }
+
     /// Build the depth target, texture, buffers and pipeline for one mesh.
     ///
     /// The GLSL is this project's own; `build.rs` compiles it with shaderc, the library the
@@ -87,7 +105,7 @@ impl VulkanBackend {
             let lines_pipelines = self.create_line_pipelines(descriptors.layout)?;
             let crumbling_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::Crumbling)?;
-            let held_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Held)?;
+            let held_pipelines = self.create_held_pipelines(descriptors.layout)?;
             let text_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Text)?;
             let text_see_through_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::TextSeeThrough)?;
@@ -125,7 +143,7 @@ impl VulkanBackend {
                 entity_pipeline,
                 lines_pipelines,
                 crumbling_pipeline,
-                held_pipeline,
+                held_pipelines,
                 text_pipeline,
                 text_see_through_pipeline,
                 text_translucent_pipeline,

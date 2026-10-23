@@ -15,4 +15,5 @@ pub mod map;
 pub mod minecart;
 pub mod painting;
 pub mod projectile;
+pub mod translucent_items;
 pub mod xp_orb;

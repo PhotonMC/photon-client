@@ -68,7 +68,8 @@ pub struct VulkanBackend {
     pub(super) screen_effect_projection: [[f32; 4]; 4],
     /// The entities' triangles for the next frame.
     pub(super) entity: DrawList,
-    /// The dropped items' triangles, which sample the block atlas.
+    /// The dropped items' triangles, which sample the block atlas: the opaque ones, then the quads
+    /// of translucent sprites.
     pub(super) ground: DrawList,
     /// The name tags' text: seen through blocks, then lit and depth-tested.
     pub(super) name_tag_see: DrawList,
@@ -108,7 +109,7 @@ pub struct VulkanBackend {
     pub(super) hand: DrawList,
     /// The held items' triangles and then their glints' (counts), after the arm's in the hand
     /// buffer.
-    pub(super) held_counts: [u32; 2],
+    pub(super) held_counts: [u32; 3],
     /// The aimed block's outline strips and the F3 3D crosshair for the next frame.
     pub(super) lines: LineDraws,
     /// `glintStrength`: how bright the enchantment glints are drawn.

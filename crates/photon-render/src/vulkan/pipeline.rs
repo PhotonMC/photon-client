@@ -22,7 +22,7 @@ impl VulkanBackend {
             kind,
             PipelineKind::SkyTranslucent | PipelineKind::SkyOverlay
         );
-        let translucent = kind == PipelineKind::Translucent;
+        let translucent = blends_by_alpha(kind);
         let clouds = kind == PipelineKind::Clouds;
         let weather = kind == PipelineKind::Weather;
         let dissolve = kind == PipelineKind::Dissolve;
@@ -355,6 +355,14 @@ fn depth_compare(kind: PipelineKind) -> vk::CompareOp {
     }
 }
 
+/// Whether a pipeline blends by the source's alpha with the terrain's blend (`TRANSLUCENT`).
+fn blends_by_alpha(kind: PipelineKind) -> bool {
+    matches!(
+        kind,
+        PipelineKind::Translucent | PipelineKind::HeldTranslucent
+    )
+}
+
 /// Whether a pipeline's draws write the depth buffer.
 fn writes_depth(kind: PipelineKind) -> bool {
     matches!(
@@ -365,6 +373,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Entity
             | PipelineKind::EntityOutline
             | PipelineKind::Held
+            | PipelineKind::HeldTranslucent
             | PipelineKind::Dissolve
             | PipelineKind::Rays
             | PipelineKind::Portal

@@ -69,6 +69,8 @@ impl Pass {
 pub(super) enum Run {
     /// Dropped items and the blocks on entities, in the block atlas.
     Ground,
+    /// The dropped items' quads of translucent sprites, blended over what is drawn.
+    GroundTranslucent,
     Entity,
     /// Blended quads of the shadow texture over the blocks' tops.
     Shadow,
@@ -106,6 +108,8 @@ pub(super) enum Run {
     Hand,
     /// The items the hand holds, from the block atlas, after the arm.
     Held,
+    /// The held items' quads of translucent sprites, blended, after the opaque ones.
+    HeldTranslucent,
     /// The enchantment glint of what the hand holds, over the depth the items wrote.
     HandGlint,
 }
@@ -113,9 +117,10 @@ pub(super) enum Run {
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
 /// flat shapes: shadows before what they lie under, the glowing layers, the additive ones, orbs,
 /// maps, and the name tags last.
-pub(super) const ENTITY_RUNS: [Run; 13] = [
+pub(super) const ENTITY_RUNS: [Run; 14] = [
     Run::Ground,
     Run::Entity,
+    Run::GroundTranslucent,
     Run::Shadow,
     Run::Dissolve,
     Run::Glow,
@@ -162,7 +167,13 @@ impl Run {
     /// The pipeline the run is drawn with.
     pub(super) fn pipeline(self, scene: &SceneResources) -> &Pipeline {
         match self {
-            Self::Ground | Self::Held | Self::BlockParticle => &scene.held_pipeline,
+            Self::Ground
+            | Self::Held
+            | Self::BlockParticle
+            | Self::GroundTranslucent
+            | Self::HeldTranslucent => {
+                &scene.held_pipelines[usize::from(self.is_item_translucent())]
+            }
             Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
@@ -177,10 +188,19 @@ impl Run {
         }
     }
 
+    /// Whether the run is the quads of translucent sprites among the items.
+    fn is_item_translucent(self) -> bool {
+        matches!(self, Self::GroundTranslucent | Self::HeldTranslucent)
+    }
+
     /// The set the run samples.
     pub(super) fn sampled(self) -> Sampled {
         match self {
-            Self::Ground | Self::Held | Self::BlockParticle => Sampled::Atlas,
+            Self::Ground
+            | Self::GroundTranslucent
+            | Self::Held
+            | Self::HeldTranslucent
+            | Self::BlockParticle => Sampled::Atlas,
             Self::Map => Sampled::Map,
             Self::NameTagSeeThrough | Self::NameTag => Sampled::Gui,
             Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
@@ -241,7 +261,10 @@ mod tests {
 
     #[test]
     fn the_entities_pass_draws_items_and_entities_before_the_shapes_over_them() {
-        assert_eq!(ENTITY_RUNS[..2], [Run::Ground, Run::Entity]);
+        assert_eq!(
+            ENTITY_RUNS[..3],
+            [Run::Ground, Run::Entity, Run::GroundTranslucent]
+        );
         let position = |run| ENTITY_RUNS.iter().position(|&own| own == run).unwrap();
         // Shadows lie under the entities' flat shapes; name tags are the last of all.
         assert!(position(Run::Shadow) < position(Run::Glow));

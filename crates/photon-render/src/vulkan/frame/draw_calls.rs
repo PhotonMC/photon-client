@@ -138,7 +138,11 @@ impl VulkanBackend {
         push[45] = base[45];
         push[46] = self.glint_strength;
         let bytes = match run {
-            Run::Ground | Run::Held | Run::BlockParticle => {
+            Run::Ground
+            | Run::GroundTranslucent
+            | Run::Held
+            | Run::HeldTranslucent
+            | Run::BlockParticle => {
                 push[40] = 1.0;
                 184
             }
@@ -231,12 +235,23 @@ impl VulkanBackend {
 
     /// The items the hand holds follow the arm in its buffer, and their glints follow the items.
     fn hand_range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
-        let [items, glints] = self.held_counts;
+        let [items, glints, translucent] = self.held_counts;
         let arm = self.hand.count;
         let buffer = self.hand.buffer.as_ref();
         match run {
-            Run::HandGlint => (buffer, arm + items, glints),
+            Run::HeldTranslucent => (buffer, arm + items, translucent),
+            Run::HandGlint => (buffer, arm + items + translucent, glints),
             _ => (buffer, arm, items),
+        }
+    }
+
+    /// The dropped items: the opaque triangles, then the translucent quads.
+    fn ground_range(&self, run: Run) -> (Option<&HostBuffer>, u32, u32) {
+        let (buffer, translucent) = (self.ground.buffer.as_ref(), self.ground.translucent);
+        let opaque = self.ground.count - translucent;
+        match run {
+            Run::GroundTranslucent => (buffer, opaque, translucent),
+            _ => (buffer, 0, opaque),
         }
     }
 
@@ -246,7 +261,7 @@ impl VulkanBackend {
             (list.buffer.as_ref(), 0, list.count)
         }
         match run {
-            Run::Ground => list(&self.ground),
+            Run::Ground | Run::GroundTranslucent => self.ground_range(run),
             Run::Entity => list(&self.entity),
             Run::Shadow => list(&self.shadow),
             Run::Dissolve => list(&self.dissolve),
@@ -265,7 +280,7 @@ impl VulkanBackend {
             Run::Cracks => list(&self.breaking),
             Run::Hand => list(&self.hand),
             // The items follow the arm in the hand's buffer.
-            Run::Held | Run::HandGlint => self.hand_range(run),
+            Run::Held | Run::HeldTranslucent | Run::HandGlint => self.hand_range(run),
         }
     }
 

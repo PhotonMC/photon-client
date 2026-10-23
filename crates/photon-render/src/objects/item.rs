@@ -243,6 +243,7 @@ fn push_layer(vertices: &mut Vec<Vertex>, layer: &ItemLayer, pose: &Pose, light:
         let (dx, dy, dz) = info.direction.step();
         let normal = pose.transform_normal([dx as f32, dy as f32, dz as f32]);
         let shade = entity_light(normal);
+        let first = vertices.len();
         for index in [0, 1, 2, 0, 2, 3] {
             let source = &layer.mesh.vertices[quad * 4 + index];
             let [x, y, z] = source.position;
@@ -254,6 +255,7 @@ fn push_layer(vertices: &mut Vec<Vertex>, layer: &ItemLayer, pose: &Pose, light:
                 light,
             });
         }
+        super::translucent_items::mark_layer(info.layer, &mut vertices[first..]);
     }
 }
 

@@ -113,7 +113,7 @@ impl VulkanBackend {
                 portal_time: 0.0,
                 name_tag: DrawList::default(),
                 hand: DrawList::default(),
-                held_counts: [0; 2],
+                held_counts: [0; 3],
                 lines: LineDraws::default(),
                 glint_strength: 0.75,
                 breaking: DrawList::default(),

@@ -145,10 +145,27 @@ impl VulkanBackend {
         if kind == DrawKind::EntityOutline {
             return self.set_silhouettes(vertices);
         }
+        if kind == DrawKind::GroundItems {
+            return self.set_ground_items(vertices);
+        }
         let mut list = std::mem::take(self.draw_list_mut(kind));
         let filled = self.fill_vertex_buffer(&mut list.buffer, vertices);
         list.count = vertices.len() as u32;
         *self.draw_list_mut(kind) = list;
+        filled
+    }
+
+    /// The dropped items: the quads of translucent sprites split off to be drawn after the rest,
+    /// farthest first.
+    fn set_ground_items(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+        let (mut all, translucent) =
+            crate::objects::translucent_items::split(vertices, self.sort_origin);
+        all.extend_from_slice(&translucent);
+        let mut buffer = std::mem::take(&mut self.ground.buffer);
+        let filled = self.fill_vertex_buffer(&mut buffer, &all);
+        self.ground.buffer = buffer;
+        self.ground.count = all.len() as u32;
+        self.ground.translucent = translucent.len() as u32;
         filled
     }
 
@@ -268,11 +285,23 @@ impl VulkanBackend {
         projection: [[f32; 4]; 4],
     ) -> Result<(), VulkanError> {
         let mut buffer = std::mem::take(&mut self.hand.buffer);
-        let all: Vec<Vertex> = vertices.iter().chain(held).chain(glint).copied().collect();
+        // The viewer is at the origin of the hand's space.
+        let (held, translucent) = crate::objects::translucent_items::split(held, [0.0; 3]);
+        let all: Vec<Vertex> = vertices
+            .iter()
+            .chain(&held)
+            .chain(&translucent)
+            .chain(glint)
+            .copied()
+            .collect();
         self.fill_vertex_buffer(&mut buffer, &all)?;
         self.hand.buffer = buffer;
         self.hand.count = vertices.len() as u32;
-        self.held_counts = [held.len() as u32, glint.len() as u32];
+        self.held_counts = [
+            held.len() as u32,
+            glint.len() as u32,
+            translucent.len() as u32,
+        ];
         self.hand_projection = projection;
         Ok(())
     }
