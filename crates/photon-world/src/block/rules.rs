@@ -22,6 +22,7 @@ mod chorus;
 mod connect;
 mod directional;
 mod dripleaf;
+mod faces;
 mod furnishings;
 mod ground;
 mod growth;

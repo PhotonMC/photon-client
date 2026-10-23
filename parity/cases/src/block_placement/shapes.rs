@@ -15,13 +15,13 @@ const PLACED: [&str; 9] = [
 ];
 
 /// A neighbour row: `block` stands at `at` before the stone below the click is built on.
-fn neighbour_row(label: &str, world: Vec<Value>, blocks: &[&str]) -> Value {
+pub(super) fn neighbour_row(label: &str, world: Vec<Value>, blocks: &[&str]) -> Value {
     let mut row = row(label, blocks, world, &ON_TOP);
     row["neighbours"] = Value::Bool(true);
     row
 }
 
-const SIDES: [(&str, [i32; 3]); 4] =
+pub(super) const SIDES: [(&str, [i32; 3]); 4] =
     [("north", [0, 64, -1]), ("east", [1, 64, 0]), ("south", [0, 64, 1]), ("west", [-1, 64, 0])];
 
 /// One kind of neighbour on each side of the block placed on the stone.
@@ -451,72 +451,4 @@ pub fn sulfur_rows() -> Vec<Value> {
         rows.push(neighbour_row(&format!("sulfur-{state}-above"), world, &["stone", "magma_block"]));
     }
     rows
-}
-
-/// Beds, campfires and doors, whose state follows the block placed beside or below them.
-pub fn paired_rows() -> Vec<Value> {
-    let mut rows = Vec::new();
-    for (side, at) in SIDES {
-        for occupied in ["true", "false"] {
-            let world = vec![
-                block([0, 63, 0], "stone", &[]),
-                block(at, "red_bed", &[("part", "head"), ("facing", side), ("occupied", occupied)]),
-                block([at[0], 63, at[2]], "end_stone", &[]),
-            ];
-            rows.push(neighbour_row(&format!("shape-bed-{side}-{occupied}"), world, &["red_bed"]));
-        }
-    }
-    for (lit, signal) in [("true", "false"), ("false", "true")] {
-        let world = vec![
-            block([0, 63, 0], "stone", &[]),
-            block([0, 65, 0], "campfire", &[("lit", lit), ("signal_fire", signal)]),
-        ];
-        let label = format!("shape-campfire-{lit}");
-        rows.push(neighbour_row(&label, world, &["hay_block", "stone", "oak_fence"]));
-    }
-    let door = vec![
-        block([0, 63, 0], "stone", &[]),
-        block([0, 65, 0], "oak_door", &[("half", "lower"), ("open", "true"), ("hinge", "right")]),
-        block([0, 66, 0], "oak_door", &[("half", "upper"), ("open", "true"), ("hinge", "right")]),
-    ];
-    rows.push(neighbour_row("shape-door-over", door, &["stone", "glass", "oak_fence", "snow_block"]));
-    rows
-}
-
-/// Attached stems: a neighbour other than the fruit in the way they face turns them back.
-pub fn stem_rows() -> Vec<Value> {
-    let mut rows = Vec::new();
-    for (stem, fruit) in [("attached_melon_stem", "melon"), ("attached_pumpkin_stem", "pumpkin")] {
-        for ((side, at), back) in SIDES.into_iter().zip(["south", "west", "north", "east"]) {
-            let world = vec![
-                block([0, 63, 0], "stone", &[]),
-                block(at, stem, &[("facing", back)]),
-                block([at[0], 63, at[2]], "end_stone", &[]),
-            ];
-            rows.push(neighbour_row(&format!("shape-{stem}-{side}"), world, &["stone", fruit]));
-        }
-    }
-    rows
-}
-
-/// Concrete powder beside water turns to concrete when something is placed against it.
-pub fn powder_rows() -> Vec<Value> {
-    let stone = block([0, 63, 0], "stone", &[]);
-    let placed = ["stone", "glass", "oak_slab"];
-    let powder = |label: &str, extra: Vec<Value>| {
-        let mut world = vec![stone.clone(), block([1, 64, 0], "white_concrete_powder", &[])];
-        world.extend(extra);
-        neighbour_row(label, world, &placed)
-    };
-    vec![
-        powder("shape-powder-dry", vec![]),
-        powder("shape-powder-east", vec![block([2, 64, 0], "water", &[])]),
-        powder("shape-powder-north", vec![block([1, 64, -1], "water", &[])]),
-        powder("shape-powder-above", vec![block([1, 65, 0], "water", &[])]),
-        powder("shape-powder-below", vec![block([1, 63, 0], "water", &[])]),
-        powder(
-            "shape-powder-held",
-            vec![block([2, 64, 0], "oak_slab", &[("waterlogged", "true"), ("type", "double")])],
-        ),
-    ]
 }

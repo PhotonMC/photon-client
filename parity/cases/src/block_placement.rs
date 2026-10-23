@@ -368,6 +368,7 @@ fn glazed_rows() -> Vec<Value> {
 mod chorus;
 mod connections;
 mod facing;
+mod follow;
 mod furnishings;
 mod growth;
 mod items;
@@ -417,9 +418,10 @@ fn furnishing_cases() -> Vec<Value> {
         case("shape-vines", shapes::vine_rows()),
         case("shape-inert", shapes::inert_rows()),
         case("shape-mushrooms", shapes::mushroom_rows()),
-        case("shape-paired", shapes::paired_rows()),
-        case("shape-stems", shapes::stem_rows()),
-        case("shape-powders", shapes::powder_rows()),
+        case("shape-paired", follow::paired_rows()),
+        case("shape-stems", follow::stem_rows()),
+        case("shape-faces", follow::face_rows()),
+        case("shape-powders", follow::powder_rows()),
         case("shape-snowy", shapes::snowy_rows()),
         case("shape-chorus", shapes::chorus_rows()),
         case("shape-tripwires", shapes::tripwire_rows()),

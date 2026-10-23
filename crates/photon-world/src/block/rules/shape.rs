@@ -190,6 +190,10 @@ fn followers(
             Rule::Known(super::paired::campfire(state, pos, direction, ctx))
         }
         BlockClass::DoorBlock => super::paired::door(state, pos, direction, ctx),
+        BlockClass::MultifaceBlock => {
+            Rule::Known(super::faces::multiface(state, pos, direction, ctx))
+        }
+        BlockClass::MossyCarpetBlock => Rule::Known(super::faces::carpet(state, pos, ctx)),
         BlockClass::ConcretePowderBlock => super::placement::concrete_update(state, pos, ctx),
         BlockClass::AttachedStemBlock => {
             Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))

@@ -173,7 +173,11 @@ fn propagule_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceCont
 }
 
 /// `MossyCarpetBlock.canSurvive`: a base needs something below, the rest a base carpet.
-fn carpet_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+pub(super) fn carpet_survives(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
     let under = ctx.state(below(pos));
     if property(state, "bottom") == Some("true") {
         return !is_air(under);
@@ -182,35 +186,61 @@ fn carpet_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext
         && property(under, "bottom") == Some("true")
 }
 
-/// `MossyCarpetBlock.getUpdatedState` with the sides made: each side a block can be put against
-/// is low, or tall where an upper carpet has it.
-fn carpet_state(
-    default: BlockStateId,
+fn is_carpet(state: BlockStateId) -> bool {
+    block(state).is_some_and(|b| b.name == "minecraft:pale_moss_carpet")
+}
+
+/// One side of `MossyCarpetBlock.getUpdatedState`.
+fn carpet_side(
+    state: BlockStateId,
+    made: bool,
+    held: bool,
+    (over, under): (BlockStateId, BlockStateId),
+    name: &str,
+) -> Option<&'static str> {
+    let base = property(state, "bottom") == Some("true");
+    let mut side = match (held, made) {
+        (false, _) => "none",
+        (true, true) => "low",
+        (true, false) => property(state, name)?,
+    };
+    if side == "low" {
+        let upper = is_carpet(over)
+            && property(over, "bottom") != Some("true")
+            && property(over, name) != Some("none");
+        if upper {
+            side = "tall";
+        }
+        if !base && is_carpet(under) && property(under, name) == Some("none") {
+            side = "none";
+        }
+    }
+    Some(side)
+}
+
+/// `MossyCarpetBlock.getUpdatedState`: each side a block can be put against is low, or tall where
+/// an upper carpet has it; without `create_sides` (and without a base) only the sides it has
+/// keep their height.
+pub(super) fn carpet_updated(
+    state: BlockStateId,
     pos: (i32, i32, i32),
     ctx: &PlaceContext<'_>,
+    create_sides: bool,
 ) -> Option<BlockStateId> {
+    let base = property(state, "bottom") == Some("true");
+    let create_sides = create_sides || base;
     let over = ctx.state(above(pos));
-    let upper = block(over).is_some_and(|b| b.name == "minecraft:pale_moss_carpet")
-        && property(over, "bottom") != Some("true");
-    let mut state = default;
-    for direction in [
-        Direction::North,
-        Direction::East,
-        Direction::South,
-        Direction::West,
-    ] {
+    let under = ctx.state(below(pos));
+    let mut state = state;
+    for direction in super::growth::HORIZONTAL {
+        let name = direction.name();
         let (dx, dy, dz) = direction.step();
         let held = super::growth::can_attach_to(
             direction,
             ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz)),
         );
-        let tall = upper && property(over, direction.name()).is_some_and(|side| side != "none");
-        let side = match (held, tall) {
-            (false, _) => "none",
-            (true, true) => "tall",
-            (true, false) => "low",
-        };
-        state = with_property(state, direction.name(), side)?;
+        let side = carpet_side(state, create_sides, held, (over, under), name)?;
+        state = with_property(state, name, side)?;
     }
     Some(state)
 }
@@ -302,6 +332,6 @@ pub(super) const PLACEMENTS: &[(BlockClass, Placement)] = &[
         )
     }),
     (BlockClass::MossyCarpetBlock, |_, default, ctx| {
-        Rule::Known(carpet_state(default, ctx.clicked_pos(), ctx))
+        Rule::Known(carpet_updated(default, ctx.clicked_pos(), ctx, true))
     }),
 ];
