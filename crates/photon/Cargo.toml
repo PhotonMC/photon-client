@@ -22,5 +22,8 @@ bevy_ecs.workspace = true
 flate2.workspace = true
 glfw.workspace = true
 
+[dev-dependencies]
+photon-protocol.workspace = true
+
 [lints]
 workspace = true

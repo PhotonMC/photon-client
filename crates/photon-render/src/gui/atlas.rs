@@ -320,7 +320,10 @@ fn collect_images(
         images.insert(format!("minecraft:{name}"), image.clone());
     }
     for name in sprite_names(resources) {
-        let image = read_png(resources, &format!("textures/gui/sprites/{name}"))?;
+        // A sprite that cannot be decoded drops only itself.
+        let Some(image) = read_png(resources, &format!("textures/gui/sprites/{name}")) else {
+            continue;
+        };
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,

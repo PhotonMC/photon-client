@@ -108,8 +108,11 @@ impl Font {
             return None;
         }
         for bytes in stack.iter().rev() {
-            let text = String::from_utf8(bytes.clone()).ok()?;
-            self.load_providers(root, &text)?;
+            // A file that cannot be read drops only itself (`safeLoad`).
+            let Ok(text) = String::from_utf8(bytes.clone()) else {
+                continue;
+            };
+            let _ = self.load_providers(root, &text);
         }
         Some(())
     }
@@ -119,32 +122,38 @@ impl Font {
             return None;
         };
         for provider in definition.array("providers")? {
-            let JsonValue::Object(provider) = provider else {
-                return None;
-            };
-            // The options' defaults: the font is not forced uniform, and
-            // Japanese glyph variants are off.
-            if let Some(filter) = provider.object("filter")
-                && filter
-                    .entries()
-                    .any(|(_, wanted)| !matches!(wanted, JsonValue::Bool(false)))
-            {
-                continue;
-            }
-            match provider.text("type")?.as_str() {
-                "reference" => self.load_definition(root, &provider.text("id")?)?,
-                "space" => {
-                    for (text, advance) in provider.object("advances")?.entries() {
-                        let codepoint = *codepoints(text).first()?;
-                        let advance = advance.as_f32()?;
-                        self.glyphs
-                            .entry(codepoint)
-                            .or_insert(Glyph::Space(advance));
-                    }
+            // A provider that cannot be loaded drops only itself.
+            let _ = self.load_provider(root, provider);
+        }
+        Some(())
+    }
+
+    fn load_provider(&mut self, root: &dyn Resources, provider: &JsonValue) -> Option<()> {
+        let JsonValue::Object(provider) = provider else {
+            return None;
+        };
+        // The options' defaults: the font is not forced uniform, and
+        // Japanese glyph variants are off.
+        if let Some(filter) = provider.object("filter")
+            && filter
+                .entries()
+                .any(|(_, wanted)| !matches!(wanted, JsonValue::Bool(false)))
+        {
+            return Some(());
+        }
+        match provider.text("type")?.as_str() {
+            "reference" => self.load_definition(root, &provider.text("id")?)?,
+            "space" => {
+                for (text, advance) in provider.object("advances")?.entries() {
+                    let codepoint = *codepoints(text).first()?;
+                    let advance = advance.as_f32()?;
+                    self.glyphs
+                        .entry(codepoint)
+                        .or_insert(Glyph::Space(advance));
                 }
-                "bitmap" => self.load_bitmap(root, provider)?,
-                _ => {}
             }
+            "bitmap" => self.load_bitmap(root, provider)?,
+            _ => {}
         }
         Some(())
     }

@@ -46,6 +46,24 @@ pub(crate) fn with_packs(
     Ok(ResourceStack::new(stacked))
 }
 
+/// Whether the stack in use already holds exactly `packs` (the top first), so that loading them
+/// changes nothing.
+pub(crate) fn holds(packs: &crate::packs::LoadedPacks) -> bool {
+    let Some(stack) = IN_USE.read().ok().and_then(|stack| stack.clone()) else {
+        return packs.is_empty();
+    };
+    let in_use = stack
+        .packs()
+        .iter()
+        .skip(1)
+        .map(|pack| pack.id().to_owned());
+    let wanted = packs
+        .iter()
+        .rev()
+        .map(|(id, _)| format!("server/{}", id.to_string_java()));
+    in_use.eq(wanted)
+}
+
 /// Put `stack` in use: what is read afterwards sees it.
 pub(crate) fn replace(stack: Arc<ResourceStack>) {
     if let Ok(mut slot) = IN_USE.write() {
