@@ -2,6 +2,9 @@
 
 use super::*;
 
+/// How far the player may be from the meshes' origin before it moves, in blocks.
+const ORIGIN_RANGE: f64 = 4096.0;
+
 impl Play {
     /// `Options.getEffectiveRenderDistance`: the option, no more than the server's.
     fn effective_render_distance(&self) -> i32 {
@@ -62,6 +65,29 @@ impl Play {
             .narrows_view()
             .then_some(self.controls.options.fov_effect_scale as f32);
         (self.camera.fov(option_fov, partial, scale), fluid)
+    }
+
+    /// Meshes are measured from a fixed block so their f32 coordinates stay small; once the
+    /// player is far from it (a teleport, another dimension, a long walk) the point moves to
+    /// the player and the sections are built again around it.
+    pub(super) fn recentre_origin(&mut self) -> Result<()> {
+        let Some(player) = self.session.player() else {
+            return Ok(());
+        };
+        let at = player.position();
+        let far = [at.x, at.y, at.z]
+            .iter()
+            .zip(self.origin)
+            .any(|(at, origin)| (at - f64::from(origin)).abs() > ORIGIN_RANGE);
+        if far {
+            self.origin = [
+                at.x.floor() as i32,
+                at.y.floor() as i32,
+                at.z.floor() as i32,
+            ];
+            self.sections.rebuild_all(&mut self.backend)?;
+        }
+        Ok(())
     }
 
     /// `Camera.alignWithEntity` and the projection: the front view turns
