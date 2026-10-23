@@ -39,12 +39,13 @@ impl Gui {
             items: ItemLayerCache::new(photon_render::model::DisplayContext::Gui),
             started_at,
             chat_queue: Default::default(),
-            assets_root: root.to_path_buf(),
             last_frame_ms: 0,
             layers: super::layers::Layers::new(started_at),
         };
         gui.hud
-            .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load(root));
+            .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load_from(
+                &*gui.resources,
+            ));
         gui.set_language(language);
         Ok(gui)
     }
@@ -90,7 +91,7 @@ impl Gui {
             alt_font: self.alt_font.clone(),
             lang: lang.clone(),
             languages: self.languages.clone(),
-            assets_root: self.assets_root.clone(),
+            resources: self.resources.clone(),
         }
     }
 

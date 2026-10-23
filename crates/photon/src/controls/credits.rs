@@ -16,7 +16,7 @@ impl Controls {
         let size = (size.gui_scaled_width(), size.gui_scaled_height());
         self.credits = Some(CreditsScreen::new(
             &assets.creative.font,
-            &assets.assets_root,
+            &*assets.resources,
             size,
             true,
             session.local_name(),

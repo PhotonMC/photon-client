@@ -13,8 +13,10 @@
 use std::path::Path;
 
 use crate::block::tint::{ColourMap, colour_map_lookup};
+use photon_core::identifier::Identifier;
 use photon_core::json::JsonObject;
 use photon_core::random::RandomSource;
+use photon_core::resources::Resources;
 
 /// Which biome colour a tint layer reads.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -165,9 +167,9 @@ fn hex_colour(object: &JsonObject, key: &str) -> Option<u32> {
     Some(0xFF00_0000 | u32::from_str_radix(hex, 16).ok()?)
 }
 
-fn colour_map(assets_root: &Path, name: &str) -> Option<Vec<u32>> {
-    let bytes =
-        std::fs::read(assets_root.join(format!("minecraft/textures/colormap/{name}.png"))).ok()?;
+fn colour_map(resources: &dyn Resources, name: &str) -> Option<Vec<u32>> {
+    let id = Identifier::parse(&format!("minecraft:textures/colormap/{name}.png")).ok()?;
+    let bytes = resources.read(&id)?;
     let image = crate::texture::png::decode_rgba(&bytes).ok()?;
     Some(
         image
@@ -203,10 +205,10 @@ fn fiddle(value: i64) -> f64 {
 
 impl BiomeTints {
     /// Read every biome's colours from a data pack folder and the colour maps
-    /// from an asset folder. `zoom_seed` is the hashed seed the login gives.
+    /// from the resource packs. `zoom_seed` is the hashed seed the login gives.
     pub fn load(
         data_root: &Path,
-        assets_root: &Path,
+        resources: &dyn Resources,
         biome_names: &[String],
         zoom_seed: i64,
     ) -> Option<Self> {
@@ -272,9 +274,9 @@ impl BiomeTints {
         Some(Self {
             biomes,
             plains,
-            grass: colour_map(assets_root, "grass")?,
-            foliage: colour_map(assets_root, "foliage")?,
-            dry_foliage: colour_map(assets_root, "dry_foliage")?,
+            grass: colour_map(resources, "grass")?,
+            foliage: colour_map(resources, "foliage")?,
+            dry_foliage: colour_map(resources, "dry_foliage")?,
             zoom_seed,
             swamp_noise: SimplexNoise::new(&mut random),
             temperature_noise: SimplexNoise::new(&mut temperature_random),

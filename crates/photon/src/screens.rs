@@ -24,8 +24,8 @@ pub struct ScreenAssets {
     pub lang: std::sync::Arc<photon_game::text::Lang>,
     /// The languages the client can switch to.
     pub languages: Option<std::sync::Arc<photon_game::language::LanguageSource>>,
-    /// Where the game's assets are, for the credits' texts.
-    pub assets_root: std::path::PathBuf,
+    /// The resource packs, for the credits' texts.
+    pub resources: std::sync::Arc<dyn photon_core::resources::Resources>,
 }
 
 impl ScreenAssets {

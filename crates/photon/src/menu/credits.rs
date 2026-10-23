@@ -15,7 +15,7 @@ impl Menu {
         let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
         CreditsScreen::new(
             self.gui.text_assets().0,
-            &self.gui.assets_root,
+            &*self.gui.resources,
             size,
             false,
             &user,

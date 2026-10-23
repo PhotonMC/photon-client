@@ -57,9 +57,8 @@ pub struct Gui {
     pub(super) started_at: std::time::Instant,
     /// `ChatListener`'s delayed messages.
     pub(super) chat_queue: photon_gui::chat::queue::ChatQueue<photon_net::connection::ChatEvent>,
-    /// Where the assets are read from, and when (in `started_at` milliseconds) the last frame was
-    /// drawn: the credits roll by the time between frames.
-    pub(super) assets_root: std::path::PathBuf,
+    /// When (in `started_at` milliseconds) the last frame was drawn: the credits roll by the time
+    /// between frames.
     /// The resource packs the texts are read from.
     pub(super) resources: Arc<photon_assets::ResourceStack>,
     pub(super) last_frame_ms: u64,

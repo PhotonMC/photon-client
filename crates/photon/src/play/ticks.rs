@@ -30,7 +30,7 @@ impl Play {
         let biome_tints = Arc::new(
             BiomeTints::load(
                 &data_root,
-                std::path::Path::new(&root),
+                &*crate::resources::shared(std::path::Path::new(&root)),
                 session.registry_names("minecraft:worldgen/biome"),
                 session.hashed_seed(),
             )

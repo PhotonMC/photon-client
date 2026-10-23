@@ -2,10 +2,11 @@
 //! menu's background, shown when the player wins the game.
 
 use crate::{FontRuns, FrameRuns, legacy_runs};
-use std::path::Path;
 
+use photon_core::identifier::Identifier;
 use photon_core::json::{self, JsonValue};
 use photon_core::random::RandomSource;
+use photon_core::resources::Resources;
 use photon_game::text::{Run, Style};
 
 use crate::chat::split;
@@ -69,7 +70,7 @@ impl CreditsScreen {
     /// from the assets' `texts` folder, `PLAYERNAME` replaced by the player's name.
     pub fn new(
         font: &Font,
-        assets_root: &Path,
+        resources: &dyn Resources,
         size: (i32, i32),
         poem: bool,
         player: &str,
@@ -88,16 +89,18 @@ impl CreditsScreen {
             direction: 1,
             size,
         };
-        let read =
-            |name: &str| std::fs::read_to_string(assets_root.join("minecraft/texts").join(name));
-        if poem && let Ok(text) = read("end.txt") {
+        let read = |name: &str| {
+            let id = Identifier::parse(&format!("minecraft:texts/{name}")).ok()?;
+            String::from_utf8(resources.read(&id)?).ok()
+        };
+        if poem && let Some(text) = read("end.txt") {
             screen.add_poem_file(font, &text, player);
         }
-        if let Ok(text) = read("credits.json") {
+        if let Some(text) = read("credits.json") {
             // A document that fails part-way keeps the lines it had added.
             let _ = screen.add_credits_file(&text);
         }
-        if poem && let Ok(text) = read("postcredits.txt") {
+        if poem && let Some(text) = read("postcredits.txt") {
             screen.add_poem_file(font, &text, player);
         }
         screen.total_scroll_length = screen.lines.len() as i32 * LINE_HEIGHT;

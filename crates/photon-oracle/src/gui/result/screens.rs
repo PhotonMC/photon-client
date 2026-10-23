@@ -291,7 +291,7 @@ pub(super) fn credits_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    let assets = ctx.root.clone();
+    let assets = photon_core::resources::FolderResources::new(&ctx.root);
     let mut screen = photon_gui::screen::credits::CreditsScreen::new(
         &ctx.font,
         &assets,

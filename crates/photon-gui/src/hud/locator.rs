@@ -6,8 +6,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use photon_core::json::{JsonValue, read_object};
+use photon_core::json::{JsonValue, parse_object};
 use photon_core::math::{mth_atan2, mth_degrees_difference_f32, mth_lerp_int, wrap_degrees_f32};
+use photon_core::resources::{FolderResources, Resources};
 use photon_game::waypoint::{TrackedWaypoint, WaypointId, WaypointKind, WaypointManager};
 
 use photon_render::gui::{GuiAtlas, GuiFrame};
@@ -54,15 +55,21 @@ pub struct WaypointStyles {
 impl WaypointStyles {
     /// The styles of an asset folder.
     pub fn load(assets_root: &Path) -> Self {
+        Self::load_from(&FolderResources::new(assets_root))
+    }
+
+    /// The styles of the resource packs: the topmost file of each name.
+    pub fn load_from(resources: &dyn Resources) -> Self {
         let mut styles = HashMap::new();
-        let folder = assets_root.join("minecraft/waypoint_style");
-        for entry in std::fs::read_dir(folder).into_iter().flatten().flatten() {
-            let path = entry.path();
+        for id in resources.list("waypoint_style", ".json") {
+            let stem = id.path().strip_prefix("waypoint_style/");
+            let stem = stem.and_then(|name| name.strip_suffix(".json"));
             let (Some(stem), Some(object)) = (
-                path.file_stem()
-                    .and_then(|stem| stem.to_str())
-                    .map(str::to_owned),
-                read_object(&path),
+                stem.filter(|_| id.namespace() == "minecraft"),
+                resources
+                    .read(&id)
+                    .and_then(|bytes| String::from_utf8(bytes).ok())
+                    .and_then(|text| parse_object(&text)),
             ) else {
                 continue;
             };
