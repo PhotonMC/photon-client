@@ -123,6 +123,7 @@ mod frame_tag;
 mod hand_use;
 mod light;
 mod remote_placement;
+mod shadow_radius;
 pub use light::*;
 mod wear;
 pub use wear::*;

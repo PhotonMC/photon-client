@@ -420,9 +420,7 @@ fn casts_no_shadow(entity: &photon_world::ClientEntity) -> bool {
 
 /// `EntityRenderer.extractShadow` and `ShadowFeatureRenderer` for the
 /// entities the frame draws: the shadow each casts on the blocks below it.
-/// `shadowRadius` and `shadowStrength` are the renderers': a mob's is its
-/// age's share of 0.7, a player's 0.5, a dropped item's and an orb's 0.15
-/// at three quarters of the strength. `local` is the player's own place, when
+/// `shadowRadius` and `shadowStrength` are the renderers' (`shadow_radius`). `local` is the player's own place, when
 /// the camera shows them.
 pub fn entity_shadows(
     session: &PlaySession,
@@ -438,30 +436,13 @@ pub fn entity_shadows(
     };
     let world = session.world();
     let partial = view.partial as f32;
-    let id = |name: &str| photon_data::entity_type::id(name);
-    let (pig, cow, item, orb) = (
-        id("minecraft:pig"),
-        id("minecraft:cow"),
-        id("minecraft:item"),
-        id("minecraft:experience_orb"),
-    );
     let mut casters: Vec<Caster> = Vec::new();
     for entity in world.entities().all() {
         // `EntityRenderer.extractShadow`: an invisible entity casts none, nor does a spectator.
         if casts_no_shadow(entity) {
             continue;
         }
-        let type_id = Some(entity.type_id);
-        let (radius, strength) = if entity.is_player() {
-            (0.5, 1.0)
-        } else if type_id == pig || type_id == cow {
-            (if entity.is_baby() { 0.35 } else { 0.7 }, 1.0)
-        } else if entity.is_cube_mob() {
-            // `AbstractCubeMobRenderer.getShadowRadius`.
-            (entity.cube_size() as f32 * 0.25, 1.0)
-        } else if type_id == item || type_id == orb {
-            (0.15, 0.75)
-        } else if entity.display().is_some() {
+        let (radius, strength) = if entity.display().is_some() {
             let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
                 continue;
             };
@@ -473,6 +454,8 @@ pub fn entity_shadows(
             ) else {
                 continue;
             };
+            shadow
+        } else if let Some(shadow) = super::shadow_radius::of(entity) {
             shadow
         } else {
             continue;
