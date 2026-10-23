@@ -3,8 +3,8 @@
 
 use crate::animation_state::AnimationState;
 
-/// `Sniffer.DATA_STATE`'s data id: `AgeableMob` has the baby flag at 16.
-pub const STATE_DATA_ID: u8 = 17;
+/// `Sniffer.DATA_STATE`'s data id: `AgeableMob` has the baby flag at 16 and the age-locked flag at 17.
+pub const STATE_DATA_ID: u8 = 18;
 
 /// `Sniffer.State`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

@@ -4,8 +4,8 @@
 
 use crate::animation_state::AnimationState;
 
-/// `Armadillo.ARMADILLO_STATE`'s data id: `AgeableMob` has the baby flag at 16.
-pub const STATE_DATA_ID: u8 = 17;
+/// `Armadillo.ARMADILLO_STATE`'s data id: `AgeableMob` has the baby flag at 16 and the age-locked flag at 17.
+pub const STATE_DATA_ID: u8 = 18;
 /// The event that tells a scared armadillo to peek again.
 pub const PEEK_EVENT: i8 = 64;
 
