@@ -409,6 +409,10 @@ impl StatsScreen {
     /// A tab chosen: it is focused in the bar, and the screen then gives the bar its focus, which
     /// lets go of the tab if the bar had not had it.
     fn press_tab(&mut self, tab: usize) {
+        // `TabManager.setCurrentTab`: a tab that is already the current one makes no sound.
+        if self.selected != tab {
+            crate::ui_sound::play_down_sound();
+        }
         self.selected = tab;
         self.focused_tab = Some(tab);
         if !self.bar_focused {

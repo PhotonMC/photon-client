@@ -488,6 +488,8 @@ class GuiHudOracle extends GuiCommandOracle {
             var minecraft = scene.minecraft();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             MovementOracle.setField(minecraft, "level", scene.level());
+            MovementOracle.setField(minecraft, "soundManager", unsafe.allocateInstance(GuiScreenOracle.SilentSounds.class));
+            GuiScreenOracle.SilentSounds.ASKED.clear();
             // Items are not drawn: the model resolver gives nothing to draw.
             MovementOracle.setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
             var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
@@ -546,6 +548,9 @@ class GuiHudOracle extends GuiCommandOracle {
                 var out = new JsonObject();
                 out.addProperty("label", row.get("label").getAsString());
                 out.add("ops", record(frame));
+                var asked = new JsonArray();
+                GuiScreenOracle.SilentSounds.ASKED.forEach(asked::add);
+                out.add("sounds", asked);
                 rows.add(out);
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);

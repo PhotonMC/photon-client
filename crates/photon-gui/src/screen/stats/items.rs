@@ -208,6 +208,8 @@ impl ItemsList {
         self.view.focused = true;
         let rows = self.len();
         self.view.select(entry, rows);
+        // Both are widgets: `AbstractWidget.mouseClicked` sounds before the button sorts.
+        crate::ui_sound::play_down_sound();
         if let Focus::Button(column) = focus {
             self.sort_by(column, stats);
         }
