@@ -39,7 +39,8 @@ fn placement_row(row: &Value, tags: &BlockTags) -> Result<Value, String> {
             (coordinate(0)?, coordinate(1)?, coordinate(2)?),
         );
         let item = photon_game::item::id_of(block.item_name());
-        let ctx = PlaceContext::new(&state_at, aimed, item, (yaw, pitch), tags);
+        let mut ctx = PlaceContext::new(&state_at, aimed, item, (yaw, pitch), tags);
+        ctx.secondary_use = row["sneak"].as_bool().unwrap_or(false);
         placements.push(place(name, &ctx)?);
     }
     Ok(json!({

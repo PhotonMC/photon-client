@@ -18,6 +18,7 @@ use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
 mod connect;
+mod directional;
 mod item;
 mod mounted;
 mod placement;
@@ -546,6 +547,40 @@ mod tests {
         ctx.replace_clicked = false;
         let lantern = registry::block_index("minecraft:lantern").expect("a lantern");
         assert_eq!(state_for_placement(lantern, &ctx), Rule::Unported);
+    }
+
+    /// A chest put at the origin's height with a single chest beside it to the west facing north,
+    /// by a player looking south.
+    fn place_chest_beside_one(sneaking: bool) -> Option<&'static str> {
+        let chest = registry::block_index("minecraft:chest").expect("a chest");
+        let partner = with_property(default_state(chest), "facing", "north").expect("a facing");
+        let state_at = |x: i32, y: i32, z: i32| {
+            if (x, y, z) == (-1, 64, 0) {
+                partner
+            } else {
+                crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+            }
+        };
+        let tags = BlockTags::default();
+        let mut ctx = PlaceContext::new(
+            &state_at,
+            ((0, 63, 0), Direction::Up, (0.5, 64.0, 0.5)),
+            None,
+            (0.0, 0.0),
+            &tags,
+        );
+        ctx.replace_clicked = false;
+        ctx.secondary_use = sneaking;
+        match state_for_placement(chest, &ctx) {
+            Rule::Known(Some(state)) => property(state, "type"),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_chest_joins_the_one_beside_it_unless_the_player_sneaks() {
+        assert_eq!(place_chest_beside_one(false), Some("right"));
+        assert_eq!(place_chest_beside_one(true), Some("single"));
     }
 
     #[test]

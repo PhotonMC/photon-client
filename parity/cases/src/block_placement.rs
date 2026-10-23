@@ -127,6 +127,12 @@ fn row(label: &str, blocks: &[&str], world: Vec<Value>, click: &Click) -> Value 
     })
 }
 
+/// The same row, with the player sneaking.
+fn sneaking(mut row: Value) -> Value {
+    row["sneak"] = json!(true);
+    row
+}
+
 /// The plants on every ground, beside a plant of their own kind, in a snow layer and over
 /// nothing.
 fn plant_rows() -> Vec<Value> {
@@ -360,6 +366,7 @@ fn glazed_rows() -> Vec<Value> {
 }
 
 mod connections;
+mod facing;
 mod mounted;
 mod signals;
 mod stacking;
@@ -396,5 +403,15 @@ pub fn cases() -> Vec<Value> {
         case("doors", tall::door_rows()),
         case("tall-plants", tall::tall_plant_rows()),
         case("beds", tall::bed_rows()),
+        case("leaves", facing::leaves_rows()),
+        case("chests", facing::chest_alone_rows()),
+        case("chest-pairing", facing::chest_pairing_rows()),
+        case("fence-gates", facing::gate_rows()),
+        case("observer-piston", facing::observer_piston_rows()),
+        case("hopper", facing::hopper_rows()),
+        case("chains-rods-buds", facing::chain_rod_rows()),
+        case("bud-support", facing::bud_support_rows()),
+        case("shulker-boxes", facing::shulker_rows()),
+        case("end-rods", facing::end_rod_rows()),
     ]
 }

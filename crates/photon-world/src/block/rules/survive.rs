@@ -45,6 +45,7 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::CandleBlock
             | BlockClass::LeafLitterBlock
             | BlockClass::SeaPickleBlock
+            | BlockClass::AmethystClusterBlock
     )
 }
 
@@ -142,12 +143,17 @@ fn foot_survives(
             can_support_center(ctx, (pos.0, pos.1 + 1, pos.2), Direction::Down)
                 && !is_water(ctx.state(pos)),
         ),
-        _ => ground_survives(class, pos, ctx),
+        _ => ground_survives(class, state, pos, ctx),
     }
 }
 
 /// `canSurvive` of the classes that stand on the block below.
-fn ground_survives(class: BlockClass, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+fn ground_survives(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
     let below = (pos.0, pos.1 - 1, pos.2);
     match class {
         BlockClass::CandleBlock => Rule::Known(can_support_center(ctx, below, Direction::Up)),
@@ -156,6 +162,7 @@ fn ground_survives(class: BlockClass, pos: (i32, i32, i32), ctx: &PlaceContext<'
                 .is_some_and(|info| info.is_face_sturdy(Direction::Up)),
         ),
         BlockClass::SeaPickleBlock => Rule::Known(sea_pickle_survives(pos, ctx)),
+        BlockClass::AmethystClusterBlock => Rule::Known(amethyst_survives(state, pos, ctx)),
         _ => Rule::Unported,
     }
 }
@@ -273,4 +280,12 @@ fn sea_pickle_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
         .collision(info)
         .face_shape(Direction::Up);
     !face.is_empty() || info.is_face_sturdy(Direction::Up)
+}
+
+/// `AmethystClusterBlock.canSurvive`: the block it grows from has a full face towards it.
+fn amethyst_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+    let toward = facing(state).unwrap_or(Direction::Up);
+    let (dx, dy, dz) = toward.opposite().step();
+    crate::block::state(ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz)))
+        .is_some_and(|info| info.is_face_sturdy(toward))
 }

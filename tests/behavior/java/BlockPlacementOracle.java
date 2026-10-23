@@ -75,6 +75,7 @@ class BlockPlacementOracle extends BlockItemOracle {
     static final class Viewer extends net.minecraft.client.player.LocalPlayer {
         float yaw;
         float pitch;
+        boolean sneakRequested;
 
         Viewer() {
             super(null, null, null, null, null, null, false, null);
@@ -92,7 +93,7 @@ class BlockPlacementOracle extends BlockItemOracle {
 
         @Override
         public boolean isSecondaryUseActive() {
-            return false;
+            return this.sneakRequested;
         }
     }
 
@@ -155,6 +156,7 @@ class BlockPlacementOracle extends BlockItemOracle {
         }
         viewer.yaw = Oracle.f32(row, "yaw");
         viewer.pitch = Oracle.f32(row, "pitch");
+        viewer.sneakRequested = row.has("sneak") && row.get("sneak").getAsBoolean();
         var location = row.getAsJsonArray("location");
         var click = new net.minecraft.world.phys.Vec3(
             Double.longBitsToDouble(Long.parseUnsignedLong(location.get(0).getAsString(), 16)),

@@ -108,6 +108,41 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::BedBlock, |_, default, ctx| {
         super::tall::bed(default, ctx)
     }),
+    (BlockClass::LeavesBlock, |_, default, ctx| {
+        Rule::Known(super::directional::leaves(default, ctx))
+    }),
+    (BlockClass::ChestBlock, super::directional::chest),
+    (BlockClass::CopperChestBlock, super::directional::chest),
+    (BlockClass::EnderChestBlock, |_, default, ctx| {
+        Rule::Known(super::directional::ender_chest(default, ctx))
+    }),
+    (BlockClass::FenceGateBlock, |_, default, ctx| {
+        super::directional::fence_gate(default, ctx)
+    }),
+    (BlockClass::ObserverBlock, |_, default, ctx| {
+        Rule::Known(super::directional::observer(default, ctx))
+    }),
+    (BlockClass::PistonBaseBlock, |_, default, ctx| {
+        Rule::Known(super::directional::piston(default, ctx))
+    }),
+    (BlockClass::HopperBlock, |_, default, ctx| {
+        Rule::Known(super::directional::hopper(default, ctx))
+    }),
+    (BlockClass::ChainBlock, |_, default, ctx| {
+        Rule::Known(super::directional::chain(default, ctx))
+    }),
+    (BlockClass::LightningRodBlock, |_, default, ctx| {
+        Rule::Known(super::directional::faced_waterlogged(default, ctx))
+    }),
+    (BlockClass::AmethystClusterBlock, |_, default, ctx| {
+        Rule::Known(super::directional::faced_waterlogged(default, ctx))
+    }),
+    (BlockClass::ShulkerBoxBlock, |_, default, ctx| {
+        Rule::Known(super::directional::shulker_box(default, ctx))
+    }),
+    (BlockClass::EndRodBlock, |block, default, ctx| {
+        Rule::Known(super::directional::end_rod(block, default, ctx))
+    }),
     (
         BlockClass::FaceAttachedHorizontalDirectionalBlock,
         |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),
@@ -333,6 +368,11 @@ fn ordered_by_nearest((y_rot, x_rot): (f32, f32)) -> [Direction; 6] {
         second.opposite(),
         first.opposite(),
     ]
+}
+
+/// `BlockPlaceContext.getNearestLookingDirection`.
+pub(super) fn nearest_direction(ctx: &PlaceContext<'_>) -> Direction {
+    ordered_by_nearest(ctx.rotation)[0]
 }
 
 /// `BlockPlaceContext.getNearestLookingDirections`: when the clicked block is not replaced, the
