@@ -137,20 +137,26 @@ pub struct PalettedPermutations {
 }
 
 impl PalettedPermutations {
-    /// The `paletted_permutations` source of an atlas definition.
-    pub fn parse(atlas: &JsonObject) -> Option<Self> {
-        let source = atlas
-            .array("sources")?
+    /// The `paletted_permutations` sources of an atlas definition, in the order it lists them.
+    pub fn parse_all(atlas: &JsonObject) -> Vec<Self> {
+        let Some(sources) = atlas.array("sources") else {
+            return Vec::new();
+        };
+        sources
             .iter()
-            .find_map(|source| match source {
+            .filter_map(|source| match source {
                 JsonValue::Object(object)
                     if object.text("type").as_deref()
                         == Some("minecraft:paletted_permutations") =>
                 {
-                    Some(object)
+                    Self::from_source(object)
                 }
                 _ => None,
-            })?;
+            })
+            .collect()
+    }
+
+    fn from_source(source: &JsonObject) -> Option<Self> {
         let textures = source
             .array("textures")?
             .iter()

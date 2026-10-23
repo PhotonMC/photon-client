@@ -172,15 +172,25 @@ impl Armor {
             let id = Identifier::parse(&format!("minecraft:textures/{path}.png")).ok()?;
             photon_render::texture::png::decode_rgba(&stack.read(&id)?).ok()
         };
-        // The atlas sources of the topmost pack only: Java adds those of every pack.
-        let atlas = Identifier::parse("minecraft:atlases/armor_trims.json")
-            .ok()
-            .and_then(|id| stack.read(&id))
-            .and_then(|bytes| String::from_utf8(bytes).ok())
-            .and_then(|text| photon_core::json::parse_object(&text));
-        let Some(source) = atlas.as_ref().and_then(PalettedPermutations::parse) else {
+        let Ok(atlas) = Identifier::parse("minecraft:atlases/armor_trims.json") else {
             return Vec::new();
         };
+        let mut images: Vec<(String, photon_render::DecodedImage)> = Vec::new();
+        for source in crate::assets::atlas_permutations(&stack, &atlas) {
+            for (name, image) in Self::permuted(&source, &load) {
+                // A later source replaces the sprite an earlier one made of the same name.
+                images.retain(|(other, _)| *other != name);
+                images.push((name, image));
+            }
+        }
+        images
+    }
+
+    /// The pictures one `paletted_permutations` source makes.
+    fn permuted(
+        source: &PalettedPermutations,
+        load: &dyn Fn(&str) -> Option<photon_render::DecodedImage>,
+    ) -> Vec<(String, photon_render::DecodedImage)> {
         let Some(keys) = load(&source.palette_key) else {
             return Vec::new();
         };
