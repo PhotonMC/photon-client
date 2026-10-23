@@ -107,8 +107,19 @@ impl WaypointStyles {
         Self { styles }
     }
 
-    fn get(&self, id: &str) -> Option<&WaypointStyle> {
-        self.styles.get(id)
+    /// `WaypointStyleManager.get`: a style that is not loaded is the missing one, whose single
+    /// sprite is the missing texture.
+    fn get(&self, id: &str) -> std::borrow::Cow<'_, WaypointStyle> {
+        self.styles.get(id).map_or_else(
+            || {
+                std::borrow::Cow::Owned(WaypointStyle {
+                    near: 0,
+                    far: 1,
+                    sprites: vec!["hud/locator_bar_dot/missingno".to_owned()],
+                })
+            },
+            std::borrow::Cow::Borrowed,
+        )
     }
 }
 
@@ -411,9 +422,7 @@ pub fn draw_dots(
         if angle <= -VISIBLE_DEGREES || angle > VISIBLE_DEGREES {
             continue;
         }
-        let Some(style) = styles.get(&waypoint.icon.style) else {
-            continue;
-        };
+        let style = styles.get(&waypoint.icon.style);
         let middle = ((gui_width - 9) as f32 / 2.0).ceil() as i32;
         let distance = (waypoint.distance_squared(viewer) as f32).sqrt();
         let colour = match waypoint.icon.colour {
@@ -491,7 +500,7 @@ mod style_tests {
     #[test]
     fn styles_of_any_namespace_name_sprites_with_their_namespace() {
         let styles = WaypointStyles::load_from(&Styles);
-        let sprites = |id: &str| styles.get(id).map(|style| style.sprites.clone());
+        let sprites = |id: &str| Some(styles.get(id).sprites.clone());
         assert_eq!(
             sprites("foo:s"),
             Some(vec![
@@ -503,5 +512,14 @@ mod style_tests {
             sprites("minecraft:default"),
             Some(vec!["hud/locator_bar_dot/default_0".to_owned()])
         );
+    }
+
+    #[test]
+    fn an_unknown_style_is_the_missing_one() {
+        let style = WaypointStyles::load_from(&Styles)
+            .get("minecraft:nope")
+            .into_owned();
+        assert_eq!((style.near, style.far), (0, 1));
+        assert_eq!(style.sprites, ["hud/locator_bar_dot/missingno"]);
     }
 }

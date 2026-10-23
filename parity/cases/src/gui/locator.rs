@@ -161,6 +161,14 @@ fn icon_rows() -> Vec<Value> {
             ],
             CAMERA,
         ),
+        bar(
+            "unknown-style",
+            vec![
+                styled("near", (-20, 64, 30), ("minecraft:nope", None)),
+                styled("far", (20, 64, 300), ("minecraft:nope", None)),
+            ],
+            CAMERA,
+        ),
     ]
 }
 
