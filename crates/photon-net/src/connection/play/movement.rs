@@ -34,7 +34,7 @@ impl PlaySession {
             player,
             mode: self.local.game_mode,
             selected_slot: self.local.status.selected_slot,
-            cooldowns: &self.local.item_cooldowns,
+            cooldowns: &mut self.local.item_cooldowns,
             game_master: self.local.permission_level >= 2,
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);

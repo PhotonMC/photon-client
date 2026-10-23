@@ -150,7 +150,10 @@ pub(super) fn tick_block_entities(
 pub(super) fn breaking_report(
     world: &photon_world::ClientWorld,
     player: &photon_world::local_player::LocalPlayer,
-    game_mode: &photon_game::game_mode::GameMode,
+    (game_mode, cooldowns): (
+        &photon_game::game_mode::GameMode,
+        &photon_game::item::cooldowns::ItemCooldowns,
+    ),
     attack: &Value,
 ) -> Result<Value, String> {
     let stage = world
@@ -181,6 +184,10 @@ pub(super) fn breaking_report(
         "right_click_delay": game_mode.right_click_delay(),
         "main_hand_count": hand_count(world, 36),
         "main_hand_item": hand_item(world, 36),
+        "main_hand_cooldown": world
+            .local_player()
+            .and_then(|state| state.inventory_slot(36))
+            .is_some_and(|stack| stack.item_count() > 0 && cooldowns.is_on_cooldown(stack)),
         "off_hand_count": hand_count(world, 45),
         "watched_states": watched,
     }))
@@ -193,4 +200,25 @@ fn hand_item(world: &photon_world::ClientWorld, slot: i16) -> String {
         .and_then(|state| state.inventory_slot(slot));
     let name = stack.and_then(|stack| photon_game::item::definition(stack.item_registry_id()));
     name.map_or_else(|| "minecraft:air".to_owned(), |item| item.name.to_owned())
+}
+
+/// The stack a row puts in the main hand, in the world's inventory and in the player.
+pub(super) fn hold_main_hand(
+    world: &mut photon_world::ClientWorld,
+    player: &mut photon_world::local_player::LocalPlayer,
+    breaking: &Value,
+) -> Result<(), String> {
+    let Some(name) = breaking["main_hand"].as_str() else {
+        return Ok(());
+    };
+    let item = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+    let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
+    world.apply_local_player_container_slot(
+        0,
+        0,
+        36,
+        Some(&photon_world::ClientItemStackState::new(count, item)),
+    );
+    player.set_main_hand_item(item);
+    Ok(())
 }

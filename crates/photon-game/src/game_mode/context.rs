@@ -56,7 +56,7 @@ pub struct Context<'a> {
     /// The selected hotbar slot, 0 to 8.
     pub selected_slot: i32,
     /// `Player.getCooldowns`.
-    pub cooldowns: &'a crate::item::cooldowns::ItemCooldowns,
+    pub cooldowns: &'a mut crate::item::cooldowns::ItemCooldowns,
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
     pub game_master: bool,
 }

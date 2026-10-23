@@ -200,6 +200,43 @@ fn crossbow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: false }
 }
 
+/// `use` of the thrown items: the server spawns the projectile (and the throw sound reaches the
+/// client from it), so the client only uses one up (`ItemStack.consume`) and swings.
+fn throw_item(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    if !ctx.instabuild() {
+        let slot = ctx.hand_slot(hand);
+        ctx.world.shrink_local_player_slot(slot, 1);
+    }
+    UseResult::Success { swing: true }
+}
+
+/// `ItemStack.use` after an instantly used item (one that did not start a use): its
+/// `use_cooldown` begins, for the stack as it was before.
+pub(super) fn after_instant_use(
+    ctx: &mut Context<'_>,
+    before: Option<&photon_world::ClientItemStackState>,
+    result: UseResult,
+) {
+    let Some(before) = before else {
+        return;
+    };
+    if !matches!(result, UseResult::Success { .. }) || ctx.player.is_using_item() {
+        return;
+    }
+    let values = Values::new(before.item_registry_id(), before.patch_bytes());
+    let Some(seconds) = values
+        .raw(photon_data::item::component_types::USE_COOLDOWN)
+        .and_then(|bytes| bytes.first_chunk::<4>())
+        .map(|bytes| f32::from_be_bytes(*bytes))
+    else {
+        return;
+    };
+    ctx.cooldowns.add(
+        crate::item::cooldowns::group(before),
+        (seconds * 20.0) as i32,
+    );
+}
+
 /// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad and frogspawn, and the spyglass (which
 /// starts using at once, with its sound). `None` for the rest.
 pub(super) fn class_item_use(
@@ -219,6 +256,14 @@ pub(super) fn class_item_use(
             let (item, _) = ctx.held(hand)?;
             Some(super::buckets::bucket_use(ctx, hand, item))
         }
+        ItemClass::SnowballItem
+        | ItemClass::EggItem
+        | ItemClass::EnderpearlItem
+        | ItemClass::ExperienceBottleItem
+        | ItemClass::WindChargeItem
+        | ItemClass::ThrowablePotionItem
+        | ItemClass::SplashPotionItem
+        | ItemClass::LingeringPotionItem => Some(throw_item(ctx, hand)),
         ItemClass::SpyglassItem => {
             ctx.player
                 .play_own_sound("minecraft:item.spyglass.use", (1.0, 1.0));

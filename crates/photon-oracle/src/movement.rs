@@ -145,6 +145,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         );
         let breaking = row.get("breaking");
         let mut game_mode = photon_game::game_mode::GameMode::default();
+        let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
         if let Some(breaking) = breaking {
             world.set_local_player_id(player.entity_id());
             // Entities the server told of.
@@ -166,18 +167,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     return Err(format!("entity {name} was rejected"));
                 }
             }
-            if let Some(name) = breaking["main_hand"].as_str() {
-                let item =
-                    photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
-                let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
-                world.apply_local_player_container_slot(
-                    0,
-                    0,
-                    36,
-                    Some(&photon_world::ClientItemStackState::new(count, item)),
-                );
-                player.set_main_hand_item(item);
-            }
+            hold_main_hand(&mut world, &mut player, breaking)?;
             worn_items(&mut world, &player, breaking)?;
             for effect in breaking["effects"].as_array().into_iter().flatten() {
                 let id = match string(effect, "effect")? {
@@ -391,7 +381,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     player: &mut player,
                     mode: game_mode_of_row,
                     selected_slot: 0,
-                    cooldowns: &photon_game::item::cooldowns::ItemCooldowns::default(),
+                    cooldowns: &mut cooldowns,
                     game_master: false,
                 };
                 actions = game_mode.keys_tick(&mut ctx, keys, aim);
@@ -534,8 +524,11 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             if let Some(vehicle_id) = ridden {
                 described["vehicle"] = vehicle_report(&world, vehicle_id)?;
             }
+            // `Player.tick` counts the item cooldowns down.
+            cooldowns.tick();
             if let Some(attack) = tick.get("attack") {
-                described["breaking"] = breaking_report(&world, &player, &game_mode, attack)?;
+                described["breaking"] =
+                    breaking_report(&world, &player, (&game_mode, &cooldowns), attack)?;
             }
             ticks.push(with_rockets(described, &world, breaking));
         }

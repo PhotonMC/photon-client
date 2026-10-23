@@ -68,6 +68,8 @@ pub enum Component {
     /// colour, effects or name.
     PotionContents(Option<&'static str>),
     PotionDurationScale(f32),
+    /// `use_cooldown` of some seconds, in the item's own group.
+    UseCooldown(f32),
     Fireworks {
         flight_duration: i32,
     },

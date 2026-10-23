@@ -9,7 +9,7 @@ use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
 /// Ticks of the use key, aimed at a block.
-struct Uses {
+pub(super) struct Uses {
     count: usize,
     aim: Option<Value>,
     clicks: i64,
@@ -18,24 +18,24 @@ struct Uses {
     held: &'static [&'static str],
 }
 
-fn uses(count: usize, aim: Option<&Value>, watch: &[(i64, i64, i64)]) -> Uses {
+pub(super) fn uses(count: usize, aim: Option<&Value>, watch: &[(i64, i64, i64)]) -> Uses {
     Uses { count, aim: aim.cloned(), clicks: 0, down: false, watch: watch.to_vec(), held: &[] }
 }
 
 impl Uses {
-    fn clicks(self, clicks: i64) -> Self {
+    pub(super) fn clicks(self, clicks: i64) -> Self {
         Self { clicks, ..self }
     }
 
-    fn down(self) -> Self {
+    pub(super) fn down(self) -> Self {
         Self { down: true, ..self }
     }
 
-    fn held(self, held: &'static [&'static str]) -> Self {
+    pub(super) fn held(self, held: &'static [&'static str]) -> Self {
         Self { held, ..self }
     }
 
-    fn go(self) -> Vec<Value> {
+    pub(super) fn go(self) -> Vec<Value> {
         let mut ticks = keys(self.count, self.held);
         let watch: Vec<Value> = self.watch.iter().map(|(x, y, z)| json!({"x": x, "y": y, "z": z})).collect();
         for (index, tick) in ticks.iter_mut().enumerate() {

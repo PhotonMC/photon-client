@@ -399,6 +399,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
         out.addProperty("main_hand_count", player.getMainHandItem().getCount());
         out.addProperty("main_hand_item", net.minecraft.core.registries.BuiltInRegistries.ITEM
             .getKey(player.getMainHandItem().getItem()).toString());
+        out.addProperty("main_hand_cooldown",
+            !player.getMainHandItem().isEmpty() && player.getCooldowns().isOnCooldown(player.getMainHandItem()));
         out.addProperty("off_hand_count", player.getOffhandItem().getCount());
         var states = new JsonArray();
         for (var element : attack.getAsJsonArray("watch")) {

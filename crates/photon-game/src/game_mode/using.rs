@@ -326,6 +326,11 @@ impl GameMode {
         }
         let sequence = ctx.world.start_predicting();
         let (y_rot, x_rot) = ctx.player.rotation();
+        let before = ctx
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
+            .cloned();
         let result = match ctx.held(hand) {
             Some(_) if ctx.on_cooldown(hand) => UseResult::Pass,
             // `WritableBookItem.use`: its screen opens (`LocalPlayer.openItemGui`).
@@ -343,6 +348,7 @@ impl GameMode {
             }
             None => UseResult::Pass,
         };
+        super::base_use::after_instant_use(ctx, before.as_ref(), result);
         out.push(Outgoing::UseItem {
             hand,
             sequence,

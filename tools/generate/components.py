@@ -55,6 +55,10 @@ def convert(owner, name, value):
         return f"Component::PotionContents({'None' if potion is None else f'Some({rust_str(potion)})'})"
     if kind == "potion_duration_scale":
         return f"Component::PotionDurationScale({float_literal(value)})"
+    if kind == "use_cooldown":
+        if set(value) != {"seconds"}:
+            raise SystemExit(f"{owner}: use cooldown {value}")
+        return f"Component::UseCooldown({float_literal(value['seconds'])})"
     if kind == "fireworks":
         if set(value) != {"flight_duration"}:
             raise SystemExit(f"{owner}: fireworks {value}")

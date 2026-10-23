@@ -127,25 +127,12 @@ fn holder(names: impl Iterator<Item = String>, wanted: &str, out: &mut Vec<u8>) 
     Some(())
 }
 
-/// A component's type id and value bytes; `None` when the value names an
-/// entry of a registry that is not known.
-pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<(i32, Vec<u8>)> {
-    let mut out = Vec::new();
-    let id = match component {
-        Component::ItemName(key) => {
-            out = translatable(key);
-            ids::ITEM_NAME
-        }
+/// The components whose value is a number or a flag: their type id, the value written to `out`.
+fn scalar(component: &Component, out: &mut Vec<u8>) -> Option<i32> {
+    Some(match component {
         Component::Rarity(value) => {
-            write_varint(rarity(*value), &mut out);
+            write_varint(rarity(*value), out);
             ids::RARITY
-        }
-        Component::AttributeModifiers(modifiers) => {
-            write_varint(modifiers.len() as i32, &mut out);
-            for modifier in *modifiers {
-                attribute_modifier(modifier, &mut out);
-            }
-            ids::ATTRIBUTE_MODIFIERS
         }
         Component::EnchantmentGlintOverride(value) => {
             out.push(u8::from(*value));
@@ -154,6 +141,39 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
         Component::MapColor(color) => {
             out.extend_from_slice(&color.to_be_bytes());
             ids::MAP_COLOR
+        }
+        Component::PotionDurationScale(scale) => {
+            out.extend_from_slice(&scale.to_be_bytes());
+            ids::POTION_DURATION_SCALE
+        }
+        Component::UseCooldown(seconds) => {
+            out.extend_from_slice(&seconds.to_be_bytes());
+            // No cooldown group.
+            out.push(0);
+            ids::USE_COOLDOWN
+        }
+        _ => return None,
+    })
+}
+
+/// A component's type id and value bytes; `None` when the value names an
+/// entry of a registry that is not known.
+pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<(i32, Vec<u8>)> {
+    let mut out = Vec::new();
+    if let Some(id) = scalar(component, &mut out) {
+        return Some((id, out));
+    }
+    let id = match component {
+        Component::ItemName(key) => {
+            out = translatable(key);
+            ids::ITEM_NAME
+        }
+        Component::AttributeModifiers(modifiers) => {
+            write_varint(modifiers.len() as i32, &mut out);
+            for modifier in *modifiers {
+                attribute_modifier(modifier, &mut out);
+            }
+            ids::ATTRIBUTE_MODIFIERS
         }
         Component::PotionContents(potion) => {
             match potion {
@@ -167,10 +187,6 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
             // No colour, no effects, no name.
             out.extend_from_slice(&[0, 0, 0]);
             ids::POTION_CONTENTS
-        }
-        Component::PotionDurationScale(scale) => {
-            out.extend_from_slice(&scale.to_be_bytes());
-            ids::POTION_DURATION_SCALE
         }
         Component::Fireworks { flight_duration } => {
             write_varint(*flight_duration, &mut out);
@@ -271,6 +287,8 @@ pub fn encode(component: &Component, registries: Option<&Registries>) -> Option<
             }
             ids::TOOLTIP_DISPLAY
         }
+        // Written by `scalar`.
+        _ => return None,
     };
     Some((id, out))
 }

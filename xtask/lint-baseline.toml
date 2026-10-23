@@ -8,7 +8,7 @@
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
-"crates/photon-oracle/src/movement.rs" = 535
+"crates/photon-oracle/src/movement.rs" = 527
 "crates/photon-oracle/src/particles.rs" = 518
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
@@ -184,7 +184,7 @@
 "crates/photon-game/src/game_mode/using.rs::GameMode::start_use_item" = 14
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 11
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 53
-"crates/photon-game/src/item/default_components.rs::encode" = 24
+"crates/photon-game/src/item/default_components.rs::encode" = 22
 "crates/photon-game/src/item/default_components.rs::slot" = 11
 "crates/photon-game/src/item/values.rs::Values::patched_equippable" = 12
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 40
@@ -318,7 +318,7 @@
 "crates/photon-oracle/src/math_cases/options.rs::vec3_case" = 16
 "crates/photon-oracle/src/math_cases/positions/blockpos.rs::blockpos_mutable_helpers_case" = 22
 "crates/photon-oracle/src/model.rs::model_result" = 11
-"crates/photon-oracle/src/movement.rs::movement_result" = 83
+"crates/photon-oracle/src/movement.rs::movement_result" = 82
 "crates/photon-oracle/src/nbt_cases.rs::json_canonical" = 12
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 16
 "crates/photon-oracle/src/nbt_cases.rs::nbt_tree_value" = 13
@@ -611,7 +611,7 @@
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 64
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 69
 "crates/photon-game/src/input/pick.rs::pick" = 66
-"crates/photon-game/src/item/default_components.rs::encode" = 143
+"crates/photon-game/src/item/default_components.rs::encode" = 131
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 144
 "crates/photon-game/src/menus/container/bundle.rs::ContainerMenu::bundle_click" = 62
 "crates/photon-game/src/menus/container/clicks.rs::ContainerMenu::do_click" = 299
@@ -753,7 +753,7 @@
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
-"crates/photon-oracle/src/movement.rs::movement_result" = 534
+"crates/photon-oracle/src/movement.rs::movement_result" = 526
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
@@ -794,7 +794,6 @@
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 163
 "crates/photon-oracle/src/strider.rs::villager_held_layers_result" = 88
 "crates/photon-oracle/src/timer.rs::binary_result" = 284
-"crates/photon-oracle/src/tooltip.rs::component_json" = 80
 "crates/photon-oracle/src/tooltip.rs::item_declarations" = 68
 "crates/photon-oracle/src/tooltip.rs::tooltip_registries" = 89
 "crates/photon-oracle/src/transform.rs::client_world_entity_tick_result" = 78

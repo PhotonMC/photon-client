@@ -148,7 +148,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
         "minecraft:item_name", "minecraft:rarity", "minecraft:attribute_modifiers",
         "minecraft:enchantment_glint_override", "minecraft:map_color", "minecraft:potion_contents",
         "minecraft:potion_duration_scale", "minecraft:fireworks", "minecraft:instrument",
-        "minecraft:jukebox_playable", "minecraft:block_state", "minecraft:ominous_bottle_amplifier");
+        "minecraft:jukebox_playable", "minecraft:block_state", "minecraft:ominous_bottle_amplifier", "minecraft:use_cooldown");
 
     /**
      * What each block declares, as `Blocks` builds it: its class and the

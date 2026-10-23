@@ -60,9 +60,48 @@ pub(super) fn movement_properties(label: &str) -> Result<Value, String> {
     Ok(json!({"label": label, "outcome": "listed", "blocks": blocks}))
 }
 
+/// `attribute_modifiers` as its codec writes it.
+fn modifiers_json(modifiers: &[photon_data::item::component::AttributeModifier]) -> Value {
+    use photon_data::item::component::{AttributeDisplay, Operation, SlotGroup};
+    Value::Array(
+        modifiers
+            .iter()
+            .map(|modifier| {
+                let mut entry = json!({
+                    "type": modifier.attribute,
+                    "id": modifier.id,
+                    "amount": modifier.amount,
+                    "operation": match modifier.operation {
+                        Operation::AddValue => "add_value",
+                        Operation::AddMultipliedBase => "add_multiplied_base",
+                        Operation::AddMultipliedTotal => "add_multiplied_total",
+                    },
+                    "slot": match modifier.slot {
+                        SlotGroup::Any => "any",
+                        SlotGroup::MainHand => "mainhand",
+                        SlotGroup::OffHand => "offhand",
+                        SlotGroup::Hand => "hand",
+                        SlotGroup::Feet => "feet",
+                        SlotGroup::Legs => "legs",
+                        SlotGroup::Chest => "chest",
+                        SlotGroup::Head => "head",
+                        SlotGroup::Armor => "armor",
+                        SlotGroup::Body => "body",
+                        SlotGroup::Saddle => "saddle",
+                    },
+                });
+                if modifier.display == AttributeDisplay::Hidden {
+                    entry["display"] = json!({"type": "hidden"});
+                }
+                entry
+            })
+            .collect(),
+    )
+}
+
 /// A default component value as the component's own codec writes it in JSON.
 pub(super) fn component_json(component: &photon_data::item::component::Component) -> Value {
-    use photon_data::item::component::{AttributeDisplay, Component, Operation, Rarity, SlotGroup};
+    use photon_data::item::component::{Component, Rarity};
     match component {
         Component::ItemName(key) => json!({"translate": key}),
         Component::Rarity(rarity) => json!(match rarity {
@@ -71,40 +110,7 @@ pub(super) fn component_json(component: &photon_data::item::component::Component
             Rarity::Rare => "rare",
             Rarity::Epic => "epic",
         }),
-        Component::AttributeModifiers(modifiers) => Value::Array(
-            modifiers
-                .iter()
-                .map(|modifier| {
-                    let mut entry = json!({
-                        "type": modifier.attribute,
-                        "id": modifier.id,
-                        "amount": modifier.amount,
-                        "operation": match modifier.operation {
-                            Operation::AddValue => "add_value",
-                            Operation::AddMultipliedBase => "add_multiplied_base",
-                            Operation::AddMultipliedTotal => "add_multiplied_total",
-                        },
-                        "slot": match modifier.slot {
-                            SlotGroup::Any => "any",
-                            SlotGroup::MainHand => "mainhand",
-                            SlotGroup::OffHand => "offhand",
-                            SlotGroup::Hand => "hand",
-                            SlotGroup::Feet => "feet",
-                            SlotGroup::Legs => "legs",
-                            SlotGroup::Chest => "chest",
-                            SlotGroup::Head => "head",
-                            SlotGroup::Armor => "armor",
-                            SlotGroup::Body => "body",
-                            SlotGroup::Saddle => "saddle",
-                        },
-                    });
-                    if modifier.display == AttributeDisplay::Hidden {
-                        entry["display"] = json!({"type": "hidden"});
-                    }
-                    entry
-                })
-                .collect(),
-        ),
+        Component::AttributeModifiers(modifiers) => modifiers_json(modifiers),
         Component::EnchantmentGlintOverride(value) => json!(value),
         Component::MapColor(color) => json!(color),
         Component::PotionContents(None) => json!({}),
@@ -130,6 +136,7 @@ pub(super) fn component_json(component: &photon_data::item::component::Component
         ),
         Component::TooltipDisplay(hidden) => json!({"hidden_components": hidden}),
         Component::PotionDurationScale(scale) => json!(f64::from(*scale)),
+        Component::UseCooldown(seconds) => json!({"seconds": f64::from(*seconds)}),
         Component::Fireworks { flight_duration } => json!({"flight_duration": flight_duration}),
         Component::Instrument(name) | Component::JukeboxPlayable(name) => json!(name),
         Component::BlockState(properties) => Value::Object(
