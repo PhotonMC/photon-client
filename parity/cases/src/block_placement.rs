@@ -417,6 +417,8 @@ fn furnishing_cases() -> Vec<Value> {
         case("shape-tripwires", shapes::tripwire_rows()),
         case("shape-dripleaves", shapes::dripleaf_rows()),
         case("speleothems", shapes::speleothem_rows()),
+        case("note-blocks", shapes::note_rows()),
+        case("note-neighbours", shapes::note_neighbour_rows()),
     ]
 }
 

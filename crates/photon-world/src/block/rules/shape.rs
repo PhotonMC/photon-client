@@ -18,6 +18,7 @@ pub(super) fn update_shape(
         BlockClass::SpeleothemBlock => {
             Rule::Known(super::speleothem::update(state, pos, direction, ctx))
         }
+        BlockClass::NoteBlock => Rule::Known(super::note::update(state, pos, direction, ctx)),
         BlockClass::SnowyBlock => Rule::Known(snowy(state, pos, direction, ctx)),
         BlockClass::ChorusPlantBlock => {
             Rule::Known(super::chorus::plant_update(state, pos, direction, ctx))

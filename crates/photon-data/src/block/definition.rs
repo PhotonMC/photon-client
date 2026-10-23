@@ -119,6 +119,8 @@ pub struct Block {
     pub replaceable: bool,
     pub dynamic_shape: bool,
     pub push_reaction: PushReaction,
+    /// `Properties.instrument`: the note block instrument the block plays under a note block.
+    pub instrument: &'static str,
     pub offset_type: OffsetType,
     pub light_emission: Emission,
     pub emissive_rendering: Rule,
@@ -158,6 +160,7 @@ impl Block {
             replaceable: false,
             dynamic_shape: false,
             push_reaction: PushReaction::Normal,
+            instrument: "harp",
             offset_type: OffsetType::None,
             light_emission: Emission::Constant(0),
             emissive_rendering: Rule::Default,
@@ -275,6 +278,11 @@ impl Block {
 
     pub const fn offset_type(mut self, offset: OffsetType) -> Self {
         self.offset_type = offset;
+        self
+    }
+
+    pub const fn instrument(mut self, instrument: &'static str) -> Self {
+        self.instrument = instrument;
         self
     }
 

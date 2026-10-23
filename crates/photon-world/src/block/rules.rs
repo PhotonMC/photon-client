@@ -26,6 +26,7 @@ mod ground;
 mod growth;
 mod item;
 mod mounted;
+mod note;
 mod placement;
 mod replace;
 mod shape;

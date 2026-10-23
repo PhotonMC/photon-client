@@ -106,6 +106,8 @@ def chain(block):
     if declared["pushReaction"] != "NORMAL":
         reaction = "".join(part.capitalize() for part in declared["pushReaction"].split("_"))
         calls.append(f"push_reaction(PushReaction::{reaction})")
+    if declared["instrument"] != "harp":
+        calls.append(f"instrument({rust_str(declared['instrument'])})")
     if block["item"] != block["name"]:
         calls.append(f"item({rust_str(block['item'])})")
     if "fluid" in block:

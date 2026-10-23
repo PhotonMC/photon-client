@@ -231,6 +231,9 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                     values.addProperty(field, (boolean) declaredValue(declared, field));
                 }
                 values.addProperty("pushReaction", declaredValue(declared, "pushReaction").toString());
+                values.addProperty("instrument",
+                    ((net.minecraft.world.level.block.state.properties.NoteBlockInstrument)
+                        declaredValue(declared, "instrument")).getSerializedName());
                 values.addProperty("offsetType", offsetType(block.defaultBlockState()));
                 described.add("declared", values);
                 described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM

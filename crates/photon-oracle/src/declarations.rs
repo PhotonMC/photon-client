@@ -3,10 +3,9 @@ use super::*;
 /// `block_declarations`: the declarations as the oracle describes them.
 pub(super) fn block_declarations(label: &str) -> Value {
     use photon_data::block::classes::BlockClass;
-    use photon_data::block::definition::{Emission, Fluid, PushReaction, Rule};
+    use photon_data::block::definition::{Emission, Fluid, Rule};
     use photon_data::block::properties::FIELDS;
     use photon_data::block::registry::{self, PropertyKind};
-    let bits = |value: f32| format!("{:08x}", value.to_bits());
     let classes: Vec<Value> = BlockClass::ALL
         .iter()
         .map(|class| {
@@ -94,38 +93,7 @@ pub(super) fn block_declarations(label: &str) -> Value {
                 "class": format!("{:?}", block.class),
                 "properties": block.properties.iter().map(|property| field(property)).collect::<Vec<_>>(),
                 "default": block.default,
-                "declared": {
-                    "destroyTime": bits(block.destroy_time),
-                    "explosionResistance": bits(block.explosion_resistance),
-                    "friction": bits(block.friction),
-                    "speedFactor": bits(block.speed_factor),
-                    "jumpFactor": bits(block.jump_factor),
-                    "bounceRestitution": bits(block.bounce_restitution),
-                    "hasCollision": block.has_collision,
-                    "requiresCorrectToolForDrops": block.requires_correct_tool_for_drops,
-                    "isRandomlyTicking": block.randomly_ticking,
-                    "canOcclude": block.can_occlude,
-                    "isAir": block.air,
-                    "ignitedByLava": block.ignited_by_lava,
-                    "liquid": block.liquid,
-                    "forceSolidOff": block.force_solid_off,
-                    "forceSolidOn": block.force_solid_on,
-                    "spawnTerrainParticles": block.spawn_terrain_particles,
-                    "replaceable": block.replaceable,
-                    "dynamicShape": block.dynamic_shape,
-                    "offsetType": match block.offset_type {
-                    photon_data::block::definition::OffsetType::None => "NONE",
-                    photon_data::block::definition::OffsetType::Xz => "XZ",
-                    photon_data::block::definition::OffsetType::Xyz => "XYZ",
-                },
-                "pushReaction": match block.push_reaction {
-                        PushReaction::Normal => "NORMAL",
-                        PushReaction::Destroy => "DESTROY",
-                        PushReaction::Block => "BLOCK",
-                        PushReaction::Ignore => "IGNORE",
-                        PushReaction::PushOnly => "PUSH_ONLY",
-                    },
-                },
+                "declared": declared(block),
                 "per_state": per_state,
                 "item": block.item_name(),
             });
@@ -331,4 +299,47 @@ pub(super) fn vanilla_tags_of(
     Ok(ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
         registry, tags,
     )]))
+}
+
+/// The `Properties` a block declares, as the reference's own fields read back.
+fn declared(block: &photon_data::block::definition::Block) -> Value {
+    use photon_data::block::definition::PushReaction;
+    json!({
+        "destroyTime": bits(block.destroy_time),
+        "explosionResistance": bits(block.explosion_resistance),
+        "friction": bits(block.friction),
+        "speedFactor": bits(block.speed_factor),
+        "jumpFactor": bits(block.jump_factor),
+        "bounceRestitution": bits(block.bounce_restitution),
+        "hasCollision": block.has_collision,
+        "requiresCorrectToolForDrops": block.requires_correct_tool_for_drops,
+        "isRandomlyTicking": block.randomly_ticking,
+        "canOcclude": block.can_occlude,
+        "isAir": block.air,
+        "ignitedByLava": block.ignited_by_lava,
+        "liquid": block.liquid,
+        "forceSolidOff": block.force_solid_off,
+        "forceSolidOn": block.force_solid_on,
+        "spawnTerrainParticles": block.spawn_terrain_particles,
+        "replaceable": block.replaceable,
+        "dynamicShape": block.dynamic_shape,
+        "offsetType": match block.offset_type {
+        photon_data::block::definition::OffsetType::None => "NONE",
+        photon_data::block::definition::OffsetType::Xz => "XZ",
+        photon_data::block::definition::OffsetType::Xyz => "XYZ",
+    },
+    "instrument": block.instrument,
+    "pushReaction": match block.push_reaction {
+            PushReaction::Normal => "NORMAL",
+            PushReaction::Destroy => "DESTROY",
+            PushReaction::Block => "BLOCK",
+            PushReaction::Ignore => "IGNORE",
+            PushReaction::PushOnly => "PUSH_ONLY",
+        },
+    })
+}
+
+/// A float as the hex of its bits.
+fn bits(value: f32) -> String {
+    format!("{:08x}", value.to_bits())
 }

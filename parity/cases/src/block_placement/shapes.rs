@@ -156,3 +156,55 @@ pub fn speleothem_rows() -> Vec<Value> {
     }
     rows
 }
+
+const INSTRUMENT_BLOCKS: [&str; 22] = [
+    "stone",
+    "oak_planks",
+    "sand",
+    "glass",
+    "gold_block",
+    "clay",
+    "bone_block",
+    "iron_block",
+    "soul_sand",
+    "pumpkin",
+    "emerald_block",
+    "hay_block",
+    "glowstone",
+    "copper_block",
+    "white_wool",
+    "packed_ice",
+    "skeleton_skull",
+    "zombie_head",
+    "creeper_head",
+    "player_head",
+    "piglin_head",
+    "dragon_head",
+];
+
+/// Note blocks below and above every kind of block.
+pub fn note_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for kind in INSTRUMENT_BLOCKS {
+        let below = vec![block([0, 63, 0], kind, &[])];
+        rows.push(row(&format!("note-over-{kind}"), &["note_block"], below, &ON_TOP));
+        let above = vec![block([0, 63, 0], "stone", &[]), block([0, 65, 0], kind, &[])];
+        rows.push(row(&format!("note-under-{kind}"), &["note_block"], above, &ON_TOP));
+        let both = vec![block([0, 63, 0], "stone", &[]), block([0, 65, 0], "skeleton_skull", &[])];
+        rows.push(row(&format!("note-between-{kind}"), &["note_block"], both, &ON_TOP));
+    }
+    rows
+}
+
+/// Blocks placed against note blocks.
+pub fn note_neighbour_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for kind in ["air", "stone", "skeleton_skull", "zombie_head", "gold_block", "player_head"] {
+        let under = vec![block([0, 62, 0], kind, &[]), block([0, 63, 0], "note_block", &[])];
+        rows.push(neighbour_row(&format!("note-below-placed-{kind}"), under, &INSTRUMENT_BLOCKS));
+        let over =
+            vec![block([0, 63, 0], "stone", &[]), block([0, 65, 0], "note_block", &[]), block([0, 66, 0], kind, &[])];
+        rows.push(neighbour_row(&format!("note-above-placed-{kind}"), over, &INSTRUMENT_BLOCKS));
+    }
+    rows
+}
