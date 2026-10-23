@@ -262,6 +262,7 @@ pub(super) fn class_item_use(
         | ItemClass::SpawnEggItem
         | ItemClass::FishingRodItem
         | ItemClass::EmptyMapItem
+        | ItemClass::TridentItem
         | ItemClass::BottleItem => Some(super::utility::use_of(ctx, hand, class)),
         ItemClass::SnowballItem
         | ItemClass::EggItem

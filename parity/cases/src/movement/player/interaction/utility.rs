@@ -7,8 +7,14 @@ use super::placing::uses;
 use super::{aim_at, using};
 use crate::movement::world::{put, put_with};
 
-const ITEMS: [&str; 5] =
-    ["minecraft:ender_eye", "minecraft:oak_boat", "minecraft:fishing_rod", "minecraft:map", "minecraft:pig_spawn_egg"];
+const ITEMS: [&str; 6] = [
+    "minecraft:ender_eye",
+    "minecraft:oak_boat",
+    "minecraft:fishing_rod",
+    "minecraft:map",
+    "minecraft:pig_spawn_egg",
+    "minecraft:trident",
+];
 
 pub fn rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));

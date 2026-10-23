@@ -13,6 +13,7 @@ pub(super) fn use_of(
         C::EnderEyeItem => ender_eye_use(ctx, hand),
         C::BoatItem => boat_use(ctx),
         C::SpawnEggItem => spawn_egg_use(ctx),
+        C::TridentItem => trident_use(ctx, hand),
         C::BottleItem => super::bottles::bottle_use(ctx, hand),
         // The cast, the reel and the new map are the server's; the client only swings (a rod's
         // sounds have no excluded player, so none is heard here).
@@ -68,4 +69,12 @@ pub(super) fn ender_eye_use_on(ctx: &Context<'_>, aim: Aim) -> UseResult {
     } else {
         UseResult::Pass
     }
+}
+
+/// `TridentItem.use` for a trident without riptide and with durability left: the use starts and
+/// nothing swings. A stack about to break fails, and one with riptide fails out of the rain;
+/// neither is read from the stack's components.
+fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    ctx.player.start_using_item(hand != super::MAIN_HAND);
+    UseResult::Success { swing: false }
 }
