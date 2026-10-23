@@ -6,12 +6,9 @@ const MAX_TRANSFERS: usize = 5;
 
 /// A host name and port as an address (`ServerAddress` resolved).
 pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, ConnectionError> {
-    use std::net::ToSocketAddrs;
     let port =
         u16::try_from(port).map_err(|_| ConnectionError::InvalidArgument("transfer port"))?;
-    (host, port)
-        .to_socket_addrs()?
-        .next()
+    crate::resolver::resolve_server(host, port)
         .ok_or(ConnectionError::InvalidArgument("transfer host"))
 }
 

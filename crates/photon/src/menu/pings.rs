@@ -1,6 +1,5 @@
 //! The pings of the server list: one thread for each saved server, which asks it for its status.
 
-use std::net::ToSocketAddrs;
 use std::time::Duration;
 
 use photon_game::server_status::{Pinged, ServerStatus};
@@ -25,11 +24,7 @@ pub(super) fn ping_all(servers: &ServerList) -> std::sync::mpsc::Receiver<(Strin
 /// `ServerStatusPinger.pingServer`: an unknown name, a server that does not answer or answers in a
 /// way that does not read is unreachable.
 fn ping(ip: &str) -> Pinged {
-    let Some(address) = address_with_port(ip)
-        .to_socket_addrs()
-        .ok()
-        .and_then(|mut addresses| addresses.next())
-    else {
+    let Some(address) = resolve(ip) else {
         return Pinged::unreachable(true);
     };
     photon_net::connection::query_status_and_ping(address, Duration::from_secs(30))
@@ -39,4 +34,17 @@ fn ping(ip: &str) -> Pinged {
             Some(Pinged::answered(&status, trace.round_trip_ms))
         })
         .unwrap_or_else(|| Pinged::unreachable(false))
+}
+
+/// The address a server's `ip` names (`ServerAddress.parseString`, then
+/// `ServerNameResolver.resolveAddress` with its SRV redirect).
+pub(super) fn resolve(ip: &str) -> Option<std::net::SocketAddr> {
+    let with_port = address_with_port(ip);
+    let (host, port) = with_port.rsplit_once(':')?;
+    let host = host.trim_start_matches('[').trim_end_matches(']');
+    let resolved = photon_net::resolver::resolve_server(host, port.parse().ok()?);
+    if resolved.is_none() {
+        log::warn!("cannot resolve {ip}");
+    }
+    resolved
 }

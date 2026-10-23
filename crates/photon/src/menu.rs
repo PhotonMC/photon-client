@@ -2,13 +2,13 @@
 //! client joins a server and to which it comes back when the player leaves it.
 
 use std::env;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use glfw::{Action, Key, Modifiers, MouseButton, WindowEvent};
 use photon_game::server_status::Pinged;
-use photon_game::servers::{PackStatus, ServerData, ServerList, address_with_port};
+use photon_game::servers::{PackStatus, ServerData, ServerList};
 use photon_game::text::Component;
 use photon_gui::screen::confirm::{ConfirmAction, ConfirmScreen};
 use photon_gui::screen::connect::ConnectScreen;
@@ -500,7 +500,7 @@ impl Menu {
                     self.servers.add(ServerData::new(&name, &ip), true);
                     self.servers.save(&self.game_directory)?;
                 }
-                if let Some(address) = resolve(&ip) {
+                if let Some(address) = pings::resolve(&ip) {
                     self.connect(address, size);
                 }
                 return Ok(None);
@@ -537,7 +537,7 @@ impl Menu {
                 let Some(server) = self.servers.servers.get(index) else {
                     return Ok(None);
                 };
-                if let Some(address) = resolve(&server.ip) {
+                if let Some(address) = pings::resolve(&server.ip) {
                     self.connect(address, size);
                 }
                 return Ok(None);
@@ -645,17 +645,6 @@ fn confirm_event(
         }
         WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
         _ => None,
-    }
-}
-
-/// The address a server's `ip` names (`ServerAddress.parseString`, then the resolver).
-fn resolve(ip: &str) -> Option<SocketAddr> {
-    match address_with_port(ip).to_socket_addrs() {
-        Ok(mut addresses) => addresses.next(),
-        Err(error) => {
-            log::warn!("cannot resolve {ip}: {error}");
-            None
-        }
     }
 }
 
