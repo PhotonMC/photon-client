@@ -8,7 +8,7 @@
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
-"crates/photon-oracle/src/movement.rs" = 527
+"crates/photon-oracle/src/movement.rs" = 515
 "crates/photon-oracle/src/particles.rs" = 518
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-oracle/src/player_input.rs" = 527
@@ -318,7 +318,7 @@
 "crates/photon-oracle/src/math_cases/options.rs::vec3_case" = 16
 "crates/photon-oracle/src/math_cases/positions/blockpos.rs::blockpos_mutable_helpers_case" = 22
 "crates/photon-oracle/src/model.rs::model_result" = 11
-"crates/photon-oracle/src/movement.rs::movement_result" = 82
+"crates/photon-oracle/src/movement.rs::movement_result" = 78
 "crates/photon-oracle/src/nbt_cases.rs::json_canonical" = 12
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 16
 "crates/photon-oracle/src/nbt_cases.rs::nbt_tree_value" = 13
@@ -753,7 +753,7 @@
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
-"crates/photon-oracle/src/movement.rs::movement_result" = 526
+"crates/photon-oracle/src/movement.rs::movement_result" = 514
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
@@ -970,7 +970,7 @@
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 62
 "crates/photon/src/play/draw.rs::Play::draw" = 88
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 175
+"crates/photon/src/play/ticks.rs::Play::start" = 174
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/version.rs::run_window" = 61

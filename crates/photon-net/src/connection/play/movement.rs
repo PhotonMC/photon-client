@@ -28,6 +28,7 @@ impl PlaySession {
         };
         // The server's flags the packets just brought, which `onSyncedDataUpdated` acts on at once.
         player.set_hand_state(hands);
+        let instruments = self.local.instruments.clone();
         let mut ctx = Context {
             miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,
@@ -35,6 +36,7 @@ impl PlaySession {
             mode: self.local.game_mode,
             selected_slot: self.local.status.selected_slot,
             cooldowns: &mut self.local.item_cooldowns,
+            instruments: &instruments,
             game_master: self.local.permission_level >= 2,
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);

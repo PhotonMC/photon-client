@@ -146,6 +146,14 @@ impl PlaySession {
         &self.local.item_cooldowns
     }
 
+    /// What `InstrumentItem` reads of the instruments, which the data pack says.
+    pub fn set_instruments(
+        &mut self,
+        instruments: Vec<Option<photon_game::item::instrument::Instrument>>,
+    ) {
+        self.local.instruments = std::sync::Arc::new(instruments);
+    }
+
     /// The entry names of one synchronised registry, in network order.
     pub fn registry_names(&self, registry: &str) -> &[String] {
         self.state

@@ -48,6 +48,9 @@ pub struct DescribedEntry {
     pub description: Option<JsonValue>,
     /// The sound event of an instrument or a jukebox song, when it names one.
     pub sound_event: Option<String>,
+    /// An instrument's `use_duration` in seconds and `range` in blocks.
+    pub use_duration: Option<f32>,
+    pub range: Option<f32>,
 }
 
 /// `BannerPattern`.
@@ -149,6 +152,8 @@ fn described_entry(data_root: &Path, directory: &str, name: String) -> Described
     DescribedEntry {
         description: component(&entry, "description"),
         sound_event: entry.text("sound_event"),
+        use_duration: entry.f32("use_duration"),
+        range: entry.f32("range"),
         name,
     }
 }

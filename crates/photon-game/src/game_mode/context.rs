@@ -57,6 +57,8 @@ pub struct Context<'a> {
     pub selected_slot: i32,
     /// `Player.getCooldowns`.
     pub cooldowns: &'a mut crate::item::cooldowns::ItemCooldowns,
+    /// The instruments of the registry, by id.
+    pub instruments: &'a [Option<crate::item::instrument::Instrument>],
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
     pub game_master: bool,
 }

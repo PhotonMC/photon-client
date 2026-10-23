@@ -104,8 +104,7 @@ impl Play {
         let registries = photon_game::registries::Registries::load(&data_root, |registry| {
             session.registry_names(registry).to_vec()
         });
-        session.set_enchantment_traits(EnchantmentTraits::of(&registries));
-        particles.set_jukebox_songs(&registries);
+        share_registries(&mut session, &mut particles, &registries);
         // `PHOTON_CAMERA=back` or `front` starts detached.
         let camera_type = match env::var("PHOTON_CAMERA").as_deref() {
             Ok("back") => CameraType::ThirdPersonBack,
@@ -545,4 +544,15 @@ fn apply_env_options(options: &mut photon_game::options::Options) {
     {
         options.framerate_limit = limit;
     }
+}
+
+/// What the data pack says of the registries, handed to the parts that read it.
+fn share_registries(
+    session: &mut PlaySession,
+    particles: &mut crate::particles::Particles,
+    registries: &photon_game::registries::Registries,
+) {
+    session.set_enchantment_traits(EnchantmentTraits::of(registries));
+    session.set_instruments(photon_game::item::instrument::instruments_of(registries));
+    particles.set_jukebox_songs(registries);
 }

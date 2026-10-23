@@ -240,3 +240,36 @@ pub(super) fn hold_main_hand(
     player.set_main_hand_item(item);
     Ok(())
 }
+
+/// The mob effects a row gives the player, as the server's packets do.
+pub(super) fn apply_effects(
+    world: &mut photon_world::ClientWorld,
+    player: &photon_world::local_player::LocalPlayer,
+    breaking: &Value,
+) -> Result<(), String> {
+    for effect in breaking["effects"].as_array().into_iter().flatten() {
+        let id = match string(effect, "effect")? {
+            "minecraft:haste" => 2,
+            "minecraft:mining_fatigue" => 3,
+            "minecraft:conduit_power" => 28,
+            other => return Err(format!("unknown effect {other}")),
+        };
+        world.apply_local_player_mob_effect(
+            player.entity_id(),
+            id,
+            i32_field(effect, "amplifier")?,
+            1_000_000,
+            0,
+        );
+    }
+    Ok(())
+}
+
+/// The instruments of the vanilla data pack, by registry id.
+pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument::Instrument>> {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    photon_game::item::instrument::instruments_of(&photon_game::registries::Registries::vanilla(
+        &data_root,
+    ))
+}

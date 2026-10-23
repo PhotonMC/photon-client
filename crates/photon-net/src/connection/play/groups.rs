@@ -87,6 +87,8 @@ pub(super) struct LocalState {
     pub(super) renderer_sections: bool,
     /// `Player.getCooldowns`.
     pub(super) item_cooldowns: photon_game::item::cooldowns::ItemCooldowns,
+    /// The instruments of the registry, by id, from the data pack.
+    pub(super) instruments: std::sync::Arc<Vec<Option<photon_game::item::instrument::Instrument>>>,
 }
 
 /// The menus the server opened and what they read.
@@ -273,6 +275,7 @@ impl Default for LocalState {
             build_bounds: (0, 0),
             renderer_sections: false,
             item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
+            instruments: std::sync::Arc::default(),
         }
     }
 }

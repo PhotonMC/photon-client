@@ -7,20 +7,25 @@ use super::placing::uses;
 use super::{aim_at, using};
 use crate::movement::world::{put, put_with};
 
-const ITEMS: [&str; 6] = [
+const ITEMS: [&str; 7] = [
     "minecraft:ender_eye",
     "minecraft:oak_boat",
     "minecraft:fishing_rod",
     "minecraft:map",
     "minecraft:pig_spawn_egg",
     "minecraft:trident",
+    "minecraft:goat_horn",
 ];
+
+/// One click, then three quiet ticks, watching the blocks around the target.
+fn run(aim: Option<&Value>) -> Vec<Value> {
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    [uses(1, aim, &around).clicks(1).go(), uses(3, aim, &around).go()].concat()
+}
 
 pub fn rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
-    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
-    let run = |aim: Option<&Value>| [uses(1, aim, &around).clicks(1).go(), uses(3, aim, &around).go()].concat();
-    let mut rows = Vec::new();
+    let mut rows = special_rows();
     for item in ITEMS {
         let name = item.trim_start_matches("minecraft:");
         let held = |label: String, world: Vec<Value>, x_rot: f64| {
@@ -31,7 +36,12 @@ pub fn rows() -> Vec<Value> {
         rows.push(using(&format!("use-{name}-sky"), vec![], run(None)).main_hand(item).count(2).x_rot(-60.0).row());
     }
     // A main hand that passes leaves the off hand its turn.
-    for (item, x_rot) in [("minecraft:ender_eye", 39.0), ("minecraft:oak_boat", -60.0), ("minecraft:map", 39.0)] {
+    for (item, x_rot) in [
+        ("minecraft:ender_eye", 39.0),
+        ("minecraft:oak_boat", -60.0),
+        ("minecraft:map", 39.0),
+        ("minecraft:goat_horn", 39.0),
+    ] {
         let name = item.trim_start_matches("minecraft:");
         rows.push(
             using(&format!("use-{name}-off-hand"), vec![], run(Some(&top_of)))
@@ -42,6 +52,13 @@ pub fn rows() -> Vec<Value> {
                 .row(),
         );
     }
+    rows
+}
+
+/// The rows that need a target, a world or a clock of their own.
+fn special_rows() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let mut rows = Vec::new();
     rows.push(
         using(
             "use-ender_eye-portal-frame",
@@ -53,6 +70,12 @@ pub fn rows() -> Vec<Value> {
         .x_rot(39.0)
         .row(),
     );
+    // The cooldown of a call holds a second click, in survival and in creative alike.
+    let click = || uses(1, None, &[]).clicks(1).go();
+    for (label, mode) in [("use-goat_horn-twice", "survival"), ("use-goat_horn-twice-creative", "creative")] {
+        let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
+        rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
+    }
     // The target is the frame itself: without an eye it takes the item (a swing, no `use`), with
     // one `useOn` passes and the look passes too.
     let frame_top = aim_at((0, 64, 2), "up", (0.5, 64.8125, 2.5));

@@ -120,6 +120,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         .as_array()
         .ok_or("movement rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
+    let instruments = vanilla_instruments();
     for row in rows {
         let label = string(row, "label")?;
         let mut world = movement_world(row)?;
@@ -169,21 +170,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             }
             hold_main_hand(&mut world, &mut player, breaking)?;
             worn_items(&mut world, &mut player, breaking)?;
-            for effect in breaking["effects"].as_array().into_iter().flatten() {
-                let id = match string(effect, "effect")? {
-                    "minecraft:haste" => 2,
-                    "minecraft:mining_fatigue" => 3,
-                    "minecraft:conduit_power" => 28,
-                    other => return Err(format!("unknown effect {other}")),
-                };
-                world.apply_local_player_mob_effect(
-                    player.entity_id(),
-                    id,
-                    i32_field(effect, "amplifier")?,
-                    1_000_000,
-                    0,
-                );
-            }
+            apply_effects(&mut world, &player, breaking)?;
         }
         // A vehicle the player rides, put aboard as the server's passengers packet does.
         let mut ridden = None;
@@ -382,6 +369,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     mode: game_mode_of_row,
                     selected_slot: 0,
                     cooldowns: &mut cooldowns,
+                    instruments: &instruments,
                     game_master: false,
                 };
                 actions = game_mode.keys_tick(&mut ctx, keys, aim);

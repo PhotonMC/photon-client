@@ -8,6 +8,7 @@ pub mod default_components;
 pub mod equippable_allowed;
 pub mod glider;
 pub mod in_hand;
+pub mod instrument;
 pub(crate) mod repairable;
 pub mod values;
 
