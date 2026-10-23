@@ -521,5 +521,8 @@ mod style_tests {
             .into_owned();
         assert_eq!((style.near, style.far), (0, 1));
         assert_eq!(style.sprites, ["hud/locator_bar_dot/missingno"]);
+        for distance in [0.0, 0.5, 1.0, 1000.0] {
+            assert_eq!(style.sprite(distance), "hud/locator_bar_dot/missingno");
+        }
     }
 }
