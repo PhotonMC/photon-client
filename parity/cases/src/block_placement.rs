@@ -418,6 +418,7 @@ fn furnishing_cases() -> Vec<Value> {
         case("shape-inert", shapes::inert_rows()),
         case("shape-mushrooms", shapes::mushroom_rows()),
         case("shape-paired", shapes::paired_rows()),
+        case("shape-stems", shapes::stem_rows()),
         case("shape-snowy", shapes::snowy_rows()),
         case("shape-chorus", shapes::chorus_rows()),
         case("shape-tripwires", shapes::tripwire_rows()),

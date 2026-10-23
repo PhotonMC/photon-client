@@ -158,7 +158,7 @@ pub fn vine_rows() -> Vec<Value> {
     rows
 }
 
-const INERT: [&str; 66] = [
+const INERT: [&str; 68] = [
     "oak_sapling",
     "dandelion",
     "torch",
@@ -223,6 +223,8 @@ const INERT: [&str; 66] = [
     "snow",
     "oak_trapdoor",
     "waxed_copper_grate",
+    "tall_grass",
+    "small_dripleaf",
     "lantern",
     "brain_coral_block",
 ];
@@ -468,5 +470,21 @@ pub fn paired_rows() -> Vec<Value> {
         block([0, 66, 0], "oak_door", &[("half", "upper"), ("open", "true"), ("hinge", "right")]),
     ];
     rows.push(neighbour_row("shape-door-over", door, &["stone", "glass", "oak_fence", "snow_block"]));
+    rows
+}
+
+/// Attached stems: a neighbour other than the fruit in the way they face turns them back.
+pub fn stem_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (stem, fruit) in [("attached_melon_stem", "melon"), ("attached_pumpkin_stem", "pumpkin")] {
+        for ((side, at), back) in SIDES.into_iter().zip(["south", "west", "north", "east"]) {
+            let world = vec![
+                block([0, 63, 0], "stone", &[]),
+                block(at, stem, &[("facing", back)]),
+                block([at[0], 63, at[2]], "end_stone", &[]),
+            ];
+            rows.push(neighbour_row(&format!("shape-{stem}-{side}"), world, &["stone", fruit]));
+        }
+    }
     rows
 }

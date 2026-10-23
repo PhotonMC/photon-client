@@ -57,7 +57,7 @@ fn growths(
 /// The classes whose `updateShape` only schedules a tick or turns into air when the block can no
 /// longer stand. The client schedules nothing, and it never applies an air result, so for the
 /// client the state stays as it is.
-const INERT: [BlockClass; 65] = [
+const INERT: [BlockClass; 67] = [
     BlockClass::VegetationBlock,
     BlockClass::FallingBlock,
     BlockClass::BrushableBlock,
@@ -123,6 +123,8 @@ const INERT: [BlockClass; 65] = [
     BlockClass::WallHangingSignBlock,
     BlockClass::WallSignBlock,
     BlockClass::WaterloggedTransparentBlock,
+    BlockClass::DoublePlantBlock,
+    BlockClass::SmallDripleafBlock,
 ];
 
 /// `HugeMushroomBlock.updateShape`: the face toward another block of the kind goes.
@@ -167,6 +169,9 @@ fn plants(
             Rule::Known(super::paired::campfire(state, pos, direction, ctx))
         }
         BlockClass::DoorBlock => super::paired::door(state, pos, direction, ctx),
+        BlockClass::AttachedStemBlock => {
+            Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))
+        }
         _ if INERT.contains(&class) => Rule::Known(state),
         _ => connecting(class, state, pos, direction, ctx),
     }

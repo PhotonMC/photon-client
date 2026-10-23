@@ -1,5 +1,5 @@
 //! `updateShape` of the blocks whose state follows a neighbour: the two halves of beds and
-//! doors, and the campfire over hay.
+//! doors, the campfire over hay and the attached stems.
 
 use super::growth::{offset, same_block};
 use super::*;
@@ -80,4 +80,25 @@ pub(super) fn door(
         }
         _ => Rule::Known(air()),
     }
+}
+
+/// `AttachedStemBlock.updateShape`: a neighbour other than the fruit in the direction it faces
+/// turns it back into the stem at full age. The fruit is the block the stem is named after.
+pub(super) fn attached_stem(
+    state: BlockStateId,
+    direction: Direction,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    let Some(name) = block(state).and_then(|b| b.name.strip_prefix("minecraft:attached_")) else {
+        return state;
+    };
+    let fruit = name.trim_end_matches("_stem");
+    let neighbour = ctx.state(offset(pos, direction));
+    let is_fruit = block(neighbour).is_some_and(|b| b.name == format!("minecraft:{fruit}"));
+    if is_fruit || Some(direction) != facing(state) {
+        return state;
+    }
+    let stem = registry::default_state_named(&format!("minecraft:{fruit}_stem"));
+    with_property(stem, "age", "7").unwrap_or(stem)
 }

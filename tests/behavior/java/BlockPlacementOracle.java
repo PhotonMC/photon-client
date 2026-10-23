@@ -20,6 +20,11 @@ class BlockPlacementOracle extends BlockItemOracle {
             return 0L;
         }
 
+        @Override
+        public net.minecraft.core.RegistryAccess registryAccess() {
+            return Oracle.vanillaRegistries();
+        }
+
         java.util.Map<Long, net.minecraft.world.level.block.state.BlockState> states;
         /** The blocks set since the last reset: position, state and flags. */
         java.util.List<Object[]> writes;
