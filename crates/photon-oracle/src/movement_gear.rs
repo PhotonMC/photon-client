@@ -8,7 +8,7 @@ const WORN: [(&str, i16); 2] = [("chest", 6), ("off_hand", 45)];
 /// Put the row's worn items into the player's inventory, as the server's slot packets do.
 pub(super) fn worn_items(
     world: &mut photon_world::ClientWorld,
-    player: &photon_world::local_player::LocalPlayer,
+    player: &mut photon_world::local_player::LocalPlayer,
     breaking: &Value,
 ) -> Result<(), String> {
     for (key, slot) in WORN {
@@ -23,6 +23,8 @@ pub(super) fn worn_items(
             Some(&photon_world::ClientItemStackState::new(1, item)),
         );
     }
+    // The session has synced the hands by the time a row's first keys are read.
+    player.set_hand_state(photon_game::item::glider::hand_state(world, 0));
     add_rockets(world, player, breaking)
 }
 

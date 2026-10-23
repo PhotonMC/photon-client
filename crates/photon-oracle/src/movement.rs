@@ -168,7 +168,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 }
             }
             hold_main_hand(&mut world, &mut player, breaking)?;
-            worn_items(&mut world, &player, breaking)?;
+            worn_items(&mut world, &mut player, breaking)?;
             for effect in breaking["effects"].as_array().into_iter().flatten() {
                 let id = match string(effect, "effect")? {
                     "minecraft:haste" => 2,

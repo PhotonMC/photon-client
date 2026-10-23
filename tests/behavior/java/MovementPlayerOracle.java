@@ -346,21 +346,27 @@ class MovementPlayerOracle extends MovementWorldOracle {
             minecraft.hitResult = net.minecraft.world.phys.BlockHitResult.miss(
                 net.minecraft.world.phys.Vec3.ZERO, net.minecraft.core.Direction.UP, BlockPos.ZERO);
         }
-        for (int click = 0; click < attack.get("clicks").getAsInt(); click++) {
+        // `handleKeybinds`: a player in the middle of a use releases it when the use key is up, and
+        // spends no attack, use or pick click.
+        boolean using = minecraft.player.isUsingItem();
+        if (using && attack.has("use") && !attack.getAsJsonObject("use").get("down").getAsBoolean()) {
+            minecraft.gameMode.releaseUsingItem(minecraft.player);
+        }
+        for (int click = 0; !using && click < attack.get("clicks").getAsInt(); click++) {
             startAttack.invoke(minecraft);
         }
         if (attack.has("use")) {
             var use = attack.getAsJsonObject("use");
             var startUseItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("startUseItem");
             startUseItem.setAccessible(true);
-            for (int click = 0; click < use.get("clicks").getAsInt(); click++) {
+            for (int click = 0; !using && click < use.get("clicks").getAsInt(); click++) {
                 startUseItem.invoke(minecraft);
             }
             // The pick item key is spent after the use clicks, before a held use.
             if (attack.has("pick_item")) {
                 var pickItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("pickBlockOrEntity");
                 pickItem.setAccessible(true);
-                for (int click = 0; click < attack.getAsJsonObject("pick_item").get("clicks").getAsInt(); click++) {
+                for (int click = 0; !using && click < attack.getAsJsonObject("pick_item").get("clicks").getAsInt(); click++) {
                     pickItem.invoke(minecraft);
                 }
             }
