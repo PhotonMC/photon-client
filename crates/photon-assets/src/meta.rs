@@ -63,6 +63,28 @@ pub fn format_range(entry: &JsonObject) -> Option<(PackFormat, PackFormat)> {
     }
 }
 
+/// The formats a pack declares in its `pack` section (`PackFormat.packCodec`): the
+/// `min_format` and `max_format` pair, the old `supported_formats` range, or the single
+/// `pack_format`. `None` when it declares none, which `PackCompatibility` calls unknown.
+fn declared_formats(section: &JsonObject) -> Option<(PackFormat, PackFormat)> {
+    if section.has("min_format") || section.has("max_format") {
+        return format_range(section);
+    }
+    if let Some(range) = section.get_str("supported_formats") {
+        let (low, high) = int_range(range)?;
+        return Some((PackFormat::of(low, 0), PackFormat::of(high, 0)));
+    }
+    let single = PackFormat::of(number(section.get_str("pack_format")?)?, 0);
+    Some((single, single))
+}
+
+/// `PackCompatibility.forVersion(..) == COMPATIBLE` for the pack metadata `meta`.
+pub(crate) fn is_compatible(meta: &JsonObject, current: PackFormat) -> bool {
+    meta.object("pack")
+        .and_then(declared_formats)
+        .is_some_and(|(low, high)| high >= current && current >= low)
+}
+
 /// The directories of the overlays that apply to `current` (`overlaysForVersion`), in the order
 /// the file lists them.
 pub(crate) fn overlays_for(meta: &JsonObject, current: PackFormat) -> Vec<String> {

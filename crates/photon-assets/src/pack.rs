@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use photon_core::identifier::Identifier;
 use photon_core::json::{self, JsonObject, JsonValue};
 
-use crate::meta::{Filter, PackFormat, filter_of, overlays_for};
+use crate::meta::{Filter, PackFormat, filter_of, is_compatible, overlays_for};
 use crate::source::Source;
 
 /// Why a pack cannot be used.
@@ -25,6 +25,7 @@ pub struct Pack {
     /// The folders to look in before the pack's own root, the topmost first.
     overlays: Vec<String>,
     filter: Option<Filter>,
+    compatible: bool,
 }
 
 impl Pack {
@@ -46,6 +47,7 @@ impl Pack {
         Ok(Self {
             id: id.into(),
             filter: filter_of(&meta),
+            compatible: is_compatible(&meta, current),
             overlays,
             source,
         })
@@ -58,7 +60,13 @@ impl Pack {
             source,
             overlays: Vec::new(),
             filter: None,
+            compatible: true,
         }
+    }
+
+    /// Whether the pack's declared formats include the game's (`PackCompatibility.COMPATIBLE`).
+    pub fn is_compatible(&self) -> bool {
+        self.compatible
     }
 
     pub fn id(&self) -> &str {

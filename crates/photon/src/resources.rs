@@ -24,18 +24,25 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
 const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
 
 /// The game's own assets, then the packs `options.txt` selects (`resourcePacks`, the lowest
-/// first). A `file/` entry names a folder or zip in the `resourcepacks` folder of the game
-/// directory; one that is missing or cannot be opened is left out.
+/// first), as `Options.loadSelectedResourcePacks` keeps them. An id names a folder or zip of the
+/// `resourcepacks` folder in the game directory, with or without its `file/` prefix. One that is
+/// missing, cannot be opened, or is not compatible with this game (unless `options.txt` lists it
+/// under `incompatibleResourcePacks`) is left out.
 fn selected_packs(jar_assets: &Path) -> Vec<photon_assets::Pack> {
     let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
     let directory = crate::controls::game_directory().join("resourcepacks");
-    for id in crate::controls::load_options().resource_packs() {
-        let Some(name) = id.strip_prefix("file/") else {
-            continue;
-        };
-        match open_pack(id.clone(), &directory.join(name)) {
+    let options = crate::controls::load_options();
+    let kept = options.incompatible_resource_packs();
+    for id in options.resource_packs() {
+        let name = id.strip_prefix("file/").unwrap_or(&id);
+        match open_pack(format!("file/{name}"), &directory.join(name)) {
+            Ok(pack) if !pack.is_compatible() && !kept.contains(&id) => {
+                log::warn!(
+                    "Removed resource pack {id} from options because it is no longer compatible"
+                );
+            }
             Ok(pack) => stacked.push(pack),
-            Err(error) => log::warn!("resource pack {id}: {error}"),
+            Err(error) => log::warn!("Removed resource pack {id} from options: {error}"),
         }
     }
     stacked

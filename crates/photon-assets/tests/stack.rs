@@ -265,3 +265,29 @@ fn a_folder_pack_reads_files_and_refuses_to_leave_its_root() {
     assert_eq!(text(&stack, "minecraft:../secret.txt"), None);
     assert_eq!(text(&stack, "minecraft:../../outside.txt"), None);
 }
+
+#[test]
+fn a_pack_is_compatible_when_its_formats_include_the_games() {
+    let compatible = |section: &str| {
+        let dir = scratch("compat");
+        std::fs::write(
+            dir.join("pack.mcmeta"),
+            format!(r#"{{"pack":{{"description":"t",{section}}}}}"#),
+        )
+        .expect("a file");
+        let source = DirectorySource::new(&dir);
+        Pack::open("p", Box::new(source), CURRENT)
+            .expect("a pack")
+            .is_compatible()
+    };
+    assert!(compatible(r#""min_format":84,"max_format":88"#));
+    assert!(compatible(r#""min_format":[88,0],"max_format":[88,5]"#));
+    assert!(!compatible(r#""min_format":84,"max_format":87"#));
+    assert!(!compatible(r#""min_format":89,"max_format":90"#));
+    assert!(!compatible(r#""pack_format":34"#));
+    assert!(compatible(r#""pack_format":88"#));
+    assert!(!compatible(
+        r#""supported_formats":[15,34],"pack_format":15"#
+    ));
+    assert!(!compatible(r#""other":1"#));
+}

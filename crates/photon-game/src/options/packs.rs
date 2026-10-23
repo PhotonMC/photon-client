@@ -7,9 +7,19 @@ impl Options {
     /// has it, so it is read where it is used.
     #[must_use]
     pub fn resource_packs(&self) -> Vec<String> {
+        self.list("resourcePacks")
+    }
+
+    /// `incompatibleResourcePacks`: the packs the player kept although they are not compatible.
+    #[must_use]
+    pub fn incompatible_resource_packs(&self) -> Vec<String> {
+        self.list("incompatibleResourcePacks")
+    }
+
+    fn list(&self, key: &str) -> Vec<String> {
         self.lines
             .iter()
-            .find(|(name, _)| name == "resourcePacks")
+            .find(|(name, _)| name == key)
             .map(|(_, value)| string_list(value))
             .unwrap_or_default()
     }
