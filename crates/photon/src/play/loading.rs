@@ -27,6 +27,7 @@ impl Play {
             return Ok(());
         };
         if self.loading.is_none() {
+            log::info!("level loading screen: {reason:?}");
             self.begin_loading()?;
         }
         // The sections around the player are meshed behind the screen; the load ends when the

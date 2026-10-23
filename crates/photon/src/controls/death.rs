@@ -85,8 +85,7 @@ impl Controls {
     }
 
     /// `handlePlayerCombatKill`: a death the server told of opens the death
-    /// screen, in the place of whatever was open; the player having health
-    /// again closes it.
+    /// screen, in the place of whatever was open; the respawn closes it.
     pub fn receive_death(
         &mut self,
         session: &mut PlaySession,
@@ -132,8 +131,12 @@ impl Controls {
             self.last_cursor = None;
             surface.set_cursor_captured(false);
             self.release_keys();
-        } else if self.death.is_some() && session.status().health > 0.0 {
-            self.close_death(surface);
+        } else if self.death.is_some() && session.level_loading().is_some() {
+            // `handleRespawn` puts `LevelLoadingScreen` in the death screen's place; the loading
+            // screen's end gives the mouse back. Health says nothing: the server's word of it
+            // follows the death by a tick.
+            self.death = None;
+            self.confirm = None;
         }
     }
 
