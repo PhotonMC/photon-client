@@ -1,6 +1,7 @@
 //! `BlockBehaviour.canSurvive`: may the state stand where it is placed.
 
 use super::*;
+use crate::block::SupportType;
 
 /// `canSurvive` of the class the state's block runs.
 pub(super) fn can_survive(
@@ -8,13 +9,125 @@ pub(super) fn can_survive(
     pos: (i32, i32, i32),
     ctx: &PlaceContext<'_>,
 ) -> Rule<bool> {
-    match state_owner(state, Method::CanSurvive) {
+    let owner = state_owner(state, Method::CanSurvive);
+    if owner.is_some_and(reads_support_shape) && has_dynamic_neighbour(pos, ctx) {
+        return Rule::Unported;
+    }
+    match owner {
         None => Rule::Known(true),
         Some(BlockClass::VegetationBlock) => vegetation(state, pos, ctx),
         Some(BlockClass::CarpetBlock) => Rule::Known(!is_air(ctx.state((pos.0, pos.1 - 1, pos.2)))),
         Some(BlockClass::FaceAttachedHorizontalDirectionalBlock) => {
             Rule::Known(face_attached_survives(state, pos, ctx))
         }
+        Some(class) => foot_survives(class, state, pos, ctx),
+    }
+}
+
+/// Whether the class decides by the shape of the block it stands on or hangs from.
+fn reads_support_shape(class: BlockClass) -> bool {
+    matches!(
+        class,
+        BlockClass::BasePressurePlateBlock
+            | BlockClass::BaseRailBlock
+            | BlockClass::DiodeBlock
+            | BlockClass::LanternBlock
+            | BlockClass::BellBlock
+            | BlockClass::SporeBlossomBlock
+            | BlockClass::CactusFlowerBlock
+    )
+}
+
+/// Whether a block beside `pos` computes its support shape per position (bamboo, dripstone,
+/// scaffolding, shulker boxes, powder snow), which the cached shapes here do not know.
+pub(super) fn has_dynamic_neighbour(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+    Direction::stream().any(|direction| {
+        let (dx, dy, dz) = direction.step();
+        block(ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz)))
+            .is_some_and(|block| block.dynamic_shape)
+    })
+}
+
+/// `Block.canSupportRigidBlock`.
+fn can_support_rigid(ctx: &PlaceContext<'_>, below: (i32, i32, i32)) -> bool {
+    crate::block::state(ctx.state(below))
+        .is_some_and(|info| info.is_face_sturdy_for(Direction::Up, SupportType::Rigid))
+}
+
+/// `Block.canSupportCenter`.
+fn can_support_center(ctx: &PlaceContext<'_>, at: (i32, i32, i32), direction: Direction) -> bool {
+    let state = ctx.state(at);
+    if direction == Direction::Down
+        && block_index(state)
+            .is_some_and(|(index, _)| ctx.tags.contains(index, "minecraft:unstable_bottom_center"))
+    {
+        return false;
+    }
+    crate::block::state(state)
+        .is_some_and(|info| info.is_face_sturdy_for(direction, SupportType::Center))
+}
+
+/// `LanternBlock.canSurvive`.
+pub(super) fn lantern_survives(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    let toward = if property(state, "hanging") == Some("true") {
+        Direction::Up
+    } else {
+        Direction::Down
+    };
+    let (dx, dy, dz) = toward.step();
+    can_support_center(ctx, (pos.0 + dx, pos.1 + dy, pos.2 + dz), toward.opposite())
+}
+
+/// `BellBlock.canSurvive`: the way the bell hangs from, up for a ceiling bell.
+pub(super) fn bell_survives(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    let toward = match property(state, "attachment") {
+        Some("floor") => Direction::Down,
+        Some("ceiling") => Direction::Up,
+        _ => property(state, "facing")
+            .and_then(Direction::from_name)
+            .unwrap_or(Direction::North),
+    };
+    let (dx, dy, dz) = toward.step();
+    let at = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
+    if toward == Direction::Up {
+        can_support_center(ctx, at, Direction::Down)
+    } else {
+        crate::block::state(ctx.state(at))
+            .is_some_and(|info| info.is_face_sturdy(toward.opposite()))
+    }
+}
+
+/// `canSurvive` of the classes that stand on or hang from a block's centre or rigid face.
+fn foot_survives(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
+    match class {
+        BlockClass::BasePressurePlateBlock => {
+            let below = (pos.0, pos.1 - 1, pos.2);
+            Rule::Known(
+                can_support_rigid(ctx, below) || can_support_center(ctx, below, Direction::Up),
+            )
+        }
+        BlockClass::BaseRailBlock | BlockClass::DiodeBlock => {
+            Rule::Known(can_support_rigid(ctx, (pos.0, pos.1 - 1, pos.2)))
+        }
+        BlockClass::LanternBlock => Rule::Known(lantern_survives(state, pos, ctx)),
+        BlockClass::BellBlock => Rule::Known(bell_survives(state, pos, ctx)),
+        BlockClass::SporeBlossomBlock => Rule::Known(
+            can_support_center(ctx, (pos.0, pos.1 + 1, pos.2), Direction::Down)
+                && !is_water(ctx.state(pos)),
+        ),
         _ => Rule::Unported,
     }
 }
@@ -81,6 +194,15 @@ fn vegetation(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>)
     let Some(placed) = block(state) else {
         return Rule::Known(false);
     };
+    if owner(placed, Method::MayPlaceOn) == Some(BlockClass::CactusFlowerBlock) {
+        // `CactusFlowerBlock.mayPlaceOn`: the override tag, or a sturdy centre.
+        let below_pos = (pos.0, pos.1 - 1, pos.2);
+        let overridden = block_index(ctx.state(below_pos)).is_some_and(|(index, _)| {
+            ctx.tags
+                .contains(index, "minecraft:support_override_cactus_flower")
+        });
+        return Rule::Known(overridden || can_support_center(ctx, below_pos, Direction::Up));
+    }
     let Some(tag) = support_tag(placed) else {
         return Rule::Unported;
     };

@@ -32,6 +32,14 @@ pub const DIRECTIONS: [Direction; 6] = [
     Direction::East,
 ];
 
+/// `SupportType`: how much of a face must carry a block placed against it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SupportType {
+    Full,
+    Center,
+    Rigid,
+}
+
 /// A face occlusion shape: nothing, the whole face, or one of the partial
 /// faces numbered after them as they turn up.
 pub type Face = u16;
@@ -60,6 +68,9 @@ pub struct StateInfo {
     pub blocks_motion: bool,
     /// `isFaceSturdy` with `SupportType.FULL`, bit `d` for each direction.
     pub sturdy_faces: u8,
+    /// `isFaceSturdy` with `SupportType.CENTER` and `SupportType.RIGID`, the same bits.
+    pub center_faces: u8,
+    pub rigid_faces: u8,
     pub suffocating: bool,
     pub view_blocking: bool,
     pub redstone_conductor: bool,
@@ -80,6 +91,16 @@ impl StateInfo {
 
     pub fn is_face_sturdy(&self, direction: Direction) -> bool {
         self.sturdy_faces & (1 << direction as u8) != 0
+    }
+
+    /// `isFaceSturdy(direction, supportType)`.
+    pub fn is_face_sturdy_for(&self, direction: Direction, support: SupportType) -> bool {
+        let bits = match support {
+            SupportType::Full => self.sturdy_faces,
+            SupportType::Center => self.center_faces,
+            SupportType::Rigid => self.rigid_faces,
+        };
+        bits & (1 << direction as u8) != 0
     }
 }
 
@@ -207,6 +228,9 @@ struct Facts {
     full: bool,
     /// `isFaceFull` towards each direction, bit `d`.
     full_faces: u8,
+    /// `SupportType.CENTER` and `SupportType.RIGID` towards each direction, bit `d`.
+    center_faces: u8,
+    rigid_faces: u8,
     /// The face numbers, once the shape has been an occlusion shape.
     faces: Option<[Face; 6]>,
 }
@@ -221,9 +245,24 @@ impl ShapeFacts {
                     .enumerate()
                     .filter(|(_, direction)| is_shape_full_block(&shape.face_shape(**direction)))
                     .fold(0, |bits, (slot, _)| bits | 1 << slot);
+                let supporting = |wanted: &VoxelShape| {
+                    DIRECTIONS
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, direction)| {
+                            !Shapes::join_is_not_empty(
+                                &shape.face_shape(**direction),
+                                wanted,
+                                BooleanOp::OnlySecond,
+                            )
+                        })
+                        .fold(0, |bits, (slot, _)| bits | 1 << slot)
+                };
                 let facts = Facts {
                     full: is_shape_full_block(shape),
                     full_faces,
+                    center_faces: supporting(&shapes::center_support()),
+                    rigid_faces: supporting(&shapes::rigid_support()),
                     faces: None,
                 };
                 (shape.clone(), facts)

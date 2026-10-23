@@ -30,6 +30,22 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::TrapDoorBlock, |_, default, ctx| {
         trapdoor_placement(default, ctx)
     }),
+    (BlockClass::LanternBlock, |_, default, ctx| {
+        if super::survive::has_dynamic_neighbour(ctx.clicked_pos(), ctx) {
+            return Rule::Unported;
+        }
+        Rule::Known(lantern_placement(default, ctx))
+    }),
+    (BlockClass::BellBlock, |_, default, ctx| {
+        if super::survive::has_dynamic_neighbour(ctx.clicked_pos(), ctx) {
+            return Rule::Unported;
+        }
+        Rule::Known(bell_placement(default, ctx))
+    }),
+    (BlockClass::DiodeBlock, |_, default, ctx| {
+        Rule::Known(diode_facing(default, ctx))
+    }),
+    (BlockClass::RepeaterBlock, repeater_placement),
     (
         BlockClass::FaceAttachedHorizontalDirectionalBlock,
         |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),
@@ -120,15 +136,6 @@ fn glazed_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Blo
         default,
         "facing",
         ctx.horizontal_direction.opposite().name(),
-    )
-}
-
-/// `FluidState.is(FluidTags.WATER)`.
-fn is_water(state: BlockStateId) -> bool {
-    use photon_data::block::definition::Fluid;
-    matches!(
-        crate::block::state_or_air(state).fluid.fluid,
-        Fluid::Water | Fluid::FlowingWater
     )
 }
 
@@ -309,4 +316,95 @@ fn nearest_looking_directions(ctx: &PlaceContext<'_>) -> [Direction; 6] {
         }
     }
     directions
+}
+
+/// `LanternBlock.getStateForPlacement`: hanging from above or standing, whichever the look
+/// reaches first and the block can survive.
+fn lantern_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let water = flag(is_water_source(ctx.state(pos)));
+    nearest_looking_directions(ctx)
+        .into_iter()
+        .filter(|direction| direction.axis() == Axis::Y)
+        .find_map(|direction| {
+            let state = with_property(default, "hanging", flag(direction == Direction::Up))?;
+            super::survive::lantern_survives(state, pos, ctx).then_some(state)
+        })
+        .and_then(|state| with_property(state, "waterlogged", water))
+}
+
+/// `BellBlock.getStateForPlacement`.
+fn bell_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let survives = |state: BlockStateId| super::survive::bell_survives(state, pos, ctx);
+    let axis = ctx.face.axis();
+    if axis == Axis::Y {
+        let attachment = if ctx.face == Direction::Down {
+            "ceiling"
+        } else {
+            "floor"
+        };
+        let state = with_property(default, "attachment", attachment)
+            .and_then(|state| with_property(state, "facing", ctx.horizontal_direction.name()))?;
+        return survives(state).then_some(state);
+    }
+    bell_on_wall(default, ctx, axis)
+}
+
+/// `BellBlock.getStateForPlacement` against a side face: hung from one wall or between two, else
+/// standing on or hanging under whatever is below.
+fn bell_on_wall(default: BlockStateId, ctx: &PlaceContext<'_>, axis: Axis) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let survives = |state: BlockStateId| super::survive::bell_survives(state, pos, ctx);
+    let sturdy = |direction: Direction, face: Direction| {
+        let (dx, dy, dz) = direction.step();
+        crate::block::state(ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz)))
+            .is_some_and(|info| info.is_face_sturdy(face))
+    };
+    let double = axis == Axis::X
+        && sturdy(Direction::West, Direction::East)
+        && sturdy(Direction::East, Direction::West)
+        || axis == Axis::Z
+            && sturdy(Direction::North, Direction::South)
+            && sturdy(Direction::South, Direction::North);
+    let attachment = if double { "double_wall" } else { "single_wall" };
+    let state = with_property(default, "facing", ctx.face.opposite().name())
+        .and_then(|state| with_property(state, "attachment", attachment))?;
+    if survives(state) {
+        return Some(state);
+    }
+    let below = sturdy(Direction::Down, Direction::Up);
+    let state = with_property(state, "attachment", if below { "floor" } else { "ceiling" })?;
+    survives(state).then_some(state)
+}
+
+/// `DiodeBlock.getStateForPlacement`: facing the player.
+fn diode_facing(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    with_property(
+        default,
+        "facing",
+        ctx.horizontal_direction.opposite().name(),
+    )
+}
+
+/// `RepeaterBlock.getStateForPlacement`: locked by a repeater or comparator beside it that
+/// gives a signal; unported when there is one.
+fn repeater_placement(
+    _: usize,
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Rule<Option<BlockStateId>> {
+    let Some(state) = diode_facing(default, ctx) else {
+        return Rule::Known(None);
+    };
+    let pos = ctx.clicked_pos();
+    let facing = ctx.horizontal_direction.opposite();
+    for side in [facing.clockwise(Axis::Y), facing.counter_clockwise(Axis::Y)] {
+        let (dx, dy, dz) = side.step();
+        let beside = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+        if block(beside).is_some_and(|block| block.class.is(BlockClass::DiodeBlock)) {
+            return Rule::Unported;
+        }
+    }
+    Rule::Known(with_property(state, "locked", "false"))
 }

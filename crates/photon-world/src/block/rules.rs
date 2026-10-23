@@ -106,6 +106,15 @@ pub fn is_water_source(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).fluid.fluid == photon_data::block::definition::Fluid::Water
 }
 
+/// `FluidState.is(FluidTags.WATER)`.
+fn is_water(state: BlockStateId) -> bool {
+    use photon_data::block::definition::Fluid;
+    matches!(
+        crate::block::state_or_air(state).fluid.fluid,
+        Fluid::Water | Fluid::FlowingWater
+    )
+}
+
 /// What a block reads of the level and of the use that places it.
 #[derive(Clone, Copy)]
 pub struct PlaceContext<'a> {
@@ -459,6 +468,29 @@ mod tests {
             place_trapdoor_beside("minecraft:stone"),
             Rule::Known(Some(_))
         ));
+    }
+
+    #[test]
+    fn a_support_that_moves_with_its_position_is_left_to_the_server() {
+        let bamboo = default_state(registry::block_index("minecraft:bamboo").expect("bamboo"));
+        let state_at = |x: i32, y: i32, z: i32| {
+            if (x, y, z) == (0, 63, 0) {
+                bamboo
+            } else {
+                crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+            }
+        };
+        let tags = BlockTags::default();
+        let mut ctx = PlaceContext::new(
+            &state_at,
+            ((0, 63, 0), Direction::Up, (0.5, 64.0, 0.5)),
+            None,
+            (0.0, 0.0),
+            &tags,
+        );
+        ctx.replace_clicked = false;
+        let lantern = registry::block_index("minecraft:lantern").expect("a lantern");
+        assert_eq!(state_for_placement(lantern, &ctx), Rule::Unported);
     }
 
     #[test]

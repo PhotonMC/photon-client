@@ -5,7 +5,7 @@
 use std::sync::OnceLock;
 
 use photon_core::direction::{Axis, Direction};
-use photon_core::shape::{Shapes, VoxelShape};
+use photon_core::shape::{BooleanOp, Shapes, VoxelShape};
 
 /// `Block.box`: a box in sixteenths.
 pub fn cube(min_x: f64, min_y: f64, min_z: f64, max_x: f64, max_y: f64, max_z: f64) -> VoxelShape {
@@ -108,6 +108,26 @@ pub fn fence_gate_support(axis: Axis) -> VoxelShape {
     let shapes =
         SHAPES.get_or_init(|| Shapes::rotate_horizontal_axis(&column(16.0, 4.0, 5.0, 24.0)));
     by_axis(shapes, axis).clone()
+}
+
+/// `SupportType.CENTER`'s shape: the small column a block needs under it.
+pub fn center_support() -> VoxelShape {
+    static SHAPE: OnceLock<VoxelShape> = OnceLock::new();
+    SHAPE.get_or_init(|| column_xz(2.0, 0.0, 10.0)).clone()
+}
+
+/// `SupportType.RIGID`'s shape: the whole block but its 12-wide centre column.
+pub fn rigid_support() -> VoxelShape {
+    static SHAPE: OnceLock<VoxelShape> = OnceLock::new();
+    SHAPE
+        .get_or_init(|| {
+            Shapes::join(
+                &Shapes::block(),
+                &column_xz(12.0, 0.0, 16.0),
+                BooleanOp::OnlyFirst,
+            )
+        })
+        .clone()
 }
 
 /// `ChorusFlowerBlock.SHAPE_BLOCK_SUPPORT`.

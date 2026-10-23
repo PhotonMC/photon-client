@@ -99,7 +99,8 @@ pub(super) fn compute(
     let blocks_motion =
         index != id::COBWEB && index != id::BAMBOO_SAPLING && legacy_solid(block, &collision);
     let support = support_shape(block, offset, &outline, &collision);
-    let sturdy_faces = facts.of(&support).full_faces;
+    let support_facts = facts.of(&support);
+    let sturdy_faces = support_facts.full_faces;
     let fallback = blocks_motion && collision_full_block;
     StateInfo {
         block: u16::try_from(index).expect("fewer than 65536 blocks"),
@@ -117,6 +118,8 @@ pub(super) fn compute(
         can_occlude: block.can_occlude,
         blocks_motion,
         sturdy_faces,
+        center_faces: support_facts.center_faces,
+        rigid_faces: support_facts.rigid_faces,
         suffocating: block.suffocating.value(offset).unwrap_or(fallback),
         view_blocking: block.view_blocking.value(offset).unwrap_or(fallback),
         redstone_conductor: block

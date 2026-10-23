@@ -20,7 +20,7 @@ pub mod tags;
 
 pub use culling::should_render_face;
 pub use fluid::FluidState;
-pub use state::{StateInfo, state, state_or_air, states};
+pub use state::{StateInfo, SupportType, state, state_or_air, states};
 
 use photon_data::block::classes::BlockClass;
 use photon_data::block::definition::OffsetType;
