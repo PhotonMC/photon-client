@@ -70,33 +70,42 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
-    // A scripted run starts on a level that has loaded; a player joins as the reference does.
-    let wait = if env::var_os("PHOTON_SCRIPT").is_some() {
-        JoinWait::Chunks
-    } else {
-        JoinWait::Level
-    };
-    let mut session = join(server, &Status::default(), wait, &packs::unattended())?;
-    session.use_renderer_sections();
-    // No menu is there to reload the assets: the packs the join settled on go in use before the
-    // window bakes the blocks from them.
     let root = env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
-    crate::packs::serve_reload(
-        session.packs(),
-        &mut |loaded| match crate::resources::with_packs(std::path::Path::new(&root), loaded) {
+    let mut session = join_with_packs(server, &packs::unattended(), std::path::Path::new(&root))?;
+    session.use_renderer_sections();
+    let client = Client::open((width, height))?;
+    Play::start(client, session)?.run()?;
+    Ok(())
+}
+
+/// A join on its own thread while this one answers the reloads of the packs the server pushes
+/// (the menu does the same while it draws): the packs the join settles on go in use before the
+/// window bakes the blocks from them.
+fn join_with_packs(
+    server: SocketAddr,
+    packs: &PackSource,
+    root: &std::path::Path,
+) -> Result<PlaySession> {
+    let task = JoinTask::start(server, packs.clone());
+    loop {
+        crate::packs::serve_reload(packs, &mut |loaded| match crate::resources::with_packs(
+            root, loaded,
+        ) {
             Ok(stack) => {
-                crate::resources::replace(std::sync::Arc::new(stack));
+                crate::resources::replace(Arc::new(stack));
                 true
             }
             Err(error) => {
                 log::warn!("resource packs: {error}");
                 false
             }
-        },
-    );
-    let client = Client::open((width, height))?;
-    Play::start(client, session)?.run()?;
-    Ok(())
+        });
+        match task.finished() {
+            Some(Ok(session)) => return Ok(session),
+            Some(Err(reason)) => return Err(format!("join failed: {reason:?}").into()),
+            None => std::thread::sleep(Duration::from_millis(10)),
+        }
+    }
 }
 
 /// Where the client joins until the server list chooses (`photon play`'s default too).
