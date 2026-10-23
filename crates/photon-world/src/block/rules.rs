@@ -28,6 +28,7 @@ mod growth;
 mod item;
 mod mounted;
 mod note;
+mod paired;
 mod placement;
 mod replace;
 mod shape;

@@ -162,6 +162,11 @@ fn plants(
         BlockClass::VineBlock => Rule::Known(super::vine::update(state, pos, direction, ctx)),
         BlockClass::HugeMushroomBlock => Rule::Known(mushroom(state, direction, pos, ctx)),
         BlockClass::HangingMossBlock => Rule::Known(moss(state, pos, ctx)),
+        BlockClass::BedBlock => Rule::Known(super::paired::bed(state, pos, direction, ctx)),
+        BlockClass::CampfireBlock => {
+            Rule::Known(super::paired::campfire(state, pos, direction, ctx))
+        }
+        BlockClass::DoorBlock => super::paired::door(state, pos, direction, ctx),
         _ if INERT.contains(&class) => Rule::Known(state),
         _ => connecting(class, state, pos, direction, ctx),
     }
