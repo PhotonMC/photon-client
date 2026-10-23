@@ -130,6 +130,9 @@ impl Play {
             return;
         }
         if self.controls.disconnected.is_none() {
+            self.end_backdrop();
+        }
+        if self.controls.disconnected.is_none() {
             self.controls.captured = true;
             self.surface.set_cursor_captured(true);
         }
@@ -182,6 +185,7 @@ impl Play {
                 view.screen = screen;
             }
         }
+        self.show_backdrop();
         if let Some(view) = &self.controls.switch {
             self.gui
                 .draw_menu_screen(
@@ -206,6 +210,10 @@ impl Play {
             self.controls.gui_mouse.0 as i32,
             self.controls.gui_mouse.1 as i32,
         );
+        if self.controls.disconnected.is_none() {
+            return Ok(());
+        }
+        self.show_backdrop();
         let Some(screen) = self.controls.disconnected.as_mut() else {
             return Ok(());
         };

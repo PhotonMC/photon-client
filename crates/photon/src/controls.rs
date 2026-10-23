@@ -173,6 +173,8 @@ pub struct Controls {
     pub pack_prompt: Option<pack_prompt::PackPrompt>,
     /// The screen of a reconfiguration or a transfer that goes on.
     pub(crate) switch: Option<crate::play::SwitchView>,
+    /// The panorama behind the reconfiguring, transfer and disconnected screens (no level).
+    pub(crate) backdrop: Option<crate::play::LoadingView>,
     /// The screen a lost connection leaves, which nothing replaces.
     pub disconnected: Option<DisconnectedScreen>,
     /// The player asked to leave the server (the pause menu's Disconnect, or the button of the

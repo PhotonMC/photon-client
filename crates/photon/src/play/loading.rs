@@ -92,24 +92,30 @@ impl Play {
         self.controls.captured = false;
         self.surface.set_cursor_captured(false);
         self.backend.set_gui_only(true);
-        if let Ok(root) = env::var("PHOTON_ASSETS") {
-            match crate::menu::panorama::faces(&root) {
-                Ok(faces) => {
-                    if let Err(error) = self
-                        .backend
-                        .load_panorama(&photon_render::panorama::layers(&faces))
-                    {
-                        log::warn!("panorama: {error:?}");
-                    }
-                }
-                Err(error) => log::warn!("panorama: {error}"),
-            }
-        }
+        self.load_panorama();
         self.loading = Some(LoadingView {
             spin: 0.0,
             last_spin: Instant::now(),
         });
         Ok(())
+    }
+
+    /// The panorama's faces, into the renderer.
+    fn load_panorama(&mut self) {
+        let Ok(root) = env::var("PHOTON_ASSETS") else {
+            return;
+        };
+        match crate::menu::panorama::faces(&root) {
+            Ok(faces) => {
+                if let Err(error) = self
+                    .backend
+                    .load_panorama(&photon_render::panorama::layers(&faces))
+                {
+                    log::warn!("panorama: {error:?}");
+                }
+            }
+            Err(error) => log::warn!("panorama: {error}"),
+        }
     }
 
     /// `Screen.extractPanorama` and the blur of `extractBlurredBackground`, for the plain reason.
@@ -121,25 +127,39 @@ impl Play {
             self.backend.set_panorama(None);
             return;
         }
-        let now = Instant::now();
-        let ticks = photon_render::panorama::real_delta_ticks(
-            now.duration_since(view.last_spin).as_secs_f32(),
+        spin_view(
+            view,
+            &mut self.backend,
+            self.controls.options.menu_background_blurriness,
         );
-        view.last_spin = now;
-        view.spin = photon_render::panorama::spin_after(view.spin, ticks, 1.0);
-        let extent = self.backend.description().extent;
-        if let Err(error) = self
-            .backend
-            .set_panorama_blur(self.controls.options.menu_background_blurriness as u32)
-        {
-            log::warn!("panorama blur: {error:?}");
+    }
+
+    /// The panorama behind a screen with no level (`Screen.extractBackground` when
+    /// `minecraft.level` is null), turning from frame to frame.
+    pub(super) fn show_backdrop(&mut self) {
+        if self.controls.backdrop.is_none() {
+            self.backend.set_gui_only(true);
+            self.load_panorama();
+            self.controls.backdrop = Some(LoadingView {
+                spin: 0.0,
+                last_spin: Instant::now(),
+            });
         }
-        self.backend
-            .set_panorama(Some(photon_render::panorama::view_projection(
-                -view.spin,
-                extent.width,
-                extent.height,
-            )));
+        if let Some(view) = self.controls.backdrop.as_mut() {
+            spin_view(
+                view,
+                &mut self.backend,
+                self.controls.options.menu_background_blurriness,
+            );
+        }
+    }
+
+    /// The backdrop goes with its screen.
+    pub(super) fn end_backdrop(&mut self) {
+        if self.controls.backdrop.take().is_some() {
+            self.backend.set_gui_only(false);
+            self.backend.set_panorama(None);
+        }
     }
 
     /// The level is loaded: the screen goes, and the mouse comes back to the game unless
@@ -155,4 +175,26 @@ impl Play {
             self.surface.set_cursor_captured(true);
         }
     }
+}
+
+/// One frame of the turning panorama behind a screen, with the blur of the options.
+fn spin_view(
+    view: &mut LoadingView,
+    backend: &mut photon_render::VulkanBackend,
+    blurriness: impl Into<f64>,
+) {
+    let now = Instant::now();
+    let ticks =
+        photon_render::panorama::real_delta_ticks(now.duration_since(view.last_spin).as_secs_f32());
+    view.last_spin = now;
+    view.spin = photon_render::panorama::spin_after(view.spin, ticks, 1.0);
+    let extent = backend.description().extent;
+    if let Err(error) = backend.set_panorama_blur(blurriness.into() as u32) {
+        log::warn!("panorama blur: {error:?}");
+    }
+    backend.set_panorama(Some(photon_render::panorama::view_projection(
+        -view.spin,
+        extent.width,
+        extent.height,
+    )));
 }

@@ -541,6 +541,7 @@ mod pacing;
 mod schedule;
 mod social_toast;
 mod switch;
+pub(crate) use loading::LoadingView;
 pub(crate) use switch::SwitchView;
 mod ticks;
 mod tutorial;
