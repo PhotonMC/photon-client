@@ -206,7 +206,7 @@ impl Armor {
             };
             for (suffix, palette) in &palettes {
                 if let Some(mapped) = permute(&image, &keys, palette) {
-                    images.push((format!("{texture}_{suffix}"), mapped));
+                    images.push((format!("{texture}{}{suffix}", source.separator), mapped));
                 }
             }
         }

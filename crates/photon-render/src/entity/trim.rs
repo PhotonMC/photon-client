@@ -134,6 +134,8 @@ pub struct PalettedPermutations {
     pub palette_key: String,
     /// Each permutation's suffix and the path of its palette.
     pub permutations: BTreeMap<String, String>,
+    /// What joins a picture's path and a permutation's suffix in the sprite's name.
+    pub separator: String,
 }
 
 impl PalettedPermutations {
@@ -182,6 +184,19 @@ impl PalettedPermutations {
             textures,
             palette_key: path_of(&source.text("palette_key")?).to_owned(),
             permutations,
+            separator: source.text("separator").unwrap_or_else(|| "_".to_owned()),
+        })
+    }
+
+    /// The picture and permutation suffix that make the sprite `name` (a path under
+    /// `textures/`), if this source does.
+    pub fn sprite_of<'a>(&'a self, name: &str) -> Option<(&'a str, &'a str)> {
+        self.textures.iter().find_map(|texture| {
+            let suffix = name
+                .strip_prefix(texture.as_str())?
+                .strip_prefix(self.separator.as_str())?;
+            let (key, _) = self.permutations.get_key_value(suffix)?;
+            Some((texture.as_str(), key.as_str()))
         })
     }
 }
@@ -226,4 +241,24 @@ pub fn permute(
         pixel.copy_from_slice(&[value[0], value[1], value[2], alpha]);
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_source_names_its_sprites_with_its_separator() {
+        let atlas = photon_core::json::parse_object(
+            r#"{"sources":[{"type":"minecraft:paletted_permutations","textures":["a","a_b"],
+            "palette_key":"k","permutations":{"x":"px"},"separator":"-"}]}"#,
+        )
+        .unwrap();
+        let sources = PalettedPermutations::parse_all(&atlas);
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].sprite_of("a-x"), Some(("a", "x")));
+        assert_eq!(sources[0].sprite_of("a_b-x"), Some(("a_b", "x")));
+        assert_eq!(sources[0].sprite_of("a_x"), None);
+        assert_eq!(sources[0].sprite_of("a-y"), None);
+    }
 }

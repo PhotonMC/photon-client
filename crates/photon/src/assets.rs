@@ -32,29 +32,23 @@ fn permuted_texture(
         name.namespace()
     ))
     .ok()?;
-    // A later source replaces the sprite an earlier one made of the same name.
-    let (source, texture, suffix) = sources(&atlas).into_iter().rev().find_map(|source| {
-        let (texture, suffix) = source.textures.iter().find_map(|texture| {
-            let suffix = name
-                .path()
-                .strip_prefix(texture.as_str())?
-                .strip_prefix('_')?;
-            Some((texture.clone(), suffix.to_owned()))
-        })?;
-        Some((source, texture, suffix))
-    })?;
     let load = |path: &str| {
         let id =
             photon_core::identifier::Identifier::parse(&format!("{}:{path}", name.namespace()))
                 .ok()?;
         photon_render::texture::png::decode_rgba(&read(&id, "textures", ".png")?).ok()
     };
-    let mapped = photon_render::entity::trim::permute(
-        &load(&texture)?,
-        &load(&source.palette_key)?,
-        &load(source.permutations.get(&suffix)?)?,
-    )?;
-    Some(photon_render::texture::png_encode::encode_rgba(&mapped))
+    // A later source replaces the sprite an earlier one made of the same name; one that cannot
+    // make it (a picture is missing) leaves the lower sprite.
+    sources(&atlas).iter().rev().find_map(|source| {
+        let (texture, suffix) = source.sprite_of(name.path())?;
+        let mapped = photon_render::entity::trim::permute(
+            &load(texture)?,
+            &load(&source.palette_key)?,
+            &load(source.permutations.get(suffix)?)?,
+        )?;
+        Some(photon_render::texture::png_encode::encode_rgba(&mapped))
+    })
 }
 
 fn texture_of(
@@ -301,5 +295,55 @@ mod tests {
         let textures: Vec<&str> = sources.iter().map(|s| s.textures[0].as_str()).collect();
         assert_eq!(textures, ["t_low", "t_high"]);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn png(rgb: [u8; 3]) -> Vec<u8> {
+        let image = photon_render::DecodedImage {
+            width: 1,
+            height: 1,
+            rgba: vec![rgb[0], rgb[1], rgb[2], 255],
+        };
+        photon_render::texture::png_encode::encode_rgba(&image)
+    }
+
+    fn source(texture: &str, suffix: &str, palette: &str) -> PalettedPermutations {
+        PalettedPermutations {
+            textures: vec![texture.to_owned()],
+            palette_key: "key".to_owned(),
+            permutations: [(suffix.to_owned(), palette.to_owned())].into(),
+            separator: "_".to_owned(),
+        }
+    }
+
+    #[test]
+    fn a_higher_source_replaces_only_the_sprites_it_makes() {
+        // `key` is red; `low` recolours it green and `high` blue; `texture` is red.
+        let files: std::collections::HashMap<&str, Vec<u8>> = [
+            ("key", png([255, 0, 0])),
+            ("texture", png([255, 0, 0])),
+            ("low", png([0, 255, 0])),
+            ("high", png([0, 0, 255])),
+        ]
+        .into();
+        let read = |name: &Identifier, _: &str, _: &str| files.get(name.path()).cloned();
+        let sources = |_: &Identifier| {
+            vec![
+                source("texture", "quartz", "low"),
+                source("texture", "gold", "high"),
+            ]
+        };
+        let made = |name: &str| {
+            let name = Identifier::parse(name).unwrap();
+            let bytes = texture_of(&read, &sources, &name)?;
+            Some(
+                photon_render::texture::png::decode_rgba(&bytes)
+                    .unwrap()
+                    .rgba,
+            )
+        };
+        // The top source makes `texture_gold`; it cannot make `texture_quartz`, which stays.
+        assert_eq!(made("minecraft:texture_gold"), Some(vec![0, 0, 255, 255]));
+        assert_eq!(made("minecraft:texture_quartz"), Some(vec![0, 255, 0, 255]));
+        assert_eq!(made("minecraft:texture_iron"), None);
     }
 }
