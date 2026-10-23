@@ -431,3 +431,34 @@ fn indexed_player_collision_respects_glide_through_tag() {
             .is_fall_flying()
     );
 }
+
+#[test]
+fn placing_into_an_entity_is_obstructed_only_by_one_that_blocks_building() {
+    let mut world = ClientWorld::default();
+    let add = |world: &mut ClientWorld, id: i32, name: &str, x: f64| {
+        let type_id = photon_data::entity_type::id(name).expect("an entity type");
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(id as u64, 1),
+            type_id,
+            x,
+            y: 0.0,
+            z: 0.5,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    };
+    add(&mut world, 1, "minecraft:pig", 0.5);
+    add(&mut world, 2, "minecraft:item", 5.5);
+    add(&mut world, 3, "minecraft:minecart", 10.5);
+    let cube = |x: f64| {
+        Shapes::create_from_aabb(Aabb::new(x, 0.0, 0.0, x + 1.0, 1.0, 1.0)).expect("a cube")
+    };
+    // A pig, living, blocks building; a dropped item does not; a minecart does.
+    assert!(!world.is_unobstructed(&cube(0.0)));
+    assert!(world.is_unobstructed(&cube(5.0)));
+    assert!(!world.is_unobstructed(&cube(10.0)));
+    // Beside the pig, in a block it does not reach.
+    assert!(world.is_unobstructed(&cube(2.0)));
+}

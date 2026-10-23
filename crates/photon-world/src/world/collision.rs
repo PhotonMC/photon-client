@@ -71,6 +71,45 @@ impl ClientWorld {
             .collect()
     }
 
+    /// `EntityGetter.isUnobstructed(null, shape)`: no entity that blocks building (and is not a
+    /// spectator) overlaps the shape. The local player is not among the entities here.
+    pub fn is_unobstructed(&self, shape: &photon_core::shape::VoxelShape) -> bool {
+        let Some(bounds) = shape.bounds() else {
+            return true;
+        };
+        // The same sections `indexed_entity_collision_candidates` reads: an entity is indexed by
+        // its position, its box reaches at most two blocks beyond it.
+        let (x_min, x_max) = (
+            entity_section_coord(bounds.min_x - 2.0),
+            entity_section_coord(bounds.max_x + 2.0),
+        );
+        let (y_min, y_max) = (
+            entity_section_coord(bounds.min_y - 4.0),
+            entity_section_coord(bounds.max_y),
+        );
+        let (z_min, z_max) = (
+            entity_section_coord(bounds.min_z - 2.0),
+            entity_section_coord(bounds.max_z + 2.0),
+        );
+        let mut ids = BTreeSet::new();
+        for x in x_min..=x_max {
+            for y in y_min..=y_max {
+                for z in z_min..=z_max {
+                    if let Some(found) = self.entities.sections.get(&(x, y, z)) {
+                        ids.extend(found.iter().copied());
+                    }
+                }
+            }
+        }
+        !ids.into_iter()
+            .filter_map(|id| self.entities.at(id))
+            .filter(|entity| !entity.is_spectator() && entity.blocks_building())
+            .any(|entity| {
+                Shapes::create_from_aabb(entity.bounding_box())
+                    .is_ok_and(|other| Shapes::join_is_not_empty(shape, &other, BooleanOp::And))
+            })
+    }
+
     /// Collect loaded block collision shapes using Java's `BlockCollisions` traversal.
     ///
     /// The caller supplies the local collision shape for each resolved block-state ID.

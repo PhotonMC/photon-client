@@ -352,7 +352,7 @@ impl GameMode {
                 Ok(predicted) => predicted,
                 Err(result) => return result,
             };
-        if obstructs_player(ctx, pos, state) {
+        if is_obstructed(ctx, pos, state) {
             return UseResult::Fail;
         }
         let writes = rules::place_writes(kind, state, pos, &place_ctx);
@@ -547,20 +547,26 @@ fn set_placed_blocks(ctx: &mut Context<'_>, writes: &rules::PlaceWrites) -> bool
     true
 }
 
-/// `BlockItem.canPlace`'s collision check: a state with a collision shape may not go where the
-/// player (unless spectating) stands.
-fn obstructs_player(
+/// `Level.isUnobstructed` for a state put at `pos`: a state with a collision shape may not go
+/// where an entity that blocks building stands. The local player (unless spectating) counts, as
+/// do the other entities the client has.
+fn is_obstructed(
     ctx: &Context<'_>,
     pos: (i32, i32, i32),
     state: photon_core::ids::BlockStateId,
 ) -> bool {
     let block_pos = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
-    !ctx.world
-        .block_state_registry()
-        .collision_shape(state)
-        .is_empty()
-        && !ctx.player.spectating()
-        && ctx.player.is_colliding(ctx.world, block_pos, state)
+    let registry = ctx.world.block_state_registry();
+    if registry.collision_shape(state).is_empty() {
+        return false;
+    }
+    if !ctx.player.spectating() && ctx.player.is_colliding(ctx.world, block_pos, state) {
+        return true;
+    }
+    let shape = registry
+        .collision_shape_at(state, [pos.0, pos.1, pos.2])
+        .move_by_block_pos(block_pos);
+    !ctx.world.is_unobstructed(&shape)
 }
 
 #[cfg(test)]
