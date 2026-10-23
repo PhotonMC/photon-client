@@ -212,6 +212,10 @@ fn crops(
             Rule::Known(super::paired::bamboo_stalk(state, pos, direction, ctx))
         }
         BlockClass::BellBlock => Rule::Known(super::paired::bell(state, pos, direction, ctx)),
+        BlockClass::GrowingPlantHeadBlock => {
+            Rule::Known(super::growing::head(state, pos, direction, ctx))
+        }
+        BlockClass::GrowingPlantBodyBlock => super::growing::body(state, pos, direction, ctx),
         BlockClass::ConcretePowderBlock => super::placement::concrete_update(state, pos, ctx),
         BlockClass::AttachedStemBlock => {
             Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))

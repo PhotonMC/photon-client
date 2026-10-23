@@ -17,7 +17,7 @@ pub(super) fn offset(pos: (i32, i32, i32), direction: Direction) -> (i32, i32, i
     (pos.0 + dx, pos.1 + dy, pos.2 + dz)
 }
 
-fn is_named(state: BlockStateId, name: &str) -> bool {
+pub(super) fn is_named(state: BlockStateId, name: &str) -> bool {
     block(state).is_some_and(|block| block.name == name)
 }
 
@@ -126,7 +126,7 @@ pub(super) fn bamboo(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Bl
 }
 
 /// The growth direction and the head and body blocks of a growing plant.
-fn plant_parts(name: &str) -> Option<(Direction, &'static str, &'static str)> {
+pub(super) fn plant_parts(name: &str) -> Option<(Direction, &'static str, &'static str)> {
     const PLANTS: [(&str, &str, Direction); 4] = [
         ("minecraft:kelp", "minecraft:kelp_plant", Direction::Up),
         (

@@ -173,3 +173,43 @@ pub fn bell_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// Growing plants: a head with the plant placed ahead of it becomes the body. A body whose front
+/// is not the plant would become a head with a random age, so no row puts a non-plant there.
+pub fn plant_rows() -> Vec<Value> {
+    let weeping = |kind: &str, props: &[(&str, &str)]| {
+        vec![block([0, 63, 0], "stone", &[]), block([0, 66, 0], "end_stone", &[]), block([0, 65, 0], kind, props)]
+    };
+    let mut rows = vec![
+        neighbour_row("shape-weeping-head", weeping("weeping_vines", &[("age", "5")]), &["weeping_vines", "stone"]),
+        neighbour_row("shape-weeping-body", weeping("weeping_vines_plant", &[]), &["weeping_vines"]),
+        neighbour_row("shape-cave-head", weeping("cave_vines", &[("berries", "true")]), &["cave_vines", "stone"]),
+        neighbour_row("shape-cave-head-bare", weeping("cave_vines", &[("berries", "false")]), &["cave_vines"]),
+        neighbour_row("shape-cave-body", weeping("cave_vines_plant", &[("berries", "true")]), &["cave_vines"]),
+    ];
+    // A head that already has the plant ahead of it: a placed block behind it that keeps it
+    // alive converts it, one beside it does not.
+    let hanging = |x: i32| {
+        vec![
+            block([0, 63, 0], "stone", &[]),
+            block([x, 63, 0], "weeping_vines_plant", &[]),
+            block([x, 62, 0], "end_stone", &[]),
+            block([x, 64, 0], "weeping_vines", &[]),
+            block([x, 65, 0], "end_stone", &[]),
+        ]
+    };
+    rows.push(neighbour_row("shape-weeping-beside", hanging(1), &["stone", "oak_fence"]));
+    let under = vec![
+        block([0, 62, 0], "weeping_vines_plant", &[]),
+        block([0, 61, 0], "end_stone", &[]),
+        block([0, 63, 0], "weeping_vines", &[]),
+    ];
+    rows.push(neighbour_row("shape-weeping-behind", under, &["stone", "oak_fence", "glass"]));
+    let twisting = |kind: &str| vec![block([0, 62, 0], "end_stone", &[]), block([0, 63, 0], kind, &[])];
+    rows.push(neighbour_row("shape-twisting-head", twisting("twisting_vines"), &["twisting_vines", "stone"]));
+    rows.push(neighbour_row("shape-twisting-body", twisting("twisting_vines_plant"), &["twisting_vines"]));
+    let mut kelp = twisting("kelp");
+    kelp.push(block([0, 64, 0], "water", &[]));
+    rows.push(neighbour_row("shape-kelp-head", kelp, &["kelp", "stone"]));
+    rows
+}

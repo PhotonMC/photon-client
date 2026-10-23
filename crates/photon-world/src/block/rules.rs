@@ -25,6 +25,7 @@ mod dripleaf;
 mod faces;
 mod furnishings;
 mod ground;
+mod growing;
 mod growth;
 mod item;
 mod mounted;
