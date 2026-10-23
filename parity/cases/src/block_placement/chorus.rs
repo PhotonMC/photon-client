@@ -108,3 +108,36 @@ pub fn tripwire_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// Big and small dripleaves on every kind of ground, in water, under blocks and facing every way.
+pub fn dripleaf_rows() -> Vec<Value> {
+    let blocks = ["big_dripleaf", "small_dripleaf"];
+    let mut rows = Vec::new();
+    for ground in ["clay", "moss_block", "dirt", "grass_block", "stone", "mud", "sand", "farmland", "glass"] {
+        rows.push(row(&format!("dripleaf-on-{ground}"), &blocks, vec![block([0, 63, 0], ground, &[])], &ON_TOP));
+    }
+    for facing in ["north", "east", "south", "west"] {
+        for part in ["big_dripleaf", "big_dripleaf_stem"] {
+            let world = vec![block([0, 63, 0], part, &[("facing", facing)])];
+            rows.push(row(&format!("dripleaf-on-{part}-{facing}"), &blocks, world, &ON_TOP));
+        }
+    }
+    for yaw in [0.0, 90.0, 180.0, 270.0] {
+        let at = click([0, 63, 0], "up", [0.5, 64.0, 0.5], yaw, 0.0);
+        rows.push(row(&format!("dripleaf-yaw{yaw}"), &blocks, vec![block([0, 63, 0], "clay", &[])], &at));
+    }
+    for ground in ["clay", "dirt", "stone", "sand"] {
+        for (label, level) in [("source", "0"), ("flowing", "3"), ("falling", "8")] {
+            let world = vec![block([0, 63, 0], ground, &[]), block([0, 64, 0], "water", &[("level", level)])];
+            let at = click([0, 64, 0], "up", [0.5, 65.0, 0.5], 0.0, 0.0);
+            rows.push(row(&format!("dripleaf-in-{label}-over-{ground}"), &blocks, world, &at));
+            let world = vec![block([0, 63, 0], ground, &[]), block([0, 64, 0], "water", &[("level", level)])];
+            rows.push(row(&format!("dripleaf-beside-{label}-over-{ground}"), &blocks, world, &ON_TOP));
+        }
+    }
+    for above in ["stone", "oak_slab", "water", "grass_block", "small_dripleaf"] {
+        let world = vec![block([0, 63, 0], "clay", &[]), block([0, 65, 0], above, &[])];
+        rows.push(row(&format!("dripleaf-under-{above}"), &blocks, world, &ON_TOP));
+    }
+    rows
+}

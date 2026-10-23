@@ -404,6 +404,7 @@ fn furnishing_cases() -> Vec<Value> {
         case("chorus-plants", chorus::chorus_rows()),
         case("coral-hearts", chorus::lone_rows()),
         case("tripwires", chorus::tripwire_rows()),
+        case("dripleaves", chorus::dripleaf_rows()),
     ]
 }
 

@@ -20,6 +20,7 @@ use photon_data::item::registry::{ITEMS, Item};
 mod chorus;
 mod connect;
 mod directional;
+mod dripleaf;
 mod furnishings;
 mod ground;
 mod growth;
