@@ -102,7 +102,7 @@ pub fn build_atlas_for(
     max_size: i32,
     mip_level: i32,
 ) -> Result<BuiltAtlas, ResolveError> {
-    build_atlas_with(source, models, &[], max_size, mip_level)
+    build_atlas_with(source, models, &[], (max_size, mip_level), 0)
 }
 
 /// The materials to pack, by sprite: those no model names and those the
@@ -150,12 +150,16 @@ fn sprite_alpha((image, _, animated): &DecodedSprite) -> crate::texture::sprite_
 
 /// Pack a set of models' textures together with sprites no model names,
 /// such as the fluid sprites the fluid renderer draws with.
+///
+/// `anisotropy_bit` is the reference's `maxAnisotropyBit` when the texture
+/// filtering is anisotropic and 0 otherwise; it widens the padding around every
+/// sprite so a stretched filter footprint stays inside its own sprite.
 pub fn build_atlas_with(
     source: &impl AssetSource,
     models: &[&ResolvedModel],
     extra: &[Identifier],
-    max_size: i32,
-    mip_level: i32,
+    (max_size, mip_level): (i32, i32),
+    anisotropy_bit: i32,
 ) -> Result<BuiltAtlas, ResolveError> {
     let wanted = wanted_materials(models, extra)?;
 
@@ -180,7 +184,7 @@ pub fn build_atlas_with(
         .map(|(image, _, _)| (image.width as i32, image.height as i32))
         .collect();
     let mip_level = effective_mip_level(&sizes, mip_level.max(0));
-    let mut stitcher = Stitcher::new(max_size, max_size, mip_level, 0);
+    let mut stitcher = Stitcher::new(max_size, max_size, mip_level, anisotropy_bit);
     for material in wanted.values() {
         let Some((image, _, _)) = decoded.get(&material.sprite.as_string()) else {
             continue;

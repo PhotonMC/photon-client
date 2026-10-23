@@ -1,10 +1,12 @@
 use super::*;
+use crate::resolve::build_atlas_with;
 use photon_core::ids::BlockStateId;
 
 impl BlockRenderer {
     /// Read every block's blockstate file and every model any of its
-    /// variants names, and pack all their textures into one atlas.
-    pub fn new(source: &impl AssetSource, mip_level: i32) -> Result<Self, ResolveError> {
+    /// variants names, and pack all their textures into one atlas. `(mip, bit)` is the
+    /// mip level count and the anisotropy bit the stitcher pads by.
+    pub fn new(source: &impl AssetSource, (mip, bit): (i32, i32)) -> Result<Self, ResolveError> {
         use rayon::prelude::*;
         let mut model_cache = crate::resolve::ModelCache::default();
         // Every blockstate file, read and parsed in parallel.
@@ -70,7 +72,7 @@ impl BlockRenderer {
             item_models(source, &mut model_cache, &mut models);
         let ordered: Vec<&ResolvedModel> = models.values().collect();
         let extra = extra_sprites(layer_sprites);
-        let atlas = crate::resolve::build_atlas_with(source, &ordered, &extra, 8192, mip_level)?;
+        let atlas = build_atlas_with(source, &ordered, &extra, (8192, mip), bit)?;
         let (baked, states) = bake_states(&models, &atlas, pending, &air);
         let particle_sprites = particle_sprites(&blockstates, &models);
         Ok(Self {
@@ -464,7 +466,7 @@ pub fn build_world_mesh(
     size: [i32; 3],
     mip_level: i32,
 ) -> Result<WorldMesh, ResolveError> {
-    let renderer = BlockRenderer::new(source, mip_level)?;
+    let renderer = BlockRenderer::new(source, (mip_level, 0))?;
     // A probe's world has no server, so no tags.
     let tags = photon_world::block::tags::BlockTags::default();
     let world = MeshWorld {

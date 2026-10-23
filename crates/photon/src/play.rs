@@ -375,13 +375,21 @@ fn bake_blocks(
     let source = FolderAssets {
         root: std::path::PathBuf::from(root),
     };
+    // The stitcher reads the saved options when the atlas is built, as the
+    // reference's sprite loader does; a change reloads the textures there, here
+    // it applies on the next start.
+    let quality = crate::controls::load_options().quality;
     let requested_mips: i32 = env::var("PHOTON_MIP_LEVELS")
         .ok()
         .map(|value| value.parse())
         .transpose()?
-        .unwrap_or(4);
+        .unwrap_or(quality.mipmap_levels);
+    let anisotropy_bit = match quality.texture_filtering {
+        photon_game::options::TextureFiltering::Anisotropic => quality.max_anisotropy_bit,
+        _ => 0,
+    };
     let baking = Instant::now();
-    let mut block_renderer = BlockRenderer::new(&source, requested_mips)
+    let mut block_renderer = BlockRenderer::new(&source, (requested_mips, anisotropy_bit))
         .map_err(|error| format!("block models: {error:?}"))?;
     println!(
         "play_atlas={}x{} models={} skipped={} in {:?}",

@@ -151,7 +151,7 @@ fn main() {
     let root = std::env::var("PHOTON_ASSETS").expect("PHOTON_ASSETS names the assets folder");
     let source = assets::FolderAssets { root: root.into() };
     let baking = Instant::now();
-    let renderer = BlockRenderer::new(&source, 4).expect("the vanilla models bake");
+    let renderer = BlockRenderer::new(&source, (4, 0)).expect("the vanilla models bake");
     println!(
         "bake atlas={}x{} models={} in {:?}",
         renderer.atlas.width,

@@ -540,4 +540,64 @@ mod tests {
         // The request is a ceiling, never raised.
         assert_eq!(effective_mip_level(&[(256, 256)], 2), 2);
     }
+
+    fn stitched(mip: i32, bit: i32) -> crate::texture::atlas::Stitcher {
+        use crate::texture::atlas::{SpriteEntry, Stitcher};
+        let mut stitcher = Stitcher::new(8192, 8192, mip, bit);
+        stitcher.register_sprite(SpriteEntry {
+            width: 16,
+            height: 16,
+            name: photon_core::identifier::Identifier::parse("minecraft:a").unwrap(),
+        });
+        stitcher.stitch().unwrap();
+        stitcher
+    }
+
+    /// The reference reserves one texel of the deepest level, doubled for each
+    /// anisotropy step above the first and capped at four doublings.
+    #[test]
+    fn anisotropy_widens_the_padding_around_a_sprite() {
+        // Hand-worked from the packer's formula at four mip levels.
+        for (bit, padding) in [
+            (0, 16),
+            (1, 16),
+            (2, 32),
+            (3, 64),
+            (4, 128),
+            (5, 256),
+            (9, 256),
+        ] {
+            assert_eq!(stitched(4, bit).padding(), padding, "bit {bit}");
+        }
+        assert_eq!(stitched(0, 3).padding(), 4);
+    }
+
+    /// A 16 texel sprite with 32 texels of padding a side needs 80, which the
+    /// packer rounds up to the next power of two for the atlas; the sprite's
+    /// own texels start one padding in.
+    #[test]
+    fn the_padded_slot_sets_the_atlas_size_and_the_sprite_origin() {
+        let stitcher = stitched(4, 2);
+        assert_eq!((stitcher.width(), stitcher.height()), (128, 128));
+        let placed = stitcher.placements();
+        assert_eq!((placed[0].x, placed[0].y, placed[0].padding), (0, 0, 32));
+        let plain = stitched(4, 0);
+        assert_eq!((plain.width(), plain.height()), (64, 64));
+    }
+
+    /// The padding of an anisotropic atlas repeats the edge texel all the way
+    /// out, so a stretched filter footprint never reads a neighbour.
+    #[test]
+    fn a_wide_padding_carries_the_edge_texel_to_its_far_side() {
+        let sprite = ramp(4, 4);
+        let mut target = DecodedImage {
+            width: 64,
+            height: 16,
+            rgba: vec![0; 64 * 16 * 4],
+        };
+        blit_sprite(&mut target, &sprite, 32, 8, 32);
+        assert_eq!(texel(&target, 0, 8), [0, 0, 7, 255]);
+        assert_eq!(texel(&target, 35, 8), [3, 0, 7, 255]);
+        assert_eq!(texel(&target, 63, 8), [3, 0, 7, 255]);
+    }
 }
