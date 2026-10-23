@@ -43,6 +43,7 @@ pub(super) fn survives(
         BlockClass::CakeBlock => Rule::Known(cake_survives(pos, ctx)),
         BlockClass::DirtPathBlock => Rule::Known(path_survives(pos, ctx)),
         BlockClass::FarmlandBlock => Rule::Known(farmland_survives(pos, ctx)),
+        BlockClass::PitcherCropBlock => pitcher_survives(state, pos, ctx),
         _ => hanging_survives(class, state, pos, ctx),
     }
 }
@@ -70,6 +71,23 @@ fn crop_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'
         return Rule::Known(false);
     }
     super::survive::vegetation(state, pos, ctx)
+}
+
+/// `PitcherCropBlock.canSurvive`: a lower half needs light, then any double plant's rule over
+/// crop soil.
+fn pitcher_survives(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
+    if property(state, "half") == Some("lower") {
+        match raw_brightness(ctx, pos) {
+            None => return Rule::Unported,
+            Some(light) if light < 8 => return Rule::Known(false),
+            Some(_) => {}
+        }
+    }
+    super::tall::double_plant_survives(state, pos, ctx)
 }
 
 /// `MushroomBlock.canSurvive`: on a block that ignores the light, or dim and on a solid one.
@@ -250,6 +268,9 @@ fn seagrass(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateI
 
 /// The rules of this file, by the class that declares `getStateForPlacement`.
 pub(super) const PLACEMENTS: &[(BlockClass, Placement)] = &[
+    (BlockClass::PitcherCropBlock, |_, default, _| {
+        Rule::Known(Some(default))
+    }),
     (BlockClass::DirtPathBlock, |_, default, ctx| {
         soil(path_survives(ctx.clicked_pos(), ctx), default)
     }),

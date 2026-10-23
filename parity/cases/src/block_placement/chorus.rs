@@ -141,3 +141,23 @@ pub fn dripleaf_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// A pitcher pod on crop soil or not, in the light and the dark, with room above or not.
+pub fn pitcher_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for ground in ["farmland", "grass_block", "dirt", "stone", "podzol", "sand", "glass"] {
+        for light in [0, 7, 8, 15] {
+            let world = vec![block([0, 63, 0], ground, &[])];
+            let mut row = row(&format!("pitcher-{ground}-{light}"), &["pitcher_crop"], world, &ON_TOP);
+            row["raw_light"] = json!(light);
+            rows.push(row);
+        }
+    }
+    for above in ["stone", "oak_slab", "water"] {
+        let world = vec![block([0, 63, 0], "farmland", &[]), block([0, 65, 0], above, &[])];
+        let mut under = row(&format!("pitcher-under-{above}"), &["pitcher_crop"], world, &ON_TOP);
+        under["raw_light"] = json!(15);
+        rows.push(under);
+    }
+    rows
+}

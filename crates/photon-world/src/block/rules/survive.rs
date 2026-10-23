@@ -240,6 +240,7 @@ const SUPPORT_TAGS: &[(BlockClass, &str)] = &[
         "minecraft:supports_wither_rose",
     ),
     (BlockClass::CropBlock, "minecraft:supports_crops"),
+    (BlockClass::PitcherCropBlock, "minecraft:supports_crops"),
 ];
 
 /// The same for the classes whose tag is a field each block is constructed with.
