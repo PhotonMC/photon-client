@@ -63,22 +63,47 @@ pub fn lone_rows() -> Vec<Value> {
         rows.push(row(&format!("coral-block-{label}"), &coral, world, &ON_TOP));
     }
     let heart = ["creaking_heart"];
-    for face in [("up", [0.5, 64.0, 0.5], [0, 63, 0]), ("north", [0.5, 64.5, 0.0], [0, 64, 0])] {
-        for (label, logs) in [
-            ("alone", vec![]),
-            ("one-log", vec![block([0, 65, 0], "pale_oak_log", &[("axis", "y")])]),
-            (
-                "wrong-axis",
-                vec![
-                    block([0, 65, 0], "pale_oak_log", &[("axis", "x")]),
-                    block([0, 63, 0], "pale_oak_log", &[("axis", "y")]),
-                ],
-            ),
-        ] {
-            let mut world = vec![block([0, 63, 0], "stone", &[])];
-            world.extend(logs.into_iter().filter(|log| log["pos"] != json!([0, 63, 0]) || face.0 == "up"));
-            let at = click(face.2, face.0, face.1, 0.0, 0.0);
-            rows.push(row(&format!("creaking-heart-{}-{label}", face.0), &heart, world, &at));
+    // Clicked face, the block clicked, where, the block past the place, and the axis between.
+    let sides = [
+        ("up", [0, 63, 0], [0.5, 64.0, 0.5], [0, 65, 0], "y"),
+        ("south", [0, 64, 0], [0.5, 64.5, 1.0], [0, 64, 2], "z"),
+        ("east", [0, 64, 0], [1.0, 64.5, 0.5], [2, 64, 0], "x"),
+    ];
+    for (face, hit, location, far, axis) in sides {
+        let wrong = if axis == "y" { "x" } else { "y" };
+        let log = |at: [i32; 3], axis: &str| block(at, "pale_oak_log", &[("axis", axis)]);
+        let worlds = [
+            ("alone", vec![block(hit, "stone", &[])]),
+            ("one-log", vec![log(hit, axis)]),
+            ("one-wrong-log", vec![log(hit, wrong)]),
+            ("far-log", vec![block(hit, "stone", &[]), log(far, axis)]),
+            ("far-wrong-log", vec![log(hit, axis), log(far, wrong)]),
+            ("near-wrong-log", vec![log(hit, wrong), log(far, axis)]),
+            ("both-wrong-logs", vec![log(hit, wrong), log(far, wrong)]),
+            ("far-other-wood", vec![log(hit, axis), block(far, "oak_log", &[("axis", axis)])]),
+        ];
+        for (label, world) in worlds {
+            let at = click(hit, face, location, 0.0, 0.0);
+            rows.push(row(&format!("creaking-heart-{face}-{label}"), &heart, world, &at));
+        }
+    }
+    rows
+}
+
+/// A tripwire beside tripwires and hooks that face it, away from it or are other blocks.
+pub fn tripwire_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let sides = [("north", [0, 64, -1]), ("east", [1, 64, 0]), ("south", [0, 64, 1]), ("west", [-1, 64, 0])];
+    let faces = ["north", "east", "south", "west"];
+    for (label, at) in sides {
+        for beside in ["tripwire", "stone", "oak_slab"] {
+            let world = vec![block([0, 63, 0], "stone", &[]), block(at, beside, &[])];
+            rows.push(row(&format!("tripwire-{label}-{beside}"), &["tripwire"], world, &ON_TOP));
+        }
+        for facing in faces {
+            let hook = block(at, "tripwire_hook", &[("facing", facing)]);
+            let world = vec![block([0, 63, 0], "stone", &[]), hook];
+            rows.push(row(&format!("tripwire-{label}-hook-{facing}"), &["tripwire"], world, &ON_TOP));
         }
     }
     rows

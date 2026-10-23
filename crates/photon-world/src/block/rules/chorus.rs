@@ -126,14 +126,35 @@ fn creaking_heart(default: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<Option<
     }
 }
 
+/// `TripWireBlock.getStateForPlacement`: each side joins a tripwire or a hook facing it. The
+/// block's `onPlace` updates the hooks along the line only on a server.
+fn tripwire(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let pos = ctx.clicked_pos();
+    let mut state = default;
+    for direction in Plane::Horizontal.directions() {
+        let there = ctx.state(offset(pos, *direction));
+        let joined = if is_named(there, "minecraft:tripwire_hook") {
+            property(there, "facing") == Some(direction.opposite().name())
+        } else {
+            same_block(there, default)
+        };
+        state = with_property(state, direction.name(), flag(joined))?;
+    }
+    Some(state)
+}
+
 /// The rules of this file, by the class that declares `getStateForPlacement`. The coral block
-/// also schedules a tick when no water is near, which a client does not run.
+/// also schedules a tick and draws from the level random when no water is near; a client runs no
+/// ticks and its random is unseeded, so neither shows.
 pub(super) const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::CoralBlock, |_, default, _| {
         Rule::Known(Some(default))
     }),
     (BlockClass::ChorusPlantBlock, |_, default, ctx| {
         Rule::Known(plant_placement(default, ctx))
+    }),
+    (BlockClass::TripWireBlock, |_, default, ctx| {
+        Rule::Known(tripwire(default, ctx))
     }),
     (BlockClass::CreakingHeartBlock, |_, default, ctx| {
         creaking_heart(default, ctx)
