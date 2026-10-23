@@ -158,7 +158,7 @@ pub fn vine_rows() -> Vec<Value> {
     rows
 }
 
-const INERT: [&str; 68] = [
+const INERT: [&str; 75] = [
     "oak_sapling",
     "dandelion",
     "torch",
@@ -225,6 +225,13 @@ const INERT: [&str; 68] = [
     "waxed_copper_grate",
     "tall_grass",
     "small_dripleaf",
+    "bee_nest",
+    "lever",
+    "stone_button",
+    "grindstone",
+    "piston_head",
+    "tripwire_hook",
+    "pitcher_crop",
     "lantern",
     "brain_coral_block",
 ];

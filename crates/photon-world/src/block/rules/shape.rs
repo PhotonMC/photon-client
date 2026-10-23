@@ -57,7 +57,7 @@ fn growths(
 /// The classes whose `updateShape` only schedules a tick or turns into air when the block can no
 /// longer stand. The client schedules nothing, and it never applies an air result, so for the
 /// client the state stays as it is.
-const INERT: [BlockClass; 67] = [
+const INERT: [BlockClass; 72] = [
     BlockClass::VegetationBlock,
     BlockClass::FallingBlock,
     BlockClass::BrushableBlock,
@@ -125,6 +125,11 @@ const INERT: [BlockClass; 67] = [
     BlockClass::WaterloggedTransparentBlock,
     BlockClass::DoublePlantBlock,
     BlockClass::SmallDripleafBlock,
+    BlockClass::BeehiveBlock,
+    BlockClass::FaceAttachedHorizontalDirectionalBlock,
+    BlockClass::PistonHeadBlock,
+    BlockClass::PitcherCropBlock,
+    BlockClass::TripWireHookBlock,
 ];
 
 /// `HugeMushroomBlock.updateShape`: the face toward another block of the kind goes.
