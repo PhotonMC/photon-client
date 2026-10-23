@@ -425,6 +425,7 @@ fn furnishing_cases() -> Vec<Value> {
         case("shape-bells", follow::bell_rows()),
         case("shape-plants", follow::plant_rows()),
         case("shape-wires", follow::wire_rows()),
+        case("shape-fire", follow::fire_rows()),
         case("shape-powders", follow::powder_rows()),
         case("shape-snowy", shapes::snowy_rows()),
         case("shape-chorus", shapes::chorus_rows()),

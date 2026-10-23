@@ -268,3 +268,35 @@ pub fn wire_rows() -> Vec<Value> {
     rows.push(neighbour_row("shape-wire-beneath", beneath, &["stone", "glass", "oak_fence"]));
     rows
 }
+
+/// Fire at (1,64,0), kept by planks at (2,64,0), is placed again from its surroundings with the
+/// age it had: on air its sides follow what burns, over a sturdy or burning block it is plain,
+/// over soul soil it is soul fire, and a waterlogged neighbour does not count as burning.
+pub fn fire_rows() -> Vec<Value> {
+    let fire = |floor: Option<&str>, age: &str, extra: Vec<Value>| {
+        let mut world = vec![
+            block([0, 63, 0], "stone", &[]),
+            block([1, 64, 0], "fire", &[("age", age), ("east", "true")]),
+            block([2, 64, 0], "oak_planks", &[]),
+        ];
+        world.extend(floor.map(|name| block([1, 63, 0], name, &[])));
+        world.extend(extra);
+        world
+    };
+    let placed = ["stone", "oak_planks"];
+    let slabs = |waterlogged: &'static str| {
+        vec![
+            block([1, 65, 0], "oak_slab", &[("waterlogged", waterlogged)]),
+            block([1, 64, 1], "oak_slab", &[("waterlogged", "false")]),
+        ]
+    };
+    vec![
+        neighbour_row("shape-fire-air-floor", fire(None, "3", vec![]), &placed),
+        neighbour_row("shape-fire-stone-floor", fire(Some("stone"), "7", vec![]), &placed),
+        neighbour_row("shape-fire-planks-floor", fire(Some("oak_planks"), "5", vec![]), &placed),
+        neighbour_row("shape-fire-carpet-floor", fire(Some("white_carpet"), "9", vec![]), &placed),
+        neighbour_row("shape-fire-soul-soil", fire(Some("soul_soil"), "4", vec![]), &placed),
+        neighbour_row("shape-fire-slab-dry", fire(None, "2", slabs("false")), &placed),
+        neighbour_row("shape-fire-slab-wet", fire(None, "2", slabs("true")), &placed),
+    ]
+}

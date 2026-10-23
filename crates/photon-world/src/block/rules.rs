@@ -23,6 +23,7 @@ mod connect;
 mod directional;
 mod dripleaf;
 mod faces;
+mod fire;
 mod furnishings;
 mod ground;
 mod growing;
