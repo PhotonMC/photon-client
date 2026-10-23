@@ -4,7 +4,8 @@ use super::*;
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 
 /// What a class's `getStateForPlacement` answers; `None` is a refusal.
-type Placement = fn(usize, BlockStateId, &PlaceContext<'_>) -> Rule<Option<BlockStateId>>;
+pub(super) type Placement =
+    fn(usize, BlockStateId, &PlaceContext<'_>) -> Rule<Option<BlockStateId>>;
 
 /// The placement rules written so far, by the class that declares them.
 const PLACEMENTS: &[(BlockClass, Placement)] = &[
@@ -182,14 +183,18 @@ pub(super) fn state_for_placement(
     ctx: &PlaceContext<'_>,
 ) -> Rule<Option<BlockStateId>> {
     let owner = owner(&BLOCKS[block], Method::GetStateForPlacement);
-    match PLACEMENTS.iter().find(|(class, _)| Some(*class) == owner) {
+    let tables = PLACEMENTS.iter().chain(super::furnishings::PLACEMENTS);
+    match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,
     }
 }
 
 /// `RotatedPillarBlock.getStateForPlacement`: the axis of the face clicked.
-fn pillar_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+pub(super) fn pillar_placement(
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Option<BlockStateId> {
     let axis = match ctx.face.axis() {
         Axis::X => "x",
         Axis::Y => "y",

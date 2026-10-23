@@ -40,7 +40,7 @@ pub(super) fn face_click(hit: [i32; 3], face: &str, yaw: f32, pitch: f32) -> Cli
 }
 
 /// Every face of a stone block at the origin's height, from the four ways of looking.
-fn face_rows(prefix: &str, blocks: &[&str]) -> Vec<Value> {
+pub(super) fn face_rows(prefix: &str, blocks: &[&str]) -> Vec<Value> {
     let mut rows = Vec::new();
     for face in FACES {
         for yaw in [0.0, 90.0, 180.0, -90.0] {
@@ -58,7 +58,7 @@ fn face_rows(prefix: &str, blocks: &[&str]) -> Vec<Value> {
 }
 
 /// The way the player looks, from every direction, onto the top of the ground.
-fn look_rows(prefix: &str, blocks: &[&str]) -> Vec<Value> {
+pub(super) fn look_rows(prefix: &str, blocks: &[&str]) -> Vec<Value> {
     let mut rows = Vec::new();
     for yaw in [0.0, 45.0, 90.0, 135.0, 180.0, -90.0, -135.0] {
         for pitch in [0.0, 30.0, 60.0, 89.0, -30.0, -60.0, -89.0] {

@@ -367,6 +367,7 @@ fn glazed_rows() -> Vec<Value> {
 
 mod connections;
 mod facing;
+mod furnishings;
 mod growth;
 mod items;
 mod mounted;
@@ -425,5 +426,10 @@ pub fn cases() -> Vec<Value> {
         case("scaffolding-stack", items::scaffolding_stack_rows()),
         case("water-items", items::water_item_rows()),
         case("game-master-blocks", items::game_master_rows()),
+        case("furnishings-facing", furnishings::facing_rows()),
+        case("furnishings-looking", furnishings::looking_rows()),
+        case("furnishings-signals", furnishings::signal_rows()),
+        case("campfires-conduit", furnishings::campfire_rows()),
+        case("huge-mushrooms", furnishings::huge_mushroom_rows()),
     ]
 }
