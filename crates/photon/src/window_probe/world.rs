@@ -55,7 +55,7 @@ pub(super) fn load_world(
     root: &str,
 ) -> Result<(photon_render::Mesh, Vec<photon_render::DecodedImage>)> {
     let address: SocketAddr = server.parse()?;
-    let session = crate::play::join(address, &crate::play::Status::default())?;
+    let session = crate::play::join_loaded(address)?;
     let world = session.world();
     println!("server={server}");
     println!("server_login=true");

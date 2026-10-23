@@ -263,6 +263,7 @@ impl PlaySession {
         if load.is_ready(now) {
             self.local.load = None;
             if !self.local.loaded {
+                log::info!("the level is ready, telling the server the player has loaded");
                 self.send(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, |_| Ok(()))?;
                 self.local.loaded = true;
             }

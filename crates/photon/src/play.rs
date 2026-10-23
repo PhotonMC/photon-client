@@ -68,7 +68,13 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
-    let mut session = join(server, &Status::default())?;
+    // A scripted run starts on a level that has loaded; a player joins as the reference does.
+    let wait = if env::var_os("PHOTON_SCRIPT").is_some() {
+        JoinWait::Chunks
+    } else {
+        JoinWait::Level
+    };
+    let mut session = join(server, &Status::default(), wait)?;
     session.use_renderer_sections();
     let client = Client::open((width, height))?;
     Play::start(client, session)?.run()?;
@@ -172,13 +178,19 @@ pub(crate) struct JoinTask {
 
 impl JoinTask {
     pub(crate) fn start(server: SocketAddr) -> Self {
+        // A scripted run starts on a level that has loaded; a player joins as the reference does.
+        let wait = if env::var_os("PHOTON_SCRIPT").is_some() {
+            JoinWait::Chunks
+        } else {
+            JoinWait::Level
+        };
         let status = Arc::new(Status::default());
         let (send, result) = std::sync::mpsc::channel();
         let shared = Arc::clone(&status);
         std::thread::Builder::new()
             .name("Server Connector".to_owned())
             .spawn(move || {
-                let _ = send.send(join(server, &shared).map_err(|error| {
+                let _ = send.send(join(server, &shared, wait).map_err(|error| {
                     match error.downcast_ref::<ConnectionError>() {
                         Some(ConnectionError::Disconnected(reason)) => (**reason).clone(),
                         _ => Component::literal(error.to_string()),
@@ -414,9 +426,25 @@ fn sky_sprites(block_renderer: &BlockRenderer) -> photon_render::sky::SkySprites
     }
 }
 
-/// Join a server and wait until its level has loaded around the player,
-/// then a little longer for the chunks near them.
-pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
+/// What a join waits for before the session goes to the play loop.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JoinWait {
+    /// The login: the play loop shows `LevelLoadingScreen` and waits for the renderer's compiled
+    /// section, as `LevelLoadTracker` does.
+    Level,
+    /// The level loaded around the player by the chunk-present rule, then a little longer for the
+    /// chunks near them: for scripted runs and probes, which need terrain from the first tick and
+    /// have no screen to show the wait.
+    Chunks,
+}
+
+/// A join that waits for the level by the chunk-present rule, for the probes.
+pub(crate) fn join_loaded(server: SocketAddr) -> Result<PlaySession> {
+    join(server, &Status::default(), JoinWait::Chunks)
+}
+
+/// Join a server and wait as `wait` says.
+pub(crate) fn join(server: SocketAddr, status: &Status, wait: JoinWait) -> Result<PlaySession> {
     let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
@@ -431,7 +459,12 @@ pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
     status.0.store(true, std::sync::atomic::Ordering::Relaxed);
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();
-    while !session.is_loaded() {
+    let arrived = |session: &PlaySession| match wait {
+        // The player is placed by the first position packet, which follows the login.
+        JoinWait::Level => session.player().is_some() || session.is_loaded(),
+        JoinWait::Chunks => session.is_loaded(),
+    };
+    while !arrived(&session) {
         session.wait(Duration::from_millis(100))?;
         session.tick_level_load()?;
         if started.elapsed() > Duration::from_secs(30) {
@@ -445,6 +478,9 @@ pub(crate) fn join(server: SocketAddr, status: &Status) -> Result<PlaySession> {
             )
             .into());
         }
+    }
+    if wait == JoinWait::Level {
+        return Ok(session);
     }
     // Let the chunks around the player arrive before the first mesh.
     // A wait ends early when a packet arrives, so the ticks keep to their own 50 ms pace.
