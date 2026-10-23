@@ -150,6 +150,19 @@ impl ClientWorld {
         }
     }
 
+    /// `ItemStack.grow` on a stack in the local player's inventory menu.
+    pub fn grow_local_player_slot(&mut self, slot: i16, amount: i32) {
+        self.shrink_local_player_slot(slot, -amount);
+    }
+
+    /// `Inventory.setItem` of the client's own prediction: the stack replaces whatever the
+    /// inventory menu slot held.
+    pub fn put_local_player_slot(&mut self, slot: i16, stack: ClientItemStackState) {
+        if let Some(player) = self.local_player.as_mut() {
+            player.inventory_slots.insert(slot, Some(stack));
+        }
+    }
+
     pub fn apply_local_player_container_slot(
         &mut self,
         container_id: i32,

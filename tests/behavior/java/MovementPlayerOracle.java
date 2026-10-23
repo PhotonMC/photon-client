@@ -397,6 +397,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
         out.addProperty("attack_strength_ticker", (int) getField(player, "attackStrengthTicker"));
         out.addProperty("right_click_delay", (int) getField(minecraft, "rightClickDelay"));
         out.addProperty("main_hand_count", player.getMainHandItem().getCount());
+        out.addProperty("main_hand_item", net.minecraft.core.registries.BuiltInRegistries.ITEM
+            .getKey(player.getMainHandItem().getItem()).toString());
         out.addProperty("off_hand_count", player.getOffhandItem().getCount());
         var states = new JsonArray();
         for (var element : attack.getAsJsonArray("watch")) {

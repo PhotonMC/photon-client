@@ -228,6 +228,153 @@ fn using_rows_4() -> Vec<Value> {
     ]
 }
 
+fn bucket_rows() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    let pool = || vec![put(0, 64, 2, "minecraft:water")];
+    let lava = || vec![put(0, 64, 2, "minecraft:lava")];
+    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let look = 39.0;
+    vec![
+        using("water-bucket-on-floor", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .x_rot(look)
+            .row(),
+        using("water-bucket-creative", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .game_mode("creative")
+            .x_rot(look)
+            .row(),
+        using("lava-bucket-on-floor", vec![], run(&top_of))
+            .main_hand("minecraft:lava_bucket")
+            .count(1)
+            .x_rot(look)
+            .row(),
+        using("empty-bucket-on-water", pool(), run(&top_of)).main_hand("minecraft:bucket").count(1).x_rot(look).row(),
+        using("empty-bucket-on-lava", lava(), run(&top_of)).main_hand("minecraft:bucket").count(1).x_rot(look).row(),
+        using("empty-bucket-stack-on-water", pool(), run(&top_of))
+            .main_hand("minecraft:bucket")
+            .count(3)
+            .x_rot(look)
+            .row(),
+        using("empty-bucket-creative", pool(), run(&top_of))
+            .main_hand("minecraft:bucket")
+            .count(1)
+            .game_mode("creative")
+            .x_rot(look)
+            .row(),
+        using("water-bucket-on-water", pool(), run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .x_rot(look)
+            .row(),
+        using(
+            "water-bucket-into-slab",
+            vec![put_with(0, 64, 2, "minecraft:oak_slab", &[("type", "bottom"), ("waterlogged", "false")])],
+            run(&top_of),
+        )
+        .main_hand("minecraft:water_bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+    ]
+}
+
+fn bucket_rows_2() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let look = 39.0;
+    let sneak_watch: Vec<(i64, i64, i64)> = (63..67).flat_map(|y| (-1..4).map(move |z| (0, y, z))).collect();
+    vec![
+        using("water-bucket-stack", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(2)
+            .x_rot(look)
+            .row(),
+        using(
+            "empty-bucket-on-waterlogged-slab",
+            vec![put_with(0, 64, 2, "minecraft:oak_slab", &[("type", "bottom"), ("waterlogged", "true")])],
+            run(&top_of),
+        )
+        .main_hand("minecraft:bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+        using(
+            "empty-bucket-on-flowing-water",
+            vec![put_with(0, 64, 2, "minecraft:water", &[("level", "3")])],
+            run(&top_of),
+        )
+        .main_hand("minecraft:bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+        using(
+            "sneak-water-bucket-into-slab",
+            vec![put_with(0, 64, 2, "minecraft:oak_slab", &[("type", "bottom"), ("waterlogged", "false")])],
+            [
+                uses(3, Some(&top_of), &sneak_watch).held(&["sneak"]).go(),
+                uses(1, Some(&top_of), &sneak_watch).clicks(1).held(&["sneak"]).go(),
+                uses(3, Some(&top_of), &sneak_watch).held(&["sneak"]).go(),
+            ]
+            .concat(),
+        )
+        .main_hand("minecraft:water_bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+        using("cod-bucket-on-floor", vec![], run(&top_of)).main_hand("minecraft:cod_bucket").count(1).x_rot(look).row(),
+        using("sulfur-cube-bucket-on-water", vec![put(0, 64, 2, "minecraft:water")], run(&top_of))
+            .main_hand("minecraft:sulfur_cube_bucket")
+            .count(1)
+            .x_rot(look)
+            .row(),
+    ]
+}
+
+fn bucket_rows_3() -> Vec<Value> {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
+    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let look = 39.0;
+    vec![
+        using(
+            "water-bucket-into-lit-candle",
+            vec![put_with(
+                0,
+                64,
+                2,
+                "minecraft:candle",
+                &[("candles", "1"), ("lit", "true"), ("waterlogged", "false")],
+            )],
+            run(&top_of),
+        )
+        .main_hand("minecraft:water_bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+        using(
+            "water-bucket-into-campfire",
+            vec![put_with(0, 64, 2, "minecraft:campfire", &[("lit", "true"), ("waterlogged", "false")])],
+            run(&top_of),
+        )
+        .main_hand("minecraft:water_bucket")
+        .count(1)
+        .x_rot(look)
+        .row(),
+        using("water-bucket-adventure", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .game_mode("adventure")
+            .x_rot(look)
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [using_rows_1(), using_rows_2(), using_rows_3(), using_rows_4()].concat()
+    [using_rows_1(), using_rows_2(), using_rows_3(), using_rows_4(), bucket_rows(), bucket_rows_2(), bucket_rows_3()]
+        .concat()
 }

@@ -17,6 +17,7 @@ use photon_data::block::registry::{self, BLOCKS, Block};
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
+mod bucket;
 mod chest;
 mod chorus;
 mod connect;
@@ -43,6 +44,7 @@ mod survive;
 mod tall;
 mod vine;
 
+pub use bucket::{Pickup, client_waterlogging, pickup, replaceable_by_fluid, water_container};
 pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
     update_context,

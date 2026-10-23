@@ -215,6 +215,10 @@ pub(super) fn class_item_use(
             let (item, _) = ctx.held(hand)?;
             Some(super::placing::place_on_water(ctx, hand, item))
         }
+        ItemClass::BucketItem => {
+            let (item, _) = ctx.held(hand)?;
+            Some(super::buckets::bucket_use(ctx, hand, item))
+        }
         ItemClass::SpyglassItem => {
             ctx.player
                 .play_own_sound("minecraft:item.spyglass.use", (1.0, 1.0));

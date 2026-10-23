@@ -64,10 +64,9 @@ pub(super) fn place(ctx: &mut Context<'_>, hand: u8, item: ItemId, aim: Aim) -> 
     UseResult::Success { swing: true }
 }
 
-/// `PlaceOnWaterBlockItem.use`: the block goes on top of the water source (or block) the
-/// look reaches within the interaction range, as a use on that block's top face. A look
-/// that reaches nothing puts the block in the air, where it cannot stand.
-pub(super) fn place_on_water(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> UseResult {
+/// The segment `Item.getPlayerPOVHitResult` clips: from the eye along the look, as far as the
+/// block interaction range.
+pub(super) fn look_ray(ctx: &Context<'_>) -> (photon_core::math::Vec3, photon_core::math::Vec3) {
     let position = ctx.player.position();
     let eye = photon_core::math::Vec3::new(
         position.x,
@@ -82,6 +81,14 @@ pub(super) fn place_on_water(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> U
         eye.y + look.y * range,
         eye.z + look.z * range,
     );
+    (eye, to)
+}
+
+/// `PlaceOnWaterBlockItem.use`: the block goes on top of the water source (or block) the
+/// look reaches within the interaction range, as a use on that block's top face. A look
+/// that reaches nothing puts the block in the air, where it cannot stand.
+pub(super) fn place_on_water(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> UseResult {
+    let (eye, to) = look_ray(ctx);
     let Some(hit) = ctx.world.clip_outlines_and_sources(eye, to) else {
         return UseResult::Fail;
     };

@@ -180,7 +180,17 @@ pub(super) fn breaking_report(
         "attack_strength_ticker": player.attack_strength_ticker(),
         "right_click_delay": game_mode.right_click_delay(),
         "main_hand_count": hand_count(world, 36),
+        "main_hand_item": hand_item(world, 36),
         "off_hand_count": hand_count(world, 45),
         "watched_states": watched,
     }))
+}
+
+/// The registry name of the item in a hand slot.
+fn hand_item(world: &photon_world::ClientWorld, slot: i16) -> String {
+    let stack = world
+        .local_player()
+        .and_then(|state| state.inventory_slot(slot));
+    let name = stack.and_then(|stack| photon_game::item::definition(stack.item_registry_id()));
+    name.map_or_else(|| "minecraft:air".to_owned(), |item| item.name.to_owned())
 }
