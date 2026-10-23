@@ -25,7 +25,21 @@ pub(super) fn can_survive(
         }
         Some(BlockClass::DoorBlock) => Rule::Known(super::tall::door_survives(state, pos, ctx)),
         Some(BlockClass::DoublePlantBlock) => super::tall::double_plant_survives(state, pos, ctx),
-        Some(class) => class_survives(class, state, pos, ctx),
+        Some(class) => chorus_or_class(class, state, pos, ctx),
+    }
+}
+
+/// The chorus blocks' own rules, or those of the other classes.
+fn chorus_or_class(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
+    match class {
+        BlockClass::ChorusPlantBlock => Rule::Known(super::chorus::plant_survives(state, pos, ctx)),
+        BlockClass::ChorusFlowerBlock => Rule::Known(super::chorus::flower_survives(pos, ctx)),
+        _ => class_survives(class, state, pos, ctx),
     }
 }
 

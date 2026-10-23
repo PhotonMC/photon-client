@@ -186,7 +186,8 @@ pub(super) fn state_for_placement(
     let tables = PLACEMENTS
         .iter()
         .chain(super::furnishings::PLACEMENTS)
-        .chain(super::ground::PLACEMENTS);
+        .chain(super::ground::PLACEMENTS)
+        .chain(super::chorus::PLACEMENTS);
     match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,

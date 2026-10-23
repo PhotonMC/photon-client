@@ -365,6 +365,7 @@ fn glazed_rows() -> Vec<Value> {
         .collect()
 }
 
+mod chorus;
 mod connections;
 mod facing;
 mod furnishings;
@@ -400,6 +401,8 @@ fn furnishing_cases() -> Vec<Value> {
         case("growing-blocks", furnishings::growing_rows()),
         case("moss-carpets", furnishings::carpet_rows()),
         case("crop-light", furnishings::light_rows()),
+        case("chorus-plants", chorus::chorus_rows()),
+        case("coral-hearts", chorus::lone_rows()),
     ]
 }
 

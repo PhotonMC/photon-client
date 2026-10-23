@@ -15,6 +15,11 @@ class BlockPlacementOracle extends BlockItemOracle {
             return RANDOM;
         }
 
+        @Override
+        public long getGameTime() {
+            return 0L;
+        }
+
         java.util.Map<Long, net.minecraft.world.level.block.state.BlockState> states;
         /** The blocks set since the last reset: position, state and flags. */
         java.util.List<Object[]> writes;
