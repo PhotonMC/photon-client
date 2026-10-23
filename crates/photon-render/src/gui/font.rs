@@ -11,7 +11,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use photon_core::identifier::Identifier;
 use photon_core::json::{JsonObject, JsonValue};
+use photon_core::resources::{FolderResources, Resources};
 
 use crate::texture::png::DecodedImage;
 
@@ -61,34 +63,59 @@ pub struct Font {
 impl Font {
     /// Read `minecraft:font/default.json` and what it refers to.
     pub fn load(assets_root: &Path) -> Option<Self> {
-        let mut font = Self {
-            images: Vec::new(),
-            glyphs: HashMap::new(),
-            by_width: HashMap::new(),
-        };
-        font.load_definition(assets_root, "minecraft:default")?;
-        font.index_widths();
-        Some(font)
+        Self::load_from(&FolderResources::new(assets_root))
+    }
+
+    /// The same, from the resource packs.
+    pub fn load_from(resources: &dyn Resources) -> Option<Self> {
+        Self::load_font(resources, "minecraft:default")
     }
 
     /// The `minecraft:alt` font the enchanting table writes its names in.
     pub fn load_alt(assets_root: &Path) -> Option<Self> {
+        Self::load_alt_from(&FolderResources::new(assets_root))
+    }
+
+    /// The same, from the resource packs.
+    pub fn load_alt_from(resources: &dyn Resources) -> Option<Self> {
+        Self::load_font(resources, "minecraft:alt")
+    }
+
+    fn load_font(resources: &dyn Resources, id: &str) -> Option<Self> {
         let mut font = Self {
             images: Vec::new(),
             glyphs: HashMap::new(),
             by_width: HashMap::new(),
         };
-        font.load_definition(assets_root, "minecraft:alt")?;
+        font.load_definition(resources, id)?;
         font.index_widths();
         Some(font)
     }
 
-    fn load_definition(&mut self, root: &Path, id: &str) -> Option<()> {
-        let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
-        let file = root.join(format!("{namespace}/font/{path}.json"));
-        let JsonValue::Object(definition) =
-            photon_core::json::parse(&std::fs::read_to_string(file).ok()?).ok()?
-        else {
+    /// `FontManager.loadResourceStack`: the definition of every pack, the providers of a higher
+    /// pack coming before those of a lower one, and a pack's own in the order of its file.
+    fn load_definition(&mut self, root: &dyn Resources, id: &str) -> Option<()> {
+        let id = Identifier::parse(&if id.contains(':') {
+            id.to_owned()
+        } else {
+            format!("minecraft:{id}")
+        })
+        .ok()?;
+        let file =
+            Identifier::parse(&format!("{}:font/{}.json", id.namespace(), id.path())).ok()?;
+        let stack = root.read_stack(&file);
+        if stack.is_empty() {
+            return None;
+        }
+        for bytes in stack.iter().rev() {
+            let text = String::from_utf8(bytes.clone()).ok()?;
+            self.load_providers(root, &text)?;
+        }
+        Some(())
+    }
+
+    fn load_providers(&mut self, root: &dyn Resources, text: &str) -> Option<()> {
+        let JsonValue::Object(definition) = photon_core::json::parse(text).ok()? else {
             return None;
         };
         for provider in definition.array("providers")? {
@@ -123,14 +150,12 @@ impl Font {
     }
 
     /// `BitmapProvider.Definition.load`.
-    fn load_bitmap(&mut self, root: &Path, provider: &JsonObject) -> Option<()> {
+    fn load_bitmap(&mut self, root: &dyn Resources, provider: &JsonObject) -> Option<()> {
         let file = provider.text("file")?;
         let file = file.as_str();
         let (namespace, path) = file.split_once(':').unwrap_or(("minecraft", file));
-        let image = crate::texture::png::decode_rgba(
-            &std::fs::read(root.join(format!("{namespace}/textures/{path}"))).ok()?,
-        )
-        .ok()?;
+        let id = Identifier::parse(&format!("{namespace}:textures/{path}")).ok()?;
+        let image = crate::texture::png::decode_rgba(&root.read(&id)?).ok()?;
         let height = provider.i32("height").unwrap_or(8);
         let ascent = provider.i32("ascent")?;
         let rows: Vec<Vec<u32>> = provider

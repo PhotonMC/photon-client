@@ -233,6 +233,11 @@ impl photon_core::resources::Resources for ResourceStack {
         self.stack(id).iter().filter_map(Resource::bytes).collect()
     }
 
+    fn list(&self, directory: &str, extension: &str) -> Vec<Identifier> {
+        let listed = ResourceStack::list(self, directory, |id| id.path().ends_with(extension));
+        listed.into_keys().collect()
+    }
+
     fn namespaces(&self) -> Vec<String> {
         ResourceStack::namespaces(self).into_iter().collect()
     }

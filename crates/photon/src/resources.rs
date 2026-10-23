@@ -69,6 +69,31 @@ mod tests {
     }
 
     #[test]
+    fn the_providers_of_a_higher_pack_come_first() {
+        let font = |advance: &str| {
+            format!(r#"{{"providers":[{{"type":"space","advances":{{"x":{advance}}}}}]}}"#)
+        };
+        let (low, a) = pack("low", &[("assets/minecraft/font/default.json", &font("4"))]);
+        let (high, b) = pack(
+            "high",
+            &[("assets/minecraft/font/default.json", &font("7"))],
+        );
+        let alone = photon_render::gui::font::Font::load_from(&ResourceStack::new(vec![low]));
+        assert_eq!(alone.unwrap().width("x"), 4);
+        let (low, c) = pack("low", &[("assets/minecraft/font/default.json", &font("4"))]);
+        let both = ResourceStack::new(vec![low, high]);
+        assert_eq!(
+            photon_render::gui::font::Font::load_from(&both)
+                .unwrap()
+                .width("x"),
+            7
+        );
+        for dir in [a, b, c] {
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
+    #[test]
     fn the_vanilla_stack_reads_the_languages_the_old_way() {
         let Ok(root) = std::env::var("PHOTON_ASSETS") else {
             return;

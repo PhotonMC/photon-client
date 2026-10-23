@@ -14,6 +14,10 @@ pub trait Resources: Send + Sync {
     /// Every version of a file, the lowest pack first (`getResourceStack`).
     fn read_stack(&self, id: &Identifier) -> Vec<Vec<u8>>;
 
+    /// The files below `directory` (no trailing slash) in every namespace whose name ends with
+    /// `extension`, once each, in id order (`listResources`).
+    fn list(&self, directory: &str, extension: &str) -> Vec<Identifier>;
+
     /// The namespaces some pack has files for (`getNamespaces`), in name order.
     fn namespaces(&self) -> Vec<String>;
 }
@@ -37,6 +41,32 @@ impl Resources for FolderResources {
 
     fn read_stack(&self, id: &Identifier) -> Vec<Vec<u8>> {
         self.read(id).into_iter().collect()
+    }
+
+    fn list(&self, directory: &str, extension: &str) -> Vec<Identifier> {
+        let mut found = Vec::new();
+        for namespace in self.namespaces() {
+            let base = self.root.join(&namespace);
+            let mut pending = vec![(base.join(directory), directory.to_owned())];
+            while let Some((folder, path)) = pending.pop() {
+                let Ok(entries) = std::fs::read_dir(&folder) else {
+                    continue;
+                };
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    let path = format!("{path}/{name}");
+                    match entry.file_type() {
+                        Ok(kind) if kind.is_dir() => pending.push((entry.path(), path)),
+                        Ok(kind) if kind.is_file() && path.ends_with(extension) => {
+                            found.extend(Identifier::parse(&format!("{namespace}:{path}")).ok());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        found.sort();
+        found
     }
 
     fn namespaces(&self) -> Vec<String> {

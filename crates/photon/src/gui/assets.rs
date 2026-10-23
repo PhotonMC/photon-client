@@ -9,12 +9,14 @@ impl Gui {
         backend: &mut VulkanBackend,
         language: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let font = Arc::new(Font::load(root).ok_or("the default font could not be read")?);
-        let alt_font = Arc::new(Font::load_alt(root).ok_or("the alt font could not be read")?);
-        let (atlas, texture) =
-            GuiAtlas::load(root, &[&font, &alt_font]).ok_or("the HUD sprites could not be read")?;
-        backend.load_gui_texture(&texture)?;
         let resources = crate::resources::shared(root);
+        let font =
+            Arc::new(Font::load_from(&*resources).ok_or("the default font could not be read")?);
+        let alt_font =
+            Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
+        let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
+            .ok_or("the HUD sprites could not be read")?;
+        backend.load_gui_texture(&texture)?;
         let started_at = std::time::Instant::now();
         let mut gui = Self {
             font,
