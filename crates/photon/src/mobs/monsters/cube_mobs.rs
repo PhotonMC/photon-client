@@ -5,10 +5,10 @@
 use photon_net::connection::PlaySession;
 use photon_render::entity::block::sulfur_cube_block_pose;
 use photon_render::entity::mob_model::{
-    CubeMobScale, SulfurCubeScale, mob_vertices, overlay_code, placement_pose,
+    CubeMobScale, MobPlacement, SulfurCubeScale, mob_vertices, overlay_code, placement_pose,
     sort_translucent_quads, sulfur_cube_overlay,
 };
-use photon_render::entity::textures::EntityTextures;
+use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::scene::Vertex;
 use photon_world::EquipmentSlot;
 
@@ -95,18 +95,31 @@ pub fn remote_cube_mobs(
                 continue;
             };
             vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
-            // `SlimeOuterLayer`: the outer body, translucent, drawn after (not on an invisible slime).
-            if entity.is_invisible() {
-                continue;
-            }
-            let Some(outer) = models.model("minecraft:slime#outer") else {
-                continue;
-            };
-            let mut shell = mob_vertices(outer, &placed, rect);
-            sort_translucent_quads(&mut shell, view.camera);
-            vertices.extend(shell);
+            vertices.extend(slime_outer(entity, models, (&placed, rect), view));
         }
     }
+}
+
+/// `SlimeOuterLayer`: the outer body, translucent and drawn after the inner one; a glowing slime
+/// adds it to its outline, which is all an invisible one shows of it.
+fn slime_outer(
+    entity: &photon_world::ClientEntity,
+    models: &mut MobModels,
+    (placed, rect): (&MobPlacement, TextureRect),
+    view: FrameView,
+) -> Vec<Vertex> {
+    let Some(outer) = models.model("minecraft:slime#outer") else {
+        return Vec::new();
+    };
+    let mut shell = mob_vertices(outer, placed, rect);
+    if entity.is_glowing() {
+        crate::mobs::outline::record(entity, shell.clone());
+    }
+    if entity.is_invisible() {
+        return Vec::new();
+    }
+    sort_translucent_quads(&mut shell, view.camera);
+    shell
 }
 
 /// `SulfurCubeRenderer` for the sulfur cubes the server added: the inner body
