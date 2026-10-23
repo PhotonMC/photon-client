@@ -39,6 +39,45 @@ fn texture_of(read: Reader<'_>, name: &photon_core::identifier::Identifier) -> O
     read(name, "textures", ".png").or_else(|| permuted_texture(read, name))
 }
 
+/// A folder that holds the namespaces, seen as a pack whose `assets` folder it is.
+struct AssetsFolder(photon_assets::DirectorySource);
+
+impl AssetsFolder {
+    /// The path inside the folder, for a path inside the pack's `assets` folder.
+    fn inside(path: &str) -> Option<&str> {
+        match path.strip_prefix("assets") {
+            Some("") => Some(""),
+            Some(rest) => rest.strip_prefix('/'),
+            None => None,
+        }
+    }
+}
+
+impl photon_assets::Source for AssetsFolder {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        self.0.read(Self::inside(path)?)
+    }
+
+    fn exists(&self, path: &str) -> bool {
+        Self::inside(path).is_some_and(|path| self.0.exists(path))
+    }
+
+    fn files_below(&self, directory: &str) -> Vec<String> {
+        let Some(inside) = Self::inside(directory) else {
+            return Vec::new();
+        };
+        let files = self.0.files_below(inside);
+        files
+            .into_iter()
+            .map(|path| format!("assets/{path}"))
+            .collect()
+    }
+
+    fn folders_in(&self, directory: &str) -> Vec<String> {
+        Self::inside(directory).map_or_else(Vec::new, |inside| self.0.folders_in(inside))
+    }
+}
+
 /// Read models and textures from the stack of resource packs, the topmost pack's file winning
 /// (`MultiPackResourceManager`).
 pub struct StackAssets {
@@ -53,7 +92,7 @@ impl StackAssets {
     /// The game's own assets alone, from the folder `root` that holds the namespaces
     /// (`<jar>/assets`), as the stack's bottom pack.
     pub fn vanilla(root: &std::path::Path) -> Self {
-        let source = photon_assets::DirectorySource::new(root.parent().unwrap_or(root));
+        let source = AssetsFolder(photon_assets::DirectorySource::new(root));
         let pack = photon_assets::Pack::built_in("vanilla", Box::new(source));
         Self::new(std::sync::Arc::new(photon_assets::ResourceStack::new(
             vec![pack],
@@ -141,15 +180,15 @@ mod tests {
         static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let dir = std::env::temp_dir().join(format!("photon-assets-{}-{n}", std::process::id()));
-        std::fs::create_dir_all(dir.join("assets/minecraft/textures/block")).unwrap();
-        std::fs::create_dir_all(dir.join("assets/minecraft/models/block")).unwrap();
+        std::fs::create_dir_all(dir.join("jar-assets/minecraft/textures/block")).unwrap();
+        std::fs::create_dir_all(dir.join("jar-assets/minecraft/models/block")).unwrap();
         dir
     }
 
     #[test]
     fn the_stack_reads_the_vanilla_folder() {
         let dir = scratch();
-        let root = dir.join("assets");
+        let root = dir.join("jar-assets");
         let block = root.join("minecraft/textures/block");
         std::fs::write(block.join("stone.png"), b"png").unwrap();
         std::fs::write(
