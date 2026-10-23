@@ -13,7 +13,7 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
     if let Some(stack) = IN_USE.read().ok().and_then(|stack| stack.clone()) {
         return stack;
     }
-    let stack = Arc::new(crate::assets::vanilla_stack(jar_assets));
+    let stack = Arc::new(ResourceStack::new(selected_packs(jar_assets)));
     if let Ok(mut slot) = IN_USE.write() {
         return Arc::clone(slot.get_or_insert(stack));
     }
@@ -23,25 +23,46 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
 /// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
 const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
 
-/// The game's assets with the downloaded packs over them. `packs` lists the top of the stack
+/// The game's own assets, then the packs `options.txt` selects (`resourcePacks`, the lowest
+/// first). A `file/` entry names a folder or zip in the `resourcepacks` folder of the game
+/// directory; one that is missing or cannot be opened is left out.
+fn selected_packs(jar_assets: &Path) -> Vec<photon_assets::Pack> {
+    let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
+    let directory = crate::controls::game_directory().join("resourcepacks");
+    for id in crate::controls::load_options().resource_packs() {
+        let Some(name) = id.strip_prefix("file/") else {
+            continue;
+        };
+        match open_pack(id.clone(), &directory.join(name)) {
+            Ok(pack) => stacked.push(pack),
+            Err(error) => log::warn!("resource pack {id}: {error}"),
+        }
+    }
+    stacked
+}
+
+fn open_pack(name: String, path: &Path) -> Result<photon_assets::Pack, String> {
+    let source: Box<dyn photon_assets::Source> = if path.is_dir() {
+        Box::new(photon_assets::DirectorySource::new(path))
+    } else {
+        let zip = photon_assets::ZipSource::open(path)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
+        Box::new(zip)
+    };
+    photon_assets::Pack::open(name, source, PACK_FORMAT)
+        .map_err(|error| format!("{}: {error:?}", path.display()))
+}
+
+/// The selected packs with the downloaded ones over them. `packs` lists the top of the stack
 /// first, as the server pack source gives them; a pack that cannot be opened fails the whole.
 pub(crate) fn with_packs(
     jar_assets: &Path,
     packs: &crate::packs::LoadedPacks,
 ) -> Result<ResourceStack, String> {
-    let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
+    let mut stacked = selected_packs(jar_assets);
     for (id, path) in packs.iter().rev() {
-        let source: Box<dyn photon_assets::Source> = if path.is_dir() {
-            Box::new(photon_assets::DirectorySource::new(path))
-        } else {
-            let zip = photon_assets::ZipSource::open(path)
-                .map_err(|error| format!("{}: {error}", path.display()))?;
-            Box::new(zip)
-        };
         let name = format!("server/{}", id.to_string_java());
-        let pack = photon_assets::Pack::open(name, source, PACK_FORMAT)
-            .map_err(|error| format!("{}: {error:?}", path.display()))?;
-        stacked.push(pack);
+        stacked.push(open_pack(name, path)?);
     }
     Ok(ResourceStack::new(stacked))
 }
@@ -55,7 +76,7 @@ pub(crate) fn holds(packs: &crate::packs::LoadedPacks) -> bool {
     let in_use = stack
         .packs()
         .iter()
-        .skip(1)
+        .filter(|pack| pack.id().starts_with("server/"))
         .map(|pack| pack.id().to_owned());
     let wanted = packs
         .iter()
