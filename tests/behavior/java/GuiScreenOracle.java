@@ -146,7 +146,17 @@ class GuiScreenOracle extends GuiOverlayOracle {
             if (row.has("steps")) {
                 for (var stepElement : row.getAsJsonArray("steps")) {
                     var step = stepElement.getAsJsonObject();
-                    if (step.get("do").getAsString().equals("frame")) {
+                    if (step.get("do").getAsString().equals("click")) {
+                        // The button sounds before its action runs; an action that needs a live game
+                        // (opening a screen, leaving the world) may fail on this stub, and only the
+                        // sound is compared.
+                        try {
+                            pause.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                                step.get("x").getAsInt(), step.get("y").getAsInt(),
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        } catch (RuntimeException ignored) {
+                        }
+                    } else if (step.get("do").getAsString().equals("frame")) {
                         // A frame drawn and thrown away, at a time.
                         now[0] = step.get("ms").getAsLong();
                         var frame = new GuiRenderState();

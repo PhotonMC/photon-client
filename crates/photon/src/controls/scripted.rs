@@ -250,7 +250,7 @@ impl Controls {
             self.options_input(input, surface, assets);
         } else if let Some(action) = self.death.as_mut().and_then(|death| death.clicked(mouse)) {
             self.death_action(action, session, surface, assets)?;
-        } else if let Some(action) = self.pause.as_ref().and_then(|pause| pause.clicked(mouse)) {
+        } else if let Some(action) = self.pause.as_mut().and_then(|pause| pause.clicked(mouse)) {
             self.pause_action(action, session, surface, assets);
         } else if self
             .chat

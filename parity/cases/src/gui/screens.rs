@@ -21,8 +21,43 @@ fn pause(label: &str, (width, height): (i64, i64), mouse: (i64, i64), steps: Vec
 }
 
 const SIZE: (i64, i64) = (427, 240);
+const BUTTONS: [(&str, (i64, i64)); 9] = [
+    ("return", (213, 60)),
+    ("advancements", (160, 90)),
+    ("statistics", (265, 90)),
+    ("report", (170, 120)),
+    ("feedback", (193, 120)),
+    ("friends", (215, 120)),
+    ("reporting", (237, 120)),
+    ("options", (213, 150)),
+    ("disconnect", (213, 180)),
+];
 const ICONS: [(&str, (i64, i64)); 4] =
     [("report", (170, 120)), ("feedback", (193, 120)), ("friends", (215, 120)), ("reporting", (237, 120))];
+
+/// A press of the primary button, which sounds when it lands on an active widget.
+fn click_rows() -> Vec<Value> {
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let centres = [
+        ("return", (213, 78)),
+        ("advancements", (160, 102)),
+        ("statistics", (265, 102)),
+        ("report", (177, 126)),
+        ("feedback", (201, 126)),
+        ("friends", (225, 126)),
+        ("reporting", (249, 126)),
+        ("options", (213, 150)),
+        ("disconnect", (213, 174)),
+    ];
+    let mut rows: Vec<Value> = centres
+        .iter()
+        .map(|&(name, (x, y))| pause(&format!("click-{name}"), SIZE, (x, y), vec![click(x, y)], 0))
+        .collect();
+    rows.push(pause("click-nothing", SIZE, (10, 10), vec![click(10, 10)], 0));
+    rows.push(pause("click-edge", SIZE, (111, 68), vec![click(111, 68)], 0));
+    rows.push(pause("click-past-edge", SIZE, (315, 68), vec![click(315, 68)], 0));
+    rows
+}
 
 fn hover_rows() -> Vec<Value> {
     let mut rows = vec![
@@ -31,18 +66,7 @@ fn hover_rows() -> Vec<Value> {
         pause("wide", (640, 360), (0, 0), vec![], 0),
         pause("tiny", (200, 150), (0, 0), vec![], 0),
     ];
-    let buttons = [
-        ("return", (213, 60)),
-        ("advancements", (160, 90)),
-        ("statistics", (265, 90)),
-        ("report", (170, 120)),
-        ("feedback", (193, 120)),
-        ("friends", (215, 120)),
-        ("reporting", (237, 120)),
-        ("options", (213, 150)),
-        ("disconnect", (213, 180)),
-    ];
-    for (name, point) in buttons {
+    for (name, point) in BUTTONS {
         rows.push(pause(&format!("hover-{name}"), SIZE, point, vec![], 0));
     }
     // Tooltips: shown once the widget has been hovered a moment (a frame
@@ -131,7 +155,7 @@ fn blur_rows() -> Vec<Value> {
 }
 
 pub fn pause_screen() -> Value {
-    gui("pause-screen", "pause_screen", [hover_rows(), focus_rows(), arrow_rows(), blur_rows()].concat())
+    gui("pause-screen", "pause_screen", [hover_rows(), click_rows(), focus_rows(), arrow_rows(), blur_rows()].concat())
 }
 
 /// One death screen scenario.

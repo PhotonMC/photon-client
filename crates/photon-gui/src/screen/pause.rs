@@ -310,14 +310,23 @@ impl PauseScreen {
     }
 
     /// A press of the primary button at `mouse`: what it asks for.
-    pub fn clicked(&self, mouse: (i32, i32)) -> Option<PauseAction> {
+    pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<PauseAction> {
         self.mouse_input();
-        let (_, action) = self
+        let index = self
             .widgets
             .iter()
-            .find(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+            .position(|(widget, _)| widget.is_active() && widget.contains(&self.arena, mouse))?;
+        self.press(index)
+    }
+
+    /// The press of a button: it sounds, and "Disconnect" turns itself off while it leaves.
+    fn press(&mut self, index: usize) -> Option<PauseAction> {
         crate::ui_sound::play_down_sound();
-        *action
+        let action = self.widgets[index].1;
+        if action == Some(PauseAction::Disconnect) {
+            self.widgets[index].0.active = false;
+        }
+        action
     }
 
     /// Tab (and Shift+Tab): the focus moves to the next button.
@@ -334,12 +343,12 @@ impl PauseScreen {
     }
 
     /// Enter or Space: what the focused button asks for.
-    pub fn pressed(&self) -> Option<PauseAction> {
-        let (_, action) = self
-            .focus
-            .and_then(|index| self.widgets.get(index))
-            .filter(|(widget, _)| widget.is_active())?;
-        crate::ui_sound::play_down_sound();
-        *action
+    pub fn pressed(&mut self) -> Option<PauseAction> {
+        let index = self.focus.filter(|&index| {
+            self.widgets
+                .get(index)
+                .is_some_and(|(widget, _)| widget.is_active())
+        })?;
+        self.press(index)
     }
 }

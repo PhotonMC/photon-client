@@ -19,7 +19,13 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         row["mouse"][1].as_i64().unwrap_or(0) as i32,
     );
     for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
-        if step["do"] == "frame" {
+        if step["do"] == "click" {
+            let at = (
+                step["x"].as_i64().unwrap_or(0) as i32,
+                step["y"].as_i64().unwrap_or(0) as i32,
+            );
+            screen.clicked(at);
+        } else if step["do"] == "frame" {
             // A frame drawn and thrown away, at a time.
             let mut thrown = GuiFrame {
                 millis: step["ms"].as_u64().unwrap_or(0),
