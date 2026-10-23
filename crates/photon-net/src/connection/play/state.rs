@@ -292,21 +292,9 @@ impl PlaySession {
         })
     }
 
-    /// The resource packs the server asked for since the last call: the player is asked about them.
-    pub fn take_pack_requests(&mut self) -> Vec<PackRequest> {
-        std::mem::take(&mut self.social.pack_requests)
-    }
-
-    /// `ServerboundResourcePackPacket`: how the client answers a pack.
-    pub fn answer_resource_pack(
-        &mut self,
-        id: photon_core::binary::Uuid,
-        action: PackAction,
-    ) -> Result<(), ConnectionError> {
-        self.send(PLAY_SERVERBOUND_RESOURCE_PACK_PACKET_ID, |output| {
-            encode_resource_pack(id, action, output);
-            Ok(())
-        })
+    /// The server packs the client keeps, which the connection reports to the server.
+    pub fn packs(&self) -> &crate::server_packs::PackSource {
+        &self.state.packs
     }
 
     /// Whether the server took the connection through the configuration phase again: what was

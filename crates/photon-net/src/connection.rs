@@ -5,6 +5,7 @@ mod encrypt;
 pub mod entities;
 mod join;
 mod open;
+mod pack_sink;
 mod play;
 mod record;
 mod session;

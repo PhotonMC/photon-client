@@ -46,6 +46,8 @@ use level_load::{LevelLoadTracker, PlayerNeed};
 mod lifecycle;
 mod menu_sync;
 mod movement;
+#[cfg(test)]
+mod pack_tests;
 mod recipes;
 mod reconfigure;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};

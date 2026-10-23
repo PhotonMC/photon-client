@@ -86,15 +86,10 @@ wrapped_packet!(
     /// `ClientboundResourcePackPushPacket`.
     ResourcePackPush(PackRequest) = parse_resource_pack_push
 );
-/// `ClientboundResourcePackPopPacket`: the pack to take off, or all of them. The client never
-/// loads one, so the packet is only checked.
-pub struct ResourcePackPop;
-
-impl Decode for ResourcePackPop {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
-        parse_resource_pack_pop(payload).map(|_| Self)
-    }
-}
+wrapped_packet!(
+    /// `ClientboundResourcePackPopPacket`: the pack to take off, or all of them.
+    ResourcePackPop(Option<Uuid>) = parse_resource_pack_pop
+);
 
 #[cfg(test)]
 mod tests {

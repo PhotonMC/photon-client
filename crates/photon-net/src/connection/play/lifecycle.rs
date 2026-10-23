@@ -261,6 +261,24 @@ impl PlaySession {
         )
     }
 
+    /// Like [`Self::connect`], with what `first` carries into the connection (the account, the
+    /// server packs the client keeps).
+    pub fn connect_with(
+        address: SocketAddr,
+        (username, auto_jump): (&str, bool),
+        timeout: Duration,
+        information: photon_protocol::configuration::ClientInformation,
+        first: ConnectionState,
+    ) -> Result<Self, ConnectionError> {
+        Self::connect_through(
+            (address, None),
+            (username, auto_jump),
+            timeout,
+            information,
+            first,
+        )
+    }
+
     /// Connect to `address` (and the host name a handshake gives, where it is not the address's
     /// own) with what `first` carries over (`cookies`, `transferring`), following the
     /// server where it sends the client on to another.
@@ -276,6 +294,7 @@ impl PlaySession {
             let mut state = ConnectionState {
                 account: carried.account.clone(),
                 cookies: carried.cookies.clone(),
+                packs: carried.packs.clone(),
                 handshake_host: host.clone(),
                 transferring: carried.transferring,
                 ..ConnectionState::default()
@@ -297,6 +316,7 @@ impl PlaySession {
                     carried = ConnectionState {
                         account: state.account,
                         cookies: state.cookies,
+                        packs: state.packs,
                         transferring: true,
                         ..ConnectionState::default()
                     };

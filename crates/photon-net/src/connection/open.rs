@@ -12,6 +12,7 @@ use photon_protocol::resources::KnownPack;
 use photon_protocol::{common, configuration, cookie, login, registry_data};
 
 use super::encrypt;
+use super::pack_sink::sink_for;
 use super::record::Recorder;
 use super::session::*;
 use super::state::ConnectionState;
@@ -28,6 +29,9 @@ pub fn open_play_connection(
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
 ) -> Result<(Transport, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
+    state
+        .packs
+        .configure_for_server(sink_for(&stream, ConnectionProtocol::Configuration, None)?);
     let host = state
         .handshake_host
         .clone()
@@ -154,6 +158,33 @@ fn log_in(
     Ok(compression_threshold)
 }
 
+/// The statuses of the server's packs go to the server over `stream` in `phase` from now on.
+fn route_pack_statuses(
+    stream: &Transport,
+    phase: ConnectionProtocol,
+    compression_threshold: Option<usize>,
+    state: &ConnectionState,
+) -> Result<(), ConnectionError> {
+    state
+        .packs
+        .set_sink(sink_for(stream, phase, compression_threshold)?);
+    Ok(())
+}
+
+/// The next packet of the configuration. When the connection ended on the player's answer (a
+/// pack the server requires was refused), that is the reason it ended.
+fn read_configuration_packet(
+    stream: &mut Transport,
+    compression_threshold: Option<usize>,
+    state: &ConnectionState,
+) -> Result<Vec<u8>, ConnectionError> {
+    read_packet(stream, compression_threshold).map_err(|error| {
+        state.packs.take_disconnect().map_or(error, |reason| {
+            ConnectionError::Disconnected(Box::new(reason))
+        })
+    })
+}
+
 /// `ClientboundDisconnectPacket`: the reason goes to the disconnected screen.
 fn config_disconnect(payload: &[u8]) -> ConnectionError {
     let mut input = payload;
@@ -206,8 +237,14 @@ pub fn configure_connection(
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
 ) -> Result<(), ConnectionError> {
     let configuration_started = Instant::now();
+    route_pack_statuses(
+        stream,
+        ConnectionProtocol::Configuration,
+        compression_threshold,
+        state,
+    )?;
     loop {
-        let body = read_packet(stream, compression_threshold)?;
+        let body = read_configuration_packet(stream, compression_threshold, state)?;
         let (packet_id, payload) = split_packet(&body)?;
         recorder.packet(ConnectionProtocol::Configuration, packet_id, body.len());
 
@@ -338,6 +375,12 @@ pub fn configure_connection(
                     compression_threshold,
                 )?;
                 recorder.configuration_finished();
+                route_pack_statuses(
+                    stream,
+                    ConnectionProtocol::Play,
+                    compression_threshold,
+                    state,
+                )?;
                 break;
             }
             CONFIG_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
@@ -371,31 +414,17 @@ pub fn configure_connection(
                 });
             }
             CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID => {
-                // There is no screen to ask on during configuration and nothing to load a pack
-                // with: a pack is declined (an address that is not one is reported as such).
-                let request = parse_resource_pack_push(payload)?;
-                let action = if request.has_valid_url() {
-                    PackAction::Declined
-                } else {
-                    PackAction::InvalidUrl
-                };
-                send_packet(
-                    stream,
-                    ConnectionProtocol::Configuration,
-                    CONFIG_SERVERBOUND_RESOURCE_PACK_PACKET_ID,
-                    |output| {
-                        encode_resource_pack(request.id, action, output);
-                        Ok(())
-                    },
-                    compression_threshold,
-                )?;
+                state.packs.push(parse_resource_pack_push(payload)?);
             }
-            // Nothing was loaded, so there is nothing to take off.
-            CONFIG_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {}
+            CONFIG_CLIENTBOUND_RESOURCE_PACK_POP_PACKET_ID => {
+                state.packs.pop(parse_resource_pack_pop(payload)?);
+            }
             _ => {}
         }
 
-        if configuration_started.elapsed() > timeout {
+        // A pack the player is asked about or that is on its way keeps the server waiting; that
+        // is not the configuration stalling.
+        if configuration_started.elapsed() > timeout && state.packs.is_idle() {
             return Err(ConnectionError::Io(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "configuration timeout",

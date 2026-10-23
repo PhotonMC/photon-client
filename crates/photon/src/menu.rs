@@ -57,8 +57,8 @@ enum Screen {
     Form(ServerFormScreen, Option<usize>),
     /// Whether to delete the saved server at this place.
     Confirm(ConfirmScreen, usize),
-    /// A join going on.
-    Connecting(ConnectScreen, JoinTask),
+    /// A join going on, and the question about the server's resource packs while one is up.
+    Connecting(ConnectScreen, JoinTask, Option<ConfirmScreen>),
     /// A join that failed (`DisconnectedScreen` with `connect.failed`).
     Failed(DisconnectedScreen),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
@@ -110,7 +110,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             _ => {}
         }
         if std::mem::take(&mut scripted_join) {
-            menu.connect(server, gui_size(&client));
+            menu.connect(server, None, gui_size(&client));
         }
         let choice = menu.run(&mut client)?;
         client.audio = Some(menu.into_audio());
@@ -121,6 +121,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
                 client.backend.set_panorama(None);
                 let (back, exit) = play::play_in(client, *session)?;
                 client = back;
+                crate::packs::shared().cleanup_after_disconnect();
                 if let Exit::Quit = exit {
                     return Ok(());
                 }
@@ -225,10 +226,13 @@ impl Menu {
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
-    fn connect(&mut self, server: SocketAddr, size: (i32, i32)) {
+    fn connect(&mut self, server: SocketAddr, ip: Option<&str>, size: (i32, i32)) {
+        let packs = crate::packs::shared();
+        crate::packs::prepare(&packs, ip);
         self.screen = Screen::Connecting(
             ConnectScreen::new(self.gui.lang(), size),
-            JoinTask::start(server),
+            JoinTask::start(server, packs),
+            None,
         );
     }
 
@@ -298,12 +302,16 @@ impl Menu {
             self.receive_pings();
             self.frame_audio();
             self.sync_icons(client)?;
-            if let Screen::Connecting(_, task) = &self.screen
+            self.ask_about_packs(size);
+            if let Screen::Connecting(_, task, _) = &self.screen
                 && let Some(result) = task.finished()
             {
                 match result {
                     Ok(session) => return Ok(Choice::Play(Box::new(session))),
-                    Err(reason) => self.join_failed(&reason, size),
+                    Err(reason) => {
+                        crate::packs::shared().cleanup_after_disconnect();
+                        self.join_failed(&reason, size);
+                    }
                 }
             }
             self.credits_ticked(size);
@@ -358,14 +366,8 @@ impl Menu {
                 let result = self.form_event(event, &mut client.surface);
                 return self.form_result(result, size);
             }
-            Screen::Connecting(screen, task) => {
-                // Cancel: back to the list; the join's thread finishes alone and is dropped.
-                if let WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) = event
-                    && !task.status.loading()
-                    && screen.cancelled(mouse)
-                {
-                    self.screen = self.server_list(size);
-                }
+            Screen::Connecting(..) => {
+                self.connecting_event(event, size);
                 return Ok(None);
             }
             Screen::Credits(..) => return Ok(self.credits_event(event, size)),

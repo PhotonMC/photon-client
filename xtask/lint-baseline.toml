@@ -527,7 +527,6 @@
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 14
 "crates/photon/src/gui/draw.rs::Gui::draw" = 17
 "crates/photon/src/gui/hud.rs::Gui::receive_hud" = 13
-"crates/photon/src/menu.rs::Menu::handle" = 13
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 19
 "crates/photon/src/mobs/animals/farm_animals.rs::pose" = 12
 "crates/photon/src/mobs/animals/farm_animals/gear.rs::layers" = 14
@@ -675,7 +674,7 @@
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
 "crates/photon-gui/src/widgets/multiline.rs::MultilineTextField::key_pressed" = 86
 "crates/photon-gui/src/widgets/text_field.rs::TextField::key_pressed" = 70
-"crates/photon-net/src/connection/open.rs::configure_connection" = 198
+"crates/photon-net/src/connection/open.rs::configure_connection" = 197
 "crates/photon-net/src/connection/open.rs::log_in" = 91
 "crates/photon-net/src/connection/play/menu_sync.rs::PlaySession::open_container_menu" = 73
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 133

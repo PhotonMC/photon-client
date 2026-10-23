@@ -193,7 +193,7 @@ impl Menu {
             self.servers.save(&self.game_directory)?;
         }
         if let Some(address) = pings::resolve(ip) {
-            self.connect(address, size);
+            self.connect(address, Some(ip), size);
         }
         Ok(())
     }
@@ -242,13 +242,12 @@ impl Menu {
 
     /// A join of the listed server.
     fn join_listed(&mut self, index: usize, size: (i32, i32)) {
-        let address = self
-            .servers
-            .servers
-            .get(index)
-            .and_then(|server| pings::resolve(&server.ip));
-        if let Some(address) = address {
-            self.connect(address, size);
+        let Some(server) = self.servers.servers.get(index) else {
+            return;
+        };
+        if let Some(address) = pings::resolve(&server.ip) {
+            let ip = server.ip.clone();
+            self.connect(address, Some(&ip), size);
         }
     }
 
@@ -285,5 +284,61 @@ impl Menu {
         }
         self.servers.save(&self.game_directory)?;
         Ok(())
+    }
+}
+
+impl Menu {
+    /// The question about the server's resource packs, when one was raised while the join is
+    /// going on (`PackConfirmScreen` over the connect screen). The packs' reloads are answered
+    /// here too.
+    pub(super) fn ask_about_packs(&mut self, size: (i32, i32)) {
+        let packs = crate::packs::shared();
+        crate::packs::serve_reload(&packs);
+        let Screen::Connecting(_, _, question) = &mut self.screen else {
+            return;
+        };
+        let Some(prompt) = packs.take_prompt() else {
+            return;
+        };
+        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+        *question = Some(
+            ConfirmScreen::server_pack(font, lang, size, prompt.required, prompt.text.as_ref())
+                .with_background(photon_gui::screen::confirm::ConfirmBackground::Menu {
+                    in_world: false,
+                }),
+        );
+    }
+
+    /// The player answered that question.
+    pub(super) fn answer_pack_question(&mut self, accepted: bool) {
+        if let Screen::Connecting(_, _, question) = &mut self.screen {
+            *question = None;
+        }
+        crate::packs::shared().answer_prompt(accepted);
+    }
+}
+
+impl Menu {
+    /// One window event while a join goes on: it answers the question about the server's packs
+    /// when one is up, and otherwise Cancel goes back to the list (the join's thread finishes
+    /// alone and is dropped).
+    pub(super) fn connecting_event(&mut self, event: WindowEvent, size: (i32, i32)) {
+        let mouse = self.mouse;
+        let Screen::Connecting(screen, task, question) = &mut self.screen else {
+            return;
+        };
+        if let Some(question) = question {
+            if let Some(action) = confirm_event(question, event, mouse) {
+                self.answer_pack_question(action == ConfirmAction::Yes);
+            }
+            return;
+        }
+        if let WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) = event
+            && !task.status.loading()
+            && screen.cancelled(mouse)
+        {
+            crate::packs::shared().cleanup_after_disconnect();
+            self.screen = self.server_list(size);
+        }
     }
 }

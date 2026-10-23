@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use photon_core::math::Vec3;
 use photon_game::text::Component;
-use photon_net::connection::{ConnectionError, PlaySession};
+use photon_net::connection::{ConnectionError, ConnectionState, PlaySession};
+use photon_net::server_packs::PackSource;
 use photon_render::VulkanBackend;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
@@ -28,6 +29,7 @@ use crate::objects::falling_blocks::falling_blocks;
 use crate::objects::fishing_hooks::{HookView, fishing_hooks};
 use crate::objects::piston_blocks::piston_blocks;
 use crate::overlays::{self, FrameView, cracks, hands, hud_fov, packed_light, tick_hands};
+use crate::packs;
 use crate::ppm;
 use crate::profile::{self, FrameProfile, Span};
 use crate::screens::ScreenAssets;
@@ -74,7 +76,7 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
     } else {
         JoinWait::Level
     };
-    let mut session = join(server, &Status::default(), wait)?;
+    let mut session = join(server, &Status::default(), wait, &packs::unattended())?;
     session.use_renderer_sections();
     let client = Client::open((width, height))?;
     Play::start(client, session)?.run()?;
@@ -177,7 +179,7 @@ pub(crate) struct JoinTask {
 }
 
 impl JoinTask {
-    pub(crate) fn start(server: SocketAddr) -> Self {
+    pub(crate) fn start(server: SocketAddr, packs: PackSource) -> Self {
         // A scripted run starts on a level that has loaded; a player joins as the reference does.
         let wait = if env::var_os("PHOTON_SCRIPT").is_some() {
             JoinWait::Chunks
@@ -190,7 +192,7 @@ impl JoinTask {
         std::thread::Builder::new()
             .name("Server Connector".to_owned())
             .spawn(move || {
-                let _ = send.send(join(server, &shared, wait).map_err(|error| {
+                let _ = send.send(join(server, &shared, wait, &packs).map_err(|error| {
                     match error.downcast_ref::<ConnectionError>() {
                         Some(ConnectionError::Disconnected(reason)) => (**reason).clone(),
                         _ => Component::literal(error.to_string()),
@@ -448,22 +450,33 @@ pub(crate) enum JoinWait {
 
 /// A join that waits for the level by the chunk-present rule, for the probes.
 pub(crate) fn join_loaded(server: SocketAddr) -> Result<PlaySession> {
-    join(server, &Status::default(), JoinWait::Chunks)
+    join(
+        server,
+        &Status::default(),
+        JoinWait::Chunks,
+        &packs::unattended(),
+    )
 }
 
 /// Join a server and wait as `wait` says.
-pub(crate) fn join(server: SocketAddr, status: &Status, wait: JoinWait) -> Result<PlaySession> {
+pub(crate) fn join(
+    server: SocketAddr,
+    status: &Status,
+    wait: JoinWait,
+    packs: &PackSource,
+) -> Result<PlaySession> {
     let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
     let information = crate::controls::client_information(&crate::controls::load_options());
     let timeout = Duration::from_secs(30);
-    let mut session = match crate::profile_login::from_environment(&username)? {
-        Some(account) => {
-            PlaySession::connect_signed_in(server, account, timeout, auto_jump, information)?
-        }
-        None => PlaySession::connect(server, &username, timeout, auto_jump, information)?,
+    let first = ConnectionState {
+        account: crate::profile_login::from_environment(&username)?,
+        packs: packs.clone(),
+        ..ConnectionState::default()
     };
+    let mut session =
+        PlaySession::connect_with(server, (&username, auto_jump), timeout, information, first)?;
     status.0.store(true, std::sync::atomic::Ordering::Relaxed);
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();

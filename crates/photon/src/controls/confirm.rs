@@ -30,7 +30,8 @@ impl Controls {
     ) -> Result {
         if self.pack_prompt.is_some() {
             self.confirm = None;
-            return self.answer_pack_prompt(action == ConfirmAction::Yes, session);
+            self.answer_pack_prompt(action == ConfirmAction::Yes, session);
+            return Ok(());
         }
         match action {
             ConfirmAction::Yes => surface.request_close(),

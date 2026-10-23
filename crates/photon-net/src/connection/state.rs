@@ -35,6 +35,8 @@ pub struct ConnectionState {
     pub dialog_registry: Vec<Option<photon_game::dialog::Dialog>>,
     pub dimension_type_registry_bounds: Vec<Option<DimensionBounds>>,
     pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
+    /// The server packs the client keeps; the same source goes through every connection.
+    pub packs: crate::server_packs::PackSource,
     /// The tags the configuration phase sent, for the world they belong to.
     pub tags: Vec<ClientboundUpdateTagsPacket>,
     /// `ClientPacketListener.seenPlayers` and `seenInsecureChatWarning`, which go on to the

@@ -30,7 +30,8 @@ impl Menu {
     /// One frame of the menus' sound: the engine, then the menu music's ticks.
     pub(super) fn frame_audio(&mut self) {
         self.sound.frame_in_menu(&self.options);
-        let loading = matches!(&self.screen, Screen::Connecting(_, task) if task.status.loading());
+        let loading =
+            matches!(&self.screen, Screen::Connecting(_, task, _) if task.status.loading());
         if let Some(sound) = self.sound.as_mut() {
             self.music.tick(sound, &self.options, loading);
         }

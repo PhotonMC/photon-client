@@ -14,20 +14,6 @@ use crate::connection::record::NoRecorder;
 const RECONFIGURATION_TIMEOUT: Duration = Duration::from_secs(30);
 
 impl PlaySession {
-    /// `handleResourcePackPush`: an address that is not a web one is answered at once; the rest
-    /// wait to be asked about.
-    pub(super) fn on_resource_pack_push(
-        &mut self,
-        request: PackRequest,
-    ) -> Result<(), ConnectionError> {
-        if request.has_valid_url() {
-            self.social.pack_requests.push(request);
-            Ok(())
-        } else {
-            self.answer_resource_pack(request.id, PackAction::InvalidUrl)
-        }
-    }
-
     /// `handleRequestCookie`: what is kept under the key goes back, or nothing.
     pub(super) fn on_cookie_request(
         &mut self,
@@ -51,6 +37,7 @@ impl PlaySession {
         let carried = ConnectionState {
             account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
+            packs: self.state.packs.clone(),
             transferring: true,
             seen_players: self.social.seen_players.clone(),
             seen_insecure_warning: self.effects.seen_unsecure_warning,
@@ -101,6 +88,7 @@ impl PlaySession {
             profile_id: self.state.profile_id,
             profile_name: self.state.profile_name.clone(),
             cookies: self.state.cookies.clone(),
+            packs: self.state.packs.clone(),
             server_brand: self.state.server_brand.clone(),
             custom_report_details: self.state.custom_report_details.clone(),
             // `CommonListenerCookie.serverLinks` goes on to the configuration listener.
@@ -246,6 +234,7 @@ fn configure_again(
             let carried = ConnectionState {
                 account: state.account,
                 cookies: state.cookies,
+                packs: state.packs,
                 transferring: true,
                 seen_players: state.seen_players,
                 seen_insecure_warning: state.seen_insecure_warning,
@@ -737,99 +726,5 @@ mod tests {
         assert!(session.transfer_failed());
         destination.join().expect("destination");
         origin.join().expect("origin");
-    }
-
-    fn pack_push_body(url: &str) -> Vec<u8> {
-        let mut body = Vec::new();
-        photon_core::binary::write_uuid(photon_core::binary::Uuid::new(1, 2), &mut body);
-        for text in [url, "0123456789abcdef0123456789abcdef01234567"] {
-            photon_core::utf8::write_utf8(
-                &mut body,
-                &text.encode_utf16().collect::<Vec<_>>(),
-                32_767,
-            )
-            .expect("string");
-        }
-        body.extend_from_slice(&[0, 0]);
-        body
-    }
-
-    #[test]
-    fn a_pack_the_server_pushes_waits_for_an_answer_and_a_bad_address_is_refused_at_once() {
-        use std::io::Write;
-        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
-        let address = listener.local_addr().expect("address");
-        let server = std::thread::spawn(move || {
-            let mut stream = Transport::from(listener.accept().expect("accept").0);
-            for url in ["https://example.com/pack.zip", "gopher://example.com/pack"] {
-                let mut packet = Vec::new();
-                wire::write_varint(PLAY_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID, &mut packet);
-                packet.extend_from_slice(&pack_push_body(url));
-                let mut framed = Vec::new();
-                wire::write_varint(packet.len() as i32, &mut framed);
-                framed.extend_from_slice(&packet);
-                stream.write_all(&framed).expect("push");
-            }
-            // Only the bad address is answered by the client alone.
-            let answer = read_packet(&mut stream, None).expect("answer");
-            let (id, body) = split_packet(&answer).expect("split");
-            assert_eq!(id, PLAY_SERVERBOUND_RESOURCE_PACK_PACKET_ID);
-            assert_eq!(body[16], PackAction::InvalidUrl as u8);
-            let answer = read_packet(&mut stream, None).expect("declined");
-            let (_, body) = split_packet(&answer).expect("split");
-            assert_eq!(body[16], PackAction::Declined as u8);
-        });
-        let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
-        let mut session = PlaySession::assemble(
-            stream,
-            None,
-            incoming,
-            ConnectionState::default(),
-            ("Tester", false),
-        );
-        session.wait(Duration::from_secs(5)).expect("first push");
-        session.wait(Duration::from_secs(5)).expect("second push");
-        let requests = session.take_pack_requests();
-        assert_eq!(requests.len(), 1);
-        assert_eq!(requests[0].url, "https://example.com/pack.zip");
-        session
-            .answer_resource_pack(requests[0].id, PackAction::Declined)
-            .expect("answer");
-        server.join().expect("server");
-    }
-
-    #[test]
-    fn a_pack_pushed_during_configuration_is_declined() {
-        use std::io::Write;
-        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
-        let address = listener.local_addr().expect("address");
-        let server = std::thread::spawn(move || {
-            let mut stream = Transport::from(listener.accept().expect("accept").0);
-            let mut packet = Vec::new();
-            wire::write_varint(CONFIG_CLIENTBOUND_RESOURCE_PACK_PUSH_PACKET_ID, &mut packet);
-            packet.extend_from_slice(&pack_push_body("https://example.com/pack.zip"));
-            let mut framed = Vec::new();
-            wire::write_varint(packet.len() as i32, &mut framed);
-            framed.extend_from_slice(&packet);
-            stream.write_all(&framed).expect("push");
-            stream
-                .write_all(&frame(CONFIG_FINISH_PACKET_ID))
-                .expect("finish");
-            let answer = read_packet(&mut stream, None).expect("answer");
-            let (id, body) = split_packet(&answer).expect("split");
-            assert_eq!(id, CONFIG_SERVERBOUND_RESOURCE_PACK_PACKET_ID);
-            assert_eq!(body[16], PackAction::Declined as u8);
-        });
-        let mut stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let mut state = ConnectionState::default();
-        configure_connection(
-            &mut stream,
-            None,
-            (Duration::from_secs(5), true),
-            (&mut state, &mut NoRecorder),
-        )
-        .expect("configured");
-        server.join().expect("server");
     }
 }

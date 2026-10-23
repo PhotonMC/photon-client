@@ -65,13 +65,14 @@ impl ClientboundPacket for Transfer {
 
 impl ClientboundPacket for ResourcePackPush {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
-        session.on_resource_pack_push(self.0)
+        session.state.packs.push(self.0);
+        Ok(())
     }
 }
 
-/// Nothing was loaded, so there is nothing to take off.
 impl ClientboundPacket for ResourcePackPop {
-    fn handle(self: Box<Self>, _session: &mut PlaySession) -> Result<(), ConnectionError> {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.state.packs.pop(self.0);
         Ok(())
     }
 }

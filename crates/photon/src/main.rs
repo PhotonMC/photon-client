@@ -14,6 +14,7 @@ mod mobs;
 mod music;
 mod objects;
 mod overlays;
+mod packs;
 mod particles;
 mod play;
 mod ppm;

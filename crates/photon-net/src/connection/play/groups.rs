@@ -139,8 +139,6 @@ pub(super) struct Social {
     /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,
     /// kept when they leave the tab list.
     pub(super) seen_players: std::collections::BTreeMap<(u64, u64), String>,
-    /// Resource packs the server asked for that the player is yet to be asked about.
-    pub(super) pack_requests: Vec<PackRequest>,
     /// Dialogs the server showed or cleared that the client is yet to act on.
     pub(super) dialog_events: Vec<DialogEvent>,
     /// The language item names are compared in.

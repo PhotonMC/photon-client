@@ -5,6 +5,7 @@
 pub mod account;
 pub mod connection;
 pub mod resolver;
+pub mod server_packs;
 
 pub use photon_protocol::phase as protocol;
 pub use photon_protocol::{
