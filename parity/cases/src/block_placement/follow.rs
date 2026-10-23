@@ -129,3 +129,23 @@ pub fn face_rows() -> Vec<Value> {
     rows.push(neighbour_row("shape-carpet-kept", kept, &placed));
     rows
 }
+
+/// Bamboo: a sapling under bamboo becomes bamboo. A stalk under an older stalk cannot be reached
+/// by placing (bamboo takes its age from the stalk below), so its rows only show the stalk stays.
+pub fn bamboo_rows() -> Vec<Value> {
+    let ground = block([0, 62, 0], "dirt", &[]);
+    let sapling = vec![ground.clone(), block([0, 63, 0], "bamboo_sapling", &[])];
+    let mut rows = vec![neighbour_row("shape-bamboo-sapling", sapling, &["bamboo", "stone"])];
+    let beside = vec![
+        block([0, 62, 0], "dirt", &[]),
+        block([0, 63, 0], "bamboo", &[]),
+        block([1, 63, 0], "dirt", &[]),
+        block([1, 64, 0], "bamboo_sapling", &[]),
+    ];
+    rows.push(neighbour_row("shape-bamboo-sapling-beside", beside, &["bamboo", "stone"]));
+    for age in ["0", "1"] {
+        let stalk = vec![ground.clone(), block([0, 63, 0], "bamboo", &[("age", age)])];
+        rows.push(neighbour_row(&format!("shape-bamboo-stalk-{age}"), stalk, &["bamboo", "stone"]));
+    }
+    rows
+}

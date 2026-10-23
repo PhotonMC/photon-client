@@ -194,6 +194,23 @@ fn followers(
             Rule::Known(super::faces::multiface(state, pos, direction, ctx))
         }
         BlockClass::MossyCarpetBlock => Rule::Known(super::faces::carpet(state, pos, ctx)),
+        _ => crops(class, state, pos, direction, ctx),
+    }
+}
+
+/// The bamboo, stems and powders, then the inert ones.
+fn crops(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    match class {
+        BlockClass::BambooSaplingBlock => super::paired::bamboo_sapling(state, pos, direction, ctx),
+        BlockClass::BambooStalkBlock => {
+            Rule::Known(super::paired::bamboo_stalk(state, pos, direction, ctx))
+        }
         BlockClass::ConcretePowderBlock => super::placement::concrete_update(state, pos, ctx),
         BlockClass::AttachedStemBlock => {
             Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))

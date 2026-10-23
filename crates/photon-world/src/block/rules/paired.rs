@@ -1,5 +1,5 @@
 //! `updateShape` of the blocks whose state follows a neighbour: the two halves of beds and
-//! doors, the campfire over hay and the attached stems.
+//! doors, the campfire over hay, the attached stems and bamboo.
 
 use super::growth::{offset, same_block};
 use super::*;
@@ -101,4 +101,47 @@ pub(super) fn attached_stem(
     }
     let stem = registry::default_state_named(&format!("minecraft:{fruit}_stem"));
     with_property(stem, "age", "7").unwrap_or(stem)
+}
+
+fn is_bamboo(state: BlockStateId) -> bool {
+    block(state).is_some_and(|b| b.name == "minecraft:bamboo")
+}
+
+/// `BambooSaplingBlock.updateShape`: air where it cannot survive; bamboo above it makes it
+/// bamboo.
+pub(super) fn bamboo_sapling(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    match can_survive(state, pos, ctx) {
+        Rule::Known(false) => Rule::Known(air()),
+        Rule::Known(true) => {
+            let grown = direction == Direction::Up && is_bamboo(ctx.state(offset(pos, direction)));
+            Rule::Known(if grown {
+                registry::default_state_named("minecraft:bamboo")
+            } else {
+                state
+            })
+        }
+        Rule::Unported => Rule::Unported,
+    }
+}
+
+/// `BambooStalkBlock.updateShape`: a stalk below a stalk with a greater age takes the other age
+/// (the tick it schedules where it cannot survive is not state).
+pub(super) fn bamboo_stalk(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    let above = ctx.state(offset(pos, direction));
+    let age = |state| property(state, "age").and_then(|age| age.parse::<u8>().ok());
+    if direction == Direction::Up && is_bamboo(above) && age(above) > age(state) {
+        let next = if age(state) == Some(0) { "1" } else { "0" };
+        return with_property(state, "age", next).unwrap_or(state);
+    }
+    state
 }
