@@ -238,6 +238,28 @@ pub(super) fn widgets_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, S
     }))
 }
 
+/// A click or a key on the death screen.
+fn death_step(
+    screen: &mut photon_gui::screen::death::DeathScreen,
+    step: &Value,
+) -> Result<(), String> {
+    match (step["do"].as_str(), step["key"].as_str()) {
+        (Some("click"), _) => {
+            let at = (
+                step["x"].as_i64().unwrap_or(0) as i32,
+                step["y"].as_i64().unwrap_or(0) as i32,
+            );
+            screen.clicked(at);
+        }
+        (_, Some("tab")) => screen.tab(true),
+        (_, Some("enter")) => {
+            screen.pressed();
+        }
+        _ => return Err(format!("unknown step {step}")),
+    }
+    Ok(())
+}
+
 pub(super) fn death_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let font = &ctx.font;
@@ -261,6 +283,9 @@ pub(super) fn death_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     );
     for _ in 0..int("ticks") {
         screen.tick();
+    }
+    for step in row["steps"].as_array().map_or(&[][..], Vec::as_slice) {
+        death_step(&mut screen, step)?;
     }
     let mouse = (
         row["mouse"][0].as_i64().unwrap_or(0) as i32,

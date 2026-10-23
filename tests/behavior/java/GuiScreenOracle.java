@@ -47,6 +47,27 @@ class GuiScreenOracle extends GuiOverlayOracle {
             for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
                 death.tick();
             }
+            if (row.has("steps")) {
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    try {
+                        if (step.get("do").getAsString().equals("click")) {
+                            death.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                                step.get("x").getAsInt(), step.get("y").getAsInt(),
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        } else {
+                            int code = switch (step.get("key").getAsString()) {
+                                case "tab" -> 258;
+                                case "enter" -> 257;
+                                default -> throw new IllegalArgumentException(step.get("key").getAsString());
+                            };
+                            death.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                        }
+                    } catch (NullPointerException ignored) {
+                        // The sound comes first; what a button does next needs a live game.
+                    }
+                }
+            }
             death.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             death.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             var out = new JsonObject();

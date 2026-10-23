@@ -189,6 +189,39 @@ fn death(label: &str, death: Death) -> Value {
     row
 }
 
+/// Presses of the buttons: asleep they stay silent, awake they click. "Respawn" is left out: Java
+/// asks the player to respawn, which needs a live connection, and the button goes off after that.
+fn press_rows(awake: Death) -> Vec<Value> {
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let with = |label: &str, death: Death, steps: Vec<Value>| {
+        let mut row = self::death(label, death);
+        row["steps"] = json!(steps);
+        row
+    };
+    vec![
+        with("click-title-asleep", Death { ticks: 19, ..DEATH }, vec![click(213, 156)]),
+        with("click-title", Death { mouse: (213, 156), ..awake }, vec![click(213, 156)]),
+        with("click-respawn-asleep", Death { ticks: 19, ..DEATH }, vec![click(213, 132)]),
+        with("click-elsewhere", Death { ..awake }, vec![click(10, 10)]),
+        with("click-title-hardcore", Death { hardcore: true, ..awake }, vec![click(213, 156)]),
+        with(
+            "tab-enter-asleep",
+            Death { ticks: 19, ..DEATH },
+            vec![json!({"do": "key", "key": "tab"}), json!({"do": "key", "key": "enter"})],
+        ),
+        with(
+            "tab-tab-enter",
+            Death { ..awake },
+            vec![
+                json!({"do": "key", "key": "tab"}),
+                json!({"do": "key", "key": "tab"}),
+                json!({"do": "key", "key": "enter"}),
+            ],
+        ),
+        with("enter-nothing-focused", Death { ..awake }, vec![json!({"do": "key", "key": "enter"})]),
+    ]
+}
+
 /// The death screen: before and after its buttons wake (20 ticks), with and
 /// without a cause, hardcore, scores of several widths, and the mouse over
 /// each button.
@@ -211,7 +244,7 @@ pub fn death_screen() -> Value {
         death("hover-title", Death { mouse: (213, 156), ..awake }),
         death("hover-elsewhere", Death { mouse: (10, 10), ..awake }),
     ];
-    gui("death-screen", "death_screen", rows)
+    gui("death-screen", "death_screen", [rows, press_rows(awake)].concat())
 }
 
 /// The disconnected screen for short and long reasons (wrapped at the
