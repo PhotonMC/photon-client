@@ -183,7 +183,10 @@ pub(super) fn state_for_placement(
     ctx: &PlaceContext<'_>,
 ) -> Rule<Option<BlockStateId>> {
     let owner = owner(&BLOCKS[block], Method::GetStateForPlacement);
-    let tables = PLACEMENTS.iter().chain(super::furnishings::PLACEMENTS);
+    let tables = PLACEMENTS
+        .iter()
+        .chain(super::furnishings::PLACEMENTS)
+        .chain(super::ground::PLACEMENTS);
     match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,
@@ -348,7 +351,7 @@ fn face_attached_placement(default: BlockStateId, ctx: &PlaceContext<'_>) -> Opt
                 with_property(default, "face", "wall")
                     .and_then(|state| with_property(state, "facing", direction.opposite().name()))
             }?;
-            super::survive::face_attached_survives(state, pos, ctx).then_some(state)
+            super::survive::attached_stays(state, pos, ctx).then_some(state)
         })
 }
 

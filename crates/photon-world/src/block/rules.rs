@@ -20,6 +20,7 @@ use photon_data::item::registry::{ITEMS, Item};
 mod connect;
 mod directional;
 mod furnishings;
+mod ground;
 mod growth;
 mod item;
 mod mounted;

@@ -431,5 +431,6 @@ pub fn cases() -> Vec<Value> {
         case("furnishings-signals", furnishings::signal_rows()),
         case("campfires-conduit", furnishings::campfire_rows()),
         case("huge-mushrooms", furnishings::huge_mushroom_rows()),
+        case("ground-blocks", furnishings::ground_rows()),
     ]
 }

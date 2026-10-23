@@ -41,6 +41,7 @@ pub fn facing_rows() -> Vec<Value> {
             "dried_ghast",
             "campfire",
             "soul_campfire",
+            "grindstone",
             "heavy_core",
             "sculk_sensor",
             "calibrated_sculk_sensor",
@@ -118,6 +119,27 @@ pub fn huge_mushroom_rows() -> Vec<Value> {
             let mut world = vec![block([0, 63, 0], "stone", &[])];
             world.push(block(at, neighbour, &[]));
             rows.push(row(&format!("mushroom-{label}-{neighbour}"), &blocks, world, &ON_TOP));
+        }
+    }
+    rows
+}
+
+/// Blocks that care what lies above or below them: cake, paths, farmland, seagrass.
+pub fn ground_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for ground in ["stone", "glass", "oak_slab", "grass_block", "water", "air"] {
+        let world = if ground == "air" { vec![] } else { vec![block([0, 63, 0], ground, &[])] };
+        rows.push(row(&format!("cake-on-{ground}"), &["cake"], world, &ON_TOP));
+    }
+    for over in ["stone", "glass", "oak_fence_gate", "oak_slab", "wheat", "farmland", "air"] {
+        let world = vec![block([0, 63, 0], "stone", &[]), block([0, 65, 0], over, &[])];
+        rows.push(row(&format!("soil-under-{over}"), &["dirt_path", "farmland"], world, &ON_TOP));
+    }
+    for ground in ["stone", "sand", "ice", "blue_ice", "packed_ice", "magma_block", "oak_slab", "glass"] {
+        for (label, level) in [("source", "0"), ("flowing", "3"), ("falling", "8")] {
+            let world = vec![block([0, 63, 0], ground, &[]), block([0, 64, 0], "water", &[("level", level)])];
+            let at = click([0, 64, 0], "up", [0.5, 65.0, 0.5], 0.0, 0.0);
+            rows.push(row(&format!("seagrass-on-{ground}-{label}"), &["seagrass"], world, &at));
         }
     }
     rows

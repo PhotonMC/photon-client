@@ -73,6 +73,13 @@ class BlockPlacementOracle extends BlockItemOracle {
         }
 
         @Override
+        public java.util.List<net.minecraft.world.entity.Entity> getEntities(
+                net.minecraft.world.entity.Entity except, net.minecraft.world.phys.AABB bb,
+                java.util.function.Predicate<? super net.minecraft.world.entity.Entity> selector) {
+            return java.util.List.of();
+        }
+
+        @Override
         public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
             return net.minecraft.world.flag.FeatureFlagSet.of();
         }

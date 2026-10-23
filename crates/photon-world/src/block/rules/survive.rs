@@ -25,11 +25,25 @@ pub(super) fn can_survive(
         }
         Some(BlockClass::DoorBlock) => Rule::Known(super::tall::door_survives(state, pos, ctx)),
         Some(BlockClass::DoublePlantBlock) => super::tall::double_plant_survives(state, pos, ctx),
-        Some(class) => match super::mounted::survives(class, state, pos, ctx) {
-            Rule::Unported => foot_survives(class, state, pos, ctx),
-            known => known,
-        },
+        Some(class) => class_survives(class, state, pos, ctx),
     }
+}
+
+/// The rules written per class, the files tried in turn.
+fn class_survives(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
+    let tried = [
+        super::ground::survives(class, pos, ctx),
+        super::mounted::survives(class, state, pos, ctx),
+    ];
+    tried
+        .into_iter()
+        .find(|rule| *rule != Rule::Unported)
+        .unwrap_or_else(|| foot_survives(class, state, pos, ctx))
 }
 
 /// Whether the class decides by the shape of a block whose shape depends on its position,
@@ -274,6 +288,9 @@ pub(super) fn vegetation(
         });
         return Rule::Known(overridden || can_support_center(ctx, below_pos, Direction::Up));
     }
+    if owner(placed, Method::MayPlaceOn) == Some(BlockClass::SeagrassBlock) {
+        return Rule::Known(super::ground::seagrass_survives(pos, ctx));
+    }
     if owner(placed, Method::MayPlaceOn) == Some(BlockClass::LilyPadBlock) {
         return Rule::Known(on_water(pos, ctx, "minecraft:supports_lily_pad"));
     }
@@ -295,6 +312,18 @@ pub(super) fn face_attached_survives(
     let (dx, dy, dz) = connected.opposite().step();
     let support = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
     crate::block::state(support).is_some_and(|info| info.is_face_sturdy(connected))
+}
+
+/// `canSurvive` of a face-attached block as its own class has it (the grindstone stays anywhere).
+pub(super) fn attached_stays(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    match can_survive(state, pos, ctx) {
+        Rule::Known(stays) => stays,
+        Rule::Unported => face_attached_survives(state, pos, ctx),
+    }
 }
 
 /// `FaceAttachedHorizontalDirectionalBlock.getConnectedDirection`: the way the block leans.
