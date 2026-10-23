@@ -10,27 +10,6 @@ use photon_core::resources::{FolderResources, Resources};
 
 mod sprites;
 
-/// The sprite folders the HUD and the screens draw from, under
-/// `textures/gui/sprites`.
-const SPRITE_FOLDERS: [&str; 16] = [
-    "advancements",
-    "statistics",
-    "social_interactions",
-    "gamemode_switcher",
-    "boss_bar",
-    "server_list",
-    "pause_menu",
-    "friends",
-    "hud",
-    "container",
-    "recipe_book",
-    "tooltip",
-    "icon",
-    "widget",
-    "toast",
-    "dialog",
-];
-
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
 const WHOLE_TEXTURES: [&str; 53] = [
@@ -341,11 +320,12 @@ fn collect_images(
         });
         images.insert(format!("minecraft:{name}"), image.clone());
     }
-    for id in sprites::sprite_ids(resources) {
+    for sprite in sprites::sprites(resources) {
         // A sprite that cannot be decoded drops only itself.
-        let Some(image) = sprites::read_sprite(resources, &id) else {
+        let Some(image) = sprites::read_sprite(resources, &sprite) else {
             continue;
         };
+        let id = sprite.id;
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,
