@@ -20,13 +20,17 @@ use photon_game::sounds::{
 use photon_world::ClientWorld;
 use photon_world::local_player::{LocalSoundSource, UnderwaterSound};
 
-use crate::indexed::IndexedAssets;
+use photon_assets::ResourceStack;
+use photon_core::identifier::Identifier;
+use photon_core::resources::Resources;
 
-impl SoundAssets for IndexedAssets {
+/// The sound files of the resource packs.
+struct PackSounds(Arc<ResourceStack>);
+
+impl SoundAssets for PackSounds {
     /// `namespace:sounds/name.ogg`.
     fn read(&self, path: &str) -> Option<Vec<u8>> {
-        let (namespace, rest) = path.split_once(':')?;
-        self.object(&format!("{namespace}/{rest}"))
+        self.0.read(&Identifier::parse(path).ok()?)
     }
 }
 
@@ -36,6 +40,27 @@ type Followed = Arc<Mutex<HashMap<EntityId, Option<(f64, f64, f64)>>>>;
 
 mod devices;
 pub use devices::SoundSlot;
+
+/// `SoundManager.prepare`: the `sounds.json` of every pack of every namespace, the lowest pack
+/// first, so that a higher one adds to or replaces what is below.
+fn sound_registry(stack: &ResourceStack) -> SoundRegistry {
+    let mut registry = SoundRegistry::default();
+    let exists = |path: &str| Identifier::parse(path).is_ok_and(|id| stack.open(&id).is_some());
+    for namespace in stack.namespaces() {
+        let Ok(id) = Identifier::parse(&format!("{namespace}:sounds.json")) else {
+            continue;
+        };
+        for bytes in stack.read_stack(&id) {
+            let Ok(text) = String::from_utf8(bytes) else {
+                continue;
+            };
+            if registry.register_file(&namespace, &text, &exists).is_err() {
+                log::warn!("sounds.json of {namespace} is not valid");
+            }
+        }
+    }
+    registry
+}
 
 pub struct SoundSystem {
     engine: SoundEngine<MixerChannels>,
@@ -73,21 +98,13 @@ impl SoundSystem {
                 return None;
             }
         };
-        let assets = Arc::new(IndexedAssets::open(jar_assets)?);
-        let text = String::from_utf8(assets.object("minecraft/sounds.json")?).ok()?;
-        let mut registry = SoundRegistry::default();
-        let exists = {
-            let assets = Arc::clone(&assets);
-            move |path: &str| {
-                path.split_once(':').is_some_and(|(namespace, rest)| {
-                    assets.contains(&format!("{namespace}/{rest}"))
-                })
-            }
-        };
-        if registry.register_file("minecraft", &text, &exists).is_err() {
-            log::warn!("sound off: sounds.json is not valid");
+        let stack = crate::resources::shared(jar_assets);
+        let registry = sound_registry(&stack);
+        if registry.names().next().is_none() {
+            log::warn!("sound off: no sounds.json");
             return None;
         }
+        let assets = Arc::new(PackSounds(stack));
         // `Library.init` sizes the pools from the device's count of mono sources. The reference
         // plays through OpenAL Soft, whose devices give 255 (247 sounds and 8 streams); the mixer
         // here has no limit of its own, so it takes that count. Thirty, the fallback for a device
@@ -533,3 +550,17 @@ impl SoundSystem {
 use photon_core::math::Vec3;
 
 mod flash;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_vanilla_stack_defines_the_game_sounds() {
+        let Ok(root) = std::env::var("PHOTON_ASSETS") else {
+            return;
+        };
+        let stack = crate::assets::vanilla_stack(std::path::Path::new(&root));
+        let registry = super::sound_registry(&stack);
+        assert!(registry.event("minecraft:block.stone.break").is_some());
+        assert!(registry.names().count() > 1000);
+    }
+}
