@@ -33,20 +33,20 @@ impl Menu {
     }
 }
 
-/// `panorama_0` to `panorama_5` of the title screen's background, from the asset index, where
-/// the real faces are, before the jar, which holds one-pixel stand-ins.
+/// `panorama_0` to `panorama_5` of the title screen's background, from the resource packs, whose
+/// bottom pack reads the asset index (where the real faces are) before the jar (which holds
+/// one-pixel stand-ins).
 pub(crate) fn faces(root: &str) -> super::Result<[photon_render::DecodedImage; 6]> {
-    let index = crate::indexed::IndexedAssets::open(std::path::Path::new(root));
-    let face = |index_number: usize| -> super::Result<photon_render::DecodedImage> {
-        let name = format!("gui/title/background/panorama_{index_number}");
-        let indexed = index
-            .as_ref()
-            .and_then(|index| index.object(&format!("minecraft/textures/{name}.png")));
-        match indexed {
-            Some(bytes) => Ok(photon_render::texture::png::decode_rgba(&bytes)
-                .map_err(|error| format!("panorama: {error:?}"))?),
-            None => crate::play::texture(root, &name, "panorama"),
-        }
+    use photon_core::resources::Resources;
+    let stack = crate::resources::shared(std::path::Path::new(root));
+    let face = |number: usize| -> super::Result<photon_render::DecodedImage> {
+        let name = format!("minecraft:textures/gui/title/background/panorama_{number}.png");
+        let bytes = photon_core::identifier::Identifier::parse(&name)
+            .ok()
+            .and_then(|id| stack.read(&id))
+            .ok_or_else(|| format!("panorama: {name} is missing"))?;
+        Ok(photon_render::texture::png::decode_rgba(&bytes)
+            .map_err(|error| format!("panorama: {error:?}"))?)
     };
     Ok([face(0)?, face(1)?, face(2)?, face(3)?, face(4)?, face(5)?])
 }
