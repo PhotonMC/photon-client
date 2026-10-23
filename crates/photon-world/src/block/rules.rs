@@ -32,6 +32,7 @@ mod mounted;
 mod note;
 mod paired;
 mod placement;
+mod redstone;
 mod replace;
 mod shape;
 mod signal;

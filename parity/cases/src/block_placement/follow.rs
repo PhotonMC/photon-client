@@ -213,3 +213,58 @@ pub fn plant_rows() -> Vec<Value> {
     rows.push(neighbour_row("shape-kelp-head", kelp, &["kelp", "stone"]));
     rows
 }
+
+/// Redstone wire: a block placed beside, above or below it reconnects its sides.
+pub fn wire_rows() -> Vec<Value> {
+    let placed = ["stone", "glass", "redstone_wire"];
+    let sides = |north: &'static str, east: &'static str, south: &'static str, west: &'static str| {
+        [("power", "7"), ("north", north), ("east", east), ("south", south), ("west", west)]
+    };
+    let shapes = [
+        ("dot", sides("none", "none", "none", "none")),
+        ("east-west", sides("none", "side", "none", "side")),
+        ("north-south", sides("side", "none", "side", "none")),
+        ("cross", sides("side", "side", "side", "side")),
+        ("west", sides("none", "none", "none", "side")),
+        ("north", sides("side", "none", "none", "none")),
+    ];
+    let mut rows = Vec::new();
+    for (label, props) in shapes {
+        let world = vec![
+            block([0, 63, 0], "stone", &[]),
+            block([1, 63, 0], "end_stone", &[]),
+            block([1, 64, 0], "redstone_wire", &props),
+        ];
+        rows.push(neighbour_row(&format!("shape-wire-{label}"), world, &placed));
+    }
+    // A wire on a step: the placed block over it decides whether it still climbs.
+    let stepped = vec![
+        block([0, 62, 0], "end_stone", &[]),
+        block([0, 63, 0], "redstone_wire", &sides("none", "up", "none", "none")),
+        block([1, 63, 0], "stone", &[]),
+        block([1, 64, 0], "redstone_wire", &sides("none", "none", "none", "none")),
+    ];
+    rows.push(neighbour_row("shape-wire-stepped", stepped, &placed));
+    let dot = vec![
+        block([0, 62, 0], "end_stone", &[]),
+        block([0, 63, 0], "redstone_wire", &sides("none", "none", "none", "none")),
+    ];
+    rows.push(neighbour_row("shape-wire-dot-below", dot, &placed));
+    // A wire climbs onto what is placed beside it only where nothing solid covers it.
+    for cover in ["stone", "glass"] {
+        let covered = vec![
+            block([0, 63, 0], "stone", &[]),
+            block([1, 63, 0], "end_stone", &[]),
+            block([1, 64, 0], "redstone_wire", &sides("none", "none", "none", "none")),
+            block([1, 65, 0], cover, &[]),
+            block([0, 65, 0], "redstone_wire", &sides("none", "none", "none", "none")),
+        ];
+        rows.push(neighbour_row(&format!("shape-wire-covered-{cover}"), covered, &placed));
+    }
+    let beneath = vec![
+        block([0, 63, 0], "stone", &[]),
+        block([0, 65, 0], "redstone_wire", &sides("none", "side", "none", "side")),
+    ];
+    rows.push(neighbour_row("shape-wire-beneath", beneath, &["stone", "glass", "oak_fence"]));
+    rows
+}

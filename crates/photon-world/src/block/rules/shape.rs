@@ -87,7 +87,7 @@ const INERT: [BlockClass; 75] = [
 type Update = fn(BlockStateId, (i32, i32, i32), Direction, &PlaceContext<'_>) -> Rule<BlockStateId>;
 
 /// The classes whose `updateShape` is written, by the class that declares it.
-const RULES: [(BlockClass, Update); 30] = [
+const RULES: [(BlockClass, Update); 31] = [
     (BlockClass::StairBlock, |s, p, d, c| {
         Rule::Known(stairs(s, p, d, c))
     }),
@@ -167,6 +167,7 @@ const RULES: [(BlockClass, Update); 30] = [
         Rule::Known(super::connect::gate_update(s, p, d, c))
     }),
     // These only keep the water ticking, which the client does not run.
+    (BlockClass::RedStoneWireBlock, super::redstone::update),
     (BlockClass::EnderChestBlock, |s, _, _, _| Rule::Known(s)),
 ];
 

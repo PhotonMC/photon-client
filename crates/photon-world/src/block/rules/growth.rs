@@ -438,12 +438,12 @@ fn wire_connects_to(state: BlockStateId, direction: Option<Direction>) -> bool {
     }
 }
 
-fn is_conductor(state: BlockStateId) -> bool {
+pub(super) fn is_conductor(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).redstone_conductor
 }
 
 /// `RedStoneWireBlock.canSurviveOn`.
-fn wire_stands_on(state: BlockStateId) -> bool {
+pub(super) fn wire_stands_on(state: BlockStateId) -> bool {
     crate::block::state_or_air(state).is_face_sturdy(Direction::Up)
         || is_named(state, "minecraft:hopper")
 }
@@ -454,7 +454,7 @@ pub(super) fn wire_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> boo
 }
 
 /// `RedStoneWireBlock.getConnectingSide`: `up`, `side` or `none`.
-fn wire_side(
+pub(super) fn wire_side(
     pos: (i32, i32, i32),
     direction: Direction,
     can_connect_up: bool,
@@ -485,7 +485,7 @@ fn wire_side(
 }
 
 /// A wire with no side on an axis connects both ends of the other axis, so that it is a line.
-fn fill_lone_sides(mut sides: [&'static str; 4]) -> [&'static str; 4] {
+pub(super) fn fill_lone_sides(mut sides: [&'static str; 4]) -> [&'static str; 4] {
     let connected = sides.map(|side| side != "none");
     let [north, east, south, west] = connected;
     let axis_empty = [!north && !south, !east && !west];
