@@ -302,7 +302,7 @@ impl Menu {
             self.receive_pings();
             self.frame_audio();
             self.sync_icons(client)?;
-            self.ask_about_packs(size);
+            self.ask_about_packs(client, size);
             if let Screen::Connecting(_, task, _) = &self.screen
                 && let Some(result) = task.finished()
             {

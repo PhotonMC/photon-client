@@ -370,7 +370,7 @@ fn open_window(width: i32, height: i32) -> Result<(WindowSurface, VulkanBackend,
 /// Every block's models and one atlas for all of them (sent to the GPU),
 /// as the reference bakes them at resource load; the world is then meshed a
 /// 16-block section at a time as its chunks arrive and change.
-fn bake_blocks(
+pub(crate) fn bake_blocks(
     root: &str,
     backend: &mut VulkanBackend,
 ) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {

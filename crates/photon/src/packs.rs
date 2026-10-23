@@ -74,16 +74,46 @@ pub(crate) fn prepare(source: &PackSource, ip: Option<&str>) {
     });
 }
 
-/// Answer the reload the packs asked for, if one is due. The assets are not reloaded yet, so
-/// the packs are reported as ones that could not be put to use.
-pub(crate) fn serve_reload(source: &PackSource) {
-    if source.take_reload().is_some() {
-        log::warn!("server packs cannot be loaded: the assets are not reloaded yet");
-        let recovery = source.reload_failed(false);
-        if recovery.is_empty() {
-            source.reload_succeeded();
-        } else {
-            source.reload_failed(true);
-        }
+/// The packs a reload loads: their ids and where they are kept.
+pub(crate) type LoadedPacks = [(photon_core::binary::Uuid, std::path::PathBuf)];
+
+/// Answer the reload the packs asked for, if one is due. `reload` puts the packs it is given (the
+/// top of the stack first) in use and says whether that went through. A failure is answered with
+/// the recovery the packs ask for, the ones that were in use before.
+pub(crate) fn serve_reload(source: &PackSource, reload: &mut dyn FnMut(&LoadedPacks) -> bool) {
+    let Some(packs) = source.take_reload() else {
+        return;
+    };
+    if reload(&packs) {
+        source.reload_succeeded();
+        return;
+    }
+    let recovery = source.reload_failed(false);
+    if reload(&recovery) {
+        source.reload_succeeded();
+    } else {
+        source.reload_failed(true);
+    }
+}
+
+/// A reload that cannot be done: the assets are fixed once a game has started, so the packs
+/// are reported as ones that could not be put to use.
+pub(crate) fn cannot_reload(_: &[(photon_core::binary::Uuid, std::path::PathBuf)]) -> bool {
+    log::warn!("server packs cannot be loaded while a game is running");
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nothing_is_reloaded_when_no_reload_is_due() {
+        let mut called = false;
+        serve_reload(&PackSource::offline(), &mut |_| {
+            called = true;
+            true
+        });
+        assert!(!called);
     }
 }

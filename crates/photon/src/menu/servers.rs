@@ -291,9 +291,9 @@ impl Menu {
     /// The question about the server's resource packs, when one was raised while the join is
     /// going on (`PackConfirmScreen` over the connect screen). The packs' reloads are answered
     /// here too.
-    pub(super) fn ask_about_packs(&mut self, size: (i32, i32)) {
+    pub(super) fn ask_about_packs(&mut self, client: &mut Client, size: (i32, i32)) {
         let packs = crate::packs::shared();
-        crate::packs::serve_reload(&packs);
+        crate::packs::serve_reload(&packs, &mut |loaded| self.reload_assets(client, loaded));
         let Screen::Connecting(_, _, question) = &mut self.screen else {
             return;
         };
@@ -340,5 +340,54 @@ impl Menu {
             crate::packs::shared().cleanup_after_disconnect();
             self.screen = self.server_list(size);
         }
+    }
+}
+
+impl Menu {
+    /// The resource packs the connection settled on are put in use: the assets are read through
+    /// the new stack and everything made of them is made again. A failure puts the stack that
+    /// was in use back and says so.
+    fn reload_assets(&mut self, client: &mut Client, packs: &crate::packs::LoadedPacks) -> bool {
+        let Ok(root) = env::var("PHOTON_ASSETS") else {
+            return false;
+        };
+        let root = Path::new(&root);
+        let previous = crate::resources::shared(root);
+        let stack = match crate::resources::with_packs(root, packs) {
+            Ok(stack) => stack,
+            Err(error) => {
+                log::warn!("resource packs: {error}");
+                return false;
+            }
+        };
+        crate::resources::replace(std::sync::Arc::new(stack));
+        match self.rebuild_assets(client, root) {
+            Ok(()) => true,
+            Err(error) => {
+                log::warn!("resource reload failed: {error}");
+                crate::resources::replace(previous);
+                false
+            }
+        }
+    }
+
+    /// What is made of the assets, made again: the world's atlas, the GUI, the panorama and the
+    /// sounds. The GPU scene is made anew by the atlas, so the textures sent after it follow it.
+    fn rebuild_assets(&mut self, client: &mut Client, root: &Path) -> Result<()> {
+        let root_text = root.to_string_lossy();
+        let (renderer, animated) = crate::play::bake_blocks(&root_text, &mut client.backend)?;
+        client.block_renderer = renderer;
+        client.animated_atlas = animated;
+        self.gui
+            .reload_assets(root, &mut client.backend, &self.options.language_code)?;
+        client.backend.set_gui_only(true);
+        client
+            .backend
+            .load_panorama(&photon_render::panorama::layers(&super::panorama::faces(
+                &root_text,
+            )?))?;
+        self.assets = self.gui.screen_assets();
+        self.sound.reload_for_packs(&self.options);
+        Ok(())
     }
 }

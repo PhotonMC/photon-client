@@ -20,6 +20,39 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
     stack
 }
 
+/// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
+const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
+
+/// The game's assets with the downloaded packs over them. `packs` lists the top of the stack
+/// first, as the server pack source gives them; a pack that cannot be opened fails the whole.
+pub(crate) fn with_packs(
+    jar_assets: &Path,
+    packs: &crate::packs::LoadedPacks,
+) -> Result<ResourceStack, String> {
+    let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
+    for (id, path) in packs.iter().rev() {
+        let source: Box<dyn photon_assets::Source> = if path.is_dir() {
+            Box::new(photon_assets::DirectorySource::new(path))
+        } else {
+            let zip = photon_assets::ZipSource::open(path)
+                .map_err(|error| format!("{}: {error}", path.display()))?;
+            Box::new(zip)
+        };
+        let name = format!("server/{}", id.to_string_java());
+        let pack = photon_assets::Pack::open(name, source, PACK_FORMAT)
+            .map_err(|error| format!("{}: {error:?}", path.display()))?;
+        stacked.push(pack);
+    }
+    Ok(ResourceStack::new(stacked))
+}
+
+/// Put `stack` in use: what is read afterwards sees it.
+pub(crate) fn replace(stack: Arc<ResourceStack>) {
+    if let Ok(mut slot) = IN_USE.write() {
+        *slot = Some(stack);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use photon_assets::{DirectorySource, Pack, ResourceStack};

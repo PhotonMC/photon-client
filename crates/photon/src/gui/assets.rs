@@ -50,6 +50,38 @@ impl Gui {
         Ok(gui)
     }
 
+    /// The resource packs in use changed: the fonts, the sprites, the texts and the pictures made
+    /// of the models are read again, and the sprites are sent to the GPU, whose scene must have
+    /// been made anew.
+    pub fn reload_assets(
+        &mut self,
+        root: &Path,
+        backend: &mut VulkanBackend,
+        language: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let resources = crate::resources::shared(root);
+        let font =
+            Arc::new(Font::load_from(&*resources).ok_or("the default font could not be read")?);
+        let alt_font =
+            Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
+        let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
+            .ok_or("the HUD sprites could not be read")?;
+        backend.load_gui_texture(&texture)?;
+        self.font = font;
+        self.alt_font = alt_font;
+        self.atlas = atlas;
+        self.atlas_image = texture;
+        self.items = ItemLayerCache::new(photon_render::model::DisplayContext::Gui);
+        self.resources = resources;
+        self.hud
+            .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load_from(
+                &*self.resources,
+            ));
+        self.lang = Arc::new(Lang::load_from(&*self.resources, root));
+        self.set_language(language);
+        Ok(())
+    }
+
     /// Where the skin the inventory's player wears is in the entity textures.
     pub fn set_player_skin(&mut self, skin: photon_render::entity::textures::TextureRect) {
         self.player_skin = skin;

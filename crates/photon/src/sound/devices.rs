@@ -53,6 +53,12 @@ impl SoundSlot {
         Self { system, idle }
     }
 
+    /// `SoundManager.reload` after the resource packs changed: the sound definitions are read
+    /// again and the engine starts anew.
+    pub fn reload_for_packs(&mut self, options: &Options) {
+        SoundSystem::reload(&mut self.system, &mut self.idle, options);
+    }
+
     /// The sound device option changed: reload on the device now chosen, with a click.
     pub fn reload_for_device(&mut self, options: &Options) {
         SoundSystem::reload_for_device(&mut self.system, &mut self.idle, options);

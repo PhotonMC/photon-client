@@ -103,14 +103,18 @@ impl photon_assets::Source for AssetsFolder {
     }
 }
 
-/// The stack of the game's own assets alone.
-pub(crate) fn vanilla_stack(root: &std::path::Path) -> photon_assets::ResourceStack {
+/// The game's own assets as the bottom pack.
+pub(crate) fn vanilla_pack(root: &std::path::Path) -> photon_assets::Pack {
     let source = AssetsFolder {
         jar: photon_assets::DirectorySource::new(root),
         indexed: crate::indexed::IndexedAssets::open(root),
     };
-    let pack = photon_assets::Pack::built_in("vanilla", Box::new(source));
-    photon_assets::ResourceStack::new(vec![pack])
+    photon_assets::Pack::built_in("vanilla", Box::new(source))
+}
+
+/// The stack of the game's own assets alone.
+pub(crate) fn vanilla_stack(root: &std::path::Path) -> photon_assets::ResourceStack {
+    photon_assets::ResourceStack::new(vec![vanilla_pack(root)])
 }
 
 /// Read models and textures from the stack of resource packs, the topmost pack's file winning
