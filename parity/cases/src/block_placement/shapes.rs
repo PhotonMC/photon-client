@@ -208,3 +208,48 @@ pub fn note_neighbour_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// Potent sulfur under every kind of water and over every kind of ground, and the blocks
+/// placed under one that is already there.
+pub fn sulfur_rows() -> Vec<Value> {
+    let grounds: [Kind; 7] = [
+        ("stone", "stone", &[]),
+        ("magma", "magma_block", &[]),
+        ("lava", "lava", &[("level", "0")]),
+        ("flowing-lava", "lava", &[("level", "3")]),
+        ("water", "water", &[("level", "0")]),
+        ("air", "air", &[]),
+        ("dirt", "dirt", &[]),
+    ];
+    let tops: [Kind; 5] = [
+        ("air", "air", &[]),
+        ("source", "water", &[("level", "0")]),
+        ("flowing", "water", &[("level", "3")]),
+        ("falling", "water", &[("level", "8")]),
+        ("stone", "stone", &[]),
+    ];
+    let side = Click { hit: [1, 63, 0], face: "west", location: [1.0, 63.5, 0.5], ..ON_TOP };
+    let mut rows = Vec::new();
+    for (ground_label, ground, ground_props) in grounds {
+        for (top_label, top, top_props) in tops {
+            let world = vec![
+                block([1, 63, 0], "stone", &[]),
+                block([0, 62, 0], ground, ground_props),
+                block([0, 64, 0], top, top_props),
+            ];
+            let label = format!("sulfur-over-{ground_label}-under-{top_label}");
+            rows.push(row(&label, &["potent_sulfur"], world, &side));
+        }
+    }
+    for (state, top) in [("wet", "source"), ("dry", "air"), ("erupting", "source"), ("dormant", "source")] {
+        let water =
+            if top == "air" { block([0, 66, 0], "air", &[]) } else { block([0, 66, 0], "water", &[("level", "0")]) };
+        let world = vec![
+            block([0, 63, 0], "stone", &[]),
+            block([0, 65, 0], "potent_sulfur", &[("potent_sulfur_state", state)]),
+            water,
+        ];
+        rows.push(neighbour_row(&format!("sulfur-{state}-above"), world, &["stone", "magma_block"]));
+    }
+    rows
+}

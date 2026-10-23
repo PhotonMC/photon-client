@@ -419,6 +419,7 @@ fn furnishing_cases() -> Vec<Value> {
         case("speleothems", shapes::speleothem_rows()),
         case("note-blocks", shapes::note_rows()),
         case("note-neighbours", shapes::note_neighbour_rows()),
+        case("potent-sulfur", shapes::sulfur_rows()),
     ]
 }
 

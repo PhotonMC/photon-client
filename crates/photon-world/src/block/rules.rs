@@ -32,6 +32,7 @@ mod replace;
 mod shape;
 mod signal;
 mod speleothem;
+mod sulfur;
 mod survive;
 mod tall;
 

@@ -193,7 +193,8 @@ pub(super) fn state_for_placement(
         .chain(super::chorus::PLACEMENTS)
         .chain(super::dripleaf::PLACEMENTS)
         .chain(super::speleothem::PLACEMENTS)
-        .chain(super::note::PLACEMENTS);
+        .chain(super::note::PLACEMENTS)
+        .chain(super::sulfur::PLACEMENTS);
     match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,
