@@ -23,25 +23,42 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
 /// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
 const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
 
+/// Whether `Options.loadSelectedResourcePacks` keeps a pack: a compatible one that is not listed
+/// as incompatible, or an incompatible one the player listed. A compatible pack that is still
+/// listed is only taken off that list, and is not selected on this load.
+fn keeps(compatible: bool, listed_incompatible: bool) -> bool {
+    compatible != listed_incompatible
+}
+
 /// The game's own assets, then the packs `options.txt` selects (`resourcePacks`, the lowest
-/// first), as `Options.loadSelectedResourcePacks` keeps them. An id names a folder or zip of the
-/// `resourcepacks` folder in the game directory, with or without its `file/` prefix. One that is
-/// missing, cannot be opened, or is not compatible with this game (unless `options.txt` lists it
-/// under `incompatibleResourcePacks`) is left out.
+/// first), as `Options.loadSelectedResourcePacks` keeps them. An id names `vanilla`, which is the
+/// bottom pack already, or a folder or zip of the `resourcepacks` folder in the game directory,
+/// with or without its `file/` prefix; the built-in `programmer_art` and `high_contrast` packs are
+/// not available yet. One that is missing, cannot be opened or is dropped by [`keeps`] is left
+/// out, and a pack listed twice counts once.
 fn selected_packs(jar_assets: &Path) -> Vec<photon_assets::Pack> {
     let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
     let directory = crate::controls::game_directory().join("resourcepacks");
     let options = crate::controls::load_options();
-    let kept = options.incompatible_resource_packs();
+    let listed = options.incompatible_resource_packs();
     for id in options.resource_packs() {
+        if id == "vanilla" {
+            continue;
+        }
         let name = id.strip_prefix("file/").unwrap_or(&id);
-        match open_pack(format!("file/{name}"), &directory.join(name)) {
-            Ok(pack) if !pack.is_compatible() && !kept.contains(&id) => {
+        let full = format!("file/{name}");
+        match open_pack(full.clone(), &directory.join(name)) {
+            Ok(pack) if keeps(pack.is_compatible(), listed.contains(&id)) => {
+                if stacked.iter().all(|other| other.id() != full) {
+                    stacked.push(pack);
+                }
+            }
+            Ok(pack) if !pack.is_compatible() => {
                 log::warn!(
                     "Removed resource pack {id} from options because it is no longer compatible"
                 );
             }
-            Ok(pack) => stacked.push(pack),
+            Ok(_) => log::info!("resource pack {id} is compatible again"),
             Err(error) => log::warn!("Removed resource pack {id} from options: {error}"),
         }
     }
@@ -103,6 +120,14 @@ pub(crate) fn replace(stack: Arc<ResourceStack>) {
 mod tests {
     use photon_assets::{DirectorySource, Pack, ResourceStack};
     use photon_game::text::Lang;
+
+    #[test]
+    fn a_compatible_pack_in_the_incompatible_list_is_not_selected() {
+        assert!(super::keeps(true, false));
+        assert!(super::keeps(false, true));
+        assert!(!super::keeps(false, false));
+        assert!(!super::keeps(true, true));
+    }
 
     fn pack(name: &str, files: &[(&str, &str)]) -> (Pack, std::path::PathBuf) {
         static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);

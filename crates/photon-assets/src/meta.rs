@@ -63,19 +63,76 @@ pub fn format_range(entry: &JsonObject) -> Option<(PackFormat, PackFormat)> {
     }
 }
 
-/// The formats a pack declares in its `pack` section (`PackFormat.packCodec`): the
-/// `min_format` and `max_format` pair, the old `supported_formats` range, or the single
-/// `pack_format`. `None` when it declares none, which `PackCompatibility` calls unknown.
+/// The last pack format whose packs carry no minor version (`PackFormat.lastPreMinorVersion` for
+/// client resources).
+const LAST_PRE_MINOR: i32 = 64;
+
+/// What a `pack` section writes about its formats (`PackFormat.IntermediaryFormat`).
+struct Declared {
+    min: Option<PackFormat>,
+    max: Option<PackFormat>,
+    supported: Option<(i32, i32)>,
+    format: Option<i32>,
+}
+
+impl Declared {
+    /// The main format has to sit inside the range and not be below 15
+    /// (`validatePackFormatForRange`).
+    fn main_in(&self, low: i32, high: i32) -> bool {
+        self.format
+            .is_some_and(|f| f >= low && f <= high && f >= 15)
+    }
+
+    /// `validateNewFormat` for a pack whose `min_format` and `max_format` are both written.
+    fn new_range(&self, min: PackFormat, max: PackFormat) -> bool {
+        if min > max {
+            return false;
+        }
+        if min.major > LAST_PRE_MINOR {
+            return self.supported.is_none()
+                && self
+                    .format
+                    .is_none_or(|_| self.main_in(min.major, max.major));
+        }
+        let old = self.supported.is_some_and(|(low, high)| {
+            low == min.major && (high == max.major || high == LAST_PRE_MINOR)
+        });
+        old && self.main_in(min.major, max.major)
+    }
+
+    /// `validate` with the `pack_format` field allowed and the old field not required.
+    fn range(&self) -> Option<(PackFormat, PackFormat)> {
+        match (self.min, self.max) {
+            (Some(min), Some(max)) => self.new_range(min, max).then_some((min, max)),
+            (None, None) => self.old_range(),
+            _ => None,
+        }
+    }
+
+    /// `validateOldFormat`, or a lone `pack_format`.
+    fn old_range(&self) -> Option<(PackFormat, PackFormat)> {
+        if let Some((low, high)) = self.supported {
+            let valid = high <= LAST_PRE_MINOR && self.main_in(low, high);
+            return valid.then_some((PackFormat::of(low, 0), PackFormat::of(high, 0)));
+        }
+        let single = self.format.filter(|f| *f <= LAST_PRE_MINOR)?;
+        Some((PackFormat::of(single, 0), PackFormat::of(single, 0)))
+    }
+}
+
+/// The formats a pack declares in its `pack` section (`PackFormat.packCodec`, with the
+/// validation of `IntermediaryFormat.validate`). `None` when the section is invalid or declares
+/// none, which `PackCompatibility` calls unknown.
 fn declared_formats(section: &JsonObject) -> Option<(PackFormat, PackFormat)> {
-    if section.has("min_format") || section.has("max_format") {
-        return format_range(section);
+    Declared {
+        min: section.get_str("min_format").and_then(|v| format_of(v, 0)),
+        max: section
+            .get_str("max_format")
+            .and_then(|v| format_of(v, i32::MAX)),
+        supported: section.get_str("supported_formats").and_then(int_range),
+        format: section.get_str("pack_format").and_then(number),
     }
-    if let Some(range) = section.get_str("supported_formats") {
-        let (low, high) = int_range(range)?;
-        return Some((PackFormat::of(low, 0), PackFormat::of(high, 0)));
-    }
-    let single = PackFormat::of(number(section.get_str("pack_format")?)?, 0);
-    Some((single, single))
+    .range()
 }
 
 /// `PackCompatibility.forVersion(..) == COMPATIBLE` for the pack metadata `meta`.

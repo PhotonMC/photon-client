@@ -280,14 +280,48 @@ fn a_pack_is_compatible_when_its_formats_include_the_games() {
             .expect("a pack")
             .is_compatible()
     };
+    // Valid declarations that include format 88.
     assert!(compatible(r#""min_format":84,"max_format":88"#));
     assert!(compatible(r#""min_format":[88,0],"max_format":[88,5]"#));
+    assert!(compatible(
+        r#""min_format":84,"max_format":88,"pack_format":85"#
+    ));
+    // Valid, but for other versions.
     assert!(!compatible(r#""min_format":84,"max_format":87"#));
     assert!(!compatible(r#""min_format":89,"max_format":90"#));
     assert!(!compatible(r#""pack_format":34"#));
-    assert!(compatible(r#""pack_format":88"#));
     assert!(!compatible(
         r#""supported_formats":[15,34],"pack_format":15"#
     ));
+    // Invalid declarations are unknown.
+    assert!(!compatible(r#""pack_format":88"#));
     assert!(!compatible(r#""other":1"#));
+    assert!(!compatible(r#""min_format":84"#));
+    assert!(!compatible(r#""min_format":90,"max_format":88"#));
+    assert!(!compatible(r#""min_format":60,"max_format":88"#));
+    assert!(!compatible(
+        r#""min_format":84,"max_format":88,"supported_formats":[84,88]"#
+    ));
+    assert!(!compatible(
+        r#""min_format":84,"max_format":88,"pack_format":70"#
+    ));
+    assert!(!compatible(
+        r#""min_format":20,"max_format":88,"supported_formats":[21,64],"pack_format":20"#
+    ));
+    assert!(!compatible(
+        r#""min_format":20,"max_format":88,"supported_formats":[20,70],"pack_format":20"#
+    ));
+    assert!(!compatible(
+        r#""min_format":20,"max_format":88,"supported_formats":[20,64]"#
+    ));
+    assert!(!compatible(
+        r#""supported_formats":[15,70],"pack_format":15"#
+    ));
+    assert!(!compatible(r#""supported_formats":[15,34]"#));
+    assert!(!compatible(
+        r#""supported_formats":[15,34],"pack_format":40"#
+    ));
+    assert!(!compatible(
+        r#""supported_formats":[10,34],"pack_format":10"#
+    ));
 }
