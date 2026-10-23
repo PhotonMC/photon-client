@@ -50,6 +50,119 @@ fn growths(
         }
         // These only keep the water ticking, which the client does not run.
         BlockClass::EnderChestBlock => Rule::Known(state),
+        _ => plants(class, state, pos, direction, ctx),
+    }
+}
+
+/// The classes whose `updateShape` only schedules a tick or turns into air when the block can no
+/// longer stand. The client schedules nothing, and it never applies an air result, so for the
+/// client the state stays as it is.
+const INERT: [BlockClass; 65] = [
+    BlockClass::VegetationBlock,
+    BlockClass::FallingBlock,
+    BlockClass::BrushableBlock,
+    BlockClass::MangroveRootsBlock,
+    BlockClass::LeavesBlock,
+    BlockClass::BaseTorchBlock,
+    BlockClass::SoulFireBlock,
+    BlockClass::CreakingHeartBlock,
+    BlockClass::SugarCaneBlock,
+    BlockClass::NetherPortalBlock,
+    BlockClass::ComparatorBlock,
+    BlockClass::BarrierBlock,
+    BlockClass::CarpetBlock,
+    BlockClass::ChorusFlowerBlock,
+    BlockClass::CoralBlock,
+    BlockClass::CoralPlantBlock,
+    BlockClass::CoralFanBlock,
+    BlockClass::CoralWallFanBlock,
+    BlockClass::BubbleColumnBlock,
+    BlockClass::SporeBlossomBlock,
+    BlockClass::FrogspawnBlock,
+    BlockClass::WallTorchBlock,
+    BlockClass::RedstoneWallTorchBlock,
+    BlockClass::AmethystClusterBlock,
+    BlockClass::BannerBlock,
+    BlockClass::BaseCoralPlantTypeBlock,
+    BlockClass::BaseCoralWallFanBlock,
+    BlockClass::BasePressurePlateBlock,
+    BlockClass::BaseRailBlock,
+    BlockClass::BigDripleafStemBlock,
+    BlockClass::CactusBlock,
+    BlockClass::CakeBlock,
+    BlockClass::CandleBlock,
+    BlockClass::CandleCakeBlock,
+    BlockClass::CeilingHangingSignBlock,
+    BlockClass::ChainBlock,
+    BlockClass::CocoaBlock,
+    BlockClass::ConduitBlock,
+    BlockClass::DecoratedPotBlock,
+    BlockClass::DirtPathBlock,
+    BlockClass::DriedGhastBlock,
+    BlockClass::FarmlandBlock,
+    BlockClass::FlowerPotBlock,
+    BlockClass::HangingRootsBlock,
+    BlockClass::HeavyCoreBlock,
+    BlockClass::LadderBlock,
+    BlockClass::LanternBlock,
+    BlockClass::LightBlock,
+    BlockClass::LightningRodBlock,
+    BlockClass::MangrovePropaguleBlock,
+    BlockClass::ObserverBlock,
+    BlockClass::RepeaterBlock,
+    BlockClass::ScaffoldingBlock,
+    BlockClass::SculkSensorBlock,
+    BlockClass::SculkShriekerBlock,
+    BlockClass::SeaPickleBlock,
+    BlockClass::SeagrassBlock,
+    BlockClass::SlabBlock,
+    BlockClass::SnowLayerBlock,
+    BlockClass::StandingSignBlock,
+    BlockClass::TrapDoorBlock,
+    BlockClass::WallBannerBlock,
+    BlockClass::WallHangingSignBlock,
+    BlockClass::WallSignBlock,
+    BlockClass::WaterloggedTransparentBlock,
+];
+
+/// `HugeMushroomBlock.updateShape`: the face toward another block of the kind goes.
+fn mushroom(
+    state: BlockStateId,
+    direction: Direction,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    let (dx, dy, dz) = direction.step();
+    let neighbour = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+    if block_index(neighbour).map(|(index, _)| index) == block_index(state).map(|(index, _)| index)
+    {
+        with_property(state, direction.name(), "false").unwrap_or(state)
+    } else {
+        state
+    }
+}
+
+/// `HangingMossBlock.updateShape`: the tip is the one with no moss under it.
+fn moss(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> BlockStateId {
+    let below = ctx.state((pos.0, pos.1 - 1, pos.2));
+    let same =
+        block_index(below).map(|(index, _)| index) == block_index(state).map(|(index, _)| index);
+    with_property(state, "tip", flag(!same)).unwrap_or(state)
+}
+
+/// The climbing and tall plants.
+fn plants(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    match class {
+        BlockClass::VineBlock => Rule::Known(super::vine::update(state, pos, direction, ctx)),
+        BlockClass::HugeMushroomBlock => Rule::Known(mushroom(state, direction, pos, ctx)),
+        BlockClass::HangingMossBlock => Rule::Known(moss(state, pos, ctx)),
+        _ if INERT.contains(&class) => Rule::Known(state),
         _ => connecting(class, state, pos, direction, ctx),
     }
 }

@@ -147,7 +147,11 @@ fn neighbour_shapes(
         let Rule::Known(updated) =
             rules::update_shape(current, &read, ctx.tags, at, direction.opposite())
         else {
-            return Err(unported());
+            return Err(format!(
+                "{}: updateShape of {} is not written",
+                unported(),
+                rules::serialize_state(current)
+            ));
         };
         if updated != current && !rules::state_is_air(updated) {
             changed.push(json!({

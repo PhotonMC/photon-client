@@ -36,6 +36,7 @@ mod speleothem;
 mod sulfur;
 mod survive;
 mod tall;
+mod vine;
 
 pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,

@@ -112,6 +112,156 @@ pub fn copper_chest_rows() -> Vec<Value> {
     rows
 }
 
+/// Vines beside, over and under the block placed: the face toward it holds only against a full
+/// face, a face over air goes, and a vine above can hold a face up.
+pub fn vine_rows() -> Vec<Value> {
+    let placed = ["stone", "oak_fence", "glass", "oak_leaves", "oak_slab"];
+    let mut rows = Vec::new();
+    for (side, at, toward, across) in [
+        ("east", [1, 64, 0], "west", "north"),
+        ("west", [-1, 64, 0], "east", "south"),
+        ("north", [0, 64, -1], "south", "east"),
+        ("south", [0, 64, 1], "north", "west"),
+    ] {
+        let hold = |axis: &str| match axis {
+            "north" => [at[0], at[1], at[2] - 1],
+            "south" => [at[0], at[1], at[2] + 1],
+            "east" => [at[0] + 1, at[1], at[2]],
+            _ => [at[0] - 1, at[1], at[2]],
+        };
+        let base = || vec![block([0, 63, 0], "stone", &[]), block(hold(across), "stone", &[])];
+        let faces = [(across, "true"), (toward, "true")];
+        let mut world = base();
+        world.push(block(at, "vine", &faces));
+        rows.push(neighbour_row(&format!("shape-vine-{side}"), world, &placed));
+        let mut world = base();
+        world.push(block(at, "vine", &[(toward, "true")]));
+        rows.push(neighbour_row(&format!("shape-vine-{side}-only"), world, &placed));
+        let mut world = base();
+        world.push(block(at, "vine", &[(across, "true"), (side, "true")]));
+        rows.push(neighbour_row(&format!("shape-vine-{side}-over-air"), world, &placed));
+        let mut world = base();
+        world.push(block(at, "vine", &[(across, "true"), (side, "true")]));
+        world.push(block([at[0], at[1] + 1, at[2]], "vine", &[(side, "true")]));
+        rows.push(neighbour_row(&format!("shape-vine-{side}-held-above"), world, &placed));
+        let mut world = base();
+        world.push(block(at, "vine", &[(across, "true"), ("up", "true")]));
+        rows.push(neighbour_row(&format!("shape-vine-{side}-up-over-air"), world, &placed));
+    }
+    // The direction to a vine above is down, which leaves it as it is, unsupported face and all.
+    let under = vec![
+        block([0, 63, 0], "stone", &[]),
+        block([0, 65, -1], "stone", &[]),
+        block([0, 65, 0], "vine", &[("east", "true"), ("north", "true")]),
+    ];
+    rows.push(neighbour_row("shape-vine-over-placed", under, &placed));
+    rows
+}
+
+const INERT: [&str; 64] = [
+    "oak_sapling",
+    "dandelion",
+    "torch",
+    "wall_torch",
+    "white_carpet",
+    "moss_carpet",
+    "sugar_cane",
+    "brain_coral",
+    "brain_coral_fan",
+    "brain_coral_wall_fan",
+    "bubble_column",
+    "spore_blossom",
+    "frogspawn",
+    "comparator",
+    "barrier",
+    "soul_fire",
+    "sand",
+    "suspicious_sand",
+    "mangrove_roots",
+    "creaking_heart",
+    "chorus_flower",
+    "oak_leaves",
+    "redstone_wall_torch",
+    "amethyst_cluster",
+    "white_banner",
+    "white_wall_banner",
+    "dead_brain_coral",
+    "dead_brain_coral_wall_fan",
+    "stone_pressure_plate",
+    "rail",
+    "big_dripleaf_stem",
+    "cactus",
+    "cake",
+    "candle",
+    "white_candle_cake",
+    "oak_hanging_sign",
+    "oak_wall_hanging_sign",
+    "oak_sign",
+    "oak_wall_sign",
+    "iron_chain",
+    "cocoa",
+    "conduit",
+    "decorated_pot",
+    "dirt_path",
+    "dried_ghast",
+    "farmland",
+    "flower_pot",
+    "hanging_roots",
+    "heavy_core",
+    "ladder",
+    "light",
+    "lightning_rod",
+    "mangrove_propagule",
+    "observer",
+    "repeater",
+    "scaffolding",
+    "sculk_sensor",
+    "sculk_shrieker",
+    "sea_pickle",
+    "seagrass",
+    "oak_slab",
+    "snow",
+    "oak_trapdoor",
+    "tinted_glass",
+];
+
+/// Blocks whose `updateShape` only schedules a tick or falls to air, east of the block placed.
+pub fn inert_rows() -> Vec<Value> {
+    let placed = ["stone", "oak_fence", "glass", "dirt"];
+    INERT
+        .iter()
+        .map(|kind| {
+            let world = vec![block([0, 63, 0], "stone", &[]), block([1, 64, 0], kind, &[])];
+            neighbour_row(&format!("shape-inert-{kind}"), world, &placed)
+        })
+        .collect()
+}
+
+/// Mushroom blocks whose faces toward another of the kind go, and the moss whose tip follows
+/// the moss under it.
+pub fn mushroom_rows() -> Vec<Value> {
+    let faces =
+        [("north", "true"), ("east", "true"), ("south", "true"), ("west", "true"), ("up", "true"), ("down", "true")];
+    let mut rows: Vec<Value> = ["red_mushroom_block", "brown_mushroom_block", "mushroom_stem"]
+        .iter()
+        .map(|kind| {
+            let world = vec![block([0, 63, 0], "stone", &[]), block([1, 64, 0], kind, &faces)];
+            neighbour_row(
+                &format!("shape-mushroom-{kind}"),
+                world,
+                &["red_mushroom_block", "brown_mushroom_block", "mushroom_stem", "stone"],
+            )
+        })
+        .collect();
+    let moss = vec![
+        block([0, 63, 0], "stone", &[]),
+        block([0, 65, 0], "pale_hanging_moss", &[("tip", "true")]),
+        block([0, 66, 0], "stone", &[]),
+    ];
+    rows.push(neighbour_row("shape-moss-under", moss, &["stone", "pale_hanging_moss", "oak_fence"]));
+    rows
+}
+
 /// Grass-like blocks that turn snowy under snow.
 pub fn snowy_rows() -> Vec<Value> {
     ["grass_block", "podzol", "mycelium", "dirt"]

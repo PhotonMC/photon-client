@@ -5,14 +5,14 @@ use super::directional::in_tag;
 use super::*;
 
 /// `Direction.Plane.HORIZONTAL`, in the reference's order.
-const HORIZONTAL: [Direction; 4] = [
+pub(super) const HORIZONTAL: [Direction; 4] = [
     Direction::North,
     Direction::East,
     Direction::South,
     Direction::West,
 ];
 
-fn offset(pos: (i32, i32, i32), direction: Direction) -> (i32, i32, i32) {
+pub(super) fn offset(pos: (i32, i32, i32), direction: Direction) -> (i32, i32, i32) {
     let (dx, dy, dz) = direction.step();
     (pos.0 + dx, pos.1 + dy, pos.2 + dz)
 }
@@ -21,7 +21,7 @@ fn is_named(state: BlockStateId, name: &str) -> bool {
     block(state).is_some_and(|block| block.name == name)
 }
 
-fn same_block(state: BlockStateId, block_index_of: usize) -> bool {
+pub(super) fn same_block(state: BlockStateId, block_index_of: usize) -> bool {
     block_index(state).map(|(index, _)| index) == Some(block_index_of)
 }
 
@@ -214,7 +214,7 @@ fn face_property(direction: Direction) -> &'static str {
     direction.name()
 }
 
-fn has_face(state: BlockStateId, direction: Direction) -> bool {
+pub(super) fn has_face(state: BlockStateId, direction: Direction) -> bool {
     property(state, face_property(direction)) == Some("true")
 }
 
@@ -272,7 +272,7 @@ pub(super) fn multiface(
 }
 
 /// `VineBlock.canSupportAtFace`.
-fn vine_supports(
+pub(super) fn vine_supports(
     block_at: usize,
     pos: (i32, i32, i32),
     direction: Direction,
