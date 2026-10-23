@@ -145,8 +145,7 @@ fn other_block_entity(
         let (base, light) = placement(session, view, at);
         let drawn = vertices.len();
         vertices.extend(skull_vertices(models, textures, (&base, light), skull));
-        // `SkullBlockRenderer` draws as `entity_cutout_z_offset`, which keeps the back of a wall
-        // head off the wall it lies against.
+        // `SkullBlockRenderer` draws as `entity_cutout_z_offset`: `VIEW_OFFSET_Z_LAYERING`.
         Layering::ViewOffset.apply(&mut vertices[drawn..], view.camera);
     } else {
         bell_or_book(session, models, textures, view, at, vertices);

@@ -91,7 +91,7 @@ pub fn remote_shulkers(
         placed.attach_face = Some(entity.shulker_attach_face());
         let drawn = vertices.len();
         vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
-        // `ShulkerModel` draws as `entity_cutout_z_offset`, which pulls the lid off the base.
+        // `ShulkerModel` draws as `entity_cutout_z_offset`: `VIEW_OFFSET_Z_LAYERING`.
         Layering::ViewOffset.apply(&mut vertices[drawn..], view.camera);
     }
 }

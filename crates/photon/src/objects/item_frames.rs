@@ -233,8 +233,7 @@ pub fn item_frames(
             let model = renderer.item_frame_state(glowing, map.is_some());
             let drawn = vertices.len();
             frame_model(state, (model, &pose), (renderer, light), vertices);
-            // `submitWithZOffset`: `entity_solid_z_offset_forward` keeps the frame's back off the
-            // wall it lies against.
+            // `submitWithZOffset`: `entity_solid_z_offset_forward`, `VIEW_OFFSET_Z_LAYERING_FORWARD`.
             Layering::ViewOffsetForward.apply(&mut vertices[drawn..], view.camera);
         }
         if let Some((id, data)) = map {

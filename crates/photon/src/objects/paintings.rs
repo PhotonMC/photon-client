@@ -120,7 +120,7 @@ pub fn remote_paintings(
             vertices.extend([0, 1, 2, 0, 2, 3].map(|index| vertex(&quad[index])));
         }
     }
-    // `PaintingRenderer` draws as `entity_solid_z_offset_forward`: pushed back from the camera.
+    // `PaintingRenderer` draws as `entity_solid_z_offset_forward`: `VIEW_OFFSET_Z_LAYERING_FORWARD`.
     Layering::ViewOffsetForward.apply(&mut vertices[first..], view.camera);
 }
 
