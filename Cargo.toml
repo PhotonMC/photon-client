@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 photon-core = { path = "crates/photon-core" }
+photon-assets = { path = "crates/photon-assets" }
 photon-data = { path = "crates/photon-data" }
 photon-world = { path = "crates/photon-world" }
 photon-game = { path = "crates/photon-game" }

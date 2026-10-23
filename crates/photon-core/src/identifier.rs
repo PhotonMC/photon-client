@@ -6,10 +6,26 @@ use crate::{binary, utf8};
 pub struct ParseError;
 
 /// A Java-style resource identifier with a namespace and path.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// Identifiers sort by path first and namespace second (`Identifier.compareTo`).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Identifier {
     namespace: String,
     path: String,
+}
+
+impl Ord for Identifier {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.path
+            .cmp(&other.path)
+            .then_with(|| self.namespace.cmp(&other.namespace))
+    }
+}
+
+impl PartialOrd for Identifier {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Identifier {

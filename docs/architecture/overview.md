@@ -9,6 +9,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | Crate | Responsibility |
 | --- | --- |
 | `photon-core` | Java-semantics basics: maths (fdlibm ports, Java float rules), AABB and voxel shapes, wire/binary/NBT/JSON/UTF-8 codecs, identifiers, randomness, timer |
+| `photon-assets` | Resource packs: folder and zip sources, `pack.mcmeta` (overlays, filters) and the ordered stack the assets are read through ([ADR 0011](../adr/0011-resource-packs.md)) |
 | `photon-data` | Tables generated from the reference, plus typed lookups over them |
 | `photon-world` | The client's copy of the world: chunks, block states, light, entities, the local player, movement and particles |
 | `photon-game` | Game rules: items and components, menus and inventories, tooltips, options, sound selection, text |
@@ -23,6 +24,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `xtask` | Lint rules, git hooks, commit gate, parity entry point |
 
 ```
+core -> assets
 core -> data -> world -> game -> protocol -> net -> photon
 audio  -> game     (the channel contract only; the `device` feature stays off)
 world  -> render   (render knows no game rules)
