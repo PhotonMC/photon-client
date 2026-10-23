@@ -1,5 +1,5 @@
 //! `updateShape` of the blocks whose state follows a neighbour: the two halves of beds and
-//! doors, the campfire over hay, the attached stems and bamboo.
+//! doors, the campfire over hay, the attached stems, bamboo and bells.
 
 use super::growth::{offset, same_block};
 use super::*;
@@ -144,4 +144,62 @@ pub(super) fn bamboo_stalk(
         return with_property(state, "age", next).unwrap_or(state);
     }
     state
+}
+
+fn sturdy(state: BlockStateId, face: Direction) -> bool {
+    crate::block::state(state).is_some_and(|info| info.is_face_sturdy(face))
+}
+
+/// `BellBlock.updateShape`: a bell between two walls becomes single where the neighbour on the
+/// axis no longer holds it, and a single one becomes double when the side opposite its support
+/// gets a block that does.
+pub(super) fn bell(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> BlockStateId {
+    let attachment = property(state, "attachment");
+    let facing = facing(state).unwrap_or(Direction::North);
+    // `getConnectedDirection(state).getOpposite()`: the way the bell hangs from.
+    let connected = match attachment {
+        Some("floor") => Direction::Down,
+        Some("ceiling") => Direction::Up,
+        _ => facing,
+    };
+    if connected == direction
+        && attachment != Some("double_wall")
+        && !super::survive::bell_survives(state, pos, ctx)
+    {
+        return air();
+    }
+    if direction.axis() != facing.axis() {
+        return state;
+    }
+    bell_wall(
+        state,
+        (facing, connected),
+        direction,
+        ctx.state(offset(pos, direction)),
+    )
+}
+
+/// The wall half of `BellBlock.updateShape`, for a neighbour on the bell's facing axis.
+fn bell_wall(
+    state: BlockStateId,
+    (facing, connected): (Direction, Direction),
+    direction: Direction,
+    neighbour: BlockStateId,
+) -> BlockStateId {
+    match property(state, "attachment") {
+        Some("double_wall") if !sturdy(neighbour, direction) => {
+            with_property(state, "attachment", "single_wall")
+                .and_then(|state| with_property(state, "facing", direction.opposite().name()))
+                .unwrap_or(state)
+        }
+        Some("single_wall") if connected.opposite() == direction && sturdy(neighbour, facing) => {
+            with_property(state, "attachment", "double_wall").unwrap_or(state)
+        }
+        _ => state,
+    }
 }

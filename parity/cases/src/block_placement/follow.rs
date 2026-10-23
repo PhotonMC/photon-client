@@ -149,3 +149,27 @@ pub fn bamboo_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// Bells hung from walls, along both axes: a double bell loses a side that stops holding it,
+/// a single one gains the side opposite its support.
+pub fn bell_rows() -> Vec<Value> {
+    let placed = ["stone", "oak_fence", "oak_stairs", "glass", "oak_slab"];
+    // (axis, bell, far support, name of the way to the far support, and of the placed side)
+    let axes = [("x", [1, 64, 0], [2, 64, 0], "east", "west"), ("z", [0, 64, 1], [0, 64, 2], "south", "north")];
+    let mut rows = Vec::new();
+    for (axis, at, far, toward_far, toward_placed) in axes {
+        let walls =
+            [("double", toward_far), ("double", toward_placed), ("single", toward_far), ("single", toward_placed)];
+        for (attachment, facing) in walls {
+            let kind = format!("{attachment}_wall");
+            let world = vec![
+                block(at, "bell", &[("attachment", kind.as_str()), ("facing", facing)]),
+                block(far, "end_stone", &[]),
+                block([0, 63, 0], "stone", &[]),
+            ];
+            let label = format!("shape-bell-{axis}-{attachment}-{facing}");
+            rows.push(neighbour_row(&label, world, &placed));
+        }
+    }
+    rows
+}
