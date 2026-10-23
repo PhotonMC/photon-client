@@ -9,6 +9,7 @@ mod gliding;
 mod pistons;
 mod placing;
 mod throwing;
+mod utility;
 
 use serde_json::{Value, json};
 
@@ -151,7 +152,7 @@ pub(super) fn place(place: &Value, block: &str) -> Value {
 pub fn cases() -> Vec<Value> {
     let local = |id: &str, rows: Vec<Value>| case(id, "movement", "local_player_ticks", json!({"rows": rows}));
     vec![
-        local("movement/using", [placing::rows(), throwing::rows(), bottling::rows()].concat()),
+        local("movement/using", [placing::rows(), throwing::rows(), bottling::rows(), utility::rows()].concat()),
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),
         local("movement/gliding", gliding::rows()),

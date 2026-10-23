@@ -237,8 +237,9 @@ pub(super) fn after_instant_use(
     );
 }
 
-/// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad and frogspawn, and the spyglass (which
-/// starts using at once, with its sound). `None` for the rest.
+/// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad
+/// and frogspawn, the spyglass (which starts using at once, with its sound), buckets, bottles,
+/// thrown items and the server-answered utilities of `utility`. `None` for the rest.
 pub(super) fn class_item_use(
     ctx: &mut Context<'_>,
     hand: u8,
@@ -256,7 +257,12 @@ pub(super) fn class_item_use(
             let (item, _) = ctx.held(hand)?;
             Some(super::buckets::bucket_use(ctx, hand, item))
         }
-        ItemClass::BottleItem => Some(super::bottles::bottle_use(ctx, hand)),
+        ItemClass::EnderEyeItem
+        | ItemClass::BoatItem
+        | ItemClass::SpawnEggItem
+        | ItemClass::FishingRodItem
+        | ItemClass::EmptyMapItem
+        | ItemClass::BottleItem => Some(super::utility::use_of(ctx, hand, class)),
         ItemClass::SnowballItem
         | ItemClass::EggItem
         | ItemClass::EnderpearlItem

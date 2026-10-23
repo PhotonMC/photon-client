@@ -182,6 +182,9 @@ pub(super) fn use_on(
         C::ShearsItem => shears_use_on(ctx, aim),
         C::AxeItem => axe_use_on(ctx, hand, aim),
         C::ShovelItem => shovel_use_on(ctx, aim),
+        C::EnderEyeItem => super::utility::ender_eye_use_on(ctx, aim),
+        // `SpawnEggItem.useOn` on the client: the spawn is the server's.
+        C::SpawnEggItem => UseResult::Success { swing: true },
         _ => return None,
     })
 }
