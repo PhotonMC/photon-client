@@ -3,8 +3,10 @@
 
 mod tracking;
 
+use photon_core::identifier::Identifier;
 use photon_core::ids::BlockStateId;
 use photon_core::ids::ItemId;
+use photon_core::resources::Resources;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -123,11 +125,15 @@ impl Particles {
     /// The engine with the sprite lists the assets give each type (`root/minecraft/particles`).
     pub(crate) fn load(root: &str) -> Self {
         let mut resources = ParticleResources::new();
+        let stack = crate::resources::shared(Path::new(root));
         for particle in photon_data::particle_type::PARTICLE_TYPES {
-            let path = Path::new(root)
-                .join("minecraft/particles")
-                .join(format!("{}.json", particle.name));
-            let Some(description) = photon_core::json::read_object(&path) else {
+            let id = format!("minecraft:particles/{}.json", particle.name);
+            let Some(description) = Identifier::parse(&id)
+                .ok()
+                .and_then(|id| stack.read(&id))
+                .and_then(|bytes| String::from_utf8(bytes).ok())
+                .and_then(|text| photon_core::json::parse_object(&text))
+            else {
                 continue;
             };
             let names = description

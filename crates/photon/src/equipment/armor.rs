@@ -4,6 +4,8 @@
 
 use std::collections::HashMap;
 
+use photon_core::identifier::Identifier;
+use photon_core::resources::Resources;
 use photon_game::item::values::{Values, equippable_of};
 use photon_render::block_entity::skull::SkullKind;
 use photon_render::entity::equipment::{EquipmentInfo, parse_equipment_info};
@@ -125,15 +127,17 @@ const SIMPLE: [&str; 11] = [
 impl Armor {
     /// Every `equipment/<name>.json` under the asset root.
     pub fn load(root: &str) -> Self {
-        let folder = std::path::Path::new(root).join("minecraft/equipment");
-        let infos = std::fs::read_dir(folder)
-            .into_iter()
-            .flatten()
-            .filter_map(|entry| {
-                let path = entry.ok()?.path();
-                let name = path.file_stem()?.to_str()?.to_owned();
-                let info = parse_equipment_info(&std::fs::read_to_string(&path).ok()?)?;
-                Some((name, info))
+        let stack = crate::resources::shared(std::path::Path::new(root));
+        let infos = Resources::list(&*stack, "equipment", ".json")
+            .iter()
+            .filter(|id| id.namespace() == "minecraft")
+            .filter_map(|id| {
+                let name = id
+                    .path()
+                    .strip_prefix("equipment/")?
+                    .strip_suffix(".json")?;
+                let text = String::from_utf8(stack.read(id)?).ok()?;
+                Some((name.to_owned(), parse_equipment_info(&text)?))
             })
             .collect();
         Self {
@@ -163,17 +167,18 @@ impl Armor {
     /// The pictures of the `armor_trims` atlas: each pattern's grey picture recoloured by each
     /// material's palette (`PalettedPermutations`), named by their path under `textures/`.
     pub fn trim_images(root: &str) -> Vec<(String, photon_render::DecodedImage)> {
-        let base = std::path::Path::new(root).join("minecraft");
+        let stack = crate::resources::shared(std::path::Path::new(root));
         let load = |path: &str| {
-            photon_render::texture::png::decode_rgba(
-                &std::fs::read(base.join("textures").join(format!("{path}.png"))).ok()?,
-            )
-            .ok()
+            let id = Identifier::parse(&format!("minecraft:textures/{path}.png")).ok()?;
+            photon_render::texture::png::decode_rgba(&stack.read(&id)?).ok()
         };
-        let Some(source) = photon_core::json::read_object(&base.join("atlases/armor_trims.json"))
-            .as_ref()
-            .and_then(PalettedPermutations::parse)
-        else {
+        // The atlas sources of the topmost pack only: Java adds those of every pack.
+        let atlas = Identifier::parse("minecraft:atlases/armor_trims.json")
+            .ok()
+            .and_then(|id| stack.read(&id))
+            .and_then(|bytes| String::from_utf8(bytes).ok())
+            .and_then(|text| photon_core::json::parse_object(&text));
+        let Some(source) = atlas.as_ref().and_then(PalettedPermutations::parse) else {
             return Vec::new();
         };
         let Some(keys) = load(&source.palette_key) else {

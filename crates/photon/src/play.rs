@@ -518,11 +518,14 @@ pub(crate) fn join(
 /// A texture of the game's own, `minecraft/textures/<name>.png`, with a
 /// label for its errors.
 pub fn texture(root: &str, name: &str, label: &str) -> Result<photon_render::DecodedImage> {
-    let path = std::path::Path::new(root).join(format!("minecraft/textures/{name}.png"));
-    Ok(
-        photon_render::texture::png::decode_rgba(&std::fs::read(path)?)
-            .map_err(|error| format!("{label}: {error:?}"))?,
-    )
+    use photon_core::resources::Resources;
+    let id = photon_core::identifier::Identifier::parse(&format!("minecraft:textures/{name}.png"))
+        .map_err(|error| format!("{label}: {error:?}"))?;
+    let bytes = crate::resources::shared(std::path::Path::new(root))
+        .read(&id)
+        .ok_or_else(|| format!("{label}: {name} is missing"))?;
+    Ok(photon_render::texture::png::decode_rgba(&bytes)
+        .map_err(|error| format!("{label}: {error:?}"))?)
 }
 
 /// `ModelBakery.DESTROY_STAGES`, stacked into one image.
