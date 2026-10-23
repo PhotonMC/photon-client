@@ -5,6 +5,7 @@ use photon_core::direction::Direction;
 use photon_core::math::{Vec3, floor_f64};
 use photon_net::connection::PlaySession;
 use photon_render::block::light::light_uv;
+use photon_render::entity::layering::Layering;
 use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::joml::Pose;
 use photon_render::objects::painting::{
@@ -82,6 +83,7 @@ pub fn remote_paintings(
     let Some(back) = textures.rect(BACK) else {
         return;
     };
+    let first = vertices.len();
     for entity in world.entities().drawn() {
         if photon_data::entity_type::name(entity.type_id) != Some("minecraft:painting") {
             continue;
@@ -118,6 +120,8 @@ pub fn remote_paintings(
             vertices.extend([0, 1, 2, 0, 2, 3].map(|index| vertex(&quad[index])));
         }
     }
+    // `PaintingRenderer` draws as `entity_solid_z_offset_forward`: pushed back from the camera.
+    Layering::ViewOffsetForward.apply(&mut vertices[first..], view.camera);
 }
 
 /// A painting's vertex for the entity shader: lit by the world and by its normal.

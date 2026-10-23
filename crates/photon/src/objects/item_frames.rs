@@ -9,6 +9,7 @@ use photon_game::item::values::Values;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
+use photon_render::entity::layering::Layering;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
 use photon_render::objects::item::{entity_block_vertices, item_layer_vertices};
@@ -230,7 +231,11 @@ pub fn item_frames(
             .and_then(|id| world.map_data(id).map(|data| (id, data)));
         if let Some(pose) = poses.frame {
             let model = renderer.item_frame_state(glowing, map.is_some());
+            let drawn = vertices.len();
             frame_model(state, (model, &pose), (renderer, light), vertices);
+            // `submitWithZOffset`: `entity_solid_z_offset_forward` keeps the frame's back off the
+            // wall it lies against.
+            Layering::ViewOffsetForward.apply(&mut vertices[drawn..], view.camera);
         }
         if let Some((id, data)) = map {
             let map_light = if glowing { GLOW_MAP_LIGHT } else { light };

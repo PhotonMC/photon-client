@@ -6,6 +6,7 @@ pub mod equipment;
 pub mod hand_motion;
 pub mod held_item;
 pub mod keyframe;
+pub mod layering;
 pub mod mob_model;
 pub mod name_tag;
 pub mod player_model;

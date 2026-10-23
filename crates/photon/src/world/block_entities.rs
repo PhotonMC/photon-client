@@ -10,6 +10,7 @@ use photon_render::block_entity::bell;
 use photon_render::block_entity::chest::{ChestKind, ChestMaterial, chest_pose, eased_open};
 use photon_render::block_entity::shulker_box;
 use photon_render::block_entity::skull::{SkullKind, ground_transformation, wall_transformation};
+use photon_render::entity::layering::Layering;
 use photon_render::entity::mob_model::{mob_vertices_posed, mob_vertices_tinted};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
@@ -142,7 +143,11 @@ fn other_block_entity(
         banner_vertices(models, textures, (&base, light, phase), &banner, vertices);
     } else if let Some(skull) = world.skull_block_view(at, partial) {
         let (base, light) = placement(session, view, at);
+        let drawn = vertices.len();
         vertices.extend(skull_vertices(models, textures, (&base, light), skull));
+        // `SkullBlockRenderer` draws as `entity_cutout_z_offset`, which keeps the back of a wall
+        // head off the wall it lies against.
+        Layering::ViewOffset.apply(&mut vertices[drawn..], view.camera);
     } else {
         bell_or_book(session, models, textures, view, at, vertices);
     }

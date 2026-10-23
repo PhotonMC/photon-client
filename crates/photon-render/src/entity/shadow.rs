@@ -4,6 +4,7 @@
 
 use photon_world::ShadowPiece;
 
+use crate::entity::layering::Layering;
 use crate::scene::Vertex;
 
 /// One corner as the renderer writes it: where (the pose's translation
@@ -15,11 +16,6 @@ pub struct Corner {
     pub alpha: i32,
     pub uv: [f32; 2],
 }
-
-/// The shadow render type's `VIEW_OFFSET_Z_LAYERING` under a perspective
-/// projection: the model-view scaled by `1 - 1/4096`, which pulls the quad
-/// lying on a block's top towards the camera so it does not fight the face.
-const VIEW_OFFSET_Z_LAYERING: f32 = 1.0 - 1.0 / 4096.0;
 
 /// `ARGB.as8BitChannel`.
 fn channel(value: f32) -> i32 {
@@ -75,9 +71,9 @@ pub fn vertices(
         let tint = [1.0, 1.0, 1.0, channel(piece.alpha) as f32 / 255.0];
         let corner = |x: f32, z: f32| Vertex {
             position: [
-                (x + translation[0]) * VIEW_OFFSET_Z_LAYERING + shift[0],
-                (y + translation[1]) * VIEW_OFFSET_Z_LAYERING + shift[1],
-                (z + translation[2]) * VIEW_OFFSET_Z_LAYERING + shift[2],
+                (x + translation[0]) * Layering::ViewOffset.scale() + shift[0],
+                (y + translation[1]) * Layering::ViewOffset.scale() + shift[1],
+                (z + translation[2]) * Layering::ViewOffset.scale() + shift[2],
             ],
             uv: crate::entity::textures::uv(
                 rect,

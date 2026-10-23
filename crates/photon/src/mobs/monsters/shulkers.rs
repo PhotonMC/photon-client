@@ -3,6 +3,7 @@
 //! attached to.
 
 use photon_net::connection::PlaySession;
+use photon_render::entity::layering::Layering;
 use photon_render::entity::mob_model::ShulkerRenderState;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -88,6 +89,9 @@ pub fn remote_shulkers(
         // face it is attached to.
         placed.body_rot += 180.0;
         placed.attach_face = Some(entity.shulker_attach_face());
+        let drawn = vertices.len();
         vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
+        // `ShulkerModel` draws as `entity_cutout_z_offset`, which pulls the lid off the base.
+        Layering::ViewOffset.apply(&mut vertices[drawn..], view.camera);
     }
 }
