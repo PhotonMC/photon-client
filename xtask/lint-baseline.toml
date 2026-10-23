@@ -540,7 +540,7 @@
 "crates/photon/src/mobs/pose.rs::piglin_arm_pose" = 11
 "crates/photon/src/objects/arrows.rs::remote_arrows" = 11
 "crates/photon/src/objects/leashes.rs::leashes" = 14
-"crates/photon/src/overlays/wear.rs::entity_shadows" = 17
+"crates/photon/src/overlays/wear.rs::entity_shadows" = 11
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
 "crates/photon/src/screens.rs::run_actions" = 16
@@ -965,7 +965,7 @@
 "crates/photon/src/objects/leashes.rs::leashes" = 98
 "crates/photon/src/objects/minecarts.rs::remote_minecarts" = 87
 "crates/photon/src/overlays/light.rs::player_model" = 82
-"crates/photon/src/overlays/wear.rs::entity_shadows" = 101
+"crates/photon/src/overlays/wear.rs::entity_shadows" = 87
 "crates/photon/src/overlays/wear.rs::remote_players" = 79
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 62
