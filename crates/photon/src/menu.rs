@@ -21,6 +21,7 @@ use photon_gui::widgets::navigation::Direction;
 use photon_net::connection::PlaySession;
 
 use self::draw::draw_screen;
+use self::input::{confirm_event, failed_event, title_event};
 use crate::gui::Gui;
 use crate::play::{self, Client, Exit, JoinTask};
 
@@ -28,8 +29,11 @@ mod audio;
 mod credits;
 mod draw;
 mod icons;
+mod input;
 pub(crate) mod panorama;
 mod pings;
+mod servers;
+mod settings;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -59,6 +63,8 @@ enum Screen {
     Failed(DisconnectedScreen),
     /// The credits of the title screen (`WinScreen` without the poem), and when it last drew.
     Credits(CreditsScreen, Instant),
+    /// The options, language or accessibility screens of the title, which the host draws.
+    Settings,
 }
 
 /// `photon` or `photon menu [server [width height]]`: the title screen, the server list from its
@@ -83,9 +89,20 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
     loop {
         let mut menu = Menu::open(&mut client)?;
-        // `PHOTON_MENU_SCREEN=servers`: open on the server list, for a capture of it.
-        if env::var("PHOTON_MENU_SCREEN").as_deref() == Ok("servers") {
-            menu.screen = menu.server_list(gui_size(&client));
+        // `PHOTON_MENU_SCREEN=servers|options|language|accessibility`: open on that screen, for a
+        // capture of it.
+        match env::var("PHOTON_MENU_SCREEN").as_deref() {
+            Ok("servers") => menu.screen = menu.server_list(gui_size(&client)),
+            Ok("options") => {
+                menu.open_settings(Some(&TitleAction::Options), &client);
+            }
+            Ok("language") => {
+                menu.open_settings(Some(&TitleAction::Language), &client);
+            }
+            Ok("accessibility") => {
+                menu.open_settings(Some(&TitleAction::Accessibility), &client);
+            }
+            _ => {}
         }
         if std::mem::take(&mut scripted_join) {
             menu.connect(server, gui_size(&client));
@@ -129,8 +146,12 @@ struct Menu {
     sound: crate::sound::SoundSlot,
     /// The menu music (`Musics.MENU`).
     music: crate::music::MenuMusic,
-    /// The options as the menu opened.
+    /// The options as the menu opened, and as the options screens last saved them.
     options: photon_game::options::Options,
+    /// The options screens the title opens: the ones of a level, made as outside one.
+    host: crate::controls::Controls,
+    /// What those screens are made with.
+    assets: crate::screens::ScreenAssets,
     /// `Panorama.spin`, in degrees, and when it last advanced.
     spin: f32,
     last_spin: Instant,
@@ -161,16 +182,7 @@ impl Menu {
             .load_panorama(&photon_render::panorama::layers(&panorama::faces(
                 &root.to_string_lossy(),
             )?))?;
-        let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
-        let seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |since| since.as_nanos() as i64);
-        let splash = photon_game::splash::pick(
-            &photon_game::splash::read_splashes(root),
-            photon_game::splash::today(),
-            &user,
-            &mut photon_core::random::RandomSource::create(seed),
-        );
+        let splash = pick_splash(root);
         let game_directory = crate::controls::game_directory();
         let screen = Screen::Title(TitleScreen::new(
             gui.text_assets().0,
@@ -179,7 +191,10 @@ impl Menu {
             splash.as_deref(),
         ));
         let (sound, music) = audio::take(client, root, &options);
+        let assets = gui.screen_assets();
         Ok(Self {
+            host: crate::controls::Controls::for_title(),
+            assets,
             gui,
             sound,
             music,
@@ -251,6 +266,18 @@ impl Menu {
         }
     }
 
+    /// A join that failed: `DisconnectedScreen` with `connect.failed`.
+    fn join_failed(&mut self, reason: &Component, size: (i32, i32)) {
+        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
+        self.screen = Screen::Failed(DisconnectedScreen::titled(
+            font,
+            lang,
+            size,
+            &Component::translatable("connect.failed"),
+            reason,
+        ));
+    }
+
     fn run(&mut self, client: &mut Client) -> Result<Choice> {
         let capture = env::var("PHOTON_CAPTURE_PPM").ok();
         let mut frames = 0;
@@ -271,16 +298,7 @@ impl Menu {
             {
                 match result {
                     Ok(session) => return Ok(Choice::Play(Box::new(session))),
-                    Err(reason) => {
-                        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-                        self.screen = Screen::Failed(DisconnectedScreen::titled(
-                            font,
-                            lang,
-                            gui_size(client),
-                            &Component::translatable("connect.failed"),
-                            &reason,
-                        ));
-                    }
+                    Err(reason) => self.join_failed(&reason, size),
                 }
             }
             self.credits_ticked(size);
@@ -289,10 +307,13 @@ impl Menu {
             let mouse = self.mouse;
             let screen = &mut self.screen;
             let lang = self.gui.lang();
+            let host = &mut self.host;
             self.gui.draw_menu_screen(
                 &mut client.backend,
                 &client.surface,
-                |frame, atlas, font| draw_screen(screen, (frame, atlas, font), (lang, mouse)),
+                |frame, atlas, font| {
+                    draw_screen(screen, host, (frame, atlas, font), (lang, mouse, size));
+                },
             )?;
             // A join's screens are not what a capture waits for.
             if !matches!(self.screen, Screen::Connecting(..)) {
@@ -317,63 +338,19 @@ impl Menu {
     /// One window event for the open menu; what it chose, if anything.
     fn handle(&mut self, event: WindowEvent, client: &mut Client) -> Result<Option<Choice>> {
         let size = gui_size(client);
-        if let WindowEvent::CursorPos(x, y) = event {
-            let scale = client.surface.scale();
-            let (width, height) = client.surface.window_size();
-            self.mouse = (
-                (x * f64::from(scale.gui_scaled_width()) / f64::from(width.max(1))) as i32,
-                (y * f64::from(scale.gui_scaled_height()) / f64::from(height.max(1))) as i32,
-            );
-        }
+        self.track_mouse(&event, &client.surface);
         let mouse = self.mouse;
         let action = match &mut self.screen {
             Screen::Title(screen) => {
                 let chosen = title_event(screen, event, mouse);
+                if self.open_settings(chosen.as_ref(), client) {
+                    return Ok(None);
+                }
                 return Ok(self.title_chosen(chosen, size));
             }
-            Screen::Servers(screen) => match event {
-                WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
-                    let now = Instant::now();
-                    let double = self
-                        .last_click
-                        .is_some_and(|(at, place)| now - at < DOUBLE_CLICK && place == mouse);
-                    self.last_click = Some((now, mouse));
-                    screen.clicked(mouse, double)
-                }
-                WindowEvent::Scroll(_, notches) => {
-                    screen.scrolled((f64::from(mouse.0), f64::from(mouse.1)), notches);
-                    None
-                }
-                WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.key_pressed(false),
-                WindowEvent::Key(Key::Enter | Key::KpEnter, _, Action::Press, _) => {
-                    screen.key_pressed(true)
-                }
-                // `JoinMultiplayerScreen.keyPressed`: F5 refreshes.
-                WindowEvent::Key(Key::F5, _, Action::Press, _) => Some(ServersAction::Refresh),
-                _ => None,
-            },
-            Screen::Form(screen, _) => {
-                let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-                let result = match event {
-                    WindowEvent::Char(character) => {
-                        screen.char_typed(font, character);
-                        None
-                    }
-                    WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => screen
-                        .key_pressed(
-                            (font, lang),
-                            key,
-                            (
-                                modifiers.contains(Modifiers::Control),
-                                modifiers.contains(Modifiers::Shift),
-                            ),
-                            &mut crate::screens::WindowClipboard(&mut client.surface),
-                        ),
-                    WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
-                        screen.clicked((font, lang), mouse, modifiers.contains(Modifiers::Shift))
-                    }
-                    _ => None,
-                };
+            Screen::Servers(_) => self.servers_event(event),
+            Screen::Form(..) => {
+                let result = self.form_event(event, &mut client.surface);
                 return self.form_result(result, size);
             }
             Screen::Connecting(screen, task) => {
@@ -387,6 +364,10 @@ impl Menu {
                 return Ok(None);
             }
             Screen::Credits(..) => return Ok(self.credits_event(event, size)),
+            Screen::Settings => {
+                self.settings_event(event, client);
+                return Ok(None);
+            }
             Screen::Failed(screen) => {
                 if failed_event(screen, event, mouse) {
                     self.screen = self.server_list(size);
@@ -401,251 +382,20 @@ impl Menu {
         };
         self.servers_action(action, size)
     }
-
-    /// The pings that have answered, shown on the list's entries of their addresses.
-    fn receive_pings(&mut self) {
-        let Some(pings) = &self.pings else {
-            return;
-        };
-        let Screen::Servers(screen) = &mut self.screen else {
-            return;
-        };
-        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        let mut icons = Vec::new();
-        while let Ok((ip, pinged)) = pings.try_recv() {
-            if let Some(index) = self
-                .servers
-                .servers
-                .iter()
-                .position(|server| server.ip == ip)
-            {
-                screen.set_pinged(index, &pinged, font, lang);
-                if let Some(favicon) = &pinged.favicon {
-                    icons.push((index, favicon.clone()));
-                }
-            }
-        }
-        for (index, favicon) in icons {
-            self.offer_ping_icon(index, &favicon);
-        }
-    }
-
-    /// `deleteCallback`: Yes removes the server and saves; either answer shows the list again.
-    fn delete_answer(
-        &mut self,
-        answer: Option<ConfirmAction>,
-        index: usize,
-        size: (i32, i32),
-    ) -> Result<Option<Choice>> {
-        let Some(answer) = answer else {
-            return Ok(None);
-        };
-        if answer == ConfirmAction::Yes && index < self.servers.servers.len() {
-            self.servers.servers.remove(index);
-            self.servers.save(&self.game_directory)?;
-        }
-        self.screen = self.server_list(size);
-        Ok(None)
-    }
-
-    /// What leaving a form does (`addServerCallback`, `editServerCallback`, `directJoinCallback`):
-    /// the list is saved and shown again, or the direct address joined.
-    fn form_result(
-        &mut self,
-        result: Option<FormResult>,
-        size: (i32, i32),
-    ) -> Result<Option<Choice>> {
-        let Some(result) = result else {
-            return Ok(None);
-        };
-        let Screen::Form(form, editing) = &self.screen else {
-            return Ok(None);
-        };
-        let (kind, editing) = (form.kind(), *editing);
-        if kind == FormKind::Direct {
-            // `DirectJoinServerScreen.removed`: the address is kept for the next time.
-            let mut options = crate::controls::load_options();
-            options.last_server = form.address();
-            options.save(&crate::controls::options_path())?;
-        }
-        let FormResult::Accepted { name, ip, pack } = result else {
-            self.screen = self.server_list(size);
-            return Ok(None);
-        };
-        match kind {
-            FormKind::Add => {
-                match self.servers.unhide(&ip) {
-                    Some(server) => server.name = name,
-                    None => self.servers.add(
-                        ServerData {
-                            pack_status: pack,
-                            ..ServerData::new(&name, &ip)
-                        },
-                        false,
-                    ),
-                }
-                self.servers.save(&self.game_directory)?;
-            }
-            FormKind::Edit => {
-                if let Some(server) = editing.and_then(|index| self.servers.servers.get_mut(index))
-                {
-                    server.name = name;
-                    server.ip = ip;
-                    server.pack_status = pack;
-                }
-                self.servers.save(&self.game_directory)?;
-            }
-            FormKind::Direct => {
-                if self.servers.find(&ip).is_none() {
-                    self.servers.add(ServerData::new(&name, &ip), true);
-                    self.servers.save(&self.game_directory)?;
-                }
-                if let Some(address) = pings::resolve(&ip) {
-                    self.connect(address, size);
-                }
-                return Ok(None);
-            }
-        }
-        self.screen = self.server_list(size);
-        Ok(None)
-    }
-
-    /// A form of the server list.
-    fn form(&self, kind: FormKind, size: (i32, i32), editing: Option<usize>) -> Screen {
-        let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        let server = editing.and_then(|index| self.servers.servers.get(index));
-        let last = crate::controls::load_options().last_server;
-        let fields = match (kind, server) {
-            (FormKind::Direct, _) => ("", last.as_str(), PackStatus::Prompt),
-            (_, Some(server)) => (server.name.as_str(), server.ip.as_str(), server.pack_status),
-            _ => ("", "", PackStatus::Prompt),
-        };
-        Screen::Form(
-            ServerFormScreen::new(font, lang, kind, size, fields),
-            editing,
-        )
-    }
-
-    /// What a press on the server list does.
-    fn servers_action(
-        &mut self,
-        action: Option<ServersAction>,
-        size: (i32, i32),
-    ) -> Result<Option<Choice>> {
-        match action {
-            Some(ServersAction::Join(index)) => {
-                let Some(server) = self.servers.servers.get(index) else {
-                    return Ok(None);
-                };
-                if let Some(address) = pings::resolve(&server.ip) {
-                    self.connect(address, size);
-                }
-                return Ok(None);
-            }
-            Some(ServersAction::Add) => self.screen = self.form(FormKind::Add, size, None),
-            Some(ServersAction::Edit(index)) => {
-                self.screen = self.form(FormKind::Edit, size, Some(index));
-            }
-            Some(ServersAction::Direct) => self.screen = self.form(FormKind::Direct, size, None),
-            Some(ServersAction::Delete(index)) => {
-                let Some(server) = self.servers.servers.get(index) else {
-                    return Ok(None);
-                };
-                let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-                let question = ConfirmScreen::new(
-                    font,
-                    lang,
-                    size,
-                    &Component::translatable("selectServer.deleteQuestion"),
-                    &Component::translatable_with(
-                        "selectServer.deleteWarning",
-                        vec![Component::literal(&server.name)],
-                    ),
-                    &Component::translatable("selectServer.deleteButton"),
-                    &Component::translatable("gui.cancel"),
-                );
-                self.screen = Screen::Confirm(question, index);
-            }
-            Some(ServersAction::Swap(from, to)) => {
-                self.servers.swap(from, to);
-                if from.max(to) < self.icons_shown.len() {
-                    self.icons_shown.swap(from, to);
-                }
-                self.servers.save(&self.game_directory)?;
-            }
-            Some(ServersAction::Refresh) => self.screen = self.server_list(size),
-            Some(ServersAction::Back) => self.screen = self.title(size),
-            None => {}
-        }
-        Ok(None)
-    }
 }
 
-/// An event for the title screen's buttons: what the press chose.
-fn title_event(
-    screen: &mut TitleScreen,
-    event: WindowEvent,
-    mouse: (i32, i32),
-) -> Option<TitleAction> {
-    let buttons = screen.buttons();
-    match event {
-        WindowEvent::CursorPos(..) => {
-            buttons.mouse_input();
-            None
-        }
-        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => buttons.clicked(mouse),
-        WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
-            buttons.tab(!modifiers.contains(Modifiers::Shift));
-            None
-        }
-        WindowEvent::Key(key, _, Action::Press | Action::Repeat, _) => {
-            match key {
-                Key::Left => buttons.arrow(Direction::Left),
-                Key::Right => buttons.arrow(Direction::Right),
-                Key::Up => buttons.arrow(Direction::Up),
-                Key::Down => buttons.arrow(Direction::Down),
-                Key::Enter | Key::KpEnter | Key::Space => return buttons.pressed(),
-                _ => {}
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// An event for the failed join's screen: whether its button was pressed.
-fn failed_event(screen: &mut DisconnectedScreen, event: WindowEvent, mouse: (i32, i32)) -> bool {
-    match event {
-        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => screen.clicked(mouse),
-        WindowEvent::Key(Key::Tab, _, Action::Press, _) => {
-            screen.tab();
-            false
-        }
-        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
-            screen.pressed()
-        }
-        _ => false,
-    }
-}
-
-/// An event for the question: its answer, if one was given.
-fn confirm_event(
-    screen: &mut ConfirmScreen,
-    event: WindowEvent,
-    mouse: (i32, i32),
-) -> Option<ConfirmAction> {
-    match event {
-        WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => screen.clicked(mouse),
-        WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
-            screen.tab(!modifiers.contains(Modifiers::Shift));
-            None
-        }
-        WindowEvent::Key(Key::Enter | Key::KpEnter | Key::Space, _, Action::Press, _) => {
-            screen.pressed()
-        }
-        WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
-        _ => None,
-    }
+/// `SplashManager.getSplash`: the splash of the title screen for today.
+fn pick_splash(root: &Path) -> Option<String> {
+    let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
+    let seed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_nanos() as i64);
+    photon_game::splash::pick(
+        &photon_game::splash::read_splashes(root),
+        photon_game::splash::today(),
+        &user,
+        &mut photon_core::random::RandomSource::create(seed),
+    )
 }
 
 fn gui_size(client: &Client) -> (i32, i32) {

@@ -55,7 +55,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             (scale.gui_scaled_width(), scale.gui_scaled_height()),
-            true,
+            !self.title_host,
             &self.options,
         ));
     }
@@ -146,7 +146,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
         ));
     }
 
@@ -156,7 +156,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             &self.options,
         ));
     }
@@ -271,7 +271,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             (
                 &self.options,
                 photon_audio::output::device_choices(photon_audio::output::Output::devices()),

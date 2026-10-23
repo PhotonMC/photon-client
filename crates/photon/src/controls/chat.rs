@@ -447,15 +447,27 @@ impl Controls {
         event: glfw::WindowEvent,
         (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
     ) -> Result {
+        match self.link_answer(event, surface) {
+            Some((action, target)) => {
+                self.answer_confirm(action, &target, session, surface, assets)
+            }
+            None => Ok(()),
+        }
+    }
+
+    /// An event for the open link confirmation: the answer it gave and what it was about.
+    pub(super) fn link_answer(
+        &mut self,
+        event: glfw::WindowEvent,
+        surface: &WindowSurface,
+    ) -> Option<(LinkAction, ConfirmTarget)> {
         use glfw::{Action, Key, WindowEvent};
         if let WindowEvent::CursorPos(x, y) = event {
             self.move_gui_mouse((x, y), surface);
-            return Ok(());
+            return None;
         }
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        let Some((screen, _)) = self.link_confirm.as_mut() else {
-            return Ok(());
-        };
+        let (screen, _) = self.link_confirm.as_mut()?;
         let action = match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => screen.escape(),
             WindowEvent::Key(Key::Tab, _, Action::Press | Action::Repeat, modifiers) => {
@@ -470,12 +482,8 @@ impl Controls {
             }
             _ => None,
         };
-        let Some(action) = action else {
-            return Ok(());
-        };
-        let Some((_, target)) = self.link_confirm.take() else {
-            return Ok(());
-        };
-        self.answer_confirm(action, &target, session, surface, assets)
+        let action = action?;
+        let (_, target) = self.link_confirm.take()?;
+        Some((action, target))
     }
 }

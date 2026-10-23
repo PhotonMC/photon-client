@@ -8,7 +8,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             &self.options,
         ));
     }

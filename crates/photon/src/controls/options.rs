@@ -130,7 +130,7 @@ impl Controls {
             &assets.lang,
             size,
             self.options.fov,
-            true,
+            !self.title_host,
         ));
     }
 
@@ -173,7 +173,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             (scale.gui_scaled_width(), scale.gui_scaled_height()),
-            true,
+            !self.title_host,
             self.options.gui_scale,
             scale.calculate_scale(0, self.options.font.force_unicode),
             Self::video_values(&self.options),
@@ -237,7 +237,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             source.languages().into_iter().collect(),
             &self.options.language_code,
         ));

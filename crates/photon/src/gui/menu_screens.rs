@@ -57,15 +57,42 @@ impl Gui {
         ) {
             return;
         }
+        if Self::draw_option_screens((atlas, font, lang), controls, frame, (gui_size, mouse)) {
+            return;
+        }
+        if let Some(pause) = controls.pause.as_mut() {
+            if pause.size() != gui_size {
+                *pause = pause.resized(font, lang, gui_size);
+            }
+            pause.draw(frame, atlas, font, mouse, gui_size, Some(blurriness));
+        }
+    }
+
+    /// The options screen that is open, the topmost of those over it: whether one was drawn. In a
+    /// level the screen under blurs the game; from the title the panorama is blurred by the
+    /// backend instead.
+    pub(crate) fn draw_option_screens(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        (gui_size, mouse): ((i32, i32), (i32, i32)),
+    ) -> bool {
+        let blurriness = controls.options.menu_background_blurriness;
+        let in_level = !controls.title_host;
+        let blur = |frame: &mut photon_render::gui::GuiFrame| {
+            if in_level {
+                frame.blur_before_this_stratum(blurriness);
+            }
+        };
         macro_rules! sized {
             ($screen:expr) => {
                 if let Some(screen) = $screen.as_mut() {
-                    frame.blur_before_this_stratum(blurriness);
+                    blur(frame);
                     if screen.size() != gui_size {
                         screen.resize(gui_size);
                     }
                     screen.draw(frame, atlas, font, mouse);
-                    return;
+                    return true;
                 }
             };
         }
@@ -80,18 +107,15 @@ impl Gui {
         sized!(controls.sound_screen);
         sized!(controls.video_screen);
         if let Some(options_screen) = controls.options_screen.as_mut() {
-            frame.blur_before_this_stratum(blurriness);
+            blur(frame);
             if options_screen.size() != gui_size {
                 *options_screen =
                     options_screen.resized(font, lang, gui_size, controls.options.fov);
             }
             options_screen.draw(frame, atlas, font, mouse);
-        } else if let Some(pause) = controls.pause.as_mut() {
-            if pause.size() != gui_size {
-                *pause = pause.resized(font, lang, gui_size);
-            }
-            pause.draw(frame, atlas, font, mouse, gui_size, Some(blurriness));
+            return true;
         }
+        false
     }
 
     /// The advancements or the statistics, when one is open: whether one was drawn.

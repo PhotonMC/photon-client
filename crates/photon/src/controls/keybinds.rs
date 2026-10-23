@@ -29,7 +29,7 @@ impl Controls {
         self.key_binds_screen = Some(KeyBindsScreen::new(
             (&assets.creative.font, &assets.lang),
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             self.options.key_bindings(),
             system_key_name,
         ));

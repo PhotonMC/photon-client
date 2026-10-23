@@ -14,7 +14,7 @@ impl Controls {
             &assets.creative.font,
             &assets.lang,
             Self::gui_size(surface),
-            true,
+            !self.title_host,
             (&self.options, false),
         ));
     }
@@ -149,7 +149,9 @@ impl Controls {
             ACCESSIBILITY_HELP,
             false,
         )
-        .with_background(ConfirmBackground::Menu { in_world: true });
+        .with_background(ConfirmBackground::Menu {
+            in_world: !self.title_host,
+        });
         self.link_confirm = Some((screen, ConfirmTarget::Link(ACCESSIBILITY_HELP.to_owned())));
     }
 }

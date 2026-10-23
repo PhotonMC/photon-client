@@ -183,6 +183,8 @@ pub struct Controls {
     /// The options were saved since the session last looked (`Options.save` then
     /// `broadcastOptions`).
     pub options_saved: bool,
+    /// The title screen's host of the options screens: they are made as outside a level.
+    pub(crate) title_host: bool,
     /// `Minecraft.lastActiveTime`: the last frame the window was focused (or the option off).
     pub(super) last_active: Option<Instant>,
     /// F3+A asked for every chunk to be built again; the frame takes it.
@@ -378,6 +380,7 @@ mod test_instance_block;
 mod sign;
 
 mod font;
+mod host;
 mod skin;
 
 mod advancements;
