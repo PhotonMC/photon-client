@@ -2,58 +2,6 @@
 
 use super::*;
 
-/// The state of the block at `pos` after the neighbour in `direction` changed, as the class that
-/// declares `updateShape` decides it. A class whose rule is not written is `Unported`.
-pub(super) fn update_shape(
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    let Some(class) = state_owner(state, Method::UpdateShape) else {
-        return Rule::Known(state);
-    };
-    match class {
-        BlockClass::StairBlock => Rule::Known(stairs(state, pos, direction, ctx)),
-        BlockClass::SpeleothemBlock => {
-            Rule::Known(super::speleothem::update(state, pos, direction, ctx))
-        }
-        BlockClass::NoteBlock => Rule::Known(super::note::update(state, pos, direction, ctx)),
-        BlockClass::PotentSulfurBlock => Rule::Known(super::sulfur::valid_state(state, pos, ctx)),
-        BlockClass::SnowyBlock => Rule::Known(snowy(state, pos, direction, ctx)),
-        _ => growths(class, state, pos, direction, ctx),
-    }
-}
-
-/// The plants and chests.
-fn growths(
-    class: BlockClass,
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    match class {
-        BlockClass::ChorusPlantBlock => {
-            Rule::Known(super::chorus::plant_update(state, pos, direction, ctx))
-        }
-        BlockClass::TripWireBlock => {
-            Rule::Known(super::chorus::tripwire_update(state, pos, direction, ctx))
-        }
-        BlockClass::BigDripleafBlock => {
-            Rule::Known(super::dripleaf::big_update(state, pos, direction, ctx))
-        }
-        BlockClass::ChestBlock | BlockClass::CopperChestBlock => {
-            let (dx, dy, dz) = direction.step();
-            let neighbour = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
-            Rule::Known(super::chest::update(state, direction, neighbour, ctx))
-        }
-        // These only keep the water ticking, which the client does not run.
-        BlockClass::EnderChestBlock => Rule::Known(state),
-        _ => plants(class, state, pos, direction, ctx),
-    }
-}
-
 /// The classes whose `updateShape` only schedules a tick or turns into air when the block can no
 /// longer stand. The client schedules nothing, and it never applies an air result, so for the
 /// client the state stays as it is.
@@ -135,6 +83,126 @@ const INERT: [BlockClass; 75] = [
     BlockClass::CopperGolemStatueBlock,
 ];
 
+/// How one class reshapes to the neighbour in a direction.
+type Update = fn(BlockStateId, (i32, i32, i32), Direction, &PlaceContext<'_>) -> Rule<BlockStateId>;
+
+/// The classes whose `updateShape` is written, by the class that declares it.
+const RULES: [(BlockClass, Update); 30] = [
+    (BlockClass::StairBlock, |s, p, d, c| {
+        Rule::Known(stairs(s, p, d, c))
+    }),
+    (BlockClass::SpeleothemBlock, |s, p, d, c| {
+        Rule::Known(super::speleothem::update(s, p, d, c))
+    }),
+    (BlockClass::NoteBlock, |s, p, d, c| {
+        Rule::Known(super::note::update(s, p, d, c))
+    }),
+    (BlockClass::PotentSulfurBlock, |s, p, _, c| {
+        Rule::Known(super::sulfur::valid_state(s, p, c))
+    }),
+    (BlockClass::SnowyBlock, |s, p, d, c| {
+        Rule::Known(snowy(s, p, d, c))
+    }),
+    (BlockClass::ChorusPlantBlock, |s, p, d, c| {
+        Rule::Known(super::chorus::plant_update(s, p, d, c))
+    }),
+    (BlockClass::TripWireBlock, |s, p, d, c| {
+        Rule::Known(super::chorus::tripwire_update(s, p, d, c))
+    }),
+    (BlockClass::BigDripleafBlock, |s, p, d, c| {
+        Rule::Known(super::dripleaf::big_update(s, p, d, c))
+    }),
+    (BlockClass::ChestBlock, chest),
+    (BlockClass::CopperChestBlock, chest),
+    (BlockClass::VineBlock, |s, p, d, c| {
+        Rule::Known(super::vine::update(s, p, d, c))
+    }),
+    (BlockClass::HugeMushroomBlock, |s, p, d, c| {
+        Rule::Known(mushroom(s, d, p, c))
+    }),
+    (BlockClass::HangingMossBlock, |s, p, _, c| {
+        Rule::Known(moss(s, p, c))
+    }),
+    (BlockClass::BedBlock, |s, p, d, c| {
+        Rule::Known(super::paired::bed(s, p, d, c))
+    }),
+    (BlockClass::CampfireBlock, |s, p, d, c| {
+        Rule::Known(super::paired::campfire(s, p, d, c))
+    }),
+    (BlockClass::DoorBlock, super::paired::door),
+    (BlockClass::MultifaceBlock, |s, p, d, c| {
+        Rule::Known(super::faces::multiface(s, p, d, c))
+    }),
+    (BlockClass::MossyCarpetBlock, |s, p, _, c| {
+        Rule::Known(super::faces::carpet(s, p, c))
+    }),
+    (
+        BlockClass::BambooSaplingBlock,
+        super::paired::bamboo_sapling,
+    ),
+    (BlockClass::BambooStalkBlock, |s, p, d, c| {
+        Rule::Known(super::paired::bamboo_stalk(s, p, d, c))
+    }),
+    (BlockClass::BellBlock, |s, p, d, c| {
+        Rule::Known(super::paired::bell(s, p, d, c))
+    }),
+    (BlockClass::GrowingPlantHeadBlock, |s, p, d, c| {
+        Rule::Known(super::growing::head(s, p, d, c))
+    }),
+    (BlockClass::GrowingPlantBodyBlock, super::growing::body),
+    (BlockClass::ConcretePowderBlock, |s, p, _, c| {
+        super::placement::concrete_update(s, p, c)
+    }),
+    (BlockClass::AttachedStemBlock, |s, p, d, c| {
+        Rule::Known(super::paired::attached_stem(s, d, p, c))
+    }),
+    (BlockClass::FenceBlock, |s, p, d, c| {
+        Rule::Known(super::connect::fence_update(s, p, d, c))
+    }),
+    (BlockClass::IronBarsBlock, |s, p, d, c| {
+        Rule::Known(super::connect::bars_update(s, p, d, c))
+    }),
+    (BlockClass::WallBlock, super::connect::wall_update),
+    (BlockClass::FenceGateBlock, |s, p, d, c| {
+        Rule::Known(super::connect::gate_update(s, p, d, c))
+    }),
+    // These only keep the water ticking, which the client does not run.
+    (BlockClass::EnderChestBlock, |s, _, _, _| Rule::Known(s)),
+];
+
+fn chest(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    let (dx, dy, dz) = direction.step();
+    let neighbour = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+    Rule::Known(super::chest::update(state, direction, neighbour, ctx))
+}
+
+/// The state of the block at `pos` after the neighbour in `direction` changed, as the class that
+/// declares `updateShape` decides it: the table first, then the inert classes. A class whose rule
+/// is not written is `Unported`.
+pub(super) fn update_shape(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    let Some(class) = state_owner(state, Method::UpdateShape) else {
+        return Rule::Known(state);
+    };
+    if let Some((_, update)) = RULES.iter().find(|(listed, _)| *listed == class) {
+        return update(state, pos, direction, ctx);
+    }
+    if INERT.contains(&class) {
+        Rule::Known(state)
+    } else {
+        Rule::Unported
+    }
+}
+
 /// `HugeMushroomBlock.updateShape`: the face toward another block of the kind goes.
 fn mushroom(
     state: BlockStateId,
@@ -158,94 +226,6 @@ fn moss(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Bl
     let same =
         block_index(below).map(|(index, _)| index) == block_index(state).map(|(index, _)| index);
     with_property(state, "tip", flag(!same)).unwrap_or(state)
-}
-
-/// The climbing and tall plants.
-fn plants(
-    class: BlockClass,
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    match class {
-        BlockClass::VineBlock => Rule::Known(super::vine::update(state, pos, direction, ctx)),
-        BlockClass::HugeMushroomBlock => Rule::Known(mushroom(state, direction, pos, ctx)),
-        BlockClass::HangingMossBlock => Rule::Known(moss(state, pos, ctx)),
-        _ => followers(class, state, pos, direction, ctx),
-    }
-}
-
-/// The blocks whose state follows a neighbour, then the inert ones.
-fn followers(
-    class: BlockClass,
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    match class {
-        BlockClass::BedBlock => Rule::Known(super::paired::bed(state, pos, direction, ctx)),
-        BlockClass::CampfireBlock => {
-            Rule::Known(super::paired::campfire(state, pos, direction, ctx))
-        }
-        BlockClass::DoorBlock => super::paired::door(state, pos, direction, ctx),
-        BlockClass::MultifaceBlock => {
-            Rule::Known(super::faces::multiface(state, pos, direction, ctx))
-        }
-        BlockClass::MossyCarpetBlock => Rule::Known(super::faces::carpet(state, pos, ctx)),
-        _ => crops(class, state, pos, direction, ctx),
-    }
-}
-
-/// The bamboo, stems and powders, then the inert ones.
-fn crops(
-    class: BlockClass,
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    match class {
-        BlockClass::BambooSaplingBlock => super::paired::bamboo_sapling(state, pos, direction, ctx),
-        BlockClass::BambooStalkBlock => {
-            Rule::Known(super::paired::bamboo_stalk(state, pos, direction, ctx))
-        }
-        BlockClass::BellBlock => Rule::Known(super::paired::bell(state, pos, direction, ctx)),
-        BlockClass::GrowingPlantHeadBlock => {
-            Rule::Known(super::growing::head(state, pos, direction, ctx))
-        }
-        BlockClass::GrowingPlantBodyBlock => super::growing::body(state, pos, direction, ctx),
-        BlockClass::ConcretePowderBlock => super::placement::concrete_update(state, pos, ctx),
-        BlockClass::AttachedStemBlock => {
-            Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))
-        }
-        _ if INERT.contains(&class) => Rule::Known(state),
-        _ => connecting(class, state, pos, direction, ctx),
-    }
-}
-
-/// The classes that join their neighbours.
-fn connecting(
-    class: BlockClass,
-    state: BlockStateId,
-    pos: (i32, i32, i32),
-    direction: Direction,
-    ctx: &PlaceContext<'_>,
-) -> Rule<BlockStateId> {
-    match class {
-        BlockClass::FenceBlock => {
-            Rule::Known(super::connect::fence_update(state, pos, direction, ctx))
-        }
-        BlockClass::IronBarsBlock => {
-            Rule::Known(super::connect::bars_update(state, pos, direction, ctx))
-        }
-        BlockClass::WallBlock => super::connect::wall_update(state, pos, direction, ctx),
-        BlockClass::FenceGateBlock => {
-            Rule::Known(super::connect::gate_update(state, pos, direction, ctx))
-        }
-        _ => Rule::Unported,
-    }
 }
 
 /// `StairBlock.updateShape`: a side neighbour reshapes the corner.
