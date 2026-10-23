@@ -1431,6 +1431,7 @@ dependencies = [
  "flate2",
  "glfw",
  "log",
+ "photon-assets",
  "photon-audio",
  "photon-core",
  "photon-data",
