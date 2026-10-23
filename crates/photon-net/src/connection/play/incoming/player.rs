@@ -243,6 +243,8 @@ impl PlaySession {
             .spawn_info
             .previous_game_type
             .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
+        self.local.loaded = false;
+        self.start_waiting_for_level(LoadingReason::Other, bounds);
         Ok(())
     }
 
@@ -250,6 +252,14 @@ impl PlaySession {
         &mut self,
         (spawn_info, data_to_keep): (SpawnInfoObservation, u8),
     ) -> Result<(), ConnectionError> {
+        let reason = LoadingReason::of_respawn(
+            self.local
+                .player
+                .as_ref()
+                .is_some_and(|player| player.health() <= 0.0),
+            &spawn_info.dimension,
+            &self.level_info.dimension,
+        );
         // A new level starts dry; the server repeats its weather.
         self.level_info.rain_level = 0.0;
         // The new level has a manager of its own.
@@ -294,6 +304,7 @@ impl PlaySession {
         self.local.player = None;
         self.local.permission_level = 0;
         self.local.loaded = false;
+        self.start_waiting_for_level(reason, bounds);
         self.level_info.level_reset = true;
         self.level_info.level_swapped |= swapped;
         self.local.health_received = false;
@@ -368,6 +379,7 @@ impl PlaySession {
         }
         self.world
             .set_weather(self.level_info.rain_level, self.level_info.thunder_level);
+        self.note_loading_event(event.event_id);
         if event.event_id == GAME_EVENT_IMMEDIATE_RESPAWN_ID {
             self.local.show_death_screen = event.param == 0.0;
         }

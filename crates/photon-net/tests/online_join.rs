@@ -37,6 +37,7 @@ fn joins_a_server_that_checks_accounts() {
             break;
         }
         session.wait(Duration::from_millis(100)).expect("play");
+        session.tick_level_load().expect("load");
     }
     assert!(session.is_loaded(), "the level did not load");
 }

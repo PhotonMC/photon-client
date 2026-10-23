@@ -78,6 +78,13 @@ pub(super) struct LocalState {
     /// Swing packets sent, for scripted runs to report.
     pub(super) swings: u32,
     pub(super) loaded: bool,
+    /// The level being loaded, from a login or respawn until the player may play.
+    pub(super) load: Option<super::level_load::LevelLoadTracker>,
+    /// The vertical bounds of the level (`min_y`, `height`), for the load's height check.
+    pub(super) build_bounds: (i32, i32),
+    /// Whether the renderer says when the player's section is compiled; without one (a probe)
+    /// the section counts as compiled once its chunk has arrived.
+    pub(super) renderer_sections: bool,
     /// `Player.getCooldowns`.
     pub(super) item_cooldowns: photon_game::item::cooldowns::ItemCooldowns,
 }
@@ -261,6 +268,9 @@ impl Default for LocalState {
             teleports: 0,
             swings: 0,
             loaded: false,
+            load: None,
+            build_bounds: (0, 0),
+            renderer_sections: false,
             item_cooldowns: photon_game::item::cooldowns::ItemCooldowns::default(),
         }
     }

@@ -24,11 +24,6 @@ pub(super) trait ClientboundPacket: Send {
     fn is_bundle_delimiter(&self) -> bool {
         false
     }
-
-    /// Whether loading may be over once the packet is handled.
-    fn checks_loading(&self) -> bool {
-        true
-    }
 }
 
 /// A packet as the reader thread hands it over; the order the packets came in is kept, so an
@@ -140,15 +135,10 @@ impl ClientboundPacket for Malformed {
 impl PlaySession {
     /// A packet from the reader thread, applied to the client's state.
     pub(super) fn handle_incoming(&mut self, packet: Incoming) -> Result<(), ConnectionError> {
-        let checks_loading = packet.checks_loading();
         self.link
             .traffic
             .received_packet(packet.is_bundle_delimiter());
-        packet.handle(self)?;
-        if checks_loading {
-            self.maybe_finish_loading()?;
-        }
-        Ok(())
+        packet.handle(self)
     }
 
     /// A packet's bytes, parsed and applied: the way a test hands one over.

@@ -77,11 +77,6 @@ impl ClientboundPacket for ChunkPacketObservation {
         session.apply_chunk(&self);
         Ok(())
     }
-
-    /// A chunk never ended its packet by checking whether loading is done.
-    fn checks_loading(&self) -> bool {
-        false
-    }
 }
 
 /// `handleLightUpdatePacket`.
@@ -89,10 +84,6 @@ impl ClientboundPacket for LightUpdateObservation {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.apply_light_update(&self);
         Ok(())
-    }
-
-    fn checks_loading(&self) -> bool {
-        false
     }
 }
 

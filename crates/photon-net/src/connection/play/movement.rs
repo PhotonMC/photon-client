@@ -164,23 +164,109 @@ impl PlaySession {
         })
     }
 
-    /// The level counts as loaded once the player has a position and the
-    /// chunk under it has arrived; then the client says so and starts ticking.
-    pub(super) fn maybe_finish_loading(&mut self) -> Result<(), ConnectionError> {
-        if self.local.loaded {
-            return Ok(());
+    /// `startWaitingForNewLevel`: a login or respawn begins a load, whose screen shows `reason`.
+    pub(super) fn start_waiting_for_level(
+        &mut self,
+        reason: LoadingReason,
+        bounds: photon_world::DimensionBounds,
+    ) {
+        self.local.build_bounds = (bounds.min_y, bounds.height);
+        self.local.load = Some(LevelLoadTracker::start(Instant::now(), reason));
+    }
+
+    /// Why the level is loading, while the client has not yet told the server it has loaded
+    /// (the time `LevelLoadingScreen` is open).
+    pub fn level_loading(&self) -> Option<LoadingReason> {
+        self.local.load.as_ref().map(LevelLoadTracker::reason)
+    }
+
+    /// From now on the renderer says when the player's section is compiled
+    /// ([`Self::player_section_compiled`]); until then the section counts as compiled once its
+    /// chunk is here.
+    pub fn use_renderer_sections(&mut self) {
+        self.local.renderer_sections = true;
+    }
+
+    /// The section the load waits to see compiled, which is the camera's, once the server has
+    /// begun to send chunks (`getPlayerCompiledSectionCallback` is set).
+    pub fn wanted_player_section(&self) -> Option<(i32, i32, i32)> {
+        if !self.local.load.as_ref()?.wants_player_section() {
+            return None;
         }
-        let Some(player) = self.local.player.as_ref() else {
+        let (x, y, z) = self.camera_block()?;
+        Some((x >> 4, y >> 4, z >> 4))
+    }
+
+    /// The renderer compiled the camera's section and shows it.
+    pub fn player_section_compiled(&mut self) {
+        if let Some(load) = self.local.load.as_mut() {
+            load.player_section_compiled();
+        }
+    }
+
+    /// The block the camera is in: the player's eyes.
+    fn camera_block(&self) -> Option<(i32, i32, i32)> {
+        let player = self.local.player.as_ref()?;
+        let position = player.position();
+        let eye = position.y + f64::from(player.eye_height());
+        Some((
+            photon_core::math::floor_f64(position.x),
+            photon_core::math::floor_f64(eye),
+            photon_core::math::floor_f64(position.z),
+        ))
+    }
+
+    /// The server's "level chunks load start" event: the client's own chunks are next.
+    pub(super) fn note_loading_event(&mut self, event_id: u8) {
+        if event_id == GAME_EVENT_LEVEL_CHUNKS_LOAD_START_ID
+            && let Some(load) = self.local.load.as_mut()
+        {
+            load.loading_packets_received();
+        }
+    }
+
+    /// What the load waits for in the player (`WaitingForPlayerChunk.isReady`).
+    fn player_need(&self, camera: Option<(i32, i32, i32)>) -> PlayerNeed {
+        let (min_y, height) = self.local.build_bounds;
+        let outside = |y: i32| y < min_y || y >= min_y + height;
+        match (self.local.player.as_ref(), camera) {
+            (Some(player), Some((_, camera_y, _)))
+                if !outside(photon_core::math::floor_f64(player.position().y))
+                    && !outside(camera_y)
+                    && !player.is_spectator()
+                    && player.health() > 0.0 =>
+            {
+                PlayerNeed::Section
+            }
+            (Some(_), _) => PlayerNeed::Nothing,
+            // A respawned player has no position until the server says where.
+            (None, _) => PlayerNeed::Section,
+        }
+    }
+
+    /// `ClientPacketListener.tick`'s end: the load moves on, and once the level is ready the
+    /// client tells the server and the player starts to tick.
+    pub fn tick_level_load(&mut self) -> Result<(), ConnectionError> {
+        let now = Instant::now();
+        let camera = self.camera_block();
+        if !self.local.renderer_sections
+            && let Some((x, _, z)) = camera
+            && self.world.contains_chunk(x >> 4, z >> 4)
+        {
+            self.player_section_compiled();
+        }
+        let need = self.player_need(camera);
+        let Some(load) = self.local.load.as_mut() else {
             return Ok(());
         };
-        let position = player.position();
-        let chunk_x = photon_core::math::floor_f64(position.x).div_euclid(16);
-        let chunk_z = photon_core::math::floor_f64(position.z).div_euclid(16);
-        if !self.world.contains_chunk(chunk_x, chunk_z) {
-            return Ok(());
+        load.tick(now, need);
+        if load.is_ready(now) {
+            self.local.load = None;
+            if !self.local.loaded {
+                self.send(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, |_| Ok(()))?;
+                self.local.loaded = true;
+            }
         }
-        self.send(PLAY_SERVERBOUND_PLAYER_LOADED_PACKET_ID, |_| Ok(()))?;
-        self.local.loaded = true;
         Ok(())
     }
 

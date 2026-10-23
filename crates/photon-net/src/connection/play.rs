@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 
 use super::transport::Transport;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use photon_core::math::Vec3;
 use photon_core::wire;
@@ -40,6 +40,9 @@ mod containers;
 mod groups;
 mod incoming;
 mod last_seen;
+mod level_load;
+pub use level_load::LoadingReason;
+use level_load::{LevelLoadTracker, PlayerNeed};
 mod lifecycle;
 mod menu_sync;
 mod movement;

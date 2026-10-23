@@ -16,8 +16,8 @@ mod writer;
 pub use open::{configure_connection, open_play_connection};
 pub use photon_protocol::play::*;
 pub use play::{
-    CommandBlockSettings, CommandBlockState, GlobalBlock, JigsawBlockSettings, PlaySession,
-    StructureBlockSettings, StructureFlags, SwitchKind,
+    CommandBlockSettings, CommandBlockState, GlobalBlock, JigsawBlockSettings, LoadingReason,
+    PlaySession, StructureBlockSettings, StructureFlags, SwitchKind,
 };
 pub use record::{NoRecorder, Recorder};
 pub use session::{
