@@ -43,6 +43,11 @@ fn placement_row(row: &Value, tags: &BlockTags) -> Result<Value, String> {
         ctx.secondary_use = row["sneak"].as_bool().unwrap_or(false);
         ctx.inside = row["inside"].as_bool().unwrap_or(false);
         ctx.game_master = row["game_master"].as_bool().unwrap_or(false);
+        let raw_light = row["raw_light"]
+            .as_i64()
+            .and_then(|n| i32::try_from(n).ok());
+        let light = move |_: i32, _: i32, _: i32| raw_light.unwrap_or(0);
+        ctx.brightness = raw_light.map(|_| &light as &dyn Fn(i32, i32, i32) -> i32);
         placements.push(place(name, &ctx)?);
     }
     Ok(json!({

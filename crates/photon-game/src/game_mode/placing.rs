@@ -29,8 +29,17 @@ pub(super) fn place(ctx: &mut Context<'_>, hand: u8, item: ItemId, aim: Aim) -> 
     let face = photon_core::direction::Direction::from_3d_data_value(i32::from(face));
     let aimed = ((x, y, z), face, (location[0], location[1], location[2]));
     let tags = world.block_state_registry().tags();
+    // `getRawBrightness(pos, 0)`: the brighter of the block light and the sky light.
+    let brightness = |x: i32, y: i32, z: i32| {
+        i32::from(
+            world
+                .block_brightness(x, y, z)
+                .max(world.sky_brightness(x, y, z)),
+        )
+    };
     let mut place_ctx =
         rules::PlaceContext::new(&state_at, aimed, Some(item), ctx.player.rotation(), tags);
+    place_ctx.brightness = Some(&brightness);
     place_ctx.secondary_use = ctx.player.is_shift_key_down();
     place_ctx.inside = inside;
     place_ctx.game_master = ctx.can_use_game_master_blocks();

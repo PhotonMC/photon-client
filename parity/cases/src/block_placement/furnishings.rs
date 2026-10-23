@@ -253,3 +253,19 @@ pub fn carpet_rows() -> Vec<Value> {
     rows.push(row("carpet-under-upper", &["pale_moss_carpet"], tall, &ON_TOP));
     rows
 }
+
+/// Crops and mushrooms, which ask how bright the place is.
+pub fn light_rows() -> Vec<Value> {
+    let blocks = ["wheat", "carrots", "potatoes", "beetroots", "torchflower_crop", "brown_mushroom", "red_mushroom"];
+    let mut rows = Vec::new();
+    for ground in ["farmland", "grass_block", "dirt", "stone", "podzol", "mycelium", "netherrack", "glass", "oak_slab"]
+    {
+        for light in [0, 7, 8, 12, 13, 15] {
+            let mut row =
+                row(&format!("light-{ground}-{light}"), &blocks, vec![block([0, 63, 0], ground, &[])], &ON_TOP);
+            row["raw_light"] = json!(light);
+            rows.push(row);
+        }
+    }
+    rows
+}

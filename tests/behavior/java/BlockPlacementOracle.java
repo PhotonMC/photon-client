@@ -19,6 +19,7 @@ class BlockPlacementOracle extends BlockItemOracle {
         /** The blocks set since the last reset: position, state and flags. */
         java.util.List<Object[]> writes;
         net.minecraft.world.level.border.WorldBorder border;
+        int rawLight;
 
         ScriptedLevel() {
             super(null, null, null, null, 0, 0, null, false, 0L, 0);
@@ -77,6 +78,11 @@ class BlockPlacementOracle extends BlockItemOracle {
                 net.minecraft.world.entity.Entity except, net.minecraft.world.phys.AABB bb,
                 java.util.function.Predicate<? super net.minecraft.world.entity.Entity> selector) {
             return java.util.List.of();
+        }
+
+        @Override
+        public int getRawBrightness(net.minecraft.core.BlockPos pos, int darkening) {
+            return this.rawLight;
         }
 
         @Override
@@ -189,6 +195,7 @@ class BlockPlacementOracle extends BlockItemOracle {
             var spec = element.getAsJsonObject();
             level.states.put(position(spec.getAsJsonArray("pos")).asLong(), scriptedState(spec));
         }
+        level.rawLight = row.has("raw_light") ? row.get("raw_light").getAsInt() : 15;
         viewer.yaw = Oracle.f32(row, "yaw");
         viewer.pitch = Oracle.f32(row, "pitch");
         viewer.sneakRequested = row.has("sneak") && row.get("sneak").getAsBoolean();

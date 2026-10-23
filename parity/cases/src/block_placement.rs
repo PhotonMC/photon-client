@@ -376,13 +376,34 @@ mod stacking;
 mod supports;
 mod tall;
 
+fn case(label: &str, rows: Vec<Value>) -> Value {
+    json!({
+        "case_id": format!("block/placement-{label}"), "family": "block",
+        "operation": "placement_rules", "rows": rows,
+    })
+}
+
 pub fn cases() -> Vec<Value> {
-    let case = |label: &str, rows: Vec<Value>| {
-        json!({
-            "case_id": format!("block/placement-{label}"), "family": "block",
-            "operation": "placement_rules", "rows": rows,
-        })
-    };
+    let mut cases = world_cases();
+    cases.extend(furnishing_cases());
+    cases
+}
+
+fn furnishing_cases() -> Vec<Value> {
+    vec![
+        case("furnishings-facing", furnishings::facing_rows()),
+        case("furnishings-looking", furnishings::looking_rows()),
+        case("furnishings-signals", furnishings::signal_rows()),
+        case("campfires-conduit", furnishings::campfire_rows()),
+        case("huge-mushrooms", furnishings::huge_mushroom_rows()),
+        case("ground-blocks", furnishings::ground_rows()),
+        case("growing-blocks", furnishings::growing_rows()),
+        case("moss-carpets", furnishings::carpet_rows()),
+        case("crop-light", furnishings::light_rows()),
+    ]
+}
+
+fn world_cases() -> Vec<Value> {
     vec![
         case("plants", plant_rows()),
         case("carpets", carpet_rows()),
@@ -426,13 +447,5 @@ pub fn cases() -> Vec<Value> {
         case("scaffolding-stack", items::scaffolding_stack_rows()),
         case("water-items", items::water_item_rows()),
         case("game-master-blocks", items::game_master_rows()),
-        case("furnishings-facing", furnishings::facing_rows()),
-        case("furnishings-looking", furnishings::looking_rows()),
-        case("furnishings-signals", furnishings::signal_rows()),
-        case("campfires-conduit", furnishings::campfire_rows()),
-        case("huge-mushrooms", furnishings::huge_mushroom_rows()),
-        case("ground-blocks", furnishings::ground_rows()),
-        case("growing-blocks", furnishings::growing_rows()),
-        case("moss-carpets", furnishings::carpet_rows()),
     ]
 }

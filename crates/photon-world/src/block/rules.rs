@@ -193,6 +193,9 @@ pub struct PlaceContext<'a> {
     /// The block tags the server sent.
     pub tags: &'a super::tags::BlockTags,
     pub limits: Limits,
+    /// `getRawBrightness(pos, 0)`: the brighter of the two light layers at a position. A context
+    /// without it cannot answer the rules that read the light.
+    pub brightness: Option<&'a dyn Fn(i32, i32, i32) -> i32>,
 }
 
 impl<'a> PlaceContext<'a> {
@@ -220,6 +223,7 @@ impl<'a> PlaceContext<'a> {
             game_master: false,
             tags,
             limits: Limits::OPEN,
+            brightness: None,
         }
     }
 
@@ -494,6 +498,7 @@ mod tests {
             game_master: false,
             tags,
             limits: Limits::OPEN,
+            brightness: None,
         };
         let grass = registry::block_index("minecraft:grass_block").expect("grass");
         match state_for_placement(grass, &ctx) {
@@ -644,6 +649,7 @@ mod tests {
             game_master: false,
             tags: &tags,
             limits: Limits::OPEN,
+            brightness: None,
         };
         assert_eq!(can_be_replaced(layers("1"), &ctx), Rule::Known(true));
         assert_eq!(can_be_replaced(layers("2"), &ctx), Rule::Known(false));

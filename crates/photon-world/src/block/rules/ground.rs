@@ -56,6 +56,35 @@ fn below(pos: (i32, i32, i32)) -> (i32, i32, i32) {
     (pos.0, pos.1 - 1, pos.2)
 }
 
+/// `getRawBrightness(pos, 0)`, if the context can tell.
+fn raw_brightness(ctx: &PlaceContext<'_>, pos: (i32, i32, i32)) -> Option<i32> {
+    ctx.brightness.map(|light| light(pos.0, pos.1, pos.2))
+}
+
+/// `CropBlock.canSurvive`: light enough, over farmland or other crop soil.
+fn crop_survives(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+    let Some(light) = raw_brightness(ctx, pos) else {
+        return Rule::Unported;
+    };
+    if light < 8 {
+        return Rule::Known(false);
+    }
+    super::survive::vegetation(state, pos, ctx)
+}
+
+/// `MushroomBlock.canSurvive`: on a block that ignores the light, or dim and on a solid one.
+fn mushroom_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+    let under = below(pos);
+    if tagged(ctx, under, "minecraft:overrides_mushroom_light_requirement") {
+        return Rule::Known(true);
+    }
+    let Some(light) = raw_brightness(ctx, pos) else {
+        return Rule::Unported;
+    };
+    let solid = crate::block::state(ctx.state(under)).is_some_and(|info| info.solid_render);
+    Rule::Known(light < 13 && solid)
+}
+
 /// `canSurvive` of what grows from a neighbour: cocoa, snow, roots, moss and propagules.
 fn hanging_survives(
     class: BlockClass,
@@ -64,6 +93,11 @@ fn hanging_survives(
     ctx: &PlaceContext<'_>,
 ) -> Rule<bool> {
     let up = above(pos);
+    match class {
+        BlockClass::CropBlock => return crop_survives(state, pos, ctx),
+        BlockClass::MushroomBlock => return mushroom_survives(pos, ctx),
+        _ => {}
+    }
     Rule::Known(match class {
         BlockClass::CocoaBlock => {
             let (dx, dy, dz) = facing(state).unwrap_or(Direction::North).step();
