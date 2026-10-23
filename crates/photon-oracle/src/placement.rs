@@ -123,9 +123,6 @@ fn item_placement(
     let Some(kind) = ctx.item.and_then(rules::item_placement) else {
         return Ok(());
     };
-    if kind == rules::ItemPlacement::Plain {
-        return Ok(());
-    }
     let Rule::Known(updated) = rules::update_context(kind, ctx) else {
         return Err(unported());
     };

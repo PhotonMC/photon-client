@@ -30,6 +30,26 @@ class BlockPlacementOracle extends BlockItemOracle {
             super(null, null, null, null, 0, 0, null, false, 0L, 0);
         }
 
+        /** Sounds are not what this oracle compares. */
+        @Override
+        public void playSound(net.minecraft.world.entity.Entity except, double x, double y,
+                double z, net.minecraft.sounds.SoundEvent sound, net.minecraft.sounds.SoundSource source,
+                float volume, float pitch) {
+        }
+
+        @Override
+        public void playSeededSound(net.minecraft.world.entity.Entity except, double x, double y,
+                double z, net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent> sound,
+                net.minecraft.sounds.SoundSource source, float volume, float pitch, long seed) {
+        }
+
+        @Override
+        public void playSeededSound(net.minecraft.world.entity.Entity except,
+                net.minecraft.world.entity.Entity entity,
+                net.minecraft.core.Holder<net.minecraft.sounds.SoundEvent> sound,
+                net.minecraft.sounds.SoundSource source, float volume, float pitch, long seed) {
+        }
+
         @Override
         public net.minecraft.world.level.block.state.BlockState getBlockState(
             net.minecraft.core.BlockPos pos) {
@@ -237,8 +257,7 @@ class BlockPlacementOracle extends BlockItemOracle {
                     net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(placed));
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));
             }
-            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item
-                && item.getClass() != net.minecraft.world.item.BlockItem.class) {
+            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item) {
                 itemPlacement(level, context, stack, item, placed, described);
             }
             results.add(described);
@@ -267,6 +286,12 @@ class BlockPlacementOracle extends BlockItemOracle {
             var chosen = (net.minecraft.world.level.block.state.BlockState) method.invoke(item, used);
             if (chosen == null) {
                 return;
+            }
+            // A growing plant's head takes a random age, which no client can reproduce.
+            if (chosen.getBlock() instanceof net.minecraft.world.level.block.GrowingPlantHeadBlock
+                && chosen.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_25)) {
+                chosen = chosen.setValue(
+                    net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_25, 0);
             }
             described.addProperty("item_state",
                 net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(chosen));

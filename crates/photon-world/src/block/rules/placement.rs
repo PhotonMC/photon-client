@@ -61,6 +61,9 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
         Rule::Known(diode_facing(default, ctx))
     }),
     (BlockClass::RepeaterBlock, repeater_placement),
+    (BlockClass::TripWireHookBlock, |_, default, ctx| {
+        super::mounted::wall_torch(default, ctx)
+    }),
     (BlockClass::WallTorchBlock, |_, default, ctx| {
         super::mounted::wall_torch(default, ctx)
     }),

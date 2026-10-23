@@ -39,6 +39,7 @@ pub(super) fn survives(
         BlockClass::WallTorchBlock
         | BlockClass::RedstoneWallTorchBlock
         | BlockClass::LadderBlock
+        | BlockClass::TripWireHookBlock
         | BlockClass::BaseCoralWallFanBlock => {
             let (at, facing) = behind(state, pos);
             crate::block::state(ctx.state(at)).is_some_and(|info| info.is_face_sturdy(facing))

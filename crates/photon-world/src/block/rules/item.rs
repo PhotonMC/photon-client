@@ -96,11 +96,18 @@ pub fn placement_state(
         // `mustSurvive` is false: the scaffolding is checked by its own distance.
         ItemPlacement::Scaffolding => state_for_placement(block, ctx),
         _ => match state_for_placement(block, ctx) {
+            Rule::Known(Some(state)) if hook_pairs(state, ctx) => Rule::Unported,
             Rule::Known(Some(state)) => survives(state, ctx).map(|stands| stands.then_some(state)),
             Rule::Known(None) => Rule::Known(None),
             Rule::Unported => Rule::Unported,
         },
     }
+}
+
+/// Whether the state is a tripwire hook that pairs with another along its line.
+fn hook_pairs(state: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
+    block(state).is_some_and(|block| block.class.is(BlockClass::TripWireHookBlock))
+        && super::chorus::hook_has_receiver(state, ctx.clicked_pos(), ctx)
 }
 
 /// `ScaffoldingBlockItem.updatePlacementContext`: on scaffolding already, the click moves along
@@ -320,6 +327,14 @@ pub fn placed_by(
             flags,
         });
     }
+    // `TripWireHookBlock.setPlacedBy` with nothing to pair with sets the hook as it is.
+    if class.is(BlockClass::TripWireHookBlock) {
+        return Some(Write {
+            pos,
+            state: placed,
+            flags,
+        });
+    }
     // A small dripleaf puts its upper half down only on a server, a pitcher crop never.
     let lone = class.is(BlockClass::SmallDripleafBlock) || class.is(BlockClass::PitcherCropBlock);
     if class.is(BlockClass::DoublePlantBlock) && !lone {
@@ -482,7 +497,7 @@ mod tests {
             count.1 += usize::from(known);
         }
         assert_eq!(plain.0, 938);
-        assert!(plain.1 >= 933, "plain block items predicted: {}", plain.1);
+        assert!(plain.1 >= 934, "plain block items predicted: {}", plain.1);
         assert!(other.1 >= 115, "other block items predicted: {}", other.1);
     }
 }

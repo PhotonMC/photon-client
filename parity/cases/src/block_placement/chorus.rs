@@ -161,3 +161,38 @@ pub fn pitcher_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// A tripwire hook on every side of a wall, with a hook of its own along the line or none.
+pub fn hook_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for yaw in [0.0, 90.0, 180.0, 270.0] {
+        for (face, hit, location) in [
+            ("north", [0, 64, 0], [0.5, 64.5, 0.0]),
+            ("east", [0, 64, 0], [1.0, 64.5, 0.5]),
+            ("south", [0, 64, 0], [0.5, 64.5, 1.0]),
+            ("west", [0, 64, 0], [0.0, 64.5, 0.5]),
+            ("up", [0, 63, 0], [0.5, 64.0, 0.5]),
+        ] {
+            for wall in ["stone", "oak_slab", "glass", "oak_fence"] {
+                let world = vec![block(hit, wall, &[])];
+                let at = click(hit, face, location, yaw, 10.0);
+                rows.push(row(&format!("hook-{face}-{wall}-yaw{yaw}"), &["tripwire_hook"], world, &at));
+            }
+        }
+    }
+    // Along the line to the south of a hook that faces south, away from the stone at the north.
+    // A hook that faces back pairs with it, which the rules leave to the server and the oracle
+    // would not compare.
+    let line = |at: [i32; 3], facing: &str| block(at, "tripwire_hook", &[("facing", facing)]);
+    let stone = block([0, 64, -1], "stone", &[]);
+    let at = click([0, 64, -1], "south", [0.5, 64.5, 0.0], 0.0, 0.0);
+    for (label, world) in [
+        ("alone", vec![stone.clone()]),
+        ("back-facing-out-of-range", vec![stone.clone(), line([0, 64, 42], "north")]),
+        ("same-facing", vec![stone.clone(), line([0, 64, 3], "south")]),
+        ("blocked-by-first", vec![stone.clone(), line([0, 64, 2], "south"), line([0, 64, 5], "north")]),
+    ] {
+        rows.push(row(&format!("hook-line-{label}"), &["tripwire_hook"], world, &at));
+    }
+    rows
+}

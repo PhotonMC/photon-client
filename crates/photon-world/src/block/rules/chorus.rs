@@ -143,6 +143,25 @@ fn tripwire(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateI
     Some(state)
 }
 
+/// Whether the hook placed at `pos` finds a hook facing back along its line, within 41 blocks:
+/// `TripWireHookBlock.calculateState` then also sets that hook, plays a sound and attaches the
+/// wire, which is not reproduced. The scan stops at the first hook of any facing.
+pub(super) fn hook_has_receiver(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    let Some(facing) = property(state, "facing").and_then(Direction::from_name) else {
+        return false;
+    };
+    let (dx, dy, dz) = facing.step();
+    (1..42).find_map(|i| {
+        let there = ctx.state((pos.0 + dx * i, pos.1 + dy * i, pos.2 + dz * i));
+        is_named(there, "minecraft:tripwire_hook")
+            .then(|| property(there, "facing") == Some(facing.opposite().name()))
+    }) == Some(true)
+}
+
 /// The rules of this file, by the class that declares `getStateForPlacement`. The coral block
 /// also schedules a tick and draws from the level random when no water is near; a client runs no
 /// ticks and its random is unseeded, so neither shows.
