@@ -144,3 +144,112 @@ pub fn ground_rows() -> Vec<Value> {
     }
     rows
 }
+
+/// Blocks that grow from a neighbour: cocoa, snow, roots, moss and propagules.
+pub fn growing_rows() -> Vec<Value> {
+    let mut rows = cocoa_rows();
+    rows.extend(snow_rows());
+    rows.extend(hanging_rows());
+    rows
+}
+
+fn cocoa_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for source in ["jungle_log", "oak_log", "jungle_wood", "stone"] {
+        for (label, face, location) in [
+            ("north", "north", [0.5, 64.5, 0.0]),
+            ("east", "east", [1.0, 64.5, 0.5]),
+            ("south", "south", [0.5, 64.5, 1.0]),
+            ("west", "west", [0.0, 64.5, 0.5]),
+            ("top", "up", [0.5, 65.0, 0.5]),
+        ] {
+            for yaw in [0.0, 90.0, 180.0, 270.0] {
+                let world = vec![block([0, 64, 0], source, &[])];
+                let at = click([0, 64, 0], face, location, yaw, 10.0);
+                rows.push(row(&format!("cocoa-{source}-{label}-yaw{yaw}"), &["cocoa"], world, &at));
+            }
+        }
+    }
+    rows
+}
+
+fn snow_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for ground in [
+        "stone",
+        "oak_slab",
+        "ice",
+        "packed_ice",
+        "blue_ice",
+        "honey_block",
+        "soul_sand",
+        "powder_snow",
+        "snow_block",
+        "glass",
+    ] {
+        rows.push(row(&format!("snow-on-{ground}"), &["snow"], vec![block([0, 63, 0], ground, &[])], &ON_TOP));
+    }
+    for layers in ["1", "3", "7", "8"] {
+        let world = vec![block([0, 63, 0], "stone", &[]), block([0, 64, 0], "snow", &[("layers", layers)])];
+        for (label, at) in [
+            ("top", click([0, 64, 0], "up", [0.5, 65.0, 0.5], 0.0, 0.0)),
+            ("side", click([0, 64, 0], "north", [0.5, 64.5, 0.0], 0.0, 0.0)),
+        ] {
+            rows.push(row(&format!("snow-layers{layers}-{label}"), &["snow"], world.clone(), &at));
+        }
+        let on_snow = vec![block([0, 63, 0], "snow", &[("layers", layers)])];
+        rows.push(row(&format!("snow-over-layers{layers}"), &["snow"], on_snow, &ON_TOP));
+    }
+    rows
+}
+
+fn hanging_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let under = |hit: [i32; 3]| click(hit, "down", [hit[0] as f64 + 0.5, hit[1] as f64, hit[2] as f64 + 0.5], 0.0, 0.0);
+    for roof in ["stone", "oak_slab", "glass", "oak_leaves", "dirt", "oak_fence", "pale_hanging_moss"] {
+        let world = vec![block([0, 65, 0], roof, &[])];
+        rows.push(row(
+            &format!("hanging-under-{roof}"),
+            &["hanging_roots", "pale_hanging_moss"],
+            world,
+            &under([0, 65, 0]),
+        ));
+    }
+    for ground in ["dirt", "grass_block", "clay", "mud", "stone", "moss_block", "farmland", "sand"] {
+        rows.push(row(
+            &format!("propagule-on-{ground}"),
+            &["mangrove_propagule"],
+            vec![block([0, 63, 0], ground, &[])],
+            &ON_TOP,
+        ));
+    }
+    for (label, level) in [("source", "0"), ("flowing", "3")] {
+        let world = vec![block([0, 63, 0], "clay", &[]), block([0, 64, 0], "water", &[("level", level)])];
+        let at = click([0, 64, 0], "up", [0.5, 65.0, 0.5], 0.0, 0.0);
+        rows.push(row(&format!("propagule-in-{label}"), &["mangrove_propagule", "hanging_roots"], world, &at));
+    }
+    rows
+}
+
+/// A moss carpet on ground with blocks beside it and carpet above.
+pub fn carpet_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let sides = [("north", [0, 64, -1]), ("east", [1, 64, 0]), ("south", [0, 64, 1]), ("west", [-1, 64, 0])];
+    for (label, at) in sides {
+        for neighbour in ["stone", "oak_slab", "glass", "oak_fence"] {
+            let world = vec![block([0, 63, 0], "stone", &[]), block(at, neighbour, &[])];
+            rows.push(row(&format!("carpet-{label}-{neighbour}"), &["pale_moss_carpet"], world, &ON_TOP));
+        }
+    }
+    for ground in ["stone", "air", "water", "glass"] {
+        let world = if ground == "air" { vec![] } else { vec![block([0, 63, 0], ground, &[])] };
+        rows.push(row(&format!("carpet-on-{ground}"), &["pale_moss_carpet"], world, &ON_TOP));
+    }
+    let tall = vec![
+        block([0, 63, 0], "stone", &[]),
+        block([1, 64, 0], "stone", &[]),
+        block([0, 65, 0], "pale_moss_carpet", &[("bottom", "false"), ("east", "low")]),
+    ];
+    rows.push(row("carpet-under-upper", &["pale_moss_carpet"], tall, &ON_TOP));
+    rows
+}

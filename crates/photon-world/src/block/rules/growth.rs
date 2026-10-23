@@ -201,7 +201,7 @@ pub(super) fn kelp(
 
 /// `MultifaceBlock.canAttachTo`: the neighbour has a full face towards the block, as support or
 /// as collision.
-fn can_attach_to(toward: Direction, neighbour: BlockStateId) -> bool {
+pub(super) fn can_attach_to(toward: Direction, neighbour: BlockStateId) -> bool {
     let info = crate::block::state_or_air(neighbour);
     let face = toward.opposite();
     info.is_face_sturdy(face)

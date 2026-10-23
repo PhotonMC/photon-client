@@ -37,7 +37,7 @@ fn class_survives(
     ctx: &PlaceContext<'_>,
 ) -> Rule<bool> {
     let tried = [
-        super::ground::survives(class, pos, ctx),
+        super::ground::survives(class, state, pos, ctx),
         super::mounted::survives(class, state, pos, ctx),
     ];
     tried
