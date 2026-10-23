@@ -78,6 +78,22 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
     };
     let mut session = join(server, &Status::default(), wait, &packs::unattended())?;
     session.use_renderer_sections();
+    // No menu is there to reload the assets: the packs the join settled on go in use before the
+    // window bakes the blocks from them.
+    let root = env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+    crate::packs::serve_reload(
+        session.packs(),
+        &mut |loaded| match crate::resources::with_packs(std::path::Path::new(&root), loaded) {
+            Ok(stack) => {
+                crate::resources::replace(std::sync::Arc::new(stack));
+                true
+            }
+            Err(error) => {
+                log::warn!("resource packs: {error}");
+                false
+            }
+        },
+    );
     let client = Client::open((width, height))?;
     Play::start(client, session)?.run()?;
     Ok(())
