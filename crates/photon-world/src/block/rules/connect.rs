@@ -66,7 +66,7 @@ fn fence_connects(
     !is_exception(state, ctx) && solid || same_fence || gate
 }
 
-/// `IronBarsBlock.attachsTo`.
+/// `IronBarsBlock`'s attach rule.
 fn bars_attach(state: BlockStateId, solid: bool, ctx: &PlaceContext<'_>) -> bool {
     !is_exception(state, ctx) && solid
         || class_is(state, BlockClass::IronBarsBlock)

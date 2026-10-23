@@ -87,4 +87,5 @@ mod mining;
 pub use mining::*;
 mod outgoing;
 pub use outgoing::*;
+mod place_prediction;
 mod using;

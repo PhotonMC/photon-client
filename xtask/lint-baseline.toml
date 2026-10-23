@@ -182,7 +182,6 @@
 "crates/photon-game/src/commands/suggest.rs::entities" = 13
 "crates/photon-game/src/commands/usage.rs::usage_lines" = 12
 "crates/photon-game/src/game_mode/using.rs::GameMode::perform_use_item_on" = 13
-"crates/photon-game/src/game_mode/using.rs::GameMode::place" = 14
 "crates/photon-game/src/game_mode/using.rs::GameMode::start_use_item" = 14
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 11
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 53
@@ -614,7 +613,6 @@
 "crates/photon-game/src/commands/arguments.rs::entity" = 83
 "crates/photon-game/src/commands/arguments/argument_kind_items.rs::ArgumentKind::read_as" = 295
 "crates/photon-game/src/game_mode/outgoing.rs::Outgoing::encode_body" = 97
-"crates/photon-game/src/game_mode/using.rs::GameMode::place" = 70
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 64
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 69
 "crates/photon-game/src/input/pick.rs::pick" = 66

@@ -19,6 +19,7 @@ use photon_data::item::registry::{ITEMS, Item};
 
 mod connect;
 mod placement;
+mod replace;
 mod signal;
 mod survive;
 
@@ -138,6 +139,8 @@ pub struct PlaceContext<'a> {
     pub rotation: (f32, f32),
     /// Whether the clicked block itself is replaced (`replaceClicked`).
     pub replace_clicked: bool,
+    /// `isSecondaryUseActive`: the player sneaks.
+    pub secondary_use: bool,
     /// The block tags the server sent.
     pub tags: &'a super::tags::BlockTags,
 }
@@ -162,6 +165,7 @@ impl<'a> PlaceContext<'a> {
             horizontal_direction: Direction::from_y_rot(f64::from(rotation.0)),
             rotation,
             replace_clicked: true,
+            secondary_use: false,
             tags,
         }
     }
@@ -200,10 +204,10 @@ pub fn can_be_replaced(state: BlockStateId, ctx: &PlaceContext<'_>) -> Rule<bool
         return Rule::Known(false);
     };
     match owner(block, Method::CanBeReplaced) {
-        None => Rule::Known(block.replaceable && (ctx.item.is_none() || !ctx.holds_item_of(state))),
+        None => Rule::Known(replace::default_replaced(state, ctx)),
         Some(BlockClass::SlabBlock) => Rule::Known(slab_replaced(state, ctx)),
         Some(BlockClass::SnowLayerBlock) => Rule::Known(snow_layer_replaced(state, ctx)),
-        _ => Rule::Unported,
+        Some(class) => replace::replaced(class, state, ctx).map_or(Rule::Unported, Rule::Known),
     }
 }
 
@@ -432,6 +436,7 @@ mod tests {
             horizontal_direction: Direction::North,
             rotation: (0.0, 0.0),
             replace_clicked: false,
+            secondary_use: false,
             tags,
         };
         let grass = registry::block_index("minecraft:grass_block").expect("grass");
@@ -503,6 +508,31 @@ mod tests {
     }
 
     #[test]
+    fn sneaking_keeps_a_candle_from_taking_another() {
+        let candle = registry::block_index("minecraft:candle").expect("a candle");
+        let held = photon_game_item(candle);
+        let state_at = |_: i32, _: i32, _: i32| crate::constants::VANILLA_AIR_BLOCK_STATE_ID;
+        let tags = BlockTags::default();
+        let mut ctx = PlaceContext::new(
+            &state_at,
+            ((0, 64, 0), Direction::Up, (0.5, 65.0, 0.5)),
+            held,
+            (0.0, 0.0),
+            &tags,
+        );
+        let state = default_state(candle);
+        assert_eq!(can_be_replaced(state, &ctx), Rule::Known(true));
+        ctx.secondary_use = true;
+        assert_eq!(can_be_replaced(state, &ctx), Rule::Known(false));
+    }
+
+    /// The registry id of the item a block places.
+    fn photon_game_item(block: usize) -> Option<ItemId> {
+        let index = photon_data::item::registry::index(BLOCKS[block].item_name())?;
+        i32::try_from(index).ok().map(ItemId)
+    }
+
+    #[test]
     fn one_snow_layer_gives_way_and_more_do_not() {
         let snow = registry::block_index("minecraft:snow").expect("snow");
         let layers = |count: &str| {
@@ -519,6 +549,7 @@ mod tests {
             horizontal_direction: Direction::North,
             rotation: (0.0, 0.0),
             replace_clicked: true,
+            secondary_use: false,
             tags: &tags,
         };
         assert_eq!(can_be_replaced(layers("1"), &ctx), Rule::Known(true));

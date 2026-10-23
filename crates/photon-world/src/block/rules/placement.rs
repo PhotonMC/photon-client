@@ -39,6 +39,11 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::WallBlock, |_, default, ctx| {
         super::connect::wall_placement(default, ctx)
     }),
+    (BlockClass::CandleBlock, stacked),
+    (BlockClass::SeaPickleBlock, stacked),
+    (BlockClass::TurtleEggBlock, stacked),
+    (BlockClass::FlowerBedBlock, stacked),
+    (BlockClass::LeafLitterBlock, stacked),
     (BlockClass::LanternBlock, |_, default, ctx| {
         if super::survive::has_dynamic_neighbour(ctx.clicked_pos(), ctx) {
             return Rule::Unported;
@@ -385,4 +390,13 @@ fn repeater_placement(
         }
     }
     Rule::Known(with_property(state, "locked", "false"))
+}
+
+/// The stacking classes' placement.
+fn stacked(
+    block: usize,
+    default: BlockStateId,
+    ctx: &PlaceContext<'_>,
+) -> Rule<Option<BlockStateId>> {
+    Rule::Known(super::replace::stack_placement(block, default, ctx))
 }

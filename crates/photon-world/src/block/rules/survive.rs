@@ -35,6 +35,9 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::BellBlock
             | BlockClass::SporeBlossomBlock
             | BlockClass::CactusFlowerBlock
+            | BlockClass::CandleBlock
+            | BlockClass::LeafLitterBlock
+            | BlockClass::SeaPickleBlock
     )
 }
 
@@ -128,6 +131,20 @@ fn foot_survives(
             can_support_center(ctx, (pos.0, pos.1 + 1, pos.2), Direction::Down)
                 && !is_water(ctx.state(pos)),
         ),
+        _ => ground_survives(class, pos, ctx),
+    }
+}
+
+/// `canSurvive` of the classes that stand on the block below.
+fn ground_survives(class: BlockClass, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+    let below = (pos.0, pos.1 - 1, pos.2);
+    match class {
+        BlockClass::CandleBlock => Rule::Known(can_support_center(ctx, below, Direction::Up)),
+        BlockClass::LeafLitterBlock => Rule::Known(
+            crate::block::state(ctx.state(below))
+                .is_some_and(|info| info.is_face_sturdy(Direction::Up)),
+        ),
+        BlockClass::SeaPickleBlock => Rule::Known(sea_pickle_survives(pos, ctx)),
         _ => Rule::Unported,
     }
 }
@@ -232,4 +249,13 @@ pub(super) fn connected_direction(state: BlockStateId) -> Direction {
             .and_then(Direction::from_name)
             .unwrap_or(Direction::North),
     }
+}
+
+/// `SeaPickleBlock.canSurvive`: the block below has a collision face up or a full one.
+fn sea_pickle_survives(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+    let info = crate::block::state_or_air(ctx.state((pos.0, pos.1 - 1, pos.2)));
+    let face = crate::block::states()
+        .collision(info)
+        .face_shape(Direction::Up);
+    !face.is_empty() || info.is_face_sturdy(Direction::Up)
 }
