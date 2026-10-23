@@ -107,6 +107,27 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var init = net.minecraft.client.gui.screens.DisconnectedScreen.class.getDeclaredMethod("init");
             init.setAccessible(true);
             init.invoke(disconnected);
+            if (row.has("steps")) {
+                for (var stepElement : row.getAsJsonArray("steps")) {
+                    var step = stepElement.getAsJsonObject();
+                    try {
+                        if (step.get("do").getAsString().equals("click")) {
+                            disconnected.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                                step.get("x").getAsInt(), step.get("y").getAsInt(),
+                                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                        } else {
+                            int code = switch (step.get("key").getAsString()) {
+                                case "tab" -> 258;
+                                case "enter" -> 257;
+                                default -> throw new IllegalArgumentException(step.get("key").getAsString());
+                            };
+                            disconnected.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, 0));
+                        }
+                    } catch (NullPointerException ignored) {
+                        // The sound comes first; leaving the screen needs a live game.
+                    }
+                }
+            }
             var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
                 GuiGraphicsExtractor.class);
             background.setAccessible(true);

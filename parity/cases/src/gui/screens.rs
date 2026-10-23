@@ -264,5 +264,23 @@ pub fn disconnected_screen() -> Value {
         row("lines", "one\ntwo\nthree", SIZE, (0, 0)),
         row("hover", "Disconnected", SIZE, (213, 140)),
     ];
+    let press = |label: &str, size: (i64, i64), steps: Vec<Value>| {
+        let mut row = row(label, "Disconnected", size, (0, 0));
+        row["steps"] = json!(steps);
+        row
+    };
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let rows = [
+        rows,
+        vec![
+            press("click-button", SIZE, vec![click(213, 140)]),
+            press("click-elsewhere", SIZE, vec![click(10, 10)]),
+            press("click-small", (320, 240), vec![click(160, 140)]),
+            press("enter-nothing-focused", SIZE, vec![key("enter")]),
+            press("tab-enter", SIZE, vec![key("tab"), key("enter")]),
+            press("tab-tab-enter", SIZE, vec![key("tab"), key("tab"), key("enter")]),
+        ],
+    ]
+    .concat();
     gui("disconnected-screen", "disconnected_screen", rows)
 }
