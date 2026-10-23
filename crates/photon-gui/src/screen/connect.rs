@@ -197,7 +197,15 @@ pub fn draw_level_loading_over(
         LoadingBackground::NetherPortal(uv) => {
             frame.block_sprite_overlay(uv, (0, 0, size.0, size.1), 1.0);
         }
-        LoadingBackground::EndPortal => {}
+        // The renderer draws the portal over the screen; the reference's draw is a white fill.
+        LoadingBackground::EndPortal => {
+            if let Some(log) = &mut frame.log {
+                log.push(photon_render::gui::DrawOp::Fill {
+                    rect: (0.0, 0.0, size.0 as f32, size.1 as f32),
+                    colour: 0xFFFF_FFFF,
+                });
+            }
+        }
     }
     let text = lang.runs(
         &Component::translatable("multiplayer.downloadingTerrain"),

@@ -248,7 +248,8 @@ pub fn server_form() -> Value {
 }
 
 /// The screens of a join: connecting with each status the handshake shows,
-/// the mouse on Cancel, and loading the terrain, in several screen sizes.
+/// the mouse on Cancel, and loading the terrain, in several screen sizes and for each reason
+/// the loading screen is shown for.
 pub fn connect_screen() -> Value {
     let row = |label: &str, screen: &str, status: &str, size: (i64, i64), mouse: (i64, i64)| {
         json!({
@@ -259,6 +260,11 @@ pub fn connect_screen() -> Value {
     let connect =
         |label: &str, status: &str, size: (i64, i64), mouse: (i64, i64)| row(label, "connect", status, size, mouse);
     let loading = |label: &str, size: (i64, i64)| row(label, "loading", "connect.connecting", size, (0, 0));
+    let reason = |label: &str, reason: &str, size: (i64, i64)| {
+        let mut value = loading(label, size);
+        value["reason"] = json!(reason);
+        value
+    };
     let reconfiguring = |label: &str, size: (i64, i64), mouse: (i64, i64), ticks: i64| {
         let mut value = row(label, "reconfiguring", "connect.reconfiguring", size, mouse);
         value["ticks"] = json!(ticks);
@@ -281,6 +287,10 @@ pub fn connect_screen() -> Value {
         loading("loading", (427, 240)),
         loading("loading-small", (320, 240)),
         loading("loading-tall", (427, 480)),
+        reason("loading-other", "other", (427, 240)),
+        reason("loading-nether-portal", "nether_portal", (427, 240)),
+        reason("loading-nether-portal-small", "nether_portal", (320, 240)),
+        reason("loading-end-portal", "end_portal", (427, 240)),
     ];
     gui("connect-screen", "connect_screen", rows)
 }

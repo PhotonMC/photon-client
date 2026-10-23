@@ -383,9 +383,14 @@ class GuiTitleOracle extends GuiSettingsOracle {
             panorama.holdSpin();
             net.minecraft.client.gui.screens.Screen shown;
             if (row.get("screen").getAsString().equals("loading")) {
+                var reason = row.has("reason")
+                    ? net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.valueOf(row.get("reason").getAsString().toUpperCase())
+                    : net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.OTHER;
+                if (reason == net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.NETHER_PORTAL) {
+                    GuiHudOracle.stubPortalSprite(minecraft);
+                }
                 shown = new net.minecraft.client.gui.screens.LevelLoadingScreen(
-                    new net.minecraft.client.multiplayer.LevelLoadTracker(),
-                    net.minecraft.client.gui.screens.LevelLoadingScreen.Reason.OTHER);
+                    new net.minecraft.client.multiplayer.LevelLoadTracker(), reason);
             } else if (row.get("screen").getAsString().equals("reconfiguring")) {
                 var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND);
                 var reconfig = new net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen(
