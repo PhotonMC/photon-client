@@ -171,11 +171,16 @@ class GuiScreenOracle extends GuiOverlayOracle {
                             case "right" -> 262;
                             case "up" -> 265;
                             case "down" -> 264;
+                            case "enter" -> 257;
                             default -> throw new IllegalArgumentException(name);
                         };
                         minecraft.setLastInputType(code == 258 ? net.minecraft.client.InputType.KEYBOARD_TAB
                             : net.minecraft.client.InputType.KEYBOARD_ARROW);
-                        pause.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        try {
+                            pause.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, name.startsWith("shift+") ? 1 : 0));
+                        } catch (RuntimeException ignored) {
+                            // As for a click: the sound comes first, the action may need a live game.
+                        }
                     }
                 }
             }

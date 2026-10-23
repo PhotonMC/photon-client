@@ -1,5 +1,23 @@
 use super::*;
 
+/// A key the pause menu is pressed with.
+fn pause_key(screen: &mut photon_gui::screen::pause::PauseScreen, key: &str) -> Result<(), String> {
+    use photon_gui::widgets::navigation::Direction;
+    match key {
+        "tab" => screen.tab(true),
+        "shift+tab" => screen.tab(false),
+        "left" => screen.arrow(Direction::Left),
+        "right" => screen.arrow(Direction::Right),
+        "up" => screen.arrow(Direction::Up),
+        "down" => screen.arrow(Direction::Down),
+        "enter" => {
+            screen.pressed();
+        }
+        other => return Err(format!("unknown key {other}")),
+    }
+    Ok(())
+}
+
 pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let font = &ctx.font;
@@ -9,7 +27,6 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::widgets::navigation::Direction;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
     let blurriness = row["blurriness"].as_i64().unwrap_or(5) as i32;
@@ -33,15 +50,7 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
             };
             screen.draw(&mut thrown, atlas, font, mouse, size, Some(blurriness));
         } else {
-            match step["key"].as_str().unwrap_or_default() {
-                "tab" => screen.tab(true),
-                "shift+tab" => screen.tab(false),
-                "left" => screen.arrow(Direction::Left),
-                "right" => screen.arrow(Direction::Right),
-                "up" => screen.arrow(Direction::Up),
-                "down" => screen.arrow(Direction::Down),
-                other => return Err(format!("unknown key {other}")),
-            }
+            pause_key(&mut screen, step["key"].as_str().unwrap_or_default())?;
         }
     }
     frame.millis = row["ms"].as_u64().unwrap_or(0);

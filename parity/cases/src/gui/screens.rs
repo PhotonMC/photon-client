@@ -54,6 +54,13 @@ fn click_rows() -> Vec<Value> {
         .map(|&(name, (x, y))| pause(&format!("click-{name}"), SIZE, (x, y), vec![click(x, y)], 0))
         .collect();
     rows.push(pause("click-nothing", SIZE, (10, 10), vec![click(10, 10)], 0));
+    let focused = |label: &str, presses: usize, steps: Vec<Value>| {
+        pause(label, SIZE, (0, 0), [keys("tab", presses), steps].concat(), 0)
+    };
+    rows.push(focused("enter-nothing-focused", 0, vec![key("enter")]));
+    rows.push(focused("enter-return", 1, vec![key("enter")]));
+    rows.push(focused("enter-disconnect", 9, vec![key("enter")]));
+    rows.push(focused("enter-disconnect-twice", 9, vec![key("enter"), key("enter")]));
     rows.push(pause("click-edge", SIZE, (111, 68), vec![click(111, 68)], 0));
     rows.push(pause("click-past-edge", SIZE, (315, 68), vec![click(315, 68)], 0));
     rows
