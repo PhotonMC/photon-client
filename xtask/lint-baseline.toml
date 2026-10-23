@@ -695,7 +695,7 @@
 "crates/photon-oracle/src/command.rs::menu_named" = 130
 "crates/photon-oracle/src/command.rs::respond" = 86
 "crates/photon-oracle/src/container.rs::container_clicks_result" = 128
-"crates/photon-oracle/src/declarations.rs::block_declarations" = 149
+"crates/photon-oracle/src/declarations.rs::block_declarations" = 117
 "crates/photon-oracle/src/declarations.rs::face_occlusion" = 95
 "crates/photon-oracle/src/declarations.rs::vanilla_tags_of" = 76
 "crates/photon-oracle/src/display.rs::text_display_submit_result" = 82
