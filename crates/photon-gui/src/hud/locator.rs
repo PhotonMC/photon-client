@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use photon_core::identifier::Identifier;
 use photon_core::json::{JsonValue, parse_object};
 use photon_core::math::{mth_atan2, mth_degrees_difference_f32, mth_lerp_int, wrap_degrees_f32};
 use photon_core::resources::{FolderResources, Resources};
@@ -65,7 +66,7 @@ impl WaypointStyles {
             let stem = id.path().strip_prefix("waypoint_style/");
             let stem = stem.and_then(|name| name.strip_suffix(".json"));
             let (Some(stem), Some(object)) = (
-                stem.filter(|_| id.namespace() == "minecraft"),
+                stem,
                 resources
                     .read(&id)
                     .and_then(|bytes| String::from_utf8(bytes).ok())
@@ -80,9 +81,13 @@ impl WaypointStyles {
                 .iter()
                 .filter_map(|sprite| match sprite {
                     JsonValue::String(units) => {
-                        let name = String::from_utf16_lossy(units);
-                        let name = name.strip_prefix("minecraft:").unwrap_or(&name);
-                        Some(format!("hud/locator_bar_dot/{name}"))
+                        let sprite = Identifier::parse(&String::from_utf16_lossy(units)).ok()?;
+                        // A bare name is in the `minecraft` namespace.
+                        let prefix = match sprite.namespace() {
+                            "minecraft" => String::new(),
+                            other => format!("{other}:"),
+                        };
+                        Some(format!("{prefix}hud/locator_bar_dot/{}", sprite.path()))
                     }
                     _ => None,
                 })
@@ -95,7 +100,7 @@ impl WaypointStyles {
                 continue;
             }
             styles.insert(
-                format!("minecraft:{stem}"),
+                format!("{}:{stem}", id.namespace()),
                 WaypointStyle { near, far, sprites },
             );
         }
@@ -448,5 +453,55 @@ pub fn draw_dots(
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod style_tests {
+    use super::*;
+
+    struct Styles;
+
+    impl Resources for Styles {
+        fn read(&self, id: &Identifier) -> Option<Vec<u8>> {
+            let text = match (id.namespace(), id.path()) {
+                ("foo", "waypoint_style/s.json") => r#"{"sprites":["foo:x","y"]}"#,
+                ("minecraft", "waypoint_style/default.json") => r#"{"sprites":["default_0"]}"#,
+                _ => return None,
+            };
+            Some(text.as_bytes().to_vec())
+        }
+        fn read_stack(&self, _: &Identifier) -> Vec<Vec<u8>> {
+            Vec::new()
+        }
+        fn list(&self, _: &str, _: &str) -> Vec<Identifier> {
+            [
+                "foo:waypoint_style/s.json",
+                "minecraft:waypoint_style/default.json",
+            ]
+            .iter()
+            .filter_map(|id| Identifier::parse(id).ok())
+            .collect()
+        }
+        fn namespaces(&self) -> Vec<String> {
+            Vec::new()
+        }
+    }
+
+    #[test]
+    fn styles_of_any_namespace_name_sprites_with_their_namespace() {
+        let styles = WaypointStyles::load_from(&Styles);
+        let sprites = |id: &str| styles.get(id).map(|style| style.sprites.clone());
+        assert_eq!(
+            sprites("foo:s"),
+            Some(vec![
+                "foo:hud/locator_bar_dot/x".to_owned(),
+                "hud/locator_bar_dot/y".to_owned()
+            ])
+        );
+        assert_eq!(
+            sprites("minecraft:default"),
+            Some(vec!["hud/locator_bar_dot/default_0".to_owned()])
+        );
     }
 }

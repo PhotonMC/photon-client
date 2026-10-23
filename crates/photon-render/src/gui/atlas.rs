@@ -8,6 +8,8 @@ use crate::texture::png::DecodedImage;
 use photon_core::identifier::Identifier;
 use photon_core::resources::{FolderResources, Resources};
 
+mod sprites;
+
 /// The sprite folders the HUD and the screens draw from, under
 /// `textures/gui/sprites`.
 const SPRITE_FOLDERS: [&str; 16] = [
@@ -101,23 +103,6 @@ fn png_names(resources: &dyn Resources, folder: &str, deep: bool) -> Vec<String>
         .collect();
     names.sort();
     names.dedup();
-    names
-}
-
-/// Every PNG under a sprite folder, as sprite names (`hud/heart/full`).
-fn sprite_names(resources: &dyn Resources) -> Vec<String> {
-    let mut names = Vec::new();
-    for folder in SPRITE_FOLDERS {
-        let folder = format!("textures/gui/sprites/{folder}");
-        let found = png_names(resources, &folder, true);
-        names.extend(found.into_iter().map(|name| {
-            let below = folder
-                .strip_prefix("textures/gui/sprites/")
-                .unwrap_or(&folder);
-            format!("{below}/{name}")
-        }));
-    }
-    names.sort();
     names
 }
 
@@ -319,17 +304,17 @@ fn collect_images(
         });
         images.insert(format!("minecraft:{name}"), image.clone());
     }
-    for name in sprite_names(resources) {
+    for id in sprites::sprite_ids(resources) {
         // A sprite that cannot be decoded drops only itself.
-        let Some(image) = read_png(resources, &format!("textures/gui/sprites/{name}")) else {
+        let Some(image) = sprites::read_sprite(resources, &id) else {
             continue;
         };
         stitcher.register_sprite(SpriteEntry {
             width: image.width as i32,
             height: image.height as i32,
-            name: Identifier::parse(&format!("minecraft:{name}")).ok()?,
+            name: Identifier::parse(&id).ok()?,
         });
-        images.insert(format!("minecraft:{name}"), image);
+        images.insert(id, image);
     }
     let blurred = register_whole_textures(&mut stitcher, &mut images, resources)?;
     // The boards the sign editing screens show, one per wood, and the
@@ -488,11 +473,14 @@ impl GuiAtlas {
         }
     }
 
+    /// The sprite `name`: a bare path is in the `minecraft` namespace.
     pub(crate) fn sprite(&self, name: &str) -> [f32; 4] {
-        self.sprites
-            .get(&format!("minecraft:{name}"))
-            .copied()
-            .unwrap_or([0.0; 4])
+        let id = if name.contains(':') {
+            name.to_owned()
+        } else {
+            format!("minecraft:{name}")
+        };
+        self.sprites.get(&id).copied().unwrap_or([0.0; 4])
     }
 }
 
