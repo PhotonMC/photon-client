@@ -14,7 +14,7 @@ use photon_protocol::phase::ConnectionProtocol;
 use super::lifecycle::spawn_reader;
 use super::*;
 use crate::connection::open::configure_connection;
-use crate::server_packs::{DownloadRequest, PackFetcher, PackSink, PackSource};
+use crate::server_packs::{DownloadRequest, PackFetcher, PackSink, PackSource, PackUser};
 
 const PACK: Uuid = Uuid::new(1, 2);
 const HASH: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -22,7 +22,7 @@ const HASH: &str = "0123456789abcdef0123456789abcdef01234567";
 struct Fetch(Result<PathBuf, String>);
 
 impl PackFetcher for Fetch {
-    fn fetch(&self, _request: &DownloadRequest) -> Result<PathBuf, String> {
+    fn fetch(&self, _request: &DownloadRequest, _user: &PackUser) -> Result<PathBuf, String> {
         self.0.clone()
     }
 }

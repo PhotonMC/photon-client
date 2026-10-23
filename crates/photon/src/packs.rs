@@ -5,18 +5,32 @@
 use std::sync::OnceLock;
 
 use photon_game::servers::{PackStatus, ServerList};
-use photon_net::server_packs::PackSource;
+use photon_net::server_packs::{HttpFetcher, PackSource};
 
-/// The source of the window's connections, which asks the player.
+/// The source of the window's connections, which asks the player and downloads into the
+/// `downloads` folder of the game directory (`Minecraft.downloadedPackSource`).
 pub(crate) fn shared() -> PackSource {
     static SHARED: OnceLock<PackSource> = OnceLock::new();
-    SHARED.get_or_init(PackSource::offline).clone()
+    SHARED.get_or_init(downloading).clone()
+}
+
+fn downloading() -> PackSource {
+    match HttpFetcher::new(crate::controls::game_directory().join("downloads")) {
+        Ok(fetcher) => PackSource::new(std::sync::Arc::new(fetcher), true),
+        Err(error) => {
+            log::error!("failed to open the pack download folder: {error}");
+            PackSource::offline()
+        }
+    }
 }
 
 /// A source for a connection nobody is there to ask for (scripts and probes): packs are declined
 /// unless `PHOTON_SERVER_PACKS` says `enabled`.
 pub(crate) fn unattended() -> PackSource {
-    let source = PackSource::default();
+    let source = match HttpFetcher::new(crate::controls::game_directory().join("downloads")) {
+        Ok(fetcher) => PackSource::new(std::sync::Arc::new(fetcher), false),
+        Err(_) => PackSource::default(),
+    };
     source.set_setting(setting_from_environment().unwrap_or(PackStatus::Disabled));
     source
 }

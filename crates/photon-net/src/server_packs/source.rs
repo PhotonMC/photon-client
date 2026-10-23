@@ -19,6 +19,9 @@ use photon_protocol::play::{PackAction, PackRequest};
 
 use super::manager::{DownloadRequest, Effect, PromptStatus, ServerPackManager, parse_sha1};
 
+/// Packs to fetch, and for whom.
+type DownloadBatch = (Vec<DownloadRequest>, PackUser);
+
 type SendStatus = Arc<dyn Fn(Uuid, PackAction) + Send + Sync>;
 
 /// Where the statuses of the packs go: the connection the server is on.
@@ -48,14 +51,22 @@ impl PackSink {
 /// Fetches a pack into the cache and names the file it is in. A failure is the reason, for the
 /// log; the server is only told that the download failed.
 pub trait PackFetcher: Send + Sync {
-    fn fetch(&self, request: &DownloadRequest) -> Result<PathBuf, String>;
+    fn fetch(&self, request: &DownloadRequest, user: &PackUser) -> Result<PathBuf, String>;
+}
+
+/// Who the client is, for the servers the packs are fetched from (`X-Minecraft-Username` and
+/// `X-Minecraft-UUID`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackUser {
+    pub name: String,
+    pub id: Uuid,
 }
 
 /// A fetcher for a client that cannot download: every pack fails.
 struct NoFetcher;
 
 impl PackFetcher for NoFetcher {
-    fn fetch(&self, _request: &DownloadRequest) -> Result<PathBuf, String> {
+    fn fetch(&self, _request: &DownloadRequest, _user: &PackUser) -> Result<PathBuf, String> {
         Err("this client cannot download packs".to_owned())
     }
 }
@@ -92,11 +103,14 @@ struct Inner {
     disconnect: Option<Component>,
     fetcher: Arc<dyn PackFetcher>,
     remember: Option<Arc<dyn Fn(PackStatus) + Send + Sync>>,
-    downloads: Option<Sender<Vec<DownloadRequest>>>,
+    user: PackUser,
+    downloads: Option<Sender<DownloadBatch>>,
 }
 
 struct Shared {
     inner: Mutex<Inner>,
+    /// Held while statuses are sent.
+    sending: Mutex<()>,
 }
 
 /// `DownloadedPackSource`, shared.
@@ -129,6 +143,7 @@ impl PackSource {
     pub fn new(fetcher: Arc<dyn PackFetcher>, attended: bool) -> Self {
         Self {
             shared: Arc::new(Shared {
+                sending: Mutex::new(()),
                 inner: Mutex::new(Inner {
                     manager: ServerPackManager::new(PromptStatus::Pending),
                     sink: None,
@@ -140,6 +155,10 @@ impl PackSource {
                     disconnect: None,
                     fetcher,
                     remember: None,
+                    user: PackUser {
+                        name: "Player".to_owned(),
+                        id: Uuid::new(0, 1),
+                    },
                     downloads: None,
                 }),
             }),
@@ -153,18 +172,32 @@ impl PackSource {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Carry out what the machine decided, then send the statuses outside the lock.
+    /// Carry out what the machine decided: the statuses are sent first and in the order the
+    /// machine gave them, outside the lock the rest of the client waits on, and only then do
+    /// the downloads start (so that a pack is never reported as downloaded before accepted).
     fn settle(&self, mut inner: MutexGuard<'_, Inner>) {
         let mut statuses = Vec::new();
+        let mut batches = Vec::new();
         for effect in inner.manager.take_effects() {
             match effect {
                 Effect::Update(id, update) => statuses.push((id, update.action())),
                 Effect::Final(id, result) => statuses.push((id, result.action())),
-                Effect::Download(requests) => self.start_downloads(&mut inner, requests),
+                Effect::Download(requests) => batches.push((requests, inner.user.clone())),
                 Effect::Reload => inner.reload = true,
             }
         }
         let sink = inner.sink.clone();
+        let downloads = if batches.is_empty() {
+            None
+        } else {
+            Some(inner.download_queue(&self.shared))
+        };
+        // Whoever settles next waits for this to be sent, which keeps the statuses in order.
+        let sending = self
+            .shared
+            .sending
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         drop(inner);
         for (id, action) in statuses {
             log::debug!("pack {} changed status to {action:?}", id.to_string_java());
@@ -172,24 +205,12 @@ impl PackSource {
                 (sink.send)(id, action);
             }
         }
-    }
-
-    fn start_downloads(&self, inner: &mut Inner, requests: Vec<DownloadRequest>) {
-        if inner.downloads.is_none() {
-            let (send, receive) = mpsc::channel();
-            let source = Arc::downgrade(&self.shared);
-            let fetcher = Arc::clone(&inner.fetcher);
-            let spawned = std::thread::Builder::new()
-                .name("Download-Queue".to_owned())
-                .spawn(move || download_until_closed(&receive, &source, fetcher.as_ref()));
-            if spawned.is_err() {
-                log::error!("no thread to download packs on");
+        for batch in batches {
+            if let Some(downloads) = &downloads {
+                let _ = downloads.send(batch);
             }
-            inner.downloads = Some(send);
         }
-        if let Some(downloads) = &inner.downloads {
-            let _ = downloads.send(requests);
-        }
+        drop(sending);
     }
 
     /// A source that asks the player but cannot download, until a fetcher is given.
@@ -205,6 +226,11 @@ impl PackSource {
     /// The setting of the server the next connection goes to (`ServerData.getResourcePackStatus`).
     pub fn set_setting(&self, setting: PackStatus) {
         self.lock().setting = setting;
+    }
+
+    /// Who the client is to the servers it fetches packs from.
+    pub fn set_user(&self, user: PackUser) {
+        self.lock().user = user;
     }
 
     /// `configureForServerControl`: a connection starts, with the server's setting. A pack that
@@ -381,6 +407,24 @@ impl PackSource {
 }
 
 impl Inner {
+    /// The way to the download thread, which is started the first time.
+    fn download_queue(&mut self, shared: &Arc<Shared>) -> Sender<DownloadBatch> {
+        if let Some(downloads) = &self.downloads {
+            return downloads.clone();
+        }
+        let (send, receive) = mpsc::channel();
+        let source = Arc::downgrade(shared);
+        let fetcher = Arc::clone(&self.fetcher);
+        let spawned = std::thread::Builder::new()
+            .name("Download-Queue".to_owned())
+            .spawn(move || download_until_closed(&receive, &source, fetcher.as_ref()));
+        if spawned.is_err() {
+            log::error!("no thread to download packs on");
+        }
+        self.downloads = Some(send.clone());
+        send
+    }
+
     /// `ServerPackManager.pushPack` for a pack the server asked for.
     fn push_request(&mut self, request: &PackRequest) {
         self.manager
@@ -405,15 +449,15 @@ impl Inner {
 /// The download thread: batches come in order, each pack one after the other, and the outcome
 /// of a batch goes back whole.
 fn download_until_closed(
-    batches: &mpsc::Receiver<Vec<DownloadRequest>>,
+    batches: &mpsc::Receiver<DownloadBatch>,
     source: &Weak<Shared>,
     fetcher: &dyn PackFetcher,
 ) {
-    while let Ok(batch) = batches.recv() {
+    while let Ok((batch, user)) = batches.recv() {
         let mut files = Vec::new();
         let mut failed = Vec::new();
         for request in &batch {
-            match fetcher.fetch(request) {
+            match fetcher.fetch(request, &user) {
                 Ok(path) => files.push((request.ticket, path)),
                 Err(reason) => {
                     log::error!("failed to download {}: {reason}", request.url);

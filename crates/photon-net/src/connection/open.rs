@@ -16,6 +16,7 @@ use super::pack_sink::sink_for;
 use super::record::Recorder;
 use super::session::*;
 use super::state::ConnectionState;
+use crate::server_packs::PackUser;
 
 /// Log in and configure, leaving the connection at the start of play.
 ///
@@ -29,6 +30,13 @@ pub fn open_play_connection(
     (state, recorder): (&mut ConnectionState, &mut dyn Recorder),
 ) -> Result<(Transport, Option<usize>), ConnectionError> {
     let mut stream = connect_stream(address, timeout)?;
+    state.packs.set_user(PackUser {
+        name: username.to_owned(),
+        id: state
+            .account
+            .as_ref()
+            .map_or(Uuid::new(0, 1), |account| account.profile_id),
+    });
     state
         .packs
         .configure_for_server(sink_for(&stream, ConnectionProtocol::Configuration, None)?);
