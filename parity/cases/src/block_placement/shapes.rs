@@ -158,7 +158,7 @@ pub fn vine_rows() -> Vec<Value> {
     rows
 }
 
-const INERT: [&str; 64] = [
+const INERT: [&str; 66] = [
     "oak_sapling",
     "dandelion",
     "torch",
@@ -222,7 +222,9 @@ const INERT: [&str; 64] = [
     "oak_slab",
     "snow",
     "oak_trapdoor",
-    "tinted_glass",
+    "waxed_copper_grate",
+    "lantern",
+    "brain_coral_block",
 ];
 
 /// Blocks whose `updateShape` only schedules a tick or falls to air, east of the block placed.
