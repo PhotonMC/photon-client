@@ -149,7 +149,7 @@ fn main() {
     let faces = photon_world::block::states().faces().len();
     println!("state cache faces={faces} in {:?}", caching.elapsed());
     let root = std::env::var("PHOTON_ASSETS").expect("PHOTON_ASSETS names the assets folder");
-    let source = assets::FolderAssets { root: root.into() };
+    let source = assets::StackAssets::vanilla(std::path::Path::new(&root));
     let baking = Instant::now();
     let renderer = BlockRenderer::new(&source, (4, 0)).expect("the vanilla models bake");
     println!(

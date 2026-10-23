@@ -9,6 +9,7 @@ include = ["/Cargo.toml", "/build.rs", "/src/**", "/examples/**"]
 
 [dependencies]
 log.workspace = true
+photon-assets.workspace = true
 photon-core.workspace = true
 photon-data.workspace = true
 photon-world.workspace = true

@@ -14,7 +14,7 @@ use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::window::{DisplayData, WindowSurface};
 
-use crate::assets::FolderAssets;
+use crate::assets::StackAssets;
 use crate::bench::{Bench, RunInfo};
 use crate::controls::Controls;
 use crate::equipment::armor::{Armor, Worn};
@@ -374,9 +374,7 @@ fn bake_blocks(
     root: &str,
     backend: &mut VulkanBackend,
 ) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {
-    let source = FolderAssets {
-        root: std::path::PathBuf::from(root),
-    };
+    let source = StackAssets::vanilla(std::path::Path::new(root));
     // The stitcher reads the saved options when the atlas is built, as the
     // reference's sprite loader does; a change reloads the textures there, here
     // it applies on the next start.

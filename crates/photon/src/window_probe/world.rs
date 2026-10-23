@@ -98,9 +98,7 @@ pub(super) fn load_world(
         origin[0], origin[1], origin[2], size[0], size[1], size[2]
     );
 
-    let source = FolderAssets {
-        root: std::path::PathBuf::from(root),
-    };
+    let source = StackAssets::vanilla(std::path::Path::new(root));
     let requested: i32 = env::var("PHOTON_MIP_LEVELS")
         .ok()
         .map(|value| value.parse())

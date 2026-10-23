@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use photon_render::VulkanBackend;
 use photon_render::window::{DisplayData, WindowSurface};
 
-use crate::assets::FolderAssets;
+use crate::assets::StackAssets;
 use crate::ppm;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;

@@ -179,9 +179,7 @@ pub(super) fn scene() -> Result<(photon_render::Mesh, Vec<photon_render::Decoded
 /// variant its properties select is taken, and the model and rotation come
 /// from there rather than from the environment.
 pub(super) fn choose_block(block: &str, root: String) -> Result<ChosenBlock> {
-    let source = FolderAssets {
-        root: std::path::PathBuf::from(&root),
-    };
+    let source = StackAssets::vanilla(std::path::Path::new(&root));
     let name = photon_core::identifier::Identifier::parse(block)
         .map_err(|error| format!("{block}: {error:?}"))?;
     let text = photon_render::AssetSource::block_state(&source, &name)
@@ -255,9 +253,7 @@ pub(super) fn model_scene(
     name: &str,
     chosen: Option<&ChosenBlock>,
 ) -> Result<(photon_render::Mesh, Vec<photon_render::DecodedImage>)> {
-    let source = FolderAssets {
-        root: std::path::PathBuf::from(root),
-    };
+    let source = StackAssets::vanilla(std::path::Path::new(root));
     let identifier = photon_core::identifier::Identifier::parse(name)
         .map_err(|error| format!("{name}: {error:?}"))?;
     let model = photon_render::resolve_model(&source, &identifier)
