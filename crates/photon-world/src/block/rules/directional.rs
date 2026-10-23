@@ -45,8 +45,18 @@ pub(super) fn leaves(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Bl
         .and_then(|state| with_property(state, "distance", &distance.to_string()))
 }
 
+/// Whether the chest `block` connects to `other` in `direction` (`chestCanConnectTo` on a side).
+pub(super) fn chest_joins(
+    block: usize,
+    other: BlockStateId,
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    direction.axis() != Axis::Y && chest_connects(block, other, ctx)
+}
+
 /// What a chest connects to: its own block, or any copper chest for a copper one.
-fn chest_connects(block: usize, other: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
+pub(super) fn chest_connects(block: usize, other: BlockStateId, ctx: &PlaceContext<'_>) -> bool {
     if BLOCKS[block].class.is(BlockClass::CopperChestBlock) {
         in_tag(other, ctx, "minecraft:copper_chests") && property(other, "type").is_some()
     } else {

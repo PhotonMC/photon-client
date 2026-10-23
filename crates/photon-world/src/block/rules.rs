@@ -17,6 +17,7 @@ use photon_data::block::registry::{self, BLOCKS, Block};
 use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
+mod chest;
 mod chorus;
 mod connect;
 mod directional;

@@ -21,6 +21,19 @@ pub(super) fn update_shape(
         BlockClass::NoteBlock => Rule::Known(super::note::update(state, pos, direction, ctx)),
         BlockClass::PotentSulfurBlock => Rule::Known(super::sulfur::valid_state(state, pos, ctx)),
         BlockClass::SnowyBlock => Rule::Known(snowy(state, pos, direction, ctx)),
+        _ => growths(class, state, pos, direction, ctx),
+    }
+}
+
+/// The plants and chests.
+fn growths(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    match class {
         BlockClass::ChorusPlantBlock => {
             Rule::Known(super::chorus::plant_update(state, pos, direction, ctx))
         }
@@ -30,6 +43,13 @@ pub(super) fn update_shape(
         BlockClass::BigDripleafBlock => {
             Rule::Known(super::dripleaf::big_update(state, pos, direction, ctx))
         }
+        BlockClass::ChestBlock | BlockClass::CopperChestBlock => {
+            let (dx, dy, dz) = direction.step();
+            let neighbour = ctx.state((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+            Rule::Known(super::chest::update(state, direction, neighbour, ctx))
+        }
+        // These only keep the water ticking, which the client does not run.
+        BlockClass::EnderChestBlock => Rule::Known(state),
         _ => connecting(class, state, pos, direction, ctx),
     }
 }

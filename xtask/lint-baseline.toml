@@ -628,7 +628,7 @@
 "crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 69
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 75
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 161
-"crates/photon-gui/src/hud/locator.rs::draw_dots" = 64
+"crates/photon-gui/src/hud/locator.rs::draw_dots" = 62
 "crates/photon-gui/src/hud/locator.rs::set_brightness" = 67
 "crates/photon-gui/src/hud/sidebar.rs::draw" = 62
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 110

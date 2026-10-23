@@ -77,6 +77,41 @@ pub fn gate_rows() -> Vec<Value> {
     rows
 }
 
+/// Chests of every kind beside a chest of every half, with a chest placed against them (pairing
+/// when walking, single when sneaking).
+pub fn chest_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (side, at) in SIDES {
+        for facing in ["north", "east"] {
+            for half in ["single", "left", "right"] {
+                let world =
+                    vec![block([0, 63, 0], "stone", &[]), block(at, "chest", &[("facing", facing), ("type", half)])];
+                let label = format!("shape-chest-{side}-{facing}-{half}");
+                let placed = ["chest", "trapped_chest", "ender_chest", "stone"];
+                rows.push(neighbour_row(&label, world.clone(), &placed));
+                rows.push(sneaking(neighbour_row(&format!("{label}-sneak"), world, &placed)));
+            }
+        }
+    }
+    rows
+}
+
+/// Copper chests beside copper chests of every weathering and half, with one placed single.
+pub fn copper_chest_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (side, at) in SIDES {
+        for kind in ["copper_chest", "weathered_copper_chest", "waxed_copper_chest"] {
+            for half in ["left", "right"] {
+                let world =
+                    vec![block([0, 63, 0], "stone", &[]), block(at, kind, &[("facing", "north"), ("type", half)])];
+                let placed = ["copper_chest", "exposed_copper_chest", "stone"];
+                rows.push(sneaking(neighbour_row(&format!("shape-{kind}-{side}-{half}"), world, &placed)));
+            }
+        }
+    }
+    rows
+}
+
 /// Grass-like blocks that turn snowy under snow.
 pub fn snowy_rows() -> Vec<Value> {
     ["grass_block", "podzol", "mycelium", "dirt"]
