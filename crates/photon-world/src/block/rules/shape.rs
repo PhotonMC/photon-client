@@ -166,11 +166,11 @@ const RULES: [(BlockClass, Update); 32] = [
     (BlockClass::FenceGateBlock, |s, p, d, c| {
         Rule::Known(super::connect::gate_update(s, p, d, c))
     }),
-    // These only keep the water ticking, which the client does not run.
     (BlockClass::RedStoneWireBlock, super::redstone::update),
     (BlockClass::FireBlock, |s, p, _, c| {
         Rule::Known(super::fire::update(s, p, c))
     }),
+    // These only keep the water ticking, which the client does not run.
     (BlockClass::EnderChestBlock, |s, _, _, _| Rule::Known(s)),
 ];
 

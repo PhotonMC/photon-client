@@ -290,7 +290,14 @@ pub fn fire_rows() -> Vec<Value> {
             block([1, 64, 1], "oak_slab", &[("waterlogged", "false")]),
         ]
     };
+    // Nothing beside burns, so only the sturdy floor keeps this fire, and it is placed again plain.
+    let held = vec![
+        block([0, 63, 0], "stone", &[]),
+        block([1, 64, 0], "fire", &[("age", "7"), ("east", "true")]),
+        block([1, 63, 0], "stone", &[]),
+    ];
     vec![
+        neighbour_row("shape-fire-held-by-floor", held, &["stone"]),
         neighbour_row("shape-fire-air-floor", fire(None, "3", vec![]), &placed),
         neighbour_row("shape-fire-stone-floor", fire(Some("stone"), "7", vec![]), &placed),
         neighbour_row("shape-fire-planks-floor", fire(Some("oak_planks"), "5", vec![]), &placed),
