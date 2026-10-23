@@ -460,6 +460,7 @@ mod tests {
             &tags,
         );
         ctx.replace_clicked = false;
+        ctx.brightness = Some(&|_, _, _| 15);
         // Plain block items, and those of the other written classes: (items, predicted).
         let (mut plain, mut other) = ((0, 0), (0, 0));
         for (index, item) in ITEMS.iter().enumerate() {
@@ -479,7 +480,7 @@ mod tests {
             count.1 += usize::from(known);
         }
         assert_eq!(plain.0, 938);
-        assert!(plain.1 >= 915, "plain block items predicted: {}", plain.1);
+        assert!(plain.1 >= 922, "plain block items predicted: {}", plain.1);
         assert!(other.1 >= 114, "other block items predicted: {}", other.1);
     }
 }
