@@ -335,6 +335,14 @@ pub(super) fn vine(
     Rule::Known(clicked_vine.then_some(result))
 }
 
+/// Whether the block under `pos` has a shape that depends on its position (and is not
+/// scaffolding, which `getDistance` reads by name), which the cached shapes here do not know.
+pub(super) fn dynamic_support(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
+    let below = ctx.state(offset(pos, Direction::Down));
+    !is_named(below, "minecraft:scaffolding")
+        && block(below).is_some_and(|block| block.dynamic_shape)
+}
+
 /// `ScaffoldingBlock.getDistance`.
 pub(super) fn scaffolding_distance(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> i32 {
     let below_pos = offset(pos, Direction::Down);

@@ -21,6 +21,14 @@ pub enum ItemPlacement {
     DoubleHigh,
     /// `BedItem`: sets the foot without shape updates.
     Bed,
+    /// `ScaffoldingBlockItem`: the block goes where the stack of scaffolding ends, and need not
+    /// be able to stand there.
+    Scaffolding,
+    /// `GameMasterBlockItem`: only an operator in creative mode places it.
+    GameMaster,
+    /// `PlaceOnWaterBlockItem` (lily pad, frogspawn): placed by `use` on the water surface the
+    /// look reaches; the placement itself is `BlockItem`'s.
+    PlaceOnWater,
 }
 
 /// One block `BlockItem.place` sets.
@@ -48,6 +56,9 @@ pub fn item_placement(item_id: ItemId) -> Option<ItemPlacement> {
         ItemClass::BlockItem => Some(ItemPlacement::Plain),
         ItemClass::DoubleHighBlockItem => Some(ItemPlacement::DoubleHigh),
         ItemClass::BedItem => Some(ItemPlacement::Bed),
+        ItemClass::ScaffoldingBlockItem => Some(ItemPlacement::Scaffolding),
+        ItemClass::GameMasterBlockItem => Some(ItemPlacement::GameMaster),
+        ItemClass::PlaceOnWaterBlockItem => Some(ItemPlacement::PlaceOnWater),
         ItemClass::StandingAndWallBlockItem
         | ItemClass::SignItem
         | ItemClass::HangingSignItem
@@ -81,11 +92,107 @@ pub fn placement_state(
             attachment,
             hanging_sign,
         } => standing_or_wall(block, wall, attachment, hanging_sign, ctx),
+        ItemPlacement::GameMaster if !ctx.game_master => Rule::Known(None),
+        // `mustSurvive` is false: the scaffolding is checked by its own distance.
+        ItemPlacement::Scaffolding => state_for_placement(block, ctx),
         _ => match state_for_placement(block, ctx) {
             Rule::Known(Some(state)) => survives(state, ctx).map(|stands| stands.then_some(state)),
             Rule::Known(None) => Rule::Known(None),
             Rule::Unported => Rule::Unported,
         },
+    }
+}
+
+/// `ScaffoldingBlockItem.updatePlacementContext`: on scaffolding already, the click moves along
+/// the stack (up, or the way the player faces from the top; a sneaking player goes the other
+/// way) to the first place that gives way; elsewhere it stands if it is not too far from
+/// support. Every other item keeps the context. `None` is a refusal.
+pub fn update_context<'a>(
+    kind: ItemPlacement,
+    ctx: &PlaceContext<'a>,
+) -> Rule<Option<PlaceContext<'a>>> {
+    if kind != ItemPlacement::Scaffolding {
+        return Rule::Known(Some(*ctx));
+    }
+    let pos = ctx.clicked_pos();
+    if !is_scaffolding(ctx.state(pos)) {
+        if growth::dynamic_support(pos, ctx) {
+            return Rule::Unported;
+        }
+        let too_far = growth::scaffolding_distance(pos, ctx) == 7;
+        return Rule::Known((!too_far).then_some(*ctx));
+    }
+    extend_stack(ctx, pos)
+}
+
+/// The way a click on a stack of scaffolding goes: along the face for a sneaking player (out of
+/// the opposite one from inside the block), up from the sides, the way the player faces from
+/// the top.
+fn stack_direction(ctx: &PlaceContext<'_>) -> Direction {
+    match (ctx.secondary_use, ctx.inside, ctx.face) {
+        (true, true, face) => face.opposite(),
+        (true, false, face) => face,
+        (false, _, Direction::Up) => ctx.horizontal_direction,
+        (false, _, _) => Direction::Up,
+    }
+}
+
+/// The first place along the stack that is not scaffolding, if it gives way, within seven
+/// blocks sideways.
+fn extend_stack<'a>(
+    ctx: &PlaceContext<'a>,
+    pos: (i32, i32, i32),
+) -> Rule<Option<PlaceContext<'a>>> {
+    let direction = stack_direction(ctx);
+    let (dx, dy, dz) = direction.step();
+    let mut at = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
+    let mut horizontal_distance = 0;
+    while horizontal_distance < 7 {
+        let found = ctx.state(at);
+        if !is_scaffolding(found) {
+            return match can_be_replaced(found, ctx) {
+                Rule::Known(true) => at_position(ctx, at, direction),
+                Rule::Known(false) => Rule::Known(None),
+                Rule::Unported => Rule::Unported,
+            };
+        }
+        at = (at.0 + dx, at.1 + dy, at.2 + dz);
+        if direction.axis() != Axis::Y {
+            horizontal_distance += 1;
+        }
+    }
+    Rule::Known(None)
+}
+
+fn is_scaffolding(state: BlockStateId) -> bool {
+    block(state).is_some_and(|block| block.class.is(BlockClass::ScaffoldingBlock))
+}
+
+/// `BlockPlaceContext.at`: a click on the middle of a face of the block at `pos`.
+fn at_position<'a>(
+    ctx: &PlaceContext<'a>,
+    pos: (i32, i32, i32),
+    face: Direction,
+) -> Rule<Option<PlaceContext<'a>>> {
+    let (dx, dy, dz) = face.step();
+    let mut moved = PlaceContext {
+        hit_pos: pos,
+        face,
+        location: (
+            f64::from(pos.0) + 0.5 + f64::from(dx) * 0.5,
+            f64::from(pos.1) + 0.5 + f64::from(dy) * 0.5,
+            f64::from(pos.2) + 0.5 + f64::from(dz) * 0.5,
+        ),
+        inside: false,
+        replace_clicked: true,
+        ..*ctx
+    };
+    match can_be_replaced(ctx.state(pos), &moved) {
+        Rule::Known(replaced) => {
+            moved.replace_clicked = replaced;
+            Rule::Known(Some(moved))
+        }
+        Rule::Unported => Rule::Unported,
     }
 }
 
@@ -319,7 +426,18 @@ mod tests {
         assert_eq!(kind_of("minecraft:red_bed"), Some(ItemPlacement::Bed));
         // Not an item that places a block, and one of a class that is not written.
         assert_eq!(kind_of("minecraft:stick"), None);
-        assert_eq!(kind_of("minecraft:scaffolding"), None);
+        assert_eq!(
+            kind_of("minecraft:scaffolding"),
+            Some(ItemPlacement::Scaffolding)
+        );
+        assert_eq!(
+            kind_of("minecraft:lily_pad"),
+            Some(ItemPlacement::PlaceOnWater)
+        );
+        assert_eq!(
+            kind_of("minecraft:command_block"),
+            Some(ItemPlacement::GameMaster)
+        );
     }
 
     /// How many block items the rules predict on a click on the top of a stone block. The counts

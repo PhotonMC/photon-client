@@ -368,6 +368,7 @@ fn glazed_rows() -> Vec<Value> {
 mod connections;
 mod facing;
 mod growth;
+mod items;
 mod mounted;
 mod signals;
 mod stacking;
@@ -421,5 +422,8 @@ pub fn cases() -> Vec<Value> {
         case("scaffolding", growth::scaffolding_rows()),
         case("rails", growth::rail_rows()),
         case("redstone-wire", growth::wire_rows()),
+        case("scaffolding-stack", items::scaffolding_stack_rows()),
+        case("water-items", items::water_item_rows()),
+        case("game-master-blocks", items::game_master_rows()),
     ]
 }

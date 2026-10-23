@@ -204,9 +204,33 @@ impl ClientWorld {
         from: photon_core::math::Vec3,
         to: photon_core::math::Vec3,
     ) -> Option<photon_core::aabb::BlockHitResult> {
+        self.clip_with_fluids(from, to, false)
+    }
+
+    /// `BlockGetter.clip` against block outlines and the shapes of fluid sources
+    /// (`ClipContext.Fluid.SOURCE_ONLY`), as `Item.getPlayerPOVHitResult` asks it.
+    pub fn clip_outlines_and_sources(
+        &self,
+        from: photon_core::math::Vec3,
+        to: photon_core::math::Vec3,
+    ) -> Option<photon_core::aabb::BlockHitResult> {
+        self.clip_with_fluids(from, to, true)
+    }
+
+    fn clip_with_fluids(
+        &self,
+        from: photon_core::math::Vec3,
+        to: photon_core::math::Vec3,
+        sources_only: bool,
+    ) -> Option<photon_core::aabb::BlockHitResult> {
         self.clip_with(from, to, |state, at, position| {
             let block = crate::outline_shape(state, at).clip(from, to, position);
-            let fluid = self.fluid_shape(state, at).clip(from, to, position);
+            let source = !sources_only || self.fluid_at(at).is_source();
+            let fluid = if source {
+                self.fluid_shape(state, at).clip(from, to, position)
+            } else {
+                None
+            };
             let distance = |hit: &Option<photon_core::aabb::BlockHitResult>| {
                 hit.as_ref()
                     .map_or(f64::MAX, |hit| from.distance_to_sqr(hit.location))

@@ -28,7 +28,10 @@ mod signal;
 mod survive;
 mod tall;
 
-pub use item::{ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state};
+pub use item::{
+    ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
+    update_context,
+};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,6 +184,10 @@ pub struct PlaceContext<'a> {
     pub replace_clicked: bool,
     /// `isSecondaryUseActive`: the player sneaks.
     pub secondary_use: bool,
+    /// `isInside` of the hit: the aim started inside the block.
+    pub inside: bool,
+    /// `Player.canUseGameMasterBlocks`: an operator in creative mode.
+    pub game_master: bool,
     /// The block tags the server sent.
     pub tags: &'a super::tags::BlockTags,
     pub limits: Limits,
@@ -207,6 +214,8 @@ impl<'a> PlaceContext<'a> {
             rotation,
             replace_clicked: true,
             secondary_use: false,
+            inside: false,
+            game_master: false,
             tags,
             limits: Limits::OPEN,
         }
@@ -479,6 +488,8 @@ mod tests {
             rotation: (0.0, 0.0),
             replace_clicked: false,
             secondary_use: false,
+            inside: false,
+            game_master: false,
             tags,
             limits: Limits::OPEN,
         };
@@ -627,6 +638,8 @@ mod tests {
             rotation: (0.0, 0.0),
             replace_clicked: true,
             secondary_use: false,
+            inside: false,
+            game_master: false,
             tags: &tags,
             limits: Limits::OPEN,
         };

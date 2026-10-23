@@ -178,6 +178,27 @@ pub(super) fn piston(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<Bl
         .and_then(|state| with_property(state, "extended", "false"))
 }
 
+/// `CommandBlock.getStateForPlacement`: facing away from the way the player looks.
+pub(super) fn command_block(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let nearest = super::placement::nearest_direction(ctx);
+    with_property(default, "facing", nearest.opposite().name())
+}
+
+/// `JigsawBlock.getStateForPlacement`: its front out of the face clicked, its top up, or back
+/// toward the player for a click on the top or bottom.
+pub(super) fn jigsaw(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
+    let top = if ctx.face.axis() == Axis::Y {
+        ctx.horizontal_direction.opposite()
+    } else {
+        Direction::Up
+    };
+    with_property(
+        default,
+        "orientation",
+        &format!("{}_{}", ctx.face.name(), top.name()),
+    )
+}
+
 /// `HopperBlock.getStateForPlacement`: out of the side clicked, down for the top and bottom.
 pub(super) fn hopper(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateId> {
     let out = ctx.face.opposite();

@@ -83,6 +83,7 @@ class BlockPlacementOracle extends BlockItemOracle {
         float yaw;
         float pitch;
         boolean sneakRequested;
+        boolean gameMaster;
 
         Viewer() {
             super(null, null, null, null, null, null, false, null);
@@ -101,6 +102,22 @@ class BlockPlacementOracle extends BlockItemOracle {
         @Override
         public boolean isSecondaryUseActive() {
             return this.sneakRequested;
+        }
+
+        @Override
+        public boolean canUseGameMasterBlocks() {
+            return this.gameMaster;
+        }
+
+        // The collision context of a placement reads these; the entity checks are stubbed.
+        @Override
+        public boolean isDescending() {
+            return false;
+        }
+
+        @Override
+        public net.minecraft.world.item.ItemStack getMainHandItem() {
+            return net.minecraft.world.item.ItemStack.EMPTY;
         }
     }
 
@@ -151,6 +168,10 @@ class BlockPlacementOracle extends BlockItemOracle {
             unsafe = (sun.misc.Unsafe) field.get(null);
             level = (ScriptedLevel) unsafe.allocateInstance(ScriptedLevel.class);
             viewer = (Viewer) unsafe.allocateInstance(Viewer.class);
+            // The placement's collision context reads the player's height.
+            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
+            position.setAccessible(true);
+            position.set(viewer, net.minecraft.world.phys.Vec3.ZERO);
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException(failure);
         }
@@ -164,6 +185,8 @@ class BlockPlacementOracle extends BlockItemOracle {
         viewer.yaw = Oracle.f32(row, "yaw");
         viewer.pitch = Oracle.f32(row, "pitch");
         viewer.sneakRequested = row.has("sneak") && row.get("sneak").getAsBoolean();
+        viewer.gameMaster = row.has("game_master") && row.get("game_master").getAsBoolean();
+        var inside = row.has("inside") && row.get("inside").getAsBoolean();
         var location = row.getAsJsonArray("location");
         var click = new net.minecraft.world.phys.Vec3(
             Double.longBitsToDouble(Long.parseUnsignedLong(location.get(0).getAsString(), 16)),
@@ -176,7 +199,7 @@ class BlockPlacementOracle extends BlockItemOracle {
             var block = net.minecraft.core.registries.BuiltInRegistries.BLOCK
                 .getValue(net.minecraft.resources.Identifier.parse(name.getAsString()));
             var stack = new net.minecraft.world.item.ItemStack(block.asItem());
-            var hit = new net.minecraft.world.phys.BlockHitResult(click, face, hitPos, false);
+            var hit = new net.minecraft.world.phys.BlockHitResult(click, face, hitPos, inside);
             var context = new Context(level, viewer, stack, hit);
             var described = new JsonObject();
             described.addProperty("block", name.getAsString());
@@ -196,10 +219,7 @@ class BlockPlacementOracle extends BlockItemOracle {
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));
             }
             if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item
-                && item.getClass() != net.minecraft.world.item.BlockItem.class
-                // Scaffolding moves the placement context along its stack; the client does not
-                // predict that item, so only the block's own rules are compared.
-                && !(item instanceof net.minecraft.world.item.ScaffoldingBlockItem)) {
+                && item.getClass() != net.minecraft.world.item.BlockItem.class) {
                 itemPlacement(level, context, stack, item, placed, described);
             }
             results.add(described);
@@ -217,15 +237,15 @@ class BlockPlacementOracle extends BlockItemOracle {
             net.minecraft.world.item.ItemStack stack, net.minecraft.world.item.BlockItem item,
             net.minecraft.world.level.block.state.BlockState placed, JsonObject described) {
         try {
-            net.minecraft.world.level.block.state.BlockState chosen;
-            if (item instanceof net.minecraft.world.item.StandingAndWallBlockItem) {
-                var method = net.minecraft.world.item.BlockItem.class.getDeclaredMethod(
-                    "getPlacementState", net.minecraft.world.item.context.BlockPlaceContext.class);
-                method.setAccessible(true);
-                chosen = (net.minecraft.world.level.block.state.BlockState) method.invoke(item, context);
-            } else {
-                chosen = placed != null && placed.canSurvive(level, context.getClickedPos()) ? placed : null;
+            // Scaffolding moves the click along its stack.
+            var used = item.updatePlacementContext(context);
+            if (used == null) {
+                return;
             }
+            var method = net.minecraft.world.item.BlockItem.class.getDeclaredMethod(
+                "getPlacementState", net.minecraft.world.item.context.BlockPlaceContext.class);
+            method.setAccessible(true);
+            var chosen = (net.minecraft.world.level.block.state.BlockState) method.invoke(item, used);
             if (chosen == null) {
                 return;
             }
@@ -237,8 +257,8 @@ class BlockPlacementOracle extends BlockItemOracle {
                 net.minecraft.world.item.context.BlockPlaceContext.class,
                 net.minecraft.world.level.block.state.BlockState.class);
             place.setAccessible(true);
-            place.invoke(item, context, chosen);
-            var pos = context.getClickedPos();
+            place.invoke(item, used, chosen);
+            var pos = used.getClickedPos();
             var now = level.getBlockState(pos);
             if (now.is(chosen.getBlock())) {
                 now.getBlock().setPlacedBy(level, pos, now, null, stack);

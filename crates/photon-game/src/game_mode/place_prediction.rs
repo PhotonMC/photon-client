@@ -28,6 +28,13 @@ pub(super) fn predicted_state(
             Rule::Unported => return Err(unpredicted),
         }
     }
+    // `updatePlacementContext`: scaffolding moves the click along its stack.
+    match rules::update_context(kind, place_ctx) {
+        Rule::Known(Some(updated)) => *place_ctx = updated,
+        Rule::Known(None) => return Err(UseResult::Fail),
+        Rule::Unported => return Err(unpredicted),
+    }
+    let pos = place_ctx.clicked_pos();
     // `getPlacementState`, with the survival check `canPlace` makes.
     match rules::placement_state(kind, block, place_ctx) {
         Rule::Known(Some(state)) => Ok((pos, state)),

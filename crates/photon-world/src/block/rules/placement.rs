@@ -125,6 +125,12 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::PistonBaseBlock, |_, default, ctx| {
         Rule::Known(super::directional::piston(default, ctx))
     }),
+    (BlockClass::CommandBlock, |_, default, ctx| {
+        Rule::Known(super::directional::command_block(default, ctx))
+    }),
+    (BlockClass::JigsawBlock, |_, default, ctx| {
+        Rule::Known(super::directional::jigsaw(default, ctx))
+    }),
     (BlockClass::HopperBlock, |_, default, ctx| {
         Rule::Known(super::directional::hopper(default, ctx))
     }),

@@ -303,69 +303,14 @@ impl GameMode {
         }
         match rules::item_use_on_owner(item) {
             ItemClass::Item => UseResult::Pass,
+            // `PlaceOnWaterBlockItem.useOn` passes: the item is placed by its `use`.
+            ItemClass::PlaceOnWaterBlockItem => UseResult::Pass,
             ItemClass::BlockItem if rules::item_placement(item).is_some() => {
-                self.place(ctx, hand, item, aim)
+                super::placing::place(ctx, hand, item, aim)
             }
             class => super::tools::use_on(ctx, (hand, class), aim)
                 .unwrap_or(UseResult::Success { swing: true }),
         }
-    }
-
-    /// `BlockItem.place` for the block item classes whose rules are written.
-    pub(super) fn place(
-        &mut self,
-        ctx: &mut Context<'_>,
-        hand: u8,
-        item: ItemId,
-        aim: Aim,
-    ) -> UseResult {
-        let Aim::Block {
-            x,
-            y,
-            z,
-            face,
-            location,
-            ..
-        } = aim
-        else {
-            return UseResult::Pass;
-        };
-        let (Some(kind), Some(block)) = (
-            rules::item_placement(item),
-            rules::item(item)
-                .and_then(|row| row.block)
-                .and_then(photon_data::block::registry::block_index),
-        ) else {
-            return UseResult::Success { swing: true };
-        };
-        let world: &ClientWorld = ctx.world;
-        let state_at = |x: i32, y: i32, z: i32| world.block_state_or_air(x, y, z);
-        let face = photon_core::direction::Direction::from_3d_data_value(i32::from(face));
-        let aimed = ((x, y, z), face, (location[0], location[1], location[2]));
-        let tags = world.block_state_registry().tags();
-        let mut place_ctx =
-            rules::PlaceContext::new(&state_at, aimed, Some(item), ctx.player.rotation(), tags);
-        place_ctx.secondary_use = ctx.player.is_shift_key_down();
-        place_ctx.limits = super::place_prediction::limits_of(world);
-        let (pos, state) =
-            match super::place_prediction::predicted_state(kind, block, &mut place_ctx) {
-                Ok(predicted) => predicted,
-                Err(result) => return result,
-            };
-        if is_obstructed(ctx, pos, state) {
-            return UseResult::Fail;
-        }
-        let writes = rules::place_writes(kind, state, pos, &place_ctx);
-        if !set_placed_blocks(ctx, &writes) {
-            return UseResult::Fail;
-        }
-        ctx.world.play_place_sound(pos, state);
-        // `ItemStack.consume`: used up unless materials are infinite.
-        if !ctx.instabuild() {
-            let slot = ctx.hand_slot(hand);
-            ctx.world.shrink_local_player_slot(slot, 1);
-        }
-        UseResult::Success { swing: true }
     }
 
     /// `MultiPlayerGameMode.useItem`: the packet goes whatever the item
@@ -525,48 +470,6 @@ impl GameMode {
             sequence,
         }
     }
-}
-
-/// `BlockItem.placeBlock` and `setPlacedBy`: what the item clears first (not checked), the
-/// block itself, which must be set, and the other part of a door, a tall plant or a bed.
-fn set_placed_blocks(ctx: &mut Context<'_>, writes: &rules::PlaceWrites) -> bool {
-    let position = ctx.player.position();
-    let mut set = |write: rules::Write| {
-        ctx.world
-            .set_block_with_updates(write.pos, write.state, write.flags, 512, position)
-    };
-    if let Some(before) = writes.before {
-        set(before);
-    }
-    if !set(writes.block) {
-        return false;
-    }
-    if let Some(after) = writes.after {
-        set(after);
-    }
-    true
-}
-
-/// `Level.isUnobstructed` for a state put at `pos`: a state with a collision shape may not go
-/// where an entity that blocks building stands. The local player (unless spectating) counts, as
-/// do the other entities the client has.
-fn is_obstructed(
-    ctx: &Context<'_>,
-    pos: (i32, i32, i32),
-    state: photon_core::ids::BlockStateId,
-) -> bool {
-    let block_pos = photon_core::binary::BlockPos::new(pos.0, pos.1, pos.2);
-    let registry = ctx.world.block_state_registry();
-    if registry.collision_shape(state).is_empty() {
-        return false;
-    }
-    if !ctx.player.spectating() && ctx.player.is_colliding(ctx.world, block_pos, state) {
-        return true;
-    }
-    let shape = registry
-        .collision_shape_at(state, [pos.0, pos.1, pos.2])
-        .move_by_block_pos(block_pos);
-    !ctx.world.is_unobstructed(&shape)
 }
 
 #[cfg(test)]

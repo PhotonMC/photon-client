@@ -10,7 +10,7 @@ pub(super) fn can_survive(
     ctx: &PlaceContext<'_>,
 ) -> Rule<bool> {
     let owner = state_owner(state, Method::CanSurvive);
-    if owner.is_some_and(reads_support_shape) && has_dynamic_neighbour(pos, ctx) {
+    if reads_unknown_shape(owner, pos, ctx) {
         return Rule::Unported;
     }
     match owner {
@@ -20,12 +20,30 @@ pub(super) fn can_survive(
         Some(BlockClass::FaceAttachedHorizontalDirectionalBlock) => {
             Rule::Known(face_attached_survives(state, pos, ctx))
         }
+        Some(BlockClass::FrogspawnBlock) => {
+            Rule::Known(on_water(pos, ctx, "minecraft:supports_frogspawn"))
+        }
         Some(BlockClass::DoorBlock) => Rule::Known(super::tall::door_survives(state, pos, ctx)),
         Some(BlockClass::DoublePlantBlock) => super::tall::double_plant_survives(state, pos, ctx),
         Some(class) => match super::mounted::survives(class, state, pos, ctx) {
             Rule::Unported => foot_survives(class, state, pos, ctx),
             known => known,
         },
+    }
+}
+
+/// Whether the class decides by the shape of a block whose shape depends on its position,
+/// which the cached shapes here do not know. Scaffolding asks only the block below, and tells
+/// scaffolding apart by name.
+fn reads_unknown_shape(
+    owner: Option<BlockClass>,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> bool {
+    match owner {
+        Some(BlockClass::ScaffoldingBlock) => super::growth::dynamic_support(pos, ctx),
+        Some(class) => reads_support_shape(class) && has_dynamic_neighbour(pos, ctx),
+        None => false,
     }
 }
 
@@ -49,7 +67,6 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::GrowingPlantBlock
             | BlockClass::MultifaceBlock
             | BlockClass::VineBlock
-            | BlockClass::ScaffoldingBlock
             | BlockClass::RedStoneWireBlock
     )
 }
@@ -228,6 +245,16 @@ fn support_tag(placed: &Block) -> Option<&'static str> {
     class_tag.or(field_tag)
 }
 
+/// `LilyPadBlock.mayPlaceOn` and `FrogspawnBlock.mayPlaceOn`: a water source below (the fluid
+/// tags hold only the still water) or a block of `block_tag`, with no fluid above.
+fn on_water(pos: (i32, i32, i32), ctx: &PlaceContext<'_>, block_tag: &str) -> bool {
+    let below_pos = (pos.0, pos.1 - 1, pos.2);
+    let below = ctx.state(below_pos);
+    let supports = is_water_source(below)
+        || block_index(below).is_some_and(|(index, _)| ctx.tags.contains(index, block_tag));
+    supports && crate::block::state_or_air(ctx.state(pos)).fluid.is_empty()
+}
+
 /// `VegetationBlock.canSurvive`: the block below must be one the plant's own `mayPlaceOn`
 /// accepts.
 pub(super) fn vegetation(
@@ -246,6 +273,9 @@ pub(super) fn vegetation(
                 .contains(index, "minecraft:support_override_cactus_flower")
         });
         return Rule::Known(overridden || can_support_center(ctx, below_pos, Direction::Up));
+    }
+    if owner(placed, Method::MayPlaceOn) == Some(BlockClass::LilyPadBlock) {
+        return Rule::Known(on_water(pos, ctx, "minecraft:supports_lily_pad"));
     }
     let Some(tag) = support_tag(placed) else {
         return Rule::Unported;

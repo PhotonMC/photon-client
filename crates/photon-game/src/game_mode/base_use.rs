@@ -200,7 +200,7 @@ fn crossbow_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: false }
 }
 
-/// `Item.use` for the classes that override it and are predicted: the bow, the crossbow and the spyglass (which
+/// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad and frogspawn, and the spyglass (which
 /// starts using at once, with its sound). `None` for the rest.
 pub(super) fn class_item_use(
     ctx: &mut Context<'_>,
@@ -211,6 +211,10 @@ pub(super) fn class_item_use(
     match class {
         ItemClass::BowItem => Some(bow_use(ctx, hand)),
         ItemClass::CrossbowItem => Some(crossbow_use(ctx, hand)),
+        ItemClass::PlaceOnWaterBlockItem => {
+            let (item, _) = ctx.held(hand)?;
+            Some(super::placing::place_on_water(ctx, hand, item))
+        }
         ItemClass::SpyglassItem => {
             ctx.player
                 .play_own_sound("minecraft:item.spyglass.use", (1.0, 1.0));

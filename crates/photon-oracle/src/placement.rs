@@ -41,6 +41,8 @@ fn placement_row(row: &Value, tags: &BlockTags) -> Result<Value, String> {
         let item = photon_game::item::id_of(block.item_name());
         let mut ctx = PlaceContext::new(&state_at, aimed, item, (yaw, pitch), tags);
         ctx.secondary_use = row["sneak"].as_bool().unwrap_or(false);
+        ctx.inside = row["inside"].as_bool().unwrap_or(false);
+        ctx.game_master = row["game_master"].as_bool().unwrap_or(false);
         placements.push(place(name, &ctx)?);
     }
     Ok(json!({
@@ -119,6 +121,13 @@ fn item_placement(
     if kind == rules::ItemPlacement::Plain {
         return Ok(());
     }
+    let Rule::Known(updated) = rules::update_context(kind, ctx) else {
+        return Err(unported());
+    };
+    let Some(ctx) = updated else {
+        return Ok(());
+    };
+    let ctx = &ctx;
     let Rule::Known(chosen) = rules::placement_state(kind, block, ctx) else {
         return Err(unported());
     };
