@@ -293,6 +293,15 @@ fn touches_liquid(pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> bool {
     false
 }
 
+/// The concrete a powder turns into: the block named without the `_powder`.
+fn concrete_default(block: usize) -> Rule<BlockStateId> {
+    BLOCKS[block]
+        .name
+        .strip_suffix("_powder")
+        .and_then(registry::block_index)
+        .map_or(Rule::Unported, |index| Rule::Known(default_state(index)))
+}
+
 /// `ConcretePowderBlock.getStateForPlacement`: concrete at once where it meets water.
 fn concrete_placement(
     block: usize,
@@ -303,13 +312,27 @@ fn concrete_placement(
     if !is_water(ctx.state(pos)) && !touches_liquid(pos, ctx) {
         return Rule::Known(Some(default));
     }
-    let concrete = BLOCKS[block]
-        .name
-        .strip_suffix("_powder")
-        .and_then(registry::block_index);
-    concrete.map_or(Rule::Unported, |index| {
-        Rule::Known(Some(default_state(index)))
-    })
+    match concrete_default(block) {
+        Rule::Known(state) => Rule::Known(Some(state)),
+        Rule::Unported => Rule::Unported,
+    }
+}
+
+/// `ConcretePowderBlock.updateShape`: concrete as soon as a neighbour is water that does not
+/// hold the face against it.
+pub(super) fn concrete_update(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    let Some((block, _)) = block_index(state) else {
+        return Rule::Unported;
+    };
+    if touches_liquid(pos, ctx) {
+        concrete_default(block)
+    } else {
+        Rule::Known(state)
+    }
 }
 
 /// `TrapDoorBlock.getStateForPlacement`.

@@ -57,7 +57,7 @@ fn growths(
 /// The classes whose `updateShape` only schedules a tick or turns into air when the block can no
 /// longer stand. The client schedules nothing, and it never applies an air result, so for the
 /// client the state stays as it is.
-const INERT: [BlockClass; 72] = [
+const INERT: [BlockClass; 75] = [
     BlockClass::VegetationBlock,
     BlockClass::FallingBlock,
     BlockClass::BrushableBlock,
@@ -130,6 +130,9 @@ const INERT: [BlockClass; 72] = [
     BlockClass::PistonHeadBlock,
     BlockClass::PitcherCropBlock,
     BlockClass::TripWireHookBlock,
+    BlockClass::LiquidBlock,
+    BlockClass::ShelfBlock,
+    BlockClass::CopperGolemStatueBlock,
 ];
 
 /// `HugeMushroomBlock.updateShape`: the face toward another block of the kind goes.
@@ -169,11 +172,25 @@ fn plants(
         BlockClass::VineBlock => Rule::Known(super::vine::update(state, pos, direction, ctx)),
         BlockClass::HugeMushroomBlock => Rule::Known(mushroom(state, direction, pos, ctx)),
         BlockClass::HangingMossBlock => Rule::Known(moss(state, pos, ctx)),
+        _ => followers(class, state, pos, direction, ctx),
+    }
+}
+
+/// The blocks whose state follows a neighbour, then the inert ones.
+fn followers(
+    class: BlockClass,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    direction: Direction,
+    ctx: &PlaceContext<'_>,
+) -> Rule<BlockStateId> {
+    match class {
         BlockClass::BedBlock => Rule::Known(super::paired::bed(state, pos, direction, ctx)),
         BlockClass::CampfireBlock => {
             Rule::Known(super::paired::campfire(state, pos, direction, ctx))
         }
         BlockClass::DoorBlock => super::paired::door(state, pos, direction, ctx),
+        BlockClass::ConcretePowderBlock => super::placement::concrete_update(state, pos, ctx),
         BlockClass::AttachedStemBlock => {
             Rule::Known(super::paired::attached_stem(state, direction, pos, ctx))
         }

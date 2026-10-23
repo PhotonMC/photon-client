@@ -158,7 +158,7 @@ pub fn vine_rows() -> Vec<Value> {
     rows
 }
 
-const INERT: [&str; 75] = [
+const INERT: [&str; 78] = [
     "oak_sapling",
     "dandelion",
     "torch",
@@ -232,6 +232,9 @@ const INERT: [&str; 75] = [
     "piston_head",
     "tripwire_hook",
     "pitcher_crop",
+    "water",
+    "acacia_shelf",
+    "copper_golem_statue",
     "lantern",
     "brain_coral_block",
 ];
@@ -494,4 +497,26 @@ pub fn stem_rows() -> Vec<Value> {
         }
     }
     rows
+}
+
+/// Concrete powder beside water turns to concrete when something is placed against it.
+pub fn powder_rows() -> Vec<Value> {
+    let stone = block([0, 63, 0], "stone", &[]);
+    let placed = ["stone", "glass", "oak_slab"];
+    let powder = |label: &str, extra: Vec<Value>| {
+        let mut world = vec![stone.clone(), block([1, 64, 0], "white_concrete_powder", &[])];
+        world.extend(extra);
+        neighbour_row(label, world, &placed)
+    };
+    vec![
+        powder("shape-powder-dry", vec![]),
+        powder("shape-powder-east", vec![block([2, 64, 0], "water", &[])]),
+        powder("shape-powder-north", vec![block([1, 64, -1], "water", &[])]),
+        powder("shape-powder-above", vec![block([1, 65, 0], "water", &[])]),
+        powder("shape-powder-below", vec![block([1, 63, 0], "water", &[])]),
+        powder(
+            "shape-powder-held",
+            vec![block([2, 64, 0], "oak_slab", &[("waterlogged", "true"), ("type", "double")])],
+        ),
+    ]
 }
