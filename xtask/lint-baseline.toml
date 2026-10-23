@@ -843,7 +843,6 @@
 "crates/photon-render/src/entity/player_model/pose.rs::humanoid_anim" = 65
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
 "crates/photon-render/src/entity/special_models.rs::head" = 90
-"crates/photon-render/src/gui/atlas.rs::GuiAtlas::load" = 81
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 86
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
