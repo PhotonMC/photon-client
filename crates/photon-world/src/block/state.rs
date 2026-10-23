@@ -66,6 +66,8 @@ pub struct StateInfo {
     pub use_shape_for_light_occlusion: bool,
     pub can_occlude: bool,
     pub blocks_motion: bool,
+    /// `BlockStateBase.isSolid`: the deprecated flag `blocksMotion` is built on.
+    pub solid: bool,
     /// `isFaceSturdy` with `SupportType.FULL`, bit `d` for each direction.
     pub sturdy_faces: u8,
     /// `isFaceSturdy` with `SupportType.CENTER` and `SupportType.RIGID`, the same bits.

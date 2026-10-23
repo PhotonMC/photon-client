@@ -96,8 +96,8 @@ pub(super) fn compute(
     let propagates_skylight_down =
         propagates_skylight_down(block, offset, facts.of(&outline).full, fluid);
     let collision_full_block = collision_full_block(block, facts.of(&collision).full);
-    let blocks_motion =
-        index != id::COBWEB && index != id::BAMBOO_SAPLING && legacy_solid(block, &collision);
+    let solid = legacy_solid(block, &collision);
+    let blocks_motion = index != id::COBWEB && index != id::BAMBOO_SAPLING && solid;
     let support = support_shape(block, offset, &outline, &collision);
     let support_facts = facts.of(&support);
     let sturdy_faces = support_facts.full_faces;
@@ -117,6 +117,7 @@ pub(super) fn compute(
         use_shape_for_light_occlusion: use_shape_for_light_occlusion(block, offset),
         can_occlude: block.can_occlude,
         blocks_motion,
+        solid,
         sturdy_faces,
         center_faces: support_facts.center_faces,
         rigid_faces: support_facts.rigid_faces,

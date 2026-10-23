@@ -6,6 +6,7 @@ use super::*;
 /// way, the state the block takes and whether it may stand there. `Err` is the result of the
 /// use where the prediction ends: a refusal, or a rule the client does not predict yet.
 pub(super) fn predicted_state(
+    kind: rules::ItemPlacement,
     block: usize,
     place_ctx: &mut rules::PlaceContext<'_>,
 ) -> Result<((i32, i32, i32), photon_core::ids::BlockStateId), UseResult> {
@@ -27,15 +28,25 @@ pub(super) fn predicted_state(
             Rule::Unported => return Err(unpredicted),
         }
     }
-    let state = match rules::state_for_placement(block, place_ctx) {
-        Rule::Known(Some(state)) => state,
-        Rule::Known(None) => return Err(UseResult::Fail),
-        Rule::Unported => return Err(unpredicted),
-    };
-    // `BlockItem.canPlace`: it must stand there and not be in the way.
-    match rules::can_survive(state, pos, place_ctx) {
-        Rule::Known(true) => Ok((pos, state)),
-        Rule::Known(false) => Err(UseResult::Fail),
+    // `getPlacementState`, with the survival check `canPlace` makes.
+    match rules::placement_state(kind, block, place_ctx) {
+        Rule::Known(Some(state)) => Ok((pos, state)),
+        Rule::Known(None) => Err(UseResult::Fail),
         Rule::Unported => Err(unpredicted),
+    }
+}
+
+/// The build height and the world border of the level the player is in.
+pub(super) fn limits_of(world: &ClientWorld) -> rules::Limits {
+    let dimension = world.dimension();
+    let border = world.world_border();
+    rules::Limits {
+        max_y: dimension.min_y + dimension.height - 1,
+        border: [
+            border.min_x(0.0),
+            border.max_x(0.0),
+            border.min_z(0.0),
+            border.max_z(0.0),
+        ],
     }
 }

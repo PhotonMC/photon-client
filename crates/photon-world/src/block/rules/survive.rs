@@ -20,7 +20,10 @@ pub(super) fn can_survive(
         Some(BlockClass::FaceAttachedHorizontalDirectionalBlock) => {
             Rule::Known(face_attached_survives(state, pos, ctx))
         }
-        Some(class) => foot_survives(class, state, pos, ctx),
+        Some(class) => match super::mounted::survives(class, state, pos, ctx) {
+            Rule::Unported => foot_survives(class, state, pos, ctx),
+            known => known,
+        },
     }
 }
 
@@ -35,6 +38,8 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::BellBlock
             | BlockClass::SporeBlossomBlock
             | BlockClass::CactusFlowerBlock
+            | BlockClass::BaseTorchBlock
+            | BlockClass::CeilingHangingSignBlock
             | BlockClass::CandleBlock
             | BlockClass::LeafLitterBlock
             | BlockClass::SeaPickleBlock
@@ -58,7 +63,11 @@ fn can_support_rigid(ctx: &PlaceContext<'_>, below: (i32, i32, i32)) -> bool {
 }
 
 /// `Block.canSupportCenter`.
-fn can_support_center(ctx: &PlaceContext<'_>, at: (i32, i32, i32), direction: Direction) -> bool {
+pub(super) fn can_support_center(
+    ctx: &PlaceContext<'_>,
+    at: (i32, i32, i32),
+    direction: Direction,
+) -> bool {
     let state = ctx.state(at);
     if direction == Direction::Down
         && block_index(state)
@@ -207,7 +216,11 @@ fn support_tag(placed: &Block) -> Option<&'static str> {
 
 /// `VegetationBlock.canSurvive`: the block below must be one the plant's own `mayPlaceOn`
 /// accepts.
-fn vegetation(state: BlockStateId, pos: (i32, i32, i32), ctx: &PlaceContext<'_>) -> Rule<bool> {
+pub(super) fn vegetation(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    ctx: &PlaceContext<'_>,
+) -> Rule<bool> {
     let Some(placed) = block(state) else {
         return Rule::Known(false);
     };

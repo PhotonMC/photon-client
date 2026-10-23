@@ -18,16 +18,30 @@ use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
 mod connect;
+mod item;
+mod mounted;
 mod placement;
 mod replace;
 mod signal;
 mod survive;
+
+pub use item::{ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rule<T> {
     Known(T),
     Unported,
+}
+
+impl<T> Rule<T> {
+    /// The answer turned into another, when it is known.
+    fn map<U>(self, convert: impl FnOnce(T) -> U) -> Rule<U> {
+        match self {
+            Rule::Known(value) => Rule::Known(convert(value)),
+            Rule::Unported => Rule::Unported,
+        }
+    }
 }
 
 fn block_index(state: BlockStateId) -> Option<(usize, u32)> {
@@ -123,6 +137,29 @@ fn is_water(state: BlockStateId) -> bool {
     )
 }
 
+/// The height and the world border a placement is checked against.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Limits {
+    /// `Level.getMaxY`.
+    pub max_y: i32,
+    /// The border's west, east, north and south edges (`getMinX`, `getMaxX`, `getMinZ`, `getMaxZ`).
+    pub border: [f64; 4],
+}
+
+impl Limits {
+    /// The overworld's height and a border at its widest.
+    pub const OPEN: Self = Self {
+        max_y: 319,
+        border: [-29_999_984.0, 29_999_984.0, -29_999_984.0, 29_999_984.0],
+    };
+
+    /// `WorldBorder.isWithinBounds(BlockPos)`.
+    pub fn within_border(&self, x: i32, z: i32) -> bool {
+        let (x, z) = (f64::from(x), f64::from(z));
+        x >= self.border[0] && x < self.border[1] && z >= self.border[2] && z < self.border[3]
+    }
+}
+
 /// What a block reads of the level and of the use that places it.
 #[derive(Clone, Copy)]
 pub struct PlaceContext<'a> {
@@ -143,6 +180,7 @@ pub struct PlaceContext<'a> {
     pub secondary_use: bool,
     /// The block tags the server sent.
     pub tags: &'a super::tags::BlockTags,
+    pub limits: Limits,
 }
 
 impl<'a> PlaceContext<'a> {
@@ -167,6 +205,7 @@ impl<'a> PlaceContext<'a> {
             replace_clicked: true,
             secondary_use: false,
             tags,
+            limits: Limits::OPEN,
         }
     }
 
@@ -438,6 +477,7 @@ mod tests {
             replace_clicked: false,
             secondary_use: false,
             tags,
+            limits: Limits::OPEN,
         };
         let grass = registry::block_index("minecraft:grass_block").expect("grass");
         match state_for_placement(grass, &ctx) {
@@ -551,6 +591,7 @@ mod tests {
             replace_clicked: true,
             secondary_use: false,
             tags: &tags,
+            limits: Limits::OPEN,
         };
         assert_eq!(can_be_replaced(layers("1"), &ctx), Rule::Known(true));
         assert_eq!(can_be_replaced(layers("2"), &ctx), Rule::Known(false));

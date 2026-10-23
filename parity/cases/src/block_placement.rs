@@ -360,6 +360,7 @@ fn glazed_rows() -> Vec<Value> {
 }
 
 mod connections;
+mod mounted;
 mod signals;
 mod stacking;
 mod supports;
@@ -388,5 +389,8 @@ pub fn cases() -> Vec<Value> {
         case("walls", connections::wall_rows()),
         case("trapdoor-signals", signals::signal_rows()),
         case("cactus-flower", supports::cactus_flower_rows()),
+        case("torches", mounted::torch_rows()),
+        case("heads-banners", mounted::head_rows()),
+        case("signs", mounted::sign_rows()),
     ]
 }

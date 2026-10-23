@@ -100,5 +100,41 @@ fn place(name: &str, ctx: &PlaceContext<'_>) -> Result<Value, String> {
             described["survives"] = json!(survives);
         }
     }
+    item_placement(block, &ctx, &mut described, unported)?;
     Ok(described)
+}
+
+/// What the item classes beyond `BlockItem` add: the state the item chooses and the blocks it
+/// sets, in order.
+fn item_placement(
+    block: usize,
+    ctx: &PlaceContext<'_>,
+    described: &mut Value,
+    unported: impl Fn() -> String,
+) -> Result<(), String> {
+    let Some(kind) = ctx.item.and_then(rules::item_placement) else {
+        return Ok(());
+    };
+    if kind == rules::ItemPlacement::Plain {
+        return Ok(());
+    }
+    let Rule::Known(chosen) = rules::placement_state(kind, block, ctx) else {
+        return Err(unported());
+    };
+    let Some(state) = chosen else {
+        return Ok(());
+    };
+    described["item_state"] = json!(rules::serialize_state(state));
+    let writes = rules::place_writes(kind, state, ctx.clicked_pos(), ctx);
+    described["writes"] = writes
+        .in_order()
+        .map(|write| {
+            json!({
+                "pos": [write.pos.0, write.pos.1, write.pos.2],
+                "state": rules::serialize_state(write.state),
+                "flags": write.flags,
+            })
+        })
+        .collect();
+    Ok(())
 }

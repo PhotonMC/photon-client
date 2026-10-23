@@ -303,9 +303,7 @@ impl GameMode {
         }
         match rules::item_use_on_owner(item) {
             ItemClass::Item => UseResult::Pass,
-            ItemClass::BlockItem
-                if rules::item(item).is_some_and(|row| row.class == ItemClass::BlockItem) =>
-            {
+            ItemClass::BlockItem if rules::item_placement(item).is_some() => {
                 self.place(ctx, hand, item, aim)
             }
             class => super::tools::use_on(ctx, (hand, class), aim)
@@ -313,7 +311,7 @@ impl GameMode {
         }
     }
 
-    /// `BlockItem.place` for a plain block item.
+    /// `BlockItem.place` for the block item classes whose rules are written.
     pub(super) fn place(
         &mut self,
         ctx: &mut Context<'_>,
@@ -332,10 +330,12 @@ impl GameMode {
         else {
             return UseResult::Pass;
         };
-        let Some(block) = rules::item(item)
-            .and_then(|row| row.block)
-            .and_then(photon_data::block::registry::block_index)
-        else {
+        let (Some(kind), Some(block)) = (
+            rules::item_placement(item),
+            rules::item(item)
+                .and_then(|row| row.block)
+                .and_then(photon_data::block::registry::block_index),
+        ) else {
             return UseResult::Success { swing: true };
         };
         let world: &ClientWorld = ctx.world;
@@ -346,18 +346,17 @@ impl GameMode {
         let mut place_ctx =
             rules::PlaceContext::new(&state_at, aimed, Some(item), ctx.player.rotation(), tags);
         place_ctx.secondary_use = ctx.player.is_shift_key_down();
-        let (pos, state) = match super::place_prediction::predicted_state(block, &mut place_ctx) {
-            Ok(predicted) => predicted,
-            Err(result) => return result,
-        };
+        place_ctx.limits = super::place_prediction::limits_of(world);
+        let (pos, state) =
+            match super::place_prediction::predicted_state(kind, block, &mut place_ctx) {
+                Ok(predicted) => predicted,
+                Err(result) => return result,
+            };
         if obstructs_player(ctx, pos, state) {
             return UseResult::Fail;
         }
-        let position = ctx.player.position();
-        if !ctx
-            .world
-            .set_block_with_updates(pos, state, 11, 512, position)
-        {
+        let writes = rules::place_writes(kind, state, pos, &place_ctx);
+        if !set_placed_blocks(ctx, &writes) {
             return UseResult::Fail;
         }
         ctx.world.play_place_sound(pos, state);
@@ -526,6 +525,26 @@ impl GameMode {
             sequence,
         }
     }
+}
+
+/// `BlockItem.placeBlock` and `setPlacedBy`: what the item clears first (not checked), the
+/// block itself, which must be set, and the other part of a door, a tall plant or a bed.
+fn set_placed_blocks(ctx: &mut Context<'_>, writes: &rules::PlaceWrites) -> bool {
+    let position = ctx.player.position();
+    let mut set = |write: rules::Write| {
+        ctx.world
+            .set_block_with_updates(write.pos, write.state, write.flags, 512, position)
+    };
+    if let Some(before) = writes.before {
+        set(before);
+    }
+    if !set(writes.block) {
+        return false;
+    }
+    if let Some(after) = writes.after {
+        set(after);
+    }
+    true
 }
 
 /// `BlockItem.canPlace`'s collision check: a state with a collision shape may not go where the

@@ -60,6 +60,45 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
         Rule::Known(diode_facing(default, ctx))
     }),
     (BlockClass::RepeaterBlock, repeater_placement),
+    (BlockClass::WallTorchBlock, |_, default, ctx| {
+        super::mounted::wall_torch(default, ctx)
+    }),
+    (BlockClass::RedstoneWallTorchBlock, |_, default, ctx| {
+        super::mounted::wall_torch(default, ctx)
+    }),
+    (BlockClass::LadderBlock, |_, default, ctx| {
+        super::mounted::ladder(default, ctx)
+    }),
+    (BlockClass::WallSignBlock, |_, default, ctx| {
+        super::mounted::wall_sign(default, ctx)
+    }),
+    (BlockClass::WallHangingSignBlock, |_, default, ctx| {
+        super::mounted::wall_hanging_sign(default, ctx)
+    }),
+    (BlockClass::StandingSignBlock, |_, default, ctx| {
+        Rule::Known(super::mounted::standing_sign(default, ctx))
+    }),
+    (BlockClass::CeilingHangingSignBlock, |_, default, ctx| {
+        super::mounted::ceiling_hanging_sign(default, ctx)
+    }),
+    (BlockClass::BannerBlock, |_, default, ctx| {
+        Rule::Known(super::mounted::standing_banner(default, ctx))
+    }),
+    (BlockClass::WallBannerBlock, |_, default, ctx| {
+        super::mounted::wall_banner(default, ctx)
+    }),
+    (BlockClass::SkullBlock, |_, default, ctx| {
+        super::mounted::standing_skull(default, ctx)
+    }),
+    (BlockClass::WallSkullBlock, |_, default, ctx| {
+        super::mounted::wall_skull(default, ctx)
+    }),
+    (BlockClass::BaseCoralPlantTypeBlock, |_, default, ctx| {
+        Rule::Known(super::mounted::coral_placement(default, ctx))
+    }),
+    (BlockClass::BaseCoralWallFanBlock, |_, default, ctx| {
+        super::mounted::coral_wall_fan(default, ctx)
+    }),
     (
         BlockClass::FaceAttachedHorizontalDirectionalBlock,
         |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),
@@ -289,7 +328,7 @@ fn ordered_by_nearest((y_rot, x_rot): (f32, f32)) -> [Direction; 6] {
 
 /// `BlockPlaceContext.getNearestLookingDirections`: when the clicked block is not replaced, the
 /// direction into it comes first.
-fn nearest_looking_directions(ctx: &PlaceContext<'_>) -> [Direction; 6] {
+pub(super) fn nearest_looking_directions(ctx: &PlaceContext<'_>) -> [Direction; 6] {
     let mut directions = ordered_by_nearest(ctx.rotation);
     if !ctx.replace_clicked {
         let into = ctx.face.opposite();

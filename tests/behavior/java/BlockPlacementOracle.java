@@ -9,6 +9,9 @@ class BlockPlacementOracle extends BlockItemOracle {
     /** A level whose blocks are the ones the row lists, and air everywhere else. */
     static final class ScriptedLevel extends net.minecraft.client.multiplayer.ClientLevel {
         java.util.Map<Long, net.minecraft.world.level.block.state.BlockState> states;
+        /** The blocks set since the last reset: position, state and flags. */
+        java.util.List<Object[]> writes;
+        net.minecraft.world.level.border.WorldBorder border;
 
         ScriptedLevel() {
             super(null, null, null, null, 0, 0, null, false, 0L, 0);
@@ -35,6 +38,30 @@ class BlockPlacementOracle extends BlockItemOracle {
 
         @Override
         public boolean isClientSide() {
+            return true;
+        }
+
+        @Override
+        public boolean setBlock(net.minecraft.core.BlockPos pos,
+                net.minecraft.world.level.block.state.BlockState state, int flags, int limit) {
+            this.writes.add(new Object[] {pos.immutable(), state, flags});
+            this.states.put(pos.asLong(), state);
+            return true;
+        }
+
+        @Override
+        public net.minecraft.world.level.border.WorldBorder getWorldBorder() {
+            return this.border;
+        }
+
+        @Override
+        public int getMaxY() {
+            return 319;
+        }
+
+        @Override
+        public boolean isUnobstructed(net.minecraft.world.entity.Entity source,
+                net.minecraft.world.phys.shapes.VoxelShape shape) {
             return true;
         }
 
@@ -120,6 +147,8 @@ class BlockPlacementOracle extends BlockItemOracle {
             throw new IllegalStateException(failure);
         }
         level.states = new java.util.HashMap<>();
+        level.writes = new java.util.ArrayList<>();
+        level.border = new net.minecraft.world.level.border.WorldBorder();
         for (var element : row.getAsJsonArray("world")) {
             var spec = element.getAsJsonObject();
             level.states.put(position(spec.getAsJsonArray("pos")).asLong(), scriptedState(spec));
@@ -151,9 +180,69 @@ class BlockPlacementOracle extends BlockItemOracle {
                     net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(placed));
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));
             }
+            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item
+                && item.getClass() != net.minecraft.world.item.BlockItem.class) {
+                itemPlacement(level, context, stack, item, placed, described);
+            }
             results.add(described);
         }
         entry.add("placements", results);
         return entry;
+    }
+
+    /**
+     * What the classes that extend {@code BlockItem} add: the state {@code getPlacementState}
+     * chooses (the standing and wall blocks of a torch are tried in the look's order), and the
+     * blocks {@code place} then sets, ending with {@code setPlacedBy}.
+     */
+    static void itemPlacement(ScriptedLevel level, Context context,
+            net.minecraft.world.item.ItemStack stack, net.minecraft.world.item.BlockItem item,
+            net.minecraft.world.level.block.state.BlockState placed, JsonObject described) {
+        try {
+            net.minecraft.world.level.block.state.BlockState chosen;
+            if (item instanceof net.minecraft.world.item.StandingAndWallBlockItem) {
+                var method = net.minecraft.world.item.BlockItem.class.getDeclaredMethod(
+                    "getPlacementState", net.minecraft.world.item.context.BlockPlaceContext.class);
+                method.setAccessible(true);
+                chosen = (net.minecraft.world.level.block.state.BlockState) method.invoke(item, context);
+            } else {
+                chosen = placed != null && placed.canSurvive(level, context.getClickedPos()) ? placed : null;
+            }
+            if (chosen == null) {
+                return;
+            }
+            described.addProperty("item_state",
+                net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(chosen));
+            level.writes.clear();
+            var before = new java.util.HashMap<>(level.states);
+            var place = net.minecraft.world.item.BlockItem.class.getDeclaredMethod("placeBlock",
+                net.minecraft.world.item.context.BlockPlaceContext.class,
+                net.minecraft.world.level.block.state.BlockState.class);
+            place.setAccessible(true);
+            place.invoke(item, context, chosen);
+            var pos = context.getClickedPos();
+            var now = level.getBlockState(pos);
+            if (now.is(chosen.getBlock())) {
+                now.getBlock().setPlacedBy(level, pos, now, null, stack);
+            }
+            level.states = before;
+            var writes = new JsonArray();
+            for (var write : level.writes) {
+                var at = (net.minecraft.core.BlockPos) write[0];
+                var entry = new JsonObject();
+                var position = new JsonArray();
+                position.add(at.getX());
+                position.add(at.getY());
+                position.add(at.getZ());
+                entry.add("pos", position);
+                entry.addProperty("state", net.minecraft.commands.arguments.blocks.BlockStateParser
+                    .serialize((net.minecraft.world.level.block.state.BlockState) write[1]));
+                entry.addProperty("flags", (Integer) write[2]);
+                writes.add(entry);
+            }
+            described.add("writes", writes);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
     }
 }
