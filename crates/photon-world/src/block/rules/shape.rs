@@ -15,6 +15,9 @@ pub(super) fn update_shape(
     };
     match class {
         BlockClass::StairBlock => Rule::Known(stairs(state, pos, direction, ctx)),
+        BlockClass::SpeleothemBlock => {
+            Rule::Known(super::speleothem::update(state, pos, direction, ctx))
+        }
         BlockClass::SnowyBlock => Rule::Known(snowy(state, pos, direction, ctx)),
         BlockClass::ChorusPlantBlock => {
             Rule::Known(super::chorus::plant_update(state, pos, direction, ctx))

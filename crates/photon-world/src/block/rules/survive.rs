@@ -40,6 +40,7 @@ fn chorus_or_class(
         BlockClass::ChorusPlantBlock => Rule::Known(super::chorus::plant_survives(state, pos, ctx)),
         BlockClass::ChorusFlowerBlock => Rule::Known(super::chorus::flower_survives(pos, ctx)),
         BlockClass::BigDripleafBlock => Rule::Known(super::dripleaf::big_survives(pos, ctx)),
+        BlockClass::SpeleothemBlock => Rule::Known(super::speleothem::survives(state, pos, ctx)),
         BlockClass::SmallDripleafBlock => super::dripleaf::small_survives(state, pos, ctx),
         _ => class_survives(class, state, pos, ctx),
     }

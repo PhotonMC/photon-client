@@ -191,7 +191,8 @@ pub(super) fn state_for_placement(
         .chain(super::furnishings::PLACEMENTS)
         .chain(super::ground::PLACEMENTS)
         .chain(super::chorus::PLACEMENTS)
-        .chain(super::dripleaf::PLACEMENTS);
+        .chain(super::dripleaf::PLACEMENTS)
+        .chain(super::speleothem::PLACEMENTS);
     match tables.into_iter().find(|(class, _)| Some(*class) == owner) {
         Some((_, placement)) => placement(block, default_state(block), ctx),
         None => Rule::Unported,
@@ -412,6 +413,15 @@ fn ordered_by_nearest((y_rot, x_rot): (f32, f32)) -> [Direction; 6] {
 /// `BlockPlaceContext.getNearestLookingDirection`.
 pub(super) fn nearest_direction(ctx: &PlaceContext<'_>) -> Direction {
     ordered_by_nearest(ctx.rotation)[0]
+}
+
+/// `BlockPlaceContext.getNearestLookingVerticalDirection`.
+pub(super) fn nearest_vertical(ctx: &PlaceContext<'_>) -> Direction {
+    let nearest = ordered_by_nearest(ctx.rotation);
+    nearest
+        .into_iter()
+        .find(|direction| direction.axis() == Axis::Y)
+        .unwrap_or(Direction::Down)
 }
 
 /// `BlockPlaceContext.getNearestLookingDirections`: when the clicked block is not replaced, the

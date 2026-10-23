@@ -30,6 +30,7 @@ mod placement;
 mod replace;
 mod shape;
 mod signal;
+mod speleothem;
 mod survive;
 mod tall;
 

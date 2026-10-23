@@ -105,3 +105,54 @@ pub fn dripleaf_rows() -> Vec<Value> {
         })
         .collect()
 }
+
+/// A neighbour's label, block and state.
+type Kind = (&'static str, &'static str, &'static [(&'static str, &'static str)]);
+
+/// Pointed dripstone and sulfur spikes between every kind of neighbour above and below, clicked
+/// from either side, looking up and down, walking and sneaking.
+pub fn speleothem_rows() -> Vec<Value> {
+    let kinds: [Kind; 8] = [
+        ("air", "air", &[]),
+        ("stone", "stone", &[]),
+        ("sand", "soul_sand", &[]),
+        ("down-tip", "pointed_dripstone", &[("vertical_direction", "down"), ("thickness", "tip")]),
+        ("down-frustum", "pointed_dripstone", &[("vertical_direction", "down"), ("thickness", "frustum")]),
+        ("up-tip", "pointed_dripstone", &[("vertical_direction", "up"), ("thickness", "tip")]),
+        ("up-merge", "pointed_dripstone", &[("vertical_direction", "up"), ("thickness", "tip_merge")]),
+        ("sulfur-down", "sulfur_spike", &[("vertical_direction", "down"), ("thickness", "tip")]),
+    ];
+    let mut rows = Vec::new();
+    for (below_label, below, below_props) in kinds {
+        for (above_label, above, above_props) in kinds {
+            for (side, clicked_below) in [("floor", true), ("ceiling", false)] {
+                let clicked = if clicked_below { below } else { above };
+                if clicked == "air" {
+                    continue;
+                }
+                let world = vec![block([0, 63, 0], below, below_props), block([0, 65, 0], above, above_props)];
+                let aim = if clicked_below {
+                    ON_TOP
+                } else {
+                    Click { hit: [0, 65, 0], face: "down", location: [0.5, 65.0, 0.5], ..ON_TOP }
+                };
+                for pitch in [-45.0, 45.0] {
+                    let label = format!("speleothem-{below_label}-{above_label}-{side}-{pitch}");
+                    let mut row = neighbour_row(&label, world.clone(), &["pointed_dripstone", "sulfur_spike"]);
+                    row["hit"] = json!(aim.hit);
+                    row["face"] = json!(aim.face);
+                    row["location"] = json!(aim.location.map(bits));
+                    row["pitch"] = json!(bits32(pitch));
+                    rows.push(row.clone());
+                    rows.push(sneaking(row));
+                }
+            }
+        }
+    }
+    for (label, level) in [("source", "0"), ("flowing", "3")] {
+        let world = vec![block([0, 63, 0], "stone", &[]), block([0, 64, 0], "water", &[("level", level)])];
+        let blocks = ["pointed_dripstone", "sulfur_spike"];
+        rows.push(neighbour_row(&format!("speleothem-in-{label}"), world, &blocks));
+    }
+    rows
+}
