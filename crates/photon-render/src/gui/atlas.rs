@@ -459,6 +459,16 @@ impl GuiAtlas {
         }
     }
 
+    /// An atlas of one sprite at `uv`, for the tests of what a frame draws.
+    #[cfg(test)]
+    pub(crate) fn with_sprite(name: &str, uv: [f32; 4]) -> Self {
+        Self {
+            sprites: BTreeMap::from([(format!("minecraft:{name}"), uv)]),
+            favicons: Vec::new(),
+            blurred: BTreeSet::new(),
+        }
+    }
+
     pub(crate) fn sprite(&self, name: &str) -> [f32; 4] {
         self.sprites
             .get(&format!("minecraft:{name}"))

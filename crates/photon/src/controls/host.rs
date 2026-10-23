@@ -83,6 +83,11 @@ impl Controls {
         self.open_options(surface, assets);
     }
 
+    /// `VideoSettingsScreen` directly, for a capture of it.
+    pub(crate) fn open_title_video(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
+        self.open_video(surface, assets);
+    }
+
     /// `AccessibilityOptionsScreen`, from the title screen's accessibility button.
     pub(crate) fn open_title_accessibility(
         &mut self,

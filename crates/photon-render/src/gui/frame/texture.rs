@@ -565,3 +565,45 @@ mod item_batch_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod repeat_tests {
+    use super::*;
+
+    const SPRITE: [f32; 4] = [0.25, 0.5, 0.375, 0.5625];
+
+    fn inside(frame: &GuiFrame) -> bool {
+        frame.vertices.iter().all(|vertex| {
+            (SPRITE[0]..=SPRITE[2]).contains(&vertex.uv[0])
+                && (SPRITE[1]..=SPRITE[3]).contains(&vertex.uv[1])
+        })
+    }
+
+    #[test]
+    fn a_blit_wider_than_its_texture_never_leaves_the_sprite() {
+        let atlas = GuiAtlas::with_sprite("texture/header_separator", SPRITE);
+        let mut frame = GuiFrame::default();
+        frame.blit_texture(&atlas, "header_separator", (32, 2), (0, 0), 0, 30, 100, 2);
+        // 100 wide over a 32 wide texture: three whole copies and a quarter, 6 vertices each.
+        assert_eq!(frame.vertices.len(), 4 * 6);
+        assert!(inside(&frame));
+        let xs: Vec<f32> = frame.vertices.iter().map(|v| v.position[0]).collect();
+        assert_eq!(xs.iter().copied().fold(f32::MAX, f32::min), 0.0);
+        assert_eq!(xs.iter().copied().fold(f32::MIN, f32::max), 100.0);
+    }
+
+    #[test]
+    fn a_scrolled_background_repeats_from_its_offset_inside_the_sprite() {
+        let atlas = GuiAtlas::with_sprite("texture/menu_list_background", SPRITE);
+        let mut frame = GuiFrame::default();
+        frame.tile_texture_from(
+            &atlas,
+            "menu_list_background",
+            (32, 32),
+            (40, -50),
+            (0, 0, 90, 70),
+        );
+        assert!(!frame.vertices.is_empty());
+        assert!(inside(&frame));
+    }
+}
