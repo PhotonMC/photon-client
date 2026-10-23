@@ -3,6 +3,7 @@
 //! entities in the crosshair.
 
 mod aiming;
+mod bottling;
 mod digging;
 mod gliding;
 mod pistons;
@@ -150,7 +151,7 @@ pub(super) fn place(place: &Value, block: &str) -> Value {
 pub fn cases() -> Vec<Value> {
     let local = |id: &str, rows: Vec<Value>| case(id, "movement", "local_player_ticks", json!({"rows": rows}));
     vec![
-        local("movement/using", [placing::rows(), throwing::rows()].concat()),
+        local("movement/using", [placing::rows(), throwing::rows(), bottling::rows()].concat()),
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),
         local("movement/gliding", gliding::rows()),

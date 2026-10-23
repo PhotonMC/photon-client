@@ -78,6 +78,7 @@ impl Default for GameMode {
 }
 
 mod base_use;
+mod bottles;
 mod buckets;
 mod context;
 mod stab;

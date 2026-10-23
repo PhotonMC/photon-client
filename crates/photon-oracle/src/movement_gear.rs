@@ -184,6 +184,7 @@ pub(super) fn breaking_report(
         "right_click_delay": game_mode.right_click_delay(),
         "main_hand_count": hand_count(world, 36),
         "main_hand_item": hand_item(world, 36),
+        "main_hand_potion": hand_potion(world),
         "main_hand_cooldown": world
             .local_player()
             .and_then(|state| state.inventory_slot(36))
@@ -191,6 +192,21 @@ pub(super) fn breaking_report(
         "off_hand_count": hand_count(world, 45),
         "watched_states": watched,
     }))
+}
+
+/// The registry name of the potion the main hand's `potion_contents` names, or empty.
+fn hand_potion(world: &photon_world::ClientWorld) -> String {
+    let Some(stack) = world
+        .local_player()
+        .and_then(|state| state.inventory_slot(36))
+    else {
+        return String::new();
+    };
+    photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+        .potion_contents()
+        .and_then(|contents| contents.potion)
+        .and_then(|index| photon_data::item::potions::POTIONS.get(usize::try_from(index).ok()?))
+        .map_or_else(String::new, |potion| potion.name.to_owned())
 }
 
 /// The registry name of the item in a hand slot.

@@ -256,6 +256,7 @@ pub(super) fn class_item_use(
             let (item, _) = ctx.held(hand)?;
             Some(super::buckets::bucket_use(ctx, hand, item))
         }
+        ItemClass::BottleItem => Some(super::bottles::bottle_use(ctx, hand)),
         ItemClass::SnowballItem
         | ItemClass::EggItem
         | ItemClass::EnderpearlItem

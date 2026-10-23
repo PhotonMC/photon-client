@@ -19,6 +19,11 @@ pub fn replaceable_by_fluid(state: BlockStateId) -> bool {
     block.replaceable || !info.solid
 }
 
+/// `getFluidState(pos).is(FluidTags.WATER)`: water, still or flowing, loose or held by a block.
+pub fn holds_water(state: BlockStateId) -> bool {
+    is_water(state)
+}
+
 /// `LiquidBlockContainer.canPlaceLiquid(.., WATER)`; `None` for a block that is no container.
 /// `creative` is `Player.isCreative`, which a barrier asks.
 pub fn water_container(state: BlockStateId, creative: bool) -> Option<bool> {

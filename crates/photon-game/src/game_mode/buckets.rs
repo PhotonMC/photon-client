@@ -47,7 +47,7 @@ fn relative(pos: Pos, direction: photon_core::direction::Direction) -> Pos {
 
 /// `Item.getPlayerPOVHitResult`: the block the look reaches within the interaction range, the
 /// fluid sources of an empty bucket's look included.
-fn pov_hit(ctx: &Context<'_>, sources: bool) -> Option<BlockHitResult> {
+pub(super) fn pov_hit(ctx: &Context<'_>, sources: bool) -> Option<BlockHitResult> {
     let (eye, to) = super::placing::look_ray(ctx);
     if sources {
         ctx.world.clip_outlines_and_sources(eye, to)
@@ -205,8 +205,16 @@ fn play_empty_sound(ctx: &mut Context<'_>, (item, content): (ItemId, Content), p
 /// joins the inventory unless one is there; otherwise one is used up and the new item takes its
 /// place or joins the inventory.
 fn filled_result(ctx: &mut Context<'_>, hand: u8, new: ItemId) -> UseResult {
+    filled_with(ctx, hand, ClientItemStackState::new(1, new))
+}
+
+/// `createFilledResult` for a stack that carries components.
+pub(super) fn filled_with(
+    ctx: &mut Context<'_>,
+    hand: u8,
+    fresh: ClientItemStackState,
+) -> UseResult {
     let result = UseResult::Success { swing: true };
-    let fresh = ClientItemStackState::new(1, new);
     if ctx.instabuild() {
         let contained = ctx.world.local_player().is_some_and(|state| {
             (5..=45).any(|slot| {
