@@ -8,6 +8,13 @@ import com.google.gson.JsonObject;
 class BlockPlacementOracle extends BlockItemOracle {
     /** A level whose blocks are the ones the row lists, and air everywhere else. */
     static final class ScriptedLevel extends net.minecraft.client.multiplayer.ClientLevel {
+        static final net.minecraft.util.RandomSource RANDOM = net.minecraft.util.RandomSource.create(0L);
+
+        @Override
+        public net.minecraft.util.RandomSource getRandom() {
+            return RANDOM;
+        }
+
         java.util.Map<Long, net.minecraft.world.level.block.state.BlockState> states;
         /** The blocks set since the last reset: position, state and flags. */
         java.util.List<Object[]> writes;
@@ -176,6 +183,12 @@ class BlockPlacementOracle extends BlockItemOracle {
             described.addProperty("replace_clicked", context.replacingClickedOnBlock());
             described.addProperty("can_place", context.canPlace());
             var placed = block.getStateForPlacement(context);
+            // A growing plant's head takes a random age, which no client can reproduce.
+            if (placed != null && block instanceof net.minecraft.world.level.block.GrowingPlantHeadBlock
+                && placed.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_25)) {
+                placed = placed.setValue(
+                    net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_25, 0);
+            }
             // A refusal has no state.
             if (placed != null) {
                 described.addProperty("state",
@@ -183,7 +196,10 @@ class BlockPlacementOracle extends BlockItemOracle {
                 described.addProperty("survives", placed.canSurvive(level, context.getClickedPos()));
             }
             if (stack.getItem() instanceof net.minecraft.world.item.BlockItem item
-                && item.getClass() != net.minecraft.world.item.BlockItem.class) {
+                && item.getClass() != net.minecraft.world.item.BlockItem.class
+                // Scaffolding moves the placement context along its stack; the client does not
+                // predict that item, so only the block's own rules are compared.
+                && !(item instanceof net.minecraft.world.item.ScaffoldingBlockItem)) {
                 itemPlacement(level, context, stack, item, placed, described);
             }
             results.add(described);

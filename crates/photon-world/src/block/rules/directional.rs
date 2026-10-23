@@ -8,7 +8,7 @@ fn waterlogged_at(ctx: &PlaceContext<'_>) -> &'static str {
     flag(is_water_source(ctx.state(ctx.clicked_pos())))
 }
 
-fn in_tag(state: BlockStateId, ctx: &PlaceContext<'_>, tag: &str) -> bool {
+pub(super) fn in_tag(state: BlockStateId, ctx: &PlaceContext<'_>, tag: &str) -> bool {
     block_index(state).is_some_and(|(index, _)| ctx.tags.contains(index, tag))
 }
 

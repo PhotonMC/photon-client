@@ -367,6 +367,7 @@ fn glazed_rows() -> Vec<Value> {
 
 mod connections;
 mod facing;
+mod growth;
 mod mounted;
 mod signals;
 mod stacking;
@@ -413,5 +414,12 @@ pub fn cases() -> Vec<Value> {
         case("bud-support", facing::bud_support_rows()),
         case("shulker-boxes", facing::shulker_rows()),
         case("end-rods", facing::end_rod_rows()),
+        case("cane-cactus", growth::cane_cactus_rows()),
+        case("bamboo", growth::bamboo_rows()),
+        case("growing-plants", growth::growing_plant_rows()),
+        case("multiface", growth::multiface_rows()),
+        case("scaffolding", growth::scaffolding_rows()),
+        case("rails", growth::rail_rows()),
+        case("redstone-wire", growth::wire_rows()),
     ]
 }

@@ -46,6 +46,11 @@ fn reads_support_shape(class: BlockClass) -> bool {
             | BlockClass::LeafLitterBlock
             | BlockClass::SeaPickleBlock
             | BlockClass::AmethystClusterBlock
+            | BlockClass::GrowingPlantBlock
+            | BlockClass::MultifaceBlock
+            | BlockClass::VineBlock
+            | BlockClass::ScaffoldingBlock
+            | BlockClass::RedStoneWireBlock
     )
 }
 
@@ -163,7 +168,7 @@ fn ground_survives(
         ),
         BlockClass::SeaPickleBlock => Rule::Known(sea_pickle_survives(pos, ctx)),
         BlockClass::AmethystClusterBlock => Rule::Known(amethyst_survives(state, pos, ctx)),
-        _ => Rule::Unported,
+        _ => super::growth::survives(class, state, pos, ctx),
     }
 }
 

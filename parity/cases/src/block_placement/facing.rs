@@ -3,10 +3,10 @@
 
 use super::*;
 
-const FACES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
+pub(super) const FACES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
 
 /// The unit step of a face.
-fn step(face: &str) -> [i32; 3] {
+pub(super) fn step(face: &str) -> [i32; 3] {
     match face {
         "down" => [0, -1, 0],
         "up" => [0, 1, 0],
@@ -33,7 +33,7 @@ fn face_name(face: &str) -> &'static str {
 }
 
 /// A click on the middle of `face` of the block at `hit`.
-fn face_click(hit: [i32; 3], face: &str, yaw: f32, pitch: f32) -> Click {
+pub(super) fn face_click(hit: [i32; 3], face: &str, yaw: f32, pitch: f32) -> Click {
     let offset = step(face);
     let location = [0, 1, 2].map(|axis| f64::from(hit[axis]) + 0.5 + f64::from(offset[axis]) * 0.5);
     click(hit, face_name(face), location, yaw, pitch)

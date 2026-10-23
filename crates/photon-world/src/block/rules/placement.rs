@@ -143,6 +143,26 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::EndRodBlock, |block, default, ctx| {
         Rule::Known(super::directional::end_rod(block, default, ctx))
     }),
+    (BlockClass::BambooStalkBlock, |_, default, ctx| {
+        Rule::Known(super::growth::bamboo(default, ctx))
+    }),
+    (BlockClass::GrowingPlantBlock, |_, default, ctx| {
+        Rule::Known(super::growth::growing_plant(default, default, ctx))
+    }),
+    (BlockClass::KelpBlock, |_, default, ctx| {
+        Rule::Known(super::growth::kelp(default, default, ctx))
+    }),
+    (BlockClass::VineBlock, super::growth::vine),
+    (BlockClass::MultifaceBlock, super::growth::multiface),
+    (BlockClass::ScaffoldingBlock, |_, default, ctx| {
+        Rule::Known(super::growth::scaffolding(default, ctx))
+    }),
+    (BlockClass::BaseRailBlock, |_, default, ctx| {
+        Rule::Known(super::growth::rail(default, ctx))
+    }),
+    (BlockClass::RedStoneWireBlock, |_, default, ctx| {
+        super::growth::wire(default, ctx)
+    }),
     (
         BlockClass::FaceAttachedHorizontalDirectionalBlock,
         |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),
