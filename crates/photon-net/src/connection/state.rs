@@ -37,6 +37,13 @@ pub struct ConnectionState {
     pub dimension_type_registry_environments: Vec<Option<DimensionEnvironment>>,
     /// The tags the configuration phase sent, for the world they belong to.
     pub tags: Vec<ClientboundUpdateTagsPacket>,
+    /// `ClientPacketListener.seenPlayers` and `seenInsecureChatWarning`, which go on to the
+    /// connection a reconfiguration or a transfer makes.
+    pub seen_players: BTreeMap<(u64, u64), String>,
+    pub seen_insecure_warning: bool,
+    /// The server reset the chat in the configuration phase (`ClientboundResetChatPacket`), so
+    /// the chat is not kept through a reconfiguration.
+    pub chat_reset: bool,
     /// Whether the server enables the minecart improvements, if it said.
     pub minecart_improvements: Option<bool>,
 }

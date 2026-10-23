@@ -211,6 +211,9 @@ pub(super) struct LevelInfo {
     /// The server took the connection through the configuration phase again since the last
     /// [`Self::take_reconfigured`].
     pub(super) reconfigured: bool,
+    /// The chat is not kept across the switch that just ended: a transfer, or a reconfiguration
+    /// the server reset the chat in. Until [`PlaySession::take_chat_reset`].
+    pub(super) chat_reset: bool,
 }
 
 impl Link {

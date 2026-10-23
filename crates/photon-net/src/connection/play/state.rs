@@ -315,6 +315,12 @@ impl PlaySession {
         std::mem::take(&mut self.level_info.reconfigured)
     }
 
+    /// Whether the chat does not stay through the switch that ended (`Hud.onDisconnected` clears
+    /// it, and only a reconfiguration the server did not reset restores it).
+    pub fn take_chat_reset(&mut self) -> bool {
+        std::mem::take(&mut self.level_info.chat_reset)
+    }
+
     /// Whether the server replaced the level since the last call, so
     /// everything drawn from the old one should go.
     pub fn take_level_reset(&mut self) -> bool {

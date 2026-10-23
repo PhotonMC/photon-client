@@ -44,6 +44,12 @@ impl Play {
             self.close_screens();
             // `Hud.onDisconnected`: the toasts go with the level.
             self.gui.clear_toasts();
+            // `Hud.onDisconnected` clears the chat; it is restored unless the switch was a
+            // transfer or the server reset it.
+            if self.session.take_chat_reset() {
+                self.controls.chat_log.clear();
+                self.controls.chat_history = self.controls.command_history.clone();
+            }
         }
         self.end_switch();
         if self.session.take_level_reset() {

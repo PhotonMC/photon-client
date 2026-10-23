@@ -346,14 +346,22 @@ impl PlaySession {
         login: (&str, bool),
     ) -> Self {
         let writer = PacketWriter::start(writer).expect("a thread to write on");
+        let social = Social {
+            seen_players: state.seen_players.clone(),
+            ..Social::default()
+        };
+        let effects = Effects {
+            seen_unsecure_warning: state.seen_insecure_warning,
+            ..Effects::default()
+        };
         Self {
             link: Link::new(writer, compression_threshold, incoming, login),
             world: state.new_world(),
             state,
             local: LocalState::default(),
             menus: Menus::default(),
-            social: Social::default(),
-            effects: Effects::default(),
+            social,
+            effects,
             level_info: LevelInfo::default(),
         }
     }

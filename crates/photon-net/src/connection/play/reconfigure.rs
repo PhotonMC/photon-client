@@ -52,6 +52,8 @@ impl PlaySession {
             account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
             transferring: true,
+            seen_players: self.social.seen_players.clone(),
+            seen_insecure_warning: self.effects.seen_unsecure_warning,
             ..ConnectionState::default()
         };
         // `Connection.disconnect`: the old connection ends before the new one is made.
@@ -103,6 +105,8 @@ impl PlaySession {
             custom_report_details: self.state.custom_report_details.clone(),
             // `CommonListenerCookie.serverLinks` goes on to the configuration listener.
             server_links: self.state.server_links.clone(),
+            seen_players: self.social.seen_players.clone(),
+            seen_insecure_warning: self.effects.seen_unsecure_warning,
             ..ConnectionState::default()
         };
         let writer = self.link.writer.stream()?;
@@ -169,6 +173,8 @@ impl PlaySession {
                 fresh.level_info.level_reset = true;
                 fresh.level_info.level_swapped = true;
                 fresh.level_info.reconfigured = true;
+                fresh.level_info.chat_reset =
+                    kind == SwitchKind::Transferring || fresh.state.chat_reset;
                 *self = fresh;
             }
             Ok(Err(error)) => self.end_switch(kind, &error),
@@ -241,6 +247,8 @@ fn configure_again(
                 account: state.account,
                 cookies: state.cookies,
                 transferring: true,
+                seen_players: state.seen_players,
+                seen_insecure_warning: state.seen_insecure_warning,
                 ..ConnectionState::default()
             };
             transfer_to((host, port), (username, auto_jump), information, carried)
@@ -335,6 +343,10 @@ mod tests {
     /// A session whose server asks for the configuration phase and then does `then` with the
     /// connection after the acknowledgement.
     fn reconfiguring_against(then: fn(Transport)) -> PlaySession {
+        reconfiguring_from(ConnectionState::default(), then)
+    }
+
+    fn reconfiguring_from(state: ConnectionState, then: fn(Transport)) -> PlaySession {
         use std::io::Write;
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let address = listener.local_addr().expect("address");
@@ -348,16 +360,53 @@ mod tests {
         });
         let stream = Transport::from(TcpStream::connect(address).expect("connect"));
         let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
-        let mut session = PlaySession::assemble(
-            stream,
-            None,
-            incoming,
-            ConnectionState::default(),
-            ("Tester", false),
-        );
+        let mut session = PlaySession::assemble(stream, None, incoming, state, ("Tester", false));
         session.wait(Duration::from_secs(5)).expect("started");
         assert_eq!(session.switching(), Some(SwitchKind::Reconfiguring));
         session
+    }
+
+    fn finish_configuration(mut stream: Transport) {
+        use std::io::Write;
+        stream
+            .write_all(&frame(CONFIG_FINISH_PACKET_ID))
+            .expect("finish");
+        read_packet(&mut stream, None).expect("finish answer");
+    }
+
+    #[test]
+    fn the_chat_stays_through_a_reconfiguration_the_server_did_not_reset() {
+        let mut session = reconfiguring_against(finish_configuration);
+        session.wait(Duration::from_secs(5)).expect("reconfigured");
+        assert!(!session.take_chat_reset());
+    }
+
+    #[test]
+    fn a_reset_chat_packet_in_the_configuration_does_not_keep_the_chat() {
+        let mut session = reconfiguring_against(|mut stream| {
+            use std::io::Write;
+            stream
+                .write_all(&frame(CONFIG_CLIENTBOUND_RESET_CHAT_PACKET_ID))
+                .expect("reset chat");
+            finish_configuration(stream);
+        });
+        session.wait(Duration::from_secs(5)).expect("reconfigured");
+        assert!(session.take_chat_reset());
+        assert!(!session.take_chat_reset());
+    }
+
+    #[test]
+    fn the_seen_players_and_the_warning_go_through_a_reconfiguration() {
+        let mut state = ConnectionState::default();
+        state.seen_players.insert((1, 2), "Ann".to_owned());
+        state.seen_insecure_warning = true;
+        let mut session = reconfiguring_from(state, finish_configuration);
+        session.wait(Duration::from_secs(5)).expect("reconfigured");
+        assert_eq!(
+            session.social.seen_players.get(&(1, 2)).map(String::as_str),
+            Some("Ann")
+        );
+        assert!(session.effects.seen_unsecure_warning);
     }
 
     #[test]
