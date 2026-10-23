@@ -33,7 +33,8 @@ pub(super) fn of(entity: &ClientEntity) -> Option<(f32, f32)> {
         return Some((0.1 + 0.1 * entity.puff_state() as f32, 1.0));
     }
     let (radius, strength) = photon_data::entity_shadow::of(name)?;
-    if !entity.is_living_entity() {
+    // The dragon's renderer is a plain `EntityRenderer`, so it has neither multiplier.
+    if !entity.is_living_entity() || name == "minecraft:ender_dragon" {
         return Some((radius, strength));
     }
     // `LivingEntityRenderer` scales by the scale attribute; `MobRenderer` also by the age.
