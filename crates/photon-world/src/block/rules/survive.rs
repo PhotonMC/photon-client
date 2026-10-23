@@ -20,6 +20,8 @@ pub(super) fn can_survive(
         Some(BlockClass::FaceAttachedHorizontalDirectionalBlock) => {
             Rule::Known(face_attached_survives(state, pos, ctx))
         }
+        Some(BlockClass::DoorBlock) => Rule::Known(super::tall::door_survives(state, pos, ctx)),
+        Some(BlockClass::DoublePlantBlock) => super::tall::double_plant_survives(state, pos, ctx),
         Some(class) => match super::mounted::survives(class, state, pos, ctx) {
             Rule::Unported => foot_survives(class, state, pos, ctx),
             known => known,

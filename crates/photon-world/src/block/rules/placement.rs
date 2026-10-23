@@ -99,6 +99,15 @@ const PLACEMENTS: &[(BlockClass, Placement)] = &[
     (BlockClass::BaseCoralWallFanBlock, |_, default, ctx| {
         super::mounted::coral_wall_fan(default, ctx)
     }),
+    (BlockClass::DoorBlock, |_, default, ctx| {
+        super::tall::door(default, ctx)
+    }),
+    (BlockClass::DoublePlantBlock, |_, default, ctx| {
+        super::tall::double_plant(default, ctx)
+    }),
+    (BlockClass::BedBlock, |_, default, ctx| {
+        super::tall::bed(default, ctx)
+    }),
     (
         BlockClass::FaceAttachedHorizontalDirectionalBlock,
         |_, default, ctx| Rule::Known(face_attached_placement(default, ctx)),

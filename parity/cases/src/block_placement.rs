@@ -364,6 +364,7 @@ mod mounted;
 mod signals;
 mod stacking;
 mod supports;
+mod tall;
 
 pub fn cases() -> Vec<Value> {
     let case = |label: &str, rows: Vec<Value>| {
@@ -392,5 +393,8 @@ pub fn cases() -> Vec<Value> {
         case("torches", mounted::torch_rows()),
         case("heads-banners", mounted::head_rows()),
         case("signs", mounted::sign_rows()),
+        case("doors", tall::door_rows()),
+        case("tall-plants", tall::tall_plant_rows()),
+        case("beds", tall::bed_rows()),
     ]
 }

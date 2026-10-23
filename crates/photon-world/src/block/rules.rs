@@ -24,6 +24,7 @@ mod placement;
 mod replace;
 mod signal;
 mod survive;
+mod tall;
 
 pub use item::{ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state};
 
