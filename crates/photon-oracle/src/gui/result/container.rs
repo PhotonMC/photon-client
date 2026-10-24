@@ -202,12 +202,19 @@ fn press_clicks(
     menu: &photon_game::menus::container::ContainerMenu,
     row: &Value,
 ) {
-    for click in row["clicks"].as_array().into_iter().flatten() {
+    let base = std::time::Instant::now();
+    for (index, click) in row["clicks"].as_array().into_iter().flatten().enumerate() {
         let at = (
             click[0].as_f64().unwrap_or(0.0),
             click[1].as_f64().unwrap_or(0.0),
         );
-        for action in screen.mouse_clicked(at, 0, false, std::time::Instant::now(), menu) {
+        for action in screen.mouse_clicked(
+            at,
+            0,
+            false,
+            base + std::time::Duration::from_secs(index as u64),
+            menu,
+        ) {
             // The player's own click, which the Java oracle's sound manager hears too.
             if let photon_gui::screen::ScreenAction::SlotState { enabled, .. } = action {
                 let (volume, pitch) =

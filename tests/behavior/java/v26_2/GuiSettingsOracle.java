@@ -478,9 +478,14 @@ class GuiSettingsOracle extends GuiScreenOracle {
             Access26_2.renderThrough(minecraft, new net.minecraft.client.Camera());
             for (var click : row.getAsJsonArray("clicks")) {
                 minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
-                screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
-                    click.getAsJsonArray().get(0).getAsDouble(), click.getAsJsonArray().get(1).getAsDouble(),
-                    new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                try {
+                    screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                        click.getAsJsonArray().get(0).getAsDouble(), click.getAsJsonArray().get(1).getAsDouble(),
+                        new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+                } catch (NullPointerException stub) {
+                    // What a press does with the game (closing the container, telling the server) has
+                    // no game to reach here; the sound came first.
+                }
             }
             var asked = new JsonArray();
             GuiScreenOracle.SilentSounds.ASKED.forEach(asked::add);

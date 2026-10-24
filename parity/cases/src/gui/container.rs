@@ -212,6 +212,16 @@ fn brewing_and_beacons() -> Vec<Value> {
         paid.row("beacon-payment"),
         Screen { mouse: (160, 40), tooltips: false, ..beacon(4) }.row("beacon-hover-power"),
         Screen { mouse: (270, 125), tooltips: false, ..paid }.row("beacon-hover-confirm"),
+        Screen { clicks: vec![(160, 40)], ..beacon(4) }.row("beacon-click-power"),
+        Screen { clicks: vec![(160, 40)], ..beacon(0) }.row("beacon-click-inactive"),
+        Screen {
+            slots: vec![(0, "emerald", 1)],
+            sync_slot: Some(0),
+            clicks: vec![(270, 125)],
+            ..after(json!([[1, 1]]))
+        }
+        .row("beacon-click-confirm"),
+        Screen { clicks: vec![(296, 125)], ..beacon(4) }.row("beacon-click-cancel"),
     ]
 }
 
@@ -286,6 +296,8 @@ fn merchants() -> Vec<Value> {
         merchant(trades(), trader(2, 15, false)).row("merchant-no-bar"),
         Screen { mouse: (160, 70), tooltips: false, ..merchant(trades(), trader(2, 15, true)) }
             .row("merchant-hover-trade"),
+        Screen { clicks: vec![(160, 70)], ..merchant(trades(), trader(2, 15, true)) }.row("merchant-click-trade"),
+        Screen { clicks: vec![(300, 70)], ..merchant(trades(), trader(2, 15, true)) }.row("merchant-click-outside"),
     ]
 }
 
