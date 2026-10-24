@@ -382,7 +382,11 @@ impl Context<'_> {
         }
         let me = self.player.entity_id();
         let holder = entity.leash_holder_id();
-        if holder == Some(me) {
+        // `Entity.interact`: shears cut a lead the mob is tied by, whoever holds it.
+        let shears = self
+            .held(hand)
+            .is_some_and(|(item, _)| crate::item::id_of("minecraft:shears") == Some(item));
+        if holder == Some(me) || (shears && holder.is_some()) {
             return Some(EntityUse::Success { swing: true });
         }
         let holder_is_player = holder

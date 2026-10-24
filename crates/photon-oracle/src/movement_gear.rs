@@ -423,10 +423,12 @@ pub(super) fn told_entities(
         // The reference's entity random starts from nowhere in particular; the port seeds it from the id.
         world.fix_entity_sound_seed(i64::from(id.0));
         apply_spawn_flags(world, id, name, described)?;
-        if described.get("leash_holder").is_some() {
-            world
-                .entities_mut()
-                .set_leash_holder(id, player.entity_id());
+        if let Some(holder) = described.get("leash_holder") {
+            // `true` is the player; a number is the entity holding the lead.
+            let holder = holder
+                .as_i64()
+                .map_or(player.entity_id(), |holder| EntityId(holder as i32));
+            world.entities_mut().set_leash_holder(id, holder);
         }
     }
     Ok(())

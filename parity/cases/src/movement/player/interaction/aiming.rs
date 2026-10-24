@@ -438,6 +438,10 @@ fn sheep_rows() -> Vec<Value> {
     };
     vec![
         click("use-sheep-with-shears", sheep(&[], None), "minecraft:shears"),
+        click("use-leashed-sheep-with-shears", sheep(&["leash_holder"], None), "minecraft:shears"),
+        click("use-leashed-sheep-with-red-dye", sheep(&["leash_holder"], None), "minecraft:red_dye"),
+        tied_to_a_pig("use-sheep-tied-to-a-pig-with-shears", "minecraft:shears"),
+        tied_to_a_pig("use-sheep-tied-to-a-pig-with-wheat", "minecraft:wheat"),
         click("use-sheared-sheep-with-shears", sheep(&["sheared"], None), "minecraft:shears"),
         click("use-baby-sheep-with-shears", sheep(&["baby"], None), "minecraft:shears"),
         click("use-sheep-with-wheat", sheep(&[], None), "minecraft:wheat"),
@@ -450,6 +454,18 @@ fn sheep_rows() -> Vec<Value> {
         click("use-baby-sheep-with-red-dye", sheep(&["baby"], None), "minecraft:red_dye"),
         click("use-sheep-with-stone", sheep(&[], None), "minecraft:stone"),
     ]
+}
+
+/// A sheep held on a lead by a pig beside it, clicked with an item.
+fn tied_to_a_pig(label: &str, item: &'static str) -> Value {
+    let mut sheep = flagged_animal("sheep", &[]);
+    sheep["leash_holder"] = json!(32);
+    let pig = mob(32, "pig", 0.5, 64.0, 4.5);
+    facing(label, vec![sheep, pig], [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat())
+        .main_hand(item)
+        .count(2)
+        .x_rot(30.0)
+        .row()
 }
 
 /// An animal at the usual spot with the named spawn flags set.
