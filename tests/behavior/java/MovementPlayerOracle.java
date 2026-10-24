@@ -26,9 +26,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
         setField(minecraft, "player", player);
         var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
         var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
-        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+        var setMode = Reflect.method(net.minecraft.client.multiplayer.PlayerInfo.class, 
             "setGameMode", net.minecraft.world.level.GameType.class);
-        setMode.setAccessible(true);
         setMode.invoke(info, gameType);
         setField(player, "playerInfo", info);
         var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);
@@ -216,11 +215,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
             level.setTimeFromServer(1000L);
         }
         int tickIndex = 0;
-        var startAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod("startAttack");
-        startAttack.setAccessible(true);
-        var continueAttack = net.minecraft.client.Minecraft.class.getDeclaredMethod(
+        var startAttack = Reflect.method(net.minecraft.client.Minecraft.class, "startAttack");
+        var continueAttack = Reflect.method(net.minecraft.client.Minecraft.class, 
             "continueAttack", boolean.class);
-        continueAttack.setAccessible(true);
 
         var ticks = new JsonArray();
         for (var element : row.get("ticks").getAsJsonArray()) {
@@ -373,15 +370,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
         }
         if (attack.has("use")) {
             var use = attack.getAsJsonObject("use");
-            var startUseItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("startUseItem");
-            startUseItem.setAccessible(true);
+            var startUseItem = Reflect.method(net.minecraft.client.Minecraft.class, "startUseItem");
             for (int click = 0; !using && click < use.get("clicks").getAsInt(); click++) {
                 startUseItem.invoke(minecraft);
             }
             // The pick item key is spent after the use clicks, before a held use.
             if (attack.has("pick_item")) {
-                var pickItem = net.minecraft.client.Minecraft.class.getDeclaredMethod("pickBlockOrEntity");
-                pickItem.setAccessible(true);
+                var pickItem = Reflect.method(net.minecraft.client.Minecraft.class, "pickBlockOrEntity");
                 for (int click = 0; !using && click < attack.getAsJsonObject("pick_item").get("clicks").getAsInt(); click++) {
                     pickItem.invoke(minecraft);
                 }
@@ -520,9 +515,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
         tick.addProperty("using_off_hand", player.getUsedItemHand() == net.minecraft.world.InteractionHand.OFF_HAND);
         tick.addProperty("ticks_using_item", Oracle.bits(player.getTicksUsingItem(0.5F)));
         // The block the screen effects cover the view with (`getViewBlockingState`), as a state number.
-        var viewBlock = net.minecraft.client.renderer.ScreenEffectRenderer.class.getDeclaredMethod(
+        var viewBlock = Reflect.method(net.minecraft.client.renderer.ScreenEffectRenderer.class, 
             "getViewBlockingState", net.minecraft.world.entity.player.Player.class);
-        viewBlock.setAccessible(true);
         var blocking = (net.minecraft.world.level.block.state.BlockState) viewBlock.invoke(null, player);
         tick.addProperty("view_block", blocking == null ? -1 : net.minecraft.world.level.block.Block.getId(blocking));
         var packets = new JsonArray();

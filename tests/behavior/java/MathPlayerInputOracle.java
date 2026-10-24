@@ -242,8 +242,7 @@ class MathPlayerInputOracle extends MathPlayerAttributeOracle {
                 System.setErr(errorOutput);
             }
 
-            var canStartSprinting = LocalPlayer.class.getDeclaredMethod("canStartSprinting");
-            canStartSprinting.setAccessible(true);
+            var canStartSprinting = Reflect.method(LocalPlayer.class, "canStartSprinting");
             Unsafe unsafe = unsafeInstance();
             int sprintWindow = request.get("sprint_window").getAsInt();
             JsonObject conditions = request.getAsJsonObject("conditions");

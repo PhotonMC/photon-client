@@ -203,11 +203,9 @@ class MovementMobExtras extends MovementAnimalExtras {
         described.addProperty("motion_x", Oracle.bits(guardian.getDeltaMovement().x));
         described.addProperty("motion_y", Oracle.bits(guardian.getDeltaMovement().y));
         described.addProperty("motion_z", Oracle.bits(guardian.getDeltaMovement().z));
-        var randomField = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
-        randomField.setAccessible(true);
+        var randomField = Reflect.field(net.minecraft.world.entity.Entity.class, "random");
         var source = randomField.get(guardian);
-        var seedField = source.getClass().getDeclaredField("seed");
-        seedField.setAccessible(true);
+        var seedField = Reflect.field(source.getClass(), "seed");
         described.addProperty("random_state",
             ((java.util.concurrent.atomic.AtomicLong) seedField.get(source)).get());
     }

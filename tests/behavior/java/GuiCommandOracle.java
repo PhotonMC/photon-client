@@ -70,9 +70,8 @@ class GuiCommandOracle extends GuiChatOracle {
     @SuppressWarnings("unchecked")
     static JsonObject commandParse(JsonObject request) throws Exception {
         var dispatcher = commandDispatcher(request.get("tree").getAsString());
-        var formatText = net.minecraft.client.gui.components.CommandSuggestions.class.getDeclaredMethod("formatText",
+        var formatText = Reflect.method(net.minecraft.client.gui.components.CommandSuggestions.class, "formatText",
             com.mojang.brigadier.ParseResults.class, String.class, int.class);
-        formatText.setAccessible(true);
         var exceptionMessage = net.minecraft.client.gui.components.CommandSuggestions.class
             .getDeclaredMethod("getExceptionMessage", com.mojang.brigadier.exceptions.CommandSyntaxException.class);
         exceptionMessage.setAccessible(true);
@@ -197,9 +196,8 @@ class GuiCommandOracle extends GuiChatOracle {
      */
     static JsonObject commandVerify(JsonObject request) throws Exception {
         var dispatcher = commandDispatcher(request.get("tree").getAsString());
-        var verify = net.minecraft.client.multiplayer.ClientPacketListener.class.getDeclaredMethod("verifyCommand",
+        var verify = Reflect.method(net.minecraft.client.multiplayer.ClientPacketListener.class, "verifyCommand",
             String.class);
-        verify.setAccessible(true);
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();

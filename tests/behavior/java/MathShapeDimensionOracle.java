@@ -11,8 +11,7 @@ class MathShapeDimensionOracle extends MathShapeCollisionOracle {
     @SuppressWarnings("unchecked")
     static java.util.Map<Pose, EntityDimensions> avatarPoseDimensions() {
         try {
-            var field = Avatar.class.getDeclaredField("POSES");
-            field.setAccessible(true);
+            var field = Reflect.field(Avatar.class, "POSES");
             return (java.util.Map<Pose, EntityDimensions>) field.get(null);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Avatar.POSES reflection failed", error);

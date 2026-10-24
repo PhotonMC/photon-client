@@ -314,8 +314,7 @@ class MovementSupport {
 
         var minecraft = (net.minecraft.client.Minecraft)
             unsafe.allocateInstance(net.minecraft.client.Minecraft.class);
-        var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-        instanceField.setAccessible(true);
+        var instanceField = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
         instanceField.set(null, minecraft);
         setField(level, "minecraft", minecraft);
         var workDir = java.nio.file.Files.createTempDirectory("oracle-options").toFile();
@@ -503,8 +502,7 @@ class MovementSupport {
             // The enchanting tables' class-wide random source, seeded for the row.
             Class.forName("net.minecraft.world.level.block.entity.EnchantingTableBlockEntity", true,
                 net.minecraft.world.level.block.entity.EnchantingTableBlockEntity.class.getClassLoader());
-            var random = net.minecraft.world.level.block.entity.EnchantingTableBlockEntity.class.getDeclaredField("RANDOM");
-            random.setAccessible(true);
+            var random = Reflect.field(net.minecraft.world.level.block.entity.EnchantingTableBlockEntity.class, "RANDOM");
             ((net.minecraft.util.RandomSource) random.get(null)).setSeed(row.get("book_seed").getAsLong());
         }
         if (row.has("block_entities")) {

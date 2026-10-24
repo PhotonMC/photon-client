@@ -27,9 +27,8 @@ class MathShapeWorldOracle extends MathShapeIndexOracle {
         BlockState state, BlockGetter level, BlockPos pos
     ) {
         try {
-            var method = StairBlock.class.getDeclaredMethod(
+            var method = Reflect.method(StairBlock.class, 
                 "getStairsShape", BlockState.class, BlockGetter.class, BlockPos.class);
-            method.setAccessible(true);
             return (StairsShape) method.invoke(null, state, level, pos);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("StairBlock.getStairsShape reflection failed", error);
@@ -247,9 +246,8 @@ class MathShapeWorldOracle extends MathShapeIndexOracle {
         var result = new JsonObject();
         try {
             Unsafe unsafe = unsafeInstance();
-            var method = LocalPlayer.class.getDeclaredMethod(
+            var method = Reflect.method(LocalPlayer.class, 
                 "isHorizontalCollisionMinor", Vec3.class);
-            method.setAccessible(true);
             var yRotField = Entity.class.getDeclaredField("yRot");
             var xxaField = LivingEntity.class.getDeclaredField("xxa");
             var zzaField = LivingEntity.class.getDeclaredField("zza");

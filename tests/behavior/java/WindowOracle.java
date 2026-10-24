@@ -32,8 +32,7 @@ public final class WindowOracle {
     }
 
     private static JsonObject minSize(JsonObject request) throws Exception {
-        var method = Window.class.getDeclaredMethod("allowedWindowMinSize", int.class);
-        method.setAccessible(true);
+        var method = Reflect.method(Window.class, "allowedWindowMinSize", int.class);
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
@@ -82,8 +81,7 @@ public final class WindowOracle {
     }
 
     private static void setInt(Window window, String fieldName, int value) throws Exception {
-        Field field = Window.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
+        Field field = Reflect.field(Window.class, fieldName);
         field.setInt(window, value);
     }
 }

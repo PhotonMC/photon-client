@@ -147,8 +147,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
-            blurField.setAccessible(true);
+            var blurField = Reflect.field(net.minecraft.client.renderer.state.gui.GuiRenderState.class, "firstStratumAfterBlur");
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             var asked = new JsonArray();
@@ -281,8 +280,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             screen.graphics().extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
-            blurField.setAccessible(true);
+            var blurField = Reflect.field(net.minecraft.client.renderer.state.gui.GuiRenderState.class, "firstStratumAfterBlur");
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             var asked = new JsonArray();

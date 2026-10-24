@@ -319,12 +319,10 @@ public final class ModelOracle extends ModelMath {
             described.addProperty("kind", kind);
             try {
                 if (kind.equals("Reference")) {
-                    var target = contents.getClass().getDeclaredMethod("target");
-                    target.setAccessible(true);
+                    var target = Reflect.method(contents.getClass(), "target");
                     described.addProperty("target", (String)target.invoke(contents));
                 } else {
-                    var material = contents.getClass().getDeclaredMethod("material");
-                    material.setAccessible(true);
+                    var material = Reflect.method(contents.getClass(), "material");
                     var value = (net.minecraft.client.resources.model.sprite.Material)
                         material.invoke(contents);
                     described.addProperty("sprite", value.sprite().toString());

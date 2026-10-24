@@ -189,6 +189,9 @@
         "org.apache.commons:commons-lang3",
         "com.mojang:authlib",
         "org.jspecify:jspecify"
+      ],
+      "extra_sources": [
+        "Reflect.java"
       ]
     },
     "binary": {
@@ -366,7 +369,8 @@
         "org.jspecify:jspecify"
       ],
       "extra_sources": [
-        "ModelMath.java"
+        "ModelMath.java",
+        "Reflect.java"
       ]
     },
     "movement": {
@@ -511,7 +515,8 @@
         "WireFrameOracle.java",
         "WireLoginOracle.java",
         "WireRegistryOracle.java",
-        "WireSupport.java"
+        "WireSupport.java",
+        "Reflect.java"
       ]
     },
     "entity": {

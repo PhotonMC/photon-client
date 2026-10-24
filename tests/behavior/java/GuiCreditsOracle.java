@@ -28,8 +28,7 @@ class GuiCreditsOracle extends GuiTestInstanceOracle {
             set(win, "font", minecraft.font);
             set(win, "width", width);
             set(win, "height", height);
-            var init = net.minecraft.client.gui.screens.WinScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.WinScreen.class, "init");
             init.invoke(win);
             set(win, "scroll", (float) row.get("scroll").getAsDouble());
             for (var step : row.getAsJsonArray("keys")) {

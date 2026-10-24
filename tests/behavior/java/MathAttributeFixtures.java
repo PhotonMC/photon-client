@@ -284,9 +284,8 @@ class MathAttributeFixtures extends MathShapeWorldOracle {
         }
 
         void setItemUseSpeed(final float speed) throws ReflectiveOperationException {
-            var constructor = ItemStack.class.getDeclaredConstructor(
+            var constructor = Reflect.constructor(ItemStack.class, 
                 Holder.class, int.class, PatchedDataComponentMap.class);
-            constructor.setAccessible(true);
             this.useItem = constructor.newInstance(
                 Items.APPLE.builtInRegistryHolder(),
                 1,

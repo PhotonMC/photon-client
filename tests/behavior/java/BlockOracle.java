@@ -67,8 +67,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
         var formatters = new JsonArray();
         var registry = net.minecraft.core.registries.BuiltInRegistries.CUSTOM_STAT;
         try {
-            var field = net.minecraft.stats.Stat.class.getDeclaredField("formatter");
-            field.setAccessible(true);
+            var field = Reflect.field(net.minecraft.stats.Stat.class, "formatter");
             var known = java.util.Map.of(
                 "default", net.minecraft.stats.StatFormatter.DEFAULT,
                 "divide_by_ten", net.minecraft.stats.StatFormatter.DIVIDE_BY_TEN,

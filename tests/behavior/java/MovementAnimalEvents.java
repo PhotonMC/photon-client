@@ -17,8 +17,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
                 event.get("last_pose").getAsLong()));
         }
         if (event.has("pose")) {
-            var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
-            pose.setAccessible(true);
+            var pose = Reflect.field(net.minecraft.world.entity.Entity.class, "DATA_POSE");
             data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
                 (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
                 net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));
@@ -31,8 +30,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
         var listener = ctx.listener();
         var entityId = ctx.entityId();
         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
-        var flags = net.minecraft.world.entity.animal.equine.AbstractHorse.class.getDeclaredField("DATA_ID_FLAGS");
-        flags.setAccessible(true);
+        var flags = Reflect.field(net.minecraft.world.entity.animal.equine.AbstractHorse.class, "DATA_ID_FLAGS");
         data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor<Byte>) flags.get(null),
             (byte) event.get("flags").getAsInt()));
@@ -155,8 +153,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
             data.add(wolfData(catClass, "DATA_COLLAR_COLOR", event.get("collar").getAsInt()));
         }
         if (event.has("pose")) {
-            var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
-            pose.setAccessible(true);
+            var pose = Reflect.field(net.minecraft.world.entity.Entity.class, "DATA_POSE");
             data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
                 (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
                 net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));
@@ -211,8 +208,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
             .getDeclaredField("idleAnimationTimeout");
         timeout.setAccessible(true);
         timeout.setInt(rabbit, event.get("timeout").getAsInt());
-        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
-        random.setAccessible(true);
+        var random = Reflect.field(net.minecraft.world.entity.Entity.class, "random");
         ((net.minecraft.util.RandomSource) random.get(rabbit)).setSeed(event.get("seed").getAsLong());
     }
 
@@ -236,8 +232,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
         var listener = ctx.listener();
         var entityId = ctx.entityId();
         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
-        var pose = net.minecraft.world.entity.Entity.class.getDeclaredField("DATA_POSE");
-        pose.setAccessible(true);
+        var pose = Reflect.field(net.minecraft.world.entity.Entity.class, "DATA_POSE");
         data.add(net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.Pose>) pose.get(null),
             net.minecraft.world.entity.Pose.valueOf(event.get("pose").getAsString())));

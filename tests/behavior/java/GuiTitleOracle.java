@@ -19,16 +19,14 @@ class GuiTitleOracle extends GuiSettingsOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             var panorama = menu(screen);
             var title = plainLogo(new net.minecraft.client.gui.screens.TitleScreen(false));
             panorama.holdSpin();
-            var literal = net.minecraft.client.resources.SplashManager.class.getDeclaredMethod("literalSplash", String.class);
-            literal.setAccessible(true);
+            var literal = Reflect.method(net.minecraft.client.resources.SplashManager.class, "literalSplash", String.class);
             set(title, "splash", new net.minecraft.client.gui.components.SplashRenderer(
                 (net.minecraft.network.chat.Component) literal.invoke(null, row.get("splash").getAsString())));
             minecraft.options.hideSplashTexts().set(row.has("hide_splash") && row.get("hide_splash").getAsBoolean());
@@ -44,8 +42,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             set(title, "realmsNotificationsScreen", realms);
             set(title, "width", width);
             set(title, "height", height);
-            var init = net.minecraft.client.gui.screens.TitleScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.TitleScreen.class, "init");
             init.invoke(title);
             if (row.has("steps")) {
                 for (var stepElement : row.getAsJsonArray("steps")) {
@@ -121,9 +118,8 @@ class GuiTitleOracle extends GuiSettingsOracle {
      */
     static void pinged(net.minecraft.client.multiplayer.ServerData server, JsonObject ping) throws Exception {
         if (ping.has("unreachable")) {
-            var field = net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.class.getDeclaredField(
+            var field = Reflect.field(net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.class, 
                 ping.get("unknown_host").getAsBoolean() ? "CANT_RESOLVE_TEXT" : "CANT_CONNECT_TEXT");
-            field.setAccessible(true);
             server.setState(net.minecraft.client.multiplayer.ServerData.State.UNREACHABLE);
             server.motd = (net.minecraft.network.chat.Component) field.get(null);
             server.status = net.minecraft.network.chat.CommonComponents.EMPTY;
@@ -196,8 +192,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             || java.nio.ByteBuffer.wrap(bytes).getInt(20) != 64) {
             return;
         }
-        var iconField = entry.getClass().getDeclaredField("icon");
-        iconField.setAccessible(true);
+        var iconField = Reflect.field(entry.getClass(), "icon");
         var icon = iconField.get(entry);
         set(icon, "texture", unsafe.allocateInstance(NoGpuTexture.class));
     }
@@ -219,8 +214,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {row.get("ms").getAsLong()};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
@@ -301,8 +295,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
             var panorama = menu(screen);
@@ -398,23 +391,19 @@ class GuiTitleOracle extends GuiSettingsOracle {
                 shown = reconfig;
                 shown.init(width, height);
                 for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
-                    var delay = net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class.getDeclaredField("delayTicker");
-                    delay.setAccessible(true);
+                    var delay = Reflect.field(net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class, "delayTicker");
                     delay.setInt(reconfig, tick + 1);
                     if (tick + 1 == 600) {
-                        var button = net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class.getDeclaredField("disconnectButton");
-                        button.setAccessible(true);
+                        var button = Reflect.field(net.minecraft.client.gui.screens.multiplayer.ServerReconfigScreen.class, "disconnectButton");
                         ((net.minecraft.client.gui.components.Button) button.get(reconfig)).active = true;
                     }
                 }
             } else {
-                var constructor = net.minecraft.client.gui.screens.ConnectScreen.class.getDeclaredConstructor(
+                var constructor = Reflect.constructor(net.minecraft.client.gui.screens.ConnectScreen.class, 
                     net.minecraft.client.gui.screens.Screen.class, net.minecraft.network.chat.Component.class);
-                constructor.setAccessible(true);
                 shown = constructor.newInstance(last, net.minecraft.network.chat.CommonComponents.CONNECT_FAILED);
-                var update = net.minecraft.client.gui.screens.ConnectScreen.class.getDeclaredMethod(
+                var update = Reflect.method(net.minecraft.client.gui.screens.ConnectScreen.class, 
                     "updateStatus", net.minecraft.network.chat.Component.class);
-                update.setAccessible(true);
                 update.invoke(shown, net.minecraft.network.chat.Component.translatable(row.get("status").getAsString()));
             }
             if (!row.get("screen").getAsString().equals("reconfiguring")) {

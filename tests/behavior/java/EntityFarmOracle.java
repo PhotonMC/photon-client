@@ -101,12 +101,10 @@ class EntityFarmOracle extends EntityDisplayOracle {
             var row = element.getAsJsonObject();
             var sheep = (net.minecraft.world.entity.animal.sheep.Sheep) UNSAFE.allocateInstance(
                 net.minecraft.world.entity.animal.sheep.Sheep.class);
-            var timer = net.minecraft.world.entity.animal.sheep.Sheep.class.getDeclaredField("eatAnimationTick");
-            timer.setAccessible(true);
+            var timer = Reflect.field(net.minecraft.world.entity.animal.sheep.Sheep.class, "eatAnimationTick");
             timer.setInt(sheep, row.get("eat_tick").getAsInt());
             for (String name : new String[] {"xRot", "xRotO"}) {
-                var field = net.minecraft.world.entity.Entity.class.getDeclaredField(name);
-                field.setAccessible(true);
+                var field = Reflect.field(net.minecraft.world.entity.Entity.class, name);
                 field.setFloat(sheep, Oracle.f32(row, "x_rot"));
             }
             float partial = Oracle.f32(row, "partial");

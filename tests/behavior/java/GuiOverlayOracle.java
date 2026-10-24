@@ -86,9 +86,8 @@ class GuiOverlayOracle extends GuiHudOracle {
             net.minecraft.world.entity.player.Input.EMPTY, false, null);
         local.setId(1);
         var info = new net.minecraft.client.multiplayer.PlayerInfo(scene.listener().getLocalGameProfile(), false);
-        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+        var setMode = Reflect.method(net.minecraft.client.multiplayer.PlayerInfo.class, 
             "setGameMode", net.minecraft.world.level.GameType.class);
-        setMode.setAccessible(true);
         setMode.invoke(info, row.get("local_spectator").getAsBoolean()
             ? net.minecraft.world.level.GameType.SPECTATOR : net.minecraft.world.level.GameType.SURVIVAL);
         MovementOracle.setField(local, "playerInfo", info);
@@ -110,14 +109,12 @@ class GuiOverlayOracle extends GuiHudOracle {
 
         // The camera and the dispatcher that measures from it.
         var camera = new net.minecraft.client.Camera();
-        var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod(
+        var setPosition = Reflect.method(net.minecraft.client.Camera.class, 
             "setPosition", double.class, double.class, double.class);
-        setPosition.setAccessible(true);
         setPosition.invoke(camera, Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"),
             Oracle.f64(row, "camera_z"));
-        var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod(
+        var setRotation = Reflect.method(net.minecraft.client.Camera.class, 
             "setRotation", float.class, float.class);
-        setRotation.setAccessible(true);
         setRotation.invoke(camera, Oracle.f32(row, "camera_y_rot"), Oracle.f32(row, "camera_x_rot"));
         MovementOracle.setField(gameRenderer, "mainCamera", camera);
         camera.setEntity(local);
@@ -165,10 +162,9 @@ class GuiOverlayOracle extends GuiHudOracle {
         state.scale = 1.0F;
         state.showExtraEars = remote.showExtraEars();
         state.lightCoords = row.get("light").getAsInt();
-        var extract = net.minecraft.client.renderer.entity.LivingEntityRenderer.class.getDeclaredMethod(
+        var extract = Reflect.method(net.minecraft.client.renderer.entity.LivingEntityRenderer.class, 
             "extractNameTags", net.minecraft.world.entity.LivingEntity.class,
             net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class, float.class);
-        extract.setAccessible(true);
         extract.invoke(renderer, remote, state, 0.0F);
         entry.addProperty("shown", state.nameTag != null);
         var submits = new JsonArray();
@@ -189,12 +185,11 @@ class GuiOverlayOracle extends GuiHudOracle {
             poseStack.translate(remote.getX() - camera.position().x + offset.x,
                 remote.getY() - camera.position().y + offset.y,
                 remote.getZ() - camera.position().z + offset.z);
-            var display = net.minecraft.client.renderer.entity.player.AvatarRenderer.class.getDeclaredMethod(
+            var display = Reflect.method(net.minecraft.client.renderer.entity.player.AvatarRenderer.class, 
                 "submitNameDisplay", net.minecraft.client.renderer.entity.state.AvatarRenderState.class,
                 com.mojang.blaze3d.vertex.PoseStack.class,
                 net.minecraft.client.renderer.SubmitNodeCollector.class,
                 net.minecraft.client.renderer.state.level.CameraRenderState.class);
-            display.setAccessible(true);
             display.invoke(renderer, state, poseStack, storage, cameraState);
             poseStack.popPose();
             submits.addAll(normal.kept);
@@ -299,12 +294,11 @@ class GuiOverlayOracle extends GuiHudOracle {
             poseStack.pushPose();
             poseStack.translate(entity.getX() - camera.position().x, entity.getY() - camera.position().y,
                 entity.getZ() - camera.position().z);
-            var display = net.minecraft.client.renderer.entity.EntityRenderer.class.getDeclaredMethod(
+            var display = Reflect.method(net.minecraft.client.renderer.entity.EntityRenderer.class, 
                 "submitNameDisplay", net.minecraft.client.renderer.entity.state.EntityRenderState.class,
                 com.mojang.blaze3d.vertex.PoseStack.class,
                 net.minecraft.client.renderer.SubmitNodeCollector.class,
                 net.minecraft.client.renderer.state.level.CameraRenderState.class);
-            display.setAccessible(true);
             display.invoke(renderer, state, poseStack, storage, cameraState);
             poseStack.popPose();
             submits.addAll(normal.kept);
@@ -419,9 +413,8 @@ class GuiOverlayOracle extends GuiHudOracle {
             var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
             set(level, "connection", listener);
             set(minecraft, "level", level);
-            var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod("extractScoreboardSidebar",
+            var method = Reflect.method(net.minecraft.client.gui.Hud.class, "extractScoreboardSidebar",
                 GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
-            method.setAccessible(true);
             method.invoke(screen.hud(), screen.graphics(), null);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

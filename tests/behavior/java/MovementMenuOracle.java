@@ -63,9 +63,8 @@ class MovementMenuOracle extends MovementPlayerOracle {
         setField(minecraft, "gameRenderer", gameRenderer);
         var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
         var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
-        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
+        var setMode = Reflect.method(net.minecraft.client.multiplayer.PlayerInfo.class, 
             "setGameMode", net.minecraft.world.level.GameType.class);
-        setMode.setAccessible(true);
         setMode.invoke(info, gameType);
         setField(player, "playerInfo", info);
         var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);

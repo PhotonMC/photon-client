@@ -178,8 +178,7 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
             this.freeAfterFluidJump = freeAfterJump;
             this.yRotation = yRot;
             this.travelDeltaMovement = deltaMovement;
-            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
-            position.setAccessible(true);
+            var position = Reflect.field(net.minecraft.world.entity.Entity.class, "position");
             position.set(this, new Vec3(0.0, currentY, 0.0));
         }
 
@@ -198,8 +197,7 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
             this.freeAfterFluidJump = freeAfterJump;
             this.yRotation = yRot;
             this.travelDeltaMovement = deltaMovement;
-            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
-            position.setAccessible(true);
+            var position = Reflect.field(net.minecraft.world.entity.Entity.class, "position");
             position.set(this, new Vec3(0.0, currentY, 0.0));
         }
 
@@ -295,8 +293,7 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
                 case "slime" -> Blocks.SLIME_BLOCK.defaultBlockState();
                 default -> throw new IllegalArgumentException("Unknown travel air block");
             });
-            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
-            position.setAccessible(true);
+            var position = Reflect.field(net.minecraft.world.entity.Entity.class, "position");
             position.set(this, new Vec3(0.0, currentY, 0.0));
         }
 
@@ -347,15 +344,13 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
             this.fallFlyingLookAngle = vec3(input.getAsJsonObject("look"));
             this.xRotation = Oracle.f32(input, "x_rot");
             this.travelPath = null;
-            var blockPosition = net.minecraft.world.entity.Entity.class.getDeclaredField("blockPosition");
-            blockPosition.setAccessible(true);
+            var blockPosition = Reflect.field(net.minecraft.world.entity.Entity.class, "blockPosition");
             blockPosition.set(this, BlockPos.ZERO);
         }
 
         void setItemUseSpeed(final float speed) throws ReflectiveOperationException {
-            var constructor = ItemStack.class.getDeclaredConstructor(
+            var constructor = Reflect.constructor(ItemStack.class, 
                 Holder.class, int.class, PatchedDataComponentMap.class);
-            constructor.setAccessible(true);
             this.useItem = constructor.newInstance(
                 Items.APPLE.builtInRegistryHolder(),
                 1,

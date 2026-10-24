@@ -172,8 +172,7 @@ class GuiRecorder extends GuiFonts {
         setup();
         var minecraft = (net.minecraft.client.Minecraft)
             unsafe.allocateInstance(net.minecraft.client.Minecraft.class);
-        var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-        instance.setAccessible(true);
+        var instance = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
         instance.set(null, minecraft);
         return prepare(minecraft, width, height, mouseX, mouseY);
     }
@@ -490,8 +489,7 @@ class GuiRecorder extends GuiFonts {
         var bytes = java.util.HexFormat.of().parseHex(hex);
         var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
         var packet = net.minecraft.network.protocol.game.ClientboundCommandsPacket.STREAM_CODEC.decode(buffer);
-        var builderField = net.minecraft.client.multiplayer.ClientPacketListener.class.getDeclaredField("COMMAND_NODE_BUILDER");
-        builderField.setAccessible(true);
+        var builderField = Reflect.field(net.minecraft.client.multiplayer.ClientPacketListener.class, "COMMAND_NODE_BUILDER");
         var root = packet.getRoot(net.minecraft.commands.CommandBuildContext.simple(registries,
                 net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS),
             (net.minecraft.network.protocol.game.ClientboundCommandsPacket.NodeBuilder<

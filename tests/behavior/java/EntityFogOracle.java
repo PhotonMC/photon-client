@@ -9,8 +9,7 @@ class EntityFogOracle extends EntityBlockOracle {
     }
 
     private static Object blendField(final Object blend, final String name) throws Exception {
-        var field = blend.getClass().getDeclaredField(name);
-        field.setAccessible(true);
+        var field = Reflect.field(blend.getClass(), name);
         return field.get(blend);
     }
 
@@ -20,8 +19,7 @@ class EntityFogOracle extends EntityBlockOracle {
      */
     static JsonObject mobEffectBlend(final JsonObject request) throws Exception {
         Oracle.vanillaRegistries();
-        var instanceBlend = net.minecraft.world.effect.MobEffectInstance.class.getDeclaredField("blendState");
-        instanceBlend.setAccessible(true);
+        var instanceBlend = Reflect.field(net.minecraft.world.effect.MobEffectInstance.class, "blendState");
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
@@ -102,8 +100,7 @@ class EntityFogOracle extends EntityBlockOracle {
             } else {
                 var fixture = (WaterFixture) unsafe.allocateInstance(WaterFixture.class);
                 fixture.eyesInWater = row.get("eyes_in_water").getAsBoolean();
-                var time = net.minecraft.client.player.LocalPlayer.class.getDeclaredField("waterVisionTime");
-                time.setAccessible(true);
+                var time = Reflect.field(net.minecraft.client.player.LocalPlayer.class, "waterVisionTime");
                 time.setInt(fixture, row.get("time").getAsInt());
                 out.addProperty("scale", Oracle.bits(fixture.getWaterVision()));
             }

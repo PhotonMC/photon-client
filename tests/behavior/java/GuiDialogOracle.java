@@ -180,8 +180,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             set(gui, "events", new java.util.ArrayList<String>());
             set(gui, "hud", screen.hud());
             set(minecraft, "gui", gui);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
@@ -267,8 +266,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             }
             set(shown, "width", width);
             set(shown, "height", height);
-            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(shown);
             var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
@@ -339,8 +337,7 @@ class GuiDialogOracle extends GuiSocialOracle {
                 // With a level the background blurs the frame behind first.
                 shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             } else {
-                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
-                background.setAccessible(true);
+                var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
                 background.invoke(shown, screen.graphics());
             }
             shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
@@ -348,8 +345,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            var blurField = net.minecraft.client.renderer.state.gui.GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
-            blurField.setAccessible(true);
+            var blurField = Reflect.field(net.minecraft.client.renderer.state.gui.GuiRenderState.class, "firstStratumAfterBlur");
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             var events = new JsonArray();
             gui.events.forEach(events::add);
@@ -393,8 +389,7 @@ class GuiDialogOracle extends GuiSocialOracle {
                 abilities(row.getAsJsonArray("restrictions")));
             set(shown, "width", width);
             set(shown, "height", height);
-            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(shown);
             var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
@@ -434,8 +429,7 @@ class GuiDialogOracle extends GuiSocialOracle {
             if (row.get("in_world").getAsBoolean()) {
                 shown.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             } else {
-                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
-                background.setAccessible(true);
+                var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "extractMenuBackground", net.minecraft.client.gui.GuiGraphicsExtractor.class);
                 background.invoke(shown, screen.graphics());
             }
             shown.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);

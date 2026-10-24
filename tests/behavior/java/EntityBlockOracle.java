@@ -34,8 +34,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         var models = net.minecraft.client.renderer.blockentity.ChestRenderer.LAYERS.map(bake);
         var renderer = (net.minecraft.client.renderer.blockentity.ChestRenderer<?>) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.ChestRenderer.class);
-        var modelsField = net.minecraft.client.renderer.blockentity.ChestRenderer.class.getDeclaredField("models");
-        modelsField.setAccessible(true);
+        var modelsField = Reflect.field(net.minecraft.client.renderer.blockentity.ChestRenderer.class, "models");
         modelsField.set(renderer, models);
         // The first use of each facing's matrix works its flags out (a facing that turns nothing
         // becomes the identity), as the first chest drawn does in the game.
@@ -192,8 +191,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         var modelSet = net.minecraft.client.model.geom.EntityModelSet.vanilla();
         var renderer = (net.minecraft.client.renderer.blockentity.SkullBlockRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class);
-        var modelsField = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class.getDeclaredField("modelByType");
-        modelsField.setAccessible(true);
+        var modelsField = Reflect.field(net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class, "modelByType");
         java.util.function.Function<net.minecraft.world.level.block.SkullBlock.Type,
             net.minecraft.client.model.object.skull.SkullModelBase> models = net.minecraft.util.Util.memoize(
                 type -> net.minecraft.client.renderer.blockentity.SkullBlockRenderer.createModel(modelSet, type));
@@ -254,16 +252,11 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var group = (net.minecraft.client.particle.ElderGuardianParticleGroup) UNSAFE.allocateInstance(
             net.minecraft.client.particle.ElderGuardianParticleGroup.class);
-        var queueField = net.minecraft.client.particle.ParticleGroup.class.getDeclaredField("particles");
-        queueField.setAccessible(true);
-        var ageField = net.minecraft.client.particle.Particle.class.getDeclaredField("age");
-        ageField.setAccessible(true);
-        var lifetimeField = net.minecraft.client.particle.Particle.class.getDeclaredField("lifetime");
-        lifetimeField.setAccessible(true);
-        var typeField = net.minecraft.client.particle.ElderGuardianParticle.class.getDeclaredField("renderType");
-        typeField.setAccessible(true);
-        var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class, float.class);
-        setRotation.setAccessible(true);
+        var queueField = Reflect.field(net.minecraft.client.particle.ParticleGroup.class, "particles");
+        var ageField = Reflect.field(net.minecraft.client.particle.Particle.class, "age");
+        var lifetimeField = Reflect.field(net.minecraft.client.particle.Particle.class, "lifetime");
+        var typeField = Reflect.field(net.minecraft.client.particle.ElderGuardianParticle.class, "renderType");
+        var setRotation = Reflect.method(net.minecraft.client.Camera.class, "setRotation", float.class, float.class);
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
@@ -314,8 +307,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.BellRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.BellRenderer.class);
-        var modelField = net.minecraft.client.renderer.blockentity.BellRenderer.class.getDeclaredField("model");
-        modelField.setAccessible(true);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.BellRenderer.class, "model");
         modelField.set(renderer, new net.minecraft.client.model.object.bell.BellModel(
             bakedLayer("minecraft:bell#main")));
         var rows = new JsonArray();
@@ -368,8 +360,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.EnchantTableRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class);
-        var modelField = net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class.getDeclaredField("bookModel");
-        modelField.setAccessible(true);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class, "bookModel");
         modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -728,8 +719,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
                     net.minecraft.core.BlockPos.ZERO, net.minecraft.world.level.block.Blocks.CONDUIT.defaultBlockState());
                 entity.tickCount = row.get("tick_count").getAsInt();
                 for (var field : new String[] {"activeRotation", "isActive", "isHunting"}) {
-                    var reflected = net.minecraft.world.level.block.entity.ConduitBlockEntity.class.getDeclaredField(field);
-                    reflected.setAccessible(true);
+                    var reflected = Reflect.field(net.minecraft.world.level.block.entity.ConduitBlockEntity.class, field);
                     if (field.equals("activeRotation")) {
                         reflected.setFloat(entity, (float) row.get("rotation").getAsInt());
                     } else {
@@ -845,8 +835,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.VaultRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.VaultRenderer.class);
-        var randomField = net.minecraft.client.renderer.blockentity.VaultRenderer.class.getDeclaredField("random");
-        randomField.setAccessible(true);
+        var randomField = Reflect.field(net.minecraft.client.renderer.blockentity.VaultRenderer.class, "random");
         randomField.set(renderer, net.minecraft.util.RandomSource.create());
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -1072,13 +1061,11 @@ class EntityBlockOracle extends EntityAquaticOracle {
             net.minecraft.client.model.geom.EntityModelSet.vanilla(), sprites);
         var names = new java.util.IdentityHashMap<Object, String>();
         for (var name : new String[] {"neck", "top", "bottom"}) {
-            var field = net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class.getDeclaredField(name);
-            field.setAccessible(true);
+            var field = Reflect.field(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class, name);
             names.put(field.get(renderer), name);
         }
         for (var name : new String[] {"front", "back", "left", "right"}) {
-            var field = net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class.getDeclaredField(name + "Side");
-            field.setAccessible(true);
+            var field = Reflect.field(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.class, name + "Side");
             names.put(field.get(renderer), name);
         }
         var rows = new JsonArray();
@@ -1138,8 +1125,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         Oracle.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.LecternRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.LecternRenderer.class);
-        var modelField = net.minecraft.client.renderer.blockentity.LecternRenderer.class.getDeclaredField("bookModel");
-        modelField.setAccessible(true);
+        var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.LecternRenderer.class, "bookModel");
         modelField.set(renderer, new net.minecraft.client.model.object.book.BookModel(bakedLayer("minecraft:book#main")));
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {

@@ -44,8 +44,7 @@ class EntityProjectileOracle extends EntityPoseOracle {
                 var state = new net.minecraft.client.renderer.entity.state.ThrownItemRenderState();
                 state.item.newLayer();
                 var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ThrownItemRenderer.class);
-                var scale = net.minecraft.client.renderer.entity.ThrownItemRenderer.class.getDeclaredField("scale");
-                scale.setAccessible(true);
+                var scale = Reflect.field(net.minecraft.client.renderer.entity.ThrownItemRenderer.class, "scale");
                 scale.setFloat(renderer, Oracle.f32(row, "scale"));
                 ((net.minecraft.client.renderer.entity.ThrownItemRenderer) renderer).submit(state, stack, collector, camera);
             }
@@ -171,11 +170,10 @@ class EntityProjectileOracle extends EntityPoseOracle {
      */
     static JsonObject leashStrip(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var pair = net.minecraft.client.renderer.feature.LeashFeatureRenderer.class.getDeclaredMethod("addVertexPair",
+        var pair = Reflect.method(net.minecraft.client.renderer.feature.LeashFeatureRenderer.class, "addVertexPair",
             com.mojang.blaze3d.vertex.VertexConsumer.class, org.joml.Matrix4fc.class,
             float.class, float.class, float.class, float.class, float.class, float.class, int.class,
             boolean.class, net.minecraft.client.renderer.entity.state.EntityRenderState.LeashState.class);
-        pair.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var state = new net.minecraft.client.renderer.entity.state.EntityRenderState.LeashState();
@@ -345,12 +343,11 @@ class EntityProjectileOracle extends EntityPoseOracle {
      */
     static JsonObject paintingGeometry(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var render = net.minecraft.client.renderer.entity.PaintingRenderer.class.getDeclaredMethod("renderPainting",
+        var render = Reflect.method(net.minecraft.client.renderer.entity.PaintingRenderer.class, "renderPainting",
             com.mojang.blaze3d.vertex.PoseStack.class, net.minecraft.client.renderer.SubmitNodeCollector.class,
             net.minecraft.client.renderer.rendertype.RenderType.class, int[].class, int.class, int.class,
             net.minecraft.client.renderer.texture.TextureAtlasSprite.class,
             net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
-        render.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var vertices = new JsonArray();
@@ -381,8 +378,7 @@ class EntityProjectileOracle extends EntityPoseOracle {
                 var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite)
                     UNSAFE.allocateInstance(net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
                 for (var corner : new String[] {"u0", "u1", "v0", "v1"}) {
-                    var field = net.minecraft.client.renderer.texture.TextureAtlasSprite.class.getDeclaredField(corner);
-                    field.setAccessible(true);
+                    var field = Reflect.field(net.minecraft.client.renderer.texture.TextureAtlasSprite.class, corner);
                     field.setFloat(sprite, Oracle.f32(row, names[s] + "_" + corner));
                 }
                 sprites[s] = sprite;

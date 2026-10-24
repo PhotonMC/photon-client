@@ -197,8 +197,7 @@ final class Access26_2 {
 
     /** A private method of the `Hud`, by name. */
     static java.lang.reflect.Method hudMethod(String name, Class<?>... types) throws Exception {
-        var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name, types);
-        method.setAccessible(true);
+        var method = Reflect.method(net.minecraft.client.gui.Hud.class, name, types);
         return method;
     }
 

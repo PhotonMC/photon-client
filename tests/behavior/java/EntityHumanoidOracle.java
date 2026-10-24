@@ -41,13 +41,11 @@ class EntityHumanoidOracle extends EntityHeldOracle {
         var rows = new JsonArray();
         var renderer = (net.minecraft.client.renderer.entity.CreeperRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.entity.CreeperRenderer.class);
-        var scale = net.minecraft.client.renderer.entity.CreeperRenderer.class.getDeclaredMethod("scale",
+        var scale = Reflect.method(net.minecraft.client.renderer.entity.CreeperRenderer.class, "scale",
             net.minecraft.client.renderer.entity.state.CreeperRenderState.class,
             com.mojang.blaze3d.vertex.PoseStack.class);
-        scale.setAccessible(true);
-        var overlay = net.minecraft.client.renderer.entity.CreeperRenderer.class.getDeclaredMethod(
+        var overlay = Reflect.method(net.minecraft.client.renderer.entity.CreeperRenderer.class, 
             "getWhiteOverlayProgress", net.minecraft.client.renderer.entity.state.CreeperRenderState.class);
-        overlay.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var state = new net.minecraft.client.renderer.entity.state.CreeperRenderState();
@@ -80,9 +78,8 @@ class EntityHumanoidOracle extends EntityHeldOracle {
         var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
             .getProtectionDomain().getCodeSource().getLocation().toURI());
         var folder = jar.getParent().getParent().resolve("assets/jar/assets/minecraft/equipment");
-        var color = net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer.class.getDeclaredMethod(
+        var color = Reflect.method(net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer.class, 
             "getColorForLayer", net.minecraft.client.resources.model.EquipmentClientInfo.Layer.class, int.class);
-        color.setAccessible(true);
         var names = new java.util.TreeSet<String>();
         try (var files = java.nio.file.Files.list(folder)) {
             files.forEach(file -> names.add(file.getFileName().toString()));
@@ -158,10 +155,9 @@ class EntityHumanoidOracle extends EntityHeldOracle {
     static JsonObject avatarPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();
         var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.player.AvatarRenderer.class);
-        var rotations = net.minecraft.client.renderer.entity.player.AvatarRenderer.class.getDeclaredMethod(
+        var rotations = Reflect.method(net.minecraft.client.renderer.entity.player.AvatarRenderer.class, 
             "setupRotations", net.minecraft.client.renderer.entity.state.AvatarRenderState.class,
             com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
-        rotations.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var state = new net.minecraft.client.renderer.entity.state.AvatarRenderState();

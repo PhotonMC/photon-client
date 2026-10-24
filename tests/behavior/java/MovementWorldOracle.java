@@ -214,8 +214,7 @@ class MovementWorldOracle extends MovementLivingOracle {
         player.fx = fogEffects(row);
         player.eyesInWater = row.get("eyes_in_water").getAsBoolean();
         player.tickCount = row.get("tick_count").getAsInt();
-        var time = net.minecraft.client.player.LocalPlayer.class.getDeclaredField("waterVisionTime");
-        time.setAccessible(true);
+        var time = Reflect.field(net.minecraft.client.player.LocalPlayer.class, "waterVisionTime");
         time.setInt(player, row.get("water_vision_time").getAsInt());
         setField(minecraft, "player", player);
         var options = (net.minecraft.client.Options) unsafe.allocateInstance(net.minecraft.client.Options.class);
@@ -310,8 +309,7 @@ class MovementWorldOracle extends MovementLivingOracle {
             player.fx = effects;
             player.spectatorMode = row.get("spectator").getAsBoolean();
             player.eyesInWater = row.get("fog_type").getAsString().equals("water");
-            var time = net.minecraft.client.player.LocalPlayer.class.getDeclaredField("waterVisionTime");
-            time.setAccessible(true);
+            var time = Reflect.field(net.minecraft.client.player.LocalPlayer.class, "waterVisionTime");
             time.setInt(player, row.get("water_vision_time").getAsInt());
             entity = player;
         } else {
@@ -375,8 +373,7 @@ class MovementWorldOracle extends MovementLivingOracle {
     static JsonObject elytraState(final JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        var setFlag = net.minecraft.world.entity.Entity.class.getDeclaredMethod("setSharedFlag", int.class, boolean.class);
-        setFlag.setAccessible(true);
+        var setFlag = Reflect.method(net.minecraft.world.entity.Entity.class, "setSharedFlag", int.class, boolean.class);
         {
             var empty = new JsonObject();
             empty.add("blocks", new JsonArray());

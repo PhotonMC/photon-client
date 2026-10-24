@@ -20,8 +20,7 @@ class GuiSignOracle extends GuiTitleOracle {
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
@@ -135,8 +134,7 @@ class GuiSignOracle extends GuiTitleOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             menu(screen);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
@@ -169,8 +167,7 @@ class GuiSignOracle extends GuiTitleOracle {
     static net.minecraft.client.gui.screens.inventory.BookEditScreen bookEdit(JsonObject row) throws Exception {
         var owner = (net.minecraft.world.entity.player.Player)
             unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
-        var profileField = net.minecraft.world.entity.player.Player.class.getDeclaredField("gameProfile");
-        profileField.setAccessible(true);
+        var profileField = Reflect.field(net.minecraft.world.entity.player.Player.class, "gameProfile");
         profileField.set(owner, new com.mojang.authlib.GameProfile(new java.util.UUID(0, 1), "Steve"));
         var pages = new java.util.ArrayList<net.minecraft.server.network.Filterable<String>>();
         row.getAsJsonArray("pages").forEach(page ->
@@ -248,8 +245,7 @@ class GuiSignOracle extends GuiTitleOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             menu(screen);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> 0L);
             var sign = (net.minecraft.client.gui.screens.inventory.BookSignScreen) get(bookEdit(row), "signScreen");
@@ -330,9 +326,8 @@ class GuiSignOracle extends GuiTitleOracle {
     static boolean keep(net.minecraft.world.level.block.entity.SignBlockEntity sign,
             net.minecraft.world.level.block.entity.SignText text, boolean isFront) {
         try {
-            var field = net.minecraft.world.level.block.entity.SignBlockEntity.class.getDeclaredField(
+            var field = Reflect.field(net.minecraft.world.level.block.entity.SignBlockEntity.class, 
                 isFront ? "frontText" : "backText");
-            field.setAccessible(true);
             field.set(sign, text);
             return true;
         } catch (ReflectiveOperationException error) {

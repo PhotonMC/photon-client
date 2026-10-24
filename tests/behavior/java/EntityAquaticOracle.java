@@ -160,12 +160,10 @@ class EntityAquaticOracle extends EntitySupport {
      */
     static JsonObject fishingHook(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var stringVertex = net.minecraft.client.renderer.entity.FishingHookRenderer.class.getDeclaredMethod("stringVertex",
+        var stringVertex = Reflect.method(net.minecraft.client.renderer.entity.FishingHookRenderer.class, "stringVertex",
             float.class, float.class, float.class, com.mojang.blaze3d.vertex.VertexConsumer.class,
             com.mojang.blaze3d.vertex.PoseStack.Pose.class, float.class, float.class, float.class);
-        stringVertex.setAccessible(true);
-        var fraction = net.minecraft.client.renderer.entity.FishingHookRenderer.class.getDeclaredMethod("fraction", int.class, int.class);
-        fraction.setAccessible(true);
+        var fraction = Reflect.method(net.minecraft.client.renderer.entity.FishingHookRenderer.class, "fraction", int.class, int.class);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var camera = new net.minecraft.client.renderer.state.level.CameraRenderState();
@@ -259,10 +257,9 @@ class EntityAquaticOracle extends EntitySupport {
      */
     static JsonObject guardianBeam(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var render = net.minecraft.client.renderer.entity.GuardianRenderer.class.getDeclaredMethod("renderBeam",
+        var render = Reflect.method(net.minecraft.client.renderer.entity.GuardianRenderer.class, "renderBeam",
             com.mojang.blaze3d.vertex.PoseStack.class, net.minecraft.client.renderer.SubmitNodeCollector.class,
             net.minecraft.world.phys.Vec3.class, float.class, float.class, float.class);
-        render.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var vertices = new JsonArray();

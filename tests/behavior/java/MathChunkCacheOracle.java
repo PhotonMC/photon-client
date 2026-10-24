@@ -76,8 +76,7 @@ class MathChunkCacheOracle extends MathBoxOracle {
             Class<?> storageClass = Class.forName(ClientChunkCache.class.getName() + "$Storage");
             var storageConstructor = storageClass.getDeclaredConstructor(ClientChunkCache.class, int.class);
             storageConstructor.setAccessible(true);
-            var calculateStorageRange = ClientChunkCache.class.getDeclaredMethod("calculateStorageRange", int.class);
-            calculateStorageRange.setAccessible(true);
+            var calculateStorageRange = Reflect.method(ClientChunkCache.class, "calculateStorageRange", int.class);
             var inRange = storageClass.getDeclaredMethod("inRange", int.class, int.class);
             inRange.setAccessible(true);
             var getIndex = storageClass.getDeclaredMethod("getIndex", int.class, int.class);

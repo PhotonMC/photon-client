@@ -13,9 +13,8 @@ import sun.misc.Unsafe;
 class MathLocalPlayerOracle extends MathAttributeFixtures {
     static JsonObject localPlayerModifiedFrictionResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "computeModifiedFriction", float.class, float.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();
@@ -37,9 +36,8 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerTravelFlyingResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "travelFlying", Vec3.class, float.class, float.class, float.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -72,9 +70,8 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerTravelInWaterResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "travelInWater", Vec3.class, double.class, boolean.class, double.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -115,9 +112,8 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerTravelInLavaResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "travelInLava", Vec3.class, double.class, boolean.class, double.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -153,9 +149,8 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerHandleRelativeFrictionResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "handleRelativeFrictionAndCalculateMovement", Vec3.class, float.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -196,8 +191,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerTravelInAirResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod("travelInAir", Vec3.class);
-            method.setAccessible(true);
+            var method = Reflect.method(LivingEntity.class, "travelInAir", Vec3.class);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -245,8 +239,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
 
     static JsonObject localPlayerUpdateFallFlyingMovementResult(JsonObject request) {
         try {
-            var method = LivingEntity.class.getDeclaredMethod("updateFallFlyingMovement", Vec3.class);
-            method.setAccessible(true);
+            var method = Reflect.method(LivingEntity.class, "updateFallFlyingMovement", Vec3.class);
             var states = new JsonArray();
             Unsafe unsafe = unsafeInstance();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
@@ -319,8 +312,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
                 System.setErr(errorOutput);
             }
             Unsafe unsafe = unsafeInstance();
-            var method = LocalPlayer.class.getDeclaredMethod("modifyInput", Vec2.class);
-            method.setAccessible(true);
+            var method = Reflect.method(LocalPlayer.class, "modifyInput", Vec2.class);
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();
@@ -392,8 +384,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
         var result = new JsonObject();
         try {
             Unsafe unsafe = unsafeInstance();
-            var method = LocalPlayer.class.getDeclaredMethod("canStartSprinting");
-            method.setAccessible(true);
+            var method = Reflect.method(LocalPlayer.class, "canStartSprinting");
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();
@@ -459,8 +450,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
         var result = new JsonObject();
         try {
             Unsafe unsafe = unsafeInstance();
-            var method = LivingEntity.class.getDeclaredMethod("handleOnClimbable", Vec3.class);
-            method.setAccessible(true);
+            var method = Reflect.method(LivingEntity.class, "handleOnClimbable", Vec3.class);
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();
@@ -490,9 +480,8 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
         var result = new JsonObject();
         try {
             Unsafe unsafe = unsafeInstance();
-            var method = LivingEntity.class.getDeclaredMethod(
+            var method = Reflect.method(LivingEntity.class, 
                 "getFrictionInfluencedSpeed", float.class);
-            method.setAccessible(true);
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();

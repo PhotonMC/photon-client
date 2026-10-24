@@ -114,8 +114,7 @@ public final class AtlasOracle {
                     net.minecraft.server.packs.PackType.CLIENT_RESOURCES, packs);
                 var list = net.minecraft.client.renderer.texture.atlas.SpriteSourceList.load(manager,
                     Identifier.parse(row.get("atlas").getAsString()));
-                var field = list.getClass().getDeclaredField("sources");
-                field.setAccessible(true);
+                var field = Reflect.field(list.getClass(), "sources");
                 var found = new java.util.TreeSet<String>();
                 var output = new net.minecraft.client.renderer.texture.atlas.SpriteSource.Output() {
                     @Override

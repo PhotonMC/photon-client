@@ -51,9 +51,8 @@ class MathShapeCollisionOracle extends MathProjectileOracle {
             shapes.add(voxelShape(entry.getAsJsonObject()));
         }
         try {
-            var method = Entity.class.getDeclaredMethod(
+            var method = Reflect.method(Entity.class, 
                 "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
-            method.setAccessible(true);
             var resolved = (Vec3) method.invoke(
                 null, vec3(request.getAsJsonObject("movement")), moving, shapes);
             result.add("movement", snapshot(resolved));
@@ -75,9 +74,8 @@ class MathShapeCollisionOracle extends MathProjectileOracle {
                 shapes.add(voxelShape(shapeEntry.getAsJsonObject()));
             }
             try {
-                var method = Entity.class.getDeclaredMethod(
+                var method = Reflect.method(Entity.class, 
                     "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
-                method.setAccessible(true);
                 var resolved = (Vec3) method.invoke(null, movement, moving, shapes);
                 boolean xCollision = !Mth.equal(movement.x, resolved.x);
                 boolean yCollision = movement.y != resolved.y;
@@ -115,9 +113,8 @@ class MathShapeCollisionOracle extends MathProjectileOracle {
                 shapes.add(voxelShape(shapeEntry.getAsJsonObject()));
             }
             try {
-                var method = Entity.class.getDeclaredMethod(
+                var method = Reflect.method(Entity.class, 
                     "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
-                method.setAccessible(true);
                 var resolved = (Vec3)method.invoke(null, delta, moving, shapes);
                 boolean xCollision = !Mth.equal(delta.x, resolved.x);
                 boolean yCollision = delta.y != resolved.y;
@@ -206,9 +203,8 @@ class MathShapeCollisionOracle extends MathProjectileOracle {
             shapes.add(voxelShape(entry.getAsJsonObject()));
         }
         try {
-            var method = Entity.class.getDeclaredMethod(
+            var method = Reflect.method(Entity.class, 
                 "collectCandidateStepUpHeights", AABB.class, java.util.List.class, float.class, float.class);
-            method.setAccessible(true);
             var candidates = (float[]) method.invoke(
                 null,
                 moving,

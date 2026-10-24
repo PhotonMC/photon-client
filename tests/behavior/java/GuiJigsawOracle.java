@@ -113,8 +113,7 @@ class GuiJigsawOracle extends GuiStructureBlockOracle {
             var gui = (Closing) unsafe.allocateInstance(Closing.class);
             set(gui, "hud", screen.hud());
             set(minecraft, "gui", gui);
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);

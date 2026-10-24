@@ -47,8 +47,7 @@ class EntityPoseOracle extends EntityLayerOracle {
             var row = element.getAsJsonObject();
             var renderer = (net.minecraft.client.renderer.entity.ItemEntityRenderer) UNSAFE.allocateInstance(
                 net.minecraft.client.renderer.entity.ItemEntityRenderer.class);
-            var randomField = net.minecraft.client.renderer.entity.ItemEntityRenderer.class.getDeclaredField("random");
-            randomField.setAccessible(true);
+            var randomField = Reflect.field(net.minecraft.client.renderer.entity.ItemEntityRenderer.class, "random");
             randomField.set(renderer, net.minecraft.util.RandomSource.create());
             var state = new net.minecraft.client.renderer.entity.state.ItemEntityRenderState();
             state.ageInTicks = Oracle.f32(row, "age");

@@ -23,8 +23,7 @@ class MovementObjectExtras extends MovementMobExtras {
         var entity = ctx.entity();
         var arrow = (net.minecraft.world.entity.projectile.arrow.AbstractArrow) entity;
         described.addProperty("shake_time", arrow.shakeTime);
-        var inGround = net.minecraft.world.entity.projectile.arrow.AbstractArrow.class.getDeclaredMethod("isInGround");
-        inGround.setAccessible(true);
+        var inGround = Reflect.method(net.minecraft.world.entity.projectile.arrow.AbstractArrow.class, "isInGround");
         described.addProperty("in_ground", (boolean) inGround.invoke(arrow));
         described.addProperty("tipped", arrow instanceof net.minecraft.world.entity.projectile.arrow.Arrow plain
             && plain.getColor() > 0);

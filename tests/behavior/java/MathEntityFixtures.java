@@ -179,8 +179,7 @@ class MathEntityFixtures extends MathCollisionFixtures {
                     .getDeclaredField("interpolationData");
                 dataField.setAccessible(true);
                 Object data = dataField.get(this.getInterpolation());
-                var stepsField = data.getClass().getDeclaredField("steps");
-                stepsField.setAccessible(true);
+                var stepsField = Reflect.field(data.getClass(), "steps");
                 return stepsField.getInt(data);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
@@ -190,8 +189,7 @@ class MathEntityFixtures extends MathCollisionFixtures {
 
         Vec3 motionTarget() {
             try {
-                var targetField = RemotePlayer.class.getDeclaredField("lerpDeltaMovement");
-                targetField.setAccessible(true);
+                var targetField = Reflect.field(RemotePlayer.class, "lerpDeltaMovement");
                 return (Vec3)targetField.get(this);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
@@ -201,8 +199,7 @@ class MathEntityFixtures extends MathCollisionFixtures {
 
         int motionSteps() {
             try {
-                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
-                stepsField.setAccessible(true);
+                var stepsField = Reflect.field(RemotePlayer.class, "lerpDeltaMovementSteps");
                 return stepsField.getInt(this);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(
@@ -212,8 +209,7 @@ class MathEntityFixtures extends MathCollisionFixtures {
 
         void setMotionSteps(int steps) {
             try {
-                var stepsField = RemotePlayer.class.getDeclaredField("lerpDeltaMovementSteps");
-                stepsField.setAccessible(true);
+                var stepsField = Reflect.field(RemotePlayer.class, "lerpDeltaMovementSteps");
                 stepsField.setInt(this, steps);
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(

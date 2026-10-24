@@ -20,8 +20,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             SilentSounds.ASKED.clear();
             var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
-            var scoreField = net.minecraft.world.entity.player.Player.class.getDeclaredField("DATA_SCORE_ID");
-            scoreField.setAccessible(true);
+            var scoreField = Reflect.field(net.minecraft.world.entity.player.Player.class, "DATA_SCORE_ID");
             @SuppressWarnings("unchecked")
             var accessor = (net.minecraft.network.syncher.EntityDataAccessor<Integer>) scoreField.get(null);
             var data = (net.minecraft.network.syncher.SynchedEntityData)
@@ -41,8 +40,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 row.get("hardcore").getAsBoolean(), (net.minecraft.client.player.LocalPlayer) player);
             set(death, "width", width);
             set(death, "height", height);
-            var init = net.minecraft.client.gui.screens.DeathScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.DeathScreen.class, "init");
             init.invoke(death);
             for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
                 death.tick();
@@ -104,8 +102,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 Component.translatable("disconnect.lost"), Component.literal(row.get("reason").getAsString()));
             set(disconnected, "width", width);
             set(disconnected, "height", height);
-            var init = net.minecraft.client.gui.screens.DisconnectedScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.DisconnectedScreen.class, "init");
             init.invoke(disconnected);
             if (row.has("steps")) {
                 for (var stepElement : row.getAsJsonArray("steps")) {
@@ -128,9 +125,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     }
                 }
             }
-            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+            var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "extractMenuBackground",
                 GuiGraphicsExtractor.class);
-            background.setAccessible(true);
             background.invoke(disconnected, screen.graphics());
             disconnected.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             var out = new JsonObject();
@@ -160,8 +156,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             SilentSounds.ASKED.clear();
             minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
             // The clock the tooltips wait by is the row's to move.
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clockField.get(null);
             long[] now = {0};
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
@@ -182,8 +177,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var pause = new net.minecraft.client.gui.screens.PauseScreen(true);
             set(pause, "width", width);
             set(pause, "height", height);
-            var init = net.minecraft.client.gui.screens.PauseScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.PauseScreen.class, "init");
             init.invoke(pause);
             if (row.has("steps")) {
                 for (var stepElement : row.getAsJsonArray("steps")) {
@@ -236,8 +230,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             clockField.set(null, clockBefore);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
-            var blurField = GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
-            blurField.setAccessible(true);
+            var blurField = Reflect.field(GuiRenderState.class, "firstStratumAfterBlur");
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             var asked = new JsonArray();
@@ -377,8 +370,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     : new net.minecraft.client.gui.screens.ConfirmScreen(callback, title, message, yes, no);
             set(confirm, "width", width);
             set(confirm, "height", height);
-            var init = net.minecraft.client.gui.screens.ConfirmScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.ConfirmScreen.class, "init");
             init.invoke(confirm);
             int delay = row.get("delay").getAsInt();
             if (delay > 0) {
@@ -411,9 +403,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             } else {
                 // Without a level the panorama would draw first, which is not a GUI drawing.
-                var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod(
+                var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, 
                     "extractMenuBackground", GuiGraphicsExtractor.class);
-                background.setAccessible(true);
                 background.invoke(confirm, screen.graphics());
             }
             confirm.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
@@ -423,8 +414,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var asked = new JsonArray();
             SilentSounds.ASKED.forEach(asked::add);
             out.add("sounds", asked);
-            var blurField = GuiRenderState.class.getDeclaredField("firstStratumAfterBlur");
-            blurField.setAccessible(true);
+            var blurField = Reflect.field(GuiRenderState.class, "firstStratumAfterBlur");
             out.addProperty("blur", blurField.getInt(screen.state()) != Integer.MAX_VALUE);
             out.add("ops", record(screen.state()));
             rows.add(out);
@@ -551,8 +541,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             var options = new net.minecraft.client.gui.screens.options.OptionsScreen(null, minecraft.options, inWorld);
             set(options, "width", width);
             set(options, "height", height);
-            var init = net.minecraft.client.gui.screens.options.OptionsScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.options.OptionsScreen.class, "init");
             init.invoke(options);
             var info = new net.minecraft.client.input.MouseButtonInfo(0, 0);
             for (var stepElement : row.getAsJsonArray("steps")) {
@@ -592,9 +581,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     default -> throw new IllegalArgumentException(action);
                 }
             }
-            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+            var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "extractMenuBackground",
                 GuiGraphicsExtractor.class);
-            background.setAccessible(true);
             background.invoke(options, screen.graphics());
             options.extractRenderState(screen.graphics(), mouseX, mouseY, 0.0F);
             var out = new JsonObject();

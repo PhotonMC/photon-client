@@ -99,8 +99,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
     }
 
     static Object declaredValue(Object properties, String field) throws ReflectiveOperationException {
-        var reflected = net.minecraft.world.level.block.state.BlockBehaviour.Properties.class.getDeclaredField(field);
-        reflected.setAccessible(true);
+        var reflected = Reflect.field(net.minecraft.world.level.block.state.BlockBehaviour.Properties.class, field);
         return reflected.get(properties);
     }
 
@@ -240,8 +239,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                 described.addProperty("item", net.minecraft.core.registries.BuiltInRegistries.ITEM
                     .getKey(block.asItem()).toString());
                 if (block instanceof net.minecraft.world.level.block.LiquidBlock) {
-                    var fluid = net.minecraft.world.level.block.LiquidBlock.class.getDeclaredField("fluid");
-                    fluid.setAccessible(true);
+                    var fluid = Reflect.field(net.minecraft.world.level.block.LiquidBlock.class, "fluid");
                     described.addProperty("fluid", net.minecraft.core.registries.BuiltInRegistries.FLUID
                         .getKey((net.minecraft.world.level.material.Fluid) fluid.get(block)).toString());
                 }

@@ -299,10 +299,8 @@ class WireRegistryOracle extends WireConfigurationOracle {
                 var progress = new JsonArray();
                 var ids = new java.util.ArrayList<>(packet.getProgress().keySet());
                 ids.sort(java.util.Comparator.comparing(Identifier::toString));
-                var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
-                criteriaField.setAccessible(true);
-                var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
-                obtainedField.setAccessible(true);
+                var criteriaField = Reflect.field(net.minecraft.advancements.AdvancementProgress.class, "criteria");
+                var obtainedField = Reflect.field(net.minecraft.advancements.CriterionProgress.class, "obtained");
                 for (var id : ids) {
                     var criteria = (Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(packet.getProgress().get(id));
                     var names = new java.util.ArrayList<>(criteria.keySet());

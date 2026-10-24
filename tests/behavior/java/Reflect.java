@@ -23,6 +23,27 @@ final class Reflect {
         field.set(target, value);
     }
 
+    /** A field of `owner` (or above it), open for reading and writing. */
+    static java.lang.reflect.Field field(Class<?> owner, String name) throws NoSuchFieldException {
+        return find(owner, name);
+    }
+
+    /** A method declared by `owner`, open for calling. */
+    static java.lang.reflect.Method method(Class<?> owner, String name, Class<?>... types)
+            throws NoSuchMethodException {
+        var method = owner.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method;
+    }
+
+    /** A constructor declared by `type`, open for calling. */
+    static <T> java.lang.reflect.Constructor<T> constructor(Class<T> type, Class<?>... types)
+            throws NoSuchMethodException {
+        var constructor = type.getDeclaredConstructor(types);
+        constructor.setAccessible(true);
+        return constructor;
+    }
+
     /** A field declared by `owner` (or above it), read from `target`. */
     static Object get(Object target, Class<?> owner, String name) throws Exception {
         return find(owner, name).get(target);

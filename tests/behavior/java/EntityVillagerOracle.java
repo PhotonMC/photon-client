@@ -93,8 +93,7 @@ class EntityVillagerOracle extends EntityVehicleOracle {
             var professionKey = net.minecraft.resources.ResourceKey.create(
                 net.minecraft.core.registries.Registries.VILLAGER_PROFESSION,
                 net.minecraft.resources.Identifier.withDefaultNamespace(row.get("profession").getAsString()));
-            var typeCache = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class.getDeclaredField("typeHatCache");
-            typeCache.setAccessible(true);
+            var typeCache = Reflect.field(net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class, "typeHatCache");
             ((java.util.Map) typeCache.get(layer)).put(typeKey, villagerHat("type", typeKey.identifier().getPath()));
             var professionCache = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class
                 .getDeclaredField("professionHatCache");
@@ -306,10 +305,9 @@ class EntityVillagerOracle extends EntityVehicleOracle {
         var rows = new JsonArray();
         var renderer = (net.minecraft.client.renderer.entity.IronGolemRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.entity.IronGolemRenderer.class);
-        var rotations = net.minecraft.client.renderer.entity.IronGolemRenderer.class.getDeclaredMethod("setupRotations",
+        var rotations = Reflect.method(net.minecraft.client.renderer.entity.IronGolemRenderer.class, "setupRotations",
             net.minecraft.client.renderer.entity.state.IronGolemRenderState.class,
             com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
-        rotations.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var state = new net.minecraft.client.renderer.entity.state.IronGolemRenderState();

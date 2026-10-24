@@ -159,8 +159,7 @@ class MovementPacketEvents extends MovementLivingRow {
     static void eventSeed(LivingRow ctx, JsonObject event) throws Exception {
         var entity = ctx.entity();
         // What the reference draws from an unseeded random source: fixed here.
-        var random = net.minecraft.world.entity.Entity.class.getDeclaredField("random");
-        random.setAccessible(true);
+        var random = Reflect.field(net.minecraft.world.entity.Entity.class, "random");
         ((net.minecraft.util.RandomSource) random.get(entity)).setSeed(event.get("seed").getAsLong());
     }
 

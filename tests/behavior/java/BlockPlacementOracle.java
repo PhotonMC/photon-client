@@ -210,8 +210,7 @@ class BlockPlacementOracle extends BlockItemOracle {
             level = (ScriptedLevel) unsafe.allocateInstance(ScriptedLevel.class);
             viewer = (Viewer) unsafe.allocateInstance(Viewer.class);
             // The placement's collision context reads the player's height.
-            var position = net.minecraft.world.entity.Entity.class.getDeclaredField("position");
-            position.setAccessible(true);
+            var position = Reflect.field(net.minecraft.world.entity.Entity.class, "position");
             position.set(viewer, net.minecraft.world.phys.Vec3.ZERO);
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException(failure);
@@ -324,9 +323,8 @@ class BlockPlacementOracle extends BlockItemOracle {
             if (used == null) {
                 return;
             }
-            var method = net.minecraft.world.item.BlockItem.class.getDeclaredMethod(
+            var method = Reflect.method(net.minecraft.world.item.BlockItem.class, 
                 "getPlacementState", net.minecraft.world.item.context.BlockPlaceContext.class);
-            method.setAccessible(true);
             var chosen = (net.minecraft.world.level.block.state.BlockState) method.invoke(item, used);
             if (chosen == null) {
                 return;
@@ -341,10 +339,9 @@ class BlockPlacementOracle extends BlockItemOracle {
                 net.minecraft.commands.arguments.blocks.BlockStateParser.serialize(chosen));
             level.writes.clear();
             var before = new java.util.HashMap<>(level.states);
-            var place = net.minecraft.world.item.BlockItem.class.getDeclaredMethod("placeBlock",
+            var place = Reflect.method(net.minecraft.world.item.BlockItem.class, "placeBlock",
                 net.minecraft.world.item.context.BlockPlaceContext.class,
                 net.minecraft.world.level.block.state.BlockState.class);
-            place.setAccessible(true);
             place.invoke(item, used, chosen);
             var pos = used.getClickedPos();
             var now = level.getBlockState(pos);

@@ -101,9 +101,8 @@ class MathPlayerAttributeOracle extends MathShapeOracle {
             int playerId = request.get("player_id").getAsInt();
             AttributeMap attributes = new AttributeMap(Player.createAttributes().build());
             AttributeSpeedFixture player = AttributeSpeedFixture.create(attributes);
-            var frictionMethod = LivingEntity.class.getDeclaredMethod(
+            var frictionMethod = Reflect.method(LivingEntity.class, 
                 "getFrictionInfluencedSpeed", float.class);
-            frictionMethod.setAccessible(true);
             var states = new JsonArray();
             for (JsonElement operationEntry : request.getAsJsonArray("operations")) {
                 JsonObject operation = operationEntry.getAsJsonObject();
@@ -171,9 +170,8 @@ class MathPlayerAttributeOracle extends MathShapeOracle {
                     operation.get("free_after_jump").getAsBoolean(),
                     Oracle.f32(operation, "y_rot"),
                     vec3(operation.getAsJsonObject("delta")));
-                var travelMethod = LivingEntity.class.getDeclaredMethod(
+                var travelMethod = Reflect.method(LivingEntity.class, 
                     "travelInWater", Vec3.class, double.class, boolean.class, double.class);
-                travelMethod.setAccessible(true);
                 travelMethod.invoke(
                     player,
                     vec3(operation.getAsJsonObject("input")),

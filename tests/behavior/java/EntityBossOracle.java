@@ -38,11 +38,10 @@ class EntityBossOracle extends EntityFogOracle {
     /** The rays of a dying ender dragon, as the reference's own `submitRays` builds them. */
     static JsonObject dragonRays(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var render = net.minecraft.client.renderer.entity.EnderDragonRenderer.class.getDeclaredMethod("submitRays",
+        var render = Reflect.method(net.minecraft.client.renderer.entity.EnderDragonRenderer.class, "submitRays",
             com.mojang.blaze3d.vertex.PoseStack.class, float.class,
             net.minecraft.client.renderer.SubmitNodeCollector.class,
             net.minecraft.client.renderer.rendertype.RenderType.class);
-        render.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var vertices = new JsonArray();

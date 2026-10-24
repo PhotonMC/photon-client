@@ -236,10 +236,9 @@ class EntityRotationOracle extends EntityProjectileOracle {
             state.isFullyFrozen = fullyFrozen;
             state.ageInTicks = (float) row.get("ticks").getAsInt() + Oracle.f32(row, "partial");
             var renderer = UNSAFE.allocateInstance(rendererClass);
-            var method = net.minecraft.client.renderer.entity.LivingEntityRenderer.class.getDeclaredMethod(
+            var method = Reflect.method(net.minecraft.client.renderer.entity.LivingEntityRenderer.class, 
                 "setupRotations", net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class,
                 com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
-            method.setAccessible(true);
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             method.invoke(renderer, state, stack, Oracle.f32(row, "body_rot"), 1.0F);
             var out = new JsonObject();

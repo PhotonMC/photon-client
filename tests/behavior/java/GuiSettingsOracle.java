@@ -90,21 +90,18 @@ class GuiSettingsOracle extends GuiScreenOracle {
             int mouseY = row.get("mouse").getAsJsonArray().get(1).getAsInt();
             setup();
             var minecraft = (StubGame) unsafe.allocateInstance(StubGame.class);
-            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-            instance.setAccessible(true);
+            var instance = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
             instance.set(null, minecraft);
             var screen = prepare(minecraft, 0, 0, mouseX, mouseY);
             // A label too wide for its button scrolls by the clock: stop it at the start.
-            var clock = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clock.setAccessible(true);
+            var clock = Reflect.field(net.minecraft.util.Util.class, "timeSource");
             var clockBefore = clock.get(null);
             long[] now = {0};
             clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             set(minecraft, "soundManager", unsafe.allocateInstance(SilentSounds.class));
             set(minecraft, "musicManager", unsafe.allocateInstance(SilentMusic.class));
             // `GraphicsPreset.apply` asks for the device even for Custom, which does nothing with it.
-            var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
-            deviceField.setAccessible(true);
+            var deviceField = Reflect.field(com.mojang.blaze3d.systems.RenderSystem.class, "DEVICE");
             deviceField.set(null, unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class));
             set(minecraft, "framerateLimitTracker",
                 unsafe.allocateInstance(com.mojang.blaze3d.platform.FramerateLimitTracker.class));
@@ -190,12 +187,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(minecraft.gui, "screen", video);
             set(video, "width", window.getGuiScaledWidth());
             set(video, "height", window.getGuiScaledHeight());
-            var init = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "init");
             init.invoke(video);
             if (kind.equals("language")) {
-                var focus = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("setInitialFocus");
-                focus.setAccessible(true);
+                var focus = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "setInitialFocus");
                 focus.invoke(video);
             }
             video.tick();
@@ -273,9 +268,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 lastY = y;
                 video.tick();
             }
-            var background = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("extractMenuBackground",
+            var background = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "extractMenuBackground",
                 GuiGraphicsExtractor.class);
-            background.setAccessible(true);
             // A graphics made now knows the window's size, which the scissor is cut to.
             var finalState = new GuiRenderState();
             var graphics = new GuiGraphicsExtractor(minecraft, finalState, mouseX, mouseY);
@@ -285,18 +279,15 @@ class GuiSettingsOracle extends GuiScreenOracle {
             graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
             double scrollAmount;
             if (kind.equals("keybinds")) {
-                var keyList = video.getClass().getDeclaredField("keyBindsList");
-                keyList.setAccessible(true);
+                var keyList = Reflect.field(video.getClass(), "keyBindsList");
                 scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) keyList.get(video))
                     .scrollAmount();
             } else if (kind.equals("language")) {
-                var languageList = video.getClass().getDeclaredField("languageSelectionList");
-                languageList.setAccessible(true);
+                var languageList = Reflect.field(video.getClass(), "languageSelectionList");
                 scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) languageList.get(video))
                     .scrollAmount();
             } else {
-                var listField = net.minecraft.client.gui.screens.options.OptionsSubScreen.class.getDeclaredField("list");
-                listField.setAccessible(true);
+                var listField = Reflect.field(net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "list");
                 scrollAmount = ((net.minecraft.client.gui.components.OptionsList) listField.get(video)).scrollAmount();
             }
             var out = new JsonObject();
@@ -309,8 +300,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             SilentSounds.ASKED.forEach(asked::add);
             out.add("sounds", asked);
             if (kind.equals("language")) {
-                var searchField = video.getClass().getDeclaredField("search");
-                searchField.setAccessible(true);
+                var searchField = Reflect.field(video.getClass(), "search");
                 out.addProperty("search",
                     ((net.minecraft.client.gui.components.EditBox) searchField.get(video)).getValue());
             }
@@ -337,8 +327,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             MovementOracle.bootstrap();
             var open = MovementOracle.openMenu(row);
             var minecraft = open.scene().minecraft();
-            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-            instance.setAccessible(true);
+            var instance = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
             instance.set(null, minecraft);
             int width = row.get("width").getAsInt();
             int height = row.get("height").getAsInt();
@@ -407,8 +396,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(screen, "font", font);
             set(screen, "width", width);
             set(screen, "height", height);
-            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(screen);
             if (row.has("sync_slot")) {
                 // The server's update of a slot, as the screen hears it.
@@ -544,8 +532,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             MovementOracle.bootstrap();
             var open = MovementOracle.openMenu(row);
             var minecraft = open.scene().minecraft();
-            var instance = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-            instance.setAccessible(true);
+            var instance = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
             instance.set(null, minecraft);
             int width = row.get("width").getAsInt();
             int height = row.get("height").getAsInt();
@@ -565,8 +552,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(screen, "font", font);
             set(screen, "width", width);
             set(screen, "height", height);
-            var init = net.minecraft.client.gui.screens.Screen.class.getDeclaredMethod("init");
-            init.setAccessible(true);
+            var init = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "init");
             init.invoke(screen);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
@@ -635,12 +621,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
         net.minecraft.world.inventory.AbstractMountInventoryMenu menu,
         net.minecraft.world.entity.player.Inventory inventory, net.minecraft.client.Minecraft minecraft,
         int columns) throws Exception {
-        var field = net.minecraft.world.inventory.AbstractMountInventoryMenu.class.getDeclaredField("mount");
-        field.setAccessible(true);
+        var field = Reflect.field(net.minecraft.world.inventory.AbstractMountInventoryMenu.class, "mount");
         var mount = (net.minecraft.world.entity.LivingEntity) field.get(menu);
         // The title is the entity's display name, which asks its team of the level's scoreboard.
-        var connection = minecraft.level.getClass().getDeclaredField("connection");
-        connection.setAccessible(true);
+        var connection = Reflect.field(minecraft.level.getClass(), "connection");
         set(connection.get(minecraft.level), "scoreboard", new net.minecraft.world.scores.Scoreboard());
         var stub = unsafe.allocateInstance(StubRenderer.class);
         var dispatcher = unsafe.allocateInstance(net.minecraft.client.renderer.entity.EntityRenderDispatcher.class);

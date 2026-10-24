@@ -293,9 +293,8 @@ class GuiChatOracle extends GuiLanguageOracle {
                 }
             };
             for (String name : new String[] {"extractOverlayMessage", "extractTitle"}) {
-                var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name,
+                var method = Reflect.method(net.minecraft.client.gui.Hud.class, name,
                     GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
-                method.setAccessible(true);
                 method.invoke(hud, screen.graphics(), tracker);
             }
             var out = new JsonObject();

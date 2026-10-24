@@ -455,8 +455,7 @@ class MovementEntityOracle extends MovementSupport {
         var fields = new com.google.gson.JsonArray();
         for (var name : new String[] {"x", "y", "z"}) {
             try {
-                var field = view.getClass().getDeclaredField(name);
-                field.setAccessible(true);
+                var field = Reflect.field(view.getClass(), name);
                 fields.add(field.getInt(view));
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(error);
@@ -514,11 +513,10 @@ class MovementEntityOracle extends MovementSupport {
             var material = new net.minecraft.client.resources.model.sprite.Material.Baked(
                 new ContentSprite(contents), row.get("force_translucent").getAsBoolean());
             var uvs = row.getAsJsonArray("uvs");
-            var method = net.minecraft.client.resources.model.cuboid.FaceBakery.class.getDeclaredMethod(
+            var method = Reflect.method(net.minecraft.client.resources.model.cuboid.FaceBakery.class, 
                 "computeMaterialTransparency",
                 net.minecraft.client.resources.model.sprite.Material.Baked.class,
                 net.minecraft.client.resources.model.cuboid.CuboidFace.UVs.class);
-            method.setAccessible(true);
             try {
                 var transparency = (com.mojang.blaze3d.platform.Transparency) method.invoke(null, material,
                     new net.minecraft.client.resources.model.cuboid.CuboidFace.UVs(
@@ -837,10 +835,9 @@ class MovementEntityOracle extends MovementSupport {
         state.distanceToCameraSq = Oracle.f64(row, "distance_sq");
         state.isInvisible = row.get("invisible").getAsBoolean();
         scene.options().entityShadows().set(row.get("shadows_option").getAsBoolean());
-        var extract = net.minecraft.client.renderer.entity.EntityRenderer.class.getDeclaredMethod(
+        var extract = Reflect.method(net.minecraft.client.renderer.entity.EntityRenderer.class, 
             "extractShadow", net.minecraft.client.renderer.entity.state.EntityRenderState.class,
             net.minecraft.client.Minecraft.class, net.minecraft.world.level.Level.class);
-        extract.setAccessible(true);
         extract.invoke(renderer, state, minecraft, level);
 
         var pieces = new JsonArray();
@@ -862,10 +859,9 @@ class MovementEntityOracle extends MovementSupport {
 
         var capture = new ShadowCapture();
         var feature = unsafe.allocateInstance(net.minecraft.client.renderer.feature.ShadowFeatureRenderer.class);
-        var prepare = net.minecraft.client.renderer.feature.ShadowFeatureRenderer.class.getDeclaredMethod(
+        var prepare = Reflect.method(net.minecraft.client.renderer.feature.ShadowFeatureRenderer.class, 
             "prepare", net.minecraft.client.renderer.feature.ShadowFeatureRenderer.Submit.class,
             com.mojang.blaze3d.vertex.VertexConsumer.class);
-        prepare.setAccessible(true);
         prepare.invoke(feature, new net.minecraft.client.renderer.feature.ShadowFeatureRenderer.Submit(
             new org.joml.Matrix4f().translation(
                 Oracle.f32(row, "tx"), Oracle.f32(row, "ty"), Oracle.f32(row, "tz")),

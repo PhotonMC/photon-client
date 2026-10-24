@@ -122,11 +122,9 @@ class EntityLayerOracle extends EntityHumanoidOracle {
                         var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)")
                             .matcher(String.valueOf(renderType));
                         out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
-                        var stateField = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
-                        stateField.setAccessible(true);
+                        var stateField = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
                         var setup = stateField.get(renderType);
-                        var pipelineField = setup.getClass().getDeclaredField("pipeline");
-                        pipelineField.setAccessible(true);
+                        var pipelineField = Reflect.field(setup.getClass(), "pipeline");
                         var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
                         out.addProperty("pipeline", pipeline.getLocation().toString());
                         var flags = new java.util.TreeSet<>(pipeline.getShaderDefines().flags());
@@ -197,11 +195,9 @@ class EntityLayerOracle extends EntityHumanoidOracle {
                         var found = java.util.regex.Pattern.compile("minecraft:(textures/[a-z_/]+\\.png)")
                             .matcher(String.valueOf(renderType));
                         out.addProperty("texture", found.find() ? found.group(1) : String.valueOf(renderType));
-                        var stateField = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
-                        stateField.setAccessible(true);
+                        var stateField = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
                         var setup = stateField.get(renderType);
-                        var pipelineField = setup.getClass().getDeclaredField("pipeline");
-                        pipelineField.setAccessible(true);
+                        var pipelineField = Reflect.field(setup.getClass(), "pipeline");
                         var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
                         out.addProperty("pipeline", pipeline.getLocation().toString());
                         out.addProperty("flags", String.join(",", new java.util.TreeSet<>(pipeline.getShaderDefines().flags())));
@@ -216,8 +212,7 @@ class EntityLayerOracle extends EntityHumanoidOracle {
                         out.addProperty("depth_test", pipeline.getDepthStencilState().depthTest().name());
                         out.addProperty("depth_write", pipeline.getDepthStencilState().writeDepth());
                         out.addProperty("cull", pipeline.isCull());
-                        var transformField = setup.getClass().getDeclaredField("textureTransform");
-                        transformField.setAccessible(true);
+                        var transformField = Reflect.field(setup.getClass(), "textureTransform");
                         var matrix = ((net.minecraft.client.renderer.rendertype.TextureTransform) transformField.get(setup))
                             .createMatrix();
                         out.addProperty("u_offset", Oracle.bits(matrix.m30()));

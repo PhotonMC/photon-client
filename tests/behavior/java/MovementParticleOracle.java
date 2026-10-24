@@ -58,8 +58,7 @@ class MovementParticleOracle extends MovementMenuOracle {
      */
     private static boolean seededWith(net.minecraft.client.particle.Particle particle, long wanted) throws Exception {
         var random = getField(particle, "random");
-        var seedField = random.getClass().getDeclaredField("seed");
-        seedField.setAccessible(true);
+        var seedField = Reflect.field(random.getClass(), "seed");
         long now = ((java.util.concurrent.atomic.AtomicLong) seedField.get(random)).get();
         long walked = (wanted ^ SEED_MULTIPLIER) & SEED_MASK;
         for (int draws = 0; draws <= MOST_DRAWS; draws++) {
@@ -74,8 +73,7 @@ class MovementParticleOracle extends MovementMenuOracle {
     /** The clock reading `particle`'s random source was seeded with, from the seed it holds now. */
     private static long clockOf(net.minecraft.client.particle.Particle particle, long uniquifier, long near) throws Exception {
         var random = getField(particle, "random");
-        var seedField = random.getClass().getDeclaredField("seed");
-        seedField.setAccessible(true);
+        var seedField = Reflect.field(random.getClass(), "seed");
         long walked = ((java.util.concurrent.atomic.AtomicLong) seedField.get(random)).get();
         long inverseMultiplier = inverse(SEED_MULTIPLIER);
         for (int draws = 0; draws <= MOST_DRAWS; draws++) {
@@ -97,8 +95,7 @@ class MovementParticleOracle extends MovementMenuOracle {
      */
     static net.minecraft.client.particle.Particle seededParticle(
         long wanted, java.util.concurrent.Callable<net.minecraft.client.particle.Particle> build) throws Exception {
-        var uniquifierField = net.minecraft.world.level.levelgen.RandomSupport.class.getDeclaredField("SEED_UNIQUIFIER");
-        uniquifierField.setAccessible(true);
+        var uniquifierField = Reflect.field(net.minecraft.world.level.levelgen.RandomSupport.class, "SEED_UNIQUIFIER");
         var uniquifier = (java.util.concurrent.atomic.AtomicLong) uniquifierField.get(null);
         long gap = 300;
         for (int attempt = 0; attempt < 2_000_000; attempt++) {
@@ -292,8 +289,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             described.addProperty("sprite", sprites.indexOf(getField(particle, "sprite")));
         }
         var drawn = new JsonArray();
-        var lightMethod = net.minecraft.client.particle.Particle.class.getDeclaredMethod("getLightCoords", float.class);
-        lightMethod.setAccessible(true);
+        var lightMethod = Reflect.method(net.minecraft.client.particle.Particle.class, "getLightCoords", float.class);
         for (var element : partials) {
             float partial = Float.intBitsToFloat(Integer.parseUnsignedInt(element.getAsString(), 16));
             var at = new JsonObject();
@@ -373,8 +369,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 long spellSeedBefore = spell.get();
                 // And what it drew from the level's random (a composter's life).
                 var levelRandom = getField(level, "random");
-                var levelSeedField = levelRandom.getClass().getDeclaredField("seed");
-                levelSeedField.setAccessible(true);
+                var levelSeedField = Reflect.field(levelRandom.getClass(), "seed");
                 var levelSeed = (java.util.concurrent.atomic.AtomicLong) levelSeedField.get(levelRandom);
                 long levelSeedBefore = levelSeed.get();
                 var levelGaussian = gaussianState(levelRandom);
@@ -408,13 +403,10 @@ class MovementParticleOracle extends MovementMenuOracle {
      * task that puts it back as it was.
      */
     static Runnable gaussianState(Object random) throws Exception {
-        var sourceField = random.getClass().getDeclaredField("gaussianSource");
-        sourceField.setAccessible(true);
+        var sourceField = Reflect.field(random.getClass(), "gaussianSource");
         var source = sourceField.get(random);
-        var next = source.getClass().getDeclaredField("nextNextGaussian");
-        next.setAccessible(true);
-        var have = source.getClass().getDeclaredField("haveNextNextGaussian");
-        have.setAccessible(true);
+        var next = Reflect.field(source.getClass(), "nextNextGaussian");
+        var have = Reflect.field(source.getClass(), "haveNextNextGaussian");
         double nextValue = next.getDouble(source);
         boolean haveValue = have.getBoolean(source);
         return () -> {
@@ -432,19 +424,16 @@ class MovementParticleOracle extends MovementMenuOracle {
         // The class sets the field as it is first used: set it after that.
         Class.forName("net.minecraft.client.particle.SpellParticle", true,
             net.minecraft.client.particle.SpellParticle.class.getClassLoader());
-        var field = net.minecraft.client.particle.SpellParticle.class.getDeclaredField("RANDOM");
-        field.setAccessible(true);
+        var field = Reflect.field(net.minecraft.client.particle.SpellParticle.class, "RANDOM");
         // The same object reseeded: compiled code may hold the field's first value.
         ((net.minecraft.util.RandomSource) field.get(null)).setSeed(seed);
     }
 
     /** The seed field of `SpellParticle.RANDOM`, to give back what a try that missed drew. */
     static java.util.concurrent.atomic.AtomicLong spellSeed() throws Exception {
-        var field = net.minecraft.client.particle.SpellParticle.class.getDeclaredField("RANDOM");
-        field.setAccessible(true);
+        var field = Reflect.field(net.minecraft.client.particle.SpellParticle.class, "RANDOM");
         var random = field.get(null);
-        var seedField = random.getClass().getDeclaredField("seed");
-        seedField.setAccessible(true);
+        var seedField = Reflect.field(random.getClass(), "seed");
         return (java.util.concurrent.atomic.AtomicLong) seedField.get(random);
     }
 
@@ -545,10 +534,9 @@ class MovementParticleOracle extends MovementMenuOracle {
         }
         // An item's crumbs show the first picture: no item model is resolved here (as an item with no
         // model, the pick draws nothing).
-        var crumb = net.minecraft.client.particle.BreakingItemParticle.class.getDeclaredConstructor(
+        var crumb = Reflect.constructor(net.minecraft.client.particle.BreakingItemParticle.class, 
             net.minecraft.client.multiplayer.ClientLevel.class, double.class, double.class, double.class,
             double.class, double.class, double.class, net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
-        crumb.setAccessible(true);
         @SuppressWarnings("unchecked")
         var providers = (java.util.Map<Object, Object>) getField(resources, "providers");
         providers.put(net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getId(net.minecraft.core.particles.ParticleTypes.ITEM),
@@ -878,12 +866,10 @@ class MovementParticleOracle extends MovementMenuOracle {
             particle.tick();
         }
         var camera = new net.minecraft.client.Camera();
-        var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition", net.minecraft.world.phys.Vec3.class);
-        setPosition.setAccessible(true);
+        var setPosition = Reflect.method(net.minecraft.client.Camera.class, "setPosition", net.minecraft.world.phys.Vec3.class);
         setPosition.invoke(camera, new net.minecraft.world.phys.Vec3(
             Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"), Oracle.f64(row, "camera_z")));
-        var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class, float.class);
-        setRotation.setAccessible(true);
+        var setRotation = Reflect.method(net.minecraft.client.Camera.class, "setRotation", float.class, float.class);
         setRotation.invoke(camera, Oracle.f32(row, "y_rot"), Oracle.f32(row, "x_rot"));
         if (row.has("roll")) {
             setField(particle, "oRoll", Oracle.f32(row, "o_roll"));
@@ -917,8 +903,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         var described = describeParticle(particle, null, partials);
         var uvs = new JsonArray();
         for (var name : new String[] {"getU0", "getU1", "getV0", "getV1"}) {
-            var method = net.minecraft.client.particle.SingleQuadParticle.class.getDeclaredMethod(name);
-            method.setAccessible(true);
+            var method = Reflect.method(net.minecraft.client.particle.SingleQuadParticle.class, name);
             uvs.add(Oracle.bits((float) method.invoke(particle)));
         }
         described.add("uvs", uvs);

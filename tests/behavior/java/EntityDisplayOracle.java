@@ -32,8 +32,7 @@ class EntityDisplayOracle extends EntityDataOracle {
             }
             var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.ItemFrameRenderer.class);
             // The map renderer only draws what the state holds.
-            var mapRendererField = net.minecraft.client.renderer.entity.ItemFrameRenderer.class.getDeclaredField("mapRenderer");
-            mapRendererField.setAccessible(true);
+            var mapRendererField = Reflect.field(net.minecraft.client.renderer.entity.ItemFrameRenderer.class, "mapRenderer");
             mapRendererField.set(renderer, UNSAFE.allocateInstance(net.minecraft.client.renderer.MapRenderer.class));
             var poses = new JsonArray();
             var maps = new JsonArray();
@@ -232,8 +231,7 @@ class EntityDisplayOracle extends EntityDataOracle {
      */
     static JsonObject displayLight(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var renderStateField = net.minecraft.world.entity.Display.class.getDeclaredField("renderState");
-        renderStateField.setAccessible(true);
+        var renderStateField = Reflect.field(net.minecraft.world.entity.Display.class, "renderState");
         var base = net.minecraft.client.renderer.entity.DisplayRenderer.class;
         var blockLevel = base.getDeclaredMethod("getBlockLightLevel", net.minecraft.world.entity.Display.class,
             net.minecraft.core.BlockPos.class);
@@ -373,14 +371,11 @@ class EntityDisplayOracle extends EntityDataOracle {
         var renderer = (net.minecraft.client.renderer.GameRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.GameRenderer.class);
         var gameState = new net.minecraft.client.renderer.state.GameRenderState();
-        var stateField = net.minecraft.client.renderer.GameRenderer.class.getDeclaredField("gameRenderState");
-        stateField.setAccessible(true);
+        var stateField = Reflect.field(net.minecraft.client.renderer.GameRenderer.class, "gameRenderState");
         stateField.set(renderer, gameState);
-        var rendererField = net.minecraft.client.Minecraft.class.getDeclaredField("gameRenderer");
-        rendererField.setAccessible(true);
+        var rendererField = Reflect.field(net.minecraft.client.Minecraft.class, "gameRenderer");
         rendererField.set(minecraft, renderer);
-        var instanceField = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-        instanceField.setAccessible(true);
+        var instanceField = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
         instanceField.set(null, minecraft);
         return gameState;
     }
@@ -471,11 +466,9 @@ class EntityDisplayOracle extends EntityDataOracle {
             var renderer = UNSAFE.allocateInstance(net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class);
             // The line height is what the font says (a font of no glyphs: only its height is read).
             var font = UNSAFE.allocateInstance(net.minecraft.client.gui.Font.class);
-            var lineHeight = net.minecraft.client.gui.Font.class.getDeclaredField("lineHeight");
-            lineHeight.setAccessible(true);
+            var lineHeight = Reflect.field(net.minecraft.client.gui.Font.class, "lineHeight");
             lineHeight.set(font, 9);
-            var fontField = net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class.getDeclaredField("font");
-            fontField.setAccessible(true);
+            var fontField = Reflect.field(net.minecraft.client.renderer.entity.DisplayRenderer.TextDisplayRenderer.class, "font");
             fontField.set(renderer, font);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
@@ -537,13 +530,11 @@ class EntityDisplayOracle extends EntityDataOracle {
     /** `GameRenderer.bobHurt`: the matrix the view is turned by when the camera's entity flinches or dies. */
     static JsonObject cameraHurt(final JsonObject request) throws Exception {
         var gameState = installGameState();
-        var minecraft = net.minecraft.client.Minecraft.class.getDeclaredField("instance");
-        minecraft.setAccessible(true);
+        var minecraft = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
         var renderer = (net.minecraft.client.renderer.GameRenderer)
             ((net.minecraft.client.Minecraft) minecraft.get(null)).gameRenderer;
-        var bob = net.minecraft.client.renderer.GameRenderer.class.getDeclaredMethod("bobHurt",
+        var bob = Reflect.method(net.minecraft.client.renderer.GameRenderer.class, "bobHurt",
             net.minecraft.client.renderer.state.level.CameraRenderState.class, com.mojang.blaze3d.vertex.PoseStack.class);
-        bob.setAccessible(true);
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
@@ -834,14 +825,11 @@ class EntityDisplayOracle extends EntityDataOracle {
         var renderType = request.has("render_type") && request.get("render_type").getAsString().equals("item")
             ? net.minecraft.client.renderer.rendertype.RenderTypes.glint()
             : net.minecraft.client.renderer.rendertype.RenderTypes.armorEntityGlint();
-        var renderTypeState = net.minecraft.client.renderer.rendertype.RenderType.class.getDeclaredField("state");
-        renderTypeState.setAccessible(true);
+        var renderTypeState = Reflect.field(net.minecraft.client.renderer.rendertype.RenderType.class, "state");
         var setup = renderTypeState.get(renderType);
-        var pipelineField = setup.getClass().getDeclaredField("pipeline");
-        pipelineField.setAccessible(true);
+        var pipelineField = Reflect.field(setup.getClass(), "pipeline");
         var pipeline = (com.mojang.blaze3d.pipeline.RenderPipeline) pipelineField.get(setup);
-        var transformField = setup.getClass().getDeclaredField("textureTransform");
-        transformField.setAccessible(true);
+        var transformField = Reflect.field(setup.getClass(), "textureTransform");
         var transform = (net.minecraft.client.renderer.rendertype.TextureTransform) transformField.get(setup);
         var result = new JsonObject();
         result.addProperty("pipeline", pipeline.getLocation().toString());

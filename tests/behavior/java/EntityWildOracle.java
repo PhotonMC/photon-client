@@ -181,19 +181,16 @@ class EntityWildOracle extends EntityVillagerOracle {
 
     /** The fox's textures by variant, state and age, from the renderer's own table. */
     static JsonObject foxTextures() throws Exception {
-        var field = net.minecraft.client.renderer.entity.FoxRenderer.class.getDeclaredField("TEXTURES_BY_VARIANT");
-        field.setAccessible(true);
+        var field = Reflect.field(net.minecraft.client.renderer.entity.FoxRenderer.class, "TEXTURES_BY_VARIANT");
         var table = (java.util.Map<?, ?>) field.get(null);
         var rows = new JsonArray();
         for (var variant : net.minecraft.world.entity.animal.fox.Fox.Variant.values()) {
             var byState = table.get(variant);
             for (String stateName : new String[] {"idle", "sleeping"}) {
-                var stateMethod = byState.getClass().getDeclaredMethod(stateName);
-                stateMethod.setAccessible(true);
+                var stateMethod = Reflect.method(byState.getClass(), stateName);
                 var byAge = stateMethod.invoke(byState);
                 for (String age : new String[] {"adult", "baby"}) {
-                    var ageMethod = byAge.getClass().getDeclaredMethod(age);
-                    ageMethod.setAccessible(true);
+                    var ageMethod = Reflect.method(byAge.getClass(), age);
                     var out = new JsonObject();
                     out.addProperty("label", variant.getId() + "-" + stateName + "-" + age);
                     out.addProperty("texture", ageMethod.invoke(byAge).toString());
@@ -244,8 +241,7 @@ class EntityWildOracle extends EntityVillagerOracle {
     static JsonObject pandaTextures() throws Exception {
         var rows = new JsonArray();
         for (String table : new String[] {"TEXTURES", "BABY_TEXTURES"}) {
-            var field = net.minecraft.client.renderer.entity.PandaRenderer.class.getDeclaredField(table);
-            field.setAccessible(true);
+            var field = Reflect.field(net.minecraft.client.renderer.entity.PandaRenderer.class, table);
             var map = (java.util.Map<?, ?>) field.get(null);
             for (var gene : net.minecraft.world.entity.animal.panda.Panda.Gene.values()) {
                 var out = new JsonObject();
@@ -310,8 +306,7 @@ class EntityWildOracle extends EntityVillagerOracle {
     static JsonObject striderTextures() throws Exception {
         var rows = new JsonArray();
         for (String name : new String[] {"STRIDER_LOCATION", "STRIDER_BABY_LOCATION", "COLD_LOCATION", "COLD_BABY_LOCATION"}) {
-            var field = net.minecraft.client.renderer.entity.StriderRenderer.class.getDeclaredField(name);
-            field.setAccessible(true);
+            var field = Reflect.field(net.minecraft.client.renderer.entity.StriderRenderer.class, name);
             var out = new JsonObject();
             out.addProperty("label", name);
             out.addProperty("texture", field.get(null).toString());

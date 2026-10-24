@@ -52,8 +52,7 @@ class WireSupport {
 
     static byte[] rawPublicKey(ClientboundHelloPacket packet) {
         try {
-            var field = ClientboundHelloPacket.class.getDeclaredField("publicKey");
-            field.setAccessible(true);
+            var field = Reflect.field(ClientboundHelloPacket.class, "publicKey");
             return ((byte[])field.get(packet)).clone();
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Cannot inspect decoded public key", error);
@@ -160,8 +159,7 @@ class WireSupport {
     @SuppressWarnings("unchecked")
     static Map<Identifier, IntList> networkPayloadTags(TagNetworkSerialization.NetworkPayload payload) {
         try {
-            var field = TagNetworkSerialization.NetworkPayload.class.getDeclaredField("tags");
-            field.setAccessible(true);
+            var field = Reflect.field(TagNetworkSerialization.NetworkPayload.class, "tags");
             return (Map<Identifier, IntList>)field.get(payload);
         } catch (ReflectiveOperationException error) {
             throw new RuntimeException(error);

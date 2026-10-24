@@ -16,8 +16,7 @@ class MovementLivingRow extends MovementEntityOracle {
     @SuppressWarnings({"rawtypes", "unchecked"})
     static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> beeData(
         final String field, final Object value) throws Exception {
-        var accessor = net.minecraft.world.entity.animal.bee.Bee.class.getDeclaredField(field);
-        accessor.setAccessible(true);
+        var accessor = Reflect.field(net.minecraft.world.entity.animal.bee.Bee.class, field);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
     }
@@ -36,8 +35,7 @@ class MovementLivingRow extends MovementEntityOracle {
     @SuppressWarnings({"rawtypes", "unchecked"})
     static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> creeperData(
         final String field, final Object value) throws Exception {
-        var accessor = net.minecraft.world.entity.monster.Creeper.class.getDeclaredField(field);
-        accessor.setAccessible(true);
+        var accessor = Reflect.field(net.minecraft.world.entity.monster.Creeper.class, field);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
     }
