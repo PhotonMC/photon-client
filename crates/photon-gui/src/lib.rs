@@ -18,7 +18,7 @@ pub mod tutorial;
 pub mod ui_sound;
 pub mod widgets;
 
-pub use hud::{HeartType, Hud, HudInput};
+pub use hud::{HeartType, Hud, HudInput, JumpInput, VehicleInput};
 pub use runs::{
     FontRuns, FrameRuns, ItemSlots, draw_lines, draw_runs, legacy_runs, legacy_styled_runs,
 };

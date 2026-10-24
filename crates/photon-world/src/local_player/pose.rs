@@ -71,6 +71,14 @@ impl LocalPlayer {
         self.input.key_presses.shift
     }
 
+    /// `LocalPlayer.jumpableVehicle` and `getJumpRidingScale`: how far the jump of the mount that
+    /// can jump is charged, if the player rides one.
+    pub fn jumpable_vehicle_scale(&self) -> Option<f32> {
+        self.riding
+            .is_some_and(|riding| riding.can_jump)
+            .then_some(self.jump_riding_scale)
+    }
+
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
     }

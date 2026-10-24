@@ -178,6 +178,40 @@ fn hand_in_use(player: &photon_world::local_player::LocalPlayer) -> Option<(bool
 }
 
 /// Everything the HUD draws from, the camera in first person or not.
+/// `Hud.getPlayerVehicleWithHealth`: the mount of the camera player, when it is a living entity.
+fn vehicle_input(session: &PlaySession) -> Option<photon_gui::VehicleInput> {
+    if session.camera_entity().is_some() {
+        return None;
+    }
+    let id = session.world().local_player()?.vehicle_id()?;
+    let vehicle = session.world().entities().at(id)?;
+    vehicle
+        .is_living_entity()
+        .then(|| photon_gui::VehicleInput {
+            health: vehicle.health().unwrap_or(1.0),
+            max_health: vehicle.max_health().unwrap_or(20.0),
+        })
+}
+
+fn heart_type(local: Option<&ClientPlayerState>) -> photon_gui::HeartType {
+    photon_gui::HeartType::for_player(
+        has_effect(local, POISON),
+        has_effect(local, WITHER),
+        local.is_some_and(|state| state.is_fully_frozen()),
+    )
+}
+
+fn jump_input(
+    player: Option<&photon_world::local_player::LocalPlayer>,
+) -> Option<photon_gui::JumpInput> {
+    player
+        .and_then(|player| player.jumpable_vehicle_scale())
+        .map(|scale| photon_gui::JumpInput {
+            scale,
+            cooldown: false,
+        })
+}
+
 pub fn hud_input(
     session: &PlaySession,
     first_person: bool,
@@ -208,17 +242,15 @@ pub fn hud_input(
         max_health: attribute(local, MAX_HEALTH, 20.0, 1.0, 1024.0) as f32,
         absorption: local.map_or(0.0, |state| state.absorption()),
         invulnerable_time: player.map_or(0, |player| player.invulnerable_time()),
-        heart_type: photon_gui::HeartType::for_player(
-            has_effect(local, POISON),
-            has_effect(local, WITHER),
-            local.is_some_and(|state| state.is_fully_frozen()),
-        ),
+        heart_type: heart_type(local),
         regeneration: has_effect(local, REGENERATION),
         hardcore: session.hardcore(),
         armor: attribute(local, ARMOR, 0.0, 0.0, 30.0).floor() as i32,
         food: status.food,
         saturation: status.saturation,
         hunger: has_effect(local, HUNGER),
+        vehicle: vehicle_input(session),
+        jump: jump_input(player),
         air_supply: local.map_or(300, |state| state.air_supply()),
         max_air_supply: 300,
         eye_in_water: player.is_some_and(|player| player.is_eye_in_water()),

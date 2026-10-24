@@ -194,6 +194,8 @@ fn quiet_input() -> HudInput {
         food: 20,
         saturation: 5.0,
         hunger: false,
+        vehicle: None,
+        jump: None,
         air_supply: 300,
         max_air_supply: 300,
         eye_in_water: false,
@@ -281,6 +283,43 @@ fn debug_screen_case(ctx: &mut GuiContext, row: &Value, operation: &str) -> Resu
     }
 }
 
+/// The mount of a status row: the health the row's horse has.
+fn vehicle_of(row: &Value) -> Result<Option<photon_gui::VehicleInput>, String> {
+    let Some(vehicle) = row.get("vehicle") else {
+        return Ok(None);
+    };
+    let bits = u32::from_str_radix(vehicle["health"].as_str().ok_or("health")?, 16)
+        .map_err(|error| error.to_string())?;
+    Ok(Some(photon_gui::VehicleInput {
+        health: f32::from_bits(bits),
+        max_health: vehicle["max_health"].as_f64().unwrap_or(20.0) as f32,
+    }))
+}
+
+/// How far a status row's horse has its jump charged.
+fn jump_of(row: &Value) -> Result<photon_gui::JumpInput, String> {
+    let bits = u32::from_str_radix(row["vehicle"]["jump"].as_str().ok_or("jump")?, 16)
+        .map_err(|error| error.to_string())?;
+    Ok(photon_gui::JumpInput {
+        scale: f32::from_bits(bits),
+        cooldown: false,
+    })
+}
+
+fn bits_of(value: &Value, key: &str) -> Result<f32, String> {
+    u32::from_str_radix(value[key].as_str().ok_or(key)?, 16)
+        .map(f32::from_bits)
+        .map_err(|error| error.to_string())
+}
+
+fn with_vehicle(input: HudInput, row: &Value) -> Result<HudInput, String> {
+    Ok(HudInput {
+        vehicle: vehicle_of(row)?,
+        jump: row.get("vehicle").map(|_| jump_of(row)).transpose()?,
+        ..input
+    })
+}
+
 fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let font = &ctx.font;
     let atlas = &ctx.atlas;
@@ -291,11 +330,7 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
             .as_array()
             .is_some_and(|effects| effects.iter().any(|effect| effect == name))
     };
-    let float = |key: &str| -> Result<f32, String> {
-        u32::from_str_radix(row[key].as_str().ok_or(key)?, 16)
-            .map(f32::from_bits)
-            .map_err(|error| error.to_string())
-    };
+    let float = |key: &str| bits_of(row, key);
     let mut hud = Hud::default();
     let (mut ticks, mut frames) = (0, Vec::new());
     for step in row["frames"].as_array().ok_or("frames")? {
@@ -306,9 +341,7 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
         }
         let input = HudInput {
             survival: true,
-            health: u32::from_str_radix(step["health"].as_str().ok_or("health")?, 16)
-                .map(f32::from_bits)
-                .map_err(|error| error.to_string())?,
+            health: bits_of(step, "health")?,
             max_health: number("max_health") as f32,
             absorption: float("absorption")?,
             invulnerable_time: step["invulnerable"].as_i64().unwrap_or(0) as i32,
@@ -327,7 +360,7 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
             eye_in_water: row["eye_in_water"].as_bool().unwrap_or(false),
             experience_progress: float("xp_progress")?,
             experience_level: int("xp_level"),
-            ..quiet_input()
+            ..with_vehicle(quiet_input(), row)?
         };
         let mut drawn = GuiFrame {
             log: Some(Vec::new()),
@@ -336,6 +369,9 @@ fn hud_status_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
         let now = step["ms"].as_u64().unwrap_or(0) as u128;
         let size = (int("width"), int("height"));
         hud.player_health(&mut drawn, atlas, size.0, size.1, &input, now);
+        if let Some(vehicle) = &input.vehicle {
+            Hud::vehicle_health(&mut drawn, atlas, size, vehicle);
+        }
         hud.contextual_bar(&mut drawn, atlas, font, size, &input);
         frames.push(Value::Array(gui_ops(&drawn.log.take().unwrap_or_default())));
     }

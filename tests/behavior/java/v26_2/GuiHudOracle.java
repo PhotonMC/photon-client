@@ -1278,6 +1278,24 @@ class GuiHudOracle extends GuiCommandOracle {
      * experience bar and its level) for a real local player, drawn through frames: each sets the HUD's tick
      * count, the clock and the player's health and damage immunity, as the hearts blink by them.
      */
+    /**
+     * The local player rides a saddled horse with the health the row names, and its jump is charged
+     * as far as the row says (`LocalPlayer.getJumpRidingScale`).
+     */
+    static void seatOnHorse(net.minecraft.client.multiplayer.ClientLevel level,
+            net.minecraft.client.player.LocalPlayer local, JsonObject vehicle) throws Exception {
+        var horse = new net.minecraft.world.entity.animal.equine.Horse(
+            net.minecraft.world.entity.EntityTypes.HORSE, level);
+        horse.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH)
+            .setBaseValue(vehicle.get("max_health").getAsDouble());
+        horse.setHealth(Oracle.f32(vehicle, "health"));
+        horse.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
+            new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+        MovementOracle.setField(local, "vehicle", horse);
+        MovementOracle.setField(horse, "passengers", com.google.common.collect.ImmutableList.<net.minecraft.world.entity.Entity>of(local));
+        MovementOracle.setField(local, "jumpRidingScale", Oracle.f32(vehicle, "jump"));
+    }
+
     static JsonObject hudStatus(JsonObject request) throws Exception {
         var rows = new JsonArray();
         var clockBefore = Access26_2.clock();
@@ -1323,6 +1341,28 @@ class GuiHudOracle extends GuiCommandOracle {
                 MovementOracle.setField(hud, "random", net.minecraft.util.RandomSource.create());
                 var tracker = net.minecraft.client.DeltaTracker.ZERO;
                 var health = hudMethod("extractPlayerHealth", GuiGraphicsExtractor.class);
+                if (row.has("vehicle")) {
+                    seatOnHorse(scene.level(), local, row.getAsJsonObject("vehicle"));
+                }
+                var vehicleHealth = hudMethod("extractVehicleHealth", GuiGraphicsExtractor.class);
+                var nextBar = hudMethod("nextContextualInfoState");
+                var infoType = Class.forName("net.minecraft.client.gui.Hud$ContextualInfo");
+                var barMap = new java.util.HashMap<Object, java.util.function.Supplier<?>>();
+                for (var constant : infoType.getEnumConstants()) {
+                    barMap.put(constant, switch (constant.toString()) {
+                        case "EXPERIENCE" -> () -> new net.minecraft.client.gui.contextualbar.ExperienceBar(minecraft);
+                        case "LOCATOR" -> () -> new net.minecraft.client.gui.contextualbar.LocatorBar(minecraft);
+                        case "JUMPABLE_VEHICLE" ->
+                            () -> new net.minecraft.client.gui.contextualbar.JumpableVehicleBar(minecraft);
+                        default -> () -> net.minecraft.client.gui.contextualbar.ContextualBar.EMPTY;
+                    });
+                }
+                MovementOracle.setField(hud, "contextualInfoBars", barMap);
+                var connection = get(local, "connection");
+                if (connection != null && get(connection, "waypointManager") == null) {
+                    MovementOracle.setField(connection, "waypointManager",
+                        new net.minecraft.client.waypoints.ClientWaypointManager());
+                }
                 var frames = new JsonArray();
                 for (var frameElement : row.getAsJsonArray("frames")) {
                     var frame = frameElement.getAsJsonObject();
@@ -1333,7 +1373,10 @@ class GuiHudOracle extends GuiCommandOracle {
                     var state = new GuiRenderState();
                     var graphics = new GuiGraphicsExtractor(minecraft, state, 0, 0);
                     health.invoke(hud, graphics);
-                    var bar = new net.minecraft.client.gui.contextualbar.ExperienceBar(minecraft);
+                    vehicleHealth.invoke(hud, graphics);
+                    var bars = (java.util.Map<?, ?>) get(hud, "contextualInfoBars");
+                    var bar = (net.minecraft.client.gui.contextualbar.ContextualBar)
+                        ((java.util.function.Supplier<?>) bars.get(nextBar.invoke(hud))).get();
                     bar.extractBackground(graphics, tracker);
                     if (local.experienceLevel > 0) {
                         Access26_2.extractExperienceLevel(graphics, minecraft.font, local.experienceLevel);

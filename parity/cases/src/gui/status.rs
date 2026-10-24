@@ -248,6 +248,8 @@ fn overlay_rows() -> Vec<Value> {
     rows
 }
 
+mod vehicle;
+
 /// One status scenario.
 #[derive(Clone)]
 struct Status {
@@ -264,6 +266,8 @@ struct Status {
     frozen_ticks: i64,
     hardcore: bool,
     xp: (i64, f64),
+    /// A saddled horse the player rides: its most health, its health and the jump's charge.
+    vehicle: Option<(f64, f64, f64)>,
 }
 
 fn status() -> Status {
@@ -281,6 +285,7 @@ fn status() -> Status {
         frozen_ticks: 0,
         hardcore: false,
         xp: (0, 0.0),
+        vehicle: None,
     }
 }
 
@@ -290,13 +295,18 @@ fn at(tick: i64, health: f64) -> Status {
 
 impl Status {
     fn row(self, label: &str) -> Value {
-        json!({
+        let vehicle = self.vehicle;
+        let mut row = json!({
             "label": label, "width": self.size.0, "height": self.size.1, "hardcore": self.hardcore,
             "max_health": self.max_health, "absorption": f32_bits(self.absorption), "armor": self.armor,
             "food": self.food, "saturation": f32_bits(self.saturation), "air": self.air,
             "eye_in_water": self.eye_in_water, "effects": self.effects, "frozen_ticks": self.frozen_ticks,
             "xp_level": self.xp.0, "xp_progress": f32_bits(self.xp.1), "frames": self.frames,
-        })
+        });
+        if let Some((max_health, health, jump)) = vehicle {
+            row["vehicle"] = json!({"max_health": max_health, "health": f32_bits(health), "jump": f32_bits(jump)});
+        }
+        row
     }
 }
 
@@ -451,7 +461,11 @@ fn timed_rows() -> Vec<Value> {
 /// the air bubbles, the experience bar and its level, several window sizes,
 /// and frames over time.
 pub fn hud_status() -> Value {
-    gui("hud-status", "hud_status", [health_rows(), food_and_air_rows(), effect_rows(), timed_rows()].concat())
+    gui(
+        "hud-status",
+        "hud_status",
+        [health_rows(), food_and_air_rows(), vehicle::rows(), effect_rows(), timed_rows()].concat(),
+    )
 }
 
 /// The sleep veil: the timer at the start, through the fade in, at its full and through the ten

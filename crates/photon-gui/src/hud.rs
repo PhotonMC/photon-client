@@ -7,9 +7,12 @@ mod hotbar;
 pub mod locator;
 mod overlays;
 pub mod subtitles;
+mod vitals;
 pub use overlays::{CameraOverlays, debug, sleep, vignette_colour};
 pub mod sidebar;
 pub mod tab_list;
+use vitals::Bar;
+pub use vitals::{JumpInput, VehicleInput};
 pub mod titles;
 
 use self::locator::{LocatorInput, WaypointStyles};
@@ -96,6 +99,10 @@ pub struct HudInput {
     pub food: i32,
     pub saturation: f32,
     pub hunger: bool,
+    /// The mount the player rides, when it shows health.
+    pub vehicle: Option<vitals::VehicleInput>,
+    /// The jumpable mount's bar (`jumpableVehicle`).
+    pub jump: Option<vitals::JumpInput>,
     pub air_supply: i32,
     pub max_air_supply: i32,
     pub eye_in_water: bool,
@@ -193,6 +200,9 @@ impl Hud {
         if input.survival {
             self.player_health(frame, atlas, width, height, input, now_millis);
         }
+        if let Some(vehicle) = &input.vehicle {
+            Self::vehicle_health(frame, atlas, (width, height), vehicle);
+        }
         self.contextual_bar(frame, atlas, font, (width, height), input);
     }
 
@@ -235,13 +245,13 @@ impl Hud {
         let t = GuiBlend::Translucent;
         let left = (width - 182) / 2;
         let top = height - 24 - 5;
-        let locator = input
-            .locator
-            .as_ref()
-            .filter(|_| !(input.survival && input.experience_prioritised));
-        if locator.is_some() {
+        let bar = vitals::contextual_info(input);
+        let locator = input.locator.as_ref().filter(|_| bar == Bar::Locator);
+        if let Some(jump) = input.jump.filter(|_| bar == Bar::Jumpable) {
+            vitals::jump_bar(frame, atlas, (left, top), jump);
+        } else if locator.is_some() {
             locator::background(frame, atlas, (width, height));
-        } else if input.survival {
+        } else if bar == Bar::Experience {
             // `ExperienceBar.extractBackground`.
             frame.sprite_blend(
                 atlas,
@@ -271,7 +281,7 @@ impl Hud {
                 &self.waypoint_styles,
                 (width, height),
             );
-        } else if input.survival {
+        } else if bar == Bar::Experience {
             // `ExperienceBar.extractRenderState`: every level needs some
             // experience, so the bar always shows.
             let progress = (input.experience_progress * 183.0) as i32;
@@ -454,62 +464,13 @@ impl Hud {
             }
         }
 
-        // `extractFood`, with no vehicle's hearts in its place.
-        let (empty, half, full) = if input.hunger {
-            (
-                "hud/food_empty_hunger",
-                "hud/food_half_hunger",
-                "hud/food_full_hunger",
-            )
-        } else {
-            ("hud/food_empty", "hud/food_half", "hud/food_full")
-        };
-        for i in 0..10 {
-            let mut y = y_base;
-            if input.saturation <= 0.0 && self.tick_count % (input.food * 3 + 1) == 0 {
-                y += self.random.next_int_bound(3).unwrap_or(1) - 1;
-            }
-            let x = x_right - i * 8 - 9;
-            frame.sprite_blend(atlas, t, empty, (x, y, 9, 9));
-            if i * 2 + 1 < input.food {
-                frame.sprite_blend(atlas, t, full, (x, y, 9, 9));
-            }
-            if i * 2 + 1 == input.food {
-                frame.sprite_blend(atlas, t, half, (x, y, 9, 9));
-            }
+        // `extractFood` only where no vehicle's hearts take its place, and the air above them.
+        let vehicle_hearts = input.vehicle.map_or(0, |vehicle| vehicle.hearts());
+        if vehicle_hearts == 0 {
+            self.food_row(frame, atlas, input, (x_right, y_base));
+            y_air -= 10;
         }
-        y_air -= 10;
-
-        // `extractAirBubbles`: with no vehicle, the row sits one line up
-        // from where the vehicle's rows would start.
-        let max_air = input.max_air_supply;
-        let air = input.air_supply.clamp(0, max_air);
-        let under_water = input.eye_in_water;
-        if under_water || air < max_air {
-            y_air += 10;
-            let bubble =
-                |offset: i32| (((air + offset) * 10) as f32 / max_air as f32).ceil() as i32;
-            let full_bubbles = bubble(-2);
-            let popping = bubble(0);
-            let delay = i32::from(air != 0 && under_water);
-            let empty_bubbles = 10 - bubble(delay);
-            let is_popping = full_bubbles != popping;
-            for index in 1..=10 {
-                let x = x_right - (index - 1) * 8 - 9;
-                if index <= full_bubbles {
-                    frame.sprite_blend(atlas, t, "hud/air", (x, y_air, 9, 9));
-                } else if is_popping && index == popping && under_water {
-                    frame.sprite_blend(atlas, t, "hud/air_bursting", (x, y_air, 9, 9));
-                } else if index > 10 - empty_bubbles {
-                    let wobble = if empty_bubbles == 10 && self.tick_count % 2 == 0 {
-                        self.random.next_int_bound(2).unwrap_or(0)
-                    } else {
-                        0
-                    };
-                    frame.sprite_blend(atlas, t, "hud/air_empty", (x, y_air + wobble, 9, 9));
-                }
-            }
-        }
+        self.air_bubbles(frame, atlas, input, (x_right, y_air, vehicle_hearts));
     }
 }
 
