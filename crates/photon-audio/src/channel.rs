@@ -64,18 +64,32 @@ pub struct MixerChannel {
 /// The sounds decoded whole, by path: a sound played again is not read and decoded again.
 type DecodedSounds = Arc<Mutex<HashMap<String, Arc<Pcm>>>>;
 
+/// The decoded sound of `path`, decoded and kept on its first use.
+fn decode_cached(
+    assets: &dyn SoundAssets,
+    decoded: &DecodedSounds,
+    path: &str,
+) -> Option<Arc<Pcm>> {
+    if let Some(pcm) = decoded.lock().ok()?.get(path) {
+        return Some(Arc::clone(pcm));
+    }
+    let pcm = Arc::new(decode_ogg(&assets.read(path)?).ok()?);
+    decoded
+        .lock()
+        .ok()?
+        .insert(path.to_owned(), Arc::clone(&pcm));
+    Some(pcm)
+}
+
 impl MixerChannel {
-    /// The decoded sound of `path`, decoded on its first use.
+    /// The sound of `path` if it was decoded before.
+    fn cached_sound(&self, path: &str) -> Option<Arc<Pcm>> {
+        self.decoded.lock().ok()?.get(path).map(Arc::clone)
+    }
+
+    /// The decoded sound of `path`, decoded now if it was not before.
     fn decoded_sound(&self, path: &str) -> Option<Arc<Pcm>> {
-        if let Some(pcm) = self.decoded.lock().ok()?.get(path) {
-            return Some(Arc::clone(pcm));
-        }
-        let pcm = Arc::new(decode_ogg(&self.assets.read(path)?).ok()?);
-        self.decoded
-            .lock()
-            .ok()?
-            .insert(path.to_owned(), Arc::clone(&pcm));
-        Some(pcm)
+        decode_cached(&*self.assets, &self.decoded, path)
     }
 
     fn with<T>(&self, action: impl FnOnce(&mut crate::mixer::Source) -> T) -> Option<T> {
@@ -114,10 +128,30 @@ impl Channel for MixerChannel {
     }
 
     fn attach_static_buffer(&mut self, path: &str) {
-        let Some(pcm) = self.decoded_sound(path) else {
+        if let Some(pcm) = self.cached_sound(path) {
+            self.with(|source| source.attach(Samples::Whole(pcm)));
             return;
-        };
-        self.with(|source| source.attach(Samples::Whole(pcm)));
+        }
+        // The first play of a sound decodes it on a thread, as the reference does, so the game
+        // thread does not stall on the file.
+        self.with(|source| source.start_loading());
+        let (mixer, id) = (Arc::clone(&self.mixer), self.id);
+        let (assets, decoded) = (Arc::clone(&self.assets), Arc::clone(&self.decoded));
+        let owned = path.to_owned();
+        let spawned = std::thread::Builder::new()
+            .name("Sound Decoder".to_owned())
+            .spawn(move || {
+                let pcm = decode_cached(&*assets, &decoded, &owned);
+                if let Ok(mut mixer) = mixer.lock()
+                    && let Some(source) = mixer.source(id)
+                {
+                    source.finish_loading(pcm.map(Samples::Whole));
+                }
+            });
+        if spawned.is_err() {
+            let pcm = self.decoded_sound(path);
+            self.with(|source| source.finish_loading(pcm.map(Samples::Whole)));
+        }
     }
 
     fn attach_stream(&mut self, path: &str, looping: bool) {
@@ -277,5 +311,19 @@ mod tests {
         assert!(channels.acquire(Pool::Static).is_none());
         held.pop().expect("one").destroy();
         assert!(channels.acquire(Pool::Static).is_some());
+    }
+
+    #[test]
+    fn a_sound_that_cannot_be_decoded_stops_its_channel_after_the_play() {
+        let mixer = Arc::new(Mutex::new(Mixer::new(48000)));
+        let mut channels = MixerChannels::with_total(mixer, Arc::new(NoAssets), 10);
+        let mut channel = channels.acquire(Pool::Static).expect("room");
+        channel.attach_static_buffer("minecraft:sounds/none.ogg");
+        channel.play();
+        let start = std::time::Instant::now();
+        while !channel.stopped() {
+            assert!(start.elapsed().as_secs() < 5, "never stopped");
+            std::thread::yield_now();
+        }
     }
 }

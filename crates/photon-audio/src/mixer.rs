@@ -71,6 +71,9 @@ pub struct Source {
     pub max_distance: Option<f32>,
     pub relative: bool,
     pub position: [f64; 3],
+    /// The samples are being decoded off the mixer's thread; `play` is remembered until they
+    /// arrive (`SoundBufferLibrary.getCompleteBuffer` is a future the engine plays on).
+    loading: Option<bool>,
 }
 
 impl Default for Source {
@@ -88,6 +91,7 @@ impl Default for Source {
             max_distance: None,
             relative: false,
             position: [0.0; 3],
+            loading: None,
         }
     }
 }
@@ -104,7 +108,30 @@ impl Source {
         self.ended = false;
     }
 
+    /// The samples are on their way: a `play` before they come waits for them.
+    pub fn start_loading(&mut self) {
+        self.loading = Some(false);
+    }
+
+    /// The samples decoded, or did not (`None`): the source plays at once if it was told to.
+    pub fn finish_loading(&mut self, samples: Option<Samples>) {
+        let play = self.loading.take().unwrap_or(false);
+        match samples {
+            Some(samples) => {
+                self.attach(samples);
+                if play {
+                    self.play();
+                }
+            }
+            None => self.state = State::Stopped,
+        }
+    }
+
     pub fn play(&mut self) {
+        if let Some(play) = self.loading.as_mut() {
+            *play = true;
+            return;
+        }
         if matches!(self.state, State::Initial | State::Stopped | State::Paused)
             && self.samples.is_some()
         {
