@@ -918,7 +918,7 @@
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 299
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 99
 "crates/photon/examples/bench.rs::world" = 71
-"crates/photon/src/bench.rs::Bench::report" = 100
+"crates/photon/src/bench.rs::Bench::report" = 76
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
 "crates/photon/src/controls/scripted.rs::Controls::script_step" = 68
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
@@ -955,7 +955,6 @@
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 91
-"crates/photon/src/world/sections.rs::SectionMeshes::visible" = 62
 "crates/photon/src/world/signs.rs::sign_texts" = 69
 
 [fn-nesting]
@@ -1015,7 +1014,6 @@
 "crates/photon/examples/bench.rs::world" = 6
 "crates/photon/src/script.rs::HeldKeys::parse" = 5
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
-"crates/photon/src/world/sections.rs::SectionMeshes::visible" = 5
 
 [fn-params]
 "crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 7
