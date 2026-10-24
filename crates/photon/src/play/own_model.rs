@@ -27,7 +27,9 @@ impl Play {
             properties: self.session.player_properties(id),
             require_secure: false,
         };
-        let Some((rect, slim)) = self.skins.resolve(&mut self.entity_textures, &who) else {
+        let Some(crate::skins::Resolved { rect, slim, .. }) =
+            self.skins.resolve(&mut self.entity_textures, &who)
+        else {
             return;
         };
         if self.player_model.slim != slim {

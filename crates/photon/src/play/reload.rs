@@ -44,16 +44,25 @@ pub(super) fn entity_textures(
     .ok_or_else(|| "the entity textures did not fit".into())
 }
 
-/// The places the downloaded skins are drawn from, empty.
+/// The places the downloaded skins and capes are drawn from, empty.
 fn skin_slots() -> impl Iterator<Item = (String, photon_render::DecodedImage)> {
-    (0..crate::skins::SLOT_COUNT).map(|index| {
-        let blank = photon_render::DecodedImage {
-            width: 64,
-            height: 64,
-            rgba: vec![0; 64 * 64 * 4],
-        };
-        (crate::skins::slot_name(index), blank)
-    })
+    (0..crate::skins::SLOT_COUNT)
+        .map(|index| {
+            let blank = photon_render::DecodedImage {
+                width: 64,
+                height: 64,
+                rgba: vec![0; 64 * 64 * 4],
+            };
+            (crate::skins::slot_name(index), blank)
+        })
+        .chain((0..crate::skins::CAPE_SLOT_COUNT).map(|index| {
+            let blank = photon_render::DecodedImage {
+                width: 64,
+                height: 32,
+                rgba: vec![0; 64 * 32 * 4],
+            };
+            (crate::skins::cape_slot_name(index), blank)
+        }))
 }
 
 /// The sun and the moon's phases in the block atlas.

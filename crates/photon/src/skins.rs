@@ -24,12 +24,28 @@ pub(crate) const SLOT_COUNT: usize = 64;
 const MAX_LOADING: usize = 4;
 /// How long a skin that failed to load is left alone.
 const RETRY: Duration = Duration::from_secs(5 * 60);
-/// A skin's size in the places.
+/// How many downloaded capes the entity textures have room for at once.
+pub(crate) const CAPE_SLOT_COUNT: usize = 32;
+/// A skin's width and height in the places; a cape has the same width and half the height.
 const SIDE: usize = 64;
 
 /// The name of a place in the entity textures.
 pub(crate) fn slot_name(index: usize) -> String {
     format!("entity/skin_slot/{index}")
+}
+
+/// The name of a place for a cape in the entity textures.
+pub(crate) fn cape_slot_name(index: usize) -> String {
+    format!("entity/skin_slot/cape/{index}")
+}
+
+/// What a player wears: the place of its skin, whether its arms are slim, and the place of its
+/// cape when it has one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Resolved {
+    pub rect: TextureRect,
+    pub slim: bool,
+    pub cape: Option<TextureRect>,
 }
 
 enum State {
@@ -65,6 +81,8 @@ type Loader = fn(&ProfileProperty, &KeyCell, &std::path::Path) -> Option<Loaded>
 pub(crate) struct Skins {
     slots: Slots,
     rects: Vec<TextureRect>,
+    cape_slots: Slots,
+    cape_rects: Vec<TextureRect>,
     players: HashMap<(u64, u64), Player>,
     queue: VecDeque<((u64, u64), ProfileProperty)>,
     loading: usize,
@@ -103,6 +121,8 @@ impl Skins {
         let mut skins = Self {
             slots: Slots::new(0),
             rects: Vec::new(),
+            cape_slots: Slots::new(0),
+            cape_rects: Vec::new(),
             players: HashMap::new(),
             queue: VecDeque::new(),
             loading: 0,
@@ -124,6 +144,10 @@ impl Skins {
             .map_while(|index| textures.rect(&slot_name(index)))
             .collect();
         self.slots = Slots::new(self.rects.len());
+        self.cape_rects = (0..CAPE_SLOT_COUNT)
+            .map_while(|index| textures.rect(&cape_slot_name(index)))
+            .collect();
+        self.cape_slots = Slots::new(self.cape_rects.len());
     }
 
     /// A frame begins: the skins that finished loading are taken in, and more are started.
@@ -181,7 +205,7 @@ impl Skins {
         session: &photon_net::connection::PlaySession,
         textures: &mut EntityTextures,
         id: Uuid,
-    ) -> Option<(TextureRect, bool)> {
+    ) -> Option<Resolved> {
         let who = Who {
             id,
             properties: session.player_properties(id),
@@ -190,18 +214,17 @@ impl Skins {
         self.resolve(textures, &who)
     }
 
-    /// Where the skin of `who` is in `textures` and whether its arms are slim: its own once it
-    /// has loaded and may be shown, otherwise its default skin.
-    pub(crate) fn resolve(
-        &mut self,
-        textures: &mut EntityTextures,
-        who: &Who,
-    ) -> Option<(TextureRect, bool)> {
+    /// Where the skin of `who` is in `textures`, whether its arms are slim, and where its cape
+    /// is: its own once it has loaded and may be shown, otherwise its default skin without a
+    /// cape.
+    pub(crate) fn resolve(&mut self, textures: &mut EntityTextures, who: &Who) -> Option<Resolved> {
         let default = photon_render::entity::player_renderer::default_skin(who.id);
         let fallback = || {
-            textures
-                .rect(default.texture)
-                .map(|rect| (rect, default.slim))
+            textures.rect(default.texture).map(|rect| Resolved {
+                rect,
+                slim: default.slim,
+                cape: None,
+            })
         };
         let Some(property) = who.properties.iter().find(|p| p.name == "textures") else {
             return fallback();
@@ -238,7 +261,30 @@ impl Skins {
             blit(textures, rect, &loaded.rgba);
             self.dirty.push(region_of(textures, rect, &loaded.rgba));
         }
-        Some((rect, loaded.slim))
+        let cape = self.place_cape(textures, &loaded, frame);
+        Some(Resolved {
+            rect,
+            slim: loaded.slim,
+            cape,
+        })
+    }
+
+    /// The place of the cape of a loaded skin, written when it was not there yet. None where
+    /// there is no cape, or no place is free in this frame (the player goes without).
+    fn place_cape(
+        &mut self,
+        textures: &mut EntityTextures,
+        loaded: &Loaded,
+        frame: u64,
+    ) -> Option<TextureRect> {
+        let cape = loaded.cape.as_ref()?;
+        let (index, fresh) = self.cape_slots.take(&cape.hash, frame)?;
+        let rect = *self.cape_rects.get(index)?;
+        if fresh {
+            blit(textures, rect, &cape.rgba);
+            self.dirty.push(region_of(textures, rect, &cape.rgba));
+        }
+        Some(rect)
     }
 }
 
@@ -261,7 +307,7 @@ fn region_of(
         x: (rect[0] * image.width as f32).round() as u32,
         y: (rect[1] * image.height as f32).round() as u32,
         width: SIDE as u32,
-        height: SIDE as u32,
+        height: (rgba.len() / (SIDE * 4)) as u32,
         rgba: rgba.to_vec(),
     }
 }
@@ -274,7 +320,7 @@ fn blit(textures: &mut EntityTextures, rect: TextureRect, rgba: &[u8]) {
         (rect[0] * width).round() as usize,
         (rect[1] * height).round() as usize,
     );
-    for row in 0..SIDE {
+    for row in 0..rgba.len() / (SIDE * 4) {
         let to = ((top + row) * image.width as usize + left) * 4;
         image.rgba[to..to + SIDE * 4].copy_from_slice(&rgba[row * SIDE * 4..(row + 1) * SIDE * 4]);
     }

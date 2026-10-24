@@ -32,11 +32,11 @@ pub fn remote_players(
         if flipped(session, entity) {
             snapshot.turn_upside_down(entity.leash_size().height);
         }
-        let Some((rect, slim)) = skins.of_player(session, textures, entity.uuid) else {
+        let Some(look) = skins.of_player(session, textures, entity.uuid) else {
             continue;
         };
         let textures = &*textures;
-        let model = models.of(slim);
+        let model = models.of(look.slim);
         let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
         let (right, left) = (
             entity.item_held_by_arm(false),
@@ -44,7 +44,7 @@ pub fn remote_players(
         );
         let (state, spears) = remote_render_state(session, (entity, &snapshot), partial);
         model.setup_anim(&state);
-        let placement = remote_placement((session, entity, &snapshot), (view, rect));
+        let placement = remote_placement((session, entity, &snapshot), (view, look.rect));
         let worn = Worn {
             head: entity.equipment(EquipmentSlot::Head),
             chest: entity.equipment(EquipmentSlot::Chest),

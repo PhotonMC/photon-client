@@ -23,6 +23,17 @@ pub(super) struct Loaded {
     pub secure: bool,
     /// 64 by 64 pixels, four bytes each.
     pub rgba: std::sync::Arc<Vec<u8>>,
+    /// The cape the property names, if it has one that loaded.
+    pub cape: Option<Cape>,
+}
+
+/// A cape ready for the textures.
+#[derive(Debug, Clone)]
+pub(super) struct Cape {
+    /// The texture's name in the services.
+    pub hash: String,
+    /// 64 by 32 pixels, four bytes each.
+    pub rgba: std::sync::Arc<Vec<u8>>,
 }
 
 /// The keys of the services, asked for once and again after a failure.
@@ -84,6 +95,29 @@ pub(super) fn load(property: &ProfileProperty, keys: &KeyCell, cache: &Path) -> 
         hash: skin.hash.clone(),
         slim: skin.is_slim(),
         secure: textures.secure(),
+        rgba: std::sync::Arc::new(rgba),
+        cape: textures
+            .cape
+            .as_ref()
+            .and_then(|cape| load_cape(cape, cache)),
+    })
+}
+
+/// `SkinManager`'s load of a cape: its file, which a failure leaves the player without (the
+/// skin is still worn).
+fn load_cape(cape: &skins::ProfileTexture, cache: &Path) -> Option<Cape> {
+    let local = skins::local_copy(&cache.join("capes"), &cape.hash);
+    let bytes = skins::fetch_texture(&cape.url, &local)
+        .inspect_err(|error| log::warn!("cape {}: {error}", cape.hash))
+        .ok()?;
+    let image = photon_render::texture::png::decode_rgba(&bytes)
+        .inspect_err(|error| log::warn!("cape {}: {error:?}", cape.hash))
+        .ok()?;
+    let rgba = skins::fit_cape(&image.rgba, image.width as usize, image.height as usize)
+        .inspect_err(|error| log::warn!("{error}: {}", cape.hash))
+        .ok()?;
+    Some(Cape {
+        hash: cape.hash.clone(),
         rgba: std::sync::Arc::new(rgba),
     })
 }
