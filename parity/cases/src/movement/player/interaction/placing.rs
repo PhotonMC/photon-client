@@ -16,10 +16,11 @@ pub(super) struct Uses {
     down: bool,
     watch: Vec<(i64, i64, i64)>,
     held: &'static [&'static str],
+    inventory: bool,
 }
 
 pub(super) fn uses(count: usize, aim: Option<&Value>, watch: &[(i64, i64, i64)]) -> Uses {
-    Uses { count, aim: aim.cloned(), clicks: 0, down: false, watch: watch.to_vec(), held: &[] }
+    Uses { count, aim: aim.cloned(), clicks: 0, down: false, watch: watch.to_vec(), held: &[], inventory: false }
 }
 
 impl Uses {
@@ -29,6 +30,11 @@ impl Uses {
 
     pub(super) fn down(self) -> Self {
         Self { down: true, ..self }
+    }
+
+    /// Asks the oracles for the inventory's slots in every tick.
+    pub(super) fn inventory(self) -> Self {
+        Self { inventory: true, ..self }
     }
 
     pub(super) fn held(self, held: &'static [&'static str]) -> Self {
@@ -44,6 +50,9 @@ impl Uses {
                 "use": {"clicks": if index == 0 { self.clicks } else { 0 }, "down": self.down},
                 "watch": watch,
             });
+            if self.inventory {
+                attack["inventory"] = json!(true);
+            }
             if let Some(aim) = &self.aim {
                 attack["target"] = aim.clone();
             }
@@ -233,7 +242,9 @@ fn bucket_rows() -> Vec<Value> {
     let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
     let pool = || vec![put(0, 64, 2, "minecraft:water")];
     let lava = || vec![put(0, 64, 2, "minecraft:lava")];
-    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let run = |aim: &Value| {
+        [uses(1, Some(aim), &around).clicks(1).inventory().go(), uses(3, Some(aim), &around).inventory().go()].concat()
+    };
     let look = 39.0;
     vec![
         using("water-bucket-on-floor", vec![], run(&top_of))
@@ -285,7 +296,9 @@ fn bucket_rows() -> Vec<Value> {
 fn bucket_rows_2() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
     let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
-    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let run = |aim: &Value| {
+        [uses(1, Some(aim), &around).clicks(1).inventory().go(), uses(3, Some(aim), &around).inventory().go()].concat()
+    };
     let look = 39.0;
     let sneak_watch: Vec<(i64, i64, i64)> = (63..67).flat_map(|y| (-1..4).map(move |z| (0, y, z))).collect();
     vec![
@@ -338,7 +351,9 @@ fn bucket_rows_2() -> Vec<Value> {
 fn bucket_rows_3() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
     let around = [(0, 64, 2), (0, 65, 2), (1, 64, 2), (-1, 64, 2), (0, 64, 3), (0, 64, 1)];
-    let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    let run = |aim: &Value| {
+        [uses(1, Some(aim), &around).clicks(1).inventory().go(), uses(3, Some(aim), &around).inventory().go()].concat()
+    };
     let look = 39.0;
     vec![
         using(
