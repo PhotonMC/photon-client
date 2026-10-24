@@ -231,12 +231,17 @@ pub(super) fn hold_main_hand(
     };
     let item = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
     let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
-    world.apply_local_player_container_slot(
-        0,
-        0,
-        36,
-        Some(&photon_world::ClientItemStackState::new(count, item)),
-    );
+    let mut stack = photon_world::ClientItemStackState::new(count, item);
+    if let Some(seconds) = breaking["main_hand_use_cooldown"].as_f64() {
+        // `UseCooldown.STREAM_CODEC`: the seconds and no group.
+        let mut value = (seconds as f32).to_be_bytes().to_vec();
+        value.push(0);
+        stack.set_patch(&photon_world::item_components::Patch {
+            added: vec![(photon_data::item::component_types::USE_COOLDOWN, value)],
+            removed: Vec::new(),
+        });
+    }
+    world.apply_local_player_container_slot(0, 0, 36, Some(&stack));
     player.set_main_hand_item(item);
     Ok(())
 }

@@ -76,6 +76,14 @@ fn special_rows() -> Vec<Value> {
         let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
         rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
     }
+    // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
+    // success: the eye starts a use all the same; a stick that passes gets none.
+    for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {
+        let name = item.trim_start_matches("minecraft:");
+        let label = format!("use-{name}-with-cooldown-{}", if x_rot < 0.0 { "sky" } else { "floor" });
+        let aim = (x_rot > 0.0).then_some(&top_of);
+        rows.push(using(&label, vec![], run(aim)).main_hand(item).count(2).use_cooldown(2.0).x_rot(x_rot).row());
+    }
     // The target is the frame itself: without an eye it takes the item (a swing, no `use`), with
     // one `useOn` passes and the look passes too.
     let frame_top = aim_at((0, 64, 2), "up", (0.5, 64.8125, 2.5));

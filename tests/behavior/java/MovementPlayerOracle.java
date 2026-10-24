@@ -71,7 +71,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
                     net.minecraft.resources.Identifier.parse(breaking_.get("main_hand").getAsString()));
                 int count = breaking_.has("main_hand_count") ? breaking_.get("main_hand_count").getAsInt() : 1;
-                player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(item, count));
+                var stack = new net.minecraft.world.item.ItemStack(item, count);
+                if (breaking_.has("main_hand_use_cooldown")) {
+                    stack.set(net.minecraft.core.component.DataComponents.USE_COOLDOWN,
+                        new net.minecraft.world.item.component.UseCooldown(breaking_.get("main_hand_use_cooldown").getAsFloat()));
+                }
+                player.getInventory().setItem(0, stack);
             }
             if (breaking_.has("off_hand")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(

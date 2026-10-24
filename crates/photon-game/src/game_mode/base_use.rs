@@ -210,8 +210,9 @@ fn throw_item(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: true }
 }
 
-/// `ItemStack.use` after an instantly used item (one that did not start a use): its
-/// `use_cooldown` begins, for the stack as it was before.
+/// `ItemStack.use` after an instantly used item (use duration 0): its `use_cooldown` begins, for
+/// the stack as it was before. Other items are approximated as instant when no use started; the
+/// ender eye is instant although it starts one.
 pub(super) fn after_instant_use(
     ctx: &mut Context<'_>,
     before: Option<&photon_world::ClientItemStackState>,
@@ -220,7 +221,9 @@ pub(super) fn after_instant_use(
     let Some(before) = before else {
         return;
     };
-    if !matches!(result, UseResult::Success { .. }) || ctx.player.is_using_item() {
+    let eye = rules::item_use_owner(before.item_registry_id())
+        == photon_data::item::classes::ItemClass::EnderEyeItem;
+    if !matches!(result, UseResult::Success { .. }) || (ctx.player.is_using_item() && !eye) {
         return;
     }
     let values = Values::new(before.item_registry_id(), before.patch_bytes());
