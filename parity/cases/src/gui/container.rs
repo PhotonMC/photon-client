@@ -159,6 +159,7 @@ fn small_menus() -> Vec<Value> {
         ingot(14, -1).row("stonecutter-scrollable"),
         Screen { clicks: vec![(185, 60)], ..ingot(5, -1) }.row("stonecutter-click-entry"),
         Screen { clicks: vec![(215, 60)], ..ingot(5, 2) }.row("stonecutter-click-chosen"),
+        Screen { clicks: vec![(215, 60)], ..ingot(5, -1) }.row("stonecutter-click-other"),
         Screen { clicks: vec![(10, 10)], ..ingot(5, -1) }.row("stonecutter-click-outside"),
         screen("loom", "container.loom").row("loom-empty"),
         cartography().row("cartography-empty"),
@@ -227,6 +228,17 @@ fn crafters_and_lecterns() -> Vec<Value> {
             .row("crafter-hover-slot"),
         Screen { mouse: (155, 58), tooltips: false, ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])) }
             .row("crafter-hover-disabled"),
+        Screen { clicks: vec![(155, 58)], ..crafter(json!([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])) }
+            .row("crafter-click-switches-off"),
+        Screen { clicks: vec![(155, 58)], ..crafter(json!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])) }
+            .row("crafter-click-switches-on"),
+        Screen {
+            slots: vec![(0, "stone", 3)],
+            sync_slot: Some(0),
+            clicks: vec![(155, 58)],
+            ..crafter(json!([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        }
+        .row("crafter-click-filled-slot"),
         lectern().row("lectern-empty"),
         book(three.clone()).row("lectern-book"),
         Screen { data_after: Some(json!([[0, 1]])), ..book(three.clone()) }.row("lectern-middle-page"),

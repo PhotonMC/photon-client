@@ -474,6 +474,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
             // Clicks come last, so what they change does not reach the drawn steps; only the
             // sounds they ask for are read.
             GuiScreenOracle.SilentSounds.ASKED.clear();
+            // A sound the player makes is placed against the camera.
+            Access26_2.renderThrough(minecraft, new net.minecraft.client.Camera());
             for (var click : row.getAsJsonArray("clicks")) {
                 minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
                 screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(

@@ -181,6 +181,8 @@ pub use bundle::{
     toggle_bundle_selected,
 };
 mod clicks;
+mod crafter;
+pub use crafter::{CRAFTER_SLOT_SOUND, crafter_slot_sound_levels};
 mod components;
 pub use components::{damage, is_damageable, max_damage};
 mod grindstone;

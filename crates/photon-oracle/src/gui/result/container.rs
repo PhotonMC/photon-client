@@ -207,7 +207,18 @@ fn press_clicks(
             click[0].as_f64().unwrap_or(0.0),
             click[1].as_f64().unwrap_or(0.0),
         );
-        screen.mouse_clicked(at, 0, false, std::time::Instant::now(), menu);
+        for action in screen.mouse_clicked(at, 0, false, std::time::Instant::now(), menu) {
+            // The player's own click, which the Java oracle's sound manager hears too.
+            if let photon_gui::screen::ScreenAction::SlotState { enabled, .. } = action {
+                let (volume, pitch) =
+                    photon_game::menus::container::crafter_slot_sound_levels(enabled);
+                photon_gui::ui_sound::ask(photon_gui::ui_sound::UiSound {
+                    event: photon_game::menus::container::CRAFTER_SLOT_SOUND,
+                    pitch,
+                    volume,
+                });
+            }
+        }
     }
 }
 

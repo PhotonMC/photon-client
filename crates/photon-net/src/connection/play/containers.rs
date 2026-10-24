@@ -27,6 +27,17 @@ impl PlaySession {
         {
             *entry = value;
         }
+        // `CrafterScreen.updateSlotState`: the click is the player's own sound, where it stands.
+        if let Some(at) = self.world.local_player().map(|player| player.position()) {
+            let levels = photon_game::menus::container::crafter_slot_sound_levels(enabled);
+            self.world
+                .play_local_sound(photon_world::local_player::LocalSound::at(
+                    photon_game::menus::container::CRAFTER_SLOT_SOUND,
+                    photon_world::local_player::LocalSoundSource::Players,
+                    levels,
+                    at,
+                ));
+        }
         self.send(
             PLAY_SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED_PACKET_ID,
             |output| {
