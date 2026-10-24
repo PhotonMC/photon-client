@@ -271,6 +271,67 @@ fn y_is_int(hx: i32, iy: i32, ly: u32) -> i32 {
     0
 }
 
+/// Whether a high word and low word, with the sign cleared, are a NaN.
+fn is_nan_words(high: i32, low: u32) -> bool {
+    high > 0x7ff0_0000 || (high == 0x7ff0_0000 && low != 0)
+}
+
+/// `pow(x, y)` for an infinite `y`.
+fn pow_infinite_exponent(x: f64, y: f64) -> f64 {
+    let (hx, lx) = (hi(x), lo(x));
+    let ix = hx & 0x7fff_ffff;
+    let hy = hi(y);
+    if ((ix - 0x3ff0_0000) as u32 | lx) == 0 {
+        y - y
+    } else if ix >= 0x3ff0_0000 {
+        if hy >= 0 { y } else { 0.0 }
+    } else if hy < 0 {
+        -y
+    } else {
+        0.0
+    }
+}
+
+/// `pow` for an exponent with a zero low word that is infinite, one, two or one half.
+fn pow_simple_exponent(x: f64, y: f64) -> Option<f64> {
+    let hx = hi(x);
+    let (hy, iy) = (hi(y), hi(y) & 0x7fff_ffff);
+    if iy == 0x7ff0_0000 {
+        return Some(pow_infinite_exponent(x, y));
+    }
+    if iy == 0x3ff0_0000 {
+        return Some(if hy < 0 { 1.0 / x } else { x });
+    }
+    if hy == 0x4000_0000 {
+        return Some(x * x);
+    }
+    if hy == 0x3fe0_0000 && hx >= 0 {
+        return Some(x.sqrt());
+    }
+    None
+}
+
+/// `pow` for a base of zero, one or infinity (`yisint` as `y_is_int` gives it).
+fn pow_unit_base(x: f64, y: f64, yisint: i32) -> Option<f64> {
+    let (hx, lx) = (hi(x), lo(x));
+    let ix = hx & 0x7fff_ffff;
+    if lx != 0 || !(ix == 0x7ff0_0000 || ix == 0 || ix == 0x3ff0_0000) {
+        return None;
+    }
+    let mut z = x.abs();
+    if hi(y) < 0 {
+        z = 1.0 / z;
+    }
+    if hx < 0 {
+        if ((ix - 0x3ff0_0000) | yisint) == 0 {
+            z = (z - z) / (z - z);
+        } else if yisint == 1 {
+            z = -z;
+        }
+    }
+    Some(z)
+}
+
 /// The arguments `pow` answers without computing: the sign of the result to come, or the answer.
 fn pow_special(x: f64, y: f64) -> Result<f64, f64> {
     let (hx, lx) = (hi(x), lo(x));
@@ -280,46 +341,17 @@ fn pow_special(x: f64, y: f64) -> Result<f64, f64> {
     if (iy as u32 | ly) == 0 {
         return Err(1.0);
     }
-    if ix > 0x7ff0_0000
-        || (ix == 0x7ff0_0000 && lx != 0)
-        || iy > 0x7ff0_0000
-        || (iy == 0x7ff0_0000 && ly != 0)
-    {
+    if is_nan_words(ix, lx) || is_nan_words(iy, ly) {
         return Err(x + y);
     }
     let yisint = y_is_int(hx, iy, ly);
-    if ly == 0 {
-        if iy == 0x7ff0_0000 {
-            if ((ix - 0x3ff0_0000) as u32 | lx) == 0 {
-                return Err(y - y);
-            } else if ix >= 0x3ff0_0000 {
-                return Err(if hy >= 0 { y } else { 0.0 });
-            }
-            return Err(if hy < 0 { -y } else { 0.0 });
-        }
-        if iy == 0x3ff0_0000 {
-            return Err(if hy < 0 { 1.0 / x } else { x });
-        }
-        if hy == 0x4000_0000 {
-            return Err(x * x);
-        }
-        if hy == 0x3fe0_0000 && hx >= 0 {
-            return Err(x.sqrt());
-        }
+    if ly == 0
+        && let Some(answer) = pow_simple_exponent(x, y)
+    {
+        return Err(answer);
     }
-    if lx == 0 && (ix == 0x7ff0_0000 || ix == 0 || ix == 0x3ff0_0000) {
-        let mut z = x.abs();
-        if hy < 0 {
-            z = 1.0 / z;
-        }
-        if hx < 0 {
-            if ((ix - 0x3ff0_0000) | yisint) == 0 {
-                z = (z - z) / (z - z);
-            } else if yisint == 1 {
-                z = -z;
-            }
-        }
-        return Err(z);
+    if let Some(answer) = pow_unit_base(x, y, yisint) {
+        return Err(answer);
     }
     let n_sign = (hx >> 31) + 1;
     if (n_sign | yisint) == 0 {

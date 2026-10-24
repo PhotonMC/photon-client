@@ -123,7 +123,6 @@
 "crates/photon-core/src/json.rs::Reader::number" = 12
 "crates/photon-core/src/json.rs::Reader::string" = 15
 "crates/photon-core/src/math/fdlibm.rs::fdlibm_pow" = 18
-"crates/photon-core/src/math/fdlibm.rs::pow_special" = 29
 "crates/photon-core/src/math/log.rs::strict_log" = 12
 "crates/photon-core/src/nbt.rs::read_payload" = 14
 "crates/photon-core/src/nbt.rs::type_id" = 12
