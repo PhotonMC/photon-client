@@ -348,6 +348,12 @@ pub(super) fn told_entities(
         }
         // The reference's entity random starts from nowhere in particular; the port seeds it from the id.
         world.fix_entity_sound_seed(i64::from(id.0));
+        if described.get("baby").is_some() {
+            world.apply_entity_metadata(id, &[16, 8, 1, 255]);
+        }
+        if described.get("bare").is_some() {
+            world.apply_entity_metadata(id, &[photon_world::SNOW_GOLEM_PUMPKIN_DATA_ID, 0, 0, 255]);
+        }
         if described.get("leash_holder").is_some() {
             world
                 .entities_mut()

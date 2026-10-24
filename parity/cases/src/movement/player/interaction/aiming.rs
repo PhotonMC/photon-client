@@ -245,18 +245,6 @@ fn decoration_rows() -> Vec<Value> {
         at("use-turtle-with-seagrass", "turtle").main_hand("minecraft:seagrass").x_rot(30.0).row(),
         at("use-fox-with-sweet-berries", "fox").main_hand("minecraft:sweet_berries").x_rot(30.0).row(),
         at("use-frog-with-slime-ball", "frog").main_hand("minecraft:slime_ball").x_rot(30.0).row(),
-        at("use-creeper-with-flint-and-steel", "creeper").main_hand("minecraft:flint_and_steel").row(),
-        facing(
-            "use-creeper-twice-with-flint-and-steel",
-            vec![mob(31, "creeper", 0.5, 64.0, 2.5)],
-            [aims(1).use_clicks(1).go(), aims(2).go(), aims(1).use_clicks(1).go(), aims(2).go()].concat(),
-        )
-        .main_hand("minecraft:flint_and_steel")
-        .row(),
-        at("use-snow-golem-with-shears", "snow_golem").main_hand("minecraft:shears").row(),
-        at("use-snow-golem-with-stone", "snow_golem").main_hand("minecraft:stone").row(),
-        at("use-creeper-with-fire-charge", "creeper").main_hand("minecraft:fire_charge").row(),
-        at("use-creeper-with-stone", "creeper").main_hand("minecraft:stone").row(),
         at("use-zombie-with-lead", "zombie").main_hand("minecraft:lead").row(),
         at("use-chicken-with-lead", "chicken").main_hand("minecraft:lead").x_rot(30.0).row(),
         at("use-armor-stand-with-lead", "armor_stand").main_hand("minecraft:lead").row(),
@@ -273,6 +261,38 @@ fn decoration_rows() -> Vec<Value> {
     ]
 }
 
+/// The use key on mobs whose class answers it on the client.
+fn mob_class_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
+    let at = |label: &str, kind: &str| facing(label, vec![mob(31, kind, 0.5, 64.0, 2.5)], use_once());
+    // An entity spawned with a flag the oracle applies (a baby, a golem without its pumpkin).
+    let with_flag = |label: &str, kind: &str, flag: &str| {
+        let mut entity = mob(31, kind, 0.5, 64.0, 2.5);
+        entity[flag] = json!(true);
+        facing(label, vec![entity], use_once())
+    };
+    vec![
+        at("use-creeper-with-flint-and-steel", "creeper").main_hand("minecraft:flint_and_steel").row(),
+        facing(
+            "use-creeper-twice-with-flint-and-steel",
+            vec![mob(31, "creeper", 0.5, 64.0, 2.5)],
+            [aims(1).use_clicks(1).go(), aims(2).go(), aims(1).use_clicks(1).go(), aims(2).go()].concat(),
+        )
+        .main_hand("minecraft:flint_and_steel")
+        .row(),
+        with_flag("use-baby-chicken-with-seeds", "chicken", "baby")
+            .main_hand("minecraft:wheat_seeds")
+            .x_rot(30.0)
+            .row(),
+        with_flag("use-baby-chicken-with-stone", "chicken", "baby").main_hand("minecraft:stone").x_rot(30.0).row(),
+        with_flag("use-bare-snow-golem-with-shears", "snow_golem", "bare").main_hand("minecraft:shears").row(),
+        at("use-snow-golem-with-shears", "snow_golem").main_hand("minecraft:shears").row(),
+        at("use-snow-golem-with-stone", "snow_golem").main_hand("minecraft:stone").row(),
+        at("use-creeper-with-fire-charge", "creeper").main_hand("minecraft:fire_charge").row(),
+        at("use-creeper-with-stone", "creeper").main_hand("minecraft:stone").row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows(), decoration_rows()].concat()
+    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows(), decoration_rows(), mob_class_rows()].concat()
 }

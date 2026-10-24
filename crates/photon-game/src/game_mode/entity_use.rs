@@ -119,7 +119,7 @@ impl Context<'_> {
     /// either ages a baby up (a success) or is consumed with no swing; any other item passes.
     /// (A golden dandelion on a baby and a lead on a leashed animal come first in the
     /// reference and are not covered.)
-    fn feed_animal(&self, id: EntityId, hand: u8, tag: &str) -> EntityUse {
+    fn feed_animal(&mut self, id: EntityId, hand: u8, tag: &str) -> EntityUse {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
@@ -132,6 +132,11 @@ impl Context<'_> {
         if !food || entity.health().is_some_and(|health| health <= 0.0) {
             EntityUse::Pass
         } else if entity.is_baby() {
+            // `usePlayerItem` takes one unless materials are infinite.
+            if !self.instabuild() {
+                let slot = self.hand_slot(hand);
+                self.world.shrink_local_player_slot(slot, 1);
+            }
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Success { swing: false }
