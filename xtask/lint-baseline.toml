@@ -873,7 +873,6 @@
 "crates/photon-render/src/vulkan/pipeline.rs::VulkanBackend::create_pipeline" = 299
 "crates/photon-render/src/vulkan/scene.rs::VulkanBackend::load_atlas" = 96
 "crates/photon-render/src/vulkan/swapchain.rs::VulkanBackend::resize" = 101
-"crates/photon-render/src/vulkan/texture.rs::VulkanBackend::update_atlas" = 69
 "crates/photon-render/src/vulkan/texture.rs::VulkanBackend::upload_texture" = 105
 "crates/photon-world/src/block/shape_rules/singles/outline/furniture.rs::outline" = 216
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 186
