@@ -372,6 +372,9 @@ pub(super) fn told_entities(
         if described.get("baby").is_some() {
             world.apply_entity_metadata(id, &[16, 8, 1, 255]);
         }
+        if described.get("screaming").is_some() {
+            world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
+        }
         if described.get("bare").is_some() {
             world.apply_entity_metadata(id, &[photon_world::SNOW_GOLEM_PUMPKIN_DATA_ID, 0, 0, 255]);
         }

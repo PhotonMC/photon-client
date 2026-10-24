@@ -322,6 +322,8 @@ pub const LONG_SERIALIZER_ID: i32 = 2;
 pub const RABBIT_TYPE_DATA_ID: u8 = 18;
 /// Where a goat's two horn flags and a mooshroom's variant (an int: red is
 /// zero, brown one) sit among their data.
+/// Where a goat's screaming flag sits among its data (a boolean).
+pub const GOAT_SCREAMING_DATA_ID: u8 = 18;
 pub const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 pub const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 pub const MOOSHROOM_TYPE_DATA_ID: u8 = 18;

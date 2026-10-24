@@ -541,6 +541,19 @@ mod tests {
             mooshroom_type_from_metadata(id("minecraft:mooshroom"), &metadata),
             Some(1)
         );
+        let screaming = data(&[(
+            GOAT_SCREAMING_DATA_ID,
+            ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            &[1],
+        )]);
+        assert_eq!(
+            goat_screaming_from_metadata(id("minecraft:goat"), &screaming),
+            Some(true)
+        );
+        assert_eq!(
+            goat_screaming_from_metadata(id("minecraft:cow"), &screaming),
+            None
+        );
         assert_eq!(
             mooshroom_type_from_metadata(id("minecraft:cow"), &metadata),
             None

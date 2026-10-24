@@ -293,13 +293,7 @@ impl ClientWorld {
         if let Some(carried) = carrying {
             entity.living.carried_state = carried;
         }
-        let (left_horn, right_horn) = goat_horns_from_metadata(entity.type_id, metadata);
-        if let Some(left) = left_horn {
-            entity.living.lost_left_horn = !left;
-        }
-        if let Some(right) = right_horn {
-            entity.living.lost_right_horn = !right;
-        }
+        apply_goat_data(entity, metadata);
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
         }

@@ -471,21 +471,6 @@ pub(crate) fn enderman_flags_from_metadata(
     )
 }
 
-/// Whether a goat has its left and its right horn (`Goat.DATA_HAS_LEFT_HORN`,
-/// `DATA_HAS_RIGHT_HORN`), when the data holds them.
-pub(crate) fn goat_horns_from_metadata(
-    type_id: EntityTypeId,
-    metadata: &[u8],
-) -> (Option<bool>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:goat") {
-        return (None, None);
-    }
-    (
-        metadata_boolean_value(metadata, GOAT_LEFT_HORN_DATA_ID),
-        metadata_boolean_value(metadata, GOAT_RIGHT_HORN_DATA_ID),
-    )
-}
-
 /// A bee's flags (`Bee.DATA_FLAGS_ID`) and the game time its anger ends
 /// (`DATA_ANGER_END_TIME`), when the data holds them.
 pub(crate) fn bee_data_from_metadata(

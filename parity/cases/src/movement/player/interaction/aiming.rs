@@ -316,9 +316,9 @@ fn cow_rows() -> Vec<Value> {
         at("use-cow-with-bucket", "cow").main_hand("minecraft:bucket").x_rot(20.0).row(),
         at("use-cow-with-stack-of-buckets", "cow").main_hand("minecraft:bucket").count(3).x_rot(20.0).row(),
         at("use-cow-with-wheat", "cow").main_hand("minecraft:wheat").x_rot(20.0).row(),
-        with_flag("use-baby-cow-with-wheat", "cow", "baby").main_hand("minecraft:wheat").x_rot(20.0).row(),
+        with_flag("use-baby-cow-with-wheat", "cow", "baby").main_hand("minecraft:wheat").x_rot(30.0).row(),
         at("use-cow-with-stone", "cow").main_hand("minecraft:stone").x_rot(20.0).row(),
-        with_flag("use-baby-cow-with-bucket", "cow", "baby").main_hand("minecraft:bucket").x_rot(20.0).row(),
+        with_flag("use-baby-cow-with-bucket", "cow", "baby").main_hand("minecraft:bucket").x_rot(30.0).row(),
         at("use-mooshroom-with-bucket", "mooshroom").main_hand("minecraft:bucket").x_rot(20.0).row(),
     ]
 }
@@ -342,9 +342,29 @@ fn mooshroom_rows() -> Vec<Value> {
             .x_rot(20.0)
             .row(),
         at("use-mooshroom-with-shears").main_hand("minecraft:shears").x_rot(20.0).row(),
-        baby("use-baby-mooshroom-with-shears").main_hand("minecraft:shears").x_rot(20.0).row(),
-        baby("use-baby-mooshroom-with-bowl").main_hand("minecraft:bowl").x_rot(20.0).row(),
+        baby("use-baby-mooshroom-with-shears").main_hand("minecraft:shears").x_rot(30.0).row(),
+        baby("use-baby-mooshroom-with-bowl").main_hand("minecraft:bowl").x_rot(30.0).row(),
         at("use-mooshroom-with-flower").main_hand("minecraft:dandelion").x_rot(20.0).row(),
+    ]
+}
+
+/// The use key on goats: a bucket is milked (a screaming goat sounds different), wheat feeds.
+fn goat_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let with = |label: &str, flag: Option<&str>| {
+        let mut entity = mob(31, "goat", 0.5, 64.0, 2.5);
+        if let Some(flag) = flag {
+            entity[flag] = json!(true);
+        }
+        facing(label, vec![entity], use_once())
+    };
+    vec![
+        with("use-goat-with-bucket", None).main_hand("minecraft:bucket").x_rot(20.0).row(),
+        with("use-screaming-goat-with-bucket", Some("screaming")).main_hand("minecraft:bucket").x_rot(20.0).row(),
+        with("use-baby-goat-with-bucket", Some("baby")).main_hand("minecraft:bucket").x_rot(30.0).row(),
+        with("use-goat-with-wheat", None).main_hand("minecraft:wheat").x_rot(20.0).row(),
+        with("use-baby-goat-with-wheat", Some("baby")).main_hand("minecraft:wheat").x_rot(30.0).row(),
+        with("use-goat-with-stone", None).main_hand("minecraft:stone").x_rot(20.0).row(),
     ]
 }
 
@@ -358,6 +378,7 @@ pub fn rows() -> Vec<Value> {
         mob_class_rows(),
         cow_rows(),
         mooshroom_rows(),
+        goat_rows(),
     ]
     .concat()
 }

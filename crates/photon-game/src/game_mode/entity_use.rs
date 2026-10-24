@@ -81,6 +81,7 @@ impl Context<'_> {
             "minecraft:creeper" => self.interact_creeper(id, hand),
             "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
             "minecraft:cow" => self.interact_cow(id, hand),
+            "minecraft:goat" => self.interact_goat(id, hand),
             "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
@@ -180,9 +181,35 @@ impl Context<'_> {
     }
 
     /// `AbstractCow.mobInteract`: a bucket on a grown cow is filled with milk on the client too,
-    /// with the milking sound. (A goat does the same with a sound that depends on its screaming
-    /// flag, which the client does not track yet.)
+    /// with the milking sound; the rest is `Animal.mobInteract`.
     fn interact_cow(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        self.milk_or_feed(id, hand, "minecraft:entity.cow.milk", "minecraft:cow_food")
+    }
+
+    /// `Goat.mobInteract`: the same with the goat's milking sound, which a screaming goat changes.
+    /// (Its eating sound reaches no one: it excludes nobody, which the client does not play.)
+    fn interact_goat(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let screaming = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_screaming_goat());
+        let sound = if screaming {
+            "minecraft:entity.goat.screaming.milk"
+        } else {
+            "minecraft:entity.goat.milk"
+        };
+        self.milk_or_feed(id, hand, sound, "minecraft:goat_food")
+    }
+
+    /// A bucket on a grown animal is milked with `sound`; anything else is fed with `food`.
+    fn milk_or_feed(
+        &mut self,
+        id: EntityId,
+        hand: u8,
+        sound: &'static str,
+        food: &str,
+    ) -> EntityUse {
         let grown = self
             .world
             .entities()
@@ -193,12 +220,12 @@ impl Context<'_> {
             .is_some_and(|(item, _)| crate::item::id_of("minecraft:bucket") == Some(item));
         if !(grown && bucket) {
             // `Animal.mobInteract`.
-            return self.feed_animal(id, hand, "minecraft:cow_food");
+            return self.feed_animal(id, hand, food);
         }
         let at = self.player.position();
         self.world
             .push_sound(photon_world::local_player::LocalSound::at(
-                "minecraft:entity.cow.milk",
+                sound,
                 photon_world::local_player::LocalSoundSource::Players,
                 (1.0, 1.0),
                 (at.x, at.y, at.z),

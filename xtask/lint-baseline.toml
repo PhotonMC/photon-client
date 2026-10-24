@@ -478,7 +478,7 @@
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 14
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 30
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13
-"crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 84
+"crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 82
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 13
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
@@ -895,7 +895,7 @@
 "crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 137
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 90
 "crates/photon-world/src/world/entities/passengers.rs::ClientWorld::boat_rider_position" = 70
-"crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 299
+"crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 293
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 85
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 76

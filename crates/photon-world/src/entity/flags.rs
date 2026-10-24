@@ -354,6 +354,8 @@ pub(crate) struct EntityState {
     /// Which of its horns a goat has lost, until the data says it has none.
     pub(crate) lost_left_horn: bool,
     pub(crate) lost_right_horn: bool,
+    /// Whether a goat screams.
+    pub(crate) screaming_goat: bool,
     /// A mooshroom's variant, zero for red.
     pub(crate) mooshroom_type: i32,
     /// A rabbit's variant, zero for brown.

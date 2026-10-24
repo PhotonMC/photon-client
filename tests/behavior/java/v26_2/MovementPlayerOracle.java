@@ -148,6 +148,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 if (described.has("baby") && entity instanceof net.minecraft.world.entity.Mob babyMob) {
                     babyMob.setBaby(true);
                 }
+                if (described.has("screaming") && entity instanceof net.minecraft.world.entity.animal.goat.Goat goat) {
+                    goat.setScreamingGoat(true);
+                }
                 if (described.has("bare") && entity instanceof net.minecraft.world.entity.animal.golem.SnowGolem golem) {
                     golem.setPumpkin(false);
                 }

@@ -5,6 +5,8 @@ pub(crate) use player::*;
 
 mod fields;
 pub use fields::*;
+mod goat;
+pub(crate) use goat::*;
 mod living;
 pub(crate) use living::*;
 mod mobs;

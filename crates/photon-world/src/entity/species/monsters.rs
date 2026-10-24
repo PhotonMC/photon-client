@@ -36,6 +36,11 @@ impl ClientEntity {
         (!self.living.lost_left_horn, !self.living.lost_right_horn)
     }
 
+    /// `Goat.isScreamingGoat`.
+    pub fn is_screaming_goat(&self) -> bool {
+        self.living.screaming_goat
+    }
+
     /// `Goat.getRammingXHeadRot`: how far the head is lowered, in radians.
     pub fn goat_ramming_x_head_rot(&self) -> f32 {
         let maximum = if self.baby { 52.5 } else { 30.0 };
