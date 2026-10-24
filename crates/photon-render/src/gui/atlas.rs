@@ -491,8 +491,8 @@ impl GuiAtlas {
     }
 
     /// Write the glyphs that text asked for since the last call into `atlas`, the image `load`
-    /// made. Whether it changed and is to be sent to the GPU again.
-    pub fn apply_glyphs(&self, atlas: &mut DecodedImage) -> bool {
+    /// made, and the cells they went into, which are to be sent to the GPU.
+    pub fn apply_glyphs(&self, atlas: &mut DecodedImage) -> Vec<crate::vulkan::AtlasRegion> {
         self.glyphs.apply(atlas)
     }
 

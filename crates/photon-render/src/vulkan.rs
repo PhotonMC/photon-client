@@ -58,6 +58,7 @@ mod panorama;
 mod pipeline;
 mod pipeline_cache;
 mod portal;
+mod regions;
 mod scene;
 mod sections;
 mod shaders;

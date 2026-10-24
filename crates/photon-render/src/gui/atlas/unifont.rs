@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use crate::gui::font::{Font, UnihexGlyph};
 use crate::texture::atlas::{SpriteEntry, Stitcher};
 use crate::texture::png::DecodedImage;
+use crate::vulkan::AtlasRegion;
 use photon_core::identifier::Identifier;
 
 /// How many glyphs the atlas holds at once.
@@ -89,24 +90,36 @@ impl GlyphCells {
     }
 
     /// Write the glyphs put into cells since the last call into `image`, the atlas as the GPU
-    /// has it; whether any were.
-    pub(super) fn apply(&self, image: &mut DecodedImage) -> bool {
+    /// has it, and give the cells they went into.
+    pub(super) fn apply(&self, image: &mut DecodedImage) -> Vec<AtlasRegion> {
         let Ok(mut cells) = self.0.lock() else {
-            return false;
+            return Vec::new();
         };
         let pending = std::mem::take(&mut cells.pending);
+        let mut regions = Vec::with_capacity(pending.len());
         for (cell, width, rgba) in &pending {
             let (x, y) = cells.origins[*cell];
             let row_bytes = *width as usize * 4;
+            let mut region = Vec::with_capacity((SIZE * SIZE * 4) as usize);
             for row in 0..SIZE {
                 let to = (((y + row) * image.width + x) * 4) as usize;
                 let from = row as usize * row_bytes;
                 // A cell is cleared first: the glyph before it may have been wider.
-                image.rgba[to..to + SIZE as usize * 4].fill(0);
-                image.rgba[to..to + row_bytes].copy_from_slice(&rgba[from..from + row_bytes]);
+                let line = &mut image.rgba[to..to + SIZE as usize * 4];
+                line.fill(0);
+                line[..row_bytes].copy_from_slice(&rgba[from..from + row_bytes]);
+                region.extend_from_slice(line);
             }
+            regions.push(AtlasRegion {
+                level: 0,
+                x,
+                y,
+                width: SIZE,
+                height: SIZE,
+                rgba: region,
+            });
         }
-        !pending.is_empty()
+        regions
     }
 }
 

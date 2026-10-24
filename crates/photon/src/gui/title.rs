@@ -51,9 +51,7 @@ impl Gui {
         (atlas, image): (&GuiAtlas, &mut photon_render::texture::png::DecodedImage),
         backend: &mut VulkanBackend,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if atlas.apply_glyphs(image) {
-            backend.replace_gui_texture(image)?;
-        }
+        backend.update_gui_atlas(&atlas.apply_glyphs(image))?;
         Ok(())
     }
 
