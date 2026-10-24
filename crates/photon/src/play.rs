@@ -124,6 +124,8 @@ pub(crate) struct Client {
     pub tutorial: photon_gui::tutorial::Tutorial,
     /// The sound engine and music manager, passed between the menu and the game.
     pub audio: Option<crate::music::Carried>,
+    /// The `Gui` of the game just played, whose assets the menus take over.
+    pub gui: Option<Gui>,
 }
 
 impl Client {
@@ -143,6 +145,7 @@ impl Client {
                 crate::controls::load_options().tutorial_step,
             ),
             audio: None,
+            gui: None,
         })
     }
 }

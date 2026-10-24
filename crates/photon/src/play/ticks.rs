@@ -1,6 +1,14 @@
 use super::*;
 use photon_game::menus::container::EnchantmentTraits;
 
+/// `PHOTON_SCRIPT`: the steps a scripted run takes.
+fn script_from_env() -> Result<Option<Script>> {
+    Ok(env::var("PHOTON_SCRIPT")
+        .ok()
+        .map(|text| Script::parse(&text))
+        .transpose()?)
+}
+
 impl Play {
     /// Join, open the window, and load everything the frames draw.
     pub(super) fn start(client: Client, mut session: PlaySession) -> Result<Self> {
@@ -12,13 +20,11 @@ impl Play {
             animated_atlas,
             tutorial,
             audio,
+            gui: _,
         } = client;
         let root =
             env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
-        let script = env::var("PHOTON_SCRIPT")
-            .ok()
-            .map(|text| Script::parse(&text))
-            .transpose()?;
+        let script = script_from_env()?;
 
         let mut particles = crate::particles::Particles::load(&root);
         let position = report_spawn(&session)?;
@@ -276,6 +282,7 @@ impl Play {
             tutorial,
             sound,
             music,
+            gui,
             ..
         } = self;
         backend.clear_sections()?;
@@ -288,6 +295,7 @@ impl Play {
                 animated_atlas,
                 tutorial,
                 audio: Some(crate::music::Carried::new(sound, music)),
+                gui: Some(gui),
             },
             exit,
         ))

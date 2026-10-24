@@ -17,16 +17,69 @@ impl Gui {
         let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
             .ok_or("the HUD sprites could not be read")?;
         backend.load_gui_texture(&texture)?;
+        let lang = Arc::new(Lang::load_from(&*resources, root));
+        let languages = photon_game::language::LanguageSource::open(root).map(Arc::new);
+        Ok(Self::assembled(
+            ((font, alt_font), (atlas, texture)),
+            (resources, lang, languages),
+            Arc::new(registries),
+            language,
+        ))
+    }
+
+    /// Whether the assets were read from the packs in use now, so that a game's `Gui` can serve
+    /// the menus again without reading them.
+    pub fn reads_from(&self, resources: &Arc<photon_assets::ResourceStack>) -> bool {
+        Arc::ptr_eq(&self.resources, resources)
+    }
+
+    /// The assets of a finished game's `Gui` (and the sprites it left on the GPU) with the state
+    /// of a new one, in `language`.
+    #[must_use]
+    pub fn recycled(self, language: &str) -> Self {
+        let Self {
+            font,
+            alt_font,
+            atlas,
+            atlas_image,
+            lang,
+            languages,
+            registries,
+            resources,
+            ..
+        } = self;
+        Self::assembled(
+            ((font, alt_font), (atlas, atlas_image)),
+            (resources, lang, languages),
+            registries,
+            language,
+        )
+    }
+
+    /// A `Gui` over loaded assets, with the state of a start.
+    fn assembled(
+        ((font, alt_font), (atlas, atlas_image)): (
+            (Arc<Font>, Arc<Font>),
+            (GuiAtlas, photon_render::texture::png::DecodedImage),
+        ),
+        (resources, lang, languages): (
+            Arc<photon_assets::ResourceStack>,
+            Arc<Lang>,
+            Option<Arc<photon_game::language::LanguageSource>>,
+        ),
+        registries: Arc<Registries>,
+        language: &str,
+    ) -> Self {
         let started_at = std::time::Instant::now();
         let mut gui = Self {
             font,
             alt_font,
             atlas,
-            atlas_image: texture,
-            lang: Arc::new(Lang::load_from(&*resources, root)),
+            atlas_image,
+            lang,
             resources,
-            languages: photon_game::language::LanguageSource::open(root).map(Arc::new),
-            registries: Arc::new(registries),
+            languages,
+            registries,
             hud: Hud::default(),
             player_skin: [0.0, 0.0, 1.0, 1.0],
             titles: Titles::default(),
@@ -47,7 +100,7 @@ impl Gui {
                 &*gui.resources,
             ));
         gui.set_language(language);
-        Ok(gui)
+        gui
     }
 
     /// The resource packs in use changed: the fonts, the sprites, the texts and the pictures made

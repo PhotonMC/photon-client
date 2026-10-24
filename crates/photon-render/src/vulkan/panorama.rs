@@ -50,6 +50,13 @@ impl VulkanBackend {
         }
     }
 
+    /// Whether the cube has been loaded, which `load_panorama` then leaves as it is.
+    pub fn has_panorama(&self) -> bool {
+        self.scene
+            .as_ref()
+            .is_some_and(|scene| scene.backdrop.panorama.is_some())
+    }
+
     /// A linear, clamped sampler over the cube and a set that samples it.
     ///
     /// # Safety

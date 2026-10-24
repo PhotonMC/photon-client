@@ -164,21 +164,28 @@ impl Menu {
             .map(PathBuf::from)
             .unwrap_or_else(|_| root.with_file_name("data"));
         let options = crate::controls::load_options();
-        let registries = photon_game::registries::Registries::load(&data_root, |_| Vec::new());
-        let gui = Gui::load(
-            root,
-            registries,
-            &mut client.backend,
-            &options.language_code,
-        )?;
+        // A game just played leaves its sprites on the GPU and its assets: the menus take them
+        // over unless the packs in use changed since.
+        let shared = crate::resources::shared(root);
+        let gui = match client.gui.take().filter(|gui| gui.reads_from(&shared)) {
+            Some(gui) => gui.recycled(&options.language_code),
+            None => Gui::load(
+                root,
+                photon_game::registries::Registries::load(&data_root, |_| Vec::new()),
+                &mut client.backend,
+                &options.language_code,
+            )?,
+        };
         client.surface.set_gui_options(options.gui_scaling());
         client.surface.set_cursor_captured(false);
         client.backend.set_gui_only(true);
-        client
-            .backend
-            .load_panorama(&photon_render::panorama::layers(&panorama::faces(
-                &root.to_string_lossy(),
-            )?))?;
+        if !client.backend.has_panorama() {
+            client
+                .backend
+                .load_panorama(&photon_render::panorama::layers(&panorama::faces(
+                    &root.to_string_lossy(),
+                )?))?;
+        }
         let splash = pick_splash(root);
         let game_directory = crate::controls::game_directory();
         let screen = Screen::Title(TitleScreen::new(
