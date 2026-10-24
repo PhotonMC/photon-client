@@ -9,20 +9,23 @@ use photon_render::gui::font::{Font, Glyph};
 /// `extraThickness`: what a bold glyph is drawn wider by, each side.
 const BOLD_THICKNESS: f32 = 0.1;
 
-/// Where a glyph drawn with its pen at `(pen, y)` can be hit; none for one that is not drawn yet.
+/// Where a glyph drawn with its pen at `(pen, y)` can be hit.
 fn hit_box(
     glyph: &Glyph,
     (pen, y): (f32, f32),
     (bold, italic): (bool, bool),
-) -> Option<(f32, f32, f32, f32)> {
-    Some(match glyph {
+) -> (f32, f32, f32, f32) {
+    match glyph {
         // `EmptyArea`: the advance wide and a line tall.
         Glyph::Space(_) => (pen, y, pen + glyph.advance(bold), y + 9.0),
-        // A unifont glyph is not drawn yet, so it has no box to hit.
-        Glyph::Unihex(_) => return None,
-        Glyph::Bitmap(bitmap) => {
-            let up = 7.0 - bitmap.ascent as f32;
-            let down = up + bitmap.cell[3] as f32 * bitmap.scale;
+        Glyph::Bitmap(_) | Glyph::Unihex(_) => {
+            let (up, down) = match glyph {
+                Glyph::Bitmap(bitmap) => {
+                    let up = 7.0 - bitmap.ascent as f32;
+                    (up, up + bitmap.cell[3] as f32 * bitmap.scale)
+                }
+                _ => (0.0, 8.0),
+            };
             let shear = if italic {
                 (1.0 - 0.25 * up).min(1.0 - 0.25 * down)
             } else {
@@ -33,11 +36,11 @@ fn hit_box(
                 pen + shear - thickness,
                 y + up - thickness,
                 pen + glyph.advance(bold),
-                // The shadow is a unit down.
-                y + down + 1.0 + thickness,
+                // The shadow lies a unit down.
+                y + down + glyph.shadow_offset() + thickness,
             )
         }
-    })
+    }
 }
 
 /// The style at `point` of `runs` drawn with their top left at `origin` (and
@@ -58,12 +61,8 @@ pub fn style_under<'a>(
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
-            let hit = hit_box(&glyph, (pen, y), (bold, italic)).is_some_and(
-                |(left, top, right, bottom)| {
-                    point_x >= left && point_x < right && point_y >= top && point_y < bottom
-                },
-            );
-            if hit {
+            let (left, top, right, bottom) = hit_box(&glyph, (pen, y), (bold, italic));
+            if point_x >= left && point_x < right && point_y >= top && point_y < bottom {
                 found = Some(&run.style);
             }
             pen += glyph.advance(bold);

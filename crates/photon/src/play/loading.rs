@@ -66,6 +66,7 @@ impl Play {
             .draw_menu_screen(&mut self.backend, &self.surface, |frame, atlas, font| {
                 draw_level_loading_over(frame, atlas, font, lang, size, background);
             })?;
+        self.gui.sync_glyphs(&mut self.backend)?;
         self.backend
             .draw_scene([0.0, 0.0, 0.0, 1.0], super::switch::IDENTITY)
             .map_err(Into::into)

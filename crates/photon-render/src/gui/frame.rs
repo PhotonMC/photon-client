@@ -263,6 +263,51 @@ fn merged_runs(runs: &[TextRun]) -> Vec<LoggedRun> {
     merged
 }
 
+/// Where a glyph is drawn relative to its pen and what of the atlas it shows.
+struct Placement {
+    /// `[u0, v0, u1, v1]` in the atlas.
+    uv: [f32; 4],
+    /// Its width in GUI units, and its top and bottom below the line's top.
+    width: f32,
+    up: f32,
+    down: f32,
+}
+
+/// `BakedSheetGlyph`'s box for a glyph; none for one that draws nothing.
+fn placement(
+    atlas: &GuiAtlas,
+    font: &crate::gui::font::Font,
+    codepoint: char,
+    glyph: &Glyph,
+) -> Option<Placement> {
+    match glyph {
+        Glyph::Space(_) => None,
+        Glyph::Bitmap(bitmap) => {
+            let (name, image) = &font.images[bitmap.image];
+            let [u0, v0, u1, v1] = atlas.sprite(name);
+            let [cx, cy, cw, ch] = bitmap.cell;
+            let su = |pixel: u32| u0 + (u1 - u0) * pixel as f32 / image.width as f32;
+            let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
+            // `GlyphBitmap`: the cell from its left edge, its top at seven
+            // units less the ascent.
+            let up = 7.0 - bitmap.ascent as f32;
+            Some(Placement {
+                uv: [su(cx), sv(cy), su(cx + cw), sv(cy + ch)],
+                width: cw as f32 * bitmap.scale,
+                up,
+                down: up + ch as f32 * bitmap.scale,
+            })
+        }
+        // A unifont bitmap is drawn at twice its resolution, from the line's top down.
+        Glyph::Unihex(unihex) => Some(Placement {
+            uv: atlas.unihex_uv(font, codepoint, unihex)?,
+            width: unihex.width() as f32 / 2.0,
+            up: 0.0,
+            down: 8.0,
+        }),
+    }
+}
+
 /// Each glyph of styled text as a quad of four corners (top left, bottom
 /// left, bottom right, top right), as `BakedSheetGlyph.render` places them:
 /// the shadow's copies first when it has one, bold glyphs twice a unit apart
@@ -289,66 +334,52 @@ pub(crate) fn glyph_quads(
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
-            if let Glyph::Bitmap(bitmap) = text_effect::obfuscated(font, run, codepoint, glyph) {
-                let (name, image) = &font.images[bitmap.image];
-                let [u0, v0, u1, v1] = atlas.sprite(name);
-                let [cx, cy, cw, ch] = bitmap.cell;
-                let su = |pixel: u32| u0 + (u1 - u0) * pixel as f32 / image.width as f32;
-                let sv = |pixel: u32| v0 + (v1 - v0) * pixel as f32 / image.height as f32;
-                // `GlyphBitmap`: the cell from its left edge, its top at
-                // seven units less the ascent.
-                let up = 7.0 - bitmap.ascent as f32;
-                let down = up + ch as f32 * bitmap.scale;
+            let drawn = text_effect::obfuscated(font, run, codepoint, glyph);
+            if let Some(placed) = placement(atlas, font, codepoint, &drawn) {
                 let (shear_top, shear_bottom) = if italic {
-                    (1.0 - 0.25 * up, 1.0 - 0.25 * down)
+                    (1.0 - 0.25 * placed.up, 1.0 - 0.25 * placed.down)
                 } else {
                     (0.0, 0.0)
                 };
                 let thickness = if bold { 0.1 } else { 0.0 };
                 // `(offset, bold shift, colour)` for each pass: the shadow's,
                 // then the glyph's; a bold glyph twice.
+                let (shadow_offset, bold_offset) = (drawn.shadow_offset(), drawn.bold_offset());
                 let mut passes: Vec<(f32, f32, [f32; 4])> = Vec::new();
                 if shadow_drawn {
-                    passes.push((1.0, 0.0, shadow_colour));
+                    passes.push((shadow_offset, 0.0, shadow_colour));
                     if bold {
-                        passes.push((1.0, 1.0, shadow_colour));
+                        passes.push((shadow_offset, bold_offset, shadow_colour));
                     }
                 }
                 passes.push((0.0, 0.0, colour));
                 if bold {
-                    passes.push((0.0, 1.0, colour));
+                    passes.push((0.0, bold_offset, colour));
                 }
+                let [u0, v0, u1, v1] = placed.uv;
                 for (offset, shift, colour) in passes {
                     let left = pen + offset + shift;
-                    let right = left + cw as f32 * bitmap.scale;
-                    let top = y + up + offset;
-                    let bottom = y + down + offset;
+                    let right = left + placed.width;
+                    let top = y + placed.up + offset;
+                    let bottom = y + placed.down + offset;
                     let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
                         position: [px, py],
                         uv,
                         colour,
                     };
                     quads.push([
-                        corner(
-                            left + shear_top - thickness,
-                            top - thickness,
-                            [su(cx), sv(cy)],
-                        ),
+                        corner(left + shear_top - thickness, top - thickness, [u0, v0]),
                         corner(
                             left + shear_bottom - thickness,
                             bottom + thickness,
-                            [su(cx), sv(cy + ch)],
+                            [u0, v1],
                         ),
                         corner(
                             right + shear_bottom + thickness,
                             bottom + thickness,
-                            [su(cx + cw), sv(cy + ch)],
+                            [u1, v1],
                         ),
-                        corner(
-                            right + shear_top + thickness,
-                            top - thickness,
-                            [su(cx + cw), sv(cy)],
-                        ),
+                        corner(right + shear_top + thickness, top - thickness, [u1, v0]),
                     ]);
                 }
             }

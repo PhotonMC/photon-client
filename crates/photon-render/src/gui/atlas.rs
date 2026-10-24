@@ -9,6 +9,7 @@ use photon_core::identifier::Identifier;
 use photon_core::resources::{FolderResources, Resources};
 
 mod sprites;
+mod unifont;
 
 pub use sprites::sprite_ids;
 
@@ -346,6 +347,7 @@ fn collect_images(
         register_folder(&mut stitcher, &mut images, resources, folders)?;
     }
     register_favicon_slots(&mut stitcher, &mut images)?;
+    unifont::register(&mut stitcher, &mut images)?;
     register_white(&mut stitcher, &mut images)?;
     register_missing(&mut stitcher, &mut images)?;
     Some((stitcher, images, blurred))
@@ -356,6 +358,8 @@ fn collect_images(
 pub struct GuiAtlas {
     sprites: BTreeMap<String, [f32; 4]>,
     favicons: Vec<FaviconSlot>,
+    /// Where unifont glyphs are put as text asks for them.
+    glyphs: unifont::GlyphCells,
     /// The whole textures sampled smoothly (`blur` in their metadata), by key.
     blurred: BTreeSet<String>,
 }
@@ -386,6 +390,7 @@ impl GuiAtlas {
         };
         let mut sprites = BTreeMap::new();
         let mut favicons = Vec::new();
+        let glyphs = unifont::GlyphCells::default();
         for placement in stitcher.placements() {
             let key = placement.name.as_string();
             let image = &images[&key];
@@ -403,7 +408,9 @@ impl GuiAtlas {
                 (width as i32, height as i32),
             );
             let uv = [sprite.u0, sprite.v0, sprite.u1, sprite.v1];
-            if key.starts_with(FAVICON_SLOT_PREFIX) {
+            if key.starts_with(unifont::PREFIX) {
+                glyphs.add_cell((left, top), (width, height));
+            } else if key.starts_with(FAVICON_SLOT_PREFIX) {
                 favicons.push(FaviconSlot {
                     origin: (left, top),
                     uv,
@@ -417,6 +424,7 @@ impl GuiAtlas {
             Self {
                 sprites,
                 favicons,
+                glyphs,
                 blurred,
             },
             atlas,
@@ -471,6 +479,23 @@ impl GuiAtlas {
         true
     }
 
+    /// The texture rectangle of a unifont glyph, put into the atlas when first asked for; none if
+    /// it has nothing to draw. See [`Self::apply_glyphs`].
+    pub(crate) fn unihex_uv(
+        &self,
+        font: &crate::gui::font::Font,
+        codepoint: char,
+        glyph: &crate::gui::font::UnihexGlyph,
+    ) -> Option<[f32; 4]> {
+        self.glyphs.uv(font, codepoint, glyph)
+    }
+
+    /// Write the glyphs that text asked for since the last call into `atlas`, the image `load`
+    /// made. Whether it changed and is to be sent to the GPU again.
+    pub fn apply_glyphs(&self, atlas: &mut DecodedImage) -> bool {
+        self.glyphs.apply(atlas)
+    }
+
     /// The blend a draw of `name` takes: the smooth-sampling variant for a blurred texture.
     pub(crate) fn blend_of(&self, name: &str, blend: super::GuiBlend) -> super::GuiBlend {
         if !self.blurred.contains(&format!("minecraft:{name}")) {
@@ -489,6 +514,7 @@ impl GuiAtlas {
         Self {
             sprites: BTreeMap::from([(format!("minecraft:{name}"), uv)]),
             favicons: Vec::new(),
+            glyphs: unifont::GlyphCells::default(),
             blurred: BTreeSet::new(),
         }
     }

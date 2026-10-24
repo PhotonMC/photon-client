@@ -202,6 +202,7 @@ impl Play {
                         Shown::Transferring(screen) => screen.draw(frame, atlas, font, view.mouse),
                     },
                 )?;
+            self.gui.sync_glyphs(&mut self.backend)?;
             self.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY)?;
         }
         Ok(Flow::Next)
@@ -232,6 +233,7 @@ impl Play {
             .draw_menu_screen(&mut self.backend, &self.surface, |frame, atlas, font| {
                 screen.draw(frame, atlas, font, mouse);
             })?;
+        self.gui.sync_glyphs(&mut self.backend)?;
         self.backend.draw_scene([0.0, 0.0, 0.0, 1.0], IDENTITY)?;
         Ok(())
     }

@@ -15,6 +15,8 @@ use photon_core::json::JsonObject;
 pub struct UnihexGlyph {
     pub left: i32,
     pub right: i32,
+    /// Which of the font's hex archives has the bitmap.
+    pub source: u8,
 }
 
 impl UnihexGlyph {
@@ -54,6 +56,7 @@ pub fn overrides(provider: &JsonObject) -> Option<Vec<OverrideRange>> {
             let glyph = UnihexGlyph {
                 left: range.i32("left")?,
                 right: range.i32("right")?,
+                source: 0,
             };
             Some(OverrideRange { from, to, glyph })
         })
@@ -67,25 +70,28 @@ fn single(text: &str) -> Option<u32> {
     chars.next().is_none().then_some(u32::from(first))
 }
 
-/// What the hex files say of each codepoint: the columns its ink spans.
-type Table = HashMap<u32, UnihexGlyph>;
+/// What the hex files say of each codepoint: the columns its ink spans and its 16 rows, each
+/// widened to 32 columns with the first column at the top bit.
+pub type Table = HashMap<u32, (UnihexGlyph, [u32; 16])>;
+
+/// A hex archive's bitmaps and the glyphs of its codepoints.
+pub type Loaded = (Arc<Table>, Vec<(u32, UnihexGlyph)>);
 
 /// The glyphs of a hex archive under `ranges`: a codepoint in a range takes the first range's
 /// columns, the others the span of their ink.
-pub fn glyphs(archive: &[u8], ranges: &[OverrideRange]) -> Option<Vec<(u32, UnihexGlyph)>> {
+pub fn glyphs(archive: &[u8], ranges: &[OverrideRange], source: u8) -> Option<Loaded> {
     let table = table(archive)?;
-    Some(
-        table
-            .iter()
-            .map(|(&codepoint, &ink)| {
-                let glyph = ranges
-                    .iter()
-                    .find(|range| (range.from..=range.to).contains(&codepoint))
-                    .map_or(ink, |range| range.glyph);
-                (codepoint, glyph)
-            })
-            .collect(),
-    )
+    let glyphs = table
+        .iter()
+        .map(|(&codepoint, &(ink, _))| {
+            let glyph = ranges
+                .iter()
+                .find(|range| (range.from..=range.to).contains(&codepoint))
+                .map_or(ink, |range| range.glyph);
+            (codepoint, UnihexGlyph { source, ..glyph })
+        })
+        .collect();
+    Some((table, glyphs))
 }
 
 /// The parsed archive, kept: the unifont is several megabytes and every font that includes it
@@ -136,7 +142,7 @@ fn read_hex(contents: &[u8], table: &mut Table) -> Option<()> {
             .iter()
             .position(|&byte| byte == b'\n')
             .unwrap_or(rest.len());
-        table.insert(codepoint, ink(&rest[..end])?);
+        table.insert(codepoint, bitmap(&rest[..end])?);
         rest = rest.get(end + 1..).unwrap_or(&[]);
     }
     Some(())
@@ -150,9 +156,10 @@ fn hex(digit: u8) -> Option<u32> {
     }
 }
 
-/// `LineData.calculateWidth`: the columns the ink of 16 rows of `digits` spans, in the 32 bits the
-/// rows are widened to; none for a bitmap that is not 8, 16, 24 or 32 columns wide.
-fn ink(digits: &[u8]) -> Option<UnihexGlyph> {
+/// One glyph's rows and, by `LineData.calculateWidth`, the columns the ink of its 16 rows of
+/// `digits` spans in the 32 bits the rows are widened to; none for a bitmap that is not 8, 16, 24
+/// or 32 columns wide.
+fn bitmap(digits: &[u8]) -> Option<(UnihexGlyph, [u32; 16])> {
     let columns = match digits.len() {
         32 => 8,
         64 => 16,
@@ -161,24 +168,43 @@ fn ink(digits: &[u8]) -> Option<UnihexGlyph> {
         _ => return None,
     };
     let per_row = digits.len() / 16;
-    let mut mask = 0u32;
-    for row in digits.chunks(per_row) {
-        let value = row
+    let mut rows = [0u32; 16];
+    for (row, digits) in rows.iter_mut().zip(digits.chunks(per_row)) {
+        let value = digits
             .iter()
             .try_fold(0u32, |value, &digit| Some(value << 4 | hex(digit)?))?;
-        mask |= value << (32 - columns);
+        *row = value << (32 - columns);
     }
-    Some(if mask == 0 {
-        UnihexGlyph {
-            left: 0,
-            right: columns,
-        }
+    let mask = rows.iter().fold(0, |mask, row| mask | row);
+    let (left, right) = if mask == 0 {
+        (0, columns)
     } else {
+        (
+            mask.leading_zeros() as i32,
+            32 - mask.trailing_zeros() as i32 - 1,
+        )
+    };
+    Some((
         UnihexGlyph {
-            left: mask.leading_zeros() as i32,
-            right: 32 - mask.trailing_zeros() as i32 - 1,
+            left,
+            right,
+            source: 0,
+        },
+        rows,
+    ))
+}
+
+/// `UnihexProvider.unpackBitsToBytes` for one glyph: RGBA pixels, white where the bitmap is set,
+/// for the columns `left` to `right` of its 16 rows.
+pub fn pixels(glyph: &UnihexGlyph, rows: &[u32; 16]) -> Vec<u8> {
+    let mut out = Vec::new();
+    for &row in rows {
+        for column in glyph.left..=glyph.right {
+            let set = (0..32).contains(&column) && row >> (31 - column) & 1 != 0;
+            out.extend_from_slice(if set { &[255; 4] } else { &[0; 4] });
         }
-    })
+    }
+    out
 }
 
 /// The files of a zip archive, by their central directory: stored or deflated.
@@ -228,13 +254,21 @@ fn zip_entries(archive: &[u8]) -> Option<Vec<(String, Vec<u8>)>> {
 mod tests {
     use super::*;
 
+    fn ink(digits: &[u8]) -> Option<UnihexGlyph> {
+        bitmap(digits).map(|(glyph, _)| glyph)
+    }
+
     #[test]
     fn ink_spans_the_set_columns() {
         // Row 0 sets columns 2 and 5 of 8 (0x24), the rest are empty.
         let digits = format!("24{}", "00".repeat(15));
         assert_eq!(
             ink(digits.as_bytes()),
-            Some(UnihexGlyph { left: 2, right: 5 })
+            Some(UnihexGlyph {
+                left: 2,
+                right: 5,
+                source: 0
+            })
         );
     }
 
@@ -243,7 +277,11 @@ mod tests {
         let digits = "0".repeat(64);
         assert_eq!(
             ink(digits.as_bytes()),
-            Some(UnihexGlyph { left: 0, right: 16 })
+            Some(UnihexGlyph {
+                left: 0,
+                right: 16,
+                source: 0
+            })
         );
     }
 
@@ -252,14 +290,19 @@ mod tests {
         let wide = format!("FFFFFF{}", "0".repeat(90));
         assert_eq!(
             ink(wide.as_bytes()),
-            Some(UnihexGlyph { left: 0, right: 23 })
+            Some(UnihexGlyph {
+                left: 0,
+                right: 23,
+                source: 0
+            })
         );
         let widest = format!("{}00000001", "0".repeat(120));
         assert_eq!(
             ink(widest.as_bytes()),
             Some(UnihexGlyph {
                 left: 31,
-                right: 31
+                right: 31,
+                source: 0
             })
         );
     }

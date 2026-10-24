@@ -409,15 +409,11 @@ impl Gui {
             (&mut self.layers, &mut draw_item),
             (controls, &size, session),
         );
-        let scale = size.gui_scale() as f32;
-        backend.set_gui(
-            &frame,
-            [
-                size.framebuffer_width() as f32 / scale,
-                size.framebuffer_height() as f32 / scale,
-            ],
-        )?;
-        Ok(())
+        Self::present(
+            backend,
+            (&frame, &size),
+            (&self.atlas, &mut self.atlas_image),
+        )
     }
 }
 

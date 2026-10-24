@@ -328,6 +328,7 @@ impl Menu {
                     draw_screen(screen, host, (frame, atlas, font), (lang, mouse, size));
                 },
             )?;
+            self.gui.sync_glyphs(&mut client.backend)?;
             // A join's screens are not what a capture waits for.
             if !matches!(self.screen, Screen::Connecting(..)) {
                 frames += 1;

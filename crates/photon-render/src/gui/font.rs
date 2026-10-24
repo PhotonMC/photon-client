@@ -82,6 +82,8 @@ pub struct Font {
     glyphs: HashMap<u32, Glyph>,
     /// `FontSet.glyphsByWidth`: the codepoints by their advance rounded up, in codepoint order.
     by_width: HashMap<i32, Vec<u32>>,
+    /// The hex archives' bitmaps, which [`Glyph::Unihex`] names by index.
+    hex: Vec<std::sync::Arc<unihex::Table>>,
 }
 
 impl Font {
@@ -110,6 +112,7 @@ impl Font {
             images: Vec::new(),
             glyphs: HashMap::new(),
             by_width: HashMap::new(),
+            hex: Vec::new(),
         };
         font.load_definition(resources, id)?;
         font.index_widths();
@@ -242,7 +245,10 @@ impl Font {
     fn load_unihex(&mut self, root: &dyn Resources, provider: &JsonObject) -> Option<()> {
         let archive = root.read(&Identifier::parse(&provider.text("hex_file")?).ok()?)?;
         let ranges = unihex::overrides(provider)?;
-        for (codepoint, glyph) in unihex::glyphs(&archive, &ranges)? {
+        let source = u8::try_from(self.hex.len()).ok()?;
+        let (table, glyphs) = unihex::glyphs(&archive, &ranges, source)?;
+        self.hex.push(table);
+        for (codepoint, glyph) in glyphs {
             self.glyphs.entry(codepoint).or_insert(Glyph::Unihex(glyph));
         }
         Some(())
@@ -262,6 +268,16 @@ impl Font {
     pub fn random_glyph(&self, width: i32, roll: u32) -> Option<Glyph> {
         let same = self.by_width.get(&width).filter(|same| !same.is_empty())?;
         self.glyphs.get(&same[roll as usize % same.len()]).copied()
+    }
+
+    /// The pixels of a unifont glyph as `UnihexProvider` uploads them: RGBA, `glyph.width()` by
+    /// 16, white where the bitmap is set.
+    pub fn unihex_pixels(&self, codepoint: char, glyph: &UnihexGlyph) -> Option<Vec<u8>> {
+        let (_, rows) = self
+            .hex
+            .get(usize::from(glyph.source))?
+            .get(&u32::from(codepoint))?;
+        Some(unihex::pixels(glyph, rows))
     }
 
     pub fn glyph(&self, codepoint: char) -> Option<Glyph> {
