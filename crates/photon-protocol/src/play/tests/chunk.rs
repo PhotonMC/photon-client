@@ -275,3 +275,46 @@ fn section_parser_reads_zero_bit_palettes_without_storage() {
     assert_eq!(observations[0].biome_values, vec![0; 64]);
     assert_eq!(observations[0].biome_distinct_value_count, 1);
 }
+
+/// A section header followed by the given block state container bytes.
+fn section_with_block_states(container: &[u8]) -> Vec<u8> {
+    let mut section = Vec::new();
+    section.extend_from_slice(&1_i16.to_be_bytes());
+    section.extend_from_slice(&0_i16.to_be_bytes());
+    section.extend_from_slice(container);
+    section
+}
+
+#[test]
+fn section_parser_rejects_more_than_32_bits_per_entry() {
+    let block_states = section_with_block_states(&[33]);
+    assert!(matches!(
+        parse_section_data(&block_states),
+        Err(super::super::ConnectionError::Codec("block state bits"))
+    ));
+
+    let mut biomes = section_with_block_states(&[0, 0]);
+    biomes.push(33);
+    assert!(matches!(
+        parse_section_data(&biomes),
+        Err(super::super::ConnectionError::Codec("biome bits"))
+    ));
+}
+
+#[test]
+fn section_parser_rejects_a_palette_larger_than_its_capacity() {
+    let mut block_states = vec![4];
+    photon_core::wire::write_varint(17, &mut block_states);
+    assert!(matches!(
+        parse_section_data(&section_with_block_states(&block_states)),
+        Err(super::super::ConnectionError::Codec("block state palette"))
+    ));
+
+    let mut biomes = section_with_block_states(&[0, 0]);
+    biomes.push(1);
+    photon_core::wire::write_varint(3, &mut biomes);
+    assert!(matches!(
+        parse_section_data(&biomes),
+        Err(super::super::ConnectionError::Codec("biome palette"))
+    ));
+}
