@@ -5,12 +5,13 @@
 //! `UndeadHorseRenderer`, `HorseMarkingLayer`).
 
 mod gear;
+mod layers;
+use layers::{horse_markings, mushrooms};
 
 use photon_net::connection::PlaySession;
-use photon_render::entity::block::mooshroom_mushroom_poses;
 use photon_render::entity::mob_model::{
     BeeState, CamelState, EquineKind, GoatState, MobModel, MobPlacement, QuadrupedState,
-    RabbitState, mob_vertices, overlay_code, placement_pose,
+    RabbitState, mob_vertices,
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
@@ -412,38 +413,6 @@ fn pose(
     }
 }
 
-/// `MushroomCowMushroomLayer`: the mushrooms on a grown, visible mooshroom.
-fn mushrooms(
-    model: &MobModel,
-    entity: &ClientEntity,
-    placed: &MobPlacement,
-    held: &mut Vec<HeldItem>,
-) {
-    if entity.is_baby() || entity.is_invisible() {
-        return;
-    }
-    let (Some(state), Some(head)) = (
-        photon_data::block::registry::block(MOOSHROOMS[mooshroom_variant(entity)].1)
-            .map(photon_data::block::registry::Block::default_state_id),
-        model
-            .root()
-            .children()
-            .iter()
-            .find(|part| part.name() == "head"),
-    ) else {
-        return;
-    };
-    for pose in mooshroom_mushroom_poses(&placement_pose(placed), head) {
-        // `MushroomCowMushroomLayer` takes the entity's overlay.
-        held.push(HeldItem::block(
-            state,
-            pose,
-            placed.light,
-            overlay_code(placed.red_overlay, 0.0),
-        ));
-    }
-}
-
 /// The animals this module draws, by entity type id.
 fn animal_kinds() -> Vec<(photon_core::ids::EntityTypeId, Animal)> {
     [
@@ -464,23 +433,6 @@ fn animal_kinds() -> Vec<(photon_core::ids::EntityTypeId, Animal)> {
     .into_iter()
     .filter_map(|(name, animal)| Some((photon_data::entity_type::id(name)?, animal)))
     .collect()
-}
-
-/// `HorseMarkingLayer`: the markings over the coat, not on an invisible horse.
-fn horse_markings(
-    model: &MobModel,
-    (animal, entity): (Animal, &ClientEntity),
-    (placed, textures): (&MobPlacement, &EntityTextures),
-) -> Vec<Vertex> {
-    if animal != Animal::Horse || entity.is_invisible() {
-        return Vec::new();
-    }
-    usize::try_from(entity.horse_look().1)
-        .ok()
-        .and_then(|index| MARKINGS[index])
-        .and_then(|markings| textures.rect(markings[usize::from(entity.is_baby())]))
-        .map(|marking| mob_vertices(model, placed, marking))
-        .unwrap_or_default()
 }
 
 /// `GoatRenderer`, `MushroomCowRenderer` and `RabbitRenderer` for the goats,
