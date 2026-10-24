@@ -293,6 +293,36 @@ fn mob_class_rows() -> Vec<Value> {
     ]
 }
 
+/// The use key on cows, which milk a bucket and eat wheat.
+fn cow_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
+    let at = |label: &str, kind: &str| facing(label, vec![mob(31, kind, 0.5, 64.0, 2.5)], use_once());
+    // An entity spawned with a flag the oracle applies (a baby, a golem without its pumpkin).
+    let with_flag = |label: &str, kind: &str, flag: &str| {
+        let mut entity = mob(31, kind, 0.5, 64.0, 2.5);
+        entity[flag] = json!(true);
+        facing(label, vec![entity], use_once())
+    };
+    vec![
+        at("use-cow-with-bucket", "cow").main_hand("minecraft:bucket").x_rot(20.0).row(),
+        at("use-cow-with-stack-of-buckets", "cow").main_hand("minecraft:bucket").count(3).x_rot(20.0).row(),
+        at("use-cow-with-wheat", "cow").main_hand("minecraft:wheat").x_rot(20.0).row(),
+        with_flag("use-baby-cow-with-wheat", "cow", "baby").main_hand("minecraft:wheat").x_rot(20.0).row(),
+        at("use-cow-with-stone", "cow").main_hand("minecraft:stone").x_rot(20.0).row(),
+        with_flag("use-baby-cow-with-bucket", "cow", "baby").main_hand("minecraft:bucket").x_rot(20.0).row(),
+        at("use-mooshroom-with-bucket", "mooshroom").main_hand("minecraft:bucket").x_rot(20.0).row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows(), decoration_rows(), mob_class_rows()].concat()
+    [
+        entity_rows_1(),
+        entity_rows_2(),
+        entity_rows_3(),
+        minecart_rows(),
+        decoration_rows(),
+        mob_class_rows(),
+        cow_rows(),
+    ]
+    .concat()
 }

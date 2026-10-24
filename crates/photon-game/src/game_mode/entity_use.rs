@@ -80,6 +80,7 @@ impl Context<'_> {
         match name {
             "minecraft:creeper" => self.interact_creeper(id, hand),
             "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
+            "minecraft:cow" | "minecraft:mooshroom" => self.interact_cow(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -174,6 +175,34 @@ impl Context<'_> {
                 (1.0, pitch),
                 at,
             ));
+        EntityUse::Success { swing: true }
+    }
+
+    /// `AbstractCow.mobInteract`: a bucket on a grown cow is filled with milk on the client too,
+    /// with the milking sound. (A goat does the same with a sound that depends on its screaming
+    /// flag, which the client does not track yet.)
+    fn interact_cow(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let grown = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| !entity.is_baby());
+        let bucket = self
+            .held(hand)
+            .is_some_and(|(item, _)| crate::item::id_of("minecraft:bucket") == Some(item));
+        if !(grown && bucket) {
+            // `Animal.mobInteract`.
+            return self.feed_animal(id, hand, "minecraft:cow_food");
+        }
+        let at = self.player.position();
+        self.world
+            .push_sound(photon_world::local_player::LocalSound::at(
+                "minecraft:entity.cow.milk",
+                photon_world::local_player::LocalSoundSource::Players,
+                (1.0, 1.0),
+                (at.x, at.y, at.z),
+            ));
+        super::buckets::milk_result(self, hand);
         EntityUse::Success { swing: true }
     }
 

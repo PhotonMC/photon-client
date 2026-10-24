@@ -208,6 +208,13 @@ fn filled_result(ctx: &mut Context<'_>, hand: u8, new: ItemId) -> UseResult {
     filled_with(ctx, hand, ClientItemStackState::new(1, new))
 }
 
+/// A bucket milked from a cow or goat: `createFilledResult` with a milk bucket.
+pub(super) fn milk_result(ctx: &mut Context<'_>, hand: u8) {
+    if let Some(milk) = crate::item::id_of("minecraft:milk_bucket") {
+        filled_result(ctx, hand, milk);
+    }
+}
+
 /// `createFilledResult` for a stack that carries components.
 pub(super) fn filled_with(
     ctx: &mut Context<'_>,
