@@ -8,6 +8,7 @@ publish = false
 include = ["/Cargo.toml", "/src/**"]
 
 [dependencies]
+photon-assets.workspace = true
 photon-core.workspace = true
 photon-data.workspace = true
 photon-world.workspace = true

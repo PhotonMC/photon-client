@@ -7,7 +7,7 @@ mod pack;
 mod source;
 mod stack;
 
-pub use meta::{PackFormat, format_range};
+pub use meta::{IdentifierPattern, PackFormat, format_range};
 pub use pack::{Pack, PackError};
 pub use source::{DirectorySource, Source, ZipSource};
 pub use stack::{Resource, ResourceStack};

@@ -249,19 +249,48 @@ pub(super) fn image_result(request: &Value) -> Result<Value, String> {
 fn sprite_ids_result(request: &Value) -> Result<Value, String> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets");
-    let resources = photon_core::resources::FolderResources::new(&root);
     let rows = request["rows"]
         .as_array()
         .ok_or("atlas rows must be an array")?;
+    let scratch = std::env::temp_dir().join(format!("photon-atlas-packs-{}", std::process::id()));
     let mut out = Vec::with_capacity(rows.len());
-    for row in rows {
+    for (number, row) in rows.iter().enumerate() {
+        // A row may put a pack of its own over the game's assets.
+        let mut packs = vec![photon_assets::Pack::built_in(
+            "vanilla",
+            Box::new(photon_assets::DirectorySource::new(root.join(".."))),
+        )];
+        if let Some(files) = row["pack"].as_array() {
+            let pack_root = scratch.join(number.to_string());
+            let assets = pack_root.join("assets");
+            for file in files {
+                let id = Identifier::parse(string(file, "id")?).map_err(|_| "pack file id")?;
+                let path = assets.join(id.namespace()).join(id.path());
+                std::fs::create_dir_all(path.parent().ok_or("pack file path")?)
+                    .map_err(|error| error.to_string())?;
+                std::fs::write(&path, hex_bytes(string(file, "hex")?)?)
+                    .map_err(|error| error.to_string())?;
+            }
+            packs.push(photon_assets::Pack::built_in(
+                "test",
+                Box::new(photon_assets::DirectorySource::new(&pack_root)),
+            ));
+        }
+        let stack = photon_assets::ResourceStack::new(packs);
         let ids = match string(row, "atlas")? {
-            "minecraft:gui" => photon_render::gui::atlas::sprite_ids(&resources),
+            "minecraft:gui" => photon_render::gui::atlas::sprite_ids(&stack),
             other => return Err(format!("unknown atlas {other}")),
         };
         out.push(json!({"label": row["label"], "ids": ids}));
     }
+    std::fs::remove_dir_all(&scratch).ok();
     Ok(json!({"rows": out}))
+}
+
+fn hex_bytes(text: &str) -> Result<Vec<u8>, String> {
+    (0..text.len() / 2)
+        .map(|at| u8::from_str_radix(&text[at * 2..at * 2 + 2], 16).map_err(|_| "hex".to_owned()))
+        .collect()
 }
 
 pub(super) fn atlas_result(request: &Value) -> Result<Value, String> {

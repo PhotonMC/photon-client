@@ -98,7 +98,46 @@ fn limit_rows() -> Vec<Value> {
 pub fn cases() -> Vec<Value> {
     let rows = [ordering_rows(), limit_rows()].concat();
     // The sprites the game's own definition of the GUI atlas lists, which the stitcher then places.
-    let listed = [json!({"label": "gui", "atlas": "minecraft:gui"})];
+    let hex = |text: &str| text.bytes().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let file = |id: &str, text: &str| json!({"id": id, "hex": hex(text)});
+    let definition = |sources: &str| file("minecraft:atlases/gui.json", &format!("{{\"sources\":[{sources}]}}"));
+    let texture = |id: &str| file(id, "x");
+    let listed = [
+        json!({"label": "gui", "atlas": "minecraft:gui"}),
+        // A pack's own sources come after the game's: a directory of another namespace with a
+        // prefix, a single file under a new name, and one filter dropping a game sprite.
+        json!({"label": "pack-directory-single-filter", "atlas": "minecraft:gui", "pack": [
+            definition(concat!(
+                r#"{"type":"minecraft:directory","source":"custom","prefix":"extra/"},"#,
+                r#"{"type":"minecraft:single","resource":"minecraft:misc/one","sprite":"foo:solo"},"#,
+                r#"{"type":"minecraft:filter","pattern":{"path":"^hud/heart/full$"}}"#
+            )),
+            texture("foo:textures/custom/deep/c.png"),
+            texture("minecraft:textures/custom/d.png"),
+            texture("minecraft:textures/misc/one.png"),
+        ]}),
+        // Regions of one texture are sprites; a filter after them drops one, and one before the
+        // unstitch source does not.
+        json!({"label": "pack-unstitch-filter", "atlas": "minecraft:gui", "pack": [
+            definition(concat!(
+                r#"{"type":"minecraft:filter","pattern":{"namespace":"^foo$"}},"#,
+                r#"{"type":"minecraft:unstitch","resource":"foo:sheet","divisor_x":2.0,"regions":["#,
+                r#"{"sprite":"foo:cut/a","x":0,"y":0,"width":1,"height":1},"#,
+                r#"{"sprite":"foo:cut/b","x":1,"y":0,"width":1,"height":1}]},"#,
+                r#"{"type":"minecraft:filter","pattern":{"path":"cut/b"}}"#
+            )),
+            texture("foo:textures/sheet.png"),
+        ]}),
+        // An unstitched texture that is missing lists nothing; a filter matching everything
+        // empties the atlas.
+        json!({"label": "pack-missing-unstitch-and-clear", "atlas": "minecraft:gui", "pack": [
+            definition(concat!(
+                r#"{"type":"minecraft:unstitch","resource":"foo:missing","regions":["#,
+                r#"{"sprite":"foo:cut/a","x":0,"y":0,"width":1,"height":1}]},"#,
+                r#"{"type":"minecraft:filter","pattern":{}}"#
+            )),
+        ]}),
+    ];
     vec![
         json!({"case_id": "atlas/stitch", "family": "atlas", "operation": "stitch", "rows": rows}),
         json!({"case_id": "atlas/sprite-ids", "family": "atlas", "operation": "sprite_ids", "rows": listed}),

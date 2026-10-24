@@ -88,10 +88,29 @@ public final class AtlasOracle {
                 .build(new net.minecraft.server.packs.PackLocationInfo("vanilla",
                     net.minecraft.network.chat.Component.literal("vanilla"),
                     net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
-            var manager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
-                net.minecraft.server.packs.PackType.CLIENT_RESOURCES, List.of(pack));
+            var packsRoot = java.nio.file.Files.createTempDirectory("atlas-packs");
+            int packNumber = 0;
             for (var element : request.get("rows").getAsJsonArray()) {
                 var row = element.getAsJsonObject();
+                // A row may put a pack of its own over the game's assets: files by id and hex bytes.
+                var packs = new java.util.ArrayList<net.minecraft.server.packs.PackResources>(List.of(pack));
+                if (row.has("pack")) {
+                    var packRoot = java.nio.file.Files.createDirectories(packsRoot.resolve(Integer.toString(packNumber++)));
+                    for (var fileElement : row.get("pack").getAsJsonArray()) {
+                        var file = fileElement.getAsJsonObject();
+                        var location = Identifier.parse(file.get("id").getAsString());
+                        var path = packRoot.resolve("assets").resolve(location.getNamespace()).resolve(location.getPath());
+                        java.nio.file.Files.createDirectories(path.getParent());
+                        java.nio.file.Files.write(path, java.util.HexFormat.of().parseHex(file.get("hex").getAsString()));
+                    }
+                    packs.add(new net.minecraft.server.packs.PathPackResources(
+                        new net.minecraft.server.packs.PackLocationInfo("test",
+                            net.minecraft.network.chat.Component.literal("test"),
+                            net.minecraft.server.packs.repository.PackSource.DEFAULT, java.util.Optional.empty()),
+                        packRoot));
+                }
+                var manager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
+                    net.minecraft.server.packs.PackType.CLIENT_RESOURCES, packs);
                 var list = net.minecraft.client.renderer.texture.atlas.SpriteSourceList.load(manager,
                     Identifier.parse(row.get("atlas").getAsString()));
                 var field = list.getClass().getDeclaredField("sources");

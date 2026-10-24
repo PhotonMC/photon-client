@@ -14,6 +14,8 @@ Server resource packs ([#51](https://github.com/PhotonMC/photon-client/issues/51
 - **Dependencies.** `zip` (with only the `flate2` backend, which the workspace already uses) reads the packs. `regex` evaluates the `filter` patterns; the reference's patterns are Java regular expressions and the common subset is the same in both engines.
 - **Server pack order.** The packs a server names go on top of the stack in the order the server lists them, the last one topmost.
 
+- **Sprite sources.** The atlas definitions' `filter` source uses the same `IdentifierPattern`, so `photon-assets` exports it and `photon-render` (and the oracle binary) may depend on `photon-assets`. The crate depends on `photon-core` alone, so no cycle appears.
+
 ## Consequences
 
 - The client now links a zip reader, which [ADR 0009](0009-xtask-downloads.md) kept out of it.

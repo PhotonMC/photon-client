@@ -167,12 +167,30 @@ pub(crate) fn overlays_for(meta: &JsonObject, current: PackFormat) -> Vec<String
 
 /// `IdentifierPattern`: a regular expression for the namespace and one for the path; a missing
 /// one matches everything. Like `Pattern.asPredicate`, a pattern matches anywhere in the text.
-pub(crate) struct Pattern {
+pub struct IdentifierPattern {
     namespace: Option<Regex>,
     path: Option<Regex>,
 }
 
-impl Pattern {
+impl IdentifierPattern {
+    /// An `IdentifierPattern` of a JSON object (`namespace` and `path`, both optional); none if
+    /// a regular expression does not compile.
+    pub fn from_json(entry: &JsonObject) -> Option<Self> {
+        let compile = |key: &str| match entry.text(key) {
+            Some(text) => Regex::new(&text).map(Some).ok(),
+            None => Some(None),
+        };
+        Some(Self {
+            namespace: compile("namespace")?,
+            path: compile("path")?,
+        })
+    }
+
+    /// `locationPredicate`: both parts match the identifier.
+    pub fn matches(&self, namespace: &str, path: &str) -> bool {
+        self.namespace_matches(namespace) && self.path_matches(path)
+    }
+
     fn namespace_matches(&self, namespace: &str) -> bool {
         self.namespace
             .as_ref()
@@ -187,7 +205,7 @@ impl Pattern {
 /// `ResourceFilterSection`: what the pack hides from the packs below it.
 #[derive(Default)]
 pub(crate) struct Filter {
-    block: Vec<Pattern>,
+    block: Vec<IdentifierPattern>,
 }
 
 impl Filter {
@@ -201,23 +219,16 @@ impl Filter {
     }
 }
 
-fn pattern_of(entry: &JsonValue) -> Option<Pattern> {
+fn pattern_of(entry: &JsonValue) -> Option<IdentifierPattern> {
     let JsonValue::Object(entry) = entry else {
         return None;
     };
-    let compile = |key: &str| match entry.text(key) {
-        Some(text) => Regex::new(&text).map(Some).ok(),
-        None => Some(None),
-    };
-    Some(Pattern {
-        namespace: compile("namespace")?,
-        path: compile("path")?,
-    })
+    IdentifierPattern::from_json(entry)
 }
 
 /// The `filter` section of a `pack.mcmeta`, if it has a valid one.
 pub(crate) fn filter_of(meta: &JsonObject) -> Option<Filter> {
     let block = meta.object("filter")?.array("block")?;
-    let block: Option<Vec<Pattern>> = block.iter().map(pattern_of).collect();
+    let block: Option<Vec<IdentifierPattern>> = block.iter().map(pattern_of).collect();
     block.map(|block| Filter { block })
 }

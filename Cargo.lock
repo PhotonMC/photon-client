@@ -1528,6 +1528,7 @@ name = "photon-oracle"
 version = "0.1.0"
 dependencies = [
  "glfw",
+ "photon-assets",
  "photon-audio",
  "photon-core",
  "photon-data",
@@ -1565,6 +1566,7 @@ dependencies = [
  "flate2",
  "glfw",
  "log",
+ "photon-assets",
  "photon-core",
  "photon-data",
  "photon-world",
