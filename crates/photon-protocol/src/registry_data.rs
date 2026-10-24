@@ -83,15 +83,9 @@ impl PackedRegistryEntry {
             None => false,
             Some(value) => decode_bool(value).ok_or(ReadError::DecoderError)?,
         };
-        let has_skylight = find_field(fields, "has_skylight")
-            .and_then(decode_bool)
-            .ok_or(ReadError::DecoderError)?;
-        let has_ceiling = find_field(fields, "has_ceiling")
-            .and_then(decode_bool)
-            .ok_or(ReadError::DecoderError)?;
-        let has_ender_dragon_fight = find_field(fields, "has_ender_dragon_fight")
-            .and_then(decode_bool)
-            .ok_or(ReadError::DecoderError)?;
+        let has_skylight = required_bool(fields, "has_skylight")?;
+        let has_ceiling = required_bool(fields, "has_ceiling")?;
+        let has_ender_dragon_fight = required_bool(fields, "has_ender_dragon_fight")?;
         let coordinate_scale = match find_field(fields, "coordinate_scale") {
             Some(FieldValue::Double(value)) => *value,
             _ => return Err(ReadError::DecoderError),
@@ -104,20 +98,18 @@ impl PackedRegistryEntry {
             Some(FieldValue::Float(value)) => *value,
             _ => return Err(ReadError::DecoderError),
         };
-        let skybox = match find_field(fields, "skybox") {
-            None => DimensionSkybox::Overworld,
-            Some(FieldValue::Str(value)) => {
-                DimensionSkybox::from_wire(value).ok_or(ReadError::DecoderError)?
-            }
-            Some(_) => return Err(ReadError::DecoderError),
-        };
-        let cardinal_light_type = match find_field(fields, "cardinal_light") {
-            None => CardinalLightType::Default,
-            Some(FieldValue::Str(value)) => {
-                CardinalLightType::from_wire(value).ok_or(ReadError::DecoderError)?
-            }
-            Some(_) => return Err(ReadError::DecoderError),
-        };
+        let skybox = optional_wire_name(
+            fields,
+            "skybox",
+            DimensionSkybox::Overworld,
+            DimensionSkybox::from_wire,
+        )?;
+        let cardinal_light_type = optional_wire_name(
+            fields,
+            "cardinal_light",
+            CardinalLightType::Default,
+            CardinalLightType::from_wire,
+        )?;
 
         let piglins_zombify = piglins_zombify(fields)?;
 
@@ -154,26 +146,57 @@ fn piglins_zombify(fields: &[photon_core::nbt::Field]) -> Result<bool, ReadError
     };
     match find_field(attributes, "minecraft:gameplay/piglins_zombify") {
         None => Ok(DEFAULT),
-        Some(FieldValue::Compound(entry)) => {
-            let argument = find_field(entry, "argument")
-                .and_then(decode_bool)
-                .ok_or(ReadError::DecoderError)?;
-            let Some(FieldValue::Str(modifier)) = find_field(entry, "modifier") else {
-                return Err(ReadError::DecoderError);
-            };
-            // `BooleanModifier` and the override every attribute has.
-            match modifier.strip_prefix("minecraft:").unwrap_or(modifier) {
-                "override" => Ok(argument),
-                "and" => Ok(argument && DEFAULT),
-                "nand" => Ok(!argument || !DEFAULT),
-                "or" => Ok(argument || DEFAULT),
-                "nor" => Ok(!argument && !DEFAULT),
-                "xor" => Ok(argument ^ DEFAULT),
-                "xnor" => Ok(argument == DEFAULT),
-                _ => Err(ReadError::DecoderError),
-            }
-        }
+        Some(FieldValue::Compound(entry)) => modified_boolean(entry, DEFAULT),
         Some(value) => decode_bool(value).ok_or(ReadError::DecoderError),
+    }
+}
+
+/// A boolean attribute given as `{modifier, argument}`: the modifier applied to `current`.
+fn modified_boolean(entry: &[photon_core::nbt::Field], current: bool) -> Result<bool, ReadError> {
+    let argument = required_bool(entry, "argument")?;
+    let Some(FieldValue::Str(modifier)) = find_field(entry, "modifier") else {
+        return Err(ReadError::DecoderError);
+    };
+    let name = modifier.strip_prefix("minecraft:").unwrap_or(modifier);
+    BOOLEAN_MODIFIERS
+        .iter()
+        .find(|(known, _)| *known == name)
+        .map(|(_, apply)| apply(argument, current))
+        .ok_or(ReadError::DecoderError)
+}
+
+/// A modifier name and what it does: `(argument, current) -> result`.
+type BooleanModifier = (&'static str, fn(bool, bool) -> bool);
+
+/// `BooleanModifier` and the override every attribute has.
+const BOOLEAN_MODIFIERS: [BooleanModifier; 7] = [
+    ("override", |argument, _| argument),
+    ("and", |argument, current| argument && current),
+    ("nand", |argument, current| !argument || !current),
+    ("or", |argument, current| argument || current),
+    ("nor", |argument, current| !argument && !current),
+    ("xor", |argument, current| argument ^ current),
+    ("xnor", |argument, current| argument == current),
+];
+
+/// A boolean field that must be present.
+fn required_bool(fields: &[photon_core::nbt::Field], key: &str) -> Result<bool, ReadError> {
+    find_field(fields, key)
+        .and_then(decode_bool)
+        .ok_or(ReadError::DecoderError)
+}
+
+/// A string field naming a wire value, or `default` when the field is absent.
+fn optional_wire_name<T>(
+    fields: &[photon_core::nbt::Field],
+    key: &str,
+    default: T,
+    from_wire: fn(&str) -> Option<T>,
+) -> Result<T, ReadError> {
+    match find_field(fields, key) {
+        None => Ok(default),
+        Some(FieldValue::Str(value)) => from_wire(value).ok_or(ReadError::DecoderError),
+        Some(_) => Err(ReadError::DecoderError),
     }
 }
 
