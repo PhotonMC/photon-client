@@ -40,8 +40,9 @@ pub struct FrameView {
     pub camera: [f32; 3],
     /// The camera's yaw and pitch, in degrees.
     pub rotation: (f32, f32),
-    /// Where the skin the local player wears is in the entity textures.
+    /// Where the skin the local player wears is in the entity textures, and its cape.
     pub skin: photon_render::entity::textures::TextureRect,
+    pub cape: Option<photon_render::entity::textures::TextureRect>,
     /// The `bobView` option.
     pub view_bobbing: bool,
     /// The `damageTiltStrength` option.
@@ -124,9 +125,11 @@ pub const SHARED_TEXTURES: [&str; 3] = [
     photon_render::render_types::ITEM_GLINT_TEXTURE,
 ];
 
+mod cape;
 mod frame_tag;
 mod hand_use;
 mod light;
+mod local_state;
 mod remote_placement;
 mod shadow_radius;
 pub use light::*;

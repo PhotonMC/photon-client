@@ -328,6 +328,8 @@ pub(crate) struct EntityState {
     pub(crate) fall_fly_ticks: i32,
     /// `ClientAvatarState.deltaMovementOnPreviousTick`.
     pub(crate) previous_motion: [u64; 3],
+    /// `ClientAvatarState`'s cloak and bob, which hang a player's cape.
+    pub(crate) cloak: crate::cloak::Cloak,
     pub(crate) variant: Option<i32>,
     pub(crate) orb_value: Option<i32>,
     /// A piglin's dancing flag.

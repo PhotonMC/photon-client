@@ -37,7 +37,6 @@ pub fn remote_players(
         };
         let textures = &*textures;
         let model = models.of(look.slim);
-        let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
         let (right, left) = (
             entity.item_held_by_arm(false),
             entity.item_held_by_arm(true),
@@ -76,15 +75,12 @@ pub fn remote_players(
         vertices.extend(shown_body(session, entity, (model, &placement), ghost));
         let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));
         vertices.extend(glowing(session, entity, wearing));
-        vertices.extend(armor.wings(
-            worn.chest,
-            (false, crouching, entity.elytra_rotations(partial)),
-            textures,
-            &|model, rect, colour| {
-                photon_render::entity::player_renderer::layer_vertices(
-                    model, &placement, rect, colour,
-                )
-            },
+        let (own, drawn) = (look.cape, (&*model, &placement));
+        vertices.extend(cape::remote_back(
+            armor,
+            (entity, own),
+            drawn,
+            (textures, partial),
         ));
     }
 }

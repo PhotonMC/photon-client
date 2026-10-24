@@ -103,6 +103,8 @@ pub struct Armor {
 /// colour (`0xRRGGBB`).
 pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vertex>;
 
+mod gates;
+
 /// The layer types armor is drawn in, by `HumanoidArmorLayer`.
 const HUMANOID: &str = "humanoid";
 const LEGGINGS: &str = "humanoid_leggings";

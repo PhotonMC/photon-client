@@ -45,17 +45,21 @@ impl ClientWorld {
         }
     }
 
-    pub(crate) fn tick_entity_once(&mut self, entity_id: EntityId) {
-        // One read of the entity decides every branch below; the reference
-        // evaluates these conditions against the pre-tick state, so they are
-        // resolved before the mutable tick borrow is taken.
-        let Some((
-            boat_is_non_authoritative,
-            projectile_kind,
-            projectile_path_is_open,
-            (ridden, ridden_mount),
-            flying,
-        )) = self.entities.at(entity_id).map(|entity| {
+    /// What decides the branches of an entity's tick, read before the tick: whether a boat is
+    /// not the local player's to move, a projectile's kind and whether its path is open, whether
+    /// the player rides or steers it, and its flight.
+    #[allow(clippy::type_complexity)]
+    fn pre_tick_facts(
+        &self,
+        entity_id: EntityId,
+    ) -> Option<(
+        bool,
+        Option<VanillaProjectileKind>,
+        bool,
+        (bool, bool),
+        Option<objects::flight::Flight>,
+    )> {
+        self.entities.at(entity_id).map(|entity| {
             let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
             let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
             let kind = vanilla_projectile_kind(entity.type_id);
@@ -75,6 +79,19 @@ impl ClientWorld {
                 objects::flight::flight_of(entity),
             )
         })
+    }
+
+    pub(crate) fn tick_entity_once(&mut self, entity_id: EntityId) {
+        // One read of the entity decides every branch below; the reference
+        // evaluates these conditions against the pre-tick state, so they are
+        // resolved before the mutable tick borrow is taken.
+        let Some((
+            boat_is_non_authoritative,
+            projectile_kind,
+            projectile_path_is_open,
+            (ridden, ridden_mount),
+            flying,
+        )) = self.pre_tick_facts(entity_id)
         else {
             return;
         };
@@ -97,6 +114,9 @@ impl ClientWorld {
                 .at_mut(entity_id)
                 .expect("entity position was checked above");
             entity.capture_old_transform();
+            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+                entity.tick_cloak();
+            }
             entity.tick_count = entity.tick_count.wrapping_add(1);
         }
         // The level ticks a mount's physics (`super.tick`) before its own `tick` counts its
@@ -126,6 +146,7 @@ impl ClientWorld {
             entity.tick_ai_step(living.filter(|_| !ridden_mount), in_water, targets);
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
                 entity.tick_motion_interpolation();
+                entity.tick_bob();
             }
             if let Some(kind) = living {
                 entity.tick_living(kind, tick_death, self.level.game_time);

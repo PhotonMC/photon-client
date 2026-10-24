@@ -80,8 +80,7 @@ impl LocalPlayer {
             on_ground_no_blocks: false,
             fall_distance: 0.0,
             stuck_speed_multiplier: Vec3::ZERO,
-            walk_dist: 0.0,
-            walk_dist_old: 0.0,
+            avatar: AvatarState::default(),
             // The reference starts a new player facing at random; this one
             // starts with head and body where it looks.
             y_body_rot: y_rot,

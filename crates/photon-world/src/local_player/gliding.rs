@@ -12,7 +12,9 @@ impl LocalPlayer {
 
     /// `ClientAvatarState.tick`: the walk distance and the motion of the tick before are kept.
     pub(super) fn begin_avatar_tick(&mut self) {
-        self.walk_dist_old = self.walk_dist;
+        self.avatar.walk_dist_old = self.avatar.walk_dist;
+        let position = (self.position.x, self.position.y, self.position.z);
+        self.avatar.cloak.tick(position);
         self.elytra.previous_motion = [self.delta.x, self.delta.y, self.delta.z];
     }
 

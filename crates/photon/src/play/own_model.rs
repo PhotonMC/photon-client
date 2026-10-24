@@ -27,11 +27,12 @@ impl Play {
             properties: self.session.player_properties(id),
             require_secure: false,
         };
-        let Some(crate::skins::Resolved { rect, slim, .. }) =
+        let Some(crate::skins::Resolved { rect, slim, cape }) =
             self.skins.resolve(&mut self.entity_textures, &who)
         else {
             return;
         };
+        self.skins.own_cape = cape;
         if self.player_model.slim != slim {
             self.player_model = photon_render::entity::player_model::PlayerModel::new(slim);
         }

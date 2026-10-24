@@ -55,6 +55,7 @@ impl Play {
             camera: frame.relative,
             rotation: frame.rotation,
             skin: self.skin_rect,
+            cape: self.skins.own_cape,
             view_bobbing: options.view_bobbing,
             damage_tilt: options.damage_tilt_strength,
             spectating: self.session.game_mode().is_spectator(),

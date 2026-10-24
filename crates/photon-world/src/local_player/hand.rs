@@ -6,9 +6,9 @@ impl LocalPlayer {
     /// `ClientAvatarState.getBackwardsInterpolatedWalkDistance` and
     /// `getInterpolatedBob`, which the view bob reads.
     pub fn view_bob(&self, partial_tick: f32) -> (f32, f32) {
-        let walked = self.walk_dist - self.walk_dist_old;
+        let walked = self.avatar.walk_dist - self.avatar.walk_dist_old;
         (
-            -(self.walk_dist + walked * partial_tick),
+            -(self.avatar.walk_dist + walked * partial_tick),
             self.bob_old + partial_tick * (self.bob - self.bob_old),
         )
     }

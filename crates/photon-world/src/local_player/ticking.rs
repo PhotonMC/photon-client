@@ -153,6 +153,9 @@ impl LocalPlayer {
             self.reset_attack_strength();
             self.last_main_hand_item = self.main_hand_item;
         }
+        if self.is_passenger() {
+            self.reset_bob();
+        }
         self.update_player_pose(level)
     }
 

@@ -93,6 +93,8 @@ pub(crate) struct Skins {
     /// How a property is loaded, which a test replaces.
     load: Loader,
     frame: u64,
+    /// Where the local player's cape is, if it has one: set by the frame that dresses it.
+    pub(crate) own_cape: Option<TextureRect>,
     /// The places written since the last call, for the GPU to take.
     dirty: Vec<photon_render::vulkan::AtlasRegion>,
 }
@@ -132,6 +134,7 @@ impl Skins {
             cache,
             load,
             frame: 0,
+            own_cape: None,
             dirty: Vec::new(),
         };
         skins.lay_out(textures);

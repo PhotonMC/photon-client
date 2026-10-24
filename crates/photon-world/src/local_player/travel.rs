@@ -87,7 +87,7 @@ impl LocalPlayer {
         // `Mth.length(float, float)` squares in double: there is no float
         // `lengthSquared` of two values.
         let (x, z) = (f64::from(delta_x), f64::from(delta_z));
-        self.walk_dist += (x * x + z * z).sqrt() as f32 * 0.6;
+        self.avatar.walk_dist += (x * x + z * z).sqrt() as f32 * 0.6;
         Ok(())
     }
 

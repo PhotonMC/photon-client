@@ -112,6 +112,7 @@ mod animation;
 mod attributes;
 pub use attributes::*;
 mod boat;
+mod cloak;
 pub use boat::*;
 mod equipment;
 pub use equipment::*;

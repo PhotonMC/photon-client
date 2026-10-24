@@ -490,7 +490,7 @@
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 30
 "crates/photon-world/src/world/entities/motion.rs::ClientWorld::apply_entity_rotation" = 13
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 84
-"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 14
+"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 13
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 13
@@ -882,7 +882,7 @@
 "crates/photon-world/src/local_player/level.rs::Level::clip_hits_fall_reset" = 86
 "crates/photon-world/src/local_player/serverbound.rs::ServerboundMovement::encode_body" = 96
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
-"crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 107
+"crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 106
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 109
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 79
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 92
@@ -915,7 +915,7 @@
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 90
 "crates/photon-world/src/world/entities/passengers.rs::ClientWorld::boat_rider_position" = 70
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 299
-"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 99
+"crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 85
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 76
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
@@ -943,9 +943,9 @@
 "crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 70
 "crates/photon/src/objects/leashes.rs::leashes" = 98
 "crates/photon/src/objects/minecarts.rs::remote_minecarts" = 87
-"crates/photon/src/overlays/light.rs::player_model" = 82
+"crates/photon/src/overlays/light.rs::player_model" = 71
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 87
-"crates/photon/src/overlays/wear.rs::remote_players" = 78
+"crates/photon/src/overlays/wear.rs::remote_players" = 74
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 61
 "crates/photon/src/play/draw.rs::Play::draw" = 75

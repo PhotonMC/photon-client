@@ -1,6 +1,7 @@
 //! What is drawn of entities that are posed models: their textures, shadows, name tags, equipment and the animation they run.
 
 pub mod block;
+pub mod cape;
 pub mod elder_guardian_particle;
 pub mod equipment;
 pub mod gui_view;

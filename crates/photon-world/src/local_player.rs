@@ -24,7 +24,8 @@ use photon_core::binary::BlockPos;
 use photon_core::direction::{Axis, Direction};
 use photon_core::ids::{EntityId, ItemId};
 use photon_core::math::{
-    MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_sin_f64,
+    MTH_DEG_TO_RAD, Vec3, equal_f64, floor_f64, mth_cos_f64, mth_inv_sqrt_f32, mth_lerp_f32,
+    mth_sin_f64,
 };
 use photon_core::shape::{BooleanOp, Shapes, VoxelShape};
 
@@ -99,8 +100,7 @@ pub struct LocalPlayer {
     pub(super) stuck_speed_multiplier: Vec3,
     /// `ClientAvatarState`: the distance walked and the view bob, now and a
     /// tick ago, which only the camera reads.
-    pub(super) walk_dist: f32,
-    pub(super) walk_dist_old: f32,
+    pub(super) avatar: AvatarState,
     /// The body's and the head's facing, now and a tick ago, which the
     /// player model is turned by.
     pub(super) y_body_rot: f32,
@@ -215,6 +215,9 @@ pub struct LocalPlayer {
 
 mod block_info;
 pub(crate) use block_info::*;
+mod cloak;
+use cloak::AvatarState;
+pub use cloak::CloakState;
 mod falling;
 use falling::*;
 mod fluids;

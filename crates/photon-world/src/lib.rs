@@ -29,6 +29,7 @@ pub use ride::vehicle::{VehicleKind, VehicleView};
 mod border;
 mod chunk;
 mod chunk_store;
+pub mod cloak;
 mod collision;
 mod constants;
 mod container;

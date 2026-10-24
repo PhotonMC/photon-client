@@ -357,30 +357,12 @@ pub fn player_model(
         },
     );
     let glide = local_glide(player, pose.head_rot, partial);
-    let state = PlayerRenderState {
-        is_fall_flying: glide.is_some(),
-        speed_value: glide.map_or(1.0, |glide| glide.speed_value),
-        head_y_rot: side * photon_core::math::wrap_degrees_f32(pose.head_rot - pose.body_rot),
-        x_rot,
-        walk_position: pose.walk_position,
-        walk_speed: pose.walk_speed,
-        age_in_ticks: player.tick_count() as f32 + partial,
-        swim_amount: pose.swim_amount,
-        crouching: pose.crouching,
-        spectator: player.spectating(),
-        attack_time,
-        attack_arm,
-        right_arm_pose: arm_poses.0,
-        left_arm_pose: arm_poses.1,
-        is_using_item: arms.using_item,
-        use_item_main_hand: arms.use_main_hand,
-        ticks_using_item: arms.ticks_using_item,
-        max_crossbow_charge_duration: arms.max_crossbow_charge,
-        swing_animation: spears.swing_animation,
-        right_spear: spears.right,
-        left_spear: spears.left,
-        ..Default::default()
-    };
+    let facing = (pose, x_rot, side);
+    let state = local_state::local_render_state(
+        (player, &facing),
+        (&arms, (attack_time, attack_arm), glide),
+        (&spears, partial),
+    );
     model.setup_anim(&state);
     let placement = local_placement((session, player), (view, x_rot, flip), (&pose, glide));
     let hands = Hands {
@@ -406,8 +388,15 @@ pub fn player_model(
     ));
     let dressed = wear(armor, worn, model.slim, textures, (&state, &placement));
     vertices.extend(glowing_local(session, dressed));
-    let wings = local_wings(armor, (worn.chest, player), (&placement, textures, partial));
-    vertices.extend(glowing_local(session, wings));
+    let hang = cape::own_hang(session, player, (view, invisible));
+    let spread = player.elytra_rotations(partial);
+    let back = cape::back(
+        armor,
+        (worn.chest, &hang, spread),
+        (model, &placement),
+        (textures, partial),
+    );
+    vertices.extend(glowing_local(session, back));
     vertices
 }
 
@@ -495,8 +484,8 @@ pub(super) fn remote_render_state(
 
 /// What the local player's glide gives its model.
 #[derive(Clone, Copy)]
-struct Glide {
-    speed_value: f32,
+pub(super) struct Glide {
+    pub(super) speed_value: f32,
     flight: photon_render::entity::player_renderer::FallFlying,
 }
 
@@ -517,25 +506,4 @@ fn local_glide(player: &LocalPlayer, head_rot: f32, partial: f32) -> Option<Glid
             partial,
         )?,
     })
-}
-
-/// The wings of what the player's own model wears on the chest.
-fn local_wings(
-    armor: &mut Armor,
-    (chest, player): (Option<&ClientItemStackState>, &LocalPlayer),
-    (placement, textures, partial): (
-        &Placement,
-        &photon_render::entity::textures::EntityTextures,
-        f32,
-    ),
-) -> Vec<Vertex> {
-    let crouching = player.model_pose(partial).crouching;
-    armor.wings(
-        chest,
-        (false, crouching, player.elytra_rotations(partial)),
-        textures,
-        &|model, rect, colour| {
-            photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
-        },
-    )
 }
