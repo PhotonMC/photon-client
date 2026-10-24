@@ -304,7 +304,8 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 }
                 let aim = match attack.get("target") {
                     _ if attack.get("pick").is_some() => {
-                        let at = player.position();
+                        // `getEyePosition(1.0)`: the position the frame blends to.
+                        let at = player.interpolated_position(1.0);
                         photon_game::input::pick::pick(
                             &world,
                             &player,

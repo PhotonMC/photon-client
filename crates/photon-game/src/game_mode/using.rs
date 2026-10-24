@@ -1,3 +1,4 @@
+use super::entity_use::EntityUse;
 use super::*;
 use photon_core::ids::ItemId;
 
@@ -115,8 +116,6 @@ impl GameMode {
         if !ctx.within_entity_interaction_range(bounds) {
             return false;
         }
-        // What the entity does on its own side of the click is not predicted: the click passes
-        // on to the hand's item as if it had not been consumed.
         out.push(Outgoing::Interact {
             entity_id: id,
             hand,
@@ -129,14 +128,25 @@ impl GameMode {
         });
         // `MinecartCommandBlock.interact`: a game master's click opens its screen, unless the
         // player only watches.
-        let opens = ctx.mode != ClientPlayerGameMode::Spectator
-            && ctx.can_use_game_master_blocks()
-            && ctx.world.command_minecart_view(id).is_some();
+        if ctx.mode == ClientPlayerGameMode::Spectator {
+            return false;
+        }
+        let opens =
+            ctx.can_use_game_master_blocks() && ctx.world.command_minecart_view(id).is_some();
         if opens {
             self.opened_command_minecart = Some(id);
             ctx.swing_hand(hand, out);
+            return true;
         }
-        opens
+        match ctx.interact_entity(id) {
+            EntityUse::Success { swing } => {
+                if swing {
+                    ctx.swing_hand(hand, out);
+                }
+                true
+            }
+            EntityUse::Pass => false,
+        }
     }
 
     /// `MultiPlayerGameMode.useItemOn`: the use runs as a prediction whose

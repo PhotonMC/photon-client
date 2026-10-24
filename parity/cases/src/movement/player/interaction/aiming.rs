@@ -182,6 +182,39 @@ fn entity_rows_3() -> Vec<Value> {
     ]
 }
 
+/// The use key on a minecart: what `Entity.interact` answers on the client decides whether the
+/// click goes on to the hand's item and whether the arm swings.
+fn minecart_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
+    let cart = |label: &str, kind: &str| facing(label, vec![mob(30, kind, 0.5, 64.0, 2.5)], use_once());
+    vec![
+        cart("use-minecart", "minecart").x_rot(30.0).row(),
+        cart("use-minecart-with-stone", "minecart").main_hand("minecraft:stone").x_rot(30.0).row(),
+        cart("use-minecart-both-hands", "minecart")
+            .main_hand("minecraft:stone")
+            .off_hand("minecraft:cobblestone")
+            .x_rot(30.0)
+            .row(),
+        facing(
+            "use-minecart-sneaking",
+            vec![mob(30, "minecart", 0.5, 64.0, 2.5)],
+            [aims(1).use_clicks(1).held(&["sneak"]).go(), aims(3).held(&["sneak"]).go()].concat(),
+        )
+        .main_hand("minecraft:stone")
+        .x_rot(30.0)
+        .row(),
+        cart("use-chest-minecart", "chest_minecart").main_hand("minecraft:stone").x_rot(30.0).row(),
+        cart("use-hopper-minecart", "hopper_minecart").main_hand("minecraft:stone").x_rot(30.0).row(),
+        cart("use-furnace-minecart", "furnace_minecart").main_hand("minecraft:stone").x_rot(30.0).row(),
+        cart("use-command-minecart", "command_block_minecart").main_hand("minecraft:stone").x_rot(30.0).row(),
+        cart("use-chest-minecart-in-spectator", "chest_minecart")
+            .main_hand("minecraft:stone")
+            .game_mode("spectator")
+            .x_rot(30.0)
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [entity_rows_1(), entity_rows_2(), entity_rows_3()].concat()
+    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows()].concat()
 }

@@ -404,6 +404,11 @@ impl Entities {
 }
 
 impl ClientWorld {
+    /// The registry name of an entity's type, or `None` when no such entity is there.
+    pub fn entity_type_name(&self, entity_id: EntityId) -> Option<&'static str> {
+        photon_data::entity_type::name(self.entities.at(entity_id)?.type_id)
+    }
+
     /// Whether the level holds the entity (the local player included).
     pub fn knows_entity(&self, entity_id: EntityId) -> bool {
         self.entity_exists(entity_id)

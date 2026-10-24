@@ -25,7 +25,7 @@ pub fn pick(world: &ClientWorld, player: &LocalPlayer, eye: Vec3) -> Aim {
     let mut max_distance = block_range.max(entity_range);
     let mut max_distance_sq = max_distance * max_distance;
     let (y_rot, x_rot) = player.rotation();
-    let look = Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let look = Vec3::view_vector(x_rot, y_rot);
     let scaled = |distance: f64| {
         Vec3::new(
             eye.x + look.x * distance,

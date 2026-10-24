@@ -74,7 +74,7 @@ pub(super) fn look_ray(ctx: &Context<'_>) -> (photon_core::math::Vec3, photon_co
         position.z,
     );
     let (y_rot, x_rot) = ctx.player.rotation();
-    let look = photon_core::math::Vec3::direction_from_rotation_components(x_rot, y_rot);
+    let look = photon_core::math::Vec3::view_vector(x_rot, y_rot);
     let range = ctx.miner.block_interaction_range;
     let to = photon_core::math::Vec3::new(
         eye.x + look.x * range,

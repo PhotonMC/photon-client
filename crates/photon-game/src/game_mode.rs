@@ -87,6 +87,7 @@ mod stab;
 mod tools;
 pub use context::*;
 mod destroying;
+mod entity_use;
 mod mining;
 pub use mining::*;
 mod outgoing;

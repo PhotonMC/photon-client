@@ -319,6 +319,23 @@ impl Vec3 {
         )
     }
 
+    /// `Entity.calculateViewVector`: where an entity looks, from its pitch and yaw in degrees. It
+    /// rounds differently from `directionFromRotation`, so the two are not interchangeable.
+    pub fn view_vector(x_rot: f32, y_rot: f32) -> Self {
+        const DEGREES_TO_RADIANS_F32: f32 = f32::from_bits(0x3c8efa35);
+        let real_x_rot = x_rot * DEGREES_TO_RADIANS_F32;
+        let real_y_rot = -y_rot * DEGREES_TO_RADIANS_F32;
+        let y_cos = mth_cos(f64::from(real_y_rot));
+        let y_sin = mth_sin(f64::from(real_y_rot));
+        let x_cos = mth_cos(f64::from(real_x_rot));
+        let x_sin = mth_sin(f64::from(real_x_rot));
+        Self::new(
+            f64::from(y_sin * x_cos),
+            f64::from(-x_sin),
+            f64::from(y_cos * x_cos),
+        )
+    }
+
     /// Apply local coordinates using the Java pitch/yaw basis construction.
     pub fn apply_local_coordinates_to_rotation(rotation: Vec2, direction: Self) -> Self {
         // Keep angle arithmetic and basis products in f32 until each basis
