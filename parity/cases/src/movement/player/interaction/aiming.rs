@@ -219,10 +219,18 @@ fn minecart_rows() -> Vec<Value> {
 fn decoration_rows() -> Vec<Value> {
     let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
     let at = |label: &str, kind: &str| facing(label, vec![mob(31, kind, 0.5, 64.0, 2.5)], use_once());
+    // A frame facing the player (north); its box hangs off the block behind it.
+    let frame = |label: &str| {
+        let mut frame = mob(31, "item_frame", 0.5, 64.0, 2.5);
+        frame["data"] = json!(2);
+        facing(label, vec![frame], use_once()).x_rot(25.0)
+    };
     vec![
         at("use-armor-stand", "armor_stand").row(),
         at("use-armor-stand-with-stone", "armor_stand").main_hand("minecraft:stone").row(),
         at("use-armor-stand-with-name-tag", "armor_stand").main_hand("minecraft:name_tag").row(),
+        frame("use-item-frame-empty").row(),
+        frame("use-item-frame-empty-with-stone").main_hand("minecraft:stone").row(),
     ]
 }
 

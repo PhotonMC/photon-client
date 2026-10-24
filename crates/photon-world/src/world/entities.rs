@@ -407,6 +407,8 @@ impl Entities {
 #[derive(Debug, Clone, Copy)]
 pub struct EntityClickView {
     pub marker: bool,
+    /// Whether an item frame holds an item (`!ItemFrame.getItem().isEmpty()`).
+    pub frame_has_item: bool,
 }
 
 impl ClientWorld {
@@ -415,12 +417,14 @@ impl ClientWorld {
         photon_data::entity_type::name(self.entities.at(entity_id)?.type_id)
     }
 
-    /// What a click on an entity asks of it on the client: an armor stand's marker flag.
+    /// What a click on an entity asks of it on the client: an armor stand's marker flag and
+    /// whether an item frame is filled.
     pub fn entity_click_view(&self, entity_id: EntityId) -> Option<EntityClickView> {
         let entity = self.entities.at(entity_id)?;
         Some(EntityClickView {
             marker: entity.armor_stand().is_marker()
                 && photon_data::entity_type::name(entity.type_id) == Some("minecraft:armor_stand"),
+            frame_has_item: entity.is_item_frame() && entity.item_stack().is_some(),
         })
     }
 

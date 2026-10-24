@@ -41,20 +41,39 @@ impl Context<'_> {
             "minecraft:chest_minecart"
             | "minecraft:hopper_minecart"
             | "minecraft:furnace_minecart" => EntityUse::Success { swing: true },
-            // `ArmorStand.interact`: the server does the work, unless the click is a marker's or
-            // a name tag's, which `Entity.interact` answers (nothing, on the client).
-            "minecraft:armor_stand" => {
-                let marker = self
-                    .world
-                    .entity_click_view(id)
-                    .is_some_and(|view| view.marker);
-                if marker || self.holds_name_tag(hand) {
-                    EntityUse::Pass
-                } else {
-                    EntityUse::Success { swing: false }
-                }
+            "minecraft:armor_stand" => self.interact_armor_stand(id, hand),
+            "minecraft:item_frame" | "minecraft:glow_item_frame" => {
+                self.interact_item_frame(id, hand)
             }
             _ => EntityUse::Pass,
+        }
+    }
+
+    /// `ArmorStand.interact`: the server does the work, unless the click is a marker's or a name
+    /// tag's, which `Entity.interact` answers (nothing, on the client).
+    fn interact_armor_stand(&self, id: EntityId, hand: u8) -> EntityUse {
+        let marker = self
+            .world
+            .entity_click_view(id)
+            .is_some_and(|view| view.marker);
+        if marker || self.holds_name_tag(hand) {
+            EntityUse::Pass
+        } else {
+            EntityUse::Success { swing: false }
+        }
+    }
+
+    /// `ItemFrame.interact` on the client: an empty frame and an empty hand do nothing. (A fixed
+    /// frame passes too, but the client is not told the flag.)
+    fn interact_item_frame(&self, id: EntityId, hand: u8) -> EntityUse {
+        let filled = self
+            .world
+            .entity_click_view(id)
+            .is_some_and(|view| view.frame_has_item);
+        if filled || self.held(hand).is_some() {
+            EntityUse::Success { swing: true }
+        } else {
+            EntityUse::Pass
         }
     }
 
