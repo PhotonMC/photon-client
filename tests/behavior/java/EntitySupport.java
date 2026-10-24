@@ -62,13 +62,7 @@ class EntitySupport {
     static final sun.misc.Unsafe UNSAFE = unsafe();
 
     static sun.misc.Unsafe unsafe() {
-        try {
-            var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            return (sun.misc.Unsafe) field.get(null);
-        } catch (ReflectiveOperationException error) {
-            throw new IllegalStateException(error);
-        }
+        return Reflect.unsafe();
     }
 
     static net.minecraft.core.Rotations rotations(final JsonArray bits) {

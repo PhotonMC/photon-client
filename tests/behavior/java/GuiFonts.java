@@ -173,9 +173,7 @@ class GuiFonts {
         if (font != null) {
             return;
         }
-        var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-        field.setAccessible(true);
-        unsafe = (sun.misc.Unsafe) field.get(null);
+        unsafe = Reflect.unsafe();
         // The game's registries, which the client classes read as they load.
         Oracle.vanillaRegistries();
         // The game's own assets, read from its jar.

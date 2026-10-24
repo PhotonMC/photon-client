@@ -78,10 +78,7 @@ public final class WindowOracle {
     }
 
     private static Window allocateWindow() throws Exception {
-        var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        Unsafe unsafe = (Unsafe)unsafeField.get(null);
-        return (Window)unsafe.allocateInstance(Window.class);
+        return (Window)Reflect.unsafe().allocateInstance(Window.class);
     }
 
     private static void setInt(Window window, String fieldName, int value) throws Exception {

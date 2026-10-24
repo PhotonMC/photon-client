@@ -242,7 +242,8 @@
         "BlockPlacementOracle.java",
         "BlockPropertyOracle.java",
         "BlockShapeOracle.java",
-        "BlockSupport.java"
+        "BlockSupport.java",
+        "Reflect.java"
       ]
     },
     "image": {
@@ -341,7 +342,8 @@
         "MathSupport.java",
         "MathTickFixtures.java",
         "MathVectorOracle.java",
-        "MathWorldLevelOracle.java"
+        "MathWorldLevelOracle.java",
+        "Reflect.java"
       ]
     },
     "model": {
@@ -479,6 +481,9 @@
         "org.jspecify:jspecify",
         "org.lwjgl:lwjgl",
         "org.lwjgl:lwjgl-glfw"
+      ],
+      "extra_sources": [
+        "Reflect.java"
       ]
     },
     "wire": {
@@ -657,7 +662,8 @@
         "com/mojang/blaze3d/audio/Library.java",
         "com/mojang/blaze3d/audio/Listener.java",
         "com/mojang/blaze3d/audio/ListenerTransform.java",
-        "com/mojang/blaze3d/audio/SoundBuffer.java"
+        "com/mojang/blaze3d/audio/SoundBuffer.java",
+        "Reflect.java"
       ]
     }
   }

@@ -340,9 +340,7 @@ class BlockItemOracle extends BlockPropertyOracle {
     /** CreativeModeInventoryScreen.updateVisibleTags on a screen with nothing else set. */
     private static JsonArray visibleTags(String term) {
         try {
-            var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            var unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+            var unsafe = Reflect.unsafe();
             var screenClass = net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.class;
             var screen = unsafe.allocateInstance(screenClass);
             var visibleField = screenClass.getDeclaredField("visibleTags");

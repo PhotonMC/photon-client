@@ -206,9 +206,7 @@ class BlockPlacementOracle extends BlockItemOracle {
         ScriptedLevel level;
         Viewer viewer;
         try {
-            var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            unsafe = (sun.misc.Unsafe) field.get(null);
+            unsafe = Reflect.unsafe();
             level = (ScriptedLevel) unsafe.allocateInstance(ScriptedLevel.class);
             viewer = (Viewer) unsafe.allocateInstance(Viewer.class);
             // The placement's collision context reads the player's height.

@@ -2,6 +2,17 @@
 final class Reflect {
     private Reflect() {}
 
+    /** The unsafe singleton, for objects built without a constructor. */
+    static sun.misc.Unsafe unsafe() {
+        try {
+            var field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            return (sun.misc.Unsafe) field.get(null);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
     static Object get(Object target, String name) throws Exception {
         var field = find(target.getClass(), name);
         return field.get(target);

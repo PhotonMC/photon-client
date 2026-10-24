@@ -444,13 +444,7 @@ class MathSupport {
     }
 
     static Unsafe unsafeInstance() {
-        try {
-            var unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            return (Unsafe)unsafeField.get(null);
-        } catch (ReflectiveOperationException error) {
-            throw new IllegalStateException("Unable to access controlled native memory", error);
-        }
+        return Reflect.unsafe();
     }
 
     static void putKey(Unsafe unsafe, Options options, String fieldName, String name,

@@ -239,9 +239,7 @@ class MovementSupport {
             return;
         }
         registries = Oracle.vanillaRegistries();
-        var unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+        unsafe = Reflect.unsafe();
         bootstrapped = true;
     }
 
