@@ -15,7 +15,6 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
-        crate::packs::serve_reload(session.packs(), &mut crate::packs::cannot_reload);
         let Some(prompt) = session.packs().take_prompt() else {
             return;
         };

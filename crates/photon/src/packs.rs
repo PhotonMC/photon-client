@@ -96,17 +96,6 @@ pub(crate) fn serve_reload(source: &PackSource, reload: &mut dyn FnMut(&LoadedPa
     }
 }
 
-/// A reload during a game: the assets are fixed once it has started, so packs that are not the
-/// ones already in use are reported as ones that could not be put to use. Loading the packs in
-/// use again changes nothing and goes through.
-pub(crate) fn cannot_reload(packs: &LoadedPacks) -> bool {
-    if crate::resources::holds(packs) {
-        return true;
-    }
-    log::warn!("server packs cannot be loaded while a game is running");
-    false
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -200,22 +189,5 @@ mod tests {
             ["Accepted", "Downloaded", "FailedReload"]
         );
         assert!(source.is_idle());
-    }
-
-    #[test]
-    fn a_game_in_progress_refuses_a_new_pack_and_keeps_what_it_had() {
-        let (source, seen) = pushed();
-        serve(&source, &mut cannot_reload);
-        assert_eq!(
-            *seen.lock().unwrap(),
-            ["Accepted", "Downloaded", "FailedReload"]
-        );
-        assert!(source.take_reload().is_none());
-        assert!(source.is_idle());
-    }
-
-    #[test]
-    fn reloading_the_packs_in_use_changes_nothing() {
-        assert!(cannot_reload(&[]));
     }
 }

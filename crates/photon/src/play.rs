@@ -441,24 +441,6 @@ pub(crate) fn bake_blocks(
     Ok((Arc::new(block_renderer), animated))
 }
 
-/// The sun and the moon's phases in the block atlas.
-fn sky_sprites(block_renderer: &BlockRenderer) -> photon_render::sky::SkySprites {
-    let sprite = |name: &str| {
-        block_renderer
-            .atlas
-            .sprites
-            .get(name)
-            .copied()
-            .unwrap_or([0.0; 4])
-    };
-    let moon_names: Vec<String> = photon_render::sky::moon_sprites().collect();
-    photon_render::sky::SkySprites {
-        sun: sprite(photon_render::sky::SUN_SPRITE),
-        end_flash: sprite(photon_render::sky::END_FLASH_SPRITE),
-        moon: std::array::from_fn(|phase| sprite(&moon_names[phase])),
-    }
-}
-
 /// What a join waits for before the session goes to the play loop.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum JoinWait {
@@ -621,6 +603,7 @@ mod glints;
 mod loading;
 mod own_model;
 mod pacing;
+mod reload;
 mod schedule;
 mod social_toast;
 mod switch;

@@ -24,9 +24,7 @@ impl Play {
         let position = report_spawn(&session)?;
         // The vanilla data pack the server runs, which sits next to the
         // assets: the biomes' colours and the sky's data come from it.
-        let data_root = env::var("PHOTON_DATA")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|_| std::path::Path::new(&root).with_file_name("data"));
+        let data_root = super::reload::data_root(&root);
         let biome_tints = Arc::new(
             BiomeTints::load(
                 &data_root,
@@ -37,7 +35,7 @@ impl Play {
             .ok_or("the biome colours could not be read")?,
         );
         particles.set_terrain(Arc::clone(&block_renderer), Arc::clone(&biome_tints));
-        let sky_sprites = sky_sprites(&block_renderer);
+        let sky_sprites = super::reload::sky_sprites(&block_renderer);
         let origin = [
             position.x.floor() as i32,
             position.y.floor() as i32,
@@ -71,29 +69,7 @@ impl Play {
             session.registry_names("minecraft:trim_pattern").to_vec(),
             session.registry_names("minecraft:trim_material").to_vec(),
         );
-        let entity_textures = photon_render::entity::textures::EntityTextures::build(
-            photon_render::entity::player_renderer::skin_textures()
-                .chain(mobs::textures())
-                .chain(overlays::SHARED_TEXTURES)
-                .map(str::to_owned)
-                .chain(villagers::textures())
-                .chain(armor.textures())
-                .chain(particles.textures().iter().cloned())
-                // A texture two layers share is packed once.
-                .scan(std::collections::HashSet::new(), |seen, name| {
-                    Some(seen.insert(name.clone()).then_some(name))
-                })
-                .flatten()
-                .map(|name| {
-                    let image = texture(&root, &name, "entity texture")?;
-                    Ok((name, image))
-                })
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .chain(Armor::trim_images(&root))
-                .collect(),
-        )
-        .ok_or("the entity textures did not fit")?;
+        let entity_textures = super::reload::entity_textures(&root, &armor, &particles)?;
         backend.load_entity_texture(&entity_textures.image)?;
         particles.bind_textures(&entity_textures);
         let skin_rect = entity_textures
@@ -321,6 +297,7 @@ impl Play {
             .receive_disconnect(&self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .receive_death(&mut self.session, &mut self.surface, &self.screen_assets);
+        self.serve_pack_reload();
         self.controls.receive_pack_requests(
             &mut self.session,
             &mut self.surface,
@@ -519,7 +496,10 @@ impl Play {
 
 /// The textures drawn over the world rather than in it: the world border's forcefield, the water
 /// over the view, and the end portal's sky and picture.
-fn load_overlay_textures(backend: &mut photon_render::VulkanBackend, root: &str) -> Result<()> {
+pub(super) fn load_overlay_textures(
+    backend: &mut photon_render::VulkanBackend,
+    root: &str,
+) -> Result<()> {
     backend.load_world_border_texture(&texture(root, "misc/forcefield", "forcefield")?)?;
     backend.load_underwater_texture(&texture(root, "misc/underwater", "underwater")?)?;
     backend.load_end_portal_textures((
@@ -547,7 +527,7 @@ fn apply_env_options(options: &mut photon_game::options::Options) {
 }
 
 /// What the data pack says of the registries, handed to the parts that read it.
-fn share_registries(
+pub(super) fn share_registries(
     session: &mut PlaySession,
     particles: &mut crate::particles::Particles,
     registries: &photon_game::registries::Registries,

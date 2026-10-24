@@ -157,6 +157,18 @@ impl SectionMeshes {
         self.rebuild_all(backend)
     }
 
+    /// The block models changed (the resource packs): the workers mesh with the new renderer and
+    /// every section is built again.
+    pub fn set_renderer(
+        &mut self,
+        renderer: Arc<photon_render::block::world_mesh::BlockRenderer>,
+        tints: Arc<photon_render::block::biome_tint::BiomeTints>,
+        backend: &mut VulkanBackend,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.workers = SectionWorkers::new(self.worker_count, renderer, tints);
+        self.rebuild_all(backend)
+    }
+
     /// `LevelExtractor.allChanged`: every section is dropped and built again (the `ao` option,
     /// F3+A).
     pub fn rebuild_all(
