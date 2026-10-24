@@ -176,6 +176,18 @@ fn fresh_user() -> String {
     )
 }
 
+/// Puts the bench's player in spectator mode once it has joined: the command is repeated for
+/// the seconds the join may take, and an unknown player is no error for the server.
+fn spectate(user: &str) {
+    let command = format!("gamemode spectator {user}");
+    std::thread::spawn(move || {
+        for _ in 0..40 {
+            std::thread::sleep(Duration::from_millis(500));
+            let _ = super::rcon::send(std::slice::from_ref(&command));
+        }
+    });
+}
+
 fn run_once(options: &Options, number: u32) -> Result<Value, String> {
     let directory = data().join("runs").join("bench");
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
@@ -186,6 +198,8 @@ fn run_once(options: &Options, number: u32) -> Result<Value, String> {
     } else {
         (STILL_USER.to_owned(), STILL_SCRIPT)
     };
+    // A spectator flies through trees and water, so the run measures the engine, not the terrain.
+    spectate(&user);
     let mut command = Command::new(client_binary());
     command
         .current_dir(process::root())
