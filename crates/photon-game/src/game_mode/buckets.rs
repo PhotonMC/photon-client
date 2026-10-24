@@ -224,10 +224,10 @@ pub(super) fn filled_with(
     filled_result_of(ctx, hand, fresh, true)
 }
 
-/// A bowl filled with stew by a mooshroom: `createFilledResult` that does not limit the creative
-/// stack size, so a creative player always gets the stew added.
-pub(super) fn stew_result(ctx: &mut Context<'_>, hand: u8) {
-    if let Some(stew) = crate::item::id_of("minecraft:mushroom_stew") {
+/// A bowl filled with stew (`name`) by a mooshroom: `createFilledResult` that does not limit the
+/// creative stack size, so a creative player always gets the stew added.
+pub(super) fn stew_result(ctx: &mut Context<'_>, hand: u8, name: &str) {
+    if let Some(stew) = crate::item::id_of(name) {
         filled_result_of(ctx, hand, ClientItemStackState::new(1, stew), false);
     }
 }

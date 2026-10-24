@@ -358,6 +358,8 @@ pub(crate) struct EntityState {
     pub(crate) screaming_goat: bool,
     /// A mooshroom's variant, zero for red.
     pub(crate) mooshroom_type: i32,
+    /// Whether a mooshroom holds the stew effects of a flower fed to it on this client.
+    pub(crate) mooshroom_stew: bool,
     /// A rabbit's variant, zero for brown.
     pub(crate) rabbit_type: i32,
     /// Whether a creeper is charged.

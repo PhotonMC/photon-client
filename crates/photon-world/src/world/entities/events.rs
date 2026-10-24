@@ -174,6 +174,13 @@ impl Entities {
         true
     }
 
+    /// Sets or clears the stew effects a mooshroom holds (`MushroomCow.stewEffects`).
+    pub fn set_mooshroom_stew(&mut self, entity_id: EntityId, held: bool) {
+        if let Some(entity) = self.at_mut(entity_id) {
+            entity.living.mooshroom_stew = held;
+        }
+    }
+
     /// `handleEntityLinkPacket`: the entity is tied to the entity with this id, or let go when
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.

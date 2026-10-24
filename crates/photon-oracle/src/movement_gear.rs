@@ -370,7 +370,18 @@ pub(super) fn told_entities(
         // The reference's entity random starts from nowhere in particular; the port seeds it from the id.
         world.fix_entity_sound_seed(i64::from(id.0));
         if described.get("baby").is_some() {
+            // Data id 16 holds the baby flag of the ageable mobs, not of a piglin's own field.
+            if name == "minecraft:piglin" {
+                return Err("the baby flag of a piglin is not at data id 16".to_owned());
+            }
             world.apply_entity_metadata(id, &[16, 8, 1, 255]);
+        }
+        if described.get("brown").is_some() {
+            // The variant is an int (serializer 1), brown is one.
+            let mut data = vec![photon_world::MOOSHROOM_TYPE_DATA_ID, 1];
+            photon_core::wire::write_varint(1, &mut data);
+            data.push(255);
+            world.apply_entity_metadata(id, &data);
         }
         if described.get("screaming").is_some() {
             world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);

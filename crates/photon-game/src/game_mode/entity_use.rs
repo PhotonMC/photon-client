@@ -234,28 +234,89 @@ impl Context<'_> {
         EntityUse::Success { swing: true }
     }
 
-    /// `MushroomCow.mobInteract`: a bowl on an adult is filled with stew (no sound reaches the
-    /// client: the mooshroom plays it with no player excluded), shears on an adult succeed with a
-    /// swing, the rest is a cow's. The flower branch of a brown mooshroom is not ported; when it
-    /// is, the client keeps per-entity stew effects and the bowl then predicts suspicious stew.
+    /// `MushroomCow.mobInteract`: a bowl on an adult is filled with stew (suspicious when a
+    /// flower was fed to it; no sound reaches the client: the mooshroom plays it with no player
+    /// excluded), shears on an adult swing, a flower on a brown adult is eaten (used up unless
+    /// materials are infinite) and sets the stew effects; the rest is a cow's.
     fn interact_mooshroom(&mut self, id: EntityId, hand: u8) -> EntityUse {
-        let grown = self
-            .world
-            .entities()
-            .at(id)
-            .is_some_and(|entity| !entity.is_baby());
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let (grown, brown, stewed) = (
+            !entity.is_baby(),
+            entity.mooshroom_variant() == 1,
+            entity.mooshroom_has_stew_effects(),
+        );
         let held = |name: &str| {
             self.held(hand)
                 .is_some_and(|(item, _)| crate::item::id_of(name) == Some(item))
         };
         if grown && held("minecraft:bowl") {
-            super::buckets::stew_result(self, hand);
+            self.fill_bowl_from_mooshroom(id, hand, stewed);
             EntityUse::Success { swing: true }
         } else if grown && held("minecraft:shears") {
+            EntityUse::Success { swing: true }
+        } else if grown && brown && self.holds_suspicious_effect_item(hand) {
+            self.eat_flower_as_mooshroom(id, hand, stewed);
             EntityUse::Success { swing: true }
         } else {
             self.interact_cow(id, hand)
         }
+    }
+
+    /// The bowl branch: stew, suspicious when the mooshroom holds a flower's effects, which the
+    /// bowl then clears.
+    fn fill_bowl_from_mooshroom(&mut self, id: EntityId, hand: u8, stewed: bool) {
+        let stew = if stewed {
+            "minecraft:suspicious_stew"
+        } else {
+            "minecraft:mushroom_stew"
+        };
+        self.world.entities_mut().set_mooshroom_stew(id, false);
+        super::buckets::stew_result(self, hand, stew);
+    }
+
+    /// The flower branch: eaten (used up unless materials are infinite) when the mooshroom holds
+    /// no effects yet, which it then does.
+    fn eat_flower_as_mooshroom(&mut self, id: EntityId, hand: u8, stewed: bool) {
+        if stewed {
+            return;
+        }
+        if !self.instabuild() {
+            let slot = self.hand_slot(hand);
+            self.world.shrink_local_player_slot(slot, 1);
+        }
+        self.world.entities_mut().set_mooshroom_stew(id, true);
+    }
+
+    /// `SuspiciousEffectHolder.tryGet` of the held item: the block items of `FlowerBlock` and its
+    /// two subclasses (the wither rose and the eyeblossoms). A type check in the reference, not a
+    /// tag, so the server's tags do not change it.
+    fn holds_suspicious_effect_item(&self, hand: u8) -> bool {
+        const HOLDERS: [&str; 17] = [
+            "minecraft:dandelion",
+            "minecraft:golden_dandelion",
+            "minecraft:torchflower",
+            "minecraft:poppy",
+            "minecraft:blue_orchid",
+            "minecraft:allium",
+            "minecraft:azure_bluet",
+            "minecraft:red_tulip",
+            "minecraft:orange_tulip",
+            "minecraft:white_tulip",
+            "minecraft:pink_tulip",
+            "minecraft:oxeye_daisy",
+            "minecraft:cornflower",
+            "minecraft:wither_rose",
+            "minecraft:lily_of_the_valley",
+            "minecraft:open_eyeblossom",
+            "minecraft:closed_eyeblossom",
+        ];
+        self.held(hand).is_some_and(|(item, _)| {
+            HOLDERS
+                .iter()
+                .any(|name| crate::item::id_of(name) == Some(item))
+        })
     }
 
     /// `SnowGolem.mobInteract`: shears on a golem that wears its pumpkin succeed with a swing (the

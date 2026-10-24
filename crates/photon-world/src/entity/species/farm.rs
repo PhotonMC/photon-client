@@ -12,6 +12,12 @@ impl ClientEntity {
         self.living.mooshroom_type.clamp(0, 1)
     }
 
+    /// Whether a mooshroom holds the stew effects of a flower (`MushroomCow.stewEffects` is set;
+    /// the server does not send it, so only this client's own feeding sets it).
+    pub fn mooshroom_has_stew_effects(&self) -> bool {
+        self.living.mooshroom_stew
+    }
+
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).
     pub fn sheep_dye_id(&self) -> u8 {
         self.living.animal.wool & 15
