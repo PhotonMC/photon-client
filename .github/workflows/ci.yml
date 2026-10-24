@@ -83,7 +83,7 @@ jobs:
         with:
           key: parity
       - name: Fetch the pinned game from Mojang
-        run: cargo xtask setup
+        run: cargo xtask setup --named
       - run: cargo xtask parity
 
   deny:
