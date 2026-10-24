@@ -125,7 +125,7 @@ pub fn camera_overlays(
     let Some(player) = session.player() else {
         return photon_gui::hud::CameraOverlays::default();
     };
-    let feet = player.position();
+    let feet = crate::view::camera_feet(session, player);
     let intensity = player.portal_effect_intensity(partial);
     let state = photon_data::block::registry::default_state_named("minecraft:nether_portal");
     let sprite = renderer

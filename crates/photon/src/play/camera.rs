@@ -291,8 +291,12 @@ pub(super) fn tick_view(
             ),
             (first_person, camera_eye_height(session, player)),
         );
-        let at = player.position();
-        [at.x, at.y + f64::from(player.eye_height()), at.z]
+        let at = crate::view::camera_feet(session, player);
+        [
+            at.x,
+            at.y + f64::from(camera_eye_height(session, player)),
+            at.z,
+        ]
     });
     let darken = photon_world::particles::Ambience::sky_darken(&sky.ambience(session));
     gui.tick(eyes.map(|point| session.world().eye_brightness(point, darken)));

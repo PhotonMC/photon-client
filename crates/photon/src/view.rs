@@ -13,6 +13,23 @@ pub fn eye_position(
     photon_core::math::Vec3::new(feet.x, feet.y + f64::from(player.eye_height()), feet.z)
 }
 
+/// Where the camera entity stands now: the entity a spectator was handed to, or the player.
+pub fn camera_feet(
+    session: &photon_net::connection::PlaySession,
+    player: &photon_world::local_player::LocalPlayer,
+) -> photon_core::math::Vec3 {
+    session
+        .camera_entity()
+        .and_then(|id| session.world().entities().at(id))
+        .map_or_else(
+            || player.position(),
+            |entity| {
+                let (x, y, z) = entity.position();
+                photon_core::math::Vec3::new(x, y, z)
+            },
+        )
+}
+
 /// `Minecraft.crosshairPickEntity`: the entity the crosshair is on, as the nearest thing along
 /// the aim.
 pub fn crosshair_entity(
