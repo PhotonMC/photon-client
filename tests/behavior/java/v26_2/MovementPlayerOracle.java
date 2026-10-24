@@ -133,6 +133,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 var entity = type.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
                     net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
                 entity.setId(described.get("id").getAsInt());
+                // The entity's random starts from nowhere in particular; the port seeds it from the id.
+                entity.getRandom().setSeed(entity.getId());
                 entity.snapTo(Oracle.f64(described, "x"), Oracle.f64(described, "y"),
                     Oracle.f64(described, "z"), 0.0F, 0.0F);
                 if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity hanging) {

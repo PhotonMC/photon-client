@@ -19,7 +19,7 @@ pub(super) enum EntityUse {
 
 impl Context<'_> {
     /// `Player.interactOn` for a player who is not a spectator, on the client.
-    pub(super) fn interact_entity(&self, id: EntityId, hand: u8) -> EntityUse {
+    pub(super) fn interact_entity(&mut self, id: EntityId, hand: u8) -> EntityUse {
         if self.named_tag_on_living_mob(id, hand) {
             return EntityUse::Success { swing: true };
         }
@@ -36,7 +36,7 @@ impl Context<'_> {
     }
 
     /// `Entity.interact` of the clicked class.
-    fn interact_entity_side(&self, id: EntityId, hand: u8) -> EntityUse {
+    fn interact_entity_side(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(name) = self.world.entity_type_name(id) else {
             return EntityUse::Pass;
         };
@@ -62,6 +62,7 @@ impl Context<'_> {
             "minecraft:item_frame" | "minecraft:glow_item_frame" => {
                 self.interact_item_frame(id, hand)
             }
+            "minecraft:creeper" => self.interact_creeper(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -118,6 +119,41 @@ impl Context<'_> {
         } else {
             EntityUse::Success { swing: false }
         }
+    }
+
+    /// `Creeper.mobInteract`: a flint and steel or fire charge lights the fuse, which the client
+    /// answers with a swing and the sound of the igniter. (The reference draws the pitch from the
+    /// creeper's own unseeded random; a fresh source seeded by the entity id stands for it.)
+    fn interact_creeper(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let alive = entity.health().is_none_or(|health| health > 0.0);
+        let at = entity.position();
+        let igniter = self.held(hand).filter(|(item, _)| {
+            self.world
+                .block_state_registry()
+                .item_tags()
+                .contains(item.0, "minecraft:creeper_igniters")
+        });
+        let Some((item, _)) = igniter.filter(|_| alive) else {
+            return EntityUse::Pass;
+        };
+        let event = if crate::item::id_of("minecraft:fire_charge") == Some(item) {
+            "minecraft:item.firecharge.use"
+        } else {
+            "minecraft:item.flintandsteel.use"
+        };
+        let pitch =
+            photon_core::random::RandomSource::create(i64::from(id.0)).next_float() * 0.4 + 0.8;
+        self.world
+            .push_sound(photon_world::local_player::LocalSound::at(
+                event,
+                photon_world::local_player::LocalSoundSource::Hostile,
+                (1.0, pitch),
+                at,
+            ));
+        EntityUse::Success { swing: true }
     }
 
     /// The end of `Entity.interact` for a `Leashable` that lives, which `Mob.interact` runs
