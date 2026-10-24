@@ -41,10 +41,8 @@ class MathWorldLevelOracle extends MathVectorOracle {
             biomeRegistry.freeze();
             var registryAccess = new RegistryAccess.ImmutableRegistryAccess(List.of(biomeRegistry));
             var containerFactory = PalettedContainerFactory.create(registryAccess);
-            var nonEmptyField = LevelChunkSection.class.getDeclaredField("nonEmptyBlockCount");
-            var fluidField = LevelChunkSection.class.getDeclaredField("fluidCount");
-            nonEmptyField.setAccessible(true);
-            fluidField.setAccessible(true);
+            var nonEmptyField = Reflect.field(LevelChunkSection.class, "nonEmptyBlockCount");
+            var fluidField = Reflect.field(LevelChunkSection.class, "fluidCount");
             var tracks = new JsonArray();
             for (var trackEntry : request.getAsJsonArray("tracks")) {
                 JsonObject track = trackEntry.getAsJsonObject();
@@ -159,10 +157,8 @@ class MathWorldLevelOracle extends MathVectorOracle {
             biomeRegistry.freeze();
             var containerFactory = PalettedContainerFactory.create(
                 new RegistryAccess.ImmutableRegistryAccess(List.of(biomeRegistry)));
-            var nonEmptyField = LevelChunkSection.class.getDeclaredField("nonEmptyBlockCount");
-            var fluidField = LevelChunkSection.class.getDeclaredField("fluidCount");
-            nonEmptyField.setAccessible(true);
-            fluidField.setAccessible(true);
+            var nonEmptyField = Reflect.field(LevelChunkSection.class, "nonEmptyBlockCount");
+            var fluidField = Reflect.field(LevelChunkSection.class, "fluidCount");
             var sections = new ArrayList<LevelChunkSection>();
             for (var sectionEntry : request.getAsJsonArray("sections")) {
                 LevelChunkSection section = new LevelChunkSection(containerFactory);

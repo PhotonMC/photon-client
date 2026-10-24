@@ -269,13 +269,12 @@ class GuiOverlayOracle extends GuiHudOracle {
         state.isDiscrete = entity.isDiscrete();
         state.lightCoords = row.get("light").getAsInt();
         boolean living = !row.get("renderer").getAsString().equals("entity");
-        var extract = (living
+        var extract = Reflect.method((living
             ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class
-            : net.minecraft.client.renderer.entity.EntityRenderer.class).getDeclaredMethod("extractNameTags",
+            : net.minecraft.client.renderer.entity.EntityRenderer.class), "extractNameTags",
                 living ? net.minecraft.world.entity.LivingEntity.class : net.minecraft.world.entity.Entity.class,
                 living ? net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class
                     : net.minecraft.client.renderer.entity.state.EntityRenderState.class, float.class);
-        extract.setAccessible(true);
         extract.invoke(renderer, entity, state, 0.0F);
         entry.addProperty("shown", state.nameTag != null);
         var submits = new JsonArray();

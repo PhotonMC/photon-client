@@ -194,9 +194,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
     static void eventSquidSpeed(LivingRow ctx, JsonObject event) throws Exception {
         var entity = ctx.entity();
         // What the constructor draws from an unseeded random source: fixed here.
-        var speed = net.minecraft.world.entity.animal.squid.Squid.class
-            .getDeclaredField("tentacleSpeed");
-        speed.setAccessible(true);
+        var speed = Reflect.field(net.minecraft.world.entity.animal.squid.Squid.class, "tentacleSpeed");
         speed.setFloat(entity, Oracle.f32(event, "speed"));
     }
 
@@ -204,9 +202,7 @@ class MovementAnimalEvents extends MovementPacketEvents {
         var entity = ctx.entity();
         // What the reference draws from an unseeded random source: fixed here.
         var rabbit = (net.minecraft.world.entity.animal.rabbit.Rabbit) entity;
-        var timeout = net.minecraft.world.entity.animal.rabbit.Rabbit.class
-            .getDeclaredField("idleAnimationTimeout");
-        timeout.setAccessible(true);
+        var timeout = Reflect.field(net.minecraft.world.entity.animal.rabbit.Rabbit.class, "idleAnimationTimeout");
         timeout.setInt(rabbit, event.get("timeout").getAsInt());
         var random = Reflect.field(net.minecraft.world.entity.Entity.class, "random");
         ((net.minecraft.util.RandomSource) random.get(rabbit)).setSeed(event.get("seed").getAsLong());

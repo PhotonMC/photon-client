@@ -182,10 +182,8 @@ class MovementObjectExtras extends MovementMobExtras {
         };
         var renderer = unsafe.allocateInstance(rendererClass);
         var base = net.minecraft.client.renderer.entity.EntityRenderer.class;
-        var affected = base.getDeclaredMethod("affectedByCulling", net.minecraft.world.entity.Entity.class);
-        affected.setAccessible(true);
-        var box = base.getDeclaredMethod("getBoundingBoxForCulling", net.minecraft.world.entity.Entity.class);
-        box.setAccessible(true);
+        var affected = Reflect.method(base, "affectedByCulling", net.minecraft.world.entity.Entity.class);
+        var box = Reflect.method(base, "getBoundingBoxForCulling", net.minecraft.world.entity.Entity.class);
         boolean culled = (boolean) affected.invoke(renderer, entity);
         described.addProperty("culled", culled);
         described.addProperty("culling_position", Oracle.bits(entity.getX()) + "," + Oracle.bits(entity.getY()) + ","

@@ -43,15 +43,12 @@ class SoundSupport {
             files.put(Identifier.fromNamespaceAndPath("minecraft", file), (Resource) UNSAFE.allocateInstance(Resource.class));
         }
         var preparationsClass = Class.forName("net.minecraft.client.sounds.SoundManager$Preparations");
-        var constructor = preparationsClass.getDeclaredConstructor();
-        constructor.setAccessible(true);
+        var constructor = Reflect.constructor(preparationsClass);
         var preparations = constructor.newInstance();
-        var cache = preparationsClass.getDeclaredField("soundCache");
-        cache.setAccessible(true);
+        var cache = Reflect.field(preparationsClass, "soundCache");
         cache.set(preparations, files);
-        var handle = preparationsClass.getDeclaredMethod("handleRegistration", Identifier.class,
+        var handle = Reflect.method(preparationsClass, "handleRegistration", Identifier.class,
             net.minecraft.client.resources.sounds.SoundEventRegistration.class);
-        handle.setAccessible(true);
         var gson = get(null, SoundManager.class, "GSON");
         var type = get(null, SoundManager.class, "SOUND_EVENT_REGISTRATION_TYPE");
         try (var reader = new java.io.StringReader(text)) {
@@ -171,15 +168,12 @@ class SoundSupport {
         // `SoundManager.prepare`: the file parsed as one, every event registered; a file with anything
         // wrong in it registers nothing.
         var preparationsClass = Class.forName("net.minecraft.client.sounds.SoundManager$Preparations");
-        var constructor = preparationsClass.getDeclaredConstructor();
-        constructor.setAccessible(true);
+        var constructor = Reflect.constructor(preparationsClass);
         var preparations = constructor.newInstance();
-        var cache = preparationsClass.getDeclaredField("soundCache");
-        cache.setAccessible(true);
+        var cache = Reflect.field(preparationsClass, "soundCache");
         cache.set(preparations, files);
-        var handle = preparationsClass.getDeclaredMethod("handleRegistration", Identifier.class,
+        var handle = Reflect.method(preparationsClass, "handleRegistration", Identifier.class,
             net.minecraft.client.resources.sounds.SoundEventRegistration.class);
-        handle.setAccessible(true);
         var gson = get(null, SoundManager.class, "GSON");
         var type = get(null, SoundManager.class, "SOUND_EVENT_REGISTRATION_TYPE");
         boolean valid = true;

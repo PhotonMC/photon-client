@@ -123,8 +123,7 @@ class MovementParticleOracle extends MovementMenuOracle {
 
         SpriteSetProbe(int count) throws Exception {
             var type = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet");
-            var constructor = type.getDeclaredConstructor();
-            constructor.setAccessible(true);
+            var constructor = Reflect.constructor(type);
             set = constructor.newInstance();
             // Opaque pictures of the particle atlas (`Layer.bySprite` asks some particles).
             var contents = unsafe.allocateInstance(net.minecraft.client.renderer.texture.SpriteContents.class);
@@ -136,8 +135,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 setField(sprite, "atlasLocation", net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_PARTICLES);
                 sprites.add(sprite);
             }
-            var rebind = type.getDeclaredMethod("rebind", java.util.List.class);
-            rebind.setAccessible(true);
+            var rebind = Reflect.method(type, "rebind", java.util.List.class);
             rebind.invoke(set, sprites);
         }
 
@@ -168,15 +166,13 @@ class MovementParticleOracle extends MovementMenuOracle {
             // A picture of the item atlas.
             setField(sprite, "atlasLocation", net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_ITEMS);
             if (kind.equals("item_crumb")) {
-                var constructor = crumb.getDeclaredConstructor(net.minecraft.client.multiplayer.ClientLevel.class,
+                var constructor = Reflect.constructor(crumb, net.minecraft.client.multiplayer.ClientLevel.class,
                     double.class, double.class, double.class, double.class, double.class, double.class,
                     net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
-                constructor.setAccessible(true);
                 return constructor.newInstance(level, at[0], at[1], at[2], at[3], at[4], at[5], sprite);
             }
-            var constructor = crumb.getDeclaredConstructor(net.minecraft.client.multiplayer.ClientLevel.class,
+            var constructor = Reflect.constructor(crumb, net.minecraft.client.multiplayer.ClientLevel.class,
                 double.class, double.class, double.class, net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
-            constructor.setAccessible(true);
             return constructor.newInstance(level, at[0], at[1], at[2], sprite);
         }
         // The coloured ones through the engine's own providers, their options built from the row.
@@ -201,9 +197,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             var resources = new net.minecraft.client.particle.ParticleResources();
             var providers = (java.util.Map) getField(resources, "providers");
             var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
-            var rebind = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet")
-                .getDeclaredMethod("rebind", java.util.List.class);
-            rebind.setAccessible(true);
+            var rebind = Reflect.method(Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
             for (var set : sets.values()) {
                 rebind.invoke(set, sprites.sprites);
             }
@@ -359,8 +353,7 @@ class MovementParticleOracle extends MovementMenuOracle {
                 @SuppressWarnings("unchecked")
                 var queue = (java.util.Queue<net.minecraft.client.particle.Particle>) getField(this, "particlesToAdd");
                 // What a try that missed drew from the engine's random source is given back.
-                var engineSeedField = getField(this, "random").getClass().getDeclaredField("seed");
-                engineSeedField.setAccessible(true);
+                var engineSeedField = Reflect.field(getField(this, "random").getClass(), "seed");
                 var engineSeed = (java.util.concurrent.atomic.AtomicLong) engineSeedField.get(getField(this, "random"));
                 long engineSeedBefore = engineSeed.get();
                 // A try's gaussians are given back too: the pair a polar draw makes is half used.
@@ -526,9 +519,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         var resources = new net.minecraft.client.particle.ParticleResources();
         @SuppressWarnings("unchecked")
         var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
-        var rebind = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet")
-            .getDeclaredMethod("rebind", java.util.List.class);
-        rebind.setAccessible(true);
+        var rebind = Reflect.method(Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
         for (var set : sets.values()) {
             rebind.invoke(set, sprites.sprites);
         }

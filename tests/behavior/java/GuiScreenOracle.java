@@ -258,10 +258,8 @@ class GuiScreenOracle extends GuiOverlayOracle {
             // The sound itself is not resolved here, so the fields are read as the instance was made.
             try {
                 var base = net.minecraft.client.resources.sounds.AbstractSoundInstance.class;
-                var pitch = base.getDeclaredField("pitch");
-                var volume = base.getDeclaredField("volume");
-                pitch.setAccessible(true);
-                volume.setAccessible(true);
+                var pitch = Reflect.field(base, "pitch");
+                var volume = Reflect.field(base, "volume");
                 ASKED.add(instance.getIdentifier() + " " + pitch.get(instance) + " " + volume.get(instance));
             } catch (ReflectiveOperationException e) {
                 throw new IllegalStateException(e);

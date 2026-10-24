@@ -125,12 +125,8 @@ class BlockPropertyOracle extends BlockShapeOracle {
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
         var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
-        var horizontal = net.minecraft.world.level.block.state.BlockBehaviour.class
-            .getDeclaredMethod("getMaxHorizontalOffset");
-        var vertical = net.minecraft.world.level.block.state.BlockBehaviour.class
-            .getDeclaredMethod("getMaxVerticalOffset");
-        horizontal.setAccessible(true);
-        vertical.setAccessible(true);
+        var horizontal = Reflect.method(net.minecraft.world.level.block.state.BlockBehaviour.class, "getMaxHorizontalOffset");
+        var vertical = Reflect.method(net.minecraft.world.level.block.state.BlockBehaviour.class, "getMaxVerticalOffset");
         var blocks = new JsonArray();
         for (var block : registry) {
             var state = block.defaultBlockState();

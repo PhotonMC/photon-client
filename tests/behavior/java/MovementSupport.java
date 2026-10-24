@@ -39,10 +39,8 @@ class MovementSupport {
             float volume;
             float pitch;
             try {
-                var volumeField = net.minecraft.client.resources.sounds.AbstractSoundInstance.class.getDeclaredField("volume");
-                var pitchField = net.minecraft.client.resources.sounds.AbstractSoundInstance.class.getDeclaredField("pitch");
-                volumeField.setAccessible(true);
-                pitchField.setAccessible(true);
+                var volumeField = Reflect.field(net.minecraft.client.resources.sounds.AbstractSoundInstance.class, "volume");
+                var pitchField = Reflect.field(net.minecraft.client.resources.sounds.AbstractSoundInstance.class, "pitch");
                 volume = (float) volumeField.get(instance);
                 pitch = (float) pitchField.get(instance);
             } catch (ReflectiveOperationException failure) {
@@ -812,7 +810,7 @@ class MovementSupport {
         if (codecField == null) {
             throw new IllegalStateException("No codec on " + packet.getClass());
         }
-        codecField.setAccessible(true);
+        Reflect.open(codecField);
         var codec = (net.minecraft.network.codec.StreamCodec) codecField.get(null);
         var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
             io.netty.buffer.Unpooled.buffer(), registries);

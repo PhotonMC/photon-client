@@ -47,16 +47,14 @@ class ModelMath {
 
         try {
             var bakery = net.minecraft.client.resources.model.cuboid.FaceBakery.class;
-            var findClosest = bakery.getDeclaredMethod("findClosestDirection", org.joml.Vector3f.class);
-            findClosest.setAccessible(true);
+            var findClosest = Reflect.method(bakery, "findClosestDirection", org.joml.Vector3f.class);
             var chosen = (net.minecraft.core.Direction)findClosest.invoke(null, normal);
             entry.addProperty("direction", chosen == null ? "none" : chosen.getName());
 
             if (chosen != null) {
                 var uvs = new long[] {10L, 20L, 30L, 40L};
-                var rewind = bakery.getDeclaredMethod("recalculateWinding",
+                var rewind = Reflect.method(bakery, "recalculateWinding",
                     org.joml.Vector3fc[].class, long[].class, net.minecraft.core.Direction.class);
-                rewind.setAccessible(true);
                 try {
                     rewind.invoke(null, positions, uvs, chosen);
                     var wound = new JsonArray();
@@ -140,7 +138,7 @@ class ModelMath {
 
     static String bits(Class<?> owner, Object instance, String accessor) throws ReflectiveOperationException {
         var method = owner.getMethod(accessor);
-        method.setAccessible(true);
+        Reflect.open(method);
         float value = (Float)method.invoke(instance);
         return String.format(java.util.Locale.ROOT, "%08x", Float.floatToRawIntBits(value));
     }

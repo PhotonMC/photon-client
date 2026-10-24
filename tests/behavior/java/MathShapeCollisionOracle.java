@@ -233,12 +233,8 @@ class MathShapeCollisionOracle extends MathProjectileOracle {
             shapes.add(voxelShape(entry.getAsJsonObject()));
         }
         try {
-            var candidatesMethod = Entity.class.getDeclaredMethod(
-                "collectCandidateStepUpHeights", AABB.class, java.util.List.class, float.class, float.class);
-            var collideMethod = Entity.class.getDeclaredMethod(
-                "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
-            candidatesMethod.setAccessible(true);
-            collideMethod.setAccessible(true);
+            var candidatesMethod = Reflect.method(Entity.class, "collectCandidateStepUpHeights", AABB.class, java.util.List.class, float.class, float.class);
+            var collideMethod = Reflect.method(Entity.class, "collideWithShapes", Vec3.class, AABB.class, java.util.List.class);
             var candidates = (float[]) candidatesMethod.invoke(
                 null,
                 groundedBox,

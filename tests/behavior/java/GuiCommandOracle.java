@@ -72,9 +72,7 @@ class GuiCommandOracle extends GuiChatOracle {
         var dispatcher = commandDispatcher(request.get("tree").getAsString());
         var formatText = Reflect.method(net.minecraft.client.gui.components.CommandSuggestions.class, "formatText",
             com.mojang.brigadier.ParseResults.class, String.class, int.class);
-        var exceptionMessage = net.minecraft.client.gui.components.CommandSuggestions.class
-            .getDeclaredMethod("getExceptionMessage", com.mojang.brigadier.exceptions.CommandSyntaxException.class);
-        exceptionMessage.setAccessible(true);
+        var exceptionMessage = Reflect.method(net.minecraft.client.gui.components.CommandSuggestions.class, "getExceptionMessage", com.mojang.brigadier.exceptions.CommandSyntaxException.class);
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();

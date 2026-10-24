@@ -699,12 +699,10 @@ class EntityBlockOracle extends EntityAquaticOracle {
             }
         });
         var names = new java.util.IdentityHashMap<Object, String>();
-        var spritesField = rendererClass.getDeclaredField("sprites");
-        spritesField.setAccessible(true);
+        var spritesField = Reflect.field(rendererClass, "sprites");
         spritesField.set(renderer, sprites);
         for (var name : new String[] {"eye", "wind", "shell", "cage"}) {
-            var field = rendererClass.getDeclaredField(name);
-            field.setAccessible(true);
+            var field = Reflect.field(rendererClass, name);
             var part = bakedLayer("minecraft:conduit#" + name);
             field.set(renderer, part);
             names.put(part, name);
@@ -902,8 +900,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
         for (var entry : layers.entrySet()) {
             models.put(entry.getKey(), new net.minecraft.client.model.object.statue.CopperGolemStatueModel(bakedLayer(entry.getValue())));
         }
-        var modelsField = rendererClass.getDeclaredField("models");
-        modelsField.setAccessible(true);
+        var modelsField = Reflect.field(rendererClass, "models");
         modelsField.set(renderer, models);
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -1327,7 +1324,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
                 continue;
             }
             try {
-                component.getAccessor().setAccessible(true);
+                Reflect.open(component.getAccessor());
                 parts.add(component.getName() + "=" + describeModel(component.getAccessor().invoke(value)));
             } catch (ReflectiveOperationException error) {
                 throw new IllegalStateException(error);

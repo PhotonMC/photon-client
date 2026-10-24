@@ -74,17 +74,12 @@ class MathChunkCacheOracle extends MathBoxOracle {
             Unsafe unsafe = unsafeInstance();
             var cacheOwner = (ClientChunkCache)unsafe.allocateInstance(ClientChunkCache.class);
             Class<?> storageClass = Class.forName(ClientChunkCache.class.getName() + "$Storage");
-            var storageConstructor = storageClass.getDeclaredConstructor(ClientChunkCache.class, int.class);
-            storageConstructor.setAccessible(true);
+            var storageConstructor = Reflect.constructor(storageClass, ClientChunkCache.class, int.class);
             var calculateStorageRange = Reflect.method(ClientChunkCache.class, "calculateStorageRange", int.class);
-            var inRange = storageClass.getDeclaredMethod("inRange", int.class, int.class);
-            inRange.setAccessible(true);
-            var getIndex = storageClass.getDeclaredMethod("getIndex", int.class, int.class);
-            getIndex.setAccessible(true);
-            var viewCenterX = storageClass.getDeclaredField("viewCenterX");
-            var viewCenterZ = storageClass.getDeclaredField("viewCenterZ");
-            viewCenterX.setAccessible(true);
-            viewCenterZ.setAccessible(true);
+            var inRange = Reflect.method(storageClass, "inRange", int.class, int.class);
+            var getIndex = Reflect.method(storageClass, "getIndex", int.class, int.class);
+            var viewCenterX = Reflect.field(storageClass, "viewCenterX");
+            var viewCenterZ = Reflect.field(storageClass, "viewCenterZ");
 
             int serverViewRadius = request.get("server_view_radius").getAsInt();
             int storageRadius = (Integer)calculateStorageRange.invoke(null, serverViewRadius);

@@ -175,9 +175,7 @@ class MathEntityFixtures extends MathCollisionFixtures {
 
         int interpolationSteps() {
             try {
-                var dataField = net.minecraft.world.entity.InterpolationHandler.class
-                    .getDeclaredField("interpolationData");
-                dataField.setAccessible(true);
+                var dataField = Reflect.field(net.minecraft.world.entity.InterpolationHandler.class, "interpolationData");
                 Object data = dataField.get(this.getInterpolation());
                 var stepsField = Reflect.field(data.getClass(), "steps");
                 return stepsField.getInt(data);

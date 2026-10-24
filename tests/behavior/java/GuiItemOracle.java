@@ -133,10 +133,8 @@ class GuiItemOracle extends GuiDialogOracle {
                 var block = row.getAsJsonArray("block");
                 var state = new net.minecraft.client.renderer.item.properties.numeric.CompassAngleState(
                     true, net.minecraft.client.renderer.item.properties.numeric.CompassAngleState.CompassTarget.NONE);
-                var method = net.minecraft.client.renderer.item.properties.numeric.CompassAngleState.class
-                    .getDeclaredMethod("getRotationTowardsCompassTarget",
+                var method = Reflect.method(net.minecraft.client.renderer.item.properties.numeric.CompassAngleState.class, "getRotationTowardsCompassTarget",
                         net.minecraft.world.entity.ItemOwner.class, long.class, net.minecraft.core.BlockPos.class);
-                method.setAccessible(true);
                 float rotation = (Float)method.invoke(state, itemOwner, row.get("tick").getAsLong(),
                     new net.minecraft.core.BlockPos(block.get(0).getAsInt(), block.get(1).getAsInt(), block.get(2).getAsInt()));
                 out.addProperty("rotation", Float.floatToRawIntBits(rotation));

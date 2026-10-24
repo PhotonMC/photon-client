@@ -38,9 +38,7 @@ public final class ImageOracle {
     private static JsonObject palettePermutation(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        var mapping = net.minecraft.client.renderer.texture.atlas.sources.PalettedPermutations.class
-            .getDeclaredMethod("createPaletteMapping", int[].class, int[].class);
-        mapping.setAccessible(true);
+        var mapping = Reflect.method(net.minecraft.client.renderer.texture.atlas.sources.PalettedPermutations.class, "createPaletteMapping", int[].class, int[].class);
         try (var base = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("png").getAsString())));
              var keys = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("keys").getAsString())));
              var values = NativeImage.read(new ByteArrayInputStream(HexFormat.of().parseHex(row.get("values").getAsString())))) {
@@ -158,11 +156,9 @@ public final class ImageOracle {
                 net.minecraft.resources.Identifier.parse("minecraft:block/parity"),
                 new net.minecraft.client.resources.metadata.animation.FrameSize(width, height),
                 image);
-            var constructor = net.minecraft.client.renderer.texture.TextureAtlasSprite.class
-                .getDeclaredConstructor(net.minecraft.resources.Identifier.class,
+            var constructor = Reflect.constructor(net.minecraft.client.renderer.texture.TextureAtlasSprite.class, net.minecraft.resources.Identifier.class,
                     net.minecraft.client.renderer.texture.SpriteContents.class,
                     int.class, int.class, int.class, int.class, int.class);
-            constructor.setAccessible(true);
             var sprite = constructor.newInstance(
                 net.minecraft.resources.Identifier.parse("minecraft:textures/atlas/parity.png"),
                 contents,
@@ -368,17 +364,12 @@ public final class ImageOracle {
                 net.minecraft.resources.Identifier.withDefaultNamespace("item_side_faces"),
                 new net.minecraft.client.resources.metadata.animation.FrameSize(image.getWidth(), image.getHeight()),
                 image);
-            var scan = net.minecraft.client.resources.model.cuboid.ItemModelGenerator.class
-                .getDeclaredMethod("getSideFaces", net.minecraft.client.renderer.texture.SpriteContents.class);
-            scan.setAccessible(true);
+            var scan = Reflect.method(net.minecraft.client.resources.model.cuboid.ItemModelGenerator.class, "getSideFaces", net.minecraft.client.renderer.texture.SpriteContents.class);
             var faces = new java.util.TreeSet<String>();
             for (Object face : (java.util.Collection<?>) scan.invoke(null, contents)) {
-                var facing = face.getClass().getDeclaredMethod("facing");
-                var x = face.getClass().getDeclaredMethod("x");
-                var y = face.getClass().getDeclaredMethod("y");
-                facing.setAccessible(true);
-                x.setAccessible(true);
-                y.setAccessible(true);
+                var facing = Reflect.method(face.getClass(), "facing");
+                var x = Reflect.method(face.getClass(), "x");
+                var y = Reflect.method(face.getClass(), "y");
                 faces.add(String.format(java.util.Locale.ROOT, "%s,%02d,%02d",
                     facing.invoke(face), (int) x.invoke(face), (int) y.invoke(face)));
             }

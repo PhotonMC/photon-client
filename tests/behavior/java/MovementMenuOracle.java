@@ -232,7 +232,7 @@ class MovementMenuOracle extends MovementPlayerOracle {
                 // Look further up.
             }
         }
-        field.setAccessible(true);
+        Reflect.open(field);
         var slots = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraft.network.HashedStack>) field.get(click.changedSlots());
         slots.replaceAll((slot, stack) -> canonical(stack));
         return new net.minecraft.network.protocol.game.ServerboundContainerClickPacket(

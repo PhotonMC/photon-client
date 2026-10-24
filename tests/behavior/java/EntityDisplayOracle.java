@@ -86,12 +86,10 @@ class EntityDisplayOracle extends EntityDataOracle {
                 var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(spriteFields);
                 var names = new String[] {"u0", "v0", "u1", "v1"};
                 for (int index = 0; index < 4; index++) {
-                    var field = spriteFields.getDeclaredField(names[index]);
-                    field.setAccessible(true);
+                    var field = Reflect.field(spriteFields, names[index]);
                     field.set(sprite, Oracle.f32(decoration.getAsJsonObject("sprite"), names[index]));
                 }
-                var atlas = spriteFields.getDeclaredField("atlasLocation");
-                atlas.setAccessible(true);
+                var atlas = Reflect.field(spriteFields, "atlasLocation");
                 atlas.set(sprite, net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/map_decorations.png"));
                 var drawn = new net.minecraft.client.renderer.state.MapRenderState.MapDecorationRenderState();
                 drawn.atlasSprite = sprite;
@@ -233,12 +231,10 @@ class EntityDisplayOracle extends EntityDataOracle {
         var rows = new JsonArray();
         var renderStateField = Reflect.field(net.minecraft.world.entity.Display.class, "renderState");
         var base = net.minecraft.client.renderer.entity.DisplayRenderer.class;
-        var blockLevel = base.getDeclaredMethod("getBlockLightLevel", net.minecraft.world.entity.Display.class,
+        var blockLevel = Reflect.method(base, "getBlockLightLevel", net.minecraft.world.entity.Display.class,
             net.minecraft.core.BlockPos.class);
-        var skyLevel = base.getDeclaredMethod("getSkyLightLevel", net.minecraft.world.entity.Display.class,
+        var skyLevel = Reflect.method(base, "getSkyLightLevel", net.minecraft.world.entity.Display.class,
             net.minecraft.core.BlockPos.class);
-        blockLevel.setAccessible(true);
-        skyLevel.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var entity = (net.minecraft.world.entity.Display) UNSAFE.allocateInstance(

@@ -71,8 +71,7 @@ class MovementFireOracle extends MovementPickupOracle {
     }
 
     static Object getStaticField(Class<?> type, String name) throws Exception {
-        var field = type.getDeclaredField(name);
-        field.setAccessible(true);
+        var field = Reflect.field(type, name);
         return field.get(null);
     }
 

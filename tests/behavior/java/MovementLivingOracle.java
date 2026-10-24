@@ -54,9 +54,7 @@ class MovementLivingOracle extends MovementObjectExtras {
         if (entity instanceof net.minecraft.world.entity.decoration.HangingEntity hanging) {
             hanging.setPos(entity.getX(), entity.getY(), entity.getZ());
             int data = row.has("data") ? row.get("data").getAsInt() : 0;
-            var setDirection = net.minecraft.world.entity.decoration.HangingEntity.class
-                .getDeclaredMethod("setDirection", net.minecraft.core.Direction.class);
-            setDirection.setAccessible(true);
+            var setDirection = Reflect.method(net.minecraft.world.entity.decoration.HangingEntity.class, "setDirection", net.minecraft.core.Direction.class);
             setDirection.invoke(hanging, net.minecraft.core.Direction.from3DDataValue(data));
         }
         // The constructor turns the head at random; the add-entity packet sets it (here: facing south).

@@ -346,8 +346,7 @@ class BlockItemOracle extends BlockPropertyOracle {
             var visibleField = screenClass.getDeclaredField("visibleTags");
             var visible = new java.util.HashSet<net.minecraft.tags.TagKey<net.minecraft.world.item.Item>>();
             unsafe.putObject(screen, unsafe.objectFieldOffset(visibleField), visible);
-            var update = screenClass.getDeclaredMethod("updateVisibleTags", String.class);
-            update.setAccessible(true);
+            var update = Reflect.method(screenClass, "updateVisibleTags", String.class);
             update.invoke(screen, term);
             var names = new java.util.TreeSet<String>();
             visible.forEach(tag -> names.add(tag.location().toString()));

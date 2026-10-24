@@ -160,10 +160,8 @@ public final class ModelOracle extends ModelMath {
         entry.addProperty("outcome", "baked");
 
         try {
-            var method = net.minecraft.client.resources.model.cuboid.FaceBakery.class
-                .getDeclaredMethod("defaultFaceUV", org.joml.Vector3fc.class,
+            var method = Reflect.method(net.minecraft.client.resources.model.cuboid.FaceBakery.class, "defaultFaceUV", org.joml.Vector3fc.class,
                                    org.joml.Vector3fc.class, net.minecraft.core.Direction.class);
-            method.setAccessible(true);
             var uvs = method.invoke(null, from, to, facing);
             var uvClass = uvs.getClass();
             entry.addProperty("min_u", bits(uvClass, uvs, "minU"));

@@ -25,8 +25,7 @@ class MovementLivingRow extends MovementEntityOracle {
     @SuppressWarnings({"rawtypes", "unchecked"})
     static net.minecraft.network.syncher.SynchedEntityData.DataValue<?> wolfData(
         final Class<?> owner, final String field, final Object value) throws Exception {
-        var accessor = owner.getDeclaredField(field);
-        accessor.setAccessible(true);
+        var accessor = Reflect.field(owner, field);
         return net.minecraft.network.syncher.SynchedEntityData.DataValue.create(
             (net.minecraft.network.syncher.EntityDataAccessor) accessor.get(null), value);
     }

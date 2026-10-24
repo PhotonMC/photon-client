@@ -274,6 +274,9 @@
         "org.lwjgl:lwjgl-stb",
         "org.lwjgl:lwjgl-stb-natives-linux",
         "org.slf4j:slf4j-api"
+      ],
+      "extra_sources": [
+        "Reflect.java"
       ]
     },
     "json": {

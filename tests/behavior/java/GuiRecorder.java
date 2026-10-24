@@ -206,7 +206,7 @@ class GuiRecorder extends GuiFonts {
         Class<?> entryClass = Class.forName(
             "net.minecraft.client.resources.model.sprite.AtlasManager$AtlasEntry");
         var constructor = entryClass.getDeclaredConstructors()[0];
-        constructor.setAccessible(true);
+        Reflect.open(constructor);
         set(atlasManager, "atlasById",
             Map.of(net.minecraft.data.AtlasIds.GUI, constructor.newInstance(atlas, null)));
         set(minecraft, "atlasManager", atlasManager);

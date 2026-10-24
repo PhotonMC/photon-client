@@ -232,9 +232,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
             panorama.holdSpin();
             list.init(width, height);
             var pings = row.has("pings") ? row.getAsJsonArray("pings") : new JsonArray();
-            var entriesField = net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen.class
-                .getDeclaredField("serverSelectionList");
-            entriesField.setAccessible(true);
+            var entriesField = Reflect.field(net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen.class, "serverSelectionList");
             var selection = (net.minecraft.client.gui.screens.multiplayer.ServerSelectionList) entriesField.get(list);
             for (int i = 0; i < list.getServers().size(); i++) {
                 var server = list.getServers().get(i);
@@ -243,9 +241,7 @@ class GuiTitleOracle extends GuiSettingsOracle {
                 server.status = net.minecraft.network.chat.CommonComponents.EMPTY;
                 if (i < pings.size() && !pings.get(i).isJsonNull()) {
                     pinged(server, pings.get(i).getAsJsonObject());
-                    var refresh = net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.OnlineServerEntry.class
-                        .getDeclaredMethod("refreshStatus");
-                    refresh.setAccessible(true);
+                    var refresh = Reflect.method(net.minecraft.client.gui.screens.multiplayer.ServerSelectionList.OnlineServerEntry.class, "refreshStatus");
                     refresh.invoke(selection.children().get(i));
                 }
                 presetIcon(selection.children().get(i), server.getIconBytes());

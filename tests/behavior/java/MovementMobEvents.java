@@ -73,13 +73,9 @@ class MovementMobEvents extends MovementAnimalEvents {
         var entity = ctx.entity();
         // What the constructor draws from an unseeded random source (and what
         // the spikes out of water are drawn from): fixed here.
-        var tail = net.minecraft.world.entity.monster.Guardian.class
-            .getDeclaredField("clientSideTailAnimation");
-        tail.setAccessible(true);
+        var tail = Reflect.field(net.minecraft.world.entity.monster.Guardian.class, "clientSideTailAnimation");
         tail.setFloat(entity, Oracle.f32(event, "tail"));
-        var tailOld = net.minecraft.world.entity.monster.Guardian.class
-            .getDeclaredField("clientSideTailAnimationO");
-        tailOld.setAccessible(true);
+        var tailOld = Reflect.field(net.minecraft.world.entity.monster.Guardian.class, "clientSideTailAnimationO");
         tailOld.setFloat(entity, Oracle.f32(event, "tail"));
         var random = Reflect.field(net.minecraft.world.entity.Entity.class, "random");
         ((net.minecraft.util.RandomSource) random.get(entity)).setSeed(event.get("seed").getAsLong());

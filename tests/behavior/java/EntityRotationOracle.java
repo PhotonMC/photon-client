@@ -96,11 +96,9 @@ class EntityRotationOracle extends EntityProjectileOracle {
             var renderer = UNSAFE.allocateInstance(rendererClass);
             boolean cubeMob = kind.equals("slime") || kind.equals("magma_cube") || kind.equals("sulfur_cube");
             // The cube mobs' renderers take the common turns of `LivingEntityRenderer`.
-            var method = (cubeMob ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class : rendererClass)
-                .getDeclaredMethod("setupRotations",
+            var method = Reflect.method((cubeMob ? net.minecraft.client.renderer.entity.LivingEntityRenderer.class : rendererClass), "setupRotations",
                     cubeMob ? net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class : state.getClass(),
                     com.mojang.blaze3d.vertex.PoseStack.class, float.class, float.class);
-            method.setAccessible(true);
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             if (row.has("feet_x")) {
                 // What `submit` does before `setupRotations`: to the entity's place, then its scale.
@@ -122,12 +120,10 @@ class EntityRotationOracle extends EntityProjectileOracle {
                 // What `submit` does after `setupRotations`: the flip, the renderer's own scale
                 // and the model's lift. (The magma cube takes its scale from the cube mobs' base.)
                 stack.scale(-1.0F, -1.0F, 1.0F);
-                var hook = (kind.equals("magma_cube")
-                        ? net.minecraft.client.renderer.entity.AbstractCubeMobRenderer.class : rendererClass)
-                    .getDeclaredMethod("scale", cubeMob && !kind.equals("sulfur_cube")
+                var hook = Reflect.method((kind.equals("magma_cube")
+                        ? net.minecraft.client.renderer.entity.AbstractCubeMobRenderer.class : rendererClass), "scale", cubeMob && !kind.equals("sulfur_cube")
                         ? net.minecraft.client.renderer.entity.state.SlimeRenderState.class : state.getClass(),
                         com.mojang.blaze3d.vertex.PoseStack.class);
-                hook.setAccessible(true);
                 hook.invoke(renderer, state, stack);
                 stack.translate(0.0F, -1.501F, 0.0F);
                 var full = new float[16];

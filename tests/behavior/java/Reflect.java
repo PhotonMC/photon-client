@@ -23,6 +23,12 @@ final class Reflect {
         field.set(target, value);
     }
 
+    /** Opens a member found some other way (a loop over a class's fields, a record accessor). */
+    static <T extends java.lang.reflect.AccessibleObject> T open(T member) {
+        member.setAccessible(true);
+        return member;
+    }
+
     /** A field of `owner` (or above it), open for reading and writing. */
     static java.lang.reflect.Field field(Class<?> owner, String name) throws NoSuchFieldException {
         return find(owner, name);
@@ -56,15 +62,11 @@ final class Reflect {
     /** A method declared by `owner`, called on `target` (null for a static one). */
     static Object invoke(Object target, Class<?> owner, String name, Class<?>[] types, Object... args)
             throws Exception {
-        var method = owner.getDeclaredMethod(name, types);
-        method.setAccessible(true);
-        return method.invoke(target, args);
+        return method(owner, name, types).invoke(target, args);
     }
 
     static <T> T construct(Class<T> type, Class<?>[] types, Object... args) throws Exception {
-        var constructor = type.getDeclaredConstructor(types);
-        constructor.setAccessible(true);
-        return constructor.newInstance(args);
+        return constructor(type, types).newInstance(args);
     }
 
     /** A static field, written with the value's own type (an int stays an int). */

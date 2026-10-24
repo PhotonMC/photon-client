@@ -95,9 +95,7 @@ class EntityVillagerOracle extends EntityVehicleOracle {
                 net.minecraft.resources.Identifier.withDefaultNamespace(row.get("profession").getAsString()));
             var typeCache = Reflect.field(net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class, "typeHatCache");
             ((java.util.Map) typeCache.get(layer)).put(typeKey, villagerHat("type", typeKey.identifier().getPath()));
-            var professionCache = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class
-                .getDeclaredField("professionHatCache");
-            professionCache.setAccessible(true);
+            var professionCache = Reflect.field(net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class, "professionHatCache");
             ((java.util.Map) professionCache.get(layer)).put(professionKey,
                 villagerHat("profession", professionKey.identifier().getPath()));
             var villagerData = new net.minecraft.world.entity.npc.villager.VillagerData(

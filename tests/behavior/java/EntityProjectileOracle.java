@@ -276,14 +276,11 @@ class EntityProjectileOracle extends EntityPoseOracle {
         var spriteClass = net.minecraft.client.renderer.texture.TextureAtlasSprite.class;
         var stackClass = com.mojang.blaze3d.vertex.PoseStack.class;
         var collectorClass = net.minecraft.client.renderer.SubmitNodeCollector.class;
-        var fire = renderer.getDeclaredMethod("submitFire", stackClass, collectorClass, spriteClass);
-        var block = renderer.getDeclaredMethod("submitBlockSprite", spriteClass, stackClass, collectorClass, int.class);
-        var quad = renderer.getDeclaredMethod("buildQuad", com.mojang.blaze3d.vertex.VertexConsumer.class,
+        var fire = Reflect.method(renderer, "submitFire", stackClass, collectorClass, spriteClass);
+        var block = Reflect.method(renderer, "submitBlockSprite", spriteClass, stackClass, collectorClass, int.class);
+        var quad = Reflect.method(renderer, "buildQuad", com.mojang.blaze3d.vertex.VertexConsumer.class,
             org.joml.Matrix4f.class, float.class, float.class, float.class, float.class, float.class, float.class,
             float.class, float.class, float.class, int.class);
-        fire.setAccessible(true);
-        block.setAccessible(true);
-        quad.setAccessible(true);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
             var vertices = new JsonArray();
@@ -301,14 +298,12 @@ class EntityProjectileOracle extends EntityPoseOracle {
                 });
             var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) UNSAFE.allocateInstance(spriteClass);
             for (var corner : new String[] {"u0", "u1", "v0", "v1"}) {
-                var field = spriteClass.getDeclaredField(corner);
-                field.setAccessible(true);
+                var field = Reflect.field(spriteClass, corner);
                 if (row.has(corner)) {
                     field.setFloat(sprite, Oracle.f32(row, corner));
                 }
             }
-            var atlas = spriteClass.getDeclaredField("atlasLocation");
-            atlas.setAccessible(true);
+            var atlas = Reflect.field(spriteClass, "atlasLocation");
             atlas.set(sprite, net.minecraft.resources.Identifier.withDefaultNamespace("textures/atlas/blocks.png"));
             var stack = new com.mojang.blaze3d.vertex.PoseStack();
             switch (row.get("kind").getAsString()) {

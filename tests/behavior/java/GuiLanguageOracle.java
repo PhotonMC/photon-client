@@ -71,9 +71,7 @@ class GuiLanguageOracle extends GuiRecorder {
             }
         }
         translations.putAll(added);
-        var constructor = net.minecraft.client.resources.language.ClientLanguage.class
-            .getDeclaredConstructor(java.util.Map.class, boolean.class);
-        constructor.setAccessible(true);
+        var constructor = Reflect.constructor(net.minecraft.client.resources.language.ClientLanguage.class, java.util.Map.class, boolean.class);
         return constructor.newInstance(java.util.Map.copyOf(translations), false);
     }
 

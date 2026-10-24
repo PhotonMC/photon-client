@@ -85,7 +85,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                     continue;
                 }
                 try {
-                    field.setAccessible(true);
+                    Reflect.open(field);
                     if (field.get(null) == property) {
                         return owner == owners.get(0) ? field.getName()
                             : owner.getSimpleName() + "." + field.getName();
@@ -163,9 +163,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
         entry.addProperty("outcome", "listed");
         var registry = net.minecraft.core.registries.BuiltInRegistries.BLOCK;
         try {
-            var propertiesField = net.minecraft.world.level.block.state.BlockBehaviour.class
-                .getDeclaredField("properties");
-            propertiesField.setAccessible(true);
+            var propertiesField = Reflect.field(net.minecraft.world.level.block.state.BlockBehaviour.class, "properties");
             var fresh = net.minecraft.world.level.block.state.BlockBehaviour.Properties.of();
             var classes = new java.util.LinkedHashMap<String, String>();
             var classTypes = new java.util.HashMap<String, Class<?>>();

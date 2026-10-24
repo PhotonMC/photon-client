@@ -403,9 +403,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 int slot = row.get("sync_slot").getAsInt();
                 if (menu instanceof net.minecraft.world.inventory.LecternMenu) {
                     // The lectern's screen hears the server's update of the book.
-                    var heard = net.minecraft.client.gui.screens.inventory.LecternScreen.class
-                        .getDeclaredField("listener");
-                    heard.setAccessible(true);
+                    var heard = Reflect.field(net.minecraft.client.gui.screens.inventory.LecternScreen.class, "listener");
                     ((net.minecraft.world.inventory.ContainerListener) heard.get(screen))
                         .slotChanged(menu, slot, menu.getSlot(slot).getItem());
                 } else if (screen instanceof net.minecraft.world.inventory.ContainerListener listener) {
@@ -424,9 +422,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             if (menu instanceof net.minecraft.world.inventory.SmithingMenu
                 || menu instanceof net.minecraft.world.inventory.BeaconMenu) {
                 // Its empty slots show their icons, and a beacon's buttons their state, once the screen has ticked.
-                var tick = net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class
-                    .getDeclaredMethod("containerTick");
-                tick.setAccessible(true);
+                var tick = Reflect.method(net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class, "containerTick");
                 tick.invoke(screen);
             }
             var out = new JsonObject();
@@ -572,9 +568,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 screen.extractRenderState(frame.graphics(), mouseX, mouseY, 0.0F);
                 var done = new JsonObject();
                 done.add("ops", record(frame.state()));
-                var field = net.minecraft.client.gui.screens.debug.GameModeSwitcherScreen.class
-                    .getDeclaredField("currentlyHovered");
-                field.setAccessible(true);
+                var field = Reflect.field(net.minecraft.client.gui.screens.debug.GameModeSwitcherScreen.class, "currentlyHovered");
                 done.addProperty("selected", field.get(screen).toString());
                 steps.add(done);
             }
@@ -666,8 +660,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             mappings.add(entry);
         }
         var categories = new com.google.gson.JsonArray();
-        var order = Class.forName("net.minecraft.client.KeyMapping$Category").getDeclaredField("SORT_ORDER");
-        order.setAccessible(true);
+        var order = Reflect.field(Class.forName("net.minecraft.client.KeyMapping$Category"), "SORT_ORDER");
         for (var category : (java.util.List<?>) order.get(null)) {
             categories.add(((net.minecraft.client.KeyMapping.Category) category).id().toString());
         }

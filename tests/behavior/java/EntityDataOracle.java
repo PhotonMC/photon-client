@@ -350,8 +350,7 @@ class EntityDataOracle extends EntityBossOracle {
             {net.minecraft.world.entity.animal.fish.Pufferfish.class, "PUFF_STATE", "pufferfish-puff-state"},
         };
         for (var described : fields) {
-            var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
-            field.setAccessible(true);
+            var field = Reflect.field(((Class<?>) described[0]), (String) described[1]);
             var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) field.get(null);
             var out = new JsonObject();
             out.addProperty("label", (String) described[2]);
@@ -377,7 +376,7 @@ class EntityDataOracle extends EntityBossOracle {
                 || !net.minecraft.network.syncher.EntityDataSerializer.class.isAssignableFrom(field.getType())) {
                 continue;
             }
-            field.setAccessible(true);
+            Reflect.open(field);
             var serializer = (net.minecraft.network.syncher.EntityDataSerializer<?>) field.get(null);
             int id = net.minecraft.network.syncher.EntityDataSerializers.getSerializedId(serializer);
             if (id >= 0) {

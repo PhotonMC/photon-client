@@ -152,7 +152,7 @@ class GuiChatOracle extends GuiLanguageOracle {
                 var queue = (java.util.Queue<Object>) get(listener, "delayedMessageQueue");
                 var messageClass = Class.forName("net.minecraft.client.multiplayer.chat.ChatListener$Message");
                 var constructor = messageClass.getDeclaredConstructors()[0];
-                constructor.setAccessible(true);
+                Reflect.open(constructor);
                 for (int queued = 0; queued < row.get("queued").getAsInt(); queued++) {
                     queue.add(constructor.newInstance(null, (java.util.function.BooleanSupplier) () -> true));
                 }
@@ -426,10 +426,8 @@ class GuiChatOracle extends GuiLanguageOracle {
                 } else {
                     var kept = new JsonObject();
                     var record = latest.getClass();
-                    var text = record.getDeclaredMethod("text");
-                    text.setAccessible(true);
-                    var method = record.getDeclaredMethod("chatMethod");
-                    method.setAccessible(true);
+                    var text = Reflect.method(record, "text");
+                    var method = Reflect.method(record, "chatMethod");
                     kept.addProperty("text", (String) text.invoke(latest));
                     kept.addProperty("method", method.invoke(latest).toString());
                     out.add("kept", kept);

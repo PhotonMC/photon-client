@@ -353,9 +353,8 @@ public final class SoundOracle extends SoundSupport {
                             step.get("source").isJsonNull() ? null
                                 : net.minecraft.sounds.SoundSource.valueOf(step.get("source").getAsString()));
                     case "tick" -> {
-                        var method = engineClass.getDeclaredMethod(step.get("paused").getAsBoolean()
+                        var method = Reflect.method(engineClass, step.get("paused").getAsBoolean()
                             ? "tickMusicWhenPaused" : "tickInGameSound");
-                        method.setAccessible(true);
                         method.invoke(engine);
                         access.scheduleTick();
                     }

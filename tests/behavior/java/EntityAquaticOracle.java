@@ -443,8 +443,7 @@ class EntityAquaticOracle extends EntitySupport {
                     case "salmon" -> new Object[] {net.minecraft.client.renderer.entity.SalmonRenderer.class, "SALMON_LOCATION"};
                     default -> new Object[] {net.minecraft.client.renderer.entity.PufferfishRenderer.class, "PUFFER_LOCATION"};
                 };
-                var field = ((Class<?>) described[0]).getDeclaredField((String) described[1]);
-                field.setAccessible(true);
+                var field = Reflect.field(((Class<?>) described[0]), (String) described[1]);
                 out.addProperty("texture", field.get(null).toString());
                 rows.add(out);
                 continue;
@@ -452,12 +451,8 @@ class EntityAquaticOracle extends EntitySupport {
             int packed = row.get("packed_id").getAsInt();
             var pattern = net.minecraft.world.entity.animal.fish.TropicalFish.getPattern(packed);
             boolean large = pattern.base() == net.minecraft.world.entity.animal.fish.TropicalFish.Base.LARGE;
-            var base = net.minecraft.client.renderer.entity.TropicalFishRenderer.class
-                .getDeclaredField(large ? "LARGE_TEXTURE" : "SMALL_TEXTURE");
-            base.setAccessible(true);
-            var layer = net.minecraft.client.renderer.entity.layers.TropicalFishPatternLayer.class
-                .getDeclaredField(pattern.name() + "_TEXTURE");
-            layer.setAccessible(true);
+            var base = Reflect.field(net.minecraft.client.renderer.entity.TropicalFishRenderer.class, large ? "LARGE_TEXTURE" : "SMALL_TEXTURE");
+            var layer = Reflect.field(net.minecraft.client.renderer.entity.layers.TropicalFishPatternLayer.class, pattern.name() + "_TEXTURE");
             out.addProperty("packed_id", packed);
             out.addProperty("texture", base.get(null).toString());
             out.addProperty("pattern_texture", layer.get(null).toString());

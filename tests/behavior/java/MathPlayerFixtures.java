@@ -221,9 +221,7 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
             this.abilities = new Abilities();
             this.abilities.flying = flying;
             this.abilities.setFlyingSpeed(flyingSpeed);
-            var abilitiesField = net.minecraft.world.entity.player.Player.class
-                .getDeclaredField("abilities");
-            abilitiesField.setAccessible(true);
+            var abilitiesField = Reflect.field(net.minecraft.world.entity.player.Player.class, "abilities");
             abilitiesField.set(this, this.abilities);
             this.sprinting = sprinting;
             this.passenger = passenger;
@@ -267,9 +265,7 @@ class MathPlayerFixtures extends MathPassengerRotationOracle {
             this.abilities = new Abilities();
             this.abilities.flying = flying;
             this.abilities.setFlyingSpeed(flyingSpeed);
-            var abilitiesField = net.minecraft.world.entity.player.Player.class
-                .getDeclaredField("abilities");
-            abilitiesField.setAccessible(true);
+            var abilitiesField = Reflect.field(net.minecraft.world.entity.player.Player.class, "abilities");
             abilitiesField.set(this, this.abilities);
             this.sprinting = sprinting;
             this.passenger = passenger;
