@@ -15,5 +15,5 @@ pub use frame::{
     DrawOp, FrameMark, GuiBlend, GuiFrame, GuiVertex, ItemDrawer, ItemHolding, LoggedRun,
     Positioner, ScreenRect,
 };
-pub use items::GuiItemVertex;
+pub use items::{GuiFigure, GuiItemVertex};
 pub use run::TextRun;

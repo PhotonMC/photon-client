@@ -443,7 +443,7 @@ impl Play {
             (
                 &mut self.player_model,
                 frame.locator,
-                (&mut self.mob_models, &mut self.armor),
+                (&mut self.mob_models, &mut self.armor, &mut self.worn_layers),
                 &self.entity_textures,
             ),
         )?;

@@ -13,6 +13,18 @@ impl GuiFrame {
             .push((GuiBlend::Entity, first, vertices.len() as u32));
     }
 
+    /// The player's figure in a screen: its model, then what it holds over it.
+    pub fn figure(&mut self, figure: &crate::gui::items::GuiFigure) {
+        self.entity(&figure.body);
+        if figure.items.is_empty() {
+            return;
+        }
+        let first = self.items.len() as u32;
+        self.items.extend_from_slice(&figure.items);
+        self.batches
+            .push((GuiBlend::Items, first, figure.items.len() as u32));
+    }
+
     /// `GuiGraphics.item`: one item's triangles into the slot at `(x, y)`.
     pub fn item(
         &mut self,

@@ -8,6 +8,18 @@ type Area = (i32, i32, i32, i32);
 type Mouse = (f32, f32);
 
 /// Where the model of a screen goes: its box, its size and offset, and the mouse it looks at.
+/// What the box's player holds: the layer caches of the hands and the renderers they draw with.
+type HeldTools<'a> = (
+    &'a mut [ItemLayerCache; 4],
+    (&'a BlockRenderer, &'a BiomeTints),
+);
+
+/// The two hands' stacks, the right first.
+type Stacks<'a> = (
+    Option<&'a ClientItemStackState>,
+    Option<&'a ClientItemStackState>,
+);
+
 type PreviewBox = ((i32, i32, i32, i32), f32, f32, (f32, f32));
 
 /// The local player in the box of its screen (`InventoryScreen.extractEntityInInventoryFollowsMouse`):
@@ -19,14 +31,16 @@ fn player_preview(
         &mut crate::equipment::armor::Armor,
         &photon_render::entity::textures::EntityTextures,
     ),
-    (skin, worn): (
+    (skin, worn, stacks): (
         photon_render::entity::textures::TextureRect,
         crate::equipment::armor::Worn<'_>,
+        Stacks<'_>,
     ),
     (area, size, offset_y, mouse): PreviewBox,
-) -> Vec<GuiItemVertex> {
+    held: HeldTools<'_>,
+) -> GuiFigure {
     let Some(player) = player else {
-        return Vec::new();
+        return GuiFigure::default();
     };
     let pose = player.model_pose(1.0);
     let state = PlayerRenderState {
@@ -52,6 +66,7 @@ fn player_preview(
         (area, size, offset_y, mouse),
         skin,
     );
+    let head = worn.head_item(armor);
     let dressed = crate::overlays::gui_dressing(
         armor,
         (worn, player_model.slim),
@@ -59,10 +74,46 @@ fn player_preview(
         (&scene.state, &scene.placement),
         player.elytra_rotations(1.0),
     );
+    let in_hands = held_vertices((player_model, &scene.placement), (stacks, head), held);
     vertices.extend(photon_render::entity::player_renderer::gui_layer_vertices(
         &dressed,
         &scene.view,
     ));
+    GuiFigure {
+        body: vertices,
+        items: photon_render::entity::gui_view::gui_held_vertices(&in_hands, &scene.view),
+    }
+}
+
+/// What the box's player holds in its hands and wears on its head, in the box's pose and without
+/// the glint (the world's glint pass would draw it at the origin).
+fn held_vertices(
+    (model, placement): (
+        &PlayerModel,
+        &photon_render::entity::player_renderer::Placement,
+    ),
+    (stacks, head): (Stacks<'_>, Option<&ClientItemStackState>),
+    (layers, tints): HeldTools<'_>,
+) -> Vec<photon_render::scene::Vertex> {
+    let hands = crate::equipment::held_items::Hands {
+        base: &photon_render::entity::player_renderer::placement_pose(placement),
+        root: &model.root,
+        hand_shift: if model.slim { 0.5 } else { 0.0 },
+        baby: false,
+        light: placement.light,
+        right: stacks.0,
+        left: stacks.1,
+        head,
+        head_transforms: crate::equipment::held_items::HEAD_TRANSFORMS,
+        eye: None,
+        motions: crate::equipment::held_items::HandActions::default(),
+    };
+    let mut held = Vec::new();
+    hands.collect(&mut held);
+    let vertices = crate::equipment::held_items::held_item_vertices(&held, layers, tints);
+    for cache in layers.iter_mut() {
+        cache.take_glint();
+    }
     vertices
 }
 
@@ -83,6 +134,18 @@ fn worn(session: &PlaySession) -> Worn<'_> {
     }
 }
 
+/// The stacks in the local player's hands: the selected hotbar slot and the off hand.
+fn hand_stacks(session: &PlaySession) -> Stacks<'_> {
+    let stack = |slot: i16| {
+        session
+            .world()
+            .local_player()
+            .and_then(|state| state.inventory_slot(slot))
+            .filter(|stack| stack.item_count() > 0)
+    };
+    (stack(36 + session.status().selected_slot as i16), stack(45))
+}
+
 /// The function a screen draws the local player's box with.
 pub(super) fn drawer<'a>(
     session: &'a PlaySession,
@@ -91,15 +154,20 @@ pub(super) fn drawer<'a>(
         &'a mut PlayerModel,
     ),
     (armor, textures): (&'a std::cell::RefCell<&mut Armor>, &'a EntityTextures),
-    skin: TextureRect,
-) -> impl FnMut(Area, f32, f32, Mouse) -> Vec<GuiItemVertex> + 'a {
-    let worn = worn(session);
+    (skin, layers, tints): (
+        TextureRect,
+        &'a mut [ItemLayerCache; 4],
+        (&'a BlockRenderer, &'a BiomeTints),
+    ),
+) -> impl FnMut(Area, f32, f32, Mouse) -> GuiFigure + 'a {
+    let (worn, stacks) = (worn(session), hand_stacks(session));
     move |area, size, offset_y, mouse| {
         player_preview(
             player,
             (&mut *player_model, &mut **armor.borrow_mut(), textures),
-            (skin, worn),
+            (skin, worn, stacks),
             (area, size, offset_y, mouse),
+            (&mut *layers, tints),
         )
     }
 }

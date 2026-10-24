@@ -49,13 +49,12 @@ use photon_game::menus::creative::Click;
 use crate::widgets::edit_box::Clipboard;
 pub use container::SlotClick;
 use photon_render::gui::font::Font;
-use photon_render::gui::{GuiAtlas, GuiFrame, GuiItemVertex, ItemDrawer};
+use photon_render::gui::{GuiAtlas, GuiFigure, GuiFrame, GuiItemVertex, ItemDrawer};
 
 /// Draws the player's model into a box (`x0, y0, x1, y1`) at a size and an
 /// offset (`InventoryScreen.extractEntityInInventoryFollowsMouse`), turned
 /// towards the mouse, as triangles for [`GuiFrame::entity`].
-pub type PlayerDrawer<'a> =
-    dyn FnMut((i32, i32, i32, i32), f32, f32, (f32, f32)) -> Vec<GuiItemVertex> + 'a;
+pub type PlayerDrawer<'a> = dyn FnMut((i32, i32, i32, i32), f32, f32, (f32, f32)) -> GuiFigure + 'a;
 
 /// Draws an entity of the world, by its id, into a box (`x0, y0, x1, y1`) at a size and an offset,
 /// turned towards the mouse (`InventoryScreen.extractEntityInInventoryFollowsMouse`), as

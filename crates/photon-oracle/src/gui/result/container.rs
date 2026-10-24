@@ -101,7 +101,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
     let keys = key_steps(row);
     let mut item_drawer = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
-        Vec::<photon_render::gui::GuiItemVertex>::new()
+        photon_render::gui::GuiFigure::default()
     };
     // A tooltip is only its first line, the item's name, which is
     // what the anvil's name box takes.

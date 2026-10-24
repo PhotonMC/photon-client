@@ -238,6 +238,46 @@ pub fn gui_layer_vertices(
         .collect()
 }
 
+/// What a player holds (as the world draws held items) in a screen's box: each triangle is lit
+/// by the two inventory lights from its own normal, and carries its quad's colour.
+pub fn gui_held_vertices(
+    vertices: &[crate::scene::Vertex],
+    view: &GuiEntityView,
+) -> Vec<crate::gui::items::GuiItemVertex> {
+    let mut out = Vec::with_capacity(vertices.len());
+    for triangle in vertices.as_chunks::<3>().0 {
+        let [a, b, c] = triangle.map(|vertex| vertex.position);
+        let edge =
+            |from: [f32; 3], to: [f32; 3]| [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+        let (u, v) = (edge(a, b), edge(a, c));
+        let normal = [
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        ];
+        let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+        let normal = if length > 0.0 {
+            normal.map(|axis| axis / length)
+        } else {
+            [0.0, 1.0, 0.0]
+        };
+        let brightness = view.brightness(normal);
+        for vertex in triangle {
+            out.push(crate::gui::items::GuiItemVertex {
+                position: view.point(vertex.position),
+                uv: vertex.uv,
+                colour: [
+                    brightness * vertex.tint[0],
+                    brightness * vertex.tint[1],
+                    brightness * vertex.tint[2],
+                    vertex.tint[3],
+                ],
+            });
+        }
+    }
+    out
+}
+
 /// `Lighting.Entry.ENTITY_IN_UI`'s two lights.
 fn inventory_lights() -> [[f32; 3]; 2] {
     let normalise = |v: [f32; 3]| {

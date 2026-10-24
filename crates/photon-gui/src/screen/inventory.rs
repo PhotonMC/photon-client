@@ -289,7 +289,7 @@ impl Screen for InventoryScreen {
             0.0625,
             (mouse.0 as f32, mouse.1 as f32),
         );
-        draw.frame.entity(&model);
+        draw.frame.figure(&model);
         if self.book.blocks_screen() {
             // A book with no room beside the screen covers it: only the
             // background shows, and the book over it.

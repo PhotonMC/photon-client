@@ -145,7 +145,8 @@ impl Gui {
                 stats.resize(gui_size);
             }
             let millis = frame.millis;
-            let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
+            let mut player =
+                |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| GuiFigure::default();
             let mut entity = |_: photon_core::ids::EntityId,
                               _: (i32, i32, i32, i32),
                               _: f32,

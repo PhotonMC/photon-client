@@ -20,7 +20,7 @@ use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::entity::player_model::{PlayerModel, PlayerRenderState};
 use photon_render::gui::GuiAtlas;
 use photon_render::gui::font::Font;
-use photon_render::gui::items::GuiItemVertex;
+use photon_render::gui::items::GuiFigure;
 use photon_render::window::WindowSurface;
 use photon_world::ClientItemStackState;
 

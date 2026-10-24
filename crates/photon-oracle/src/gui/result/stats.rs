@@ -86,7 +86,9 @@ fn draw_screen(
     let registries = vanilla_registries();
     let mut tooltip = default_tooltip(lang, &registries);
     let mut item = no_items;
-    let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
+    let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
+        photon_render::gui::GuiFigure::default()
+    };
     let mut entity =
         |_: EntityId, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| Vec::new();
     let (book, tags) = (

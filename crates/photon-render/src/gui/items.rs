@@ -15,6 +15,23 @@ pub struct GuiItemVertex {
     pub colour: [f32; 4],
 }
 
+/// The player of a screen's box: its model, which samples the skin, and what it holds in its
+/// hands, which samples the item atlas, each as triangles with depth towards the viewer.
+#[derive(Debug, Clone, Default)]
+pub struct GuiFigure {
+    pub body: Vec<GuiItemVertex>,
+    pub items: Vec<GuiItemVertex>,
+}
+
+impl From<Vec<GuiItemVertex>> for GuiFigure {
+    fn from(body: Vec<GuiItemVertex>) -> Self {
+        Self {
+            body,
+            items: Vec::new(),
+        }
+    }
+}
+
 type Matrix = [[f32; 3]; 3];
 
 fn multiply(a: Matrix, b: Matrix) -> Matrix {

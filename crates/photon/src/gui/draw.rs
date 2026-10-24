@@ -3,6 +3,14 @@ use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
 use photon_gui::screen::restrictions::RestrictionsScreen;
 
+/// What the figures of the screens are drawn with: the mob models, the armor and the layers of
+/// what is held.
+type Dressing<'a> = (
+    &'a mut crate::mobs::MobModels,
+    &'a mut crate::equipment::armor::Armor,
+    &'a mut [ItemLayerCache; 4],
+);
+
 impl Gui {
     /// The chat's messages, the box's and brighter when it is open; the lines of the tooltip
     /// the mouse is over, if any.
@@ -155,13 +163,10 @@ impl Gui {
         session: &mut PlaySession,
         controls: &mut Controls,
         (renderer, tints): (&BlockRenderer, &BiomeTints),
-        (player_model, locator_camera, (mob_models, armor), entity_textures): (
+        (player_model, locator_camera, (mob_models, armor, held_layers), entity_textures): (
             &mut PlayerModel,
             LocatorCamera,
-            (
-                &mut crate::mobs::MobModels,
-                &mut crate::equipment::armor::Armor,
-            ),
+            Dressing<'_>,
             &photon_render::entity::textures::EntityTextures,
         ),
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -322,7 +327,7 @@ impl Gui {
                 session,
                 (hud_player, player_model),
                 (&armor, entity_textures),
-                skin,
+                (skin, held_layers, (renderer, tints)),
             );
             // A mount in the box of its screen, between two ticks as it stands now.
             let world = session.world();

@@ -70,7 +70,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         photon_gui::screen::container::ContainerLayout::new(int("width"), int("height"), (0, 0));
     let mut item = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
-        Vec::<photon_render::gui::GuiItemVertex>::new()
+        photon_render::gui::GuiFigure::default()
     };
     let mut entity = |_: EntityId, _: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()

@@ -363,7 +363,7 @@ impl Screen for CreativeScreen {
                 0.0625,
                 (mouse.0 as f32, mouse.1 as f32),
             );
-            draw.frame.entity(&model);
+            draw.frame.figure(&model);
         }
         self.hovered = self.hovered_slot(mouse);
         if let Some(slot) = self.hovered {
