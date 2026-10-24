@@ -75,7 +75,8 @@ pub(crate) struct Skins {
     /// How a property is loaded, which a test replaces.
     load: Loader,
     frame: u64,
-    dirty: bool,
+    /// The places written since the last call, for the GPU to take.
+    dirty: Vec<photon_render::vulkan::AtlasRegion>,
 }
 
 impl Skins {
@@ -111,7 +112,7 @@ impl Skins {
             cache,
             load,
             frame: 0,
-            dirty: false,
+            dirty: Vec::new(),
         };
         skins.lay_out(textures);
         skins
@@ -168,8 +169,8 @@ impl Skins {
         }
     }
 
-    /// The textures changed (a skin was written to a place) since the last call.
-    pub(crate) fn take_dirty(&mut self) -> bool {
+    /// The places written (a skin was put into each) since the last call.
+    pub(crate) fn take_dirty(&mut self) -> Vec<photon_render::vulkan::AtlasRegion> {
         std::mem::take(&mut self.dirty)
     }
 
@@ -235,7 +236,7 @@ impl Skins {
         let rect = self.rects[index];
         if fresh {
             blit(textures, rect, &loaded.rgba);
-            self.dirty = true;
+            self.dirty.push(region_of(textures, rect, &loaded.rgba));
         }
         Some((rect, loaded.slim))
     }
@@ -246,6 +247,23 @@ impl Skins {
 fn shared_keys() -> Arc<KeyCell> {
     static KEYS: std::sync::OnceLock<Arc<KeyCell>> = std::sync::OnceLock::new();
     KEYS.get_or_init(Arc::default).clone()
+}
+
+/// The place `rect` is in `textures`, with the pixels written into it.
+fn region_of(
+    textures: &EntityTextures,
+    rect: TextureRect,
+    rgba: &[u8],
+) -> photon_render::vulkan::AtlasRegion {
+    let image = &textures.image;
+    photon_render::vulkan::AtlasRegion {
+        level: 0,
+        x: (rect[0] * image.width as f32).round() as u32,
+        y: (rect[1] * image.height as f32).round() as u32,
+        width: SIDE as u32,
+        height: SIDE as u32,
+        rgba: rgba.to_vec(),
+    }
 }
 
 /// Write a skin's pixels into the textures where `rect` is.

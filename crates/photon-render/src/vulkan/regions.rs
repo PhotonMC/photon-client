@@ -14,6 +14,19 @@ impl VulkanBackend {
         self.write_regions(image, regions)
     }
 
+    /// The same for the entity textures: the skins put into their places.
+    pub fn update_entity_texture(&mut self, regions: &[AtlasRegion]) -> Result<(), VulkanError> {
+        let Some(texture) = self
+            .scene
+            .as_ref()
+            .and_then(|scene| scene.entity_texture.as_ref())
+        else {
+            return Ok(());
+        };
+        let image = texture.image.image;
+        self.write_regions(image, regions)
+    }
+
     /// The same for the GUI atlas: the unifont glyphs put into its cells.
     pub fn update_gui_atlas(&mut self, regions: &[AtlasRegion]) -> Result<(), VulkanError> {
         let Some(texture) = self

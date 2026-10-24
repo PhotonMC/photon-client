@@ -9,9 +9,9 @@ impl Play {
 
     /// A skin written into the textures is there before the frame draws.
     pub(super) fn upload_skins(&mut self) -> Result<()> {
-        if self.skins.take_dirty() {
-            self.backend
-                .load_entity_texture(&self.entity_textures.image)?;
+        let written = self.skins.take_dirty();
+        if !written.is_empty() {
+            self.backend.update_entity_texture(&written)?;
         }
         Ok(())
     }

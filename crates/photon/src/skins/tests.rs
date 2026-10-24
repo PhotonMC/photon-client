@@ -92,7 +92,7 @@ fn a_loaded_skin_is_written_to_its_place() {
     let properties = [property("slim")];
     let (rect, slim) = settle(&mut skins, &mut atlas, &who(1, &properties, false));
     assert!(slim);
-    assert!(skins.take_dirty());
+    assert!(!skins.take_dirty().is_empty());
     let (width, height) = (atlas.image.width as f32, atlas.image.height as f32);
     let (x, y) = (
         (rect[0] * width).round() as usize,
@@ -154,5 +154,5 @@ fn a_skin_that_fails_leaves_the_default_skin() {
         assert_eq!(found.0, atlas.rect(default.texture).unwrap());
         std::thread::sleep(Duration::from_millis(2));
     }
-    assert!(!skins.take_dirty());
+    assert!(skins.take_dirty().is_empty());
 }
