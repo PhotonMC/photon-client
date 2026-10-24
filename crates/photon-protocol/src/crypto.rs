@@ -70,6 +70,24 @@ pub fn signed_hex(bytes: &[u8]) -> String {
     }
 }
 
+/// `Signature.getInstance("SHA1withRSA")` verifying `signature` over `message` under the key in
+/// `public_key_der`. Any malformed key or signature is a failed check.
+pub fn verify_sha1_rsa(public_key_der: &[u8], message: &[u8], signature: &[u8]) -> bool {
+    /// The `DigestInfo` header of a SHA-1 digest (RFC 8017, note 1).
+    const SHA1_PREFIX: [u8; 15] = [
+        0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14,
+    ];
+    let Ok(key) = RsaPublicKey::from_public_key_der(public_key_der) else {
+        return false;
+    };
+    let scheme = rsa::Pkcs1v15Sign {
+        hash_len: Some(20),
+        prefix: Box::new(SHA1_PREFIX),
+    };
+    key.verify(scheme, &Sha1::digest(message), signature)
+        .is_ok()
+}
+
 /// `Crypt.encryptUsingKey`: RSA with PKCS#1 v1.5 padding under the server's public key.
 pub fn encrypt_with_public_key(public_key_der: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptError> {
     let key =
@@ -163,6 +181,30 @@ mod tests {
         let sealed = encrypt_with_public_key(&der, &secret).expect("encrypt");
         let opened = private.decrypt(Pkcs1v15Encrypt, &sealed).expect("decrypt");
         assert_eq!(opened, secret);
+    }
+
+    #[test]
+    fn sha1_signatures_verify_only_for_their_message() {
+        let private = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
+        let der = private
+            .to_public_key()
+            .to_public_key_der()
+            .expect("der")
+            .to_vec();
+        let message = b"textures property";
+        // The signer pads a `DigestInfo` it builds here from the SHA-1 object id 1.3.14.3.2.26.
+        let mut info = vec![
+            0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a,
+        ];
+        info.extend([0x05, 0x00, 0x04, 0x14]);
+        info.extend(Sha1::digest(message));
+        let signature = private
+            .sign(rsa::Pkcs1v15Sign::new_unprefixed(), &info)
+            .expect("sign");
+        assert!(verify_sha1_rsa(&der, message, &signature));
+        assert!(!verify_sha1_rsa(&der, b"another", &signature));
+        assert!(!verify_sha1_rsa(&der, message, &signature[1..]));
+        assert!(!verify_sha1_rsa(&[1, 2], message, &signature));
     }
 
     #[test]
