@@ -124,7 +124,6 @@
 "crates/photon-core/src/json.rs::Reader::string" = 15
 "crates/photon-core/src/math/fdlibm.rs::fdlibm_pow" = 18
 "crates/photon-core/src/math/fdlibm.rs::pow_special" = 29
-"crates/photon-core/src/math/fdlibm.rs::rem_pio2" = 11
 "crates/photon-core/src/math/log.rs::strict_log" = 12
 "crates/photon-core/src/nbt.rs::read_payload" = 14
 "crates/photon-core/src/nbt.rs::type_id" = 12
@@ -538,7 +537,6 @@
 [fn-length]
 "crates/photon-core/src/aabb/clipping.rs::clip_bounds" = 119
 "crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 74
-"crates/photon-core/src/math/fdlibm.rs::rem_pio2" = 61
 "crates/photon-core/src/math/log.rs::strict_log" = 62
 "crates/photon-core/src/shape/rotation.rs::Shapes::rotate_transform_with_center" = 103
 "crates/photon-core/src/utf8.rs::decode_java_utf8" = 101

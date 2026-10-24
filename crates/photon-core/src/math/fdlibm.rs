@@ -92,37 +92,41 @@ fn kernel_cos(x: f64, y: f64) -> f64 {
     }
 }
 
+/// `rem_pio2` for `|x| < 3 pi / 4`: one subtraction of pi / 2 in the direction of the sign.
+fn rem_pio2_one_step(x: f64, hx: i32, ix: i32) -> (i32, f64, f64) {
+    if hx > 0 {
+        let mut z = x - PIO2_1;
+        let (y0, y1);
+        if ix == 0x3ff9_21fb {
+            z -= PIO2_2;
+            y0 = z - PIO2_2T;
+            y1 = (z - y0) - PIO2_2T;
+        } else {
+            y0 = z - PIO2_1T;
+            y1 = (z - y0) - PIO2_1T;
+        }
+        return (1, y0, y1);
+    }
+    let mut z = x + PIO2_1;
+    let (y0, y1);
+    if ix == 0x3ff9_21fb {
+        z += PIO2_2;
+        y0 = z + PIO2_2T;
+        y1 = (z - y0) + PIO2_2T;
+    } else {
+        y0 = z + PIO2_1T;
+        y1 = (z - y0) + PIO2_1T;
+    }
+    (-1, y0, y1)
+}
+
 /// `__ieee754_rem_pio2` for arguments up to 2^19 * pi / 2: the quadrant and the remainder as a
 /// head and a tail.
 fn rem_pio2(x: f64) -> (i32, f64, f64) {
     let hx = hi(x);
     let ix = hx & 0x7fff_ffff;
     if ix < 0x4002_d97c {
-        // |x| < 3 pi / 4: one step.
-        if hx > 0 {
-            let mut z = x - PIO2_1;
-            let (y0, y1);
-            if ix == 0x3ff9_21fb {
-                z -= PIO2_2;
-                y0 = z - PIO2_2T;
-                y1 = (z - y0) - PIO2_2T;
-            } else {
-                y0 = z - PIO2_1T;
-                y1 = (z - y0) - PIO2_1T;
-            }
-            return (1, y0, y1);
-        }
-        let mut z = x + PIO2_1;
-        let (y0, y1);
-        if ix == 0x3ff9_21fb {
-            z += PIO2_2;
-            y0 = z + PIO2_2T;
-            y1 = (z - y0) + PIO2_2T;
-        } else {
-            y0 = z + PIO2_1T;
-            y1 = (z - y0) + PIO2_1T;
-        }
-        return (-1, y0, y1);
+        return rem_pio2_one_step(x, hx, ix);
     }
     let t = x.abs();
     let n = (t * INVPIO2 + 0.5) as i32;
