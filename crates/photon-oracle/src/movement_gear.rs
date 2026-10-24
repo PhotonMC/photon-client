@@ -232,12 +232,25 @@ pub(super) fn hold_main_hand(
     let item = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
     let count = breaking["main_hand_count"].as_i64().unwrap_or(1) as i32;
     let mut stack = photon_world::ClientItemStackState::new(count, item);
+    let mut added = Vec::new();
     if let Some(seconds) = breaking["main_hand_use_cooldown"].as_f64() {
         // `UseCooldown.STREAM_CODEC`: the seconds and no group.
         let mut value = (seconds as f32).to_be_bytes().to_vec();
         value.push(0);
+        added.push((photon_data::item::component_types::USE_COOLDOWN, value));
+    }
+    if let Some(name) = breaking["main_hand_use_remainder"].as_str() {
+        let remainder =
+            photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
+        // `ItemStackTemplate.STREAM_CODEC`: the item, a count of one and an empty patch.
+        let mut value = Vec::new();
+        photon_core::wire::write_varint(remainder.0, &mut value);
+        value.extend([1, 0, 0]);
+        added.push((photon_data::item::component_types::USE_REMAINDER, value));
+    }
+    if !added.is_empty() {
         stack.set_patch(&photon_world::item_components::Patch {
-            added: vec![(photon_data::item::component_types::USE_COOLDOWN, value)],
+            added,
             removed: Vec::new(),
         });
     }

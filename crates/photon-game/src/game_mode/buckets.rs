@@ -246,7 +246,7 @@ pub(super) fn filled_with(
 
 /// `Inventory.add` of one item: onto a stack with room (the selected slot, the off hand, then the
 /// hotbar and the rest in order), else into the first free slot.
-fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
+pub(super) fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
     let menu_slot = |index: i16| if index < 9 { 36 + index } else { index };
     let order: Vec<i16> = [menu_slot(ctx.selected_slot as i16), 45]
         .into_iter()
@@ -269,7 +269,7 @@ fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
             .is_none_or(|stack| stack.item_count() <= 0)
     };
     if let Some(slot) = order.iter().copied().find(|slot| has_room(*slot)) {
-        ctx.world.grow_local_player_slot(slot, 1);
+        ctx.world.grow_local_player_slot(slot, fresh.item_count());
     } else if let Some(slot) = (0..36).map(menu_slot).find(|slot| free(*slot)) {
         ctx.world.put_local_player_slot(slot, fresh);
     }

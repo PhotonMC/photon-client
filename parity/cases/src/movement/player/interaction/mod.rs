@@ -26,6 +26,8 @@ pub struct Interaction {
     count: Option<i64>,
     /// A `use_cooldown` component (seconds) on the main hand's stack.
     use_cooldown: Option<f64>,
+    /// A `use_remainder` component (one of this item) on the main hand's stack.
+    use_remainder: Option<&'static str>,
     off_hand: Option<&'static str>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
@@ -39,6 +41,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         main_hand: None,
         count,
         use_cooldown: None,
+        use_remainder: None,
         off_hand: None,
         chest: None,
         rockets: None,
@@ -78,6 +81,10 @@ impl Interaction {
 
     pub fn use_cooldown(self, seconds: f64) -> Self {
         Self { use_cooldown: Some(seconds), ..self }
+    }
+
+    pub fn use_remainder(self, item: &'static str) -> Self {
+        Self { use_remainder: Some(item), ..self }
     }
 
     pub fn off_hand(self, item: &'static str) -> Self {
@@ -125,6 +132,9 @@ impl Interaction {
         }
         if let Some(seconds) = self.use_cooldown {
             held["main_hand_use_cooldown"] = json!(seconds);
+        }
+        if let Some(item) = self.use_remainder {
+            held["main_hand_use_remainder"] = json!(item);
         }
         if let Some(item) = self.off_hand {
             held["off_hand"] = json!(item);

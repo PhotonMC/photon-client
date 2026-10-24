@@ -348,7 +348,7 @@ impl GameMode {
             }
             None => UseResult::Pass,
         };
-        super::base_use::after_instant_use(ctx, before.as_ref(), result);
+        super::base_use::after_instant_use(ctx, hand, before.as_ref(), result);
         out.push(Outgoing::UseItem {
             hand,
             sequence,
