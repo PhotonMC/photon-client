@@ -23,6 +23,12 @@ final class Reflect {
         field.set(target, value);
     }
 
+    /** A static field, written with the value's own type (an int stays an int). */
+    static void setStatic(Class<?> owner, String name, Object value) throws Exception {
+        var field = find(owner, name);
+        field.set(null, value);
+    }
+
     private static java.lang.reflect.Field find(Class<?> start, String name) throws NoSuchFieldException {
         for (Class<?> type = start; type != null; type = type.getSuperclass()) {
             try {

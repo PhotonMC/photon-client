@@ -121,17 +121,7 @@ class GuiHudOracle extends GuiCommandOracle {
             if (row.get("pause_screen").getAsBoolean()) {
                 set(screen.minecraft().gui, "screen", unsafe.allocateInstance(net.minecraft.client.gui.screens.PauseScreen.class));
             }
-            // The music notes' colour waits on the wall clock: held where the row says.
-            var noteClass = net.minecraft.client.gui.components.toasts.NowPlayingToast.class;
-            var tick = noteClass.getDeclaredField("musicNoteColorTick");
-            tick.setAccessible(true);
-            tick.setInt(null, 0);
-            var last = noteClass.getDeclaredField("lastMusicNoteColorChange");
-            last.setAccessible(true);
-            last.setLong(null, Long.MAX_VALUE / 2);
-            var colour = noteClass.getDeclaredField("musicNoteColor");
-            colour.setAccessible(true);
-            colour.setInt(null, -1);
+            Access26_2.holdMusicNote();
             var manager = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
             var events = new JsonArray();
             net.minecraft.client.gui.components.toasts.TutorialToast[] tutorial = {null};
