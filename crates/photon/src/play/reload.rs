@@ -38,9 +38,22 @@ pub(super) fn entity_textures(
             .collect::<Result<Vec<_>>>()?
             .into_iter()
             .chain(Armor::trim_images(root))
+            .chain(skin_slots())
             .collect(),
     )
     .ok_or_else(|| "the entity textures did not fit".into())
+}
+
+/// The places the downloaded skins are drawn from, empty.
+fn skin_slots() -> impl Iterator<Item = (String, photon_render::DecodedImage)> {
+    (0..crate::skins::SLOT_COUNT).map(|index| {
+        let blank = photon_render::DecodedImage {
+            width: 64,
+            height: 64,
+            rgba: vec![0; 64 * 64 * 4],
+        };
+        (crate::skins::slot_name(index), blank)
+    })
 }
 
 /// The sun and the moon's phases in the block atlas.
@@ -158,6 +171,7 @@ impl Play {
         let textures = entity_textures(root, &armor, &particles)?;
         self.backend.load_entity_texture(&textures.image)?;
         particles.bind_textures(&textures);
+        self.skins.lay_out(&textures);
         let skin = photon_render::entity::player_renderer::default_skin(
             self.session
                 .profile_id()

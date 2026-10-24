@@ -110,6 +110,18 @@ impl PlaySession {
             .map(|info| info.name.as_str())
     }
 
+    /// A player's profile properties (`GameProfile.properties`), among them the packed textures;
+    /// none for one the server did not tell of.
+    pub fn player_properties(
+        &self,
+        uuid: photon_core::binary::Uuid,
+    ) -> &[photon_protocol::play::ProfileProperty] {
+        self.social
+            .player_infos
+            .get(&(uuid.most, uuid.least))
+            .map_or(&[], |info| info.properties.as_slice())
+    }
+
     /// `getOnlinePlayerIds` with their names, and the seen players who have left
     /// (`getSeenPlayers`), for the social interactions screen.
     pub fn social_players(&self) -> SocialPlayers {

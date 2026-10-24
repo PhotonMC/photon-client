@@ -290,6 +290,8 @@ struct Play {
     /// The layers of what humanoids hold, in the right and the left hand.
     worn_layers: [ItemLayerCache; 4],
     entity_textures: photon_render::entity::textures::EntityTextures,
+    /// The skins players wear, drawn from places in the entity textures.
+    skins: crate::skins::Skins,
     skin_rect: photon_render::entity::textures::TextureRect,
     gui: Gui,
     screen_assets: ScreenAssets,

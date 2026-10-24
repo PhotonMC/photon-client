@@ -12,7 +12,10 @@ use photon_render::entity::tag_rules::{NameRules, entity_name_tag, eye_height, r
 pub fn remote_players(
     session: &PlaySession,
     (models, armor): (&mut RemoteModels, &mut Armor),
-    textures: &photon_render::entity::textures::EntityTextures,
+    (textures, skins): (
+        &mut photon_render::entity::textures::EntityTextures,
+        &mut crate::skins::Skins,
+    ),
     (view, held): (FrameView, &mut Vec<HeldItem>),
     vertices: &mut Vec<Vertex>,
 ) {
@@ -29,15 +32,11 @@ pub fn remote_players(
         if flipped(session, entity) {
             snapshot.turn_upside_down(entity.leash_size().height);
         }
-        let skin = photon_render::entity::player_renderer::default_skin(entity.uuid);
-        let Some(rect) = textures.rect(skin.texture) else {
+        let Some((rect, slim)) = skins.of_player(session, textures, entity.uuid) else {
             continue;
         };
-        let model = if skin.slim {
-            &mut models.slim
-        } else {
-            &mut models.wide
-        };
+        let textures = &*textures;
+        let model = models.of(slim);
         let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
         let (right, left) = (
             entity.item_held_by_arm(false),

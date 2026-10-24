@@ -69,6 +69,11 @@ pub struct RemoteModels {
 }
 
 impl RemoteModels {
+    /// The model with wide or slim arms.
+    pub fn of(&mut self, slim: bool) -> &mut PlayerModel {
+        if slim { &mut self.slim } else { &mut self.wide }
+    }
+
     pub fn new() -> Self {
         Self {
             wide: PlayerModel::new(false),

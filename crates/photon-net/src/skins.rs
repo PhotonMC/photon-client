@@ -9,4 +9,5 @@ mod unpack;
 pub use download::{fetch_texture, local_copy};
 pub use keys::{fetch_property_keys, parse_property_keys};
 pub use legacy::process_legacy_skin;
+pub use photon_protocol::play::ProfileProperty;
 pub use unpack::{ProfileTexture, ProfileTextures, SignatureState, unpack_textures};

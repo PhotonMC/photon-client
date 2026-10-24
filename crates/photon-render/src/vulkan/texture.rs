@@ -291,12 +291,28 @@ impl VulkanBackend {
         Ok(())
     }
 
+    /// Hand over the entity textures' image. One already in use is replaced: the descriptor set
+    /// is kept and made to point at the new image (a skin arrived, or the packs reloaded).
     pub fn load_entity_texture(&mut self, skin: &DecodedImage) -> Result<(), VulkanError> {
-        if self
-            .scene
-            .as_ref()
-            .is_none_or(|scene| scene.entity_set.is_some())
-        {
+        let Some(scene) = self.scene.as_ref() else {
+            return Ok(());
+        };
+        if let Some(set) = scene.entity_set {
+            let Some(sampler) = scene
+                .entity_texture
+                .as_ref()
+                .map(|texture| texture.sampler.handle)
+            else {
+                return Ok(());
+            };
+            let image = self.replace_image(skin, set, sampler)?;
+            if let Some(texture) = self
+                .scene
+                .as_mut()
+                .and_then(|scene| scene.entity_texture.as_mut())
+            {
+                texture.image = image;
+            }
             return Ok(());
         }
         let Some((texture, set)) = self.upload_sampled_texture(skin)? else {

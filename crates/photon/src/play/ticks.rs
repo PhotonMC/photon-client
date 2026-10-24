@@ -72,9 +72,7 @@ impl Play {
         let entity_textures = super::reload::entity_textures(&root, &armor, &particles)?;
         backend.load_entity_texture(&entity_textures.image)?;
         particles.bind_textures(&entity_textures);
-        let skin_rect = entity_textures
-            .rect(skin.texture)
-            .ok_or("the player's skin")?;
+        let skin_rect = entity_textures.rect(skin.texture).ok_or("player skin")?;
         // The registries a tooltip reads, from the data pack, named as the
         // server synchronised them.
         let registries = photon_game::registries::Registries::load(&data_root, |registry| {
@@ -135,6 +133,7 @@ impl Play {
                 ItemLayerCache::new(photon_render::model::DisplayContext::Head),
                 ItemLayerCache::new(photon_render::model::DisplayContext::Ground),
             ],
+            skins: crate::skins::Skins::for_game(&entity_textures),
             entity_textures,
             skin_rect,
             gui,

@@ -24,6 +24,7 @@ mod resources;
 mod screens;
 mod screenshot;
 mod script;
+mod skins;
 mod sound;
 mod system_info;
 mod view;

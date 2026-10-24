@@ -1,6 +1,44 @@
 use super::*;
 
 impl Play {
+    /// A frame begins for the skins, the local player's among them.
+    pub(super) fn begin_skins(&mut self) {
+        self.skins.begin_frame();
+        self.wear_own_skin();
+    }
+
+    /// A skin written into the textures is there before the frame draws.
+    pub(super) fn upload_skins(&mut self) -> Result<()> {
+        if self.skins.take_dirty() {
+            self.backend
+                .load_entity_texture(&self.entity_textures.image)?;
+        }
+        Ok(())
+    }
+
+    /// `PlayerInfo.createSkinLookup` for the local player, which needs no signature: the skin
+    /// its model, hands and inventory figure are drawn in.
+    pub(super) fn wear_own_skin(&mut self) {
+        let Some(id) = self.session.profile_id() else {
+            return;
+        };
+        let who = crate::skins::Who {
+            id,
+            properties: self.session.player_properties(id),
+            require_secure: false,
+        };
+        let Some((rect, slim)) = self.skins.resolve(&mut self.entity_textures, &who) else {
+            return;
+        };
+        if self.player_model.slim != slim {
+            self.player_model = photon_render::entity::player_model::PlayerModel::new(slim);
+        }
+        if self.skin_rect != rect {
+            self.skin_rect = rect;
+            self.gui.set_player_skin(rect);
+        }
+    }
+
     /// The local player's own model with what it wears and holds (an invisible one keeps those,
     /// not its body).
     pub(super) fn own_model(

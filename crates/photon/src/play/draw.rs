@@ -67,6 +67,7 @@ impl Play {
     /// leaves its eyes.
     pub(super) fn draw_overlays(&mut self, frame: &FrameCamera) -> Result<()> {
         self.apply_glint_options();
+        self.begin_skins();
         let view = self.frame_view(frame);
         self.place_listener(frame);
         let first_person = self.controls.camera_type == CameraType::FirstPerson;
@@ -233,7 +234,7 @@ impl Play {
         overlays::remote_players(
             &self.session,
             (&mut self.remote_models, &mut self.armor),
-            &self.entity_textures,
+            (&mut self.entity_textures, &mut self.skins),
             (view, &mut held),
             models,
         );
@@ -253,6 +254,7 @@ impl Play {
             let own = self.own_model(view, &mut held, invisible)?;
             self.entity_vertices.extend(own);
         }
+        self.upload_skins()?;
         self.backend.set_draw(
             photon_render::vulkan::DrawKind::Entities,
             &self.entity_vertices,
