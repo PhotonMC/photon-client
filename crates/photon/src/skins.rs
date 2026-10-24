@@ -107,7 +107,7 @@ impl Skins {
             loading: 0,
             finished,
             sender,
-            keys: Arc::new(KeyCell::default()),
+            keys: shared_keys(),
             cache,
             load,
             frame: 0,
@@ -239,6 +239,13 @@ impl Skins {
         }
         Some((rect, loaded.slim))
     }
+}
+
+/// The signing keys, asked for once by the process and kept across games (the services' keys
+/// belong to the launcher session in the reference, not to a level).
+fn shared_keys() -> Arc<KeyCell> {
+    static KEYS: std::sync::OnceLock<Arc<KeyCell>> = std::sync::OnceLock::new();
+    KEYS.get_or_init(Arc::default).clone()
 }
 
 /// Write a skin's pixels into the textures where `rect` is.
