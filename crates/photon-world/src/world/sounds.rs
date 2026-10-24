@@ -7,6 +7,16 @@ impl ClientWorld {
         self.sounds.0.push(sound);
     }
 
+    /// The pitch of an igniter's sound on a creeper, `random.nextFloat() * 0.4F + 0.8F`.
+    pub fn entity_sound_pitch(&mut self) -> f32 {
+        self.entity_sound_random.source().next_float() * 0.4 + 0.8
+    }
+
+    /// Fixes the source `entity_sound_pitch` draws from, so a comparison can be made.
+    pub fn fix_entity_sound_seed(&mut self, seed: i64) {
+        self.entity_sound_random.fix_seed(seed);
+    }
+
     /// The sounds made since the last call, in order.
     pub fn take_sounds(&mut self) -> Vec<local_player::LocalSound> {
         std::mem::take(&mut self.sounds.0)

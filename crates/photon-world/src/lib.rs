@@ -124,6 +124,9 @@ pub struct ClientWorld {
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
+    /// The source a sound made for an entity's click draws its pitch from (the reference keeps
+    /// one per entity, unseeded).
+    entity_sound_random: entity_random::EntityRandom,
     /// The level events, until the particle engine takes them.
     level_events: world::LevelEventQueue,
     /// The blocks the player is breaking and the face it aims at, for each tick it swings at one

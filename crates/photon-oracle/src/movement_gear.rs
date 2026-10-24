@@ -346,6 +346,8 @@ pub(super) fn told_entities(
         if !accepted {
             return Err(format!("entity {name} was rejected"));
         }
+        // The reference's entity random starts from nowhere in particular; the port seeds it from the id.
+        world.fix_entity_sound_seed(i64::from(id.0));
         if described.get("leash_holder").is_some() {
             world
                 .entities_mut()

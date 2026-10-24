@@ -122,8 +122,8 @@ impl Context<'_> {
     }
 
     /// `Creeper.mobInteract`: a flint and steel or fire charge lights the fuse, which the client
-    /// answers with a swing and the sound of the igniter. (The reference draws the pitch from the
-    /// creeper's own unseeded random; a fresh source seeded by the entity id stands for it.)
+    /// answers with a swing and the sound of the igniter, its pitch drawn from a source that runs
+    /// on from click to click, as the creeper's own does.
     fn interact_creeper(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
@@ -144,8 +144,7 @@ impl Context<'_> {
         } else {
             "minecraft:item.flintandsteel.use"
         };
-        let pitch =
-            photon_core::random::RandomSource::create(i64::from(id.0)).next_float() * 0.4 + 0.8;
+        let pitch = self.world.entity_sound_pitch();
         self.world
             .push_sound(photon_world::local_player::LocalSound::at(
                 event,

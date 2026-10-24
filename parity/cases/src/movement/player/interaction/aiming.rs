@@ -246,6 +246,13 @@ fn decoration_rows() -> Vec<Value> {
         at("use-fox-with-sweet-berries", "fox").main_hand("minecraft:sweet_berries").x_rot(30.0).row(),
         at("use-frog-with-slime-ball", "frog").main_hand("minecraft:slime_ball").x_rot(30.0).row(),
         at("use-creeper-with-flint-and-steel", "creeper").main_hand("minecraft:flint_and_steel").row(),
+        facing(
+            "use-creeper-twice-with-flint-and-steel",
+            vec![mob(31, "creeper", 0.5, 64.0, 2.5)],
+            [aims(1).use_clicks(1).go(), aims(2).go(), aims(1).use_clicks(1).go(), aims(2).go()].concat(),
+        )
+        .main_hand("minecraft:flint_and_steel")
+        .row(),
         at("use-creeper-with-fire-charge", "creeper").main_hand("minecraft:fire_charge").row(),
         at("use-creeper-with-stone", "creeper").main_hand("minecraft:stone").row(),
         at("use-zombie-with-lead", "zombie").main_hand("minecraft:lead").row(),
