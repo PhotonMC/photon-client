@@ -266,8 +266,17 @@ pub(super) fn decode_sprite(
     material: &Material,
 ) -> Result<DecodedSprite, ResolveError> {
     let bad = || ResolveError::BadTexture(key.to_owned());
-    let bytes = source.texture(&material.sprite).ok_or_else(bad)?;
-    let mut image = decode_rgba(&bytes).map_err(|_| bad())?;
+    // A sprite whose file is missing or unreadable is the missing texture (`MissingTextureAtlasSprite`).
+    let read = source
+        .texture(&material.sprite)
+        .and_then(|bytes| decode_rgba(&bytes).ok());
+    let Some(mut image) = read else {
+        return Ok((
+            crate::texture::missing::missing_image(),
+            Default::default(),
+            None,
+        ));
+    };
     let mut animated = None;
     if let Some(animation) = source.texture_animation(&material.sprite) {
         let strip = image;

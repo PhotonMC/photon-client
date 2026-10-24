@@ -2,6 +2,7 @@
 //! OpenGL; this client targets the Vulkan one, for the reasons recorded in
 //! `docs/adr/0001-vulkan-renderer.md`.
 
+pub mod atlas_sources;
 pub mod block;
 pub mod block_entity;
 pub mod border;

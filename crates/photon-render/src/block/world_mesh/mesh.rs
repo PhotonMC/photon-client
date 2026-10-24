@@ -1,5 +1,5 @@
+use super::listing::atlas_of;
 use super::*;
-use crate::resolve::build_atlas_with;
 use photon_core::ids::BlockStateId;
 
 impl BlockRenderer {
@@ -70,9 +70,8 @@ impl BlockRenderer {
         add_item_frame_states(&frame_files, &mut pending, &mut air);
         let (items, layer_alpha, layer_sprites) =
             item_models(source, &mut model_cache, &mut models);
-        let ordered: Vec<&ResolvedModel> = models.values().collect();
-        let extra = extra_sprites(layer_sprites);
-        let atlas = build_atlas_with(source, &ordered, &extra, (8192, mip), bit)?;
+        let (atlas, unlisted) =
+            atlas_of(source, (&models, layer_sprites, &layer_alpha), (mip, bit))?;
         let (baked, states) = bake_states(&models, &atlas, pending, &air);
         let particle_sprites = particle_sprites(&blockstates, &models);
         Ok(Self {
@@ -85,6 +84,7 @@ impl BlockRenderer {
             frame_base,
             atlas,
             skipped,
+            unlisted,
         })
     }
 
@@ -519,7 +519,9 @@ pub(super) fn add_face(
 
 /// The sprites named by no block model, so they are asked for by name: the fluid renderer's, the
 /// sky's sun and moon phases, the conduit's, and those the item models ask for.
-fn extra_sprites(layer_sprites: impl IntoIterator<Item = Identifier>) -> Vec<Identifier> {
+pub(super) fn extra_sprites(
+    layer_sprites: impl IntoIterator<Item = Identifier>,
+) -> Vec<Identifier> {
     FLUID_SPRITES
         .iter()
         .map(|name| (*name).to_owned())

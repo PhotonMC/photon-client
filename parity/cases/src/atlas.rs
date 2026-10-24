@@ -104,6 +104,24 @@ pub fn cases() -> Vec<Value> {
     let texture = |id: &str| file(id, "x");
     let listed = [
         json!({"label": "gui", "atlas": "minecraft:gui"}),
+        json!({"label": "blocks", "atlas": "minecraft:blocks"}),
+        json!({"label": "items", "atlas": "minecraft:items"}),
+        json!({"label": "armor-trims", "atlas": "minecraft:armor_trims"}),
+        // A pack adds a folder to the block atlas and permutes a texture of the item atlas; a
+        // permutation of a texture that is missing lists nothing.
+        json!({"label": "pack-blocks-folder", "atlas": "minecraft:blocks", "pack": [
+            file("minecraft:atlases/blocks.json", concat!(
+                r#"{"sources":[{"type":"minecraft:directory","source":"custom","prefix":"custom/"},"#,
+                r#"{"type":"minecraft:filter","pattern":{"path":"^block/stone$"}}]}"#)),
+            texture("minecraft:textures/custom/a.png"),
+            texture("foo:textures/custom/sub/b.png"),
+        ]}),
+        json!({"label": "pack-items-permutations", "atlas": "minecraft:items", "pack": [
+            file("minecraft:atlases/items.json", concat!(
+                r#"{"sources":[{"type":"minecraft:paletted_permutations","textures":["foo:p/one","foo:p/gone"],"#,
+                r#""palette_key":"foo:p/key","permutations":{"red":"foo:p/red","blue":"foo:p/blue"},"separator":"-"}]}"#)),
+            texture("foo:textures/p/one.png"),
+        ]}),
         // A pack's own sources come after the game's: a directory of another namespace with a
         // prefix, a single file under a new name, and one filter dropping a game sprite.
         json!({"label": "pack-directory-single-filter", "atlas": "minecraft:gui", "pack": [

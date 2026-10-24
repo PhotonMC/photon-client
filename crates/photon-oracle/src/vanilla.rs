@@ -277,10 +277,10 @@ fn sprite_ids_result(request: &Value) -> Result<Value, String> {
             ));
         }
         let stack = photon_assets::ResourceStack::new(packs);
-        let ids = match string(row, "atlas")? {
-            "minecraft:gui" => photon_render::gui::atlas::sprite_ids(&stack),
-            other => return Err(format!("unknown atlas {other}")),
-        };
+        let atlas = string(row, "atlas")?
+            .strip_prefix("minecraft:")
+            .ok_or("atlas id")?;
+        let ids = photon_render::atlas_sources::sprite_ids(&stack, atlas);
         out.push(json!({"label": row["label"], "ids": ids}));
     }
     std::fs::remove_dir_all(&scratch).ok();

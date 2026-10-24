@@ -35,9 +35,12 @@ pub struct BlockRenderer {
     pub atlas: BuiltAtlas,
     /// Blocks or models that could not be prepared, with why.
     pub skipped: Vec<(String, String)>,
+    /// The sprites that models name and no atlas definition lists, drawn as the missing texture.
+    pub unlisted: Vec<String>,
 }
 
 mod conduit;
+mod listing;
 pub use conduit::ConduitMeshes;
 mod fluid;
 use fluid::*;

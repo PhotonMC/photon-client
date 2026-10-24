@@ -46,6 +46,12 @@ pub trait AssetSource: Sync {
         None
     }
 
+    /// Whether an atlas definition lists the sprite. A model face naming one it does not list
+    /// is drawn with the missing texture (see [`Hiding`]).
+    fn sprite_listed(&self, _name: &Identifier) -> bool {
+        true
+    }
+
     /// The texture section of one sprite's metadata, if the sprite has one.
     ///
     /// Absent metadata is not an error: every field has a default, and the
@@ -354,6 +360,8 @@ struct BuiltSprite {
 
 mod sprite;
 pub use sprite::*;
+mod hiding;
+pub use hiding::*;
 mod tint;
 pub use tint::*;
 

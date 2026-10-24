@@ -1,13 +1,15 @@
-//! Which sprites the GUI atlas holds: the sources of `atlases/gui.json` of every pack, as full
-//! ids (`namespace:prefix + path under the source`).
+//! Which sprites an atlas holds: the sources of `atlases/<name>.json` of every pack, as full ids
+//! (`namespace:prefix + path under the source`). The GUI, block and item atlases all list their
+//! sprites here.
 
-use super::{DecodedImage, Resources};
+use crate::texture::png::DecodedImage;
 use photon_assets::IdentifierPattern;
 use photon_core::identifier::Identifier;
 use photon_core::json::{JsonObject, JsonValue};
+use photon_core::resources::Resources;
 use std::collections::BTreeMap;
 
-/// One entry of an atlas definition's `sources`. The `paletted_permutations` type is not read.
+/// One entry of an atlas definition's `sources`.
 enum Source {
     /// `minecraft:directory`: every PNG under `textures/<source>`, named `<prefix><path>`.
     Directory { prefix: String, source: String },
@@ -15,6 +17,12 @@ enum Source {
     Single {
         resource: String,
         sprite: Option<String>,
+    },
+    /// `minecraft:paletted_permutations`: each texture once per permutation, named `<texture><separator><key>`.
+    Permutations {
+        textures: Vec<String>,
+        keys: Vec<String>,
+        separator: String,
     },
     /// `minecraft:filter`: the sprites listed so far whose id matches are dropped.
     Filter(IdentifierPattern),
@@ -61,6 +69,28 @@ fn parse_unstitch(entry: &JsonObject) -> Option<Source> {
     })
 }
 
+fn parse_permutations(entry: &JsonObject) -> Option<Source> {
+    let strings = |values: Vec<JsonValue>| -> Vec<String> {
+        values
+            .iter()
+            .filter_map(|value| match value {
+                JsonValue::String(units) => String::from_utf16(units).ok(),
+                _ => None,
+            })
+            .collect()
+    };
+    entry.text("palette_key")?;
+    Some(Source::Permutations {
+        textures: strings(entry.array("textures")?.to_vec()),
+        keys: entry
+            .object("permutations")?
+            .entries()
+            .filter_map(|(key, _)| String::from_utf16(key).ok())
+            .collect(),
+        separator: entry.text("separator").unwrap_or_else(|| "_".to_owned()),
+    })
+}
+
 fn parse_sources(atlas: &JsonObject) -> Vec<Source> {
     let entries = atlas.array("sources").unwrap_or_default();
     entries
@@ -78,6 +108,7 @@ fn parse_sources(atlas: &JsonObject) -> Vec<Source> {
                     resource: entry.text("resource")?,
                     sprite: entry.text("sprite"),
                 }),
+                "minecraft:paletted_permutations" => parse_permutations(entry),
                 "minecraft:filter" => {
                     IdentifierPattern::from_json(entry.object("pattern")?).map(Source::Filter)
                 }
@@ -88,10 +119,10 @@ fn parse_sources(atlas: &JsonObject) -> Vec<Source> {
         .collect()
 }
 
-/// The sources of `atlases/gui.json` in every pack, the lowest pack's first (`AtlasLoader`). A
-/// stack with no such file holds the game's own two: the GUI sprites and the effect icons.
-fn sources(resources: &dyn Resources) -> Vec<Source> {
-    let Ok(file) = Identifier::parse("minecraft:atlases/gui.json") else {
+/// The sources of `atlases/<atlas>.json` in every pack, the lowest pack's first (`AtlasLoader`).
+/// A stack with no `gui` file holds the game's own two: the GUI sprites and the effect icons.
+fn sources(resources: &dyn Resources, atlas: &str) -> Vec<Source> {
+    let Ok(file) = Identifier::parse(&format!("minecraft:atlases/{atlas}.json")) else {
         return Vec::new();
     };
     let found: Vec<Source> = resources
@@ -101,7 +132,7 @@ fn sources(resources: &dyn Resources) -> Vec<Source> {
         .filter_map(photon_core::json::parse_object)
         .flat_map(|atlas| parse_sources(&atlas))
         .collect();
-    if !found.is_empty() {
+    if !found.is_empty() || atlas != "gui" {
         return found;
     }
     vec![
@@ -128,14 +159,14 @@ enum Origin {
 }
 
 /// A sprite of the atlas: its id and where its picture is.
-pub(super) struct Sprite {
-    pub(super) id: String,
+pub(crate) struct Sprite {
+    pub(crate) id: String,
     origin: Origin,
 }
 
-/// The ids of the sprites `atlases/gui.json` lists, sorted.
-pub fn sprite_ids(resources: &dyn Resources) -> Vec<String> {
-    sprites(resources)
+/// The ids of the sprites `atlases/<atlas>.json` lists (`gui`, `blocks`, `items`, ...), sorted.
+pub fn sprite_ids(resources: &dyn Resources, atlas: &str) -> Vec<String> {
+    sprites(resources, atlas)
         .into_iter()
         .map(|sprite| sprite.id)
         .collect()
@@ -196,11 +227,31 @@ fn add_regions(
     }
 }
 
+/// `PalettedPermutations`: one sprite per texture that exists and permutation key. Its picture is
+/// made by the item atlas, so the sprite names the texture it recolours.
+fn add_permutations(
+    resources: &dyn Resources,
+    found: &mut BTreeMap<String, Origin>,
+    (textures, keys): (&[String], &[String]),
+    separator: &str,
+) {
+    for texture in textures {
+        let Some(file) = texture_file(texture).filter(|file| resources.read(file).is_some()) else {
+            continue;
+        };
+        for key in keys {
+            if let Some(id) = full_id(&format!("{texture}{separator}{key}")) {
+                found.insert(id, Origin::File(file.clone()));
+            }
+        }
+    }
+}
+
 /// Every sprite, sorted by id; a later source names a sprite again over an earlier one and a
 /// filter drops the ids it matches (`SpriteSourceList`).
-pub(super) fn sprites(resources: &dyn Resources) -> Vec<Sprite> {
+pub(crate) fn sprites(resources: &dyn Resources, atlas: &str) -> Vec<Sprite> {
     let mut found: BTreeMap<String, Origin> = BTreeMap::new();
-    for source in sources(resources) {
+    for source in sources(resources, atlas) {
         match source {
             Source::Directory { prefix, source } => {
                 let root = format!("textures/{source}");
@@ -221,6 +272,11 @@ pub(super) fn sprites(resources: &dyn Resources) -> Vec<Sprite> {
             Source::Single { resource, sprite } => {
                 add_single(resources, &mut found, &resource, sprite);
             }
+            Source::Permutations {
+                textures,
+                keys,
+                separator,
+            } => add_permutations(resources, &mut found, (&textures, &keys), &separator),
             Source::Filter(pattern) => found.retain(|id, _| {
                 let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
                 !pattern.matches(namespace, path)
@@ -239,7 +295,7 @@ pub(super) fn sprites(resources: &dyn Resources) -> Vec<Sprite> {
 }
 
 /// The picture of a sprite.
-pub(super) fn read_sprite(resources: &dyn Resources, sprite: &Sprite) -> Option<DecodedImage> {
+pub(crate) fn read_sprite(resources: &dyn Resources, sprite: &Sprite) -> Option<DecodedImage> {
     match &sprite.origin {
         Origin::File(file) => crate::texture::png::decode_rgba(&resources.read(file)?).ok(),
         Origin::Region {
@@ -315,7 +371,10 @@ mod tests {
     }
 
     fn ids(files: &Files) -> Vec<String> {
-        sprites(files).into_iter().map(|sprite| sprite.id).collect()
+        sprites(files, "gui")
+            .into_iter()
+            .map(|sprite| sprite.id)
+            .collect()
     }
 
     #[test]

@@ -77,6 +77,7 @@ public final class AtlasOracle {
     /** The ids an atlas definition lists in the game's own assets, as its sprite sources run. */
     private static JsonObject spriteIds(JsonObject request) {
         var rows = new JsonArray();
+        java.nio.file.Path packsRoot = null;
         try {
             // The registry of source types the definition files name is filled once, by the game.
             net.minecraft.client.renderer.texture.atlas.SpriteSources.bootstrap();
@@ -88,7 +89,7 @@ public final class AtlasOracle {
                 .build(new net.minecraft.server.packs.PackLocationInfo("vanilla",
                     net.minecraft.network.chat.Component.literal("vanilla"),
                     net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
-            var packsRoot = java.nio.file.Files.createTempDirectory("atlas-packs");
+            packsRoot = java.nio.file.Files.createTempDirectory("atlas-packs");
             int packNumber = 0;
             for (var element : request.get("rows").getAsJsonArray()) {
                 var row = element.getAsJsonObject();
@@ -139,9 +140,23 @@ public final class AtlasOracle {
             }
         } catch (Exception error) {
             throw new IllegalStateException(error);
+        } finally {
+            deleteTree(packsRoot);
         }
         var result = new JsonObject();
         result.add("rows", rows);
         return result;
+    }
+
+    /** The scratch packs of the rows, removed once they are listed. */
+    private static void deleteTree(java.nio.file.Path root) {
+        if (root == null) {
+            return;
+        }
+        try (var walk = java.nio.file.Files.walk(root)) {
+            walk.sorted(java.util.Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
+        } catch (java.io.IOException error) {
+            // Scratch files left behind are not a failure of the listing.
+        }
     }
 }

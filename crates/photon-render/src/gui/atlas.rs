@@ -4,14 +4,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::texture::atlas::{AtlasSprite, SpriteEntry, Stitcher};
+use crate::texture::missing::missing_image;
 use crate::texture::png::DecodedImage;
 use photon_core::identifier::Identifier;
 use photon_core::resources::{FolderResources, Resources};
 
-mod sprites;
 mod unifont;
-
-pub use sprites::sprite_ids;
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
@@ -211,27 +209,6 @@ fn with_edge_border(image: &DecodedImage) -> DecodedImage {
 /// The key of the missing texture (`MissingTextureAtlasSprite.getLocation`).
 const MISSING: &str = "minecraft:missingno";
 
-/// `MissingTextureAtlasSprite.generateMissingImage`: 16 by 16, magenta where exactly one of the
-/// row and the column is in the first half, black elsewhere.
-fn missing_image() -> DecodedImage {
-    let mut rgba = Vec::with_capacity(16 * 16 * 4);
-    for y in 0..16 {
-        for x in 0..16 {
-            let pink = (y < 8) ^ (x < 8);
-            rgba.extend_from_slice(if pink {
-                &[0xF8, 0x00, 0xF8, 0xFF]
-            } else {
-                &[0, 0, 0, 0xFF]
-            });
-        }
-    }
-    DecodedImage {
-        width: 16,
-        height: 16,
-        rgba,
-    }
-}
-
 fn register_missing(
     stitcher: &mut Stitcher,
     images: &mut BTreeMap<String, DecodedImage>,
@@ -323,9 +300,9 @@ fn collect_images(
         });
         images.insert(format!("minecraft:{name}"), image.clone());
     }
-    for sprite in sprites::sprites(resources) {
+    for sprite in crate::atlas_sources::sprites(resources, "gui") {
         // A sprite that cannot be decoded drops only itself.
-        let Some(image) = sprites::read_sprite(resources, &sprite) else {
+        let Some(image) = crate::atlas_sources::read_sprite(resources, &sprite) else {
             continue;
         };
         let id = sprite.id;

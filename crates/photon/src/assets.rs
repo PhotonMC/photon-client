@@ -141,11 +141,16 @@ pub(crate) fn vanilla_stack(root: &std::path::Path) -> photon_assets::ResourceSt
 /// (`MultiPackResourceManager`).
 pub struct StackAssets {
     stack: std::sync::Arc<photon_assets::ResourceStack>,
+    /// The sprites the block, item and celestial atlases list, read when first asked.
+    listed: std::sync::OnceLock<std::collections::HashSet<String>>,
 }
 
 impl StackAssets {
     pub fn new(stack: std::sync::Arc<photon_assets::ResourceStack>) -> Self {
-        Self { stack }
+        Self {
+            stack,
+            listed: std::sync::OnceLock::new(),
+        }
     }
 
     /// The game's own assets alone, from the folder `root` that holds the namespaces
@@ -190,7 +195,22 @@ impl StackAssets {
     }
 }
 
+/// The atlases the block renderer's one atlas stands for: blocks and items, and the celestial
+/// bodies it also holds.
+const LISTED_ATLASES: [&str; 3] = ["blocks", "items", "celestials"];
+
 impl photon_render::AssetSource for StackAssets {
+    fn sprite_listed(&self, name: &photon_core::identifier::Identifier) -> bool {
+        let listed = self.listed.get_or_init(|| {
+            LISTED_ATLASES
+                .iter()
+                .flat_map(|atlas| photon_render::atlas_sources::sprite_ids(&*self.stack, atlas))
+                .collect()
+        });
+        // A stack with no atlas definitions at all (a test fixture) lists everything.
+        listed.is_empty() || listed.contains(&name.as_string())
+    }
+
     fn model(&self, name: &photon_core::identifier::Identifier) -> Option<String> {
         self.text(name, "models")
     }
@@ -345,5 +365,60 @@ mod tests {
         assert_eq!(made("minecraft:texture_gold"), Some(vec![0, 0, 255, 255]));
         assert_eq!(made("minecraft:texture_quartz"), Some(vec![0, 255, 0, 255]));
         assert_eq!(made("minecraft:texture_iron"), None);
+    }
+
+    /// A stack of one pack that holds `files` (id and text) under `assets`.
+    fn stack_of(files: &[(&str, &str)]) -> (StackAssets, std::path::PathBuf) {
+        let dir = scratch();
+        for (id, text) in files {
+            let id = Identifier::parse(id).unwrap();
+            let path = dir.join("assets").join(id.namespace()).join(id.path());
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        }
+        let pack = photon_assets::Pack::built_in(
+            "test",
+            Box::new(photon_assets::DirectorySource::new(&dir)),
+        );
+        let stack = photon_assets::ResourceStack::new(vec![pack]);
+        (StackAssets::new(std::sync::Arc::new(stack)), dir)
+    }
+
+    #[test]
+    fn only_the_sprites_an_atlas_lists_are_listed() {
+        let (stack, dir) = stack_of(&[
+            (
+                "minecraft:atlases/blocks.json",
+                r#"{"sources":[{"type":"minecraft:directory","source":"custom","prefix":"custom/"}]}"#,
+            ),
+            ("minecraft:textures/custom/a.png", "x"),
+            ("minecraft:textures/block/stone.png", "x"),
+        ]);
+        let listed = |name: &str| stack.sprite_listed(&Identifier::parse(name).unwrap());
+        assert!(listed("minecraft:custom/a"));
+        assert!(!listed("minecraft:block/stone"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_stack_with_no_definitions_lists_everything() {
+        let (stack, dir) = stack_of(&[("minecraft:textures/block/stone.png", "x")]);
+        assert!(stack.sprite_listed(&Identifier::parse("minecraft:block/stone").unwrap()));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn every_sprite_the_game_draws_is_listed_by_its_atlases() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.data/minecraft/assets/jar/assets");
+        if !root.exists() {
+            eprintln!("skipped: the game's assets are not extracted");
+            return;
+        }
+        let stack = StackAssets::vanilla(&root);
+        let renderer =
+            photon_render::block::world_mesh::BlockRenderer::new(&stack, (0, 0)).unwrap();
+        let missing = &renderer.unlisted;
+        assert!(missing.is_empty(), "drawn as missing: {missing:?}");
     }
 }

@@ -267,6 +267,33 @@ fn layers_of_any_use(def: &crate::item_model::ClientItem) -> Vec<crate::item_mod
     layers
 }
 
+/// The alpha of the textures flat items extrude, with their sizes.
+fn flat_alpha(
+    source: &impl AssetSource,
+    flat_sprites: &[Identifier],
+) -> BTreeMap<String, crate::item_model::LayerAlpha> {
+    use rayon::prelude::*;
+    flat_sprites
+        .par_iter()
+        .map(|sprite| {
+            // A sprite no atlas lists, or without a readable file, is the missing texture.
+            let image = source
+                .sprite_listed(sprite)
+                .then(|| source.texture(sprite))
+                .flatten()
+                .and_then(|bytes| crate::texture::png::decode_rgba(&bytes).ok())
+                .unwrap_or_else(crate::texture::missing::missing_image);
+            // An animated strip's first frame decides the sides.
+            let frame = image.width.min(image.height);
+            let alpha = image.rgba[..(frame * frame * 4) as usize]
+                .chunks(4)
+                .map(|pixel| pixel[3])
+                .collect();
+            (sprite.as_string(), (alpha, frame as i32, frame as i32))
+        })
+        .collect()
+}
+
 /// Every item's client item definition, the models its layers name in any
 /// display context (added to `models`), the alpha of every flat item's
 /// layers and the sprites no element names.
@@ -333,19 +360,7 @@ pub(super) fn item_models(
             models.insert(name, model);
         }
     }
-    let layer_alpha = flat_sprites
-        .par_iter()
-        .filter_map(|sprite| {
-            let image = crate::texture::png::decode_rgba(&source.texture(sprite)?).ok()?;
-            // An animated strip's first frame decides the sides.
-            let frame = image.width.min(image.height);
-            let alpha = image.rgba[..(frame * frame * 4) as usize]
-                .chunks(4)
-                .map(|pixel| pixel[3])
-                .collect();
-            Some((sprite.as_string(), (alpha, frame as i32, frame as i32)))
-        })
-        .collect();
+    let layer_alpha = flat_alpha(source, &flat_sprites);
     (items, layer_alpha, layer_sprites)
 }
 
