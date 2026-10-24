@@ -464,7 +464,6 @@
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 19
 "crates/photon-world/src/pick.rs::ClientWorld::entity_hit_result" = 11
 "crates/photon-world/src/region_copy.rs::ClientWorld::clip_with" = 12
-"crates/photon-world/src/region_copy.rs::ClientWorld::copy_region" = 13
 "crates/photon-world/src/ride/boat/body.rs::BoatBody::inside_block_effect" = 12
 "crates/photon-world/src/ride/boat/physics.rs::BoatBody::control_boat" = 13
 "crates/photon-world/src/ride/boat/physics.rs::BoatBody::float_boat" = 11
@@ -886,7 +885,6 @@
 "crates/photon-world/src/particles/resources.rs::provider_of" = 73
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 91
 "crates/photon-world/src/player/motion.rs::ClientPlayerState::new" = 67
-"crates/photon-world/src/region_copy.rs::ClientWorld::copy_region" = 65
 "crates/photon-world/src/ride/boat/physics.rs::BoatBody::move_self" = 77
 "crates/photon-world/src/ride/boat/world.rs::ClientWorld::tick_ridden_boat" = 79
 "crates/photon-world/src/ride/mount/travel.rs::MountBody::move_self" = 62

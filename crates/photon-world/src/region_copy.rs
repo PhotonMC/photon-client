@@ -131,16 +131,7 @@ impl ClientWorld {
                 }
             }
         }
-        // Light as the level's getters read it, loaded chunk or not.
-        for y in min[1]..min[1] + size[1] {
-            for z in min[2]..min[2] + size[2] {
-                for x in min[0]..min[0] + size[0] {
-                    let index =
-                        (((y - min[1]) * size[2] + (z - min[2])) * size[0] + (x - min[0])) as usize;
-                    light[index] = (self.block_brightness(x, y, z), self.sky_brightness(x, y, z));
-                }
-            }
-        }
+        self.copy_light(min, size, &mut light);
 
         let quart_rows = self.dimension().quart_rows();
         let mut biomes =
@@ -162,6 +153,40 @@ impl ClientWorld {
             biomes,
             quart_rows,
             tags: std::sync::Arc::clone(self.block_state_registry.tags()),
+        }
+    }
+}
+
+impl ClientWorld {
+    /// Light as the level's getters read it, loaded chunk or not; a row is read a section's
+    /// width at a time.
+    fn copy_light(&self, min: [i32; 3], size: [i32; 3], light: &mut [(u8, u8)]) {
+        let width = size[0] as usize;
+        let (mut block_row, mut sky_row) = (vec![0; width], vec![0; width]);
+        for y in min[1]..min[1] + size[1] {
+            for z in min[2]..min[2] + size[2] {
+                let mut start = 0;
+                while start < width {
+                    let x = min[0] + start as i32;
+                    let run = ((16 - x.rem_euclid(16)) as usize).min(width - start);
+                    let range = start..start + run;
+                    self.light.light_run(
+                        crate::light::LightLayer::Block,
+                        (x, y, z),
+                        &mut block_row[range.clone()],
+                    );
+                    self.light.light_run(
+                        crate::light::LightLayer::Sky,
+                        (x, y, z),
+                        &mut sky_row[range],
+                    );
+                    start += run;
+                }
+                let row = (((y - min[1]) * size[2] + (z - min[2])) * size[0]) as usize;
+                for (offset, (block, sky)) in block_row.iter().zip(&sky_row).enumerate() {
+                    light[row + offset] = (*block, *sky);
+                }
+            }
         }
     }
 }

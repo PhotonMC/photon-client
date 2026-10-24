@@ -127,6 +127,17 @@ impl LevelLightEngine {
         }
     }
 
+    /// `light_value` along x from `block` for `out.len()` blocks inside one section.
+    pub fn light_run(&self, layer: LightLayer, block: BlockKey, out: &mut [u8]) {
+        match layer {
+            LightLayer::Block => self.block.storage.get_light_run(block, out),
+            LightLayer::Sky => match self.sky.as_ref() {
+                Some(sky) => sky.storage.get_light_run(block, out),
+                None => out.fill(0),
+            },
+        }
+    }
+
     /// `getDataLayerData`: the section's published layer, or the one queued
     /// for it.
     pub fn data_layer(&self, layer: LightLayer, section: SectionKey) -> Option<&DataLayer> {

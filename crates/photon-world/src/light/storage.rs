@@ -312,30 +312,54 @@ impl Storage {
 
     /// The level a getter reads, from the published layers.
     pub(super) fn get_light_value(&self, block: BlockKey) -> u8 {
+        let mut level = [0];
+        self.get_light_run(block, &mut level);
+        level[0]
+    }
+
+    /// The levels a getter reads along x from `block`, one per entry of `out`; the run stays
+    /// inside one section, so the layer is looked up once.
+    pub(super) fn get_light_run(&self, block: BlockKey, out: &mut [u8]) {
         let key = section_of(block);
         let (x, y, z) = local(block);
-        match self.layer {
-            LightLayer::Block => self
-                .visible_layer(key)
-                .map_or(0, |layer| layer.get(x, y, z)),
-            LightLayer::Sky => {
-                let top = self.visible_sky.top(column(key));
-                if top != self.visible_sky.current_lowest_y && key.1 < top {
-                    let mut section = key;
-                    let mut local_y = y;
-                    loop {
-                        if let Some(layer) = self.visible_layer(section) {
-                            return layer.get(x, local_y, z);
-                        }
-                        // The flat index: the bottom row of the layer above.
-                        local_y = 0;
-                        section.1 += 1;
-                        if section.1 >= top {
-                            return 15;
-                        }
-                    }
+        debug_assert!(x as usize + out.len() <= 16, "a run stays in its section");
+        let source = match self.layer {
+            LightLayer::Block => self.visible_layer(key).map(|layer| (layer, y)),
+            LightLayer::Sky => match self.sky_source(key, y) {
+                SkySource::Layer(layer, local_y) => Some((layer, local_y)),
+                SkySource::Full => {
+                    out.fill(15);
+                    return;
                 }
-                15
+            },
+        };
+        match source {
+            None => out.fill(0),
+            Some((layer, local_y)) => {
+                for (offset, level) in out.iter_mut().enumerate() {
+                    *level = layer.get(x + offset as i32, local_y, z);
+                }
+            }
+        }
+    }
+
+    /// Where the sky level of a block in section `key` at local height `y` is read from.
+    fn sky_source(&self, key: SectionKey, y: i32) -> SkySource<'_> {
+        let top = self.visible_sky.top(column(key));
+        if top == self.visible_sky.current_lowest_y || key.1 >= top {
+            return SkySource::Full;
+        }
+        let mut section = key;
+        let mut local_y = y;
+        loop {
+            if let Some(layer) = self.visible_layer(section) {
+                return SkySource::Layer(layer, local_y);
+            }
+            // The flat index: the bottom row of the layer above.
+            local_y = 0;
+            section.1 += 1;
+            if section.1 >= top {
+                return SkySource::Full;
             }
         }
     }
@@ -368,4 +392,12 @@ pub trait LightChunks {
     /// A block state in a loaded chunk.
     fn block_state(&self, x: i32, y: i32, z: i32) -> BlockStateId;
     fn sky_sources(&self, chunk_x: i32, chunk_z: i32) -> Option<&ChunkSkyLightSources>;
+}
+
+/// The place a sky level is read from.
+enum SkySource<'a> {
+    /// Above all light data: the sky is full.
+    Full,
+    /// A layer, at this height in it.
+    Layer(&'a DataLayer, i32),
 }

@@ -408,3 +408,64 @@ fn client_world_updates_stair_shape_from_loaded_neighbors() {
         ]
     );
 }
+
+#[test]
+fn a_copied_region_holds_the_light_the_getters_answer() {
+    let (blocks, biomes) = section(7, 8);
+    let mut world = ClientWorld::default();
+    for (chunk_x, chunk_z) in [(0, 0), (1, 0)] {
+        world.replace_chunk(
+            chunk_x,
+            chunk_z,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        // Every nibble differs from its neighbours, so a misplaced run shows.
+        let pattern = |seed: usize| -> Vec<u8> {
+            (0..2_048)
+                .map(|index| ((index * 7 + seed * 31) % 251) as u8)
+                .collect()
+        };
+        let (sky, block) = (pattern(chunk_x as usize + 1), pattern(chunk_x as usize + 5));
+        world.apply_chunk_light(
+            chunk_x,
+            chunk_z,
+            LightUpdateInput {
+                sky: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::from_bits(&[2]),
+                    updates: &[sky],
+                },
+                block: LightLayerInput {
+                    mask: &BitSet::from_bits(&[1]),
+                    empty_mask: &BitSet::from_bits(&[2]),
+                    updates: &[block],
+                },
+            },
+        );
+    }
+    world.flush_light();
+
+    // A region over the seam between the chunks, below, in and above the lit sections.
+    let min = [-3, -65, -2];
+    let size = [24, 20, 6];
+    let copy = world.copy_region(min, size, [-1, -17, -1], [6, 5, 2]);
+    for y in min[1]..min[1] + size[1] {
+        for z in min[2]..min[2] + size[2] {
+            for x in min[0]..min[0] + size[0] {
+                assert_eq!(
+                    copy.light_at(x, y, z),
+                    (
+                        world.block_brightness(x, y, z),
+                        world.sky_brightness(x, y, z)
+                    ),
+                    "at {x} {y} {z}"
+                );
+            }
+        }
+    }
+}
