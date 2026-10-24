@@ -788,7 +788,6 @@
 "crates/photon-oracle/src/travel.rs::local_player_travel_dispatch_parameters" = 86
 "crates/photon-oracle/src/vanilla.rs::image_result" = 95
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 81
-"crates/photon-protocol/src/play/chunk.rs::parse_chunk_packet" = 69
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 113
 "crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 72
