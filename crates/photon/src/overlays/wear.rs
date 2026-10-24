@@ -260,7 +260,10 @@ fn player_tags(
 ) {
     let world = session.world();
     for entity in world.entities().all() {
-        if !entity.is_player() || entity.is_spectator() {
+        if !entity.is_player()
+            || entity.is_spectator()
+            || session.camera_entity() == Some(entity.id())
+        {
             continue;
         }
         // A player the server did not tell of has no name to show.
@@ -300,6 +303,13 @@ fn player_tags(
     }
 }
 
+/// The rules of the name over an entity; `LivingEntityRenderer.shouldShowName` never shows one over
+/// the camera entity.
+fn tag_rules(session: &PlaySession, entity: &photon_world::ClientEntity) -> Option<NameRules> {
+    rules_of(entity)
+        .filter(|rules| *rules != NameRules::Mob || session.camera_entity() != Some(entity.id()))
+}
+
 /// `EntityRenderer.extractNameTags` for the entities that are not players: the ones a name shows
 /// over (a custom name that is visible, or under the crosshair).
 fn entity_tags(
@@ -311,7 +321,7 @@ fn entity_tags(
     let world = session.world();
     let picked = crate::view::crosshair_entity(session);
     for entity in world.entities().drawn_with_invisible() {
-        let Some(rules) = rules_of(entity) else {
+        let Some(rules) = tag_rules(session, entity) else {
             continue;
         };
         let Some(inputs) = frame_tag::inputs_of(entity, rules, (lang, session)) else {

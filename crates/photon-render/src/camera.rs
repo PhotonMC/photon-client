@@ -44,7 +44,7 @@ impl Camera {
         &mut self,
         player: &LocalPlayer,
         (nausea, effect_scale): (f32, f32),
-        (first_person, eye_height): (bool, f32),
+        (first_person, eye_height, own): (bool, f32, bool),
     ) {
         // `GameRenderer.tick` runs before the player's, so it reads what the last tick ended with.
         let seen = std::mem::replace(&mut self.nausea, nausea);
@@ -53,22 +53,11 @@ impl Camera {
         self.eye_height_old = self.eye_height;
         self.eye_height += (eye_height - self.eye_height) * 0.5;
 
-        // `getFieldOfViewModifier`, its effect scale lerping from one to the modifier.
-        let abilities = player.abilities();
-        let mut target = 1.0_f32;
-        if abilities.flying() {
-            target *= 1.1;
-        }
-        let walking_speed = abilities.walking_speed();
-        if walking_speed != 0.0 {
-            let speed_factor = player.movement_speed() / walking_speed;
-            target *= (speed_factor + 1.0) / 2.0;
-        }
-        let target = match player.use_fov(first_person) {
-            UseFov::Free => 1.0 + effect_scale * (target - 1.0),
-            UseFov::Drawing(factor) => 1.0 + effect_scale * (target * factor - 1.0),
-            // A spyglass fixes the modifier whatever the effect scale is.
-            UseFov::Scoped => 0.1,
+        // `Camera.tickFov`: another entity's view has no modifier.
+        let target = if own {
+            player_fov_target(player, effect_scale, first_person)
+        } else {
+            1.0
         };
         self.old_fov_modifier = self.fov_modifier;
         self.fov_modifier += (target - self.fov_modifier) * 0.5;
@@ -303,6 +292,26 @@ fn rotation(angle: f32, [x, y, z]: [f32; 3]) -> [[f32; 4]; 4] {
         ],
         [0.0, 0.0, 0.0, 1.0],
     ]
+}
+
+/// `getFieldOfViewModifier`, its effect scale lerping from one to the modifier.
+fn player_fov_target(player: &LocalPlayer, effect_scale: f32, first_person: bool) -> f32 {
+    let abilities = player.abilities();
+    let mut target = 1.0_f32;
+    if abilities.flying() {
+        target *= 1.1;
+    }
+    let walking_speed = abilities.walking_speed();
+    if walking_speed != 0.0 {
+        let speed_factor = player.movement_speed() / walking_speed;
+        target *= (speed_factor + 1.0) / 2.0;
+    }
+    match player.use_fov(first_person) {
+        UseFov::Free => 1.0 + effect_scale * (target - 1.0),
+        UseFov::Drawing(factor) => 1.0 + effect_scale * (target * factor - 1.0),
+        // A spyglass fixes the modifier whatever the effect scale is.
+        UseFov::Scoped => 0.1,
+    }
 }
 
 #[cfg(test)]

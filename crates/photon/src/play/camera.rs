@@ -289,7 +289,11 @@ pub(super) fn tick_view(
                 crate::world::fog::nausea_blend(session, 1.0),
                 fov_effect_scale,
             ),
-            (first_person, camera_eye_height(session, player)),
+            (
+                first_person,
+                camera_eye_height(session, player),
+                session.camera_entity().is_none(),
+            ),
         );
         let at = crate::view::camera_feet(session, player);
         [
