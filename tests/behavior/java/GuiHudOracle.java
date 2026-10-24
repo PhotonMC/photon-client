@@ -138,22 +138,11 @@ class GuiHudOracle extends GuiCommandOracle {
                     case "advancement" -> manager.addToast(new net.minecraft.client.gui.components.toasts.AdvancementToast(
                         advancementHolder(event.getAsJsonObject("advancement"))));
                     case "recipe" -> {
-                        var toastClass = net.minecraft.client.gui.components.toasts.RecipeToast.class;
-                        var toast = manager.getToast(toastClass, net.minecraft.client.gui.components.toasts.Toast.NO_TOKEN);
-                        if (toast == null) {
-                            var constructor = toastClass.getDeclaredConstructor();
-                            constructor.setAccessible(true);
-                            toast = constructor.newInstance();
-                            manager.addToast(toast);
-                        }
                         var stack = (java.util.function.Function<com.google.gson.JsonElement, net.minecraft.world.item.ItemStack>) name ->
                             name.isJsonNull() ? net.minecraft.world.item.ItemStack.EMPTY
                                 : new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
                                     .getValue(net.minecraft.resources.Identifier.parse(name.getAsString())));
-                        var addItem = toastClass.getDeclaredMethod("addItem",
-                            net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class);
-                        addItem.setAccessible(true);
-                        addItem.invoke(toast, stack.apply(event.get("station")), stack.apply(event.get("result")));
+                        Access26_2.showRecipe(manager, stack.apply(event.get("station")), stack.apply(event.get("result")));
                     }
                     case "tutorial" -> {
                         var icons = net.minecraft.client.gui.components.toasts.TutorialToast.Icons.values();
@@ -200,9 +189,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 if (recipeToast == null) {
                     out.add("recipe_index", com.google.gson.JsonNull.INSTANCE);
                 } else {
-                    var index = recipeClass.getDeclaredField("displayedRecipeIndex");
-                    index.setAccessible(true);
-                    out.addProperty("recipe_index", index.getInt(recipeToast));
+                    out.addProperty("recipe_index", Access26_2.recipeIndex(recipeToast));
                 }
                 events.add(out);
             }
@@ -255,11 +242,7 @@ class GuiHudOracle extends GuiCommandOracle {
         var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
             GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
             (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);
-        var device = unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
-        set(device, "backend", backend);
-        var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
-        deviceField.setAccessible(true);
-        deviceField.set(null, device);
+        Access26_2.installDevice(backend);
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
             int width = row.get("width").getAsInt();
@@ -270,43 +253,18 @@ class GuiHudOracle extends GuiCommandOracle {
             var at = camera.getAsJsonArray("pos");
             var feet = row.getAsJsonObject("player").getAsJsonArray("pos");
             var uuid = row.getAsJsonObject("player").getAsJsonArray("uuid");
-            var fresh = net.minecraft.client.Camera.class.getDeclaredConstructor();
-            fresh.setAccessible(true);
-            var cameraObject = fresh.newInstance();
-            var setRotation = net.minecraft.client.Camera.class.getDeclaredMethod("setRotation", float.class,
-                float.class);
-            setRotation.setAccessible(true);
-            setRotation.invoke(cameraObject, (float) camera.get("yaw").getAsDouble(),
-                (float) camera.get("pitch").getAsDouble());
-            var setPosition = net.minecraft.client.Camera.class.getDeclaredMethod("setPosition",
-                net.minecraft.world.phys.Vec3.class);
-            setPosition.setAccessible(true);
-            setPosition.invoke(cameraObject, new net.minecraft.world.phys.Vec3(at.get(0).getAsDouble(),
-                at.get(1).getAsDouble(), at.get(2).getAsDouble()));
             float fov = (float) camera.get("fov").getAsDouble();
-            set(cameraObject, "fov", fov);
-            var projection = (net.minecraft.client.renderer.Projection) get(cameraObject, "projection");
-            projection.setupPerspective(0.05F, (float) camera.get("far").getAsDouble(), fov,
+            var cameraObject = Access26_2.camera((float) camera.get("yaw").getAsDouble(),
+                (float) camera.get("pitch").getAsDouble(), new net.minecraft.world.phys.Vec3(at.get(0).getAsDouble(),
+                    at.get(1).getAsDouble(), at.get(2).getAsDouble()), fov);
+            var projection = Access26_2.projection(cameraObject);
+                        projection.setupPerspective(0.05F, (float) camera.get("far").getAsDouble(), fov,
                 (float) camera.get("aspect").getAsDouble(), 1.0F);
-            var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
-            set(renderer, "mainCamera", cameraObject);
-            set(minecraft, "gameRenderer", renderer);
-
-            var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
-            set(level, "tickRateManager", new net.minecraft.world.TickRateManager());
-            var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
-            var position = new net.minecraft.world.phys.Vec3(feet.get(0).getAsDouble(), feet.get(1).getAsDouble(),
-                feet.get(2).getAsDouble());
-            set(player, "level", level);
-            set(player, "position", position);
-            set(player, "blockPosition", net.minecraft.core.BlockPos.containing(position));
-            set(player, "uuid", new java.util.UUID(uuid.get(0).getAsLong(), uuid.get(1).getAsLong()));
-            var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+            Access26_2.renderThrough(minecraft, cameraObject);
             var manager = new net.minecraft.client.waypoints.ClientWaypointManager();
-            set(listener, "waypointManager", manager);
-            set(player, "connection", listener);
-            set(minecraft, "player", player);
-            set(cameraObject, "entity", player);
+            Access26_2.localPlayer(minecraft, cameraObject, new net.minecraft.world.phys.Vec3(feet.get(0).getAsDouble(),
+                feet.get(1).getAsDouble(), feet.get(2).getAsDouble()),
+                new java.util.UUID(uuid.get(0).getAsLong(), uuid.get(1).getAsLong()), manager);
 
             var styles = new HashMap<net.minecraft.resources.ResourceKey<
                 net.minecraft.world.waypoints.WaypointStyleAsset>, net.minecraft.client.resources.WaypointStyle>();

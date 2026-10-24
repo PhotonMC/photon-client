@@ -68,4 +68,80 @@ final class Access26_2 {
         Reflect.set(gui, "screen",
             Reflect.unsafe().allocateInstance(net.minecraft.client.gui.screens.PauseScreen.class));
     }
+
+    /** The recipe toast on screen (made if there is none) shows `station` and `result`. */
+    static void showRecipe(net.minecraft.client.gui.components.toasts.ToastManager manager,
+            net.minecraft.world.item.ItemStack station, net.minecraft.world.item.ItemStack result) throws Exception {
+        var toastClass = net.minecraft.client.gui.components.toasts.RecipeToast.class;
+        var toast = manager.getToast(toastClass, net.minecraft.client.gui.components.toasts.Toast.NO_TOKEN);
+        if (toast == null) {
+            var constructor = toastClass.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            toast = constructor.newInstance();
+            manager.addToast(toast);
+        }
+        var addItem = toastClass.getDeclaredMethod("addItem",
+            net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class);
+        addItem.setAccessible(true);
+        addItem.invoke(toast, station, result);
+    }
+
+    /** The index of the item the recipe toast shows. */
+    static int recipeIndex(Object toast) throws Exception {
+        return (Integer) Reflect.get(toast, "displayedRecipeIndex");
+    }
+
+    /** The render system's device, with `backend` as its backend. */
+    static void installDevice(com.mojang.blaze3d.systems.GpuDeviceBackend backend) throws Exception {
+        var device = Reflect.unsafe().allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
+        Reflect.set(device, "backend", backend);
+        Reflect.setStatic(com.mojang.blaze3d.systems.RenderSystem.class, "DEVICE", device);
+    }
+
+    /** A camera turned and placed as given, with its field of view. */
+    static net.minecraft.client.Camera camera(float yaw, float pitch,
+            net.minecraft.world.phys.Vec3 position, float fov) throws Exception {
+        var cameraClass = net.minecraft.client.Camera.class;
+        var fresh = cameraClass.getDeclaredConstructor();
+        fresh.setAccessible(true);
+        var camera = fresh.newInstance();
+        var setRotation = cameraClass.getDeclaredMethod("setRotation", float.class, float.class);
+        setRotation.setAccessible(true);
+        setRotation.invoke(camera, yaw, pitch);
+        var setPosition = cameraClass.getDeclaredMethod("setPosition", net.minecraft.world.phys.Vec3.class);
+        setPosition.setAccessible(true);
+        setPosition.invoke(camera, position);
+        Reflect.set(camera, "fov", fov);
+        return camera;
+    }
+
+    static net.minecraft.client.renderer.Projection projection(Object camera) throws Exception {
+        return (net.minecraft.client.renderer.Projection) Reflect.get(camera, "projection");
+    }
+
+    /** The game renders through `camera`. */
+    static void renderThrough(net.minecraft.client.Minecraft minecraft, Object camera) throws Exception {
+        var renderer = Reflect.unsafe().allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+        Reflect.set(renderer, "mainCamera", camera);
+        Reflect.set(minecraft, "gameRenderer", renderer);
+    }
+
+    /** A local player at `position` in a level, whose connection tracks `waypoints`; the camera follows it. */
+    static void localPlayer(net.minecraft.client.Minecraft minecraft, Object camera,
+            net.minecraft.world.phys.Vec3 position, java.util.UUID uuid,
+            net.minecraft.client.waypoints.ClientWaypointManager waypoints) throws Exception {
+        var unsafe = Reflect.unsafe();
+        var level = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class);
+        Reflect.set(level, "tickRateManager", new net.minecraft.world.TickRateManager());
+        var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+        Reflect.set(player, "level", level);
+        Reflect.set(player, "position", position);
+        Reflect.set(player, "blockPosition", net.minecraft.core.BlockPos.containing(position));
+        Reflect.set(player, "uuid", uuid);
+        var listener = unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
+        Reflect.set(listener, "waypointManager", waypoints);
+        Reflect.set(player, "connection", listener);
+        Reflect.set(minecraft, "player", player);
+        Reflect.set(camera, "entity", player);
+    }
 }

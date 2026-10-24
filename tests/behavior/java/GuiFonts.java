@@ -31,17 +31,7 @@ class GuiFonts {
     static final Map<String, GlyphSource> SOURCES = new HashMap<>();
 
     static void set(Object target, String name, Object value) throws Exception {
-        for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
-            try {
-                Field field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                field.set(target, value);
-                return;
-            } catch (NoSuchFieldException ignored) {
-                // keep looking up the class chain
-            }
-        }
-        throw new NoSuchFieldException(name);
+        Reflect.set(target, name, value);
     }
 
     static Object get(Object target, String name) throws Exception {
