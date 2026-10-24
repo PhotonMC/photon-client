@@ -120,6 +120,7 @@ mod container;
 mod hud;
 mod ids;
 mod inventory;
+mod inventory_predictions;
 mod map;
 mod movement;
 mod particles;

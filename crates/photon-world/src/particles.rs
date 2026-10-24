@@ -41,6 +41,7 @@ mod look;
 mod parrots;
 mod particle;
 mod pickup;
+mod puffs;
 mod resources;
 mod resources_make;
 mod rising;

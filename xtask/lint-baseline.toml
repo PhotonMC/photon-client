@@ -4,13 +4,7 @@
 
 [file-lines]
 "crates/photon-dev/src/probe/mode.rs" = 2246
-"crates/photon-oracle/src/entity_motion.rs" = 541
-"crates/photon-oracle/src/humanoid_models.rs" = 545
-"crates/photon-oracle/src/math_cases/player.rs" = 538
 "crates/photon-oracle/src/movement.rs" = 510
-"crates/photon-oracle/src/passenger_rotations.rs" = 536
-"crates/photon-protocol/src/play/tests/inventory.rs" = 558
-"crates/photon-world/src/particles/firework.rs" = 540
 
 [file-name]
 "crates/photon-dev/examples/block_break_rejection_probe.rs" = 1
