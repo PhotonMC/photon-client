@@ -229,6 +229,14 @@ fn decoration_rows() -> Vec<Value> {
         at("use-armor-stand", "armor_stand").row(),
         at("use-armor-stand-with-stone", "armor_stand").main_hand("minecraft:stone").row(),
         at("use-armor-stand-with-name-tag", "armor_stand").main_hand("minecraft:name_tag").row(),
+        at("use-armor-stand-with-named-tag", "armor_stand").main_hand("minecraft:name_tag").custom_name("Bob").row(),
+        at("use-zombie-with-named-tag", "zombie").main_hand("minecraft:name_tag").custom_name("Bob").row(),
+        at("use-zombie-with-unnamed-tag", "zombie").main_hand("minecraft:name_tag").row(),
+        at("use-minecart-with-named-tag", "minecart")
+            .main_hand("minecraft:name_tag")
+            .custom_name("Bob")
+            .x_rot(30.0)
+            .row(),
         frame("use-item-frame-empty").row(),
         frame("use-item-frame-empty-with-stone").main_hand("minecraft:stone").row(),
     ]

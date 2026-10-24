@@ -29,6 +29,8 @@ pub struct Interaction {
     use_cooldown: Option<f64>,
     /// A `use_remainder` component (one of this item) on the main hand's stack.
     use_remainder: Option<&'static str>,
+    /// A `custom_name` component (plain text) on the main hand's stack.
+    custom_name: Option<&'static str>,
     off_hand: Option<&'static str>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
@@ -43,6 +45,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         count,
         use_cooldown: None,
         use_remainder: None,
+        custom_name: None,
         off_hand: None,
         chest: None,
         rockets: None,
@@ -84,6 +87,10 @@ impl Interaction {
         Self { use_cooldown: Some(seconds), ..self }
     }
 
+    pub fn custom_name(self, name: &'static str) -> Self {
+        Self { custom_name: Some(name), ..self }
+    }
+
     pub fn use_remainder(self, item: &'static str) -> Self {
         Self { use_remainder: Some(item), ..self }
     }
@@ -122,20 +129,28 @@ impl Interaction {
         Self { scene: self.scene.game_mode(game_mode), ..self }
     }
 
-    pub fn row(self) -> Value {
-        let mut row = self.scene.row();
-        let mut held = json!({});
-        if let Some(item) = self.main_hand {
-            held["main_hand"] = json!(format!("minecraft:{}", item.trim_start_matches("minecraft:")));
-            if let Some(count) = self.count {
-                held["main_hand_count"] = json!(count);
-            }
-        }
+    /// The components a row puts on the main hand's stack.
+    fn add_stack_components(&self, held: &mut Value) {
         if let Some(seconds) = self.use_cooldown {
             held["main_hand_use_cooldown"] = json!(seconds);
         }
         if let Some(item) = self.use_remainder {
             held["main_hand_use_remainder"] = json!(item);
+        }
+        if let Some(name) = self.custom_name {
+            held["main_hand_custom_name"] = json!(name);
+        }
+    }
+
+    pub fn row(self) -> Value {
+        let mut held = json!({});
+        self.add_stack_components(&mut held);
+        let mut row = self.scene.row();
+        if let Some(item) = self.main_hand {
+            held["main_hand"] = json!(format!("minecraft:{}", item.trim_start_matches("minecraft:")));
+            if let Some(count) = self.count {
+                held["main_hand_count"] = json!(count);
+            }
         }
         if let Some(item) = self.off_hand {
             held["off_hand"] = json!(item);

@@ -248,6 +248,13 @@ pub(super) fn hold_main_hand(
         value.extend([1, 0, 0]);
         added.push((photon_data::item::component_types::USE_REMAINDER, value));
     }
+    if let Some(name) = breaking["main_hand_custom_name"].as_str() {
+        // A plain text component on the wire: a nameless string tag.
+        let mut value = vec![8];
+        value.extend((name.len() as u16).to_be_bytes());
+        value.extend(name.as_bytes());
+        added.push((photon_data::item::component_types::CUSTOM_NAME, value));
+    }
     if !added.is_empty() {
         stack.set_patch(&photon_world::item_components::Patch {
             added,

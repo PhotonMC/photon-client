@@ -20,6 +20,14 @@ pub(super) enum EntityUse {
 impl Context<'_> {
     /// `Player.interactOn` for a player who is not a spectator, on the client.
     pub(super) fn interact_entity(&self, id: EntityId, hand: u8) -> EntityUse {
+        match self.interact_entity_side(id, hand) {
+            EntityUse::Pass => self.item_interacts_with_living(id, hand),
+            success => success,
+        }
+    }
+
+    /// `Entity.interact` of the clicked class.
+    fn interact_entity_side(&self, id: EntityId, hand: u8) -> EntityUse {
         let Some(name) = self.world.entity_type_name(id) else {
             return EntityUse::Pass;
         };
@@ -75,6 +83,39 @@ impl Context<'_> {
         } else {
             EntityUse::Pass
         }
+    }
+
+    /// `ItemStack.interactLivingEntity` on the client, for what the stack alone decides: a name
+    /// tag that carries a name succeeds on any living entity that is not a player.
+    fn item_interacts_with_living(&self, id: EntityId, hand: u8) -> EntityUse {
+        let living = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_living_entity());
+        let player = self.world.entity_type_name(id) == Some("minecraft:player");
+        if living && !player && self.holds_named_name_tag(hand) {
+            EntityUse::Success { swing: true }
+        } else {
+            EntityUse::Pass
+        }
+    }
+
+    /// `NameTagItem.interactLivingEntity`'s condition on the stack: a name tag with a name.
+    fn holds_named_name_tag(&self, hand: u8) -> bool {
+        let Some(stack) = self
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot(self.hand_slot(hand)))
+        else {
+            return false;
+        };
+        let item = stack.item_registry_id();
+        crate::item::id_of("minecraft:name_tag") == Some(item)
+            && stack.item_count() > 0
+            && crate::item::values::Values::new(item, stack.patch_bytes())
+                .custom_name()
+                .is_some()
     }
 
     fn holds_name_tag(&self, hand: u8) -> bool {
