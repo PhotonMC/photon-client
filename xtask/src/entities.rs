@@ -71,12 +71,23 @@ fn corpus(dirs: &[&str]) -> Vec<String> {
     out
 }
 
-/// How many files spell the type as `"minecraft:name"` or `"name"`.
+/// Whether `text` holds `needle` as a whole word: not part of a longer name.
+fn has_word(text: &str, needle: &str) -> bool {
+    text.match_indices(needle).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + needle.len()..].chars().next();
+        let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_');
+        !word(before) && !word(after)
+    })
+}
+
+/// How many files spell the type as `minecraft:name` or as a quoted bare `name`, alone or before
+/// a model layer's `#`, so `minecraft:drowned#main` counts.
 fn mentions(files: &[String], name: &str) -> usize {
-    let (full, bare) = (format!("\"minecraft:{name}\""), format!("\"{name}\""));
+    let (full, bare) = (format!("minecraft:{name}"), format!("\"{name}"));
     files
         .iter()
-        .filter(|file| file.contains(&full) || file.contains(&bare))
+        .filter(|file| has_word(file, &full) || (file.contains(&bare) && has_word(file, name)))
         .count()
 }
 
