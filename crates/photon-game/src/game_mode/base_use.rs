@@ -245,7 +245,8 @@ pub(super) fn after_instant_use(
 }
 
 /// `UseRemainder.convertIntoRemainder` for the stack in `hand` that was just used up by one: an
-/// emptied stack becomes the remainder, otherwise the remainder is added to the inventory.
+/// emptied stack becomes the remainder. Extra remainders are the server's to hand out
+/// (`handleExtraItemsCreatedOnUse` does nothing on the client).
 fn convert_into_remainder(ctx: &mut Context<'_>, hand: u8, count_before: i32, template: &[u8]) {
     let slot = ctx.hand_slot(hand);
     let used_up_count = ctx
@@ -256,13 +257,10 @@ fn convert_into_remainder(ctx: &mut Context<'_>, hand: u8, count_before: i32, te
     if ctx.instabuild() || used_up_count >= count_before {
         return;
     }
-    let Some(fresh) = remainder_stack(template) else {
-        return;
-    };
-    if used_up_count <= 0 {
+    if used_up_count <= 0
+        && let Some(fresh) = remainder_stack(template)
+    {
         ctx.world.put_local_player_slot(slot, fresh);
-    } else {
-        super::buckets::add_to_inventory(ctx, fresh);
     }
 }
 
