@@ -441,7 +441,6 @@
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 39
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
-"crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 26
 "crates/photon-world/src/metadata/fields.rs::variant_from_metadata" = 11
 "crates/photon-world/src/mobs/axolotl.rs::AxolotlState::tick" = 17
 "crates/photon-world/src/mobs/creaking.rs::CreakingState::eq" = 12
@@ -878,7 +877,6 @@
 "crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 106
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 109
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 79
-"crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 92
 "crates/photon-world/src/mobs/guardian.rs::GuardianState::tick" = 70
 "crates/photon-world/src/particles/attract.rs::Particle::attract_tick" = 62
 "crates/photon-world/src/particles/colour.rs::Particle::glow" = 64
