@@ -215,7 +215,14 @@ fn colour_rows() -> Vec<Value> {
         json!({"json": "{\"text\":\"red \u{a7}lbold \u{a7}rback\",\"color\":\"red\",\"italic\":true}", "tick": 0}),
     ];
     let pieces = vec![json!({"json": "{\"text\":\"half \u{a7}\",\"extra\":[{\"text\":\"c split\"}]}", "tick": 0})];
+    let bold_reset = vec![json!({
+        "json": format!("{{\"text\":\"bold \u{a7}r{}\",\"bold\":true}}", "word ".repeat(30)),
+        "tick": 0
+    })];
+    let reset_after_wrap = format!("\u{a7}lbold {}\u{a7}r after {}", "word ".repeat(30), "tail ".repeat(12));
     vec![
+        with_options(bold_reset, 3, json!({"colors": true})).row("colours-on-reset-in-bold-piece"),
+        with_options(texts(&[(&reset_after_wrap, 0)]), 3, json!({"colors": true})).row("colours-on-reset-after-wrap"),
         with_options(texts(&coded), 3, json!({"colors": true})).row("colours-on"),
         with_options(texts(&coded), 3, json!({"colors": false})).row("colours-off"),
         with_options(texts(&[(wide, 0)]), 3, json!({"colors": false})).row("colours-off-wraps-shorter"),

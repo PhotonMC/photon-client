@@ -166,85 +166,24 @@ pub fn split(runs: &[Run], max: i32, font: &Font) -> Vec<Vec<Run>> {
 }
 
 fn break_lines(runs: &[Run], max: i32, font: &Font, indent_soft: bool) -> Vec<Vec<Run>> {
-    // The codes of the text style it and take no room (`StringSplitter` goes through
-    // `iterateFormatted`).
-    let coded;
-    let runs = if runs.iter().any(|run| run.text.contains('\u{a7}')) {
-        coded = crate::legacy_styled_runs(runs);
-        &coded[..]
-    } else {
-        runs
-    };
-    let chars: Vec<(char, usize)> = runs
-        .iter()
-        .enumerate()
-        .flat_map(|(index, run)| run.text.chars().map(move |c| (c, index)))
+    let lines = crate::splitter::split_lines(runs, max, font, &Style::default());
+    let mut out: Vec<Vec<Run>> = lines
+        .into_iter()
+        .map(|(mut line, soft)| {
+            if soft && indent_soft {
+                line.insert(
+                    0,
+                    Run {
+                        text: " ".into(),
+                        style: Style::default(),
+                    },
+                );
+            }
+            line
+        })
         .collect();
-    let advance = |(c, index): (char, usize)| {
-        let bold = runs[index].style.bold == Some(true);
-        font.glyph(c).map_or(0.0, |glyph| glyph.advance(bold))
-    };
-    // Each line, and whether it follows a soft break (one the width made).
-    let mut lines: Vec<(Vec<(char, usize)>, bool)> = Vec::new();
-    let mut soft = false;
-    let mut current: Vec<(char, usize)> = Vec::new();
-    let mut width = 0.0_f32;
-    let mut last_space: Option<usize> = None;
-    for &entry in &chars {
-        if entry.0 == '\n' {
-            lines.push((std::mem::take(&mut current), soft));
-            soft = false;
-            width = 0.0;
-            last_space = None;
-            continue;
-        }
-        current.push(entry);
-        width += advance(entry);
-        if entry.0 == ' ' {
-            last_space = Some(current.len() - 1);
-        }
-        if width > max as f32 && current.len() > 1 {
-            let (line, rest) = if let Some(space) = last_space {
-                let rest = current.split_off(space + 1);
-                current.pop();
-                (std::mem::take(&mut current), rest)
-            } else {
-                let rest = current.split_off(current.len() - 1);
-                (std::mem::take(&mut current), rest)
-            };
-            lines.push((line, soft));
-            soft = true;
-            current = rest;
-            width = current.iter().map(|entry| advance(*entry)).sum();
-            last_space = current.iter().rposition(|entry| entry.0 == ' ');
-        }
-    }
-    lines.push((current, soft));
-    lines
-        .into_iter()
-        .map(|(line, soft)| line_runs(runs, line, soft && indent_soft))
-        .collect()
-}
-
-/// A line's characters as runs. A line after a soft break starts with a space in no style.
-/// Characters of one component stay one run; the next component starts its own, in the same
-/// style or not, as the reference's pieces do.
-fn line_runs(runs: &[Run], line: Vec<(char, usize)>, indent: bool) -> Vec<Run> {
-    let mut out: Vec<Run> = Vec::new();
-    let indent = indent.then_some((' ', Style::default(), usize::MAX));
-    let styled = line
-        .into_iter()
-        .map(|(c, index)| (c, runs[index].style.clone(), index));
-    let mut last = None;
-    for (c, style, index) in indent.into_iter().chain(styled) {
-        match out.last_mut() {
-            Some(run) if last == Some(index) => run.text.push(c),
-            _ => out.push(Run {
-                text: c.to_string(),
-                style,
-            }),
-        }
-        last = Some(index);
+    if out.is_empty() && indent_soft {
+        out.push(Vec::new());
     }
     out
 }

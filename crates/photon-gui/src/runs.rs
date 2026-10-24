@@ -330,7 +330,7 @@ fn legacy_expanded(text: &str, base: &Style) -> Vec<Run> {
 }
 
 /// The style after a `\u{a7}` code: a colour clears the formats, a format adds one, `r` resets.
-fn styled_by(mut style: Style, code: char, reset: &Style) -> Style {
+pub(crate) fn styled_by(mut style: Style, code: char, reset: &Style) -> Style {
     const COLOURS: [&str; 16] = [
         "black",
         "dark_blue",
