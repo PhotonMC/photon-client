@@ -27,13 +27,24 @@ impl Menu {
         }
     }
 
+    /// The options as they stand now: while an options screen is open its sliders change them at
+    /// once, and they are the menu's own only once saved.
+    pub(super) fn live_options(&self) -> &photon_game::options::Options {
+        if self.host.host_open() {
+            &self.host.options
+        } else {
+            &self.options
+        }
+    }
+
     /// One frame of the menus' sound: the engine, then the menu music's ticks.
     pub(super) fn frame_audio(&mut self) {
-        self.sound.frame_in_menu(&self.options);
+        let options = self.live_options().clone();
+        self.sound.frame_in_menu(&options);
         let loading =
             matches!(&self.screen, Screen::Connecting(_, task, _) if task.status.loading());
         if let Some(sound) = self.sound.as_mut() {
-            self.music.tick(sound, &self.options, loading);
+            self.music.tick(sound, &options, loading);
         }
     }
 }

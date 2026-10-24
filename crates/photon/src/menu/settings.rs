@@ -45,7 +45,6 @@ impl Menu {
         }
         if std::mem::take(&mut self.host.options_saved) {
             self.options = self.host.options.clone();
-            self.blurriness = self.options.menu_background_blurriness;
         }
         if !self.host.host_open() {
             self.screen = self.title(super::gui_size(client));

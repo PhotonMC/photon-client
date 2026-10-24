@@ -137,8 +137,6 @@ struct Menu {
     game_directory: PathBuf,
     servers: ServerList,
     screen: Screen,
-    /// `menuBackgroundBlurriness`, as the options held it when the menu opened.
-    blurriness: i32,
     mouse: (i32, i32),
     /// When and where the last primary press was, for a double click.
     last_click: Option<(Instant, (i32, i32))>,
@@ -215,7 +213,6 @@ impl Menu {
             icons_dirty: false,
             spin: 0.0,
             last_spin: Instant::now(),
-            blurriness: options.menu_background_blurriness,
             options,
         })
     }

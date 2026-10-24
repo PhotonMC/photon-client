@@ -19,7 +19,11 @@ impl Menu {
         // `Screen.extractBackground` blurs behind every screen but the title's, which draws no
         // background of its own.
         let title = matches!(self.screen, Screen::Title(_));
-        let blur = if title { 0 } else { self.blurriness as u32 };
+        let blur = if title {
+            0
+        } else {
+            self.live_options().menu_background_blurriness as u32
+        };
         if let Err(error) = client.backend.set_panorama_blur(blur) {
             log::warn!("panorama blur: {error:?}");
         }
