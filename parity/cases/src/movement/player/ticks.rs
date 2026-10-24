@@ -77,6 +77,15 @@ fn walking_rows() -> Vec<Value> {
         Scene::new("camera-elsewhere-forward", floor(), keys(8, &["forward", "sprint"]))
             .camera_entity(41, "minecraft:pig")
             .row(),
+        // A spectator flies, and only the camera entity's keys move it up and down.
+        Scene::new("camera-elsewhere-spectator-rise", floor(), keys(6, &["jump"]))
+            .game_mode("spectator")
+            .camera_entity(41, "minecraft:pig")
+            .row(),
+        Scene::new("camera-elsewhere-spectator-sink", floor(), keys(6, &["sneak"]))
+            .game_mode("spectator")
+            .camera_entity(41, "minecraft:pig")
+            .row(),
         Scene::new("camera-elsewhere-turned", floor(), turned(keys(6, &["jump"]), Some(90.0), Some(20.0)))
             .camera_entity(41, "minecraft:pig")
             .row(),
