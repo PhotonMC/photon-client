@@ -23,6 +23,9 @@ impl Context<'_> {
         if self.spawn_egg_on_living_mob(id, hand) {
             return EntityUse::Success { swing: false };
         }
+        if let Some(answer) = self.lead_on_mob(id, hand) {
+            return answer;
+        }
         match self.interact_entity_side(id, hand) {
             EntityUse::Pass => self.item_interacts_with_living(id, hand),
             success => success,
@@ -112,6 +115,24 @@ impl Context<'_> {
         } else {
             EntityUse::Success { swing: false }
         }
+    }
+
+    /// The end of `Entity.interact` for a `Leashable` that lives, which `Mob.interact` runs
+    /// before the class's own rule: a lead in hand, on a mob no player holds, is consumed on the
+    /// client (the server ties it). Taking back a lead the player holds (a swing) and shears
+    /// are not covered.
+    fn lead_on_mob(&self, id: EntityId, hand: u8) -> Option<EntityUse> {
+        let entity = self.world.entities().at(id)?;
+        if !entity.is_mob() || entity.health().is_some_and(|health| health <= 0.0) {
+            return None;
+        }
+        let holder_is_player = entity
+            .leash_holder_id()
+            .is_some_and(|holder| self.world.entity_type_name(holder) == Some("minecraft:player"));
+        let lead = self
+            .held(hand)
+            .is_some_and(|(item, _)| crate::item::id_of("minecraft:lead") == Some(item));
+        (lead && !holder_is_player).then_some(EntityUse::Success { swing: false })
     }
 
     /// `Mob.checkAndHandleImportantInteractions` for a spawn egg: the server spawns the
