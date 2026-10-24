@@ -306,7 +306,7 @@ impl LocalPlayer {
                 current_bob: Vec2::new(self.x_bob, self.y_bob),
                 previous_bob: Vec2::new(self.x_bob_old, self.y_bob_old),
                 rotation: Vec2::new(self.x_rot, self.y_rot),
-                controlled_camera: self.controlled_camera,
+                controlled_camera: self.view.controlled_camera,
             },
             LocalPlayerInputModifiers {
                 using_item: self.is_using_item(),
@@ -327,7 +327,7 @@ impl LocalPlayer {
 
     /// The vertical input of a flying player, which only the camera entity gives.
     fn fly_vertically(&mut self) {
-        if !self.abilities.flying || !self.controlled_camera {
+        if !self.abilities.flying || !self.view.controlled_camera {
             return;
         }
         let input_ya =
@@ -512,6 +512,10 @@ impl LocalPlayer {
         self.delta = Vec3::new(dx, dy, dz);
 
         self.apply_input();
+        // `LivingEntity.aiStep`: a sleeper is immobile.
+        if self.is_sleeping() {
+            (self.jumping, self.xxa, self.zza) = (false, 0.0, 0.0);
+        }
 
         self.jump_or_rise_in_fluid(level);
 

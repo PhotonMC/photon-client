@@ -92,11 +92,11 @@ impl LocalPlayer {
         Shapes::join_is_not_empty(&shape, &player, BooleanOp::And)
     }
 
-    pub(super) fn update_player_pose(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
-        if !self.can_fit(level, ClientEntityPose::Swimming)? {
-            return Ok(());
-        }
-        let desired = if self.is_swimming() {
+    /// `Player.getDesiredPose`.
+    fn desired_pose(&self) -> ClientEntityPose {
+        if self.is_sleeping() {
+            ClientEntityPose::Sleeping
+        } else if self.is_swimming() {
             ClientEntityPose::Swimming
         } else if self.elytra.fall_flying {
             ClientEntityPose::FallFlying
@@ -104,7 +104,14 @@ impl LocalPlayer {
             ClientEntityPose::Crouching
         } else {
             ClientEntityPose::Standing
-        };
+        }
+    }
+
+    pub(super) fn update_player_pose(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
+        if !self.can_fit(level, ClientEntityPose::Swimming)? {
+            return Ok(());
+        }
+        let desired = self.desired_pose();
         let actual =
             if self.is_spectator() || self.is_passenger() || self.can_fit(level, desired)? {
                 desired

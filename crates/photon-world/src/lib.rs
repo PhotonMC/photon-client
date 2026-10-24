@@ -188,6 +188,21 @@ mod tests;
 
 /// Whether the `MOTION_BLOCKING` heightmap counts a state: it blocks
 /// motion or holds a fluid.
+/// The bed an entity data update names for the sleeper: none when it holds no such field, an
+/// empty place when it gets up.
+pub fn entity_sleeping_pos(metadata: &[u8]) -> Option<Option<photon_core::binary::BlockPos>> {
+    metadata::sleeping_pos_from_metadata(metadata)
+}
+
+/// `LivingEntity.setPosToBed`: where a sleeper lies, over the bed's middle.
+pub(crate) fn bed_position(bed: photon_core::binary::BlockPos) -> (f64, f64, f64) {
+    (
+        f64::from(bed.x) + 0.5,
+        f64::from(bed.y) + 0.6875,
+        f64::from(bed.z) + 0.5,
+    )
+}
+
 pub fn motion_blocking(state: BlockStateId) -> bool {
     let state = block::state_or_air(state);
     state.blocks_motion || !state.fluid.is_empty()

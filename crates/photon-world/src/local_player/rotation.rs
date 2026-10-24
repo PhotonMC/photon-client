@@ -136,7 +136,7 @@ impl LocalPlayer {
 
     pub(super) fn send_position(&mut self) {
         self.send_sprint_command();
-        if !self.controlled_camera {
+        if !self.view.controlled_camera {
             return;
         }
         let delta_x = self.position.x - self.last_sent.x;

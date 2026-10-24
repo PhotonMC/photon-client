@@ -5,13 +5,30 @@ use photon_data::item::registry::AIR_ITEM;
 impl LocalPlayer {
     /// `Minecraft.setCameraEntity`: whether the view is the player's own, which decides whether its
     /// input moves it and its position is sent (`isControlledCamera`).
+    /// The server's word on the bed the player sleeps in (`SLEEPING_POS_ID`): a bed puts the
+    /// player in it (`LivingEntity.setPosToBed`), an empty place gets it up.
+    pub fn set_sleeping_pos(&mut self, bed: Option<BlockPos>) {
+        self.view.sleeping_pos = bed;
+        if let Some(bed) = bed {
+            self.set_pos(Vec3::new(
+                f64::from(bed.x) + 0.5,
+                f64::from(bed.y) + 0.6875,
+                f64::from(bed.z) + 0.5,
+            ));
+        }
+    }
+
+    pub fn is_sleeping(&self) -> bool {
+        self.view.sleeping_pos.is_some()
+    }
+
     pub fn set_controlled_camera(&mut self, controlled: bool) {
-        self.controlled_camera = controlled;
+        self.view.controlled_camera = controlled;
     }
 
     /// `LocalPlayer.isControlledCamera`.
     pub fn is_controlled_camera(&self) -> bool {
-        self.controlled_camera
+        self.view.controlled_camera
     }
 
     /// How many ticks the player has lived, which the model's idle sway
@@ -131,7 +148,7 @@ impl LocalPlayer {
             no_physics: false,
             auto_jump_option,
             auto_jump_enabled: true,
-            controlled_camera: true,
+            view: ViewState::default(),
             trace: Default::default(),
             last_sent: Vec3::ZERO,
             y_rot_last: 0.0,

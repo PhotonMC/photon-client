@@ -297,6 +297,16 @@ impl ClientWorld {
         }
     }
 
+    /// `LivingEntity.setPosToBed` for an entity the server has told of the bed it sleeps in.
+    pub fn lie_in_bed(&mut self, entity_id: EntityId, bed: photon_core::binary::BlockPos) {
+        let at = crate::bed_position(bed);
+        if let Some(player) = self.local_player.as_mut().filter(|p| p.id == entity_id) {
+            player.set_position(at);
+        } else if let Some(entity) = self.entities.at_mut(entity_id) {
+            entity.set_position(at);
+        }
+    }
+
     /// `ClientPacketListener.handleAnimate`'s wake-up (action 2) for the local player.
     pub fn wake_local_player(&mut self) {
         if let Some(player) = self.local_player.as_mut() {

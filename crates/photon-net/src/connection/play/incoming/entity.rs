@@ -435,7 +435,7 @@ impl PlaySession {
             self.queue_emitter(id, particle, 3, None);
         }
         if action == 2 && self.local.player_id == Some(id) {
-            self.world.wake_local_player();
+            self.wake_local_player();
         }
         self.world.entities_mut().apply_animate(id, action);
         Ok(())
@@ -505,12 +505,9 @@ impl PlaySession {
         packet: EntityMetadataObservation,
     ) -> Result<(), ConnectionError> {
         entities::metadata(&mut self.world, &packet);
-        // The shared flags' gliding bit (flag 7) is the server's word over the client's start.
-        if self.local.player_id == Some(packet.entity_id)
-            && let Some(player) = self.local.player.as_mut()
-            && let Some((_, [flags, ..])) = photon_world::entity_metadata_field(&packet.metadata, 0)
-        {
-            player.set_server_fall_flying(flags & 0x80 != 0);
+        self.local_metadata(&packet);
+        if let Some(Some(bed)) = photon_world::entity_sleeping_pos(&packet.metadata) {
+            self.world.lie_in_bed(packet.entity_id, bed);
         }
         Ok(())
     }

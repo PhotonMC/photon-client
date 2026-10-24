@@ -199,7 +199,7 @@ pub struct LocalPlayer {
     pub(super) auto_jump_enabled: bool,
     /// `LocalPlayer.isControlledCamera`: the player is the camera entity, so its input moves it and
     /// its position is sent.
-    pub(super) controlled_camera: bool,
+    pub(super) view: ViewState,
     pub(super) trace: MoveTrace,
     /// `xLast`, `yLast`, `zLast`: the position last sent.
     pub(super) last_sent: Vec3,
@@ -235,6 +235,7 @@ mod rotation;
 use rotation::*;
 mod serverbound;
 pub use serverbound::*;
+mod sleeping;
 mod spectating;
 mod sprinting;
 mod state;
@@ -242,3 +243,20 @@ pub use state::*;
 mod ticking;
 mod travel;
 pub(crate) use travel::*;
+
+/// What the player's viewpoint hangs on: whether it is the camera entity (`isControlledCamera`) and
+/// the bed it lies in (`LivingEntity.getSleepingPos`).
+#[derive(Debug, Clone, Copy)]
+pub(super) struct ViewState {
+    pub(super) controlled_camera: bool,
+    pub(super) sleeping_pos: Option<BlockPos>,
+}
+
+impl Default for ViewState {
+    fn default() -> Self {
+        Self {
+            controlled_camera: true,
+            sleeping_pos: None,
+        }
+    }
+}
