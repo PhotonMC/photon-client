@@ -243,11 +243,8 @@ impl PlaySession {
         }
         entities::add(&mut self.world, &packet);
         // `handleAddEntity`: a player in the tab list is remembered as seen.
-        let id = (packet.uuid.most, packet.uuid.least);
-        if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id)
-            && let Some(info) = self.social.player_infos.get(&id)
-        {
-            self.social.seen_players.insert(id, info.name.clone());
+        if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id) {
+            self.remember_entity_profile((packet.uuid.most, packet.uuid.least));
         }
         Ok(())
     }
@@ -306,6 +303,7 @@ impl PlaySession {
                 self.local.removed_player_vehicle = Some(id);
             }
         }
+        self.forget_entity_profiles(&packet.entity_ids);
         entities::remove(&mut self.world, &packet);
         Ok(())
     }

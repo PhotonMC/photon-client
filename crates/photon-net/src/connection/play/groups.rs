@@ -123,6 +123,13 @@ pub(super) struct Menus {
         std::sync::Arc<Vec<photon_game::menus::container::EnchantmentTraits>>,
 }
 
+/// What a player entity reads of its profile.
+#[derive(Debug, Clone)]
+pub(super) struct EntityProfile {
+    pub name: String,
+    pub properties: Vec<photon_protocol::play::ProfileProperty>,
+}
+
 /// Chat, the HUD, the tab list, commands and what the server asked the player.
 #[derive(Default)]
 pub(super) struct Social {
@@ -144,6 +151,9 @@ pub(super) struct Social {
     /// `ClientPacketListener.seenPlayers`: the players whose entity was added, by id and name,
     /// kept when they leave the tab list.
     pub(super) seen_players: std::collections::BTreeMap<(u64, u64), String>,
+    /// The profile each player entity was added with (`AbstractClientPlayer.playerInfo`): it
+    /// keeps its name and skin when the tab list drops or changes the entry.
+    pub(super) entity_profiles: std::collections::BTreeMap<(u64, u64), EntityProfile>,
     /// Dialogs the server showed or cleared that the client is yet to act on.
     pub(super) dialog_events: Vec<DialogEvent>,
     /// The language item names are compared in.

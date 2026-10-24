@@ -31,6 +31,36 @@ impl PlaySession {
         }
     }
 
+    /// `handleAddEntity`: a player in the tab list is remembered as seen, and
+    /// `AbstractClientPlayer.getPlayerInfo`: a player entity takes the tab list entry it is
+    /// added with and keeps its name and skin whatever the list does afterwards.
+    pub(super) fn remember_entity_profile(&mut self, id: (u64, u64)) {
+        let Some(info) = self.social.player_infos.get(&id) else {
+            return;
+        };
+        self.social.seen_players.insert(id, info.name.clone());
+        let profile = super::groups::EntityProfile {
+            name: info.name.clone(),
+            properties: info.properties.clone(),
+        };
+        self.social.entity_profiles.insert(id, profile);
+    }
+
+    /// The entities are gone: so are the profiles they kept.
+    pub(super) fn forget_entity_profiles(&mut self, entity_ids: &[photon_core::ids::EntityId]) {
+        for &entity_id in entity_ids {
+            let uuid = self
+                .world
+                .entities()
+                .at(entity_id)
+                .filter(|entity| entity.is_player())
+                .map(|entity| (entity.uuid.most, entity.uuid.least));
+            if let Some(uuid) = uuid {
+                self.social.entity_profiles.remove(&uuid);
+            }
+        }
+    }
+
     /// `ServerboundCommandSuggestionPacket`: ask for what could follow `text`.
     pub fn request_suggestions(&mut self, id: i32, text: &str) -> Result<(), ConnectionError> {
         self.send(PLAY_SERVERBOUND_COMMAND_SUGGESTION_PACKET_ID, |output| {
@@ -101,12 +131,17 @@ impl PlaySession {
             .collect()
     }
 
-    /// `ClientPacketListener.getPlayerInfo(uuid)`'s profile name: what a
-    /// remote player is called, if the server told of them.
+    /// `AbstractClientPlayer.getPlayerInfo`'s profile name: what a remote player is called, as
+    /// the entity was added (the tab list entry may be gone since), else as the server told of
+    /// them.
     pub fn player_name(&self, uuid: photon_core::binary::Uuid) -> Option<&str> {
+        let id = (uuid.most, uuid.least);
+        if let Some(profile) = self.social.entity_profiles.get(&id) {
+            return Some(profile.name.as_str());
+        }
         self.social
             .player_infos
-            .get(&(uuid.most, uuid.least))
+            .get(&id)
             .map(|info| info.name.as_str())
     }
 
@@ -116,9 +151,13 @@ impl PlaySession {
         &self,
         uuid: photon_core::binary::Uuid,
     ) -> &[photon_protocol::play::ProfileProperty] {
+        let id = (uuid.most, uuid.least);
+        if let Some(profile) = self.social.entity_profiles.get(&id) {
+            return &profile.properties;
+        }
         self.social
             .player_infos
-            .get(&(uuid.most, uuid.least))
+            .get(&id)
             .map_or(&[], |info| info.properties.as_slice())
     }
 

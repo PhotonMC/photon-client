@@ -48,6 +48,8 @@ mod menu_sync;
 mod movement;
 #[cfg(test)]
 mod pack_tests;
+#[cfg(test)]
+mod profile_tests;
 mod recipes;
 mod reconfigure;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
