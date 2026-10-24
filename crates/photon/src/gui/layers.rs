@@ -370,6 +370,12 @@ impl Gui {
         self.layers.toasts.add(Box::new(toast));
     }
 
+    /// `Hud.onDisconnected`: the boss bars and the titles go with the level.
+    pub fn clear_level_hud(&mut self) {
+        self.boss_bars.clear();
+        self.titles.clear(true);
+    }
+
     /// `ToastManager.clear`.
     pub fn clear_toasts(&mut self) {
         self.layers.toasts.clear();
