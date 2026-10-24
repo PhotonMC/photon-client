@@ -395,17 +395,20 @@ impl Armor {
         &mut self,
         chest: Option<&ClientItemStackState>,
         (baby, crouching, spread): (bool, bool, [f32; 3]),
-        textures: &EntityTextures,
+        (textures, player_texture): (&EntityTextures, Option<TextureRect>),
         place: Place,
     ) -> Vec<Vertex> {
         let glint_matrix = self.glint_matrix();
         let Some(asset) = chest.and_then(|stack| self.asset_for(stack, "chest")) else {
             return Vec::new();
         };
-        let layers: Vec<(String, u32)> = self.infos[&asset]
+        let layers: Vec<(String, u32, Option<TextureRect>)> = self.infos[&asset]
             .layers(WINGS)
             .iter()
-            .map(|layer| (layer.texture_path(WINGS), layer.colour(0)))
+            .map(|layer| {
+                let own = player_texture.filter(|_| layer.use_player_texture);
+                (layer.texture_path(WINGS), layer.colour(0), own)
+            })
             .collect();
         let name = if baby {
             "minecraft:elytra_baby#main"
@@ -415,13 +418,9 @@ impl Armor {
         if layers.is_empty() {
             return Vec::new();
         }
-        if !self.models.contains_key(name) {
-            let Some(layer) = photon_data::entity_model::layer(name) else {
-                return Vec::new();
-            };
-            self.models.insert(name.to_owned(), MobModel::bake(layer));
-        }
-        let model = self.models.get_mut(name).expect("the model was just built");
+        let Some(model) = self.baked(name) else {
+            return Vec::new();
+        };
         model.setup_elytra(spread, crouching);
         // `WingsLayer.submit`: the wings sit an eighth of a block behind the back.
         model.shift_root([0.0, 0.0, 2.0]);
@@ -431,8 +430,8 @@ impl Armor {
             Values::new(stack.item_registry_id(), stack.patch_bytes()).has_foil()
         });
         let mut glints = Vec::new();
-        for (texture, colour) in layers {
-            let (true, Some(rect)) = (colour != 0, textures.rect(&texture)) else {
+        for (texture, colour, own) in layers {
+            let (true, Some(rect)) = (colour != 0, own.or_else(|| textures.rect(&texture))) else {
                 continue;
             };
             let rgb = colour & 0x00FF_FFFF;

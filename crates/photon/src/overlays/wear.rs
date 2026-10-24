@@ -182,7 +182,7 @@ pub fn gui_dressing(
     dressed.extend(armor.wings(
         worn.chest,
         (false, state.crouching, elytra),
-        textures,
+        (textures, None),
         &|model, rect, colour| {
             photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
         },

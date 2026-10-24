@@ -12,8 +12,10 @@ use photon_world::local_player::CloakState;
 pub(super) struct Hang {
     /// Where the cape is, or none where the avatar has none.
     pub rect: Option<TextureRect>,
-    /// `state.showCape && !state.isInvisible`.
-    pub shown: bool,
+    /// `state.showCape`.
+    pub shows_cape: bool,
+    /// `state.isInvisible`.
+    pub invisible: bool,
     pub cloak: CloakState,
     /// Where the avatar is between the last two ticks.
     pub position: [f64; 3],
@@ -60,7 +62,7 @@ pub(super) fn cape(
     (model, placement): (&PlayerModel, &Placement),
     partial: f32,
 ) -> Vec<Vertex> {
-    let (true, Some(rect)) = (hang.shown, hang.rect) else {
+    let (true, Some(rect)) = (hang.shows_cape && !hang.invisible, hang.rect) else {
         return Vec::new();
     };
     if armor.has_layer(chest, "wings") {
@@ -82,7 +84,8 @@ pub(super) fn back(
     vertices.extend(armor.wings(
         chest,
         (false, placement.crouching, spread),
-        textures,
+        // `WingsLayer.getPlayerElytraTexture`: the cape of a player who shows it is the wings'.
+        (textures, hang.rect.filter(|_| hang.shows_cape)),
         &|model, rect, colour| {
             photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
         },
@@ -100,7 +103,8 @@ pub(super) fn remote_back(
     let position = entity.interpolated_position(partial);
     let hang = Hang {
         rect,
-        shown: entity.shows_cape() && !entity.is_invisible(),
+        shows_cape: entity.shows_cape(),
+        invisible: entity.is_invisible(),
         cloak: Hang::remote_cloak(entity.cloak(), partial),
         position: [position.0, position.1, position.2],
         glide_ticks: entity.fall_flying_ticks(),
@@ -129,7 +133,8 @@ pub(super) fn own_hang(
         .is_some_and(|state| state.model_customisation() & 1 != 0);
     cape::Hang {
         rect: view.cape,
-        shown: shown && !invisible,
+        shows_cape: shown,
+        invisible,
         cloak: player.cloak_state(partial),
         position: [position.x, position.y, position.z],
         glide_ticks: player.fall_flying_ticks(),
@@ -143,7 +148,8 @@ mod tests {
     fn hang(cloak: [f64; 3], position: [f64; 3], glide_ticks: i32) -> Hang {
         Hang {
             rect: None,
-            shown: true,
+            shows_cape: true,
+            invisible: false,
             cloak: CloakState {
                 position: cloak,
                 walk_distance: 0.0,

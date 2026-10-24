@@ -159,7 +159,7 @@ pub(super) fn worn_layers(
             entity.is_crouching(),
             entity.elytra_rotations(partial),
         ),
-        textures,
+        (textures, None),
         &|model, rect, colour| mob_vertices_coloured(model, placement, rect, colour),
     ));
     super::outline::record_worn(entity, vertices)
