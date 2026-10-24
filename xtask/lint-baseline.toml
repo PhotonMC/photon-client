@@ -4,7 +4,6 @@
 
 [file-lines]
 "crates/photon-dev/src/probe/mode.rs" = 2246
-"crates/photon-oracle/src/movement.rs" = 510
 
 [file-name]
 "crates/photon-dev/examples/block_break_rejection_probe.rs" = 1
@@ -303,7 +302,7 @@
 "crates/photon-oracle/src/math_cases/options.rs::vec3_case" = 16
 "crates/photon-oracle/src/math_cases/positions/blockpos.rs::blockpos_mutable_helpers_case" = 22
 "crates/photon-oracle/src/model.rs::model_result" = 11
-"crates/photon-oracle/src/movement.rs::movement_result" = 76
+"crates/photon-oracle/src/movement.rs::movement_result" = 74
 "crates/photon-oracle/src/nbt_cases.rs::json_canonical" = 12
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 16
 "crates/photon-oracle/src/nbt_cases.rs::nbt_tree_value" = 13
@@ -729,7 +728,7 @@
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
-"crates/photon-oracle/src/movement.rs::movement_result" = 509
+"crates/photon-oracle/src/movement.rs::movement_result" = 492
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
