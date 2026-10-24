@@ -177,21 +177,24 @@ impl VulkanBackend {
     /// Only the live handles.
     unsafe fn resort_translucent(&mut self, moved: bool) {
         let origin = self.sort_origin;
-        let due: Vec<(i32, i32, i32)> = self
-            .sections
-            .iter()
-            .filter(|(key, _)| {
-                self.visible_sections
-                    .as_ref()
-                    .is_none_or(|seen| seen.contains(key))
-            })
-            .filter_map(|(key, section)| {
-                let sort = section.sort.as_ref()?;
-                let view = point_of_view(origin, section.centre);
-                let aligned = view.contains(&0);
-                (view != sort.point_of_view || (moved && aligned)).then_some(*key)
-            })
-            .collect();
+        let candidate = |key: &(i32, i32, i32), section: &SectionBuffers| {
+            let sort = section.sort.as_ref()?;
+            let view = point_of_view(origin, section.centre);
+            let aligned = view.contains(&0);
+            (view != sort.point_of_view || (moved && aligned)).then_some(*key)
+        };
+        // Walk the sections in view, not every section for each of them.
+        let due: Vec<(i32, i32, i32)> = match &self.visible_sections {
+            Some(visible) => visible
+                .iter()
+                .filter_map(|key| candidate(key, self.sections.get(key)?))
+                .collect(),
+            None => self
+                .sections
+                .iter()
+                .filter_map(|(key, section)| candidate(key, section))
+                .collect(),
+        };
         for key in due {
             let Some(section) = self.sections.get_mut(&key) else {
                 continue;

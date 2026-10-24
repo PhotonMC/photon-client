@@ -23,6 +23,10 @@ const STILL_SCRIPT: &str =
 /// occlusion flood reruns while frames are measured: where frame spikes show.
 const RUN_SCRIPT: &str = "none=200;forward,sprint,jump=300;turn:90;forward,sprint,jump=100;turn:90;\
                           forward,sprint,jump=300;turn:90;forward,sprint,jump=100;none=100";
+/// Diving into the ground and flying level through the rock, turning at each leg: the
+/// spectator's camera sits inside blocks, where the occlusion flood has smart culling off.
+const DIVE_SCRIPT: &str = "none=200;pitch:60;forward,sprint=80;pitch:-60;forward,sprint=200;turn:90;\
+                           forward,sprint=200;turn:90;forward,sprint=200;turn:90;forward,sprint=200;none=100";
 /// A user of its own, so its saved position is the world's spawn and stays there.
 /// The `run` route uses a new user per run instead (see [`fresh_user`]).
 const STILL_USER: &str = "Bench";
@@ -38,6 +42,7 @@ struct Options {
     route: String,
     vsync_off: bool,
     fps_limit: Option<u32>,
+    render_distance: Option<u32>,
     validation: bool,
 }
 
@@ -51,13 +56,14 @@ const SPEC: Spec = Spec {
         ("--route", 1),
         ("--vsync", 1),
         ("--fps-limit", 1),
+        ("--render-distance", 1),
     ],
 };
 
 fn options(parsed: &Parsed) -> Result<Options, String> {
     let route = parsed.value("--route").unwrap_or("still").to_owned();
-    if !["still", "run"].contains(&route.as_str()) {
-        return Err("--route is still or run".to_owned());
+    if !["still", "run", "dive"].contains(&route.as_str()) {
+        return Err("--route is still, run or dive".to_owned());
     }
     let vsync = parsed.value("--vsync").unwrap_or("on");
     if !["on", "off"].contains(&vsync) {
@@ -78,6 +84,10 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
         fps_limit: parsed
             .value("--fps-limit")
             .map(|_| parsed.number("--fps-limit", 0))
+            .transpose()?,
+        render_distance: parsed
+            .value("--render-distance")
+            .map(|_| parsed.number("--render-distance", 0))
             .transpose()?,
         validation: parsed.flag("--validation"),
     })
@@ -157,6 +167,23 @@ fn summary(report: &Value) -> String {
         number(report, "/wall_fps").unwrap_or(f64::NAN),
         gpu_text(report),
         parts_text(report)
+    ) + &pacing_text(report)
+}
+
+/// The worst one-second window, the intervals past 1/240 s and 1/230 s, and the blinks.
+fn pacing_text(report: &Value) -> String {
+    let pacing = &report["pacing"];
+    if pacing.is_null() {
+        return String::new();
+    }
+    format!(
+        " worst_second_fps={} longest_ms={} over240={}/{} over230={} blinks={}",
+        pacing["worst_second_fps"],
+        pacing["longest_interval_ms"],
+        pacing["intervals_over_240"],
+        pacing["intervals"],
+        pacing["intervals_over_230"],
+        report["blinks"]
     )
 }
 
@@ -188,29 +215,27 @@ fn spectate(user: &str) {
     });
 }
 
-fn run_once(options: &Options, number: u32) -> Result<Value, String> {
-    let directory = data().join("runs").join("bench");
-    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let path = directory.join(format!("{}-{number}.json", options.name));
-    let _ = fs::remove_file(&path);
-    let (user, script) = if options.route == "run" {
-        (fresh_user(), RUN_SCRIPT)
-    } else {
-        (STILL_USER.to_owned(), STILL_SCRIPT)
-    };
-    // A spectator flies through trees and water, so the run measures the engine, not the terrain.
-    spectate(&user);
+/// The client run that writes its report to `path`.
+fn client_command(
+    options: &Options,
+    path: &std::path::Path,
+    user: String,
+    script: &str,
+) -> Result<Command, String> {
     let mut command = Command::new(client_binary());
     command
         .current_dir(process::root())
         .envs(client_environment()?)
         .env("PHOTON_USER", user)
         .env("PHOTON_SCRIPT", script)
-        .env("PHOTON_BENCH", &path)
+        .env("PHOTON_BENCH", path)
         .env("PHOTON_BENCH_WARMUP", options.warmup.to_string())
         .env("PHOTON_VSYNC", if options.vsync_off { "0" } else { "1" });
     if options.validation {
         command.env("PHOTON_VALIDATION", "1");
+    }
+    if let Some(distance) = options.render_distance {
+        command.env("PHOTON_RENDER_DISTANCE", distance.to_string());
     }
     if let Some(limit) = options.fps_limit {
         command.env("PHOTON_MAX_FPS", limit.to_string());
@@ -219,6 +244,24 @@ fn run_once(options: &Options, number: u32) -> Result<Value, String> {
         .arg("play")
         .arg(&options.address)
         .args(&options.size);
+    Ok(command)
+}
+
+fn run_once(options: &Options, number: u32) -> Result<Value, String> {
+    let directory = data().join("runs").join("bench");
+    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let path = directory.join(format!("{}-{number}.json", options.name));
+    let _ = fs::remove_file(&path);
+    let (user, script) = if options.route == "run" {
+        (fresh_user(), RUN_SCRIPT)
+    } else if options.route == "dive" {
+        (fresh_user(), DIVE_SCRIPT)
+    } else {
+        (STILL_USER.to_owned(), STILL_SCRIPT)
+    };
+    // A spectator flies through trees and water, so the run measures the engine, not the terrain.
+    spectate(&user);
+    let command = client_command(options, &path, user, script)?;
     let (status, output) = run_merged(command)?;
     if !status.success() || !path.exists() {
         let lines: Vec<&str> = output.lines().collect();

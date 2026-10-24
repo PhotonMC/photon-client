@@ -16,6 +16,8 @@ use photon_render::visibility::{GraphWorld, SectionState, visible_sections};
 pub struct FloodInputs {
     camera: [f64; 3],
     view_distance: i32,
+    /// `smartCull`: off only for a spectator inside blocks.
+    smart_cull: bool,
     /// The dimension's sections, bottom to top.
     sections: Range<i32>,
     /// The view area's lowest column and its width in columns.
@@ -33,6 +35,7 @@ impl FloodInputs {
     pub fn capture(
         camera: [f64; 3],
         view_distance: i32,
+        smart_cull: bool,
         sections: Range<i32>,
         column: impl Fn(i32, i32, &mut Vec<SectionState>) -> bool,
     ) -> Self {
@@ -55,6 +58,7 @@ impl FloodInputs {
         Self {
             camera,
             view_distance,
+            smart_cull,
             sections,
             low,
             width,
@@ -88,7 +92,7 @@ impl FloodInputs {
             max_section_y: self.sections.end - 1,
             loaded: &loaded,
             section: &section,
-            smart_cull: true,
+            smart_cull: self.smart_cull,
         })
     }
 }
@@ -183,6 +187,31 @@ mod tests {
     /// above, inside and below it.
     #[test]
     fn the_copy_floods_as_the_world_does() {
+        for smart_cull in [true, false] {
+            copy_floods_as_the_world_does(smart_cull);
+        }
+    }
+
+    /// Without smart culling a camera inside rock still floods through it.
+    #[test]
+    fn a_spectator_inside_rock_floods_through_it() {
+        let rock = |_: SectionKey| SectionState::Compiled(VisibilitySet::NONE);
+        let flood = |smart_cull| {
+            FloodInputs::capture([8.5, 40.0, 8.5], 3, smart_cull, 0..8, |x, z, states| {
+                states.extend((0..8).map(|y| rock((x, y, z))));
+                true
+            })
+            .run()
+            .len()
+        };
+        assert!(
+            flood(true) <= 7,
+            "smart culling stops at the camera's walls"
+        );
+        assert!(flood(false) > 7 * 7 * 4, "the spectator sees through rock");
+    }
+
+    fn copy_floods_as_the_world_does(smart_cull: bool) {
         let state = |(x, y, z): SectionKey| match (x * 7 + y * 3 + z * 5).rem_euclid(5) {
             0 | 1 => SectionState::Empty,
             2 => SectionState::Uncompiled,
@@ -198,9 +227,9 @@ mod tests {
                 max_section_y: 19,
                 loaded: &loaded,
                 section: &state,
-                smart_cull: true,
+                smart_cull,
             });
-            let copy = FloodInputs::capture(camera, 6, -4..20, |x, z, states| {
+            let copy = FloodInputs::capture(camera, 6, smart_cull, -4..20, |x, z, states| {
                 if loaded(x, z) {
                     states.extend((-4..20).map(|y| state((x, y, z))));
                 }

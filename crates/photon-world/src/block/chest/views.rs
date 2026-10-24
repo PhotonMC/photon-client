@@ -430,7 +430,8 @@ pub(crate) fn chests_of(
 ) -> std::collections::BTreeSet<(i32, i32, i32)> {
     let mut found = std::collections::BTreeSet::new();
     for (section_y, section) in sections.iter() {
-        if section.has_only_air() {
+        // Most sections hold nothing drawn, which the palette says at once.
+        if section.has_only_air() || !section.block_states.palette_any(is_drawn_state) {
             continue;
         }
         for index in 0..4096 {

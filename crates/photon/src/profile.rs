@@ -3,6 +3,7 @@
 //! shows instead of averaging away.
 
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::time::{Duration, Instant};
 
@@ -57,6 +58,67 @@ pub fn take_parts() -> [f64; SPANS.len()] {
     PARTS
         .with(|parts| parts.replace([Duration::ZERO; SPANS.len()]))
         .map(|took| took.as_secs_f64() * 1000.0)
+}
+
+/// Frames a dropped section has to come back within to count as a blink.
+const BLINK_FRAMES: u64 = 60;
+
+thread_local! {
+    static BLINKS: Cell<u32> = const { Cell::new(0) };
+}
+
+/// Blinks since the last call: sections that left the drawn set and were
+/// back within [`BLINK_FRAMES`] frames, the flicker the eye sees.
+pub fn take_blinks() -> u32 {
+    BLINKS.with(|blinks| blinks.replace(0))
+}
+
+/// Watches the occlusion flood's results for sections that blink, when a
+/// bench run asks (`PHOTON_BENCH`): a section in view that one result
+/// drops and a later one brings back.
+#[derive(Default)]
+pub struct BlinkWatch {
+    frame: u64,
+    dropped: HashMap<(i32, i32, i32), u64>,
+}
+
+impl BlinkWatch {
+    /// A watch if a bench run is on.
+    pub fn from_env() -> Option<Self> {
+        std::env::var_os("PHOTON_BENCH")
+            .is_some()
+            .then(Self::default)
+    }
+
+    /// A frame passes.
+    pub fn frame(&mut self) {
+        self.frame += 1;
+    }
+
+    /// The flood's result `old` was replaced by `new`; `in_view` says
+    /// whether a section is in the frustum.
+    pub fn swapped(
+        &mut self,
+        old: &[(i32, i32, i32)],
+        new: &[(i32, i32, i32)],
+        in_view: impl Fn(&(i32, i32, i32)) -> bool,
+    ) {
+        let now: std::collections::HashSet<_> = new.iter().copied().collect();
+        let frame = self.frame;
+        let back = new
+            .iter()
+            .filter(|key| {
+                self.dropped
+                    .remove(key)
+                    .is_some_and(|at| frame - at <= BLINK_FRAMES)
+            })
+            .count() as u32;
+        for key in old.iter().filter(|key| !now.contains(key) && in_view(key)) {
+            self.dropped.insert(*key, frame);
+        }
+        self.dropped.retain(|_, at| frame - *at <= BLINK_FRAMES);
+        BLINKS.with(|blinks| blinks.set(blinks.get() + back));
+    }
 }
 
 /// The names of the coarse spans, then the parts.

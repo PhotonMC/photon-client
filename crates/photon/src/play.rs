@@ -473,7 +473,9 @@ pub(crate) fn join(
     let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
-    let information = crate::controls::client_information(&crate::controls::load_options());
+    let mut options = crate::controls::load_options();
+    ticks::apply_env_options(&mut options);
+    let information = crate::controls::client_information(&options);
     let timeout = Duration::from_secs(30);
     let first = ConnectionState {
         account: crate::profile_login::from_environment(&username)?,

@@ -33,6 +33,10 @@ struct Sample {
     parts: [f64; profile::SPANS.len()],
     backend: BackendTimings,
     gpu: Option<GpuTimings>,
+    /// When the frame ended, in seconds since the first frame.
+    at: f64,
+    /// Sections that came back within a second after leaving the drawn set.
+    blinks: u32,
 }
 
 /// The facts of a run the report names beside the numbers.
@@ -101,6 +105,8 @@ impl Bench {
             parts,
             backend: backend.timings(),
             gpu: backend.gpu_timings(),
+            at: (drawn - first).as_secs_f64(),
+            blinks: profile::take_blinks(),
         });
     }
 
@@ -156,6 +162,7 @@ impl Bench {
             frames as f64 / measured.max(1e-9)
         );
         let _ = writeln!(out, "  \"work_fps\": {:.1},", 1000.0 / work.mean);
+        out.push_str(&self.pacing_json());
         let _ = writeln!(out, "  \"work_ms\": {},", work.json());
         let _ = writeln!(out, "  \"frame_ms\": {},", total.json());
         out.push_str("  \"cpu_ms\": {\n");
@@ -190,6 +197,13 @@ impl Bench {
             let _ = writeln!(out, "    \"{name}\": {}{comma}", stats.json());
         }
         out.push_str("  },\n");
+        out.push_str(&self.gpu_json());
+        out
+    }
+
+    /// The `gpu_ms` entry and the closing brace.
+    fn gpu_json(&self) -> String {
+        let mut out = String::new();
         let gpu: Vec<&GpuTimings> = self
             .samples
             .iter()
@@ -221,6 +235,49 @@ impl Bench {
         out.push_str("  }\n}\n");
         out
     }
+}
+
+impl Bench {
+    /// What a player sees of the pacing: the frames per second of the worst
+    /// one-second window (the F3 counter's lowest reading), how many frame
+    /// intervals ran past 1/240 s and 1/230 s, and the sections that
+    /// blinked.
+    fn pacing_json(&self) -> String {
+        let times: Vec<f64> = self.samples.iter().map(|sample| sample.at).collect();
+        let intervals: Vec<f64> = times.windows(2).map(|pair| pair[1] - pair[0]).collect();
+        let over = |limit_fps: f64| intervals.iter().filter(|&&dt| dt > 1.0 / limit_fps).count();
+        let (worst, longest) = worst_second(&times);
+        format!(
+            "  \"pacing\": {{\"worst_second_fps\": {worst:.1}, \"longest_interval_ms\": {:.2}, \
+             \"intervals_over_240\": {}, \"intervals_over_230\": {}, \"intervals\": {}}},\n  \"blinks\": {},\n",
+            longest * 1000.0,
+            over(240.0),
+            over(230.0),
+            intervals.len(),
+            self.samples.iter().map(|sample| sample.blinks).sum::<u32>()
+        )
+    }
+}
+
+/// The fewest frames in any one-second window of ascending frame times (as
+/// frames per second), and the longest gap between two frames.
+fn worst_second(times: &[f64]) -> (f64, f64) {
+    let longest = times
+        .windows(2)
+        .map(|pair| pair[1] - pair[0])
+        .fold(0.0, f64::max);
+    let mut worst = f64::INFINITY;
+    let mut start = 0;
+    for (end, &time) in times.iter().enumerate() {
+        while time - times[start] > 1.0 {
+            start += 1;
+        }
+        // Only full windows count.
+        if time - times[0] >= 1.0 {
+            worst = worst.min((end - start) as f64);
+        }
+    }
+    (if worst.is_finite() { worst } else { 0.0 }, longest)
 }
 
 /// The mean and the percentiles of a column of samples.
@@ -262,6 +319,16 @@ impl Stats {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_worst_second_is_the_window_with_the_fewest_frames() {
+        // 100 fps for two seconds, then a 0.5 s hitch, then 100 fps again.
+        let mut times: Vec<f64> = (0..200).map(|i| f64::from(i) * 0.01).collect();
+        times.extend((0..200).map(|i| 2.49 + f64::from(i) * 0.01));
+        let (worst, longest) = worst_second(&times);
+        assert!((50.0..=52.0).contains(&worst), "{worst}");
+        assert!((longest - 0.5).abs() < 1e-9);
+    }
 
     #[test]
     fn percentiles_are_nearest_rank() {

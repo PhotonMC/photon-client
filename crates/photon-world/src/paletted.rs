@@ -96,6 +96,13 @@ impl PalettedStates {
         (position < SECTION_VOLUME).then(|| BlockStateId(self.palette[self.index_at(position)]))
     }
 
+    /// Whether a state the palette holds satisfies `test`. The palette can
+    /// keep a state nothing uses any more, so a `false` is certain and a
+    /// `true` is only a hint to look at the positions.
+    pub(crate) fn palette_any(&self, test: impl Fn(BlockStateId) -> bool) -> bool {
+        self.palette.iter().any(|&state| test(BlockStateId(state)))
+    }
+
     /// Put a state at a position; the state it replaced.
     pub(crate) fn set(&mut self, position: usize, state: BlockStateId) -> Option<BlockStateId> {
         let previous = self.get(position)?;

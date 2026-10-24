@@ -82,8 +82,8 @@ pub struct SectionMeshes {
     /// The thread the flood runs on.
     flood: Flood,
     /// The camera's eight-block cell and the view distance the flood last
-    /// ran with (`invalidateIfNeeded`).
-    graph_from: Option<([i64; 3], i32)>,
+    /// ran with, and its smart culling (`invalidateIfNeeded`).
+    graph_from: Option<([i64; 3], i32, bool)>,
     workers: SectionWorkers,
     worker_count: usize,
     /// The chunk fade option.
@@ -91,6 +91,8 @@ pub struct SectionMeshes {
     /// Whether the occlusion graph and the frustum choose the sections;
     /// `PHOTON_CULLING=0` turns them off to compare against.
     culling: bool,
+    /// Counts the sections that blink out of view, in a bench run.
+    blinks: Option<crate::profile::BlinkWatch>,
     /// The dimension's sections, bottom to top.
     sections: Range<i32>,
     stats: MeshStats,
@@ -136,6 +138,7 @@ impl SectionMeshes {
             workers: SectionWorkers::new(worker_count, renderer, tints),
             worker_count,
             chunk_fade,
+            blinks: crate::profile::BlinkWatch::from_env(),
             culling: std::env::var("PHOTON_CULLING").map_or(true, |value| value != "0"),
             sections: low..low + dimension.height / 16,
             stats: MeshStats::default(),
@@ -360,45 +363,27 @@ impl SectionMeshes {
                 .collect();
         }
         let cell = view.camera.map(|value| (value / 8.0).floor() as i64);
-        if self.graph_from != Some((cell, view.view_distance)) {
-            self.graph_from = Some((cell, view.view_distance));
+        let smart_cull = smart_cull(session, view.camera);
+        if self.graph_from != Some((cell, view.view_distance, smart_cull)) {
+            self.graph_from = Some((cell, view.view_distance, smart_cull));
             self.graph_stale = true;
         }
+        if let Some(blinks) = self.blinks.as_mut() {
+            blinks.frame();
+        }
         if let Some(graph) = self.flood.finished() {
+            if let Some(blinks) = self.blinks.as_mut() {
+                let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
+                blinks.swapped(&self.graph, &graph, |key| frustum.section_visible(*key));
+            }
             self.graph = graph;
         }
         // The flood runs on its own thread; the frames keep the last one
         // meanwhile, and one that went stale starts again when it is done.
         if self.graph_stale && !self.flood.busy() {
             self.graph_stale = false;
-            let world = session.world();
-            let compiled = &self.compiled;
-            let sections = self.sections.clone();
-            let column = |x: i32, z: i32, states: &mut Vec<SectionState>| {
-                let Some(empty) = world.column_is_empty(x, z, sections.clone()) else {
-                    return false;
-                };
-                states.extend(sections.clone().zip(empty).map(|(y, empty)| {
-                    if empty {
-                        SectionState::Empty
-                    } else {
-                        compiled
-                            .get(&(x, y, z))
-                            .map_or(SectionState::Uncompiled, |visibility| {
-                                SectionState::Compiled(*visibility)
-                            })
-                    }
-                }));
-                true
-            };
-            let inputs = profile::timed(Span::Graph, || {
-                FloodInputs::capture(
-                    view.camera,
-                    view.view_distance,
-                    self.sections.clone(),
-                    column,
-                )
-            });
+            let inputs =
+                profile::timed(Span::Graph, || self.flood_inputs(session, view, smart_cull));
             self.flood.start(inputs);
         }
         let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
@@ -407,6 +392,42 @@ impl SectionMeshes {
             .copied()
             .filter(|key| frustum.section_visible(*key))
             .collect()
+    }
+
+    /// What the flood reads of the world around the camera, copied.
+    fn flood_inputs(
+        &self,
+        session: &PlaySession,
+        view: &SectionView,
+        smart_cull: bool,
+    ) -> FloodInputs {
+        let world = session.world();
+        let compiled = &self.compiled;
+        let sections = self.sections.clone();
+        let column = |x: i32, z: i32, states: &mut Vec<SectionState>| {
+            let Some(empty) = world.column_is_empty(x, z, sections.clone()) else {
+                return false;
+            };
+            states.extend(sections.clone().zip(empty).map(|(y, empty)| {
+                if empty {
+                    SectionState::Empty
+                } else {
+                    compiled
+                        .get(&(x, y, z))
+                        .map_or(SectionState::Uncompiled, |visibility| {
+                            SectionState::Compiled(*visibility)
+                        })
+                }
+            }));
+            true
+        };
+        FloodInputs::capture(
+            view.camera,
+            view.view_distance,
+            smart_cull,
+            self.sections.clone(),
+            column,
+        )
     }
 
     /// The dirty sections in view that may be built now, nearest first: one
@@ -494,4 +515,16 @@ impl SectionMeshes {
         self.stats.built = 0;
         self.stats.took = Duration::ZERO;
     }
+}
+
+/// `Camera.extractRenderState`: smart culling is off for a spectator whose
+/// camera is inside a block that fills its cube, who sees through the rock.
+fn smart_cull(session: &PlaySession, camera: [f64; 3]) -> bool {
+    let [x, y, z] = camera.map(|value| value.floor() as i32);
+    !(session.game_mode().is_spectator()
+        && session
+            .world()
+            .block_state_at(x, y, z)
+            .and_then(photon_world::block::state)
+            .is_some_and(|state| state.solid_render))
 }

@@ -517,9 +517,15 @@ pub(super) fn load_overlay_textures(
 
 /// A measuring run is not held to the player's limit, and a test can set either option without
 /// touching the options file.
-fn apply_env_options(options: &mut photon_game::options::Options) {
+pub(super) fn apply_env_options(options: &mut photon_game::options::Options) {
     if env::var_os("PHOTON_BENCH").is_some() {
         options.framerate_limit = UNLIMITED_FRAMERATE_CUTOFF;
+    }
+    if let Some(distance) = env::var("PHOTON_RENDER_DISTANCE")
+        .ok()
+        .and_then(|text| text.parse().ok())
+    {
+        options.render_distance = distance;
     }
     if let Ok(value) = env::var("PHOTON_VSYNC") {
         options.enable_vsync = value != "0";

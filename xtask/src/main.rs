@@ -40,7 +40,8 @@ usage: cargo xtask <command>
                             build and start the client
   rcon <command>...         send commands to the test server
   bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
-        [--route still|run] [--vsync on|off] [--fps-limit <n>] [--validation] [--no-build]
+        [--route still|run|dive] [--vsync on|off] [--fps-limit <n>]
+        [--render-distance <n>] [--validation] [--no-build]
                             fixed scripted run, frame timing report in .data/runs/bench
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
