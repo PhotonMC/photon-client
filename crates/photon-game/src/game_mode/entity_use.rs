@@ -68,6 +68,15 @@ impl Context<'_> {
 
     /// `Mob.mobInteract` of the clicked class.
     fn interact_mob_class(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        // `Mob.interact` passes for a mob that is not alive.
+        let dead = self
+            .world
+            .entities()
+            .at(id)
+            .is_none_or(|entity| entity.health().is_some_and(|health| health <= 0.0));
+        if dead {
+            return EntityUse::Pass;
+        }
         match name {
             "minecraft:creeper" => self.interact_creeper(id, hand),
             "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
