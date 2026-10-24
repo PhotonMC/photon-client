@@ -98,14 +98,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         screen.tick(&menu);
     }
     let mut steps = Vec::new();
-    let mut keys = vec![String::new()];
-    keys.extend(
-        row["keys"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|k| k.as_str().map(str::to_owned)),
-    );
+    let keys = key_steps(row);
     let mut item_drawer = no_items;
     let mut player = |_: (i32, i32, i32, i32), _: f32, _: f32, _: (f32, f32)| {
         Vec::<photon_render::gui::GuiItemVertex>::new()
@@ -185,7 +178,37 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             "entities": entities,
         }));
     }
+    press_clicks(&mut *screen, &menu, row);
     Ok(json!({"label": row["label"], "steps": steps}))
+}
+
+/// The keys a container row presses, after the frame with none.
+fn key_steps(row: &Value) -> Vec<String> {
+    let mut keys = vec![String::new()];
+    keys.extend(
+        row["keys"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|k| k.as_str().map(str::to_owned)),
+    );
+    keys
+}
+
+/// Presses the row's clicks (left button) last, so what they change does not reach the drawn
+/// steps; the sounds they ask for are read after.
+fn press_clicks(
+    screen: &mut dyn photon_gui::screen::Screen,
+    menu: &photon_game::menus::container::ContainerMenu,
+    row: &Value,
+) {
+    for click in row["clicks"].as_array().into_iter().flatten() {
+        let at = (
+            click[0].as_f64().unwrap_or(0.0),
+            click[1].as_f64().unwrap_or(0.0),
+        );
+        screen.mouse_clicked(at, 0, false, std::time::Instant::now(), menu);
+    }
 }
 
 /// A number the way the comparison reads it: five decimals, no negative zero.

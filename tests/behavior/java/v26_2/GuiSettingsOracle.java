@@ -333,6 +333,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             int height = row.get("height").getAsInt();
             var drawn = prepare(minecraft, width, height, row.get("mouse_x").getAsInt(),
                 row.get("mouse_y").getAsInt());
+            set(minecraft, "soundManager", unsafe.allocateInstance(GuiScreenOracle.SilentSounds.class));
             set(minecraft, "itemModelResolver", unsafe.allocateInstance(NoItems.class));
             // The entity models the loom's flag and the book of the enchanting
             // table are baked from.
@@ -470,6 +471,19 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 steps.add(step);
             }
             out.add("steps", steps);
+            // Clicks come last, so what they change does not reach the drawn steps; only the
+            // sounds they ask for are read.
+            GuiScreenOracle.SilentSounds.ASKED.clear();
+            for (var click : row.getAsJsonArray("clicks")) {
+                minecraft.setLastInputType(net.minecraft.client.InputType.MOUSE);
+                screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+                    click.getAsJsonArray().get(0).getAsDouble(), click.getAsJsonArray().get(1).getAsDouble(),
+                    new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+            }
+            var asked = new JsonArray();
+            GuiScreenOracle.SilentSounds.ASKED.forEach(asked::add);
+            out.add("sounds", asked);
+            GuiScreenOracle.SilentSounds.ASKED.clear();
             rows.add(out);
         }
         var result = new JsonObject();
