@@ -89,16 +89,7 @@ class GuiTutorialOracle extends GuiItemOracle {
     }
 
     private static Object field(Object target, String name) throws Exception {
-        for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
-            try {
-                var field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                return field.get(target);
-            } catch (NoSuchFieldException error) {
-                // Look in the parent.
-            }
-        }
-        throw new NoSuchFieldException(name);
+        return Reflect.get(target, name);
     }
 
     static JsonObject tutorial(JsonObject request) throws Exception {

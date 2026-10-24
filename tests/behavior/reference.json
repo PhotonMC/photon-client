@@ -410,6 +410,7 @@
         "MovementPickupOracle.java",
         "MovementFireOracle.java",
         "MovementPlayerOracle.java",
+        "Reflect.java",
         "MovementSupport.java",
         "MovementWorldOracle.java"
       ]
@@ -544,6 +545,7 @@
         "EntityPoseOracle.java",
         "EntityProjectileOracle.java",
         "EntityRotationOracle.java",
+        "Reflect.java",
         "EntitySupport.java",
         "EntityVehicleOracle.java",
         "EntityVillagerOracle.java",
@@ -619,6 +621,7 @@
         "MovementPickupOracle.java",
         "MovementFireOracle.java",
         "MovementPlayerOracle.java",
+        "Reflect.java",
         "MovementSupport.java",
         "MovementWorldOracle.java",
         "com/mojang/blaze3d/audio/Listener.java",

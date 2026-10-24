@@ -56,16 +56,7 @@ class EntitySupport {
     }
 
     static Object field(final Object owner, final String name) throws Exception {
-        for (Class<?> type = owner.getClass(); type != null; type = type.getSuperclass()) {
-            try {
-                var field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                return field.get(owner);
-            } catch (NoSuchFieldException ignored) {
-                // look in the class above
-            }
-        }
-        throw new NoSuchFieldException(name);
+        return Reflect.get(owner, name);
     }
 
     static final sun.misc.Unsafe UNSAFE = unsafe();

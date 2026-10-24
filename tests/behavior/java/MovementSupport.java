@@ -226,32 +226,11 @@ class MovementSupport {
     }
 
     static Object getField(Object target, String name) throws Exception {
-        Class<?> type = target.getClass();
-        while (type != null) {
-            try {
-                var field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                return field.get(target);
-            } catch (NoSuchFieldException missing) {
-                type = type.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(name);
+        return Reflect.get(target, name);
     }
 
     static void setField(Object target, String name, Object value) throws Exception {
-        Class<?> type = target.getClass();
-        while (type != null) {
-            try {
-                var field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                field.set(target, value);
-                return;
-            } catch (NoSuchFieldException missing) {
-                type = type.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(name);
+        Reflect.set(target, name, value);
     }
 
     /** Bring the game up once, with the vanilla data pack's registries and tags. */
