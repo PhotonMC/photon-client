@@ -86,6 +86,7 @@ impl SoundSlot {
         self.track_device(options);
         self.play_ui_queue();
         if let Some(system) = self.system.as_mut() {
+            system.apply_volumes(options);
             system.tick_menu();
         }
     }
