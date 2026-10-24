@@ -25,6 +25,6 @@ pub use session::{
     connect_stream, frame_packet, read_packet, send_configuration_start, send_handshake_intention,
     send_handshake_to, send_packet,
 };
-pub use state::ConnectionState;
+pub use state::{ConnectionState, LoginStage, stage};
 pub use status::{ServerStatus, query_status_and_ping, query_status_and_ping_recorded};
 pub use transport::Transport;

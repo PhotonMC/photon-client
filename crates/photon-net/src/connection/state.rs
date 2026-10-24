@@ -48,6 +48,36 @@ pub struct ConnectionState {
     pub chat_reset: bool,
     /// Whether the server enables the minecart improvements, if it said.
     pub minecart_improvements: Option<bool>,
+    /// Where the login has come to, for a screen that shows it
+    /// (`ClientHandshakePacketListenerImpl.updateStatus`).
+    pub login_stage: Option<LoginStage>,
+}
+
+/// The cell a connection writes its login stage to.
+#[derive(Debug, Clone, Default)]
+pub struct LoginStage(pub std::sync::Arc<std::sync::atomic::AtomicU8>);
+
+impl PartialEq for LoginStage {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+/// The login stages a connection reports, by `ClientHandshakePacketListenerImpl.State`.
+pub mod stage {
+    pub const CONNECTING: u8 = 0;
+    pub const AUTHORIZING: u8 = 1;
+    pub const ENCRYPTING: u8 = 2;
+    pub const JOINING: u8 = 3;
+}
+
+impl ConnectionState {
+    /// Tell a screen that the login has come to `stage`.
+    pub(super) fn reach(&self, stage: u8) {
+        if let Some(shared) = &self.login_stage {
+            shared.0.store(stage, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
 }
 
 impl ConnectionState {

@@ -186,16 +186,6 @@ pub(crate) fn play_in(client: Client, mut session: PlaySession) -> Result<(Clien
     Play::start(client, session)?.run()
 }
 
-/// How far a join has come: still connecting, or in the level waiting for it to load.
-#[derive(Default)]
-pub(crate) struct Status(std::sync::atomic::AtomicBool);
-
-impl Status {
-    pub(crate) fn loading(&self) -> bool {
-        self.0.load(std::sync::atomic::Ordering::Relaxed)
-    }
-}
-
 /// A join on its own thread (`ConnectScreen.connect`'s "Server Connector"), so the window keeps
 /// drawing; its session, or why it failed.
 pub(crate) struct JoinTask {
@@ -480,11 +470,12 @@ pub(crate) fn join(
     let first = ConnectionState {
         account: crate::profile_login::from_environment(&username)?,
         packs: packs.clone(),
+        login_stage: Some(status.stage.clone()),
         ..ConnectionState::default()
     };
     let mut session =
         PlaySession::connect_with(server, (&username, auto_jump), timeout, information, first)?;
-    status.0.store(true, std::sync::atomic::Ordering::Relaxed);
+    status.set_loading();
     println!("play_joined, waiting for the level");
     let started = std::time::Instant::now();
     let arrived = |session: &PlaySession| match wait {
@@ -594,6 +585,8 @@ fn set_moving_blocks(
 }
 
 mod audio;
+mod join_status;
+pub(crate) use join_status::Status;
 mod camera;
 mod chat;
 mod cull;

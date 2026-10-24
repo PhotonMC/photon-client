@@ -116,6 +116,7 @@ fn log_in(
                 let finished = ClientboundLoginFinishedPacket::decode(&mut input)
                     .map_err(|_| ConnectionError::Codec("login finished"))?;
                 recorder.login_finished();
+                state.reach(super::state::stage::JOINING);
                 remember_profile(state, &finished.game_profile);
 
                 send_packet(
@@ -144,14 +145,7 @@ fn log_in(
             }
             LOGIN_CLIENTBOUND_DISCONNECT_PACKET_ID => return Err(login_disconnect(payload)),
             LOGIN_CLIENTBOUND_HELLO_PACKET_ID => {
-                let hello = login::ClientboundHelloPacket::decode(&mut &payload[..])
-                    .map_err(|_| ConnectionError::Codec("login hello"))?;
-                encrypt::answer_hello(
-                    stream,
-                    &hello,
-                    (state.account.as_ref(), timeout),
-                    compression_threshold,
-                )?;
+                answer_server_hello(stream, payload, (state, timeout), compression_threshold)?;
             }
             _ => {}
         }
@@ -525,4 +519,25 @@ pub(crate) fn take_report_details(
 fn remember_profile(state: &mut ConnectionState, profile: &photon_protocol::login::GameProfile) {
     state.profile_id = Some(profile.id);
     state.profile_name = Some(String::from_utf16_lossy(&profile.name));
+}
+
+/// `ClientHandshakePacketListenerImpl.handleHello`: log in with the session server and answer
+/// with the encrypted key, telling the stages on the way.
+fn answer_server_hello(
+    stream: &mut Transport,
+    payload: &[u8],
+    (state, timeout): (&ConnectionState, Duration),
+    compression_threshold: Option<usize>,
+) -> Result<(), ConnectionError> {
+    let hello = login::ClientboundHelloPacket::decode(&mut &payload[..])
+        .map_err(|_| ConnectionError::Codec("login hello"))?;
+    state.reach(super::state::stage::AUTHORIZING);
+    encrypt::answer_hello(
+        stream,
+        &hello,
+        (state.account.as_ref(), timeout),
+        compression_threshold,
+    )?;
+    state.reach(super::state::stage::ENCRYPTING);
+    Ok(())
 }

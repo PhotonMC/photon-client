@@ -87,6 +87,8 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         .unwrap_or(720);
     let mut client = Client::open((width, height))?;
     let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
+    // `Minecraft.disconnectFromWorld`: a remote server's player comes back to the server list.
+    let mut left_server = false;
     loop {
         let mut menu = Menu::open(&mut client)?;
         // `PHOTON_MENU_SCREEN=servers|options|video|language|accessibility`: open on that screen, for a
@@ -109,6 +111,9 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
             }
             _ => {}
         }
+        if std::mem::take(&mut left_server) {
+            menu.screen = menu.server_list(gui_size(&client));
+        }
         if std::mem::take(&mut scripted_join) {
             menu.connect(server, None, gui_size(&client));
         }
@@ -117,17 +122,24 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         match choice {
             Choice::Quit => return Ok(()),
             Choice::Play(session) => {
-                client.backend.set_gui_only(false);
-                client.backend.set_panorama(None);
-                let (back, exit) = play::play_in(client, *session)?;
+                let (back, exit) = play_game(client, *session)?;
                 client = back;
-                crate::packs::shared().cleanup_after_disconnect();
                 if let Exit::Quit = exit {
                     return Ok(());
                 }
+                left_server = env::var_os("PHOTON_SCRIPT").is_none();
             }
         }
     }
+}
+
+/// Play a joined `session`, then drop the packs it pushed.
+fn play_game(mut client: Client, session: PlaySession) -> Result<(Client, Exit)> {
+    client.backend.set_gui_only(false);
+    client.backend.set_panorama(None);
+    let (client, exit) = play::play_in(client, session)?;
+    crate::packs::shared().cleanup_after_disconnect();
+    Ok((client, exit))
 }
 
 /// The menus' state between frames.
@@ -233,6 +245,23 @@ impl Menu {
         );
     }
 
+    /// The connect screen's status, and the session once the join has finished (or the screen
+    /// for why it failed).
+    fn poll_join(&mut self, size: (i32, i32)) -> Option<Box<PlaySession>> {
+        let Screen::Connecting(screen, task, _) = &mut self.screen else {
+            return None;
+        };
+        screen.set_status(self.gui.lang(), task.status.message_key());
+        match task.finished()? {
+            Ok(session) => Some(Box::new(session)),
+            Err(reason) => {
+                crate::packs::shared().cleanup_after_disconnect();
+                self.join_failed(&reason, size);
+                None
+            }
+        }
+    }
+
     /// `JoinMultiplayerScreen`, the saved servers read again.
     fn server_list(&mut self, size: (i32, i32)) -> Screen {
         self.servers = ServerList::load(&self.game_directory);
@@ -300,16 +329,8 @@ impl Menu {
             self.frame_audio();
             self.sync_icons(client)?;
             self.ask_about_packs(client, size);
-            if let Screen::Connecting(_, task, _) = &self.screen
-                && let Some(result) = task.finished()
-            {
-                match result {
-                    Ok(session) => return Ok(Choice::Play(Box::new(session))),
-                    Err(reason) => {
-                        crate::packs::shared().cleanup_after_disconnect();
-                        self.join_failed(&reason, size);
-                    }
-                }
+            if let Some(session) = self.poll_join(size) {
+                return Ok(Choice::Play(session));
             }
             self.credits_ticked(size);
             self.fit_screen(size);

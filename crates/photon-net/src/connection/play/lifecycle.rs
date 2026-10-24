@@ -297,8 +297,10 @@ impl PlaySession {
                 packs: carried.packs.clone(),
                 handshake_host: host.clone(),
                 transferring: carried.transferring,
+                login_stage: carried.login_stage.clone(),
                 ..ConnectionState::default()
             };
+            state.reach(crate::connection::state::stage::CONNECTING);
             let opened = open_play_connection(
                 (address, username),
                 timeout,
@@ -317,6 +319,7 @@ impl PlaySession {
                         account: state.account,
                         cookies: state.cookies,
                         packs: state.packs,
+                        login_stage: state.login_stage,
                         transferring: true,
                         ..ConnectionState::default()
                     };
