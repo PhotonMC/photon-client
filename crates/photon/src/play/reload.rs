@@ -88,8 +88,6 @@ impl Play {
         };
         crate::resources::replace(Arc::new(stack));
         let rebuilt = self.rebuild_assets(&root.to_string_lossy());
-        // The time the rebuild took is not owed to the game as ticks.
-        self.last_frame = Instant::now();
         match rebuilt {
             Ok(()) => true,
             Err(error) => {
@@ -98,7 +96,6 @@ impl Play {
                 if let Err(error) = self.rebuild_assets(&root.to_string_lossy()) {
                     log::warn!("the previous resources could not be restored: {error}");
                 }
-                self.last_frame = Instant::now();
                 false
             }
         }

@@ -176,13 +176,23 @@ fn route_effects(mut play: NonSendMut<Play>) {
     play.route_effects();
 }
 
+/// `Minecraft.MAX_TICKS_PER_UPDATE`.
+const MAX_TICKS_PER_UPDATE: u32 = 10;
+
 /// The ticks the time since the last frame owes, each with the keys a person or the script holds.
 fn run_ticks(world: &mut World) {
     let mut script_done = false;
+    let mut ran = 0;
     loop {
+        // `Minecraft.MAX_TICKS_PER_UPDATE`: the ticks beyond the cap are dropped, not caught up.
+        if ran == MAX_TICKS_PER_UPDATE {
+            world.non_send_mut::<Play>().drop_owed_ticks();
+            break;
+        }
         let held = world.non_send_mut::<Play>().begin_tick(&mut script_done);
         match held {
             Ok(Some(held)) => {
+                ran += 1;
                 world.insert_resource(TickInput(held));
                 world.run_schedule(Tick);
                 if world.non_send::<Failure>().0.is_some() {

@@ -250,6 +250,12 @@ impl Play {
         frame_ticks
     }
 
+    /// The whole ticks the frame did not run are not owed any more (`DeltaTracker` keeps only the
+    /// fraction of a tick).
+    pub(super) fn drop_owed_ticks(&mut self) {
+        self.accumulated = tick_fraction(self.accumulated);
+    }
+
     /// The mouse's movement of the frame turns the player.
     pub(super) fn turn_player(&mut self) {
         self.controls.turn_frame(&mut self.session, Instant::now());
@@ -535,4 +541,21 @@ pub(super) fn share_registries(
     session.set_enchantment_traits(EnchantmentTraits::of(registries));
     session.set_instruments(photon_game::item::instrument::instruments_of(registries));
     particles.set_jukebox_songs(registries);
+}
+
+/// What is left of `owed` once its whole ticks are taken away.
+fn tick_fraction(owed: Duration) -> Duration {
+    Duration::from_nanos((owed.as_nanos() % TICK_LENGTH.as_nanos()) as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dropped_ticks_leave_only_the_fraction() {
+        let owed = TICK_LENGTH * 25 + TICK_LENGTH / 4;
+        assert_eq!(tick_fraction(owed), TICK_LENGTH / 4);
+        assert_eq!(tick_fraction(TICK_LENGTH / 2), TICK_LENGTH / 2);
+    }
 }
