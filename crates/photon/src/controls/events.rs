@@ -84,6 +84,31 @@ impl Controls {
         Err(event)
     }
 
+    /// `Minecraft.handleKeybinds` for the inventory key: on a mount the server opens the mount's
+    /// inventory, otherwise the player's own opens.
+    fn inventory_key(
+        &mut self,
+        (session, surface, assets): (&mut PlaySession, &mut WindowSurface, &ScreenAssets),
+        spectating: bool,
+    ) {
+        if session.is_server_controlled_inventory() {
+            if let Err(error) = session.send_open_inventory() {
+                log::warn!("could not ask for the mount inventory: {error:?}");
+            }
+        } else if !spectating {
+            open_inventory(
+                surface,
+                &mut self.screen,
+                creative_tags(session),
+                self.creative_tab,
+                assets,
+            );
+            self.captured = false;
+            self.turning.inventory_opened = true;
+            self.release_keys();
+        }
+    }
+
     /// A key or mouse button, by the mappings it is bound to (`KeyMapping.set` and `click`): the
     /// keys held for moving, the attack, use and pick keys, and the keys that open things.
     fn mapped_input(
@@ -108,17 +133,8 @@ impl Controls {
                 "key.attack" => held(&mut self.attack_key, self.captured),
                 "key.use" => held(&mut self.use_key, self.captured),
                 "key.pickItem" => held(&mut self.pick_key, self.captured),
-                "key.inventory" if press && self.captured && !spectating => {
-                    open_inventory(
-                        surface,
-                        &mut self.screen,
-                        creative_tags(session),
-                        self.creative_tab,
-                        assets,
-                    );
-                    self.captured = false;
-                    self.turning.inventory_opened = true;
-                    self.release_keys();
+                "key.inventory" if press && self.captured => {
+                    self.inventory_key((session, surface, assets), spectating);
                 }
                 "key.quickActions" => self.open_quick_actions(press, session, surface, assets),
                 screen

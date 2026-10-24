@@ -496,7 +496,7 @@
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 13
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 11
-"crates/photon/src/controls/events.rs::Controls::mapped_input" = 35
+"crates/photon/src/controls/events.rs::Controls::mapped_input" = 34
 "crates/photon/src/controls/events.rs::Controls::pause_event" = 13
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 11
 "crates/photon/src/controls/events.rs::Controls::world_event" = 14

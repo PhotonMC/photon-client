@@ -53,6 +53,25 @@ impl ClientEntity {
         crate::ride::mount::is_horse_type(self.type_id)
     }
 
+    /// `HasCustomInventoryScreen`: the horses, llamas, camels, nautiluses and chest boats, whose
+    /// inventory the server opens when the rider asks.
+    pub fn has_custom_inventory_screen(&self) -> bool {
+        let Some(name) = photon_data::entity_type::name(self.type_id) else {
+            return false;
+        };
+        self.is_horse()
+            || matches!(
+                name,
+                "minecraft:llama"
+                    | "minecraft:trader_llama"
+                    | "minecraft:camel"
+                    | "minecraft:camel_husk"
+                    | "minecraft:nautilus"
+                    | "minecraft:zombie_nautilus"
+            )
+            || (self.is_boat() && (name.contains("_chest_")))
+    }
+
     /// Whether this is a pig.
     pub fn is_pig(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:pig")

@@ -210,6 +210,7 @@ pub enum PlayerCommandAction {
     StartSprinting = 1,
     StopSprinting = 2,
     StartRidingJump = 3,
+    OpenInventory = 5,
     StartFallFlying = 6,
 }
 

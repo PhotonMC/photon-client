@@ -195,6 +195,31 @@ impl PlaySession {
         )
     }
 
+    /// `MultiPlayerGameMode.isServerControlledInventory`: the player rides something whose
+    /// inventory the server opens.
+    pub fn is_server_controlled_inventory(&self) -> bool {
+        self.world
+            .local_player()
+            .and_then(|player| player.vehicle_id())
+            .and_then(|id| self.world.entities().at(id))
+            .is_some_and(|vehicle| vehicle.has_custom_inventory_screen())
+    }
+
+    /// `LocalPlayer.sendOpenInventory`: the inventory key on a mount asks the server to open its
+    /// inventory.
+    pub fn send_open_inventory(&mut self) -> Result<(), ConnectionError> {
+        let Some(entity_id) = self.world.local_player().map(|player| player.id()) else {
+            return Ok(());
+        };
+        self.send_movement(
+            photon_world::local_player::ServerboundMovement::PlayerCommand {
+                entity_id,
+                action: photon_world::local_player::PlayerCommandAction::OpenInventory,
+                data: 0,
+            },
+        )
+    }
+
     /// `ClientPacketListener.sendChat` and `sendCommand`: a line typed into
     /// the chat, sent as a command when `command` (without its slash).
     /// Without a chat key the message goes unsigned.
