@@ -172,6 +172,30 @@ pub(super) fn wear(
     )
 }
 
+/// What the local player wears (armor and wings) in a screen's box rather than the world: the
+/// triangles in the box's pose, without the glint (the world's glint pass would draw it at the
+/// origin).
+pub fn gui_dressing(
+    armor: &mut Armor,
+    (worn, slim): (Worn, bool),
+    textures: &photon_render::entity::textures::EntityTextures,
+    (state, placement): (&PlayerRenderState, &Placement),
+    elytra: [f32; 3],
+) -> Vec<Vertex> {
+    let glint = armor.glint.len();
+    let mut dressed = wear(armor, worn, slim, textures, (state, placement));
+    dressed.extend(armor.wings(
+        worn.chest,
+        (false, state.crouching, elytra),
+        textures,
+        &|model, rect, colour| {
+            photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
+        },
+    ));
+    armor.glint.truncate(glint);
+    dressed
+}
+
 /// What the name tags of a frame are made with, and the triangles made so far.
 struct Tags<'a> {
     text: (

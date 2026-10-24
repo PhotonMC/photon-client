@@ -3,6 +3,7 @@
 pub mod block;
 pub mod elder_guardian_particle;
 pub mod equipment;
+pub mod gui_view;
 pub mod hand_motion;
 pub mod held_item;
 pub mod keyframe;

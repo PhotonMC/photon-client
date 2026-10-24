@@ -316,14 +316,14 @@ impl Gui {
         );
         if let (Some(screen), Some(menu)) = (controls.screen.as_mut(), screen_menu) {
             let skin = self.player_skin;
-            let mut draw_player = |area, size, offset_y, mouse| {
-                player_preview(
-                    hud_player,
-                    player_model,
-                    skin,
-                    (area, size, offset_y, mouse),
-                )
-            };
+            // Both previews dress what they draw from the same cache, one after the other.
+            let armor = std::cell::RefCell::new(armor);
+            let mut draw_player = preview::drawer(
+                session,
+                (hud_player, player_model),
+                (&armor, entity_textures),
+                skin,
+            );
             // A mount in the box of its screen, between two ticks as it stands now.
             let world = session.world();
             let mut draw_entity = |id: EntityId,
@@ -343,7 +343,7 @@ impl Gui {
                 );
                 crate::mobs::animals::farm_animals::gui_preview(
                     world,
-                    (&mut *mob_models, &mut *armor),
+                    (&mut *mob_models, &mut **armor.borrow_mut()),
                     entity_textures,
                     entity,
                     &view,
@@ -352,7 +352,7 @@ impl Gui {
                     crate::mobs::aquatic::nautilus::gui_preview(
                         world,
                         session.registry_names("minecraft:zombie_nautilus_variant"),
-                        (mob_models, armor),
+                        (&mut *mob_models, &mut **armor.borrow_mut()),
                         entity_textures,
                         entity,
                         &view,
@@ -415,42 +415,6 @@ impl Gui {
             (&self.atlas, &mut self.atlas_image),
         )
     }
-}
-
-/// Where the model of a screen goes: its box, its size and offset, and the mouse it looks at.
-type PreviewBox = ((i32, i32, i32, i32), f32, f32, (f32, f32));
-
-/// The local player in the box of its screen (`InventoryScreen.extractEntityInInventoryFollowsMouse`):
-/// its model as it stands now, turned to look at the mouse.
-fn player_preview(
-    player: Option<&photon_world::local_player::LocalPlayer>,
-    player_model: &mut PlayerModel,
-    skin: photon_render::entity::textures::TextureRect,
-    (area, size, offset_y, mouse): PreviewBox,
-) -> Vec<GuiItemVertex> {
-    let Some(player) = player else {
-        return Vec::new();
-    };
-    let pose = player.model_pose(1.0);
-    let state = PlayerRenderState {
-        walk_position: pose.walk_position,
-        walk_speed: pose.walk_speed,
-        age_in_ticks: player.tick_count() as f32 + 1.0,
-        swim_amount: pose.swim_amount,
-        crouching: pose.crouching,
-        spectator: player.spectating(),
-        attack_time: player.attack_anim(1.0),
-        ..Default::default()
-    };
-    photon_render::entity::player_renderer::gui_player_vertices(
-        player_model,
-        &state,
-        area,
-        size,
-        offset_y,
-        mouse,
-        skin,
-    )
 }
 
 impl Gui {
