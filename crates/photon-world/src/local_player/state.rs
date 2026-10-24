@@ -3,6 +3,17 @@ use photon_core::ids::{BlockStateId, EntityId};
 use photon_data::item::registry::AIR_ITEM;
 
 impl LocalPlayer {
+    /// `Minecraft.setCameraEntity`: whether the view is the player's own, which decides whether its
+    /// input moves it and its position is sent (`isControlledCamera`).
+    pub fn set_controlled_camera(&mut self, controlled: bool) {
+        self.controlled_camera = controlled;
+    }
+
+    /// `LocalPlayer.isControlledCamera`.
+    pub fn is_controlled_camera(&self) -> bool {
+        self.controlled_camera
+    }
+
     /// How many ticks the player has lived, which the model's idle sway
     /// reads.
     pub fn tick_count(&self) -> i32 {
@@ -120,10 +131,9 @@ impl LocalPlayer {
             no_physics: false,
             auto_jump_option,
             auto_jump_enabled: true,
+            controlled_camera: true,
             trace: Default::default(),
-            x_last: 0.0,
-            y_last: 0.0,
-            z_last: 0.0,
+            last_sent: Vec3::ZERO,
             y_rot_last: 0.0,
             x_rot_last: 0.0,
             last_on_ground: false,

@@ -404,6 +404,11 @@ impl Entities {
 }
 
 impl ClientWorld {
+    /// Whether the level holds the entity (the local player included).
+    pub fn knows_entity(&self, entity_id: EntityId) -> bool {
+        self.entity_exists(entity_id)
+    }
+
     pub(crate) fn entity_exists(&self, entity_id: EntityId) -> bool {
         self.entities.contains_key(&entity_id)
             || self

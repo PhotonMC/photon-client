@@ -398,4 +398,51 @@ mod tests {
             .unwrap();
         assert_eq!(session.local.removed_player_vehicle, None);
     }
+
+    #[test]
+    fn set_camera_hands_the_view_to_a_known_entity_and_back() {
+        let (mut session, _far_end) = detached();
+        let own = EntityId(1);
+        session.local.player_id = Some(own);
+        session.world.set_local_player_id(own);
+        session.local.player = Some(LocalPlayer::new(
+            own,
+            Vec3::new(8.0, 64.0, 8.0),
+            0.0,
+            0.0,
+            session.local.game_mode,
+            session.link.auto_jump,
+        ));
+        session
+            .handle_bytes(&add_entity_of_type(1, 156, 8.0))
+            .unwrap();
+        session
+            .handle_bytes(&add_entity_of_type(7, 94, 8.0))
+            .unwrap();
+        let camera = |id: u32| {
+            let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
+            body.extend(varint(id));
+            body
+        };
+        let controlled = |session: &PlaySession| {
+            session
+                .local
+                .player
+                .as_ref()
+                .unwrap()
+                .is_controlled_camera()
+        };
+        assert!(controlled(&session));
+        // An entity the client never heard of changes nothing.
+        session.handle_bytes(&camera(99)).unwrap();
+        assert_eq!(session.camera_entity(), None);
+        assert!(controlled(&session));
+        session.handle_bytes(&camera(7)).unwrap();
+        assert_eq!(session.camera_entity(), Some(EntityId(7)));
+        assert!(!controlled(&session));
+        // Naming the player itself gives the view back.
+        session.handle_bytes(&camera(1)).unwrap();
+        assert_eq!(session.camera_entity(), None);
+        assert!(controlled(&session));
+    }
 }

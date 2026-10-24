@@ -90,6 +90,23 @@ impl PlaySession {
         }
     }
 
+    /// `ClientPacketListener.handleSetCamera`: an entity the level does not hold changes nothing.
+    pub(super) fn on_set_camera(&mut self, entity: EntityId) {
+        if !self.world.knows_entity(entity) {
+            return;
+        }
+        let own = self.local.player_id == Some(entity);
+        self.local.camera = (!own).then_some(entity);
+        if let Some(player) = self.local.player.as_mut() {
+            player.set_controlled_camera(own);
+        }
+    }
+
+    /// `Minecraft.getCameraEntity` when it is not the local player.
+    pub fn camera_entity(&self) -> Option<EntityId> {
+        self.local.camera
+    }
+
     pub(super) fn send_movement(
         &mut self,
         packet: ServerboundMovement,
@@ -297,6 +314,7 @@ impl PlaySession {
                 self.local.game_mode,
                 self.link.auto_jump,
             );
+            player.set_controlled_camera(self.local.camera.is_none());
             // A health update that came before the player did is its first.
             if let Some(health) = known_health {
                 player.hurt_to(health);

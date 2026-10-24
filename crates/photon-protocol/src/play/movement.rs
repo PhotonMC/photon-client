@@ -348,6 +348,21 @@ wrapped_packet!(
     OnError::Ignore("set_entity_motion")
 );
 
+/// `ClientboundSetCameraPacket`: the entity the view follows.
+pub fn parse_set_camera_packet(mut input: &[u8]) -> Result<EntityId, ConnectionError> {
+    let entity_id = read_varint(&mut input, "camera entity id")?;
+    if !input.is_empty() {
+        return Err(ConnectionError::Codec("set camera trailing payload"));
+    }
+    Ok(EntityId(entity_id))
+}
+
+wrapped_packet!(
+    /// `ClientboundSetCameraPacket`.
+    SetCamera(EntityId) = parse_set_camera_packet,
+    OnError::Ignore("set_camera")
+);
+
 wrapped_packet!(
     /// `ClientboundMoveMinecartPacket`.
     MoveMinecart((EntityId, Vec<MinecartStep>)) = parse_move_minecart_packet,

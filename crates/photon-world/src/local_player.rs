@@ -197,10 +197,12 @@ pub struct LocalPlayer {
     pub(super) no_physics: bool,
     pub(super) auto_jump_option: bool,
     pub(super) auto_jump_enabled: bool,
+    /// `LocalPlayer.isControlledCamera`: the player is the camera entity, so its input moves it and
+    /// its position is sent.
+    pub(super) controlled_camera: bool,
     pub(super) trace: MoveTrace,
-    pub(super) x_last: f64,
-    pub(super) y_last: f64,
-    pub(super) z_last: f64,
+    /// `xLast`, `yLast`, `zLast`: the position last sent.
+    pub(super) last_sent: Vec3,
     pub(super) y_rot_last: f32,
     pub(super) x_rot_last: f32,
     pub(super) last_on_ground: bool,
@@ -233,6 +235,7 @@ mod rotation;
 use rotation::*;
 mod serverbound;
 pub use serverbound::*;
+mod spectating;
 mod sprinting;
 mod state;
 pub use state::*;

@@ -35,6 +35,9 @@ pub(super) struct LocalState {
     pub(super) previous_game_mode: Option<ClientPlayerGameMode>,
     pub(super) abilities: Option<ClientPlayerAbilities>,
     pub(super) player: Option<LocalPlayer>,
+    /// `Minecraft.getCameraEntity` when it is not the player: set by `ClientboundSetCameraPacket`,
+    /// reset by a login or a respawn.
+    pub(super) camera: Option<EntityId>,
     pub(super) status: PlayerStatus,
     /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`), which
     /// the server tells by entity events 24 to 28.
@@ -248,6 +251,7 @@ impl Default for LocalState {
             previous_game_mode: None,
             abilities: None,
             player: None,
+            camera: None,
             status: PlayerStatus::default(),
             permission_level: 0,
             hardcore: false,

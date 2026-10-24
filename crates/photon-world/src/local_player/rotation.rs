@@ -116,24 +116,32 @@ impl LocalPlayer {
         self.y_rot += y_delta;
     }
 
-    pub(super) fn send_position(&mut self) {
-        if self.sprinting != self.was_sprinting {
-            let action = if self.sprinting {
-                PlayerCommandAction::StartSprinting
-            } else {
-                PlayerCommandAction::StopSprinting
-            };
-            self.sent.push(ServerboundMovement::PlayerCommand {
-                entity_id: self.entity_id,
-                action,
-                data: 0,
-            });
-            self.was_sprinting = self.sprinting;
+    /// The sprint command of `LocalPlayer.sendPosition`, which a spectated view still sends.
+    fn send_sprint_command(&mut self) {
+        if self.sprinting == self.was_sprinting {
+            return;
         }
+        let action = if self.sprinting {
+            PlayerCommandAction::StartSprinting
+        } else {
+            PlayerCommandAction::StopSprinting
+        };
+        self.sent.push(ServerboundMovement::PlayerCommand {
+            entity_id: self.entity_id,
+            action,
+            data: 0,
+        });
+        self.was_sprinting = self.sprinting;
+    }
 
-        let delta_x = self.position.x - self.x_last;
-        let delta_y = self.position.y - self.y_last;
-        let delta_z = self.position.z - self.z_last;
+    pub(super) fn send_position(&mut self) {
+        self.send_sprint_command();
+        if !self.controlled_camera {
+            return;
+        }
+        let delta_x = self.position.x - self.last_sent.x;
+        let delta_y = self.position.y - self.last_sent.y;
+        let delta_z = self.position.z - self.last_sent.z;
         let delta_y_rot = f64::from(self.y_rot - self.y_rot_last);
         let delta_x_rot = f64::from(self.x_rot - self.x_rot_last);
         self.position_reminder += 1;
@@ -172,9 +180,7 @@ impl LocalPlayer {
             });
         }
         if moved {
-            self.x_last = self.position.x;
-            self.y_last = self.position.y;
-            self.z_last = self.position.z;
+            self.last_sent = self.position;
             self.position_reminder = 0;
         }
         if rotated {

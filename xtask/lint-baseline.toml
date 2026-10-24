@@ -439,11 +439,11 @@
 "crates/photon-world/src/local_player/inside_blocks.rs::living_inside_effect" = 14
 "crates/photon-world/src/local_player/level.rs::Level::clip_hits_fall_reset" = 20
 "crates/photon-world/src/local_player/level.rs::Level::fluid_flow" = 17
-"crates/photon-world/src/local_player/rotation.rs::LocalPlayer::send_position" = 13
+"crates/photon-world/src/local_player/rotation.rs::LocalPlayer::send_position" = 12
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::apply_movement_emission" = 11
 "crates/photon-world/src/local_player/sounds.rs::LocalPlayer::fall_on" = 12
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 43
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 39
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 26
 "crates/photon-world/src/metadata/fields.rs::variant_from_metadata" = 11
@@ -881,11 +881,10 @@
 "crates/photon-world/src/local_player/inside_blocks.rs::blocks_intersected_between" = 161
 "crates/photon-world/src/local_player/inside_blocks.rs::living_inside_effect" = 78
 "crates/photon-world/src/local_player/level.rs::Level::clip_hits_fall_reset" = 86
-"crates/photon-world/src/local_player/rotation.rs::LocalPlayer::send_position" = 68
 "crates/photon-world/src/local_player/serverbound.rs::ServerboundMovement::encode_body" = 96
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 120
-"crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 108
-"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 121
+"crates/photon-world/src/local_player/state.rs::LocalPlayer::new" = 107
+"crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 109
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::tick_riding" = 79
 "crates/photon-world/src/metadata/fields.rs::skip_metadata_value" = 92
 "crates/photon-world/src/mobs/guardian.rs::GuardianState::tick" = 70

@@ -292,6 +292,46 @@ impl LocalPlayer {
         }
     }
 
+    /// `LocalPlayer.applyInput`, which only the camera entity takes input for.
+    fn apply_input(&mut self) {
+        if !self.controlled_camera {
+            // `LivingEntity.applyInput`.
+            self.xxa *= 0.98_f32;
+            self.zza *= 0.98_f32;
+            return;
+        }
+        let modified = modify_local_player_input(
+            self.input.move_vector(),
+            LocalPlayerInputModifiers {
+                using_item: self.is_using_item(),
+                passenger: self.is_passenger(),
+                item_use_speed_multiplier: self.item_use_speed_multiplier(),
+                moving_slowly: self.is_moving_slowly(),
+                sneaking_movement_factor: SNEAKING_SPEED as f32,
+            },
+        );
+        self.xxa = modified.x;
+        self.zza = modified.y;
+        self.jumping = self.input.key_presses.jump;
+        self.y_bob_old = self.y_bob;
+        self.x_bob_old = self.x_bob;
+        self.x_bob += (self.x_rot - self.x_bob) * 0.5;
+        self.y_bob += (self.y_rot - self.y_bob) * 0.5;
+    }
+
+    /// The vertical input of a flying player, which only the camera entity gives.
+    fn fly_vertically(&mut self) {
+        if !self.abilities.flying || !self.controlled_camera {
+            return;
+        }
+        let input_ya =
+            i32::from(self.input.key_presses.jump) - i32::from(self.input.key_presses.shift);
+        if input_ya != 0 {
+            let rise = input_ya as f32 * self.abilities.flying_speed() * 3.0_f32;
+            self.delta = self.delta.add_components(0.0, f64::from(rise), 0.0);
+        }
+    }
+
     pub(super) fn local_ai_step(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         self.tick_start_timers();
 
@@ -363,19 +403,7 @@ impl LocalPlayer {
             self.delta = self.delta.add_components(0.0, f64::from(-0.04_f32), 0.0);
         }
 
-        if self.abilities.flying {
-            let mut input_ya = 0;
-            if self.input.key_presses.shift {
-                input_ya -= 1;
-            }
-            if self.input.key_presses.jump {
-                input_ya += 1;
-            }
-            if input_ya != 0 {
-                let rise = input_ya as f32 * self.abilities.flying_speed() * 3.0_f32;
-                self.delta = self.delta.add_components(0.0, f64::from(rise), 0.0);
-            }
-        }
+        self.fly_vertically();
 
         // `jumpableVehicle`: holding the jump key charges a jump of the mount (a saddled horse),
         // which letting go of it makes, and tells the server of.
@@ -477,24 +505,7 @@ impl LocalPlayer {
         }
         self.delta = Vec3::new(dx, dy, dz);
 
-        // LocalPlayer.applyInput.
-        let modified = modify_local_player_input(
-            self.input.move_vector(),
-            LocalPlayerInputModifiers {
-                using_item: self.is_using_item(),
-                passenger: self.is_passenger(),
-                item_use_speed_multiplier: self.item_use_speed_multiplier(),
-                moving_slowly: self.is_moving_slowly(),
-                sneaking_movement_factor: SNEAKING_SPEED as f32,
-            },
-        );
-        self.xxa = modified.x;
-        self.zza = modified.y;
-        self.jumping = self.input.key_presses.jump;
-        self.y_bob_old = self.y_bob;
-        self.x_bob_old = self.x_bob;
-        self.x_bob += (self.x_rot - self.x_bob) * 0.5;
-        self.y_bob += (self.y_rot - self.y_bob) * 0.5;
+        self.apply_input();
 
         self.jump_or_rise_in_fluid(level);
 

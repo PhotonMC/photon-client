@@ -23,6 +23,7 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
         typed::<SetEntityLink>,
     ),
     (PLAY_CLIENTBOUND_ROTATE_HEAD_PACKET_ID, typed::<RotateHead>),
+    (PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID, typed::<SetCamera>),
     (
         PLAY_CLIENTBOUND_REMOVE_ENTITIES_PACKET_ID,
         typed::<RemoveEntities>,
@@ -123,6 +124,13 @@ impl ClientboundPacket for SetEntityLink {
 impl ClientboundPacket for RotateHead {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.on_rotate_head(self.0)
+    }
+}
+
+impl ClientboundPacket for SetCamera {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        session.on_set_camera(self.0);
+        Ok(())
     }
 }
 

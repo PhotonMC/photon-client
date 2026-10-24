@@ -237,6 +237,7 @@ impl PlaySession {
         self.local.stats.clear();
         self.local.show_death_screen = login.show_death_screen;
         self.local.player_id = Some(login.player_id);
+        self.local.camera = None;
         self.local.permission_level = 0;
         self.local.game_mode = ClientPlayerGameMode::from_id(i32::from(login.spawn_info.game_type));
         self.local.previous_game_mode = login
@@ -302,6 +303,7 @@ impl PlaySession {
             .as_ref()
             .map(|player| (player.portal_carry(), spawn_info.portal_cooldown));
         self.local.player = None;
+        self.local.camera = None;
         self.local.permission_level = 0;
         self.local.loaded = false;
         self.start_waiting_for_level(reason, bounds);
