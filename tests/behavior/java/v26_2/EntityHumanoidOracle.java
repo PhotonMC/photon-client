@@ -290,7 +290,7 @@ class EntityHumanoidOracle extends EntityHeldOracle {
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     static JsonObject zombieModel(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var layers = new java.util.HashMap<String, net.minecraft.client.model.geom.builders.LayerDefinition>();
         for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
             layers.put(entry.getKey().toString(), entry.getValue());

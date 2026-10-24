@@ -199,7 +199,7 @@ class WireRegistryOracle extends WireConfigurationOracle {
      */
     @SuppressWarnings("unchecked")
     static JsonObject awardStatsResult(JsonObject request) {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         ByteBuf buffer = Unpooled.buffer();
         try {
             buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));
@@ -244,7 +244,7 @@ class WireRegistryOracle extends WireConfigurationOracle {
      * progress of each criterion; the advancements in the order they came, the progress by id.
      */
     static JsonObject updateAdvancementsResult(JsonObject request) {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         ByteBuf buffer = Unpooled.buffer();
         try {
             buffer.writeBytes(HexFormat.of().parseHex(request.get("hex").getAsString()));

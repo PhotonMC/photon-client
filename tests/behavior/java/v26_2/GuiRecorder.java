@@ -465,7 +465,7 @@ class GuiRecorder extends GuiFonts {
 
         @Override
         public net.minecraft.core.RegistryAccess registryAccess() {
-            return Oracle.vanillaRegistries();
+            return Game26_2.vanillaRegistries();
         }
 
         @Override
@@ -485,7 +485,7 @@ class GuiRecorder extends GuiFonts {
     @SuppressWarnings("unchecked")
     static com.mojang.brigadier.CommandDispatcher<net.minecraft.client.multiplayer.ClientSuggestionProvider>
             commandDispatcher(String hex) throws Exception {
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var bytes = java.util.HexFormat.of().parseHex(hex);
         var buffer = new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
         var packet = net.minecraft.network.protocol.game.ClientboundCommandsPacket.STREAM_CODEC.decode(buffer);

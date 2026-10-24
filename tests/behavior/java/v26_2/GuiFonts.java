@@ -156,7 +156,7 @@ class GuiFonts {
         }
         unsafe = Reflect.unsafe();
         // The game's registries, which the client classes read as they load.
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         // The game's own assets, read from its jar.
         var jar = java.nio.file.Path.of(net.minecraft.client.Minecraft.class
             .getProtectionDomain().getCodeSource().getLocation().toURI());

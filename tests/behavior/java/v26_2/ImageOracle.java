@@ -61,7 +61,7 @@ public final class ImageOracle {
     private static JsonObject trimSpriteId(JsonObject row) {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var materials = registries.lookupOrThrow(net.minecraft.core.registries.Registries.TRIM_MATERIAL);
         var patterns = registries.lookupOrThrow(net.minecraft.core.registries.Registries.TRIM_PATTERN);
         var trim = new net.minecraft.world.item.equipment.trim.ArmorTrim(

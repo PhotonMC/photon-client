@@ -14,7 +14,7 @@ final class GuiTooltipOracle {
 
     static JsonObject tooltipLines(JsonObject request) throws Exception {
         GuiFonts.setup();
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
@@ -75,7 +75,7 @@ final class GuiTooltipOracle {
      */
     static JsonObject bundleTooltip(JsonObject request) throws Exception {
         GuiFonts.setup();
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();

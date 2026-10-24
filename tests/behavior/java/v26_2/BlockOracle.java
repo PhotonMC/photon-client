@@ -50,7 +50,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
 
     /** The names of the registries whose wire ids the client reads, in id order. */
     static JsonObject registryNames(JsonObject row) {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.add("block_entity_types",

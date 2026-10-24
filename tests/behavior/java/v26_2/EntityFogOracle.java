@@ -18,7 +18,7 @@ class EntityFogOracle extends EntityBlockOracle {
      * blend state's two factors after each tick, for an effect that blends or starts blended.
      */
     static JsonObject mobEffectBlend(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var instanceBlend = Reflect.field(net.minecraft.world.effect.MobEffectInstance.class, "blendState");
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -84,7 +84,7 @@ class EntityFogOracle extends EntityBlockOracle {
      * `LocalPlayer.getWaterVision` after some time under water or none.
      */
     static JsonObject viewScales(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var unsafe = (sun.misc.Unsafe) UNSAFE;
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {

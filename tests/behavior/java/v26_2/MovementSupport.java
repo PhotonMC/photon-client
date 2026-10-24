@@ -236,7 +236,7 @@ class MovementSupport {
         if (bootstrapped) {
             return;
         }
-        registries = Oracle.vanillaRegistries();
+        registries = Game26_2.vanillaRegistries();
         unsafe = Reflect.unsafe();
         bootstrapped = true;
     }
@@ -768,7 +768,7 @@ class MovementSupport {
                 bytes[index] = (byte) Integer.parseInt(patch.substring(index * 2, index * 2 + 2), 16);
             }
             var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
-                io.netty.buffer.Unpooled.wrappedBuffer(bytes), Oracle.vanillaRegistries());
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), Game26_2.vanillaRegistries());
             stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
         }
         if (described.has("book_pages")) {

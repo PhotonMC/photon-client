@@ -19,7 +19,7 @@ public final class SoundOracle extends SoundSupport {
 
     public static JsonObject run(JsonObject request) {
         try {
-            Oracle.vanillaRegistries();
+            Game26_2.vanillaRegistries();
             switch (request.get("operation").getAsString()) {
                 case "sound_events" -> {
                     return soundEvents();
@@ -111,7 +111,7 @@ public final class SoundOracle extends SoundSupport {
             out.addProperty("sound", effect.sound().location().toString());
             rows.add(out);
         }
-        var registry = Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE);
+        var registry = Game26_2.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE);
         var types = new java.util.TreeMap<String, String>();
         registry.listElements().forEach(holder ->
             types.put(holder.key().identifier().toString(), holder.value().effects().getSerializedName()));
@@ -206,7 +206,7 @@ public final class SoundOracle extends SoundSupport {
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
-                io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Oracle.vanillaRegistries());
+                io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Game26_2.vanillaRegistries());
             try {
                 switch (row.get("kind").getAsString()) {
                     case "sound" -> {

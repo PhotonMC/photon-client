@@ -73,7 +73,7 @@ class MathChunkCacheOracle extends MathBoxOracle {
 
             Unsafe unsafe = unsafeInstance();
             var cacheOwner = (ClientChunkCache)unsafe.allocateInstance(ClientChunkCache.class);
-            Class<?> storageClass = Class.forName(ClientChunkCache.class.getName() + "$Storage");
+            Class<?> storageClass = Reflect.type(ClientChunkCache.class.getName() + "$Storage");
             var storageConstructor = Reflect.constructor(storageClass, ClientChunkCache.class, int.class);
             var calculateStorageRange = Reflect.method(ClientChunkCache.class, "calculateStorageRange", int.class);
             var inRange = Reflect.method(storageClass, "inRange", int.class, int.class);

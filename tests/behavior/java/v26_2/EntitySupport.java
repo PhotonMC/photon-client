@@ -184,7 +184,7 @@ class EntitySupport {
 
     /** A layer of the table baked, as the game bakes it. */
     static net.minecraft.client.model.geom.ModelPart bakedLayer(final String id) {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
             if (entry.getKey().toString().equals(id)) {
                 return entry.getValue().bakeRoot();

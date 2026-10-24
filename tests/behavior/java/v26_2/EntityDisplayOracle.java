@@ -311,7 +311,7 @@ class EntityDisplayOracle extends EntityDataOracle {
      * of enchantments and glint overrides set or removed over the item's own).
      */
     static JsonObject itemFoil(final JsonObject request) throws Exception {
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var items = net.minecraft.core.registries.BuiltInRegistries.ITEM;
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -869,7 +869,7 @@ class EntityDisplayOracle extends EntityDataOracle {
      * item's own, as the slot's name and the equipment asset it names.
      */
     static JsonObject itemEquippable(final JsonObject request) throws Exception {
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();

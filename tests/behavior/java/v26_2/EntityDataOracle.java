@@ -60,7 +60,7 @@ class EntityDataOracle extends EntityBossOracle {
      * each attribute its supplier has), in entity type order, and each attribute's range.
      */
     static JsonObject entityAttributes() throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         var types = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
         var attributes = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE;
@@ -109,7 +109,7 @@ class EntityDataOracle extends EntityBossOracle {
 
     /** The entity type registry: each type's id and name, in id order. */
     static JsonObject entityTypes() {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var registry = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
         var rows = new JsonArray();
         for (var type : registry) {
@@ -125,7 +125,7 @@ class EntityDataOracle extends EntityBossOracle {
 
     /** The cat, chicken, cow, frog, pig and zombie nautilus variants the game's data pack holds: their textures and model. */
     static JsonObject entityVariants() {
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var rows = new java.util.TreeMap<String, JsonObject>();
         registries.lookupOrThrow(net.minecraft.core.registries.Registries.PIG_VARIANT).listElements().forEach(holder -> {
             var variant = holder.value();
@@ -167,7 +167,7 @@ class EntityDataOracle extends EntityBossOracle {
     /** The wolf variants of the game's data pack: the six textures each wears (grown and baby; wild, tame, angry). */
     static JsonObject wolfVariants() {
         var rows = new java.util.TreeMap<String, JsonObject>();
-        Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.WOLF_VARIANT)
+        Game26_2.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.WOLF_VARIANT)
             .listElements().forEach(holder -> {
                 var variant = holder.value();
                 var out = new JsonObject();
@@ -223,7 +223,7 @@ class EntityDataOracle extends EntityBossOracle {
 
     static JsonObject paintingVariants() {
         var rows = new java.util.TreeMap<String, JsonObject>();
-        Oracle.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT)
+        Game26_2.vanillaRegistries().lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT)
             .listElements().forEach(holder -> {
                 var variant = holder.value();
                 var out = new JsonObject();
@@ -262,7 +262,7 @@ class EntityDataOracle extends EntityBossOracle {
      * carries it.
      */
     static JsonObject entityVariantFields() throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         Object[][] fields = {
             {net.minecraft.world.entity.animal.pig.Pig.class, "DATA_VARIANT_ID", "pig"},
@@ -369,7 +369,7 @@ class EntityDataOracle extends EntityBossOracle {
      * field that holds it in `EntityDataSerializers`.
      */
     static JsonObject entityDataSerializers() throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var byId = new java.util.TreeMap<Integer, String>();
         for (var field : net.minecraft.network.syncher.EntityDataSerializers.class.getDeclaredFields()) {
             if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())
@@ -398,7 +398,7 @@ class EntityDataOracle extends EntityBossOracle {
     /** Every model layer the game builds: its texture size and the tree of its parts. */
     static JsonObject modelLayers() throws Exception {
         // The layers are made from registries (decorated pot patterns): the game's bootstrap first.
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var layers = new java.util.TreeMap<String, Object>();
         for (var entry : net.minecraft.client.model.geom.LayerDefinitions.createRoots().entrySet()) {
             layers.put(entry.getKey().toString(), entry.getValue());

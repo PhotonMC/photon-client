@@ -176,7 +176,7 @@ class MovementMobEvents extends MovementAnimalEvents {
         var key = net.minecraft.resources.ResourceKey.create(
             net.minecraft.core.registries.Registries.PAINTING_VARIANT,
             net.minecraft.resources.Identifier.parse(event.get("variant").getAsString()));
-        var holder = Oracle.vanillaRegistries()
+        var holder = Game26_2.vanillaRegistries()
             .lookupOrThrow(net.minecraft.core.registries.Registries.PAINTING_VARIANT).getOrThrow(key);
         var data = new java.util.ArrayList<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>>();
         data.add(wolfData(net.minecraft.world.entity.decoration.painting.Painting.class,

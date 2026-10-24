@@ -11,7 +11,7 @@ class BlockSupport {
         }
         // Tags matter here: movement reads the climbable, fence and wall tags,
         // and unbound tags would read as empty rather than as vanilla.
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         bootstrapped = true;
         // The grass and foliage tints read a colour map the game loads from
         // its own assets. Headless, that map is all zeroes, so those tints

@@ -154,7 +154,7 @@ class EntityRotationOracle extends EntityProjectileOracle {
                         return null;
                     });
                 net.minecraft.client.renderer.entity.RenderLayerParent parent = () -> null;
-                Oracle.vanillaRegistries();
+                Game26_2.vanillaRegistries();
                 new net.minecraft.client.renderer.entity.layers.SulfurCubeInnerLayer(
                     parent, new net.minecraft.client.model.geom.EntityModelSet(
                         net.minecraft.client.model.geom.LayerDefinitions.createRoots()))
@@ -200,7 +200,7 @@ class EntityRotationOracle extends EntityProjectileOracle {
      */
     static JsonObject shakingRotations(final JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var dimensionTypes = Oracle.vanillaRegistries()
+        var dimensionTypes = Game26_2.vanillaRegistries()
             .lookupOrThrow(net.minecraft.core.registries.Registries.DIMENSION_TYPE);
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();

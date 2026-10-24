@@ -22,7 +22,7 @@ class BlockPlacementOracle extends BlockItemOracle {
 
         @Override
         public net.minecraft.core.RegistryAccess registryAccess() {
-            return Oracle.vanillaRegistries();
+            return Game26_2.vanillaRegistries();
         }
 
         java.util.Map<Long, net.minecraft.world.level.block.state.BlockState> states;

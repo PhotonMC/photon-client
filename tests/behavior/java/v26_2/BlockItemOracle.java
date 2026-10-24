@@ -105,7 +105,7 @@ class BlockItemOracle extends BlockPropertyOracle {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var registry = net.minecraft.core.registries.BuiltInRegistries.ITEM;
         var items = new JsonArray();
         for (var item : registry) {
@@ -155,7 +155,7 @@ class BlockItemOracle extends BlockPropertyOracle {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         entry.add("enchantments", listRegistry(registries, net.minecraft.core.registries.Registries.ENCHANTMENT,
             (enchantment, described) -> {
                 described.add("description", componentJson(enchantment.description()));
@@ -216,7 +216,7 @@ class BlockItemOracle extends BlockPropertyOracle {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var effectRegistry = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT;
         var effects = new JsonArray();
         for (var effect : effectRegistry) {
@@ -270,7 +270,7 @@ class BlockItemOracle extends BlockPropertyOracle {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "listed");
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
             net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS, false, registries);
         var registry = net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB;
@@ -317,7 +317,7 @@ class BlockItemOracle extends BlockPropertyOracle {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
         entry.addProperty("outcome", "searched");
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
             net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS, false, registries);
         var items = java.util.List.copyOf(net.minecraft.world.item.CreativeModeTabs.searchTab().getDisplayItems());

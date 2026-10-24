@@ -43,7 +43,7 @@ import sun.misc.Unsafe;
 
 class MathSupport {
     // Shared with the other bootstrapping families; see Oracle.
-    static final WorldVersion TEST_VERSION = Oracle.TEST_VERSION;
+    static final WorldVersion TEST_VERSION = Game26_2.TEST_VERSION;
 
     static Holder<Attribute> attributeHolder(int attributeId) {
         Holder<Attribute> holder = BuiltInRegistries.ATTRIBUTE.asHolderIdMap().byId(attributeId);

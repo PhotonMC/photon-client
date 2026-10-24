@@ -26,7 +26,7 @@ class EntityVillagerOracle extends EntityVehicleOracle {
      * registries), and for each the hat its texture's metadata asks for.
      */
     static JsonObject villagerRegistries() throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         var types = new java.util.TreeMap<Integer, String>();
         for (var type : net.minecraft.core.registries.BuiltInRegistries.VILLAGER_TYPE) {
@@ -64,7 +64,7 @@ class EntityVillagerOracle extends EntityVehicleOracle {
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     static JsonObject villagerLayers(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();

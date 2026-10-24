@@ -162,7 +162,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
             clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             var listener = (net.minecraft.client.multiplayer.ClientPacketListener)
                 unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientPacketListener.class);
-            set(listener, "registryAccess", (net.minecraft.core.RegistryAccess.Frozen) Oracle.vanillaRegistries());
+            set(listener, "registryAccess", (net.minecraft.core.RegistryAccess.Frozen) Game26_2.vanillaRegistries());
             set(listener, "serverLinks", net.minecraft.server.ServerLinks.EMPTY);
             var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
             set(player, "connection", listener);

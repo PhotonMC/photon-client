@@ -95,7 +95,7 @@ class MovementMenuOracle extends MovementPlayerOracle {
             // server's recipe sets, and what burns from the client's fuel
             // values.
             setField(listener, "fuelValues", net.minecraft.world.level.block.entity.FuelValues
-                .vanillaBurnTimes(Oracle.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
+                .vanillaBurnTimes(Game26_2.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS));
             var accepted = new java.util.ArrayList<net.minecraft.world.item.crafting.Ingredient>();
             if (row.has("furnace_inputs")) {
                 for (var name : row.getAsJsonArray("furnace_inputs")) {
@@ -251,7 +251,7 @@ class MovementMenuOracle extends MovementPlayerOracle {
 
     /** `ClientPacketListener.decoratedHashOpsGenerator` over the vanilla registries. */
     static net.minecraft.network.HashedPatchMap.HashGenerator hashGenerator() {
-        var ops = Oracle.vanillaRegistries().createSerializationContext(
+        var ops = Game26_2.vanillaRegistries().createSerializationContext(
             net.minecraft.util.HashOps.CRC32C_INSTANCE);
         return component -> component.encodeValue(ops).getOrThrow().asInt();
     }

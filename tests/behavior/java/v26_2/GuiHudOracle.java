@@ -287,7 +287,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
                 }
                 var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
-                    io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Oracle.vanillaRegistries());
+                    io.netty.buffer.Unpooled.wrappedBuffer(bytes), (net.minecraft.core.RegistryAccess) Game26_2.vanillaRegistries());
                 net.minecraft.network.protocol.game.ClientboundTrackedWaypointPacket.STREAM_CODEC.decode(buffer)
                     .apply(manager);
             }

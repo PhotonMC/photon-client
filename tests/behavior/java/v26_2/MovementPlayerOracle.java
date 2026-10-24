@@ -253,7 +253,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 var type = net.minecraft.resources.ResourceKey.create(
                     net.minecraft.core.registries.Registries.DAMAGE_TYPE,
                     net.minecraft.resources.Identifier.parse(input.get("damage").getAsString()));
-                var holder = Oracle.vanillaRegistries()
+                var holder = Game26_2.vanillaRegistries()
                     .lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE).getOrThrow(type);
                 player.handleDamageEvent(new net.minecraft.world.damagesource.DamageSource(holder));
             }

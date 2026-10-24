@@ -26,7 +26,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * the light and the sprite, for a chest's type, material, facing and openness.
      */
     static JsonObject chestPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var roots = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
         java.util.function.Function<net.minecraft.client.model.geom.ModelLayerLocation,
             net.minecraft.client.model.object.chest.ChestModel> bake = layer ->
@@ -92,7 +92,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * sprite and tint.
      */
     static JsonObject bannerPose(final JsonObject request) throws Exception {
-        var registries = Oracle.vanillaRegistries();
+        var registries = Game26_2.vanillaRegistries();
         var patterns = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN);
         var requested = new net.minecraft.client.resources.model.sprite.SpriteId[1];
         var sprites = (net.minecraft.client.resources.model.sprite.SpriteGetter) java.lang.reflect.Proxy.newProxyInstance(
@@ -187,7 +187,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * wall or rotation gives, the light, the texture and the model posed for the animation.
      */
     static JsonObject skullBlockPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var modelSet = net.minecraft.client.model.geom.EntityModelSet.vanilla();
         var renderer = (net.minecraft.client.renderer.blockentity.SkullBlockRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.SkullBlockRenderer.class);
@@ -249,7 +249,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * the texture. (The model is the elder guardian's own, drawn unposed.)
      */
     static JsonObject elderGuardianParticlePose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var group = (net.minecraft.client.particle.ElderGuardianParticleGroup) UNSAFE.allocateInstance(
             net.minecraft.client.particle.ElderGuardianParticleGroup.class);
         var queueField = Reflect.field(net.minecraft.client.particle.ParticleGroup.class, "particles");
@@ -304,7 +304,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * ticks and the side it was struck from, the light and the sprite.
      */
     static JsonObject bellPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.BellRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.BellRenderer.class);
         var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.BellRenderer.class, "model");
@@ -357,7 +357,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * the model's state and the model set up with it.
      */
     static JsonObject enchantTablePose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.EnchantTableRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class);
         var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.EnchantTableRenderer.class, "bookModel");
@@ -493,7 +493,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * is the translucent glow, and the quads it writes.
      */
     static JsonObject beaconBeam(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = new net.minecraft.client.renderer.blockentity.BeaconRenderer<
             net.minecraft.world.level.block.entity.BeaconBlockEntity>();
         var rows = new JsonArray();
@@ -552,7 +552,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * the translucent glow, and the quads it writes. No face of the cube is shown.
      */
     static JsonObject gatewayBeam(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = new net.minecraft.client.renderer.blockentity.TheEndGatewayRenderer();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
@@ -583,7 +583,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * submitted from. The item's own model is a bare layer.
      */
     static JsonObject brushablePose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.BrushableBlockRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.BrushableBlockRenderer.class);
         var rows = new JsonArray();
@@ -627,7 +627,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * model is a bare layer with two points for its extent; `gaps` leaves slots empty.
      */
     static JsonObject shelfPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.ShelfRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.ShelfRenderer.class);
         var rows = new JsonArray();
@@ -682,7 +682,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * recorded by the path they are asked for; the camera turns as given.
      */
     static JsonObject conduitPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rendererClass = net.minecraft.client.renderer.blockentity.ConduitRenderer.class;
         var renderer = (net.minecraft.client.renderer.blockentity.ConduitRenderer) UNSAFE.allocateInstance(rendererClass);
         var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
@@ -780,7 +780,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * `gaps` leaves slots empty.
      */
     static JsonObject campfirePose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.CampfireRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.CampfireRenderer.class);
         var rows = new JsonArray();
@@ -830,7 +830,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * out as the renderer's extraction works it, from the last two ticks'.
      */
     static JsonObject vaultPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.VaultRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.VaultRenderer.class);
         var randomField = Reflect.field(net.minecraft.client.renderer.blockentity.VaultRenderer.class, "random");
@@ -887,7 +887,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * quads once the statue model has been set up.
      */
     static JsonObject copperStatuePose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rendererClass = net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer.class;
         var renderer = (net.minecraft.client.renderer.blockentity.CopperGolemStatueBlockRenderer) UNSAFE.allocateInstance(rendererClass);
         var models = new java.util.HashMap<net.minecraft.world.level.block.CopperGolemStatueBlock.Pose,
@@ -991,7 +991,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * cube showing some of its faces: the render type's name and the corners written, in order.
      */
     static JsonObject endPortalCube(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.get("rows").getAsJsonArray()) {
             var row = element.getAsJsonObject();
@@ -1040,7 +1040,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * extraction leaves it, which never records the wobble's style.
      */
     static JsonObject decoratedPotPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var made = new java.util.IdentityHashMap<Object, net.minecraft.client.resources.model.sprite.SpriteId>();
         var byId = new java.util.HashMap<net.minecraft.client.resources.model.sprite.SpriteId,
             net.minecraft.client.renderer.texture.TextureAtlasSprite>();
@@ -1119,7 +1119,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * with it.
      */
     static JsonObject lecternPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = (net.minecraft.client.renderer.blockentity.LecternRenderer) UNSAFE.allocateInstance(
             net.minecraft.client.renderer.blockentity.LecternRenderer.class);
         var modelField = Reflect.field(net.minecraft.client.renderer.blockentity.LecternRenderer.class, "bookModel");
@@ -1174,7 +1174,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * and the model with its lid set for the progress, for a colour, facing and progress.
      */
     static JsonObject shulkerBoxPose(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var renderer = new net.minecraft.client.renderer.blockentity.ShulkerBoxRenderer(
             net.minecraft.client.model.geom.EntityModelSet.vanilla(), null);
         // The first use of each facing's matrix works its flags out, as the first box drawn does.
@@ -1231,7 +1231,7 @@ class EntityBlockOracle extends EntityAquaticOracle {
      * `BlockState` is its serialized string.
      */
     static JsonObject builtInBlockModels(final JsonObject request) throws Exception {
-        Oracle.vanillaRegistries();
+        Game26_2.vanillaRegistries();
         var models = net.minecraft.client.renderer.block.BuiltInBlockModels.createBlockModels(
             net.minecraft.client.color.block.BlockColors.createDefault());
         var sorted = new java.util.TreeMap<String, JsonObject>();

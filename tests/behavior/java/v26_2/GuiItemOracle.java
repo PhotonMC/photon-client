@@ -50,7 +50,7 @@ class GuiItemOracle extends GuiDialogOracle {
     }
 
     static JsonObject itemCondition(JsonObject request) {
-        Oracle.bootstrap();
+        Game26_2.bootstrap();
         if (!propertiesBootstrapped) {
             net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperties.bootstrap();
             propertiesBootstrapped = true;
@@ -73,7 +73,7 @@ class GuiItemOracle extends GuiDialogOracle {
 
     /** The `block_state` select's value for a stack: the property it reads, or null. */
     static JsonObject itemSelect(JsonObject request) {
-        Oracle.bootstrap();
+        Game26_2.bootstrap();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
@@ -92,7 +92,7 @@ class GuiItemOracle extends GuiDialogOracle {
 
     /** The compass needle: the wobbler over a run of ticks, and the rotation towards a block. */
     static JsonObject itemNeedle(JsonObject request) throws Exception {
-        Oracle.bootstrap();
+        Game26_2.bootstrap();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();

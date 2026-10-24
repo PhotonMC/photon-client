@@ -325,7 +325,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
         // What the client burns an item for, from the registries and tags it
         // was given.
         var fuel = net.minecraft.world.level.block.entity.FuelValues.vanillaBurnTimes(
-            Oracle.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
+            Game26_2.vanillaRegistries(), net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
         // The ingredients of the brewing stand (the client's own `PotionBrewing`).
         var brewing = net.minecraft.world.item.alchemy.PotionBrewing.bootstrap(
             net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS);
@@ -419,7 +419,7 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
             // rarity, no attribute modifiers) is left out.
             var componentJson = new JsonObject();
             var componentWire = new JsonObject();
-            var registries = Oracle.vanillaRegistries();
+            var registries = Game26_2.vanillaRegistries();
             var ops = net.minecraft.resources.RegistryOps.create(
                 com.mojang.serialization.JsonOps.INSTANCE, registries);
             for (var component : data) {

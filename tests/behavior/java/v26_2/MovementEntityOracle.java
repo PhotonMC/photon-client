@@ -337,7 +337,7 @@ class MovementEntityOracle extends MovementSupport {
             default -> throw new IllegalArgumentException("unknown cardinal kind");
         }
         var ops = net.minecraft.resources.RegistryOps.create(
-            net.minecraft.nbt.NbtOps.INSTANCE, Oracle.vanillaRegistries());
+            net.minecraft.nbt.NbtOps.INSTANCE, Game26_2.vanillaRegistries());
         var parsed = net.minecraft.world.level.dimension.DimensionType.NETWORK_CODEC.parse(ops, tag);
         var result = new JsonObject();
         if (parsed.result().isPresent()) {
