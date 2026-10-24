@@ -141,7 +141,7 @@ pub(crate) fn vanilla_stack(root: &std::path::Path) -> photon_assets::ResourceSt
 /// (`MultiPackResourceManager`).
 pub struct StackAssets {
     stack: std::sync::Arc<photon_assets::ResourceStack>,
-    /// The sprites the block, item and celestial atlases list, read when first asked.
+    /// The sprites the block and item atlases list, read when first asked.
     listed: std::sync::OnceLock<std::collections::HashSet<String>>,
 }
 
@@ -195,9 +195,8 @@ impl StackAssets {
     }
 }
 
-/// The atlases the block renderer's one atlas stands for: blocks and items, and the celestial
-/// bodies it also holds.
-const LISTED_ATLASES: [&str; 3] = ["blocks", "items", "celestials"];
+/// The atlases the block renderer's one atlas stands for for model textures: blocks and items.
+const LISTED_ATLASES: [&str; 2] = ["blocks", "items"];
 
 impl photon_render::AssetSource for StackAssets {
     fn sprite_listed(&self, name: &photon_core::identifier::Identifier) -> bool {
@@ -408,13 +407,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "needs the extracted game assets: cargo test -p photon -- --ignored"]
     fn every_sprite_the_game_draws_is_listed_by_its_atlases() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../.data/minecraft/assets/jar/assets");
-        if !root.exists() {
-            eprintln!("skipped: the game's assets are not extracted");
-            return;
-        }
         let stack = StackAssets::vanilla(&root);
         let renderer =
             photon_render::block::world_mesh::BlockRenderer::new(&stack, (0, 0)).unwrap();
