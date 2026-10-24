@@ -28,12 +28,51 @@ pub(super) fn parse_item_cost(
     })
 }
 
+/// One offer: what it costs, what it gives, and how much it was used.
+fn parse_merchant_offer(
+    input: &mut &[u8],
+) -> Result<photon_game::menus::merchant::MerchantOffer, ConnectionError> {
+    const NAME: &str = "merchant offers";
+    let cost_a = parse_item_cost(input)?;
+    let result = parse_optional_item_stack(input, NAME)?;
+    let result = photon_world::ClientItemStackState::from_wire(
+        result.item_count.unwrap_or(0),
+        result.item_registry_id.unwrap_or(AIR_ITEM),
+        result.positive_component_type_ids,
+        result.negative_component_type_ids,
+    )
+    .with_patch_bytes(result.patch_bytes);
+    let cost_b = if read_bool(input, NAME)? {
+        Some(parse_item_cost(input)?)
+    } else {
+        None
+    };
+    let out_of_stock = read_bool(input, NAME)?;
+    let uses = read_i32(input, NAME)?;
+    let max_uses = read_i32(input, NAME)?;
+    let xp = read_i32(input, NAME)?;
+    let special_price_diff = read_i32(input, NAME)?;
+    let price_multiplier = f32::from_bits(read_i32(input, NAME)? as u32);
+    let demand = read_i32(input, NAME)?;
+    Ok(photon_game::menus::merchant::MerchantOffer {
+        cost_a,
+        cost_b,
+        result,
+        uses: if out_of_stock { max_uses } else { uses },
+        max_uses,
+        xp,
+        special_price_diff,
+        demand,
+        price_multiplier,
+    })
+}
+
 /// `ClientboundMerchantOffersPacket`: the container, the offers, and the merchant's level,
 /// experience and what its screen shows.
 pub fn parse_merchant_offers_packet(
     input: &[u8],
 ) -> Result<(i32, photon_game::menus::merchant::MerchantState), ConnectionError> {
-    use photon_game::menus::merchant::{MerchantOffer, MerchantState, Trader};
+    use photon_game::menus::merchant::{MerchantState, Trader};
     const NAME: &str = "merchant offers";
     let mut input = input;
     let input = &mut input;
@@ -41,38 +80,7 @@ pub fn parse_merchant_offers_packet(
     let count = read_varint(input, NAME)?;
     let mut offers = Vec::new();
     for _ in 0..count.max(0) {
-        let cost_a = parse_item_cost(input)?;
-        let result = parse_optional_item_stack(input, NAME)?;
-        let result = photon_world::ClientItemStackState::from_wire(
-            result.item_count.unwrap_or(0),
-            result.item_registry_id.unwrap_or(AIR_ITEM),
-            result.positive_component_type_ids,
-            result.negative_component_type_ids,
-        )
-        .with_patch_bytes(result.patch_bytes);
-        let cost_b = if read_bool(input, NAME)? {
-            Some(parse_item_cost(input)?)
-        } else {
-            None
-        };
-        let out_of_stock = read_bool(input, NAME)?;
-        let uses = read_i32(input, NAME)?;
-        let max_uses = read_i32(input, NAME)?;
-        let xp = read_i32(input, NAME)?;
-        let special_price_diff = read_i32(input, NAME)?;
-        let price_multiplier = f32::from_bits(read_i32(input, NAME)? as u32);
-        let demand = read_i32(input, NAME)?;
-        offers.push(MerchantOffer {
-            cost_a,
-            cost_b,
-            result,
-            uses: if out_of_stock { max_uses } else { uses },
-            max_uses,
-            xp,
-            special_price_diff,
-            demand,
-            price_multiplier,
-        });
+        offers.push(parse_merchant_offer(input)?);
     }
     let level = read_varint(input, NAME)?;
     let xp = read_varint(input, NAME)?;

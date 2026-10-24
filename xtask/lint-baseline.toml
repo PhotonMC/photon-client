@@ -793,7 +793,6 @@
 "crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 102
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 113
 "crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68
-"crates/photon-protocol/src/play/merchant.rs::parse_merchant_offers_packet" = 61
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 72
 "crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 81
 "crates/photon-protocol/src/registry_data.rs::PackedRegistryEntry::dimension_type_environment" = 68
