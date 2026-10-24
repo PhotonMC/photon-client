@@ -124,7 +124,7 @@ pub struct VulkanBackend {
     pub(super) gui_size: [f32; 2],
     /// The items in the GUI's slots, which the GUI's item runs count in.
     pub(super) gui_item_buffer: DynamicBuffer,
-    pub(super) sections: std::collections::BTreeMap<(i32, i32, i32), SectionBuffers>,
+    pub(super) sections: super::sections::SectionMap,
     /// The sections in view this frame; `None` draws every section.
     pub(super) visible_sections: Option<Vec<(i32, i32, i32)>>,
     /// The falling blocks' meshes for the frame, drawn with the sections.

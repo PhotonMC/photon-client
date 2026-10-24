@@ -78,6 +78,10 @@ pub struct SectionMeshes {
     flood_inputs: HashMap<SectionKey, (bool, bool)>,
     /// The occlusion flood's sections, and whether it has to run again.
     graph: Vec<SectionKey>,
+    /// The graph's sections in the frustum they were last filtered with,
+    /// and the graph's generation; still cameras filter once.
+    in_frustum: Option<(photon_render::visibility::Frustum, u64, Vec<SectionKey>)>,
+    graph_generation: u64,
     graph_stale: bool,
     /// The thread the flood runs on.
     flood: Flood,
@@ -132,6 +136,8 @@ impl SectionMeshes {
             compiled: HashMap::new(),
             flood_inputs: HashMap::new(),
             graph: Vec::new(),
+            in_frustum: None,
+            graph_generation: 0,
             graph_stale: true,
             flood: Flood::new(),
             graph_from: None,
@@ -377,6 +383,7 @@ impl SectionMeshes {
                 blinks.swapped(&self.graph, &graph, |key| frustum.section_visible(*key));
             }
             self.graph = graph;
+            self.graph_generation += 1;
         }
         // The flood runs on its own thread; the frames keep the last one
         // meanwhile, and one that went stale starts again when it is done.
@@ -386,12 +393,26 @@ impl SectionMeshes {
                 profile::timed(Span::Graph, || self.flood_inputs(session, view, smart_cull));
             self.flood.start(inputs);
         }
-        let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
-        self.graph
+        self.graph_in_view(&view.frustum.offset_to_fully_include_camera_cube(8))
+    }
+
+    /// The flood's sections in the frustum; the same answer while neither
+    /// moves.
+    fn graph_in_view(&mut self, frustum: &photon_render::visibility::Frustum) -> Vec<SectionKey> {
+        if let Some((seen, generation, drawn)) = &self.in_frustum
+            && seen == frustum
+            && *generation == self.graph_generation
+        {
+            return drawn.clone();
+        }
+        let drawn: Vec<SectionKey> = self
+            .graph
             .iter()
             .copied()
             .filter(|key| frustum.section_visible(*key))
-            .collect()
+            .collect();
+        self.in_frustum = Some((*frustum, self.graph_generation, drawn.clone()));
+        drawn
     }
 
     /// What the flood reads of the world around the camera, copied.
@@ -441,6 +462,9 @@ impl SectionMeshes {
         visible: &[SectionKey],
         camera_block: [i64; 3],
     ) -> Vec<SectionKey> {
+        if self.pending.is_empty() {
+            return Vec::new();
+        }
         let world = session.world();
         let lit = |x: i32, z: i32| {
             world.contains_chunk(x, z) && world.light_engine().light_on_in_column(x, z)

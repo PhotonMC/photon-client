@@ -136,7 +136,7 @@ impl VisGraph {
 
 /// JOML's `FrustumIntersection` on a clip matrix: six planes, each
 /// `(x, y, z, w)` with the point inside where `x*p + w >= 0`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct FrustumIntersection {
     planes: [[f32; 4]; 6],
 }
@@ -193,7 +193,7 @@ impl FrustumIntersection {
 
 /// `Frustum`: the camera's view cone, planes in the camera's own frame and
 /// the camera's place in the world.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frustum {
     intersection: FrustumIntersection,
     /// The view direction, `matrix.transformTranspose(0, 0, 1, 0)`.

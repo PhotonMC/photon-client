@@ -122,7 +122,7 @@ impl VulkanBackend {
                 gui_runs: GuiRuns::default(),
                 gui_size: [1.0, 1.0],
                 gui_item_buffer: DynamicBuffer::default(),
-                sections: std::collections::BTreeMap::new(),
+                sections: Default::default(),
                 visible_sections: None,
                 moving_sections: Vec::new(),
                 arena: Vec::new(),

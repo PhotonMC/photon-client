@@ -3,6 +3,40 @@
 use super::*;
 use crate::translucent::point_of_view;
 
+/// Section buffers by section, looked up for every section in view each
+/// frame: a hash map with a cheap hasher, since the keys are small integers.
+pub(super) type SectionMap = std::collections::HashMap<
+    (i32, i32, i32),
+    SectionBuffers,
+    std::hash::BuildHasherDefault<KeyHasher>,
+>;
+
+/// A multiply-and-rotate hasher for small integer keys.
+#[derive(Default)]
+pub(super) struct KeyHasher(u64);
+
+impl KeyHasher {
+    fn add(&mut self, word: u64) {
+        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+}
+
+impl std::hash::Hasher for KeyHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.add(u64::from(byte));
+        }
+    }
+
+    fn write_i32(&mut self, value: i32) {
+        self.add(u64::from(value as u32));
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+
 impl VulkanBackend {
     /// Replace one section's mesh, or remove it when the mesh is empty.
     pub fn set_section(
@@ -103,12 +137,16 @@ impl VulkanBackend {
 
     /// The sections drawn this frame: the ones in view, or all of them.
     pub(super) fn drawn_sections(&self) -> Vec<&SectionBuffers> {
-        let mut drawn: Vec<&SectionBuffers> = match &self.visible_sections {
-            Some(visible) => visible
+        let mut drawn: Vec<&SectionBuffers> = if let Some(visible) = &self.visible_sections {
+            visible
                 .iter()
                 .filter_map(|key| self.sections.get(key))
-                .collect(),
-            None => self.sections.values().collect(),
+                .collect()
+        } else {
+            // Without culling, in key order so the draw is repeatable.
+            let mut all: Vec<_> = self.sections.iter().collect();
+            all.sort_by_key(|(key, _)| **key);
+            all.into_iter().map(|(_, section)| section).collect()
         };
         drawn.extend(&self.moving_sections);
         drawn
