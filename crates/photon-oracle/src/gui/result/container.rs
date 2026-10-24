@@ -61,7 +61,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
             .collect();
     }
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(root));
-    let shared_font = std::sync::Arc::new(Font::load(root).ok_or("font")?);
+    let shared_font = std::sync::Arc::new(crate::fonts::load_font(root).ok_or("font")?);
     let titles = Titles {
         title: lang.text(row["title_key"].as_str().ok_or("title_key")?),
         inventory: lang.text("container.inventory"),
@@ -70,7 +70,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         repair_expensive: lang.text("container.repair.expensive"),
         patterns: std::sync::Arc::default(),
         lang: lang.clone(),
-        alt_font: std::sync::Arc::new(Font::load_alt(root).ok_or("alt font")?),
+        alt_font: std::sync::Arc::new(crate::fonts::load_alt(root).ok_or("alt font")?),
         enchantments: std::sync::Arc::new(Vec::<EnchantText>::new()),
         recipe: std::sync::Arc::default(),
     };

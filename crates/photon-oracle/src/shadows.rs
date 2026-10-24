@@ -10,7 +10,7 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
     use photon_render::entity::name_tag::{Viewer, name_tag};
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/assets");
-    let font = photon_render::gui::font::Font::load(&root).ok_or("font")?;
+    let font = crate::fonts::load_font(&root).ok_or("font")?;
     let lang = photon_game::text::Lang::load(&root);
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());

@@ -140,7 +140,7 @@ pub(super) fn book_sign_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
 pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_gui::screen::Screen;
     use photon_gui::screen::book::BookScreen;
-    let font = std::sync::Arc::new(Font::load(&ctx.root).ok_or("font")?);
+    let font = std::sync::Arc::new(crate::fonts::load_font(&ctx.root).ok_or("font")?);
     let lang = std::sync::Arc::new(photon_game::text::Lang::load(&ctx.root));
     let int = |key: &str| row[key].as_i64().unwrap_or(0) as i32;
     let pages = row_pages(row)?;

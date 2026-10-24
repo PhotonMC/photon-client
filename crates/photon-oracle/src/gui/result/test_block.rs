@@ -92,7 +92,7 @@ fn step(
 /// drawn once, and whether it closed and the packets it would send.
 pub(super) fn test_block_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let lang = Lang::load(&ctx.root);
-    let font = std::sync::Arc::new(Font::load(&ctx.root).ok_or("font")?);
+    let font = std::sync::Arc::new(crate::fonts::load_font(&ctx.root).ok_or("font")?);
     let int = |value: &Value| value.as_i64().unwrap_or(0) as i32;
     let size = (int(&row["width"]), int(&row["height"]));
     let contents = TestBlockContents {

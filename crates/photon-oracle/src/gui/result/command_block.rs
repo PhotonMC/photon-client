@@ -161,7 +161,7 @@ pub(super) fn command_block_screen_case(
 ) -> Result<Value, String> {
     use photon_gui::screen::command_block::SuggestionSources;
     let lang = Lang::load(&ctx.root);
-    let font = std::sync::Arc::new(Font::load(&ctx.root).ok_or("font")?);
+    let font = std::sync::Arc::new(crate::fonts::load_font(&ctx.root).ok_or("font")?);
     let int = |value: &Value| value.as_i64().unwrap_or(0) as i32;
     let block = block_of(row);
     let commands = no_commands()?;

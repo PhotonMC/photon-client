@@ -75,9 +75,10 @@ pub(super) struct GuiContext {
 impl GuiContext {
     /// The font, the alternate font and the atlas drawn from the assets under `root`.
     fn load(root: std::path::PathBuf) -> Result<Self, String> {
-        let packs = font::FontResources::new(&root);
-        let font = Font::load_from(&packs).ok_or("font")?;
-        let alt = Font::load_alt_from(&packs).ok_or("alt font")?;
+        let (font, alt) = (
+            crate::fonts::load_font(&root).ok_or("font")?,
+            crate::fonts::load_alt(&root).ok_or("alt font")?,
+        );
         let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
         Ok(Self {
             root,

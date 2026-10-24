@@ -269,7 +269,7 @@ pub(super) fn suggestions_case(ctx: &mut GuiContext, row: &Value) -> Result<Valu
     let height = int("height");
     let text = row["text"].as_str().ok_or("text")?;
     let mut screen = ChatScreen::new(
-        std::sync::Arc::new(Font::load(root).ok_or("font")?),
+        std::sync::Arc::new(crate::fonts::load_font(root).ok_or("font")?),
         (width, height),
         text,
         Vec::new(),
@@ -349,7 +349,7 @@ pub(super) fn chat_draft_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     use photon_gui::chat::{ChatDrafts, ChatMethod, ChatScreen};
     let (width, height) = (int("width"), int("height"));
     let save = row["save"].as_bool().unwrap_or(false);
-    let font = std::sync::Arc::new(Font::load(root).ok_or("font")?);
+    let font = std::sync::Arc::new(crate::fonts::load_font(root).ok_or("font")?);
     let lang = photon_game::text::Lang::load(root);
     let allowed = abilities(&row["restrictions"])?;
     let say = row["say"].as_bool().unwrap_or(false);

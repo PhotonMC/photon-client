@@ -151,6 +151,7 @@ mod vanilla;
 use vanilla::*;
 mod lighting;
 use lighting::*;
+mod fonts;
 mod shadows;
 use shadows::*;
 mod sky;
