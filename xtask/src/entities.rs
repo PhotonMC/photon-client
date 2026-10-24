@@ -81,13 +81,17 @@ fn has_word(text: &str, needle: &str) -> bool {
     })
 }
 
-/// How many files spell the type as `minecraft:name` or as a quoted bare `name`, alone or before
-/// a model layer's `#`, so `minecraft:drowned#main` counts.
+/// How many files spell the type as `minecraft:name`, as a quoted bare `name` (alone or before a
+/// model layer's `#`), or as the hyphenated case name `snow-golem`.
 fn mentions(files: &[String], name: &str) -> usize {
-    let (full, bare) = (format!("minecraft:{name}"), format!("\"{name}"));
+    let spellings = [
+        format!("minecraft:{name}"),
+        format!("\"{name}"),
+        name.replace('_', "-"),
+    ];
     files
         .iter()
-        .filter(|file| has_word(file, &full) || (file.contains(&bare) && has_word(file, name)))
+        .filter(|file| spellings.iter().any(|spelling| has_word(file, spelling)))
         .count()
 }
 
