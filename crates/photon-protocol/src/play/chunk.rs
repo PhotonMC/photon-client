@@ -49,28 +49,35 @@ pub fn decode_chunk_section_data(input: &[u8]) -> Result<Vec<ChunkSectionObserva
     parse_section_data(input).map_err(|error| error.to_string())
 }
 
-pub(super) fn parse_palette_container(
-    input: &mut &[u8],
-    entry_count: usize,
-    block_states: bool,
-) -> Result<PaletteObservation, ConnectionError> {
-    let bits_per_entry = read_byte(
-        input,
-        if block_states {
-            "block state bits"
-        } else {
-            "biome bits"
-        },
-    )?;
-    if bits_per_entry > 32 {
-        return Err(ConnectionError::Codec(if block_states {
-            "block state bits"
-        } else {
-            "biome bits"
-        }));
-    }
+/// The codec error labels of one paletted container kind.
+struct ContainerLabels {
+    bits: &'static str,
+    palette: &'static str,
+    palette_value: &'static str,
+    storage: &'static str,
+    value: &'static str,
+}
 
-    let (palette_capacity, storage_bits) = if bits_per_entry == 0 {
+const BLOCK_STATE_LABELS: ContainerLabels = ContainerLabels {
+    bits: "block state bits",
+    palette: "block state palette",
+    palette_value: "block state palette value",
+    storage: "block state storage",
+    value: "block state value",
+};
+
+const BIOME_LABELS: ContainerLabels = ContainerLabels {
+    bits: "biome bits",
+    palette: "biome palette",
+    palette_value: "biome palette value",
+    storage: "biome storage",
+    value: "biome value",
+};
+
+/// The palette capacity (`None` when ids are stored directly) and the bits each stored entry
+/// takes, for a container kind and the bits-per-entry byte the server sent.
+fn palette_layout(bits_per_entry: u8, block_states: bool) -> (Option<usize>, u8) {
+    if bits_per_entry == 0 {
         (Some(1), 0)
     } else if block_states && bits_per_entry <= 4 {
         (Some(1_usize << 4), 4)
@@ -78,43 +85,51 @@ pub(super) fn parse_palette_container(
         (Some(1_usize << bits_per_entry), bits_per_entry)
     } else {
         (None, bits_per_entry)
-    };
+    }
+}
 
-    let palette_ids = if bits_per_entry == 0 {
-        let value = read_varint(
-            input,
-            if block_states {
-                "block state palette value"
-            } else {
-                "biome palette value"
-            },
-        )?;
-        vec![value]
-    } else if let Some(capacity) = palette_capacity {
-        let name = if block_states {
-            "block state palette"
-        } else {
-            "biome palette"
-        };
-        let count = read_count(input, name)?;
-        if count > capacity {
-            return Err(ConnectionError::Codec(name));
-        }
-        let mut palette_ids = Vec::with_capacity(count);
-        for _ in 0..count {
-            palette_ids.push(read_varint(
-                input,
-                if block_states {
-                    "block state palette value"
-                } else {
-                    "biome palette value"
-                },
-            )?);
-        }
-        palette_ids
-    } else {
-        Vec::new()
+/// The palette entries of a container: one for a single value, a counted list when the palette
+/// has a capacity, and none when ids are stored directly.
+fn read_palette_ids(
+    input: &mut &[u8],
+    bits_per_entry: u8,
+    palette_capacity: Option<usize>,
+    labels: &ContainerLabels,
+) -> Result<Vec<i32>, ConnectionError> {
+    if bits_per_entry == 0 {
+        return Ok(vec![read_varint(input, labels.palette_value)?]);
+    }
+    let Some(capacity) = palette_capacity else {
+        return Ok(Vec::new());
     };
+    let count = read_count(input, labels.palette)?;
+    if count > capacity {
+        return Err(ConnectionError::Codec(labels.palette));
+    }
+    let mut palette_ids = Vec::with_capacity(count);
+    for _ in 0..count {
+        palette_ids.push(read_varint(input, labels.palette_value)?);
+    }
+    Ok(palette_ids)
+}
+
+pub(super) fn parse_palette_container(
+    input: &mut &[u8],
+    entry_count: usize,
+    block_states: bool,
+) -> Result<PaletteObservation, ConnectionError> {
+    let labels = if block_states {
+        &BLOCK_STATE_LABELS
+    } else {
+        &BIOME_LABELS
+    };
+    let bits_per_entry = read_byte(input, labels.bits)?;
+    if bits_per_entry > 32 {
+        return Err(ConnectionError::Codec(labels.bits));
+    }
+
+    let (palette_capacity, storage_bits) = palette_layout(bits_per_entry, block_states);
+    let palette_ids = read_palette_ids(input, bits_per_entry, palette_capacity, labels)?;
 
     let storage_word_count = if storage_bits == 0 {
         0
@@ -122,26 +137,14 @@ pub(super) fn parse_palette_container(
         let values_per_long = 64 / usize::from(storage_bits);
         entry_count.div_ceil(values_per_long)
     };
-    let storage = read_fixed_long_array(
-        input,
-        storage_word_count,
-        if block_states {
-            "block state storage"
-        } else {
-            "biome storage"
-        },
-    )?;
+    let storage = read_fixed_long_array(input, storage_word_count, labels.storage)?;
 
     let values = decode_palette_values(
         &storage,
         entry_count,
         storage_bits,
         &palette_ids,
-        if block_states {
-            "block state value"
-        } else {
-            "biome value"
-        },
+        labels.value,
     )?;
     let first_values = values.iter().copied().take(4).collect();
     let distinct_value_count = values.iter().copied().collect::<BTreeSet<_>>().len();
