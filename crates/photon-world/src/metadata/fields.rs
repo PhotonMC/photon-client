@@ -62,107 +62,146 @@ pub(crate) fn metadata_boolean_value(metadata: &[u8], target_data_id: u8) -> Opt
 /// cannot walk leaves the fields after it unread: a particle with data of its
 /// own, a resolvable profile and a painting variant sent whole.
 pub(crate) fn skip_metadata_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
-    let varint = |metadata: &mut &[u8]| photon_core::wire::read_varint(metadata).ok().map(drop);
-    let bytes = |metadata: &mut &[u8], count: usize| {
-        *metadata = metadata.get(count..)?;
-        Some(())
-    };
+    if let Some(count) = fixed_value_size(serializer_id) {
+        skip_bytes(metadata, count)
+    } else if is_varint_value(serializer_id) {
+        skip_varint(metadata)
+    } else if is_optional_value(serializer_id) {
+        skip_optional_value(metadata, serializer_id)
+    } else {
+        skip_structured_value(metadata, serializer_id)
+    }
+}
+
+fn skip_varint(metadata: &mut &[u8]) -> Option<()> {
+    photon_core::wire::read_varint(metadata).ok().map(drop)
+}
+
+fn skip_bytes(metadata: &mut &[u8], count: usize) -> Option<()> {
+    *metadata = metadata.get(count..)?;
+    Some(())
+}
+
+/// The byte count of the serializers whose value has a fixed size.
+fn fixed_value_size(serializer_id: i32) -> Option<usize> {
     match serializer_id {
         // Byte, boolean.
-        ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => bytes(metadata, 1)?,
-        // Int, block state, optional block state, optional unsigned int,
-        // direction, pose, humanoid arm, and the enums and registry holders:
-        // each a var int.
+        ENTITY_DATA_SERIALIZER_BYTE_ID | ENTITY_DATA_SERIALIZER_BOOLEAN_ID => Some(1),
+        ENTITY_DATA_SERIALIZER_FLOAT_ID => Some(4),
+        // Block position.
+        10 => Some(8),
+        // Rotations, vector3.
+        9 | 39 => Some(12),
+        // Quaternion.
+        40 => Some(16),
+        _ => None,
+    }
+}
+
+/// Int, block state, optional block state, optional unsigned int, direction, pose, humanoid
+/// arm, and the enums and registry holders: each a var int.
+fn is_varint_value(serializer_id: i32) -> bool {
+    matches!(
+        serializer_id,
         ENTITY_DATA_SERIALIZER_INT_ID
-        | ENTITY_DATA_SERIALIZER_POSE_ID
-        | 12
-        | 14
-        | 15
-        | ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID
-        | 21..=32
-        | 35..=38
-        | 42 => varint(metadata)?,
+            | ENTITY_DATA_SERIALIZER_POSE_ID
+            | 12
+            | 14
+            | 15
+            | ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID
+            | 21..=32
+            | 35..=38
+            | 42
+    )
+}
+
+/// The serializers whose value is a presence flag and then the value.
+fn is_optional_value(serializer_id: i32) -> bool {
+    matches!(
+        serializer_id,
+        ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID
+            | ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID
+            | 13
+            | 33
+    )
+}
+
+fn skip_optional_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
+    let (&present, rest) = metadata.split_first()?;
+    *metadata = rest;
+    if present == 0 {
+        return Some(());
+    }
+    match serializer_id {
+        ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
+            photon_core::nbt::read_any_nbt(metadata).ok()?.as_ref()?;
+        }
+        ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID => {
+            photon_core::binary::read_blockpos(metadata).ok()?;
+        }
+        // Optional living entity reference: a flag and a UUID.
+        13 => skip_bytes(metadata, 16)?,
+        // Optional global position: a flag, a dimension, a block position.
+        _ => {
+            let length = usize::try_from(photon_core::wire::read_varint(metadata).ok()?).ok()?;
+            skip_bytes(metadata, length)?;
+            skip_bytes(metadata, 8)?;
+        }
+    }
+    Some(())
+}
+
+/// The remaining serializers, whose values are read piece by piece.
+fn skip_structured_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
+    match serializer_id {
         2 => {
             photon_core::wire::read_varlong(metadata).ok()?;
         }
-        ENTITY_DATA_SERIALIZER_FLOAT_ID => bytes(metadata, 4)?,
         4 => {
             let length = usize::try_from(photon_core::wire::read_varint(metadata).ok()?).ok()?;
-            bytes(metadata, length)?;
+            skip_bytes(metadata, length)?;
         }
         5 => {
             photon_core::nbt::read_any_nbt(metadata).ok()?.as_ref()?;
         }
-        ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID => {
-            let (&present, rest) = metadata.split_first()?;
-            *metadata = rest;
-            if present != 0 {
-                let component = photon_core::nbt::read_any_nbt(metadata).ok()?;
-                component.as_ref()?;
-            }
-        }
-        // Item stack (`ItemStack.OPTIONAL_STREAM_CODEC`).
-        7 => {
-            if photon_core::wire::read_varint(metadata).ok()? > 0 {
-                varint(metadata)?;
-                crate::item_components::read_patch(metadata).ok()?;
-            }
-        }
-        // Rotations, vector3.
-        9 | 39 => bytes(metadata, 12)?,
-        // Block position.
-        10 => bytes(metadata, 8)?,
-        ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID => {
-            let (&present, rest) = metadata.split_first()?;
-            *metadata = rest;
-            if present != 0 {
-                photon_core::binary::read_blockpos(metadata).ok()?;
-            }
-        }
-        // Optional living entity reference: a flag and a UUID.
-        13 => {
-            let (&present, rest) = metadata.split_first()?;
-            *metadata = rest;
-            if present != 0 {
-                bytes(metadata, 16)?;
-            }
-        }
-        // One particle, which only the entity effect's colour is known for.
-        16 => {
-            if photon_core::wire::read_varint(metadata).ok()? != ENTITY_EFFECT_PARTICLE_TYPE_ID {
-                return None;
-            }
-            bytes(metadata, 4)?;
-        }
+        7 => skip_item_stack(metadata)?,
+        16 => skip_effect_particle(metadata)?,
         ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
             read_effect_particle_type_ids(metadata)?;
         }
         // Villager data: type, profession, level.
         18 => {
-            varint(metadata)?;
-            varint(metadata)?;
-            varint(metadata)?;
+            skip_varint(metadata)?;
+            skip_varint(metadata)?;
+            skip_varint(metadata)?;
         }
-        // Optional global position: a flag, a dimension, a block position.
-        33 => {
-            let (&present, rest) = metadata.split_first()?;
-            *metadata = rest;
-            if present != 0 {
-                let length =
-                    usize::try_from(photon_core::wire::read_varint(metadata).ok()?).ok()?;
-                bytes(metadata, length)?;
-                bytes(metadata, 8)?;
-            }
-        }
-        // Painting variant: a registry holder, or the variant itself.
-        34 => {
-            if photon_core::wire::read_varint(metadata).ok()? == 0 {
-                return None;
-            }
-        }
-        // Quaternion.
-        40 => bytes(metadata, 16)?,
+        34 => skip_painting_variant(metadata)?,
         _ => return None,
+    }
+    Some(())
+}
+
+/// Item stack (`ItemStack.OPTIONAL_STREAM_CODEC`).
+fn skip_item_stack(metadata: &mut &[u8]) -> Option<()> {
+    if photon_core::wire::read_varint(metadata).ok()? > 0 {
+        skip_varint(metadata)?;
+        crate::item_components::read_patch(metadata).ok()?;
+    }
+    Some(())
+}
+
+/// One particle, which only the entity effect's colour is known for.
+fn skip_effect_particle(metadata: &mut &[u8]) -> Option<()> {
+    if photon_core::wire::read_varint(metadata).ok()? != ENTITY_EFFECT_PARTICLE_TYPE_ID {
+        return None;
+    }
+    skip_bytes(metadata, 4)
+}
+
+/// Painting variant: a registry holder, or the variant itself.
+fn skip_painting_variant(metadata: &mut &[u8]) -> Option<()> {
+    if photon_core::wire::read_varint(metadata).ok()? == 0 {
+        return None;
     }
     Some(())
 }
