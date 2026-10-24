@@ -412,7 +412,7 @@ impl Play {
         self.music.tick(
             (&self.session, sound),
             &self.controls.options,
-            &mut self.gui,
+            (&mut self.gui, self.controls.credits.is_some()),
         );
     }
 

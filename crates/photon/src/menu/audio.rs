@@ -44,7 +44,8 @@ impl Menu {
         let loading =
             matches!(&self.screen, Screen::Connecting(_, task, _) if task.status.loading());
         if let Some(sound) = self.sound.as_mut() {
-            self.music.tick(sound, &options, loading);
+            let credits = matches!(&self.screen, Screen::Credits(..));
+            self.music.tick(sound, &options, (loading, credits));
         }
     }
 }

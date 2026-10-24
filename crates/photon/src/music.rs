@@ -98,6 +98,16 @@ impl Carried {
     }
 }
 
+/// `Minecraft.getSituationalMusic` with no level: the credits' own track while their screen is
+/// up (`WinScreen.getBackgroundMusic`), else `Musics.MENU`.
+fn screen_or_menu(credits: bool) -> Music {
+    if credits {
+        Music::new("minecraft:music.credits", 0, 0, true)
+    } else {
+        Music::new("minecraft:music.menu", 20, 600, true)
+    }
+}
+
 /// The music of the menus: `Musics.MENU` whenever there is no level, ticked at the client's rate.
 pub struct MenuMusic {
     manager: MusicManager,
@@ -128,7 +138,7 @@ impl MenuMusic {
         &mut self,
         sound: &mut SoundSystem,
         options: &photon_game::options::Options,
-        loading: bool,
+        (loading, credits): (bool, bool),
     ) {
         let now = std::time::Instant::now();
         self.owed = (self.owed + now.duration_since(self.last)).min(TICK * MAX_OWED_TICKS);
@@ -137,7 +147,7 @@ impl MenuMusic {
             self.owed -= TICK;
             let mut host = Host {
                 sound,
-                situation: Some(Music::new("minecraft:music.menu", 20, 600, true)),
+                situation: Some(screen_or_menu(credits)),
                 volume: 1.0,
                 toast: Vec::new(),
                 loading,
@@ -228,7 +238,12 @@ impl GameMusic {
 
     /// `Minecraft.getSituationalMusic` and `getMusicVolume` for the player: the biome at the
     /// player's feet over the dimension.
-    fn situation(&self, session: &PlaySession, boss_music: bool) -> (Option<Music>, f32) {
+    fn situation(&self, session: &PlaySession, screen: (bool, bool)) -> (Option<Music>, f32) {
+        let (boss_music, credits) = screen;
+        // A screen's own music comes first, at full volume (`getMusicVolume`).
+        if credits {
+            return (Some(screen_or_menu(true)), 1.0);
+        }
         let Some(player) = session.player() else {
             return (None, 1.0);
         };
@@ -267,10 +282,10 @@ impl GameMusic {
         &mut self,
         (session, sound): (&PlaySession, &mut SoundSystem),
         options: &photon_game::options::Options,
-        gui: &mut crate::gui::Gui,
+        (gui, credits): (&mut crate::gui::Gui, bool),
     ) {
         let frequency = options.music_frequency;
-        let (situation, volume) = self.situation(session, gui.boss_bars.plays_music());
+        let (situation, volume) = self.situation(session, (gui.boss_bars.plays_music(), credits));
         let mut host = Host {
             sound,
             situation,
@@ -301,5 +316,19 @@ impl GameMusic {
     pub fn current_song(&self, sound: &SoundSystem) -> Option<String> {
         self.manager.current()?;
         sound.music_song_key()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_credits_screen_asks_for_its_own_track_over_the_menu_music() {
+        let credits = screen_or_menu(true);
+        assert_eq!(credits.sound, "minecraft:music.credits");
+        assert_eq!((credits.min_delay, credits.max_delay), (0, 0));
+        assert!(credits.replace_current_music);
+        assert_eq!(screen_or_menu(false).sound, "minecraft:music.menu");
     }
 }
