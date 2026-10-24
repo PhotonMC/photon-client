@@ -116,6 +116,7 @@ class GuiFonts {
             @Override
             public BakedGlyph getGlyph(int codepoint) {
                 float advance = advance(fontId, codepoint);
+                GlyphInfo own = null;
                 // A bitmap glyph has the box its provider gives it, as the game bakes it;
                 // a glyph of only an advance has none.
                 for (var provider : FONTS.get(fontId)) {
@@ -136,12 +137,15 @@ class GuiFonts {
                             throw new IllegalStateException(error);
                         }
                     }
+                    own = glyph.info();
                     break;
                 }
+                // A glyph of its provider's own advance and offsets (unihex bolds by half a unit).
+                GlyphInfo info = own != null ? own : GlyphInfo.simple(advance);
                 return new BakedGlyph() {
                     @Override
                     public GlyphInfo info() {
-                        return GlyphInfo.simple(advance);
+                        return info;
                     }
 
                     @Override
@@ -186,9 +190,20 @@ class GuiFonts {
         var manager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
             net.minecraft.server.packs.PackType.CLIENT_RESOURCES, List.of(pack));
         resources = manager;
+        // The fonts also read the asset index's own files (the unifont definition and its hex
+        // archives), which the pack reads before the jar's: the last path pushed comes first.
+        var indexed = new net.minecraft.server.packs.VanillaPackResourcesBuilder()
+            .pushAssetPath(net.minecraft.server.packs.PackType.CLIENT_RESOURCES, jarSystem.getPath("/assets"))
+            .pushAssetPath(net.minecraft.server.packs.PackType.CLIENT_RESOURCES,
+                GuiLanguageOracle.assetFolder().resolve("named"))
+            .exposeNamespace("minecraft")
+            .build(new net.minecraft.server.packs.PackLocationInfo("indexed", Component.literal("indexed"),
+                net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
+        var fontManager = new net.minecraft.server.packs.resources.MultiPackResourceManager(
+            net.minecraft.server.packs.PackType.CLIENT_RESOURCES, List.of(indexed));
         for (String name : new String[] {"default", "alt"}) {
             var providers = new ArrayList<com.mojang.blaze3d.font.GlyphProvider>();
-            loadFont(manager, Identifier.withDefaultNamespace(name), providers);
+            loadFont(fontManager, Identifier.withDefaultNamespace(name), providers);
             FONTS.put("minecraft:" + name, providers);
         }
         font = new Font(new Font.Provider() {

@@ -17,6 +17,10 @@ use photon_core::resources::{FolderResources, Resources};
 
 use crate::texture::png::DecodedImage;
 
+mod unihex;
+
+pub use unihex::UnihexGlyph;
+
 /// One bitmap glyph: where its cell is in its provider's image, and how it
 /// is placed.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -37,16 +41,36 @@ pub enum Glyph {
     /// Only an advance.
     Space(f32),
     Bitmap(BitmapGlyph),
+    /// A unifont glyph: only its metrics are read, so it advances but is not drawn.
+    Unihex(UnihexGlyph),
 }
 
 impl Glyph {
-    /// `GlyphInfo.getAdvance(bold)`: bold adds a unit.
+    /// `GlyphInfo.getAdvance(bold)`: bold adds the glyph's bold offset.
     pub fn advance(&self, bold: bool) -> f32 {
         let advance = match self {
             Self::Space(advance) => *advance,
             Self::Bitmap(glyph) => glyph.advance,
+            Self::Unihex(glyph) => glyph.advance(),
         };
-        if bold { advance + 1.0 } else { advance }
+        if bold {
+            advance + self.bold_offset()
+        } else {
+            advance
+        }
+    }
+
+    /// `GlyphInfo.getBoldOffset`: a unifont glyph is emboldened by half a unit, the others by one.
+    pub fn bold_offset(&self) -> f32 {
+        match self {
+            Self::Unihex(_) => 0.5,
+            _ => 1.0,
+        }
+    }
+
+    /// `GlyphInfo.getShadowOffset`: how far the shadow lies behind the glyph.
+    pub fn shadow_offset(&self) -> f32 {
+        self.bold_offset()
     }
 }
 
@@ -153,6 +177,7 @@ impl Font {
                 }
             }
             "bitmap" => self.load_bitmap(root, provider)?,
+            "unihex" => self.load_unihex(root, provider)?,
             _ => {}
         }
         Some(())
@@ -210,6 +235,16 @@ impl Font {
         }
         self.images
             .push((path.trim_end_matches(".png").to_owned(), image));
+        Some(())
+    }
+
+    /// `UnihexProvider.Definition.load`: the glyphs of the provider's hex archive.
+    fn load_unihex(&mut self, root: &dyn Resources, provider: &JsonObject) -> Option<()> {
+        let archive = root.read(&Identifier::parse(&provider.text("hex_file")?).ok()?)?;
+        let ranges = unihex::overrides(provider)?;
+        for (codepoint, glyph) in unihex::glyphs(&archive, &ranges)? {
+            self.glyphs.entry(codepoint).or_insert(Glyph::Unihex(glyph));
+        }
         Some(())
     }
 

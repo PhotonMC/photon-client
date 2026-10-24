@@ -602,6 +602,7 @@
         "GuiTutorialOracle.java",
         "GuiTitleOracle.java",
         "GuiTooltipOracle.java",
+        "GuiFontOracle.java",
         "MovementAnimalEvents.java",
         "MovementAnimalExtras.java",
         "MovementEntityOracle.java",

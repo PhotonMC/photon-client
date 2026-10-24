@@ -16,6 +16,7 @@ fn no_items(
 
 mod advancements_screen;
 mod chat;
+mod font;
 use chat::*;
 mod hud;
 use hud::*;
@@ -74,8 +75,9 @@ pub(super) struct GuiContext {
 impl GuiContext {
     /// The font, the alternate font and the atlas drawn from the assets under `root`.
     fn load(root: std::path::PathBuf) -> Result<Self, String> {
-        let font = Font::load(&root).ok_or("font")?;
-        let alt = Font::load_alt(&root).ok_or("alt font")?;
+        let packs = font::FontResources::new(&root);
+        let font = Font::load_from(&packs).ok_or("font")?;
+        let alt = Font::load_alt_from(&packs).ok_or("alt font")?;
         let (atlas, atlas_image) = GuiAtlas::load(&root, &[&font, &alt]).ok_or("gui atlas")?;
         Ok(Self {
             root,
@@ -306,7 +308,8 @@ fn stat_format_case(row: &Value) -> Result<Value, String> {
 }
 
 /// The operations `texts_case` answers.
-pub(super) const TEXT_OPERATIONS: [&str; 5] = [
+pub(super) const TEXT_OPERATIONS: [&str; 6] = [
+    "font_width",
     "lang_text",
     "stat_format",
     "stats_screen",
@@ -321,6 +324,7 @@ pub(super) fn texts_case(
     operation: &str,
 ) -> Result<Value, String> {
     match operation {
+        "font_width" => font::font_width_case(ctx, row),
         "stat_format" => stat_format_case(row),
         "stats_screen" => stats::stats_screen_case(ctx, row),
         "client_advancements" => stats::client_advancements_case(ctx, row),

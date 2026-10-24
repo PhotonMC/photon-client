@@ -14,6 +14,7 @@ mod debug;
 mod debug_entry_rows;
 mod dialog;
 mod draft;
+mod fonts;
 mod hud;
 mod icons;
 mod item_conditions;
@@ -125,6 +126,7 @@ const ORDER: &[Generator] = &[
     || vec![books::book_edit_screen()],
     || vec![books::book_sign_screen()],
     || vec![books::book_view()],
+    || vec![fonts::font_width()],
     || vec![tooltips::tooltip_lines()],
     || vec![tooltips::bundle_tooltip()],
 ];

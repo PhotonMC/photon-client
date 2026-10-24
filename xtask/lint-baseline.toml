@@ -268,7 +268,6 @@
 "crates/photon-gui/src/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 18
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 12
 "crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 14
-"crates/photon-gui/src/text_hit.rs::style_under" = 11
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 18
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 23
 "crates/photon-gui/src/widgets/edit_box.rs::edit_key" = 11

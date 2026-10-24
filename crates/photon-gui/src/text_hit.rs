@@ -9,6 +9,37 @@ use photon_render::gui::font::{Font, Glyph};
 /// `extraThickness`: what a bold glyph is drawn wider by, each side.
 const BOLD_THICKNESS: f32 = 0.1;
 
+/// Where a glyph drawn with its pen at `(pen, y)` can be hit; none for one that is not drawn yet.
+fn hit_box(
+    glyph: &Glyph,
+    (pen, y): (f32, f32),
+    (bold, italic): (bool, bool),
+) -> Option<(f32, f32, f32, f32)> {
+    Some(match glyph {
+        // `EmptyArea`: the advance wide and a line tall.
+        Glyph::Space(_) => (pen, y, pen + glyph.advance(bold), y + 9.0),
+        // A unifont glyph is not drawn yet, so it has no box to hit.
+        Glyph::Unihex(_) => return None,
+        Glyph::Bitmap(bitmap) => {
+            let up = 7.0 - bitmap.ascent as f32;
+            let down = up + bitmap.cell[3] as f32 * bitmap.scale;
+            let shear = if italic {
+                (1.0 - 0.25 * up).min(1.0 - 0.25 * down)
+            } else {
+                0.0
+            };
+            let thickness = if bold { BOLD_THICKNESS } else { 0.0 };
+            (
+                pen + shear - thickness,
+                y + up - thickness,
+                pen + glyph.advance(bold),
+                // The shadow is a unit down.
+                y + down + 1.0 + thickness,
+            )
+        }
+    })
+}
+
 /// The style at `point` of `runs` drawn with their top left at `origin` (and
 /// a shadow, as chat text has).
 pub fn style_under<'a>(
@@ -27,28 +58,12 @@ pub fn style_under<'a>(
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
-            let (left, top, right, bottom) = match glyph {
-                // `EmptyArea`: the advance wide and a line tall.
-                Glyph::Space(_) => (pen, y, pen + glyph.advance(bold), y + 9.0),
-                Glyph::Bitmap(bitmap) => {
-                    let up = 7.0 - bitmap.ascent as f32;
-                    let down = up + bitmap.cell[3] as f32 * bitmap.scale;
-                    let shear = if italic {
-                        (1.0 - 0.25 * up).min(1.0 - 0.25 * down)
-                    } else {
-                        0.0
-                    };
-                    let thickness = if bold { BOLD_THICKNESS } else { 0.0 };
-                    (
-                        pen + shear - thickness,
-                        y + up - thickness,
-                        pen + glyph.advance(bold),
-                        // The shadow is a unit down.
-                        y + down + 1.0 + thickness,
-                    )
-                }
-            };
-            if point_x >= left && point_x < right && point_y >= top && point_y < bottom {
+            let hit = hit_box(&glyph, (pen, y), (bold, italic)).is_some_and(
+                |(left, top, right, bottom)| {
+                    point_x >= left && point_x < right && point_y >= top && point_y < bottom
+                },
+            );
+            if hit {
                 found = Some(&run.style);
             }
             pen += glyph.advance(bold);
