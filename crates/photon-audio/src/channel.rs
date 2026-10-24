@@ -1,11 +1,12 @@
 //! The engine's channels over the mixer (`Channel`, `Library`): a channel is a source in the
 //! mixer, loaded from the files the assets hold.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::library::{Channel, ChannelSource, Pool};
 
-use crate::decode::{LoopingOggStream, OggStream, decode_ogg};
+use crate::decode::{LoopingOggStream, OggStream, Pcm, decode_ogg};
 use crate::mixer::{Mixer, Samples, State, StreamFeed};
 
 /// Where the sound files are (`sounds/<name>.ogg` of the assets): their bytes, by the path
@@ -57,9 +58,26 @@ pub struct MixerChannel {
     id: usize,
     pool: usize,
     used: Arc<Mutex<[usize; 2]>>,
+    decoded: DecodedSounds,
 }
 
+/// The sounds decoded whole, by path: a sound played again is not read and decoded again.
+type DecodedSounds = Arc<Mutex<HashMap<String, Arc<Pcm>>>>;
+
 impl MixerChannel {
+    /// The decoded sound of `path`, decoded on its first use.
+    fn decoded_sound(&self, path: &str) -> Option<Arc<Pcm>> {
+        if let Some(pcm) = self.decoded.lock().ok()?.get(path) {
+            return Some(Arc::clone(pcm));
+        }
+        let pcm = Arc::new(decode_ogg(&self.assets.read(path)?).ok()?);
+        self.decoded
+            .lock()
+            .ok()?
+            .insert(path.to_owned(), Arc::clone(&pcm));
+        Some(pcm)
+    }
+
     fn with<T>(&self, action: impl FnOnce(&mut crate::mixer::Source) -> T) -> Option<T> {
         let mut mixer = self.mixer.lock().ok()?;
         mixer.source(self.id).map(action)
@@ -96,14 +114,10 @@ impl Channel for MixerChannel {
     }
 
     fn attach_static_buffer(&mut self, path: &str) {
-        let Some(pcm) = self
-            .assets
-            .read(path)
-            .and_then(|bytes| decode_ogg(&bytes).ok())
-        else {
+        let Some(pcm) = self.decoded_sound(path) else {
             return;
         };
-        self.with(|source| source.attach(Samples::Whole(Arc::new(pcm))));
+        self.with(|source| source.attach(Samples::Whole(pcm)));
     }
 
     fn attach_stream(&mut self, path: &str, looping: bool) {
@@ -176,6 +190,7 @@ pub struct MixerChannels {
     assets: Arc<dyn SoundAssets>,
     limits: [usize; 2],
     used: Arc<Mutex<[usize; 2]>>,
+    decoded: DecodedSounds,
 }
 
 impl MixerChannels {
@@ -194,6 +209,7 @@ impl MixerChannels {
             assets,
             limits: [static_count, streaming],
             used: Arc::new(Mutex::new([0, 0])),
+            decoded: DecodedSounds::default(),
         }
     }
 }
@@ -224,6 +240,7 @@ impl ChannelSource for MixerChannels {
             id,
             pool: slot,
             used: Arc::clone(&self.used),
+            decoded: Arc::clone(&self.decoded),
         })
     }
 }
