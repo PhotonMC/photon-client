@@ -267,6 +267,8 @@ impl PlaySession {
         self.level_info.tick_rate = Default::default();
         self.level_info.thunder_level = 0.0;
         self.world.set_weather(0.0, 0.0);
+        // The players of the old level are gone, and the profiles they kept.
+        self.social.entity_profiles.clear();
         let bounds = self.state.dimension_bounds(&spawn_info);
         let environment = self.state.dimension_environment(&spawn_info);
         let swapped = self.world.replace_dimension_with_environment(

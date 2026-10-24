@@ -237,15 +237,16 @@ impl ClientboundPacket for RemoveMobEffect {
 }
 
 impl PlaySession {
-    fn on_add_entity(&mut self, packet: AddEntityObservation) -> Result<(), ConnectionError> {
+    pub(in crate::connection::play) fn on_add_entity(
+        &mut self,
+        packet: AddEntityObservation,
+    ) -> Result<(), ConnectionError> {
         if self.local.removed_player_vehicle == Some(packet.entity_id) {
             self.local.removed_player_vehicle = None;
         }
         entities::add(&mut self.world, &packet);
         // `handleAddEntity`: a player in the tab list is remembered as seen.
-        if photon_data::entity_type::id("minecraft:player") == Some(packet.entity_type_id) {
-            self.remember_entity_profile((packet.uuid.most, packet.uuid.least));
-        }
+        self.remember_added_player(packet.entity_type_id, packet.uuid);
         Ok(())
     }
 

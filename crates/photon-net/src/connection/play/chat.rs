@@ -15,6 +15,7 @@ impl PlaySession {
                         properties,
                         ..PlayerInfo::default()
                     });
+                self.remember_entity_profile_if_new(id);
                 continue;
             }
             let Some(info) = self.social.player_infos.get_mut(&id) else {
@@ -31,6 +32,17 @@ impl PlaySession {
         }
     }
 
+    /// A player entity was added: it takes the tab entry of its uuid.
+    pub(super) fn remember_added_player(
+        &mut self,
+        entity_type: photon_core::ids::EntityTypeId,
+        uuid: photon_core::binary::Uuid,
+    ) {
+        if photon_data::entity_type::id("minecraft:player") == Some(entity_type) {
+            self.remember_entity_profile((uuid.most, uuid.least));
+        }
+    }
+
     /// `handleAddEntity`: a player in the tab list is remembered as seen, and
     /// `AbstractClientPlayer.getPlayerInfo`: a player entity takes the tab list entry it is
     /// added with and keeps its name and skin whatever the list does afterwards.
@@ -44,6 +56,19 @@ impl PlaySession {
             properties: info.properties.clone(),
         };
         self.social.entity_profiles.insert(id, profile);
+    }
+
+    /// `getPlayerInfo` also caches on the first query that finds an entry: a player entity added
+    /// before its tab entry takes the entry when it arrives, and never replaces a cached one.
+    fn remember_entity_profile_if_new(&mut self, id: (u64, u64)) {
+        let present = self
+            .world
+            .entities()
+            .all()
+            .any(|entity| entity.is_player() && (entity.uuid.most, entity.uuid.least) == id);
+        if present && !self.social.entity_profiles.contains_key(&id) {
+            self.remember_entity_profile(id);
+        }
     }
 
     /// The entities are gone: so are the profiles they kept.
