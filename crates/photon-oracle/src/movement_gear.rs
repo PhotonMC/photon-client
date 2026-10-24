@@ -291,3 +291,24 @@ pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument:
         &data_root,
     ))
 }
+
+/// The entity events a tick brings to the player: a damage event, the death event and the end of
+/// a used item (event 9).
+pub(super) fn server_events(
+    tick: &Value,
+    (world, player, cooldowns): (
+        &mut photon_world::ClientWorld,
+        &mut photon_world::local_player::LocalPlayer,
+        &mut photon_game::item::cooldowns::ItemCooldowns,
+    ),
+) {
+    if let Some(damage) = tick.get("damage").and_then(Value::as_str) {
+        player.handle_damage_event(damage);
+    }
+    if tick.get("death").is_some() {
+        player.handle_death_event();
+    }
+    if tick.get("finish_use").is_some() {
+        photon_game::game_mode::finish_use(world, player, cooldowns, 0);
+    }
+}

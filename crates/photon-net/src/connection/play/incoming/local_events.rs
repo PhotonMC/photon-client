@@ -22,7 +22,12 @@ impl PlaySession {
             && self.local.player_id == Some(id)
             && let Some(player) = self.local.player.as_mut()
         {
-            player.complete_using_item();
+            photon_game::game_mode::finish_use(
+                &mut self.world,
+                player,
+                &mut self.local.item_cooldowns,
+                self.local.status.selected_slot,
+            );
         }
     }
 }

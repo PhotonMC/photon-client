@@ -135,17 +135,33 @@ pub(super) fn component_json(component: &photon_data::item::component::Component
                 .collect(),
         ),
         Component::TooltipDisplay(hidden) => json!({"hidden_components": hidden}),
-        Component::PotionDurationScale(scale) => json!(f64::from(*scale)),
-        Component::UseCooldown(seconds) => json!({"seconds": f64::from(*seconds)}),
-        Component::Fireworks { flight_duration } => json!({"flight_duration": flight_duration}),
-        Component::Instrument(name) | Component::JukeboxPlayable(name) => json!(name),
+        Component::PotionDurationScale(_)
+        | Component::UseCooldown(_)
+        | Component::UseRemainder(_)
+        | Component::Fireworks { .. }
+        | Component::Instrument(_)
+        | Component::JukeboxPlayable(_)
+        | Component::OminousBottleAmplifier(_) => single_value_json(component),
         Component::BlockState(properties) => Value::Object(
             properties
                 .iter()
                 .map(|(key, value)| ((*key).to_owned(), json!(value)))
                 .collect(),
         ),
+    }
+}
+
+/// [`component_json`] of the components that hold a number or a name.
+fn single_value_json(component: &photon_data::item::component::Component) -> Value {
+    use photon_data::item::component::Component;
+    match component {
+        Component::PotionDurationScale(scale) => json!(f64::from(*scale)),
+        Component::UseCooldown(seconds) => json!({"seconds": f64::from(*seconds)}),
+        Component::UseRemainder(item) => json!({"id": item}),
+        Component::Fireworks { flight_duration } => json!({"flight_duration": flight_duration}),
+        Component::Instrument(name) | Component::JukeboxPlayable(name) => json!(name),
         Component::OminousBottleAmplifier(amplifier) => json!(amplifier),
+        other => unreachable!("{other:?} is not a single value"),
     }
 }
 

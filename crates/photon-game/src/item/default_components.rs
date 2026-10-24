@@ -152,6 +152,12 @@ fn scalar(component: &Component, out: &mut Vec<u8>) -> Option<i32> {
             out.push(0);
             ids::USE_COOLDOWN
         }
+        Component::UseRemainder(item) => {
+            // `ItemStackTemplate.STREAM_CODEC`: the item, a count of one and an empty patch.
+            write_varint(crate::item::id_of(item)?.0, out);
+            out.extend([1, 0, 0]);
+            ids::USE_REMAINDER
+        }
         _ => return None,
     })
 }

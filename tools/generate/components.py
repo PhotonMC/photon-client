@@ -59,6 +59,10 @@ def convert(owner, name, value):
         if set(value) != {"seconds"}:
             raise SystemExit(f"{owner}: use cooldown {value}")
         return f"Component::UseCooldown({float_literal(value['seconds'])})"
+    if kind == "use_remainder":
+        if set(value) != {"id"}:
+            raise SystemExit(f"{owner}: use remainder {value}")
+        return f"Component::UseRemainder({rust_str(value['id'])})"
     if kind == "fireworks":
         if set(value) != {"flight_duration"}:
             raise SystemExit(f"{owner}: fireworks {value}")

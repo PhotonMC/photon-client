@@ -70,6 +70,8 @@ pub enum Component {
     PotionDurationScale(f32),
     /// `use_cooldown` of some seconds, in the item's own group.
     UseCooldown(f32),
+    /// `use_remainder`: one of this item (by registry name) with no components.
+    UseRemainder(&'static str),
     Fireworks {
         flight_duration: i32,
     },

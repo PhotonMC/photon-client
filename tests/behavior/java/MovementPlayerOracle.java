@@ -21,6 +21,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
         // The server hands out the entity id at login; the scenario names it,
         // because the sprint command packet carries it.
         player.setId(row.get("entity_id").getAsInt());
+        // The entity's random starts from nowhere in particular; the port seeds it from the id.
+        player.getRandom().setSeed(player.getId());
         setField(minecraft, "player", player);
         var info = new net.minecraft.client.multiplayer.PlayerInfo(listener.getLocalGameProfile(), false);
         var gameType = net.minecraft.world.level.GameType.byName(row.get("game_mode").getAsString());
@@ -260,6 +262,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
             }
             if (input.has("death")) {
                 player.handleEntityEvent((byte) 3);
+            }
+            if (input.has("finish_use")) {
+                player.handleEntityEvent((byte) 9);
             }
             if (input.has("attack")) {
                 attack(minecraft, level, input, startAttack, continueAttack);

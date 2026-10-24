@@ -7,7 +7,7 @@
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
-"crates/photon-oracle/src/movement.rs" = 515
+"crates/photon-oracle/src/movement.rs" = 510
 "crates/photon-oracle/src/passenger_rotations.rs" = 536
 "crates/photon-protocol/src/play/tests/inventory.rs" = 558
 "crates/photon-world/src/particles/firework.rs" = 540
@@ -313,7 +313,7 @@
 "crates/photon-oracle/src/math_cases/options.rs::vec3_case" = 16
 "crates/photon-oracle/src/math_cases/positions/blockpos.rs::blockpos_mutable_helpers_case" = 22
 "crates/photon-oracle/src/model.rs::model_result" = 11
-"crates/photon-oracle/src/movement.rs::movement_result" = 78
+"crates/photon-oracle/src/movement.rs::movement_result" = 76
 "crates/photon-oracle/src/nbt_cases.rs::json_canonical" = 12
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 16
 "crates/photon-oracle/src/nbt_cases.rs::nbt_tree_value" = 13
@@ -332,7 +332,7 @@
 "crates/photon-oracle/src/strider.rs::setup_rotations_result" = 29
 "crates/photon-oracle/src/timer.rs::binary_result" = 32
 "crates/photon-oracle/src/timer.rs::nbt_type_name" = 12
-"crates/photon-oracle/src/tooltip.rs::component_json" = 18
+"crates/photon-oracle/src/tooltip.rs::component_json" = 14
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 11
 "crates/photon-oracle/src/travel.rs::aabb_result" = 49
 "crates/photon-oracle/src/vanilla.rs::image_result" = 17
@@ -748,7 +748,7 @@
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
-"crates/photon-oracle/src/movement.rs::movement_result" = 514
+"crates/photon-oracle/src/movement.rs::movement_result" = 509
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62

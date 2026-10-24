@@ -278,12 +278,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 x_rot = bits32(tick, "x_rot")?;
             }
             player.set_rotation(y_rot, x_rot);
-            if let Some(damage) = tick.get("damage").and_then(Value::as_str) {
-                player.handle_damage_event(damage);
-            }
-            if tick.get("death").is_some() {
-                player.handle_death_event();
-            }
+            server_events(tick, (&mut world, &mut player, &mut cooldowns));
             let mut actions = Vec::new();
             if let Some(attack) = tick.get("attack") {
                 for event in attack["server"].as_array().into_iter().flatten() {

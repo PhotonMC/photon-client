@@ -210,9 +210,9 @@ fn throw_item(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: true }
 }
 
-/// `ItemStack.use` after an instantly used item (use duration 0): its `use_cooldown` begins, for
-/// the stack as it was before. Other items are approximated as instant when no use started; the
-/// ender eye is instant although it starts one.
+/// `ItemStack.use` after an instantly used item (use duration 0): its `use_remainder` and
+/// `use_cooldown` apply, for the stack as it was before. Other items are approximated as instant
+/// when no use started; the ender eye is instant although it starts one.
 pub(super) fn after_instant_use(
     ctx: &mut Context<'_>,
     hand: u8,
@@ -227,52 +227,8 @@ pub(super) fn after_instant_use(
     if !matches!(result, UseResult::Success { .. }) || (ctx.player.is_using_item() && !eye) {
         return;
     }
-    let values = Values::new(before.item_registry_id(), before.patch_bytes());
-    if let Some(bytes) = values.raw(photon_data::item::component_types::USE_REMAINDER) {
-        convert_into_remainder(ctx, hand, before.item_count(), bytes);
-    }
-    let Some(seconds) = values
-        .raw(photon_data::item::component_types::USE_COOLDOWN)
-        .and_then(|bytes| bytes.first_chunk::<4>())
-        .map(|bytes| f32::from_be_bytes(*bytes))
-    else {
-        return;
-    };
-    ctx.cooldowns.add(
-        crate::item::cooldowns::group(before),
-        (seconds * 20.0) as i32,
-    );
-}
-
-/// `UseRemainder.convertIntoRemainder` for the stack in `hand` that was just used up by one: an
-/// emptied stack becomes the remainder. Extra remainders are the server's to hand out
-/// (`handleExtraItemsCreatedOnUse` does nothing on the client).
-fn convert_into_remainder(ctx: &mut Context<'_>, hand: u8, count_before: i32, template: &[u8]) {
-    let slot = ctx.hand_slot(hand);
-    let used_up_count = ctx
-        .world
-        .local_player()
-        .and_then(|state| state.inventory_slot(slot))
-        .map_or(0, |stack| stack.item_count());
-    if ctx.instabuild() || used_up_count >= count_before {
-        return;
-    }
-    if used_up_count <= 0
-        && let Some(fresh) = remainder_stack(template)
-    {
-        ctx.world.put_local_player_slot(slot, fresh);
-    }
-}
-
-/// `ItemStackTemplate.create`: the template's item, count and component patch as a stack.
-fn remainder_stack(mut template: &[u8]) -> Option<photon_world::ClientItemStackState> {
-    let item = photon_core::ids::ItemId(photon_core::wire::read_varint(&mut template).ok()?);
-    let count = photon_core::wire::read_varint(&mut template).ok()?;
-    let patch = photon_world::item_components::read_patch(&mut template).ok()?;
-    let mut stack =
-        photon_world::ClientItemStackState::from_wire(count, item, Vec::new(), Vec::new());
-    stack.set_patch(&patch);
-    Some(stack)
+    let (slot, instabuild) = (ctx.hand_slot(hand), ctx.instabuild());
+    super::after_use::apply(ctx.world, ctx.cooldowns, (slot, instabuild), before);
 }
 
 /// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad
