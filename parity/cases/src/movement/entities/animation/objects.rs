@@ -2,6 +2,17 @@
 
 use crate::movement::entities::prelude::*;
 
+/// Every boat of the registry afloat: each wood's boat and chest boat has its own texture.
+fn boat_woods() -> Vec<Value> {
+    let woods = ["acacia", "birch", "cherry", "dark_oak", "jungle", "mangrove", "oak", "pale_oak", "spruce"];
+    woods
+        .iter()
+        .flat_map(|wood| [format!("{wood}_boat"), format!("{wood}_chest_boat")])
+        .chain(["bamboo_chest_raft".to_owned()])
+        .map(|kind| fish(&format!("afloat-{}", kind.replace('_', "-")), &kind, 6, vec![]).tag("boat").row())
+        .collect()
+}
+
 fn objects_1() -> Vec<Value> {
     vec![
         // A boat's hit (its time and damage) runs down a tick at a time; a bubble column shakes it
@@ -153,5 +164,5 @@ fn objects_4() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [objects_1(), objects_2(), objects_3(), objects_4()].concat()
+    [objects_1(), objects_2(), objects_3(), objects_4(), boat_woods()].concat()
 }
