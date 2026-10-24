@@ -6,6 +6,7 @@
 
 mod affected;
 mod dev;
+mod entities;
 mod gate;
 mod git;
 mod hooks;
@@ -41,6 +42,7 @@ usage: cargo xtask <command>
   bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
         [--route still|run] [--vsync on|off] [--fps-limit <n>] [--validation] [--no-build]
                             fixed scripted run, frame timing report in .data/runs/bench
+  entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
                             scripted client run, first frame in .data/runs/shots";
 
@@ -62,6 +64,7 @@ const COMMANDS: &[(&str, Command)] = &[
     ("rcon", dev::rcon),
     ("bench", dev::bench),
     ("shot", dev::shot),
+    ("entities", entities::run),
 ];
 
 fn main() -> ExitCode {
