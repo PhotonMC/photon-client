@@ -66,8 +66,8 @@ fn remainder_stack(mut template: &[u8]) -> Option<ClientItemStackState> {
 }
 
 /// `LivingEntity.completeUsingItem` on the server's entity event 9 for the local player: the use
-/// ends with the consumable's effects (see `LocalPlayer::complete_using_item`), and a consumed
-/// stack loses one and applies its remainder and cooldown.
+/// ends with the consumable's effects (see `LocalPlayer::complete_using_item`), a consumed stack
+/// loses one, and the remainder and cooldown of any finished use apply.
 pub fn finish_use(
     world: &mut ClientWorld,
     player: &mut LocalPlayer,
@@ -83,14 +83,14 @@ pub fn finish_use(
         .local_player()
         .and_then(|state| state.inventory_slot(slot))
         .cloned();
-    if !player.complete_using_item() {
+    let Some(consumed) = player.complete_using_item() else {
         return;
-    }
+    };
     let Some(before) = before else {
         return;
     };
     let instabuild = player.abilities().instabuild();
-    if !instabuild {
+    if consumed && !instabuild {
         world.shrink_local_player_slot(slot, 1);
     }
     apply(world, cooldowns, (slot, instabuild), &before);

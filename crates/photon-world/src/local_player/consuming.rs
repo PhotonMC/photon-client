@@ -68,15 +68,16 @@ impl LocalPlayer {
 
     /// `LivingEntity.completeUsingItem` for the server's entity event 9: when the item in the
     /// used hand is still the one in use, `Consumable.onConsume` sounds and throws sixteen
-    /// crumbs, and the use ends. True when a consumable was consumed; the stack's shrink and what
-    /// it leaves are the caller's (`photon_game::game_mode::finish_use`).
-    pub fn complete_using_item(&mut self) -> bool {
+    /// crumbs, and the use ends. `None` when no use finished; else whether a consumable was
+    /// consumed. The stack's shrink and what it leaves are the caller's
+    /// (`photon_game::game_mode::finish_use`).
+    pub fn complete_using_item(&mut self) -> Option<bool> {
         if !self.hands.using_item {
-            return false;
+            return None;
         }
         self.end_use_of_changed_item();
         if !self.hands.using_item {
-            return false;
+            return None;
         }
         let cue = self.consume_cue();
         if let Some(cue) = cue {
@@ -87,7 +88,7 @@ impl LocalPlayer {
             self.play_own_sound("minecraft:item.spyglass.stop_using", (1.0, 1.0));
         }
         self.release_using_item();
-        cue.is_some()
+        Some(cue.is_some())
     }
 
     /// `LivingEntity.spawnItemParticles`: crumbs of the item in use, thrown from in front of the

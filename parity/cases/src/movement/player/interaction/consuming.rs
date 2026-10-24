@@ -28,5 +28,7 @@ pub fn rows() -> Vec<Value> {
         consume("eat-with-remainder", "minecraft:golden_apple", 1).use_remainder("minecraft:stick").row(),
         consume("eat-with-remainder-more", "minecraft:golden_apple", 2).use_remainder("minecraft:stick").row(),
         consume("eat-not-hungry", "minecraft:apple", 3).row(),
+        // A finished use that consumes nothing still starts its cooldown.
+        consume("finish-spyglass-with-cooldown", "minecraft:spyglass", 1).use_cooldown(2.0).row(),
     ]
 }
