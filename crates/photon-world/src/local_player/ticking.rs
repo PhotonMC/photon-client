@@ -1,4 +1,6 @@
 use super::*;
+use crate::input::{LocalPlayerInputState, apply_local_player_input};
+use photon_core::math::Vec2;
 
 impl LocalPlayer {
     /// Run one client tick with the given keys held, and return what it sent.
@@ -292,16 +294,20 @@ impl LocalPlayer {
         }
     }
 
-    /// `LocalPlayer.applyInput`, which only the camera entity takes input for.
+    /// `LocalPlayer.applyInput`, which only the camera entity takes input for (oracle-checked as
+    /// `apply_local_player_input`).
     fn apply_input(&mut self) {
-        if !self.controlled_camera {
-            // `LivingEntity.applyInput`.
-            self.xxa *= 0.98_f32;
-            self.zza *= 0.98_f32;
-            return;
-        }
-        let modified = modify_local_player_input(
-            self.input.move_vector(),
+        let applied = apply_local_player_input(
+            LocalPlayerInputState {
+                move_vector: self.input.move_vector(),
+                jump_pressed: self.input.key_presses.jump,
+                current_impulses: Vec2::new(self.xxa, self.zza),
+                current_jumping: self.jumping,
+                current_bob: Vec2::new(self.x_bob, self.y_bob),
+                previous_bob: Vec2::new(self.x_bob_old, self.y_bob_old),
+                rotation: Vec2::new(self.x_rot, self.y_rot),
+                controlled_camera: self.controlled_camera,
+            },
             LocalPlayerInputModifiers {
                 using_item: self.is_using_item(),
                 passenger: self.is_passenger(),
@@ -310,13 +316,13 @@ impl LocalPlayer {
                 sneaking_movement_factor: SNEAKING_SPEED as f32,
             },
         );
-        self.xxa = modified.x;
-        self.zza = modified.y;
-        self.jumping = self.input.key_presses.jump;
-        self.y_bob_old = self.y_bob;
-        self.x_bob_old = self.x_bob;
-        self.x_bob += (self.x_rot - self.x_bob) * 0.5;
-        self.y_bob += (self.y_rot - self.y_bob) * 0.5;
+        self.xxa = applied.movement.x;
+        self.zza = applied.movement.y;
+        self.jumping = applied.jumping;
+        self.x_bob = applied.x_bob;
+        self.y_bob = applied.y_bob;
+        self.x_bob_old = applied.x_bob_old;
+        self.y_bob_old = applied.y_bob_old;
     }
 
     /// The vertical input of a flying player, which only the camera entity gives.

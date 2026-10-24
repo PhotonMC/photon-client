@@ -17,7 +17,7 @@
     reason = "the reference's negated comparisons, which a NaN also passes"
 )]
 
-use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers, modify_local_player_input};
+use crate::input::{Input, KeyboardInput, LocalPlayerInputModifiers};
 use crate::java_math;
 use photon_core::aabb::Aabb;
 use photon_core::binary::BlockPos;
