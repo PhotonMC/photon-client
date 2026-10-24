@@ -8,7 +8,15 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 use std::thread::JoinHandle;
 
 use photon_render::section_workers::SectionKey;
-use photon_render::visibility::{GraphWorld, SectionState, visible_sections};
+use photon_render::visibility::{GraphWorld, OcclusionGraph, SectionState};
+
+/// What a flood was started with, which later passes of it keep.
+#[derive(Clone, Copy)]
+pub struct FloodParams {
+    pub camera: [f64; 3],
+    pub view_distance: i32,
+    pub smart_cull: bool,
+}
 
 /// What the flood reads of the world, copied for the sections within the
 /// view distance of the camera's column, so the world can change while it
@@ -30,31 +38,31 @@ pub struct FloodInputs {
 }
 
 impl FloodInputs {
-    /// Copy what the flood reads around `camera`: `column` adds a loaded
-    /// column's states, bottom to top, and says whether it is loaded.
+    /// Copy what the flood reads around `camera`: `column` fills a loaded
+    /// column's states, bottom to top, and says whether it is loaded. The
+    /// columns are copied one after the other.
     pub fn capture(
         camera: [f64; 3],
         view_distance: i32,
         smart_cull: bool,
         sections: Range<i32>,
-        column: impl Fn(i32, i32, &mut Vec<SectionState>) -> bool,
+        column: impl Fn(i32, i32, &mut [SectionState]) -> bool,
     ) -> Self {
         let reach = view_distance.max(0);
         let [x, z] = [camera[0], camera[2]].map(|value| (value.floor() as i32).div_euclid(16));
         let low = (x - reach, z - reach);
         let width = 2 * reach + 1;
-        let mut column_loaded = Vec::with_capacity((width * width) as usize);
-        let mut states = Vec::with_capacity((width * width) as usize * sections.len());
-        for column_x in low.0..low.0 + width {
-            for column_z in low.1..low.1 + width {
-                let here = column(column_x, column_z, &mut states);
-                column_loaded.push(here);
-                if !here {
-                    // The flood never reads a section of a column not here.
-                    states.extend(sections.clone().map(|_| SectionState::Uncompiled));
-                }
-            }
-        }
+        let height = sections.len();
+        // The flood never reads a section of a column not here.
+        let mut states = vec![SectionState::Uncompiled; (width * width) as usize * height];
+        let column_loaded: Vec<bool> = states
+            .chunks_mut(height.max(1))
+            .enumerate()
+            .map(|(index, states)| {
+                let index = index as i32;
+                column(low.0 + index / width, low.1 + index % width, states)
+            })
+            .collect();
         Self {
             camera,
             view_distance,
@@ -67,6 +75,15 @@ impl FloodInputs {
         }
     }
 
+    /// The camera, view distance and smart culling the copy was made for.
+    pub fn params(&self) -> FloodParams {
+        FloodParams {
+            camera: self.camera,
+            view_distance: self.view_distance,
+            smart_cull: self.smart_cull,
+        }
+    }
+
     /// The column of a chunk inside the copied area.
     fn column(&self, x: i32, z: i32) -> Option<usize> {
         let (dx, dz) = (x - self.low.0, z - self.low.1);
@@ -75,7 +92,7 @@ impl FloodInputs {
     }
 
     /// The flood over the copy.
-    fn run(&self) -> Vec<SectionKey> {
+    fn run(&self) -> OcclusionGraph {
         let height = self.sections.len();
         let loaded = |x: i32, z: i32| self.column(x, z).is_some_and(|column| self.loaded[column]);
         let section = |(x, y, z): SectionKey| {
@@ -85,7 +102,7 @@ impl FloodInputs {
                     self.states[column * height + (y - self.sections.start) as usize]
                 })
         };
-        visible_sections(&GraphWorld {
+        OcclusionGraph::full(&GraphWorld {
             camera: self.camera,
             view_distance: self.view_distance,
             min_section_y: self.sections.start,
@@ -100,7 +117,7 @@ impl FloodInputs {
 /// The thread that runs the full updates, one at a time.
 pub struct Flood {
     jobs: Option<Sender<(u64, FloodInputs)>>,
-    results: Receiver<(u64, Vec<SectionKey>)>,
+    results: Receiver<(u64, OcclusionGraph)>,
     thread: Option<JoinHandle<()>>,
     /// The generation of the update running, if one is.
     running: Option<u64>,
@@ -147,7 +164,7 @@ impl Flood {
 
     /// The update that finished since the last call, unless the level it
     /// flooded has gone.
-    pub fn finished(&mut self) -> Option<Vec<SectionKey>> {
+    pub fn finished(&mut self) -> Option<OcclusionGraph> {
         match self.results.try_recv() {
             Ok((generation, graph)) => {
                 self.running = None;
@@ -198,10 +215,13 @@ mod tests {
         let rock = |_: SectionKey| SectionState::Compiled(VisibilitySet::NONE);
         let flood = |smart_cull| {
             FloodInputs::capture([8.5, 40.0, 8.5], 3, smart_cull, 0..8, |x, z, states| {
-                states.extend((0..8).map(|y| rock((x, y, z))));
+                for (y, state) in (0..8).zip(states) {
+                    *state = rock((x, y, z));
+                }
                 true
             })
             .run()
+            .reached()
             .len()
         };
         assert!(
@@ -220,7 +240,7 @@ mod tests {
         };
         let loaded = |x: i32, z: i32| (x + 2 * z).rem_euclid(9) != 0;
         for camera in [[8.5, 300.0, -40.2], [-70.1, 20.4, 33.3], [5.0, -90.0, 5.0]] {
-            let direct = visible_sections(&GraphWorld {
+            let direct = photon_render::visibility::visible_sections(&GraphWorld {
                 camera,
                 view_distance: 6,
                 min_section_y: -4,
@@ -231,12 +251,14 @@ mod tests {
             });
             let copy = FloodInputs::capture(camera, 6, smart_cull, -4..20, |x, z, states| {
                 if loaded(x, z) {
-                    states.extend((-4..20).map(|y| state((x, y, z))));
+                    for (y, slot) in (-4..20).zip(states) {
+                        *slot = state((x, y, z));
+                    }
                 }
                 loaded(x, z)
             });
             assert!(!direct.is_empty());
-            assert_eq!(copy.run(), direct);
+            assert_eq!(copy.run().reached(), direct);
         }
     }
 }

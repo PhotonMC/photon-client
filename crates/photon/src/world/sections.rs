@@ -10,10 +10,12 @@ use std::time::{Duration, Instant};
 use photon_net::connection::PlaySession;
 use photon_render::VulkanBackend;
 use photon_render::section_workers::{SectionKey, SectionWorkers};
-use photon_render::visibility::{Frustum, SectionState, VisibilitySet};
+use photon_render::visibility::{Frustum, OcclusionGraph, VisibilitySet};
 use photon_render::vulkan::SectionFade;
 
-use super::flood::{Flood, FloodInputs};
+use super::flood::{Flood, FloodInputs, FloodParams};
+
+mod graph;
 use crate::profile::{self, Span};
 
 /// The squared distance, in blocks, within which a section counts as near
@@ -76,8 +78,17 @@ pub struct SectionMeshes {
     /// that leaves both as they were (light, a block swapped for another)
     /// does not make the flood run again.
     flood_inputs: HashMap<SectionKey, (bool, bool)>,
-    /// The occlusion flood's sections, and whether it has to run again.
-    graph: Vec<SectionKey>,
+    /// The occlusion flood's result, and whether a full one has to run
+    /// again.
+    graph: Option<(OcclusionGraph, FloodParams)>,
+    /// Sections that changed since the flood passed them on: a mesh that
+    /// finished, a section that stopped being empty, a chunk that arrived
+    /// (`schedulePropagationFrom`).
+    propagate: Vec<SectionKey>,
+    /// What was passed on while a full flood ran, to pass on again from the
+    /// result.
+    propagated_meanwhile: Vec<SectionKey>,
+    running: Option<FloodParams>,
     /// The graph's sections in the frustum they were last filtered with,
     /// and the graph's generation; still cameras filter once.
     in_frustum: Option<(photon_render::visibility::Frustum, u64, Vec<SectionKey>)>,
@@ -135,7 +146,10 @@ impl SectionMeshes {
             fades: HashMap::new(),
             compiled: HashMap::new(),
             flood_inputs: HashMap::new(),
-            graph: Vec::new(),
+            graph: None,
+            propagate: Vec::new(),
+            propagated_meanwhile: Vec::new(),
+            running: None,
             in_frustum: None,
             graph_generation: 0,
             graph_stale: true,
@@ -203,7 +217,9 @@ impl SectionMeshes {
         self.fades.clear();
         self.compiled.clear();
         self.flood_inputs.clear();
-        self.graph.clear();
+        self.graph = None;
+        self.propagate.clear();
+        self.propagated_meanwhile.clear();
         self.graph_stale = true;
         self.flood.forget();
     }
@@ -215,7 +231,6 @@ impl SectionMeshes {
         backend: &mut VulkanBackend,
     ) -> Result<(), Box<dyn std::error::Error>> {
         for (chunk_x, chunk_z) in chunks {
-            self.graph_stale = true;
             for section_y in self.sections.clone() {
                 let key = (chunk_x, section_y, chunk_z);
                 self.pending.remove(&key);
@@ -274,7 +289,9 @@ impl SectionMeshes {
         let world = session.world();
         for &(x, y, z) in &dirtied {
             let inputs = (world.contains_chunk(x, z), world.section_is_empty(x, y, z));
-            self.graph_stale |= self.flood_inputs.insert((x, y, z), inputs) != Some(inputs);
+            if self.flood_inputs.insert((x, y, z), inputs) != Some(inputs) {
+                self.propagate.push((x, y, z));
+            }
         }
         self.unchecked.extend(dirtied.iter().copied());
         self.pending.extend(dirtied);
@@ -313,8 +330,9 @@ impl SectionMeshes {
             if self.latest.get(&built.key) == Some(&built.generation) {
                 self.latest.remove(&built.key);
                 // Most rebuilds leave which faces see each other as it was.
-                self.graph_stale |=
-                    self.compiled.insert(built.key, built.visibility) != Some(built.visibility);
+                if self.compiled.insert(built.key, built.visibility) != Some(built.visibility) {
+                    self.propagate.push(built.key);
+                }
                 let fade = self.fade(built.key, camera_block);
                 backend.set_section(built.key, &built.mesh, built.centre, fade)?;
             }
@@ -340,7 +358,9 @@ impl SectionMeshes {
         for key in empty {
             self.pending.remove(&key);
             self.latest.remove(&key);
-            self.compiled.remove(&key);
+            if self.compiled.remove(&key).is_some() {
+                self.propagate.push(key);
+            }
             // An empty section has shown too, so what is built in it later
             // does not fade.
             let fade = self.fade(key, camera_block);
@@ -374,81 +394,8 @@ impl SectionMeshes {
             self.graph_from = Some((cell, view.view_distance, smart_cull));
             self.graph_stale = true;
         }
-        if let Some(blinks) = self.blinks.as_mut() {
-            blinks.frame();
-        }
-        if let Some(graph) = self.flood.finished() {
-            if let Some(blinks) = self.blinks.as_mut() {
-                let frustum = view.frustum.offset_to_fully_include_camera_cube(8);
-                blinks.swapped(&self.graph, &graph, |key| frustum.section_visible(*key));
-            }
-            self.graph = graph;
-            self.graph_generation += 1;
-        }
-        // The flood runs on its own thread; the frames keep the last one
-        // meanwhile, and one that went stale starts again when it is done.
-        if self.graph_stale && !self.flood.busy() {
-            self.graph_stale = false;
-            let inputs =
-                profile::timed(Span::Graph, || self.flood_inputs(session, view, smart_cull));
-            self.flood.start(inputs);
-        }
+        self.refresh_graph(session, view, smart_cull);
         self.graph_in_view(&view.frustum.offset_to_fully_include_camera_cube(8))
-    }
-
-    /// The flood's sections in the frustum; the same answer while neither
-    /// moves.
-    fn graph_in_view(&mut self, frustum: &photon_render::visibility::Frustum) -> Vec<SectionKey> {
-        if let Some((seen, generation, drawn)) = &self.in_frustum
-            && seen == frustum
-            && *generation == self.graph_generation
-        {
-            return drawn.clone();
-        }
-        let drawn: Vec<SectionKey> = self
-            .graph
-            .iter()
-            .copied()
-            .filter(|key| frustum.section_visible(*key))
-            .collect();
-        self.in_frustum = Some((*frustum, self.graph_generation, drawn.clone()));
-        drawn
-    }
-
-    /// What the flood reads of the world around the camera, copied.
-    fn flood_inputs(
-        &self,
-        session: &PlaySession,
-        view: &SectionView,
-        smart_cull: bool,
-    ) -> FloodInputs {
-        let world = session.world();
-        let compiled = &self.compiled;
-        let sections = self.sections.clone();
-        let column = |x: i32, z: i32, states: &mut Vec<SectionState>| {
-            let Some(empty) = world.column_is_empty(x, z, sections.clone()) else {
-                return false;
-            };
-            states.extend(sections.clone().zip(empty).map(|(y, empty)| {
-                if empty {
-                    SectionState::Empty
-                } else {
-                    compiled
-                        .get(&(x, y, z))
-                        .map_or(SectionState::Uncompiled, |visibility| {
-                            SectionState::Compiled(*visibility)
-                        })
-                }
-            }));
-            true
-        };
-        FloodInputs::capture(
-            view.camera,
-            view.view_distance,
-            smart_cull,
-            self.sections.clone(),
-            column,
-        )
     }
 
     /// The dirty sections in view that may be built now, nearest first: one

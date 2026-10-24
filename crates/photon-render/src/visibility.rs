@@ -291,6 +291,8 @@ pub struct GraphWorld<'a> {
 struct Node {
     sources: u8,
     directions: u8,
+    /// Whether the section joined the reached list.
+    listed: bool,
 }
 
 impl GraphWorld<'_> {
@@ -429,6 +431,39 @@ mod tests {
             7,
             "the camera's section and its six neighbours"
         );
+    }
+
+    #[test]
+    fn a_section_that_opens_up_passes_the_flood_on_without_a_new_one() {
+        use std::cell::Cell;
+        let open = Cell::new(false);
+        let section = |key: SectionKey| {
+            if key == (1, 1, 0) && !open.get() {
+                SectionState::Uncompiled
+            } else {
+                SectionState::Compiled(VisibilitySet::ALL)
+            }
+        };
+        let world = GraphWorld {
+            camera: [8.0, 24.0, 8.0],
+            view_distance: 2,
+            min_section_y: 0,
+            max_section_y: 3,
+            loaded: &|_, _| true,
+            section: &section,
+            smart_cull: true,
+        };
+        let mut graph = OcclusionGraph::full(&world);
+        let before = graph.reached().len();
+        open.set(true);
+        let added = graph.propagate(&world, &[(1, 1, 0)]);
+        assert!(added > 0, "the sections behind it join");
+        assert_eq!(graph.reached().len(), before + added);
+        let mut passed: Vec<_> = graph.reached().to_vec();
+        let mut fresh = visible_sections(&world);
+        passed.sort_unstable();
+        fresh.sort_unstable();
+        assert_eq!(passed, fresh, "the same sections as a new flood reaches");
     }
 
     #[test]

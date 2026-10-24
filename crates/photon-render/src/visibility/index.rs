@@ -85,8 +85,23 @@ impl Nodes {
         &mut self.slots[slot]
     }
 
-    fn loaded(&self, key: SectionKey) -> bool {
-        self.loaded[self.column(key)]
+    /// Whether the key lies inside the view area the nodes were made for.
+    fn holds(&self, key: SectionKey) -> bool {
+        let (dx, dz) = (key.0 - self.low.0, key.2 - self.low.2);
+        let (dy, width) = (key.1 - self.low.1, self.width as i32);
+        (0..width).contains(&dx)
+            && (0..width).contains(&dz)
+            && (0..self.height as i32).contains(&dy)
+    }
+
+    /// Whether the key's chunk has arrived: asked again while it has not,
+    /// since a chunk arrives after the nodes were made.
+    fn loaded(&mut self, key: SectionKey, world: &GraphWorld<'_>) -> bool {
+        let column = self.column(key);
+        if !self.loaded[column] {
+            self.loaded[column] = (world.loaded)(key.0, key.2);
+        }
+        self.loaded[column]
     }
 }
 
@@ -94,54 +109,128 @@ impl Nodes {
 /// through the sections whose faces see each other, and return every
 /// non-empty section reached in a loaded chunk, in the order reached.
 pub fn visible_sections(world: &GraphWorld<'_>) -> Vec<SectionKey> {
-    let mut nodes = Nodes::new(world);
-    let mut queue: VecDeque<SectionKey> = VecDeque::new();
-    for (key, node) in initial_nodes(world) {
-        *nodes.get_mut(key) = Some(node);
-        queue.push_back(key);
-    }
-    let camera = world.camera_section();
-    let mut reached = Vec::new();
-    while let Some(key) = queue.pop_front() {
-        let Some(node) = nodes.get(key) else {
-            continue;
-        };
-        if !nodes.loaded(key) {
-            continue;
+    OcclusionGraph::full(world).reached
+}
+
+/// The flood's result and the nodes it left, so a section that changes
+/// later can pass the flood on (`runPartialUpdate`) without a new flood.
+pub struct OcclusionGraph {
+    nodes: Nodes,
+    /// Every non-empty section reached in a loaded chunk, in the order
+    /// reached.
+    reached: Vec<SectionKey>,
+}
+
+impl OcclusionGraph {
+    /// The full update from the camera.
+    pub fn full(world: &GraphWorld<'_>) -> Self {
+        let mut nodes = Nodes::new(world);
+        let mut queue: VecDeque<SectionKey> = VecDeque::new();
+        for (key, node) in initial_nodes(world) {
+            *nodes.get_mut(key) = Some(node);
+            queue.push_back(key);
         }
-        let state = (world.section)(key);
-        if state != SectionState::Empty {
-            reached.push(key);
+        let mut graph = Self {
+            nodes,
+            reached: Vec::new(),
+        };
+        graph.run(world, queue);
+        graph
+    }
+
+    /// The sections reached so far.
+    pub fn reached(&self) -> &[SectionKey] {
+        &self.reached
+    }
+
+    /// `runPartialUpdate`: pass the flood on from sections that changed (a
+    /// mesh that finished, a section that stopped being empty, a chunk that
+    /// arrived) that the flood had reached. The sections newly reached join
+    /// [`Self::reached`]; the count is how many did.
+    pub fn propagate(&mut self, world: &GraphWorld<'_>, from: &[SectionKey]) -> usize {
+        let before = self.reached.len();
+        let queue: VecDeque<SectionKey> = from
+            .iter()
+            .copied()
+            .filter(|&key| self.nodes.holds(key) && self.nodes.get(key).is_some())
+            .collect();
+        self.run(world, queue);
+        self.reached.len() - before
+    }
+
+    /// Whether the flood may go from a node towards `direction`: the smart
+    /// culling's three tests (`runUpdates`).
+    fn passes(
+        &self,
+        world: &GraphWorld<'_>,
+        (camera, key): (SectionKey, SectionKey),
+        (node, state): (Node, SectionState),
+        direction: Direction,
+    ) -> bool {
+        if !world.smart_cull {
+            return true;
         }
         let distant = [key.0 - camera.0, key.1 - camera.1, key.2 - camera.2]
             .iter()
             .any(|delta| delta.abs() > 60 / 16);
-        for direction in DIRECTIONS {
-            let Some(next) = world.relative(camera, key, direction) else {
+        node.directions & (1 << direction.opposite() as u8) == 0
+            && (node.sources == 0 || sees_through(state, node, direction))
+            && (!distant || ray_clear(world, camera, &self.nodes, key, direction))
+    }
+
+    fn run(&mut self, world: &GraphWorld<'_>, mut queue: VecDeque<SectionKey>) {
+        let camera = world.camera_section();
+        while let Some(key) = queue.pop_front() {
+            let Some(node) = self.nodes.get(key) else {
                 continue;
             };
-            if world.smart_cull && node.directions & (1 << direction.opposite() as u8) != 0 {
+            if !self.nodes.loaded(key, world) {
                 continue;
             }
-            if world.smart_cull && node.sources != 0 && !sees_through(state, node, direction) {
-                continue;
-            }
-            if world.smart_cull && distant && !ray_clear(world, camera, &nodes, key, direction) {
-                continue;
-            }
-            match nodes.get_mut(next) {
-                Some(existing) => existing.sources |= 1 << direction as u8,
-                empty @ None => {
-                    *empty = Some(Node {
-                        sources: 1 << direction as u8,
-                        directions: node.directions | 1 << direction as u8,
-                    });
-                    queue.push_back(next);
+            let state = (world.section)(key);
+            self.list(key, node, state);
+            for direction in DIRECTIONS {
+                let Some(next) = world.relative(camera, key, direction) else {
+                    continue;
+                };
+                if self.passes(world, (camera, key), (node, state), direction) {
+                    self.reach(next, node, direction, &mut queue);
                 }
             }
         }
     }
-    reached
+
+    /// A section the flood reached that holds something joins the list, once.
+    fn list(&mut self, key: SectionKey, node: Node, state: SectionState) {
+        if state != SectionState::Empty && !node.listed {
+            self.reached.push(key);
+            if let Some(listed) = self.nodes.get_mut(key) {
+                listed.listed = true;
+            }
+        }
+    }
+
+    /// The flood arrives at `next` from `node` going `direction`: a section
+    /// reached before notes the side, a new one is queued.
+    fn reach(
+        &mut self,
+        next: SectionKey,
+        node: Node,
+        direction: Direction,
+        queue: &mut VecDeque<SectionKey>,
+    ) {
+        match self.nodes.get_mut(next) {
+            Some(existing) => existing.sources |= 1 << direction as u8,
+            empty @ None => {
+                *empty = Some(Node {
+                    sources: 1 << direction as u8,
+                    directions: node.directions | 1 << direction as u8,
+                    listed: false,
+                });
+                queue.push_back(next);
+            }
+        }
+    }
 }
 
 /// Whether a section lets the flood through from a side it was reached
@@ -195,6 +284,7 @@ pub(super) fn initial_nodes(world: &GraphWorld<'_>) -> Vec<(SectionKey, Node)> {
             let node = Node {
                 sources: 1 << source as u8,
                 directions,
+                listed: false,
             };
             layer_nodes.push((key, node));
         }

@@ -59,6 +59,7 @@ impl SectionWorkers {
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(count.max(1))
             .thread_name(|index| format!("section-mesher-{index}"))
+            .start_handler(|_| crate::vulkan::yield_to_the_frame())
             .build()
             .expect("a section mesher pool starts");
         Self {

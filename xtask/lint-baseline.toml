@@ -395,7 +395,6 @@
 "crates/photon-render/src/visibility.rs::VisGraph::flood_fill" = 13
 "crates/photon-render/src/visibility.rs::VisGraph::resolve" = 13
 "crates/photon-render/src/visibility/index.rs::initial_nodes" = 11
-"crates/photon-render/src/visibility/index.rs::visible_sections" = 17
 "crates/photon-render/src/vulkan/frame/draw_calls.rs::VulkanBackend::run_range" = 19
 "crates/photon-render/src/vulkan/frame/passes.rs::Run::pipeline" = 12
 "crates/photon-render/src/vulkan/frame/scene.rs::VulkanBackend::record_scene" = 20
