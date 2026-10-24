@@ -341,6 +341,13 @@ pub(super) fn server_events(
     }
 }
 
+/// A sheep row's wool byte: the dye in the low four bits, sheared in bit four.
+fn sheep_wool_byte(described: &Value) -> Option<u8> {
+    let sheared = described.get("sheared").is_some();
+    let dye = described.get("dye").and_then(Value::as_u64);
+    (sheared || dye.is_some()).then(|| dye.unwrap_or(0) as u8 | if sheared { 16 } else { 0 })
+}
+
 /// The spawn flags a row can put on an entity, applied as the server's metadata would.
 fn apply_spawn_flags(
     world: &mut photon_world::ClientWorld,
@@ -377,6 +384,9 @@ fn apply_spawn_flags(
     }
     if described.get("screaming").is_some() {
         world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
+    }
+    if let Some(wool) = sheep_wool_byte(described) {
+        world.apply_entity_metadata(id, &[photon_world::SHEEP_WOOL_DATA_ID, 0, wool, 255]);
     }
     if described.get("bare").is_some() {
         world.apply_entity_metadata(id, &[photon_world::SNOW_GOLEM_PUMPKIN_DATA_ID, 0, 0, 255]);

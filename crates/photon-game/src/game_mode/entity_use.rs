@@ -8,6 +8,8 @@
 use super::*;
 use photon_core::ids::EntityId;
 
+mod sheep;
+
 /// The client's answer to a click on an entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntityUse {
@@ -83,6 +85,7 @@ impl Context<'_> {
             "minecraft:cow" => self.interact_cow(id, hand),
             "minecraft:goat" => self.interact_goat(id, hand),
             "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
+            "minecraft:sheep" => self.interact_sheep(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -417,14 +420,15 @@ impl Context<'_> {
 
     /// `ItemStack.interactLivingEntity` on the client, for what the stack alone decides: a name
     /// tag that carries a name succeeds on any living entity that is not a player.
-    fn item_interacts_with_living(&self, id: EntityId, hand: u8) -> EntityUse {
+    fn item_interacts_with_living(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let living = self
             .world
             .entities()
             .at(id)
             .is_some_and(|entity| entity.is_living_entity());
         let player = self.world.entity_type_name(id) == Some("minecraft:player");
-        if living && !player && self.holds_named_name_tag(hand) {
+        let named = living && !player && self.holds_named_name_tag(hand);
+        if named || (living && self.dye_on_sheep(id, hand)) {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass

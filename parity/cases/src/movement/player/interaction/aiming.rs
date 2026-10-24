@@ -422,6 +422,36 @@ fn two_use_clicks() -> Vec<Value> {
     .concat()
 }
 
+/// Shears, wheat and dyes on sheep: shears only consume the click, a dye of another colour on a
+/// sheep with wool swings and sounds, the rest is feeding.
+fn sheep_rows() -> Vec<Value> {
+    let sheep = |flags: &[&str], dye: Option<u8>| {
+        let mut entity = flagged_animal("sheep", flags);
+        if let Some(dye) = dye {
+            entity["dye"] = json!(dye);
+        }
+        entity
+    };
+    let once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let click = |label: &str, entity: Value, item: &'static str| {
+        facing(label, vec![entity], once()).main_hand(item).count(2).x_rot(30.0).row()
+    };
+    vec![
+        click("use-sheep-with-shears", sheep(&[], None), "minecraft:shears"),
+        click("use-sheared-sheep-with-shears", sheep(&["sheared"], None), "minecraft:shears"),
+        click("use-baby-sheep-with-shears", sheep(&["baby"], None), "minecraft:shears"),
+        click("use-sheep-with-wheat", sheep(&[], None), "minecraft:wheat"),
+        click("use-baby-sheep-with-wheat", sheep(&["baby"], None), "minecraft:wheat"),
+        click("use-sheep-with-red-dye", sheep(&[], None), "minecraft:red_dye"),
+        click("use-white-sheep-with-white-dye", sheep(&[], None), "minecraft:white_dye"),
+        click("use-red-sheep-with-red-dye", sheep(&[], Some(14)), "minecraft:red_dye"),
+        click("use-red-sheep-with-white-dye", sheep(&[], Some(14)), "minecraft:white_dye"),
+        click("use-sheared-sheep-with-red-dye", sheep(&["sheared"], None), "minecraft:red_dye"),
+        click("use-baby-sheep-with-red-dye", sheep(&["baby"], None), "minecraft:red_dye"),
+        click("use-sheep-with-stone", sheep(&[], None), "minecraft:stone"),
+    ]
+}
+
 /// An animal at the usual spot with the named spawn flags set.
 fn flagged_animal(kind: &str, flags: &[&str]) -> Value {
     let mut entity = mob(31, kind, 0.5, 64.0, 2.5);
@@ -504,6 +534,7 @@ pub fn rows() -> Vec<Value> {
         mooshroom_rows(),
         goat_rows(),
         brown_mooshroom_rows(),
+        sheep_rows(),
         age_lock_rows(),
     ]
     .concat()
