@@ -137,6 +137,31 @@ impl Layers<'_> {
     }
 }
 
+/// The state the wolf renders in: its walk, its mood and its tail, head roll and shake.
+fn wolf_state(
+    entity: &photon_world::ClientEntity,
+    snapshot: &photon_world::EntitySnapshot,
+    (partial, game_time): (f32, u64),
+) -> WolfState {
+    let own = entity.wolf();
+    let (baby, angry) = (entity.is_baby(), entity.is_angry(game_time));
+    WolfState {
+        quadruped: QuadrupedState {
+            head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+        },
+        angry,
+        sitting: entity.is_sitting(),
+        baby,
+        tail_angle: entity.wolf_tail_angle(game_time),
+        head_roll_angle: own.head_roll_angle(partial),
+        shake_anim: own.shake_anim(partial),
+        age_scale: if baby { 0.5 } else { 1.0 },
+    }
+}
+
 /// `WolfRenderer` and `WolfCollarLayer` for the wolves the server added.
 pub fn remote_wolves(
     session: &PlaySession,
@@ -170,24 +195,7 @@ pub fn remote_wolves(
         ) else {
             continue;
         };
-        let own = entity.wolf();
-        let state = WolfState {
-            quadruped: QuadrupedState {
-                head_y_rot: photon_core::math::wrap_degrees_f32(
-                    snapshot.head_yaw - snapshot.body_yaw,
-                ),
-                x_rot: snapshot.pitch,
-                walk_position: snapshot.walk_position,
-                walk_speed: snapshot.walk_speed,
-            },
-            angry,
-            sitting: entity.is_sitting(),
-            baby,
-            tail_angle: entity.wolf_tail_angle(game_time),
-            head_roll_angle: own.head_roll_angle(partial),
-            shake_anim: own.shake_anim(partial),
-            age_scale: if baby { 0.5 } else { 1.0 },
-        };
+        let state = wolf_state(entity, &snapshot, (partial, game_time));
         model.setup_wolf(&state);
         let placed = placement(world, &snapshot, view, entity.scale());
         vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));

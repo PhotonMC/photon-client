@@ -494,16 +494,15 @@
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 14
 "crates/photon/examples/bench.rs::world" = 14
 "crates/photon/src/controls.rs::menu_key" = 14
-"crates/photon/src/controls/book.rs::Controls::book_event" = 14
+"crates/photon/src/controls/book.rs::Controls::book_event" = 13
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 11
 "crates/photon/src/controls/events.rs::Controls::mapped_input" = 35
 "crates/photon/src/controls/events.rs::Controls::pause_event" = 13
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 11
 "crates/photon/src/controls/events.rs::Controls::world_event" = 14
 "crates/photon/src/controls/keybinds.rs::Controls::key_binds_event" = 12
-"crates/photon/src/controls/options.rs::Controls::language_event" = 13
+"crates/photon/src/controls/options.rs::Controls::language_event" = 12
 "crates/photon/src/controls/options.rs::Controls::options_event" = 13
-"crates/photon/src/controls/options.rs::Controls::video_event" = 11
 "crates/photon/src/controls/scripted.rs::Controls::script_step" = 14
 "crates/photon/src/controls/scripted.rs::Controls::scripted_escape" = 13
 "crates/photon/src/controls/settings.rs::Controls::chat_options_event" = 11
@@ -921,10 +920,7 @@
 "crates/photon-world/src/world/entities/ticking.rs::ClientWorld::tick_entity_once" = 99
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 100
-"crates/photon/src/controls/book.rs::Controls::book_event" = 67
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
-"crates/photon/src/controls/options.rs::Controls::language_event" = 61
-"crates/photon/src/controls/options.rs::Controls::video_event" = 61
 "crates/photon/src/controls/scripted.rs::Controls::script_step" = 68
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
@@ -936,8 +932,6 @@
 "crates/photon/src/mobs/animals/felines.rs::remote_felines" = 94
 "crates/photon/src/mobs/animals/foxes.rs::remote_foxes" = 70
 "crates/photon/src/mobs/animals/pandas.rs::remote_pandas" = 76
-"crates/photon/src/mobs/animals/wolves.rs::remote_wolves" = 63
-"crates/photon/src/mobs/aquatic/axolotls.rs::remote_axolotls" = 61
 "crates/photon/src/mobs/aquatic/frogs.rs::remote_frogs" = 69
 "crates/photon/src/mobs/humanoids/armor_stands.rs::remote_armor_stands" = 74
 "crates/photon/src/mobs/humanoids/golems.rs::remote_golems" = 104
@@ -961,7 +955,6 @@
 "crates/photon/src/play/ticks.rs::Play::start" = 151
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
-"crates/photon/src/window_probe/version.rs::run_window" = 61
 "crates/photon/src/window_probe/world.rs::load_world" = 91
 "crates/photon/src/world/sections.rs::SectionMeshes::visible" = 62
 "crates/photon/src/world/signs.rs::sign_texts" = 69

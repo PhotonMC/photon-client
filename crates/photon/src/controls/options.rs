@@ -11,11 +11,7 @@ impl Controls {
         use glfw::{Action, Key, MouseButton, WindowEvent};
         let lang = &assets.lang;
         if let WindowEvent::CursorPos(x, y) = event {
-            let before = self.gui_mouse.1;
-            self.move_gui_mouse((x, y), surface);
-            if let Some(video) = self.video_screen.as_mut() {
-                video.dragged(lang, self.gui_mouse, self.gui_mouse.1 - before);
-            }
+            self.video_cursor((x, y), surface, lang);
             return;
         }
         let Some(video) = self.video_screen.as_mut() else {
@@ -260,6 +256,30 @@ impl Controls {
         }
     }
 
+    /// A press of the primary button, and whether it makes a double click with the one before:
+    /// the window's own timing is not kept, so two presses at the same place within 250 ms.
+    fn press_is_double(last: &mut Option<(Instant, (i32, i32))>, mouse: (f64, f64)) -> bool {
+        let (now, place) = (Instant::now(), (mouse.0 as i32, mouse.1 as i32));
+        let double = last
+            .is_some_and(|(at, before)| now - at < Duration::from_millis(250) && before == place);
+        *last = Some((now, place));
+        double
+    }
+
+    /// The cursor moving over the video settings: the slider it drags follows.
+    fn video_cursor(
+        &mut self,
+        at: (f64, f64),
+        surface: &mut WindowSurface,
+        lang: &photon_game::text::Lang,
+    ) {
+        let before = self.gui_mouse.1;
+        self.move_gui_mouse(at, surface);
+        if let Some(video) = self.video_screen.as_mut() {
+            video.dragged(lang, self.gui_mouse, self.gui_mouse.1 - before);
+        }
+    }
+
     /// An event for the open language screen.
     pub(super) fn language_event(
         &mut self,
@@ -306,14 +326,7 @@ impl Controls {
             }
             WindowEvent::Char(character) => screen.char_typed(font, character),
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
-                // The window's own double click timing is not kept: two
-                // presses at the same place within 250 ms.
-                let now = Instant::now();
-                let double = self.last_press.is_some_and(|(at, place)| {
-                    now - at < Duration::from_millis(250)
-                        && place == (mouse.0 as i32, mouse.1 as i32)
-                });
-                self.last_press = Some((now, (mouse.0 as i32, mouse.1 as i32)));
+                let double = Self::press_is_double(&mut self.last_press, mouse);
                 input = Some(screen.clicked(font, mouse, double));
             }
             WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _) => screen.released(),

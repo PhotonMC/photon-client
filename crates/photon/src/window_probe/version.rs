@@ -1,26 +1,27 @@
 use super::*;
 
+/// The next argument parsed, or `default` when there is none.
+fn next_arg<T>(args: &mut impl Iterator<Item = String>, default: T) -> Result<T>
+where
+    T: std::str::FromStr,
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    Ok(args
+        .next()
+        .map(|value| value.parse())
+        .transpose()?
+        .unwrap_or(default))
+}
+
 /// Open the client window and report the sizing the reference rules produce.
 ///
 /// This is the surface only: nothing is drawn yet, so the window stays blank
 /// until the Vulkan backend lands. `frames` bounds the loop so the probe can be
 /// run non-interactively; `0` keeps it open until the window is closed.
 pub fn run_window(mut args: impl Iterator<Item = String>) -> Result<()> {
-    let width: i32 = args
-        .next()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(854);
-    let height: i32 = args
-        .next()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(480);
-    let frames: u64 = args
-        .next()
-        .map(|value| value.parse())
-        .transpose()?
-        .unwrap_or(0);
+    let width: i32 = next_arg(&mut args, 854)?;
+    let height: i32 = next_arg(&mut args, 480)?;
+    let frames: u64 = next_arg(&mut args, 0)?;
 
     let display = DisplayData {
         width,

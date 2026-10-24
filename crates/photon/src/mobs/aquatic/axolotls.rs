@@ -39,6 +39,34 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     TEXTURES.into_iter().flatten()
 }
 
+/// The state the axolotl renders in: its walk, its animation blends and the poses it is in.
+fn render_state(
+    entity: &photon_world::ClientEntity,
+    snapshot: &photon_world::EntitySnapshot,
+    partial: f32,
+) -> AxolotlRenderState {
+    let own = entity.axolotl().copied().unwrap_or_default();
+    AxolotlRenderState {
+        quadruped: QuadrupedState {
+            head_y_rot: photon_core::math::wrap_degrees_f32(snapshot.head_yaw - snapshot.body_yaw),
+            x_rot: snapshot.pitch,
+            walk_position: snapshot.walk_position,
+            walk_speed: snapshot.walk_speed,
+        },
+        age_in_ticks: entity.tick_count() as f32 + partial,
+        playing_dead_factor: own.playing_dead.factor(partial),
+        moving_factor: own.moving.factor(partial),
+        in_water_factor: own.in_water.factor(partial),
+        on_ground_factor: own.on_ground.factor(partial),
+        swim: own.swim,
+        walk: own.walk,
+        idle_under_water: own.idle_under_water,
+        idle_under_water_on_ground: own.idle_under_water_on_ground,
+        idle_on_ground: own.idle_on_ground,
+        play_dead: own.play_dead,
+    }
+}
+
 /// `AxolotlRenderer` for the axolotls the server added.
 pub fn remote_axolotls(
     session: &PlaySession,
@@ -70,28 +98,7 @@ pub fn remote_axolotls(
         ) else {
             continue;
         };
-        let own = entity.axolotl().copied().unwrap_or_default();
-        let state = AxolotlRenderState {
-            quadruped: QuadrupedState {
-                head_y_rot: photon_core::math::wrap_degrees_f32(
-                    snapshot.head_yaw - snapshot.body_yaw,
-                ),
-                x_rot: snapshot.pitch,
-                walk_position: snapshot.walk_position,
-                walk_speed: snapshot.walk_speed,
-            },
-            age_in_ticks: entity.tick_count() as f32 + partial,
-            playing_dead_factor: own.playing_dead.factor(partial),
-            moving_factor: own.moving.factor(partial),
-            in_water_factor: own.in_water.factor(partial),
-            on_ground_factor: own.on_ground.factor(partial),
-            swim: own.swim,
-            walk: own.walk,
-            idle_under_water: own.idle_under_water,
-            idle_under_water_on_ground: own.idle_under_water_on_ground,
-            idle_on_ground: own.idle_on_ground,
-            play_dead: own.play_dead,
-        };
+        let state = render_state(entity, &snapshot, partial);
         if baby {
             model.setup_axolotl_baby(&state);
         } else {

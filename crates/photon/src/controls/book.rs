@@ -98,6 +98,18 @@ impl Controls {
         Ok(())
     }
 
+    /// The signing screen opens over the book being edited.
+    fn open_sign(&mut self, texts: (&photon_render::gui::font::Font, &photon_game::text::Lang)) {
+        if let Some(edit) = self.book_edit.as_mut() {
+            edit.sign = Some(BookSignScreen::new(
+                texts,
+                &edit.title,
+                &edit.owner,
+                edit.screen.size(),
+            ));
+        }
+    }
+
     /// An event for the book's screen.
     pub(super) fn book_event(
         &mut self,
@@ -153,14 +165,7 @@ impl Controls {
             Some(BookEditAction::Done) => self.close_book(Some(None), session, surface),
             Some(BookEditAction::Close) => self.close_book(None, session, surface),
             Some(BookEditAction::Sign) => {
-                if let Some(edit) = self.book_edit.as_mut() {
-                    edit.sign = Some(BookSignScreen::new(
-                        texts,
-                        &edit.title,
-                        &edit.owner,
-                        edit.screen.size(),
-                    ));
-                }
+                self.open_sign(texts);
                 Ok(())
             }
             None => Ok(()),
