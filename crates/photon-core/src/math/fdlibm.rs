@@ -424,62 +424,78 @@ fn log2_parts(mut ax: f64) -> (f64, f64) {
     (high, z_l - (((high - t) - DP_H[k]) - z_h))
 }
 
+/// `log2(|x|)` as a head and a tail for `|y| > 2^31`, or the answer when `x^y` is certain to
+/// overflow or underflow.
+fn log2_for_huge_exponent(x: f64, y: f64, s: f64) -> Result<(f64, f64), f64> {
+    let ix = hi(x) & 0x7fff_ffff;
+    let iy = hi(y) & 0x7fff_ffff;
+    let hy = hi(y);
+    if iy > 0x43f0_0000 {
+        if ix <= 0x3fef_ffff {
+            return Err(if hy < 0 { HUGE * HUGE } else { TINY * TINY });
+        }
+        if ix >= 0x3ff0_0000 {
+            return Err(if hy > 0 { HUGE * HUGE } else { TINY * TINY });
+        }
+    }
+    if ix < 0x3fef_ffff {
+        return Err(if hy < 0 {
+            s * HUGE * HUGE
+        } else {
+            s * TINY * TINY
+        });
+    }
+    if ix > 0x3ff0_0000 {
+        return Err(if hy > 0 {
+            s * HUGE * HUGE
+        } else {
+            s * TINY * TINY
+        });
+    }
+    Ok(log2_near_one(x.abs()))
+}
+
+/// The overflow or underflow answer for `2^(p_h + p_l)`, where `z` is their sum, if it has one.
+fn pow_out_of_range(s: f64, p_h: f64, p_l: f64, z: f64) -> Option<f64> {
+    let j = hi(z);
+    let i = lo(z);
+    if j >= 0x4090_0000 {
+        if ((j - 0x4090_0000) as u32 | i) != 0 || p_l + OVT > z - p_h {
+            return Some(s * HUGE * HUGE);
+        }
+    } else if (j & 0x7fff_ffff) >= 0x4090_cc00
+        && (((j as u32).wrapping_sub(0xc090_cc00)) | i != 0 || p_l <= z - p_h)
+    {
+        return Some(s * TINY * TINY);
+    }
+    None
+}
+
 /// `StrictMath.pow`.
 pub fn fdlibm_pow(x: f64, y: f64) -> f64 {
     let s = match pow_special(x, y) {
         Ok(sign) => sign,
         Err(answer) => return answer,
     };
-    let ix = hi(x) & 0x7fff_ffff;
     let iy = hi(y) & 0x7fff_ffff;
-    let hy = hi(y);
-    let ax = x.abs();
-    let (t1, t2);
-    if iy > 0x41e0_0000 {
+    let (t1, t2) = if iy > 0x41e0_0000 {
         // |y| > 2^31.
-        if iy > 0x43f0_0000 {
-            if ix <= 0x3fef_ffff {
-                return if hy < 0 { HUGE * HUGE } else { TINY * TINY };
-            }
-            if ix >= 0x3ff0_0000 {
-                return if hy > 0 { HUGE * HUGE } else { TINY * TINY };
-            }
+        match log2_for_huge_exponent(x, y, s) {
+            Ok(parts) => parts,
+            Err(answer) => return answer,
         }
-        if ix < 0x3fef_ffff {
-            return if hy < 0 {
-                s * HUGE * HUGE
-            } else {
-                s * TINY * TINY
-            };
-        }
-        if ix > 0x3ff0_0000 {
-            return if hy > 0 {
-                s * HUGE * HUGE
-            } else {
-                s * TINY * TINY
-            };
-        }
-        (t1, t2) = log2_near_one(ax);
     } else {
-        (t1, t2) = log2_parts(ax);
-    }
+        log2_parts(x.abs())
+    };
     // Split y into y1 + y2 and compute (y1 + y2) * (t1 + t2).
     let y1 = with_lo(y, 0);
     let p_l = (y - y1) * t1 + y * t2;
     let p_h = y1 * t1;
     let z = p_l + p_h;
-    let j = hi(z);
-    let i = lo(z);
-    if j >= 0x4090_0000 {
-        if ((j - 0x4090_0000) as u32 | i) != 0 || p_l + OVT > z - p_h {
-            return s * HUGE * HUGE;
-        }
-    } else if (j & 0x7fff_ffff) >= 0x4090_cc00
-        && (((j as u32).wrapping_sub(0xc090_cc00)) | i != 0 || p_l <= z - p_h)
-    {
-        return s * TINY * TINY;
+    if let Some(answer) = pow_out_of_range(s, p_h, p_l, z) {
+        return answer;
     }
-    s * exp2_parts(p_h, p_l, j)
+    s * exp2_parts(p_h, p_l, hi(z))
 }
 
 /// `2^(p_h + p_l)`, where `j` is the high word of their sum.
