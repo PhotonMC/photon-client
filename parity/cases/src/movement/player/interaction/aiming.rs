@@ -253,6 +253,8 @@ fn decoration_rows() -> Vec<Value> {
         )
         .main_hand("minecraft:flint_and_steel")
         .row(),
+        at("use-snow-golem-with-shears", "snow_golem").main_hand("minecraft:shears").row(),
+        at("use-snow-golem-with-stone", "snow_golem").main_hand("minecraft:stone").row(),
         at("use-creeper-with-fire-charge", "creeper").main_hand("minecraft:fire_charge").row(),
         at("use-creeper-with-stone", "creeper").main_hand("minecraft:stone").row(),
         at("use-zombie-with-lead", "zombie").main_hand("minecraft:lead").row(),

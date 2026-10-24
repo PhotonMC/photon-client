@@ -62,7 +62,15 @@ impl Context<'_> {
             "minecraft:item_frame" | "minecraft:glow_item_frame" => {
                 self.interact_item_frame(id, hand)
             }
+            _ => self.interact_mob_class(name, id, hand),
+        }
+    }
+
+    /// `Mob.mobInteract` of the clicked class.
+    fn interact_mob_class(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        match name {
             "minecraft:creeper" => self.interact_creeper(id, hand),
+            "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -153,6 +161,24 @@ impl Context<'_> {
                 at,
             ));
         EntityUse::Success { swing: true }
+    }
+
+    /// `SnowGolem.mobInteract`: shears on a golem that wears its pumpkin succeed with a swing (the
+    /// server shears it).
+    fn interact_snow_golem(&self, id: EntityId, hand: u8) -> EntityUse {
+        let wears = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.has_pumpkin());
+        let shears = self
+            .held(hand)
+            .is_some_and(|(item, _)| crate::item::id_of("minecraft:shears") == Some(item));
+        if wears && shears {
+            EntityUse::Success { swing: true }
+        } else {
+            EntityUse::Pass
+        }
     }
 
     /// The end of `Entity.interact` for a `Leashable` that lives, which `Mob.interact` runs
