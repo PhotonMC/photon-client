@@ -19,15 +19,8 @@ pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, Conn
             match bit {
                 0 => {
                     let name = read_chat_string(&mut input, 16, "player info name")?;
-                    let properties = read_varint(&mut input, "player info properties")?;
-                    for _ in 0..properties {
-                        read_chat_string(&mut input, 64, "property name")?;
-                        read_chat_string(&mut input, 32767, "property value")?;
-                        if read_bool(&mut input, "property signature flag")? {
-                            read_chat_string(&mut input, 1024, "property signature")?;
-                        }
-                    }
-                    list.push(InfoAction::Add { name });
+                    let properties = read_properties(&mut input)?;
+                    list.push(InfoAction::Add { name, properties });
                 }
                 1 => {
                     if read_bool(&mut input, "player info chat flag")? {
@@ -63,6 +56,27 @@ pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, Conn
     Ok(entries)
 }
 
+/// A profile's properties, each with an optional signature.
+fn read_properties(input: &mut &[u8]) -> Result<Vec<ProfileProperty>, ConnectionError> {
+    let count = read_varint(input, "player info properties")?;
+    let mut properties = Vec::new();
+    for _ in 0..count {
+        let name = read_chat_string(input, 64, "property name")?;
+        let value = read_chat_string(input, 32767, "property value")?;
+        let signature = if read_bool(input, "property signature flag")? {
+            Some(read_chat_string(input, 1024, "property signature")?)
+        } else {
+            None
+        };
+        properties.push(ProfileProperty {
+            name,
+            value,
+            signature,
+        });
+    }
+    Ok(properties)
+}
+
 /// `ClientboundPlayerInfoRemovePacket`.
 pub fn parse_player_info_remove(input: &[u8]) -> Result<Vec<(u64, u64)>, ConnectionError> {
     let mut input = input;
@@ -86,12 +100,26 @@ pub struct PlayerInfo {
     pub listed: bool,
     pub display_name: Option<photon_game::text::Component>,
     pub list_order: i32,
+    /// The profile's properties (`GameProfile.properties`), among them the packed textures.
+    pub properties: Vec<ProfileProperty>,
+}
+
+/// A `Property` of a game profile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProfileProperty {
+    pub name: String,
+    pub value: String,
+    /// The base64 signature, where the property is signed.
+    pub signature: Option<String>,
 }
 
 /// One `ClientboundPlayerInfoUpdatePacket` action of a player.
 #[derive(Debug, Clone, PartialEq)]
 pub enum InfoAction {
-    Add { name: String },
+    Add {
+        name: String,
+        properties: Vec<ProfileProperty>,
+    },
     GameMode(i32),
     Listed(bool),
     Latency(i32),

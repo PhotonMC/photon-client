@@ -219,9 +219,36 @@ fn player_info_update_reads_its_actions_in_order() {
     assert_eq!(
         entries[0].1,
         vec![
-            super::super::InfoAction::Add { name: "Al".into() },
+            super::super::InfoAction::Add {
+                name: "Al".into(),
+                properties: Vec::new(),
+            },
             super::super::InfoAction::Listed(true),
             super::super::InfoAction::Latency(50),
         ]
     );
+}
+
+#[test]
+fn player_info_add_keeps_the_profile_properties() {
+    let mut payload = vec![1, 1];
+    payload.extend([0; 15]);
+    payload.push(9); // uuid
+    payload.extend([2, b'A', b'l', 2]); // name, two properties
+    payload.extend([8]);
+    payload.extend(b"textures");
+    payload.extend([3]);
+    payload.extend(b"abc");
+    payload.extend([1, 2]); // signed
+    payload.extend(b"sg");
+    payload.extend([1, b'x', 1, b'y', 0]); // unsigned
+    let entries = super::super::parse_player_info_update(&payload).unwrap();
+    let super::super::InfoAction::Add { properties, .. } = &entries[0].1[0] else {
+        panic!("an add action");
+    };
+    assert_eq!(properties.len(), 2);
+    assert_eq!(properties[0].name, "textures");
+    assert_eq!(properties[0].value, "abc");
+    assert_eq!(properties[0].signature.as_deref(), Some("sg"));
+    assert_eq!(properties[1].signature, None);
 }

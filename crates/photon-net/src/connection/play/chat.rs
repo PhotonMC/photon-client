@@ -6,12 +6,13 @@ impl PlaySession {
     /// that is not.
     pub(super) fn apply_player_info(&mut self, id: (u64, u64), actions: Vec<InfoAction>) {
         for action in actions {
-            if let InfoAction::Add { name } = action {
+            if let InfoAction::Add { name, properties } = action {
                 self.social
                     .player_infos
                     .entry(id)
                     .or_insert_with(|| PlayerInfo {
                         name,
+                        properties,
                         ..PlayerInfo::default()
                     });
                 continue;

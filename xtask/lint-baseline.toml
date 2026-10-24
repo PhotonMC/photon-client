@@ -333,7 +333,7 @@
 "crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 21
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 41
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 16
-"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 16
+"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 14
 "crates/photon-protocol/src/play/recipe.rs::read_slot_display" = 15
 "crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 14
 "crates/photon-protocol/src/play/tests.rs::write_component_fixture" = 13
