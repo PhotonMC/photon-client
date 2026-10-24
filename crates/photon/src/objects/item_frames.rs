@@ -33,10 +33,15 @@ const GLOW_MAP_LIGHT: i32 = 15_728_850;
 /// The block light a glow frame is at least lit by (`ItemFrameRenderer.GLOW_FRAME_BRIGHTNESS`).
 const GLOW_FRAME_BRIGHTNESS: i32 = 5;
 
-/// How many maps the maps' image holds at once.
-const MAP_SLOTS: usize = 16;
+/// The maps' image is a grid of slots, a map to a slot: 16 across, 8 down. A wall of picture
+/// maps shows more than a few at once, and a map whose slot is taken in the same frame would
+/// show another map's colours.
+const MAP_COLUMNS: usize = 16;
+const MAP_ROWS: usize = 8;
+const MAP_SLOTS: usize = MAP_COLUMNS * MAP_ROWS;
+const IMAGE_WIDTH: usize = MAP_SIDE * MAP_COLUMNS;
 
-/// The maps' colours as one image, a map to a slot of 128 rows, kept until a map changes.
+/// The maps' colours as one image, a map to a slot of 128 by 128, kept until a map changes.
 pub struct MapTextures {
     slots: Vec<Option<(i32, u32)>>,
     pixels: Vec<u8>,
@@ -48,7 +53,7 @@ impl MapTextures {
     fn new() -> Self {
         Self {
             slots: vec![None; MAP_SLOTS],
-            pixels: vec![0; MAP_SIDE * MAP_SIDE * MAP_SLOTS * 4],
+            pixels: vec![0; IMAGE_WIDTH * MAP_SIDE * MAP_ROWS * 4],
             next_victim: 0,
             dirty: false,
         }
@@ -70,9 +75,13 @@ impl MapTextures {
             })
         });
         if self.slots[slot] != Some((id, data.version())) {
-            let start = slot * MAP_SIDE * MAP_SIDE * 4;
+            let (left, top) = (
+                (slot % MAP_COLUMNS) * MAP_SIDE,
+                (slot / MAP_COLUMNS) * MAP_SIDE,
+            );
             for (index, color) in data.colors().iter().enumerate() {
-                let at = start + index * 4;
+                let (x, y) = (index % MAP_SIDE, index / MAP_SIDE);
+                let at = ((top + y) * IMAGE_WIDTH + left + x) * 4;
                 self.pixels[at..at + 4].copy_from_slice(&photon_data::map::packed_rgba(*color));
             }
             self.slots[slot] = Some((id, data.version()));
@@ -84,8 +93,8 @@ impl MapTextures {
     /// The image to upload, if a map came or changed since it last was.
     fn take_image(&mut self) -> Option<photon_render::DecodedImage> {
         std::mem::take(&mut self.dirty).then(|| photon_render::DecodedImage {
-            width: MAP_SIDE as u32,
-            height: (MAP_SIDE * MAP_SLOTS) as u32,
+            width: IMAGE_WIDTH as u32,
+            height: (MAP_SIDE * MAP_ROWS) as u32,
             rgba: self.pixels.clone(),
         })
     }
@@ -293,14 +302,17 @@ fn frame_map(
         })
         .collect();
     let light = photon_render::block::light::light_uv(light);
-    let rows = MAP_SLOTS as f32;
+    let (column, row) = ((slot % MAP_COLUMNS) as f32, (slot / MAP_COLUMNS) as f32);
     for quad in map_quads(pose, &decorations, true) {
         for index in [0, 1, 2, 0, 2, 3] {
             let uv = quad.uvs[index];
             let (uv, target) = match quad.sheet {
-                // The map's own rows of the image.
+                // The map's own cell of the image.
                 Sheet::Map => (
-                    [uv[0], (slot as f32 + uv[1]) / rows],
+                    [
+                        (column + uv[0]) / MAP_COLUMNS as f32,
+                        (row + uv[1]) / MAP_ROWS as f32,
+                    ],
                     &mut state.map_vertices,
                 ),
                 Sheet::Decorations => (uv, &mut state.decoration_vertices),
