@@ -68,7 +68,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
         font: shared_font.clone(),
         repair_cost: lang.text("container.repair.cost"),
         repair_expensive: lang.text("container.repair.expensive"),
-        patterns: std::sync::Arc::default(),
+        patterns: super::loom::offer(&mut menu),
         lang: lang.clone(),
         alt_font: std::sync::Arc::new(crate::fonts::load_alt(root).ok_or("alt font")?),
         enchantments: std::sync::Arc::new(Vec::<EnchantText>::new()),

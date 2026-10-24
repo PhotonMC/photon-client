@@ -96,3 +96,29 @@ impl ItemTags {
         self.0.iter().map(|(tag, items)| (tag.as_str(), items))
     }
 }
+
+/// The tags of a registry whose order matters, as the server listed their members: the loom
+/// offers a tag's patterns in that order.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OrderedTags(BTreeMap<String, Vec<i32>>);
+
+impl OrderedTags {
+    /// The tags of one registry from a tag packet; `None` when it does not update that registry.
+    pub fn of_registry(registries: &[RegistryTags], name: &str) -> Option<Self> {
+        let entries = registries
+            .iter()
+            .find(|registry| registry.registry.as_string() == name)?;
+        Some(Self(
+            entries
+                .tags
+                .iter()
+                .map(|tag| (tag.id.as_string(), tag.values.clone()))
+                .collect(),
+        ))
+    }
+
+    /// The members of a tag by registry id, in the order the server listed them.
+    pub fn members(&self, tag: &str) -> impl Iterator<Item = i32> + '_ {
+        self.0.get(tag).into_iter().flatten().copied()
+    }
+}

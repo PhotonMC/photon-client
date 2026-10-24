@@ -52,6 +52,30 @@ class GuiRecorder extends GuiFonts {
         }
     }
 
+    /**
+     * The sprites of the banner patterns: each a whole texture of its own named for its pattern,
+     * so a picture of a part of one records where in the 64 by 64 it lies.
+     */
+    static final class BannerSprites extends HashMap<Object, net.minecraft.client.renderer.texture.TextureAtlasSprite> {
+        @Override
+        public net.minecraft.client.renderer.texture.TextureAtlasSprite get(Object key) {
+            try {
+                var texture = ((net.minecraft.client.resources.model.sprite.SpriteId) key).texture().getPath();
+                var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) unsafe.allocateInstance(
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                set(sprite, "atlasLocation", Identifier.withDefaultNamespace(
+                    "textures/gui/banner/" + texture.replace("entity/banner/", "") + ".png"));
+                set(sprite, "u0", 0.0F);
+                set(sprite, "u1", 1.0F);
+                set(sprite, "v0", 0.0F);
+                set(sprite, "v1", 1.0F);
+                return sprite;
+            } catch (Exception error) {
+                throw new IllegalStateException(error);
+            }
+        }
+    }
+
     /** A texture view that is only its name. */
     static final class NamedView extends com.mojang.blaze3d.textures.GpuTextureView {
         String name;
@@ -209,6 +233,7 @@ class GuiRecorder extends GuiFonts {
         Reflect.open(constructor);
         set(atlasManager, "atlasById",
             Map.of(net.minecraft.data.AtlasIds.GUI, constructor.newInstance(atlas, null)));
+        set(atlasManager, "spriteLookup", new BannerSprites());
         set(minecraft, "atlasManager", atlasManager);
         var directory = java.nio.file.Files.createTempDirectory("oracle-gui").toFile();
         set(minecraft, "gameDirectory", directory);

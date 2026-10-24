@@ -35,6 +35,7 @@ mod shell;
 mod stored;
 use settings::*;
 mod container;
+mod loom;
 use container::*;
 mod title;
 use title::*;

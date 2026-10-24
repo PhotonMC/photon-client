@@ -316,19 +316,7 @@ impl GenericScreen {
                 .ok()
                 .and_then(|id| self.titles.patterns.get(id));
             if let Some((asset, key)) = pattern {
-                // The banner's texture from its top left: 21 by 40 of the 64
-                // by 64, drawn small over grey.
-                let (px, py) = (left + x + 4, top + y + 2);
-                draw.frame
-                    .fill(draw.atlas, (px, py, px + 5, py + 10), 0xFF47_4F52);
-                draw.frame.blit_region(
-                    draw.atlas,
-                    GuiBlend::Translucent,
-                    &format!("banner/{asset}"),
-                    (64, 64),
-                    (0, 1, 21, 40),
-                    (px, py, 5, 10),
-                );
+                loom_banner_preview(draw, asset, (left + x + 4, top + y + 2));
                 if over && index as i32 != selected {
                     tip = Some(self.titles.lang.text(&format!("{key}.{dye}")));
                 }
@@ -378,4 +366,22 @@ impl GenericScreen {
                 .then_some(row as i32)
         })
     }
+}
+
+/// A pattern button's banner: 21 by 40 of the texture's 64 by 64 from its top left, drawn small
+/// over grey.
+fn loom_banner_preview(draw: &mut ScreenDraw<'_, '_>, asset: &str, (px, py): (i32, i32)) {
+    draw.frame
+        .fill(draw.atlas, (px, py, px + 5, py + 10), 0xFF47_4F52);
+    let name = format!("banner/{asset}");
+    draw.frame
+        .log_texture(&name, (64, 64), (0, 1, 21, 40), (px, py, 5, 10));
+    draw.frame.blit_region(
+        draw.atlas,
+        GuiBlend::Translucent,
+        &name,
+        (64, 64),
+        (0, 1, 21, 40),
+        (px, py, 5, 10),
+    );
 }

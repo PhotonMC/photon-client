@@ -644,7 +644,7 @@
 "crates/photon-gui/src/screen/generic/transform/anvil.rs::GenericScreen::anvil_extras" = 89
 "crates/photon-gui/src/screen/generic/transform/name.rs::GenericScreen::enchant_draw" = 163
 "crates/photon-gui/src/screen/generic/transform/name.rs::GenericScreen::enchant_tooltip" = 64
-"crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::loom_draw" = 96
+"crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::loom_draw" = 86
 "crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::stone_draw" = 64
 "crates/photon-gui/src/screen/inventory.rs::InventoryScreen::build" = 63
 "crates/photon-gui/src/screen/pause.rs::PauseScreen::new" = 121

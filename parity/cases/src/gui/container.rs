@@ -145,6 +145,11 @@ fn small_menus() -> Vec<Value> {
         sync_slot: Some(0),
         ..stonecutter()
     };
+    let loom = || Screen {
+        slots: vec![(0, "white_banner", 1), (1, "red_dye", 1)],
+        sync_slot: Some(1),
+        ..screen("loom", "container.loom")
+    };
     let cartography = || screen("cartography_table", "container.cartography_table");
     vec![
         anvil().row("anvil-empty"),
@@ -162,6 +167,9 @@ fn small_menus() -> Vec<Value> {
         Screen { clicks: vec![(215, 60)], ..ingot(5, -1) }.row("stonecutter-click-other"),
         Screen { clicks: vec![(10, 10)], ..ingot(5, -1) }.row("stonecutter-click-outside"),
         screen("loom", "container.loom").row("loom-empty"),
+        loom().row("loom-patterns"),
+        Screen { clicks: vec![(190, 55)], ..loom() }.row("loom-click-pattern"),
+        Screen { clicks: vec![(190, 55)], ..screen("loom", "container.loom") }.row("loom-click-no-banner"),
         cartography().row("cartography-empty"),
         Screen { slots: vec![(1, "paper", 1)], sync_slot: Some(1), ..cartography() }.row("cartography-paper"),
         Screen { slots: vec![(1, "glass_pane", 1)], sync_slot: Some(1), ..cartography() }.row("cartography-glass"),

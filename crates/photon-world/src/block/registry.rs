@@ -27,7 +27,7 @@ pub struct ClientBlockStateRegistry {
     /// The item tags the server last sent.
     pub(crate) item_tags: Arc<ItemTags>,
     /// The banner pattern tags the server last sent.
-    pub(crate) banner_pattern_tags: Arc<ItemTags>,
+    pub(crate) banner_pattern_tags: Arc<super::tags::OrderedTags>,
     /// The entity type tags the server last sent.
     pub(crate) entity_type_tags: Arc<ItemTags>,
     /// The fluid tags the server last sent, by fluid registry id.
@@ -79,7 +79,7 @@ impl ClientBlockStateRegistry {
     }
 
     /// The banner pattern tags the server last sent.
-    pub fn banner_pattern_tags(&self) -> &Arc<ItemTags> {
+    pub fn banner_pattern_tags(&self) -> &Arc<super::tags::OrderedTags> {
         &self.banner_pattern_tags
     }
 
@@ -105,7 +105,9 @@ impl ClientBlockStateRegistry {
         if let Some(tags) = ItemTags::from_registries(registries) {
             self.item_tags = Arc::new(tags);
         }
-        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:banner_pattern") {
+        if let Some(tags) =
+            super::tags::OrderedTags::of_registry(registries, "minecraft:banner_pattern")
+        {
             self.banner_pattern_tags = Arc::new(tags);
         }
         if let Some(tags) = ItemTags::of_registry(registries, "minecraft:entity_type") {

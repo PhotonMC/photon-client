@@ -65,10 +65,9 @@ impl GuiFrame {
         self.blit_stretched_with(atlas, GuiBlend::Vignette, name, texture_size, region, rect);
     }
 
-    pub(super) fn blit_stretched_with(
+    /// The draw log's record of part of a whole texture: where in it, as fractions.
+    pub fn log_texture(
         &mut self,
-        atlas: &GuiAtlas,
-        blend: GuiBlend,
         name: &str,
         texture_size: (i32, i32),
         region: (i32, i32, i32, i32),
@@ -93,6 +92,18 @@ impl GuiFrame {
                 colour: 0xFFFF_FFFF,
             });
         }
+    }
+
+    pub(super) fn blit_stretched_with(
+        &mut self,
+        atlas: &GuiAtlas,
+        blend: GuiBlend,
+        name: &str,
+        texture_size: (i32, i32),
+        region: (i32, i32, i32, i32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        self.log_texture(name, texture_size, region, rect);
         self.blit_region(
             atlas,
             blend,
