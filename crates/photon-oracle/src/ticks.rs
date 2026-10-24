@@ -97,7 +97,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     }
 
     // The reference level's registry holds the vanilla tags.
-    world.apply_update_tags_packet(&vanilla_block_tags()?);
+    world.apply_update_tags_packet(&vanilla_block_and_item_tags()?);
     Ok(world)
 }
 

@@ -233,6 +233,12 @@ fn decoration_rows() -> Vec<Value> {
         at("use-zombie-with-named-tag", "zombie").main_hand("minecraft:name_tag").custom_name("Bob").row(),
         at("use-zombie-with-spawn-egg", "zombie").main_hand("minecraft:pig_spawn_egg").row(),
         at("use-armor-stand-with-spawn-egg", "armor_stand").main_hand("minecraft:pig_spawn_egg").row(),
+        at("use-chicken-with-seeds", "chicken").main_hand("minecraft:wheat_seeds").x_rot(30.0).row(),
+        at("use-chicken-with-stone", "chicken").main_hand("minecraft:stone").x_rot(30.0).row(),
+        at("use-rabbit-with-carrot", "rabbit").main_hand("minecraft:carrot").x_rot(30.0).row(),
+        at("use-turtle-with-seagrass", "turtle").main_hand("minecraft:seagrass").x_rot(30.0).row(),
+        at("use-fox-with-sweet-berries", "fox").main_hand("minecraft:sweet_berries").x_rot(30.0).row(),
+        at("use-frog-with-slime-ball", "frog").main_hand("minecraft:slime_ball").x_rot(30.0).row(),
         at("use-zombie-with-unnamed-tag", "zombie").main_hand("minecraft:name_tag").row(),
         at("use-minecart-with-named-tag", "minecart")
             .main_hand("minecraft:name_tag")

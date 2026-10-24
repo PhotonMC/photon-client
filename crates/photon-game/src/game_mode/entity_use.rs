@@ -56,7 +56,10 @@ impl Context<'_> {
             "minecraft:item_frame" | "minecraft:glow_item_frame" => {
                 self.interact_item_frame(id, hand)
             }
-            _ => EntityUse::Pass,
+            _ => match animal_food_tag(name) {
+                Some(tag) => self.feed_animal(id, hand, tag),
+                None => EntityUse::Pass,
+            },
         }
     }
 
@@ -85,6 +88,29 @@ impl Context<'_> {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass
+        }
+    }
+
+    /// `Animal.mobInteract` on the client, for the animals that add nothing to it: their food
+    /// either ages a baby up (a success) or is consumed with no swing; any other item passes.
+    /// (A golden dandelion on a baby and a lead on a leashed animal come first in the
+    /// reference and are not covered.)
+    fn feed_animal(&self, id: EntityId, hand: u8, tag: &str) -> EntityUse {
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let food = self.held(hand).is_some_and(|(item, _)| {
+            self.world
+                .block_state_registry()
+                .item_tags()
+                .contains(item.0, tag)
+        });
+        if !food || entity.health().is_some_and(|health| health <= 0.0) {
+            EntityUse::Pass
+        } else if entity.is_baby() {
+            EntityUse::Success { swing: true }
+        } else {
+            EntityUse::Success { swing: false }
         }
     }
 
@@ -139,4 +165,17 @@ impl Context<'_> {
         self.held(hand)
             .is_some_and(|(item, _)| crate::item::id_of("minecraft:name_tag") == Some(item))
     }
+}
+
+/// The item tag an animal's `isFood` asks for, for the animals whose class has no `mobInteract`
+/// of its own and so answers with `Animal.mobInteract`.
+fn animal_food_tag(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "minecraft:chicken" => "minecraft:chicken_food",
+        "minecraft:rabbit" => "minecraft:rabbit_food",
+        "minecraft:turtle" => "minecraft:turtle_food",
+        "minecraft:frog" => "minecraft:frog_food",
+        "minecraft:fox" => "minecraft:fox_food",
+        _ => return None,
+    })
 }
