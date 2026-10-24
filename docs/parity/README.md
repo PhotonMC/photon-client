@@ -56,6 +56,15 @@ The pre-push hook runs parity when engine crates or reference sources changed. R
 
 The GUI family has its own page: [GUI oracle](gui-oracle.md).
 
+## Reaching private members of the game
+
+The oracle runs the game's own classes, and many of their members are private. Two kinds of class keep that access in one place each:
+
+- `Reflect.java` is the version-neutral mechanism: reading and writing fields (also static ones), calling methods and constructors, and the `Unsafe` singleton for objects built without a constructor. It knows no game names.
+- `Access26_2.java` holds every 26.2 name the oracle reaches, as a named method (for example `holdMusicNote()`). An oracle file calls these methods and carries no member name of its own. Oracle files not yet migrated still use inline reflection; moving them is tracked in issue 11.
+
+To add a version, write the same set of named methods in a class for that version and let the version's families list it. The oracle sources of all families compile in one run, so a helper that a family's `extra_sources` in `tests/behavior/reference.json` does not name still compiles, but that family's capture cache key then ignores edits to the helper. List `Reflect.java` next to `Access26_2.java` in every family that uses either.
+
 ## Legacy records
 
 `docs/records/` holds 670 per-slice contract and parity records from the first phase of the project (in Turkish). They are being converted into case metadata with a generated coverage report and will then be removed.

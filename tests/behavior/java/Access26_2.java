@@ -75,15 +75,12 @@ final class Access26_2 {
         var toastClass = net.minecraft.client.gui.components.toasts.RecipeToast.class;
         var toast = manager.getToast(toastClass, net.minecraft.client.gui.components.toasts.Toast.NO_TOKEN);
         if (toast == null) {
-            var constructor = toastClass.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            toast = constructor.newInstance();
+            toast = Reflect.construct(toastClass, new Class<?>[0]);
             manager.addToast(toast);
         }
-        var addItem = toastClass.getDeclaredMethod("addItem",
-            net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class);
-        addItem.setAccessible(true);
-        addItem.invoke(toast, station, result);
+        Reflect.invoke(toast, toastClass, "addItem",
+            new Class<?>[] {net.minecraft.world.item.ItemStack.class, net.minecraft.world.item.ItemStack.class},
+            station, result);
     }
 
     /** The index of the item the recipe toast shows. */
@@ -102,15 +99,10 @@ final class Access26_2 {
     static net.minecraft.client.Camera camera(float yaw, float pitch,
             net.minecraft.world.phys.Vec3 position, float fov) throws Exception {
         var cameraClass = net.minecraft.client.Camera.class;
-        var fresh = cameraClass.getDeclaredConstructor();
-        fresh.setAccessible(true);
-        var camera = fresh.newInstance();
-        var setRotation = cameraClass.getDeclaredMethod("setRotation", float.class, float.class);
-        setRotation.setAccessible(true);
-        setRotation.invoke(camera, yaw, pitch);
-        var setPosition = cameraClass.getDeclaredMethod("setPosition", net.minecraft.world.phys.Vec3.class);
-        setPosition.setAccessible(true);
-        setPosition.invoke(camera, position);
+        var camera = Reflect.construct(cameraClass, new Class<?>[0]);
+        Reflect.invoke(camera, cameraClass, "setRotation", new Class<?>[] {float.class, float.class}, yaw, pitch);
+        Reflect.invoke(camera, cameraClass, "setPosition",
+            new Class<?>[] {net.minecraft.world.phys.Vec3.class}, position);
         Reflect.set(camera, "fov", fov);
         return camera;
     }
@@ -143,5 +135,106 @@ final class Access26_2 {
         Reflect.set(player, "connection", listener);
         Reflect.set(minecraft, "player", player);
         Reflect.set(camera, "entity", player);
+    }
+
+    /** The clock the game reads (`Util.timeSource`). */
+    static Object clock() throws Exception {
+        return Reflect.get(null, net.minecraft.util.Util.class, "timeSource");
+    }
+
+    static void setClock(Object source) throws Exception {
+        Reflect.setStatic(net.minecraft.util.Util.class, "timeSource", source);
+    }
+
+    /** The toasts waiting to show. */
+    @SuppressWarnings("unchecked")
+    static java.util.Collection<Object> queuedToasts(Object manager) throws Exception {
+        return (java.util.Collection<Object>) Reflect.get(manager, "queued");
+    }
+
+    static net.minecraft.advancements.AdvancementHolder toastAdvancement(Object toast) throws Exception {
+        return (net.minecraft.advancements.AdvancementHolder) Reflect.get(toast, "advancement");
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.Map<String, net.minecraft.advancements.CriterionProgress> criteria(Object progress)
+            throws Exception {
+        return (java.util.Map<String, net.minecraft.advancements.CriterionProgress>) Reflect.get(progress, "criteria");
+    }
+
+    static void obtained(Object criterion, java.time.Instant at) throws Exception {
+        Reflect.set(criterion, "obtained", at);
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.Collection<net.minecraft.advancements.AdvancementNode> tasks(Object tree) throws Exception {
+        return (java.util.Collection<net.minecraft.advancements.AdvancementNode>) Reflect.get(tree, "tasks");
+    }
+
+    @SuppressWarnings("unchecked")
+    static java.util.Map<net.minecraft.advancements.AdvancementHolder, net.minecraft.advancements.AdvancementProgress>
+            heldProgress(Object advancements) throws Exception {
+        return (java.util.Map<net.minecraft.advancements.AdvancementHolder,
+            net.minecraft.advancements.AdvancementProgress>) Reflect.get(advancements, "progress");
+    }
+
+    static net.minecraft.advancements.AdvancementHolder selectedTab(Object advancements) throws Exception {
+        return (net.minecraft.advancements.AdvancementHolder) Reflect.get(advancements, "selectedTab");
+    }
+
+    /** The frame rate the debug screen shows. */
+    static void fps(int value) throws Exception {
+        Reflect.setStatic(net.minecraft.client.Minecraft.class, "fps", value);
+    }
+
+    static Object cpuInfo() throws Exception {
+        return Reflect.get(null, com.mojang.blaze3d.platform.GLX.class, "cpuInfo");
+    }
+
+    static void setCpuInfo(Object value) throws Exception {
+        Reflect.setStatic(com.mojang.blaze3d.platform.GLX.class, "cpuInfo", value);
+    }
+
+    /** A private method of the `Hud`, by name. */
+    static java.lang.reflect.Method hudMethod(String name, Class<?>... types) throws Exception {
+        var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name, types);
+        method.setAccessible(true);
+        return method;
+    }
+
+    /** `DebugScreenOverlay.extractLines`, drawn for one side. */
+    static void extractDebugLines(Object overlay, Object graphics, java.util.List<?> lines, boolean left)
+            throws Exception {
+        Reflect.invoke(overlay, net.minecraft.client.gui.components.DebugScreenOverlay.class, "extractLines",
+            new Class<?>[] {net.minecraft.client.gui.GuiGraphicsExtractor.class, java.util.List.class, boolean.class},
+            graphics, lines, left);
+    }
+
+    /** `ContextualBar.extractExperienceLevel` (static). */
+    static void extractExperienceLevel(Object graphics, Object font, int level) throws Exception {
+        Reflect.invoke(null, net.minecraft.client.gui.contextualbar.ContextualBar.class, "extractExperienceLevel",
+            new Class<?>[] {net.minecraft.client.gui.GuiGraphicsExtractor.class, net.minecraft.client.gui.Font.class,
+                int.class}, graphics, font, level);
+    }
+
+    static void setGameMode(Object playerInfo, net.minecraft.world.level.GameType mode) throws Exception {
+        Reflect.invoke(playerInfo, net.minecraft.client.multiplayer.PlayerInfo.class, "setGameMode",
+            new Class<?>[] {net.minecraft.world.level.GameType.class}, mode);
+    }
+
+    /** The hud draws waypoints in `styles`. */
+    static void waypointStyles(Object hud, Object styleManager, Object styles) throws Exception {
+        Reflect.set(styleManager, "waypointStyles", styles);
+        Reflect.set(hud, "waypointStyles", styleManager);
+    }
+
+    /** The sound engine plays through `library`; the manager runs on that engine. */
+    static void soundEngine(net.minecraft.client.Minecraft minecraft, Object library) throws Exception {
+        var unsafe = Reflect.unsafe();
+        var engine = unsafe.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
+        Reflect.set(engine, "library", library);
+        var manager = unsafe.allocateInstance(net.minecraft.client.sounds.SoundManager.class);
+        Reflect.set(manager, "soundEngine", engine);
+        Reflect.set(minecraft, "soundManager", manager);
     }
 }

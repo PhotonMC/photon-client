@@ -35,16 +35,7 @@ class GuiFonts {
     }
 
     static Object get(Object target, String name) throws Exception {
-        for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass()) {
-            try {
-                Field field = type.getDeclaredField(name);
-                field.setAccessible(true);
-                return field.get(target);
-            } catch (NoSuchFieldException ignored) {
-                // keep looking up the class chain
-            }
-        }
-        throw new NoSuchFieldException(name);
+        return Reflect.get(target, name);
     }
 
     /**

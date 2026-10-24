@@ -277,9 +277,8 @@ class GuiHudOracle extends GuiCommandOracle {
                             .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow());
                 }
             }
-            var styleManager = unsafe.allocateInstance(net.minecraft.client.resources.WaypointStyleManager.class);
-            set(styleManager, "waypointStyles", styles);
-            set(screen.hud(), "waypointStyles", styleManager);
+            Access26_2.waypointStyles(screen.hud(),
+                unsafe.allocateInstance(net.minecraft.client.resources.WaypointStyleManager.class), styles);
 
             for (var packetElement : row.getAsJsonArray("packets")) {
                 var hex = packetElement.getAsString();
@@ -331,10 +330,7 @@ class GuiHudOracle extends GuiCommandOracle {
         local.setId(1);
         var mode = spectator ? net.minecraft.world.level.GameType.SPECTATOR : net.minecraft.world.level.GameType.SURVIVAL;
         var info = new net.minecraft.client.multiplayer.PlayerInfo(scene.listener().getLocalGameProfile(), false);
-        var setMode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod(
-            "setGameMode", net.minecraft.world.level.GameType.class);
-        setMode.setAccessible(true);
-        setMode.invoke(info, mode);
+        Access26_2.setGameMode(info, mode);
         MovementOracle.setField(local, "playerInfo", info);
         MovementOracle.setField(minecraft, "player", local);
         var gameMode = unsafe.allocateInstance(net.minecraft.client.multiplayer.MultiPlayerGameMode.class);
@@ -378,9 +374,7 @@ class GuiHudOracle extends GuiCommandOracle {
 
     /** A private method of the `Hud`, by name. */
     static java.lang.reflect.Method hudMethod(String name, Class<?>... types) throws Exception {
-        var method = net.minecraft.client.gui.Hud.class.getDeclaredMethod(name, types);
-        method.setAccessible(true);
-        return method;
+        return Access26_2.hudMethod(name, types);
     }
 
     /**
@@ -427,11 +421,9 @@ class GuiHudOracle extends GuiCommandOracle {
             GuiScreenOracle.SilentSounds.ASKED.clear();
             // Items are not drawn: the model resolver gives nothing to draw.
             MovementOracle.setField(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
-            var clockField = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-            clockField.setAccessible(true);
-            var clockBefore = clockField.get(null);
+            var clockBefore = Access26_2.clock();
             long[] now = {row.get("now").getAsLong()};
-            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+            Access26_2.setClock((net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
             var languageBefore = net.minecraft.locale.Language.getInstance();
             net.minecraft.locale.Language.inject(clientLanguage("en_us"));
             try {
@@ -489,7 +481,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 rows.add(out);
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);
-                clockField.set(null, clockBefore);
+                Access26_2.setClock(clockBefore);
             }
         }
         var result = new JsonObject();
@@ -516,17 +508,9 @@ class GuiHudOracle extends GuiCommandOracle {
             net.minecraft.locale.Language.inject(clientLanguage("en_us"));
             var states = new JsonArray();
             try {
-                var queued = net.minecraft.client.gui.components.toasts.ToastManager.class.getDeclaredField("queued");
-                queued.setAccessible(true);
-                var toastAdvancement = net.minecraft.client.gui.components.toasts.AdvancementToast.class.getDeclaredField("advancement");
-                toastAdvancement.setAccessible(true);
-                var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
-                criteriaField.setAccessible(true);
-                var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
-                obtainedField.setAccessible(true);
                 for (var stepElement : row.getAsJsonArray("steps")) {
                     var step = stepElement.getAsJsonObject();
-                    ((java.util.Collection<Object>) queued.get(toasts)).clear();
+                    Access26_2.queuedToasts(toasts).clear();
                     if (step.has("tab")) {
                         var tab = step.get("tab");
                         advancements.setSelectedTab(tab.isJsonNull() ? null : advancements.get(
@@ -558,15 +542,11 @@ class GuiHudOracle extends GuiCommandOracle {
                     }
                     state.add("nodes", nodeList);
                     var tasks = new JsonArray();
-                    var taskField = net.minecraft.advancements.AdvancementTree.class.getDeclaredField("tasks");
-                    taskField.setAccessible(true);
-                    for (var task : (java.util.Collection<net.minecraft.advancements.AdvancementNode>) taskField.get(tree)) {
+                    for (var task : Access26_2.tasks(tree)) {
                         tasks.add(task.holder().id().toString());
                     }
                     state.add("tasks", tasks);
-                    var progressField = net.minecraft.client.multiplayer.ClientAdvancements.class.getDeclaredField("progress");
-                    progressField.setAccessible(true);
-                    var held = (java.util.Map<net.minecraft.advancements.AdvancementHolder, net.minecraft.advancements.AdvancementProgress>) progressField.get(advancements);
+                    var held = Access26_2.heldProgress(advancements);
                     var heldIds = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>(held.keySet());
                     heldIds.sort(java.util.Comparator.comparing(holder -> holder.id().toString()));
                     for (var holder : heldIds) {
@@ -596,8 +576,8 @@ class GuiHudOracle extends GuiCommandOracle {
                     var selected = advancementsSelected(advancements);
                     state.add("selected", selected == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(selected));
                     var queuedIds = new java.util.ArrayList<String>();
-                    for (var toast : (java.util.Collection<Object>) queued.get(toasts)) {
-                        queuedIds.add(((net.minecraft.advancements.AdvancementHolder) toastAdvancement.get(toast)).id().toString());
+                    for (var toast : Access26_2.queuedToasts(toasts)) {
+                        queuedIds.add(Access26_2.toastAdvancement(toast).id().toString());
                     }
                     java.util.Collections.sort(queuedIds);
                     var queuedList = new JsonArray();
@@ -726,10 +706,6 @@ class GuiHudOracle extends GuiCommandOracle {
     /** An update packet from its JSON: the flags, the advancements, the ids removed and the progress. */
     @SuppressWarnings("unchecked")
     static net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket updatePacket(JsonObject step) throws Exception {
-        var criteriaField = net.minecraft.advancements.AdvancementProgress.class.getDeclaredField("criteria");
-        criteriaField.setAccessible(true);
-        var obtainedField = net.minecraft.advancements.CriterionProgress.class.getDeclaredField("obtained");
-        obtainedField.setAccessible(true);
         var holders = new java.util.ArrayList<net.minecraft.advancements.AdvancementHolder>();
         for (var added : step.getAsJsonArray("added")) {
             holders.add(advancementHolder(added.getAsJsonObject()));
@@ -742,12 +718,12 @@ class GuiHudOracle extends GuiCommandOracle {
         for (var progressElement : step.getAsJsonArray("progress")) {
             var entry = progressElement.getAsJsonObject();
             var one = new net.minecraft.advancements.AdvancementProgress();
-            var criteria = (java.util.Map<String, net.minecraft.advancements.CriterionProgress>) criteriaField.get(one);
+            var criteria = Access26_2.criteria(one);
             for (var criterion : entry.getAsJsonArray("criteria")) {
                 var pair = criterion.getAsJsonArray();
                 var obtained = new net.minecraft.advancements.CriterionProgress();
                 if (!pair.get(1).isJsonNull()) {
-                    obtainedField.set(obtained, java.time.Instant.ofEpochMilli(pair.get(1).getAsLong()));
+                    Access26_2.obtained(obtained, java.time.Instant.ofEpochMilli(pair.get(1).getAsLong()));
                 }
                 criteria.put(pair.get(0).getAsString(), obtained);
             }
@@ -758,9 +734,7 @@ class GuiHudOracle extends GuiCommandOracle {
     }
 
     private static String advancementsSelected(net.minecraft.client.multiplayer.ClientAdvancements advancements) throws Exception {
-        var field = net.minecraft.client.multiplayer.ClientAdvancements.class.getDeclaredField("selectedTab");
-        field.setAccessible(true);
-        var selected = (net.minecraft.advancements.AdvancementHolder) field.get(advancements);
+        var selected = Access26_2.selectedTab(advancements);
         return selected == null ? null : selected.id().toString();
     }
 
@@ -934,9 +908,6 @@ class GuiHudOracle extends GuiCommandOracle {
             var row = element.getAsJsonObject();
             var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
             var overlay = new net.minecraft.client.gui.components.DebugScreenOverlay(scene.minecraft());
-            var method = net.minecraft.client.gui.components.DebugScreenOverlay.class.getDeclaredMethod(
-                "extractLines", GuiGraphicsExtractor.class, java.util.List.class, boolean.class);
-            method.setAccessible(true);
             // The game's own language reorders each string into pieces, as it does in the game.
             var languageBefore = net.minecraft.locale.Language.getInstance();
             net.minecraft.locale.Language.inject(clientLanguage("en_us"));
@@ -946,7 +917,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     for (var line : row.getAsJsonArray(side)) {
                         lines.add(line.getAsString());
                     }
-                    method.invoke(overlay, scene.screen().graphics(), lines, side.equals("left"));
+                    Access26_2.extractDebugLines(overlay, scene.screen().graphics(), lines, side.equals("left"));
                 }
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);
@@ -978,9 +949,7 @@ class GuiHudOracle extends GuiCommandOracle {
             MovementOracle.setField(minecraft, "launchedVersion", row.get("launched").getAsString());
             // The frame rate line: the count of the last second, the limit the tracker gives (a real tracker
             // over the options, with input just received) and the surface's configuration.
-            var fpsField = net.minecraft.client.Minecraft.class.getDeclaredField("fps");
-            fpsField.setAccessible(true);
-            fpsField.setInt(null, row.get("fps").getAsInt());
+            Access26_2.fps(row.get("fps").getAsInt());
             minecraft.options.framerateLimit().set(row.get("limit").getAsInt());
             MovementOracle.setField(minecraft.getWindow(), "iconified", row.get("iconified").getAsBoolean());
             var tracker = new com.mojang.blaze3d.platform.FramerateLimitTracker(minecraft.options, minecraft);
@@ -1031,9 +1000,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 anisotropyLimit = impactors.get("limit").getAsInt();
             }
             // What the system entry reads from the process, put back after the row.
-            var cpuField = com.mojang.blaze3d.platform.GLX.class.getDeclaredField("cpuInfo");
-            cpuField.setAccessible(true);
-            var cpuBefore = cpuField.get(null);
+            var cpuBefore = Access26_2.cpuInfo();
             var javaVersionBefore = System.getProperty("java.version");
             String deviceName = null, vendor = null, driver = null, backendName = null;
             var deviceType = com.mojang.blaze3d.systems.DeviceType.OTHER;
@@ -1042,7 +1009,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 kept.add("system_specs");
                 var system = row.getAsJsonObject("system");
                 System.setProperty("java.version", system.get("runtime").getAsString());
-                cpuField.set(null, system.get("cpu").getAsString());
+                Access26_2.setCpuInfo(system.get("cpu").getAsString());
                 MovementOracle.setField(minecraft.getWindow(), "framebufferWidth", system.get("width").getAsInt());
                 MovementOracle.setField(minecraft.getWindow(), "framebufferHeight", system.get("height").getAsInt());
                 deviceName = system.get("name").getAsString();
@@ -1058,11 +1025,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 var backend = (com.mojang.blaze3d.systems.GpuDeviceBackend) java.lang.reflect.Proxy.newProxyInstance(
                     GuiOracle.class.getClassLoader(), new Class<?>[] {com.mojang.blaze3d.systems.GpuDeviceBackend.class},
                     (proxy, method, args) -> method.getName().equals("getDeviceInfo") ? deviceInfo : null);
-                var device = unsafe.allocateInstance(com.mojang.blaze3d.systems.GpuDevice.class);
-                set(device, "backend", backend);
-                var deviceField = com.mojang.blaze3d.systems.RenderSystem.class.getDeclaredField("DEVICE");
-                deviceField.setAccessible(true);
-                deviceField.set(null, device);
+                Access26_2.installDevice(backend);
             }
             // The entries a row turns on besides the defaults.
             if (row.has("extra")) {
@@ -1080,7 +1043,6 @@ class GuiHudOracle extends GuiCommandOracle {
             if (row.has("mood")) {
                 // The sound library as it is with no device (empty pools), and the mood the player's
                 // biome sounds handler has built up.
-                var engine = unsafe.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
                 var library = new com.mojang.blaze3d.audio.Library();
                 if (row.has("channels")) {
                     // The pools of a device and the channels in use in them.
@@ -1093,10 +1055,7 @@ class GuiHudOracle extends GuiCommandOracle {
                         library.acquireChannel(com.mojang.blaze3d.audio.Library.Pool.STREAMING);
                     }
                 }
-                set(engine, "library", library);
-                var manager = unsafe.allocateInstance(net.minecraft.client.sounds.SoundManager.class);
-                set(manager, "soundEngine", engine);
-                set(minecraft, "soundManager", manager);
+                Access26_2.soundEngine(minecraft, library);
                 for (var handler : (java.util.List<?>) MovementOracle.getField(local, "ambientSoundHandlers")) {
                     if (handler instanceof net.minecraft.client.resources.sounds.BiomeAmbientSoundsHandler) {
                         MovementOracle.setField(handler, "moodiness", Oracle.f32(row, "mood"));
@@ -1162,7 +1121,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     .extractRenderState(scene.screen().graphics());
             } finally {
                 net.minecraft.locale.Language.inject(languageBefore);
-                cpuField.set(null, cpuBefore);
+                Access26_2.setCpuInfo(cpuBefore);
                 System.setProperty("java.version", javaVersionBefore);
             }
             var out = new JsonObject();
@@ -1321,11 +1280,9 @@ class GuiHudOracle extends GuiCommandOracle {
      */
     static JsonObject hudStatus(JsonObject request) throws Exception {
         var rows = new JsonArray();
-        var clock = net.minecraft.util.Util.class.getDeclaredField("timeSource");
-        clock.setAccessible(true);
-        var clockBefore = clock.get(null);
+        var clockBefore = Access26_2.clock();
         long[] now = {0};
-        clock.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
+        Access26_2.setClock((net.minecraft.util.TimeSource.NanoTimeSource) () -> now[0] * 1_000_000L);
         try {
             for (var element : request.getAsJsonArray("rows")) {
                 var row = element.getAsJsonObject();
@@ -1366,9 +1323,6 @@ class GuiHudOracle extends GuiCommandOracle {
                 MovementOracle.setField(hud, "random", net.minecraft.util.RandomSource.create());
                 var tracker = net.minecraft.client.DeltaTracker.ZERO;
                 var health = hudMethod("extractPlayerHealth", GuiGraphicsExtractor.class);
-                var level = net.minecraft.client.gui.contextualbar.ContextualBar.class.getDeclaredMethod(
-                    "extractExperienceLevel", GuiGraphicsExtractor.class, net.minecraft.client.gui.Font.class, int.class);
-                level.setAccessible(true);
                 var frames = new JsonArray();
                 for (var frameElement : row.getAsJsonArray("frames")) {
                     var frame = frameElement.getAsJsonObject();
@@ -1382,7 +1336,7 @@ class GuiHudOracle extends GuiCommandOracle {
                     var bar = new net.minecraft.client.gui.contextualbar.ExperienceBar(minecraft);
                     bar.extractBackground(graphics, tracker);
                     if (local.experienceLevel > 0) {
-                        level.invoke(null, graphics, minecraft.font, local.experienceLevel);
+                        Access26_2.extractExperienceLevel(graphics, minecraft.font, local.experienceLevel);
                     }
                     bar.extractRenderState(graphics, tracker);
                     frames.add(record(state));
@@ -1393,7 +1347,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 rows.add(out);
             }
         } finally {
-            clock.set(null, clockBefore);
+            Access26_2.setClock(clockBefore);
         }
         var result = new JsonObject();
         result.add("rows", rows);

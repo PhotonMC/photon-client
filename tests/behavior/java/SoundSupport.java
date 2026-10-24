@@ -21,9 +21,7 @@ class SoundSupport {
     }
 
     static Object get(Object target, Class<?> owner, String name) throws Exception {
-        Field field = owner.getDeclaredField(name);
-        field.setAccessible(true);
-        return field.get(target);
+        return Reflect.get(target, owner, name);
     }
 
     /** A sound event holder: its place in the registry, or what a packet sent whole says. */
@@ -71,9 +69,7 @@ class SoundSupport {
     }
 
     static void setField(Object target, Class<?> owner, String name, Object value) throws Exception {
-        Field field = owner.getDeclaredField(name);
-        field.setAccessible(true);
-        field.set(target, value);
+        Reflect.set(target, owner, name, value);
     }
 
     /** A sound instance a scenario describes: a sound at a place, scripted to move and stop if it ticks. */
