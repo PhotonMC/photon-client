@@ -19,17 +19,11 @@ impl ClientWorld {
     /// `handleEntityEvent` for the events that are not a death: a sheep is
     /// told to eat.
     pub fn apply_entity_event(&mut self, entity_id: EntityId, event: i8) -> bool {
-        // `FireworkRocketEntity.handleEntityEvent`: 17 sets it off where it is.
-        if event == FIREWORK_ROCKET_EXPLODE_EVENT
-            && let Some(entity) = self.entities.at(entity_id)
-            && photon_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
-        {
-            let launch = particles::FireworkLaunch {
-                at: entity.position(),
-                motion: entity.motion(),
-                explosions: entity.firework_explosions(),
-            };
-            self.create_fireworks(launch);
+        if self.firework_event(entity_id, event) {
+            return true;
+        }
+        if let Some(burst) = self.entity_burst(entity_id, event) {
+            self.level_events.0.push(LevelEvent::EntityBurst(burst));
             return true;
         }
         let game_time = self.level.game_time;
@@ -191,6 +185,42 @@ impl Entities {
             return false;
         }
         entity.leash_holder_id = holder_id;
+        true
+    }
+}
+
+impl ClientWorld {
+    /// The hearts or smoke an animal's love or taming event shows around it.
+    fn entity_burst(&self, entity_id: EntityId, event: i8) -> Option<mobs::burst::EntityBurst> {
+        let entity = self.entities.at(entity_id)?;
+        let name = photon_data::entity_type::name(entity.type_id)?;
+        let animal = crate::vanilla_passenger_is_animal(entity.type_id);
+        let particle = mobs::burst::particle_of(name, animal, event)?;
+        Some(mobs::burst::EntityBurst {
+            at: entity.position(),
+            size: (entity.dimensions().width(), entity.bb_height()),
+            particle,
+        })
+    }
+}
+
+impl ClientWorld {
+    /// `FireworkRocketEntity.handleEntityEvent`: 17 sets it off where it is.
+    fn firework_event(&mut self, entity_id: EntityId, event: i8) -> bool {
+        let Some(entity) = self.entities.at(entity_id) else {
+            return false;
+        };
+        if event != FIREWORK_ROCKET_EXPLODE_EVENT
+            || photon_data::entity_type::name(entity.type_id) != Some("minecraft:firework_rocket")
+        {
+            return false;
+        }
+        let launch = particles::FireworkLaunch {
+            at: entity.position(),
+            motion: entity.motion(),
+            explosions: entity.firework_explosions(),
+        };
+        self.create_fireworks(launch);
         true
     }
 }

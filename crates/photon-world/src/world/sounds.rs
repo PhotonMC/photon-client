@@ -302,6 +302,8 @@ pub enum LevelEvent {
     Explosion(Box<crate::particles::Explosion>),
     /// A level event every player hears (`LevelEventHandler.globalLevelEvent`).
     Global { event: i32, pos: (i32, i32, i32) },
+    /// Hearts or smoke around an animal (`Animal` and `TamableAnimal.handleEntityEvent`).
+    EntityBurst(crate::mobs::burst::EntityBurst),
     /// A firework rocket went off (`ClientLevel.createFireworks`).
     Fireworks(Box<crate::particles::FireworkLaunch>),
     /// The sound a piston asks the level for when it moves: the server plays it to the player, and

@@ -473,3 +473,29 @@ fn a_wake_up_animation_empties_a_remote_players_sleeping_position() {
     let player = world.entities().at(EntityId(9)).unwrap();
     assert_eq!(player.sleeping_pos(), None);
 }
+
+#[test]
+fn love_and_taming_events_queue_a_burst_around_the_animal() {
+    let mut world = ClientWorld::default();
+    let pig = photon_data::entity_type::named("minecraft:pig");
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(5),
+        uuid: Uuid::new(3, 4),
+        type_id: pig,
+        x: 1.5,
+        y: 70.0,
+        z: -2.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    assert!(world.apply_entity_event(EntityId(5), 18));
+    let events = world.take_level_events();
+    let [crate::LevelEvent::EntityBurst(burst)] = events.as_slice() else {
+        panic!("one burst expected, got {events:?}");
+    };
+    assert_eq!((burst.particle, burst.at), ("heart", (1.5, 70.0, -2.5)));
+    // A pig cannot be tamed: the event 7 is not its own.
+    assert!(!world.apply_entity_event(EntityId(5), 7));
+    assert!(world.take_level_events().is_empty());
+}

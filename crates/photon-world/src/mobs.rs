@@ -6,6 +6,7 @@ pub mod armadillo;
 pub mod axolotl;
 pub mod bat;
 pub mod breeze;
+pub mod burst;
 pub mod cat;
 pub mod copper_golem;
 pub mod creaking;

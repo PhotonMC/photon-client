@@ -234,6 +234,10 @@ impl ParticleEngine {
             }
             LevelEvent::Explosion(explosion) => self.explode(*explosion, context),
             LevelEvent::Global { event, pos } => self.global_level_event((event, pos), context),
+            LevelEvent::EntityBurst(burst) => {
+                self.entity_burst(burst, context);
+                Vec::new()
+            }
             LevelEvent::Fireworks(launch) => {
                 self.create_fireworks(*launch, context);
                 Vec::new()
@@ -442,6 +446,31 @@ impl ParticleEngine {
                 nz * pow + random.next_gaussian() * 0.01,
             );
             self.level_add(context, name, at, push);
+        }
+    }
+
+    /// `spawnTamingParticles` and the love hearts: seven particles in the entity's box, each
+    /// pushed by a small gaussian of the entity's random.
+    fn entity_burst<F: FnMut() -> RandomSource>(
+        &mut self,
+        burst: crate::mobs::burst::EntityBurst,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let (x, y, z) = burst.at;
+        let (width, height) = (f64::from(burst.size.0), f64::from(burst.size.1));
+        for _ in 0..crate::mobs::burst::BURST_COUNT {
+            let random = &mut *context.level_random;
+            let push = (
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+                random.next_gaussian() * 0.02,
+            );
+            let at = (
+                x + width * (2.0 * random.next_double() - 1.0),
+                y + height * random.next_double() + 0.5,
+                z + width * (2.0 * random.next_double() - 1.0),
+            );
+            self.level_add(context, burst.particle, at, push);
         }
     }
 
