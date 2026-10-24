@@ -143,6 +143,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         described.has("data") ? described.get("data").getAsInt() : 0));
                 }
                 level.addEntity(entity);
+                if (described.has("leash_holder") && entity instanceof net.minecraft.world.entity.Leashable leashed) {
+                    // The server's SetEntityLink to the player, as `handleEntityLinkPacket` applies it.
+                    leashed.setDelayedLeashHolderId(player.getId());
+                }
                 if (row.has("camera_entity") && row.get("camera_entity").getAsInt() == entity.getId()) {
                     // The server's SetCamera: the view is another entity's, so the player is not
                     // the controlled camera.

@@ -150,25 +150,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();
         if let Some(breaking) = breaking {
             world.set_local_player_id(player.entity_id());
-            // Entities the server told of.
-            for described in row["entities"].as_array().into_iter().flatten() {
-                let name = string(described, "type")?;
-                let id = entity_id_field(described, "id")?;
-                if !world.apply_entity(EntityInput {
-                    entity_id: id,
-                    uuid: Uuid::new(0, id.0 as u64),
-                    type_id: photon_data::entity_type::id(name)
-                        .ok_or_else(|| format!("unknown entity type {name}"))?,
-                    x: bits64(described, "x")?,
-                    y: bits64(described, "y")?,
-                    z: bits64(described, "z")?,
-                    movement: (0.0, 0.0, 0.0),
-                    rotation: (0.0, 0.0, 0.0),
-                    data: described.get("data").and_then(Value::as_i64).unwrap_or(0) as i32,
-                }) {
-                    return Err(format!("entity {name} was rejected"));
-                }
-            }
+            told_entities(&mut world, &player, row)?;
             hold_main_hand(&mut world, &mut player, breaking)?;
             worn_items(&mut world, &mut player, breaking)?;
             apply_effects(&mut world, &player, breaking)?;

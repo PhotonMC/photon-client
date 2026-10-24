@@ -225,6 +225,12 @@ fn decoration_rows() -> Vec<Value> {
         frame["data"] = json!(2);
         facing(label, vec![frame], use_once()).x_rot(25.0)
     };
+    // A zombie the player holds on a lead.
+    let leashed = |label: &str| {
+        let mut zombie = mob(31, "zombie", 0.5, 64.0, 2.5);
+        zombie["leash_holder"] = json!("player");
+        facing(label, vec![zombie], use_once())
+    };
     vec![
         at("use-armor-stand", "armor_stand").row(),
         at("use-armor-stand-with-stone", "armor_stand").main_hand("minecraft:stone").row(),
@@ -242,6 +248,8 @@ fn decoration_rows() -> Vec<Value> {
         at("use-zombie-with-lead", "zombie").main_hand("minecraft:lead").row(),
         at("use-chicken-with-lead", "chicken").main_hand("minecraft:lead").x_rot(30.0).row(),
         at("use-armor-stand-with-lead", "armor_stand").main_hand("minecraft:lead").row(),
+        leashed("use-leashed-zombie-with-stone").main_hand("minecraft:stone").row(),
+        leashed("use-leashed-zombie-with-lead").main_hand("minecraft:lead").row(),
         at("use-zombie-with-unnamed-tag", "zombie").main_hand("minecraft:name_tag").row(),
         at("use-minecart-with-named-tag", "minecart")
             .main_hand("minecraft:name_tag")

@@ -20,6 +20,9 @@ pub(super) enum EntityUse {
 impl Context<'_> {
     /// `Player.interactOn` for a player who is not a spectator, on the client.
     pub(super) fn interact_entity(&self, id: EntityId, hand: u8) -> EntityUse {
+        if self.named_tag_on_living_mob(id, hand) {
+            return EntityUse::Success { swing: true };
+        }
         if self.spawn_egg_on_living_mob(id, hand) {
             return EntityUse::Success { swing: false };
         }
@@ -118,21 +121,36 @@ impl Context<'_> {
     }
 
     /// The end of `Entity.interact` for a `Leashable` that lives, which `Mob.interact` runs
-    /// before the class's own rule: a lead in hand, on a mob no player holds, is consumed on the
-    /// client (the server ties it). Taking back a lead the player holds (a swing) and shears
-    /// are not covered.
+    /// before the class's own rule: taking back the lead the player holds succeeds with a swing;
+    /// a lead in hand, on a mob no player holds, is consumed on the client (the server ties it).
+    /// Shears on a leashed mob are not covered.
     fn lead_on_mob(&self, id: EntityId, hand: u8) -> Option<EntityUse> {
         let entity = self.world.entities().at(id)?;
         if !entity.is_mob() || entity.health().is_some_and(|health| health <= 0.0) {
             return None;
         }
-        let holder_is_player = entity
-            .leash_holder_id()
+        let me = self.player.entity_id();
+        let holder = entity.leash_holder_id();
+        if holder == Some(me) {
+            return Some(EntityUse::Success { swing: true });
+        }
+        let holder_is_player = holder
             .is_some_and(|holder| self.world.entity_type_name(holder) == Some("minecraft:player"));
         let lead = self
             .held(hand)
             .is_some_and(|(item, _)| crate::item::id_of("minecraft:lead") == Some(item));
         (lead && !holder_is_player).then_some(EntityUse::Success { swing: false })
+    }
+
+    /// `Mob.checkAndHandleImportantInteractions` for a name tag with a name, which comes before
+    /// the lead and the class's own rule. (Other living entities reach it through the item.)
+    fn named_tag_on_living_mob(&self, id: EntityId, hand: u8) -> bool {
+        let alive = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_mob() && entity.health().is_none_or(|h| h > 0.0));
+        alive && self.holds_named_name_tag(hand)
     }
 
     /// `Mob.checkAndHandleImportantInteractions` for a spawn egg: the server spawns the

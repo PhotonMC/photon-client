@@ -319,3 +319,38 @@ pub(super) fn server_events(
         photon_game::game_mode::finish_use(world, player, cooldowns, 0);
     }
 }
+
+/// The entities the server told of, added to the level as `handleAddEntity` does; one may be
+/// held on a lead by the player (`handleEntityLinkPacket`).
+pub(super) fn told_entities(
+    world: &mut photon_world::ClientWorld,
+    player: &photon_world::local_player::LocalPlayer,
+    row: &Value,
+) -> Result<(), String> {
+    use photon_world::EntityInput;
+    for described in row["entities"].as_array().into_iter().flatten() {
+        let name = string(described, "type")?;
+        let id = entity_id_field(described, "id")?;
+        let accepted = world.apply_entity(EntityInput {
+            entity_id: id,
+            uuid: Uuid::new(0, id.0 as u64),
+            type_id: photon_data::entity_type::id(name)
+                .ok_or_else(|| format!("unknown entity type {name}"))?,
+            x: bits64(described, "x")?,
+            y: bits64(described, "y")?,
+            z: bits64(described, "z")?,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: described.get("data").and_then(Value::as_i64).unwrap_or(0) as i32,
+        });
+        if !accepted {
+            return Err(format!("entity {name} was rejected"));
+        }
+        if described.get("leash_holder").is_some() {
+            world
+                .entities_mut()
+                .set_leash_holder(id, player.entity_id());
+        }
+    }
+    Ok(())
+}
