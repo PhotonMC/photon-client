@@ -44,14 +44,14 @@ impl Camera {
         &mut self,
         player: &LocalPlayer,
         (nausea, effect_scale): (f32, f32),
-        first_person: bool,
+        (first_person, eye_height): (bool, f32),
     ) {
         // `GameRenderer.tick` runs before the player's, so it reads what the last tick ended with.
         let seen = std::mem::replace(&mut self.nausea, nausea);
         let portal = std::mem::replace(&mut self.portal, player.portal_effect_intensity_now());
         self.spinning.tick(portal, seen);
         self.eye_height_old = self.eye_height;
-        self.eye_height += (player.eye_height() - self.eye_height) * 0.5;
+        self.eye_height += (eye_height - self.eye_height) * 0.5;
 
         // `getFieldOfViewModifier`, its effect scale lerping from one to the modifier.
         let abilities = player.abilities();

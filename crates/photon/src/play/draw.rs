@@ -86,8 +86,12 @@ impl Play {
             view,
         ))?;
         let spectating = player.spectating();
-        let local = (!first_person && !spectating && !self.local_invisible())
-            .then(|| player.interpolated_position(frame.partial));
+        // `LevelExtractor` draws the local player only while it is the camera entity.
+        let local = (!first_person
+            && !spectating
+            && !self.local_invisible()
+            && self.session.camera_entity().is_none())
+        .then(|| player.interpolated_position(frame.partial));
         let held = self.draw_entities(view, first_person, hook_sprites)?;
         self.set_billboards(frame, (spectating, local), view)?;
         let tints = (&*self.block_renderer, &*self.biome_tints);
@@ -388,20 +392,7 @@ impl Play {
         };
         let frame = self.frame_camera(player);
         self.particles.set_camera(frame.camera);
-        let out_of_view = if self.sections.culling() {
-            cull::out_of_view(
-                self.session.world(),
-                &self.sections,
-                &cull::CullView {
-                    frustum: &frame.frustum,
-                    camera: (frame.camera.x, frame.camera.y, frame.camera.z),
-                    render_distance: frame.render_distance,
-                },
-            )
-        } else {
-            Default::default()
-        };
-        self.session.set_entities_out_of_view(out_of_view);
+        self.leave_out_of_view(&frame);
         profile::timed(Span::Overlays, || self.draw_overlays(&frame))?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
         self.sections

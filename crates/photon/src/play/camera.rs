@@ -26,6 +26,30 @@ impl Play {
         )
     }
 
+    /// Where the camera entity stands and which way it looks (`Camera.alignWithEntity`): the
+    /// player, or the entity a spectator was handed to (`getViewYRot`: a living one looks where
+    /// its head turns).
+    fn camera_entity_pose(
+        &self,
+        player: &photon_world::local_player::LocalPlayer,
+        partial: f64,
+    ) -> (Vec3, (f32, f32)) {
+        let world = self.session.world();
+        if let Some(id) = self.session.camera_entity()
+            && let Some(entity) = world.entities().at(id)
+            && let Some(snapshot) = world.entity_snapshot(id, partial as f32)
+        {
+            let y_rot = if entity.is_living_entity() {
+                snapshot.head_yaw
+            } else {
+                snapshot.yaw
+            };
+            let (x, y, z) = snapshot.position;
+            return (Vec3::new(x, y, z), (y_rot, snapshot.pitch));
+        }
+        (player.interpolated_position(partial), player.rotation())
+    }
+
     /// `Camera.alignWithEntity` for a sleeper in first person: the view turns to the foot of the
     /// bed and the eyes lift; the rotation it looks along, with `eye` moved.
     fn sleeping_view(
@@ -35,9 +59,10 @@ impl Play {
         rotation: (f32, f32),
     ) -> (f32, f32) {
         let world = self.session.world();
-        let bed = (camera_type == CameraType::FirstPerson)
-            .then(|| world.local_player().and_then(|state| state.sleeping_pos()))
-            .flatten();
+        let bed = (camera_type == CameraType::FirstPerson
+            && self.session.camera_entity().is_none())
+        .then(|| world.local_player().and_then(|state| state.sleeping_pos()))
+        .flatten();
         let Some(bed) = bed else {
             return rotation;
         };
@@ -98,8 +123,7 @@ impl Play {
         player: &photon_world::local_player::LocalPlayer,
     ) -> FrameCamera {
         let partial = self.accumulated.as_secs_f64() / TICK_LENGTH.as_secs_f64();
-        let feet = player.interpolated_position(partial);
-        let (player_y_rot, player_x_rot) = player.rotation();
+        let (feet, (player_y_rot, player_x_rot)) = self.camera_entity_pose(player, partial);
         let camera_type = self.controls.camera_type;
         let (y_rot, x_rot) = if camera_type == CameraType::ThirdPersonFront {
             (player_y_rot + 180.0, -player_x_rot)
@@ -185,6 +209,13 @@ impl Play {
         partial: f32,
     ) -> [[f32; 4]; 4] {
         let options = &self.controls.options;
+        // Only the player's own avatar sways the view and flinches it here.
+        if self.session.camera_entity().is_some() {
+            return photon_render::scene::multiply(
+                photon_render::camera::view_hurt(&photon_render::camera::HurtView::none()),
+                photon_render::camera::view_bob(0.0, 0.0),
+            );
+        }
         let motion = player_motion(
             player,
             partial,
@@ -223,6 +254,19 @@ fn player_motion(
     photon_render::scene::multiply(hurt, bob)
 }
 
+/// `Entity.getEyeHeight` of the camera entity: the player's, or the standing height of the entity
+/// a spectator was handed to.
+fn camera_eye_height(
+    session: &photon_net::connection::PlaySession,
+    player: &photon_world::local_player::LocalPlayer,
+) -> f32 {
+    session
+        .camera_entity()
+        .and_then(|id| session.world().entities().at(id))
+        .and_then(photon_render::entity::tag_rules::eye_height)
+        .map_or_else(|| player.eye_height(), |height| height as f32)
+}
+
 /// One tick of what follows the player's eyes: the camera, and the HUD with the brightness of the
 /// light there (`getMaxLocalRawBrightness` with the sky's dimming, through the dimension's ambient
 /// light).
@@ -245,7 +289,7 @@ pub(super) fn tick_view(
                 crate::world::fog::nausea_blend(session, 1.0),
                 fov_effect_scale,
             ),
-            first_person,
+            (first_person, camera_eye_height(session, player)),
         );
         let at = player.position();
         [at.x, at.y + f64::from(player.eye_height()), at.z]

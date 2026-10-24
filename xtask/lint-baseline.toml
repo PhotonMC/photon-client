@@ -948,8 +948,8 @@
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 87
 "crates/photon/src/overlays/wear.rs::remote_players" = 79
 "crates/photon/src/particles.rs::Particles::vertices" = 78
-"crates/photon/src/play/camera.rs::Play::frame_camera" = 62
-"crates/photon/src/play/draw.rs::Play::draw" = 88
+"crates/photon/src/play/camera.rs::Play::frame_camera" = 61
+"crates/photon/src/play/draw.rs::Play::draw" = 75
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 151
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63

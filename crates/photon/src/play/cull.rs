@@ -141,3 +141,34 @@ fn shulker_slide_visible(shulker: &ClientEntity, frustum: &Frustum) -> bool {
     );
     visible(frustum, aabb.inflate(half_width, half_height, half_width))
 }
+
+impl super::Play {
+    /// Tells the session which entities this frame leaves out. The camera entity is one of them
+    /// unless the camera leaves its eyes or it sleeps (`LevelExtractor`).
+    pub(super) fn leave_out_of_view(&mut self, frame: &super::FrameCamera) {
+        let mut out_of_view = if self.sections.culling() {
+            out_of_view(
+                self.session.world(),
+                &self.sections,
+                &CullView {
+                    frustum: &frame.frustum,
+                    camera: (frame.camera.x, frame.camera.y, frame.camera.z),
+                    render_distance: frame.render_distance,
+                },
+            )
+        } else {
+            Default::default()
+        };
+        let world = self.session.world();
+        if let Some(camera) = self.session.camera_entity()
+            && self.controls.camera_type == crate::view::CameraType::FirstPerson
+            && !world
+                .entities()
+                .at(camera)
+                .is_some_and(|entity| entity.is_sleeping())
+        {
+            out_of_view.insert(camera);
+        }
+        self.session.set_entities_out_of_view(out_of_view);
+    }
+}
