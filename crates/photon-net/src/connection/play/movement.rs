@@ -92,10 +92,10 @@ impl PlaySession {
 
     /// `ClientPacketListener.handleSetCamera`: an entity the level does not hold changes nothing.
     pub(super) fn on_set_camera(&mut self, entity: EntityId) {
-        if !self.world.knows_entity(entity) {
+        let own = self.local.player_id == Some(entity);
+        if !own && !self.world.knows_entity(entity) {
             return;
         }
-        let own = self.local.player_id == Some(entity);
         self.local.camera = (!own).then_some(entity);
         if let Some(player) = self.local.player.as_mut() {
             player.set_controlled_camera(own);

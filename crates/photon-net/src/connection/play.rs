@@ -445,4 +445,47 @@ mod tests {
         assert_eq!(session.camera_entity(), None);
         assert!(controlled(&session));
     }
+
+    /// A server never adds the client's own player as an entity, yet naming it ends a spectating.
+    #[test]
+    fn set_camera_to_the_player_returns_the_view_without_an_added_player() {
+        let (mut session, _far_end) = detached();
+        let own = EntityId(1);
+        session.local.player_id = Some(own);
+        session.local.player = Some(LocalPlayer::new(
+            own,
+            Vec3::new(8.0, 64.0, 8.0),
+            0.0,
+            0.0,
+            session.local.game_mode,
+            session.link.auto_jump,
+        ));
+        session
+            .handle_bytes(&add_entity_of_type(7, 94, 8.0))
+            .unwrap();
+        let camera = |id: u32| {
+            let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
+            body.extend(varint(id));
+            body
+        };
+        session.handle_bytes(&camera(7)).unwrap();
+        assert!(
+            !session
+                .local
+                .player
+                .as_ref()
+                .unwrap()
+                .is_controlled_camera()
+        );
+        session.handle_bytes(&camera(1)).unwrap();
+        assert_eq!(session.camera_entity(), None);
+        assert!(
+            session
+                .local
+                .player
+                .as_ref()
+                .unwrap()
+                .is_controlled_camera()
+        );
+    }
 }
