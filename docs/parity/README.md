@@ -71,7 +71,7 @@ To add a version:
 - For an obfuscated version (1.14.4 and later have Mojang's official mappings), compile the oracle against the jar remapped with those mappings, so call sites stay readable.
 - For members renamed since 26.2, add a rename table for that version and consult it inside the lookups of `Reflect`; no call site changes.
 - Where a setup differs in shape, write a class like `Access26_2` for that version.
-- The oracle sources of all families compile in one run, so a helper that a family's `extra_sources` does not name still compiles, but that family's capture cache key then ignores edits to it. List `Reflect.java` (and any `Access` class) in every family that uses it.
+- `xtask` compiles `Oracle.java`, `Reflect.java`, `Game26_2.java` and `Access26_2.java` into every family, so a family's `extra_sources` lists only its own helpers.
 
 ## Legacy records
 

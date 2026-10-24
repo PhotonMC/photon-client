@@ -189,9 +189,6 @@
         "org.apache.commons:commons-lang3",
         "com.mojang:authlib",
         "org.jspecify:jspecify"
-      ],
-      "extra_sources": [
-        "Reflect.java"
       ]
     },
     "binary": {
@@ -245,8 +242,7 @@
         "BlockPlacementOracle.java",
         "BlockPropertyOracle.java",
         "BlockShapeOracle.java",
-        "BlockSupport.java",
-        "Reflect.java"
+        "BlockSupport.java"
       ]
     },
     "image": {
@@ -274,9 +270,6 @@
         "org.lwjgl:lwjgl-stb",
         "org.lwjgl:lwjgl-stb-natives-linux",
         "org.slf4j:slf4j-api"
-      ],
-      "extra_sources": [
-        "Reflect.java"
       ]
     },
     "json": {
@@ -348,8 +341,7 @@
         "MathSupport.java",
         "MathTickFixtures.java",
         "MathVectorOracle.java",
-        "MathWorldLevelOracle.java",
-        "Reflect.java"
+        "MathWorldLevelOracle.java"
       ]
     },
     "model": {
@@ -372,8 +364,7 @@
         "org.jspecify:jspecify"
       ],
       "extra_sources": [
-        "ModelMath.java",
-        "Reflect.java"
+        "ModelMath.java"
       ]
     },
     "movement": {
@@ -419,7 +410,6 @@
         "MovementPickupOracle.java",
         "MovementFireOracle.java",
         "MovementPlayerOracle.java",
-        "Reflect.java",
         "MovementSupport.java",
         "MovementWorldOracle.java"
       ]
@@ -488,9 +478,6 @@
         "org.jspecify:jspecify",
         "org.lwjgl:lwjgl",
         "org.lwjgl:lwjgl-glfw"
-      ],
-      "extra_sources": [
-        "Reflect.java"
       ]
     },
     "wire": {
@@ -518,8 +505,7 @@
         "WireFrameOracle.java",
         "WireLoginOracle.java",
         "WireRegistryOracle.java",
-        "WireSupport.java",
-        "Reflect.java"
+        "WireSupport.java"
       ]
     },
     "entity": {
@@ -558,7 +544,6 @@
         "EntityPoseOracle.java",
         "EntityProjectileOracle.java",
         "EntityRotationOracle.java",
-        "Reflect.java",
         "EntitySupport.java",
         "EntityVehicleOracle.java",
         "EntityVillagerOracle.java",
@@ -599,8 +584,6 @@
         "GuiCommandOracle.java",
         "GuiFonts.java",
         "GuiHudOracle.java",
-        "Access26_2.java",
-        "Reflect.java",
         "GuiLanguageOracle.java",
         "GuiOverlayOracle.java",
         "GuiRecorder.java",
@@ -671,8 +654,7 @@
         "com/mojang/blaze3d/audio/Library.java",
         "com/mojang/blaze3d/audio/Listener.java",
         "com/mojang/blaze3d/audio/ListenerTransform.java",
-        "com/mojang/blaze3d/audio/SoundBuffer.java",
-        "Reflect.java"
+        "com/mojang/blaze3d/audio/SoundBuffer.java"
       ]
     }
   }

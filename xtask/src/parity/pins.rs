@@ -96,11 +96,16 @@ impl Pins {
             .families
             .get(family)
             .ok_or_else(|| format!("unknown parity family `{family}`"))?;
-        let mut sources = vec![
-            source_path("Oracle.java"),
-            source_path("Game26_2.java"),
-            source_path(&entry.source),
-        ];
+        let mut sources: Vec<PathBuf> = [
+            "Oracle.java",
+            "Reflect.java",
+            "Game26_2.java",
+            "Access26_2.java",
+        ]
+        .into_iter()
+        .map(source_path)
+        .collect();
+        sources.push(source_path(&entry.source));
         sources.extend(entry.extra_sources.iter().map(|extra| source_path(extra)));
         Ok(sources)
     }
