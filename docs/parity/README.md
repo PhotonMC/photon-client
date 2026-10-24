@@ -58,12 +58,20 @@ The GUI family has its own page: [GUI oracle](gui-oracle.md).
 
 ## Reaching private members of the game
 
-The oracle runs the game's own classes, and many of their members are private. Two kinds of class keep that access in one place each:
+The oracle runs the game's own classes, and many of their members are private. All of that access goes through two kinds of class:
 
-- `Reflect.java` is the version-neutral mechanism: reading and writing fields (also static ones), calling methods and constructors, and the `Unsafe` singleton for objects built without a constructor. It knows no game names.
-- `Access26_2.java` holds every 26.2 name the oracle reaches, as a named method (for example `holdMusicNote()`). New or changed oracle code reaches private members only through these classes.
+- `Reflect.java` is the one choke point. It opens fields (also static ones), methods and constructors, calls them, and holds the `Unsafe` singleton for objects built without a constructor. `setAccessible` and `getDeclared*` appear nowhere else in the oracle sources.
+- `Access26_2.java` holds multi-step setups whose shape is specific to this game version (for example a recipe toast, a camera or a local player scene).
 
-To add a version, write the same set of named methods in a class for that version. The pinned game version, its jars and the family source lists live in `tests/behavior/reference.json`, which holds one version today, so a second version also needs a second reference file and the `xtask` support to select it. For an obfuscated version (1.14.4 and later have Mojang's official mappings), compile the oracle against the jar remapped with those mappings, so the names in `Access` classes stay readable. The oracle sources of all families compile in one run, so a helper that a family's `extra_sources` in `tests/behavior/reference.json` does not name still compiles, but that family's capture cache key then ignores edits to the helper. List `Reflect.java` next to `Access26_2.java` in every family that uses either.
+Call sites name members by their 26.2 names, the Mojang-mapped ones. New or changed oracle code reaches private members only through these classes.
+
+To add a version:
+
+- The pinned game version, its jars and the family source lists live in `tests/behavior/reference.json`, which holds one version today, so a second version needs a second reference file and the `xtask` support to select it.
+- For an obfuscated version (1.14.4 and later have Mojang's official mappings), compile the oracle against the jar remapped with those mappings, so call sites stay readable.
+- For members renamed since 26.2, add a rename table for that version and consult it inside the lookups of `Reflect`; no call site changes.
+- Where a setup differs in shape, write a class like `Access26_2` for that version.
+- The oracle sources of all families compile in one run, so a helper that a family's `extra_sources` does not name still compiles, but that family's capture cache key then ignores edits to it. List `Reflect.java` (and any `Access` class) in every family that uses it.
 
 ## Legacy records
 
