@@ -55,9 +55,17 @@ pub fn style_under<'a>(
     let mut pen = x as f32;
     let y = y as f32;
     for run in runs {
-        let bold = run.style.bold == Some(true);
-        let italic = run.style.italic == Some(true);
-        for codepoint in run.text.chars() {
+        // The codes of the text style the glyphs after them and take no room; the style handed
+        // back is the run's own, which is where the events are.
+        let mut style = run.style.clone();
+        let mut chars = run.text.chars();
+        while let Some(codepoint) = chars.next() {
+            if codepoint == '\u{a7}' {
+                let Some(code) = chars.next() else { break };
+                style = crate::runs::styled_by(style, code.to_ascii_lowercase(), &run.style);
+                continue;
+            }
+            let (bold, italic) = (style.bold == Some(true), style.italic == Some(true));
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
