@@ -371,49 +371,31 @@ fn goat_rows() -> Vec<Value> {
 /// The use key on brown mooshrooms, which eat a flower for the stew they give next.
 fn brown_mooshroom_rows() -> Vec<Value> {
     let use_once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
-    let brown_mooshroom = || {
-        let mut entity = mob(31, "mooshroom", 0.5, 64.0, 2.5);
-        entity["brown"] = json!(true);
-        entity
-    };
+    let brown_mooshroom = || flagged_animal("mooshroom", &["brown"]);
     let brown = |label: &str| facing(label, vec![brown_mooshroom()], use_once());
     vec![
         brown("use-brown-mooshroom-with-flowers").main_hand("minecraft:dandelion").count(2).x_rot(20.0).row(),
         brown("use-brown-mooshroom-with-wither-rose").main_hand("minecraft:wither_rose").count(2).x_rot(20.0).row(),
         brown("use-brown-mooshroom-with-pink-petals").main_hand("minecraft:pink_petals").count(2).x_rot(20.0).row(),
+        brown("use-brown-mooshroom-with-flowers-in-creative")
+            .main_hand("minecraft:dandelion")
+            .count(2)
+            .game_mode("creative")
+            .x_rot(20.0)
+            .row(),
         brown("use-brown-mooshroom-with-stone").main_hand("minecraft:stone").x_rot(20.0).row(),
-        facing(
-            "use-brown-mooshroom-twice-with-flowers",
-            vec![brown_mooshroom()],
-            [
-                aims(1).use_clicks(1).inventory().go(),
-                aims(2).inventory().go(),
-                aims(1).use_clicks(1).inventory().go(),
-                aims(2).inventory().go(),
-            ]
-            .concat(),
-        )
-        .main_hand("minecraft:dandelion")
-        .count(2)
-        .x_rot(20.0)
-        .row(),
+        facing("use-brown-mooshroom-twice-with-flowers", vec![brown_mooshroom()], two_use_clicks())
+            .main_hand("minecraft:dandelion")
+            .count(2)
+            .x_rot(20.0)
+            .row(),
         // One flower in the main hand, a bowl in the other: the first click eats the flower, the
         // second finds the hand empty and goes on to the bowl, which holds the flower's effects.
-        facing(
-            "use-brown-mooshroom-flower-then-bowl",
-            vec![brown_mooshroom()],
-            [
-                aims(1).use_clicks(1).inventory().go(),
-                aims(2).inventory().go(),
-                aims(1).use_clicks(1).inventory().go(),
-                aims(2).inventory().go(),
-            ]
-            .concat(),
-        )
-        .main_hand("minecraft:dandelion")
-        .off_hand("minecraft:bowl")
-        .x_rot(20.0)
-        .row(),
+        facing("use-brown-mooshroom-flower-then-bowl", vec![brown_mooshroom()], two_use_clicks())
+            .main_hand("minecraft:dandelion")
+            .off_hand("minecraft:bowl")
+            .x_rot(20.0)
+            .row(),
         facing(
             "use-baby-brown-mooshroom-with-flower",
             vec![{
@@ -427,6 +409,17 @@ fn brown_mooshroom_rows() -> Vec<Value> {
         .x_rot(30.0)
         .row(),
     ]
+}
+
+/// Two right clicks two ticks apart, the inventory reported after each.
+fn two_use_clicks() -> Vec<Value> {
+    [
+        aims(1).use_clicks(1).inventory().go(),
+        aims(2).inventory().go(),
+        aims(1).use_clicks(1).inventory().go(),
+        aims(2).inventory().go(),
+    ]
+    .concat()
 }
 
 /// An animal at the usual spot with the named spawn flags set.
