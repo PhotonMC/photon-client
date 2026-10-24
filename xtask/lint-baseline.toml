@@ -4,7 +4,6 @@
 
 [file-lines]
 "crates/photon-dev/src/probe/mode.rs" = 2246
-"crates/photon-gui/src/screen/servers.rs" = 515
 "crates/photon-oracle/src/entity_motion.rs" = 541
 "crates/photon-oracle/src/humanoid_models.rs" = 545
 "crates/photon-oracle/src/math_cases/player.rs" = 538
