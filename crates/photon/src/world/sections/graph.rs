@@ -34,7 +34,13 @@ impl SectionMeshes {
                     .graph
                     .as_ref()
                     .map_or(&[][..], |(graph, _)| graph.reached());
-                blinks.swapped(old, graph.reached(), |key| frustum.section_visible(*key));
+                let same_cull = self
+                    .graph
+                    .as_ref()
+                    .is_none_or(|(_, before)| before.smart_cull == params.smart_cull);
+                blinks.swapped(old, graph.reached(), same_cull, |key| {
+                    frustum.section_visible(*key)
+                });
             }
             self.graph = Some((graph, params));
             self.graph_generation += 1;

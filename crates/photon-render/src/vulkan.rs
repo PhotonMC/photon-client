@@ -65,7 +65,6 @@ mod shaders;
 mod swapchain;
 mod terrain_filter;
 mod texture;
-mod threads;
 mod validation;
 mod vertex_attributes;
 
@@ -78,6 +77,5 @@ pub use validation::validation_findings;
 
 mod buffer;
 pub use buffer::*;
-pub use threads::yield_to_the_frame;
 mod backend;
 pub use backend::*;

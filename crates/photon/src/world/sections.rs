@@ -218,6 +218,8 @@ impl SectionMeshes {
         self.compiled.clear();
         self.flood_inputs.clear();
         self.graph = None;
+        self.in_frustum = None;
+        self.graph_generation += 1;
         self.propagate.clear();
         self.propagated_meanwhile.clear();
         self.graph_stale = true;
@@ -285,14 +287,7 @@ impl SectionMeshes {
         // `ClientLevel.update`: queued light and the light engine, each frame.
         profile::timed(Span::Light, || session.update_light());
         let dirtied = session.take_dirty_sections();
-        // A chunk arriving or a section turning empty or not changes the flood.
-        let world = session.world();
-        for &(x, y, z) in &dirtied {
-            let inputs = (world.contains_chunk(x, z), world.section_is_empty(x, y, z));
-            if self.flood_inputs.insert((x, y, z), inputs) != Some(inputs) {
-                self.propagate.push((x, y, z));
-            }
-        }
+        self.note_flood_inputs(session, &dirtied);
         self.unchecked.extend(dirtied.iter().copied());
         self.pending.extend(dirtied);
         let camera_block = view.camera.map(|value| value.floor() as i64);
@@ -313,6 +308,22 @@ impl SectionMeshes {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    /// A chunk arriving or a section that stopped being empty passes the
+    /// flood on from it.
+    fn note_flood_inputs(&mut self, session: &PlaySession, dirtied: &[SectionKey]) {
+        let world = session.world();
+        for &(x, y, z) in dirtied {
+            let inputs = (world.contains_chunk(x, z), world.section_is_empty(x, y, z));
+            let before = self.flood_inputs.insert((x, y, z), inputs);
+            // `updateEmptySections` and `loadedExpectedChunks`: a section
+            // that stopped being empty, or whose chunk arrived.
+            let (was_here, was_empty) = before.unwrap_or((false, true));
+            if (inputs.0 && !was_here) || (was_empty && !inputs.1) {
+                self.propagate.push((x, y, z));
+            }
         }
     }
 
@@ -358,9 +369,7 @@ impl SectionMeshes {
         for key in empty {
             self.pending.remove(&key);
             self.latest.remove(&key);
-            if self.compiled.remove(&key).is_some() {
-                self.propagate.push(key);
-            }
+            self.compiled.remove(&key);
             // An empty section has shown too, so what is built in it later
             // does not fade.
             let fade = self.fade(key, camera_block);

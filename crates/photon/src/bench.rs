@@ -238,6 +238,34 @@ impl Bench {
 }
 
 impl Bench {
+    /// The five longest frames with every span and part, to tell what made
+    /// them long.
+    fn worst_frames_json(&self) -> String {
+        let mut order: Vec<usize> = (0..self.samples.len()).collect();
+        order.sort_by(|&a, &b| self.samples[b].cpu[4].total_cmp(&self.samples[a].cpu[4]));
+        let frames: Vec<String> = order
+            .iter()
+            .take(5)
+            .map(|&index| {
+                let sample = &self.samples[index];
+                let spans = ["tick", "mesh", "extract", "backend", "total"];
+                let mut fields: Vec<String> = spans
+                    .iter()
+                    .zip(sample.cpu)
+                    .map(|(name, ms)| format!("\"{name}\": {ms:.2}"))
+                    .collect();
+                fields.extend(
+                    profile::SPANS
+                        .iter()
+                        .zip(sample.parts)
+                        .map(|(name, ms)| format!("\"{name}\": {ms:.2}")),
+                );
+                format!("{{\"at_s\": {:.2}, {}}}", sample.at, fields.join(", "))
+            })
+            .collect();
+        format!("  \"worst_frames\": [{}],\n", frames.join(", "))
+    }
+
     /// What a player sees of the pacing: the frames per second of the worst
     /// one-second window (the F3 counter's lowest reading), how many frame
     /// intervals ran past 1/240 s and 1/230 s, and the sections that
@@ -247,7 +275,7 @@ impl Bench {
         let intervals: Vec<f64> = times.windows(2).map(|pair| pair[1] - pair[0]).collect();
         let over = |limit_fps: f64| intervals.iter().filter(|&&dt| dt > 1.0 / limit_fps).count();
         let (worst, longest) = worst_second(&times);
-        format!(
+        let pacing = format!(
             "  \"pacing\": {{\"worst_second_fps\": {worst:.1}, \"longest_interval_ms\": {:.2}, \
              \"intervals_over_240\": {}, \"intervals_over_230\": {}, \"intervals\": {}}},\n  \"blinks\": {},\n",
             longest * 1000.0,
@@ -255,7 +283,8 @@ impl Bench {
             over(230.0),
             intervals.len(),
             self.samples.iter().map(|sample| sample.blinks).sum::<u32>()
-        )
+        );
+        pacing + &self.worst_frames_json()
     }
 }
 

@@ -101,8 +101,15 @@ impl BlinkWatch {
         &mut self,
         old: &[(i32, i32, i32)],
         new: &[(i32, i32, i32)],
+        same_smart_cull: bool,
         in_view: impl Fn(&(i32, i32, i32)) -> bool,
     ) {
+        // A new smart culling makes a different graph on purpose, in the
+        // reference too; only swaps that keep it count.
+        if !same_smart_cull {
+            self.dropped.clear();
+            return;
+        }
         let now: std::collections::HashSet<_> = new.iter().copied().collect();
         let frame = self.frame;
         let back = new
