@@ -34,10 +34,12 @@ impl PlaySession {
         &mut self,
         packet: photon_protocol::cookie::ClientboundTransferPacket,
     ) -> Result<(), ConnectionError> {
+        let stage = crate::connection::LoginStage::default();
         let carried = ConnectionState {
             account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
             packs: self.state.packs.clone(),
+            login_stage: Some(stage.clone()),
             transferring: true,
             seen_players: self.social.seen_players.clone(),
             seen_insecure_warning: self.effects.seen_unsecure_warning,
@@ -64,6 +66,7 @@ impl PlaySession {
             kind: SwitchKind::Transferring,
             result,
             abort: None,
+            stage: Some(stage),
         });
         Ok(())
     }
@@ -117,6 +120,7 @@ impl PlaySession {
             kind: SwitchKind::Reconfiguring,
             result,
             abort: Some(abort),
+            stage: None,
         });
         Ok(())
     }
@@ -124,6 +128,12 @@ impl PlaySession {
     /// What the connection is doing besides playing, while it is.
     pub fn switching(&self) -> Option<SwitchKind> {
         self.link.switching.as_ref().map(|switch| switch.kind)
+    }
+
+    /// The login stage (`connection::stage`) a transfer's new connection has come to.
+    pub fn switch_stage(&self) -> Option<u8> {
+        let stage = self.link.switching.as_ref()?.stage.as_ref()?;
+        Some(stage.0.load(std::sync::atomic::Ordering::Relaxed))
     }
 
     /// Whether the connection ended because a transfer could not be made.
@@ -212,6 +222,8 @@ pub(super) struct Switch {
     result: mpsc::Receiver<Result<PlaySession, ConnectionError>>,
     /// The connection the thread reads, to be cut where the player gives up.
     abort: Option<Transport>,
+    /// The login stage of a transfer's new connection.
+    stage: Option<crate::connection::LoginStage>,
 }
 
 /// The configuration phase again on a connection, then a play phase on it.
@@ -235,6 +247,7 @@ fn configure_again(
                 account: state.account,
                 cookies: state.cookies,
                 packs: state.packs,
+                login_stage: state.login_stage,
                 transferring: true,
                 seen_players: state.seen_players,
                 seen_insecure_warning: state.seen_insecure_warning,

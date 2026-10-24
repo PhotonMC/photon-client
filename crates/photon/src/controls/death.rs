@@ -57,7 +57,7 @@ impl Controls {
     }
 
     /// An event for the disconnected screen: it takes no Escape, and its
-    /// button leaves for the title screen (there is no server list yet).
+    /// button leaves for the server list.
     pub(super) fn disconnected_event(
         &mut self,
         event: glfw::WindowEvent,

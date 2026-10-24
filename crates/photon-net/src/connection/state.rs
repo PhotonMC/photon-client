@@ -69,6 +69,8 @@ pub mod stage {
     pub const AUTHORIZING: u8 = 1;
     pub const ENCRYPTING: u8 = 2;
     pub const JOINING: u8 = 3;
+    /// A login custom query was answered (`connect.negotiating`).
+    pub const NEGOTIATING: u8 = 4;
 }
 
 impl ConnectionState {

@@ -193,6 +193,13 @@ impl Play {
             }
         }
         self.show_backdrop();
+        // The new connection's login stages replace `connect.transferring` as they come.
+        if let Some(stage) = self.session.switch_stage().filter(|stage| *stage != 0)
+            && let Some(Shown::Transferring(screen)) =
+                self.controls.switch.as_mut().map(|view| &mut view.screen)
+        {
+            screen.set_status(self.gui.lang(), super::join_status::key_of(stage));
+        }
         if let Some(view) = &self.controls.switch {
             self.gui
                 .draw_menu_screen(

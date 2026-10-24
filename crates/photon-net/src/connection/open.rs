@@ -130,7 +130,7 @@ fn log_in(
                 break;
             }
             LOGIN_CLIENTBOUND_CUSTOM_QUERY_PACKET_ID => {
-                answer_custom_query(stream, payload, compression_threshold)?;
+                answer_login_query(stream, payload, (state, compression_threshold))?;
             }
             LOGIN_CLIENTBOUND_COOKIE_REQUEST_PACKET_ID => {
                 answer_cookie_request(
@@ -540,4 +540,14 @@ fn answer_server_hello(
     )?;
     state.reach(super::state::stage::ENCRYPTING);
     Ok(())
+}
+
+/// `handleCustomQuery`: every query is answered as not understood, telling the stage.
+fn answer_login_query(
+    stream: &mut Transport,
+    payload: &[u8],
+    (state, compression_threshold): (&ConnectionState, Option<usize>),
+) -> Result<(), ConnectionError> {
+    state.reach(super::state::stage::NEGOTIATING);
+    answer_custom_query(stream, payload, compression_threshold)
 }

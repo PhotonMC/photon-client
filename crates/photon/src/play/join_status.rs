@@ -22,7 +22,15 @@ impl Status {
     /// The text the connect screen shows for the login stage
     /// (`ClientHandshakePacketListenerImpl.State`).
     pub(crate) fn message_key(&self) -> &'static str {
-        match self.stage.0.load(Ordering::Relaxed) {
+        key_of(self.stage.0.load(Ordering::Relaxed))
+    }
+}
+
+/// The connect screen's text for a login `stage`.
+pub(super) fn key_of(reached: u8) -> &'static str {
+    {
+        match reached {
+            stage::NEGOTIATING => "connect.negotiating",
             stage::AUTHORIZING => "connect.authorizing",
             stage::ENCRYPTING => "connect.encrypting",
             stage::JOINING => "connect.joining",
