@@ -91,26 +91,7 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
     let mut left_server = false;
     loop {
         let mut menu = Menu::open(&mut client)?;
-        // `PHOTON_MENU_SCREEN=servers|options|video|language|accessibility`: open on that screen, for a
-        // capture of it.
-        match env::var("PHOTON_MENU_SCREEN").as_deref() {
-            Ok("servers") => menu.screen = menu.server_list(gui_size(&client)),
-            Ok("options") => {
-                menu.open_settings(Some(&TitleAction::Options), &client);
-            }
-            Ok("video") => {
-                menu.host.options = crate::controls::load_options();
-                menu.host.open_title_video(&client.surface, &menu.assets);
-                menu.screen = Screen::Settings;
-            }
-            Ok("language") => {
-                menu.open_settings(Some(&TitleAction::Language), &client);
-            }
-            Ok("accessibility") => {
-                menu.open_settings(Some(&TitleAction::Accessibility), &client);
-            }
-            _ => {}
-        }
+        menu.open_requested_screen(&client);
         if std::mem::take(&mut left_server) {
             menu.screen = menu.server_list(gui_size(&client));
         }

@@ -39,6 +39,7 @@ impl Controls {
         self.accessibility_screen = None;
         self.skin_screen = None;
         self.font_screen = None;
+        self.credits_attribution_screen = None;
         self.drop_light_screens();
         self.stats = None;
         self.advancements = None;
@@ -118,6 +119,7 @@ impl Controls {
             self.accessibility_screen = None;
             self.skin_screen = None;
             self.font_screen = None;
+            self.credits_attribution_screen = None;
             self.drop_light_screens();
             self.stats = None;
             self.drop_advancements(session);

@@ -6,6 +6,7 @@ use super::*;
 /// The options screens, by what takes the events.
 #[derive(Clone, Copy)]
 enum OptionScreen {
+    CreditsAttribution,
     Language,
     KeyBinds,
     Controls,
@@ -32,7 +33,14 @@ impl Controls {
 
     /// The screen that takes the events: the topmost of the options screens that are open.
     fn topmost_option_screen(&self) -> Option<OptionScreen> {
+        if self.credits.is_some() {
+            return None;
+        }
         [
+            (
+                self.credits_attribution_screen.is_some(),
+                OptionScreen::CreditsAttribution,
+            ),
             (self.language_open(), OptionScreen::Language),
             (self.key_binds_screen.is_some(), OptionScreen::KeyBinds),
             (
@@ -65,17 +73,33 @@ impl Controls {
             return Err(event);
         };
         match screen {
+            OptionScreen::CreditsAttribution => {
+                self.credits_attribution_event(event, surface, assets);
+            }
             OptionScreen::Language => self.language_event(event, surface, assets),
             OptionScreen::KeyBinds => self.key_binds_event(event, surface, assets),
             OptionScreen::Controls => self.controls_event(event, surface, assets),
+            _ => self.lower_option_screen_event(screen, event, surface, assets),
+        }
+        Ok(())
+    }
+
+    /// An event for the settings screens that the others open over.
+    fn lower_option_screen_event(
+        &mut self,
+        screen: OptionScreen,
+        event: glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        match screen {
             OptionScreen::Sound => self.sound_options_event(event, surface, assets),
             OptionScreen::Skin => self.skin_event(event, surface, assets),
             OptionScreen::Accessibility => self.accessibility_event(event, surface, assets),
             OptionScreen::Chat => self.chat_options_event(event, surface, assets),
             OptionScreen::Video => self.video_event(event, surface, assets),
-            OptionScreen::Options => self.options_event(event, surface, assets),
+            _ => self.options_event(event, surface, assets),
         }
-        Ok(())
     }
 
     /// `OptionsScreen`, from the title screen's Options button.

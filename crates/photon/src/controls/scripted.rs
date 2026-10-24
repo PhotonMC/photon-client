@@ -22,9 +22,7 @@ impl Controls {
             self.close_controls();
         } else if self.sound_screen.is_some() {
             self.close_sound_options();
-        } else if self.skin_screen.is_some() {
-            self.close_skin();
-        } else if self.close_chat_settings() {
+        } else if self.close_skin_or_credits() || self.close_chat_settings() {
         } else if self.video_screen.is_some() {
             self.close_video();
         } else if self.options_screen.is_some() {

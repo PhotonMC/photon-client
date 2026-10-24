@@ -9,6 +9,7 @@ pub mod command_block;
 pub mod confirm;
 pub mod connect;
 pub mod credits;
+pub mod credits_attribution;
 pub mod death;
 pub mod debug_options;
 pub mod dialog;

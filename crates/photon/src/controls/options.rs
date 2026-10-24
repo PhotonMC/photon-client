@@ -151,6 +151,19 @@ impl Controls {
         }
         match input.action {
             Some(OptionsAction::Done) => self.close_options(),
+            Some(action) => self.open_options_child(action, surface, assets),
+            None => {}
+        }
+    }
+
+    /// The screen an options button opens over the options screen.
+    fn open_options_child(
+        &mut self,
+        action: OptionsAction,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        match Some(action) {
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
             Some(OptionsAction::Accessibility) => self.open_accessibility(surface, assets),
@@ -158,6 +171,9 @@ impl Controls {
             Some(OptionsAction::Sounds) => self.open_sound_options(surface, assets),
             Some(OptionsAction::Controls) => self.open_controls(surface, assets),
             Some(OptionsAction::Language) => self.open_language(surface, assets),
+            Some(OptionsAction::CreditsAndAttribution) => {
+                self.open_credits_attribution(surface, assets);
+            }
             _ => {}
         }
     }

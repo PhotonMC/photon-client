@@ -111,6 +111,14 @@ pub struct Controls {
     pub skin_screen: Option<photon_gui::options::skin::SkinCustomizationScreen>,
     /// The font settings, opened over the language screen.
     pub font_screen: Option<photon_gui::options::font::FontOptionsScreen>,
+    /// `CreditsAndAttributionScreen`, over the options or the title.
+    pub credits_attribution_screen:
+        Option<photon_gui::screen::credits_attribution::CreditsAttributionScreen>,
+    /// The Credits button was pressed on a title host: its menu shows the roll.
+    credits_request: bool,
+    /// The roll on `credits` was opened from the credits and attribution screen: its end only
+    /// closes it, no respawn.
+    credits_from_options: bool,
     pub sound_screen: Option<SoundOptionsScreen>,
     /// The controls screen, and the mouse settings over it.
     pub controls_screen: Option<ControlsScreen>,
@@ -343,6 +351,7 @@ mod chat;
 mod confirm;
 
 mod credits;
+mod credits_attribution;
 
 mod death;
 mod debug_actions;

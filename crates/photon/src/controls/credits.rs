@@ -33,6 +33,7 @@ impl Controls {
         self.accessibility_screen = None;
         self.skin_screen = None;
         self.font_screen = None;
+        self.credits_attribution_screen = None;
         self.drop_light_screens();
         self.stats = None;
         self.drop_advancements(session);
@@ -62,6 +63,11 @@ impl Controls {
 
     /// `WinScreen.respawn`: the server is asked to bring the player back, and the screen goes.
     fn close_credits(&mut self, session: &mut PlaySession, surface: &mut WindowSurface) -> Result {
+        if std::mem::take(&mut self.credits_from_options) {
+            // `WinScreen(false, ...)`: the roll of the credits screen goes back to it.
+            self.credits = None;
+            return Ok(());
+        }
         session.respawn()?;
         self.credits = None;
         self.captured = true;

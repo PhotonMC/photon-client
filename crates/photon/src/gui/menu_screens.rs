@@ -96,6 +96,14 @@ impl Gui {
                 }
             };
         }
+        if let Some(screen) = controls.credits_attribution_screen.as_mut() {
+            blur(frame);
+            if screen.size() != gui_size {
+                screen.resize(font, lang, gui_size);
+            }
+            screen.draw(frame, atlas, font, mouse);
+            return true;
+        }
         sized!(controls.font_screen);
         sized!(controls.language_screen);
         sized!(controls.key_binds_screen);

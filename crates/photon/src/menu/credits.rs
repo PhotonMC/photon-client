@@ -31,19 +31,30 @@ impl Menu {
         match chosen {
             Some(TitleAction::Multiplayer) => self.screen = self.server_list(size),
             Some(TitleAction::Quit) => return Some(Choice::Quit),
-            Some(TitleAction::Credits) => {
-                self.screen = Screen::Credits(self.credits(size), Instant::now());
-            }
             // The other screens are not here yet.
             _ => {}
         }
         None
     }
 
+    /// The roll the credits and attribution screen's Credits button starts.
+    pub(super) fn show_credits(&mut self, size: (i32, i32)) {
+        self.screen = Screen::Credits(self.credits(size), Instant::now());
+    }
+
+    /// `setScreen(this)` of the roll's callback: the credits and attribution screen it came from.
+    fn leave_credits(&mut self, size: (i32, i32)) {
+        self.screen = if self.host.host_open() {
+            Screen::Settings
+        } else {
+            self.title(size)
+        };
+    }
+
     /// `WinScreen.tick`: the roll that has run past its end closes.
     pub(super) fn credits_ticked(&mut self, size: (i32, i32)) {
         if matches!(&self.screen, Screen::Credits(screen, _) if screen.tick()) {
-            self.screen = self.title(size);
+            self.leave_credits(size);
         }
     }
 
@@ -69,7 +80,7 @@ impl Menu {
         };
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press | Action::Repeat, _) => {
-                self.screen = self.title(size);
+                self.leave_credits(size);
             }
             WindowEvent::Key(key, _, Action::Press | Action::Repeat, _) => {
                 screen.key_pressed(key as i32);
