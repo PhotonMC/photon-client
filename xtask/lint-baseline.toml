@@ -950,7 +950,7 @@
 "crates/photon/src/play/camera.rs::Play::frame_camera" = 61
 "crates/photon/src/play/draw.rs::Play::draw" = 75
 "crates/photon/src/play/draw.rs::Play::set_billboards" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 150
+"crates/photon/src/play/ticks.rs::Play::start" = 148
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 91
