@@ -4,7 +4,7 @@ Screen layout and behaviour are verified by running Java's **own GUI code** head
 
 ## How it works
 
-- **Java side.** `tests/behavior/java/GuiOracle.java` builds a fake `Minecraft` (through `Unsafe`), `Options`, `Hud`, `ChatListener`, `TextureManager` and sprite/atlas stubs. `GuiGraphicsExtractor` is the real class; every `fill`, sprite (`BlitRenderState`) and text (`GuiTextRenderState`) is read from `GuiRenderState` with its pose applied.
+- **Java side.** `tests/behavior/java/v26_2/GuiOracle.java` builds a fake `Minecraft` (through `Unsafe`), `Options`, `Hud`, `ChatListener`, `TextureManager` and sprite/atlas stubs. `GuiGraphicsExtractor` is the real class; every `fill`, sprite (`BlitRenderState`) and text (`GuiTextRenderState`) is read from `GuiRenderState` with its pose applied.
 - **Font.** Java's own `font/default.json` providers (bitmap and space) are read from the jar. Glyphs are not drawn, only advances are used, so the layout is Java's layout.
 - **Rust side.** `GuiFrame.log` records `DrawOp`s, and `photon-oracle` runs the same scenario through the production Rust screen and emits the same JSON.
 - **Comparison.** Java's layer order serves the GPU, so both sides are sorted fill -> sprite -> text, then top to bottom and left to right.

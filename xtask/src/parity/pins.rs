@@ -41,6 +41,17 @@ pub fn java_dir() -> PathBuf {
     process::root().join("tests/behavior/java")
 }
 
+/// Where an oracle source lives: `common/` holds the version-neutral dispatcher and
+/// `Reflect`, `v26_2/` the classes written against the 26.2 game.
+fn source_path(name: &str) -> PathBuf {
+    let common = java_dir().join("common").join(name);
+    if common.is_file() {
+        common
+    } else {
+        java_dir().join("v26_2").join(name)
+    }
+}
+
 impl Pins {
     pub fn load() -> Result<Self, String> {
         let path = process::root().join("tests/behavior/reference.json");
@@ -85,9 +96,8 @@ impl Pins {
             .families
             .get(family)
             .ok_or_else(|| format!("unknown parity family `{family}`"))?;
-        let dir = java_dir();
-        let mut sources = vec![dir.join("Oracle.java"), dir.join(&entry.source)];
-        sources.extend(entry.extra_sources.iter().map(|extra| dir.join(extra)));
+        let mut sources = vec![source_path("Oracle.java"), source_path(&entry.source)];
+        sources.extend(entry.extra_sources.iter().map(|extra| source_path(extra)));
         Ok(sources)
     }
 
