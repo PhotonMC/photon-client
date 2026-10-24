@@ -179,6 +179,11 @@ fn flyers_5() -> Vec<Value> {
 
 fn flyers_6() -> Vec<Value> {
     vec![
+        living("command-block-minecart", "command_block_minecart", 6, vec![])
+            .extras(&["minecart"])
+            .player_x(30.5)
+            .set("chunk_radius", json!(1))
+            .row(),
         living("minecart-spawner-command", "spawner_minecart", 6, vec![])
             .extras(&["minecart"])
             .player_x(30.5)
