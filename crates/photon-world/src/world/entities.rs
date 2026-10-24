@@ -403,10 +403,25 @@ impl Entities {
     }
 }
 
+/// See [`ClientWorld::entity_click_view`].
+#[derive(Debug, Clone, Copy)]
+pub struct EntityClickView {
+    pub marker: bool,
+}
+
 impl ClientWorld {
     /// The registry name of an entity's type, or `None` when no such entity is there.
     pub fn entity_type_name(&self, entity_id: EntityId) -> Option<&'static str> {
         photon_data::entity_type::name(self.entities.at(entity_id)?.type_id)
+    }
+
+    /// What a click on an entity asks of it on the client: an armor stand's marker flag.
+    pub fn entity_click_view(&self, entity_id: EntityId) -> Option<EntityClickView> {
+        let entity = self.entities.at(entity_id)?;
+        Some(EntityClickView {
+            marker: entity.armor_stand().is_marker()
+                && photon_data::entity_type::name(entity.type_id) == Some("minecraft:armor_stand"),
+        })
     }
 
     /// Whether the level holds the entity (the local player included).

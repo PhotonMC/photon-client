@@ -19,7 +19,7 @@ pub(super) enum EntityUse {
 
 impl Context<'_> {
     /// `Player.interactOn` for a player who is not a spectator, on the client.
-    pub(super) fn interact_entity(&self, id: EntityId) -> EntityUse {
+    pub(super) fn interact_entity(&self, id: EntityId, hand: u8) -> EntityUse {
         let Some(name) = self.world.entity_type_name(id) else {
             return EntityUse::Pass;
         };
@@ -41,7 +41,25 @@ impl Context<'_> {
             "minecraft:chest_minecart"
             | "minecraft:hopper_minecart"
             | "minecraft:furnace_minecart" => EntityUse::Success { swing: true },
+            // `ArmorStand.interact`: the server does the work, unless the click is a marker's or
+            // a name tag's, which `Entity.interact` answers (nothing, on the client).
+            "minecraft:armor_stand" => {
+                let marker = self
+                    .world
+                    .entity_click_view(id)
+                    .is_some_and(|view| view.marker);
+                if marker || self.holds_name_tag(hand) {
+                    EntityUse::Pass
+                } else {
+                    EntityUse::Success { swing: false }
+                }
+            }
             _ => EntityUse::Pass,
         }
+    }
+
+    fn holds_name_tag(&self, hand: u8) -> bool {
+        self.held(hand)
+            .is_some_and(|(item, _)| crate::item::id_of("minecraft:name_tag") == Some(item))
     }
 }

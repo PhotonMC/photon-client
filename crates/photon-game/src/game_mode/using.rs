@@ -138,7 +138,7 @@ impl GameMode {
             ctx.swing_hand(hand, out);
             return true;
         }
-        match ctx.interact_entity(id) {
+        match ctx.interact_entity(id, hand) {
             EntityUse::Success { swing } => {
                 if swing {
                     ctx.swing_hand(hand, out);

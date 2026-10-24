@@ -215,6 +215,17 @@ fn minecart_rows() -> Vec<Value> {
     ]
 }
 
+/// The use key on an armor stand.
+fn decoration_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
+    let at = |label: &str, kind: &str| facing(label, vec![mob(31, kind, 0.5, 64.0, 2.5)], use_once());
+    vec![
+        at("use-armor-stand", "armor_stand").row(),
+        at("use-armor-stand-with-stone", "armor_stand").main_hand("minecraft:stone").row(),
+        at("use-armor-stand-with-name-tag", "armor_stand").main_hand("minecraft:name_tag").row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows()].concat()
+    [entity_rows_1(), entity_rows_2(), entity_rows_3(), minecart_rows(), decoration_rows()].concat()
 }
