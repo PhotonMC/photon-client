@@ -20,6 +20,9 @@ pub(super) enum EntityUse {
 impl Context<'_> {
     /// `Player.interactOn` for a player who is not a spectator, on the client.
     pub(super) fn interact_entity(&self, id: EntityId, hand: u8) -> EntityUse {
+        if self.spawn_egg_on_living_mob(id, hand) {
+            return EntityUse::Success { swing: false };
+        }
         match self.interact_entity_side(id, hand) {
             EntityUse::Pass => self.item_interacts_with_living(id, hand),
             success => success,
@@ -83,6 +86,20 @@ impl Context<'_> {
         } else {
             EntityUse::Pass
         }
+    }
+
+    /// `Mob.checkAndHandleImportantInteractions` for a spawn egg: the server spawns the
+    /// offspring, the client's answer is the server's success (no swing) for a mob that lives.
+    fn spawn_egg_on_living_mob(&self, id: EntityId, hand: u8) -> bool {
+        let Some(entity) = self.world.entities().at(id) else {
+            return false;
+        };
+        let alive = entity.health().is_none_or(|health| health > 0.0);
+        let egg = self.held(hand).is_some_and(|(item, _)| {
+            photon_world::block::rules::item(item)
+                .is_some_and(|row| row.class == photon_data::item::classes::ItemClass::SpawnEggItem)
+        });
+        entity.is_mob() && alive && egg
     }
 
     /// `ItemStack.interactLivingEntity` on the client, for what the stack alone decides: a name
