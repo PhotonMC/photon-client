@@ -18,6 +18,22 @@ impl ClientEntity {
         self.living.mooshroom_stew
     }
 
+    /// `AgeableMob.isAgeLocked`.
+    pub fn is_age_locked(&self) -> bool {
+        self.living.age_locked
+    }
+
+    /// `AgeableMob.ageLockParticleTimer`: above zero for forty ticks after a golden dandelion.
+    pub fn age_lock_timer(&self) -> i32 {
+        self.living.age_lock_timer
+    }
+
+    /// Whether the type is an `AgeableMob` (an animal or a villager), which has an age lock.
+    pub fn is_ageable_mob(&self) -> bool {
+        crate::entity::boat::vanilla_passenger_is_animal(self.type_id)
+            || photon_data::entity_type::name(self.type_id) == Some("minecraft:villager")
+    }
+
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).
     pub fn sheep_dye_id(&self) -> u8 {
         self.living.animal.wool & 15

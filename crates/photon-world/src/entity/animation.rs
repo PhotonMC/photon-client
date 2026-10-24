@@ -97,6 +97,8 @@ impl ClientEntity {
         &mut self,
         (sleeper_near_cat, thundering, jukebox_near): (bool, bool, bool),
     ) {
+        // `AgeableMob.makeAgeLockedParticle` counts the wait down on the client.
+        self.living.age_lock_timer = (self.living.age_lock_timer - 1).max(0);
         self.tick_cat(sleeper_near_cat);
         self.tick_panda(thundering);
         self.tick_bat();

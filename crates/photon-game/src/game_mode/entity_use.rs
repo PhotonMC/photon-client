@@ -120,21 +120,25 @@ impl Context<'_> {
 
     /// `Animal.mobInteract` on the client, for the animals that add nothing to it: their food
     /// either ages a baby up (a success) or is consumed with no swing; any other item passes.
-    /// (A golden dandelion on a baby and a lead on a leashed animal come first in the
-    /// reference and are not covered.)
+    /// (A lead on a leashed animal comes first in the reference and is not covered.)
     fn feed_animal(&mut self, id: EntityId, hand: u8, tag: &str) -> EntityUse {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
+        let (baby, locked) = (entity.is_baby(), entity.is_age_locked());
+        let dead = entity.health().is_some_and(|health| health <= 0.0);
         let food = self.held(hand).is_some_and(|(item, _)| {
             self.world
                 .block_state_registry()
                 .item_tags()
                 .contains(item.0, tag)
         });
-        if !food || entity.health().is_some_and(|health| health <= 0.0) {
+        if dead {
             EntityUse::Pass
-        } else if entity.is_baby() {
+        } else if !food {
+            // `AgeableMob.mobInteract`, which `Animal.mobInteract` ends in.
+            self.golden_dandelion_on_baby(id, hand)
+        } else if baby && !locked {
             // `usePlayerItem` takes one unless materials are infinite.
             if !self.instabuild() {
                 let slot = self.hand_slot(hand);
@@ -144,6 +148,33 @@ impl Context<'_> {
         } else {
             EntityUse::Success { swing: false }
         }
+    }
+
+    /// `AgeableMob.mobInteract`: a golden dandelion on a baby, when the last use is over and the
+    /// type may be locked, flips the age lock and is used up (the sound excludes nobody, so the
+    /// client plays none, and the particles are not compared).
+    fn golden_dandelion_on_baby(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let ready = entity.is_baby() && entity.age_lock_timer() == 0;
+        let barred = self
+            .world
+            .block_state_registry()
+            .entity_type_tags()
+            .contains(entity.type_id.0, "minecraft:cannot_be_age_locked");
+        let golden = self.held(hand).is_some_and(|(item, _)| {
+            crate::item::id_of("minecraft:golden_dandelion") == Some(item)
+        });
+        if !(ready && golden && !barred) {
+            return EntityUse::Pass;
+        }
+        self.world.entities_mut().toggle_age_lock(id);
+        if !self.instabuild() {
+            let slot = self.hand_slot(hand);
+            self.world.shrink_local_player_slot(slot, 1);
+        }
+        EntityUse::Success { swing: true }
     }
 
     /// `Creeper.mobInteract`: a flint and steel or fire charge lights the fuse, which the client

@@ -293,7 +293,7 @@ impl ClientWorld {
         if let Some(carried) = carrying {
             entity.living.carried_state = carried;
         }
-        apply_goat_data(entity, metadata);
+        apply_age_lock_and_goat_data(entity, metadata);
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
         }

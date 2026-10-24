@@ -429,6 +429,76 @@ fn brown_mooshroom_rows() -> Vec<Value> {
     ]
 }
 
+/// An animal at the usual spot with the named spawn flags set.
+fn flagged_animal(kind: &str, flags: &[&str]) -> Value {
+    let mut entity = mob(31, kind, 0.5, 64.0, 2.5);
+    for flag in flags {
+        entity[*flag] = json!(true);
+    }
+    entity
+}
+
+/// The golden dandelion on animals: babies lock or unlock their growth, a locked baby is not fed.
+fn age_lock_rows() -> Vec<Value> {
+    let once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let twice = || {
+        [
+            aims(1).use_clicks(1).inventory().go(),
+            aims(2).inventory().go(),
+            aims(1).use_clicks(1).inventory().go(),
+            aims(2).inventory().go(),
+        ]
+        .concat()
+    };
+    let animal = flagged_animal;
+    let golden = "minecraft:golden_dandelion";
+    vec![
+        facing("age-lock-baby-chicken", vec![animal("chicken", &["baby"])], once())
+            .main_hand(golden)
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-baby-chicken-twice", vec![animal("chicken", &["baby"])], twice())
+            .main_hand(golden)
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-adult-chicken", vec![animal("chicken", &[])], once())
+            .main_hand(golden)
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-locked-baby-chicken-with-seeds", vec![animal("chicken", &["baby", "age_locked"])], once())
+            .main_hand("minecraft:wheat_seeds")
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-locked-baby-chicken-with-golden", vec![animal("chicken", &["baby", "age_locked"])], once())
+            .main_hand(golden)
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        // The first click locks the baby on this client; the second click, with the main hand
+        // empty, goes on to the seeds, which a locked baby does not eat.
+        facing("age-lock-then-seeds", vec![animal("chicken", &["baby"])], twice())
+            .main_hand(golden)
+            .off_hand("minecraft:wheat_seeds")
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-baby-brown-mooshroom", vec![animal("mooshroom", &["baby", "brown"])], once())
+            .main_hand(golden)
+            .count(2)
+            .x_rot(30.0)
+            .row(),
+        facing("age-lock-baby-chicken-in-creative", vec![animal("chicken", &["baby"])], once())
+            .main_hand(golden)
+            .count(2)
+            .game_mode("creative")
+            .x_rot(30.0)
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         entity_rows_1(),
@@ -441,6 +511,7 @@ pub fn rows() -> Vec<Value> {
         mooshroom_rows(),
         goat_rows(),
         brown_mooshroom_rows(),
+        age_lock_rows(),
     ]
     .concat()
 }

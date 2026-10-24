@@ -360,6 +360,10 @@ pub(crate) struct EntityState {
     pub(crate) mooshroom_type: i32,
     /// Whether a mooshroom holds the stew effects of a flower fed to it on this client.
     pub(crate) mooshroom_stew: bool,
+    /// An ageable mob's age lock, and the ticks the client waits after a golden dandelion
+    /// before it takes another (`AgeableMob.ageLockParticleTimer`).
+    pub(crate) age_locked: bool,
+    pub(crate) age_lock_timer: i32,
     /// A rabbit's variant, zero for brown.
     pub(crate) rabbit_type: i32,
     /// Whether a creeper is charged.

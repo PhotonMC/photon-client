@@ -174,6 +174,14 @@ impl Entities {
         true
     }
 
+    /// `AgeableMob.setAgeLockedData` as the client runs it: the lock flips and the wait starts.
+    pub fn toggle_age_lock(&mut self, entity_id: EntityId) {
+        if let Some(entity) = self.at_mut(entity_id) {
+            entity.living.age_locked = !entity.living.age_locked;
+            entity.living.age_lock_timer = 40;
+        }
+    }
+
     /// Sets or clears the stew effects a mooshroom holds (`MushroomCow.stewEffects`).
     pub fn set_mooshroom_stew(&mut self, entity_id: EntityId, held: bool) {
         if let Some(entity) = self.at_mut(entity_id) {

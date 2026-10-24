@@ -58,6 +58,29 @@ pub(crate) fn zombie_baby_from_metadata(metadata: &[u8]) -> Option<bool> {
     metadata_boolean_value(metadata, VANILLA_ZOMBIE_BABY_DATA_ID)
 }
 
+/// Whether an ageable mob's growth is locked (`AgeableMob.AGE_LOCKED`), when the data holds it.
+pub(crate) fn age_locked_from_metadata(metadata: &[u8]) -> Option<bool> {
+    metadata_boolean_value(metadata, AGEABLE_AGE_LOCKED_DATA_ID)
+}
+
+/// An ageable mob's age lock in its data, applied to the entity.
+pub(crate) fn apply_age_lock_data(entity: &mut crate::entity::ClientEntity, metadata: &[u8]) {
+    if entity.is_ageable_mob()
+        && let Some(locked) = age_locked_from_metadata(metadata)
+    {
+        entity.living.age_locked = locked;
+    }
+}
+
+/// The ageable-mob lock and the goat's own data, applied together.
+pub(crate) fn apply_age_lock_and_goat_data(
+    entity: &mut crate::entity::ClientEntity,
+    metadata: &[u8],
+) {
+    apply_age_lock_data(entity, metadata);
+    super::goat::apply_goat_data(entity, metadata);
+}
+
 pub(crate) fn ticks_frozen_from_metadata(metadata: &[u8]) -> Option<i32> {
     metadata_int_value(metadata, ENTITY_TICKS_FROZEN_DATA_ID)
 }

@@ -157,6 +157,8 @@ pub(crate) const ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
 pub(crate) const ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
 pub(crate) const ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID: u8 = 3;
 pub(crate) const ENTITY_SILENT_DATA_ID: u8 = 4;
+/// Where an `AgeableMob` keeps its age lock (a boolean), after the baby flag.
+pub(crate) const AGEABLE_AGE_LOCKED_DATA_ID: u8 = 17;
 pub(crate) const ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const ENTITY_POSE_DATA_ID: u8 = 6;
 pub(crate) const ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;

@@ -6,6 +6,7 @@ pub(crate) use player::*;
 mod fields;
 pub use fields::*;
 mod goat;
+#[cfg(test)]
 pub(crate) use goat::*;
 mod living;
 pub(crate) use living::*;
