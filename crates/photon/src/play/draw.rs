@@ -145,17 +145,27 @@ impl Play {
 
     /// The hands in first person unless the player only watches, the screen effects, and the
     /// totem animation in any view, all drawn in the hand pass.
+    /// `CameraRenderState.isSleeping`: whether the camera entity sleeps.
+    fn camera_sleeping(&self) -> bool {
+        let world = self.session.world();
+        match self.session.camera_entity() {
+            Some(id) => world
+                .entities()
+                .at(id)
+                .is_some_and(|entity| entity.is_sleeping()),
+            None => world
+                .local_player()
+                .is_some_and(|state| state.is_sleeping()),
+        }
+    }
+
     fn set_hands(&mut self, view: FrameView, first_person: bool) -> Result<()> {
         let glint = self.glint_frame();
         let (activation, activation_glint) = self.activation_vertices(&glint);
         for cache in &mut self.held_item_layers {
             cache.set_glint(&glint);
         }
-        let sleeping = self
-            .session
-            .world()
-            .local_player()
-            .is_some_and(|state| state.is_sleeping());
+        let sleeping = self.camera_sleeping();
         let watching = self
             .session
             .player()
