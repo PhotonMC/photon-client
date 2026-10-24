@@ -87,7 +87,10 @@ impl Play {
             }
         };
         crate::resources::replace(Arc::new(stack));
-        match self.rebuild_assets(&root.to_string_lossy()) {
+        let rebuilt = self.rebuild_assets(&root.to_string_lossy());
+        // The time the rebuild took is not owed to the game as ticks.
+        self.last_frame = Instant::now();
+        match rebuilt {
             Ok(()) => true,
             Err(error) => {
                 log::warn!("resource reload failed: {error}");
@@ -95,6 +98,7 @@ impl Play {
                 if let Err(error) = self.rebuild_assets(&root.to_string_lossy()) {
                     log::warn!("the previous resources could not be restored: {error}");
                 }
+                self.last_frame = Instant::now();
                 false
             }
         }
@@ -104,6 +108,16 @@ impl Play {
     /// anew, so every texture is sent again after it.
     fn rebuild_assets(&mut self, root: &str) -> Result<()> {
         let data_root = data_root(root);
+        // The colour maps are read through the packs too.
+        self.biome_tints = Arc::new(
+            BiomeTints::load(
+                &data_root,
+                &*crate::resources::shared(std::path::Path::new(root)),
+                self.session.registry_names("minecraft:worldgen/biome"),
+                self.session.hashed_seed(),
+            )
+            .ok_or("the biome colours could not be read")?,
+        );
         let (renderer, animated) = bake_blocks(root, &mut self.backend)?;
         self.block_renderer = renderer;
         self.animated_atlas = animated;
