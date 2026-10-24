@@ -48,3 +48,7 @@ The scenarios of each operation are in its generator under `parity/cases/src/gui
 - **Fonts.** Languages with non-Latin names are not listed, because font fallbacks and right-to-left shaping are not ported.
 - **Key names.** GLFW gives printable keys their names on the keyboard's layout; a headless run has no window to ask, so the digit keys come out as their language keys. The `hud_debug_overlay` operation adds the US names (`1` to `4`) to the language it runs under; another case that prints a key's name needs the same.
 - **Debug overlay.** `hud_debug_overlay` runs the game's own overlay with only the entries that need no running game (version, position, section position); the frame rate, memory and system entries read state the headless scene lacks and are not compared.
+
+## Banner pattern sprites
+
+The recorder answers a sprite of the banner pattern sheet with a texture of its own named for the pattern, so the loom's pattern buttons record which part of the 64 by 64 they show; any other sprite of that lookup fails. The banner drawn in the loom's result slot is a picture-in-picture element that neither side records.

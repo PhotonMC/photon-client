@@ -103,6 +103,11 @@ impl ItemTags {
 pub struct OrderedTags(BTreeMap<String, Vec<i32>>);
 
 impl OrderedTags {
+    /// Tags from their ids and members.
+    pub fn new(tags: impl IntoIterator<Item = (String, Vec<i32>)>) -> Self {
+        Self(tags.into_iter().collect())
+    }
+
     /// The tags of one registry from a tag packet; `None` when it does not update that registry.
     pub fn of_registry(registries: &[RegistryTags], name: &str) -> Option<Self> {
         let entries = registries
@@ -120,5 +125,16 @@ impl OrderedTags {
     /// The members of a tag by registry id, in the order the server listed them.
     pub fn members(&self, tag: &str) -> impl Iterator<Item = i32> + '_ {
         self.0.get(tag).into_iter().flatten().copied()
+    }
+}
+
+#[cfg(test)]
+mod ordered_tests {
+    use super::*;
+
+    #[test]
+    fn a_tag_keeps_the_order_the_server_listed() {
+        let tags = OrderedTags::new([("minecraft:t".to_owned(), vec![5, 1, 3])]);
+        assert_eq!(tags.members("minecraft:t").collect::<Vec<_>>(), [5, 1, 3]);
     }
 }

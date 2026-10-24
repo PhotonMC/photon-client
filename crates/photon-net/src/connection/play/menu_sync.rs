@@ -4,37 +4,16 @@
 use super::*;
 
 impl PlaySession {
-    /// `LoomMenu.slotsChanged`'s list of patterns: with a banner and a dye in,
-    /// those that need no item, or those the pattern item in the loom gives.
-    /// Nothing once the banner has six layers.
-    pub(super) fn loom_patterns(
+    /// The loom's pattern list, from the tags the server sent.
+    fn sync_loom(
         world: &photon_world::ClientWorld,
-        menu: &photon_game::menus::container::ContainerMenu,
-    ) -> (Vec<i32>, usize) {
-        let stack = |slot: usize| menu.slots.get(slot).and_then(Option::as_ref);
-        let (Some(banner), Some(_dye)) = (stack(0), stack(1)) else {
-            return (Vec::new(), 0);
-        };
-        let layers =
-            photon_game::item::values::Values::new(banner.item_registry_id(), banner.patch_bytes())
-                .banner_layers()
-                .len();
-        let tags = world.block_state_registry().banner_pattern_tags();
-        let tag = match stack(2) {
-            None => "minecraft:no_item_required".to_owned(),
-            Some(pattern) => {
-                // `provides_banner_patterns` names `pattern_item/<name>`.
-                let name = usize::try_from(pattern.item_registry_id().0)
-                    .ok()
-                    .and_then(|id| photon_data::item::registry::ITEMS.get(id))
-                    .map_or("", |item| item.name);
-                let short = name
-                    .trim_start_matches("minecraft:")
-                    .trim_end_matches("_banner_pattern");
-                format!("minecraft:pattern_item/{short}")
-            }
-        };
-        (tags.members(&tag).collect(), layers)
+        menu: &mut photon_game::menus::container::ContainerMenu,
+    ) {
+        if menu.kind == photon_game::menus::container::MenuKind::Loom {
+            let tags = world.block_state_registry().banner_pattern_tags();
+            (menu.patterns, menu.banner_layers) =
+                photon_game::menus::container::loom_patterns(tags, menu);
+        }
     }
 
     /// The enchantment registry's entries, which a click's component hashes name.
@@ -120,11 +99,7 @@ impl PlaySession {
                     .map(|input| self.world.stonecutter_options(input.item_registry_id()))
                     .unwrap_or_default();
             }
-            if menu.kind == photon_game::menus::container::MenuKind::Loom {
-                let (patterns, layers) = Self::loom_patterns(&self.world, menu);
-                menu.patterns = patterns;
-                menu.banner_layers = layers;
-            }
+            Self::sync_loom(&self.world, menu);
             menu.item_tags = self.world.block_state_registry().item_tags().clone();
             menu.enchantments = enchantments;
             menu.enchantment_traits = self.menus.enchantment_traits.clone();

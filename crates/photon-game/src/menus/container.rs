@@ -182,7 +182,9 @@ pub use bundle::{
 };
 mod clicks;
 mod crafter;
+mod loom;
 pub use crafter::{CRAFTER_SLOT_SOUND, crafter_slot_sound_levels};
+pub use loom::loom_patterns;
 mod components;
 pub use components::{damage, is_damageable, max_damage};
 mod grindstone;

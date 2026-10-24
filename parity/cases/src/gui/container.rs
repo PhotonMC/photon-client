@@ -169,6 +169,14 @@ fn small_menus() -> Vec<Value> {
         screen("loom", "container.loom").row("loom-empty"),
         loom().row("loom-patterns"),
         Screen { clicks: vec![(190, 55)], ..loom() }.row("loom-click-pattern"),
+        Screen { data: Some(json!([0])), clicks: vec![(190, 55)], ..loom() }.row("loom-click-selected"),
+        Screen {
+            slots: vec![(0, "white_banner", 1), (1, "red_dye", 1), (2, "flower_banner_pattern", 1)],
+            sync_slot: Some(2),
+            clicks: vec![(190, 55)],
+            ..screen("loom", "container.loom")
+        }
+        .row("loom-click-pattern-item"),
         Screen { clicks: vec![(190, 55)], ..screen("loom", "container.loom") }.row("loom-click-no-banner"),
         cartography().row("cartography-empty"),
         Screen { slots: vec![(1, "paper", 1)], sync_slot: Some(1), ..cartography() }.row("cartography-paper"),

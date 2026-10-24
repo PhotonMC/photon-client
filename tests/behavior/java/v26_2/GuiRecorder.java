@@ -60,9 +60,16 @@ class GuiRecorder extends GuiFonts {
         @Override
         public net.minecraft.client.renderer.texture.TextureAtlasSprite get(Object key) {
             try {
-                var texture = ((net.minecraft.client.resources.model.sprite.SpriteId) key).texture().getPath();
+                var id = (net.minecraft.client.resources.model.sprite.SpriteId) key;
+                if (!id.atlasLocation().getPath().equals("textures/atlas/banner_patterns.png")) {
+                    throw new IllegalStateException("no stand-in for the sprite " + id);
+                }
+                var texture = id.texture().getPath();
                 var sprite = (net.minecraft.client.renderer.texture.TextureAtlasSprite) unsafe.allocateInstance(
                     net.minecraft.client.renderer.texture.TextureAtlasSprite.class);
+                var contents = unsafe.allocateInstance(net.minecraft.client.renderer.texture.SpriteContents.class);
+                set(contents, "additionalMetadata", List.of());
+                set(sprite, "contents", contents);
                 set(sprite, "atlasLocation", Identifier.withDefaultNamespace(
                     "textures/gui/banner/" + texture.replace("entity/banner/", "") + ".png"));
                 set(sprite, "u0", 0.0F);

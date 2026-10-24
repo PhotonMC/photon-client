@@ -1,22 +1,19 @@
-//! The loom's patterns as the vanilla data pack offers them: the tag of the pattern slot's item.
+//! The loom's patterns as the vanilla data pack offers them, through the client's own selection.
 
 use photon_game::menus::container::ContainerMenu;
+use photon_world::block::tags::OrderedTags;
 
 fn data_root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.data/minecraft/assets/jar/data")
 }
 
 /// The entries a banner pattern tag lists, in the file's order.
-fn tag_values(tag: &str) -> Vec<String> {
-    let path = data_root().join(format!(
-        "minecraft/tags/banner_pattern/{}.json",
-        tag.trim_start_matches("minecraft:")
-    ));
-    let file: serde_json::Value = std::fs::read_to_string(path)
+fn tag_values(file: &std::path::Path) -> Vec<String> {
+    let parsed: serde_json::Value = std::fs::read_to_string(file)
         .ok()
         .and_then(|text| serde_json::from_str(&text).ok())
         .unwrap_or_default();
-    file["values"]
+    parsed["values"]
         .as_array()
         .into_iter()
         .flatten()
@@ -24,39 +21,43 @@ fn tag_values(tag: &str) -> Vec<String> {
         .collect()
 }
 
-/// What the loom offers for the menu's slots: the registry's names and the offered ids.
+/// Every banner pattern tag of the data pack as registry ids, as a tag packet lists them.
+fn pack_tags(names: &[String]) -> OrderedTags {
+    let root = data_root().join("minecraft/tags/banner_pattern");
+    let mut files = vec![(
+        "no_item_required".to_owned(),
+        root.join("no_item_required.json"),
+    )];
+    for entry in std::fs::read_dir(root.join("pattern_item"))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let file = entry.file_name().to_string_lossy().into_owned();
+        if let Some(short) = file.strip_suffix(".json") {
+            files.push((format!("pattern_item/{short}"), entry.path()));
+        }
+    }
+    OrderedTags::new(files.into_iter().map(|(tag, file)| {
+        let ids = tag_values(&file)
+            .iter()
+            .filter_map(|name| names.iter().position(|known| known == name))
+            .map(|id| id as i32)
+            .collect();
+        (format!("minecraft:{tag}"), ids)
+    }))
+}
+
+/// Gives the loom menu the patterns the client would list for its slots, and returns the
+/// registry's names for the screen.
 pub(super) fn offer(menu: &mut ContainerMenu) -> std::sync::Arc<Vec<(String, String)>> {
     if menu.kind != photon_game::menus::container::MenuKind::Loom {
         return std::sync::Arc::default();
     }
-    let item = |slot: usize| menu.slots.get(slot).and_then(Option::as_ref);
-    let tag = match item(2) {
-        None => "no_item_required".to_owned(),
-        Some(pattern) => {
-            let name =
-                photon_data::item::registry::ITEMS[pattern.item_registry_id().0 as usize].name;
-            let short = name
-                .trim_start_matches("minecraft:")
-                .trim_end_matches("_banner_pattern");
-            format!("pattern_item/{short}")
-        }
-    };
-    let offered = tag_values(&tag);
     let registry = photon_game::registries::Registries::vanilla(&data_root()).banner_patterns;
-    // The ids in the tag's order, as the server lists them.
-    let ids: Vec<i32> = offered
-        .iter()
-        .filter_map(|name| registry.iter().position(|entry| entry.name == *name))
-        .map(|id| id as i32)
-        .collect();
-    menu.patterns = ids;
-    menu.banner_layers = item(0)
-        .map(|banner| {
-            photon_game::item::values::Values::new(banner.item_registry_id(), banner.patch_bytes())
-                .banner_layers()
-                .len()
-        })
-        .unwrap_or(0);
+    let names: Vec<String> = registry.iter().map(|entry| entry.name.clone()).collect();
+    (menu.patterns, menu.banner_layers) =
+        photon_game::menus::container::loom_patterns(&pack_tags(&names), menu);
     std::sync::Arc::new(
         registry
             .into_iter()
