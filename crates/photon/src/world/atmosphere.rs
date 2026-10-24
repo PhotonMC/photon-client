@@ -147,24 +147,101 @@ impl Flicker {
     }
 }
 
-/// The cloud layer: its cells from the clouds texture, and which cell and
-/// side of the layer its faces were last built for.
+/// The faces a thread is building for a cell and side of the layer.
+type CloudBuild = (
+    CloudKey,
+    std::sync::mpsc::Receiver<Vec<photon_render::sky::clouds::CloudVertex>>,
+);
+type CloudKey = ((i32, i32), photon_render::sky::clouds::RelativeCamera);
+
+/// The cloud layer: its cells from the clouds texture, which cell and side of the layer its
+/// faces were last built for, and the build under way.
 pub struct Clouds {
-    cells: photon_render::sky::clouds::CloudCells,
-    built_for: Option<((i32, i32), photon_render::sky::clouds::RelativeCamera)>,
+    cells: std::sync::Arc<photon_render::sky::clouds::CloudCells>,
+    built_for: Option<CloudKey>,
+    building: Option<CloudBuild>,
 }
 
 impl Clouds {
     pub fn new(cells: photon_render::sky::clouds::CloudCells) -> Self {
         Self {
-            cells,
+            cells: std::sync::Arc::new(cells),
             built_for: None,
+            building: None,
         }
     }
 
     /// Build the faces again on the next frame, as after a respawn.
     pub fn reset(&mut self) {
         self.built_for = None;
+        self.building = None;
+    }
+
+    /// Faces for `key`: made on a thread while the old ones stay up, except where there are
+    /// none yet.
+    fn build(
+        &mut self,
+        key: CloudKey,
+        cloud_range: i32,
+    ) -> Option<Vec<photon_render::sky::clouds::CloudVertex>> {
+        let radius = photon_render::sky::clouds::radius_cells(cloud_range);
+        let cells = self.cells.clone();
+        let make = move || cells.build(key.1, key.0.0, key.0.1, radius);
+        if self.built_for.is_none() {
+            self.building = None;
+            return Some(make());
+        }
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let spawned = std::thread::Builder::new()
+            .name("Cloud Builder".to_owned())
+            .spawn(move || {
+                let _ = sender.send(make());
+            });
+        if spawned.is_err() {
+            return Some(self.cells.build(key.1, key.0.0, key.0.1, radius));
+        }
+        self.building = Some((key, receiver));
+        None
+    }
+
+    /// The faces a finished build made, taken in.
+    fn finished(&mut self) -> Option<(CloudKey, Vec<photon_render::sky::clouds::CloudVertex>)> {
+        let (key, receiver) = self.building.as_ref()?;
+        match receiver.try_recv() {
+            Ok(faces) => {
+                let key = *key;
+                self.building = None;
+                Some((key, faces))
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.building = None;
+                None
+            }
+        }
+    }
+
+    /// Where the built cell's corner sits from the camera: the placement's offset, moved by the
+    /// cells between (the grid wraps).
+    fn offset_for_built(&self, placement: &photon_render::sky::clouds::CloudPlacement) -> [f32; 3] {
+        let Some(((built_x, built_z), _)) = self.built_for else {
+            return placement.offset;
+        };
+        let wrap = |delta: i32, width: i32| {
+            if delta > width / 2 {
+                delta - width
+            } else if delta < -(width / 2) {
+                delta + width
+            } else {
+                delta
+            }
+        };
+        let (width, height) = (self.cells.width(), self.cells.height());
+        let step = photon_render::sky::clouds::CELL_SIZE;
+        let mut offset = placement.offset;
+        offset[0] -= wrap(placement.cell.0 - built_x, width) as f32 * step;
+        offset[2] -= wrap(placement.cell.1 - built_z, height) as f32 * step;
+        offset
     }
 
     /// The clouds for the frame, when their colour is not fully
@@ -191,19 +268,19 @@ impl Clouds {
             partial,
         );
         let key = (placement.cell, placement.relative);
-        if self.built_for != Some(key) {
+        if let Some((built, faces)) = self.finished() {
+            self.built_for = Some(built);
+            backend.set_cloud_faces(&faces)?;
+        }
+        let wanted = self.built_for != Some(key)
+            && self.building.as_ref().map(|(pending, _)| *pending) != Some(key);
+        if wanted && let Some(faces) = self.build(key, cloud_range) {
             self.built_for = Some(key);
-            let faces = self.cells.build(
-                placement.relative,
-                placement.cell.0,
-                placement.cell.1,
-                photon_render::sky::clouds::radius_cells(cloud_range),
-            );
             backend.set_cloud_faces(&faces)?;
         }
         backend.set_cloud_frame(Some(photon_render::vulkan::CloudFrame {
             view_projection,
-            offset: placement.offset,
+            offset: self.offset_for_built(&placement),
             fog_end: sky.cloud_fog_end,
             colour: sky.cloud_colour,
         }));

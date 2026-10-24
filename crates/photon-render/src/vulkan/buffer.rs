@@ -318,6 +318,8 @@ pub(super) enum Retired {
     /// The index range a section left when its translucent faces were
     /// ordered again.
     Indices(ArenaSlice),
+    /// The cloud faces a rebuild replaced: the frames in flight may still read them.
+    Clouds(Box<HostBuffer>),
 }
 
 /// One mesh's buffers: the opaque indices, then the translucent ones.

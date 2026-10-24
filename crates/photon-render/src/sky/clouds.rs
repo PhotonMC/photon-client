@@ -154,6 +154,10 @@ impl CloudCells {
         self.width
     }
 
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+
     fn cell(&self, x: i32, z: i32) -> Option<[bool; 4]> {
         let index = x.rem_euclid(self.width) + z.rem_euclid(self.height) * self.width;
         self.cells[index as usize]

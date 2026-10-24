@@ -385,27 +385,29 @@ impl VulkanBackend {
         &mut self,
         vertices: &[crate::sky::clouds::CloudVertex],
     ) -> Result<(), VulkanError> {
-        // SAFETY: the fence wait leaves the previous frame done with the buffer, so it may be
-        // replaced and written.
+        // SAFETY: the new buffer is written before any frame reads it; the one it replaces is
+        // retired, not freed, since the frames in flight may still read it, so no wait is made.
         unsafe {
-            self.wait_in_flight()?;
             let bytes = as_bytes(vertices);
-            if self
-                .cloud_buffer
-                .as_ref()
-                .is_none_or(|clouds| clouds.host.capacity < bytes.len())
-            {
-                self.cloud_buffer = None;
-                self.cloud_buffer = Some(CloudBuffer {
-                    host: HostBuffer::new(self, bytes.len().max(1 << 20))?,
-                    vertex_count: 0,
-                    push: [0.0; 24],
-                    visible: false,
-                });
+            let host = HostBuffer::new(self, bytes.len().max(1 << 20))?;
+            host.write(&[bytes])?;
+            let vertex_count = vertices.len() as u32;
+            match self.cloud_buffer.as_mut() {
+                Some(clouds) => {
+                    let old = std::mem::replace(&mut clouds.host, host);
+                    clouds.vertex_count = vertex_count;
+                    self.retired
+                        .push((self.frames_submitted, Retired::Clouds(Box::new(old))));
+                }
+                None => {
+                    self.cloud_buffer = Some(CloudBuffer {
+                        host,
+                        vertex_count,
+                        push: [0.0; 24],
+                        visible: false,
+                    });
+                }
             }
-            let clouds = self.cloud_buffer.as_mut().expect("allocated above");
-            clouds.host.write(&[bytes])?;
-            clouds.vertex_count = vertices.len() as u32;
             Ok(())
         }
     }

@@ -54,6 +54,8 @@ impl VulkanBackend {
                     // SAFETY: the section's last frame has finished (see `# Safety`).
                     unsafe { self.destroy_section(section) };
                 }
+                // Dropping the buffer frees it; its last frame has finished.
+                Retired::Clouds(buffer) => drop(buffer),
                 Retired::Indices(slice) => {
                     self.staged.retain(|copy| copy.target != slice);
                     self.arena_free(slice);

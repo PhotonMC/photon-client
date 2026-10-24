@@ -265,6 +265,7 @@ impl VulkanBackend {
             // SAFETY: the caller's contract.
             Retired::Section(section) => unsafe { self.destroy_section(section) },
             Retired::Indices(slice) => self.arena_free(slice),
+            Retired::Clouds(buffer) => drop(buffer),
         }
     }
 
