@@ -19,10 +19,11 @@ struct Aims {
     use_down: bool,
     pick_clicks: i64,
     held: &'static [&'static str],
+    inventory: bool,
 }
 
 fn aims(count: usize) -> Aims {
-    Aims { count, clicks: 0, use_clicks: 0, down: false, use_down: false, pick_clicks: 0, held: &[] }
+    Aims { count, clicks: 0, use_clicks: 0, down: false, use_down: false, pick_clicks: 0, held: &[], inventory: false }
 }
 
 impl Aims {
@@ -50,6 +51,11 @@ impl Aims {
         Self { held, ..self }
     }
 
+    /// Asks the oracles for the inventory's slots in every tick.
+    fn inventory(self) -> Self {
+        Self { inventory: true, ..self }
+    }
+
     fn go(self) -> Vec<Value> {
         let mut ticks = keys(self.count, self.held);
         for (index, tick) in ticks.iter_mut().enumerate() {
@@ -59,6 +65,9 @@ impl Aims {
                 "use": {"clicks": if first { self.use_clicks } else { 0 }, "down": self.use_down},
                 "watch": [],
             });
+            if self.inventory {
+                attack["inventory"] = json!(true);
+            }
             if self.pick_clicks != 0 {
                 attack["pick_item"] = json!({"clicks": if first { self.pick_clicks } else { 0 }});
             }
@@ -295,7 +304,7 @@ fn mob_class_rows() -> Vec<Value> {
 
 /// The use key on cows, which milk a bucket and eat wheat.
 fn cow_rows() -> Vec<Value> {
-    let use_once = || [aims(1).use_clicks(1).go(), aims(3).go()].concat();
+    let use_once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
     let at = |label: &str, kind: &str| facing(label, vec![mob(31, kind, 0.5, 64.0, 2.5)], use_once());
     // An entity spawned with a flag the oracle applies (a baby, a golem without its pumpkin).
     let with_flag = |label: &str, kind: &str, flag: &str| {
@@ -314,6 +323,31 @@ fn cow_rows() -> Vec<Value> {
     ]
 }
 
+/// The use key on mooshrooms: a bowl is filled with stew, shears work on an adult.
+fn mooshroom_rows() -> Vec<Value> {
+    let use_once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let at = |label: &str| facing(label, vec![mob(31, "mooshroom", 0.5, 64.0, 2.5)], use_once());
+    let baby = |label: &str| {
+        let mut entity = mob(31, "mooshroom", 0.5, 64.0, 2.5);
+        entity["baby"] = json!(true);
+        facing(label, vec![entity], use_once())
+    };
+    vec![
+        at("use-mooshroom-with-bowl").main_hand("minecraft:bowl").x_rot(20.0).row(),
+        at("use-mooshroom-with-stack-of-bowls").main_hand("minecraft:bowl").count(2).x_rot(20.0).row(),
+        at("use-mooshroom-with-bowl-in-creative")
+            .main_hand("minecraft:bowl")
+            .off_hand("minecraft:mushroom_stew")
+            .game_mode("creative")
+            .x_rot(20.0)
+            .row(),
+        at("use-mooshroom-with-shears").main_hand("minecraft:shears").x_rot(20.0).row(),
+        baby("use-baby-mooshroom-with-shears").main_hand("minecraft:shears").x_rot(20.0).row(),
+        baby("use-baby-mooshroom-with-bowl").main_hand("minecraft:bowl").x_rot(20.0).row(),
+        at("use-mooshroom-with-flower").main_hand("minecraft:dandelion").x_rot(20.0).row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         entity_rows_1(),
@@ -323,6 +357,7 @@ pub fn rows() -> Vec<Value> {
         decoration_rows(),
         mob_class_rows(),
         cow_rows(),
+        mooshroom_rows(),
     ]
     .concat()
 }

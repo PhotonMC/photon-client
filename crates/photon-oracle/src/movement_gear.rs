@@ -174,7 +174,7 @@ pub(super) fn breaking_report(
                 .map_or(0, |state| state.0),
         );
     }
-    Ok(json!({
+    let mut report = json!({
         "destroying": game_mode.is_destroying(),
         "progress": format!("{:08x}", game_mode.destroy_progress().to_bits()),
         "destroy_ticks": format!("{:08x}", game_mode.destroy_ticks().to_bits()),
@@ -193,7 +193,28 @@ pub(super) fn breaking_report(
             .is_some_and(|stack| stack.item_count() > 0 && cooldowns.is_on_cooldown(stack)),
         "off_hand_count": hand_count(world, 45),
         "watched_states": watched,
-    }))
+    });
+    if attack.get("inventory").is_some() {
+        report["inventory"] = json!(inventory_report(world));
+    }
+    Ok(report)
+}
+
+/// The slots of the inventory menu that hold something, as `slot:item:count`, when a row asks.
+fn inventory_report(world: &photon_world::ClientWorld) -> Vec<String> {
+    let Some(state) = world.local_player() else {
+        return Vec::new();
+    };
+    (5..=45)
+        .filter_map(|slot| {
+            let stack = state.inventory_slot(slot)?;
+            (stack.item_count() > 0).then(|| {
+                let name = photon_game::item::definition(stack.item_registry_id())
+                    .map_or("?", |row| row.name);
+                format!("{slot}:{name}:{}", stack.item_count())
+            })
+        })
+        .collect()
 }
 
 /// The registry name of the potion the main hand's `potion_contents` names, or empty.

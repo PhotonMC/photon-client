@@ -221,6 +221,24 @@ pub(super) fn filled_with(
     hand: u8,
     fresh: ClientItemStackState,
 ) -> UseResult {
+    filled_result_of(ctx, hand, fresh, true)
+}
+
+/// A bowl filled with stew by a mooshroom: `createFilledResult` that does not limit the creative
+/// stack size, so a creative player always gets the stew added.
+pub(super) fn stew_result(ctx: &mut Context<'_>, hand: u8) {
+    if let Some(stew) = crate::item::id_of("minecraft:mushroom_stew") {
+        filled_result_of(ctx, hand, ClientItemStackState::new(1, stew), false);
+    }
+}
+
+/// `ItemUtils.createFilledResult(held, player, fresh, limitCreativeStackSize)`.
+fn filled_result_of(
+    ctx: &mut Context<'_>,
+    hand: u8,
+    fresh: ClientItemStackState,
+    limit_creative: bool,
+) -> UseResult {
     let result = UseResult::Success { swing: true };
     if ctx.instabuild() {
         let contained = ctx.world.local_player().is_some_and(|state| {
@@ -230,7 +248,7 @@ pub(super) fn filled_with(
                 })
             })
         });
-        if !contained {
+        if !(limit_creative && contained) {
             add_to_inventory(ctx, fresh);
         }
         return result;

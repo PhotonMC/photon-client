@@ -457,6 +457,18 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 watched.get("x").getAsInt(), watched.get("y").getAsInt(), watched.get("z").getAsInt()))));
         }
         out.add("watched_states", states);
+        if (attack.has("inventory")) {
+            // The inventory menu's slots that hold something, as slot:item:count.
+            var slots = new JsonArray();
+            for (int slot = 5; slot <= 45; slot++) {
+                var stack = player.inventoryMenu.getSlot(slot).getItem();
+                if (!stack.isEmpty()) {
+                    slots.add(slot + ":" + net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(stack.getItem()) + ":" + stack.getCount());
+                }
+            }
+            out.add("inventory", slots);
+        }
         return out;
     }
 

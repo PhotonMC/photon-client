@@ -80,7 +80,8 @@ impl Context<'_> {
         match name {
             "minecraft:creeper" => self.interact_creeper(id, hand),
             "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
-            "minecraft:cow" | "minecraft:mooshroom" => self.interact_cow(id, hand),
+            "minecraft:cow" => self.interact_cow(id, hand),
+            "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -204,6 +205,30 @@ impl Context<'_> {
             ));
         super::buckets::milk_result(self, hand);
         EntityUse::Success { swing: true }
+    }
+
+    /// `MushroomCow.mobInteract`: a bowl on an adult is filled with stew (no sound reaches the
+    /// client: the mooshroom plays it with no player excluded), shears on an adult succeed with a
+    /// swing, the rest is a cow's. The flower branch of a brown mooshroom is not ported; when it
+    /// is, the client keeps per-entity stew effects and the bowl then predicts suspicious stew.
+    fn interact_mooshroom(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let grown = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| !entity.is_baby());
+        let held = |name: &str| {
+            self.held(hand)
+                .is_some_and(|(item, _)| crate::item::id_of(name) == Some(item))
+        };
+        if grown && held("minecraft:bowl") {
+            super::buckets::stew_result(self, hand);
+            EntityUse::Success { swing: true }
+        } else if grown && held("minecraft:shears") {
+            EntityUse::Success { swing: true }
+        } else {
+            self.interact_cow(id, hand)
+        }
     }
 
     /// `SnowGolem.mobInteract`: shears on a golem that wears its pumpkin succeed with a swing (the
