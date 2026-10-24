@@ -128,22 +128,23 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             world.apply_world_border_center(bits64(border, "x")?, bits64(border, "z")?);
             world.apply_world_border_size(bits64(border, "size")?);
         }
-        let game_mode = match string(row, "game_mode")? {
+        let game_mode_of_row = match string(row, "game_mode")? {
             "survival" => ClientPlayerGameMode::Survival,
             "creative" => ClientPlayerGameMode::Creative,
             "adventure" => ClientPlayerGameMode::Adventure,
             "spectator" => ClientPlayerGameMode::Spectator,
             other => return Err(format!("unknown game mode {other}")),
         };
-        let game_mode_of_row = game_mode;
         let mut player = LocalPlayer::new(
             EntityId(i32_field(row, "entity_id")?),
             photon_core::math::Vec3::new(bits64(row, "x")?, bits64(row, "y")?, bits64(row, "z")?),
             bits32(row, "y_rot")?,
             bits32(row, "x_rot")?,
-            game_mode,
+            game_mode_of_row,
             flag(row, "auto_jump")?,
         );
+        // A row whose view is another entity's (SetCamera) has no controlled camera.
+        player.set_controlled_camera(row.get("camera_entity").is_none());
         let breaking = row.get("breaking");
         let mut game_mode = photon_game::game_mode::GameMode::default();
         let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();

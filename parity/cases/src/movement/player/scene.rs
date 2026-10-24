@@ -51,6 +51,7 @@ pub struct Scene {
     auto_jump: bool,
     border: Option<(f64, f64, f64)>,
     block_events: Vec<Value>,
+    camera_entity: Option<(i64, &'static str)>,
 }
 
 impl Scene {
@@ -66,6 +67,7 @@ impl Scene {
             auto_jump: false,
             border: None,
             block_events: Vec::new(),
+            camera_entity: None,
         }
     }
 
@@ -103,6 +105,12 @@ impl Scene {
         Self { block_events, ..self }
     }
 
+    /// The server hands the view to another entity (SetCamera): a `kind` with id `id` stands a
+    /// few blocks away and is the camera entity.
+    pub fn camera_entity(self, id: i64, kind: &'static str) -> Self {
+        Self { camera_entity: Some((id, kind)), ..self }
+    }
+
     pub fn row(self) -> Value {
         let mut row = json!({
             "label": self.label, "blocks": self.blocks, "chunk_radius": 1, "entity_id": 7,
@@ -112,6 +120,13 @@ impl Scene {
         });
         if !self.block_events.is_empty() {
             row["block_events"] = Value::Array(self.block_events);
+        }
+        if let Some((id, kind)) = self.camera_entity {
+            row["entities"] = json!([{
+                "id": id, "type": kind, "x": f64_bits(self.start.0 + 4.0),
+                "y": f64_bits(self.start.1), "z": f64_bits(self.start.2),
+            }]);
+            row["camera_entity"] = json!(id);
         }
         if let Some((x, z, size)) = self.border {
             row["border"] = json!({"x": f64_bits(x), "z": f64_bits(z), "size": f64_bits(size)});

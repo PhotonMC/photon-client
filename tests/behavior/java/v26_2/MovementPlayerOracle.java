@@ -132,6 +132,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 entity.snapTo(Oracle.f64(described, "x"), Oracle.f64(described, "y"),
                     Oracle.f64(described, "z"), 0.0F, 0.0F);
                 level.addEntity(entity);
+                if (row.has("camera_entity") && row.get("camera_entity").getAsInt() == entity.getId()) {
+                    // The server's SetCamera: the view is another entity's, so the player is not
+                    // the controlled camera.
+                    camera.setEntity(entity);
+                }
             }
         }
         // A vehicle the player rides, as the server's passengers packet makes it: the player is put

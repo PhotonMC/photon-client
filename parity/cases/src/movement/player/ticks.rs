@@ -73,6 +73,13 @@ fn walking_rows() -> Vec<Value> {
         |label: &'static str, blocks: Vec<Value>, count: usize, held: &[&str]| scene(label, blocks, keys(count, held));
     vec![
         scene("stand-still", floor(), keys(6, &[])),
+        // The view is a pig's: the keys are still sent, no position is, and nothing moves.
+        Scene::new("camera-elsewhere-forward", floor(), keys(8, &["forward", "sprint"]))
+            .camera_entity(41, "minecraft:pig")
+            .row(),
+        Scene::new("camera-elsewhere-turned", floor(), turned(keys(6, &["jump"]), Some(90.0), Some(20.0)))
+            .camera_entity(41, "minecraft:pig")
+            .row(),
         walk("walk-forward", floor(), 20, &["forward"]),
         walk("walk-backward", floor(), 12, &["backward"]),
         walk("strafe-left", floor(), 12, &["left"]),
