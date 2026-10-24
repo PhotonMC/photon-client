@@ -42,9 +42,12 @@ pub fn rows() -> Vec<Value> {
         edge("wind-charge-cooldown-edge", "minecraft:wind_charge", 8).row(),
         twice("snowball-twice", "minecraft:snowball", 3).row(),
         // `use_remainder`: an emptied stack becomes it; one with items left keeps them (the
-        // remainder goes to the inventory); creative has infinite materials.
+        // client adds nothing: the off hand stick stays one); creative has infinite materials.
         throw("snowball-remainder-last", "minecraft:snowball", 1).use_remainder("minecraft:stick").row(),
-        throw("snowball-remainder-more", "minecraft:snowball", 3).use_remainder("minecraft:stick").row(),
+        throw("snowball-remainder-more", "minecraft:snowball", 3)
+            .use_remainder("minecraft:stick")
+            .off_hand("minecraft:stick")
+            .row(),
         throw("snowball-remainder-creative", "minecraft:snowball", 1)
             .use_remainder("minecraft:stick")
             .game_mode("creative")
