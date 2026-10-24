@@ -27,6 +27,23 @@ fn with_high_word(x: f64, high: i32) -> f64 {
     f64::from_bits((u64::from(high as u32) << 32) | u64::from(low_word(x)))
 }
 
+/// `log` for a reduced `1 + f` with `|f| < 2**-20`, where `k` is the binary exponent taken out.
+fn log_near_one(f: f64, k: i32) -> f64 {
+    if f == 0.0 {
+        if k == 0 {
+            return 0.0;
+        }
+        let dk = f64::from(k);
+        return dk * LN2_HI + dk * LN2_LO;
+    }
+    let r = f * f * (0.5 - 0.333_333_333_333_333_3 * f);
+    if k == 0 {
+        return f - r;
+    }
+    let dk = f64::from(k);
+    dk * LN2_HI - ((r - dk * LN2_LO) - f)
+}
+
 /// `StrictMath.log`.
 pub fn strict_log(mut x: f64) -> f64 {
     let mut hx = high_word(x);
@@ -54,20 +71,7 @@ pub fn strict_log(mut x: f64) -> f64 {
     k += i >> 20;
     let f = x - 1.0;
     if (0x000f_ffff & (2 + hx)) < 3 {
-        // |f| < 2**-20
-        if f == 0.0 {
-            if k == 0 {
-                return 0.0;
-            }
-            let dk = f64::from(k);
-            return dk * LN2_HI + dk * LN2_LO;
-        }
-        let r = f * f * (0.5 - 0.333_333_333_333_333_3 * f);
-        if k == 0 {
-            return f - r;
-        }
-        let dk = f64::from(k);
-        return dk * LN2_HI - ((r - dk * LN2_LO) - f);
+        return log_near_one(f, k);
     }
     let s = f / (2.0 + f);
     let dk = f64::from(k);
