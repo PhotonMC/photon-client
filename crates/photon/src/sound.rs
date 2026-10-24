@@ -24,6 +24,16 @@ use photon_assets::ResourceStack;
 use photon_core::identifier::Identifier;
 use photon_core::resources::Resources;
 
+/// `SoundInstance.createUnseededRandom`: a sound the client makes itself picks its file by a
+/// source of its own, so a weighted event (the songs) does not give the same pick every time.
+fn unseeded() -> RandomSource {
+    RandomSource::create(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_nanos() as i64),
+    )
+}
+
 /// The sound files of the resource packs.
 struct PackSounds(Arc<ResourceStack>);
 
@@ -271,8 +281,7 @@ impl SoundSystem {
         for change in changes {
             match change {
                 JukeboxChange::Play { pos, sound, .. } => {
-                    let mut instance =
-                        SoundInstance::new(&sound, SoundSource::Records, RandomSource::create(0));
+                    let mut instance = SoundInstance::new(&sound, SoundSource::Records, unseeded());
                     instance.volume = 4.0;
                     instance.position = (
                         f64::from(pos.0) + 0.5,
@@ -302,8 +311,7 @@ impl SoundSystem {
                 UnderwaterSound::Loop => "minecraft:ambient.underwater.loop",
                 UnderwaterSound::Addition(event) => event,
             };
-            let mut instance =
-                SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+            let mut instance = SoundInstance::new(event, SoundSource::Ambient, unseeded());
             instance.relative = true;
             let underwater = Arc::clone(&self.underwater);
             instance.ticker = Some(match sound {
@@ -342,7 +350,7 @@ impl SoundSystem {
         event: &str,
         fade: Arc<photon_game::sounds::ambient::LoopFade>,
     ) {
-        let mut instance = SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+        let mut instance = SoundInstance::new(event, SoundSource::Ambient, unseeded());
         instance.relative = true;
         instance.looping = true;
         instance.ticker = Some(Box::new(move |state: &mut TickState| {
@@ -359,7 +367,7 @@ impl SoundSystem {
     /// `SimpleSoundInstance.forAmbientAddition`: not placed anywhere.
     pub fn play_ambient_addition(&mut self, event: &str) {
         use photon_game::sounds::engine::Attenuation;
-        let mut instance = SoundInstance::new(event, SoundSource::Ambient, RandomSource::create(0));
+        let mut instance = SoundInstance::new(event, SoundSource::Ambient, unseeded());
         instance.relative = true;
         instance.attenuation = Attenuation::None;
         let id = self.engine.add(instance);
@@ -439,7 +447,7 @@ impl SoundSystem {
     pub fn play_music(&mut self, event: &str) -> photon_game::sounds::music::Started {
         use photon_game::sounds::engine::{Attenuation, PlayResult};
         use photon_game::sounds::music::Started;
-        let mut instance = SoundInstance::new(event, SoundSource::Music, RandomSource::create(0));
+        let mut instance = SoundInstance::new(event, SoundSource::Music, unseeded());
         instance.attenuation = Attenuation::None;
         instance.relative = true;
         let id = self.engine.add(instance);
@@ -468,7 +476,7 @@ impl SoundSystem {
     /// the listener is.
     pub fn play_ui(&mut self, event: &str, pitch: f32, volume: f32) {
         use photon_game::sounds::engine::Attenuation;
-        let mut instance = SoundInstance::new(event, SoundSource::Ui, RandomSource::create(0));
+        let mut instance = SoundInstance::new(event, SoundSource::Ui, unseeded());
         instance.attenuation = Attenuation::None;
         instance.relative = true;
         instance.pitch = pitch;
