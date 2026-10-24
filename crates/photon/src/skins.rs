@@ -85,10 +85,16 @@ impl Skins {
 
     /// The skins of a game: downloads are kept under the game directory's assets.
     pub(crate) fn for_game(textures: &EntityTextures) -> Self {
-        Self::new(
+        let skins = Self::new(
             textures,
             crate::controls::game_directory().join("assets/skins"),
-        )
+        );
+        // The signing keys are asked for while the game loads, not when the first skin waits.
+        let keys = skins.keys.clone();
+        let _ = std::thread::Builder::new()
+            .name("Skin Keys".to_owned())
+            .spawn(move || keys.warm());
+        skins
     }
 
     fn with_loader(textures: &EntityTextures, cache: PathBuf, load: Loader) -> Self {

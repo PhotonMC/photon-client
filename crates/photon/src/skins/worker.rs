@@ -36,6 +36,11 @@ struct KeyState {
 }
 
 impl KeyCell {
+    /// The keys are fetched ahead of the first skin that needs them.
+    pub(super) fn warm(&self) {
+        self.get();
+    }
+
     /// The keys, fetched by the first caller while the others wait; empty where they could not
     /// be had (every signature is then invalid, as with the reference's empty key set).
     fn get(&self) -> Vec<Vec<u8>> {
