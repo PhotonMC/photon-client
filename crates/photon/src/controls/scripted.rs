@@ -302,6 +302,8 @@ impl Controls {
             if self.screen.is_some() {
                 close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;
                 surface.set_cursor_captured(false);
+            } else if session.is_server_controlled_inventory() {
+                session.send_open_inventory()?;
             } else {
                 open_inventory(
                     surface,
