@@ -76,6 +76,14 @@ pub(super) struct Sprite {
     file: Identifier,
 }
 
+/// The ids of the sprites `atlases/gui.json` lists, sorted.
+pub fn sprite_ids(resources: &dyn Resources) -> Vec<String> {
+    sprites(resources)
+        .into_iter()
+        .map(|sprite| sprite.id)
+        .collect()
+}
+
 /// Every sprite, sorted by id; a later source names a sprite again over an earlier one
 /// (`SpriteSourceList`).
 pub(super) fn sprites(resources: &dyn Resources) -> Vec<Sprite> {

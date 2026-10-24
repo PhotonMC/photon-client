@@ -245,9 +245,30 @@ pub(super) fn image_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+/// `sprite_ids`: the names of the sprites an atlas definition lists in the game's assets.
+fn sprite_ids_result(request: &Value) -> Result<Value, String> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/assets");
+    let resources = photon_core::resources::FolderResources::new(&root);
+    let rows = request["rows"]
+        .as_array()
+        .ok_or("atlas rows must be an array")?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let ids = match string(row, "atlas")? {
+            "minecraft:gui" => photon_render::gui::atlas::sprite_ids(&resources),
+            other => return Err(format!("unknown atlas {other}")),
+        };
+        out.push(json!({"label": row["label"], "ids": ids}));
+    }
+    Ok(json!({"rows": out}))
+}
+
 pub(super) fn atlas_result(request: &Value) -> Result<Value, String> {
-    if string(request, "operation")? != "stitch" {
-        return Err("unknown atlas operation".into());
+    match string(request, "operation")? {
+        "stitch" => {}
+        "sprite_ids" => return sprite_ids_result(request),
+        _ => return Err("unknown atlas operation".into()),
     }
     let rows = request["rows"]
         .as_array()

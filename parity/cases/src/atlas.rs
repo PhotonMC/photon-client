@@ -97,5 +97,10 @@ fn limit_rows() -> Vec<Value> {
 
 pub fn cases() -> Vec<Value> {
     let rows = [ordering_rows(), limit_rows()].concat();
-    vec![json!({"case_id": "atlas/stitch", "family": "atlas", "operation": "stitch", "rows": rows})]
+    // The sprites the game's own definition of the GUI atlas lists, which the stitcher then places.
+    let listed = [json!({"label": "gui", "atlas": "minecraft:gui"})];
+    vec![
+        json!({"case_id": "atlas/stitch", "family": "atlas", "operation": "stitch", "rows": rows}),
+        json!({"case_id": "atlas/sprite-ids", "family": "atlas", "operation": "sprite_ids", "rows": listed}),
+    ]
 }

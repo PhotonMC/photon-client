@@ -10,6 +10,8 @@ use photon_core::resources::{FolderResources, Resources};
 
 mod sprites;
 
+pub use sprites::sprite_ids;
+
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
 const WHOLE_TEXTURES: [&str; 53] = [
