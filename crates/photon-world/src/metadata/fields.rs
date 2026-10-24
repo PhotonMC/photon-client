@@ -209,33 +209,43 @@ fn skip_painting_variant(metadata: &mut &[u8]) -> Option<()> {
 /// The registry id of the variant a pig, cow, frog or other of this type wears, if the
 /// data holds one (the default is not sent).
 pub(crate) fn variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    let (data_id, serializer) = match photon_data::entity_type::name(type_id)? {
-        // A painting's variant is a holder: its registry id plus one, or zero for one sent whole.
-        "minecraft:painting" => {
-            let (found, mut value) = find_metadata_field(metadata, PAINTING_VARIANT_DATA_ID)?;
-            if found != PAINTING_VARIANT_SERIALIZER_ID {
-                return None;
-            }
-            let holder = photon_core::wire::read_varint(&mut value).ok()?;
-            return holder.checked_sub(1).filter(|id| *id >= 0);
-        }
-        "minecraft:pig" => (PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID),
-        "minecraft:cow" => (COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID),
-        "minecraft:chicken" => (CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID),
-        "minecraft:wolf" => (WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID),
-        "minecraft:cat" => (CAT_VARIANT_DATA_ID, CAT_VARIANT_SERIALIZER_ID),
-        "minecraft:frog" => (FROG_VARIANT_DATA_ID, FROG_VARIANT_SERIALIZER_ID),
-        "minecraft:zombie_nautilus" => (
-            ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
-            ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID,
-        ),
-        _ => return None,
-    };
+    let name = photon_data::entity_type::name(type_id)?;
+    if name == "minecraft:painting" {
+        return painting_variant(metadata);
+    }
+    let (data_id, serializer) = variant_field(name)?;
     let (found, mut value) = find_metadata_field(metadata, data_id)?;
     if found != serializer {
         return None;
     }
     photon_core::wire::read_varint(&mut value).ok()
+}
+
+/// A painting's variant is a holder: its registry id plus one, or zero for one sent whole.
+fn painting_variant(metadata: &[u8]) -> Option<i32> {
+    let (found, mut value) = find_metadata_field(metadata, PAINTING_VARIANT_DATA_ID)?;
+    if found != PAINTING_VARIANT_SERIALIZER_ID {
+        return None;
+    }
+    let holder = photon_core::wire::read_varint(&mut value).ok()?;
+    holder.checked_sub(1).filter(|id| *id >= 0)
+}
+
+/// The metadata data id and serializer id of the variant field of an entity type.
+fn variant_field(entity_name: &str) -> Option<(u8, i32)> {
+    match entity_name {
+        "minecraft:pig" => Some((PIG_VARIANT_DATA_ID, PIG_VARIANT_SERIALIZER_ID)),
+        "minecraft:cow" => Some((COW_VARIANT_DATA_ID, COW_VARIANT_SERIALIZER_ID)),
+        "minecraft:chicken" => Some((CHICKEN_VARIANT_DATA_ID, CHICKEN_VARIANT_SERIALIZER_ID)),
+        "minecraft:wolf" => Some((WOLF_VARIANT_DATA_ID, WOLF_VARIANT_SERIALIZER_ID)),
+        "minecraft:cat" => Some((CAT_VARIANT_DATA_ID, CAT_VARIANT_SERIALIZER_ID)),
+        "minecraft:frog" => Some((FROG_VARIANT_DATA_ID, FROG_VARIANT_SERIALIZER_ID)),
+        "minecraft:zombie_nautilus" => Some((
+            ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+            ZOMBIE_NAUTILUS_VARIANT_SERIALIZER_ID,
+        )),
+        _ => None,
+    }
 }
 
 pub(crate) fn metadata_int_value(metadata: &[u8], target_data_id: u8) -> Option<i32> {

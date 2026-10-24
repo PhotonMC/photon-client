@@ -441,7 +441,6 @@
 "crates/photon-world/src/local_player/sprinting.rs::LocalPlayer::update_auto_jump" = 24
 "crates/photon-world/src/local_player/ticking.rs::LocalPlayer::local_ai_step" = 39
 "crates/photon-world/src/local_player/travel.rs::LocalPlayer::entity_move" = 13
-"crates/photon-world/src/metadata/fields.rs::variant_from_metadata" = 11
 "crates/photon-world/src/mobs/axolotl.rs::AxolotlState::tick" = 17
 "crates/photon-world/src/mobs/creaking.rs::CreakingState::eq" = 12
 "crates/photon-world/src/mobs/ender_dragon.rs::DragonPhase::from_id" = 11
