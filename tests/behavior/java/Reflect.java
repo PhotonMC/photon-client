@@ -23,6 +23,11 @@ final class Reflect {
         field.set(target, value);
     }
 
+    /** A game class by its binary name (a nested class has a `$`). */
+    static Class<?> type(String name) throws ClassNotFoundException {
+        return Class.forName(name);
+    }
+
     /** Opens a member found some other way (a loop over a class's fields, a record accessor). */
     static <T extends java.lang.reflect.AccessibleObject> T open(T member) {
         member.setAccessible(true);

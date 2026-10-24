@@ -224,15 +224,7 @@ class MovementMenuOracle extends MovementPlayerOracle {
             return packet;
         }
         // The packet keeps an unmodifiable view; the map under it keeps its own order of slots.
-        java.lang.reflect.Field field = null;
-        for (Class<?> type = click.changedSlots().getClass(); field == null && type != null; type = type.getSuperclass()) {
-            try {
-                field = type.getDeclaredField("map");
-            } catch (NoSuchFieldException missing) {
-                // Look further up.
-            }
-        }
-        Reflect.open(field);
+        var field = Reflect.field(click.changedSlots().getClass(), "map");
         var slots = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraft.network.HashedStack>) field.get(click.changedSlots());
         slots.replaceAll((slot, stack) -> canonical(stack));
         return new net.minecraft.network.protocol.game.ServerboundContainerClickPacket(

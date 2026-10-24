@@ -660,7 +660,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             mappings.add(entry);
         }
         var categories = new com.google.gson.JsonArray();
-        var order = Reflect.field(Class.forName("net.minecraft.client.KeyMapping$Category"), "SORT_ORDER");
+        var order = Reflect.field(Reflect.type("net.minecraft.client.KeyMapping$Category"), "SORT_ORDER");
         for (var category : (java.util.List<?>) order.get(null)) {
             categories.add(((net.minecraft.client.KeyMapping.Category) category).id().toString());
         }

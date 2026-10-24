@@ -80,7 +80,7 @@ class MathPlayerCollisionFixtures extends MathPassengerFixtures {
                 entity.stillTimeout = stillTimeout;
                 entity.vehicle = vehicle;
                 entity.setBoundingBox(boundingBox);
-                var field = Entity.class.getDeclaredField("position");
+                var field = Reflect.field(Entity.class, "position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 return entity;
             } catch (ReflectiveOperationException error) {
@@ -179,12 +179,11 @@ class MathPlayerCollisionFixtures extends MathPassengerFixtures {
                     && climbableContext.get("fall_flying").getAsBoolean();
                 entity.useClimbableContext = climbableContext != null;
                 entity.setBoundingBox(boundingBox);
-                var field = Entity.class.getDeclaredField("position");
+                var field = Reflect.field(Entity.class, "position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 if (climbableContext != null) {
                     entity.inBlockState = createClimbableBlockState(climbableContext);
-                    var abilitiesField = net.minecraft.world.entity.player.Player.class
-                        .getDeclaredField("abilities");
+                    var abilitiesField = Reflect.field(net.minecraft.world.entity.player.Player.class, "abilities");
                     var abilities = new net.minecraft.world.entity.player.Abilities();
                     abilities.flying = flying;
                     unsafe.putObject(entity, unsafe.objectFieldOffset(abilitiesField), abilities);

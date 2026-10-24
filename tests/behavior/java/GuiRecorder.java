@@ -203,7 +203,7 @@ class GuiRecorder extends GuiFonts {
             }
         });
         set(minecraft, "textureManager", textures);
-        Class<?> entryClass = Class.forName(
+        Class<?> entryClass = Reflect.type(
             "net.minecraft.client.resources.model.sprite.AtlasManager$AtlasEntry");
         var constructor = entryClass.getDeclaredConstructors()[0];
         Reflect.open(constructor);

@@ -143,7 +143,7 @@ class MathSupport {
     ) {
         try {
             Unsafe unsafe = unsafeInstance();
-            var passengersField = Entity.class.getDeclaredField("passengers");
+            var passengersField = Reflect.field(Entity.class, "passengers");
             unsafe.putObject(
                 vehicle,
                 unsafe.objectFieldOffset(passengersField),

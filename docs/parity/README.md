@@ -60,7 +60,7 @@ The GUI family has its own page: [GUI oracle](gui-oracle.md).
 
 The oracle runs the game's own classes, and many of their members are private. All of that access goes through two kinds of class:
 
-- `Reflect.java` is the one choke point. It opens fields (also static ones), methods and constructors, calls them, and holds the `Unsafe` singleton for objects built without a constructor. `setAccessible` and `getDeclared*` appear nowhere else in the oracle sources.
+- `Reflect.java` is the one choke point. It opens fields (also static ones), methods and constructors, calls them, and holds the `Unsafe` singleton for objects built without a constructor. Private fields, methods, constructors and game classes are looked up by name only there (`field`, `method`, `constructor`, `type`); loops that enumerate a class's members open what they find with `Reflect.open`. Public methods called by name with `getMethod`, class initialisation with `Class.forName(name, true, ...)`, and the method tables of the block declaration oracle are the exceptions.
 - `Access26_2.java` holds multi-step setups whose shape is specific to this game version (for example a recipe toast, a camera or a local player scene).
 
 Call sites name members by their 26.2 names, the Mojang-mapped ones. New or changed oracle code reaches private members only through these classes.

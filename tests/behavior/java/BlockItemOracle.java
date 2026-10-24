@@ -343,7 +343,7 @@ class BlockItemOracle extends BlockPropertyOracle {
             var unsafe = Reflect.unsafe();
             var screenClass = net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen.class;
             var screen = unsafe.allocateInstance(screenClass);
-            var visibleField = screenClass.getDeclaredField("visibleTags");
+            var visibleField = Reflect.field(screenClass, "visibleTags");
             var visible = new java.util.HashSet<net.minecraft.tags.TagKey<net.minecraft.world.item.Item>>();
             unsafe.putObject(screen, unsafe.objectFieldOffset(visibleField), visible);
             var update = Reflect.method(screenClass, "updateVisibleTags", String.class);

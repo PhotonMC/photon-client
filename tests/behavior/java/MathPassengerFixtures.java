@@ -36,7 +36,7 @@ class MathPassengerFixtures extends MathOptionOracle {
         static PassengerRelationFixtureEntity create(int entityId, Vec3 position) {
             try {
                 PassengerRelationFixtureEntity entity = new PassengerRelationFixtureEntity();
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafeInstance().putInt(entity, unsafeInstance().objectFieldOffset(idField), entityId);
                 entity.setPos(position);
                 entity.setOldPosAndRot();
@@ -86,33 +86,33 @@ class MathPassengerFixtures extends MathOptionOracle {
         float yRot
     ) throws ReflectiveOperationException {
         Unsafe unsafe = unsafeInstance();
-        var idField = Entity.class.getDeclaredField("id");
+        var idField = Reflect.field(Entity.class, "id");
         unsafe.putInt(vehicle, unsafe.objectFieldOffset(idField), entityId);
-        var typeField = Entity.class.getDeclaredField("type");
+        var typeField = Reflect.field(Entity.class, "type");
         unsafe.putObject(vehicle, unsafe.objectFieldOffset(typeField), type);
-        var levelField = Entity.class.getDeclaredField("level");
+        var levelField = Reflect.field(Entity.class, "level");
         unsafe.putObject(
             vehicle,
             unsafe.objectFieldOffset(levelField),
             PassengerRelationFixtureEntity.CLIENT_LEVEL);
-        var dimensionsField = Entity.class.getDeclaredField("dimensions");
+        var dimensionsField = Reflect.field(Entity.class, "dimensions");
         unsafe.putObject(
             vehicle,
             unsafe.objectFieldOffset(dimensionsField),
             type.getDimensions());
-        var positionField = Entity.class.getDeclaredField("position");
+        var positionField = Reflect.field(Entity.class, "position");
         unsafe.putObject(vehicle, unsafe.objectFieldOffset(positionField), position);
-        var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+        var blockPositionField = Reflect.field(Entity.class, "blockPosition");
         unsafe.putObject(
             vehicle,
             unsafe.objectFieldOffset(blockPositionField),
             BlockPos.containing(position.x, position.y, position.z));
-        var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+        var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
         unsafe.putObject(
             vehicle,
             unsafe.objectFieldOffset(chunkPositionField),
             ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-        var passengersField = Entity.class.getDeclaredField("passengers");
+        var passengersField = Reflect.field(Entity.class, "passengers");
         unsafe.putObject(
             vehicle,
             unsafe.objectFieldOffset(passengersField),
@@ -305,44 +305,44 @@ class MathPassengerFixtures extends MathOptionOracle {
                 PassengerPositionPlayerFixture player =
                     (PassengerPositionPlayerFixture)unsafe.allocateInstance(
                         PassengerPositionPlayerFixture.class);
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafe.putInt(player, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(typeField),
                     net.minecraft.world.entity.EntityTypes.PLAYER);
-                var levelField = Entity.class.getDeclaredField("level");
+                var levelField = Reflect.field(Entity.class, "level");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(levelField),
                     PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                var dimensionsField = Reflect.field(Entity.class, "dimensions");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(dimensionsField),
                     net.minecraft.world.entity.EntityTypes.PLAYER.getDimensions());
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
-                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                var deltaMovementField = Reflect.field(Entity.class, "deltaMovement");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(deltaMovementField), movement);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                var blockPositionField = Reflect.field(Entity.class, "blockPosition");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(blockPositionField),
                     BlockPos.containing(position.x, position.y, position.z));
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(passengersField),
                     com.google.common.collect.ImmutableList.of());
-                var vehicleField = Entity.class.getDeclaredField("vehicle");
+                var vehicleField = Reflect.field(Entity.class, "vehicle");
                 unsafe.putObject(player, unsafe.objectFieldOffset(vehicleField), vehicle);
                 player.setLevelCallback(EntityInLevelCallback.NULL);
                 player.noGravity = noGravity;
@@ -397,44 +397,44 @@ class MathPassengerFixtures extends MathOptionOracle {
                 PassengerPositionBreezeFixture breeze =
                     (PassengerPositionBreezeFixture)unsafe.allocateInstance(
                         PassengerPositionBreezeFixture.class);
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafe.putInt(breeze, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(typeField),
                     net.minecraft.world.entity.EntityTypes.BREEZE);
-                var levelField = Entity.class.getDeclaredField("level");
+                var levelField = Reflect.field(Entity.class, "level");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(levelField),
                     PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                var dimensionsField = Reflect.field(Entity.class, "dimensions");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(dimensionsField),
                     net.minecraft.world.entity.EntityTypes.BREEZE.getDimensions());
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(breeze, unsafe.objectFieldOffset(positionField), position);
-                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                var deltaMovementField = Reflect.field(Entity.class, "deltaMovement");
                 unsafe.putObject(
                     breeze, unsafe.objectFieldOffset(deltaMovementField), movement);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                var blockPositionField = Reflect.field(Entity.class, "blockPosition");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(blockPositionField),
                     BlockPos.containing(position.x, position.y, position.z));
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     breeze,
                     unsafe.objectFieldOffset(passengersField),
                     com.google.common.collect.ImmutableList.of());
-                var vehicleField = Entity.class.getDeclaredField("vehicle");
+                var vehicleField = Reflect.field(Entity.class, "vehicle");
                 unsafe.putObject(breeze, unsafe.objectFieldOffset(vehicleField), vehicle);
                 breeze.setLevelCallback(EntityInLevelCallback.NULL);
                 breeze.noGravity = noGravity;
@@ -481,43 +481,43 @@ class MathPassengerFixtures extends MathOptionOracle {
                 PassengerPositionCowFixture cow =
                     (PassengerPositionCowFixture)unsafe.allocateInstance(
                         PassengerPositionCowFixture.class);
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafe.putInt(cow, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(typeField),
                     net.minecraft.world.entity.EntityTypes.COW);
-                var levelField = Entity.class.getDeclaredField("level");
+                var levelField = Reflect.field(Entity.class, "level");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(levelField),
                     PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var dimensionsField = Entity.class.getDeclaredField("dimensions");
+                var dimensionsField = Reflect.field(Entity.class, "dimensions");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(dimensionsField),
                     net.minecraft.world.entity.EntityTypes.COW.getDimensions());
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(cow, unsafe.objectFieldOffset(positionField), position);
-                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                var deltaMovementField = Reflect.field(Entity.class, "deltaMovement");
                 unsafe.putObject(cow, unsafe.objectFieldOffset(deltaMovementField), movement);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                var blockPositionField = Reflect.field(Entity.class, "blockPosition");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(blockPositionField),
                     BlockPos.containing(position.x, position.y, position.z));
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     cow,
                     unsafe.objectFieldOffset(passengersField),
                     com.google.common.collect.ImmutableList.of());
-                var vehicleField = Entity.class.getDeclaredField("vehicle");
+                var vehicleField = Reflect.field(Entity.class, "vehicle");
                 unsafe.putObject(cow, unsafe.objectFieldOffset(vehicleField), vehicle);
                 cow.setLevelCallback(EntityInLevelCallback.NULL);
                 cow.noGravity = noGravity;

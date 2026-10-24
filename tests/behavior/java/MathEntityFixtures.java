@@ -131,30 +131,30 @@ class MathEntityFixtures extends MathCollisionFixtures {
                 RemotePlayerInterpolationFixture player =
                     (RemotePlayerInterpolationFixture)unsafe.allocateInstance(
                         RemotePlayerInterpolationFixture.class);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(typeField),
                     net.minecraft.world.entity.EntityTypes.PLAYER);
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
-                var deltaMovementField = Entity.class.getDeclaredField("deltaMovement");
+                var deltaMovementField = Reflect.field(Entity.class, "deltaMovement");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(deltaMovementField), initialMotion);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                var blockPositionField = Reflect.field(Entity.class, "blockPosition");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(blockPositionField),
                     BlockPos.containing(position.x, position.y, position.z));
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(BlockPos.containing(position.x, position.y, position.z)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(passengersField),
                     com.google.common.collect.ImmutableList.of());
                 player.setLevelCallback(EntityInLevelCallback.NULL);
-                var interpolationField = LivingEntity.class.getDeclaredField("interpolation");
+                var interpolationField = Reflect.field(LivingEntity.class, "interpolation");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(interpolationField),

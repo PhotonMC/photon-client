@@ -798,19 +798,7 @@ class MovementSupport {
     /** A packet as the bytes its own codec writes, without the packet id. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     static String encode(net.minecraft.network.protocol.Packet<?> packet) throws Exception {
-        Class<?> type = packet.getClass();
-        java.lang.reflect.Field codecField = null;
-        while (type != null && codecField == null) {
-            try {
-                codecField = type.getDeclaredField("STREAM_CODEC");
-            } catch (NoSuchFieldException missing) {
-                type = type.getSuperclass();
-            }
-        }
-        if (codecField == null) {
-            throw new IllegalStateException("No codec on " + packet.getClass());
-        }
-        Reflect.open(codecField);
+        var codecField = Reflect.field(packet.getClass(), "STREAM_CODEC");
         var codec = (net.minecraft.network.codec.StreamCodec) codecField.get(null);
         var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
             io.netty.buffer.Unpooled.buffer(), registries);

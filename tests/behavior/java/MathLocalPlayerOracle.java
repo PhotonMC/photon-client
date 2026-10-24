@@ -494,8 +494,7 @@ class MathLocalPlayerOracle extends MathAttributeFixtures {
                 player.abilities = new Abilities();
                 player.abilities.flying = input.get("flying").getAsBoolean();
                 player.abilities.setFlyingSpeed(Oracle.f32(input, "flying_speed"));
-                var abilitiesField = net.minecraft.world.entity.player.Player.class
-                    .getDeclaredField("abilities");
+                var abilitiesField = Reflect.field(net.minecraft.world.entity.player.Player.class, "abilities");
                 unsafe.putObject(player, unsafe.objectFieldOffset(abilitiesField), player.abilities);
                 float speed = (float)method.invoke(
                     player, Oracle.f32(input, "block_friction"));

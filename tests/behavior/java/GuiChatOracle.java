@@ -150,7 +150,7 @@ class GuiChatOracle extends GuiLanguageOracle {
                 var listener = get(get(screen.minecraft(), "gui"), "chatListener");
                 @SuppressWarnings("unchecked")
                 var queue = (java.util.Queue<Object>) get(listener, "delayedMessageQueue");
-                var messageClass = Class.forName("net.minecraft.client.multiplayer.chat.ChatListener$Message");
+                var messageClass = Reflect.type("net.minecraft.client.multiplayer.chat.ChatListener$Message");
                 var constructor = messageClass.getDeclaredConstructors()[0];
                 Reflect.open(constructor);
                 for (int queued = 0; queued < row.get("queued").getAsInt(); queued++) {

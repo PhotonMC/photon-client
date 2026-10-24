@@ -60,19 +60,19 @@ class MathProjectileFixtures extends MathPlayerStateFixtures {
             snowball.setDeltaMovement(movement);
             try {
                 Unsafe unsafe = unsafeInstance();
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafe.putInt(snowball, unsafe.objectFieldOffset(idField), entityId);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     snowball, unsafe.objectFieldOffset(typeField),
                     net.minecraft.world.entity.EntityTypes.SNOWBALL);
-                var levelField = Entity.class.getDeclaredField("level");
+                var levelField = Reflect.field(Entity.class, "level");
                 unsafe.putObject(
                     snowball, unsafe.objectFieldOffset(levelField),
                     PassengerRelationFixtureEntity.CLIENT_LEVEL);
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(snowball, unsafe.objectFieldOffset(positionField), position);
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     snowball,
                     unsafe.objectFieldOffset(passengersField),

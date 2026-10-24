@@ -73,7 +73,7 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 entity.pushable = pushable;
                 entity.setBoundingBox(boundingBox);
                 if (position != null) {
-                    var field = Entity.class.getDeclaredField("position");
+                    var field = Reflect.field(Entity.class, "position");
                     unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 }
                 return entity;
@@ -163,21 +163,21 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
         static void indexEntity(Entity entity, int entityId, Vec3 position) {
             try {
                 Unsafe unsafe = unsafeInstance();
-                var idField = Entity.class.getDeclaredField("id");
+                var idField = Reflect.field(Entity.class, "id");
                 unsafe.putInt(entity, unsafe.objectFieldOffset(idField), entityId);
-                var uuidField = Entity.class.getDeclaredField("uuid");
+                var uuidField = Reflect.field(Entity.class, "uuid");
                 unsafe.putObject(
                     entity, unsafe.objectFieldOffset(uuidField),
                     new UUID(0L, Integer.toUnsignedLong(entityId)));
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     entity, unsafe.objectFieldOffset(passengersField),
                     com.google.common.collect.ImmutableList.of());
                 BlockPos blockPosition = BlockPos.containing(position.x, position.y, position.z);
-                var blockPositionField = Entity.class.getDeclaredField("blockPosition");
+                var blockPositionField = Reflect.field(Entity.class, "blockPosition");
                 unsafe.putObject(
                     entity, unsafe.objectFieldOffset(blockPositionField), blockPosition);
-                var chunkPositionField = Entity.class.getDeclaredField("chunkPosition");
+                var chunkPositionField = Reflect.field(Entity.class, "chunkPosition");
                 unsafe.putObject(
                     entity, unsafe.objectFieldOffset(chunkPositionField),
                     ChunkPos.containing(blockPosition));
@@ -244,7 +244,7 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 BoatCollisionFixtureEntity entity =
                     (BoatCollisionFixtureEntity)unsafe.allocateInstance(BoatCollisionFixtureEntity.class);
                 entity.setBoundingBox(boundingBox);
-                var field = Entity.class.getDeclaredField("position");
+                var field = Reflect.field(Entity.class, "position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 return entity;
             } catch (ReflectiveOperationException error) {
@@ -284,10 +284,10 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                 Unsafe unsafe = unsafeInstance();
                 MinecartCollisionFixtureEntity entity =
                     (MinecartCollisionFixtureEntity)unsafe.allocateInstance(MinecartCollisionFixtureEntity.class);
-                var levelField = Entity.class.getDeclaredField("level");
+                var levelField = Reflect.field(Entity.class, "level");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(levelField), CLIENT_LEVEL);
                 entity.setBoundingBox(boundingBox);
-                var field = Entity.class.getDeclaredField("position");
+                var field = Reflect.field(Entity.class, "position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 return entity;
             } catch (ReflectiveOperationException error) {
@@ -322,7 +322,7 @@ class MathCollisionFixtures extends MathWorldLevelOracle {
                     (ShulkerCollisionFixtureEntity)unsafe.allocateInstance(ShulkerCollisionFixtureEntity.class);
                 entity.sameVehicle = sameVehicle;
                 entity.setBoundingBox(boundingBox);
-                var field = Entity.class.getDeclaredField("position");
+                var field = Reflect.field(Entity.class, "position");
                 unsafe.putObject(entity, unsafe.objectFieldOffset(field), position);
                 return entity;
             } catch (ReflectiveOperationException error) {

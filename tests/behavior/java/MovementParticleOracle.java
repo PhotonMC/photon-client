@@ -122,7 +122,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         final java.util.List<net.minecraft.client.renderer.texture.TextureAtlasSprite> sprites = new java.util.ArrayList<>();
 
         SpriteSetProbe(int count) throws Exception {
-            var type = Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet");
+            var type = Reflect.type("net.minecraft.client.particle.ParticleResources$MutableSpriteSet");
             var constructor = Reflect.constructor(type);
             set = constructor.newInstance();
             // Opaque pictures of the particle atlas (`Layer.bySprite` asks some particles).
@@ -197,7 +197,7 @@ class MovementParticleOracle extends MovementMenuOracle {
             var resources = new net.minecraft.client.particle.ParticleResources();
             var providers = (java.util.Map) getField(resources, "providers");
             var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
-            var rebind = Reflect.method(Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
+            var rebind = Reflect.method(Reflect.type("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
             for (var set : sets.values()) {
                 rebind.invoke(set, sprites.sprites);
             }
@@ -519,7 +519,7 @@ class MovementParticleOracle extends MovementMenuOracle {
         var resources = new net.minecraft.client.particle.ParticleResources();
         @SuppressWarnings("unchecked")
         var sets = (java.util.Map<?, ?>) getField(resources, "spriteSets");
-        var rebind = Reflect.method(Class.forName("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
+        var rebind = Reflect.method(Reflect.type("net.minecraft.client.particle.ParticleResources$MutableSpriteSet"), "rebind", java.util.List.class);
         for (var set : sets.values()) {
             rebind.invoke(set, sprites.sprites);
         }

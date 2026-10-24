@@ -248,9 +248,9 @@ class MathShapeWorldOracle extends MathShapeIndexOracle {
             Unsafe unsafe = unsafeInstance();
             var method = Reflect.method(LocalPlayer.class, 
                 "isHorizontalCollisionMinor", Vec3.class);
-            var yRotField = Entity.class.getDeclaredField("yRot");
-            var xxaField = LivingEntity.class.getDeclaredField("xxa");
-            var zzaField = LivingEntity.class.getDeclaredField("zza");
+            var yRotField = Reflect.field(Entity.class, "yRot");
+            var xxaField = Reflect.field(LivingEntity.class, "xxa");
+            var zzaField = Reflect.field(LivingEntity.class, "zza");
             var states = new JsonArray();
             for (var inputEntry : request.getAsJsonArray("inputs")) {
                 JsonObject input = inputEntry.getAsJsonObject();

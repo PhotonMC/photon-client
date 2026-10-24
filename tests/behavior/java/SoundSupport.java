@@ -42,7 +42,7 @@ class SoundSupport {
         for (var file : fileNames) {
             files.put(Identifier.fromNamespaceAndPath("minecraft", file), (Resource) UNSAFE.allocateInstance(Resource.class));
         }
-        var preparationsClass = Class.forName("net.minecraft.client.sounds.SoundManager$Preparations");
+        var preparationsClass = Reflect.type("net.minecraft.client.sounds.SoundManager$Preparations");
         var constructor = Reflect.constructor(preparationsClass);
         var preparations = constructor.newInstance();
         var cache = Reflect.field(preparationsClass, "soundCache");
@@ -167,7 +167,7 @@ class SoundSupport {
 
         // `SoundManager.prepare`: the file parsed as one, every event registered; a file with anything
         // wrong in it registers nothing.
-        var preparationsClass = Class.forName("net.minecraft.client.sounds.SoundManager$Preparations");
+        var preparationsClass = Reflect.type("net.minecraft.client.sounds.SoundManager$Preparations");
         var constructor = Reflect.constructor(preparationsClass);
         var preparations = constructor.newInstance();
         var cache = Reflect.field(preparationsClass, "soundCache");

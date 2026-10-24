@@ -265,7 +265,7 @@ class GuiOverlayOracle extends GuiHudOracle {
         var renderer = unsafe.allocateInstance(rendererClass);
         MovementOracle.setField(renderer, "entityRenderDispatcher", dispatcher);
         MovementOracle.setField(renderer, "font", loadedFont());
-        var state = (net.minecraft.client.renderer.entity.state.EntityRenderState) stateClass.getDeclaredConstructor().newInstance();
+        var state = (net.minecraft.client.renderer.entity.state.EntityRenderState) Reflect.construct(stateClass, new Class<?>[0]);
         state.isDiscrete = entity.isDiscrete();
         state.lightCoords = row.get("light").getAsInt();
         boolean living = !row.get("renderer").getAsString().equals("entity");

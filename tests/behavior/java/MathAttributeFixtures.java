@@ -124,7 +124,7 @@ class MathAttributeFixtures extends MathShapeWorldOracle {
                 Unsafe unsafe = unsafeInstance();
                 AttributeSpeedFixture player =
                     (AttributeSpeedFixture)unsafe.allocateInstance(AttributeSpeedFixture.class);
-                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                var attributesField = Reflect.field(LivingEntity.class, "attributes");
                 unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
                 return player;
             } catch (ReflectiveOperationException error) {
@@ -144,10 +144,10 @@ class MathAttributeFixtures extends MathShapeWorldOracle {
                 Unsafe unsafe = unsafeInstance();
                 SprintAttributeFixture player =
                     (SprintAttributeFixture)unsafe.allocateInstance(SprintAttributeFixture.class);
-                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                var attributesField = Reflect.field(LivingEntity.class, "attributes");
                 unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
                 SharedFlagsFixtureEntity entityDataFixture = new SharedFlagsFixtureEntity();
-                var entityDataField = Entity.class.getDeclaredField("entityData");
+                var entityDataField = Reflect.field(Entity.class, "entityData");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(entityDataField),
@@ -177,7 +177,7 @@ class MathAttributeFixtures extends MathShapeWorldOracle {
                 Unsafe unsafe = unsafeInstance();
                 SneakingSpeedInputFixture player =
                     (SneakingSpeedInputFixture)unsafe.allocateInstance(SneakingSpeedInputFixture.class);
-                var attributesField = LivingEntity.class.getDeclaredField("attributes");
+                var attributesField = Reflect.field(LivingEntity.class, "attributes");
                 unsafe.putObject(player, unsafe.objectFieldOffset(attributesField), attributes);
                 return player;
             } catch (ReflectiveOperationException error) {

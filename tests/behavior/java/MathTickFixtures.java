@@ -38,12 +38,12 @@ class MathTickFixtures extends MathShapeRotationOracle {
                 Unsafe unsafe = unsafeInstance();
                 TickLocalPlayerFixture player =
                     (TickLocalPlayerFixture)unsafe.allocateInstance(TickLocalPlayerFixture.class);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(typeField), net.minecraft.world.entity.EntityTypes.PLAYER);
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(passengersField),
@@ -65,7 +65,7 @@ class MathTickFixtures extends MathShapeRotationOracle {
         void setFixtureState(Vec3 position, float yRot, float xRot) {
             try {
                 Unsafe unsafe = unsafeInstance();
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(this, unsafe.objectFieldOffset(positionField), position);
                 this.setYRot(yRot);
                 this.setXRot(xRot);
@@ -122,12 +122,12 @@ class MathTickFixtures extends MathShapeRotationOracle {
                 Unsafe unsafe = unsafeInstance();
                 TickRemotePlayerFixture player =
                     (TickRemotePlayerFixture)unsafe.allocateInstance(TickRemotePlayerFixture.class);
-                var typeField = Entity.class.getDeclaredField("type");
+                var typeField = Reflect.field(Entity.class, "type");
                 unsafe.putObject(
                     player, unsafe.objectFieldOffset(typeField), net.minecraft.world.entity.EntityTypes.PLAYER);
-                var positionField = Entity.class.getDeclaredField("position");
+                var positionField = Reflect.field(Entity.class, "position");
                 unsafe.putObject(player, unsafe.objectFieldOffset(positionField), position);
-                var passengersField = Entity.class.getDeclaredField("passengers");
+                var passengersField = Reflect.field(Entity.class, "passengers");
                 unsafe.putObject(
                     player,
                     unsafe.objectFieldOffset(passengersField),

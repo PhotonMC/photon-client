@@ -24,7 +24,7 @@ class MovementPickupOracle extends MovementParticleOracle {
         var camera = new net.minecraft.client.Camera();
         setField(camera, "position", new net.minecraft.world.phys.Vec3(
             Oracle.f64(row, "camera_x"), Oracle.f64(row, "camera_y"), Oracle.f64(row, "camera_z")));
-        var instance = Class.forName("net.minecraft.client.particle.ItemPickupParticleGroup$ParticleInstance");
+        var instance = Reflect.type("net.minecraft.client.particle.ItemPickupParticleGroup$ParticleInstance");
         var fromParticle = Reflect.method(instance, "fromParticle",
             net.minecraft.client.particle.ItemPickupParticle.class, net.minecraft.client.Camera.class, float.class);
         var partials = row.getAsJsonArray("partials");

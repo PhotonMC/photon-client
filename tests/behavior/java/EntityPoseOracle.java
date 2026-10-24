@@ -125,7 +125,7 @@ class EntityPoseOracle extends EntityLayerOracle {
         throws Exception {
         var found = new java.util.LinkedHashMap<String, net.minecraft.client.animation.AnimationDefinition>();
         for (String name : ANIMATION_CLASSES) {
-            var type = Class.forName("net.minecraft.client.animation.definitions." + name + "Animation");
+            var type = Reflect.type("net.minecraft.client.animation.definitions." + name + "Animation");
             for (var field : type.getDeclaredFields()) {
                 if (field.getType() == net.minecraft.client.animation.AnimationDefinition.class
                     && java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
