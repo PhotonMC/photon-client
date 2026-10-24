@@ -2,6 +2,11 @@
 
 use crate::movement::entities::prelude::*;
 
+/// The wandering trader's llama stands as the llama does, in the trader's blanket.
+fn trader_llama() -> Vec<Value> {
+    vec![living("trader-llama", "trader_llama", 6, vec![]).player_x(30.5).row()]
+}
+
 /// Every boat of the registry afloat: each wood's boat and chest boat has its own texture.
 fn boat_woods() -> Vec<Value> {
     let woods = ["acacia", "birch", "cherry", "dark_oak", "jungle", "mangrove", "oak", "pale_oak", "spruce"];
@@ -164,5 +169,5 @@ fn objects_4() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [objects_1(), objects_2(), objects_3(), objects_4(), boat_woods()].concat()
+    [objects_1(), objects_2(), objects_3(), objects_4(), boat_woods(), trader_llama()].concat()
 }
