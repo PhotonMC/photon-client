@@ -18,22 +18,16 @@ class GuiHudOracle extends GuiCommandOracle {
             var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
             var minecraft = screen.minecraft();
             // The sound manager only answers where the listener is.
-            var listener = unsafe.allocateInstance(com.mojang.blaze3d.audio.Listener.class);
             var vec = (java.util.function.Function<com.google.gson.JsonArray, net.minecraft.world.phys.Vec3>) array ->
                 new net.minecraft.world.phys.Vec3(array.get(0).getAsDouble(), array.get(1).getAsDouble(),
                     array.get(2).getAsDouble());
-            set(listener, "transform", new com.mojang.blaze3d.audio.ListenerTransform(
+            Access26_2.listenFrom(minecraft, new com.mojang.blaze3d.audio.ListenerTransform(
                 vec.apply(row.getAsJsonArray("position")), vec.apply(row.getAsJsonArray("forward")),
                 vec.apply(row.getAsJsonArray("up"))));
-            var engine = unsafe.allocateInstance(net.minecraft.client.sounds.SoundEngine.class);
-            set(engine, "listener", listener);
-            var manager = unsafe.allocateInstance(net.minecraft.client.sounds.SoundManager.class);
-            set(manager, "soundEngine", engine);
-            set(minecraft, "soundManager", manager);
             minecraft.options.showSubtitles().set(true);
             minecraft.options.notificationDisplayTime().set(row.get("display_time").getAsDouble());
             var overlay = new net.minecraft.client.gui.components.SubtitleOverlay(minecraft);
-            set(overlay, "isListening", true);
+            Access26_2.listenForSubtitles(overlay);
             for (var heardElement : row.getAsJsonArray("heard")) {
                 var heard = heardElement.getAsJsonObject();
                 long at = heard.get("at").getAsLong();
@@ -95,31 +89,24 @@ class GuiHudOracle extends GuiCommandOracle {
             var screen = screen(row.get("width").getAsInt(), row.get("height").getAsInt(), 0, 0);
             var minecraft = screen.minecraft();
             var sounds = (RecordingSounds) unsafe.allocateInstance(RecordingSounds.class);
-            set(sounds, "played", new java.util.ArrayList<String>());
-            set(minecraft, "soundManager", sounds);
+            Access26_2.recordSounds(minecraft, sounds, new java.util.ArrayList<String>());
             // An item is not drawn here: its resolver adds nothing.
-            set(minecraft, "itemModelResolver", unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
+            Access26_2.drawNoItems(minecraft, unsafe.allocateInstance(GuiSettingsOracle.NoItems.class));
             // The options' own change callbacks reach for the game's toast manager: set the values
             // under them.
             var musicState = net.minecraft.client.MusicToastDisplayState.valueOf(
                 row.get("music_toast").getAsString());
-            set(minecraft.options.musicToast(), "value", musicState);
-            set(minecraft.options.notificationDisplayTime(), "value", row.get("display_time").getAsDouble());
+            Access26_2.optionValue(minecraft.options.musicToast(), musicState);
+            Access26_2.optionValue(minecraft.options.notificationDisplayTime(), row.get("display_time").getAsDouble());
             // The song that plays, as the toast asks the music manager for its key.
             var music = unsafe.allocateInstance(net.minecraft.client.sounds.MusicManager.class);
             if (row.has("song")) {
-                var sound = unsafe.allocateInstance(net.minecraft.client.resources.sounds.Sound.class);
-                set(sound, "location", net.minecraft.resources.Identifier.parse(row.get("song").getAsString()));
-                var instance = (net.minecraft.client.resources.sounds.SoundInstance) java.lang.reflect.Proxy.newProxyInstance(
-                    Oracle.class.getClassLoader(),
-                    new Class<?>[] {net.minecraft.client.resources.sounds.SoundInstance.class},
-                    (proxy, method, args) -> method.getName().equals("getSound") ? sound : null);
-                set(music, "currentMusic", instance);
+                Access26_2.playSong(music, net.minecraft.resources.Identifier.parse(row.get("song").getAsString()));
             }
-            set(minecraft, "musicManager", music);
-            set(screen.hud(), "isHidden", row.get("hud_hidden").getAsBoolean());
+            Access26_2.useMusicManager(minecraft, music);
+            Access26_2.hideHud(screen.hud(), row.get("hud_hidden").getAsBoolean());
             if (row.get("pause_screen").getAsBoolean()) {
-                set(screen.minecraft().gui, "screen", unsafe.allocateInstance(net.minecraft.client.gui.screens.PauseScreen.class));
+                Access26_2.showPauseScreen(screen.minecraft().gui);
             }
             Access26_2.holdMusicNote();
             var manager = new net.minecraft.client.gui.components.toasts.ToastManager(minecraft, minecraft.options);
