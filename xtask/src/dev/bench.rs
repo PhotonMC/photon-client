@@ -27,6 +27,9 @@ const RUN_SCRIPT: &str = "none=200;forward,sprint,jump=300;turn:90;forward,sprin
 /// spectator's camera sits inside blocks, where the occlusion flood has smart culling off.
 const DIVE_SCRIPT: &str = "none=200;pitch:60;forward,sprint=80;pitch:-60;forward,sprint=200;turn:90;\
                            forward,sprint=200;turn:90;forward,sprint=200;turn:90;forward,sprint=200;none=100";
+/// The `void` route stands where nothing is built, as a skyblock map does: the spectator is
+/// taken far above the terrain, so the frame costs what the engine costs when the world is empty.
+const VOID_HEIGHT: i32 = 300;
 /// A user of its own, so its saved position is the world's spawn and stays there.
 /// The `run` route uses a new user per run instead (see [`fresh_user`]).
 const STILL_USER: &str = "Bench";
@@ -62,8 +65,8 @@ const SPEC: Spec = Spec {
 
 fn options(parsed: &Parsed) -> Result<Options, String> {
     let route = parsed.value("--route").unwrap_or("still").to_owned();
-    if !["still", "run", "dive"].contains(&route.as_str()) {
-        return Err("--route is still, run or dive".to_owned());
+    if !["still", "run", "dive", "void"].contains(&route.as_str()) {
+        return Err("--route is still, run, dive or void".to_owned());
     }
     let vsync = parsed.value("--vsync").unwrap_or("on");
     if !["on", "off"].contains(&vsync) {
@@ -205,12 +208,17 @@ fn fresh_user() -> String {
 
 /// Puts the bench's player in spectator mode once it has joined: the command is repeated for
 /// the seconds the join may take, and an unknown player is no error for the server.
-fn spectate(user: &str) {
-    let command = format!("gamemode spectator {user}");
+fn spectate(user: &str, high: bool) {
+    let mut commands = vec![format!("gamemode spectator {user}")];
+    if high {
+        commands.push(format!("tp {user} 17 {VOID_HEIGHT} -35"));
+    }
     std::thread::spawn(move || {
         for _ in 0..40 {
             std::thread::sleep(Duration::from_millis(500));
-            let _ = super::rcon::send(std::slice::from_ref(&command));
+            for command in &commands {
+                let _ = super::rcon::send(std::slice::from_ref(command));
+            }
         }
     });
 }
@@ -256,11 +264,13 @@ fn run_once(options: &Options, number: u32) -> Result<Value, String> {
         (fresh_user(), RUN_SCRIPT)
     } else if options.route == "dive" {
         (fresh_user(), DIVE_SCRIPT)
+    } else if options.route == "void" {
+        (fresh_user(), STILL_SCRIPT)
     } else {
         (STILL_USER.to_owned(), STILL_SCRIPT)
     };
     // A spectator flies through trees and water, so the run measures the engine, not the terrain.
-    spectate(&user);
+    spectate(&user, options.route == "void");
     let command = client_command(options, &path, user, script)?;
     let (status, output) = run_merged(command)?;
     if !status.success() || !path.exists() {
