@@ -106,3 +106,50 @@ pub fn remote_boats(
         ));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TEXTURES, model_of};
+
+    fn of(name: &str) -> (String, String) {
+        model_of(name).unwrap_or_default()
+    }
+
+    #[test]
+    fn a_boat_wears_the_texture_of_its_layer() {
+        assert_eq!(
+            of("minecraft:oak_boat"),
+            ("minecraft:boat/oak#main".into(), "entity/boat/oak".into())
+        );
+        assert_eq!(
+            of("minecraft:dark_oak_chest_boat"),
+            (
+                "minecraft:chest_boat/dark_oak#main".into(),
+                "entity/chest_boat/dark_oak".into()
+            )
+        );
+    }
+
+    #[test]
+    fn rafts_use_the_bamboo_layers() {
+        assert_eq!(of("minecraft:bamboo_raft").1, "entity/boat/bamboo");
+        assert_eq!(
+            of("minecraft:bamboo_chest_raft").0,
+            "minecraft:chest_boat/bamboo#main"
+        );
+    }
+
+    #[test]
+    fn every_wood_has_its_texture_listed() {
+        for wood in [
+            "acacia", "birch", "cherry", "dark_oak", "jungle", "mangrove", "oak", "pale_oak",
+            "spruce",
+        ] {
+            for kind in ["boat", "chest_boat"] {
+                let name = format!("minecraft:{wood}_{kind}");
+                assert!(TEXTURES.contains(&of(&name).1.as_str()), "{name}");
+            }
+        }
+        assert_eq!(model_of("minecraft:pig"), None);
+    }
+}
