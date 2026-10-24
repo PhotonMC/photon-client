@@ -2,20 +2,38 @@
 
 use crate::movement::entities::prelude::*;
 
-/// The wandering trader's llama stands as the llama does, in the trader's blanket.
+/// The wandering trader's llama in the scene: its ticked state only, no drawn output.
 fn trader_llama() -> Vec<Value> {
     vec![living("trader-llama", "trader_llama", 6, vec![]).player_x(30.5).row()]
 }
 
-/// Every boat of the registry afloat: each wood's boat and chest boat has its own texture.
+/// Every boat of the registry afloat: the ticked state only (the wood changes only the texture, which
+/// these rows do not draw).
 fn boat_woods() -> Vec<Value> {
-    let woods = ["acacia", "birch", "cherry", "dark_oak", "jungle", "mangrove", "oak", "pale_oak", "spruce"];
-    woods
-        .iter()
-        .flat_map(|wood| [format!("{wood}_boat"), format!("{wood}_chest_boat")])
-        .chain(["bamboo_chest_raft".to_owned()])
-        .map(|kind| fish(&format!("afloat-{}", kind.replace('_', "-")), &kind, 6, vec![]).tag("boat").row())
-        .collect()
+    [
+        "acacia_boat",
+        "acacia_chest_boat",
+        "birch_boat",
+        "birch_chest_boat",
+        "cherry_boat",
+        "cherry_chest_boat",
+        "dark_oak_boat",
+        "dark_oak_chest_boat",
+        "jungle_boat",
+        "jungle_chest_boat",
+        "mangrove_boat",
+        "mangrove_chest_boat",
+        "oak_boat",
+        "oak_chest_boat",
+        "pale_oak_boat",
+        "pale_oak_chest_boat",
+        "spruce_boat",
+        "spruce_chest_boat",
+        "bamboo_chest_raft",
+    ]
+    .iter()
+    .map(|kind| fish(&format!("afloat-{kind}"), kind, 6, vec![]).tag("boat").row())
+    .collect()
 }
 
 fn objects_1() -> Vec<Value> {
