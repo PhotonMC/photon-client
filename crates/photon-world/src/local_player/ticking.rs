@@ -198,6 +198,12 @@ impl LocalPlayer {
         self.delta
     }
 
+    /// `Entity.setDeltaMovement`: the motion a server sets (`Entity.lerpMotion` of the local
+    /// player) replaces the one it has at once.
+    pub fn set_delta_movement(&mut self, motion: Vec3) {
+        self.delta = motion;
+    }
+
     /// `Entity.addDeltaMovement`: a push on top of the motion it has (an explosion's).
     pub fn add_delta_movement(&mut self, push: Vec3) {
         self.delta = self.delta.add_vec3(push);

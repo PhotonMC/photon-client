@@ -4,6 +4,19 @@ use super::*;
 use photon_core::ids::EntityId;
 
 impl PlaySession {
+    /// `Entity.lerpMotion`: only `RemotePlayer` lerps the motion; the local player takes it as
+    /// it is, so a knockback or a launch pad moves it on the next tick.
+    pub(super) fn local_motion(&mut self, packet: &EntityMotionObservation) -> bool {
+        if self.local.player_id != Some(packet.entity_id) {
+            return false;
+        }
+        let Some(player) = self.local.player.as_mut() else {
+            return false;
+        };
+        player.set_delta_movement(photon_core::math::Vec3::new(packet.x, packet.y, packet.z));
+        true
+    }
+
     /// `LivingEntity.handleEntityEvent`: 2 is the kick of a spear's hit, which the server sends to
     /// the attacker too.
     pub(super) fn local_kinetic_hit(&mut self, id: EntityId, event: i8) {

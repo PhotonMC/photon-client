@@ -256,6 +256,9 @@ impl PlaySession {
         &mut self,
         packet: EntityMotionObservation,
     ) -> Result<(), ConnectionError> {
+        if self.local_motion(&packet) {
+            return Ok(());
+        }
         entities::motion(&mut self.world, &packet);
         Ok(())
     }
