@@ -67,9 +67,19 @@ pub(crate) fn head_by_width(runs: &[Run], font: &Font, width: i32) -> Vec<Run> {
     let mut left = width as f32;
     let mut head = Vec::new();
     for run in runs {
-        let bold = run.style.bold == Some(true);
+        let mut style = run.style.clone();
         let mut kept = String::new();
-        for c in run.text.chars() {
+        let mut chars = run.text.chars();
+        while let Some(c) = chars.next() {
+            // A code of the text styles what follows and takes no room.
+            if c == '\u{a7}' {
+                let Some(code) = chars.next() else { break };
+                style = crate::runs::styled_by(style, code.to_ascii_lowercase(), &run.style);
+                kept.push(c);
+                kept.push(code);
+                continue;
+            }
+            let bold = style.bold == Some(true);
             left -= font.glyph(c).map_or(0.0, |glyph| glyph.advance(bold));
             if left < 0.0 {
                 if !kept.is_empty() {

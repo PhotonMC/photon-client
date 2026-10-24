@@ -260,6 +260,14 @@ pub fn book_view() -> Value {
         view("long page", long_page),
         view("empty book", vec![json!("")]),
         view(
+            "section codes",
+            vec![json!(format!("\u{a7}lBold {}\u{a7}r plain {}", "word ".repeat(12), "tail ".repeat(8)))],
+        ),
+        view(
+            "section reset in bold piece",
+            vec![json!({"text": format!("bold \u{a7}r{}", "word ".repeat(30)), "bold": true})],
+        ),
+        view(
             "effects",
             vec![json!({"text": "under ", "underlined": true, "extra": [
                 {"text": "child"}, {"text": " both", "strikethrough": true, "color": "red"}

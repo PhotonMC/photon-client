@@ -130,7 +130,16 @@ fn text_rows() -> Vec<Sign> {
             {"text": "Glow", "color": "gold"}
         ])
     };
+    let coded = || {
+        json!([
+            "\u{a7}lbold start of a sign line cut",
+            {"text": "bold \u{a7}rplain then it is cut here", "bold": true},
+            "\u{a7}cred \u{a7}rplain \u{a7}kwx",
+            "\u{a7}"
+        ])
+    };
     vec![
+        Sign { front: face(coded(), "black", false, None), ..row("section codes") },
         Sign { front: face(rude(), "black", false, filtered()), ..row("written lines") },
         Sign { front: face(rude(), "black", false, filtered()), filtering: true, ..row("filtered lines") },
         Sign { front: face(wide(), "black", false, None), back: face(wide(), "blue", true, None), ..row("too wide") },
