@@ -330,7 +330,6 @@
 "crates/photon-oracle/src/transform.rs::client_world_entity_ticking_eligibility_result" = 11
 "crates/photon-oracle/src/travel.rs::aabb_result" = 49
 "crates/photon-oracle/src/vanilla.rs::image_result" = 17
-"crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 21
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 41
 "crates/photon-protocol/src/play/particles.rs::read_particle_options" = 16
 "crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 14
@@ -790,7 +789,6 @@
 "crates/photon-oracle/src/vanilla.rs::image_result" = 95
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 81
 "crates/photon-protocol/src/play/chunk.rs::parse_chunk_packet" = 69
-"crates/photon-protocol/src/play/chunk.rs::parse_palette_container" = 102
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 113
 "crates/photon-protocol/src/play/map.rs::parse_map_item_data_packet" = 68
 "crates/photon-protocol/src/play/merchant.rs::parse_merchant_offers_packet" = 61
