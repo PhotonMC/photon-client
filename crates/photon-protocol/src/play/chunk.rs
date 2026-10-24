@@ -337,6 +337,35 @@ fn read_heightmaps(input: &mut &[u8]) -> Result<Vec<HeightmapObservation>, Conne
     Ok(observations)
 }
 
+/// The block entities of a chunk packet, each placed by its packed in-chunk column.
+fn read_block_entities(
+    input: &mut &[u8],
+    chunk_x: i32,
+    chunk_z: i32,
+) -> Result<Vec<BlockEntityObservation>, ConnectionError> {
+    let count = read_count(input, "block entity count")?;
+    let mut block_entities = Vec::with_capacity(count);
+    for _ in 0..count {
+        let packed_xz = read_byte(input, "block entity packed xz")?;
+        let y = i32::from(read_i16(input, "block entity y")?);
+        let type_id = read_varint(input, "block entity type")?;
+        let tag = read_nbt_bytes(input, "block entity nbt")?;
+        let local_x = i32::from(packed_xz >> 4);
+        let local_z = i32::from(packed_xz & 0x0f);
+        let tag_length = tag.as_ref().map_or(0, Vec::len);
+        block_entities.push(BlockEntityObservation {
+            x: chunk_x.wrapping_mul(16).wrapping_add(local_x),
+            y,
+            z: chunk_z.wrapping_mul(16).wrapping_add(local_z),
+            type_id,
+            tag_length,
+            applied_to_world: false,
+            tag,
+        });
+    }
+    Ok(block_entities)
+}
+
 pub fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, ConnectionError> {
     let x = read_i32(&mut input, "chunk x")?;
     let z = read_i32(&mut input, "chunk z")?;
@@ -348,28 +377,8 @@ pub fn parse_chunk_packet(mut input: &[u8]) -> Result<ChunkPacketObservation, Co
     let section_data_length = section_data.len();
     let section_observations = parse_section_data(section_data)?;
 
-    let block_entity_count = read_count(&mut input, "block entity count")?;
-    let mut block_entities = Vec::with_capacity(block_entity_count);
-    for _ in 0..block_entity_count {
-        let packed_xz = read_byte(&mut input, "block entity packed xz")?;
-        let y = i32::from(read_i16(&mut input, "block entity y")?);
-        let type_id = read_varint(&mut input, "block entity type")?;
-        let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
-        let local_x = i32::from(packed_xz >> 4);
-        let local_z = i32::from(packed_xz & 0x0f);
-        let x = x.wrapping_mul(16).wrapping_add(local_x);
-        let z = z.wrapping_mul(16).wrapping_add(local_z);
-        let tag_length = tag.as_ref().map_or(0, Vec::len);
-        block_entities.push(BlockEntityObservation {
-            x,
-            y,
-            z,
-            type_id,
-            tag_length,
-            applied_to_world: false,
-            tag,
-        });
-    }
+    let block_entities = read_block_entities(&mut input, x, z)?;
+    let block_entity_count = block_entities.len();
 
     let light_data = parse_light_data(&mut input)?;
     let sky_mask_word_count = light_data.sky_mask.to_longs().len();
