@@ -13,6 +13,15 @@ fn has_dandelion_bypass(name: &str) -> bool {
     !matches!(name, "minecraft:zombie_horse" | "minecraft:skeleton_horse")
 }
 
+/// The horse family this module answers for (camels have their own rule).
+pub(super) fn is_equine(name: &str) -> bool {
+    is_chested(name)
+        || matches!(
+            name,
+            "minecraft:horse" | "minecraft:zombie_horse" | "minecraft:skeleton_horse"
+        )
+}
+
 /// `isFood`'s tag for the class.
 fn food_tag(name: &str) -> &'static str {
     match name {

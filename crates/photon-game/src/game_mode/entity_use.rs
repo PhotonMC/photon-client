@@ -10,6 +10,7 @@ use photon_core::ids::EntityId;
 
 mod horse;
 mod sheep;
+mod villager;
 
 /// The client's answer to a click on an entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,17 +84,21 @@ impl Context<'_> {
         match name {
             "minecraft:creeper" => self.interact_creeper(id, hand),
             "minecraft:snow_golem" => self.interact_snow_golem(id, hand),
+            "minecraft:villager" | "minecraft:wandering_trader" | "minecraft:zombie_villager" => {
+                self.interact_villager_class(name, id, hand)
+            }
+            n if horse::is_equine(n) => self.interact_horse(name, id, hand),
+            _ => self.interact_herd_class(name, id, hand),
+        }
+    }
+
+    /// The cattle, goats, sheep and the animals that only take their food.
+    fn interact_herd_class(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        match name {
             "minecraft:cow" => self.interact_cow(id, hand),
             "minecraft:goat" => self.interact_goat(id, hand),
             "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
             "minecraft:sheep" => self.interact_sheep(id, hand),
-            "minecraft:horse"
-            | "minecraft:donkey"
-            | "minecraft:mule"
-            | "minecraft:llama"
-            | "minecraft:trader_llama"
-            | "minecraft:zombie_horse"
-            | "minecraft:skeleton_horse" => self.interact_horse(name, id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,

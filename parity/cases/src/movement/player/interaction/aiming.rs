@@ -12,6 +12,7 @@ use crate::movement::player::scene::keys;
 use crate::movement::world::put;
 
 mod herding;
+mod villagers;
 
 /// Ticks of the attack, use and pick keys on whatever the aim lands on.
 struct Aims {
@@ -315,6 +316,7 @@ pub fn rows() -> Vec<Value> {
         decoration_rows(),
         mob_class_rows(),
         herding::rows(),
+        villagers::rows(),
     ]
     .concat()
 }

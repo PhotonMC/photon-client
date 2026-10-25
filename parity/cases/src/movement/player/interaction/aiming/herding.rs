@@ -292,7 +292,7 @@ fn tied_to_a_pig(label: &str, item: &'static str) -> Value {
 }
 
 /// An animal at the usual spot with the named spawn flags set.
-fn flagged_animal(kind: &str, flags: &[&str]) -> Value {
+pub(super) fn flagged_animal(kind: &str, flags: &[&str]) -> Value {
     let mut entity = mob(31, kind, 0.5, 64.0, 2.5);
     for flag in flags {
         entity[*flag] = json!(true);

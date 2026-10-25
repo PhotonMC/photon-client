@@ -460,12 +460,7 @@ impl ClientWorld {
         }
         // `DATA_BABY_ID` is the same field for a zombie and for every
         // animal and villager (`AgeableMob`).
-        if (entity.is_zombie_type()
-            || vanilla_passenger_is_animal(entity.type_id)
-            || matches!(
-                photon_data::entity_type::name(entity.type_id),
-                Some("minecraft:villager" | "minecraft:dolphin")
-            ))
+        if (entity.is_zombie_type() || entity.is_ageable_mob())
             && let Some(zombie_baby) = zombie_baby
         {
             entity.baby = zombie_baby;

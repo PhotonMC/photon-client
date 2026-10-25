@@ -182,6 +182,13 @@ impl Entities {
         }
     }
 
+    /// `Villager.setUnhappyCounter` as the client runs it for a shaken-off baby.
+    pub fn set_unhappy_counter(&mut self, entity_id: EntityId, ticks: i32) {
+        if let Some(entity) = self.at_mut(entity_id) {
+            entity.living.unhappy_counter = ticks;
+        }
+    }
+
     /// `AbstractChestedHorse.setChest`.
     pub fn set_horse_chest(&mut self, entity_id: EntityId, chest: bool) {
         if let Some(entity) = self.at_mut(entity_id) {

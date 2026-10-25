@@ -28,10 +28,23 @@ impl ClientEntity {
         self.living.age_lock_timer
     }
 
-    /// Whether the type is an `AgeableMob` (an animal or a villager), which has an age lock.
+    /// Whether the type is an `AgeableMob`: an animal, a villager or trader, a squid or dolphin
+    /// (`AgeableWaterCreature`), or a cube mob. They share the baby flag and the age lock.
     pub fn is_ageable_mob(&self) -> bool {
         crate::entity::boat::vanilla_passenger_is_animal(self.type_id)
-            || photon_data::entity_type::name(self.type_id) == Some("minecraft:villager")
+            || matches!(
+                photon_data::entity_type::name(self.type_id),
+                Some(
+                    "minecraft:villager"
+                        | "minecraft:wandering_trader"
+                        | "minecraft:dolphin"
+                        | "minecraft:squid"
+                        | "minecraft:glow_squid"
+                        | "minecraft:slime"
+                        | "minecraft:magma_cube"
+                        | "minecraft:sulfur_cube"
+                )
+            )
     }
 
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).
