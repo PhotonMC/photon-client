@@ -8,6 +8,8 @@ pub trait ItemTints {
     fn potion_color_or(&self, default: i32) -> i32;
     fn map_color(&self) -> Option<i32>;
     fn firework_colors(&self) -> Vec<i32>;
+    /// `CustomModelData.getColor`.
+    fn custom_color(&self, index: usize) -> Option<i32>;
 }
 
 /// A tint's colour, ARGB. `grass` reads the grass colour map.
@@ -25,6 +27,9 @@ pub fn tint_colour(
                     ComponentTint::Dye => values.dyed_color().unwrap_or(default),
                     ComponentTint::Potion => values.potion_color_or(default),
                     ComponentTint::MapColor => values.map_color().unwrap_or(default),
+                    ComponentTint::CustomModelData(index) => {
+                        values.custom_color(index).unwrap_or(default)
+                    }
                     ComponentTint::Firework => {
                         let colors = values.firework_colors();
                         match colors.len() {

@@ -386,10 +386,10 @@ impl ItemLayerCache {
         {
             index
         } else {
-            let own = stack_tints(item, stack);
+            let own = photon_gui::stack_tints(item, stack);
             let nested = selected
                 .as_ref()
-                .map(|inner| stack_tints(inner.item_registry_id(), inner));
+                .map(|inner| photon_gui::stack_tints(inner.item_registry_id(), inner));
             let layers = renderer.item_layers(
                 (item, state),
                 context,
@@ -428,35 +428,6 @@ fn block_state_lines(stack: &ClientItemStackState) -> Option<&'static str> {
         &photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
             .block_state(),
     )
-}
-
-/// The tints of a stack's components.
-fn stack_tints(item: photon_core::ids::ItemId, stack: &ClientItemStackState) -> StackTints {
-    StackTints(photon_game::item::values::Values::new(
-        item,
-        stack.patch_bytes(),
-    ))
-}
-
-/// The tints' view of a stack's components.
-struct StackTints(photon_game::item::values::Values);
-
-impl photon_render::item_model::ItemTints for StackTints {
-    fn dyed_color(&self) -> Option<i32> {
-        self.0.dyed_color()
-    }
-
-    fn potion_color_or(&self, default: i32) -> i32 {
-        self.0.potion_color_or(default)
-    }
-
-    fn map_color(&self) -> Option<i32> {
-        self.0.map_color()
-    }
-
-    fn firework_colors(&self) -> Vec<i32> {
-        self.0.firework_colors()
-    }
 }
 
 /// The dimension the needle store's frame holds.

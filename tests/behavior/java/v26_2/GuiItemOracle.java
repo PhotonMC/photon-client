@@ -109,6 +109,25 @@ class GuiItemOracle extends GuiDialogOracle {
         return result;
     }
 
+    /** The colour a `custom_model_data` tint source gives a stack (ARGB, signed). */
+    static JsonObject itemTint(JsonObject request) {
+        Game26_2.vanillaRegistries();
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var tint = row.getAsJsonObject("tint");
+            var source = new net.minecraft.client.color.item.CustomModelDataSource(
+                tint.has("index") ? tint.get("index").getAsInt() : 0, tint.get("default").getAsInt());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("value", source.calculate(itemStack(row), null, null));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The `block_state` select's value for a stack: the property it reads, or null. */
     static JsonObject itemSelect(JsonObject request) {
         Game26_2.vanillaRegistries();

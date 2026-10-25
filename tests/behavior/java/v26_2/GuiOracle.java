@@ -47,6 +47,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "item_condition" -> itemCondition(request);
                 case "item_number" -> itemNumber(request);
                 case "item_select" -> itemSelect(request);
+                case "item_tint" -> itemTint(request);
                 case "item_needle" -> itemNeedle(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "title_screen" -> titleScreen(request);

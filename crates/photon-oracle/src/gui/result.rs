@@ -110,6 +110,7 @@ fn item_operation(request: &Value) -> Option<Result<Value, String>> {
         "item_condition" => item_condition::item_condition_result(request),
         "item_number" => item_condition::item_number_result(request),
         "item_select" => item_condition::item_select_result(request),
+        "item_tint" => item_condition::item_tint_result(request),
         "item_needle" => item_condition::item_needle_result(request),
         _ => return None,
     })

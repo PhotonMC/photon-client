@@ -153,6 +153,19 @@ pub(super) fn item_number_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// Each row's tint source colour for its stack, by the production parser and colours.
+pub(super) fn item_tint_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let stack = stack_of(row)?;
+        let tint = photon_render::item_model::tint_of(&row["tint"].to_string()).ok_or("tint")?;
+        let tints = photon_gui::stack_tints(stack.item_registry_id(), &stack);
+        let colour = photon_render::item_model::tint_colour(&tint, &|_, _| 0, &tints);
+        rows.push(json!({"label": row["label"], "value": colour as i32}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
 /// Each row's `block_state` select value read from its stack, by the production select.
 pub(super) fn item_select_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();

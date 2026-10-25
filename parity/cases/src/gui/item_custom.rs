@@ -81,11 +81,28 @@ fn with_index(mut property: Value, index: Option<i64>) -> Value {
     property
 }
 
+/// The colour tint: the colour at the index, or the default.
+pub fn tints() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (name, data) in stacks() {
+        for index in [None, Some(0), Some(1), Some(2), Some(3), Some(40)] {
+            let mut tint = json!({"type": "minecraft:custom_model_data", "default": 0x00ab_cdef});
+            if let Some(index) = index {
+                tint["index"] = json!(index);
+            }
+            let label = format!("{name}-{}", index.map_or("default".to_owned(), |index| index.to_string()));
+            rows.push(row(&label, json!({"tint": tint}), "minecraft:stone", data.clone()));
+        }
+    }
+    rows
+}
+
 /// The cases of the `custom_model_data` properties.
 pub fn cases() -> Vec<Value> {
     vec![
         gui("item-custom-condition", "item_condition", conditions()),
         gui("item-custom-number", "item_number", numbers()),
         gui("item-custom-select", "item_select", selects()),
+        gui("item-custom-tint", "item_tint", tints()),
     ]
 }

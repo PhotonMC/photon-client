@@ -259,6 +259,12 @@ pub(super) fn parse_tint(object: &JsonObject) -> TintSource {
             source: ComponentTint::MapColor,
             default: rgb("default"),
         },
+        "minecraft:custom_model_data" => TintSource::Component {
+            source: ComponentTint::CustomModelData(
+                usize::try_from(object.i32("index").unwrap_or(0)).unwrap_or(usize::MAX),
+            ),
+            default: rgb("default"),
+        },
         _ => TintSource::Default(rgb("default")),
     }
 }
@@ -480,4 +486,9 @@ pub fn node_property(node: &str) -> Option<String> {
         | ItemModelDef::Select { property, .. } => Some(property),
         _ => None,
     }
+}
+
+/// A tint source written as JSON.
+pub fn tint_of(node: &str) -> Option<TintSource> {
+    Some(parse_tint(&photon_core::json::parse_object(node)?))
 }

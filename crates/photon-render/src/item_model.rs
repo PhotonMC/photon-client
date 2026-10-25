@@ -79,6 +79,8 @@ pub enum ComponentTint {
     Firework,
     /// `map_color`.
     MapColor,
+    /// `custom_model_data`: the colour at an index of the component's colours.
+    CustomModelData(usize),
 }
 
 /// A client item's model tree (`ItemModel.Unbaked`), as `items/*.json`
