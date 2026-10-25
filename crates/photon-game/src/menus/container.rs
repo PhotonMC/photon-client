@@ -176,9 +176,9 @@ mod bar;
 pub use bar::item_bar;
 mod bundle;
 pub use bundle::{
-    BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE, BundleView, bundle_items_to_show,
-    bundle_view, selected_item as bundle_selected_item, selected_stack as bundle_selected_stack,
-    toggle_bundle_selected,
+    BUNDLE_INSERT, BUNDLE_INSERT_FAIL, BUNDLE_REMOVE_ONE, BundleView, bundle_fullness,
+    bundle_items_to_show, bundle_view, selected_item as bundle_selected_item,
+    selected_stack as bundle_selected_stack, toggle_bundle_selected,
 };
 mod clicks;
 mod crafter;
@@ -187,6 +187,7 @@ pub use crafter::{CRAFTER_SLOT_SOUND, crafter_slot_sound_levels};
 pub use loom::loom_patterns;
 mod components;
 pub use components::{damage, is_damageable, max_damage};
+mod fraction;
 mod grindstone;
 mod kinds;
 pub use kinds::*;

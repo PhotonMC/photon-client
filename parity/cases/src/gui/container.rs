@@ -354,6 +354,14 @@ fn decorations() -> Vec<Value> {
         Screen { slots, patches, ..grindstone() }.row("decorations-durability"),
         Screen { slots: bundles, patches: fullness, ..grindstone() }.row("decorations-bundle"),
     ];
+    // A weight that cannot be computed counts as a full bundle.
+    let errors: Vec<(i64, &str, i64)> = (12..15).map(|slot| (slot, "bundle", 1)).collect();
+    let weights = vec![
+        (12, crate::components::bundle(&super::item_bundle::primes(10))),
+        (13, crate::components::bundle(&super::item_bundle::primes(9))),
+        (14, crate::components::bundle(&super::item_bundle::primes(11))),
+    ];
+    rows.push(Screen { slots: errors, patches: weights, ..grindstone() }.row("decorations-bundle-error"));
     for ticks in [0, 5, 7, 19, 20] {
         let cooled = Screen {
             slots: vec![

@@ -136,6 +136,7 @@ impl ItemState {
         match property {
             "minecraft:damage" => Some(numbers.damage_property(true)),
             "minecraft:count" => Some(numbers.count_property(true)),
+            "minecraft:bundle/fullness" => Some(f32::from_bits(numbers.fullness)),
             "minecraft:damage/raw" => Some(numbers.damage_property(false)),
             "minecraft:count/raw" => Some(numbers.count_property(false)),
             _ if property.starts_with(CUSTOM_MODEL_DATA) => Some(self.custom_float(property)),
@@ -352,7 +353,8 @@ const READ_SELECTS: [&str; 3] = [
 ];
 
 /// The numeric properties a range dispatch is decided from here.
-const READ_RANGES: [&str; 6] = [
+const READ_RANGES: [&str; 7] = [
+    "minecraft:bundle/fullness",
     "minecraft:use_duration",
     "minecraft:crossbow/pull",
     "minecraft:damage",
@@ -628,6 +630,7 @@ mod tests {
             max_damage: 100,
             count: 1,
             max_count: 1,
+            ..StackNumbers::default()
         };
         drawn_by(
             WORN,

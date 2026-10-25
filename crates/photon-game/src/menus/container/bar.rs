@@ -17,8 +17,10 @@ pub fn item_bar(stack: &Stack) -> Option<(i32, i32)> {
         if numerator <= 0 {
             return None;
         }
-        // `Mth.mulAndTruncate`.
-        let width = (1 + numerator * 12 / denominator).min(13) as i32;
+        // `Math.min(1 + Mth.mulAndTruncate(weight, 12), 13)`, in `int`s that wrap.
+        let truncated =
+            photon_core::math::mth_mul_and_truncate(numerator as i32, denominator as i32, 12);
+        let width = 1_i32.wrapping_add(truncated).min(13);
         let colour = if numerator >= denominator {
             BUNDLE_FULL
         } else {

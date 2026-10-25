@@ -1,7 +1,9 @@
 //! The durability and size of a stack, as the item models read them.
 
 use photon_core::wire::{read_varint, take};
-use photon_game::menus::container::{damage, is_damaged, max_damage, max_stack_size};
+use photon_game::menus::container::{
+    bundle_fullness, damage, is_damaged, max_damage, max_stack_size,
+};
 use photon_render::item_model::{CustomModelData, StackNumbers};
 use photon_world::ClientItemStackState;
 
@@ -13,6 +15,7 @@ pub fn stack_numbers(stack: &ClientItemStackState) -> StackNumbers {
         max_damage: max_damage(stack),
         count: stack.item_count(),
         max_count: max_stack_size(stack),
+        fullness: bundle_fullness(stack).to_bits(),
     }
 }
 

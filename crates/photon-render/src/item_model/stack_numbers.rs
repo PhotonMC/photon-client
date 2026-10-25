@@ -14,6 +14,8 @@ pub struct StackNumbers {
     pub count: i32,
     /// `ItemStack.getMaxStackSize`.
     pub max_count: i32,
+    /// `BundleItem.getFullnessDisplay`, as `f32` bits so the numbers stay comparable.
+    pub fullness: u32,
 }
 
 /// The suffix of a `damage` or `count` property that is not normalized.

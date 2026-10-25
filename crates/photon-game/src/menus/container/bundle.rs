@@ -6,6 +6,7 @@
 //! the bundle and sent as `SelectBundleItem`) is the one a secondary click
 //! takes out; the stack keeps it beside its components.
 
+use super::fraction::Fraction;
 use super::*;
 use photon_world::item_components::ids;
 
@@ -13,51 +14,6 @@ use photon_world::item_components::ids;
 pub const BUNDLE_INSERT: &str = "minecraft:item.bundle.insert";
 pub const BUNDLE_INSERT_FAIL: &str = "minecraft:item.bundle.insert_fail";
 pub const BUNDLE_REMOVE_ONE: &str = "minecraft:item.bundle.remove_one";
-
-/// Apache Commons `Fraction`, reduced; exact for a bundle's weights.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Fraction {
-    numerator: i64,
-    denominator: i64,
-}
-
-impl Fraction {
-    const ZERO: Self = Self::new(0, 1);
-    const ONE: Self = Self::new(1, 1);
-
-    const fn new(numerator: i64, denominator: i64) -> Self {
-        let (mut a, mut b) = (numerator.abs(), denominator.abs());
-        while b != 0 {
-            (a, b) = (b, a % b);
-        }
-        let gcd = if a == 0 { 1 } else { a };
-        let sign = if denominator < 0 { -1 } else { 1 };
-        Self {
-            numerator: sign * numerator / gcd,
-            denominator: sign * denominator / gcd,
-        }
-    }
-
-    const fn add(self, other: Self) -> Self {
-        Self::new(
-            self.numerator * other.denominator + other.numerator * self.denominator,
-            self.denominator * other.denominator,
-        )
-    }
-
-    const fn subtract(self, other: Self) -> Self {
-        self.add(Self::new(-other.numerator, other.denominator))
-    }
-
-    const fn times(self, count: i64) -> Self {
-        Self::new(self.numerator * count, self.denominator)
-    }
-
-    /// `divideBy(...).intValue()`: truncated toward zero.
-    const fn whole_times_in(self, divisor: Self) -> i64 {
-        (self.numerator * divisor.denominator) / (self.denominator * divisor.numerator)
-    }
-}
 
 /// A bundle's contents, or `None` for a stack with no `bundle_contents`
 /// (the bundles' own is empty).
@@ -120,7 +76,7 @@ fn set_contents(stack: &mut Stack, contents: &Contents) {
 /// stack size. `None` where the reference's result is an error.
 fn weight(stack: &Stack) -> Option<Fraction> {
     if let Some(items) = contents(stack) {
-        return Some(content_weight(&items)?.add(Fraction::new(1, 16)));
+        return content_weight(&items)?.checked_add(Fraction::new(1, 16));
     }
     let bees = match stack.patched(ids::BEES) {
         Some(Some(value)) => photon_core::wire::read_varint(&mut value.as_slice()).ok()? > 0,
@@ -129,19 +85,28 @@ fn weight(stack: &Stack) -> Option<Fraction> {
     Some(if bees {
         Fraction::ONE
     } else {
-        Fraction::new(1, i64::from(max_stack_size(stack)))
+        Fraction::checked_new(1, max_stack_size(stack))?
     })
 }
 
 /// `BundleContents.computeContentWeight`.
 fn content_weight(items: &[Stack]) -> Option<Fraction> {
     items.iter().try_fold(Fraction::ZERO, |sum, item| {
-        Some(sum.add(weight(item)?.times(i64::from(item.item_count()))))
+        sum.checked_add(weight(item)?.checked_times(item.item_count())?)
     })
 }
 
-/// `BundleItem.getWeightSafe` of a bundle's contents, as a numerator and a
-/// denominator (zero for an error); none for a stack that is no bundle.
+/// `BundleItem.getWeightSafe` of a stack's `bundle_contents` (the bundle's own are empty): an
+/// error counts as a full bundle, and a stack without the component as an empty one.
+fn weight_safe(stack: &Stack) -> Fraction {
+    match contents(stack) {
+        Some(items) => content_weight(&items).unwrap_or(Fraction::ONE),
+        None => Fraction::ZERO,
+    }
+}
+
+/// `BundleItem.getWeightSafe` as a numerator and a denominator; none for a stack that is no
+/// bundle.
 pub(super) fn bundle_weight(stack: &Stack) -> Option<(i64, i64)> {
     let bundle = stacking(stack).is_some_and(|item| {
         item.class.owner_of(ItemMethod::OverrideStackedOnOther) == ItemClass::BundleItem
@@ -149,10 +114,15 @@ pub(super) fn bundle_weight(stack: &Stack) -> Option<(i64, i64)> {
     if !bundle {
         return None;
     }
-    let weight = contents(stack)
-        .and_then(|items| content_weight(&items))
-        .unwrap_or(Fraction::ZERO);
+    let weight = weight_safe(stack);
     Some((weight.numerator, weight.denominator))
+}
+
+/// `BundleItem.getFullnessDisplay`: the weight of any stack's `bundle_contents` as a float
+/// (`Fraction.floatValue`).
+pub fn bundle_fullness(stack: &Stack) -> f32 {
+    let weight = weight_safe(stack);
+    weight.numerator as f32 / weight.denominator as f32
 }
 
 /// `BundleContents.canItemBeInBundle`.
