@@ -4,6 +4,24 @@ import net.minecraft.core.BlockPos;
 
 /** The original client player in a scene: ticks, attacks and breaking. */
 class MovementPlayerOracle extends MovementWorldOracle {
+    /**
+     * Applies a component patch as the wire carries it over the stack's own components; a short or
+     * long read is a broken row.
+     */
+    static void applyWirePatch(net.minecraft.world.item.ItemStack stack, String hex,
+                               net.minecraft.core.RegistryAccess registries) {
+        var bytes = new byte[hex.length() / 2];
+        for (int at = 0; at < bytes.length; at++) {
+            bytes[at] = (byte) Integer.parseInt(hex.substring(at * 2, at * 2 + 2), 16);
+        }
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+            io.netty.buffer.Unpooled.wrappedBuffer(bytes), registries);
+        stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
+        if (buffer.readableBytes() != 0) {
+            throw new IllegalStateException("component patch has trailing bytes");
+        }
+    }
+
     static JsonObject localPlayerTicks(JsonObject row) throws Exception {
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
@@ -82,19 +100,7 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         new net.minecraft.world.item.component.UseCooldown(breaking_.get("main_hand_use_cooldown").getAsFloat()));
                 }
                 if (breaking_.has("main_hand_patch")) {
-                    // The patch as the wire carries it, applied over the item's own components; a
-                    // short or long read is a broken row.
-                    var hex = breaking_.get("main_hand_patch").getAsString();
-                    var bytes = new byte[hex.length() / 2];
-                    for (int at = 0; at < bytes.length; at++) {
-                        bytes[at] = (byte) Integer.parseInt(hex.substring(at * 2, at * 2 + 2), 16);
-                    }
-                    var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
-                        io.netty.buffer.Unpooled.wrappedBuffer(bytes), level.registryAccess());
-                    stack.applyComponents(net.minecraft.core.component.DataComponentPatch.STREAM_CODEC.decode(buffer));
-                    if (buffer.readableBytes() != 0) {
-                        throw new IllegalStateException("main_hand_patch has trailing bytes");
-                    }
+                    applyWirePatch(stack, breaking_.get("main_hand_patch").getAsString(), level.registryAccess());
                 }
                 if (breaking_.has("main_hand_custom_name")) {
                     stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
@@ -111,7 +117,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
             if (breaking_.has("off_hand")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
                     net.minecraft.resources.Identifier.parse(breaking_.get("off_hand").getAsString()));
-                player.getInventory().setItem(40, new net.minecraft.world.item.ItemStack(item));
+                var offHand = new net.minecraft.world.item.ItemStack(item);
+                if (breaking_.has("off_hand_patch")) {
+                    applyWirePatch(offHand, breaking_.get("off_hand_patch").getAsString(), level.registryAccess());
+                }
+                player.getInventory().setItem(40, offHand);
             }
             if (breaking_.has("chest")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(

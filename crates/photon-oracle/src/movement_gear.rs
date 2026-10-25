@@ -16,12 +16,11 @@ pub(super) fn worn_items(
             continue;
         };
         let item = photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
-        world.apply_local_player_container_slot(
-            0,
-            0,
-            slot,
-            Some(&photon_world::ClientItemStackState::new(1, item)),
-        );
+        let mut stack = photon_world::ClientItemStackState::new(1, item);
+        if let Some(hex) = breaking[format!("{key}_patch")].as_str() {
+            stack.set_patch(&wire_patch(hex)?);
+        }
+        world.apply_local_player_container_slot(0, 0, slot, Some(&stack));
     }
     // The session has synced the hands by the time a row's first keys are read.
     player.set_hand_state(photon_game::item::glider::hand_state(world, 0));
@@ -241,6 +240,19 @@ fn hand_item(world: &photon_world::ClientWorld, slot: i16) -> String {
     name.map_or_else(|| "minecraft:air".to_owned(), |item| item.name.to_owned())
 }
 
+/// A component patch as the wire carries it, the same bytes Java decodes; the reader must end
+/// exactly where they do.
+fn wire_patch(hex: &str) -> Result<photon_world::item_components::Patch, String> {
+    let bytes = hex_bytes(hex)?;
+    let mut rest = bytes.as_slice();
+    let patch = photon_world::item_components::read_patch(&mut rest)
+        .map_err(|_| format!("malformed component patch {hex}"))?;
+    if !rest.is_empty() {
+        return Err(format!("component patch has trailing bytes {hex}"));
+    }
+    Ok(patch)
+}
+
 /// The stack a row puts in the main hand, in the world's inventory and in the player.
 pub(super) fn hold_main_hand(
     world: &mut photon_world::ClientWorld,
@@ -262,14 +274,7 @@ pub(super) fn hold_main_hand(
     }
     let mut removed = Vec::new();
     if let Some(hex) = breaking["main_hand_patch"].as_str() {
-        // The same bytes Java decodes; the reader must end exactly where they do.
-        let bytes = hex_bytes(hex)?;
-        let mut rest = bytes.as_slice();
-        let patch = photon_world::item_components::read_patch(&mut rest)
-            .map_err(|_| format!("malformed main_hand_patch {hex}"))?;
-        if !rest.is_empty() {
-            return Err(format!("main_hand_patch has trailing bytes {hex}"));
-        }
+        let patch = wire_patch(hex)?;
         added.extend(patch.added);
         removed = patch.removed;
     }

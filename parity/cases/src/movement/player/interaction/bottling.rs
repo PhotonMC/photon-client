@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
+use crate::components::{POTION_CONTENTS, patch};
 use crate::movement::world::{put, put_with};
 
 pub fn rows() -> Vec<Value> {
@@ -21,6 +22,14 @@ pub fn rows() -> Vec<Value> {
         bottle("bottle-on-water", pool(), 1).row(),
         bottle("bottle-stack-on-water", pool(), 3).row(),
         bottle("bottle-creative-on-water", pool(), 1).game_mode("creative").row(),
+        // A creative player gets the bottle only when no stack of it is carried already: the water
+        // potion (the first potion of the registry, no colour, effects or name) in the off hand.
+        bottle("bottle-creative-already-held", pool(), 1)
+            .game_mode("creative")
+            .off_hand("minecraft:potion")
+            .off_hand_patch(patch(&[(POTION_CONTENTS, "0100000000".to_owned())]))
+            .row(),
+        bottle("bottle-creative-other-potion-held", pool(), 1).game_mode("creative").off_hand("minecraft:potion").row(),
         bottle("bottle-adventure-on-water", pool(), 1).game_mode("adventure").row(),
         bottle("bottle-on-flowing-water", vec![put_with(0, 64, 2, "minecraft:water", &[("level", "3")])], 1).row(),
         bottle(

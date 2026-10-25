@@ -34,6 +34,8 @@ pub struct Interaction {
     /// Components on the main hand's stack, as `DataComponentPatch.STREAM_CODEC` hex.
     patch: Option<String>,
     off_hand: Option<&'static str>,
+    /// Components on the off hand's stack, as `DataComponentPatch.STREAM_CODEC` hex.
+    off_hand_patch: Option<String>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
     effects: Option<Vec<Value>>,
@@ -50,6 +52,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         custom_name: None,
         patch: None,
         off_hand: None,
+        off_hand_patch: None,
         chest: None,
         rockets: None,
         effects: None,
@@ -100,6 +103,10 @@ impl Interaction {
 
     pub fn use_remainder(self, item: &'static str) -> Self {
         Self { use_remainder: Some(item), ..self }
+    }
+
+    pub fn off_hand_patch(self, hex: String) -> Self {
+        Self { off_hand_patch: Some(hex), ..self }
     }
 
     pub fn off_hand(self, item: &'static str) -> Self {
@@ -164,6 +171,9 @@ impl Interaction {
         }
         if let Some(item) = self.off_hand {
             held["off_hand"] = json!(item);
+            if let Some(hex) = &self.off_hand_patch {
+                held["off_hand_patch"] = json!(hex);
+            }
         }
         if let Some(count) = self.rockets {
             held["rockets"] = json!(count);

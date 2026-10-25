@@ -18,6 +18,7 @@ pub const REPAIR_COST: i64 = 19;
 pub const GLINT: i64 = 21;
 pub const STORED_ENCHANTMENTS: i64 = 42;
 pub const DYED_COLOR: i64 = 44;
+pub const POTION_CONTENTS: i64 = 51;
 pub const MAP_ID: i64 = 46;
 pub const MAP_POST_PROCESSING: i64 = 48;
 pub const BUNDLE_CONTENTS: i64 = 50;
