@@ -33,15 +33,7 @@ impl Controls {
                 self.mapped_input(input, action, (session, surface, assets), spectating);
             }
             WindowEvent::Scroll(x, y) if self.captured => {
-                if !spectating
-                    && let Some(slot) = self.scroll_wheel.select(
-                        x * self.options.mouse_wheel_sensitivity,
-                        y * self.options.mouse_wheel_sensitivity,
-                        session.status().selected_slot,
-                    )
-                {
-                    session.select_slot(slot);
-                }
+                self.scrolled((x, y), session, spectating);
             }
             WindowEvent::CursorPos(x, y) => {
                 if self.captured
@@ -54,6 +46,30 @@ impl Controls {
             _ => {}
         }
         Ok(())
+    }
+
+    /// `MouseHandler.onScroll` in the world: a spectator's wheel changes the flying speed (the
+    /// spectator menu is not drawn), anyone else's picks the hotbar slot.
+    fn scrolled(&mut self, (x, y): (f64, f64), session: &mut PlaySession, spectating: bool) {
+        let sensitivity = self.options.mouse_wheel_sensitivity;
+        if spectating {
+            let speed = session
+                .player()
+                .map(|player| player.abilities().flying_speed());
+            if let Some(speed) = speed
+                && let Some(speed) =
+                    self.scroll_wheel
+                        .spectator_speed(x * sensitivity, y * sensitivity, speed)
+            {
+                session.set_flying_speed(speed);
+            }
+        } else if let Some(slot) = self.scroll_wheel.select(
+            x * sensitivity,
+            y * sensitivity,
+            session.status().selected_slot,
+        ) {
+            session.select_slot(slot);
+        }
     }
 
     /// An event for the settings screens (and the social interactions and pause screens), the

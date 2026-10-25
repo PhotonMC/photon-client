@@ -155,8 +155,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             game_mode_of_row,
             flag(row, "auto_jump")?,
         );
-        // A row whose view is another entity's (SetCamera) has no controlled camera.
-        player.set_controlled_camera(row.get("camera_entity").is_none());
+        movement_player::start_player(&mut player, row)?;
         let breaking = row.get("breaking");
         let mut game_mode = photon_game::game_mode::GameMode::default();
         let mut cooldowns = photon_game::item::cooldowns::ItemCooldowns::default();

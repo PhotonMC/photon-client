@@ -52,6 +52,7 @@ pub struct Scene {
     border: Option<(f64, f64, f64)>,
     block_events: Vec<Value>,
     camera_entity: Option<(i64, &'static str)>,
+    flying_speed: Option<f64>,
 }
 
 impl Scene {
@@ -68,6 +69,7 @@ impl Scene {
             border: None,
             block_events: Vec::new(),
             camera_entity: None,
+            flying_speed: None,
         }
     }
 
@@ -90,6 +92,11 @@ impl Scene {
 
     pub fn game_mode(self, game_mode: &'static str) -> Self {
         Self { game_mode, ..self }
+    }
+
+    /// The flying speed the server's abilities packet gave (the default is 0.05).
+    pub fn flying_speed(self, speed: f64) -> Self {
+        Self { flying_speed: Some(speed), ..self }
     }
 
     pub fn auto_jump(self) -> Self {
@@ -127,6 +134,9 @@ impl Scene {
                 "y": f64_bits(self.start.1), "z": f64_bits(self.start.2),
             }]);
             row["camera_entity"] = json!(id);
+        }
+        if let Some(speed) = self.flying_speed {
+            row["flying_speed"] = json!(f32_bits(speed));
         }
         if let Some((x, z, size)) = self.border {
             row["border"] = json!({"x": f64_bits(x), "z": f64_bits(z), "size": f64_bits(size)});

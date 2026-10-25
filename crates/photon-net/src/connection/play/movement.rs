@@ -563,6 +563,17 @@ impl PlaySession {
         }
     }
 
+    /// `Abilities.setFlyingSpeed` by the client itself: the player and the abilities kept for a
+    /// respawn take it; the server is not told.
+    pub fn set_flying_speed(&mut self, speed: f32) {
+        if let Some(abilities) = self.local.abilities.as_mut() {
+            *abilities = abilities.with_flying_speed(speed);
+        }
+        if let Some(player) = self.local.player.as_mut() {
+            player.set_flying_speed(speed);
+        }
+    }
+
     /// `MultiPlayerGameMode.ensureHasSentCarriedItem`: the server hears of
     /// a new hotbar slot before anything the slot's item does.
     pub(super) fn ensure_has_sent_carried_item(&mut self) -> Result<(), ConnectionError> {

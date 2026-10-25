@@ -159,6 +159,7 @@ use sky::*;
 mod movement;
 use movement::*;
 mod movement_gear;
+mod movement_player;
 use movement_gear::*;
 mod quads;
 use quads::*;

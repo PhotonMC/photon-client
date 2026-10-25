@@ -25,6 +25,7 @@ fn flying(label: &'static str, blocks: Vec<Value>, then: Vec<Value>) -> Scene {
 pub fn rows() -> Vec<Value> {
     let mut rows = steady_rows();
     rows.extend(toggle_rows());
+    rows.extend(speed_rows());
     rows
 }
 
@@ -66,5 +67,26 @@ fn toggle_rows() -> Vec<Value> {
         Scene::new("survival-double-tap", floor(), double_tap(1, keys(10, &["jump"]))).row(),
         Scene::new("adventure-double-tap", floor(), double_tap(1, keys(10, &["jump"]))).game_mode("adventure").row(),
         flying("fly-then-sneak-to-ground", floor(), [keys(4, &["jump"]), keys(30, &["sneak"])].concat()).row(),
+    ]
+}
+
+/// The flying speed a server sets: the vertical push, the sprint doubling and the air control all
+/// read it.
+fn speed_rows() -> Vec<Value> {
+    let take_off =
+        |label: &'static str, speed: f64, then: Vec<Value>| flying(label, floor(), then).flying_speed(speed).row();
+    vec![
+        take_off("fly-speed-0.1-up", 0.1, keys(12, &["jump"])),
+        take_off("fly-speed-0.07-sprint", 0.07, keys(12, &["forward", "sprint"])),
+        take_off("fly-speed-0.07-strafe", 0.07, keys(12, &["left", "jump"])),
+        take_off("fly-speed-0-hover", 0.0, keys(8, &["forward", "jump"])),
+        Scene::new("spectator-speed-0.2-forward", floor(), keys(10, &["forward"]))
+            .game_mode("spectator")
+            .flying_speed(0.2)
+            .row(),
+        Scene::new("spectator-speed-0.03-sprint", floor(), keys(10, &["forward", "sprint", "jump"]))
+            .game_mode("spectator")
+            .flying_speed(0.03)
+            .row(),
     ]
 }

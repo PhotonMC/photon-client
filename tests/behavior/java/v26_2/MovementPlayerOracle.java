@@ -55,6 +55,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
         var gameMode = new net.minecraft.client.multiplayer.MultiPlayerGameMode(minecraft, listener);
         gameMode.setLocalMode(gameType);
         gameMode.adjustPlayer(player);
+        if (row.has("flying_speed")) {
+            player.getAbilities().setFlyingSpeed(Oracle.f32(row, "flying_speed"));
+        }
         setField(minecraft, "gameMode", gameMode);
         var renderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
         var camera = new net.minecraft.client.Camera();

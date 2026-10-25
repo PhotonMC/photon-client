@@ -148,6 +148,12 @@ impl ClientPlayerAbilities {
         self.may_build
     }
 
+    /// `Abilities.setFlyingSpeed`.
+    pub fn with_flying_speed(mut self, speed: f32) -> Self {
+        self.flying_speed = JavaF32::new(speed);
+        self
+    }
+
     pub fn flying_speed(self) -> f32 {
         self.flying_speed.get()
     }

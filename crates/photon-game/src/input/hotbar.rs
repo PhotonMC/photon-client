@@ -16,6 +16,16 @@ impl ScrollWheel {
     /// `MouseHandler.onScroll` for a player on foot, with the default
     /// options (continuous scrolling at a sensitivity of one): the slot
     /// after `selected` the wheel moved to, if it moved a whole step.
+    /// `MouseHandler.onScroll` for a spectator whose menu is closed: the flying speed the wheel
+    /// moved to, 0.005 a step within 0 to 0.2, once the wheel moved a whole step.
+    pub fn spectator_speed(&mut self, x: f64, y: f64, speed: f32) -> Option<f32> {
+        let (wheel_x, wheel_y) = self.0.on_mouse_scroll(x, y);
+        if wheel_x == 0 && wheel_y == 0 {
+            return None;
+        }
+        Some((speed + wheel_y as f32 * 0.005_f32).clamp(0.0, 0.2_f32))
+    }
+
     pub fn select(&mut self, x: f64, y: f64, selected: i32) -> Option<i32> {
         let (wheel_x, wheel_y) = self.0.on_mouse_scroll(x, y);
         if wheel_x == 0 && wheel_y == 0 {
@@ -40,6 +50,20 @@ mod tests {
         assert_eq!(wheel.select(0.0, 1.0, 0), Some(8));
         assert_eq!(wheel.select(0.0, -1.0, 8), Some(0));
         assert_eq!(wheel.select(0.0, -1.0, 3), Some(4));
+    }
+
+    #[test]
+    fn the_spectator_wheel_changes_the_flying_speed_within_bounds() {
+        let mut wheel = ScrollWheel::default();
+        assert_eq!(
+            wheel.spectator_speed(0.0, 1.0, 0.05),
+            Some(0.05_f32 + 0.005_f32)
+        );
+        assert_eq!(wheel.spectator_speed(0.0, -1.0, 0.002), Some(0.0));
+        assert_eq!(wheel.spectator_speed(0.0, 1.0, 0.199), Some(0.2));
+        assert_eq!(wheel.spectator_speed(0.0, 0.4, 0.05), None);
+        // Sideways turns alone do not change it.
+        assert_eq!(wheel.spectator_speed(1.0, 0.0, 0.05), Some(0.05));
     }
 
     #[test]

@@ -182,6 +182,11 @@ impl LocalPlayer {
         self.abilities.may_build = may_build;
     }
 
+    /// `Abilities.setFlyingSpeed` on the player's own abilities (the spectator's wheel).
+    pub fn set_flying_speed(&mut self, speed: f32) {
+        self.abilities = self.abilities.with_flying_speed(speed);
+    }
+
     pub fn health(&self) -> f32 {
         self.health
     }
