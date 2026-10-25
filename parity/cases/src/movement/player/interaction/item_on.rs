@@ -203,6 +203,59 @@ fn with_block_entities() -> Vec<Value> {
     ]
 }
 
+fn pots_bushes_and_composters() -> Vec<Value> {
+    let pot = |block: &str| vec![put(0, 64, 2, block)];
+    let bush = |age: &str| vec![put_with(0, 64, 2, "minecraft:sweet_berry_bush", &[("age", age)])];
+    let composter = |level: &str| vec![put_with(0, 64, 2, "minecraft:composter", &[("level", level)])];
+    vec![
+        row("item-on-pot-sapling", pot("minecraft:flower_pot"), &north())
+            .main_hand("minecraft:oak_sapling")
+            .count(3)
+            .row(),
+        row("item-on-pot-azalea", pot("minecraft:flower_pot"), &north())
+            .main_hand("minecraft:flowering_azalea")
+            .count(3)
+            .row(),
+        row("item-on-pot-sapling-creative", pot("minecraft:flower_pot"), &north())
+            .main_hand("minecraft:poppy")
+            .count(3)
+            .game_mode("creative")
+            .row(),
+        row("item-on-pot-stone", pot("minecraft:flower_pot"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-pot-empty-hand", pot("minecraft:flower_pot"), &north()).row(),
+        row("item-on-potted-sapling", pot("minecraft:potted_oak_sapling"), &north())
+            .main_hand("minecraft:poppy")
+            .count(3)
+            .row(),
+        row("item-on-potted-stone", pot("minecraft:potted_cactus"), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .row(),
+        row("item-on-potted-empty-hand", pot("minecraft:potted_bamboo"), &north()).row(),
+        row("item-on-bush-ripe-empty", bush("3"), &north()).row(),
+        row("item-on-bush-young-empty", bush("1"), &north()).row(),
+        row("item-on-bush-young-bone-meal", bush("1"), &north()).main_hand("minecraft:bone_meal").count(3).row(),
+        row("item-on-bush-ripe-bone-meal", bush("3"), &north()).main_hand("minecraft:bone_meal").count(3).row(),
+        row("item-on-bush-growing-stone", bush("2"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-composter-wheat", composter("3"), &north()).main_hand("minecraft:wheat").count(3).row(),
+        row("item-on-composter-dirt", composter("3"), &north()).main_hand("minecraft:dirt").count(3).row(),
+        row("item-on-composter-ready-empty", composter("8"), &north()).row(),
+        row("item-on-composter-ready-wheat", composter("8"), &north()).main_hand("minecraft:wheat").count(3).row(),
+        row("item-on-composter-ready-stone", composter("8"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-composter-filling-empty", composter("4"), &north()).row(),
+        row("item-on-composter-full-wheat", composter("7"), &north()).main_hand("minecraft:wheat").count(3).row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [simple(), lit_candles(), anchors_and_statues(), records_and_books(), cakes(), with_block_entities()].concat()
+    [
+        simple(),
+        lit_candles(),
+        anchors_and_statues(),
+        records_and_books(),
+        cakes(),
+        with_block_entities(),
+        pots_bushes_and_composters(),
+    ]
+    .concat()
 }

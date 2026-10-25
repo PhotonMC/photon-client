@@ -44,6 +44,9 @@ fn describe(ctx: &Context<'_>, hand: u8) -> Held {
             .world
             .recipe_property_set("minecraft:campfire_input")
             .contains(&item.0),
+        block: rules::item(item).and_then(|row| row.block),
+        compostable: photon_data::compost::chance(name).is_some(),
+        bone_meal: name == "minecraft:bone_meal",
         candle: tagged("minecraft:candles").then_some(name),
         record: values.has(photon_data::item::component_types::JUKEBOX_PLAYABLE),
     }

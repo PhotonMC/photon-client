@@ -277,7 +277,7 @@ fn filled_result_of(
 
 /// `Inventory.add` of one item: onto a stack with room (the selected slot, the off hand, then the
 /// hotbar and the rest in order), else into the first free slot.
-fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
+pub(super) fn add_to_inventory(ctx: &mut Context<'_>, fresh: ClientItemStackState) {
     let menu_slot = |index: i16| if index < 9 { 36 + index } else { index };
     let order: Vec<i16> = [menu_slot(ctx.selected_slot as i16), 45]
         .into_iter()

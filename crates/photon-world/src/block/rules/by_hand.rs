@@ -24,6 +24,8 @@ pub struct Opened {
     pub sound: Option<HandSound>,
     /// The player eats: the food level takes `FoodData.eat(2, 0.1)`.
     pub eats: bool,
+    /// The item the player takes into the inventory (`Player.addItem`).
+    pub gives: Option<&'static str>,
 }
 
 /// The sound a use plays at the middle of the block.
@@ -171,6 +173,7 @@ fn done(write: Write, sound: &'static str, pitch: Option<f32>) -> Rule<HandUse> 
             pitch,
         }),
         eats: false,
+        gives: None,
     }))
 }
 
@@ -285,6 +288,7 @@ fn comparator_use(hand: &Hand) -> Rule<HandUse> {
                 pitch: Some(if to_subtract { 0.55 } else { 0.5 }),
             }),
             eats: false,
+            gives: None,
         }))
     })
 }
@@ -308,6 +312,7 @@ fn repeater_use(hand: &Hand) -> Rule<HandUse> {
                 },
                 sound: None,
                 eats: false,
+                gives: None,
             }))
         },
     )
@@ -389,6 +394,7 @@ fn bite(pos: (i32, i32, i32), cake: BlockStateId, user: &User) -> Option<Opened>
         },
         sound: None,
         eats: true,
+        gives: None,
     })
 }
 
@@ -417,7 +423,70 @@ fn success_if_held(held: bool) -> Rule<HandUse> {
     result(if held { SUCCESS } else { UseResult::Pass })
 }
 
+/// The item of the plant in a potted pot: its block's name without `potted_`, the azaleas
+/// having `_bush` more.
+fn potted_plant(pot: &str) -> Option<&'static str> {
+    let plant = match pot.strip_prefix("minecraft:potted_")? {
+        "azalea_bush" => "azalea",
+        "flowering_azalea_bush" => "flowering_azalea",
+        other => other,
+    };
+    let index = registry::block_index(&format!("minecraft:{plant}"))?;
+    Some(BLOCKS[index].name)
+}
+
+/// `FlowerPotBlock.useWithoutItem`: a potted plant comes out (the plant joins the inventory on
+/// the server's word); an empty pot consumes the use.
+fn flower_pot_use(hand: &Hand) -> Rule<HandUse> {
+    let emptied = block(hand.state)
+        .filter(|block| block.name != "minecraft:flower_pot")
+        .and_then(|_| registry::block_index("minecraft:flower_pot"))
+        .map(default_state);
+    match emptied {
+        Some(state) => Rule::Known(HandUse::Set(Opened {
+            write: Write {
+                pos: hand.pos,
+                state,
+                flags: 3,
+            },
+            sound: None,
+            eats: false,
+            gives: block(hand.state).and_then(|block| potted_plant(block.name)),
+        })),
+        None => result(SERVER),
+    }
+}
+
+/// `ComposterBlock.useWithoutItem`: a full composter is emptied (the bone meal is the server's).
+fn composter_use(hand: &Hand) -> Rule<HandUse> {
+    if property(hand.state, "level") != Some("8") {
+        return result(UseResult::Pass);
+    }
+    let emptied = with_property(hand.state, "level", "0");
+    Rule::Known(emptied.map_or(HandUse::Result(SUCCESS), |state| {
+        HandUse::Set(Opened {
+            write: Write {
+                pos: hand.pos,
+                state,
+                flags: 3,
+            },
+            sound: None,
+            eats: false,
+            gives: None,
+        })
+    }))
+}
+
 const USES: &[(BlockClass, UseFn)] = &[
+    (BlockClass::FlowerPotBlock, flower_pot_use),
+    (BlockClass::ComposterBlock, composter_use),
+    // The server picks the berries; two ripe stages and more count as a success.
+    (BlockClass::SweetBerryBushBlock, |hand| {
+        let age: i32 = property(hand.state, "age")
+            .and_then(|age| age.parse().ok())
+            .unwrap_or(0);
+        result(if age > 1 { SUCCESS } else { UseResult::Pass })
+    }),
     // Charged, the server sets the spawn or explodes; the client consumes the use.
     (BlockClass::RespawnAnchorBlock, |hand| {
         result(if property(hand.state, "charges") == Some("0") {

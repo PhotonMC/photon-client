@@ -315,6 +315,9 @@ impl GameMode {
         if opened.eats {
             Self::eat_food(ctx, 2, 0.1);
         }
+        if let Some(item) = opened.gives.and_then(crate::item::id_of) {
+            super::buckets::add_to_inventory(ctx, ClientItemStackState::new(1, item));
+        }
         let position = ctx.player.position();
         ctx.world
             .set_block_with_updates(write.pos, write.state, write.flags, 512, position);

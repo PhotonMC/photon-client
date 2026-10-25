@@ -28,6 +28,11 @@ pub struct Held {
     pub record: bool,
     /// The name of a candle item (`ItemTags.CANDLES`).
     pub candle: Option<&'static str>,
+    /// The block a block item places.
+    pub block: Option<&'static str>,
+    /// A composter takes the item (`ComposterBlock.COMPOSTABLES`).
+    pub compostable: bool,
+    pub bone_meal: bool,
 }
 
 /// Who uses the block with the stack, and where.
@@ -254,7 +259,49 @@ fn cake(use_: &Use) -> Option<ItemOn> {
     Some(ItemOn::set(use_.pos, cake, 3, true))
 }
 
+/// The pot a plant stands in (`FlowerPotBlock.POTTED_BY_CONTENT`): `potted_` and the plant's
+/// name, the azaleas being `potted_azalea_bush` and `potted_flowering_azalea_bush`.
+fn potted(block: &str) -> Option<BlockStateId> {
+    let path = block.strip_prefix("minecraft:")?;
+    let name = match path {
+        "azalea" | "flowering_azalea" => format!("minecraft:potted_{path}_bush"),
+        _ => format!("minecraft:potted_{path}"),
+    };
+    let index = registry::block_index(&name)?;
+    (BLOCKS[index].class == BlockClass::FlowerPotBlock).then(|| default_state(index))
+}
+
+/// `FlowerPotBlock`: a plant goes into an empty pot; a full pot consumes the use.
+fn flower_pot(use_: &Use) -> Option<ItemOn> {
+    let Some(plant) = use_.held.block.and_then(potted) else {
+        return empty_hand();
+    };
+    if block(use_.state).is_none_or(|block| block.name != "minecraft:flower_pot") {
+        return Some(ItemOn::answer(SERVER));
+    }
+    Some(ItemOn::set(use_.pos, Some(plant), 3, true))
+}
+
+/// `SweetBerryBushBlock`: bone meal on a young bush is left to the item.
+fn sweet_berry_bush(use_: &Use) -> Option<ItemOn> {
+    if use_.held.bone_meal && !is(use_, "age", "3") {
+        return pass();
+    }
+    empty_hand()
+}
+
+/// `ComposterBlock`: a compostable item is taken, on the server.
+fn composter(use_: &Use) -> Option<ItemOn> {
+    if number(use_.state, "level") < 8 && use_.held.compostable {
+        return Some(ItemOn::answer(SUCCESS));
+    }
+    empty_hand()
+}
+
 const USES: &[(BlockClass, Rule1)] = &[
+    (BlockClass::FlowerPotBlock, flower_pot),
+    (BlockClass::SweetBerryBushBlock, sweet_berry_bush),
+    (BlockClass::ComposterBlock, composter),
     (BlockClass::CakeBlock, cake),
     (BlockClass::NoteBlock, note_block),
     (BlockClass::PumpkinBlock, pumpkin),
