@@ -40,7 +40,7 @@ impl Context<'_> {
     }
 
     /// Whether the item in a hand is in an item tag.
-    fn holds_tagged(&self, hand: u8, tag: &str) -> bool {
+    pub(super) fn holds_tagged(&self, hand: u8, tag: &str) -> bool {
         self.held(hand).is_some_and(|(item, _)| {
             self.world
                 .block_state_registry()

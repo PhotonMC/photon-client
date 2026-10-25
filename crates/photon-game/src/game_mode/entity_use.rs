@@ -10,6 +10,7 @@ use photon_core::ids::EntityId;
 
 mod camel;
 mod horse;
+mod pickups;
 mod sheep;
 mod villager;
 
@@ -90,6 +91,7 @@ impl Context<'_> {
             }
             n if horse::is_equine(n) => self.interact_horse(name, id, hand),
             "minecraft:camel" | "minecraft:camel_husk" => self.interact_camel(name, id, hand),
+            n if pickups::bucket_of(n).is_some() => self.interact_bucketable(name, id, hand),
             _ => self.interact_herd_class(name, id, hand),
         }
     }

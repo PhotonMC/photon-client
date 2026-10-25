@@ -232,6 +232,12 @@ pub(super) fn stew_result(ctx: &mut Context<'_>, hand: u8, name: &str) {
     }
 }
 
+/// `createFilledResult` with a plain item that never limits the creative stack size, as a mob
+/// pickup and an axolotl's emptied bucket do.
+pub(super) fn plain_result(ctx: &mut Context<'_>, hand: u8, new: ItemId) {
+    filled_result_of(ctx, hand, ClientItemStackState::new(1, new), false);
+}
+
 /// `ItemUtils.createFilledResult(held, player, fresh, limitCreativeStackSize)`.
 fn filled_result_of(
     ctx: &mut Context<'_>,
