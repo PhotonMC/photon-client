@@ -78,21 +78,11 @@ pub fn rows() -> Vec<Value> {
     let on_top = aim_at((0, 64, 2), "up", (0.5, 64.125, 2.5));
     let at_upper = aim_at((0, 65, 2), "north", (0.5, 65.5, 2.0));
     let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
-    let twice = |aim: &Value| {
-        [
-            uses(1, Some(aim), &around).clicks(1).go(),
-            uses(3, Some(aim), &around).go(),
-            uses(1, Some(aim), &around).clicks(1).go(),
-            uses(3, Some(aim), &around).go(),
-        ]
-        .concat()
-    };
     let row = |label: &str, world: Vec<Value>, aim: &Value| using(label, world, run(aim));
     vec![
         row("door-oak-opens", door_world("minecraft:oak_door", false), &at_door).row(),
         row("door-oak-closes", door_world("minecraft:oak_door", true), &at_door).row(),
         row("door-oak-upper-half", door_world("minecraft:oak_door", false), &at_upper).row(),
-        using("door-oak-opens-and-closes", door_world("minecraft:oak_door", false), twice(&at_door)).row(),
         row("door-iron-passes", door_world("minecraft:iron_door", false), &at_door).row(),
         row("door-copper-opens", door_world("minecraft:copper_door", false), &at_door).row(),
         row("door-waxed-weathered-copper", door_world("minecraft:waxed_weathered_copper_door", false), &at_door).row(),

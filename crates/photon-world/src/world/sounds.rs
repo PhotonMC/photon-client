@@ -14,7 +14,12 @@ impl ClientWorld {
 
     /// The pitch of a block's use sound, `random.nextFloat() * 0.1F + 0.9F`.
     pub fn block_use_sound_pitch(&mut self) -> f32 {
-        self.entity_sound_random.source().next_float() * 0.1 + 0.9
+        self.level_random.source().next_float() * 0.1 + 0.9
+    }
+
+    /// Fixes `Level.random`, so a comparison can be made.
+    pub fn fix_level_seed(&mut self, seed: i64) {
+        self.level_random.fix_seed(seed);
     }
 
     /// Fixes the source `entity_sound_pitch` draws from, so a comparison can be made.

@@ -39,6 +39,9 @@ fn placed_blocks(
 
 /// The scene's blocks in a client world of loaded chunks, as the movement
 /// oracle builds its level.
+/// The seed `Level.random` starts from in the movement scenes, on both sides.
+pub(super) const LEVEL_SEED: i64 = 20_261_026;
+
 pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     use photon_data::block::registry;
     use photon_world::{DimensionBounds, SectionInput};
@@ -46,6 +49,8 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     let dimension = DimensionBounds::new(-64, 384);
     let placed = placed_blocks(row)?;
     let mut world = ClientWorld::new(dimension);
+    // The reference's level random starts from the clock; both sides start it from one seed.
+    world.fix_level_seed(LEVEL_SEED);
     let radius = i32_field(row, "chunk_radius")?;
     let biomes = vec![particles::biome_id(row)?; 64];
     for chunk_x in -radius..=radius {

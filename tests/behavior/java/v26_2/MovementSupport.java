@@ -76,10 +76,7 @@ class MovementSupport {
             String played = instance.getIdentifier().toString();
             if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")
                 || played.startsWith("minecraft:entity.player.hurt") || played.equals("minecraft:entity.player.death")
-                || played.equals("minecraft:block.portal.trigger")
-                // A door, trap door or fence gate opening or closing draws its pitch from the level's unseeded random.
-                || played.endsWith("door.open") || played.endsWith("door.close")
-                || played.endsWith("fence_gate.open") || played.endsWith("fence_gate.close")) {
+                || played.equals("minecraft:block.portal.trigger")) {
                 pitch = 0.0F;
             }
             PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","
@@ -301,6 +298,10 @@ class MovementSupport {
             new net.minecraft.client.multiplayer.ClientLevel.ClientLevelData(
                 net.minecraft.world.Difficulty.PEACEFUL, false, false),
             net.minecraft.world.level.Level.OVERWORLD, dimensionType, 8, 8, null, false, 0L, 63);
+
+        // The level's random starts from the clock; both sides start it from one seed.
+        ((net.minecraft.util.RandomSource) Reflect.field(net.minecraft.world.level.Level.class, "random").get(level))
+            .setSeed(20_261_026L);
 
         // A block that changes tells the renderer which section to rebuild; nothing draws here.
         var rebuilds = unsafe.allocateInstance(NoRebuilds.class);

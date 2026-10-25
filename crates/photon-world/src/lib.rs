@@ -127,6 +127,8 @@ pub struct ClientWorld {
     /// The source a sound made for an entity's click draws its pitch from (the reference keeps
     /// one per entity, unseeded).
     entity_sound_random: entity_random::EntityRandom,
+    /// `Level.random`, which a block's use sound draws its pitch from (unseeded in the reference).
+    level_random: entity_random::EntityRandom,
     /// The swirls the living entities' effects threw (`tickEffects`), until the particle engine
     /// takes them, and the source they draw from (the reference's own per entity, unseeded).
     effect_particles: (Vec<particles::LevelParticles>, entity_random::EntityRandom),
