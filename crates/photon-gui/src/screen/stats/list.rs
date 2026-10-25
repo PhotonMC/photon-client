@@ -83,6 +83,22 @@ impl ListView {
         self.scroll = self.scroll.clamp(0.0, max);
     }
 
+    /// The list takes the focus by Tab: the entry selected keeps it, else one at the end the
+    /// search comes from is chosen. Whether there was an entry.
+    pub(super) fn focus_entry(&mut self, forward: bool, rows: usize) -> bool {
+        if rows == 0 {
+            return false;
+        }
+        let index = match self.selected {
+            Some(selected) => selected,
+            None if forward => 0,
+            None => rows - 1,
+        };
+        self.focused = true;
+        self.select(index, rows);
+        true
+    }
+
     /// `AbstractSelectionList.extractSelection`: the outline of the entry, white while the list has
     /// the focus and grey after.
     pub(super) fn draw_selection(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, index: usize) {

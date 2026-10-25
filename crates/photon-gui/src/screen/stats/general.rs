@@ -81,6 +81,13 @@ impl GeneralList {
         self.view.focused = false;
     }
 
+    /// `ObjectSelectionList.nextFocusPath` by Tab: the selected entry, else the first (the last
+    /// going backwards), takes the focus. Whether the list had an entry to give it to.
+    pub(super) fn focus_entry(&mut self, forward: bool) -> bool {
+        let rows = self.entries.len();
+        self.view.focus_entry(forward, rows)
+    }
+
     /// The entries that show, then the scroll bar.
     pub(super) fn draw(
         &self,

@@ -6,6 +6,7 @@ mod general;
 mod items;
 mod list;
 mod mobs;
+mod navigation;
 
 use std::collections::HashMap;
 
@@ -66,8 +67,8 @@ pub struct StatsScreen {
     selected: usize,
     /// The tab the bar has focused, after one was clicked.
     focused_tab: Option<usize>,
-    /// Whether the screen's focus is on the tab bar.
-    bar_focused: bool,
+    /// Which child of the screen has the focus.
+    focus: ScreenFocus,
     /// The lists, once the server's statistics are in (`isLoading`).
     lists: Option<Lists>,
     /// What each tab's list has in it, which decides if the tab can be chosen.
@@ -76,6 +77,15 @@ pub struct StatsScreen {
     stats: HashMap<StatKey, i32>,
     /// `init` has not yet asked the server for the statistics.
     request_pending: bool,
+}
+
+/// The children of the screen that can have its focus, in the order Tab goes through them.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ScreenFocus {
+    None,
+    Bar,
+    List,
+    Done,
 }
 
 struct Lists {
@@ -119,7 +129,7 @@ impl StatsScreen {
             pending: runs(lang, "multiplayer.downloadingStats"),
             selected: 0,
             focused_tab: None,
-            bar_focused: false,
+            focus: ScreenFocus::None,
             lists: None,
             tab_active: [true, false, false],
             stats: stats.clone(),
@@ -156,7 +166,7 @@ impl StatsScreen {
         });
         self.selected = 0;
         // `setFocused(tabNavigationBar)`: the bar has the focus, no tab of it.
-        self.bar_focused = true;
+        self.focus = ScreenFocus::Bar;
         self.focused_tab = None;
         self.layout();
     }
@@ -253,7 +263,7 @@ impl StatsScreen {
             width,
             2,
         );
-        let highlighted = self.done.contains(&self.arena, mouse);
+        let highlighted = self.done.contains(&self.arena, mouse) || self.focus == ScreenFocus::Done;
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
         // Widget tooltips are drawn last (`GuiGraphicsExtractor.setTooltipForNextFrame`).
         if self.selected == 1
@@ -406,7 +416,7 @@ impl StatsScreen {
             }
         } else if self.press_list(mouse) {
             // The list has the focus now, and the bar lets go of its tab.
-            self.bar_focused = false;
+            self.focus = ScreenFocus::List;
             self.focused_tab = None;
         }
         None
@@ -421,8 +431,8 @@ impl StatsScreen {
         }
         self.selected = tab;
         self.focused_tab = Some(tab);
-        if !self.bar_focused {
-            self.bar_focused = true;
+        if self.focus != ScreenFocus::Bar {
+            self.focus = ScreenFocus::Bar;
             self.focused_tab = None;
             self.unfocus_lists();
         }
@@ -431,7 +441,7 @@ impl StatsScreen {
     /// `TabNavigationBar.keyPressed`, which the screen asks first: with the edit shortcut key down
     /// (Control, Command on a Mac) a digit chooses that tab (the tenth wraps to the last) and Tab
     /// the next one that can be chosen (Shift the one before). Whether the key was taken.
-    pub fn key_pressed(&mut self, key: i32, modifiers: i32) -> bool {
+    fn bar_key(&mut self, key: i32, modifiers: i32) -> bool {
         if modifiers & EDIT_SHORTCUT_MODIFIER == 0 {
             return false;
         }

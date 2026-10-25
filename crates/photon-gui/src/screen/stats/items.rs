@@ -170,6 +170,43 @@ impl ItemsList {
         })
     }
 
+    /// A step of Tab through the widgets of the list, in the order of their entries: the sort
+    /// buttons of the header, then the slot of each item. An unfocused list takes the first (the
+    /// last going backwards). Whether it took the step; a step past the end is the screen's.
+    pub(super) fn tab_step(&mut self, forward: bool) -> bool {
+        let buttons = ICONS.len();
+        let Some(next) = self.next_widget(forward, buttons) else {
+            return false;
+        };
+        let (focus, entry) = if next < buttons {
+            (Focus::Button(next), 0)
+        } else {
+            (Focus::Slot(next - buttons), next - buttons + 1)
+        };
+        self.focus = focus;
+        self.view.focused = true;
+        let rows = self.len();
+        self.view.select(entry, rows);
+        true
+    }
+
+    /// The place among the buttons and slots that a step of Tab goes to, if there is one.
+    fn next_widget(&self, forward: bool, buttons: usize) -> Option<usize> {
+        let total = buttons + self.len().saturating_sub(1);
+        let at = match (self.view.focused, self.focus) {
+            (true, Focus::Button(column)) => Some(column),
+            (true, Focus::Slot(item)) => Some(buttons + item),
+            _ => None,
+        };
+        let next = match (at, forward) {
+            (Some(at), true) => Some(at + 1),
+            (Some(at), false) => at.checked_sub(1),
+            (None, true) => Some(0),
+            (None, false) => total.checked_sub(1),
+        };
+        next.filter(|&next| next < total)
+    }
+
     /// Another child of the screen took the press: the focus leaves the list, and with it the
     /// selection (`ContainerObjectSelectionList.setFocused`).
     pub(super) fn unfocus(&mut self) {

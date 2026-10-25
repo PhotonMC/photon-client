@@ -125,6 +125,13 @@ impl MobsList {
         self.view.focused = false;
     }
 
+    /// `ObjectSelectionList.nextFocusPath` by Tab: the selected entry, else the first (the last
+    /// going backwards), takes the focus. Whether the list had an entry to give it to.
+    pub(super) fn focus_entry(&mut self, forward: bool) -> bool {
+        let rows = self.rows.len();
+        self.view.focus_entry(forward, rows)
+    }
+
     /// The rows that show, then the scroll bar.
     pub(super) fn draw(&self, frame: &mut GuiFrame, (atlas, font): (&GuiAtlas, &Font)) {
         let view = &self.view;
