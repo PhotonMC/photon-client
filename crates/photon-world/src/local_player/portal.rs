@@ -83,6 +83,7 @@ impl LocalPlayer {
                 self.pending_sounds.push(LocalSound {
                     relative: true,
                     delay_ticks: 0,
+                    follows_player: false,
                     event: "minecraft:block.portal.trigger",
                     source: LocalSoundSource::Ambient,
                     volume: 0.25,

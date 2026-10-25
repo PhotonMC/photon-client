@@ -49,6 +49,7 @@ impl LocalPlayer {
         self.pending_sounds.push(LocalSound {
             relative: false,
             delay_ticks: 0,
+            follows_player: false,
             event,
             source: LocalSoundSource::Ambient,
             volume: 1.0,

@@ -177,15 +177,17 @@ fn instrument_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     };
     let (sound, ticks, volume) = (instrument.sound, instrument.use_ticks, instrument.volume);
     ctx.player.start_using_item(hand != super::MAIN_HAND);
-    // `level.playSound(player, player, ..)`: bound to the player, who is the excluded one.
+    // `level.playSound(player, player, ..)`: bound to the player (`EntityBoundSoundInstance`).
     let at = ctx.player.position();
-    ctx.world
-        .push_sound(photon_world::local_player::LocalSound::at(
+    ctx.world.push_sound(
+        photon_world::local_player::LocalSound::at(
             sound,
             photon_world::local_player::LocalSoundSource::Records,
             (volume, 1.0),
             (at.x, at.y, at.z),
-        ));
+        )
+        .following_player(),
+    );
     ctx.cooldowns
         .add(crate::item::cooldowns::group(&stack), ticks);
     UseResult::Success { swing: false }

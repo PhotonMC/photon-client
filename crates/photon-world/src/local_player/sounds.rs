@@ -44,6 +44,8 @@ pub struct LocalSound {
     pub relative: bool,
     /// Ticks the sound waits before it plays (`playDelayed`); 0 plays it at once.
     pub delay_ticks: i32,
+    /// Goes where the local player does (`EntityBoundSoundInstance` of `Level.playSound(player, player, ..)`).
+    pub follows_player: bool,
 }
 
 impl LocalSound {
@@ -62,7 +64,14 @@ impl LocalSound {
             position,
             relative: false,
             delay_ticks: 0,
+            follows_player: false,
         }
+    }
+
+    /// The sound follows the local player.
+    pub fn following_player(mut self) -> Self {
+        self.follows_player = true;
+        self
     }
 
     /// `ClientLevel.playSound` with `distanceDelay`: heard from more than ten blocks off
@@ -128,6 +137,7 @@ impl LocalPlayer {
         self.pending_sounds.push(LocalSound {
             relative: false,
             delay_ticks: 0,
+            follows_player: false,
             event,
             source: LocalSoundSource::Players,
             volume,

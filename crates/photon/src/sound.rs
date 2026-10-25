@@ -189,9 +189,7 @@ impl SoundSystem {
             // The reference draws the seed from the level's own random source.
             let seed = i64::from(self.local_sounds).wrapping_mul(0x5DEE_CE66_D1CE_4E5B);
             let mut instance = SoundInstance::new(sound.event, source, RandomSource::create(seed));
-            if sound.event == photon_world::local_player::GLIDE_SOUND {
-                self.glide_loop(&mut instance);
-            }
+            self.bind_to_player(&sound, &mut instance);
             instance.volume = sound.volume;
             instance.pitch = sound.pitch;
             instance.position = sound.position;
@@ -205,6 +203,20 @@ impl SoundSystem {
             } else {
                 self.engine.play(id);
             }
+        }
+    }
+
+    /// The sounds that go on with the player: the glide loop and the ones bound to them.
+    fn bind_to_player(
+        &self,
+        sound: &photon_world::local_player::LocalSound,
+        instance: &mut SoundInstance,
+    ) {
+        if sound.event == photon_world::local_player::GLIDE_SOUND {
+            self.glide_loop(instance);
+        }
+        if sound.follows_player {
+            follow_player(&self.glide, instance);
         }
     }
 
@@ -559,8 +571,44 @@ use photon_core::math::Vec3;
 
 mod flash;
 
+/// `EntityBoundSoundInstance` of the local player: the sound goes where the player does.
+fn follow_player(glide: &Arc<Mutex<(Vec3, [f64; 3], bool)>>, instance: &mut SoundInstance) {
+    let glide = Arc::clone(glide);
+    instance.ticker = Some(Box::new(move |state: &mut TickState| {
+        if let Ok((position, _, _)) = glide.lock().map(|glide| *glide) {
+            *state.position = (position.x, position.y, position.z);
+        }
+    }));
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn a_sound_bound_to_the_player_moves_with_them() {
+        let glide = Arc::new(Mutex::new((Vec3::ZERO, [0.0; 3], false)));
+        let mut instance = SoundInstance::new(
+            "minecraft:item.goat_horn.sound.0",
+            SoundSource::Records,
+            RandomSource::create(1),
+        );
+        follow_player(&glide, &mut instance);
+        let mut ticker = instance.ticker.take().expect("a ticker");
+        *glide.lock().unwrap() = (Vec3::new(1.5, 64.0, -3.25), [0.0; 3], false);
+        let (mut position, mut volume, mut pitch) = ((0.0, 0.0, 0.0), 1.0, 1.0);
+        let (mut looping, mut stopped) = (false, false);
+        ticker(&mut TickState {
+            position: &mut position,
+            volume: &mut volume,
+            pitch: &mut pitch,
+            looping: &mut looping,
+            stopped: &mut stopped,
+        });
+        assert_eq!(position, (1.5, 64.0, -3.25));
+        assert!(!stopped);
+    }
+
     #[test]
     fn the_vanilla_stack_defines_the_game_sounds() {
         let Ok(root) = std::env::var("PHOTON_ASSETS") else {

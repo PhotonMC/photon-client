@@ -464,6 +464,7 @@ impl PlaySession {
                 .play_local_sound(photon_world::local_player::LocalSound {
                     relative: false,
                     delay_ticks: 0,
+                    follows_player: false,
                     event: "minecraft:entity.elder_guardian.curse",
                     source: photon_world::local_player::LocalSoundSource::Hostile,
                     volume: 1.0,

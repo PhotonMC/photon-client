@@ -316,6 +316,7 @@ pub(super) fn local_sound<F: FnMut() -> RandomSource>(
     LocalSound {
         relative: false,
         delay_ticks: 0,
+        follows_player: false,
         event,
         source,
         volume,

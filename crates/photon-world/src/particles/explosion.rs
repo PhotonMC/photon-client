@@ -50,6 +50,7 @@ impl ParticleEngine {
             sounds.push(LocalSound {
                 relative: false,
                 delay_ticks: 0,
+                follows_player: false,
                 event,
                 source: LocalSoundSource::Blocks,
                 volume: 4.0,
