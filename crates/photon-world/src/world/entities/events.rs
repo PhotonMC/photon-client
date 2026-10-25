@@ -182,6 +182,13 @@ impl Entities {
         }
     }
 
+    /// `AbstractChestedHorse.setChest`.
+    pub fn set_horse_chest(&mut self, entity_id: EntityId, chest: bool) {
+        if let Some(entity) = self.at_mut(entity_id) {
+            entity.living.horse_chest = chest;
+        }
+    }
+
     /// Sets or clears the stew effects a mooshroom holds (`MushroomCow.stewEffects`).
     pub fn set_mooshroom_stew(&mut self, entity_id: EntityId, held: bool) {
         if let Some(entity) = self.at_mut(entity_id) {

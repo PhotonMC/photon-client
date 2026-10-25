@@ -162,6 +162,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 if (described.has("bare") && entity instanceof net.minecraft.world.entity.animal.golem.SnowGolem golem) {
                     golem.setPumpkin(false);
                 }
+                if (described.has("tamed") && entity instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
+                    horse.setTamed(true);
+                }
                 if (entity instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep) {
                     if (described.has("sheared")) {
                         sheep.setSheared(true);

@@ -375,6 +375,17 @@ fn apply_spawn_flags(
             return Err(format!("{name} did not take the age lock"));
         }
     }
+    apply_species_flags(world, id, name, described)
+}
+
+/// The species' own flags: a brown mooshroom, a screaming goat, a tamed horse, a sheep's wool
+/// and a golem without its pumpkin.
+fn apply_species_flags(
+    world: &mut photon_world::ClientWorld,
+    id: EntityId,
+    name: &str,
+    described: &Value,
+) -> Result<(), String> {
     if described.get("brown").is_some() {
         // The variant is an int (serializer 1), brown is one.
         let mut data = vec![photon_world::MOOSHROOM_TYPE_DATA_ID, 1];
@@ -384,6 +395,16 @@ fn apply_spawn_flags(
     }
     if described.get("screaming").is_some() {
         world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
+    }
+    if described.get("tamed").is_some() {
+        world.apply_entity_metadata(id, &[photon_world::HORSE_FLAGS_DATA_ID, 0, 2, 255]);
+        if !world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.horse().is_some_and(|horse| horse.is_tamed()))
+        {
+            return Err(format!("{name} did not take the tame flag"));
+        }
     }
     if let Some(wool) = sheep_wool_byte(described) {
         world.apply_entity_metadata(id, &[photon_world::SHEEP_WOOL_DATA_ID, 0, wool, 255]);

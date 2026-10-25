@@ -451,13 +451,17 @@ pub(super) fn vanilla_fluid_tags() -> Result<ClientboundUpdateTagsPacket, String
     })
 }
 
-/// The block and item tags of the data pack in one packet, as a level that knows both has them.
+/// The block, item and entity type tags of the data pack in one packet, as a level has them.
 pub(super) fn vanilla_block_and_item_tags() -> Result<ClientboundUpdateTagsPacket, String> {
     let mut packet = vanilla_block_tags()?;
     let items = vanilla_tags_of("item", "minecraft:item", &|name| {
         photon_game::item::id_of(name).map(|id| id.0)
     })?;
     packet.registries.extend(items.registries);
+    let entities = vanilla_tags_of("entity_type", "minecraft:entity_type", &|name| {
+        photon_data::entity_type::id(name).map(|id| id.0)
+    })?;
+    packet.registries.extend(entities.registries);
     Ok(packet)
 }
 

@@ -8,6 +8,7 @@
 use super::*;
 use photon_core::ids::EntityId;
 
+mod horse;
 mod sheep;
 
 /// The client's answer to a click on an entity.
@@ -86,6 +87,13 @@ impl Context<'_> {
             "minecraft:goat" => self.interact_goat(id, hand),
             "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
             "minecraft:sheep" => self.interact_sheep(id, hand),
+            "minecraft:horse"
+            | "minecraft:donkey"
+            | "minecraft:mule"
+            | "minecraft:llama"
+            | "minecraft:trader_llama"
+            | "minecraft:zombie_horse"
+            | "minecraft:skeleton_horse" => self.interact_horse(name, id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,
@@ -128,7 +136,12 @@ impl Context<'_> {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
-        let (baby, locked) = (entity.is_baby(), entity.is_age_locked());
+        // `canAgeUp` is false for the undead horses.
+        let ages = !matches!(
+            self.world.entity_type_name(id),
+            Some("minecraft:zombie_horse" | "minecraft:skeleton_horse")
+        );
+        let (baby, locked) = (entity.is_baby() && ages, entity.is_age_locked());
         let dead = entity.health().is_some_and(|health| health <= 0.0);
         let food = self.held(hand).is_some_and(|(item, _)| {
             self.world
