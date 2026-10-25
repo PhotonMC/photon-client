@@ -107,6 +107,7 @@ impl Context<'_> {
             "minecraft:sheep" => self.interact_sheep(id, hand),
             "minecraft:wolf" => self.interact_wolf(id, hand),
             "minecraft:cat" => self.interact_cat(id, hand),
+            "minecraft:nautilus" | "minecraft:zombie_nautilus" => self.interact_nautilus(id, hand),
             "minecraft:pig" | "minecraft:strider" => self.interact_saddleable(name, id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),

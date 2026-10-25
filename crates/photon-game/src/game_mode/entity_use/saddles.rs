@@ -57,7 +57,7 @@ impl Context<'_> {
         };
         equip.equip_on_interact
             && equip.allowed.contains(&name)
-            && can_use_slot(name, slot, entity.is_baby())
+            && can_use_slot(name, slot, entity.is_baby(), entity.is_tame())
             && entity.equipment(slot).is_none()
     }
 }
@@ -76,9 +76,9 @@ fn slot_named(name: &str) -> Option<photon_world::EquipmentSlot> {
 }
 
 /// `LivingEntity.canUseSlot` for the mobs that restrict a slot to adults. A camel is always
-/// tame (`Camel.isTamed`); the nautilus' tame state is not tracked, so it answers no; the horse
+/// tame (`Camel.isTamed`); a nautilus' saddle and body slots need an adult that is tame; the horse
 /// family never reaches here (its own `mobInteract` answers first).
-fn can_use_slot(name: &str, slot: photon_world::EquipmentSlot, baby: bool) -> bool {
+fn can_use_slot(name: &str, slot: photon_world::EquipmentSlot, baby: bool, tame: bool) -> bool {
     use photon_world::EquipmentSlot as Slot;
     match (name, slot) {
         (
@@ -86,7 +86,9 @@ fn can_use_slot(name: &str, slot: photon_world::EquipmentSlot, baby: bool) -> bo
             Slot::Saddle,
         ) => !baby,
         ("minecraft:happy_ghast" | "minecraft:sulfur_cube", Slot::Body) => !baby,
-        ("minecraft:nautilus" | "minecraft:zombie_nautilus", Slot::Saddle | Slot::Body) => false,
+        ("minecraft:nautilus" | "minecraft:zombie_nautilus", Slot::Saddle | Slot::Body) => {
+            !baby && tame
+        }
         _ => true,
     }
 }

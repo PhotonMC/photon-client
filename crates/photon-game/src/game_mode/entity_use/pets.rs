@@ -80,6 +80,38 @@ impl Context<'_> {
         }
     }
 
+    /// `AbstractNautilus.mobInteract`: a baby is fed as an animal; an adult is opened (tame and
+    /// sneaking), healed with food, fitted through the item, ridden (tame), or fed.
+    pub(super) fn interact_nautilus(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let Some(pet) = self.pet_state(id) else {
+            return EntityUse::Pass;
+        };
+        let tag = nautilus_tag(&pet);
+        if pet.baby {
+            return self.feed_animal(id, hand, tag);
+        }
+        if pet.tame && self.player.is_shift_key_down() {
+            return EntityUse::Success { swing: true };
+        }
+        let food = self.holds_tagged(hand, tag);
+        if self.nautilus_item_answers(id, hand, food && pet.hurt) || (pet.tame && !food) {
+            return EntityUse::Success { swing: true };
+        }
+        self.feed_animal(id, hand, tag)
+    }
+
+    /// With something in hand: hurt-healing food, then the item's own equip on interact.
+    fn nautilus_item_answers(&mut self, id: EntityId, hand: u8, heals: bool) -> bool {
+        if self.held(hand).is_none() {
+            return false;
+        }
+        if heals {
+            self.use_up(hand);
+            return true;
+        }
+        self.equips_on_interact(id, hand)
+    }
+
     /// What the pet's data says: tame, owned by the local player, hurt, a baby, in body armor.
     fn pet_state(&self, id: EntityId) -> Option<Pet> {
         let entity = self.world.entities().at(id)?;
@@ -123,5 +155,14 @@ fn owner_sits(owned: bool, inner: EntityUse) -> EntityUse {
         EntityUse::Success { swing: true }
     } else {
         inner
+    }
+}
+
+/// `AbstractNautilus.isFood`: wild adults are tamed with their taming items, the rest eat fish.
+fn nautilus_tag(pet: &Pet) -> &'static str {
+    if pet.tame || pet.baby {
+        "minecraft:nautilus_food"
+    } else {
+        "minecraft:nautilus_taming_items"
     }
 }
