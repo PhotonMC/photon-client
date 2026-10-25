@@ -88,6 +88,7 @@ pub fn stats_screen() -> Value {
     rows.extend(mob_rows());
     rows.extend(item_rows());
     rows.extend(selection_rows());
+    rows.extend(key_rows());
     gui("stats-screen", "stats_screen", rows)
 }
 
@@ -330,4 +331,51 @@ fn selection_rows() -> Vec<Value> {
     rows.push(general("mobs-select-then-tab", vec![mobs.clone(), click(200, 50), click(60, 10)]));
     rows.push(general("mobs-select-clipped", vec![mobs.clone(), scroll(-1.0), click(200, 25)]));
     rows
+}
+
+/// The keys the tab bar takes (`TabNavigationBar.keyPressed`): Control with a digit or Tab, in a
+/// loaded screen with every tab usable, one with the middle tab empty, and while loading.
+fn key_rows() -> Vec<Value> {
+    const CTRL: i64 = 2;
+    const SHIFT: i64 = 1;
+    const TAB: i64 = 258;
+    let all = json!([
+        ["minecraft:custom", "minecraft:jump", 1234],
+        ["minecraft:used", "minecraft:diamond_sword", 5],
+        ["minecraft:killed", "minecraft:zombie", 12],
+    ]);
+    let no_items = json!([["minecraft:custom", "minecraft:jump", 1234], ["minecraft:killed", "minecraft:zombie", 12]]);
+    let only_general = json!([["minecraft:custom", "minecraft:jump", 1234]]);
+    let key = |code: i64, modifiers: i64| json!({"do": "key", "key": code, "modifiers": modifiers});
+    let digit = |digit: i64| 48 + digit;
+    let click = |x: i64, y: i64| json!({"do": "click", "x": x, "y": y});
+    let on = |label: &str, stats: &Value, loaded: bool, steps: Vec<Value>| {
+        with(screen_row(label, (427, 240), stats, loaded), json!({"steps": steps}))
+    };
+    vec![
+        on("key-ctrl-2", &all, true, vec![key(digit(2), CTRL)]),
+        on("key-ctrl-3", &all, true, vec![key(digit(3), CTRL)]),
+        on("key-ctrl-1-stays", &all, true, vec![key(digit(1), CTRL)]),
+        on("key-ctrl-0-last", &all, true, vec![key(digit(0), CTRL)]),
+        on("key-ctrl-5-last", &all, true, vec![key(digit(5), CTRL)]),
+        on("key-ctrl-3-inactive", &no_items, true, vec![key(digit(2), CTRL)]),
+        on("key-ctrl-2-then-1", &all, true, vec![key(digit(2), CTRL), key(digit(1), CTRL)]),
+        on("key-ctrl-tab", &all, true, vec![key(TAB, CTRL)]),
+        on("key-ctrl-tab-twice", &all, true, vec![key(TAB, CTRL), key(TAB, CTRL)]),
+        on("key-ctrl-tab-wraps", &all, true, vec![key(TAB, CTRL), key(TAB, CTRL), key(TAB, CTRL)]),
+        on("key-ctrl-shift-tab", &all, true, vec![key(TAB, CTRL | SHIFT)]),
+        on("key-ctrl-tab-skips-empty", &no_items, true, vec![key(TAB, CTRL)]),
+        on("key-ctrl-shift-tab-skips-empty", &no_items, true, vec![key(TAB, CTRL | SHIFT), key(TAB, CTRL | SHIFT)]),
+        on("key-ctrl-tab-loading", &only_general, false, vec![key(TAB, CTRL)]),
+        on("key-ctrl-2-loading", &json!([]), false, vec![key(digit(2), CTRL)]),
+        on("key-ctrl-tab-only-general", &only_general, true, vec![key(TAB, CTRL)]),
+        on("key-digit-alone", &all, true, vec![key(digit(2), 0)]),
+        on("key-shift-digit", &all, true, vec![key(digit(2), SHIFT)]),
+        on("key-ctrl-keypad-digit", &all, true, vec![key(322, CTRL)]),
+        on("key-ctrl-letter", &all, true, vec![key(65, CTRL)]),
+        on("key-after-list-click", &all, true, vec![click(200, 40), key(digit(2), CTRL)]),
+        on("key-after-list-click-back", &all, true, vec![click(200, 40), key(digit(2), CTRL), key(digit(1), CTRL)]),
+        on("key-after-list-click-inactive", &no_items, true, vec![click(200, 40), key(digit(2), CTRL)]),
+        on("key-after-tab-click", &all, true, vec![click(200, 10), key(digit(3), CTRL), key(TAB, CTRL)]),
+    ]
 }

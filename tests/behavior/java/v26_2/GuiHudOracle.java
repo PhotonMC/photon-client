@@ -455,6 +455,17 @@ class GuiHudOracle extends GuiCommandOracle {
                             stats.mouseReleased(event);
                         }
                         case "scroll" -> stats.mouseScrolled(x, y, 0.0, action.get("delta").getAsDouble());
+                        case "key" -> {
+                            // `KeyboardHandler.keyPress` notes what kind of key it was.
+                            int code = action.get("key").getAsInt();
+                            if (code == 258) {
+                                minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_TAB);
+                            } else if (code >= 262 && code <= 265) {
+                                minecraft.setLastInputType(net.minecraft.client.InputType.KEYBOARD_ARROW);
+                            }
+                            stats.keyPressed(new net.minecraft.client.input.KeyEvent(
+                                code, 0, action.get("modifiers").getAsInt()));
+                        }
                         case "resize" -> {
                             // The window is the new size too: the scissors clamp to it.
                             MovementOracle.setField(minecraft.getWindow(), "guiScaledWidth", action.get("width").getAsInt());

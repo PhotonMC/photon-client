@@ -50,6 +50,12 @@ fn round_to_even(value: i32) -> i32 {
     (value + 1) / 2 * 2
 }
 
+/// `InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER`: Control, Command on a Mac.
+const EDIT_SHORTCUT_MODIFIER: i32 = if cfg!(target_os = "macos") { 8 } else { 2 };
+const SHIFT_MODIFIER: i32 = 1;
+/// `GLFW_KEY_TAB`.
+const TAB_KEY: i32 = 258;
+
 pub struct StatsScreen {
     size: (i32, i32),
     in_world: bool,
@@ -418,6 +424,55 @@ impl StatsScreen {
         if !self.bar_focused {
             self.bar_focused = true;
             self.focused_tab = None;
+            self.unfocus_lists();
+        }
+    }
+
+    /// `TabNavigationBar.keyPressed`, which the screen asks first: with the edit shortcut key down
+    /// (Control, Command on a Mac) a digit chooses that tab (the tenth wraps to the last) and Tab
+    /// the next one that can be chosen (Shift the one before). Whether the key was taken.
+    pub fn key_pressed(&mut self, key: i32, modifiers: i32) -> bool {
+        if modifiers & EDIT_SHORTCUT_MODIFIER == 0 {
+            return false;
+        }
+        let digit = key - 48;
+        let target = if (0..=9).contains(&digit) {
+            (digit - 1).rem_euclid(10) as usize
+        } else if key == TAB_KEY {
+            self.next_tab(self.selected, modifiers & SHIFT_MODIFIER != 0)
+        } else {
+            return false;
+        };
+        self.select_tab(target.min(TABS - 1));
+        true
+    }
+
+    /// The tab after `from` that can be chosen, going round.
+    fn next_tab(&self, from: usize, backwards: bool) -> usize {
+        let mut index = from;
+        loop {
+            index = if backwards {
+                (index + TABS - 1) % TABS
+            } else {
+                (index + 1) % TABS
+            };
+            if self.tab_active[index] {
+                return index;
+            }
+        }
+    }
+
+    /// `TabNavigationBar.selectTab`: with the bar focused the tab's button takes the focus (and
+    /// the tab is shown if it can be chosen); otherwise a tab that can be chosen is shown.
+    fn select_tab(&mut self, tab: usize) {
+        // The bar counts as focused only while one of its tabs holds the focus (`isFocused`).
+        if self.focused_tab.is_some() {
+            self.focused_tab = Some(tab);
+        }
+        if self.tab_active[tab] && self.selected != tab {
+            crate::ui_sound::play_down_sound();
+            self.selected = tab;
+            // The shown list is taken off the screen, and the focus it had goes with it.
             self.unfocus_lists();
         }
     }

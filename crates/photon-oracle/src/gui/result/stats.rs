@@ -135,6 +135,12 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
             "click" => {
                 screen.clicked(at);
             }
+            "key" => {
+                screen.key_pressed(
+                    step["key"].as_i64().ok_or("key")? as i32,
+                    step["modifiers"].as_i64().ok_or("modifiers")? as i32,
+                );
+            }
             "scroll" => screen.scrolled(at, step["delta"].as_f64().ok_or("delta")?),
             // A frame between two steps: the screen has no state that waits for one.
             "frame" => {}

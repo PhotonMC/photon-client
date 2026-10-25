@@ -65,6 +65,12 @@ impl Controls {
         }
         match event {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => self.stats = None,
+            // The tab bar's own keys (Ctrl+digit, Ctrl+Tab): `StatsScreen.keyPressed`.
+            WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => {
+                self.stats
+                    .iter_mut()
+                    .for_each(|stats| _ = stats.key_pressed(key as i32, modifiers.bits()));
+            }
             WindowEvent::CursorPos(x, y) => self.move_gui_mouse((x, y), surface),
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {
                 self.stats_pressed(mouse);
