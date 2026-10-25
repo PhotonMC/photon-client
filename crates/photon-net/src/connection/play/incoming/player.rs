@@ -250,6 +250,18 @@ impl PlaySession {
         Ok(())
     }
 
+    /// The world's new player state: the old one's attributes and data as the packet keeps them,
+    /// and an empty inventory the server sends again.
+    pub(in crate::connection::play) fn recreate_player_state(&mut self, data_to_keep: u8) {
+        // `handleRespawn` copies the old player's own attributes (`assignAllValues` or
+        // `assignBaseValues`), so the sprinting modifier the client put on goes with them.
+        if let Some(player) = self.local.player.as_ref() {
+            self.world
+                .apply_local_player_attributes(player.entity_id(), player.attributes());
+        }
+        self.world.recreate_local_player(data_to_keep);
+    }
+
     fn on_respawn(
         &mut self,
         (spawn_info, data_to_keep): (SpawnInfoObservation, u8),
@@ -286,9 +298,7 @@ impl PlaySession {
         self.local.previous_game_mode = spawn_info
             .previous_game_type
             .map(|id| ClientPlayerGameMode::from_id(i32::from(id)));
-        // The new player starts with an empty inventory; the server
-        // sends it again.
-        self.world.recreate_local_player(data_to_keep);
+        self.recreate_player_state(data_to_keep);
         if swapped {
             // The players of the old level are gone, and the profiles they kept.
             self.social.entity_profiles.clear();
