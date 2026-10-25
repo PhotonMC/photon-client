@@ -46,6 +46,8 @@ pub struct User {
     pub face: Direction,
     /// The height of the click in the block, 0 to 1.
     pub click_y: f64,
+    /// Where the click landed.
+    pub location: [f64; 3],
     /// `Player.canEat(false)`.
     pub can_eat: bool,
     /// The main hand holds no stack.
@@ -477,7 +479,28 @@ fn composter_use(hand: &Hand) -> Rule<HandUse> {
     }))
 }
 
+/// `ChiseledBookShelfBlock.useWithoutItem`: a book in the slot hit comes out, on the server.
+fn chiseled_bookshelf_use(hand: &Hand) -> Rule<HandUse> {
+    if !hand.user.block_entity {
+        return result(UseResult::Pass);
+    }
+    let slot = super::slots::hit_slot(
+        hand.state,
+        hand.pos,
+        (hand.user.face, hand.user.location),
+        (2, 3),
+    );
+    match slot {
+        None => result(UseResult::Pass),
+        Some(slot) if property(hand.state, &format!("slot_{slot}_occupied")) == Some("true") => {
+            result(SUCCESS)
+        }
+        Some(_) => result(SERVER),
+    }
+}
+
 const USES: &[(BlockClass, UseFn)] = &[
+    (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf_use),
     // The server edits the sign or refuses; the client consumes the use where it has the sign.
     (BlockClass::SignBlock, |hand| {
         result(if hand.user.block_entity {

@@ -37,6 +37,8 @@ pub struct Held {
     pub sign_applicator: bool,
     /// A hanging sign item.
     pub hanging_sign: bool,
+    /// `ItemTags.BOOKSHELF_BOOKS`.
+    pub bookshelf_book: bool,
 }
 
 /// Who uses the block with the stack, and where.
@@ -46,6 +48,8 @@ pub struct ItemUser {
     pub may_build: bool,
     pub face: Direction,
     pub click_y: f64,
+    /// Where the click landed.
+    pub location: [f64; 3],
     /// The block has a block entity in the client's level.
     pub block_entity: bool,
     /// The stack in the other hand is glowstone.
@@ -326,7 +330,48 @@ fn hanging_sign(use_: &Use) -> Option<ItemOn> {
     sign(use_)
 }
 
+fn slot_hit(use_: &Use, size: (i32, i32)) -> Option<i32> {
+    super::slots::hit_slot(
+        use_.state,
+        use_.pos,
+        (use_.user.face, use_.user.location),
+        size,
+    )
+}
+
+/// `ChiseledBookShelfBlock`: a book goes into the slot hit, on the server.
+fn chiseled_bookshelf(use_: &Use) -> Option<ItemOn> {
+    if !use_.user.block_entity {
+        return pass();
+    }
+    if !use_.held.bookshelf_book {
+        return empty_hand();
+    }
+    let Some(slot) = slot_hit(use_, (2, 3)) else {
+        return pass();
+    };
+    if is(use_, &format!("slot_{slot}_occupied"), "true") {
+        return empty_hand();
+    }
+    Some(ItemOn::answer(SUCCESS))
+}
+
+/// `ShelfBlock`: the main hand trades with the slot hit, on the server; the client succeeds when
+/// it holds something.
+fn shelf(use_: &Use) -> Option<ItemOn> {
+    if !use_.user.block_entity || !use_.user.main_hand || slot_hit(use_, (1, 3)).is_none() {
+        return pass();
+    }
+    Some(ItemOn::answer(if use_.held.empty {
+        UseResult::Pass
+    } else {
+        SUCCESS
+    }))
+}
+
 const USES: &[(BlockClass, Rule1)] = &[
+    (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf),
+    (BlockClass::ShelfBlock, shelf),
     (BlockClass::SignBlock, sign),
     (BlockClass::CeilingHangingSignBlock, hanging_sign),
     (BlockClass::WallHangingSignBlock, hanging_sign),
@@ -395,6 +440,7 @@ mod tests {
             may_build: true,
             face: Direction::North,
             click_y: 0.5,
+            location: [0.5, 64.5, 2.0],
             block_entity,
             off_hand_glowstone: false,
             waxed: false,

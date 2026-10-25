@@ -548,6 +548,7 @@ fn user_of(ctx: &Context<'_>, aim: Aim) -> rules::User {
         may_build: ctx.mode != ClientPlayerGameMode::Adventure,
         face: photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
         click_y: location[1] - f64::from(y),
+        location,
         can_eat: ctx.player.abilities().invulnerable()
             || ctx
                 .world

@@ -40,6 +40,7 @@ mod redstone;
 mod replace;
 mod shape;
 mod signal;
+mod slots;
 mod speleothem;
 mod sulfur;
 mod survive;

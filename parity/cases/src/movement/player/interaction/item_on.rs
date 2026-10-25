@@ -323,6 +323,89 @@ fn hanging_signs() -> Vec<Value> {
     ]
 }
 
+fn bookshelves() -> Vec<Value> {
+    let at = (0, 64, 2);
+    let bookshelf = |occupied: &[&str]| {
+        let slots: Vec<(String, &str)> = (0..6)
+            .map(|slot| {
+                (
+                    format!("slot_{slot}_occupied"),
+                    if occupied.contains(&slot.to_string().as_str()) { "true" } else { "false" },
+                )
+            })
+            .collect();
+        let mut properties: Vec<(&str, &str)> = vec![("facing", "north")];
+        properties.extend(slots.iter().map(|(key, value)| (key.as_str(), *value)));
+        vec![put_with(0, 64, 2, "minecraft:chiseled_bookshelf", &properties)]
+    };
+    let hit = |x: f64, y: f64| aim_at((0, 64, 2), "north", (x, y, 2.0));
+    let side = aim_at((0, 64, 2), "east", (1.0, 64.5, 2.5));
+    let kind = "minecraft:chiseled_bookshelf";
+    vec![
+        row("item-on-bookshelf-book-top-left", bookshelf(&[]), &hit(0.9, 64.9))
+            .main_hand("minecraft:book")
+            .count(3)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-book-bottom-right", bookshelf(&[]), &hit(0.1, 64.1))
+            .main_hand("minecraft:book")
+            .count(3)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-book-occupied", bookshelf(&["1"]), &hit(0.5, 64.9))
+            .main_hand("minecraft:book")
+            .count(3)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-book-side", bookshelf(&[]), &side)
+            .main_hand("minecraft:book")
+            .count(3)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-stone-free-slot", bookshelf(&[]), &hit(0.5, 64.5))
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-stone-occupied", bookshelf(&["4"]), &hit(0.5, 64.1))
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-bookshelf-empty-occupied", bookshelf(&["3"]), &hit(0.9, 64.1)).block_entity(at, kind).row(),
+        row("item-on-bookshelf-empty-free", bookshelf(&["3"]), &hit(0.1, 64.9)).block_entity(at, kind).row(),
+        row("item-on-bookshelf-empty-side", bookshelf(&["3"]), &side).block_entity(at, kind).row(),
+    ]
+}
+
+fn shelves() -> Vec<Value> {
+    let at = (0, 64, 2);
+    let shelf = || {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:oak_shelf",
+            &[("facing", "north"), ("powered", "false"), ("side_chain", "unconnected"), ("waterlogged", "false")],
+        )]
+    };
+    let hit = |x: f64, y: f64| aim_at((0, 64, 2), "north", (x, y, 2.0));
+    let side = aim_at((0, 64, 2), "east", (1.0, 64.5, 2.5));
+    vec![
+        row("item-on-shelf-empty", shelf(), &hit(0.5, 64.5)).block_entity(at, "minecraft:shelf").row(),
+        row("item-on-shelf-stone", shelf(), &hit(0.2, 64.5))
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, "minecraft:shelf")
+            .row(),
+        row("item-on-shelf-stone-side", shelf(), &side)
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, "minecraft:shelf")
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         simple(),
@@ -334,6 +417,8 @@ pub fn rows() -> Vec<Value> {
         pots_bushes_and_composters(),
         signs(),
         hanging_signs(),
+        bookshelves(),
+        shelves(),
     ]
     .concat()
 }
