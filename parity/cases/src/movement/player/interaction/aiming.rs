@@ -210,7 +210,8 @@ fn minecart_rows() -> Vec<Value> {
         facing(
             "use-minecart-sneaking",
             vec![mob(30, "minecart", 0.5, 64.0, 2.5)],
-            [aims(1).use_clicks(1).held(&["sneak"]).go(), aims(3).held(&["sneak"]).go()].concat(),
+            [aims(2).held(&["sneak"]).go(), aims(1).use_clicks(1).held(&["sneak"]).go(), aims(3).held(&["sneak"]).go()]
+                .concat(),
         )
         .main_hand("minecraft:stone")
         .x_rot(30.0)

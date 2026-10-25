@@ -3,10 +3,21 @@
 use serde_json::{Value, json};
 
 use super::{aims, facing, mob};
+use crate::movement::player::interaction::Interaction;
 
 pub(super) fn rows() -> Vec<Value> {
-    [cow_rows(), mooshroom_rows(), goat_rows(), brown_mooshroom_rows(), sheep_rows(), horse_rows(), age_lock_rows()]
-        .concat()
+    [
+        cow_rows(),
+        mooshroom_rows(),
+        goat_rows(),
+        brown_mooshroom_rows(),
+        sheep_rows(),
+        horse_rows(),
+        other_horse_rows(),
+        sneaking_horse_rows(),
+        age_lock_rows(),
+    ]
+    .concat()
 }
 
 /// The use key on cows, which milk a bucket and eat wheat.
@@ -163,14 +174,25 @@ fn sheep_rows() -> Vec<Value> {
     ]
 }
 
+/// A horse-family animal clicked once with the use key, the inventory reported.
+fn horse_at(label: &str, kind: &str, flags: &[&str]) -> Interaction {
+    let once = [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    facing(label, vec![flagged_animal(kind, flags)], once).x_rot(30.0)
+}
+
+/// Two ticks of sneaking, then the click: sneaking takes a tick to lower the eye.
+fn sneaking_click() -> Vec<Value> {
+    [
+        aims(2).held(&["sneak"]).inventory().go(),
+        aims(1).use_clicks(1).held(&["sneak"]).inventory().go(),
+        aims(3).held(&["sneak"]).inventory().go(),
+    ]
+    .concat()
+}
+
 /// The horse family: food, anger, the chest and riding, with the golden dandelion bypass.
 fn horse_rows() -> Vec<Value> {
-    let once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
-    let sneaking = || {
-        [aims(1).use_clicks(1).held(&["sneak"]).inventory().go(), aims(3).held(&["sneak"]).inventory().go()].concat()
-    };
-    let at =
-        |label: &str, kind: &str, flags: &[&str]| facing(label, vec![flagged_animal(kind, flags)], once()).x_rot(30.0);
+    let at = horse_at;
     let golden = "minecraft:golden_dandelion";
     vec![
         at("use-horse-empty-handed", "horse", &[]).row(),
@@ -184,6 +206,14 @@ fn horse_rows() -> Vec<Value> {
             .off_hand(golden)
             .count(2)
             .row(),
+    ]
+}
+
+/// Undead horses, chested horses and llamas, and the sneaking owner.
+fn other_horse_rows() -> Vec<Value> {
+    let at = horse_at;
+    let golden = "minecraft:golden_dandelion";
+    vec![
         at("use-baby-zombie-horse-with-golden", "zombie_horse", &["baby"]).main_hand(golden).count(2).row(),
         at("use-tamed-baby-zombie-horse-with-golden", "zombie_horse", &["baby", "tamed"])
             .main_hand(golden)
@@ -210,13 +240,38 @@ fn horse_rows() -> Vec<Value> {
             .game_mode("creative")
             .row(),
         at("use-tamed-horse-with-chest", "horse", &["tamed"]).main_hand("minecraft:chest").count(2).row(),
+        at("use-zombie-horse-with-red-mushroom", "zombie_horse", &[])
+            .main_hand("minecraft:red_mushroom")
+            .count(2)
+            .row(),
+        at("use-zombie-horse-with-wheat", "zombie_horse", &[]).main_hand("minecraft:wheat").count(2).row(),
+        at("use-llama-with-apple", "llama", &[]).main_hand("minecraft:apple").count(2).row(),
+        at("use-llama-with-hay-block", "llama", &[]).main_hand("minecraft:hay_block").count(2).row(),
         at("use-llama-with-stone", "llama", &[]).main_hand("minecraft:stone").count(2).row(),
-        facing("use-tamed-horse-sneaking", vec![flagged_animal("horse", &["tamed"])], sneaking())
+    ]
+}
+
+/// The owner's sneak: a tamed adult opens the inventory, anything else is as without it.
+fn sneaking_horse_rows() -> Vec<Value> {
+    vec![
+        facing(
+            "use-tamed-adult-horse-sneaking-empty-handed",
+            vec![flagged_animal("horse", &["tamed"])],
+            sneaking_click(),
+        )
+        .x_rot(30.0)
+        .row(),
+        facing("use-untamed-horse-sneaking-with-stone", vec![flagged_animal("horse", &[])], sneaking_click())
             .x_rot(30.0)
             .main_hand("minecraft:stone")
             .count(2)
             .row(),
-        facing("use-tamed-horse-sneaking-with-wheat", vec![flagged_animal("horse", &["tamed"])], sneaking())
+        facing("use-tamed-horse-sneaking", vec![flagged_animal("horse", &["tamed"])], sneaking_click())
+            .x_rot(30.0)
+            .main_hand("minecraft:stone")
+            .count(2)
+            .row(),
+        facing("use-tamed-horse-sneaking-with-wheat", vec![flagged_animal("horse", &["tamed"])], sneaking_click())
             .x_rot(30.0)
             .main_hand("minecraft:wheat")
             .count(2)
