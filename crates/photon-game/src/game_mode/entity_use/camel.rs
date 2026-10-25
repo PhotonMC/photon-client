@@ -16,6 +16,9 @@ impl Context<'_> {
         if self.player.is_shift_key_down() && !baby {
             return EntityUse::Success { swing: true };
         }
+        if self.equips_on_interact(id, hand) {
+            return EntityUse::Success { swing: true };
+        }
         let tag = if name == "minecraft:camel_husk" {
             "minecraft:camel_husk_food"
         } else {

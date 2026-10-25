@@ -10,7 +10,26 @@ pub(super) fn rows() -> Vec<Value> {
     for kind in ["pig", "strider"] {
         rows.extend(kind_rows(kind));
     }
+    rows.extend(other_rows());
     rows
+}
+
+/// Items that equip on interact, on mobs that may or may not wear them.
+fn other_rows() -> Vec<Value> {
+    let once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let click = |label: &str, kind: &str, flags: &[&str], item: &'static str| {
+        facing(label, vec![flagged_animal(kind, flags)], once()).main_hand(item).count(2).x_rot(30.0).row()
+    };
+    vec![
+        click("use-saddle-on-zombie", "zombie", &[], "minecraft:saddle"),
+        click("use-saddle-on-cow", "cow", &[], "minecraft:saddle"),
+        click("use-harness-on-pig", "pig", &[], "minecraft:red_harness"),
+        click("use-harness-on-happy-ghast", "happy_ghast", &[], "minecraft:red_harness"),
+        click("use-harness-on-baby-happy-ghast", "happy_ghast", &["baby"], "minecraft:red_harness"),
+        click("use-saddle-on-baby-camel", "camel", &["baby"], "minecraft:saddle"),
+        click("use-saddle-on-camel", "camel", &[], "minecraft:saddle"),
+        click("use-saddle-on-saddled-camel", "camel", &["saddled"], "minecraft:saddle"),
+    ]
 }
 
 fn kind_rows(kind: &str) -> Vec<Value> {

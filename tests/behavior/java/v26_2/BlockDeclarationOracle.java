@@ -352,6 +352,13 @@ class BlockDeclarationOracle extends BlockPlacementOracle {
                 equip.addProperty("slot", equippable.slot().getSerializedName());
                 equip.addProperty("player", equippable.canBeEquippedBy(playerType));
                 equip.addProperty("swappable", equippable.swappable());
+                equip.addProperty("equip_on_interact", equippable.equipOnInteract());
+                equippable.allowedEntities().ifPresent(set -> {
+                    var allowed = new com.google.gson.JsonArray();
+                    set.stream().forEach(holder -> allowed.add(
+                        net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(holder.value()).toString()));
+                    equip.add("allowed", allowed);
+                });
                 equippable.assetId().ifPresent(asset -> equip.addProperty("asset", asset.identifier().toString()));
                 equippable.cameraOverlay().ifPresent(overlay -> equip.addProperty("camera_overlay", overlay.toString()));
                 described.add("equippable", equip);

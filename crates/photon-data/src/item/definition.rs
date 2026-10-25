@@ -38,6 +38,10 @@ pub struct Equip {
     pub player: bool,
     /// Using it swaps it with what is worn.
     pub swappable: bool,
+    /// A click on a mob wears it on the mob (`Equippable.equipOnInteract`).
+    pub equip_on_interact: bool,
+    /// The entity types that may wear it (`allowedEntities`); empty when any may.
+    pub allowed: &'static [&'static str],
     /// The equipment asset it is worn as (`Equippable.assetId`): which
     /// layers and textures draw it on a wearer.
     pub asset: Option<&'static str>,

@@ -456,7 +456,7 @@ impl Context<'_> {
             .is_some_and(|entity| entity.is_living_entity());
         let player = self.world.entity_type_name(id) == Some("minecraft:player");
         let named = living && !player && self.holds_named_name_tag(hand);
-        if named || (living && self.dye_on_sheep(id, hand)) {
+        if named || (living && (self.dye_on_sheep(id, hand) || self.equips_on_interact(id, hand))) {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass

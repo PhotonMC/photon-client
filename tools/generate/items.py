@@ -126,6 +126,8 @@ def items_file(items):
             calls.append(f"equippable(Equip {{ slot: {rust_str(equip['slot'])}, "
                          f"player: {str(equip['player']).lower()}, "
                          f"swappable: {str(equip['swappable']).lower()}, "
+                         f"equip_on_interact: {str(equip['equip_on_interact']).lower()}, "
+                         f"allowed: &[{', '.join(rust_str(n) for n in equip.get('allowed', []))}], "
                          f"asset: {rust_opt_str(equip.get('asset'))}, "
                          f"camera_overlay: {rust_opt_str(equip.get('camera_overlay'))} }})")
         remainder = item.get("crafting_remainder")

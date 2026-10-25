@@ -215,7 +215,11 @@ fn describe_equippable(equip: &photon_data::item::definition::Equip) -> Value {
         "slot": equip.slot,
         "player": equip.player,
         "swappable": equip.swappable,
+        "equip_on_interact": equip.equip_on_interact,
     });
+    if !equip.allowed.is_empty() {
+        described["allowed"] = json!(equip.allowed);
+    }
     if let Some(asset) = equip.asset {
         described["asset"] = json!(asset);
     }
