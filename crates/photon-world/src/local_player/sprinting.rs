@@ -62,7 +62,8 @@ impl LocalPlayer {
             return Ok(());
         }
 
-        let jump_height = 1.2_f32;
+        // Jump boost lets the auto-jump climb three quarters of a block more a level.
+        let jump_height = 1.2_f32 + self.hands.jump_boost.map_or(0, |n| n + 1) as f32 * 0.75;
         let look_ahead_dist = (current_speed * 7.0).max(1.0 / move_dist_inverted);
         let seg_begin = move_begin;
         let seg_end = move_end.add_vec3(move_dir.scale(f64::from(look_ahead_dist)));
@@ -144,8 +145,37 @@ impl LocalPlayer {
         }
     }
 
+    /// `LivingEntity.setSprinting`: the sprinting modifier comes off the movement speed, and goes
+    /// back on while sprinting.
     pub(super) fn set_sprinting(&mut self, sprinting: bool) {
         self.sprinting = sprinting;
+        let speed_id = crate::VANILLA_PLAYER_MOVEMENT_SPEED_ATTRIBUTE_ID;
+        if !self
+            .attributes
+            .iter()
+            .any(|held| held.attribute_id == speed_id)
+        {
+            // The reference's player has the attribute at its default before any packet.
+            self.attributes.push(crate::ClientAttributeState::new(
+                speed_id,
+                f64::from(crate::VANILLA_PLAYER_DEFAULT_MOVEMENT_SPEED),
+                Vec::new(),
+            ));
+        }
+        let speed = self
+            .attributes
+            .iter_mut()
+            .find(|held| held.attribute_id == speed_id)
+            .expect("the movement speed was just made if it was missing");
+        let modifiers = &mut speed.modifiers;
+        modifiers.retain(|modifier| modifier.id() != crate::VANILLA_PLAYER_SPRINTING_MODIFIER_ID);
+        if sprinting {
+            modifiers.push(crate::ClientAttributeModifierState::new(
+                crate::VANILLA_PLAYER_SPRINTING_MODIFIER_ID.to_owned(),
+                f64::from(crate::VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT),
+                2,
+            ));
+        }
     }
 
     /// `Player.isSwimming`: the flag, unless flying or spectating.

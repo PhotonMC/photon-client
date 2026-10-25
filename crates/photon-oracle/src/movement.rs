@@ -165,7 +165,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
             told_entities(&mut world, &player, row)?;
             hold_main_hand(&mut world, &mut player, breaking)?;
             worn_items(&mut world, &mut player, breaking)?;
-            apply_effects(&mut world, &player, breaking)?;
+            apply_effects(&mut world, &mut player, breaking)?;
         }
         // A vehicle the player rides, put aboard as the server's passengers packet does.
         let mut ridden = None;

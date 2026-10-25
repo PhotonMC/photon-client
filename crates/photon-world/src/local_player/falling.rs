@@ -136,7 +136,7 @@ impl LocalPlayer {
         }
         if self.vertical_collision {
             if self.vertical_collision_below {
-                restitution = if !(-current.y < GRAVITY)
+                restitution = if !(-current.y < self.effective_gravity())
                     && !suppressing_bounce
                     && effect_state.flags & flag::SUPPRESSES_BOUNCE == 0
                 {
@@ -147,8 +147,14 @@ impl LocalPlayer {
             }
             let (gravity_compensation, effective_drag) = if restitution > 0.0 {
                 let portion = movement.y / current.y;
-                let air_drag = f64::from(compute_modified_friction(0.98, 1.0));
-                (portion * GRAVITY, 1.0 + portion * (air_drag - 1.0))
+                let air_drag = f64::from(compute_modified_friction(
+                    0.98,
+                    self.attribute("minecraft:air_drag_modifier") as f32,
+                ));
+                (
+                    portion * self.effective_gravity(),
+                    1.0 + portion * (air_drag - 1.0),
+                )
             } else {
                 (0.0, 1.0)
             };
@@ -176,8 +182,11 @@ impl LocalPlayer {
         let y_collision = movement.y != movement_step.y;
         let z_collision = movement.z != movement_step.z;
         let on_ground_after_collision = y_collision && movement.y < 0.0;
-        let max_up_step = STEP_HEIGHT as f32;
-        if (on_ground_after_collision || self.on_ground) && (x_collision || z_collision) {
+        let max_up_step = self.attribute("minecraft:step_height") as f32;
+        if max_up_step > 0.0
+            && (on_ground_after_collision || self.on_ground)
+            && (x_collision || z_collision)
+        {
             let grounded = if on_ground_after_collision {
                 aabb.move_by(0.0, movement_step.y, 0.0)
             } else {
@@ -207,7 +216,7 @@ impl LocalPlayer {
         level: &Level<'_>,
         delta: Vec3,
     ) -> Result<Vec3, Unsupported> {
-        let max_down_step = STEP_HEIGHT as f32;
+        let max_down_step = self.attribute("minecraft:step_height") as f32;
         if self.abilities.flying
             || delta.y > 0.0
             || !self.is_shift_key_down()

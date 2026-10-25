@@ -13,13 +13,29 @@ impl LocalPlayer {
 
     /// `getAttributeValue(MOVEMENT_SPEED)`, narrowed as `Player.getSpeed` does.
     pub(super) fn speed(&self) -> f32 {
-        let base = f64::from(MOVEMENT_SPEED_BASE);
-        let value = if self.sprinting {
-            base * (1.0 + f64::from(SPRINTING_MODIFIER))
+        self.attribute("minecraft:movement_speed") as f32
+    }
+
+    /// `LivingEntity.getJumpPower`: the jump strength attribute on this block, then what jump
+    /// boost adds.
+    pub(super) fn jump_power(&self, level: &Level<'_>) -> f32 {
+        let jump_boost = self
+            .hands
+            .jump_boost
+            .map_or(0.0, |amplifier| 0.1_f32 * (amplifier as f32 + 1.0));
+        self.attribute("minecraft:jump_strength") as f32 * 1.0_f32 * self.block_jump_factor(level)
+            + jump_boost
+    }
+
+    /// `LivingEntity.getEffectiveGravity`: the gravity attribute, which slow falling caps while
+    /// the player falls.
+    pub(super) fn effective_gravity(&self) -> f64 {
+        let gravity = self.attribute("minecraft:gravity");
+        if self.delta.y <= 0.0 && self.hands.slow_falling {
+            gravity.min(0.01)
         } else {
-            base
-        };
-        value.clamp(0.0, 1024.0) as f32
+            gravity
+        }
     }
 
     pub(super) fn handle_relative_friction_and_calculate_movement(
@@ -256,22 +272,28 @@ impl LocalPlayer {
     ) -> Result<(), Unsupported> {
         let pos_below = self.get_on_pos(level, 0.500_001_f32);
         let block_friction = if self.on_ground {
-            compute_modified_friction(level.info(pos_below).friction, 1.0)
+            compute_modified_friction(
+                level.info(pos_below).friction,
+                self.attribute("minecraft:friction_modifier") as f32,
+            )
         } else {
             1.0
         };
         let movement =
             self.handle_relative_friction_and_calculate_movement(level, input, block_friction)?;
-        let movement_y = if level.has_chunk_at(pos_below) {
-            movement.y - GRAVITY
+        let movement_y = if let Some(amplifier) = self.hands.levitation {
+            movement.y + (0.05 * f64::from(amplifier + 1) - movement.y) * 0.2
+        } else if level.has_chunk_at(pos_below) {
+            movement.y - self.effective_gravity()
         } else if self.position.y > f64::from(level.world.dimension().min_y) {
             -0.1
         } else {
             0.0
         };
-        let air_drag = compute_modified_friction(0.91, 1.0);
+        let air_drag_modifier = self.attribute("minecraft:air_drag_modifier") as f32;
+        let air_drag = compute_modified_friction(0.91, air_drag_modifier);
         let friction = block_friction * air_drag;
-        let vertical_friction = compute_modified_friction(0.98, 1.0);
+        let vertical_friction = compute_modified_friction(0.98, air_drag_modifier);
         self.delta = Vec3::new(
             movement.x * f64::from(friction),
             movement_y * f64::from(vertical_friction),
@@ -287,12 +309,22 @@ impl LocalPlayer {
     ) -> Result<(), Unsupported> {
         let is_falling = self.delta.y <= 0.0;
         let old_y = self.position.y;
-        let base_gravity = GRAVITY;
+        let base_gravity = self.effective_gravity();
         if self.is_in_water() {
             let mut slow_down = if self.sprinting { 0.9_f32 } else { 0.8_f32 };
-            let speed = 0.02_f32;
-            // The player's water movement efficiency is zero: no blend.
-            let _ = &mut slow_down;
+            let mut speed = 0.02_f32;
+            // Depth strider's water movement efficiency, half of it off the ground.
+            let mut water_walker = self.attribute("minecraft:water_movement_efficiency") as f32;
+            if !self.on_ground {
+                water_walker *= 0.5;
+            }
+            if water_walker > 0.0 {
+                slow_down += (0.546_000_06_f32 - slow_down) * water_walker;
+                speed += (self.speed() - speed) * water_walker;
+            }
+            if self.hands.dolphins_grace {
+                slow_down = 0.96;
+            }
             self.move_relative(speed, input);
             self.move_self(level, self.delta)?;
             let mut movement = self.delta;
@@ -316,7 +348,9 @@ impl LocalPlayer {
             } else {
                 self.delta = self.delta.scale(0.5);
             }
-            self.delta = self.delta.add_components(0.0, -base_gravity / 4.0, 0.0);
+            if base_gravity != 0.0 {
+                self.delta = self.delta.add_components(0.0, -base_gravity / 4.0, 0.0);
+            }
             self.jump_out_of_fluid(level, old_y)
         }
     }

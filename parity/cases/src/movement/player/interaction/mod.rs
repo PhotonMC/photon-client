@@ -6,6 +6,7 @@ mod aiming;
 mod bottling;
 mod consuming;
 mod digging;
+mod effects;
 mod gliding;
 mod pistons;
 mod placing;
@@ -39,6 +40,8 @@ pub struct Interaction {
     chest: Option<&'static str>,
     rockets: Option<i64>,
     effects: Option<Vec<Value>>,
+    /// The attributes the server sent, each with its base and modifiers.
+    attributes: Vec<Value>,
     entities: Option<Vec<Value>>,
 }
 
@@ -56,6 +59,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         chest: None,
         rockets: None,
         effects: None,
+        attributes: Vec::new(),
         entities: None,
     }
 }
@@ -127,6 +131,16 @@ impl Interaction {
         Self { effects: Some(effects), ..self }
     }
 
+    /// An attribute as the server sends it: its base and its modifiers as `(id, amount, operation)`.
+    pub fn attribute(mut self, name: &str, base: f64, modifiers: &[(&str, f64, i64)]) -> Self {
+        let modifiers: Vec<Value> = modifiers
+            .iter()
+            .map(|(id, amount, operation)| json!({"id": id, "amount": f64_bits(*amount), "operation": operation}))
+            .collect();
+        self.attributes.push(json!({"attribute": name, "base": f64_bits(base), "modifiers": modifiers}));
+        self
+    }
+
     pub fn start(self, x: f64, y: f64, z: f64) -> Self {
         Self { scene: self.scene.start(x, y, z), ..self }
     }
@@ -184,6 +198,9 @@ impl Interaction {
         if let Some(effects) = self.effects {
             held["effects"] = json!(effects);
         }
+        if !self.attributes.is_empty() {
+            held["attributes"] = json!(self.attributes);
+        }
         row["breaking"] = held;
         if let Some(entities) = self.entities {
             row["entities"] = json!(entities);
@@ -216,5 +233,6 @@ pub fn cases() -> Vec<Value> {
         local("movement/entity-aim", aiming::rows()),
         local("movement/gliding", gliding::rows()),
         local("movement/pistons", pistons::rows()),
+        local("movement/effects", effects::rows()),
     ]
 }

@@ -7,6 +7,7 @@ mod blocks;
 mod chat;
 mod connection;
 mod containers;
+mod effects;
 mod emitters;
 mod entity;
 mod local_events;
@@ -46,6 +47,7 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             containers::DECODERS,
             blocks::DECODERS,
             entity::DECODERS,
+            effects::DECODERS,
             session::DECODERS,
             &[(PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID, |_, _| {
                 Ok(Box::new(BundleDelimiter))
