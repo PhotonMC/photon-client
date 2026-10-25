@@ -207,7 +207,6 @@
 "crates/photon-game/src/text/translatable.rs::Component::from_nbt" = 16
 "crates/photon-game/src/tooltip/lines.rs::lines" = 61
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
-"crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 15
 "crates/photon-gui/src/chat/screen.rs::ChatScreen::key_pressed" = 18
 "crates/photon-gui/src/chat/suggestions.rs::SuggestionsList::draw" = 14
 "crates/photon-gui/src/hud.rs::HeartType::sprite" = 11
@@ -597,9 +596,8 @@
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
 "crates/photon-game/src/text.rs::flat_strings" = 83
 "crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 71
-"crates/photon-game/src/tooltip/lines.rs::lines" = 274
+"crates/photon-game/src/tooltip/lines.rs::lines" = 272
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
-"crates/photon-game/src/tooltip/name.rs::potion_tooltip" = 65
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 75
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 115
 "crates/photon-gui/src/hud/locator.rs::draw_dots" = 62
@@ -901,7 +899,7 @@
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
-"crates/photon/src/gui/draw.rs::Gui::draw" = 252
+"crates/photon/src/gui/draw.rs::Gui::draw" = 244
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75
 "crates/photon/src/mobs/animals/farm_animals.rs::pose" = 72
 "crates/photon/src/mobs/animals/farm_animals/gear.rs::layers" = 90

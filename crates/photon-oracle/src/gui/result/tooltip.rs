@@ -4,7 +4,7 @@ use super::*;
 /// runs, neighbours of one style joined, the style written as the reference
 /// adapter writes it (a colour or `-`, then the set flags).
 pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_game::tooltip::{Flags, MapInfo, lines};
+    use photon_game::tooltip::{Context, Flags, MapInfo, lines};
     let lang = photon_game::text::Lang::load(&ctx.root);
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
@@ -18,7 +18,11 @@ pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
         creative: row["creative"].as_bool().unwrap_or(false),
         advanced: row["advanced"].as_bool().unwrap_or(false),
     };
-    let lines: Vec<Value> = lines(&stack, false, flags, &registries, &|_| map)
+    let context = Context {
+        maps: &|_| map,
+        tick_rate: row["tick_rate"].as_f64().unwrap_or(20.0) as f32,
+    };
+    let lines: Vec<Value> = lines(&stack, false, flags, &registries, context)
         .iter()
         .map(|line| {
             let mut runs: Vec<(String, String)> = Vec::new();
@@ -56,7 +60,7 @@ pub(super) fn tooltip_lines_case(ctx: &mut GuiContext, row: &Value) -> Result<Va
 /// A stack's tooltip as a container screen draws it, with a bundle's image:
 /// the lines from `tooltip::lines`, by the mouse on a GUI of the row's size.
 pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
-    use photon_game::tooltip::{Flags, lines, no_maps};
+    use photon_game::tooltip::{Context, Flags, lines};
     let lang = photon_game::text::Lang::load(&ctx.root);
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
@@ -76,7 +80,7 @@ pub(super) fn bundle_tooltip_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         Vec::<photon_render::gui::GuiItemVertex>::new()
     };
     let mut tooltip = |stack: &photon_world::ClientItemStackState, _: bool| {
-        lines(stack, false, Flags::default(), &registries, &no_maps)
+        lines(stack, false, Flags::default(), &registries, Context::EMPTY)
             .iter()
             .map(|line| lang.runs(line, &photon_game::text::Style::default()))
             .collect::<Vec<_>>()

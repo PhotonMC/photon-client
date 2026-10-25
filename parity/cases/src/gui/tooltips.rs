@@ -4,8 +4,8 @@ use serde_json::{Value, json};
 
 use super::gui;
 use crate::components::{
-    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, LORE, MAP_ID, MAP_POST_PROCESSING, Stack, WRITTEN_BOOK_CONTENT,
-    bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
+    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, LORE, MAP_ID, MAP_POST_PROCESSING, OMINOUS_BOTTLE_AMPLIFIER,
+    POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
 };
 
 /// `ItemContainerContents`: an optional stack per slot.
@@ -35,10 +35,12 @@ struct Tooltip {
     added: Vec<(i64, String)>,
     advanced: bool,
     map: Option<(i64, bool)>,
+    /// The level's tick rate the effect times are read at, when not twenty.
+    tick_rate: Option<f64>,
 }
 
 fn row(label: &'static str, item: &'static str) -> Tooltip {
-    Tooltip { label, item, added: vec![], advanced: false, map: None }
+    Tooltip { label, item, added: vec![], advanced: false, map: None, tick_rate: None }
 }
 
 impl Tooltip {
@@ -53,8 +55,27 @@ impl Tooltip {
         if let Some((scale, locked)) = self.map {
             made["map"] = json!({"scale": scale, "locked": locked});
         }
+        if let Some(rate) = self.tick_rate {
+            made["tick_rate"] = json!(rate);
+        }
         made
     }
+}
+
+/// A potion's and an ominous bottle's effect times at the level's tick rate: twenty, slower and a
+/// fraction.
+fn effect_time_rows() -> Vec<Tooltip> {
+    // `PotionContents`: the potion by registry id, no colour, no custom effects, no name.
+    let potion = |id: i64| vec![(POTION_CONTENTS, format!("01{}000000", vi(id)))];
+    let (swiftness, long_swiftness) = (13, 14);
+    let at = |label, item, added, rate| Tooltip { added, tick_rate: Some(rate), ..row(label, item) };
+    vec![
+        at("swiftness", "potion", potion(swiftness), 20.0),
+        at("swiftness tick rate 10", "potion", potion(swiftness), 10.0),
+        at("swiftness tick rate 2.5", "potion", potion(swiftness), 2.5),
+        at("long swiftness tick rate 10", "potion", potion(long_swiftness), 10.0),
+        at("ominous bottle tick rate 10", "ominous_bottle", vec![(OMINOUS_BOTTLE_AMPLIFIER, vi(2))], 10.0),
+    ]
 }
 
 /// Tooltip lines of stacks whose items or components add lines: maps with
@@ -68,7 +89,7 @@ pub fn tooltip_lines() -> Value {
     let advanced = |label, item, added: Vec<(i64, String)>| Tooltip { advanced: true, ..with(label, item, added) };
     let contents = |items: &[Option<Stack>]| vec![(CONTAINER, container(items))];
     let many: Vec<Option<Stack>> = (1..8).map(|n| Some(stack("stone", n))).collect();
-    let rows = vec![
+    let mut rows = vec![
         row("plain", "stone"),
         advanced("plain advanced", "stone", vec![]),
         advanced("named advanced", "stone", vec![(CUSTOM_NAME, nbt("Rock"))]),
@@ -109,6 +130,7 @@ pub fn tooltip_lines() -> Value {
             ],
         ),
     ];
+    rows.extend(effect_time_rows());
     gui("tooltip-lines", "tooltip_lines", rows.into_iter().map(Tooltip::row).collect())
 }
 

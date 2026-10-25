@@ -176,8 +176,14 @@ pub(super) fn format_tick_duration(ticks: i32, tick_rate: f32) -> String {
     }
 }
 
-/// `PotionContents.addPotionTooltip`: `(effect id, amplifier, duration)`.
-pub(super) fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut Vec<Component>) {
+/// `PotionContents.addPotionTooltip`: `(effect id, amplifier, duration)`, their times read at the
+/// context's tick rate.
+pub(super) fn potion_tooltip(
+    effects: &[(i32, i32, i32)],
+    scale: f32,
+    context: Context,
+    out: &mut Vec<Component>,
+) {
     let mut modifiers: Vec<(i32, f64, i32)> = Vec::new();
     for &(effect, amplifier, duration) in effects {
         let Some(entry) = usize::try_from(effect)
@@ -205,7 +211,7 @@ pub(super) fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut 
         }
         // `MobEffectInstance.endsWithin(20)`: not one that never ends.
         if duration == -1 || duration > 20 {
-            let time = format_duration(duration, scale, 20.0);
+            let time = format_duration(duration, scale, context.tick_rate);
             line = Component::translatable_with("potion.withDuration", vec![line, time]);
         }
         out.push(line.with_colour(if entry.style() == "RED" {
@@ -217,6 +223,11 @@ pub(super) fn potion_tooltip(effects: &[(i32, i32, i32)], scale: f32, out: &mut 
     if effects.is_empty() {
         out.push(Component::translatable("effect.none").with_colour("gray"));
     }
+    when_drank_lines(modifiers, out);
+}
+
+/// The potion tooltip's `potion.whenDrank` part: what its effects do to the attributes.
+fn when_drank_lines(modifiers: Vec<(i32, f64, i32)>, out: &mut Vec<Component>) {
     if !modifiers.is_empty() {
         out.push(Component::empty());
         out.push(Component::translatable("potion.whenDrank").with_colour("dark_purple"));

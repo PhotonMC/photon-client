@@ -42,7 +42,7 @@ fn default_tooltip<'a>(
             true,
             photon_game::tooltip::Flags::default(),
             registries,
-            &photon_game::tooltip::no_maps,
+            photon_game::tooltip::Context::EMPTY,
         )
         .iter()
         .map(|line| lang.runs(line, &photon_game::text::Style::default()))
