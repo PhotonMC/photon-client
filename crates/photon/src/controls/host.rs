@@ -50,12 +50,12 @@ impl Controls {
             ),
             (self.sound_screen.is_some(), OptionScreen::Sound),
             (self.skin_screen.is_some(), OptionScreen::Skin),
-            (self.world_screen.is_some(), OptionScreen::World),
             (
                 self.accessibility_screen.is_some(),
                 OptionScreen::Accessibility,
             ),
             (self.chat_options_screen.is_some(), OptionScreen::Chat),
+            (self.world_screen.is_some(), OptionScreen::World),
             (self.video_screen.is_some(), OptionScreen::Video),
             (self.options_screen.is_some(), OptionScreen::Options),
         ]

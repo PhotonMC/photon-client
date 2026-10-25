@@ -34,16 +34,38 @@ impl Controls {
         }
     }
 
-    /// An event for the open world settings. Game Rules and Restrictions have no screen to open
-    /// yet, so pressing them does nothing.
+    /// A scripted press of the primary button on the world settings: whether they are open.
+    pub(super) fn scripted_world_press(
+        &mut self,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> bool {
+        if self.world_screen.is_none() {
+            return false;
+        }
+        let press = glfw::WindowEvent::MouseButton(
+            glfw::MouseButton::Button1,
+            glfw::Action::Press,
+            glfw::Modifiers::empty(),
+        );
+        self.world_options_event(press, surface, assets);
+        true
+    }
+
+    /// An event for the open world settings. Game Rules has no screen to open yet, so pressing
+    /// it does nothing.
     pub(super) fn world_options_event(
         &mut self,
         event: glfw::WindowEvent,
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) {
-        use glfw::{Action, Key, MouseButton, WindowEvent};
+        use glfw::WindowEvent;
         let lang = &assets.lang;
+        // The restrictions it opened are over it.
+        if self.restrictions.is_some() {
+            return self.restrictions_event(event, surface, assets);
+        }
         if let WindowEvent::CursorPos(x, y) = event {
             self.move_gui_mouse((x, y), surface);
             return;
@@ -55,22 +77,32 @@ impl Controls {
         if screen.facts() != facts {
             screen.rebuild(&assets.creative.font, lang, Self::gui_size(surface), facts);
         }
-        let mut press = None;
-        match menu_key(&event) {
-            Some(MenuKey::Tab(forward)) => screen.tab(forward),
-            Some(MenuKey::Key(key, shift)) => press = screen.key_pressed(lang, key, shift),
-            None => {}
-        }
-        match event {
-            WindowEvent::Key(Key::Escape, _, Action::Press, _) => press = Some(WorldPress::Done),
-            WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers) => {
-                let shift = modifiers.contains(glfw::Modifiers::Shift);
-                press = screen.clicked(lang, self.gui_mouse, shift);
-            }
+        let press = screen_press(screen, &event, (lang, self.gui_mouse));
+        match press {
+            Some(WorldPress::Done) => self.world_screen = None,
+            Some(WorldPress::Restrictions) => self.open_restrictions(surface, assets),
             _ => {}
         }
-        if press == Some(WorldPress::Done) {
-            self.world_screen = None;
+    }
+}
+
+/// What an event does on the screen: the press it made, if any.
+fn screen_press(
+    screen: &mut WorldOptionsScreen,
+    event: &glfw::WindowEvent,
+    (lang, mouse): (&photon_game::text::Lang, (f64, f64)),
+) -> Option<WorldPress> {
+    use glfw::{Action, Key, MouseButton, WindowEvent};
+    match (menu_key(event), event) {
+        (Some(MenuKey::Tab(forward)), _) => {
+            screen.tab(forward);
+            None
         }
+        (Some(MenuKey::Key(key, shift)), _) => screen.key_pressed(lang, key, shift),
+        (None, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => Some(WorldPress::Done),
+        (None, WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers)) => {
+            screen.clicked(lang, mouse, modifiers.contains(glfw::Modifiers::Shift))
+        }
+        _ => None,
     }
 }

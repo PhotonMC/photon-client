@@ -42,8 +42,12 @@ impl Gui {
         ),
     ) {
         // A link to confirm takes the screen's place (`ConfirmLinkScreen` is not drawn over its
-        // parent), and so does a dialog (`setScreen` replaces the menu it was opened from).
-        if controls.link_confirm.is_some() || controls.dialog.is_some() {
+        // parent), and so does a dialog (`setScreen` replaces the menu it was opened from); the
+        // restrictions are drawn with them, over the settings that opened them.
+        if controls.link_confirm.is_some()
+            || controls.dialog.is_some()
+            || controls.restrictions.is_some()
+        {
             return;
         }
         let mouse = (controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32);
@@ -128,9 +132,6 @@ impl Gui {
             screen.draw(frame, atlas, font, mouse);
             return true;
         }
-        if Self::draw_world_options((atlas, font, lang), controls, frame, (gui_size, mouse)) {
-            return true;
-        }
         sized!(controls.font_screen);
         sized!(controls.language_screen);
         sized!(controls.key_binds_screen);
@@ -138,6 +139,9 @@ impl Gui {
         sized!(controls.controls_screen);
         sized!(controls.skin_screen);
         sized!(controls.chat_options_screen);
+        if Self::draw_world_options((atlas, font, lang), controls, frame, (gui_size, mouse)) {
+            return true;
+        }
         sized!(controls.accessibility_screen);
         sized!(controls.sound_screen);
         sized!(controls.video_screen);

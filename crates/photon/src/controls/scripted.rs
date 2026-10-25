@@ -224,6 +224,17 @@ impl Controls {
         Ok(true)
     }
 
+    /// A scripted press on the world settings, else on the screens of its own.
+    fn scripted_press_screens(
+        &mut self,
+        session: &mut PlaySession,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
+        Ok(self.scripted_world_press(surface, assets)
+            || self.scripted_press_own(session, surface, assets)?)
+    }
+
     /// A scripted press of the primary button on the confirmation, the death
     /// screen or the pause menu, at the mouse.
     pub(super) fn scripted_press(
@@ -233,7 +244,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         let mouse = (self.gui_mouse.0 as i32, self.gui_mouse.1 as i32);
-        if self.scripted_press_own(session, surface, assets)? {
+        if self.scripted_press_screens(session, surface, assets)? {
             return Ok(());
         }
         if let Some(confirm) = &self.confirm {
