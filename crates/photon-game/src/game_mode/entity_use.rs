@@ -8,6 +8,7 @@
 use super::*;
 use photon_core::ids::EntityId;
 
+mod camel;
 mod horse;
 mod sheep;
 mod villager;
@@ -88,6 +89,7 @@ impl Context<'_> {
                 self.interact_villager_class(name, id, hand)
             }
             n if horse::is_equine(n) => self.interact_horse(name, id, hand),
+            "minecraft:camel" | "minecraft:camel_husk" => self.interact_camel(name, id, hand),
             _ => self.interact_herd_class(name, id, hand),
         }
     }

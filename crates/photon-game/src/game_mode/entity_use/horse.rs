@@ -133,7 +133,7 @@ impl Context<'_> {
     }
 
     /// `Player.isHolding(GOLDEN_DANDELION)`: either hand.
-    fn holds_golden_dandelion(&self) -> bool {
+    pub(super) fn holds_golden_dandelion(&self) -> bool {
         let golden = crate::item::id_of("minecraft:golden_dandelion");
         [MAIN_HAND, OFF_HAND].into_iter().any(|hand| {
             self.held(hand)
