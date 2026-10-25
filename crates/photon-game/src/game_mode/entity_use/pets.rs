@@ -14,8 +14,29 @@ struct Pet {
     armored: bool,
 }
 
+/// The classes of `TamableAnimal` this file answers for.
+pub(super) fn is_pet(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:wolf"
+            | "minecraft:cat"
+            | "minecraft:parrot"
+            | "minecraft:nautilus"
+            | "minecraft:zombie_nautilus"
+    )
+}
+
 impl Context<'_> {
-    pub(super) fn interact_wolf(&mut self, id: EntityId, hand: u8) -> EntityUse {
+    pub(super) fn interact_pet_class(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        match name {
+            "minecraft:wolf" => self.interact_wolf(id, hand),
+            "minecraft:cat" => self.interact_cat(id, hand),
+            "minecraft:parrot" => self.interact_parrot(id, hand),
+            _ => self.interact_nautilus(id, hand),
+        }
+    }
+
+    fn interact_wolf(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(pet) = self.pet_state(id) else {
             return EntityUse::Pass;
         };
@@ -50,7 +71,7 @@ impl Context<'_> {
         Some(EntityUse::Success { swing: true })
     }
 
-    pub(super) fn interact_cat(&mut self, id: EntityId, hand: u8) -> EntityUse {
+    fn interact_cat(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(pet) = self.pet_state(id) else {
             return EntityUse::Pass;
         };
@@ -82,7 +103,7 @@ impl Context<'_> {
 
     /// `AbstractNautilus.mobInteract`: a baby is fed as an animal; an adult is opened (tame and
     /// sneaking), healed with food, fitted through the item, ridden (tame), or fed.
-    pub(super) fn interact_nautilus(&mut self, id: EntityId, hand: u8) -> EntityUse {
+    fn interact_nautilus(&mut self, id: EntityId, hand: u8) -> EntityUse {
         let Some(pet) = self.pet_state(id) else {
             return EntityUse::Pass;
         };
@@ -110,6 +131,29 @@ impl Context<'_> {
             return true;
         }
         self.equips_on_interact(id, hand)
+    }
+
+    /// `Parrot.mobInteract`: seeds on a wild parrot and poisonous food are eaten (a swing, one
+    /// used up); a tame owner's parrot on the ground sits; anything else passes.
+    fn interact_parrot(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let Some(pet) = self.pet_state(id) else {
+            return EntityUse::Pass;
+        };
+        let poisonous = self.holds_tagged(hand, "minecraft:parrot_poisonous_food");
+        let eats = (!pet.tame && self.holds_tagged(hand, "minecraft:parrot_food")) || poisonous;
+        if eats {
+            self.use_up(hand);
+            return EntityUse::Success { swing: true };
+        }
+        let grounded = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.on_ground());
+        if grounded && pet.tame && pet.owned {
+            return EntityUse::Success { swing: true };
+        }
+        EntityUse::Pass
     }
 
     /// What the pet's data says: tame, owned by the local player, hurt, a baby, in body armor.

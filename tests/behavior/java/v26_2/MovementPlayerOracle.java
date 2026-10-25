@@ -186,6 +186,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         setCollar.invoke(wolf, net.minecraft.world.item.DyeColor.byId(described.get("collar").getAsInt()));
                     }
                 }
+                if (described.has("grounded")) {
+                    entity.setOnGround(true);
+                }
                 if (described.has("hurt") && entity instanceof net.minecraft.world.entity.LivingEntity hurtMob) {
                     hurtMob.setHealth(described.get("hurt").getAsFloat());
                 }

@@ -333,9 +333,9 @@ impl ClientWorld {
         entity
             .living
             .apply_wolf(wolf_data_from_metadata(entity.type_id, metadata));
-        if let Some(flags) = nautilus_flags_from_metadata(entity.type_id, metadata) {
-            entity.living.tamable_flags = flags;
-        }
+        entity
+            .living
+            .apply_tamable(tamable_data_from_metadata(entity.type_id, metadata));
         entity
             .living
             .apply_cat(cat_data_from_metadata(entity.type_id, metadata));

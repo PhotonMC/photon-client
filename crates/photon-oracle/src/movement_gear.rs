@@ -460,6 +460,9 @@ fn apply_pet_flags(
         data.push(255);
         world.apply_entity_metadata(id, &data);
     }
+    if described.get("grounded").is_some() {
+        world.apply_entity_ground_state(id, true);
+    }
     if described.get("armored").is_some() {
         let armor = photon_game::item::id_of("minecraft:wolf_armor").ok_or("no wolf armor item")?;
         world.entities_mut().apply_equipment(

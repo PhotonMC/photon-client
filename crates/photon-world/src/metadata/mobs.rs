@@ -509,13 +509,24 @@ pub(crate) fn wolf_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) ->
 }
 
 /// A nautilus's `TamableAnimal` flags, when the data holds them.
-pub(crate) fn nautilus_flags_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<u8> {
-    matches!(
+pub(crate) fn tamable_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> TamableData {
+    if !matches!(
         photon_data::entity_type::name(type_id),
-        Some("minecraft:nautilus" | "minecraft:zombie_nautilus")
-    )
-    .then(|| metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID))
-    .flatten()
+        Some("minecraft:nautilus" | "minecraft:zombie_nautilus" | "minecraft:parrot")
+    ) {
+        return TamableData::default();
+    }
+    TamableData {
+        flags: metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID),
+        owner: metadata_owner(metadata),
+    }
+}
+
+/// What the data of a nautilus or parrot holds of `TamableAnimal`: its flags and owner.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TamableData {
+    pub(crate) flags: Option<u8>,
+    pub(crate) owner: Option<Option<photon_core::binary::Uuid>>,
 }
 
 pub(crate) fn cat_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> CatData {

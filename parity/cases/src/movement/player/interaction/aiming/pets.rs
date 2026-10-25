@@ -6,7 +6,7 @@ use super::herding::{flagged_animal, sneaking_click};
 use super::{aims, facing};
 
 pub(super) fn rows() -> Vec<Value> {
-    [wolf_rows(), cat_rows(), nautilus_rows()].concat()
+    [wolf_rows(), cat_rows(), nautilus_rows(), parrot_rows()].concat()
 }
 
 /// A pet at the usual spot, with the pet flags given as key and value.
@@ -136,5 +136,36 @@ fn nautilus_rows() -> Vec<Value> {
         click("use-saddled-nautilus-with-saddle", tame("nautilus", &["saddled"], &[]), saddle, once()),
         click("use-tame-zombie-nautilus-with-saddle", tame("zombie_nautilus", &[], &[]), saddle, once()),
         click("use-wild-zombie-nautilus-with-saddle", wild("zombie_nautilus", &[]), saddle, once()),
+    ]
+}
+
+/// Parrots: tamed with seeds, poisoned by cookies, and sat by an owner while grounded.
+fn parrot_rows() -> Vec<Value> {
+    let owned = |extra: &[(&str, Value)]| {
+        let mut flags = vec![("tame", json!(true))];
+        flags.extend_from_slice(extra);
+        pet("parrot", &[], &flags)
+    };
+    let grounded = || owned(&[("grounded", json!(true))]);
+    vec![
+        click("use-wild-parrot-with-seeds", pet("parrot", &[], &[]), "minecraft:wheat_seeds", once()),
+        click("use-wild-parrot-with-cookie", pet("parrot", &[], &[]), "minecraft:cookie", once()),
+        click("use-wild-parrot-with-stone", pet("parrot", &[], &[]), "minecraft:stone", once()),
+        click("use-flying-owned-parrot-with-stone", owned(&[]), "minecraft:stone", once()),
+        click("use-grounded-owned-parrot-with-stone", grounded(), "minecraft:stone", once()),
+        click("use-grounded-owned-parrot-with-seeds", grounded(), "minecraft:wheat_seeds", once()),
+        click("use-grounded-owned-parrot-with-cookie", grounded(), "minecraft:cookie", once()),
+        click(
+            "use-grounded-other-parrot-with-stone",
+            pet("parrot", &[], &[("tame", json!("other")), ("grounded", json!(true))]),
+            "minecraft:stone",
+            once(),
+        ),
+        click(
+            "use-grounded-wild-parrot-with-stone",
+            pet("parrot", &[], &[("grounded", json!(true))]),
+            "minecraft:stone",
+            once(),
+        ),
     ]
 }

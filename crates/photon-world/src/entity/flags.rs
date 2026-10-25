@@ -445,6 +445,16 @@ pub(crate) struct EntityState {
 }
 
 impl EntityState {
+    /// Takes the `TamableAnimal` data of a nautilus or parrot.
+    pub(crate) fn apply_tamable(&mut self, data: crate::metadata::TamableData) {
+        if let Some(flags) = data.flags {
+            self.tamable_flags = flags;
+        }
+        if let Some(owner) = data.owner {
+            self.owner = owner;
+        }
+    }
+
     /// Takes what a cat's data holds (see [`crate::metadata::CatData`]).
     pub(crate) fn apply_cat(&mut self, cat: crate::metadata::CatData) {
         if let Some(flags) = cat.flags {
