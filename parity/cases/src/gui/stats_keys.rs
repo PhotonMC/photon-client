@@ -197,14 +197,24 @@ fn enter_rows() -> Vec<Value> {
     ]
 }
 
-/// The arrow keys.
+/// The arrow keys, with a frame drawn after every step as in play (the positions of the widgets
+/// in a list are set when it draws).
 fn arrow_rows() -> Vec<Value> {
     let mut rows = bar_arrow_rows();
     rows.extend(list_arrow_rows());
     rows.extend(items_arrow_rows());
     rows.extend(items_arrow_more_rows());
     rows.extend(items_arrow_last_rows());
-    rows
+    rows.extend(small_arrow_rows());
+    rows.into_iter().map(rendered).collect()
+}
+
+/// The row with a frame after each of its steps.
+fn rendered(mut row: Value) -> Value {
+    let steps = row["steps"].as_array().cloned().unwrap_or_default();
+    let framed: Vec<Value> = steps.into_iter().flat_map(|step| [step, json!({"do": "frame"})]).collect();
+    row["steps"] = Value::Array(framed);
+    row
 }
 
 /// Arrows on the tab bar.
@@ -418,5 +428,33 @@ fn items_arrow_last_rows() -> Vec<Value> {
             v.push(key(265, 0));
             v
         }),
+    ]
+}
+
+/// A few arrows on a 320x180 screen, where the lists and the bar are laid out smaller.
+fn small_arrow_rows() -> Vec<Value> {
+    let all = all_stats();
+    let small = |row: Value| with(row, json!({"width": 320, "height": 180}));
+    vec![
+        small(on(
+            "arrow-small-items-slot-right",
+            &all,
+            true,
+            items_then_tab(8, 0).into_iter().chain([key(262, 0)]).collect(),
+        )),
+        small(on(
+            "arrow-small-items-right-7",
+            &all,
+            true,
+            items_then_tab(2, 0).into_iter().chain((0..7).map(|_| key(262, 0))).collect(),
+        )),
+        small(on("arrow-small-items-up", &all, true, items_then_tab(2, 0).into_iter().chain([key(265, 0)]).collect())),
+        small(on("arrow-small-general-down-end", &all, true, after_click(70, 10, 264, 12))),
+        small(on(
+            "arrow-small-general-down-up",
+            &all,
+            true,
+            after_click(70, 10, 264, 3).into_iter().chain([key(265, 0)]).collect(),
+        )),
     ]
 }

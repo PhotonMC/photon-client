@@ -186,9 +186,8 @@ impl ItemsList {
     }
 
     /// An arrow with the focus in the list (`ContainerObjectSelectionList.nextFocusPath`).
-    /// Whether the list kept it: past the last entry downwards, and to the right of the last widget
-    /// of an entry, the screen takes over; upwards from the header and left of the first nothing
-    /// moves.
+    /// Whether the list kept it: past the last entry downwards, above the header and to the right
+    /// of a slot the screen takes over; left of the first widget nothing moves.
     pub(super) fn arrow(&mut self, arrow: Arrow) -> bool {
         let slots = self.len().saturating_sub(1);
         let target = if self.view.focused {
@@ -224,12 +223,14 @@ impl ItemsList {
     fn moved_focus(&self, arrow: Arrow, slots: usize) -> Option<Focus> {
         match (self.focus, arrow) {
             (Focus::Button(column), Arrow::Left) => Some(Focus::Button(column.saturating_sub(1))),
-            (Focus::Button(column), Arrow::Right) if column + 1 < ICONS.len() => {
-                Some(Focus::Button(column + 1))
+            (Focus::Button(column), Arrow::Right) => {
+                Some(Focus::Button((column + 1).min(ICONS.len() - 1)))
             }
-            // Nothing to the right in the entry: the screen takes the arrow.
-            (_, Arrow::Right) => None,
+            // A slot has nothing to its right: the screen takes the arrow.
+            (Focus::Slot(_), Arrow::Right) => None,
             (focus, Arrow::Down) => Self::below(focus, slots),
+            // Nothing above the header: the screen takes the arrow.
+            (Focus::Button(_), Arrow::Up) => None,
             (Focus::Slot(0), Arrow::Up) => Some(Focus::Button(0)),
             (Focus::Slot(item), Arrow::Up) => Some(Focus::Slot(item - 1)),
             (focus, _) => Some(focus),

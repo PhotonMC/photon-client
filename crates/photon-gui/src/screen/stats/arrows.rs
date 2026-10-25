@@ -96,11 +96,8 @@ impl StatsScreen {
                 }
             }
             (ScreenFocus::List, Arrow::Down) => self.take_focus_done(),
-            // An arrow to the right that the items list could not take goes up to the bar.
-            (ScreenFocus::List, Arrow::Right) if self.selected == 1 => {
-                self.release_focus();
-                self.take_bar();
-            }
+            // The rectangles put Done to the right of an item's slot.
+            (ScreenFocus::List, Arrow::Right) if self.selected == 1 => self.take_focus_done(),
             (ScreenFocus::List, Arrow::Up) => {
                 self.release_focus();
                 self.take_bar();
