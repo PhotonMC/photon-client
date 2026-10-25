@@ -422,7 +422,7 @@ impl SoundSystem {
         else {
             return;
         };
-        instance.position = position;
+        instance.position = narrowed(position);
         if let Ok(mut map) = self.followed.lock() {
             map.insert(entity, Some(position));
         }
@@ -433,7 +433,7 @@ impl SoundSystem {
                 .ok()
                 .and_then(|map| map.get(&entity).copied())
             {
-                *state.position = position;
+                *state.position = narrowed(position);
             } else {
                 *state.stopped = true;
                 *state.looping = false;
@@ -571,12 +571,23 @@ use photon_core::math::Vec3;
 
 mod flash;
 
-/// `EntityBoundSoundInstance` of the local player: the sound goes where the player does.
+/// `EntityBoundSoundInstance` keeps the entity's place narrowed to floats.
+fn narrowed((x, y, z): (f64, f64, f64)) -> (f64, f64, f64) {
+    (
+        f64::from(x as f32),
+        f64::from(y as f32),
+        f64::from(z as f32),
+    )
+}
+
+/// `EntityBoundSoundInstance` of the local player: the sound goes where the player does. The
+/// silent flag (`canPlaySound`) is not read.
 fn follow_player(glide: &Arc<Mutex<(Vec3, [f64; 3], bool)>>, instance: &mut SoundInstance) {
     let glide = Arc::clone(glide);
+    instance.position = narrowed(instance.position);
     instance.ticker = Some(Box::new(move |state: &mut TickState| {
         if let Ok((position, _, _)) = glide.lock().map(|glide| *glide) {
-            *state.position = (position.x, position.y, position.z);
+            *state.position = narrowed((position.x, position.y, position.z));
         }
     }));
 }
@@ -595,7 +606,7 @@ mod tests {
         );
         follow_player(&glide, &mut instance);
         let mut ticker = instance.ticker.take().expect("a ticker");
-        *glide.lock().unwrap() = (Vec3::new(1.5, 64.0, -3.25), [0.0; 3], false);
+        *glide.lock().unwrap() = (Vec3::new(1.5, 64.0, -3.1), [0.0; 3], false);
         let (mut position, mut volume, mut pitch) = ((0.0, 0.0, 0.0), 1.0, 1.0);
         let (mut looping, mut stopped) = (false, false);
         ticker(&mut TickState {
@@ -605,7 +616,7 @@ mod tests {
             looping: &mut looping,
             stopped: &mut stopped,
         });
-        assert_eq!(position, (1.5, 64.0, -3.25));
+        assert_eq!(position, (1.5, 64.0, f64::from(-3.1_f32)));
         assert!(!stopped);
     }
 
