@@ -197,6 +197,11 @@ impl LocalPlayer {
         }
     }
 
+    /// The player's attributes, the sprinting modifier the client put on among them.
+    pub fn attributes(&self) -> &[crate::ClientAttributeState] {
+        &self.attributes
+    }
+
     /// `getAttributeValue` of one of the player's attributes.
     pub(super) fn attribute(&self, name: &str) -> f64 {
         crate::effective_attribute(&self.attributes, "minecraft:player", name)
