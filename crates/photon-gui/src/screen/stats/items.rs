@@ -170,6 +170,15 @@ impl ItemsList {
         })
     }
 
+    /// Enter or Space on the widget with the focus: a sort button sounds and sorts (as a press
+    /// does); a slot does nothing.
+    pub(super) fn press_focused(&mut self, stats: &HashMap<StatKey, i32>) {
+        if let (true, Focus::Button(column)) = (self.view.focused, self.focus) {
+            crate::ui_sound::play_down_sound();
+            self.sort_by(column, stats);
+        }
+    }
+
     /// A step of Tab through the widgets of the list, in the order of their entries: the sort
     /// buttons of the header, then the slot of each item. An unfocused list takes the first (the
     /// last going backwards). Whether it took the step; a step past the end is the screen's.

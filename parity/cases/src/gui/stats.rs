@@ -349,6 +349,20 @@ fn click(x: i64, y: i64) -> Value {
     json!({"do": "click", "x": x, "y": y})
 }
 
+fn enter_after(mut steps: Vec<Value>) -> Vec<Value> {
+    steps.push(key(257, 0));
+    steps
+}
+
+fn enter_twice(steps: Vec<Value>) -> Vec<Value> {
+    enter_after(enter_after(steps))
+}
+
+fn space_after(mut steps: Vec<Value>) -> Vec<Value> {
+    steps.push(key(32, 0));
+    steps
+}
+
 /// A loaded 427x240 screen of the statistics `stats`, and what is done to it.
 fn on(label: &str, stats: &Value, loaded: bool, steps: Vec<Value>) -> Value {
     with(screen_row(label, (427, 240), stats, loaded), json!({"steps": steps}))
@@ -451,6 +465,12 @@ fn navigation_rows() -> Vec<Value> {
         on("nav-items-shift-tab-9", &all, true, items_then_tab(9, SHIFT)),
         on("nav-items-shift-tab-10", &all, true, items_then_tab(10, SHIFT)),
         on("nav-enter-load", &all, true, vec![key(257, 0)]),
+        on("nav-items-enter-button", &all, true, enter_after(items_then_tab(2, 0))),
+        on("nav-items-enter-twice", &all, true, enter_twice(items_then_tab(2, 0))),
+        on("nav-items-space-button-2", &all, true, space_after(items_then_tab(3, 0))),
+        on("nav-items-enter-slot", &all, true, enter_after(items_then_tab(8, 0))),
+        on("nav-loading-tab", &all, false, vec![key(TAB, 0)]),
+        on("nav-loading-shift-tab", &all, false, vec![key(TAB, SHIFT)]),
         on("nav-tab-enter", &all, true, vec![key(TAB, 0), key(257, 0)]),
         on("nav-tab-click-enter", &all, true, vec![click(200, 10), key(257, 0)]),
         on("nav-tab-click-space", &all, true, vec![click(200, 10), key(32, 0)]),

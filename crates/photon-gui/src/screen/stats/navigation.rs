@@ -39,6 +39,12 @@ impl StatsScreen {
                 self.press_tab(tab);
                 None
             }
+            (ScreenFocus::List, _) if self.selected == 1 => {
+                if let Some(lists) = &mut self.lists {
+                    lists.items.press_focused(&self.stats);
+                }
+                None
+            }
             _ => None,
         }
     }
