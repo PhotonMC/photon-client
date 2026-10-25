@@ -99,6 +99,29 @@ impl ListView {
         true
     }
 
+    /// An up or down arrow in the list with the focus (`ObjectSelectionList.nextFocusPath`): the
+    /// next entry is chosen; past the end the list lets go of the focus and the selection. Whether
+    /// the focus moved.
+    pub(super) fn arrow_step(&mut self, down: bool, rows: usize) -> bool {
+        let next = match self.selected {
+            Some(selected) if down => Some(selected + 1).filter(|&next| next < rows),
+            Some(selected) => selected.checked_sub(1),
+            None if down => (rows > 0).then_some(0),
+            None => rows.checked_sub(1),
+        };
+        match next {
+            Some(index) => self.select(index, rows),
+            None => self.clear(),
+        }
+        next.is_some()
+    }
+
+    /// The list lets go of the focus and the selection.
+    pub(super) fn clear(&mut self) {
+        self.focused = false;
+        self.selected = None;
+    }
+
     /// `AbstractSelectionList.extractSelection`: the outline of the entry, white while the list has
     /// the focus and grey after.
     pub(super) fn draw_selection(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, index: usize) {

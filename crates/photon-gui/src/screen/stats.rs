@@ -2,6 +2,7 @@
 //! of the tab chosen, and Done under it. While the server has not answered, every tab shows
 //! "Retrieving statistics..." with dots that go round.
 
+mod arrows;
 mod general;
 mod items;
 mod list;
@@ -31,7 +32,7 @@ const TAB_BAR_MARGIN: i32 = 14;
 const FOOTER_HEIGHT: i32 = 33;
 /// `LoadingDotsWidget`: the padding under the dots' text and the layout's under the widget.
 const LOADING_PADDING_BOTTOM: i32 = 30;
-const TABS: usize = 3;
+pub(super) const TABS: usize = 3;
 
 /// What the screen asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -474,7 +475,7 @@ impl StatsScreen {
 
     /// `TabNavigationBar.selectTab`: with the bar focused the tab's button takes the focus (and
     /// the tab is shown if it can be chosen); otherwise a tab that can be chosen is shown.
-    fn select_tab(&mut self, tab: usize) {
+    pub(super) fn select_tab(&mut self, tab: usize) {
         // The bar counts as focused only while one of its tabs holds the focus (`isFocused`).
         if self.focused_tab.is_some() {
             self.focused_tab = Some(tab);

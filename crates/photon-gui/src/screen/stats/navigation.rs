@@ -7,6 +7,27 @@ use super::{SHIFT_MODIFIER, ScreenFocus, StatsAction, StatsScreen, TAB_KEY};
 /// `GLFW_KEY_ENTER`, `GLFW_KEY_SPACE` and `GLFW_KEY_KP_ENTER`: `KeyEvent.isSelection`.
 const SELECTION_KEYS: [i32; 3] = [257, 32, 335];
 
+/// `GLFW_KEY_RIGHT`, `LEFT`, `DOWN` and `UP`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Arrow {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+impl Arrow {
+    fn of_key(key: i32) -> Option<Self> {
+        match key {
+            262 => Some(Self::Right),
+            263 => Some(Self::Left),
+            264 => Some(Self::Down),
+            265 => Some(Self::Up),
+            _ => None,
+        }
+    }
+}
+
 /// The children in tab order: the screen sorts them by tab order group (Done is in group 1) and
 /// keeps the order they were added in within a group.
 const ORDER: [ScreenFocus; 3] = [ScreenFocus::Bar, ScreenFocus::List, ScreenFocus::Done];
@@ -17,7 +38,10 @@ impl StatsScreen {
         if self.bar_key(key, modifiers) {
             return None;
         }
-        if key == TAB_KEY {
+        if let Some(arrow) = Arrow::of_key(key) {
+            self.arrow_focus(arrow);
+            None
+        } else if key == TAB_KEY {
             self.tab_focus(modifiers & SHIFT_MODIFIER == 0);
             None
         } else if SELECTION_KEYS.contains(&key) {
@@ -53,6 +77,10 @@ impl StatsScreen {
     /// the focus; when there is none the focus is cleared and the search starts again.
     fn tab_focus(&mut self, forward: bool) {
         if self.focus == ScreenFocus::Bar && self.focused_tab.is_none() && self.take_bar() {
+            return;
+        }
+        // A list the arrows let go of still has the screen's focus, and takes it back by Tab.
+        if self.focus == ScreenFocus::List && !self.list_focused() && self.take_list(forward) {
             return;
         }
         if self.focus == ScreenFocus::List && self.list_step(forward) {
@@ -97,7 +125,7 @@ impl StatsScreen {
 
     /// `TabNavigationBar.nextFocusPath`: a bar without a focused tab focuses the button of the
     /// tab shown (and that tab stays the current one).
-    fn take_bar(&mut self) -> bool {
+    pub(super) fn take_bar(&mut self) -> bool {
         self.release_focus();
         self.focus = ScreenFocus::Bar;
         self.focused_tab = Some(self.selected);
@@ -105,7 +133,7 @@ impl StatsScreen {
     }
 
     /// An unfocused list focuses its selected entry, or the first (the last, going backwards).
-    fn take_list(&mut self, forward: bool) -> bool {
+    pub(super) fn take_list(&mut self, forward: bool) -> bool {
         let selected = self.selected;
         let Some(lists) = &mut self.lists else {
             return false;
@@ -132,7 +160,7 @@ impl StatsScreen {
     }
 
     /// The focus the screen had lets go (`changeFocus` clears the old path).
-    fn release_focus(&mut self) {
+    pub(super) fn release_focus(&mut self) {
         self.focused_tab = None;
         if let Some(lists) = &mut self.lists {
             lists.general.unfocus();
@@ -142,7 +170,7 @@ impl StatsScreen {
     }
 
     /// `Screen.clearFocus`.
-    fn clear_focus(&mut self) {
+    pub(super) fn clear_focus(&mut self) {
         self.release_focus();
         self.focus = ScreenFocus::None;
     }

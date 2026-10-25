@@ -4,6 +4,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use super::list::{ListView, PADDING};
+use super::navigation::Arrow;
 use crate::FrameRuns;
 use crate::widgets::scroll_area::Place;
 use photon_data::stat::{Formatter, StatKey};
@@ -176,6 +177,71 @@ impl ItemsList {
         if let (true, Focus::Button(column)) = (self.view.focused, self.focus) {
             crate::ui_sound::play_down_sound();
             self.sort_by(column, stats);
+        }
+    }
+
+    /// Whether the list has the focus inside it.
+    pub(super) fn is_focused(&self) -> bool {
+        self.view.focused
+    }
+
+    /// An arrow with the focus in the list (`ContainerObjectSelectionList.nextFocusPath`).
+    /// Whether the list kept it: past the last entry downwards, and to the right of the last widget
+    /// of an entry, the screen takes over; upwards from the header and left of the first nothing
+    /// moves.
+    pub(super) fn arrow(&mut self, arrow: Arrow) -> bool {
+        let slots = self.len().saturating_sub(1);
+        let target = if self.view.focused {
+            self.moved_focus(arrow, slots)
+        } else {
+            Some(Self::first_focus(arrow, slots))
+        };
+        let Some(target) = target else {
+            return false;
+        };
+        self.focus = target;
+        self.view.focused = true;
+        let entry = match target {
+            Focus::Slot(item) => item + 1,
+            _ => 0,
+        };
+        let rows = self.len();
+        self.view.select(entry, rows);
+        true
+    }
+
+    /// Where an arrow puts the focus when the list has none: right and down start at the first
+    /// sort button, left at the last, up at the last item.
+    fn first_focus(arrow: Arrow, slots: usize) -> Focus {
+        match arrow {
+            Arrow::Down | Arrow::Right => Focus::Button(0),
+            Arrow::Left => Focus::Button(ICONS.len() - 1),
+            Arrow::Up => slots.checked_sub(1).map_or(Focus::Button(0), Focus::Slot),
+        }
+    }
+
+    /// Where an arrow moves the focus the list has; `None` when the screen is to take the arrow.
+    fn moved_focus(&self, arrow: Arrow, slots: usize) -> Option<Focus> {
+        match (self.focus, arrow) {
+            (Focus::Button(column), Arrow::Left) => Some(Focus::Button(column.saturating_sub(1))),
+            (Focus::Button(column), Arrow::Right) if column + 1 < ICONS.len() => {
+                Some(Focus::Button(column + 1))
+            }
+            // Nothing to the right in the entry: the screen takes the arrow.
+            (_, Arrow::Right) => None,
+            (focus, Arrow::Down) => Self::below(focus, slots),
+            (Focus::Slot(0), Arrow::Up) => Some(Focus::Button(0)),
+            (Focus::Slot(item), Arrow::Up) => Some(Focus::Slot(item - 1)),
+            (focus, _) => Some(focus),
+        }
+    }
+
+    /// The widget under the focused one (the column index of a button is not kept).
+    fn below(focus: Focus, slots: usize) -> Option<Focus> {
+        match focus {
+            Focus::Button(_) if slots > 0 => Some(Focus::Slot(0)),
+            Focus::Slot(item) if item + 1 < slots => Some(Focus::Slot(item + 1)),
+            _ => None,
         }
     }
 

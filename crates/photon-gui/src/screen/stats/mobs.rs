@@ -125,6 +125,22 @@ impl MobsList {
         self.view.focused = false;
     }
 
+    /// An up or down arrow in the focused list; whether the focus stayed in it.
+    pub(super) fn arrow_step(&mut self, down: bool) -> bool {
+        let rows = self.rows.len();
+        self.view.arrow_step(down, rows)
+    }
+
+    /// A left or right arrow: nothing to move to, so the list lets go.
+    pub(super) fn clear(&mut self) {
+        self.view.clear();
+    }
+
+    /// Whether the list has the focus.
+    pub(super) fn is_focused(&self) -> bool {
+        self.view.focused
+    }
+
     /// `ObjectSelectionList.nextFocusPath` by Tab: the selected entry, else the first (the last
     /// going backwards), takes the focus. Whether the list had an entry to give it to.
     pub(super) fn focus_entry(&mut self, forward: bool) -> bool {
