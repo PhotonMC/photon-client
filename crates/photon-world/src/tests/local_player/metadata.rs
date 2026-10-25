@@ -162,7 +162,7 @@ fn local_player_effect_ambience_metadata_follows_entity_data_keep_respawn() {
 }
 
 #[test]
-fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
+fn local_player_effect_particles_follow_entity_data_keep_respawn() {
     let mut world = ClientWorld::default();
     world.set_local_player_id(EntityId(42));
     let mut particle_metadata = vec![
@@ -181,8 +181,11 @@ fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
         world
             .local_player()
             .expect("particle player")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .effect_particles(),
+        &[crate::EffectParticle {
+            type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            color: Some(0x5566_7788)
+        }]
     );
 
     assert!(world.recreate_local_player(PLAYER_RESPAWN_KEEP_ENTITY_DATA));
@@ -190,8 +193,11 @@ fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
         world
             .local_player()
             .expect("respawned particle player")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .effect_particles(),
+        &[crate::EffectParticle {
+            type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            color: Some(0x5566_7788)
+        }]
     );
 
     assert!(world.recreate_local_player(0));
@@ -199,7 +205,7 @@ fn local_player_effect_particle_types_follow_entity_data_keep_respawn() {
         world
             .local_player()
             .expect("reset particle player")
-            .effect_particle_type_ids()
+            .effect_particles()
             .is_empty()
     );
 }

@@ -1,21 +1,33 @@
 use super::*;
 
-pub(crate) fn read_effect_particle_type_ids(metadata: &mut &[u8]) -> Option<Vec<i32>> {
+/// `ParticleTypes.STREAM_CODEC.apply(ByteBufCodecs.list())`: the effect particles, each the entity
+/// effect's colour or a simple particle (the only ones an effect gives off).
+pub(crate) fn read_effect_particles(metadata: &mut &[u8]) -> Option<Vec<EffectParticle>> {
     let count = photon_core::wire::read_varint(metadata).ok()?;
     let count = usize::try_from(count).ok()?;
     if count > metadata.len() {
         return None;
     }
-    let mut type_ids = Vec::with_capacity(count);
+    let mut particles = Vec::with_capacity(count);
     for _ in 0..count {
-        let type_id = photon_core::wire::read_varint(metadata).ok()?;
-        if type_id != ENTITY_EFFECT_PARTICLE_TYPE_ID {
-            return None;
-        }
-        *metadata = metadata.get(4..)?;
-        type_ids.push(type_id);
+        particles.push(read_effect_particle(metadata)?);
     }
-    Some(type_ids)
+    Some(particles)
+}
+
+/// One particle of an effect: the entity effect's ARGB colour, or a simple particle's nothing.
+pub(crate) fn read_effect_particle(metadata: &mut &[u8]) -> Option<EffectParticle> {
+    let type_id = photon_core::wire::read_varint(metadata).ok()?;
+    let color = if type_id == ENTITY_EFFECT_PARTICLE_TYPE_ID {
+        let bytes: [u8; 4] = metadata.get(..4)?.try_into().ok()?;
+        *metadata = &metadata[4..];
+        Some(u32::from_be_bytes(bytes))
+    } else if photon_data::particle_type::is_simple(type_id) {
+        None
+    } else {
+        return None;
+    };
+    Some(EffectParticle { type_id, color })
 }
 
 pub(crate) fn shared_flags_from_metadata(metadata: &[u8]) -> Option<u8> {
@@ -99,13 +111,13 @@ pub(crate) fn custom_name_visible_from_metadata(metadata: &[u8]) -> Option<bool>
     metadata_boolean_value(metadata, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
 }
 
-pub(crate) fn effect_particle_type_ids_from_metadata(metadata: &[u8]) -> Option<Vec<i32>> {
+pub(crate) fn effect_particles_from_metadata(metadata: &[u8]) -> Option<Vec<EffectParticle>> {
     let (serializer_id, mut value_input) =
         find_metadata_field(metadata, ENTITY_EFFECT_PARTICLES_DATA_ID)?;
     if serializer_id != ENTITY_DATA_SERIALIZER_PARTICLES_ID {
         return None;
     }
-    read_effect_particle_type_ids(&mut value_input)
+    read_effect_particles(&mut value_input)
 }
 
 pub(crate) fn sleeping_pos_from_metadata(

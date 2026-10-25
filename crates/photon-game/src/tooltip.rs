@@ -49,7 +49,7 @@ mod lines;
 pub use lines::*;
 mod details;
 use details::*;
-pub use details::{MapInfo, Maps, no_maps};
+pub use details::{Context, MapInfo, Maps};
 
 #[cfg(test)]
 mod tests {
@@ -76,9 +76,9 @@ mod tests {
 
     #[test]
     fn ticks_read_as_minutes_and_seconds() {
-        assert_eq!(format_ticks(3600), "03:00");
-        assert_eq!(format_ticks(20), "00:01");
-        assert_eq!(format_ticks(20 * 3600), "01:00:00");
+        assert_eq!(format_tick_duration(3600, 20.0), "03:00");
+        assert_eq!(format_tick_duration(20, 20.0), "00:01");
+        assert_eq!(format_tick_duration(20 * 3600, 20.0), "01:00:00");
     }
 
     #[test]
@@ -89,7 +89,7 @@ mod tests {
             false,
             Flags::default(),
             &registries(),
-            &no_maps,
+            Context::EMPTY,
         );
         assert_eq!(lines.len(), 1);
     }

@@ -33,6 +33,7 @@ impl ClientWorld {
             entity.motion.z = JavaF64::new(0.0_f64);
         }
         self.tick_entity_once(entity_id);
+        self.throw_effect_particles(entity_id);
         if let Some(vehicle_id) = vehicle_id {
             self.position_entity_passenger(vehicle_id, entity_id);
         }
@@ -203,5 +204,33 @@ impl ClientWorld {
         {
             entity.ticking = in_loaded_chunk;
         }
+    }
+}
+
+impl ClientWorld {
+    /// `LivingEntity.tickEffects` on a client: the swirls of the effects a living entity's data
+    /// lists. The reference draws from each entity's own unseeded source; one unseeded source
+    /// for them all is the same to see.
+    fn throw_effect_particles(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.living_kind().is_some())
+        else {
+            return;
+        };
+        let flags = (entity.is_effect_ambient(), entity.is_invisible());
+        let (x, y, z) = entity.position();
+        let body = (
+            Vec3::new(x, y, z),
+            (entity.dimensions().width(), entity.dimensions().height()),
+        );
+        let (queue, random) = &mut self.effect_particles;
+        queue.extend(particles::effect_particle(
+            entity.effect_particles(),
+            flags,
+            body,
+            random.source(),
+        ));
     }
 }

@@ -235,6 +235,34 @@ impl CreativeScreen {
         );
     }
 
+    /// The slots of the tab or the inventory, under the hovered one's highlight.
+    pub(super) fn draw_slots(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        inventory: &ContainerMenu,
+        mouse: (f64, f64),
+        inventory_tab: bool,
+    ) {
+        self.hovered = self.hovered_slot(mouse);
+        if let Some(slot) = self.hovered {
+            self.layout
+                .highlight(draw, slot_position(inventory_tab, slot), false);
+        }
+        for index in 0..self.slot_count() {
+            let (x, y) = slot_position(inventory_tab, index);
+            let icon = match target_of(inventory_tab, index) {
+                Target::Inventory(slot) => empty_icon(slot),
+                _ => None,
+            };
+            let view = View {
+                creative: &self.menu,
+                inventory,
+            };
+            self.mouse
+                .draw_slot(draw, &view, index, &self.layout, (x, y), icon);
+        }
+    }
+
     /// The image of the tab: its background, and its scroll bar if it has
     /// one.
     pub(super) fn build_image(&self, draw: &mut ScreenDraw<'_, '_>) {

@@ -376,8 +376,10 @@ impl Default for HandState {
             off_consume: None,
             food: 20,
             blinded: false,
-            levitating: false,
+            levitation: None,
             slow_falling: false,
+            jump_boost: None,
+            dolphins_grace: false,
             glider: false,
         }
     }
@@ -405,9 +407,13 @@ pub struct HandState {
     /// The food level, and whether blindness is on: what sprinting reads of the player state.
     pub food: i32,
     pub blinded: bool,
-    /// Levitation is on, and slow falling: what gliding and its fall read of the effects.
-    pub levitating: bool,
+    /// Levitation's amplifier, and whether slow falling is on: what gliding and the fall read of
+    /// the effects.
+    pub levitation: Option<i32>,
     pub slow_falling: bool,
+    /// Jump boost's amplifier, and whether dolphin's grace is on: what jumps and swimming read.
+    pub jump_boost: Option<i32>,
+    pub dolphins_grace: bool,
     /// Some worn or held stack lets the player glide (`canGlideUsing`); the connection fills it.
     pub glider: bool,
 }
@@ -423,8 +429,9 @@ pub struct UseEdge {
     pub(super) item: Option<ItemId>,
     /// `lastKineticHitFeedbackTime`, in the player's own ticks: when a spear hit last kicked.
     pub(super) kinetic_hit: Option<i32>,
-    /// The crumbs the use threw since the frame last took them.
-    pub(super) crumbs: Vec<crate::particles::LevelParticles>,
+    /// The particles the player's tick threw since the frame last took them: a use's crumbs and
+    /// the effects' swirls.
+    pub(super) particles: Vec<crate::particles::LevelParticles>,
 }
 
 /// How the use of an item changes the field of view.

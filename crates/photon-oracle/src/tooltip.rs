@@ -391,6 +391,51 @@ pub(super) fn serde_of(value: &photon_core::json::JsonValue) -> Value {
     }
 }
 
+/// `potions`: every mob effect and potion as the data tables declare them.
+pub(super) fn potions(label: &str) -> Value {
+    use photon_data::item::effect::{attribute_id, effect_id};
+    use photon_data::item::mob_effects::MOB_EFFECTS;
+    use photon_data::item::potions::POTIONS;
+    let effects: Vec<Value> = MOB_EFFECTS
+        .iter()
+        .map(|effect| {
+            json!({
+                "name": effect.name,
+                "color": effect.color,
+                "description_id": effect.description_id(),
+                "style": effect.style(),
+                "category": format!("{:?}", effect.category).to_uppercase(),
+                "modifiers": effect.modifiers.iter().map(|modifier| json!({
+                    "attribute": attribute_id(modifier.attribute),
+                    "amount": modifier.amount,
+                    "operation": modifier.operation,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let potions: Vec<Value> = POTIONS
+        .iter()
+        .map(|potion| {
+            json!({
+                "name": potion.name,
+                "potion_name": potion.potion_name(),
+                "effects": potion.effects.iter().map(|effect| json!({
+                    "effect": effect_id(effect.effect),
+                    "amplifier": effect.amplifier,
+                    "duration": effect.duration,
+                    "visible": effect.visible,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    json!({
+        "label": label,
+        "outcome": "listed",
+        "effects": effects,
+        "potions": potions,
+    })
+}
+
 /// `tooltip_registries`: the data-driven registries as the game loads them
 /// from the data pack, and the attributes' declarations.
 pub(super) fn tooltip_registries(label: &str) -> Value {

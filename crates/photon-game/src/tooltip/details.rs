@@ -12,11 +12,26 @@ pub struct MapInfo {
     pub locked: bool,
 }
 
-/// `TooltipContext.mapData`: the map data the client holds for a map id.
+/// `Context.mapData`: the map data the client holds for a map id.
 pub type Maps<'a> = &'a dyn Fn(i32) -> Option<MapInfo>;
 
-/// No map data at all: the creative search's context.
-pub fn no_maps(_: i32) -> Option<MapInfo> {
+/// `Item.Context`: the map data the client holds and the tick rate effect times are read at.
+#[derive(Clone, Copy)]
+pub struct Context<'a> {
+    pub maps: Maps<'a>,
+    pub tick_rate: f32,
+}
+
+impl Context<'static> {
+    /// `Context.EMPTY`, and `of(registries)` as the creative search makes it: no map data,
+    /// and twenty ticks a second.
+    pub const EMPTY: Self = Self {
+        maps: &no_maps,
+        tick_rate: 20.0,
+    };
+}
+
+fn no_maps(_: i32) -> Option<MapInfo> {
     None
 }
 

@@ -166,9 +166,16 @@ fn hud_casts(
     local_casts(session, player, local.inventory_slot(selected))
 }
 
-/// [`hud_casts`] of the session's own player, for the screens.
-pub(crate) fn held_casts(session: &PlaySession) -> [bool; 2] {
-    hud_casts(session, session.player(), session.world().local_player())
+/// What the screens read of the session's own player: the selected slot, the casts of
+/// [`hud_casts`], the effects and the tick rate.
+pub(crate) fn screen_viewer(session: &PlaySession) -> photon_gui::screen::PlayerView<'_> {
+    let local = session.world().local_player();
+    photon_gui::screen::PlayerView {
+        selected: session.status().selected_slot as usize,
+        casts: hud_casts(session, session.player(), local),
+        effects: local.map_or(&[], |state| state.effects()),
+        tick_rate: session.tick_rate(),
+    }
 }
 
 /// The hand the player uses an item in (true for the off hand) and for how many ticks.
@@ -267,6 +274,7 @@ pub fn hud_input(
         attack_delay: attack_strength_delay(attack_speed(local)),
         attack_indicator,
         target_is_living,
+        effects: local.map_or_else(Vec::new, |state| state.effects().to_vec()),
         hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
         offhand: stack(45),
     }
@@ -283,7 +291,7 @@ pub fn frame_input(
     ),
 ) -> photon_gui::HudInput {
     let shown = controls.debug.entries.enabled(session.reduced_debug_info());
-    photon_gui::HudInput {
+    let mut input = photon_gui::HudInput {
         // `getGameTimeDeltaPartialTick(true)`.
         cooldowns: session.item_cooldowns().percents(partial),
         overlays: camera_overlays(session, renderer, (partial, &controls.options)),
@@ -294,5 +302,14 @@ pub fn frame_input(
             camera,
             controls.options.attack_indicator,
         )
+    };
+    // `Hud.extractEffects`: a screen that lists the effects itself hides the icons.
+    if controls
+        .screen
+        .as_ref()
+        .is_some_and(|screen| screen.shows_active_effects())
+    {
+        input.effects.clear();
     }
+    input
 }

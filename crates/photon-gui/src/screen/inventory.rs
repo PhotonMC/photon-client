@@ -127,6 +127,31 @@ impl InventoryScreen {
         }
     }
 
+    /// The slots under the hovered one's highlight and the highlight over it.
+    fn draw_slots(
+        &mut self,
+        draw: &mut ScreenDraw<'_, '_>,
+        menu: &ContainerMenu,
+        mouse: (f64, f64),
+    ) {
+        let previous = self.hovered;
+        self.hovered = self.hovered_slot(mouse);
+        self.mouse
+            .bundle
+            .hover_changed(previous, self.hovered, menu);
+        if let Some(slot) = self.hovered {
+            self.layout.highlight(draw, slot_position(slot), false);
+        }
+        for index in 0..SLOT_COUNT {
+            let (x, y) = slot_position(index);
+            self.mouse
+                .draw_slot(draw, menu, index, &self.layout, (x, y), empty_icon(index));
+        }
+        if let Some(slot) = self.hovered {
+            self.layout.highlight(draw, slot_position(slot), true);
+        }
+    }
+
     fn hovered_slot(&self, mouse: (f64, f64)) -> Option<usize> {
         if self.book.blocks_screen() {
             return None;
@@ -290,11 +315,15 @@ impl Screen for InventoryScreen {
             (mouse.0 as f32, mouse.1 as f32),
         );
         draw.frame.figure(&model);
+        // `InventoryScreen.extractRenderState`: the effects come after the background stage (the
+        // dimmed world, the image and the player) and before the rest of the screen.
+        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         if self.book.blocks_screen() {
             // A book with no room beside the screen covers it: only the
             // background shows, and the book over it.
             self.book.draw(draw, menu, mouse, left);
             self.mouse.draw_carried(draw, menu.carried.as_ref(), mouse);
+            super::effects::draw_tooltip(draw, &self.layout, effects_tooltip, mouse);
             return;
         }
         draw.frame.text(
@@ -305,22 +334,7 @@ impl Screen for InventoryScreen {
             top + 6,
             0xFF40_4040,
         );
-        let previous = self.hovered;
-        self.hovered = self.hovered_slot(mouse);
-        self.mouse
-            .bundle
-            .hover_changed(previous, self.hovered, menu);
-        if let Some(slot) = self.hovered {
-            self.layout.highlight(draw, slot_position(slot), false);
-        }
-        for index in 0..SLOT_COUNT {
-            let (x, y) = slot_position(index);
-            self.mouse
-                .draw_slot(draw, menu, index, &self.layout, (x, y), empty_icon(index));
-        }
-        if let Some(slot) = self.hovered {
-            self.layout.highlight(draw, slot_position(slot), true);
-        }
+        self.draw_slots(draw, menu, mouse);
         self.book.draw(draw, menu, mouse, left);
         self.book
             .draw_ghost(draw, menu, (left, top), &slot_position);
@@ -333,6 +347,11 @@ impl Screen for InventoryScreen {
         if !shown {
             self.book.ghost_tooltip(draw, menu, self.hovered, mouse);
         }
+        super::effects::draw_tooltip(draw, &self.layout, effects_tooltip, mouse);
+    }
+
+    fn shows_active_effects(&self) -> bool {
+        super::effects::can_see(&self.layout)
     }
 }
 

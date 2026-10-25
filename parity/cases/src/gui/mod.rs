@@ -14,6 +14,7 @@ mod debug;
 mod debug_entry_rows;
 mod dialog;
 mod draft;
+mod effects;
 mod fonts;
 mod hud;
 mod icons;
@@ -117,6 +118,8 @@ const ORDER: &[Generator] = &[
     || vec![toasts::toasts()],
     || vec![tutorial::tutorial()],
     || vec![status::hud_status()],
+    || vec![effects::hud_effects()],
+    || vec![effects::inventory_effects()],
     language::language_cases,
     || vec![locator::locator_bar()],
     language::settings_keys,

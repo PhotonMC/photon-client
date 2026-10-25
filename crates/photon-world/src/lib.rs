@@ -127,6 +127,9 @@ pub struct ClientWorld {
     /// The source a sound made for an entity's click draws its pitch from (the reference keeps
     /// one per entity, unseeded).
     entity_sound_random: entity_random::EntityRandom,
+    /// The swirls the living entities' effects threw (`tickEffects`), until the particle engine
+    /// takes them, and the source they draw from (the reference's own per entity, unseeded).
+    effect_particles: (Vec<particles::LevelParticles>, entity_random::EntityRandom),
     /// The level events, until the particle engine takes them.
     level_events: world::LevelEventQueue,
     /// The blocks the player is breaking and the face it aims at, for each tick it swings at one

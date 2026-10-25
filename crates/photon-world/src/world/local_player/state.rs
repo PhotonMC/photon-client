@@ -167,7 +167,7 @@ impl ClientWorld {
             player.arrow_count = previous.arrow_count;
             player.stinger_count = previous.stinger_count;
             player.effect_ambience = previous.effect_ambience;
-            player.effect_particle_type_ids = previous.effect_particle_type_ids;
+            player.effect_particles = previous.effect_particles;
             player.sleep.pos = previous.sleep.pos;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
@@ -226,18 +226,8 @@ impl ClientWorld {
         else {
             return false;
         };
-        let mut effect = ClientMobEffectState {
-            effect_id,
-            amplifier,
-            duration_ticks,
-            flags,
-            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
-        };
-        // `ClientPacketListener.handleUpdateMobEffect`: unless the packet asks for it to blend,
-        // the effect starts as faded in as it will be.
-        if flags & 0b1000 == 0 {
-            effect.skip_blending();
-        }
+        let mut effect =
+            ClientMobEffectState::from_packet(effect_id, amplifier, duration_ticks, flags);
         if let Some(existing) = player
             .effects
             .iter_mut()

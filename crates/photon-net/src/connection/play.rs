@@ -448,6 +448,46 @@ mod tests {
         assert!(controlled(&session));
     }
 
+    /// `handleRespawn`: the new player's attributes come from the old player's own, the sprinting
+    /// modifier the client put on among them, kept whole or only as their bases.
+    #[test]
+    fn a_respawn_carries_the_old_players_own_attributes() {
+        use photon_world::{ClientAttributeModifierState, ClientAttributeState};
+        let speed = photon_data::entity_type::attribute("minecraft:movement_speed")
+            .unwrap()
+            .0 as i32;
+        for (keep, expected) in [
+            (
+                photon_world::PLAYER_RESPAWN_KEEP_ATTRIBUTE_MODIFIERS,
+                0.1 * (1.0 + 0.3),
+            ),
+            (0, 0.1),
+        ] {
+            let (mut session, _far_end) = detached();
+            let own = EntityId(1);
+            session.local.player_id = Some(own);
+            session.world.set_local_player_id(own);
+            let mut player = LocalPlayer::new(
+                own,
+                Vec3::new(8.0, 64.0, 8.0),
+                0.0,
+                0.0,
+                session.local.game_mode,
+                session.link.auto_jump,
+            );
+            // The client's own copy has the modifier; the server never sent it.
+            let sprinting = ClientAttributeModifierState::new("minecraft:sprinting".into(), 0.3, 2);
+            player.set_attributes(&[ClientAttributeState::new(speed, 0.1, vec![sprinting])]);
+            session.local.player = Some(player);
+            session.recreate_player_state(keep);
+            let state = session.world.local_player().unwrap();
+            assert_eq!(
+                state.attribute_value("minecraft:movement_speed"),
+                Some(expected)
+            );
+        }
+    }
+
     /// A server never adds the client's own player as an entity, yet naming it ends a spectating.
     #[test]
     fn set_camera_to_the_player_returns_the_view_without_an_added_player() {

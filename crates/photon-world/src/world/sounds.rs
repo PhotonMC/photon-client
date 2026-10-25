@@ -17,6 +17,11 @@ impl ClientWorld {
         self.entity_sound_random.fix_seed(seed);
     }
 
+    /// The particles the living entities' effects threw since the last call, in order.
+    pub fn take_effect_particles(&mut self) -> Vec<particles::LevelParticles> {
+        std::mem::take(&mut self.effect_particles.0)
+    }
+
     /// The sounds made since the last call, in order.
     pub fn take_sounds(&mut self) -> Vec<local_player::LocalSound> {
         std::mem::take(&mut self.sounds.0)

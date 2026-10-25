@@ -309,9 +309,11 @@ impl Gui {
             &mut frame,
             (gui_size, &mut draw_item),
         );
+        // The menus drawn over the game have no map data.
         let mut menu_tooltip = Self::stack_tooltip_lines(
             (&self.lang, &self.registries),
             controls.options.advanced_item_tooltips,
+            photon_game::tooltip::Context::EMPTY,
         );
         Self::draw_menu(
             (&self.atlas, &self.font, &self.lang),
@@ -369,24 +371,15 @@ impl Gui {
                 .unwrap_or_default()
             };
             // A stack's tooltip in words.
-            let lang = &self.lang;
-            let registries = &self.registries;
             let maps = |id: i32| map_info(world, id);
-            let mut tooltip_lines = |stack: &ClientItemStackState, creative: bool| {
-                photon_game::tooltip::lines(
-                    stack,
-                    true,
-                    photon_game::tooltip::Flags {
-                        creative,
-                        advanced: controls.options.advanced_item_tooltips,
-                    },
-                    registries,
-                    &maps,
-                )
-                .iter()
-                .map(|line| lang.runs(line, &Style::default()))
-                .collect::<Vec<_>>()
-            };
+            let mut tooltip_lines = Self::stack_tooltip_lines(
+                (&self.lang, &self.registries),
+                controls.options.advanced_item_tooltips,
+                photon_game::tooltip::Context {
+                    maps: &maps,
+                    tick_rate: session.tick_rate(),
+                },
+            );
             let mut draw = ScreenDraw {
                 frame: &mut frame,
                 atlas: &self.atlas,
@@ -399,10 +392,7 @@ impl Gui {
                 control_held: controls.mods.control,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
                 widget_tooltips: true,
-                held: (
-                    session.status().selected_slot as usize,
-                    crate::hud_input::held_casts(session),
-                ),
+                viewer: crate::hud_input::screen_viewer(session),
                 book: session.world().recipe_book(),
                 tags: session.world().block_state_registry().item_tags(),
             };
@@ -445,13 +435,14 @@ impl Gui {
 }
 
 impl Gui {
-    /// A stack's tooltip in words for the menus drawn over the game, which have no map data.
+    /// A stack's tooltip in words, in the context of the level's maps and tick rate.
     fn stack_tooltip_lines<'a>(
         (lang, registries): (
             &'a photon_game::text::Lang,
             &'a photon_game::registries::Registries,
         ),
         advanced: bool,
+        context: photon_game::tooltip::Context<'a>,
     ) -> impl FnMut(&ClientItemStackState, bool) -> Vec<Vec<photon_game::text::Run>> + 'a {
         move |stack, creative| {
             photon_game::tooltip::lines(
@@ -459,7 +450,7 @@ impl Gui {
                 true,
                 photon_game::tooltip::Flags { creative, advanced },
                 registries,
-                &photon_game::tooltip::no_maps,
+                context,
             )
             .iter()
             .map(|line| lang.runs(line, &Style::default()))

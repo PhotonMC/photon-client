@@ -140,8 +140,8 @@ impl ClientEntity {
         self.effect_ambience
     }
 
-    pub fn effect_particle_type_ids(&self) -> &[i32] {
-        &self.effect_particle_type_ids
+    pub fn effect_particles(&self) -> &[EffectParticle] {
+        &self.effect_particles
     }
 
     pub fn sleeping_pos(&self) -> Option<photon_core::binary::BlockPos> {

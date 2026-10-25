@@ -293,6 +293,31 @@ impl PlaySession {
         Ok(())
     }
 
+    /// The player the first position packet makes, with what the server told before it came.
+    fn new_player(&mut self, position: Vec3, (y_rot, x_rot): (f32, f32)) -> LocalPlayer {
+        let mut player = LocalPlayer::new(
+            self.local.player_id.unwrap_or(EntityId(0)),
+            position,
+            y_rot,
+            x_rot,
+            self.local.game_mode,
+            self.link.auto_jump,
+        );
+        player.set_controlled_camera(self.local.camera.is_none());
+        // The attributes that came before the player did, and those a respawn kept.
+        if let Some(state) = self.world.local_player() {
+            player.set_attributes(state.attributes());
+        }
+        // A health update that came before the player did is its first.
+        if self.local.health_received {
+            player.hurt_to(self.local.status.health);
+        }
+        if let Some((carry, cooldown)) = self.local.respawn_portal.take() {
+            player.restore_portal(carry, cooldown);
+        }
+        player
+    }
+
     /// `ClientPacketListener.handleMovePlayer`.
     /// `setValuesFromPositionPacket` for the local player: a rider stays where its vehicle puts it.
     pub(super) fn place_player(&mut self, packet: &PlayerPositionPacket) {
@@ -304,29 +329,14 @@ impl PlaySession {
         });
         let absolute = resolve_player_position(*packet, current);
         let position = Vec3::new(absolute.0, absolute.1, absolute.2);
-        let known_health = self
+        if self.local.player.is_none() {
+            self.local.player = Some(self.new_player(position, (absolute.3, absolute.4)));
+        }
+        let player = self
             .local
-            .health_received
-            .then_some(self.local.status.health);
-        let player = self.local.player.get_or_insert_with(|| {
-            let mut player = LocalPlayer::new(
-                self.local.player_id.unwrap_or(EntityId(0)),
-                position,
-                absolute.3,
-                absolute.4,
-                self.local.game_mode,
-                self.link.auto_jump,
-            );
-            player.set_controlled_camera(self.local.camera.is_none());
-            // A health update that came before the player did is its first.
-            if let Some(health) = known_health {
-                player.hurt_to(health);
-            }
-            if let Some((carry, cooldown)) = self.local.respawn_portal.take() {
-                player.restore_portal(carry, cooldown);
-            }
-            player
-        });
+            .player
+            .as_mut()
+            .expect("the player was just made if it was missing");
         if let Some(abilities) = self.local.abilities {
             player.set_abilities(abilities);
         }

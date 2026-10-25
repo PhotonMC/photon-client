@@ -225,6 +225,8 @@ class BlockItemOracle extends BlockPropertyOracle {
             described.addProperty("color", effect.getColor());
             described.addProperty("description_id", effect.getDescriptionId());
             described.addProperty("style", effect.getCategory().getTooltipFormatting().name());
+            // The category itself: a neutral effect's tooltip is as blue as a beneficial one's.
+            described.addProperty("category", effect.getCategory().name());
             var modifiers = new JsonArray();
             var attributeRegistry = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE;
             effect.createModifiers(0, (attribute, modifier) -> {

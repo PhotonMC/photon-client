@@ -60,6 +60,24 @@ pub struct ClientAttributeState {
     pub(crate) modifiers: Vec<ClientAttributeModifierState>,
 }
 
+/// One of the particles a living entity's effects give off (`DATA_EFFECT_PARTICLES`): the entity
+/// effect's swirl in an ARGB colour, or a simple particle of an effect's own (oozing's slime).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EffectParticle {
+    pub type_id: i32,
+    pub color: Option<u32>,
+}
+
+impl EffectParticle {
+    /// The particle's options, as the engine makes it from them.
+    pub fn data(self) -> crate::particles::ParticleData {
+        self.color.map_or(
+            crate::particles::ParticleData::Plain,
+            crate::particles::ParticleData::Color,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientMobEffectState {
     pub(crate) effect_id: i32,
@@ -115,6 +133,32 @@ impl ClientMobEffectState {
 
     pub fn flags(&self) -> u8 {
         self.flags
+    }
+
+    /// `ClientPacketListener.handleUpdateMobEffect`'s effect: unless the packet's flags ask for it
+    /// to blend, it starts as faded in as it will be.
+    pub fn from_packet(effect_id: i32, amplifier: i32, duration_ticks: i32, flags: u8) -> Self {
+        let mut effect = Self {
+            effect_id,
+            amplifier,
+            duration_ticks,
+            flags,
+            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
+        };
+        if flags & 0b1000 == 0 {
+            effect.skip_blending();
+        }
+        effect
+    }
+
+    /// `MobEffectInstance.isAmbient`: the packet's ambient flag (a beacon's).
+    pub fn is_ambient(&self) -> bool {
+        self.flags & 0b0001 != 0
+    }
+
+    /// `MobEffectInstance.showIcon`: the packet's icon flag.
+    pub fn shows_icon(&self) -> bool {
+        self.flags & 0b0100 != 0
     }
 
     /// An effect as a client first has it from a packet that does (`blends`) or does not ask for it

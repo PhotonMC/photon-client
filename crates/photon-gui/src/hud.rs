@@ -3,6 +3,7 @@
 //! Sprites come from the GUI atlas, the reference's `gui/sprites` folder,
 //! drawn at the size the HUD asks for.
 pub mod boss_bar;
+pub mod effects;
 mod hotbar;
 pub mod locator;
 mod overlays;
@@ -124,6 +125,9 @@ pub struct HudInput {
     /// The crosshair is on a living entity that is alive
     /// (`crosshairPickEntity`).
     pub target_is_living: bool,
+    /// The player's active effects, or none while the open screen lists them itself
+    /// (`showsActiveEffects`).
+    pub effects: Vec<photon_world::ClientMobEffectState>,
     /// The hotbar's stacks and the off hand's.
     pub hotbar: [Option<photon_world::ClientItemStackState>; 9],
     pub offhand: Option<photon_world::ClientItemStackState>,
@@ -204,6 +208,7 @@ impl Hud {
             Self::vehicle_health(frame, atlas, (width, height), vehicle);
         }
         self.contextual_bar(frame, atlas, font, (width, height), input);
+        effects::draw(frame, atlas, width, &input.effects);
     }
 
     /// `draw` into a new frame.

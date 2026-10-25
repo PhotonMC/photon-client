@@ -154,6 +154,27 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         holder, 1000000, effect.get("amplifier").getAsInt()), null);
                 }
             }
+            if (breaking_.has("attributes")) {
+                // As `handleUpdateAttributes` sets each attribute the server sent: a client's own
+                // effects add no modifiers, so a potion's speed comes in this way.
+                for (var attributeElement : breaking_.getAsJsonArray("attributes")) {
+                    var described = attributeElement.getAsJsonObject();
+                    var holder = net.minecraft.core.registries.BuiltInRegistries.ATTRIBUTE.get(
+                        net.minecraft.resources.Identifier.parse(described.get("attribute").getAsString()))
+                        .orElseThrow();
+                    var instance = player.getAttributes().getInstance(holder);
+                    instance.setBaseValue(Oracle.f64(described, "base"));
+                    instance.removeModifiers();
+                    for (var modifierElement : described.getAsJsonArray("modifiers")) {
+                        var modifier = modifierElement.getAsJsonObject();
+                        instance.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                            net.minecraft.resources.Identifier.parse(modifier.get("id").getAsString()),
+                            Oracle.f64(modifier, "amount"),
+                            net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.BY_ID.apply(
+                                modifier.get("operation").getAsInt())));
+                    }
+                }
+            }
         }
         if (row.has("entities")) {
             // Entities the server told of: made as the type makes them, put

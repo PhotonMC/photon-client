@@ -161,6 +161,8 @@ use movement::*;
 mod movement_gear;
 mod movement_player;
 use movement_gear::*;
+mod movement_status;
+use movement_status::*;
 mod quads;
 use quads::*;
 mod frog;

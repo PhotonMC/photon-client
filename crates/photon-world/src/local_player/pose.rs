@@ -21,7 +21,7 @@ impl LocalPlayer {
             x_rot: self.x_rot,
             walk_position: self.walk.position_at(partial_tick),
             walk_speed: self.walk.speed_at(partial_tick),
-            swim_amount: lerp(self.swim_amount_old, self.swim_amount),
+            swim_amount: lerp(self.swim_amount.1, self.swim_amount.0),
             crouching: self.pose == ClientEntityPose::Crouching,
             pose: self.pose,
         }

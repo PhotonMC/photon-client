@@ -190,10 +190,30 @@ fn entity_effect_particles() -> Vec<Value> {
                     "metadata_hex": "0800010a11021c112233441c55667788ff",
                 },
                 {"label": "no-gravity-preserves-effect-particles", "metadata_hex": "050801ff"},
+                // An effect's own simple particle (oozing's `item_slime`, id 59) beside a swirl.
+                {"label": "swirl-and-simple-particle", "metadata_hex": "0a11021c112233443bff"},
                 {"label": "clear-effect-particles", "metadata_hex": "0a1100ff"},
             ],
         }),
     ));
+    // `tickEffects` with a seeded source: how often, which particle and where in the box.
+    let spawns = |label: &str, particles: Value, (ambient, invisible): (bool, bool), seed: i64| {
+        case(
+            format!("client-world/entity-effect-particle-spawns-{label}"),
+            "math",
+            "client_world_entity_effect_particles",
+            json!({"spawn": {"particles": particles, "ambient": ambient, "invisible": invisible,
+                "seed": seed, "ticks": 200}}),
+        )
+    };
+    let swirl = json!([{"type_id": 28, "color": 0x7F33_EBFF_u32 as i32}]);
+    let mixed = json!([{"type_id": 28, "color": -1}, {"type_id": 59}, {"type_id": 28, "color": 0x2603_0201}]);
+    out.push(spawns("swirl", swirl.clone(), (false, false), 7));
+    out.push(spawns("ambient", swirl.clone(), (true, false), 11));
+    out.push(spawns("invisible", swirl.clone(), (false, true), 13));
+    out.push(spawns("ambient-invisible", swirl, (true, true), 17));
+    out.push(spawns("mixed", mixed, (false, false), 19));
+    out.push(spawns("none", json!([]), (false, false), 23));
     out.push(case(
         "client-world/entity-sleeping-position",
         "math",
