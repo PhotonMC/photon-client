@@ -26,6 +26,11 @@ impl ClientEntity {
         self.living.tamable_flags & 4 != 0
     }
 
+    /// `TamableAnimal.getOwnerReference`: the owner's uuid, when the data names one.
+    pub fn owner(&self) -> Option<photon_core::binary::Uuid> {
+        self.living.owner
+    }
+
     /// The dye of a wolf's collar (`Wolf.getCollarColor`).
     pub fn collar_dye(&self) -> i32 {
         // `DyeColor.RED` until the data says otherwise.

@@ -38,6 +38,7 @@ impl PlaySession {
             cooldowns: &mut self.local.item_cooldowns,
             instruments: &instruments,
             game_master: self.local.permission_level >= 2,
+            profile_id: self.state.profile_id,
         };
         let sent = self.local.game_mode_state.keys_tick(&mut ctx, keys, aim);
         for packet in sent {

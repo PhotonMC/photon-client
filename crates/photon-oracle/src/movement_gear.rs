@@ -393,6 +393,7 @@ fn apply_species_flags(
         data.push(255);
         world.apply_entity_metadata(id, &data);
     }
+    apply_pet_flags(world, id, described)?;
     if described.get("saddled").is_some() {
         let saddle = photon_game::item::id_of("minecraft:saddle").ok_or("no saddle item")?;
         world.entities_mut().apply_equipment(
@@ -419,6 +420,53 @@ fn apply_species_flags(
     }
     if described.get("bare").is_some() {
         world.apply_entity_metadata(id, &[photon_world::SNOW_GOLEM_PUMPKIN_DATA_ID, 0, 0, 255]);
+    }
+    Ok(())
+}
+
+/// A tamed pet's flags: tame (owned by the player, or by another uuid when the flag is a string),
+/// sitting, a collar dye, a health below the maximum and a wolf armor on its body.
+fn apply_pet_flags(
+    world: &mut photon_world::ClientWorld,
+    id: EntityId,
+    described: &Value,
+) -> Result<(), String> {
+    if let Some(tame) = described.get("tame") {
+        let sitting = u8::from(described.get("sitting").is_some());
+        world.apply_entity_metadata(
+            id,
+            &[photon_world::TAMABLE_FLAGS_DATA_ID, 0, 4 | sitting, 255],
+        );
+        let owner = if tame.is_string() {
+            0x7002
+        } else {
+            super::movement::ORACLE_PLAYER_UUID
+        };
+        let mut data = vec![photon_world::TAMABLE_OWNER_DATA_ID, 13, 1];
+        data.extend_from_slice(&0_u64.to_be_bytes());
+        data.extend_from_slice(&owner.to_be_bytes());
+        data.push(255);
+        world.apply_entity_metadata(id, &data);
+    }
+    if let Some(dye) = described.get("collar").and_then(Value::as_i64) {
+        let mut data = vec![photon_world::WOLF_COLLAR_DATA_ID, 1];
+        photon_core::wire::write_varint(dye as i32, &mut data);
+        data.push(255);
+        world.apply_entity_metadata(id, &data);
+    }
+    if let Some(health) = described.get("hurt").and_then(Value::as_f64) {
+        let mut data = vec![9, 3];
+        data.extend_from_slice(&(health as f32).to_be_bytes());
+        data.push(255);
+        world.apply_entity_metadata(id, &data);
+    }
+    if described.get("armored").is_some() {
+        let armor = photon_game::item::id_of("minecraft:wolf_armor").ok_or("no wolf armor item")?;
+        world.entities_mut().apply_equipment(
+            id,
+            photon_world::EquipmentSlot::Body,
+            Some(photon_world::ClientItemStackState::new(1, armor)),
+        );
     }
     Ok(())
 }

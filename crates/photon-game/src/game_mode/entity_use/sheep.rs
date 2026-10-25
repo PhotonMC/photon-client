@@ -46,7 +46,7 @@ impl Context<'_> {
 
     /// `DyeColor.getId` of the held dye: the stack has the `dye` component, and the vanilla
     /// items carrying it are the sixteen `<colour>_dye`.
-    fn held_dye(&self, hand: u8) -> Option<u8> {
+    pub(super) fn held_dye(&self, hand: u8) -> Option<u8> {
         let stack = self
             .world
             .local_player()

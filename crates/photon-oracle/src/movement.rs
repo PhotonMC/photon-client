@@ -1,5 +1,17 @@
 use super::*;
 
+/// The uuid the oracle gives the local player in rows that name an owner (the Java side sets the same).
+pub(crate) const ORACLE_PLAYER_UUID: u64 = 0x7001;
+
+fn oracle_player_uuid() -> photon_core::binary::Uuid {
+    photon_core::binary::Uuid::new(0, ORACLE_PLAYER_UUID)
+}
+
+/// A click count of a row: a non-negative int.
+fn count_field(value: &Value, key: &str) -> Result<u32, String> {
+    u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
+}
+
 pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     use photon_world::ClientPlayerGameMode;
     use photon_world::local_player::LocalPlayer;
@@ -327,9 +339,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                     None => photon_game::game_mode::Aim::Miss,
                 };
-                let count = |value: &Value, key: &str| -> Result<u32, String> {
-                    u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
-                };
+                let count = count_field;
                 let use_ = attack.get("use");
                 let keys = photon_game::game_mode::Keys {
                     attack_clicks: count(attack, "clicks")?,
@@ -350,6 +360,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     cooldowns: &mut cooldowns,
                     instruments: &instruments,
                     game_master: false,
+                    profile_id: row.get("player_uuid").map(|_| oracle_player_uuid()),
                 };
                 actions = game_mode.keys_tick(&mut ctx, keys, aim);
             }

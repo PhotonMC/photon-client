@@ -45,6 +45,22 @@ pub(crate) fn metadata_byte_value(metadata: &[u8], target_data_id: u8) -> Option
     Some(value)
 }
 
+/// The owner a tamable animal's data holds (`DATA_OWNERUUID_ID`, an optional entity reference:
+/// a presence flag and a uuid); `Some(None)` is a cleared owner.
+pub(crate) fn metadata_owner(metadata: &[u8]) -> Option<Option<photon_core::binary::Uuid>> {
+    let (serializer, value) = find_metadata_field(metadata, TAMABLE_OWNER_DATA_ID)?;
+    if serializer != 13 {
+        return None;
+    }
+    let (&present, rest) = value.split_first()?;
+    if present == 0 {
+        return Some(None);
+    }
+    let most = u64::from_be_bytes(rest.get(..8)?.try_into().ok()?);
+    let least = u64::from_be_bytes(rest.get(8..16)?.try_into().ok()?);
+    Some(Some(photon_core::binary::Uuid::new(most, least)))
+}
+
 pub(crate) fn metadata_boolean_value(metadata: &[u8], target_data_id: u8) -> Option<bool> {
     let (serializer_id, value_input) = find_metadata_field(metadata, target_data_id)?;
     if serializer_id != ENTITY_DATA_SERIALIZER_BOOLEAN_ID {
@@ -356,6 +372,23 @@ mod tests {
         }
         out.push(255);
         out
+    }
+
+    #[test]
+    fn a_pet_owner_reads_as_a_uuid_and_a_cleared_one_as_none() {
+        let mut uuid = vec![1];
+        uuid.extend_from_slice(&5_u64.to_be_bytes());
+        uuid.extend_from_slice(&9_u64.to_be_bytes());
+        let owned = data(&[(TAMABLE_OWNER_DATA_ID, 13, &uuid)]);
+        assert_eq!(
+            metadata_owner(&owned),
+            Some(Some(photon_core::binary::Uuid::new(5, 9)))
+        );
+        assert_eq!(
+            metadata_owner(&data(&[(TAMABLE_OWNER_DATA_ID, 13, &[0])])),
+            Some(None)
+        );
+        assert_eq!(metadata_owner(&data(&[])), None);
     }
 
     #[test]

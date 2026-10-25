@@ -12,6 +12,7 @@ use crate::movement::player::scene::keys;
 use crate::movement::world::put;
 
 mod herding;
+mod pets;
 mod pickups;
 mod saddles;
 mod villagers;
@@ -320,6 +321,7 @@ pub fn rows() -> Vec<Value> {
         herding::rows(),
         villagers::rows(),
         pickups::rows(),
+        pets::rows(),
         saddles::rows(),
     ]
     .concat()

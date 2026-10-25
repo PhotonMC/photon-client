@@ -501,6 +501,7 @@ pub(crate) fn wolf_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) ->
         });
     WolfData {
         flags: metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID),
+        owner: metadata_owner(metadata),
         interested: metadata_boolean_value(metadata, WOLF_INTERESTED_DATA_ID),
         collar: metadata_int_value(metadata, WOLF_COLLAR_DATA_ID),
         anger_end,
@@ -523,6 +524,7 @@ pub(crate) fn cat_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> 
     }
     CatData {
         flags: metadata_byte_value(metadata, TAMABLE_FLAGS_DATA_ID),
+        owner: metadata_owner(metadata),
         lying: metadata_boolean_value(metadata, CAT_LYING_DATA_ID),
         relaxed: metadata_boolean_value(metadata, CAT_RELAX_DATA_ID),
         collar: metadata_int_value(metadata, CAT_COLLAR_DATA_ID),
@@ -549,6 +551,7 @@ pub(crate) fn fox_data_from_metadata(
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct WolfData {
     pub(crate) flags: Option<u8>,
+    pub(crate) owner: Option<Option<photon_core::binary::Uuid>>,
     pub(crate) interested: Option<bool>,
     pub(crate) collar: Option<i32>,
     pub(crate) anger_end: Option<i64>,
@@ -559,6 +562,7 @@ pub(crate) struct WolfData {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct CatData {
     pub(crate) flags: Option<u8>,
+    pub(crate) owner: Option<Option<photon_core::binary::Uuid>>,
     pub(crate) lying: Option<bool>,
     pub(crate) relaxed: Option<bool>,
     pub(crate) collar: Option<i32>,

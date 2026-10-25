@@ -378,6 +378,8 @@ pub(crate) struct EntityState {
     /// A tamable animal's flags (1 sitting, 4 tame), a wolf's interest, and
     /// the dye of its collar, when the data has said (red otherwise).
     pub(crate) tamable_flags: u8,
+    /// The owner a tamable animal names (`TamableAnimal.getOwnerReference`).
+    pub(crate) owner: Option<photon_core::binary::Uuid>,
     pub(crate) wolf_interested: bool,
     /// A wolf's interest angle and shake.
     pub(crate) wolf: crate::mobs::wolf::WolfState,
@@ -448,6 +450,9 @@ impl EntityState {
         if let Some(flags) = cat.flags {
             self.tamable_flags = flags;
         }
+        if let Some(owner) = cat.owner {
+            self.owner = owner;
+        }
         if let Some(lying) = cat.lying {
             self.cat_lying = lying;
         }
@@ -463,6 +468,9 @@ impl EntityState {
     pub(crate) fn apply_wolf(&mut self, wolf: crate::metadata::WolfData) {
         if let Some(flags) = wolf.flags {
             self.tamable_flags = flags;
+        }
+        if let Some(owner) = wolf.owner {
+            self.owner = owner;
         }
         if let Some(interested) = wolf.interested {
             self.wolf_interested = interested;

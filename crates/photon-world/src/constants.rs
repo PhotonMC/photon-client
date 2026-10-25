@@ -229,6 +229,7 @@ pub const BEE_ANGER_END_DATA_ID: u8 = 19;
 /// sit: whether it is interested, its collar's dye, the game time its anger
 /// ends and its variant (a registry id).
 pub const TAMABLE_FLAGS_DATA_ID: u8 = 18;
+pub const TAMABLE_OWNER_DATA_ID: u8 = 19;
 pub const WOLF_INTERESTED_DATA_ID: u8 = 20;
 pub const WOLF_COLLAR_DATA_ID: u8 = 21;
 pub const WOLF_ANGER_END_DATA_ID: u8 = 22;

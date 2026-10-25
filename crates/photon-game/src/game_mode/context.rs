@@ -61,6 +61,8 @@ pub struct Context<'a> {
     pub instruments: &'a [Option<crate::item::instrument::Instrument>],
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
     pub game_master: bool,
+    /// The player's profile id, as the server logged it in (`Player.getUUID`).
+    pub profile_id: Option<photon_core::binary::Uuid>,
 }
 
 impl Context<'_> {

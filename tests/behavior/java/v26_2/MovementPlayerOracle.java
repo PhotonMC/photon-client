@@ -21,6 +21,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
         // The server hands out the entity id at login; the scenario names it,
         // because the sprint command packet carries it.
         player.setId(row.get("entity_id").getAsInt());
+        if (row.has("player_uuid")) {
+            // Rows with an owned pet: the owner is told by uuid, the same one on the Rust side.
+            player.setUUID(new java.util.UUID(0L, 0x7001L));
+        }
         // The entity's random starts from nowhere in particular; the port seeds it from the id.
         player.getRandom().setSeed(player.getId());
         setField(minecraft, "player", player);
@@ -165,6 +169,29 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 if (described.has("saddled") && entity instanceof net.minecraft.world.entity.Mob saddledMob) {
                     saddledMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
                         new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+                }
+                if (described.has("tame") && entity instanceof net.minecraft.world.entity.TamableAnimal pet) {
+                    // `tame` is true for a pet the player owns, "other" for one of another owner.
+                    pet.setTame(true, false);
+                    if (described.get("tame").isJsonPrimitive() && described.get("tame").getAsJsonPrimitive().isString()) {
+                        pet.setOwnerReference(net.minecraft.world.entity.EntityReference.of(new java.util.UUID(0L, 0x7002L)));
+                    } else {
+                        pet.setOwner(player);
+                    }
+                    if (described.has("sitting")) {
+                        pet.setInSittingPose(true);
+                    }
+                    if (described.has("collar") && entity instanceof net.minecraft.world.entity.animal.wolf.Wolf wolf) {
+                        var setCollar = Reflect.method(net.minecraft.world.entity.animal.wolf.Wolf.class, "setCollarColor", net.minecraft.world.item.DyeColor.class);
+                        setCollar.invoke(wolf, net.minecraft.world.item.DyeColor.byId(described.get("collar").getAsInt()));
+                    }
+                }
+                if (described.has("hurt") && entity instanceof net.minecraft.world.entity.LivingEntity hurtMob) {
+                    hurtMob.setHealth(described.get("hurt").getAsFloat());
+                }
+                if (described.has("armored") && entity instanceof net.minecraft.world.entity.Mob armoredMob) {
+                    armoredMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WOLF_ARMOR));
                 }
                 if (described.has("tamed") && entity instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
                     horse.setTamed(true);
