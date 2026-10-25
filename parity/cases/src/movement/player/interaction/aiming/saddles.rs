@@ -30,6 +30,8 @@ fn kind_rows(kind: &str) -> Vec<Value> {
         click("saddle-on-baby", &["baby"], saddle, once()),
         click("saddle-on-saddled", &["saddled"], saddle, sneaking()),
         click("stone-on-bare", &[], "minecraft:stone", once()),
+        click("horse-armor-on-bare", &[], "minecraft:iron_horse_armor", once()),
+        click("wolf-armor-on-bare", &[], "minecraft:wolf_armor", once()),
         click("food-on-bare", &[], food, once()),
     ]
 }
