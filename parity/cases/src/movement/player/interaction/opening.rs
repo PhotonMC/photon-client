@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
-use crate::movement::world::put_with;
+use crate::movement::world::{put, put_with};
 
 fn door(block: &str, half: &str, open: bool, y: i64) -> Value {
     put_with(
@@ -72,6 +72,135 @@ fn comparator(mode: &str) -> Vec<Value> {
     vec![put_with(0, 64, 2, "minecraft:comparator", &[("facing", "north"), ("mode", mode), ("powered", "false")])]
 }
 
+/// A use of the block at (0, 64, 2) with a block in hand: a pass lets the block go down in front
+/// of the face, a success or consume does not.
+fn hand_row(label: &str, world: Vec<Value>, aim: &Value) -> super::Interaction {
+    let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
+    let ticks = [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    using(label, world, ticks).main_hand("minecraft:stone").count(4)
+}
+
+fn north() -> Value {
+    aim_at((0, 64, 2), "north", (0.5, 64.5, 2.0))
+}
+
+fn bed_and_plants() -> Vec<Value> {
+    let bed = |part: &str, z: i64| {
+        put_with(0, 64, z, "minecraft:red_bed", &[("facing", "south"), ("occupied", "false"), ("part", part)])
+    };
+    let vines = |block: &str, props: &[(&str, &str)]| vec![put_with(0, 64, 2, block, props)];
+    let top = aim_at((0, 64, 2), "up", (0.5, 65.0, 2.5));
+    vec![
+        hand_row(
+            "bed-head-server-answers",
+            vec![bed("foot", 1), bed("head", 2)],
+            &aim_at((0, 64, 2), "up", (0.5, 64.5625, 2.5)),
+        )
+        .row(),
+        hand_row("fence-passes", vec![put(0, 64, 2, "minecraft:oak_fence")], &north()).row(),
+        hand_row("light-consumes", vines("minecraft:light", &[("level", "7"), ("waterlogged", "false")]), &north())
+            .row(),
+        hand_row(
+            "cave-vines-with-berries",
+            vines("minecraft:cave_vines", &[("age", "3"), ("berries", "true")]),
+            &north(),
+        )
+        .row(),
+        hand_row(
+            "cave-vines-without-berries",
+            vines("minecraft:cave_vines", &[("age", "3"), ("berries", "false")]),
+            &north(),
+        )
+        .row(),
+        hand_row(
+            "cave-vines-plant-with-berries",
+            vines("minecraft:cave_vines_plant", &[("berries", "true")]),
+            &north(),
+        )
+        .row(),
+        hand_row("daylight-detector-builds", vec![put(0, 64, 2, "minecraft:daylight_detector")], &top).row(),
+        hand_row("daylight-detector-adventure", vec![put(0, 64, 2, "minecraft:daylight_detector")], &top)
+            .game_mode("adventure")
+            .row(),
+    ]
+}
+
+fn repeaters() -> Vec<Value> {
+    let repeater = |delay: &str| {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:repeater",
+            &[("delay", delay), ("facing", "north"), ("locked", "false"), ("powered", "false")],
+        )]
+    };
+    let on_top = aim_at((0, 64, 2), "up", (0.5, 64.125, 2.5));
+    vec![
+        hand_row("repeater-delay-1", repeater("1"), &on_top).row(),
+        hand_row("repeater-delay-4", repeater("4"), &on_top).row(),
+        hand_row("repeater-adventure", repeater("2"), &on_top).game_mode("adventure").row(),
+    ]
+}
+
+fn bells() -> Vec<Value> {
+    let bell = |attachment: &str| {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:bell",
+            &[("attachment", attachment), ("facing", "north"), ("powered", "false")],
+        )]
+    };
+    let east = aim_at((0, 64, 2), "east", (1.0, 64.5, 2.5));
+    let high = aim_at((0, 64, 2), "north", (0.5, 64.9, 2.0));
+    vec![
+        hand_row("bell-floor-front", bell("floor"), &north()).row(),
+        hand_row("bell-floor-side", bell("floor"), &east).row(),
+        hand_row("bell-floor-high", bell("floor"), &high).row(),
+        hand_row("bell-wall-front", bell("single_wall"), &north()).row(),
+        hand_row("bell-wall-side", bell("single_wall"), &east).row(),
+        hand_row("bell-ceiling-side", bell("ceiling"), &east).row(),
+    ]
+}
+
+/// These open a screen or act on the server; the client's use ends in a success.
+fn server_work() -> Vec<Value> {
+    [
+        "chest",
+        "ender_chest",
+        "crafting_table",
+        "furnace",
+        "anvil",
+        "hopper",
+        "barrel",
+        "shulker_box",
+        "dragon_egg",
+        "beacon",
+        "brewing_stand",
+        "stonecutter",
+        "dispenser",
+        "enchanting_table",
+        "loom",
+        "grindstone",
+        "smithing_table",
+        "cartography_table",
+        "crafter",
+        "lever",
+    ]
+    .iter()
+    .map(|block| {
+        let world = vec![put(0, 64, 2, &format!("minecraft:{block}"))];
+        hand_row(&format!("server-work-{block}"), world, &north()).row()
+    })
+    .collect()
+}
+
+fn hand_rows() -> Vec<Value> {
+    [bed_and_plants(), repeaters(), bells(), server_work()].concat()
+}
+
 pub fn rows() -> Vec<Value> {
     let around = [(0, 64, 2), (0, 65, 2)];
     let at_door = aim_at((0, 64, 2), "north", (0.5, 64.5, 2.0));
@@ -79,7 +208,7 @@ pub fn rows() -> Vec<Value> {
     let at_upper = aim_at((0, 65, 2), "north", (0.5, 65.5, 2.0));
     let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
     let row = |label: &str, world: Vec<Value>, aim: &Value| using(label, world, run(aim));
-    vec![
+    let mut rows = vec![
         row("door-oak-opens", door_world("minecraft:oak_door", false), &at_door).row(),
         row("door-oak-closes", door_world("minecraft:oak_door", true), &at_door).row(),
         row("door-oak-upper-half", door_world("minecraft:oak_door", false), &at_upper).row(),
@@ -115,5 +244,7 @@ pub fn rows() -> Vec<Value> {
         row("comparator-to-compare", comparator("subtract"), &on_top).row(),
         row("comparator-adventure-passes", comparator("compare"), &on_top).game_mode("adventure").row(),
         row("button-powered-consumes", button("minecraft:oak_button", true), &at_door).row(),
-    ]
+    ];
+    rows.extend(hand_rows());
+    rows
 }

@@ -232,7 +232,7 @@ impl GameMode {
                 return item_use;
             }
             if item_use == UseResult::TryEmptyHand && hand == MAIN_HAND {
-                let used = self.use_without_item(ctx, state, (x, y, z));
+                let used = self.use_without_item(ctx, state, (x, y, z), aim);
                 if used.consumes_action() {
                     return used;
                 }
@@ -285,6 +285,7 @@ impl GameMode {
         ctx: &mut Context<'_>,
         state: photon_core::ids::BlockStateId,
         pos: (i32, i32, i32),
+        aim: Aim,
     ) -> UseResult {
         if ctx.can_use_game_master_blocks() && ctx.world.command_block_view(pos).is_some() {
             self.opened_command_block = Some(pos);
@@ -293,14 +294,8 @@ impl GameMode {
         if let Some(result) = self.operator_block(ctx, state, pos) {
             return result;
         }
-        let user = rules::User {
-            facing: photon_core::direction::Direction::from_y_rot(f64::from(
-                ctx.player.rotation().0,
-            )),
-            may_build: ctx.mode != ClientPlayerGameMode::Adventure,
-        };
-        if let Rule::Known(open) = rules::use_openable(state, pos, user) {
-            return Self::open_block(ctx, open);
+        if let Rule::Known(by_hand) = rules::use_by_hand(state, pos, user_of(ctx, aim)) {
+            return Self::by_hand(ctx, by_hand);
         }
         match rules::use_without_item(state) {
             Rule::Known(result) => result,
@@ -308,32 +303,33 @@ impl GameMode {
         }
     }
 
-    /// A door, trap door, fence gate or button used by hand: the block is set and its sound
-    /// plays, as the server leaves the user out of the sound it broadcasts.
-    fn open_block(ctx: &mut Context<'_>, open: rules::OpenUse) -> UseResult {
-        let opened = match open {
-            rules::OpenUse::Pass => return UseResult::Pass,
-            rules::OpenUse::Consume => return UseResult::Success { swing: false },
-            rules::OpenUse::Done(opened) => opened,
+    /// A block used by hand that the client runs itself: the block it sets, and the sound the
+    /// server leaves the user out of.
+    fn by_hand(ctx: &mut Context<'_>, by_hand: rules::HandUse) -> UseResult {
+        let opened = match by_hand {
+            rules::HandUse::Result(result) => return result,
+            rules::HandUse::Set(opened) => opened,
         };
         let write = opened.write;
         let position = ctx.player.position();
         ctx.world
             .set_block_with_updates(write.pos, write.state, write.flags, 512, position);
-        let pitch = opened
-            .pitch
-            .unwrap_or_else(|| ctx.world.block_use_sound_pitch());
-        let at = (
-            f64::from(write.pos.0) + 0.5,
-            f64::from(write.pos.1) + 0.5,
-            f64::from(write.pos.2) + 0.5,
-        );
-        ctx.world.push_sound(LocalSound::at(
-            opened.sound,
-            LocalSoundSource::Blocks,
-            (opened.volume, pitch),
-            at,
-        ));
+        if let Some(sound) = opened.sound {
+            let pitch = sound
+                .pitch
+                .unwrap_or_else(|| ctx.world.block_use_sound_pitch());
+            let at = (
+                f64::from(write.pos.0) + 0.5,
+                f64::from(write.pos.1) + 0.5,
+                f64::from(write.pos.2) + 0.5,
+            );
+            ctx.world.push_sound(LocalSound::at(
+                sound.event,
+                LocalSoundSource::Blocks,
+                (sound.volume, pitch),
+                at,
+            ));
+        }
         UseResult::Success { swing: true }
     }
 
@@ -524,6 +520,22 @@ impl GameMode {
             face,
             sequence,
         }
+    }
+}
+
+/// Who uses a block by hand, and where the click landed.
+fn user_of(ctx: &Context<'_>, aim: Aim) -> rules::User {
+    let Aim::Block {
+        y, face, location, ..
+    } = aim
+    else {
+        unreachable!("a block is used from an aim at a block");
+    };
+    rules::User {
+        facing: photon_core::direction::Direction::from_y_rot(f64::from(ctx.player.rotation().0)),
+        may_build: ctx.mode != ClientPlayerGameMode::Adventure,
+        face: photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
+        click_y: location[1] - f64::from(y),
     }
 }
 

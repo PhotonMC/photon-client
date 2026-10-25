@@ -18,6 +18,7 @@ use photon_data::item::classes::{ItemClass, ItemMethod};
 use photon_data::item::registry::{ITEMS, Item};
 
 mod bucket;
+mod by_hand;
 mod chest;
 mod chorus;
 mod connect;
@@ -32,7 +33,6 @@ mod growth;
 mod item;
 mod mounted;
 mod note;
-mod openable;
 mod paired;
 mod placement;
 mod redstone;
@@ -48,11 +48,11 @@ mod vine;
 pub use bucket::{
     Pickup, client_waterlogging, holds_water, pickup, replaceable_by_fluid, water_container,
 };
+pub use by_hand::{HandSound, HandUse, Opened, User, use_by_hand};
 pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
     update_context,
 };
-pub use openable::{OpenUse, Opened, User, use_openable};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
