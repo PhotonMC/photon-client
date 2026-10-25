@@ -63,10 +63,22 @@ fn removed_components(row: &Value) -> Vec<i32> {
     removed
 }
 
-/// The stack a row describes: its item and its component patch.
+/// The bytes of a hex string.
+fn hex_bytes(hex: &str) -> Result<Vec<u8>, String> {
+    (0..hex.len() / 2)
+        .map(|at| u8::from_str_radix(&hex[at * 2..at * 2 + 2], 16).map_err(|e| e.to_string()))
+        .collect()
+}
+
+/// The stack a row describes: its item and its component patch, either spelled out field by
+/// field or as the bytes the wire carries (`patch`).
 fn stack_of(row: &Value) -> Result<ClientItemStackState, String> {
     let name = row["item"].as_str().ok_or("item")?;
     let item = photon_game::item::id_of(name).ok_or("unknown item")?;
+    if let Some(wire) = row["patch"].as_str() {
+        let count = row["count"].as_i64().map_or(1, |count| count as i32);
+        return Ok(ClientItemStackState::new(count, item).with_patch_bytes(hex_bytes(wire)?));
+    }
     let added = added_components(row)?;
     let removed = removed_components(row);
     let mut patch = Vec::new();
@@ -83,20 +95,26 @@ fn stack_of(row: &Value) -> Result<ClientItemStackState, String> {
     Ok(ClientItemStackState::new(count, item).with_patch_bytes(patch))
 }
 
+/// What the item models read of a stack, as the draw builds it.
+fn stack_state(stack: &ClientItemStackState) -> ItemState {
+    ItemState {
+        broken: stack.breaks_on_next_damage(),
+        numbers: photon_gui::stack_numbers(stack),
+        custom_model_data: photon_gui::stack_custom_model_data(stack),
+        components: TestedComponents {
+            dyed_color: stack.has_added_component(DYED_COLOR),
+            lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
+        },
+        ..ItemState::default()
+    }
+}
+
 /// Each row's property decided from its stack, by the production conditions.
 pub(super) fn item_condition_result(request: &Value) -> Result<Value, String> {
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         let stack = stack_of(row)?;
-        let state = ItemState {
-            broken: stack.breaks_on_next_damage(),
-            numbers: photon_gui::stack_numbers(&stack),
-            components: TestedComponents {
-                dyed_color: stack.has_added_component(DYED_COLOR),
-                lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
-            },
-            ..ItemState::default()
-        };
+        let state = stack_state(&stack);
         let property = &row["property"];
         let component = property["component"].as_str().map(|name| {
             (
@@ -104,10 +122,10 @@ pub(super) fn item_condition_result(request: &Value) -> Result<Value, String> {
                 property["ignore_default"].as_bool().unwrap_or(false),
             )
         });
-        let value = state.condition(
-            property["property"].as_str().ok_or("property")?,
-            component.as_ref(),
-        );
+        let mut node = property.clone();
+        node["type"] = json!("minecraft:condition");
+        let name = photon_render::item_model::node_property(&node.to_string()).ok_or("property")?;
+        let value = state.condition(&name, component.as_ref());
         rows.push(json!({"label": row["label"], "value": value}));
     }
     Ok(json!({"rows": rows}))
@@ -122,9 +140,8 @@ pub(super) fn item_number_result(request: &Value) -> Result<Value, String> {
         let mut node = row["property"].clone();
         node["type"] = json!("minecraft:range_dispatch");
         let node = node.to_string();
-        let value =
-            photon_render::item_model::stack_range_value(&node, photon_gui::stack_numbers(&stack))
-                .ok_or("property")?;
+        let value = photon_render::item_model::stack_range_value(&node, &stack_state(&stack))
+            .ok_or("property")?;
         let mut out = json!({"label": row["label"]});
         if value.is_nan() {
             out["nan"] = json!(true);
@@ -142,6 +159,7 @@ pub(super) fn item_select_result(request: &Value) -> Result<Value, String> {
     for row in request["rows"].as_array().ok_or("rows")? {
         let stack = stack_of(row)?;
         let state = ItemState {
+            custom_model_data: photon_gui::stack_custom_model_data(&stack),
             block_state: photon_render::item_model::block_state_key(
                 &photon_game::item::values::Values::new(
                     stack.item_registry_id(),
@@ -151,11 +169,14 @@ pub(super) fn item_select_result(request: &Value) -> Result<Value, String> {
             ),
             ..ItemState::default()
         };
-        let property = format!(
-            "{}{}",
-            photon_render::item_model::BLOCK_STATE_SELECT,
-            row["property"].as_str().ok_or("property")?
-        );
+        let property = match row["custom_index"].as_i64() {
+            Some(index) => format!("{}{index}", photon_render::item_model::CUSTOM_MODEL_DATA),
+            None => format!(
+                "{}{}",
+                photon_render::item_model::BLOCK_STATE_SELECT,
+                row["property"].as_str().ok_or("property")?
+            ),
+        };
         let value = photon_render::item_model::select_value(
             &property,
             (photon_render::model::DisplayContext::Gui, &state),

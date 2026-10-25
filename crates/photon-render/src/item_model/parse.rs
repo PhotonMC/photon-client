@@ -296,6 +296,10 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
         "minecraft:damage" | "minecraft:count" if !object.bool("normalize").unwrap_or(true) => {
             format!("{property}{RAW}")
         }
+        // `custom_model_data` names its `index` (0 when absent) the same way.
+        "minecraft:custom_model_data" => {
+            format!("{CUSTOM_MODEL_DATA}{}", object.i32("index").unwrap_or(0))
+        }
         // A clock names its `source` the same way.
         "minecraft:time" => NeedleSource::parse(&object.text("source").unwrap_or_default(), true)
             .map_or(property, |source| {
@@ -331,8 +335,15 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
 /// A `condition` node: its property, the component `has_component` asks about and both branches.
 fn parse_condition(object: &JsonObject) -> ItemModelDef {
     let child = |key: &str| object.object(key).map(parse_item_model);
+    let property = object.text("property").unwrap_or_default();
+    let property = match property.as_str() {
+        "minecraft:custom_model_data" => {
+            format!("{CUSTOM_MODEL_DATA}{}", object.i32("index").unwrap_or(0))
+        }
+        _ => property,
+    };
     ItemModelDef::Condition {
-        property: object.text("property").unwrap_or_default(),
+        property,
         component: object
             .text("component")
             .map(|name| (name, object.bool("ignore_default").unwrap_or(false))),
@@ -347,6 +358,9 @@ fn parse_select(object: &JsonObject) -> ItemModelDef {
     // `block_state` names the property it reads in a field of its own; it is kept in the name.
     let property = match (property.as_str(), object.text("block_state_property")) {
         ("minecraft:block_state", Some(name)) => format!("{BLOCK_STATE_SELECT}{name}"),
+        ("minecraft:custom_model_data", _) => {
+            format!("{CUSTOM_MODEL_DATA}{}", object.i32("index").unwrap_or(0))
+        }
         // The date pattern the clock is formatted by is kept in the name.
         ("minecraft:local_time", _) => match object.text("pattern") {
             Some(pattern) => format!("{LOCAL_TIME_SELECT}{pattern}"),
@@ -454,4 +468,16 @@ pub fn parse_client_item(text: &str) -> Option<ClientItem> {
         hand_animation_on_swap: object.bool("hand_animation_on_swap").unwrap_or(true),
         swap_animation_scale: object.f32("swap_animation_scale").unwrap_or(1.0),
     })
+}
+
+/// The property a `condition`, `range_dispatch` or `select` node written as JSON reads, as the
+/// parser names it (the index of `custom_model_data` and the like are part of the name).
+pub fn node_property(node: &str) -> Option<String> {
+    let object = photon_core::json::parse_object(node)?;
+    match parse_item_model(&object) {
+        ItemModelDef::Condition { property, .. }
+        | ItemModelDef::RangeDispatch { property, .. }
+        | ItemModelDef::Select { property, .. } => Some(property),
+        _ => None,
+    }
 }

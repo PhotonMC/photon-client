@@ -37,8 +37,13 @@ impl BlockRenderer {
         let mut out = Vec::new();
         for layer in layers {
             if let Some(nested) = layer.nested {
-                if let Some((state, tints)) = selected {
-                    out.extend(self.item_layers((nested, state), context, grass, (tints, None)));
+                if let Some((state, tints)) = &selected {
+                    out.extend(self.item_layers(
+                        (nested, state.clone()),
+                        context,
+                        grass,
+                        (*tints, None),
+                    ));
                 }
                 continue;
             }

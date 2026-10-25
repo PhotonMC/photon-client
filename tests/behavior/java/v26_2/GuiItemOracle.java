@@ -10,6 +10,9 @@ class GuiItemOracle extends GuiDialogOracle {
     private static net.minecraft.world.item.ItemStack itemStack(JsonObject row) {
         var id = net.minecraft.resources.Identifier.parse(row.get("item").getAsString());
         var stack = new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
+        if (row.has("patch")) {
+            MovementPlayerOracle.applyWirePatch(stack, row.get("patch").getAsString(), Game26_2.vanillaRegistries());
+        }
         if (row.has("count")) {
             stack.setCount(row.get("count").getAsInt());
         }
@@ -112,8 +115,12 @@ class GuiItemOracle extends GuiDialogOracle {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
-            var property = new net.minecraft.client.renderer.item.properties.select.ItemBlockState(
-                row.get("property").getAsString());
+            net.minecraft.client.renderer.item.properties.select.SelectItemModelProperty<String> property =
+                row.has("custom_index")
+                    ? new net.minecraft.client.renderer.item.properties.select.CustomModelDataProperty(
+                        row.get("custom_index").getAsInt())
+                    : new net.minecraft.client.renderer.item.properties.select.ItemBlockState(
+                        row.get("property").getAsString());
             var value = property.get(itemStack(row), null, null, 0, net.minecraft.world.item.ItemDisplayContext.GUI);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());

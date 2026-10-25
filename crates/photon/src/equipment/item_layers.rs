@@ -279,6 +279,7 @@ impl ItemLayerCache {
             dimension: None,
             cast: self.cast,
             numbers: photon_gui::stack_numbers(stack),
+            custom_model_data: photon_gui::stack_custom_model_data(stack),
             needles: photon_render::item_model::Needles::default(),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
@@ -311,7 +312,7 @@ impl ItemLayerCache {
         state.dimension = Some(photon_render::item_model::intern_key(
             store_dimension(needles).as_str(),
         ));
-        let wanted = renderer.item_needles_wanted(item, self.context, *state);
+        let wanted = renderer.item_needles_wanted(item, self.context, state.clone());
         if wanted.is_empty() {
             state.dimension = None;
             return;
@@ -362,19 +363,21 @@ impl ItemLayerCache {
         let mut branches = if state == ItemState::default() {
             Vec::new()
         } else {
-            renderer.item_branches(item, context, state)
+            renderer.item_branches(item, context, state.clone())
         };
         // The trim's key comes from the registry, which the patch alone does not name.
-        branches.extend(state.trim_material.map(str::as_bytes).unwrap_or_default());
-        branches.extend(state.block_state.map(str::as_bytes).unwrap_or_default());
-        branches.extend(state.dimension.map(str::as_bytes).unwrap_or_default());
+        branches.extend(registry_keys(&state));
         // The selected contents decide the nested layers, and the selection is not in the patch.
         let selected = photon_game::menus::container::bundle_selected_stack(stack);
         let selected_state = selected.as_ref().map(|inner| self.item_state(inner, None));
-        if let (Some(inner), Some(inner_state)) = (&selected, selected_state) {
+        if let (Some(inner), Some(inner_state)) = (&selected, &selected_state) {
             branches.extend(inner.item_registry_id().0.to_le_bytes());
             branches.extend(inner.patch_bytes());
-            branches.extend(renderer.item_branches(inner.item_registry_id(), context, inner_state));
+            branches.extend(renderer.item_branches(
+                inner.item_registry_id(),
+                context,
+                inner_state.clone(),
+            ));
         }
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
@@ -395,7 +398,7 @@ impl ItemLayerCache {
                     &own,
                     nested
                         .as_ref()
-                        .zip(selected_state)
+                        .zip(selected_state.clone())
                         .map(|(tints, state)| (state, tints as &dyn ItemTints)),
                 ),
             );
@@ -409,6 +412,14 @@ impl ItemLayerCache {
         .filter(|corners| !corners.is_empty());
         layers
     }
+}
+
+/// The keys the draw read from the registries and the level, which the patch alone does not name.
+fn registry_keys(state: &ItemState) -> Vec<u8> {
+    [state.trim_material, state.block_state, state.dimension]
+        .into_iter()
+        .flat_map(|key| key.map(str::as_bytes).unwrap_or_default().iter().copied())
+        .collect()
 }
 
 /// A stack's `block_state` properties as `name=value` lines, held for good.

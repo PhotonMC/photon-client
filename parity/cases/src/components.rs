@@ -9,6 +9,7 @@ pub const MAX_STACK_SIZE: i64 = 1;
 pub const MAX_DAMAGE: i64 = 2;
 pub const DAMAGE: i64 = 3;
 pub const UNBREAKABLE: i64 = 4;
+pub const CUSTOM_MODEL_DATA: i64 = 17;
 pub const CUSTOM_NAME: i64 = 6;
 pub const ITEM_NAME: i64 = 9;
 pub const LORE: i64 = 11;
@@ -184,6 +185,25 @@ pub fn patch_of(added: &[(i64, String)], removed: &[i64]) -> String {
 /// A patch that adds components and removes none.
 pub fn patch(added: &[(i64, String)]) -> String {
     patch_of(added, &[])
+}
+
+/// `custom_model_data`: the float bits (hex, so a NaN can be spelled), flags, strings and colours,
+/// each a counted list.
+pub fn custom_model_data(floats: &[&str], flags: &[bool], strings: &[&str], colors: &[i64]) -> String {
+    let floats = format!("{}{}", vi(floats.len() as i64), floats.concat());
+    let flags = format!(
+        "{}{}",
+        vi(flags.len() as i64),
+        flags.iter().map(|flag| format!("{:02x}", u8::from(*flag))).collect::<String>()
+    );
+    let strings =
+        format!("{}{}", vi(strings.len() as i64), strings.iter().map(|value| text(value)).collect::<String>());
+    let colors = format!(
+        "{}{}",
+        vi(colors.len() as i64),
+        colors.iter().map(|color| format!("{:08x}", *color as i32 as u32)).collect::<String>()
+    );
+    format!("{floats}{flags}{strings}{colors}")
 }
 
 /// `enchantments`: a level for each enchantment.

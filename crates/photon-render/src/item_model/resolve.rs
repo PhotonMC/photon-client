@@ -36,7 +36,7 @@ impl Charge {
 }
 
 /// What the properties read of a stack and its holder.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ItemState {
     pub item_use: Option<ItemUse>,
     pub charge: Charge,
@@ -59,6 +59,8 @@ pub struct ItemState {
     pub cast: bool,
     /// The durability and size the `damaged`, `damage` and `count` properties read.
     pub numbers: StackNumbers,
+    /// The stack's `custom_model_data`, if it has any.
+    pub custom_model_data: Option<Box<CustomModelData>>,
 }
 
 /// What a `block_state` select's property is named in front of: the state property it reads.
@@ -90,15 +92,42 @@ impl ItemState {
             "minecraft:using_item" => self.item_use.is_some(),
             "minecraft:broken" => self.broken,
             "minecraft:damaged" => self.numbers.damaged,
+            _ if property.starts_with(CUSTOM_MODEL_DATA) => self.custom_flag(property),
             "minecraft:fishing_rod/cast" => self.cast,
             "minecraft:bundle/has_selected_item" => self.selected.is_some(),
-            "minecraft:has_component" => match component.map(|(name, _)| name.as_str()) {
-                Some("minecraft:dyed_color") => self.components.dyed_color,
-                Some("minecraft:lodestone_tracker") => self.components.lodestone_tracker,
-                _ => false,
-            },
+            "minecraft:has_component" => self.has_component(component),
             _ => false,
         }
+    }
+
+    /// `HasComponent`: the stack has the component the condition names.
+    fn has_component(&self, component: Option<&(String, bool)>) -> bool {
+        match component.map(|(name, _)| name.as_str()) {
+            Some("minecraft:dyed_color") => self.components.dyed_color,
+            Some("minecraft:lodestone_tracker") => self.components.lodestone_tracker,
+            _ => false,
+        }
+    }
+
+    /// `CustomModelDataProperty` (condition): the flag at the index is set.
+    fn custom_flag(&self, property: &str) -> bool {
+        let flag = self.custom_model_data.as_ref().zip(custom_index(property));
+        flag.and_then(|(data, index)| data.flag(index)) == Some(true)
+    }
+
+    /// `CustomModelDataProperty` (select): the string at the index.
+    pub fn custom_string(&self, property: &str) -> Option<&str> {
+        self.custom_model_data
+            .as_ref()?
+            .string(custom_index(property)?)
+    }
+
+    /// `CustomModelDataProperty` (range): the float at the index, or zero.
+    fn custom_float(&self, property: &str) -> f32 {
+        let value = self.custom_model_data.as_ref().zip(custom_index(property));
+        value
+            .and_then(|(data, index)| data.float(index))
+            .unwrap_or(0.0)
     }
 
     /// The `damage` and `count` properties, which read the stack alone.
@@ -107,10 +136,9 @@ impl ItemState {
         match property {
             "minecraft:damage" => Some(numbers.damage_property(true)),
             "minecraft:count" => Some(numbers.count_property(true)),
-            _ if property == format!("minecraft:damage{RAW}") => {
-                Some(numbers.damage_property(false))
-            }
-            _ if property == format!("minecraft:count{RAW}") => Some(numbers.count_property(false)),
+            "minecraft:damage/raw" => Some(numbers.damage_property(false)),
+            "minecraft:count/raw" => Some(numbers.count_property(false)),
+            _ if property.starts_with(CUSTOM_MODEL_DATA) => Some(self.custom_float(property)),
             _ => None,
         }
     }
@@ -254,7 +282,7 @@ pub fn layers_any_use(
 /// Whether a range dispatch's property is one this client reads.
 fn is_read_range(property: &str) -> bool {
     READ_RANGES.contains(&property)
-        || [USE_CYCLE, COMPASS, TIME]
+        || [USE_CYCLE, COMPASS, TIME, CUSTOM_MODEL_DATA]
             .iter()
             .any(|prefix| property.starts_with(prefix))
 }
@@ -269,7 +297,11 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             on_true,
             on_false,
             ..
-        } if READ_CONDITIONS.contains(&property.as_str()) => Some(vec![on_true, on_false]),
+        } if READ_CONDITIONS.contains(&property.as_str())
+            || property.starts_with(CUSTOM_MODEL_DATA) =>
+        {
+            Some(vec![on_true, on_false])
+        }
         ItemModelDef::RangeDispatch {
             property,
             entries,
@@ -287,7 +319,8 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
             cases,
             fallback,
         } if READ_SELECTS.contains(&property.as_str())
-            || property.starts_with(BLOCK_STATE_SELECT) =>
+            || property.starts_with(BLOCK_STATE_SELECT)
+            || property.starts_with(CUSTOM_MODEL_DATA) =>
         {
             Some(
                 cases
@@ -405,13 +438,14 @@ pub fn block_state_key(properties: &[(String, String)]) -> Option<&'static str> 
 /// context and what a crossbow holds. `None` takes the fallback.
 pub fn select_value<'a>(
     property: &str,
-    (context, state): (DisplayContext, &ItemState),
+    (context, state): (DisplayContext, &'a ItemState),
 ) -> Option<&'a str> {
     Some(match property {
         "minecraft:display_context" => context.name(),
         "minecraft:charge_type" => state.charge.name(),
         "minecraft:trim_material" => state.trim_material?,
         "minecraft:context_dimension" => state.dimension?,
+        other if other.starts_with(CUSTOM_MODEL_DATA) => state.custom_string(other)?,
         other if other.starts_with(LOCAL_TIME_SELECT) => {
             return local_time(other.strip_prefix(LOCAL_TIME_SELECT)?);
         }
@@ -512,21 +546,15 @@ fn layers_under(
     }
 }
 
-/// A range dispatch node written as JSON, its value for a stack's numbers: what the `damage` and
-/// `count` properties give, times the scale. None for another property or a node that is not one.
-pub fn stack_range_value(node: &str, numbers: StackNumbers) -> Option<f32> {
+/// A range dispatch node written as JSON, its property's value for a stack's state (before the
+/// node's scale): what the `damage`, `count` and `custom_model_data` properties give. None for
+/// another property or a node that is not one.
+pub fn stack_range_value(node: &str, state: &ItemState) -> Option<f32> {
     let object = photon_core::json::parse_object(node)?;
-    let ItemModelDef::RangeDispatch {
-        property, scale, ..
-    } = parse_item_model(&object)
-    else {
+    let ItemModelDef::RangeDispatch { property, .. } = parse_item_model(&object) else {
         return None;
     };
-    let state = ItemState {
-        numbers,
-        ..ItemState::default()
-    };
-    Some(state.stack_number(&property)? * scale)
+    state.stack_number(&property)
 }
 
 #[cfg(test)]
@@ -631,6 +659,47 @@ mod tests {
             (&IDENTITY, &mut layers),
         );
         assert_eq!(layers.len(), 3);
+    }
+
+    const CUSTOM: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:custom_model_data","index":1,
+        "cases":[{"when":"gold","model":{"type":"minecraft:condition","property":"minecraft:custom_model_data","index":2,
+                    "on_true":{"type":"minecraft:model","model":"minecraft:item/gold_lit"},
+                    "on_false":{"type":"minecraft:range_dispatch","property":"minecraft:custom_model_data","index":3,
+                      "entries":[{"threshold":2.0,"model":{"type":"minecraft:model","model":"minecraft:item/gold_big"}}],
+                      "fallback":{"type":"minecraft:model","model":"minecraft:item/gold"}}}}],
+        "fallback":{"type":"minecraft:model","model":"minecraft:item/plain"}}}"#;
+
+    fn customised(data: Option<CustomModelData>) -> String {
+        let state = ItemState {
+            custom_model_data: data.map(Box::new),
+            ..ItemState::default()
+        };
+        drawn_by(CUSTOM, state).0
+    }
+
+    /// The select, the condition and the range each read their own index of the lists.
+    #[test]
+    fn custom_model_data_is_read_by_index() {
+        let data = |flag: bool, float: f32| CustomModelData {
+            floats: vec![0, 0, 0, float.to_bits()],
+            flags: vec![false, false, flag],
+            strings: vec!["x".into(), "gold".into()],
+            colors: Vec::new(),
+        };
+        assert_eq!(customised(None), "minecraft:item/plain");
+        assert_eq!(
+            customised(Some(CustomModelData::default())),
+            "minecraft:item/plain"
+        );
+        assert_eq!(customised(Some(data(true, 0.0))), "minecraft:item/gold_lit");
+        assert_eq!(customised(Some(data(false, 1.0))), "minecraft:item/gold");
+        assert_eq!(
+            customised(Some(data(false, 2.0))),
+            "minecraft:item/gold_big"
+        );
+        let mut other = data(true, 0.0);
+        other.strings[1] = "silver".into();
+        assert_eq!(customised(Some(other)), "minecraft:item/plain");
     }
 
     const CROSSBOW: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:charge_type",
@@ -868,7 +937,7 @@ mod tests {
             needles,
             ..ItemState::default()
         };
-        assert!(needles_wanted(&item.model, DisplayContext::Gui, state).is_empty());
+        assert!(needles_wanted(&item.model, DisplayContext::Gui, state.clone()).is_empty());
         assert_eq!(drawn_by(COMPASS_MODEL, state).0, "minecraft:item/spawn_1");
     }
 

@@ -18,6 +18,7 @@ mod fonts;
 mod hud;
 mod icons;
 mod item_conditions;
+mod item_custom;
 mod jigsaw;
 mod keybinds;
 mod language;
@@ -74,6 +75,7 @@ const ORDER: &[Generator] = &[
             item_conditions::item_needle(),
         ]
     },
+    item_custom::cases,
     || vec![screens::pause_screen()],
     || vec![screens::death_screen()],
     || vec![screens::disconnected_screen()],
