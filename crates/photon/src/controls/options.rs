@@ -164,6 +164,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) {
         match Some(action) {
+            Some(OptionsAction::WorldOptions) => self.open_world(surface, assets),
             Some(OptionsAction::Video) => self.open_video(surface, assets),
             Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
             Some(OptionsAction::Accessibility) => self.open_accessibility(surface, assets),

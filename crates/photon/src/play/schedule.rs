@@ -156,6 +156,9 @@ fn advance_clock(mut play: NonSendMut<Play>, mut clock: ResMut<Clock>) {
 /// `MouseHandler.handleAccumulatedMovement`, after the ticks and before the frame is drawn.
 fn turn_player(mut play: NonSendMut<Play>) {
     play.turn_player();
+    // The world screen follows what the server said of the difficulty and the permission.
+    let play = &mut *play;
+    play.controls.sync_world_facts(&play.session);
 }
 
 fn receive_session(mut play: NonSendMut<Play>) -> Result<()> {

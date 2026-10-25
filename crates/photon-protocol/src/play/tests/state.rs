@@ -165,3 +165,25 @@ fn animate_reads_the_entity_and_the_action() {
     );
     assert!(super::super::parse_animate_packet(&payload[..2]).is_err());
 }
+
+#[test]
+fn a_difficulty_change_wraps_an_id_out_of_range_and_reads_the_lock() {
+    // `ByIdMap.OutOfBoundsStrategy.WRAP`: the id is taken modulo the four difficulties, so 5 is
+    // easy and -1 is hard.
+    assert_eq!(
+        super::super::parse_change_difficulty(&[2, 0]).unwrap(),
+        (2, false)
+    );
+    assert_eq!(
+        super::super::parse_change_difficulty(&[5, 1]).unwrap(),
+        (1, true)
+    );
+    let mut negative = Vec::new();
+    photon_core::wire::write_varint(-1, &mut negative);
+    negative.push(0);
+    assert_eq!(
+        super::super::parse_change_difficulty(&negative).unwrap(),
+        (3, false)
+    );
+    assert!(super::super::parse_change_difficulty(&[2]).is_err());
+}

@@ -187,6 +187,16 @@ impl PlaySession {
         self.level_info.game_time
     }
 
+    /// The difficulty (0 peaceful to 3 hard) and whether the server locked it.
+    pub fn difficulty(&self) -> (u8, bool) {
+        (self.local.difficulty, self.local.difficulty_locked)
+    }
+
+    /// The player's operator level, 0 to 4 (`LocalPlayer.permissions`).
+    pub fn permission_level(&self) -> i32 {
+        self.local.permission_level
+    }
+
     /// Whether the level is hardcore.
     pub fn hardcore(&self) -> bool {
         self.local.hardcore

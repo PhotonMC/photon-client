@@ -30,6 +30,10 @@ fn play_packet_ids_match_java_26_2_dispatch_order() {
         126
     );
     assert_eq!(PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID, 1);
+    assert_eq!(
+        super::super::ids::PLAY_CLIENTBOUND_CHANGE_DIFFICULTY_PACKET_ID,
+        10
+    );
     assert_eq!(PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID, 35);
     assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID, 53);
     assert_eq!(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_ROT_PACKET_ID, 54);

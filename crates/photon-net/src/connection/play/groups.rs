@@ -44,6 +44,10 @@ pub(super) struct LocalState {
     pub(super) permission_level: i32,
     /// Whether the level is hardcore, as the login said.
     pub(super) hardcore: bool,
+    /// The difficulty (0 peaceful to 3 hard) and its lock, as `ClientboundChangeDifficultyPacket`
+    /// last said; a login starts at normal and unlocked (`new ClientLevelData`).
+    pub(super) difficulty: u8,
+    pub(super) difficulty_locked: bool,
     /// `Player.isReducedDebugInfo`: the login's word, then entity events 22 and 23.
     pub(super) reduced_debug_info: bool,
     /// `ClientAdvancements`: the tree the server told of and how far the player is.
@@ -267,6 +271,8 @@ impl Default for LocalState {
             status: PlayerStatus::default(),
             permission_level: 0,
             hardcore: false,
+            difficulty: 2,
+            difficulty_locked: false,
             reduced_debug_info: false,
             advancements: photon_game::advancements::ClientAdvancements::default(),
             pending_toasts: Vec::new(),

@@ -109,6 +109,10 @@ pub struct Controls {
     pub accessibility_screen: Option<AccessibilityScreen>,
     /// The skin customization, opened the same way.
     pub skin_screen: Option<photon_gui::options::skin::SkinCustomizationScreen>,
+    /// The world settings, opened from the options screen in a level.
+    pub world_screen: Option<photon_gui::options::world::WorldOptionsScreen>,
+    /// What the server last said about the world, for that screen.
+    pub world_facts: photon_gui::options::world::WorldFacts,
     /// The font settings, opened over the language screen.
     pub font_screen: Option<photon_gui::options::font::FontOptionsScreen>,
     /// `CreditsAndAttributionScreen`, over the options or the title.
@@ -391,6 +395,7 @@ mod sign;
 mod font;
 mod host;
 mod skin;
+mod world;
 
 mod advancements;
 #[cfg(test)]

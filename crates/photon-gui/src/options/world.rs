@@ -32,6 +32,18 @@ pub struct WorldFacts {
     pub gamemaster: bool,
 }
 
+impl Default for WorldFacts {
+    /// A new level's data: normal, unlocked, and no permission.
+    fn default() -> Self {
+        Self {
+            difficulty: 2,
+            locked: false,
+            hardcore: false,
+            gamemaster: false,
+        }
+    }
+}
+
 /// What a press asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorldPress {
@@ -53,6 +65,7 @@ pub struct WorldOptionsScreen {
     arena: Arena,
     size: (i32, i32),
     in_world: bool,
+    facts: WorldFacts,
     title: Widget,
     /// The widgets in the order the screen adds them (the order Tab goes through).
     widgets: Vec<(Part, Widget)>,
@@ -182,6 +195,7 @@ impl WorldOptionsScreen {
             arena,
             size,
             in_world,
+            facts,
             title,
             widgets,
             tooltips,
@@ -192,6 +206,19 @@ impl WorldOptionsScreen {
 
     pub fn size(&self) -> (i32, i32) {
         self.size
+    }
+
+    /// What the screen was built from.
+    pub fn facts(&self) -> WorldFacts {
+        self.facts
+    }
+
+    /// The screen laid out again for another size or other facts (`repositionElements`,
+    /// `onDifficultyChanged`, `onGamemasterPermissionChanged`); the focus stays.
+    pub fn rebuild(&mut self, font: &Font, lang: &Lang, size: (i32, i32), facts: WorldFacts) {
+        let focus = self.focus;
+        *self = Self::new(font, lang, size, self.in_world, facts);
+        self.focus = focus;
     }
 
     pub fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, mouse: (i32, i32)) {

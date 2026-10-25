@@ -3,6 +3,10 @@ use super::*;
 /// The packets of this family, by packet id.
 pub(super) const DECODERS: &[(i32, Decoder)] = &[
     (
+        PLAY_CLIENTBOUND_CHANGE_DIFFICULTY_PACKET_ID,
+        typed::<ChangeDifficulty>,
+    ),
+    (
         PLAY_CLIENTBOUND_SET_SIMULATION_DISTANCE_PACKET_ID,
         typed::<SetSimulationDistance>,
     ),
@@ -22,6 +26,14 @@ pub(super) const DECODERS: &[(i32, Decoder)] = &[
 impl ClientboundPacket for SetSimulationDistance {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         session.world.set_server_simulation_distance(self.0);
+        Ok(())
+    }
+}
+
+/// `handleChangeDifficulty`.
+impl ClientboundPacket for ChangeDifficulty {
+    fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
+        (session.local.difficulty, session.local.difficulty_locked) = self.0;
         Ok(())
     }
 }

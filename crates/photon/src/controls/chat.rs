@@ -5,6 +5,7 @@ impl Controls {
     pub(super) fn drop_light_screens(&mut self) {
         self.social = None;
         self.debug_options = None;
+        self.world_screen = None;
     }
 
     /// `ChatComponent.openScreen`: the chat box opens on the draft a closed

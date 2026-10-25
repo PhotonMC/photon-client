@@ -220,6 +220,21 @@ pub fn parse_update_mob_effect_packet(
     })
 }
 
+/// `ClientboundChangeDifficultyPacket`: the difficulty's id (`Difficulty.STREAM_CODEC` wraps an id
+/// out of range around the four difficulties) and whether it is locked.
+pub fn parse_change_difficulty(input: &[u8]) -> Result<(u8, bool), ConnectionError> {
+    let mut input = input;
+    let id = read_varint(&mut input, "difficulty")?;
+    let locked = read_bool(&mut input, "difficulty locked")?;
+    Ok((id.rem_euclid(4) as u8, locked))
+}
+
+wrapped_packet!(
+    /// `ClientboundChangeDifficultyPacket`: the difficulty (0 peaceful to 3 hard) and its lock.
+    ChangeDifficulty((u8, bool)) = parse_change_difficulty,
+    OnError::Ignore("change_difficulty")
+);
+
 wrapped_packet!(
     /// `ClientboundSetSimulationDistancePacket`: the distance, in chunks.
     SetSimulationDistance(i32) = parse_entity_id_prefix,

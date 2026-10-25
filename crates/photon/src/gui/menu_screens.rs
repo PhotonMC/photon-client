@@ -68,6 +68,30 @@ impl Gui {
         }
     }
 
+    /// The world settings, when they are open, laid out again when the size or what the server
+    /// said changed: whether they were drawn.
+    fn draw_world_options(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        (gui_size, mouse): ((i32, i32), (i32, i32)),
+    ) -> bool {
+        let facts = controls.world_facts;
+        let blurriness = controls.options.menu_background_blurriness;
+        let in_level = !controls.title_host;
+        let Some(screen) = controls.world_screen.as_mut() else {
+            return false;
+        };
+        if in_level {
+            frame.blur_before_this_stratum(blurriness);
+        }
+        if screen.size() != gui_size || screen.facts() != facts {
+            screen.rebuild(font, lang, gui_size, facts);
+        }
+        screen.draw(frame, atlas, font, mouse);
+        true
+    }
+
     /// The options screen that is open, the topmost of those over it: whether one was drawn. In a
     /// level the screen under blurs the game; from the title the panorama is blurred by the
     /// backend instead.
@@ -102,6 +126,9 @@ impl Gui {
                 screen.resize(font, lang, gui_size);
             }
             screen.draw(frame, atlas, font, mouse);
+            return true;
+        }
+        if Self::draw_world_options((atlas, font, lang), controls, frame, (gui_size, mouse)) {
             return true;
         }
         sized!(controls.font_screen);

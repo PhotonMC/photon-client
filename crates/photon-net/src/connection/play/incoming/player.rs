@@ -229,6 +229,7 @@ impl PlaySession {
             self.effects.seen_unsecure_warning = true;
         }
         self.local.hardcore = login.hardcore;
+        (self.local.difficulty, self.local.difficulty_locked) = (2, false);
         self.local.reduced_debug_info = login.reduced_debug_info;
         // The advancements are the connection's: a login starts with none.
         self.local.advancements = photon_game::advancements::ClientAdvancements::default();
@@ -307,6 +308,8 @@ impl PlaySession {
         self.local.player = None;
         self.local.camera = None;
         self.local.permission_level = 0;
+        // A respawn makes new level data: the difficulty stays and the lock does not.
+        self.local.difficulty_locked = false;
         self.local.loaded = false;
         self.start_waiting_for_level(reason, bounds);
         self.level_info.level_reset = true;
