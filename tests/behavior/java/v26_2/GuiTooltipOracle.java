@@ -27,6 +27,8 @@ final class GuiTooltipOracle {
                     net.minecraft.world.level.Level.OVERWORLD);
             }
             var held = map;
+            // The level's tick rate the effect times are read at.
+            float rate = row.has("tick_rate") ? row.get("tick_rate").getAsFloat() : 20.0F;
             var context = new net.minecraft.world.item.Item.TooltipContext() {
                 @Override
                 public net.minecraft.core.HolderLookup.Provider registries() {
@@ -35,7 +37,7 @@ final class GuiTooltipOracle {
 
                 @Override
                 public float tickRate() {
-                    return 20.0F;
+                    return rate;
                 }
 
                 @Override

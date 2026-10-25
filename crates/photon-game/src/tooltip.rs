@@ -49,7 +49,7 @@ mod lines;
 pub use lines::*;
 mod details;
 use details::*;
-pub use details::{MapInfo, Maps, no_maps};
+pub use details::{Context, MapInfo, Maps};
 
 #[cfg(test)]
 mod tests {
@@ -89,7 +89,7 @@ mod tests {
             false,
             Flags::default(),
             &registries(),
-            &no_maps,
+            Context::EMPTY,
         );
         assert_eq!(lines.len(), 1);
     }

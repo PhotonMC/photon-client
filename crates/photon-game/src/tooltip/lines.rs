@@ -8,7 +8,7 @@ pub fn lines(
     player: bool,
     flags: Flags,
     registries: &Registries,
-    maps: Maps,
+    context: Context,
 ) -> Vec<Component> {
     let values = Values::with_registries(stack.item_registry_id(), stack.patch_bytes(), registries);
     let (hide, hidden) = values.tooltip_display();
@@ -72,7 +72,7 @@ pub fn lines(
         out.push(description.with_style(&Style::coloured("gray")));
     }
     if shows(ids::MAP_ID) {
-        map_lines(&values, flags, maps, &mut out);
+        map_lines(&values, flags, context.maps, &mut out);
     }
     if shows(ids::CONTAINER) {
         container_lines(&values, registries, &mut out);
@@ -173,7 +173,7 @@ pub fn lines(
                 .iter()
                 .map(|&(effect, amplifier, duration, _)| (effect, amplifier, duration)),
         );
-        potion_tooltip(&effects, values.potion_duration_scale(), &mut out);
+        potion_tooltip(&effects, values.potion_duration_scale(), context, &mut out);
     }
     if shows(ids::JUKEBOX_PLAYABLE)
         && let Some(id) = values.holder_id(ids::JUKEBOX_PLAYABLE)
@@ -245,11 +245,9 @@ pub fn lines(
         && let Some(amplifier) = values
             .raw(ids::OMINOUS_BOTTLE_AMPLIFIER)
             .and_then(crate::item_components::varint_value)
-        && let Some(bad_omen) = MOB_EFFECTS
-            .iter()
-            .position(|effect| effect.name == "minecraft:bad_omen")
+        && let Some(bad_omen) = effect_id("minecraft:bad_omen")
     {
-        potion_tooltip(&[(bad_omen as i32, amplifier, 120_000)], 1.0, &mut out);
+        potion_tooltip(&[(bad_omen, amplifier, 120_000)], 1.0, context, &mut out);
     }
     if flags.creative && shows(ids::SUSPICIOUS_STEW_EFFECTS) {
         let effects: Vec<(i32, i32, i32)> = values
@@ -258,7 +256,7 @@ pub fn lines(
             .map(|(effect, duration)| (effect, 0, duration))
             .collect();
         if !effects.is_empty() {
-            potion_tooltip(&effects, 1.0, &mut out);
+            potion_tooltip(&effects, 1.0, context, &mut out);
         }
     }
     if shows(ids::BLOCK_STATE)
@@ -303,7 +301,7 @@ pub fn search_lines(stack: &Stack, lang: &Lang, registries: &Registries) -> Vec<
             advanced: false,
         },
         registries,
-        &no_maps,
+        Context::EMPTY,
     )
     .iter()
     .map(|line| lang.plain(line).trim().to_owned())
