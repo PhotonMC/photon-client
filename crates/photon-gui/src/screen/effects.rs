@@ -84,7 +84,11 @@ fn draw_entry(
     } else {
         "container/inventory/effect_background"
     };
-    draw.frame.sprite(draw.atlas, background, x0, y0, width, 32);
+    // Both backgrounds are nine-slice sprites (`.mcmeta`): 32 square, a border of 4, the inside
+    // tiled as the entry widens.
+    let (atlas, sprite_size) = (draw.atlas, (32, 32));
+    draw.frame
+        .nine_slice(atlas, background, sprite_size, 4, false, x0, y0, width, 32);
     let max_text = width - 32 - 7;
     let compact = max_text <= 0 || name_width > max_text;
     if max_text > 0 {
