@@ -188,7 +188,7 @@ impl ClientWorld {
         let arrow_count = arrow_count_from_metadata(metadata);
         let stinger_count = stinger_count_from_metadata(metadata);
         let effect_ambience = effect_ambience_from_metadata(metadata);
-        let effect_particle_type_ids = effect_particle_type_ids_from_metadata(metadata);
+        let effect_particles = effect_particles_from_metadata(metadata);
         let zombie_baby = zombie_baby_from_metadata(metadata);
         let sleeping_pos = sleeping_pos_from_metadata(metadata);
         let custom_name_present = custom_name_present_from_metadata(metadata);
@@ -224,8 +224,8 @@ impl ClientWorld {
             if let Some(effect_ambience) = effect_ambience {
                 player.effect_ambience = effect_ambience;
             }
-            if let Some(effect_particle_type_ids) = effect_particle_type_ids.as_ref() {
-                player.effect_particle_type_ids = effect_particle_type_ids.clone();
+            if let Some(effect_particles) = effect_particles.as_ref() {
+                player.effect_particles = effect_particles.clone();
             }
             if let Some(sleeping_pos) = sleeping_pos {
                 player.sleep.pos = sleeping_pos;
@@ -437,8 +437,8 @@ impl ClientWorld {
         if let Some(effect_ambience) = effect_ambience {
             entity.effect_ambience = effect_ambience;
         }
-        if let Some(effect_particle_type_ids) = effect_particle_type_ids {
-            entity.effect_particle_type_ids = effect_particle_type_ids;
+        if let Some(effect_particles) = effect_particles {
+            entity.effect_particles = effect_particles;
         }
         if let Some(sleeping_pos) = sleeping_pos {
             entity.sleeping_pos = sleeping_pos;

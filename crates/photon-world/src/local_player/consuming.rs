@@ -112,16 +112,18 @@ impl LocalPlayer {
             let from = ((draw() - 0.5) * 0.3, down, 0.6);
             let push = turn(turn(push, pitch, Axis::X), yaw, Axis::Y);
             let from = turn(turn(from, pitch, Axis::X), yaw, Axis::Y);
-            self.use_edge.crumbs.push(crate::particles::LevelParticles {
-                type_id,
-                data: crate::particles::ParticleData::Item(item),
-                override_limiter: false,
-                always_show: false,
-                at: (from.0 + at.x, from.1 + at.y + eye, from.2 + at.z),
-                spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
-                max_speed: 1.0,
-                count: 0,
-            });
+            self.use_edge
+                .particles
+                .push(crate::particles::LevelParticles {
+                    type_id,
+                    data: crate::particles::ParticleData::Item(item),
+                    override_limiter: false,
+                    always_show: false,
+                    at: (from.0 + at.x, from.1 + at.y + eye, from.2 + at.z),
+                    spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
+                    max_speed: 1.0,
+                    count: 0,
+                });
         }
     }
 
@@ -137,9 +139,24 @@ impl LocalPlayer {
         ));
     }
 
+    /// `LivingEntity.tickEffects`: the swirls of the effects the entity data lists.
+    pub(super) fn throw_effect_particles(&mut self, level: &Level<'_>) {
+        let Some(state) = level.world.local_player() else {
+            return;
+        };
+        let flags = (state.is_effect_ambient(), state.is_invisible());
+        let body = (
+            self.position,
+            (self.dimensions.width(), self.dimensions.height()),
+        );
+        let particles = state.effect_particles();
+        let thrown = crate::particles::effect_particle(particles, flags, body, &mut self.random);
+        self.use_edge.particles.extend(thrown);
+    }
+
     /// The particles the player's own tick threw since the last call.
     pub fn take_particles(&mut self) -> Vec<crate::particles::LevelParticles> {
-        std::mem::take(&mut self.use_edge.crumbs)
+        std::mem::take(&mut self.use_edge.particles)
     }
 
     /// `Consumable.emitParticlesAndSounds`: the volumes and pitches of both kinds are drawn,

@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         entity.type_id == photon_data::entity_type::named("minecraft:iron_golem")
             && x == 67.5
             && z == -35.5
-            && !entity.effect_particle_type_ids().is_empty()
+            && !entity.effect_particles().is_empty()
     }) else {
         return Err("vanilla effect particles were not applied to ClientWorld".into());
     };
@@ -33,12 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!(
         "entity_effect_particle_count={}",
-        entity.effect_particle_type_ids().len()
+        entity.effect_particles().len()
     );
-    println!(
-        "entity_effect_particle_type_ids={:?}",
-        entity.effect_particle_type_ids()
-    );
+    println!("entity_effect_particles={:?}", entity.effect_particles());
     println!("entity_effect_ambient={}", entity.is_effect_ambient());
     println!("entity_type_id={}", entity.type_id);
     println!("entity_position={:?}", entity.position());

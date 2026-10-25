@@ -445,6 +445,9 @@ class MathEntityStateOracle extends MathEntityMotionOracle {
                 System.setErr(errorOutput);
             }
 
+            if (request.has("spawn")) {
+                return effectParticleSpawns(request.getAsJsonObject("spawn"));
+            }
             var entity = new LivingFlagsFixtureEntity();
             var states = new JsonArray();
             states.add(entityEffectParticlesState("initial", true, entity));
@@ -465,6 +468,48 @@ class MathEntityStateOracle extends MathEntityMotionOracle {
         }
     }
 
+    /**
+     * `LivingEntity.tickEffects` on a client, ticked with a seeded source: the particles it adds,
+     * in order, with the tick each came on.
+     */
+    static JsonObject effectParticleSpawns(JsonObject spawn) {
+        var entity = new EffectParticlesFixtureEntity();
+        entity.setPos(1.25, 80.0, -35.5);
+        var particles = new java.util.ArrayList<net.minecraft.core.particles.ParticleOptions>();
+        for (JsonElement element : spawn.getAsJsonArray("particles")) {
+            var described = element.getAsJsonObject();
+            var type = BuiltInRegistries.PARTICLE_TYPE.byId(described.get("type_id").getAsInt());
+            particles.add(described.has("color")
+                ? net.minecraft.core.particles.ColorParticleOption.create(
+                    net.minecraft.core.particles.ParticleTypes.ENTITY_EFFECT, described.get("color").getAsInt())
+                : (net.minecraft.core.particles.SimpleParticleType) type);
+        }
+        entity.setEffectParticles(particles, spawn.get("ambient").getAsBoolean());
+        entity.setInvisible(spawn.get("invisible").getAsBoolean());
+        entity.getRandom().setSeed(spawn.get("seed").getAsLong());
+        ParticleRecordingLevel.ADDED.clear();
+        var added = new JsonArray();
+        for (int tick = 0; tick < spawn.get("ticks").getAsInt(); tick++) {
+            entity.tickEffectsOnce();
+            for (var call : ParticleRecordingLevel.ADDED) {
+                var particle = (net.minecraft.core.particles.ParticleOptions) call[0];
+                var described = new JsonObject();
+                described.addProperty("tick", tick);
+                described.addProperty("type_id", BuiltInRegistries.PARTICLE_TYPE.getId(particle.getType()));
+                for (int index = 1; index < 7; index++) {
+                    described.addProperty(AXES[index - 1], Oracle.bits((double) call[index]));
+                }
+                added.add(described);
+            }
+            ParticleRecordingLevel.ADDED.clear();
+        }
+        var result = new JsonObject();
+        result.add("added", added);
+        return result;
+    }
+
+    private static final String[] AXES = {"x", "y", "z", "xd", "yd", "zd"};
+
     static JsonObject entityEffectParticlesState(
         String label, boolean accepted, LivingFlagsFixtureEntity entity
     ) {
@@ -473,11 +518,22 @@ class MathEntityStateOracle extends MathEntityMotionOracle {
         state.addProperty("accepted", accepted);
         state.addProperty("living_flags", entity.livingFlags());
         state.addProperty("effect_ambience", entity.effectAmbience());
-        var particleTypeIds = new JsonArray();
-        for (int typeId : entity.effectParticleTypeIds()) {
-            particleTypeIds.add(typeId);
+        var particles = new JsonArray();
+        for (var particle : entity.effectParticles()) {
+            var described = new JsonObject();
+            described.addProperty("type_id",
+                net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.getId(particle.getType()));
+            if (particle instanceof net.minecraft.core.particles.ColorParticleOption) {
+                try {
+                    described.addProperty("color", Reflect.field(
+                        net.minecraft.core.particles.ColorParticleOption.class, "color").getInt(particle));
+                } catch (ReflectiveOperationException error) {
+                    throw new IllegalStateException(error);
+                }
+            }
+            particles.add(described);
         }
-        state.add("effect_particle_type_ids", particleTypeIds);
+        state.add("effect_particles", particles);
         return state;
     }
 

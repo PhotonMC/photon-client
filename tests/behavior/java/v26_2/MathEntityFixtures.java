@@ -56,6 +56,59 @@ class MathEntityFixtures extends MathCollisionFixtures {
         }
     }
 
+    /** A client level that keeps the particles it is asked to add, in order. */
+    static final class ParticleRecordingLevel extends net.minecraft.client.multiplayer.ClientLevel {
+        static final java.util.List<Object[]> ADDED = new java.util.ArrayList<>();
+
+        ParticleRecordingLevel() {
+            super(null, null, null, null, 0, 0, null, false, 0L, 0);
+        }
+
+        @Override
+        public boolean isClientSide() {
+            return true;
+        }
+
+        @Override
+        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
+            return net.minecraft.world.flag.FeatureFlagSet.of();
+        }
+
+        @Override
+        public void addParticle(net.minecraft.core.particles.ParticleOptions particle,
+                double x, double y, double z, double xd, double yd, double zd) {
+            ADDED.add(new Object[] {particle, x, y, z, xd, yd, zd});
+        }
+    }
+
+    /** An armour stand in a level that keeps its particles: `tickEffects` on a client. */
+    static final class EffectParticlesFixtureEntity
+        extends net.minecraft.world.entity.decoration.ArmorStand {
+        static final net.minecraft.world.level.Level CLIENT_LEVEL = createClientLevel();
+
+        EffectParticlesFixtureEntity() {
+            super(net.minecraft.world.entity.EntityTypes.ARMOR_STAND, CLIENT_LEVEL);
+        }
+
+        static net.minecraft.world.level.Level createClientLevel() {
+            try {
+                return (net.minecraft.world.level.Level)unsafeInstance()
+                    .allocateInstance(ParticleRecordingLevel.class);
+            } catch (InstantiationException error) {
+                throw new IllegalStateException("Unable to allocate particle recording level", error);
+            }
+        }
+
+        void setEffectParticles(List<net.minecraft.core.particles.ParticleOptions> particles, boolean ambient) {
+            this.getEntityData().set(LivingFlagsFixtureEntity.EFFECT_PARTICLES_DATA, particles);
+            this.getEntityData().set(LivingFlagsFixtureEntity.EFFECT_AMBIENCE_DATA, ambient);
+        }
+
+        void tickEffectsOnce() {
+            this.tickEffects();
+        }
+    }
+
     static final class LivingFlagsFixtureEntity
         extends net.minecraft.world.entity.decoration.ArmorStand {
         static final net.minecraft.network.syncher.EntityDataAccessor<
@@ -79,10 +132,8 @@ class MathEntityFixtures extends MathCollisionFixtures {
             return this.getEntityData().get(EFFECT_AMBIENCE_DATA);
         }
 
-        List<Integer> effectParticleTypeIds() {
-            return this.getEntityData().get(EFFECT_PARTICLES_DATA).stream()
-                .map(particle -> BuiltInRegistries.PARTICLE_TYPE.getId(particle.getType()))
-                .toList();
+        List<net.minecraft.core.particles.ParticleOptions> effectParticles() {
+            return this.getEntityData().get(EFFECT_PARTICLES_DATA);
         }
     }
 
