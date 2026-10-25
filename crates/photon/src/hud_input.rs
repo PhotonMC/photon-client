@@ -267,6 +267,7 @@ pub fn hud_input(
         attack_delay: attack_strength_delay(attack_speed(local)),
         attack_indicator,
         target_is_living,
+        effects: local.map_or_else(Vec::new, |state| state.effects().to_vec()),
         hotbar: std::array::from_fn(|i| stack(36 + i as i16)),
         offhand: stack(45),
     }

@@ -21,6 +21,7 @@ use chat::*;
 mod hud;
 use hud::*;
 mod debug_entries;
+mod effects;
 mod hud_overlays;
 mod screens;
 mod tutorial;

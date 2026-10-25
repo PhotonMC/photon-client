@@ -399,6 +399,32 @@ class GuiHudOracle extends GuiCommandOracle {
         return result;
     }
 
+    /** The game's own effect icons (`Hud.extractEffects`) for a real local player's effects. */
+    static JsonObject hudEffects(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
+            for (var effectElement : row.getAsJsonArray("effects")) {
+                var effect = effectElement.getAsJsonObject();
+                var holder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(
+                    net.minecraft.resources.Identifier.parse(effect.get("effect").getAsString())).orElseThrow();
+                scene.local().forceAddEffect(new net.minecraft.world.effect.MobEffectInstance(
+                    holder, effect.get("duration").getAsInt(), effect.get("amplifier").getAsInt(),
+                    effect.get("ambient").getAsBoolean(), true, effect.get("show_icon").getAsBoolean()), null);
+            }
+            hudMethod("extractEffects", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
+                .invoke(scene.screen().hud(), scene.screen().graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * The game's own `StatsScreen` over a real `StatsCounter`: in the loading state or with the
      * statistics in, on a tab, after some scrolls and clicks, drawn in a world.
