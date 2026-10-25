@@ -31,6 +31,8 @@ pub struct Interaction {
     use_remainder: Option<&'static str>,
     /// A `custom_name` component (plain text) on the main hand's stack.
     custom_name: Option<&'static str>,
+    /// A `recipes` component (one recipe key) on the main hand's stack.
+    recipes: Option<&'static str>,
     off_hand: Option<&'static str>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
@@ -46,6 +48,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         use_cooldown: None,
         use_remainder: None,
         custom_name: None,
+        recipes: None,
         off_hand: None,
         chest: None,
         rockets: None,
@@ -89,6 +92,10 @@ impl Interaction {
 
     pub fn custom_name(self, name: &'static str) -> Self {
         Self { custom_name: Some(name), ..self }
+    }
+
+    pub fn recipes(self, recipe: &'static str) -> Self {
+        Self { recipes: Some(recipe), ..self }
     }
 
     pub fn use_remainder(self, item: &'static str) -> Self {
@@ -136,6 +143,9 @@ impl Interaction {
         }
         if let Some(item) = self.use_remainder {
             held["main_hand_use_remainder"] = json!(item);
+        }
+        if let Some(recipe) = self.recipes {
+            held["main_hand_recipes"] = json!(recipe);
         }
         if let Some(name) = self.custom_name {
             held["main_hand_custom_name"] = json!(name);

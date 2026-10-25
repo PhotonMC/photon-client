@@ -81,6 +81,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     stack.set(net.minecraft.core.component.DataComponents.USE_COOLDOWN,
                         new net.minecraft.world.item.component.UseCooldown(breaking_.get("main_hand_use_cooldown").getAsFloat()));
                 }
+                if (breaking_.has("main_hand_recipes")) {
+                    stack.set(net.minecraft.core.component.DataComponents.RECIPES,
+                        java.util.List.of(net.minecraft.resources.ResourceKey.create(
+                            net.minecraft.core.registries.Registries.RECIPE,
+                            net.minecraft.resources.Identifier.parse(breaking_.get("main_hand_recipes").getAsString()))));
+                }
                 if (breaking_.has("main_hand_custom_name")) {
                     stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                         net.minecraft.network.chat.Component.literal(breaking_.get("main_hand_custom_name").getAsString()));

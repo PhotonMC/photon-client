@@ -65,6 +65,24 @@ pub fn rows() -> Vec<Value> {
     rows
 }
 
+/// A book with a recipe is a success (a swing) and is consumed on the client too; creative keeps
+/// the book.
+fn recipe_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for (label, mode) in [("use-knowledge_book-recipe", "survival"), ("use-knowledge_book-recipe-creative", "creative")]
+    {
+        rows.push(
+            using(label, vec![], run(None))
+                .main_hand("minecraft:knowledge_book")
+                .count(2)
+                .recipes("minecraft:oak_planks")
+                .game_mode(mode)
+                .row(),
+        );
+    }
+    rows
+}
+
 /// The rows that need a target, a world or a clock of their own.
 fn special_rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
@@ -98,6 +116,7 @@ fn special_rows() -> Vec<Value> {
         let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
         rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
     }
+    rows.extend(recipe_rows());
     // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
     // success: the eye starts a use all the same; a stick that passes gets none.
     for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {

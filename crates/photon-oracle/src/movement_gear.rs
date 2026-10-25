@@ -260,6 +260,13 @@ pub(super) fn hold_main_hand(
         value.push(0);
         added.push((photon_data::item::component_types::USE_COOLDOWN, value));
     }
+    if let Some(recipe) = breaking["main_hand_recipes"].as_str() {
+        // `Recipe.KEY_CODEC.listOf()` on the wire: a count, then each key's identifier string.
+        let mut value = vec![1];
+        photon_core::wire::write_varint(recipe.len() as i32, &mut value);
+        value.extend(recipe.as_bytes());
+        added.push((photon_data::item::component_types::RECIPES, value));
+    }
     if let Some(name) = breaking["main_hand_use_remainder"].as_str() {
         let remainder =
             photon_game::item::id_of(name).ok_or_else(|| format!("unknown item {name}"))?;
