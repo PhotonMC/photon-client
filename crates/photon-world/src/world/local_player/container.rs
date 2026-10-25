@@ -221,6 +221,8 @@ impl ClientWorld {
         const BLINDNESS: i32 = 14;
         const LEVITATION: i32 = 24;
         const SLOW_FALLING: i32 = 27;
+        const JUMP_BOOST: i32 = 7;
+        const DOLPHINS_GRACE: i32 = 29;
         let Some(state) = self.local_player() else {
             return local_player::HandState::default();
         };
@@ -252,8 +254,10 @@ impl ClientWorld {
             off_consume: consume_cue(state.inventory_slot(45)),
             food: state.food,
             blinded: amplifier(BLINDNESS).is_some(),
-            levitating: amplifier(LEVITATION).is_some(),
+            levitation: amplifier(LEVITATION),
             slow_falling: amplifier(SLOW_FALLING).is_some(),
+            jump_boost: amplifier(JUMP_BOOST),
+            dolphins_grace: amplifier(DOLPHINS_GRACE).is_some(),
             glider: false,
         }
     }

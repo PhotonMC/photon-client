@@ -156,9 +156,8 @@ pub struct LocalPlayer {
     pub(super) hurt_dir: f32,
     /// `deathTime`: the ticks since the health ran out.
     pub(super) death_time: i32,
-    /// How far into the swimming pose the model has turned.
-    pub(super) swim_amount: f32,
-    pub(super) swim_amount_old: f32,
+    /// How far into the swimming pose the model has turned, now and a tick ago.
+    pub(super) swim_amount: (f32, f32),
     pub(super) bob: f32,
     pub(super) bob_old: f32,
     pub(super) first_tick: bool,
@@ -193,6 +192,9 @@ pub struct LocalPlayer {
     pub(super) sprint_trigger_time: i32,
     pub(super) auto_jump_time: i32,
     pub(super) abilities: ClientPlayerAbilities,
+    /// The player's attributes as `handleUpdateAttributes` last set them, with the sprinting
+    /// modifier `setSprinting` puts on and takes off the movement speed.
+    pub(super) attributes: Vec<crate::ClientAttributeState>,
     pub(super) game_mode: ClientPlayerGameMode,
     pub(super) no_physics: bool,
     pub(super) auto_jump_option: bool,

@@ -160,6 +160,8 @@ mod movement;
 use movement::*;
 mod movement_gear;
 use movement_gear::*;
+mod movement_status;
+use movement_status::*;
 mod quads;
 use quads::*;
 mod frog;

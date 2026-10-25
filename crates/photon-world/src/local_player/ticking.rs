@@ -189,9 +189,11 @@ impl LocalPlayer {
             self.invulnerable_time -= 1;
         }
         // LivingEntity.tick: the swimming pose eases in or out.
-        self.swim_amount_old = self.swim_amount;
-        self.swim_amount =
-            crate::living::ease_swim_amount(self.swim_amount, self.is_visually_swimming());
+        let swim_amount = self.swim_amount.0;
+        self.swim_amount = (
+            crate::living::ease_swim_amount(swim_amount, self.is_visually_swimming()),
+            swim_amount,
+        );
         self.local_ai_step(level)?;
         self.turn_body();
         Ok(())
@@ -284,7 +286,7 @@ impl LocalPlayer {
     }
 
     pub(super) fn jump_from_ground(&mut self, level: &Level<'_>) {
-        let jump_power = JUMP_STRENGTH * 1.0_f32 * self.block_jump_factor(level) + 0.0_f32;
+        let jump_power = self.jump_power(level);
         if jump_power <= 1.0e-5 {
             return;
         }
@@ -322,7 +324,7 @@ impl LocalPlayer {
                 passenger: self.is_passenger(),
                 item_use_speed_multiplier: self.item_use_speed_multiplier(),
                 moving_slowly: self.is_moving_slowly(),
-                sneaking_movement_factor: SNEAKING_SPEED as f32,
+                sneaking_movement_factor: self.attribute("minecraft:sneaking_speed") as f32,
             },
         );
         self.xxa = applied.movement.x;
@@ -529,6 +531,10 @@ impl LocalPlayer {
         self.jump_or_rise_in_fluid(level);
 
         let input = Vec3::new(f64::from(self.xxa), 0.0, f64::from(self.zza));
+        // `aiStep`: slow falling and levitation keep a fall from building up.
+        if self.hands.slow_falling || self.hands.levitation.is_some() {
+            self.fall_distance = 0.0;
+        }
         self.player_travel(level, input)?;
         self.apply_effects_from_blocks(level)?;
         // `calculateEntityAnimation`: the limbs swing with the distance

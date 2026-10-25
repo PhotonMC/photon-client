@@ -115,8 +115,7 @@ impl LocalPlayer {
             hurt_duration: 0,
             hurt_dir: 0.0,
             death_time: 0,
-            swim_amount: 0.0,
-            swim_amount_old: 0.0,
+            swim_amount: (0.0, 0.0),
             bob: 0.0,
             bob_old: 0.0,
             first_tick: true,
@@ -143,6 +142,7 @@ impl LocalPlayer {
             sprint_trigger_time: 0,
             auto_jump_time: 0,
             abilities: game_mode.update_player_abilities(ClientPlayerAbilities::default()),
+            attributes: Vec::new(),
             game_mode,
             no_physics: false,
             auto_jump_option,
@@ -182,6 +182,27 @@ impl LocalPlayer {
         self.abilities.may_build = may_build;
     }
 
+    /// `handleUpdateAttributes` for the local player: each attribute sent takes the server's base
+    /// and modifiers in place of all it had, the sprinting modifier among them.
+    pub fn set_attributes(&mut self, attributes: &[crate::ClientAttributeState]) {
+        for attribute in attributes {
+            match self
+                .attributes
+                .iter_mut()
+                .find(|held| held.attribute_id == attribute.attribute_id)
+            {
+                Some(held) => *held = attribute.clone(),
+                None => self.attributes.push(attribute.clone()),
+            }
+        }
+    }
+
+    /// `getAttributeValue` of one of the player's attributes.
+    pub(super) fn attribute(&self, name: &str) -> f64 {
+        crate::effective_attribute(&self.attributes, "minecraft:player", name)
+            .expect("the attributes read here are all registered for the player")
+    }
+
     pub fn health(&self) -> f32 {
         self.health
     }
@@ -212,19 +233,6 @@ pub enum PlayerCommandAction {
     OpenInventory = 5,
     StartFallFlying = 6,
 }
-
-// Player attribute defaults, as the reference registers them.
-pub(super) const MOVEMENT_SPEED_BASE: f32 = 0.1;
-
-pub(super) const SPRINTING_MODIFIER: f32 = 0.3;
-
-pub(super) const JUMP_STRENGTH: f32 = 0.42;
-
-pub(super) const STEP_HEIGHT: f64 = 0.6;
-
-pub(super) const GRAVITY: f64 = 0.08;
-
-pub(super) const SNEAKING_SPEED: f64 = 0.3;
 
 pub(super) const SPRINT_WINDOW: i32 = 7;
 

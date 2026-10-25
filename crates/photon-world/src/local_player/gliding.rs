@@ -88,7 +88,7 @@ impl LocalPlayer {
         !self.abilities.flying
             && !self.on_ground
             && !self.is_passenger()
-            && !self.hands.levitating
+            && self.hands.levitation.is_none()
             && self.hands.glider
     }
 
@@ -121,15 +121,6 @@ impl LocalPlayer {
                 action: PlayerCommandAction::StartFallFlying,
                 data: 0,
             });
-        }
-    }
-
-    /// `LivingEntity.getEffectiveGravity`: slow falling caps a fall's gravity.
-    fn effective_gravity(&self) -> f64 {
-        if self.delta.y <= 0.0 && self.hands.slow_falling {
-            GRAVITY.min(0.01)
-        } else {
-            GRAVITY
         }
     }
 
