@@ -237,6 +237,7 @@ macro_rules! each {
             Shell::Sound($screen) => $body,
             Shell::Skin($screen) => $body,
             Shell::Font($screen) => $body,
+            Shell::World($screen) => $body,
         }
     };
 }

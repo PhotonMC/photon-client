@@ -160,6 +160,57 @@ pub fn font_options_screen() -> Value {
     gui("font-options-screen", "font_options_screen", rows)
 }
 
+/// The world settings screen: the buttons by what the server told the client (the difficulty and
+/// its lock, a hardcore world, the permission level), the tooltip of the game rules button, and
+/// the focus Tab walks over the active ones. No integrated server is ever present.
+pub fn world_options_screen() -> Value {
+    let world = |difficulty: &str, locked: bool, permission: i64| json!({"difficulty": difficulty, "locked": locked, "hardcore": false, "permission": permission});
+    let tab = |label: &str, permission: i64, presses: usize| {
+        let steps = (0..presses).map(|_| json!({"do": "key", "key": "tab"})).collect();
+        at(label).world(world("normal", false, permission)).steps(steps).row()
+    };
+    let rows = vec![
+        at("normal").world(world("normal", false, 0)).row(),
+        at("peaceful").world(world("peaceful", false, 0)).row(),
+        at("easy").world(world("easy", false, 0)).row(),
+        at("hard").world(world("hard", false, 0)).row(),
+        at("locked").world(world("normal", true, 0)).row(),
+        at("hardcore").world(json!({"difficulty": "hard", "locked": false, "hardcore": true, "permission": 0})).row(),
+        at("moderator").world(world("normal", false, 1)).row(),
+        at("gamemaster").world(world("normal", false, 2)).row(),
+        at("owner").world(world("normal", false, 4)).row(),
+        at("small").world(world("normal", false, 2)).window(640, 480).row(),
+        at("large-scale").world(world("normal", false, 2)).window(1280, 720).scale(0).row(),
+        at("hover-rules")
+            .world(world("normal", false, 0))
+            .mouse(100, 70)
+            .steps(vec![json!({"do": "frame", "ms": 0})])
+            .ms(1000)
+            .row(),
+        at("hover-rules-soon")
+            .world(world("normal", false, 0))
+            .mouse(100, 70)
+            .steps(vec![json!({"do": "frame", "ms": 0})])
+            .ms(300)
+            .row(),
+        at("hover-restrictions").world(world("normal", false, 0)).mouse(100, 95).row(),
+        at("hover-rules-gamemaster")
+            .world(world("normal", false, 2))
+            .mouse(100, 70)
+            .steps(vec![json!({"do": "frame", "ms": 0})])
+            .ms(1000)
+            .row(),
+        at("hover-done").world(world("normal", false, 0)).mouse(200, 224).row(),
+        at("hover-lock").world(world("normal", true, 2)).mouse(350, 70).row(),
+        tab("tab-once", 0, 1),
+        tab("tab-twice", 0, 2),
+        tab("tab-gamemaster", 2, 1),
+        tab("tab-gamemaster-wrap", 2, 4),
+        at("shift-tab").world(world("normal", false, 2)).steps(vec![json!({"do": "key", "key": "shift+tab"})]).row(),
+    ];
+    gui("world-options-screen", "world_options_screen", rows)
+}
+
 fn mouse_rows() -> Vec<Value> {
     let press = |label: &str, steps: Vec<Value>| at(label).steps(steps).row();
     let options = |label: &str, options: Value| at(label).options(options).row();

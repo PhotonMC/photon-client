@@ -31,6 +31,7 @@ use photon_gui::options::font::{FontChoices, FontOptionsScreen};
 use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
 use photon_gui::options::skin::SkinCustomizationScreen;
 use photon_gui::options::sound::SoundOptionsScreen;
+use photon_gui::options::world::{WorldFacts, WorldOptionsScreen};
 use photon_render::window::scale::WindowScale;
 
 // The settings screens that have the same inputs.
@@ -42,6 +43,7 @@ pub(super) enum Shell {
     Sound(SoundOptionsScreen),
     Skin(SkinCustomizationScreen),
     Font(FontOptionsScreen),
+    World(WorldOptionsScreen),
 }
 
 /// The screen of a settings operation, over the options the row has.
@@ -55,6 +57,13 @@ pub(super) fn settings_shell(
     match operation {
         "skin_customization_screen" => Shell::Skin(SkinCustomizationScreen::new(
             font, lang, size, in_world, &options,
+        )),
+        "world_options_screen" => Shell::World(WorldOptionsScreen::new(
+            font,
+            lang,
+            size,
+            in_world,
+            world_facts(&row["world"]),
         )),
         "font_options_screen" => {
             Shell::Font(FontOptionsScreen::new(font, lang, size, in_world, &options))
@@ -79,5 +88,21 @@ pub(super) fn settings_shell(
             Shell::Sound(sound_screen(font, lang, (size, in_world), &options))
         }
         _ => Shell::Controls(ControlsScreen::new(font, lang, size, in_world)),
+    }
+}
+
+/// What the row says the server told the client about the world.
+fn world_facts(world: &Value) -> WorldFacts {
+    let difficulty = match world["difficulty"].as_str().unwrap_or("normal") {
+        "peaceful" => 0,
+        "easy" => 1,
+        "hard" => 3,
+        _ => 2,
+    };
+    WorldFacts {
+        difficulty,
+        locked: world["locked"].as_bool().unwrap_or(false),
+        hardcore: world["hardcore"].as_bool().unwrap_or(false),
+        gamemaster: world["permission"].as_i64().unwrap_or(0) >= 2,
     }
 }

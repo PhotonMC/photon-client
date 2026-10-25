@@ -54,6 +54,28 @@ class GuiSettingsOracle extends GuiScreenOracle {
      */
     /// The quality options as `options.txt` would have loaded them: the game is not running yet, so
     /// a set neither applies the preset nor turns it to Custom.
+    /**
+     * What the server told the world screen: the difficulty and whether it is locked, a hardcore world,
+     * and the player's permission level (a player is made only when one is given).
+     */
+    static void worldFacts(StubGame minecraft, Object level, JsonObject facts) throws Exception {
+        var data = new net.minecraft.client.multiplayer.ClientLevel.ClientLevelData(
+            net.minecraft.world.Difficulty.valueOf(facts.get("difficulty").getAsString().toUpperCase()),
+            facts.has("hardcore") && facts.get("hardcore").getAsBoolean(), false);
+        data.setDifficultyLocked(facts.has("locked") && facts.get("locked").getAsBoolean());
+        set(level, "clientLevelData", data);
+        set(level, "levelData", data);
+        var player = unsafe.allocateInstance(net.minecraft.client.player.LocalPlayer.class);
+        set(player, "permissions", switch (facts.has("permission") ? facts.get("permission").getAsInt() : 0) {
+            case 1 -> net.minecraft.server.permissions.LevelBasedPermissionSet.MODERATOR;
+            case 2 -> net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER;
+            case 3 -> net.minecraft.server.permissions.LevelBasedPermissionSet.ADMIN;
+            case 4 -> net.minecraft.server.permissions.LevelBasedPermissionSet.OWNER;
+            default -> net.minecraft.server.permissions.PermissionSet.NO_PERMISSIONS;
+        });
+        minecraft.player = (net.minecraft.client.player.LocalPlayer) player;
+    }
+
     static void storedQuality(StubGame minecraft, JsonObject values) throws Exception {
         var options = minecraft.options;
         set(minecraft, "running", false);
@@ -120,6 +142,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     : net.minecraft.world.flag.FeatureFlagSet.of());
                 set(level, "connection", connection);
                 set(minecraft, "level", level);
+                if (row.has("world")) {
+                    worldFacts(minecraft, level, row.getAsJsonObject("world"));
+                }
             }
             // No resource packs are available, as in Photon.
             set(minecraft, "resourcePackRepository", new net.minecraft.server.packs.repository.PackRepository());
@@ -168,7 +193,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
             if (kind.equals("language")) {
                 net.minecraft.locale.Language.inject(clientLanguage(row.get("language").getAsString()));
             }
-            net.minecraft.client.gui.screens.options.OptionsSubScreen video = switch (kind) {
+            net.minecraft.client.gui.screens.Screen video = switch (kind) {
+                case "world" -> new net.minecraft.client.gui.screens.options.WorldOptionsScreen(null, minecraft.level);
                 case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(
                     null, minecraft, minecraft.options);
                 case "chat" -> new net.minecraft.client.gui.screens.options.ChatOptionsScreen(null, minecraft.options);
@@ -187,7 +213,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(minecraft.gui, "screen", video);
             set(video, "width", window.getGuiScaledWidth());
             set(video, "height", window.getGuiScaledHeight());
-            var init = Reflect.method(net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "init");
+            var init = Reflect.method(kind.equals("world")
+                ? net.minecraft.client.gui.screens.options.WorldOptionsScreen.class
+                : net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "init");
             init.invoke(video);
             if (kind.equals("language")) {
                 var focus = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "setInitialFocus");
@@ -286,6 +314,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 var languageList = Reflect.field(video.getClass(), "languageSelectionList");
                 scrollAmount = ((net.minecraft.client.gui.components.AbstractScrollArea) languageList.get(video))
                     .scrollAmount();
+            } else if (kind.equals("world")) {
+                scrollAmount = 0;
             } else {
                 var listField = Reflect.field(net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "list");
                 scrollAmount = ((net.minecraft.client.gui.components.OptionsList) listField.get(video)).scrollAmount();

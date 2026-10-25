@@ -24,6 +24,8 @@ pub enum Kind {
     Button { label: Vec<Run> },
     /// `SpriteIconButton.CenteredIcon`: a sprite in the middle of the button.
     Icon { sprite: String, size: (i32, i32) },
+    /// `LockIconButton`: the lock sprite alone, over the whole button.
+    Lock { locked: bool },
     /// `StringWidget`: text, not drawn over a button.
     Text { text: Vec<Run> },
     /// `PlainTextButton`: text that is pressed like a button, underlined when hovered or focused.
@@ -90,6 +92,7 @@ impl Widget {
                 let y = rect.y + rect.height / 2 - size.1 / 2;
                 frame.sprite(atlas, sprite, x, y, size.0, size.1);
             }
+            Kind::Lock { locked } => self.draw_lock(frame, atlas, arena, (*locked, highlighted)),
             Kind::Text { text } => {
                 let y = rect.y + (rect.height - 9) / 2;
                 frame.styled_text(atlas, font, text, rect.x, y, 0xFFFF_FFFF, true);
@@ -110,6 +113,31 @@ impl Widget {
                 frame.styled_text(atlas, font, text, rect.x, rect.y, 0xFFFF_FFFF, true);
             }
         }
+    }
+
+    /// `LockIconButton.extractContents`: the lock sprite for the state, over the whole button.
+    fn draw_lock(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        arena: &Arena,
+        (locked, highlighted): (bool, bool),
+    ) {
+        let rect = arena.0[self.rect];
+        let state = match (self.active, highlighted) {
+            (false, _) => "_disabled",
+            (true, true) => "_highlighted",
+            (true, false) => "",
+        };
+        let name = if locked { "locked" } else { "unlocked" };
+        frame.sprite(
+            atlas,
+            &format!("widget/{name}_button{state}"),
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+        );
     }
 
     /// `extractDefaultSprite`: the button's sprite over its whole rectangle.

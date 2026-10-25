@@ -136,9 +136,21 @@ fn editing_case(
     })
 }
 
+/// The settings screens, then the editing ones.
+fn screen_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+    operation: &str,
+) -> Option<Result<Value, String>> {
+    if SETTINGS_SCREENS.contains(&operation) {
+        return Some(chat_options_screen_case(ctx, row, operation));
+    }
+    editing_case(ctx, row, operation)
+}
+
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 35] = [
+const SOUND_OPERATIONS: [&str; 36] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -171,9 +183,22 @@ const SOUND_OPERATIONS: [&str; 35] = [
     "sound_options_screen",
     "skin_customization_screen",
     "font_options_screen",
+    "world_options_screen",
     "controls_screen",
     "key_binds_screen",
     "language_screen",
+];
+
+/// The settings screens that take the same inputs.
+const SETTINGS_SCREENS: [&str; 8] = [
+    "chat_options_screen",
+    "accessibility_options_screen",
+    "mouse_settings_screen",
+    "controls_screen",
+    "skin_customization_screen",
+    "font_options_screen",
+    "world_options_screen",
+    "sound_options_screen",
 ];
 
 /// A row's result with the sounds the interface asked for while it ran, for the operations whose
@@ -221,13 +246,6 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "widgets" => widgets_case(&mut ctx, row)?,
                 "options_screen" => options_screen_case(&mut ctx, row)?,
                 "video_settings_screen" => video_settings_screen_case(&mut ctx, row)?,
-                "chat_options_screen"
-                | "accessibility_options_screen"
-                | "mouse_settings_screen"
-                | "controls_screen"
-                | "skin_customization_screen"
-                | "font_options_screen"
-                | "sound_options_screen" => chat_options_screen_case(&mut ctx, row, operation)?,
                 "key_binds_screen" => key_binds_screen_case(&mut ctx, row)?,
                 "language_screen" => language_screen_case(&mut ctx, row)?,
                 "death_screen" => death_screen_case(&mut ctx, row)?,
@@ -247,7 +265,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "sign_texts" => sign_texts_case(&mut ctx, row)?,
                 "tooltip_lines" => tooltip_lines_case(&mut ctx, row)?,
                 "bundle_tooltip" => bundle_tooltip_case(&mut ctx, row)?,
-                other => match editing_case(&mut ctx, row, other) {
+                other => match screen_case(&mut ctx, row, other) {
                     Some(result) => result?,
                     None => hud_ops(&mut ctx, row, other)?,
                 },

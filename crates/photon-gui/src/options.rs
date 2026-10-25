@@ -12,6 +12,7 @@ pub mod skin;
 pub mod sound;
 pub mod text;
 pub mod video;
+pub mod world;
 
 use crate::FontRuns;
 use photon_game::options::values::IntRange;

@@ -14,6 +14,7 @@ pub struct Setting {
     steps: Vec<Value>,
     ms: i64,
     options: Option<Value>,
+    world: Option<Value>,
 }
 
 /// A scenario in the default window, in a world.
@@ -27,6 +28,7 @@ pub fn at(label: &str) -> Setting {
         steps: vec![],
         ms: 0,
         options: None,
+        world: None,
     }
 }
 
@@ -59,6 +61,11 @@ impl Setting {
         Self { options: Some(options), ..self }
     }
 
+    /// What the server told the client about the world (the world screen's inputs).
+    pub fn world(self, world: Value) -> Self {
+        Self { world: Some(world), ..self }
+    }
+
     /// The row; `extra` fields come after the common ones.
     pub fn row(self) -> Value {
         let mut row = json!({
@@ -67,6 +74,9 @@ impl Setting {
         });
         if let Some(options) = self.options {
             row["options"] = options;
+        }
+        if let Some(world) = self.world {
+            row["world"] = world;
         }
         row
     }
