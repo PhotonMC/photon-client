@@ -292,6 +292,10 @@ fn parse_range_dispatch(object: &JsonObject) -> ItemModelDef {
                     target.property(object.bool("wobble").unwrap_or(true))
                 })
         }
+        // `damage` and `count` keep whether they are normalized (the default) in the name.
+        "minecraft:damage" | "minecraft:count" if !object.bool("normalize").unwrap_or(true) => {
+            format!("{property}{RAW}")
+        }
         // A clock names its `source` the same way.
         "minecraft:time" => NeedleSource::parse(&object.text("source").unwrap_or_default(), true)
             .map_or(property, |source| {

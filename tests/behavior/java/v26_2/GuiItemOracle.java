@@ -5,10 +5,17 @@ import com.mojang.serialization.JsonOps;
 /** The conditions an item model decides from a stack alone: broken and has_component. */
 class GuiItemOracle extends GuiDialogOracle {
     private static boolean propertiesBootstrapped;
+    private static boolean numbersBootstrapped;
 
     private static net.minecraft.world.item.ItemStack itemStack(JsonObject row) {
         var id = net.minecraft.resources.Identifier.parse(row.get("item").getAsString());
         var stack = new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(id));
+        if (row.has("count")) {
+            stack.setCount(row.get("count").getAsInt());
+        }
+        if (row.has("max_stack_size")) {
+            stack.set(net.minecraft.core.component.DataComponents.MAX_STACK_SIZE, row.get("max_stack_size").getAsInt());
+        }
         if (row.has("damage")) {
             stack.set(net.minecraft.core.component.DataComponents.DAMAGE, row.get("damage").getAsInt());
         }
@@ -50,7 +57,8 @@ class GuiItemOracle extends GuiDialogOracle {
     }
 
     static JsonObject itemCondition(JsonObject request) {
-        Game26_2.bootstrap();
+        // Binds the items' default components, which a stack reads.
+        Game26_2.vanillaRegistries();
         if (!propertiesBootstrapped) {
             net.minecraft.client.renderer.item.properties.conditional.ConditionalItemModelProperties.bootstrap();
             propertiesBootstrapped = true;
@@ -71,9 +79,36 @@ class GuiItemOracle extends GuiDialogOracle {
         return result;
     }
 
+    /** The `damage` and `count` range properties' value for a stack; a NaN is reported as `nan`. */
+    static JsonObject itemNumber(JsonObject request) {
+        Game26_2.vanillaRegistries();
+        if (!numbersBootstrapped) {
+            net.minecraft.client.renderer.item.properties.numeric.RangeSelectItemModelProperties.bootstrap();
+            numbersBootstrapped = true;
+        }
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            var property = net.minecraft.client.renderer.item.properties.numeric.RangeSelectItemModelProperties.MAP_CODEC
+                .codec().parse(JsonOps.INSTANCE, row.get("property")).getOrThrow();
+            float value = property.get(itemStack(row), null, null, 0);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            if (Float.isNaN(value)) {
+                out.addProperty("nan", true);
+            } else {
+                out.addProperty("value", (double) value);
+            }
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** The `block_state` select's value for a stack: the property it reads, or null. */
     static JsonObject itemSelect(JsonObject request) {
-        Game26_2.bootstrap();
+        Game26_2.vanillaRegistries();
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();

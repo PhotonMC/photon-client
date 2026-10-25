@@ -100,7 +100,15 @@ fn standalone(request: &Value, root: &std::path::Path) -> Option<Result<Value, S
         "command_parse" => crate::command_parse_result(request, root),
         "command_suggest" => crate::command_suggest_result(request),
         "command_verify" => crate::command_verify_result(request),
+        _ => return item_operation(request),
+    })
+}
+
+/// The operations on a stack's item model properties.
+fn item_operation(request: &Value) -> Option<Result<Value, String>> {
+    Some(match request["operation"].as_str()? {
         "item_condition" => item_condition::item_condition_result(request),
+        "item_number" => item_condition::item_number_result(request),
         "item_select" => item_condition::item_select_result(request),
         "item_needle" => item_condition::item_needle_result(request),
         _ => return None,

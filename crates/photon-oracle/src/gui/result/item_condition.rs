@@ -10,7 +10,11 @@ use photon_world::item_components::ids;
 /// The components a row's patch adds, as the wire carries them.
 fn added_components(row: &Value) -> Result<Vec<(i32, Vec<u8>)>, String> {
     let mut added: Vec<(i32, Vec<u8>)> = Vec::new();
-    for (key, id) in [("damage", ids::DAMAGE), ("max_damage", ids::MAX_DAMAGE)] {
+    for (key, id) in [
+        ("damage", ids::DAMAGE),
+        ("max_damage", ids::MAX_DAMAGE),
+        ("max_stack_size", ids::MAX_STACK_SIZE),
+    ] {
         if let Some(value) = row[key].as_i64() {
             let mut bytes = Vec::new();
             write_varint(value as i32, &mut bytes);
@@ -75,7 +79,8 @@ fn stack_of(row: &Value) -> Result<ClientItemStackState, String> {
     for id in removed {
         write_varint(id, &mut patch);
     }
-    Ok(ClientItemStackState::new(1, item).with_patch_bytes(patch))
+    let count = row["count"].as_i64().map_or(1, |count| count as i32);
+    Ok(ClientItemStackState::new(count, item).with_patch_bytes(patch))
 }
 
 /// Each row's property decided from its stack, by the production conditions.
@@ -85,6 +90,7 @@ pub(super) fn item_condition_result(request: &Value) -> Result<Value, String> {
         let stack = stack_of(row)?;
         let state = ItemState {
             broken: stack.breaks_on_next_damage(),
+            numbers: photon_gui::stack_numbers(&stack),
             components: TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
                 lodestone_tracker: stack.has_added_component(LODESTONE_TRACKER),
@@ -103,6 +109,29 @@ pub(super) fn item_condition_result(request: &Value) -> Result<Value, String> {
             component.as_ref(),
         );
         rows.push(json!({"label": row["label"], "value": value}));
+    }
+    Ok(json!({"rows": rows}))
+}
+
+/// Each row's `damage` or `count` range property decided from its stack, by the production
+/// parser and numbers. A NaN is reported as `nan` since its bits differ between languages.
+pub(super) fn item_number_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let stack = stack_of(row)?;
+        let mut node = row["property"].clone();
+        node["type"] = json!("minecraft:range_dispatch");
+        let node = node.to_string();
+        let value =
+            photon_render::item_model::stack_range_value(&node, photon_gui::stack_numbers(&stack))
+                .ok_or("property")?;
+        let mut out = json!({"label": row["label"]});
+        if value.is_nan() {
+            out["nan"] = json!(true);
+        } else {
+            out["value"] = json!(f64::from(value));
+        }
+        rows.push(out);
     }
     Ok(json!({"rows": rows}))
 }

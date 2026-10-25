@@ -178,6 +178,8 @@ mod parse;
 pub use parse::*;
 mod resolve;
 pub use resolve::*;
+mod stack_numbers;
+pub use stack_numbers::*;
 mod generated;
 pub use generated::*;
 

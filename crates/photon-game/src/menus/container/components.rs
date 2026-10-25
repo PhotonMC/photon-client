@@ -100,18 +100,26 @@ pub fn max_damage(stack: &Stack) -> i32 {
         .unwrap_or(0)
 }
 
+/// `Mth.clamp` on ints: a maximum below the minimum wins, where `i32::clamp` panics.
+fn mth_clamp(value: i32, min: i32, max: i32) -> i32 {
+    if value < min { min } else { value.min(max) }
+}
+
 /// `ItemStack.getDamageValue`.
 pub fn damage(stack: &Stack) -> i32 {
-    get(stack, ids::DAMAGE)
-        .and_then(|value| varint_of(&value))
-        .unwrap_or(0)
-        .clamp(0, max_damage(stack))
+    mth_clamp(
+        get(stack, ids::DAMAGE)
+            .and_then(|value| varint_of(&value))
+            .unwrap_or(0),
+        0,
+        max_damage(stack),
+    )
 }
 
 /// `ItemStack.setDamageValue`.
 pub(super) fn set_damage(stack: &mut Stack, damage: i32) {
     let max = max_damage(stack);
-    set(stack, ids::DAMAGE, varint(damage.clamp(0, max)));
+    set(stack, ids::DAMAGE, varint(mth_clamp(damage, 0, max)));
 }
 
 /// `ItemStack.isDamageableItem`.

@@ -40,7 +40,9 @@ impl ClientItemStackState {
             return false;
         }
         let max = self.int_component(ids::MAX_DAMAGE, durability);
-        self.int_component(ids::DAMAGE, 0).clamp(0, max) >= max - 1
+        let damage = self.int_component(ids::DAMAGE, 0);
+        // `Mth.clamp`: a maximum below zero wins, where `i32::clamp` panics.
+        (if damage < 0 { 0 } else { damage.min(max) }) >= max - 1
     }
 
     /// `ItemStack.has` for a component only a stack's own patch adds: no item definition the

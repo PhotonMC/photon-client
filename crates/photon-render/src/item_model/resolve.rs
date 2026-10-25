@@ -57,6 +57,8 @@ pub struct ItemState {
     pub dimension: Option<&'static str>,
     /// The holder's bobber is out and this stack is in the arm that holds the rod.
     pub cast: bool,
+    /// The durability and size the `damaged`, `damage` and `count` properties read.
+    pub numbers: StackNumbers,
 }
 
 /// What a `block_state` select's property is named in front of: the state property it reads.
@@ -87,6 +89,7 @@ impl ItemState {
         match property {
             "minecraft:using_item" => self.item_use.is_some(),
             "minecraft:broken" => self.broken,
+            "minecraft:damaged" => self.numbers.damaged,
             "minecraft:fishing_rod/cast" => self.cast,
             "minecraft:bundle/has_selected_item" => self.selected.is_some(),
             "minecraft:has_component" => match component.map(|(name, _)| name.as_str()) {
@@ -95,6 +98,20 @@ impl ItemState {
                 _ => false,
             },
             _ => false,
+        }
+    }
+
+    /// The `damage` and `count` properties, which read the stack alone.
+    pub fn stack_number(&self, property: &str) -> Option<f32> {
+        let numbers = &self.numbers;
+        match property {
+            "minecraft:damage" => Some(numbers.damage_property(true)),
+            "minecraft:count" => Some(numbers.count_property(true)),
+            _ if property == format!("minecraft:damage{RAW}") => {
+                Some(numbers.damage_property(false))
+            }
+            _ if property == format!("minecraft:count{RAW}") => Some(numbers.count_property(false)),
+            _ => None,
         }
     }
 }
@@ -134,6 +151,14 @@ impl Walk {
             }
             return 0.0;
         }
+        if let Some(value) = self.state.stack_number(property) {
+            return value;
+        }
+        self.use_number(property, remaining)
+    }
+
+    /// The numeric properties of a stack in use, zero for a stack that is not.
+    fn use_number(&self, property: &str, remaining: bool) -> f32 {
         let (Some(item_use), false) = (self.state.item_use, remaining) else {
             return 0.0;
         };
@@ -277,7 +302,8 @@ fn read_children(def: &ItemModelDef) -> Option<Vec<&ItemModelDef>> {
 }
 
 /// The conditions decided here.
-const READ_CONDITIONS: [&str; 5] = [
+const READ_CONDITIONS: [&str; 6] = [
+    "minecraft:damaged",
     "minecraft:fishing_rod/cast",
     "minecraft:using_item",
     "minecraft:broken",
@@ -293,7 +319,14 @@ const READ_SELECTS: [&str; 3] = [
 ];
 
 /// The numeric properties a range dispatch is decided from here.
-const READ_RANGES: [&str; 2] = ["minecraft:use_duration", "minecraft:crossbow/pull"];
+const READ_RANGES: [&str; 6] = [
+    "minecraft:use_duration",
+    "minecraft:crossbow/pull",
+    "minecraft:damage",
+    "minecraft:count",
+    "minecraft:damage/raw",
+    "minecraft:count/raw",
+];
 
 /// The layers a stack draws for its holder, and the branches the tree took: two stacks of one
 /// item with the same trace and components draw the same.
@@ -479,6 +512,23 @@ fn layers_under(
     }
 }
 
+/// A range dispatch node written as JSON, its value for a stack's numbers: what the `damage` and
+/// `count` properties give, times the scale. None for another property or a node that is not one.
+pub fn stack_range_value(node: &str, numbers: StackNumbers) -> Option<f32> {
+    let object = photon_core::json::parse_object(node)?;
+    let ItemModelDef::RangeDispatch {
+        property, scale, ..
+    } = parse_item_model(&object)
+    else {
+        return None;
+    };
+    let state = ItemState {
+        numbers,
+        ..ItemState::default()
+    };
+    Some(state.stack_number(&property)? * scale)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -535,6 +585,52 @@ mod tests {
         assert_eq!(trace(20), trace(40));
         assert_ne!(trace(0), trace(13));
         assert_ne!(drawn(None).1, trace(0));
+    }
+
+    const WORN: &str = r#"{"model":{"type":"minecraft:condition","property":"minecraft:damaged",
+        "on_false":{"type":"minecraft:model","model":"minecraft:item/new"},
+        "on_true":{"type":"minecraft:range_dispatch","property":"minecraft:damage","normalize":false,
+          "entries":[{"threshold":10.0,"model":{"type":"minecraft:model","model":"minecraft:item/worn"}}],
+          "fallback":{"type":"minecraft:model","model":"minecraft:item/scratched"}}}}"#;
+
+    fn worn(damage: i32) -> String {
+        let numbers = StackNumbers {
+            damaged: damage > 0,
+            damage,
+            max_damage: 100,
+            count: 1,
+            max_count: 1,
+        };
+        drawn_by(
+            WORN,
+            ItemState {
+                numbers,
+                ..ItemState::default()
+            },
+        )
+        .0
+    }
+
+    /// `damaged` and an un-normalized `damage` range read the stack's numbers alone.
+    #[test]
+    fn a_worn_item_steps_through_its_damage_models() {
+        assert_eq!(worn(0), "minecraft:item/new");
+        assert_eq!(worn(9), "minecraft:item/scratched");
+        assert_eq!(worn(10), "minecraft:item/worn");
+        assert_eq!(worn(100), "minecraft:item/worn");
+    }
+
+    /// The models of a `damaged` condition and a `damage` range are all in use.
+    #[test]
+    fn every_damage_model_is_in_use() {
+        let item = parse_client_item(WORN).expect("a client item");
+        let mut layers = Vec::new();
+        layers_any_use(
+            &item.model,
+            DisplayContext::ALL[0],
+            (&IDENTITY, &mut layers),
+        );
+        assert_eq!(layers.len(), 3);
     }
 
     const CROSSBOW: &str = r#"{"model":{"type":"minecraft:select","property":"minecraft:charge_type",

@@ -278,6 +278,7 @@ impl ItemLayerCache {
             block_state: block_state_lines(stack),
             dimension: None,
             cast: self.cast,
+            numbers: photon_gui::stack_numbers(stack),
             needles: photon_render::item_model::Needles::default(),
             components: photon_render::item_model::TestedComponents {
                 dyed_color: stack.has_added_component(DYED_COLOR),
