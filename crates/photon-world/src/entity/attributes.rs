@@ -117,6 +117,32 @@ impl ClientMobEffectState {
         self.flags
     }
 
+    /// `ClientPacketListener.handleUpdateMobEffect`'s effect: unless the packet's flags ask for it
+    /// to blend, it starts as faded in as it will be.
+    pub fn from_packet(effect_id: i32, amplifier: i32, duration_ticks: i32, flags: u8) -> Self {
+        let mut effect = Self {
+            effect_id,
+            amplifier,
+            duration_ticks,
+            flags,
+            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
+        };
+        if flags & 0b1000 == 0 {
+            effect.skip_blending();
+        }
+        effect
+    }
+
+    /// `MobEffectInstance.isAmbient`: the packet's ambient flag (a beacon's).
+    pub fn is_ambient(&self) -> bool {
+        self.flags & 0b0001 != 0
+    }
+
+    /// `MobEffectInstance.showIcon`: the packet's icon flag.
+    pub fn shows_icon(&self) -> bool {
+        self.flags & 0b0100 != 0
+    }
+
     /// An effect as a client first has it from a packet that does (`blends`) or does not ask for it
     /// to fade in.
     pub fn new(effect_id: i32, amplifier: i32, duration_ticks: i32, blends: bool) -> Self {

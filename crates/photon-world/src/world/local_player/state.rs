@@ -226,18 +226,8 @@ impl ClientWorld {
         else {
             return false;
         };
-        let mut effect = ClientMobEffectState {
-            effect_id,
-            amplifier,
-            duration_ticks,
-            flags,
-            blend: (JavaF32::new(0.0), JavaF32::new(0.0)),
-        };
-        // `ClientPacketListener.handleUpdateMobEffect`: unless the packet asks for it to blend,
-        // the effect starts as faded in as it will be.
-        if flags & 0b1000 == 0 {
-            effect.skip_blending();
-        }
+        let mut effect =
+            ClientMobEffectState::from_packet(effect_id, amplifier, duration_ticks, flags);
         if let Some(existing) = player
             .effects
             .iter_mut()
