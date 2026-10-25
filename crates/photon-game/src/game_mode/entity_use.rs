@@ -119,8 +119,28 @@ impl Context<'_> {
             "minecraft:pig" | "minecraft:strider" => self.interact_saddleable(name, id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
-                None => EntityUse::Pass,
+                None => self.interact_ageable_only(id, hand),
             },
+        }
+    }
+
+    /// `AgeableMob.mobInteract`, the only override of a class that adds nothing to it (the polar
+    /// bear, the squids, the cube mobs); any other mob passes.
+    fn interact_ageable_only(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let ageable = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_ageable_mob());
+        // The cube mobs share the baby flag but are not `AgeableMob`s.
+        let cube = matches!(
+            self.world.entity_type_name(id),
+            Some("minecraft:slime" | "minecraft:magma_cube" | "minecraft:sulfur_cube")
+        );
+        if ageable && !cube {
+            self.golden_dandelion_on_baby(id, hand)
+        } else {
+            EntityUse::Pass
         }
     }
 

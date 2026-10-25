@@ -22,6 +22,12 @@ fn clicked(label: &str, entity: Value, (item, x_rot): (&'static str, f64), click
 
 /// Adults (`""`) and babies (`"baby"`) with the item in hand: label, flag, kind, item.
 const PLAIN: &[(&str, &str, &str, &str)] = &[
+    ("use-baby-polar-bear-with-golden-dandelion", "baby", "polar_bear", "minecraft:golden_dandelion"),
+    ("use-polar-bear-with-golden-dandelion", "", "polar_bear", "minecraft:golden_dandelion"),
+    ("use-baby-squid-with-golden-dandelion", "baby", "squid", "minecraft:golden_dandelion"),
+    ("use-baby-glow-squid-with-golden-dandelion", "baby", "glow_squid", "minecraft:golden_dandelion"),
+    ("use-baby-zombie-with-golden-dandelion", "baby", "zombie", "minecraft:golden_dandelion"),
+    ("use-baby-slime-with-golden-dandelion", "baby", "slime", "minecraft:golden_dandelion"),
     ("use-sulfur-cube-with-stone", "", "sulfur_cube", "minecraft:stone"),
     ("use-sulfur-cube-with-shears", "", "sulfur_cube", "minecraft:shears"),
     ("use-sulfur-cube-with-bucket", "", "sulfur_cube", "minecraft:bucket"),
