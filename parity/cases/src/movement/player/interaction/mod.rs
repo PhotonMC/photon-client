@@ -8,6 +8,7 @@ mod consuming;
 mod digging;
 mod effects;
 mod gliding;
+mod opening;
 mod pistons;
 mod placing;
 mod throwing;
@@ -227,7 +228,8 @@ pub fn cases() -> Vec<Value> {
     vec![
         local(
             "movement/using",
-            [placing::rows(), consuming::rows(), throwing::rows(), bottling::rows(), utility::rows()].concat(),
+            [placing::rows(), consuming::rows(), throwing::rows(), bottling::rows(), utility::rows(), opening::rows()]
+                .concat(),
         ),
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),

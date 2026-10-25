@@ -76,7 +76,10 @@ class MovementSupport {
             String played = instance.getIdentifier().toString();
             if (played.equals("minecraft:entity.player.swim") || played.startsWith("minecraft:entity.player.splash")
                 || played.startsWith("minecraft:entity.player.hurt") || played.equals("minecraft:entity.player.death")
-                || played.equals("minecraft:block.portal.trigger")) {
+                || played.equals("minecraft:block.portal.trigger")
+                // A door, trap door or fence gate opening or closing draws its pitch from the level's unseeded random.
+                || played.endsWith("door.open") || played.endsWith("door.close")
+                || played.endsWith("fence_gate.open") || played.endsWith("fence_gate.close")) {
                 pitch = 0.0F;
             }
             PLAYED.add(instance.getIdentifier() + "," + instance.getSource().getName() + ","

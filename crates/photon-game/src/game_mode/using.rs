@@ -1,6 +1,7 @@
 use super::entity_use::EntityUse;
 use super::*;
 use photon_core::ids::ItemId;
+use photon_world::local_player::{LocalSound, LocalSoundSource};
 
 impl GameMode {
     /// The hands whose stack was used since the last call, in order.
@@ -281,7 +282,7 @@ impl GameMode {
     /// `BlockBehaviour.useWithoutItem`; a command block opens its screen for a game master.
     fn use_without_item(
         &mut self,
-        ctx: &Context<'_>,
+        ctx: &mut Context<'_>,
         state: photon_core::ids::BlockStateId,
         pos: (i32, i32, i32),
     ) -> UseResult {
@@ -292,10 +293,46 @@ impl GameMode {
         if let Some(result) = self.operator_block(ctx, state, pos) {
             return result;
         }
+        let facing =
+            photon_core::direction::Direction::from_y_rot(f64::from(ctx.player.rotation().0));
+        if let Rule::Known(open) = rules::use_openable(state, pos, facing) {
+            return Self::open_block(ctx, open);
+        }
         match rules::use_without_item(state) {
             Rule::Known(result) => result,
             Rule::Unported => UseResult::Success { swing: true },
         }
+    }
+
+    /// A door, trap door, fence gate or button used by hand: the block is set and its sound
+    /// plays, as the server leaves the user out of the sound it broadcasts.
+    fn open_block(ctx: &mut Context<'_>, open: rules::OpenUse) -> UseResult {
+        let opened = match open {
+            rules::OpenUse::Pass => return UseResult::Pass,
+            rules::OpenUse::Consume => return UseResult::Success { swing: false },
+            rules::OpenUse::Done(opened) => opened,
+        };
+        let write = opened.write;
+        let position = ctx.player.position();
+        ctx.world
+            .set_block_with_updates(write.pos, write.state, write.flags, 512, position);
+        let pitch = if opened.random_pitch {
+            ctx.world.block_use_sound_pitch()
+        } else {
+            1.0
+        };
+        let at = (
+            f64::from(write.pos.0) + 0.5,
+            f64::from(write.pos.1) + 0.5,
+            f64::from(write.pos.2) + 0.5,
+        );
+        ctx.world.push_sound(LocalSound::at(
+            opened.sound,
+            LocalSoundSource::Blocks,
+            (1.0, pitch),
+            at,
+        ));
+        UseResult::Success { swing: true }
     }
 
     /// `ItemStack.useOn`, then `Item.useOn` as the item's class decides it.
