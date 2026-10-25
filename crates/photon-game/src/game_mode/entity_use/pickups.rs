@@ -39,7 +39,7 @@ impl Context<'_> {
             .is_some_and(|entity| entity.is_baby() && !entity.is_age_locked());
         if ages && self.holds_tagged(hand, tag) {
             if let Some(bucket) = water {
-                buckets::plain_result(self, hand, bucket);
+                buckets::filled_with(self, hand, ClientItemStackState::new(1, bucket));
             }
             return EntityUse::Success { swing: true };
         }

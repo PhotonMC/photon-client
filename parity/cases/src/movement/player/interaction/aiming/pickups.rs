@@ -20,8 +20,6 @@ pub(super) fn rows() -> Vec<Value> {
         at("pick-up-pufferfish", "pufferfish", &[]).main_hand(water).x_rot(33.0).row(),
         at("pick-up-tropical-fish", "tropical_fish", &[]).main_hand(water).row(),
         at("pick-up-axolotl", "axolotl", &[]).main_hand(water).row(),
-        at("use-cod-with-stone", "cod", &[]).main_hand("minecraft:stone").count(2).x_rot(33.0).row(),
-        at("use-cod-with-bucket", "cod", &[]).main_hand("minecraft:bucket").x_rot(33.0).row(),
         at("feed-axolotl-tropical-fish-bucket", "axolotl", &[]).main_hand("minecraft:tropical_fish_bucket").row(),
         at("feed-baby-axolotl-tropical-fish-bucket", "axolotl", &["baby"])
             .main_hand("minecraft:tropical_fish_bucket")
@@ -32,7 +30,18 @@ pub(super) fn rows() -> Vec<Value> {
             .game_mode("creative")
             .x_rot(33.0)
             .row(),
-        at("use-baby-axolotl-with-stone", "axolotl", &["baby"]).main_hand("minecraft:stone").count(2).x_rot(33.0).row(),
+        at("feed-baby-axolotl-creative-with-water-bucket", "axolotl", &["baby"])
+            .main_hand("minecraft:tropical_fish_bucket")
+            .off_hand("minecraft:water_bucket")
+            .game_mode("creative")
+            .x_rot(33.0)
+            .row(),
+        at("pick-up-cod-creative-with-cod-bucket", "cod", &[])
+            .main_hand(water)
+            .off_hand("minecraft:cod_bucket")
+            .game_mode("creative")
+            .x_rot(33.0)
+            .row(),
         at("use-baby-axolotl-with-golden", "axolotl", &["baby"])
             .main_hand("minecraft:golden_dandelion")
             .count(2)
