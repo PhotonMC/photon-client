@@ -7,6 +7,7 @@ pub(crate) fn table_result(operation: &str) -> Option<Value> {
     match operation {
         "renderer_shadows" => Some(renderer_shadows()),
         "fire_flammability" => Some(fire_flammability()),
+        "compostables" => Some(compostables()),
         _ => None,
     }
 }
@@ -35,4 +36,13 @@ fn fire_flammability() -> Value {
         .map(|(name, ignite, burn)| json!({"name": name, "ignite": ignite, "burn": burn}))
         .collect();
     json!({"rows": [{"label": "all", "blocks": blocks}]})
+}
+
+/// `ComposterBlock.COMPOSTABLES`: the chance each item fills a layer.
+fn compostables() -> Value {
+    let items: Vec<Value> = photon_data::compost::all()
+        .iter()
+        .map(|(name, chance)| json!({"name": name, "chance": crate::declarations::bits(*chance)}))
+        .collect();
+    json!({"rows": [{"label": "all", "items": items}]})
 }

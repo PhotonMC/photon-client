@@ -14,6 +14,7 @@ pub mod animation;
 pub mod block;
 pub mod block_entity_type;
 pub mod block_sound;
+pub mod compost;
 pub mod damage_effect;
 pub mod entity_model;
 pub mod entity_shadow;

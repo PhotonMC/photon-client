@@ -30,6 +30,27 @@ class MovementFireOracle extends MovementPickupOracle {
         return entry;
     }
 
+    /** Every item a composter takes, in registry order: its name and the chance it fills a layer. */
+    @SuppressWarnings("unchecked")
+    static JsonObject compostables(JsonObject row) throws Exception {
+        var chances = (it.unimi.dsi.fastutil.objects.Object2FloatMap<net.minecraft.world.level.ItemLike>)
+            getStaticField(net.minecraft.world.level.block.ComposterBlock.class, "COMPOSTABLES");
+        var items = new com.google.gson.JsonArray();
+        for (var item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            if (!chances.containsKey(item)) {
+                continue;
+            }
+            var entry = new JsonObject();
+            entry.addProperty("name", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString());
+            entry.addProperty("chance", Oracle.bits(chances.getFloat(item)));
+            items.add(entry);
+        }
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.add("items", items);
+        return entry;
+    }
+
     /**
      * Each entity type's renderer, built from the renderers' own table with a context that only
      * holds the vanilla model set: the shadow radius and strength it sets in its
