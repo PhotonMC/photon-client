@@ -22,6 +22,7 @@ pub(super) fn handles(name: &str) -> bool {
             | "minecraft:panda"
             | "minecraft:happy_ghast"
             | "minecraft:bee"
+            | "minecraft:copper_golem"
     )
 }
 
@@ -38,10 +39,17 @@ impl Context<'_> {
             "minecraft:iron_golem" => self.interact_iron_golem(id, hand),
             "minecraft:allay" => self.interact_allay(id, hand),
             "minecraft:bogged" => self.interact_bogged(hand),
+            _ => self.interact_listed_class_more(name, id, hand),
+        }
+    }
+
+    fn interact_listed_class_more(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        match name {
             "minecraft:piglin" => self.interact_piglin(id, hand),
             "minecraft:panda" => self.interact_panda(id, hand),
             "minecraft:happy_ghast" => self.interact_happy_ghast(id, hand),
             "minecraft:bee" => self.interact_bee(id, hand),
+            "minecraft:copper_golem" => self.interact_copper_golem(id, hand),
             _ => self.interact_armadillo(id, hand),
         }
     }
@@ -200,6 +208,28 @@ impl Context<'_> {
             return EntityUse::Success { swing: true };
         }
         self.feed_animal(id, hand, "minecraft:bee_food")
+    }
+
+    /// `CopperGolem.mobInteract` on the client: an empty hand takes what the golem carries, and
+    /// shears take the antenna flower; the honey and the axe are the server's (the client passes).
+    fn interact_copper_golem(&self, id: EntityId, hand: u8) -> EntityUse {
+        use photon_world::EquipmentSlot;
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let carries = entity.equipment(EquipmentSlot::MainHand).is_some();
+        let shearable = entity.equipment(EquipmentSlot::Saddle).is_some_and(|worn| {
+            self.world.block_state_registry().item_tags().contains(
+                worn.item_registry_id().0,
+                "minecraft:shearable_from_copper_golem",
+            )
+        });
+        let takes = self.held(hand).is_none() && carries;
+        if takes || (shearable && self.holds_item(hand, "minecraft:shears")) {
+            EntityUse::Success { swing: true }
+        } else {
+            EntityUse::Pass
+        }
     }
 
     /// `Armadillo.mobInteract`: a brush takes a scute off an adult, otherwise its food.

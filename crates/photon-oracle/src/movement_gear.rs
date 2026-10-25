@@ -396,14 +396,6 @@ fn apply_species_flags(
         world.apply_entity_metadata(id, &data);
     }
     apply_pet_flags(world, id, described)?;
-    if described.get("saddled").is_some() {
-        let saddle = photon_game::item::id_of("minecraft:saddle").ok_or("no saddle item")?;
-        world.entities_mut().apply_equipment(
-            id,
-            photon_world::EquipmentSlot::Saddle,
-            Some(photon_world::ClientItemStackState::new(1, saddle)),
-        );
-    }
     if described.get("screaming").is_some() {
         world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
     }
@@ -468,7 +460,8 @@ fn apply_pet_flags(
     apply_worn_items(world, id, described)
 }
 
-/// The `armored` (body slot, wolf armor unless it names an item) and `offhand` flags.
+/// The `armored` (body slot, wolf armor unless it names an item), `saddled` (a saddle unless it
+/// names an item), `offhand` and `mainhand` flags.
 fn apply_worn_items(
     world: &mut photon_world::ClientWorld,
     id: EntityId,
@@ -477,7 +470,9 @@ fn apply_worn_items(
     use photon_world::EquipmentSlot;
     let worn = [
         ("armored", EquipmentSlot::Body, "minecraft:wolf_armor"),
+        ("saddled", EquipmentSlot::Saddle, "minecraft:saddle"),
         ("offhand", EquipmentSlot::OffHand, ""),
+        ("mainhand", EquipmentSlot::MainHand, ""),
     ];
     for (key, slot, default) in worn {
         let Some(flag) = described.get(key) else {

@@ -167,8 +167,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     golem.setPumpkin(false);
                 }
                 if (described.has("saddled") && entity instanceof net.minecraft.world.entity.Mob saddledMob) {
+                    // `saddled` is true for a saddle, or the id of the item in the saddle slot.
+                    var worn = described.get("saddled").getAsJsonPrimitive().isString()
+                        ? net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(described.get("saddled").getAsString()))
+                        : net.minecraft.world.item.Items.SADDLE;
                     saddledMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.SADDLE,
-                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SADDLE));
+                        new net.minecraft.world.item.ItemStack(worn));
                 }
                 if (described.has("tame") && entity instanceof net.minecraft.world.entity.TamableAnimal pet) {
                     // `tame` is true for a pet the player owns, "other" for one of another owner.
@@ -200,6 +205,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         : net.minecraft.world.item.Items.WOLF_ARMOR;
                     armoredMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY,
                         new net.minecraft.world.item.ItemStack(worn));
+                }
+                if (described.has("mainhand") && entity instanceof net.minecraft.world.entity.Mob handMob) {
+                    handMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(described.get("mainhand").getAsString()))));
                 }
                 if (described.has("offhand") && entity instanceof net.minecraft.world.entity.Mob offhandMob) {
                     offhandMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,
