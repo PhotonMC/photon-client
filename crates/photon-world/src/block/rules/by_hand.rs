@@ -478,6 +478,14 @@ fn composter_use(hand: &Hand) -> Rule<HandUse> {
 }
 
 const USES: &[(BlockClass, UseFn)] = &[
+    // The server edits the sign or refuses; the client consumes the use where it has the sign.
+    (BlockClass::SignBlock, |hand| {
+        result(if hand.user.block_entity {
+            SERVER
+        } else {
+            UseResult::Pass
+        })
+    }),
     (BlockClass::FlowerPotBlock, flower_pot_use),
     (BlockClass::ComposterBlock, composter_use),
     // The server picks the berries; two ripe stages and more count as a success.

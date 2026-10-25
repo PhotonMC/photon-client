@@ -33,6 +33,10 @@ pub struct Held {
     /// A composter takes the item (`ComposterBlock.COMPOSTABLES`).
     pub compostable: bool,
     pub bone_meal: bool,
+    /// A dye, ink sac, glow ink sac or honeycomb (`SignApplicator`).
+    pub sign_applicator: bool,
+    /// A hanging sign item.
+    pub hanging_sign: bool,
 }
 
 /// Who uses the block with the stack, and where.
@@ -46,6 +50,8 @@ pub struct ItemUser {
     pub block_entity: bool,
     /// The stack in the other hand is glowstone.
     pub off_hand_glowstone: bool,
+    /// The sign's block entity says it is waxed.
+    pub waxed: bool,
 }
 
 /// What `useItemOn` does on the client.
@@ -298,7 +304,32 @@ fn composter(use_: &Use) -> Option<ItemOn> {
     empty_hand()
 }
 
+/// `SignBlock.useItemOn` on the client: a sign without its block entity passes; an applicator, or
+/// a waxed sign, is a success with a swing, and anything else only consumes the use.
+fn sign(use_: &Use) -> Option<ItemOn> {
+    if !use_.user.block_entity {
+        return pass();
+    }
+    let applicator = use_.held.sign_applicator && use_.user.may_build;
+    Some(ItemOn::answer(if applicator || use_.user.waxed {
+        SUCCESS
+    } else {
+        SERVER
+    }))
+}
+
+/// The hanging signs chain another hanging sign under them, which is not ported.
+fn hanging_sign(use_: &Use) -> Option<ItemOn> {
+    if use_.held.hanging_sign {
+        return None;
+    }
+    sign(use_)
+}
+
 const USES: &[(BlockClass, Rule1)] = &[
+    (BlockClass::SignBlock, sign),
+    (BlockClass::CeilingHangingSignBlock, hanging_sign),
+    (BlockClass::WallHangingSignBlock, hanging_sign),
     (BlockClass::FlowerPotBlock, flower_pot),
     (BlockClass::SweetBerryBushBlock, sweet_berry_bush),
     (BlockClass::ComposterBlock, composter),
@@ -366,6 +397,7 @@ mod tests {
             click_y: 0.5,
             block_entity,
             off_hand_glowstone: false,
+            waxed: false,
         }
     }
 
@@ -419,6 +451,41 @@ mod tests {
             use_item_with(fire, at, stone(), user(true)).map(|on| on.result),
             Some(UseResult::TryEmptyHand)
         );
+    }
+
+    /// A waxed sign is a success with a swing for any stack; the hanging sign chain is not ported.
+    #[test]
+    fn a_waxed_sign_is_a_success_for_any_stack() {
+        let sign = state(
+            "minecraft:oak_sign",
+            &[("rotation", "0"), ("waterlogged", "false")],
+        );
+        let at = (0, 64, 2);
+        let waxed = ItemUser {
+            waxed: true,
+            ..user(true)
+        };
+        assert_eq!(
+            use_item_with(sign, at, stone(), waxed).map(|on| on.result),
+            Some(SUCCESS)
+        );
+        assert_eq!(
+            use_item_with(sign, at, stone(), user(true)).map(|on| on.result),
+            Some(SERVER)
+        );
+        let hanging = state(
+            "minecraft:oak_hanging_sign",
+            &[
+                ("attached", "false"),
+                ("rotation", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let sign_item = Held {
+            hanging_sign: true,
+            ..stone()
+        };
+        assert_eq!(use_item_with(hanging, at, sign_item, user(true)), None);
     }
 
     /// The weathering statue passes without its block entity, and turns with it; an axe is not

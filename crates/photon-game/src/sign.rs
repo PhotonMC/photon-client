@@ -119,9 +119,35 @@ pub fn sign_texts(tag: Option<&[u8]>) -> (SignText, SignText) {
     (face("front_text"), face("back_text"))
 }
 
+/// `SignBlockEntity.isWaxed`, read from the block entity tag (`is_waxed`).
+pub fn is_waxed(tag: Option<&[u8]>) -> bool {
+    let fields = tag.and_then(|mut input| photon_core::nbt::read_nbt(&mut input).ok().flatten());
+    fields
+        .as_deref()
+        .and_then(|fields| fields.iter().find(|field| field.key == "is_waxed"))
+        .is_some_and(|field| matches!(field.value, FieldValue::Byte(value) if value != 0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_sign_is_waxed_by_its_tag() {
+        let tag = |waxed: Option<i8>| {
+            let fields: Vec<Field> = waxed
+                .map(|value| field("is_waxed", FieldValue::Byte(value)))
+                .into_iter()
+                .collect();
+            let mut bytes = Vec::new();
+            photon_core::nbt::write_nbt(Some(&fields), &mut bytes);
+            bytes
+        };
+        assert!(is_waxed(Some(&tag(Some(1)))));
+        assert!(!is_waxed(Some(&tag(Some(0)))));
+        assert!(!is_waxed(Some(&tag(None))));
+        assert!(!is_waxed(None));
+    }
 
     fn field(key: &str, value: FieldValue) -> Field {
         Field {

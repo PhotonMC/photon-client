@@ -247,6 +247,82 @@ fn pots_bushes_and_composters() -> Vec<Value> {
     ]
 }
 
+fn signs() -> Vec<Value> {
+    let at = (0, 64, 2);
+    let standing = || vec![put_with(0, 64, 2, "minecraft:oak_sign", &[("rotation", "0"), ("waterlogged", "false")])];
+    let wall = || vec![put_with(0, 64, 2, "minecraft:oak_wall_sign", &[("facing", "north"), ("waterlogged", "false")])];
+    let kind = "minecraft:sign";
+    vec![
+        row("item-on-sign-empty", standing(), &north()).block_entity(at, kind).row(),
+        row("item-on-sign-stone", standing(), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-sign-dye", standing(), &north())
+            .main_hand("minecraft:red_dye")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-sign-ink", standing(), &north())
+            .main_hand("minecraft:glow_ink_sac")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-sign-honeycomb", standing(), &north())
+            .main_hand("minecraft:honeycomb")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-sign-dye-adventure", standing(), &north())
+            .main_hand("minecraft:red_dye")
+            .count(4)
+            .game_mode("adventure")
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-wall-sign-stone", wall(), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+    ]
+}
+
+fn hanging_signs() -> Vec<Value> {
+    let at = (0, 64, 2);
+    let hanging = || {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:oak_hanging_sign",
+            &[("attached", "false"), ("rotation", "0"), ("waterlogged", "false")],
+        )]
+    };
+    let wall = || {
+        vec![put_with(0, 64, 2, "minecraft:oak_wall_hanging_sign", &[("facing", "north"), ("waterlogged", "false")])]
+    };
+    let kind = "minecraft:hanging_sign";
+    vec![
+        row("item-on-hanging-sign-stone", hanging(), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-hanging-sign-dye", hanging(), &north())
+            .main_hand("minecraft:black_dye")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-wall-hanging-sign-empty", wall(), &north()).block_entity(at, kind).row(),
+        row("item-on-wall-hanging-sign-stone", wall(), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
     [
         simple(),
@@ -256,6 +332,8 @@ pub fn rows() -> Vec<Value> {
         cakes(),
         with_block_entities(),
         pots_bushes_and_composters(),
+        signs(),
+        hanging_signs(),
     ]
     .concat()
 }

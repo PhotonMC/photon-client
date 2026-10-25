@@ -6,6 +6,7 @@ use super::{GameMode, UseResult};
 use crate::item::values::Values;
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
+use photon_data::item::classes::ItemClass;
 use photon_world::block::rules::{self, Held, ItemUser, Rule};
 
 const GLOWSTONE: &str = "minecraft:glowstone";
@@ -47,6 +48,16 @@ fn describe(ctx: &Context<'_>, hand: u8) -> Held {
         block: rules::item(item).and_then(|row| row.block),
         compostable: photon_data::compost::chance(name).is_some(),
         bone_meal: name == "minecraft:bone_meal",
+        sign_applicator: rules::item(item).is_some_and(|row| {
+            matches!(
+                row.class,
+                ItemClass::DyeItem
+                    | ItemClass::InkSacItem
+                    | ItemClass::GlowInkSacItem
+                    | ItemClass::HoneycombItem
+            )
+        }),
+        hanging_sign: rules::item(item).is_some_and(|row| row.class == ItemClass::HangingSignItem),
         candle: tagged("minecraft:candles").then_some(name),
         record: values.has(photon_data::item::component_types::JUKEBOX_PLAYABLE),
     }
@@ -95,6 +106,10 @@ impl GameMode {
             click_y: location[1] - f64::from(pos.1),
             block_entity: ctx.world.block_entity_at(pos.0, pos.1, pos.2).is_some(),
             off_hand_glowstone: describe(ctx, other).glowstone,
+            waxed: ctx
+                .world
+                .sign_view(pos)
+                .is_some_and(|sign| crate::sign::is_waxed(sign.tag)),
         };
         let answer = rules::use_item_with(state, pos, describe(ctx, hand), user)?;
         if let Some(write) = answer.write {
