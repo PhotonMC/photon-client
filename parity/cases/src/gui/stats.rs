@@ -376,6 +376,13 @@ fn key_rows() -> Vec<Value> {
         on("key-after-list-click", &all, true, vec![click(200, 40), key(digit(2), CTRL)]),
         on("key-after-list-click-back", &all, true, vec![click(200, 40), key(digit(2), CTRL), key(digit(1), CTRL)]),
         on("key-after-list-click-inactive", &no_items, true, vec![click(200, 40), key(digit(2), CTRL)]),
+        on("key-focused-tab-inactive", &no_items, true, vec![click(70, 10), key(digit(2), CTRL)]),
+        on(
+            "key-focused-tab-inactive-keyboard",
+            &no_items,
+            true,
+            vec![click(70, 10), key(TAB, CTRL), key(digit(2), CTRL)],
+        ),
         on("key-after-tab-click", &all, true, vec![click(200, 10), key(digit(3), CTRL), key(TAB, CTRL)]),
     ]
 }
