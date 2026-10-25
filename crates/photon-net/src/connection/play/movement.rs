@@ -29,6 +29,7 @@ impl PlaySession {
         // The server's flags the packets just brought, which `onSyncedDataUpdated` acts on at once.
         player.set_hand_state(hands);
         let instruments = self.local.instruments.clone();
+        let spin_attack = self.local.spin_attack.clone();
         let mut ctx = Context {
             miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,
@@ -37,6 +38,7 @@ impl PlaySession {
             selected_slot: self.local.status.selected_slot,
             cooldowns: &mut self.local.item_cooldowns,
             instruments: &instruments,
+            spin_attack: &spin_attack,
             game_master: self.local.permission_level >= 2,
             profile_id: self.state.profile_id,
         };

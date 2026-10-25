@@ -552,6 +552,13 @@ pub(super) fn share_registries(
     registries: &photon_game::registries::Registries,
 ) {
     session.set_enchantment_traits(EnchantmentTraits::of(registries));
+    session.set_spin_attack(
+        registries
+            .enchantments
+            .iter()
+            .map(|entry| entry.trident_spin_attack)
+            .collect(),
+    );
     session.set_instruments(photon_game::item::instrument::instruments_of(registries));
     particles.set_jukebox_songs(registries);
 }

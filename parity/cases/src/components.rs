@@ -33,6 +33,7 @@ pub const BINDING_CURSE: i64 = 2;
 pub const EFFICIENCY: i64 = 8;
 pub const MENDING: i64 = 23;
 pub const PROTECTION: i64 = 28;
+pub const RIPTIDE: i64 = 32;
 pub const SHARPNESS: i64 = 33;
 pub const SMITE: i64 = 35;
 pub const UNBREAKING: i64 = 40;

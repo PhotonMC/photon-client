@@ -335,6 +335,17 @@ pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument:
     ))
 }
 
+/// Which enchantments of the vanilla data pack carry the trident spin attack effect, by registry id.
+pub(super) fn vanilla_spin_attack() -> Vec<bool> {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    photon_game::registries::Registries::vanilla(&data_root)
+        .enchantments
+        .iter()
+        .map(|entry| entry.trident_spin_attack)
+        .collect()
+}
+
 /// The entity events a tick brings to the player: a damage event, the death event and the end of
 /// a used item (event 9).
 pub(super) fn server_events(

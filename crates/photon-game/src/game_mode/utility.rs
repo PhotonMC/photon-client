@@ -127,16 +127,29 @@ pub(super) fn ender_eye_use_on(ctx: &Context<'_>, aim: Aim) -> UseResult {
     }
 }
 
-/// `TridentItem.use` for a trident without riptide: a stack about to break fails; otherwise the
-/// use starts and nothing swings. Riptide out of the rain fails too, which is not read from the
-/// stack's components.
+/// `TridentItem.use`: a stack about to break fails, and so does one with the spin attack effect
+/// (riptide) out of the water; otherwise the use starts and nothing swings. The rain is not read,
+/// so a riptide trident in the rain on land fails here where the reference starts the use.
 fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
-    let breaks = ctx
+    let held = ctx
         .world
         .local_player()
-        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
-        .is_some_and(|stack| stack.breaks_on_next_damage());
-    if breaks {
+        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)));
+    let Some(stack) = held else {
+        return UseResult::Pass;
+    };
+    let spins = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+        .enchantments(photon_world::item_components::ids::ENCHANTMENTS)
+        .iter()
+        .any(|&(id, level)| {
+            level > 0
+                && usize::try_from(id)
+                    .ok()
+                    .and_then(|id| ctx.spin_attack.get(id))
+                    .copied()
+                    .unwrap_or(false)
+        });
+    if stack.breaks_on_next_damage() || (spins && !ctx.player.is_in_water()) {
         return UseResult::Fail;
     }
     ctx.player.start_using_item(hand != super::MAIN_HAND);

@@ -132,7 +132,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         .as_array()
         .ok_or("movement rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
-    let instruments = vanilla_instruments();
+    let (instruments, spin_attack) = (vanilla_instruments(), vanilla_spin_attack());
     for row in rows {
         let label = string(row, "label")?;
         let mut world = movement_world(row)?;
@@ -339,16 +339,15 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                     None => photon_game::game_mode::Aim::Miss,
                 };
-                let count = count_field;
                 let use_ = attack.get("use");
                 let keys = photon_game::game_mode::Keys {
-                    attack_clicks: count(attack, "clicks")?,
+                    attack_clicks: count_field(attack, "clicks")?,
                     attack_held: flag(attack, "down")?,
-                    use_clicks: use_.map_or(Ok(0), |use_| count(use_, "clicks"))?,
+                    use_clicks: use_.map_or(Ok(0), |use_| count_field(use_, "clicks"))?,
                     use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
                     pick_clicks: attack
                         .get("pick_item")
-                        .map_or(Ok(0), |pick| count(pick, "clicks"))?,
+                        .map_or(Ok(0), |pick| count_field(pick, "clicks"))?,
                     control_down: false,
                 };
                 let mut ctx = photon_game::game_mode::Context {
@@ -359,6 +358,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     selected_slot: 0,
                     cooldowns: &mut cooldowns,
                     instruments: &instruments,
+                    spin_attack: &spin_attack,
                     game_master: false,
                     profile_id: row.get("player_uuid").map(|_| oracle_player_uuid()),
                 };

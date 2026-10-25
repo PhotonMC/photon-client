@@ -59,6 +59,8 @@ pub struct Context<'a> {
     pub cooldowns: &'a mut crate::item::cooldowns::ItemCooldowns,
     /// The instruments of the registry, by id.
     pub instruments: &'a [Option<crate::item::instrument::Instrument>],
+    /// Whether each enchantment of the registry, by id, has the trident spin attack effect.
+    pub spin_attack: &'a [bool],
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
     pub game_master: bool,
     /// The player's profile id, as the server logged it in (`Player.getUUID`).

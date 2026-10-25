@@ -5,7 +5,9 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
-use crate::components::{DAMAGE, INSTRUMENT, RECIPES, Tag, UNBREAKABLE, nbt, patch, patch_of, vi};
+use crate::components::{
+    DAMAGE, ENCHANTMENTS, INSTRUMENT, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt, patch, patch_of, vi,
+};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
@@ -73,7 +75,15 @@ fn trident_rows() -> Vec<Value> {
     let row = |label: &str, added: &[(i64, String)]| {
         using(label, vec![], ticks.clone()).main_hand("minecraft:trident").count(1).patch(patch(added)).row()
     };
+    // Riptide fails on dry land and starts in water; the clicks come after the water has been felt.
+    let spin = patch(&[(ENCHANTMENTS, enchantments(&[(RIPTIDE, 1)]))]);
+    let wet = [uses(3, None, &[]).go(), ticks.clone()].concat();
+    let riptide = |label: &str, world: Vec<Value>, ticks: Vec<Value>| {
+        using(label, world, ticks).main_hand("minecraft:trident").count(1).patch(spin.clone()).row()
+    };
     vec![
+        riptide("use-trident-riptide-dry", vec![], ticks.clone()),
+        riptide("use-trident-riptide-water", vec![put(0, 64, 0, "minecraft:water")], wet.clone()),
         row("use-trident-last-point", &[(DAMAGE, vi(249))]),
         row("use-trident-room-left", &[(DAMAGE, vi(248))]),
         row("use-trident-unbreakable-last-point", &[(DAMAGE, vi(249)), (UNBREAKABLE, String::new())]),

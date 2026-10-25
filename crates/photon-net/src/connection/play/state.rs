@@ -146,6 +146,11 @@ impl PlaySession {
         &self.local.item_cooldowns
     }
 
+    /// Which enchantments carry the trident spin attack effect, by registry id.
+    pub fn set_spin_attack(&mut self, spin_attack: Vec<bool>) {
+        self.local.spin_attack = std::sync::Arc::new(spin_attack);
+    }
+
     /// What `InstrumentItem` reads of the instruments, which the data pack says.
     pub fn set_instruments(
         &mut self,

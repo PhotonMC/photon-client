@@ -144,7 +144,7 @@ impl LocalPlayer {
         self.game_mode.is_spectator()
     }
 
-    pub(super) fn is_in_water(&self) -> bool {
+    pub fn is_in_water(&self) -> bool {
         self.was_touching_water
     }
 

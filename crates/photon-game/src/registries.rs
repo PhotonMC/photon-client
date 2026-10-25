@@ -22,6 +22,9 @@ pub struct EnchantmentEntry {
     /// Whether it has the `prevent_armor_change` effect (armour it is on
     /// cannot be taken off but in creative).
     pub prevents_armor_change: bool,
+    /// Whether it has the `trident_spin_attack_strength` effect (riptide: a trident with it
+    /// needs water or rain to be used).
+    pub trident_spin_attack: bool,
     /// `anvil_cost`.
     pub anvil_cost: i32,
     /// The item tag of `supported_items`, without its `#`.
@@ -83,6 +86,16 @@ fn entry_path(data_root: &Path, directory: &str, name: &str) -> PathBuf {
         .join(namespace)
         .join(directory)
         .join(format!("{path}.json"))
+}
+
+const PREVENT_ARMOR_CHANGE: &str = "minecraft:prevent_armor_change";
+const SPIN_ATTACK: &str = "minecraft:trident_spin_attack_strength";
+
+/// Whether an enchantment entry lists the effect among its `effects`.
+fn has_effect(entry: &JsonObject, effect: &str) -> bool {
+    entry
+        .object("effects")
+        .is_some_and(|effects| effects.get_str(effect).is_some())
 }
 
 fn read_entry(data_root: &Path, directory: &str, name: &str) -> JsonObject {
@@ -169,9 +182,8 @@ impl Registries {
             .map(|name| {
                 let entry = read_entry(data_root, "enchantment", &name);
                 EnchantmentEntry {
-                    prevents_armor_change: entry.object("effects").is_some_and(|effects| {
-                        effects.get_str("minecraft:prevent_armor_change").is_some()
-                    }),
+                    prevents_armor_change: has_effect(&entry, PREVENT_ARMOR_CHANGE),
+                    trident_spin_attack: has_effect(&entry, SPIN_ATTACK),
                     description: component(&entry, "description"),
                     anvil_cost: entry.i32("anvil_cost").unwrap_or(1),
                     supported_items: entry

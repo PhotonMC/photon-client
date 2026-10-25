@@ -592,7 +592,7 @@
 "crates/photon-game/src/menus/container/transform.rs::ContainerMenu::quick_move_transform" = 131
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::slot_clicked" = 69
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::window_click" = 81
-"crates/photon-game/src/registries.rs::Registries::load" = 81
+"crates/photon-game/src/registries.rs::Registries::load" = 80
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 79
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
 "crates/photon-game/src/text.rs::flat_strings" = 83
