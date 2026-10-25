@@ -178,7 +178,7 @@ impl Context<'_> {
     }
 
     /// `usePlayerItem` / `consume(1, player)`: one is used up unless materials are infinite.
-    fn use_up(&mut self, hand: u8) {
+    pub(super) fn use_up(&mut self, hand: u8) {
         if !self.instabuild() {
             let slot = self.hand_slot(hand);
             self.world.shrink_local_player_slot(slot, 1);

@@ -9,6 +9,7 @@ use super::*;
 use photon_core::ids::EntityId;
 
 mod camel;
+mod classes;
 mod horse;
 mod pets;
 mod pickups;
@@ -93,6 +94,14 @@ impl Context<'_> {
             }
             n if horse::is_equine(n) => self.interact_horse(name, id, hand),
             "minecraft:camel" | "minecraft:camel_husk" => self.interact_camel(name, id, hand),
+            _ => self.interact_other_class(name, id, hand),
+        }
+    }
+
+    /// The classes with a fixed answer, the bucketables and, after them, the herd.
+    fn interact_other_class(&mut self, name: &str, id: EntityId, hand: u8) -> EntityUse {
+        match name {
+            n if classes::handles(n) => self.interact_listed_class(n, id, hand),
             n if pickups::bucket_of(n).is_some() => self.interact_bucketable(name, id, hand),
             _ => self.interact_herd_class(name, id, hand),
         }
@@ -497,6 +506,9 @@ fn animal_food_tag(name: &str) -> Option<&'static str> {
         "minecraft:turtle" => "minecraft:turtle_food",
         "minecraft:frog" => "minecraft:frog_food",
         "minecraft:fox" => "minecraft:fox_food",
+        "minecraft:hoglin" => "minecraft:hoglin_food",
+        "minecraft:sniffer" => "minecraft:sniffer_food",
+        "minecraft:bee" => "minecraft:bee_food",
         _ => return None,
     })
 }

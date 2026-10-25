@@ -356,7 +356,9 @@ fn apply_spawn_flags(
     described: &Value,
 ) -> Result<(), String> {
     if described.get("baby").is_some() {
-        world.apply_entity_metadata(id, &[16, 8, 1, 255]);
+        // A piglin keeps its own baby flag after the zombification one.
+        let baby_id = if name == "minecraft:piglin" { 17 } else { 16 };
+        world.apply_entity_metadata(id, &[baby_id, 8, 1, 255]);
         if !world
             .entities()
             .at(id)
