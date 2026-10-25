@@ -261,9 +261,10 @@ pub(super) fn hold_main_hand(
         added.push((photon_data::item::component_types::USE_COOLDOWN, value));
     }
     if let Some(recipe) = breaking["main_hand_recipes"].as_str() {
-        // `Recipe.KEY_CODEC.listOf()` on the wire: a count, then each key's identifier string.
-        let mut value = vec![1];
-        photon_core::wire::write_varint(recipe.len() as i32, &mut value);
+        // No stream codec of its own: `fromCodecWithRegistries` writes a network NBT list of
+        // strings (tag 9, element type 8, int count, then a short length and bytes each).
+        let mut value = vec![9, 8, 0, 0, 0, 1];
+        value.extend((recipe.len() as u16).to_be_bytes());
         value.extend(recipe.as_bytes());
         added.push((photon_data::item::component_types::RECIPES, value));
     }

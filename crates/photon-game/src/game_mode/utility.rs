@@ -59,10 +59,11 @@ fn knowledge_book_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
         return UseResult::Pass;
     };
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
-    // `getOrDefault(RECIPES, List.of())`: a list is empty when its length prefix is 0.
+    // `getOrDefault(RECIPES, List.of())`: the component has no stream codec of its own, so it is
+    // a network NBT list (tag 9, element type, int count); it is empty when the count is 0.
     let recipes = values
         .raw(photon_data::item::component_types::RECIPES)
-        .is_some_and(|bytes| bytes.first().is_some_and(|length| *length != 0));
+        .is_some_and(|bytes| bytes.len() >= 6 && bytes[2..6] != [0, 0, 0, 0]);
     if !ctx.instabuild() {
         let slot = ctx.hand_slot(hand);
         ctx.world.shrink_local_player_slot(slot, 1);

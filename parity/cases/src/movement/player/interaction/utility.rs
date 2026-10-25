@@ -69,12 +69,13 @@ pub fn rows() -> Vec<Value> {
 /// the book.
 fn recipe_rows() -> Vec<Value> {
     let mut rows = Vec::new();
+    let ticks = [uses(1, None, &[]).clicks(1).inventory().go(), uses(2, None, &[]).inventory().go()].concat();
     for (label, mode) in [("use-knowledge_book-recipe", "survival"), ("use-knowledge_book-recipe-creative", "creative")]
     {
         rows.push(
-            using(label, vec![], run(None))
+            using(label, vec![], ticks.clone())
                 .main_hand("minecraft:knowledge_book")
-                .count(2)
+                .count(1)
                 .recipes("minecraft:oak_planks")
                 .game_mode(mode)
                 .row(),
