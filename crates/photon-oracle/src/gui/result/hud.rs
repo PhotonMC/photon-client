@@ -266,7 +266,7 @@ pub(super) fn hud_ops(ctx: &mut GuiContext, row: &Value, operation: &str) -> Res
     match operation {
         "hud_status" => hud_status_case(ctx, row),
         "hud_sleep" => super::hud_overlays::hud_sleep_case(ctx, row),
-        "hud_effects" => super::effects::hud_effects_case(ctx, row),
+        "hud_effects" | "inventory_effects" => super::effects::effects_case(ctx, row, operation),
         "debug_entries" | "debug_options_screen" => debug_screen_case(ctx, row, operation),
         "hud_debug_lines" => super::hud_overlays::hud_debug_lines_case(ctx, row),
         "hud_debug_overlay" => super::hud_overlays::hud_debug_overlay_case(ctx, row),

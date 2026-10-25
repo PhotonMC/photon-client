@@ -156,7 +156,7 @@ pub(super) fn container_screen_case(ctx: &mut GuiContext, row: &Value) -> Result
                 Vec::<photon_render::gui::GuiItemVertex>::new()
             };
         let mut draw = photon_gui::screen::ScreenDraw {
-            held: (0, [false; 2]),
+            viewer: photon_gui::screen::PlayerView::default(),
             frame: &mut drawn,
             atlas,
             font,

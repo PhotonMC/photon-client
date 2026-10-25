@@ -193,7 +193,7 @@ pub(super) fn book_view_case(ctx: &mut GuiContext, row: &Value) -> Result<Value,
         photon_world::block::tags::ItemTags::default(),
     );
     let mut draw = photon_gui::screen::ScreenDraw {
-        held: (0, [false; 2]),
+        viewer: photon_gui::screen::PlayerView::default(),
         frame: &mut frame,
         atlas: &ctx.atlas,
         font: &font,

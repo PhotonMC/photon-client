@@ -65,3 +65,55 @@ pub fn hud_effects() -> Value {
     rows.extend(blink_rows());
     gui("hud-effects", "hud_effects", rows)
 }
+
+/// One inventory list: a 176 by 166 image at `left` (the recipe book moves it), the mouse, the
+/// effects and the tick rate.
+fn listed(label: &str, (width, height): (i64, i64), left: i64, mouse: (i64, i64), effects: Vec<Value>) -> Value {
+    json!({"label": label, "width": width, "height": height, "image_width": 176, "image_height": 166,
+        "left": left, "mouse_x": mouse.0, "mouse_y": mouse.1, "effects": effects})
+}
+
+/// `EffectsInInventory` beside the survival inventory: full entries, icon-only ones, none, the
+/// recipe book's shift, the squeeze past five, a cut name and the tooltips of cut entries.
+pub fn inventory_effects() -> Value {
+    let wide = (427, 240);
+    let centred = |width: i64| (width - 176) / 2;
+    let away = (0, 0);
+    // The first entry's top left corner at the wide size, inside it.
+    let first = (310, 45);
+    let three = vec![shown("speed", 600), shown("poison", 300), effect("haste", 1, 1200, false, true)];
+    let seven = ["speed", "haste", "strength", "jump_boost", "regeneration", "resistance", "fire_resistance"]
+        .iter()
+        .map(|name| shown(name, 600))
+        .collect();
+    let mut rows = vec![
+        listed("none", wide, centred(427), away, vec![]),
+        listed("three", wide, centred(427), away, three.clone()),
+        listed("icons-only", (320, 240), centred(320), away, three.clone()),
+        listed("icons-only-tooltip", (320, 240), centred(320), (260, 50), three.clone()),
+        listed("no-room", (200, 240), centred(200), away, three.clone()),
+        listed("book-open", wide, 177 + (427 - 376) / 2, away, three.clone()),
+        listed("seven", wide, centred(427), away, seven),
+        listed("full-entry-no-tooltip", wide, centred(427), first, vec![shown("speed", 600)]),
+        listed("cut-name", wide, centred(427), away, vec![shown("hero_of_the_village", 600)]),
+        listed("cut-name-tooltip", wide, centred(427), first, vec![shown("hero_of_the_village", 600)]),
+        listed("infinite-and-hours", wide, centred(427), away, vec![shown("speed", -1), shown("haste", 80000)]),
+        listed(
+            "levels",
+            wide,
+            centred(427),
+            away,
+            vec![
+                effect("speed", 1, 600, false, true),
+                effect("haste", 9, 600, false, true),
+                effect("strength", 10, 600, false, true),
+            ],
+        ),
+        listed("ambient", wide, centred(427), away, vec![effect("haste", 0, 600, true, true), shown("speed", 600)]),
+        listed("hidden-icon-listed", wide, centred(427), away, vec![effect("speed", 0, 600, false, false)]),
+    ];
+    let mut slow = listed("tick-rate", wide, centred(427), away, vec![shown("speed", 600)]);
+    slow["tick_rate"] = json!(10.0);
+    rows.push(slow);
+    gui("inventory-effects", "inventory_effects", rows)
+}

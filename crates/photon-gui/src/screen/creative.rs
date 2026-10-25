@@ -338,6 +338,8 @@ impl Screen for CreativeScreen {
     ) {
         let (left, top) = (self.layout.left(), self.layout.top());
         let selected = self.menu.tab();
+        // `CreativeModeInventoryScreen.extractRenderState`: the effects come before the screen.
+        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         self.layout.background(draw);
         for tab in shown_tabs() {
             if tab != selected {
@@ -365,24 +367,7 @@ impl Screen for CreativeScreen {
             );
             draw.frame.figure(&model);
         }
-        self.hovered = self.hovered_slot(mouse);
-        if let Some(slot) = self.hovered {
-            self.layout
-                .highlight(draw, slot_position(inventory_tab, slot), false);
-        }
-        for index in 0..self.slot_count() {
-            let (x, y) = slot_position(inventory_tab, index);
-            let icon = match target_of(inventory_tab, index) {
-                Target::Inventory(slot) => empty_icon(slot),
-                _ => None,
-            };
-            let view = View {
-                creative: &self.menu,
-                inventory,
-            };
-            self.mouse
-                .draw_slot(draw, &view, index, &self.layout, (x, y), icon);
-        }
+        self.draw_slots(draw, inventory, mouse, inventory_tab);
         if CREATIVE_TABS[selected].show_title {
             draw.frame.text(
                 draw.atlas,
@@ -400,6 +385,11 @@ impl Screen for CreativeScreen {
         self.mouse
             .draw_carried(draw, inventory.carried.as_ref(), mouse);
         self.build_tooltip(draw, inventory, mouse);
+        super::effects::draw_tooltip(draw, &self.layout, effects_tooltip, mouse);
+    }
+
+    fn shows_active_effects(&self) -> bool {
+        super::effects::can_see(&self.layout)
     }
 
     fn as_creative_mut(&mut self) -> Option<&mut CreativeScreen> {

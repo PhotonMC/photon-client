@@ -118,6 +118,11 @@ impl PlaySession {
         )
     }
 
+    /// `TickRateManager.tickrate`: the ticks a second the server runs at.
+    pub fn tick_rate(&self) -> f32 {
+        self.level_info.tick_rate.tick_rate()
+    }
+
     /// The tick rate manager's frozen state: whether it is stepping forward, and whether frozen.
     pub fn tick_rate_status(&self) -> (bool, bool) {
         let rate = &self.level_info.tick_rate;
