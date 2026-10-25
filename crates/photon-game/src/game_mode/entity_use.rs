@@ -11,6 +11,7 @@ use photon_core::ids::EntityId;
 mod camel;
 mod horse;
 mod pickups;
+mod saddles;
 mod sheep;
 mod villager;
 
@@ -103,6 +104,7 @@ impl Context<'_> {
             "minecraft:goat" => self.interact_goat(id, hand),
             "minecraft:mooshroom" => self.interact_mooshroom(id, hand),
             "minecraft:sheep" => self.interact_sheep(id, hand),
+            "minecraft:pig" | "minecraft:strider" => self.interact_saddleable(name, id, hand),
             _ => match animal_food_tag(name) {
                 Some(tag) => self.feed_animal(id, hand, tag),
                 None => EntityUse::Pass,

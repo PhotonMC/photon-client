@@ -393,6 +393,14 @@ fn apply_species_flags(
         data.push(255);
         world.apply_entity_metadata(id, &data);
     }
+    if described.get("saddled").is_some() {
+        let saddle = photon_game::item::id_of("minecraft:saddle").ok_or("no saddle item")?;
+        world.entities_mut().apply_equipment(
+            id,
+            photon_world::EquipmentSlot::Saddle,
+            Some(photon_world::ClientItemStackState::new(1, saddle)),
+        );
+    }
     if described.get("screaming").is_some() {
         world.apply_entity_metadata(id, &[photon_world::GOAT_SCREAMING_DATA_ID, 8, 1, 255]);
     }

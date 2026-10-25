@@ -13,6 +13,7 @@ use crate::movement::world::put;
 
 mod herding;
 mod pickups;
+mod saddles;
 mod villagers;
 
 /// Ticks of the attack, use and pick keys on whatever the aim lands on.
@@ -319,6 +320,7 @@ pub fn rows() -> Vec<Value> {
         herding::rows(),
         villagers::rows(),
         pickups::rows(),
+        saddles::rows(),
     ]
     .concat()
 }

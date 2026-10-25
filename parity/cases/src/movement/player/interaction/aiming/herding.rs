@@ -181,7 +181,7 @@ fn horse_at(label: &str, kind: &str, flags: &[&str]) -> Interaction {
 }
 
 /// Two ticks of sneaking, then the click: sneaking takes a tick to lower the eye.
-fn sneaking_click() -> Vec<Value> {
+pub(super) fn sneaking_click() -> Vec<Value> {
     [
         aims(2).held(&["sneak"]).inventory().go(),
         aims(1).use_clicks(1).held(&["sneak"]).inventory().go(),

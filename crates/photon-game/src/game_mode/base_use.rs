@@ -95,7 +95,7 @@ fn swappable(values: &Values, item: photon_core::ids::ItemId) -> bool {
     values.raw(EQUIPPABLE) != defaults.raw(EQUIPPABLE)
         || rules::item(item)
             .and_then(|row| row.equippable)
-            .is_some_and(|equippable| equippable.swappable)
+            .is_some_and(|equippable| equippable.swappable && equippable.player)
 }
 
 /// The client's prediction of `Item.use` for the stack in a hand. A use that starts is started
