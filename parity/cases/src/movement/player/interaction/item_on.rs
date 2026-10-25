@@ -109,9 +109,27 @@ fn records_and_books() -> Vec<Value> {
     let lectern = |has: &str| {
         vec![put_with(0, 64, 2, "minecraft:lectern", &[("facing", "north"), ("has_book", has), ("powered", "false")])]
     };
+    let (at, kind) = ((0, 64, 2), "minecraft:jukebox");
     vec![
-        row("item-on-jukebox-record", jukebox("false"), &north()).main_hand("minecraft:music_disc_13").row(),
-        row("item-on-jukebox-stone", jukebox("false"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-jukebox-record", jukebox("false"), &north())
+            .main_hand("minecraft:music_disc_13")
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-jukebox-stone", jukebox("false"), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-jukebox-full-record", jukebox("true"), &north())
+            .main_hand("minecraft:music_disc_13")
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-jukebox-full-stone", jukebox("true"), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .block_entity(at, kind)
+            .row(),
+        row("item-on-jukebox-full-empty", jukebox("true"), &north()).block_entity(at, kind).row(),
         row("item-on-lectern-book", lectern("false"), &north()).main_hand("minecraft:writable_book").row(),
         row("item-on-lectern-stone", lectern("false"), &north()).main_hand("minecraft:stone").count(4).row(),
         row("item-on-lectern-empty", lectern("false"), &north()).row(),
@@ -145,6 +163,46 @@ fn cakes() -> Vec<Value> {
     ]
 }
 
+/// Blocks that answer from their block entity, which the reference always has and the client has
+/// when the server sent it.
+fn with_block_entities() -> Vec<Value> {
+    let at = (0, 64, 2);
+    let statue = |pose: &str| {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:copper_golem_statue",
+            &[("copper_golem_pose", pose), ("facing", "north"), ("waterlogged", "false")],
+        )]
+    };
+    let pot = || {
+        vec![put_with(
+            0,
+            64,
+            2,
+            "minecraft:decorated_pot",
+            &[("cracked", "false"), ("facing", "north"), ("waterlogged", "false")],
+        )]
+    };
+    let statue_kind = "minecraft:copper_golem_statue";
+    let pot_kind = "minecraft:decorated_pot";
+    vec![
+        row("item-on-weathering-statue-stone", statue("sitting"), &north())
+            .main_hand("minecraft:stone")
+            .count(3)
+            .block_entity(at, statue_kind)
+            .row(),
+        row("item-on-weathering-statue-star", statue("star"), &north()).block_entity(at, statue_kind).row(),
+        row("item-on-pot-stone", pot(), &north())
+            .main_hand("minecraft:stone")
+            .count(3)
+            .block_entity(at, pot_kind)
+            .row(),
+        row("item-on-pot-empty", pot(), &north()).block_entity(at, pot_kind).row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [simple(), lit_candles(), anchors_and_statues(), records_and_books(), cakes()].concat()
+    [simple(), lit_candles(), anchors_and_statues(), records_and_books(), cakes(), with_block_entities()].concat()
 }

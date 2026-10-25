@@ -8,6 +8,7 @@ mod ambience;
 mod digest;
 mod events;
 mod extras;
+pub(crate) use extras::place_block_entities;
 mod terrain;
 use digest::digest_group;
 use terrain::OracleTerrain;

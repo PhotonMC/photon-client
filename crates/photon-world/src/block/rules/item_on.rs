@@ -1,6 +1,7 @@
 //! `BlockBehaviour.useItemOn` as the client runs it: what the block answers to the stack in the
-//! hand, and the state it takes. Sounds the server plays with `null` as the excluded player never
-//! reach the user's own client, so none are played here.
+//! hand, and the state it takes. A `Level.playSound(null, ..)` made here would play nothing on the
+//! client (it plays only a sound that names the local player), and the server sends its own to
+//! everyone, so none are played here.
 
 use super::*;
 

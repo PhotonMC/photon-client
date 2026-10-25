@@ -175,7 +175,7 @@ fn place_gateway(world: &mut ClientWorld, gateway: &Value) -> Result<(), String>
 
 /// The block entities of a row, set up in the order it lists them (the level makes one the first
 /// time something asks for the entity at the block).
-fn place_block_entities(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
+pub(crate) fn place_block_entities(world: &mut ClientWorld, row: &Value) -> Result<(), String> {
     for entity in row["block_entities"].as_array().into_iter().flatten() {
         let kind = string(entity, "type")?;
         let type_id = photon_data::block_entity_type::id(kind)

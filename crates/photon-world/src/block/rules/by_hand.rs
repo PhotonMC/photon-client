@@ -344,6 +344,7 @@ fn success_if(state: BlockStateId, name: &str) -> Rule<HandUse> {
 /// screen or act on the server.
 const SERVER_WORK: &[BlockClass] = &[
     BlockClass::DispenserBlock,
+    BlockClass::NoteBlock,
     BlockClass::ChestBlock,
     BlockClass::CraftingTableBlock,
     BlockClass::AbstractFurnaceBlock,

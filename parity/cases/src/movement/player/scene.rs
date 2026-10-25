@@ -53,6 +53,7 @@ pub struct Scene {
     block_events: Vec<Value>,
     camera_entity: Option<(i64, &'static str)>,
     flying_speed: Option<f64>,
+    block_entities: Vec<Value>,
 }
 
 impl Scene {
@@ -70,6 +71,7 @@ impl Scene {
             block_events: Vec::new(),
             camera_entity: None,
             flying_speed: None,
+            block_entities: Vec::new(),
         }
     }
 
@@ -112,6 +114,13 @@ impl Scene {
         Self { block_events, ..self }
     }
 
+    /// A block entity of a block (the reference makes one for every block that has the type; the
+    /// client holds the ones the server sent).
+    pub fn block_entity(mut self, at: (i64, i64, i64), kind: &str) -> Self {
+        self.block_entities.push(json!({"x": at.0, "y": at.1, "z": at.2, "type": kind}));
+        self
+    }
+
     /// The server hands the view to another entity (SetCamera): a `kind` with id `id` stands a
     /// few blocks away and is the camera entity.
     pub fn camera_entity(self, id: i64, kind: &'static str) -> Self {
@@ -127,6 +136,9 @@ impl Scene {
         });
         if !self.block_events.is_empty() {
             row["block_events"] = Value::Array(self.block_events);
+        }
+        if !self.block_entities.is_empty() {
+            row["block_entities"] = Value::Array(self.block_entities);
         }
         if let Some((id, kind)) = self.camera_entity {
             row["entities"] = json!([{

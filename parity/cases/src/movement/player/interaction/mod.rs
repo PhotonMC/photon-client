@@ -87,6 +87,10 @@ impl Interaction {
         Self { scene, ..self }
     }
 
+    pub fn block_entity(self, at: (i64, i64, i64), kind: &str) -> Self {
+        Self { scene: self.scene.block_entity(at, kind), ..self }
+    }
+
     pub fn main_hand(self, item: &'static str) -> Self {
         Self { main_hand: Some(item), ..self }
     }
