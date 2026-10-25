@@ -655,7 +655,7 @@
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
 "crates/photon-oracle/src/animation.rs::copper_golem_layers_result" = 70
-"crates/photon-oracle/src/block.rs::block_result" = 475
+"crates/photon-oracle/src/block.rs::block_result" = 434
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 125
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 142
 "crates/photon-oracle/src/blockstate.rs::model_state_result" = 62

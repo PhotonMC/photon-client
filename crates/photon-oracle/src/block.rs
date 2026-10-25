@@ -328,48 +328,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({"label": label, "outcome": "listed", "items": items}));
             }
             "tooltip_registries" => out.push(tooltip_registries(label)),
-            "potions" => {
-                use photon_data::item::effect::{attribute_id, effect_id};
-                use photon_data::item::mob_effects::MOB_EFFECTS;
-                use photon_data::item::potions::POTIONS;
-                let effects: Vec<Value> = MOB_EFFECTS
-                    .iter()
-                    .map(|effect| {
-                        json!({
-                            "name": effect.name,
-                            "color": effect.color,
-                            "description_id": effect.description_id(),
-                            "style": effect.style(),
-                            "modifiers": effect.modifiers.iter().map(|modifier| json!({
-                                "attribute": attribute_id(modifier.attribute),
-                                "amount": modifier.amount,
-                                "operation": modifier.operation,
-                            })).collect::<Vec<_>>(),
-                        })
-                    })
-                    .collect();
-                let potions: Vec<Value> = POTIONS
-                    .iter()
-                    .map(|potion| {
-                        json!({
-                            "name": potion.name,
-                            "potion_name": potion.potion_name(),
-                            "effects": potion.effects.iter().map(|effect| json!({
-                                "effect": effect_id(effect.effect),
-                                "amplifier": effect.amplifier,
-                                "duration": effect.duration,
-                                "visible": effect.visible,
-                            })).collect::<Vec<_>>(),
-                        })
-                    })
-                    .collect();
-                out.push(json!({
-                    "label": label,
-                    "outcome": "listed",
-                    "effects": effects,
-                    "potions": potions,
-                }));
-            }
+            "potions" => out.push(potions(label)),
             "creative_tabs" => {
                 use photon_data::item::component_types::NAMES;
                 use photon_data::item::creative_tabs::{CREATIVE_TABS, DEFAULT_TAB, TabKind};
