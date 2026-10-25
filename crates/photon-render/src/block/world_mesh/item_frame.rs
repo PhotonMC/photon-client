@@ -15,13 +15,13 @@ impl BlockRenderer {
     /// the vertices' colour. `grass` reads the grass colour map.
     pub fn item_layers(
         &self,
-        (item, state): (ItemId, crate::item_model::ItemState),
+        (item, state): (ItemId, &crate::item_model::ItemState),
         context: crate::model::DisplayContext,
         grass: &dyn Fn(f64, f64) -> u32,
         (values, selected): (
             &dyn crate::item_model::ItemTints,
             Option<(
-                crate::item_model::ItemState,
+                &crate::item_model::ItemState,
                 &dyn crate::item_model::ItemTints,
             )>,
         ),
@@ -37,13 +37,8 @@ impl BlockRenderer {
         let mut out = Vec::new();
         for layer in layers {
             if let Some(nested) = layer.nested {
-                if let Some((state, tints)) = &selected {
-                    out.extend(self.item_layers(
-                        (nested, state.clone()),
-                        context,
-                        grass,
-                        (*tints, None),
-                    ));
+                if let Some((state, tints)) = selected {
+                    out.extend(self.item_layers((nested, state), context, grass, (tints, None)));
                 }
                 continue;
             }
@@ -134,7 +129,7 @@ impl BlockRenderer {
         &self,
         item: ItemId,
         context: crate::model::DisplayContext,
-        state: crate::item_model::ItemState,
+        state: &crate::item_model::ItemState,
     ) -> Vec<u8> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()
@@ -150,7 +145,7 @@ impl BlockRenderer {
         &self,
         item: ItemId,
         context: crate::model::DisplayContext,
-        state: crate::item_model::ItemState,
+        state: &crate::item_model::ItemState,
     ) -> Vec<(crate::item_model::NeedleSource, bool)> {
         let Some(Some(def)) = usize::try_from(item.0)
             .ok()

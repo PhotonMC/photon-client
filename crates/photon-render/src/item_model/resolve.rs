@@ -155,14 +155,14 @@ pub struct TestedComponents {
 }
 
 /// What a walk of the model tree reads, and which branches it took (the cache key of the layers).
-struct Walk {
-    state: ItemState,
+struct Walk<'a> {
+    state: &'a ItemState,
     trace: Vec<u8>,
     /// The compass needles the state did not hold when a range asked for them.
     wanted: Vec<(NeedleSource, bool)>,
 }
 
-impl Walk {
+impl Walk<'_> {
     /// `IsUsingItem`: the holder uses this very stack.
     fn condition(&self, property: &str, component: Option<&(String, bool)>) -> bool {
         self.state.condition(property, component)
@@ -243,7 +243,7 @@ impl Walk {
 /// false, selections other than the display context and numeric
 /// properties take their fallbacks.
 pub fn layers_for(def: &ItemModelDef, context: DisplayContext, out: &mut Vec<ItemLayerRef>) {
-    layers_in_use(def, context, ItemState::default(), out);
+    layers_in_use(def, context, &ItemState::default(), out);
 }
 
 /// Every layer an item can draw for any state of the properties this client reads: both sides
@@ -268,7 +268,7 @@ pub fn layers_any_use(
         // A property this client does not read: the default stack's way.
         _ => {
             let mut walk = Walk {
-                state: ItemState::default(),
+                state: &ItemState::default(),
                 trace: Vec::new(),
                 wanted: Vec::new(),
             };
@@ -368,7 +368,7 @@ const READ_RANGES: [&str; 7] = [
 pub fn layers_in_use(
     def: &ItemModelDef,
     context: DisplayContext,
-    state: ItemState,
+    state: &ItemState,
     out: &mut Vec<ItemLayerRef>,
 ) -> Vec<u8> {
     let mut walk = Walk {
@@ -385,7 +385,7 @@ pub fn layers_in_use(
 pub fn needles_wanted(
     def: &ItemModelDef,
     context: DisplayContext,
-    state: ItemState,
+    state: &ItemState,
 ) -> Vec<(NeedleSource, bool)> {
     let mut walk = Walk {
         state,
@@ -483,7 +483,7 @@ fn select_case<'a>(
 fn chosen_child<'a>(
     def: &'a ItemModelDef,
     context: DisplayContext,
-    walk: &mut Walk,
+    walk: &mut Walk<'_>,
 ) -> Option<&'a ItemModelDef> {
     match def {
         ItemModelDef::Condition {
@@ -500,7 +500,7 @@ fn chosen_child<'a>(
             property,
             cases,
             fallback,
-        } => select_case(property, cases, (context, &walk.state)).or(fallback.as_deref()),
+        } => select_case(property, cases, (context, walk.state)).or(fallback.as_deref()),
         ItemModelDef::RangeDispatch {
             property,
             scale,
@@ -517,7 +517,7 @@ fn chosen_child<'a>(
 fn layers_under(
     def: &ItemModelDef,
     context: DisplayContext,
-    (local, walk): (&Matrix4, &mut Walk),
+    (local, walk): (&Matrix4, &mut Walk<'_>),
     out: &mut Vec<ItemLayerRef>,
 ) {
     match def {
@@ -573,7 +573,7 @@ mod tests {
     fn drawn_by(text: &str, state: ItemState) -> (String, Vec<u8>) {
         let item = parse_client_item(text).expect("a client item");
         let mut layers = Vec::new();
-        let trace = layers_in_use(&item.model, DisplayContext::ALL[0], state, &mut layers);
+        let trace = layers_in_use(&item.model, DisplayContext::ALL[0], &state, &mut layers);
         (layers[0].model.as_string(), trace)
     }
 
@@ -847,7 +847,7 @@ mod tests {
                 ..ItemState::default()
             };
             let mut layers = Vec::new();
-            layers_in_use(&item.model, DisplayContext::ALL[0], state, &mut layers);
+            layers_in_use(&item.model, DisplayContext::ALL[0], &state, &mut layers);
             layers
         };
         let closed = layers_of(None);
@@ -930,7 +930,7 @@ mod tests {
                 },
                 ..ItemState::default()
             };
-            needles_wanted(&item.model, DisplayContext::Gui, state)
+            needles_wanted(&item.model, DisplayContext::Gui, &state)
         };
         assert_eq!(wanted(false), [(NeedleSource::Spawn, false)]);
         assert_eq!(wanted(true), [(NeedleSource::Lodestone, true)]);
@@ -940,7 +940,7 @@ mod tests {
             needles,
             ..ItemState::default()
         };
-        assert!(needles_wanted(&item.model, DisplayContext::Gui, state.clone()).is_empty());
+        assert!(needles_wanted(&item.model, DisplayContext::Gui, &state).is_empty());
         assert_eq!(drawn_by(COMPASS_MODEL, state).0, "minecraft:item/spawn_1");
     }
 
@@ -959,7 +959,7 @@ mod tests {
                 dimension: Some(intern_key(dimension)),
                 ..ItemState::default()
             };
-            needles_wanted(&item.model, DisplayContext::Gui, state)
+            needles_wanted(&item.model, DisplayContext::Gui, &state)
         };
         assert_eq!(
             wanted("minecraft:overworld"),

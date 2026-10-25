@@ -312,7 +312,7 @@ impl ItemLayerCache {
         state.dimension = Some(photon_render::item_model::intern_key(
             store_dimension(needles).as_str(),
         ));
-        let wanted = renderer.item_needles_wanted(item, self.context, state.clone());
+        let wanted = renderer.item_needles_wanted(item, self.context, state);
         if wanted.is_empty() {
             state.dimension = None;
             return;
@@ -360,11 +360,7 @@ impl ItemLayerCache {
         let item = stack.item_registry_id();
         let mut state = self.item_state(stack, ticks);
         self.work_out_needles(renderer, (item, stack), &mut state);
-        let mut branches = if state == ItemState::default() {
-            Vec::new()
-        } else {
-            renderer.item_branches(item, context, state.clone())
-        };
+        let mut branches = renderer.item_branches(item, context, &state);
         // The trim's key comes from the registry, which the patch alone does not name.
         branches.extend(registry_keys(&state));
         // The selected contents decide the nested layers, and the selection is not in the patch.
@@ -373,11 +369,7 @@ impl ItemLayerCache {
         if let (Some(inner), Some(inner_state)) = (&selected, &selected_state) {
             branches.extend(inner.item_registry_id().0.to_le_bytes());
             branches.extend(inner.patch_bytes());
-            branches.extend(renderer.item_branches(
-                inner.item_registry_id(),
-                context,
-                inner_state.clone(),
-            ));
+            branches.extend(renderer.item_branches(inner.item_registry_id(), context, inner_state));
         }
         let variants = self.layers.entry(item.0).or_default();
         let index = if let Some(index) = variants
@@ -391,14 +383,14 @@ impl ItemLayerCache {
                 .as_ref()
                 .map(|inner| photon_gui::stack_tints(inner.item_registry_id(), inner));
             let layers = renderer.item_layers(
-                (item, state),
+                (item, &state),
                 context,
                 &|temperature, downfall| tints.grass_at_climate(temperature, downfall),
                 (
                     &own,
                     nested
                         .as_ref()
-                        .zip(selected_state.clone())
+                        .zip(selected_state.as_ref())
                         .map(|(tints, state)| (state, tints as &dyn ItemTints)),
                 ),
             );
