@@ -142,6 +142,7 @@ impl Gui {
         if Self::draw_world_options((atlas, font, lang), controls, frame, (gui_size, mouse)) {
             return true;
         }
+        sized!(controls.online_screen);
         sized!(controls.accessibility_screen);
         sized!(controls.sound_screen);
         sized!(controls.video_screen);

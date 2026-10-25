@@ -65,6 +65,7 @@ impl Options {
     fn read_group(&mut self, key: Key, json: &Json) {
         match key {
             Key::Quality(key) => self.quality.read(key, json),
+            Key::Online(key) => self.online.read(key, json),
             _ => self.read_skin(key, json),
         }
     }
@@ -72,6 +73,7 @@ impl Options {
     fn write_group(&self, key: Key) -> String {
         match key {
             Key::Quality(key) => self.quality.write(key),
+            Key::Online(key) => self.online.write(key),
             Key::ModelPart(bit) => self.is_model_part_enabled(bit).to_string(),
             _ => String::new(),
         }
@@ -210,7 +212,6 @@ impl Options {
             Key::InvertXMouse => self.invert_mouse_x = boolean().unwrap_or(self.invert_mouse_x),
             Key::SaveChatDrafts
             | Key::ChatColors
-            | Key::AllowServerListing
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
@@ -248,7 +249,9 @@ impl Options {
             | Key::DamageTiltStrength => {
                 self.read_unit(key, &json);
             }
-            Key::MainHand | Key::ModelPart(_) | Key::Quality(_) => self.read_group(key, &json),
+            Key::MainHand | Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) => {
+                self.read_group(key, &json);
+            }
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 self.read_range(key, &json);
             }
@@ -284,7 +287,6 @@ impl Options {
         let flag = match key {
             Key::SaveChatDrafts => &mut self.save_chat_drafts,
             Key::ChatColors => &mut self.chat_colors,
-            Key::AllowServerListing => &mut self.allow_server_listing,
             Key::AdvancedItemTooltips => &mut self.advanced_item_tooltips,
             Key::PauseOnLostFocus => &mut self.pause_on_lost_focus,
             Key::ViewBobbing => &mut self.view_bobbing,
@@ -300,7 +302,6 @@ impl Options {
         match key {
             Key::SaveChatDrafts => self.save_chat_drafts,
             Key::ChatColors => self.chat_colors,
-            Key::AllowServerListing => self.allow_server_listing,
             Key::AdvancedItemTooltips => self.advanced_item_tooltips,
             Key::PauseOnLostFocus => self.pause_on_lost_focus,
             Key::ViewBobbing => self.view_bobbing,
@@ -439,7 +440,6 @@ impl Options {
             Key::InvertXMouse => self.invert_mouse_x.to_string(),
             Key::SaveChatDrafts
             | Key::ChatColors
-            | Key::AllowServerListing
             | Key::BackgroundForChatOnly
             | Key::AdvancedItemTooltips
             | Key::PauseOnLostFocus
@@ -470,7 +470,7 @@ impl Options {
                 java_double(value.map_or(0.0, |(_, value)| value))
             }
             Key::MainHand => write_string(self.main_hand.serialized()),
-            Key::ModelPart(_) | Key::Quality(_) => self.write_group(key),
+            Key::ModelPart(_) | Key::Quality(_) | Key::Online(_) => self.write_group(key),
             Key::MouseWheelSensitivity | Key::NotificationDisplayTime | Key::ChatDelay => {
                 java_double(self.range_value(key))
             }
@@ -554,6 +554,22 @@ mod tests {
         let path = directory.join(format!("{number}.txt"));
         std::fs::write(&path, text).unwrap();
         Options::load(&path)
+    }
+
+    #[test]
+    fn the_online_options_read_and_write_as_the_file_holds_them() {
+        let options = loaded(
+            "realmsNotifications:false\ninGameNotification:true\nsharePresence:\"limited\"\n",
+        );
+        assert!(!options.online.realms_notifications);
+        assert!(options.online.in_game_notification);
+        assert_eq!(options.online.share_presence, PresenceSharing::Limited);
+        assert_eq!(
+            options.write(Key::Online(OnlineKey::SharePresence)),
+            "\"limited\""
+        );
+        let refused = loaded("realmsNotifications:1\nsharePresence:\"everyone\"\n");
+        assert_eq!(refused.online, OnlineOptions::default());
     }
 
     #[test]
@@ -707,7 +723,7 @@ mod tests {
     fn the_information_options_read_wrap_and_write_back() {
         let options = loaded("chatColors:false\nallowServerListing:false\nparticles:4\n");
         assert!(!options.chat_colors);
-        assert!(!options.allow_server_listing);
+        assert!(!options.online.allow_server_listing);
         // The id wraps round, as `ByIdMap` does.
         assert_eq!(options.particles, ParticleStatus::Decreased);
         assert_eq!(loaded("particles:-1").particles, ParticleStatus::Minimal);
@@ -715,7 +731,10 @@ mod tests {
         let path = std::env::temp_dir().join(format!("photon-info-{}.txt", std::process::id()));
         let fresh = Options {
             chat_colors: false,
-            allow_server_listing: false,
+            online: OnlineOptions {
+                allow_server_listing: false,
+                ..OnlineOptions::default()
+            },
             particles: ParticleStatus::Decreased,
             ..Options::default()
         };

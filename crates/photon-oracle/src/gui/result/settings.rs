@@ -1,5 +1,6 @@
 use super::shell::{Shell, rescale_font, settings_shell};
 use super::*;
+use photon_game::options::PresenceSharing;
 use photon_render::window::scale::WindowScale;
 
 pub(super) fn options_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
@@ -171,6 +172,18 @@ pub(super) fn video_settings_screen_case(
     }))
 }
 
+/// The online options a settings row sets.
+fn online_options(options: &mut photon_game::options::Options, row: &Value) {
+    let stored = &row["options"];
+    options.online.realms_notifications = stored["realms"].as_bool().unwrap_or(true);
+    options.online.in_game_notification = stored["in_game_notification"].as_bool().unwrap_or(false);
+    options.online.allow_server_listing = stored["server_listing"].as_bool().unwrap_or(true);
+    if let Some(name) = stored["presence"].as_str() {
+        options.online.share_presence =
+            PresenceSharing::from_serialized(name).unwrap_or(PresenceSharing::All);
+    }
+}
+
 /// The options a settings row sets.
 pub(super) fn row_options(row: &Value) -> Result<photon_game::options::Options, String> {
     let mut options = photon_game::options::Options::default();
@@ -224,6 +237,7 @@ pub(super) fn row_options(row: &Value) -> Result<photon_game::options::Options, 
     options.font.japanese_glyph_variants = row["options"]["japanese_variants"]
         .as_bool()
         .unwrap_or(false);
+    online_options(&mut options, row);
     Ok(options)
 }
 
@@ -238,6 +252,7 @@ macro_rules! each {
             Shell::Skin($screen) => $body,
             Shell::Font($screen) => $body,
             Shell::World($screen) => $body,
+            Shell::Online($screen) => $body,
         }
     };
 }

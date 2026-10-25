@@ -160,6 +160,67 @@ pub fn font_options_screen() -> Value {
     gui("font-options-screen", "font_options_screen", rows)
 }
 
+/// The online settings screen: the friends list off (no account) or on, the buttons that depend
+/// on it, the presence cycle with its tooltips, and the server and Realms toggles (scrolled to).
+/// The friends list, request and Xbox presses open screens that are not written yet.
+pub fn online_options_screen() -> Value {
+    let on = || json!({"enabled": true, "requests": true});
+    let press = |label: &str, steps: Vec<Value>| at(label).friends(on()).steps(steps).row();
+    let tab = |label: &str, friends: Value, presses: usize| {
+        let steps = (0..presses).map(|_| json!({"do": "key", "key": "tab"})).collect();
+        at(label).friends(friends).steps(steps).row()
+    };
+    let hover = |label: &str, friends: Value, x: i64, y: i64| {
+        let frame = vec![json!({"do": "frame", "ms": 0})];
+        at(label).friends(friends).mouse(x, y).steps(frame).ms(1000).row()
+    };
+    let rows = vec![
+        at("offline").row(),
+        at("out-of-world").outside().row(),
+        at("small").window(640, 480).row(),
+        at("friends-on").friends(on()).row(),
+        at("friends-on-no-requests").friends(json!({"enabled": true, "requests": false})).row(),
+        at("stored")
+            .options(
+                json!({"realms": false, "in_game_notification": true, "server_listing": false, "presence": "limited"}),
+            )
+            .friends(on())
+            .row(),
+        hover("hover-requests-off", json!({}), 290, 56),
+        hover("hover-requests-on", on(), 290, 56),
+        hover("hover-in-game", on(), 130, 81),
+        hover("hover-presence", on(), 290, 81),
+        hover("hover-friends", json!({}), 130, 56),
+        at("hover-presence-limited")
+            .options(json!({"presence": "limited"}))
+            .friends(on())
+            .mouse(290, 81)
+            .steps(vec![json!({"do": "frame", "ms": 0})])
+            .ms(1000)
+            .row(),
+        at("hover-presence-none")
+            .options(json!({"presence": "none"}))
+            .friends(on())
+            .mouse(290, 81)
+            .steps(vec![json!({"do": "frame", "ms": 0})])
+            .ms(1000)
+            .row(),
+        press("press-in-game", vec![click(130, 81)]),
+        press("press-presence", vec![click(290, 81)]),
+        press("press-presence-thrice", times(click(290, 81), 3)),
+        at("press-presence-off").steps(vec![click(290, 81)]).row(),
+        at("press-in-game-off").steps(vec![click(130, 81)]).row(),
+        tab("tab-off", json!({}), 1),
+        tab("tab-on", on(), 1),
+        tab("tab-on-thrice", on(), 3),
+        tab("tab-on-wrap", on(), 8),
+        press("scroll-down", vec![wheel(-3)]),
+        at("press-server-listing").steps(vec![click(200, 175)]).row(),
+        at("scroll-and-press-realms").steps(vec![wheel(-5), click(200, 150)]).row(),
+    ];
+    gui("online-options-screen", "online_options_screen", rows)
+}
+
 /// The world settings screen: the buttons by what the server told the client (the difficulty and
 /// its lock, a hardcore world, the permission level), the tooltip of the game rules button, and
 /// the focus Tab walks over the active ones. No integrated server is ever present.

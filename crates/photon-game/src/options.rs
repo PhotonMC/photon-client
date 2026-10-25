@@ -35,8 +35,6 @@ pub struct Options {
     pub save_chat_drafts: bool,
     /// `chatColors`: formatting codes of chat text are applied; the server is told.
     pub chat_colors: bool,
-    /// `allowServerListing`: the server may list the player; the server is told.
-    pub allow_server_listing: bool,
     /// `particles`.
     pub particles: ParticleStatus,
     /// `invertYMouse`.
@@ -108,6 +106,8 @@ pub struct Options {
     /// `modelParts`: the bits (`PlayerModelPart.getMask`) of the parts of the skin shown.
     pub model_parts: i32,
     pub main_hand: MainHand,
+    /// The online screen's options.
+    pub online: OnlineOptions,
     /// The quality options the video screen holds besides the ones above.
     pub quality: QualityOptions,
     /// The key each mapping is bound to, in `keyMappings` order.
@@ -135,7 +135,6 @@ impl Default for Options {
             invert_mouse_x: false,
             save_chat_drafts: false,
             chat_colors: true,
-            allow_server_listing: true,
             particles: ParticleStatus::All,
             invert_mouse_y: false,
             sensitivity: 0.5,
@@ -180,6 +179,7 @@ impl Default for Options {
             music_toast: MusicToast::Never,
             model_parts: ALL_MODEL_PARTS,
             main_hand: MainHand::Right,
+            online: OnlineOptions::default(),
             quality: QualityOptions::default(),
             key_bindings: bindings::default_bindings(),
             lines: Vec::new(),
@@ -196,11 +196,14 @@ mod json;
 pub use json::*;
 mod font;
 mod keys;
+mod online;
 mod packs;
 mod quality;
 pub use font::*;
 pub use keys::DATA_VERSION;
 use keys::*;
+use online::OnlineKey;
+pub use online::{OnlineOptions, PresenceSharing};
 pub use quality::*;
 mod sliders;
 pub use sliders::*;

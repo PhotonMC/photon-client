@@ -113,6 +113,8 @@ pub struct Controls {
     pub world_screen: Option<photon_gui::options::world::WorldOptionsScreen>,
     /// What the server last said about the world, for that screen.
     pub world_facts: photon_gui::options::world::WorldFacts,
+    /// The online settings, opened from the options screen.
+    pub online_screen: Option<photon_gui::options::online::OnlineOptionsScreen>,
     /// The font settings, opened over the language screen.
     pub font_screen: Option<photon_gui::options::font::FontOptionsScreen>,
     /// `CreditsAndAttributionScreen`, over the options or the title.
@@ -288,7 +290,7 @@ pub(crate) fn client_information(
             photon_game::options::MainHand::Right => photon_net::configuration::MainHand::Right,
         },
         false,
-        options.allow_server_listing,
+        options.online.allow_server_listing,
         match options.particles {
             photon_game::options::ParticleStatus::All => {
                 photon_net::configuration::ParticleStatus::All
@@ -394,6 +396,7 @@ mod sign;
 
 mod font;
 mod host;
+mod online;
 mod skin;
 mod world;
 

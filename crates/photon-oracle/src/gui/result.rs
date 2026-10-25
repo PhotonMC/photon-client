@@ -150,7 +150,7 @@ fn screen_case(
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 36] = [
+const SOUND_OPERATIONS: [&str; 37] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -184,13 +184,14 @@ const SOUND_OPERATIONS: [&str; 36] = [
     "skin_customization_screen",
     "font_options_screen",
     "world_options_screen",
+    "online_options_screen",
     "controls_screen",
     "key_binds_screen",
     "language_screen",
 ];
 
 /// The settings screens that take the same inputs.
-const SETTINGS_SCREENS: [&str; 8] = [
+const SETTINGS_SCREENS: [&str; 9] = [
     "chat_options_screen",
     "accessibility_options_screen",
     "mouse_settings_screen",
@@ -198,6 +199,7 @@ const SETTINGS_SCREENS: [&str; 8] = [
     "skin_customization_screen",
     "font_options_screen",
     "world_options_screen",
+    "online_options_screen",
     "sound_options_screen",
 ];
 

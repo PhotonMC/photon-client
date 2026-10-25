@@ -188,6 +188,14 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 minecraft.options.forceUnicodeFont().set(
                     stored.has("force_unicode") && stored.get("force_unicode").getAsBoolean());
             }
+            if (kind.equals("online")) {
+                // The account's friends list: off unless the row turns it on.
+                var social = unsafe.allocateInstance(net.minecraft.client.gui.screens.social.PlayerSocialManager.class);
+                var friends = row.has("friends") ? row.getAsJsonObject("friends") : new JsonObject();
+                set(social, "friendListEnabled", friends.has("enabled") && friends.get("enabled").getAsBoolean());
+                set(social, "allowFriendRequests", friends.has("requests") && friends.get("requests").getAsBoolean());
+                set(minecraft, "playerSocialManager", social);
+            }
             minecraft.setLastInputType(net.minecraft.client.InputType.NONE);
             var languageBefore = net.minecraft.locale.Language.getInstance();
             if (kind.equals("language")) {
@@ -205,6 +213,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "sound" -> new net.minecraft.client.gui.screens.options.SoundOptionsScreen(null, minecraft.options);
                 case "skin" -> new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, minecraft.options);
                 case "font" -> new net.minecraft.client.gui.screens.options.FontOptionsScreen(null, minecraft.options);
+                case "online" -> new net.minecraft.client.gui.screens.options.OnlineOptionsScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
                 default -> throw new IllegalArgumentException(kind);

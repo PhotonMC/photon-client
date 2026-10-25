@@ -29,6 +29,7 @@ use photon_gui::options::accessibility::AccessibilityScreen;
 use photon_gui::options::chat::ChatOptionsScreen;
 use photon_gui::options::font::{FontChoices, FontOptionsScreen};
 use photon_gui::options::mouse::{ControlsScreen, MouseSettingsScreen};
+use photon_gui::options::online::{FriendFacts, OnlineOptionsScreen};
 use photon_gui::options::skin::SkinCustomizationScreen;
 use photon_gui::options::sound::SoundOptionsScreen;
 use photon_gui::options::world::{WorldFacts, WorldOptionsScreen};
@@ -44,6 +45,7 @@ pub(super) enum Shell {
     Skin(SkinCustomizationScreen),
     Font(FontOptionsScreen),
     World(WorldOptionsScreen),
+    Online(OnlineOptionsScreen),
 }
 
 /// The screen of a settings operation, over the options the row has.
@@ -64,6 +66,12 @@ pub(super) fn settings_shell(
             size,
             in_world,
             world_facts(&row["world"]),
+        )),
+        "online_options_screen" => Shell::Online(OnlineOptionsScreen::new(
+            (font, lang),
+            size,
+            in_world,
+            (&options, friend_facts(&row["friends"])),
         )),
         "font_options_screen" => {
             Shell::Font(FontOptionsScreen::new(font, lang, size, in_world, &options))
@@ -104,5 +112,13 @@ fn world_facts(world: &Value) -> WorldFacts {
         locked: world["locked"].as_bool().unwrap_or(false),
         hardcore: world["hardcore"].as_bool().unwrap_or(false),
         gamemaster: world["permission"].as_i64().unwrap_or(0) >= 2,
+    }
+}
+
+/// What the row says the account has on the friends list.
+fn friend_facts(friends: &Value) -> FriendFacts {
+    FriendFacts {
+        enabled: friends["enabled"].as_bool().unwrap_or(false),
+        allow_requests: friends["requests"].as_bool().unwrap_or(false),
     }
 }

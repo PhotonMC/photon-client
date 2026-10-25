@@ -13,6 +13,7 @@ enum OptionScreen {
     Sound,
     Skin,
     World,
+    Online,
     Accessibility,
     Chat,
     Video,
@@ -56,6 +57,7 @@ impl Controls {
             ),
             (self.chat_options_screen.is_some(), OptionScreen::Chat),
             (self.world_screen.is_some(), OptionScreen::World),
+            (self.online_screen.is_some(), OptionScreen::Online),
             (self.video_screen.is_some(), OptionScreen::Video),
             (self.options_screen.is_some(), OptionScreen::Options),
         ]
@@ -98,6 +100,7 @@ impl Controls {
             OptionScreen::Sound => self.sound_options_event(event, surface, assets),
             OptionScreen::Skin => self.skin_event(event, surface, assets),
             OptionScreen::World => self.world_options_event(event, surface, assets),
+            OptionScreen::Online => self.online_event(event, surface, assets),
             OptionScreen::Accessibility => self.accessibility_event(event, surface, assets),
             OptionScreen::Chat => self.chat_options_event(event, surface, assets),
             OptionScreen::Video => self.video_event(event, surface, assets),

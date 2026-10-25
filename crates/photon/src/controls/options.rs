@@ -163,16 +163,29 @@ impl Controls {
         surface: &WindowSurface,
         assets: &ScreenAssets,
     ) {
-        match Some(action) {
-            Some(OptionsAction::WorldOptions) => self.open_world(surface, assets),
-            Some(OptionsAction::Video) => self.open_video(surface, assets),
-            Some(OptionsAction::Chat) => self.open_chat_options(surface, assets),
-            Some(OptionsAction::Accessibility) => self.open_accessibility(surface, assets),
-            Some(OptionsAction::SkinCustomisation) => self.open_skin(surface, assets),
-            Some(OptionsAction::Sounds) => self.open_sound_options(surface, assets),
-            Some(OptionsAction::Controls) => self.open_controls(surface, assets),
-            Some(OptionsAction::Language) => self.open_language(surface, assets),
-            Some(OptionsAction::CreditsAndAttribution) => {
+        match action {
+            OptionsAction::WorldOptions => self.open_world(surface, assets),
+            OptionsAction::Online => self.open_online(surface, assets),
+            OptionsAction::Video => self.open_video(surface, assets),
+            OptionsAction::Chat => self.open_chat_options(surface, assets),
+            OptionsAction::Accessibility => self.open_accessibility(surface, assets),
+            OptionsAction::SkinCustomisation => self.open_skin(surface, assets),
+            _ => self.open_other_options_child(action, surface, assets),
+        }
+    }
+
+    /// The rest of the screens the options screen opens.
+    fn open_other_options_child(
+        &mut self,
+        action: OptionsAction,
+        surface: &WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        match action {
+            OptionsAction::Sounds => self.open_sound_options(surface, assets),
+            OptionsAction::Controls => self.open_controls(surface, assets),
+            OptionsAction::Language => self.open_language(surface, assets),
+            OptionsAction::CreditsAndAttribution => {
                 self.open_credits_attribution(surface, assets);
             }
             _ => {}

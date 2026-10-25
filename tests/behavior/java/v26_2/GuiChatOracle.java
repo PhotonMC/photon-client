@@ -40,6 +40,13 @@ class GuiChatOracle extends GuiLanguageOracle {
         if (values.has("main_hand")) {
             options.mainHand().set(net.minecraft.world.entity.HumanoidArm.valueOf(values.get("main_hand").getAsString()));
         }
+        if (values.has("realms")) options.realmsNotifications().set(values.get("realms").getAsBoolean());
+        if (values.has("in_game_notification")) options.inGameNotification().set(values.get("in_game_notification").getAsBoolean());
+        if (values.has("server_listing")) options.allowServerListing().set(values.get("server_listing").getAsBoolean());
+        if (values.has("presence")) {
+            options.sharePresence().set(net.minecraft.client.PresenceSharing.valueOf(
+                values.get("presence").getAsString().toUpperCase(java.util.Locale.ROOT)));
+        }
         if (values.has("subtitles")) options.showSubtitles().set(values.get("subtitles").getAsBoolean());
         if (values.has("directional")) options.directionalAudio().set(values.get("directional").getAsBoolean());
         if (values.has("music_frequency")) {

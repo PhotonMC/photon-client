@@ -290,6 +290,8 @@ impl Controls {
         if self.advancements.is_some() {
             self.close_advancements(session, surface);
         } else if self.world_screen.take().is_some() {
+        } else if self.online_screen.is_some() {
+            self.close_online();
         } else if self.font_screen.is_some() {
             self.close_font(surface, assets);
         } else if self.language_screen.is_some() {

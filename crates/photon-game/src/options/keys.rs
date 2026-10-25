@@ -43,7 +43,6 @@ pub(super) enum Key {
     MainHand,
     MouseWheelSensitivity,
     JoinedFirstServer,
-    AllowServerListing,
     SaveChatDrafts,
     AttackIndicator,
     TutorialStep,
@@ -63,9 +62,10 @@ pub(super) enum Key {
     /// `modelPart_<id>`, by the bit of the part.
     ModelPart(usize),
     Quality(QualityKey),
+    Online(OnlineKey),
 }
 
-pub(super) const KEYS: [(&str, Key); 84] = [
+pub(super) const KEYS: [(&str, Key); 87] = [
     ("ao", Key::AmbientOcclusion),
     (
         "biomeBlendRadius",
@@ -118,6 +118,10 @@ pub(super) const KEYS: [(&str, Key); 84] = [
     ("chatColors", Key::ChatColors),
     ("invertXMouse", Key::InvertXMouse),
     ("invertYMouse", Key::InvertYMouse),
+    (
+        "realmsNotifications",
+        Key::Online(OnlineKey::RealmsNotifications),
+    ),
     ("mouseSensitivity", Key::MouseSensitivity),
     ("lang", Key::Lang),
     ("lastServer", Key::LastServer),
@@ -137,7 +141,15 @@ pub(super) const KEYS: [(&str, Key); 84] = [
     ("mainHand", Key::MainHand),
     ("mouseWheelSensitivity", Key::MouseWheelSensitivity),
     ("joinedFirstServer", Key::JoinedFirstServer),
-    ("allowServerListing", Key::AllowServerListing),
+    (
+        "allowServerListing",
+        Key::Online(OnlineKey::AllowServerListing),
+    ),
+    (
+        "inGameNotification",
+        Key::Online(OnlineKey::InGameNotification),
+    ),
+    ("sharePresence", Key::Online(OnlineKey::SharePresence)),
     ("saveChatDrafts", Key::SaveChatDrafts),
     ("attackIndicator", Key::AttackIndicator),
     ("tutorialStep", Key::TutorialStep),

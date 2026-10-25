@@ -15,6 +15,7 @@ pub struct Setting {
     ms: i64,
     options: Option<Value>,
     world: Option<Value>,
+    friends: Option<Value>,
 }
 
 /// A scenario in the default window, in a world.
@@ -29,6 +30,7 @@ pub fn at(label: &str) -> Setting {
         ms: 0,
         options: None,
         world: None,
+        friends: None,
     }
 }
 
@@ -66,6 +68,11 @@ impl Setting {
         Self { world: Some(world), ..self }
     }
 
+    /// What the account has on the friends list (the online screen's inputs).
+    pub fn friends(self, friends: Value) -> Self {
+        Self { friends: Some(friends), ..self }
+    }
+
     /// The row; `extra` fields come after the common ones.
     pub fn row(self) -> Value {
         let mut row = json!({
@@ -77,6 +84,9 @@ impl Setting {
         }
         if let Some(world) = self.world {
             row["world"] = world;
+        }
+        if let Some(friends) = self.friends {
+            row["friends"] = friends;
         }
         row
     }

@@ -6,6 +6,7 @@ impl Controls {
         self.social = None;
         self.debug_options = None;
         self.world_screen = None;
+        self.online_screen = None;
     }
 
     /// `ChatComponent.openScreen`: the chat box opens on the draft a closed

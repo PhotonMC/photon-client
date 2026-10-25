@@ -90,6 +90,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "sound_options_screen" -> settingsScreen(request, "sound");
                 case "skin_customization_screen" -> settingsScreen(request, "skin");
                 case "font_options_screen" -> settingsScreen(request, "font");
+                case "online_options_screen" -> settingsScreen(request, "online");
                 case "world_options_screen" -> settingsScreen(request, "world");
                 case "controls_screen" -> settingsScreen(request, "controls");
                 case "key_binds_screen" -> settingsScreen(request, "keybinds");
