@@ -23,6 +23,7 @@ pub(super) fn handles(name: &str) -> bool {
             | "minecraft:happy_ghast"
             | "minecraft:bee"
             | "minecraft:copper_golem"
+            | "minecraft:sulfur_cube"
     )
 }
 
@@ -50,6 +51,7 @@ impl Context<'_> {
             "minecraft:happy_ghast" => self.interact_happy_ghast(id, hand),
             "minecraft:bee" => self.interact_bee(id, hand),
             "minecraft:copper_golem" => self.interact_copper_golem(id, hand),
+            "minecraft:sulfur_cube" => self.interact_sulfur_cube(id, hand),
             _ => self.interact_armadillo(id, hand),
         }
     }
@@ -230,6 +232,62 @@ impl Context<'_> {
         } else {
             EntityUse::Pass
         }
+    }
+
+    /// `SulfurCube.mobInteract` on the client: a baby takes slime; an adult's shears work when it
+    /// holds something, a swallowable item it does not already hold is swallowed (one is used
+    /// up, the server does the rest) and an empty bucket scoops it up.
+    ///
+    /// Not covered: a primed cube and the fire starters.
+    fn interact_sulfur_cube(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        let (baby, locked) = (entity.is_baby(), entity.is_age_locked());
+        let body = entity
+            .equipment(photon_world::EquipmentSlot::Body)
+            .map(|worn| worn.item_registry_id());
+        if baby {
+            return if !locked && self.holds_tagged(hand, "minecraft:sulfur_cube_food") {
+                self.use_up(hand);
+                EntityUse::Success { swing: true }
+            } else {
+                self.golden_dandelion_on_baby(id, hand)
+            };
+        }
+        self.interact_adult_sulfur_cube(id, hand, body)
+    }
+
+    fn interact_adult_sulfur_cube(
+        &mut self,
+        id: EntityId,
+        hand: u8,
+        body: Option<photon_core::ids::ItemId>,
+    ) -> EntityUse {
+        let held = self.held(hand).map(|(item, _)| item);
+        if body.is_some() && self.holds_item(hand, "minecraft:shears") {
+            EntityUse::Success { swing: true }
+        } else if self.holds_tagged(hand, "minecraft:sulfur_cube_swallowable") {
+            if body.is_some() && body == held {
+                return EntityUse::Pass;
+            }
+            self.use_up(hand);
+            EntityUse::Success { swing: false }
+        } else if self.holds_item(hand, "minecraft:bucket") {
+            self.scoop_up(id, hand, "minecraft:sulfur_cube_bucket")
+        } else {
+            EntityUse::Pass
+        }
+    }
+
+    /// `Bucketable.bucketMobPickup` for a mob that an empty bucket picks up.
+    fn scoop_up(&mut self, id: EntityId, hand: u8, filled: &str) -> EntityUse {
+        let Some(bucket) = crate::item::id_of(filled) else {
+            return EntityUse::Pass;
+        };
+        buckets::plain_result(self, hand, bucket);
+        self.world.remove_entity(id);
+        EntityUse::Success { swing: true }
     }
 
     /// `Armadillo.mobInteract`: a brush takes a scute off an adult, otherwise its food.

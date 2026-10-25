@@ -22,6 +22,13 @@ fn clicked(label: &str, entity: Value, (item, x_rot): (&'static str, f64), click
 
 /// Adults (`""`) and babies (`"baby"`) with the item in hand: label, flag, kind, item.
 const PLAIN: &[(&str, &str, &str, &str)] = &[
+    ("use-sulfur-cube-with-stone", "", "sulfur_cube", "minecraft:stone"),
+    ("use-sulfur-cube-with-shears", "", "sulfur_cube", "minecraft:shears"),
+    ("use-sulfur-cube-with-bucket", "", "sulfur_cube", "minecraft:bucket"),
+    ("use-sulfur-cube-with-water-bucket", "", "sulfur_cube", "minecraft:water_bucket"),
+    ("use-baby-sulfur-cube-with-slime", "baby", "sulfur_cube", "minecraft:slime_ball"),
+    ("use-baby-sulfur-cube-with-stone", "baby", "sulfur_cube", "minecraft:stone"),
+    ("use-baby-sulfur-cube-with-bucket", "baby", "sulfur_cube", "minecraft:bucket"),
     ("use-ocelot-with-cod", "", "ocelot", "minecraft:cod"),
     ("use-ocelot-with-stone", "", "ocelot", "minecraft:stone"),
     ("use-dolphin-with-cod", "", "dolphin", "minecraft:cod"),
@@ -108,6 +115,9 @@ fn health_rows() -> Vec<Value> {
 
 /// Rows that read the equipment the mob wears: label, kind, flag, worn item, held item, sneaking.
 const WORN: &[(&str, &str, &str, &str, &str, bool)] = &[
+    ("use-swallowing-sulfur-cube-with-stone", "sulfur_cube", "armored", "minecraft:stone", "minecraft:stone", false),
+    ("use-swallowing-sulfur-cube-with-dirt", "sulfur_cube", "armored", "minecraft:stone", "minecraft:dirt", false),
+    ("use-swallowing-sulfur-cube-with-shears", "sulfur_cube", "armored", "minecraft:stone", "minecraft:shears", false),
     (
         "use-harnessed-happy-ghast-with-stone",
         "happy_ghast",
