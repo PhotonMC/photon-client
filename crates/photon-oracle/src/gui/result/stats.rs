@@ -123,6 +123,8 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     let counter = counter_from(row)?;
     let size = (int("width"), int("height"));
     let mut screen = StatsScreen::new(&lang, size, true, &counter);
+    let mouse = (int_at(&row["mouse"], 0), int_at(&row["mouse"], 1));
+    let mut now = row["now"].as_u64().unwrap_or(0);
     if row["loaded"].as_bool().unwrap_or(false) {
         screen.on_stats_updated(&lang, &counter);
     }
@@ -142,8 +144,11 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
                 );
             }
             "scroll" => screen.scrolled(at, step["delta"].as_f64().ok_or("delta")?),
-            // A frame between two steps: the screen has no state that waits for one.
-            "frame" => {}
+            // A frame drawn and thrown away: a tooltip's wait begins in one.
+            "frame" => {
+                draw_screen(ctx, &lang, (&screen, mouse), now);
+            }
+            "wait" => now += step["ms"].as_u64().ok_or("ms")?,
             "resize" => screen.resize((
                 step["width"].as_i64().unwrap_or(0) as i32,
                 step["height"].as_i64().unwrap_or(0) as i32,
@@ -151,13 +156,7 @@ pub(super) fn stats_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
             _ => return Err("unknown step".into()),
         }
     }
-    let mouse = (int_at(&row["mouse"], 0), int_at(&row["mouse"], 1));
-    let log = draw_screen(
-        ctx,
-        &lang,
-        (&screen, mouse),
-        row["now"].as_u64().unwrap_or(0),
-    );
+    let log = draw_screen(ctx, &lang, (&screen, mouse), now);
     Ok(json!({
         "label": row["label"],
         "ops": gui_ops(&log),

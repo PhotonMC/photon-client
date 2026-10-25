@@ -2,6 +2,8 @@
 //! the tab shown and Done (`Screen.keyPressed`, `ContainerEventHandler.handleTabNavigation`), and
 //! Enter or Space on the focused child.
 
+use crate::widgets::slider::InputType;
+
 use super::{SHIFT_MODIFIER, ScreenFocus, StatsAction, StatsScreen, TAB_KEY};
 
 /// `GLFW_KEY_ENTER`, `GLFW_KEY_SPACE` and `GLFW_KEY_KP_ENTER`: `KeyEvent.isSelection`.
@@ -35,6 +37,12 @@ const ORDER: [ScreenFocus; 3] = [ScreenFocus::Bar, ScreenFocus::List, ScreenFocu
 impl StatsScreen {
     /// `StatsScreen.keyPressed`: the tab bar first (Control with a digit or Tab), then the screen.
     pub fn key_pressed(&mut self, key: i32, modifiers: i32) -> Option<StatsAction> {
+        // `KeyboardHandler.keyPress` notes what kind of key it was.
+        if key == TAB_KEY {
+            self.input.set(InputType::KeyboardTab);
+        } else if Arrow::of_key(key).is_some() {
+            self.input.set(InputType::KeyboardArrow);
+        }
         if self.bar_key(key, modifiers) {
             return None;
         }

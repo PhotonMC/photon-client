@@ -472,6 +472,7 @@ class GuiHudOracle extends GuiCommandOracle {
                             MovementOracle.setField(minecraft.getWindow(), "guiScaledHeight", action.get("height").getAsInt());
                             stats.init(action.get("width").getAsInt(), action.get("height").getAsInt());
                         }
+                        case "wait" -> now[0] += action.get("ms").getAsLong();
                         case "frame" -> {
                             // A frame drawn and thrown away: the header's buttons take their places in one.
                             var thrown = new GuiGraphicsExtractor(minecraft, new GuiRenderState(), mouseX, mouseY);

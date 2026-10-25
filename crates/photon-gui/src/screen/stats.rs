@@ -9,10 +9,14 @@ mod list;
 mod mobs;
 mod navigation;
 
+use std::cell::Cell;
 use std::collections::HashMap;
 
 use crate::layout::{Arena, Item, place_in_frame};
+use crate::tooltip::{Holder, Pending};
+use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::Place;
+use crate::widgets::slider::InputType;
 use crate::widgets::{Kind, Widget, draw_label};
 use crate::{FontRuns, FrameRuns};
 use photon_data::stat::StatKey;
@@ -78,6 +82,10 @@ pub struct StatsScreen {
     stats: HashMap<StatKey, i32>,
     /// `init` has not yet asked the server for the statistics.
     request_pending: bool,
+    /// What kind of input was last (a tooltip of a focused widget shows for the keyboard's).
+    input: Cell<InputType>,
+    /// The tooltip of each tab with nothing in its list.
+    tab_tips: [Option<Holder>; TABS],
 }
 
 /// The children of the screen that can have its focus, in the order Tab goes through them.
@@ -135,6 +143,8 @@ impl StatsScreen {
             tab_active: [true, false, false],
             stats: stats.clone(),
             request_pending: true,
+            input: Cell::new(InputType::Mouse),
+            tab_tips: [None, None, None],
         };
         screen.layout();
         screen
@@ -160,6 +170,9 @@ impl StatsScreen {
         let mobs = MobsList::new(lang, stats);
         // `setTabActiveStateAndTooltip`: a tab with nothing in its list cannot be chosen.
         self.tab_active = [true, !items.is_empty(), !mobs.is_empty()];
+        self.tab_tips = self.tab_active.map(|active| {
+            (!active).then(|| Holder::of(lang, &Component::translatable("gui.stats.none_found")))
+        });
         self.lists = Some(Lists {
             general,
             items,
@@ -267,6 +280,15 @@ impl StatsScreen {
         let highlighted = self.done.contains(&self.arena, mouse) || self.focus == ScreenFocus::Done;
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
         // Widget tooltips are drawn last (`GuiGraphicsExtractor.setTooltipForNextFrame`).
+        self.draw_stack_tooltip(draw, mouse);
+        if let Some(pending) = self.widget_tooltip(mouse, millis) {
+            pending.draw(draw.frame, draw.atlas, draw.font, mouse, self.size);
+        }
+    }
+
+    /// The tooltip of the item slot under the pointer in the items list.
+    fn draw_stack_tooltip(&self, draw: &mut super::ScreenDraw<'_, '_>, mouse: (i32, i32)) {
+        let (width, height) = self.size;
         if self.selected == 1
             && let Some(lists) = &self.lists
             && let Some((stack, at)) = lists.items.hovered_stack(mouse)
@@ -276,6 +298,36 @@ impl StatsScreen {
             let at = (f64::from(at.0), f64::from(at.1));
             super::bundle_tooltip::stack_tooltip(&layout, draw, &stack, &lines, at);
         }
+    }
+
+    /// The tooltip a widget asks for in this frame: a tab with nothing in it, or a sort button.
+    fn widget_tooltip(&self, mouse: (i32, i32), millis: u64) -> Option<Pending> {
+        let input = self.input.get();
+        let (first, tab_width) = self.tab_geometry();
+        let mut asked = None;
+        for (tab, tip) in self.tab_tips.iter().enumerate() {
+            let Some(tip) = tip else {
+                continue;
+            };
+            let rectangle = Rectangle {
+                x: first + tab as i32 * tab_width,
+                y: 0,
+                width: tab_width,
+                height: TAB_BAR_HEIGHT,
+            };
+            let focused = self.focus == ScreenFocus::Bar && self.focused_tab == Some(tab);
+            let hovered = self.tab_at(mouse) == Some(tab);
+            if let Some(pending) = tip.refresh(millis, (hovered, focused), input, rectangle) {
+                asked = Some(pending);
+            }
+        }
+        let lists = self.lists.as_ref()?;
+        if self.selected == 1
+            && let Some(pending) = lists.items.tooltip(mouse, millis, input)
+        {
+            asked = Some(pending);
+        }
+        asked
     }
 
     /// `MenuTabBar.extractWidgetRenderState`: the header's line either side of the tabs, then each
@@ -407,6 +459,7 @@ impl StatsScreen {
     /// first one the pointer is over gets it, and the focus goes to it if it took it. An inactive
     /// tab takes nothing.
     pub fn clicked(&mut self, mouse: (i32, i32)) -> Option<StatsAction> {
+        self.input.set(InputType::Mouse);
         if self.done.contains(&self.arena, mouse) {
             crate::ui_sound::play_down_sound();
             return Some(StatsAction::Close);

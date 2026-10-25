@@ -89,6 +89,7 @@ pub fn stats_screen() -> Value {
     rows.extend(item_rows());
     rows.extend(selection_rows());
     rows.extend(super::stats_keys::key_rows());
+    rows.extend(super::stats_tooltips::tooltip_rows());
     gui("stats-screen", "stats_screen", rows)
 }
 

@@ -35,6 +35,7 @@ mod signs;
 mod social;
 mod stats;
 mod stats_keys;
+mod stats_tooltips;
 mod status;
 mod structure_block;
 mod suggest;

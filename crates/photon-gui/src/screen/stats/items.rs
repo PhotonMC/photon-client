@@ -6,7 +6,10 @@ use std::collections::{BTreeSet, HashMap};
 use super::list::{ListView, PADDING};
 use super::navigation::Arrow;
 use crate::FrameRuns;
+use crate::tooltip::{Holder, Pending};
+use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::Place;
+use crate::widgets::slider::InputType;
 use photon_data::stat::{Formatter, StatKey};
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_render::gui::font::Font;
@@ -57,6 +60,8 @@ pub(super) struct ItemsList {
     sort: Option<(usize, i32)>,
     /// What the last press was on, which keeps the focus.
     focus: Focus,
+    /// The tooltip of each sort button: the name of what it counts.
+    tips: Vec<Holder>,
 }
 
 /// The widget of the list that has the focus.
@@ -123,6 +128,13 @@ impl ItemsList {
             none: lang.runs(&Component::translatable("stats.none"), &Style::default()),
             sort: None,
             focus: Focus::None,
+            tips: COLUMNS
+                .iter()
+                .map(|name| {
+                    let key = format!("stat_type.{}", name.replace(':', "."));
+                    Holder::of(lang, &Component::translatable(key))
+                })
+                .collect(),
         }
     }
 
@@ -178,6 +190,39 @@ impl ItemsList {
             crate::ui_sound::play_down_sound();
             self.sort_by(column, stats);
         }
+    }
+
+    /// `AbstractWidget.extractTooltipForNextRenderPass` of the sort buttons: the tooltip a button
+    /// under the pointer, or focused by the keyboard, asks for once it has waited.
+    pub(super) fn tooltip(
+        &self,
+        mouse: (i32, i32),
+        millis: u64,
+        input: InputType,
+    ) -> Option<Pending> {
+        let y = self.view.row_y(0);
+        let shown = !self.rows.is_empty() && self.view.shows(y);
+        let hovered = if shown {
+            self.button_at(mouse, true)
+        } else {
+            None
+        };
+        let mut asked = None;
+        for (column, tip) in self.tips.iter().enumerate() {
+            let (x, top) = self.button_rect(column, y);
+            let rectangle = Rectangle {
+                x,
+                y: top,
+                width: BUTTON_SIZE,
+                height: BUTTON_SIZE,
+            };
+            let focused = shown && self.view.focused && self.focus == Focus::Button(column);
+            let state = (hovered == Some(column), focused);
+            if let Some(pending) = tip.refresh(millis, state, input, rectangle) {
+                asked = Some(pending);
+            }
+        }
+        asked
     }
 
     /// Whether the list has the focus inside it.
