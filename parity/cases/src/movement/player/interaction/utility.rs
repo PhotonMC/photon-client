@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
+use crate::components::{DAMAGE, RECIPES, Tag, UNBREAKABLE, nbt, patch, vi};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
@@ -65,6 +66,20 @@ pub fn rows() -> Vec<Value> {
     rows
 }
 
+/// A trident one point from breaking fails the use; an unbreakable one starts it, and one with
+/// room left starts it too.
+fn trident_rows() -> Vec<Value> {
+    let ticks = [uses(1, None, &[]).clicks(1).go(), uses(3, None, &[]).go()].concat();
+    let row = |label: &str, added: &[(i64, String)]| {
+        using(label, vec![], ticks.clone()).main_hand("minecraft:trident").count(1).patch(patch(added)).row()
+    };
+    vec![
+        row("use-trident-last-point", &[(DAMAGE, vi(249))]),
+        row("use-trident-room-left", &[(DAMAGE, vi(248))]),
+        row("use-trident-unbreakable-last-point", &[(DAMAGE, vi(249)), (UNBREAKABLE, String::new())]),
+    ]
+}
+
 /// A book with a recipe is a success (a swing) and is consumed on the client too; creative keeps
 /// the book.
 fn recipe_rows() -> Vec<Value> {
@@ -76,7 +91,7 @@ fn recipe_rows() -> Vec<Value> {
             using(label, vec![], ticks.clone())
                 .main_hand("minecraft:knowledge_book")
                 .count(1)
-                .recipes("minecraft:oak_planks")
+                .patch(patch(&[(RECIPES, nbt(&Tag::List(vec![Tag::from("minecraft:oak_planks")])))]))
                 .game_mode(mode)
                 .row(),
         );
@@ -117,7 +132,7 @@ fn special_rows() -> Vec<Value> {
         let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
         rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
     }
-    rows.extend(recipe_rows());
+    rows.extend([recipe_rows(), trident_rows()].concat());
     // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
     // success: the eye starts a use all the same; a stick that passes gets none.
     for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {

@@ -127,10 +127,18 @@ pub(super) fn ender_eye_use_on(ctx: &Context<'_>, aim: Aim) -> UseResult {
     }
 }
 
-/// `TridentItem.use` for a trident without riptide and with durability left: the use starts and
-/// nothing swings. A stack about to break fails, and one with riptide fails out of the rain;
-/// neither is read from the stack's components.
+/// `TridentItem.use` for a trident without riptide: a stack about to break fails; otherwise the
+/// use starts and nothing swings. Riptide out of the rain fails too, which is not read from the
+/// stack's components.
 fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    let breaks = ctx
+        .world
+        .local_player()
+        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
+        .is_some_and(|stack| stack.breaks_on_next_damage());
+    if breaks {
+        return UseResult::Fail;
+    }
     ctx.player.start_using_item(hand != super::MAIN_HAND);
     UseResult::Success { swing: false }
 }

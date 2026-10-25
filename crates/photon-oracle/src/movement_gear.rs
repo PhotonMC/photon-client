@@ -260,13 +260,18 @@ pub(super) fn hold_main_hand(
         value.push(0);
         added.push((photon_data::item::component_types::USE_COOLDOWN, value));
     }
-    if let Some(recipe) = breaking["main_hand_recipes"].as_str() {
-        // No stream codec of its own: `fromCodecWithRegistries` writes a network NBT list of
-        // strings (tag 9, element type 8, int count, then a short length and bytes each).
-        let mut value = vec![9, 8, 0, 0, 0, 1];
-        value.extend((recipe.len() as u16).to_be_bytes());
-        value.extend(recipe.as_bytes());
-        added.push((photon_data::item::component_types::RECIPES, value));
+    let mut removed = Vec::new();
+    if let Some(hex) = breaking["main_hand_patch"].as_str() {
+        // The same bytes Java decodes; the reader must end exactly where they do.
+        let bytes = hex_bytes(hex)?;
+        let mut rest = bytes.as_slice();
+        let patch = photon_world::item_components::read_patch(&mut rest)
+            .map_err(|_| format!("malformed main_hand_patch {hex}"))?;
+        if !rest.is_empty() {
+            return Err(format!("main_hand_patch has trailing bytes {hex}"));
+        }
+        added.extend(patch.added);
+        removed = patch.removed;
     }
     if let Some(name) = breaking["main_hand_use_remainder"].as_str() {
         let remainder =
@@ -284,11 +289,8 @@ pub(super) fn hold_main_hand(
         value.extend(name.as_bytes());
         added.push((photon_data::item::component_types::CUSTOM_NAME, value));
     }
-    if !added.is_empty() {
-        stack.set_patch(&photon_world::item_components::Patch {
-            added,
-            removed: Vec::new(),
-        });
+    if !added.is_empty() || !removed.is_empty() {
+        stack.set_patch(&photon_world::item_components::Patch { added, removed });
     }
     world.apply_local_player_container_slot(0, 0, 36, Some(&stack));
     player.set_main_hand_item(item);
