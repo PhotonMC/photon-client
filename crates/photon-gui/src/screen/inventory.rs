@@ -297,8 +297,6 @@ impl Screen for InventoryScreen {
         self.book.sync(draw.book);
         self.layout.left_override = Some(self.book.left_pos());
         let (left, top) = (self.layout.left(), self.layout.top());
-        // `InventoryScreen.extractRenderState`: the effects come before the screen itself.
-        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         self.layout.background(draw);
         draw.frame.blit_texture(
             draw.atlas,
@@ -317,6 +315,9 @@ impl Screen for InventoryScreen {
             (mouse.0 as f32, mouse.1 as f32),
         );
         draw.frame.figure(&model);
+        // `InventoryScreen.extractRenderState`: the effects come after the background stage (the
+        // dimmed world, the image and the player) and before the rest of the screen.
+        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         if self.book.blocks_screen() {
             // A book with no room beside the screen covers it: only the
             // background shows, and the book over it.
