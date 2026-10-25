@@ -78,7 +78,11 @@ impl ContainerMouse {
                 draw.item,
                 &stack,
                 (count, text),
-                (x, y, slot_holding(draw.held, menu, index, (seed, preview))),
+                (
+                    x,
+                    y,
+                    slot_holding(draw.viewer, menu, index, (seed, preview)),
+                ),
             );
         }
     }
@@ -87,7 +91,9 @@ impl ContainerMouse {
 /// What the slot's stack is held as: its `seed`, and the rod cast when the slot shows the stack a
 /// hand holds (`FishingRodCast` compares the stacks themselves, which a drag's preview is not).
 fn slot_holding(
-    (selected, casts): (usize, [bool; 2]),
+    super::super::PlayerView {
+        selected, casts, ..
+    }: super::super::PlayerView<'_>,
     menu: &impl SlotView,
     index: usize,
     (seed, preview): (i32, bool),

@@ -69,6 +69,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "hud_status" -> hudStatus(request);
                 case "hud_sleep" -> hudSleep(request);
                 case "hud_effects" -> hudEffects(request);
+                case "inventory_effects" -> inventoryEffects(request);
                 case "hud_debug_overlay" -> hudDebugOverlay(request);
                 case "hud_debug_lines" -> hudDebugLines(request);
                 case "debug_entries" -> debugEntries(request);

@@ -399,10 +399,7 @@ impl Gui {
                 control_held: controls.mods.control,
                 partial: (self.last_tick.elapsed().as_secs_f32() / 0.05).min(1.0),
                 widget_tooltips: true,
-                held: (
-                    session.status().selected_slot as usize,
-                    crate::hud_input::held_casts(session),
-                ),
+                viewer: crate::hud_input::screen_viewer(session),
                 book: session.world().recipe_book(),
                 tags: session.world().block_state_registry().item_tags(),
             };

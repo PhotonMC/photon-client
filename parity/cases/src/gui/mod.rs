@@ -119,6 +119,7 @@ const ORDER: &[Generator] = &[
     || vec![tutorial::tutorial()],
     || vec![status::hud_status()],
     || vec![effects::hud_effects()],
+    || vec![effects::inventory_effects()],
     language::language_cases,
     || vec![locator::locator_bar()],
     language::settings_keys,

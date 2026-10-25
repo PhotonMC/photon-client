@@ -38,6 +38,7 @@ pub mod bundle_mouse;
 pub mod bundle_tooltip;
 pub mod container;
 pub mod creative;
+pub mod effects;
 pub mod generic;
 pub mod inventory;
 pub mod recipe_book;
@@ -90,8 +91,30 @@ pub struct ScreenDraw<'a, 'b> {
     /// Whether the tooltips the screen's own widgets ask for are drawn (the reference draws them
     /// last, after everything a draw log compares).
     pub widget_tooltips: bool,
+    pub viewer: PlayerView<'a>,
+}
+
+/// What the screens read of the local player.
+#[derive(Debug, Clone, Copy)]
+pub struct PlayerView<'a> {
     /// The selected hotbar slot, and which hand's stack a rod's bobber makes the cast one.
-    pub held: (usize, [bool; 2]),
+    pub selected: usize,
+    pub casts: [bool; 2],
+    /// The active effects, which the inventories list beside them, and the server's tick rate
+    /// their times are read at.
+    pub effects: &'a [photon_world::ClientMobEffectState],
+    pub tick_rate: f32,
+}
+
+impl Default for PlayerView<'_> {
+    fn default() -> Self {
+        Self {
+            selected: 0,
+            casts: [false; 2],
+            effects: &[],
+            tick_rate: 20.0,
+        }
+    }
 }
 
 /// A click a screen asks the session to run.
@@ -221,6 +244,11 @@ pub trait Screen {
     /// server opened in the player's hand.
     fn is_container(&self) -> bool {
         true
+    }
+
+    /// `Screen.showsActiveEffects`: the screen lists the effects itself, so the HUD does not.
+    fn shows_active_effects(&self) -> bool {
+        false
     }
 
     /// The creative screen, for what only it has (its tab and menu).

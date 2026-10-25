@@ -405,16 +405,67 @@ class GuiHudOracle extends GuiCommandOracle {
         for (var element : request.getAsJsonArray("rows")) {
             var row = element.getAsJsonObject();
             var scene = hudScene(row.get("width").getAsInt(), row.get("height").getAsInt(), false, false);
-            for (var effectElement : row.getAsJsonArray("effects")) {
-                var effect = effectElement.getAsJsonObject();
-                var holder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(
-                    net.minecraft.resources.Identifier.parse(effect.get("effect").getAsString())).orElseThrow();
-                scene.local().forceAddEffect(new net.minecraft.world.effect.MobEffectInstance(
-                    holder, effect.get("duration").getAsInt(), effect.get("amplifier").getAsInt(),
-                    effect.get("ambient").getAsBoolean(), true, effect.get("show_icon").getAsBoolean()), null);
-            }
+            addEffects(scene.local(), row);
             hudMethod("extractEffects", GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class)
                 .invoke(scene.screen().hud(), scene.screen().graphics(), net.minecraft.client.DeltaTracker.ZERO);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("ops", record(scene.screen().state()));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
+    /** The row's effects, as the server's packets give them to the local player. */
+    static void addEffects(net.minecraft.client.player.LocalPlayer local, JsonObject row) {
+        for (var effectElement : row.getAsJsonArray("effects")) {
+            var effect = effectElement.getAsJsonObject();
+            var holder = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(
+                net.minecraft.resources.Identifier.parse(effect.get("effect").getAsString())).orElseThrow();
+            local.forceAddEffect(new net.minecraft.world.effect.MobEffectInstance(
+                holder, effect.get("duration").getAsInt(), effect.get("amplifier").getAsInt(),
+                effect.get("ambient").getAsBoolean(), true, effect.get("show_icon").getAsBoolean()), null);
+        }
+    }
+
+    /**
+     * The game's own `EffectsInInventory` beside an inventory image placed as the row says, then
+     * the tooltip it asks for.
+     */
+    static JsonObject inventoryEffects(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            int mouseX = row.get("mouse_x").getAsInt();
+            int mouseY = row.get("mouse_y").getAsInt();
+            var scene = hudScene(width, height, false, false);
+            var minecraft = scene.minecraft();
+            Reflect.field(net.minecraft.client.Minecraft.class, "instance").set(null, minecraft);
+            MovementOracle.setField(minecraft, "level", scene.level());
+            if (row.has("tick_rate")) {
+                scene.level().tickRateManager().setTickRate(row.get("tick_rate").getAsFloat());
+            }
+            addEffects(scene.local(), row);
+            // An inventory screen with only what the list reads of it: where its image is.
+            var screen = unsafe.allocateInstance(net.minecraft.client.gui.screens.inventory.InventoryScreen.class);
+            int imageWidth = row.get("image_width").getAsInt();
+            int imageHeight = row.get("image_height").getAsInt();
+            MovementOracle.setField(screen, "leftPos", row.get("left").getAsInt());
+            MovementOracle.setField(screen, "topPos", (height - imageHeight) / 2);
+            MovementOracle.setField(screen, "imageWidth", imageWidth);
+            MovementOracle.setField(screen, "imageHeight", imageHeight);
+            MovementOracle.setField(screen, "width", width);
+            MovementOracle.setField(screen, "height", height);
+            MovementOracle.setField(screen, "font", minecraft.font);
+            var graphics = scene.screen().graphics();
+            new net.minecraft.client.gui.screens.inventory.EffectsInInventory(
+                (net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) screen)
+                .extractRenderState(graphics, mouseX, mouseY);
+            graphics.extractDeferredElements(mouseX, mouseY, 0.0F);
             var out = new JsonObject();
             out.addProperty("label", row.get("label").getAsString());
             out.add("ops", record(scene.screen().state()));
