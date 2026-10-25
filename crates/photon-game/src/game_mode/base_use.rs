@@ -233,7 +233,8 @@ pub(super) fn after_instant_use(
 
 /// `Item.use` for the classes that override it and are predicted: the bow, the crossbow, lily pad
 /// and frogspawn, the spyglass (which starts using at once, with its sound), buckets, bottles,
-/// thrown items and the server-answered utilities of `utility`. `None` for the rest.
+/// thrown items, the food on a stick, the firework rocket, the knowledge and written books, the
+/// bundle and the server-answered utilities of `utility`. `None` for the rest.
 pub(super) fn class_item_use(
     ctx: &mut Context<'_>,
     hand: u8,

@@ -132,7 +132,8 @@ impl Context<'_> {
             .entities()
             .at(id)
             .is_some_and(|entity| entity.is_ageable_mob());
-        // The cube mobs share the baby flag but are not `AgeableMob`s.
+        // `canBeABaby` is false for the slimes: they are `AgeableMob`s that are never babies
+        // (a server never marks one; the flag would only come from a test scene).
         let cube = matches!(
             self.world.entity_type_name(id),
             Some("minecraft:slime" | "minecraft:magma_cube" | "minecraft:sulfur_cube")

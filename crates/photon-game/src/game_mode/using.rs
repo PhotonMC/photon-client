@@ -353,7 +353,7 @@ impl GameMode {
             }
             Some((item, _)) => {
                 super::base_use::class_item_use(ctx, hand, rules::item_use_owner(item))
-                    // The other classes that override `use` are not predicted yet.
+                    // Only a class added by a later version lands here.
                     .unwrap_or(UseResult::Success { swing: false })
             }
             None => UseResult::Pass,
