@@ -22,6 +22,7 @@ pub const MAP_ID: i64 = 46;
 pub const MAP_POST_PROCESSING: i64 = 48;
 pub const BUNDLE_CONTENTS: i64 = 50;
 pub const WRITTEN_BOOK_CONTENT: i64 = 55;
+pub const INSTRUMENT: i64 = 61;
 pub const RECIPES: i64 = 66;
 pub const BANNER_PATTERNS: i64 = 72;
 pub const CONTAINER: i64 = 75;

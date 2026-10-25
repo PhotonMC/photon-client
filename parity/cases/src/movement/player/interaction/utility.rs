@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
-use crate::components::{DAMAGE, RECIPES, Tag, UNBREAKABLE, nbt, patch, vi};
+use crate::components::{DAMAGE, INSTRUMENT, RECIPES, Tag, UNBREAKABLE, nbt, patch, patch_of, vi};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
@@ -80,6 +80,20 @@ fn trident_rows() -> Vec<Value> {
     ]
 }
 
+/// A horn names its call by the `instrument` component: the item's own is the ponder call, a patched
+/// one is another call (sound and all), and a removed one leaves nothing to play.
+fn horn_rows() -> Vec<Value> {
+    let ticks = [uses(1, None, &[]).clicks(1).go(), uses(3, None, &[]).go()].concat();
+    let row = |label: &str, hex: String| {
+        using(label, vec![], ticks.clone()).main_hand("minecraft:goat_horn").count(1).patch(hex).row()
+    };
+    // The sing call is the seventh entry of the registry, a holder written as its id plus one.
+    vec![
+        row("use-goat_horn-sing", patch(&[(INSTRUMENT, vi(7))])),
+        row("use-goat_horn-no-instrument", patch_of(&[], &[INSTRUMENT])),
+    ]
+}
+
 /// A book with a recipe is a success (a swing) and is consumed on the client too; creative keeps
 /// the book.
 fn recipe_rows() -> Vec<Value> {
@@ -140,7 +154,7 @@ fn special_rows() -> Vec<Value> {
         let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
         rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
     }
-    rows.extend([recipe_rows(), trident_rows()].concat());
+    rows.extend([recipe_rows(), trident_rows(), horn_rows()].concat());
     // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
     // success: the eye starts a use all the same; a stick that passes gets none.
     for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {
