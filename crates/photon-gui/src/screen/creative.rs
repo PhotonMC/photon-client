@@ -338,8 +338,6 @@ impl Screen for CreativeScreen {
     ) {
         let (left, top) = (self.layout.left(), self.layout.top());
         let selected = self.menu.tab();
-        // `CreativeModeInventoryScreen.extractRenderState`: the effects come before the screen.
-        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         self.layout.background(draw);
         for tab in shown_tabs() {
             if tab != selected {
@@ -367,6 +365,9 @@ impl Screen for CreativeScreen {
             );
             draw.frame.figure(&model);
         }
+        // `CreativeModeInventoryScreen.extractRenderState`: the effects come after the background
+        // stage (the dimmed world, the tabs, the image and the player).
+        let effects_tooltip = super::effects::draw(draw, &self.layout, mouse);
         self.draw_slots(draw, inventory, mouse, inventory_tab);
         if CREATIVE_TABS[selected].show_title {
             draw.frame.text(
