@@ -155,35 +155,52 @@ fn worn_rows() -> Vec<Value> {
         .collect()
 }
 
-/// Rows that put the entity where the test needs it: label, kind, flags, position, item, aim.
-type Placed = (&'static str, &'static str, &'static [&'static str], [f64; 3], &'static str, f64);
+/// A row that puts the entity where the test needs it and holds an item.
+struct Placed {
+    label: &'static str,
+    kind: &'static str,
+    flags: &'static [&'static str],
+    at: [f64; 3],
+    item: &'static str,
+    aim: f64,
+    sneaking: bool,
+}
 
-const PLACED: &[Placed] = &[
-    // Within reach of the eyes, but more than three blocks from the feet.
-    ("use-far-ocelot-with-cod", "ocelot", &[], [0.5, 65.5, 3.7], "minecraft:cod", 0.0),
-    ("use-near-ocelot-with-cod", "ocelot", &[], [0.5, 65.5, 3.0], "minecraft:cod", 0.0),
-    ("use-locked-tadpole-with-slime", "tadpole", &["age_locked"], [0.5, 64.0, 2.5], "minecraft:slime_ball", 36.0),
-    ("use-tadpole-with-golden-dandelion", "tadpole", &[], [0.5, 64.0, 2.5], "minecraft:golden_dandelion", 36.0),
-    (
-        "use-locked-tadpole-with-golden-dandelion",
-        "tadpole",
-        &["age_locked"],
-        [0.5, 64.0, 2.5],
-        "minecraft:golden_dandelion",
-        36.0,
-    ),
-    ("use-bee-with-closed-eyeblossom", "bee", &[], [0.5, 64.0, 2.5], "minecraft:closed_eyeblossom", 30.0),
-];
+const fn placed(label: &'static str, kind: &'static str, item: &'static str) -> Placed {
+    Placed { label, kind, flags: &[], at: [0.5, 64.0, 2.5], item, aim: 30.0, sneaking: false }
+}
+
+fn placed_table() -> Vec<Placed> {
+    let tadpole = |label, item, flags| Placed { flags, aim: 36.0, ..placed(label, "tadpole", item) };
+    vec![
+        // Within reach of the eyes, but more than three blocks from the feet.
+        Placed { at: [0.5, 65.5, 3.7], aim: 0.0, ..placed("use-far-ocelot-with-cod", "ocelot", "minecraft:cod") },
+        Placed { at: [0.5, 65.5, 3.0], aim: 0.0, ..placed("use-near-ocelot-with-cod", "ocelot", "minecraft:cod") },
+        tadpole("use-locked-tadpole-with-slime", "minecraft:slime_ball", &["age_locked"]),
+        tadpole("use-tadpole-with-golden-dandelion", "minecraft:golden_dandelion", &[]),
+        tadpole("use-locked-tadpole-with-golden-dandelion", "minecraft:golden_dandelion", &["age_locked"]),
+        placed("use-bee-with-closed-eyeblossom", "bee", "minecraft:closed_eyeblossom"),
+        placed("use-boat-with-stone", "oak_boat", "minecraft:stone"),
+        Placed { sneaking: true, ..placed("use-boat-sneaking", "oak_boat", "minecraft:stone") },
+        placed("use-chest-boat-with-stone", "oak_chest_boat", "minecraft:stone"),
+        Placed { sneaking: true, ..placed("use-chest-boat-sneaking", "oak_chest_boat", "minecraft:stone") },
+        placed("use-interaction-with-stone", "interaction", "minecraft:stone"),
+        placed("use-leash-knot-with-stone", "leash_knot", "minecraft:stone"),
+        placed("use-leash-knot-with-shears", "leash_knot", "minecraft:shears"),
+    ]
+}
 
 fn placed_rows() -> Vec<Value> {
-    PLACED
-        .iter()
-        .map(|&(label, kind, flags, [x, y, z], item, x_rot)| {
-            let mut entity = super::mob(31, kind, x, y, z);
-            for flag in flags {
+    placed_table()
+        .into_iter()
+        .map(|row| {
+            let [x, y, z] = row.at;
+            let mut entity = super::mob(31, row.kind, x, y, z);
+            for flag in row.flags {
                 entity[*flag] = json!(true);
             }
-            clicked(label, entity, (item, x_rot), once())
+            let clicks = if row.sneaking { sneaking_click() } else { once() };
+            clicked(row.label, entity, (row.item, row.aim), clicks)
         })
         .collect()
 }

@@ -15,6 +15,7 @@ mod pets;
 mod pickups;
 mod saddles;
 mod sheep;
+mod vehicles;
 mod villager;
 
 /// The client's answer to a click on an entity.
@@ -71,7 +72,7 @@ impl Context<'_> {
             "minecraft:item_frame" | "minecraft:glow_item_frame" => {
                 self.interact_item_frame(id, hand)
             }
-            _ => self.interact_mob_class(name, id, hand),
+            _ => self.interact_other_entity(name, id, hand),
         }
     }
 
