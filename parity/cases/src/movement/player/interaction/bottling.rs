@@ -30,6 +30,11 @@ pub fn rows() -> Vec<Value> {
             .off_hand_patch(patch(&[(POTION_CONTENTS, "0100000000".to_owned())]))
             .row(),
         bottle("bottle-creative-other-potion-held", pool(), 1).game_mode("creative").off_hand("minecraft:potion").row(),
+        // The main hand passes, so the off hand's bottle is the one filled, in place.
+        bottle("bottle-off-hand-on-water", pool(), 1)
+            .main_hand("minecraft:stick")
+            .off_hand("minecraft:glass_bottle")
+            .row(),
         bottle("bottle-adventure-on-water", pool(), 1).game_mode("adventure").row(),
         bottle("bottle-on-flowing-water", vec![put_with(0, 64, 2, "minecraft:water", &[("level", "3")])], 1).row(),
         bottle(
