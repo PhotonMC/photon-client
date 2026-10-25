@@ -239,7 +239,7 @@ pub(super) fn flint_and_steel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResu
     let Some((target, placed)) = ignition(ctx, (x, y, z, face)) else {
         return UseResult::Fail;
     };
-    let pitch = ctx.player.next_level_float() * 0.4 + 0.8;
+    let pitch = ctx.world.next_level_float() * 0.4 + 0.8;
     ctx.world.push_sound(LocalSound::at(
         "minecraft:item.flintandsteel.use",
         LocalSoundSource::Blocks,
@@ -276,19 +276,6 @@ pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> U
     let slot = ctx.hand_slot(hand);
     ctx.world.shrink_local_player_slot(slot, 1);
     UseResult::Success { swing: true }
-}
-
-/// `useItemOn` of a campfire, candle or candle cake with flint and steel or a fire charge in hand: the cake passes
-/// (`CandleCakeBlock.useItemOn`), the others leave it to the item (`TRY_WITH_EMPTY_HAND` from
-/// `BlockBehaviour`, as a held stack is no food for the campfire and no empty hand for the candle).
-pub(super) fn flint_over_lightable(state: photon_core::ids::BlockStateId) -> Option<UseResult> {
-    let path = block(state).name.trim_start_matches("minecraft:");
-    match path {
-        _ if path.ends_with("candle_cake") => Some(UseResult::Pass),
-        "campfire" | "soul_campfire" | "candle" => Some(UseResult::TryEmptyHand),
-        _ if path.ends_with("_candle") => Some(UseResult::TryEmptyHand),
-        _ => None,
-    }
 }
 
 /// `HoeItem.useOn` for the client: a tillable block with its predicate met sounds the hoe and

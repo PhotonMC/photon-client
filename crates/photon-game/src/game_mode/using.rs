@@ -212,21 +212,9 @@ impl GameMode {
         let suppress_using_block = ctx.player.is_shift_key_down() && have_something;
         if !suppress_using_block {
             let state = ctx.state_at((x, y, z));
-            let flint = item.is_some_and(|(item, _)| {
-                rules::item(item).is_some_and(|row| {
-                    matches!(
-                        row.class,
-                        ItemClass::FlintAndSteelItem | ItemClass::FireChargeItem
-                    )
-                })
-            });
-            let item_use = match flint
-                .then(|| super::tools::flint_over_lightable(state))
-                .flatten()
-                .map_or_else(|| rules::use_item_on(state), Rule::Known)
-            {
-                Rule::Known(result) => result,
-                Rule::Unported => return UseResult::Success { swing: true },
+            let Rule::Known(item_use) = Self::item_on_result(ctx, hand, state, (x, y, z), aim)
+            else {
+                return UseResult::Success { swing: true };
             };
             if item_use.consumes_action() {
                 return item_use;
@@ -303,6 +291,19 @@ impl GameMode {
         }
     }
 
+    /// `FoodData.eat(nutrition, saturation)` on the player's own food.
+    fn eat_food(ctx: &mut Context<'_>, nutrition: i32, saturation: f32) {
+        let Some(state) = ctx.world.local_player() else {
+            return;
+        };
+        let food = (state.food() + nutrition).clamp(0, 20);
+        let saturation =
+            (state.saturation() + nutrition as f32 * saturation * 2.0).clamp(0.0, food as f32);
+        let health = state.health();
+        ctx.world
+            .apply_local_player_health(health, food, saturation);
+    }
+
     /// A block used by hand that the client runs itself: the block it sets, and the sound the
     /// server leaves the user out of.
     fn by_hand(ctx: &mut Context<'_>, by_hand: rules::HandUse) -> UseResult {
@@ -311,6 +312,9 @@ impl GameMode {
             rules::HandUse::Set(opened) => opened,
         };
         let write = opened.write;
+        if opened.eats {
+            Self::eat_food(ctx, 2, 0.1);
+        }
         let position = ctx.player.position();
         ctx.world
             .set_block_with_updates(write.pos, write.state, write.flags, 512, position);
@@ -526,7 +530,12 @@ impl GameMode {
 /// Who uses a block by hand, and where the click landed.
 fn user_of(ctx: &Context<'_>, aim: Aim) -> rules::User {
     let Aim::Block {
-        y, face, location, ..
+        x,
+        y,
+        z,
+        face,
+        location,
+        ..
     } = aim
     else {
         unreachable!("a block is used from an aim at a block");
@@ -536,6 +545,13 @@ fn user_of(ctx: &Context<'_>, aim: Aim) -> rules::User {
         may_build: ctx.mode != ClientPlayerGameMode::Adventure,
         face: photon_core::direction::Direction::from_3d_data_value(i32::from(face)),
         click_y: location[1] - f64::from(y),
+        can_eat: ctx.player.abilities().invulnerable()
+            || ctx
+                .world
+                .local_player()
+                .is_some_and(|state| state.food() < 20),
+        main_hand_empty: ctx.held(MAIN_HAND).is_none(),
+        block_entity: ctx.world.block_entity_at(x, y, z).is_some(),
     }
 }
 

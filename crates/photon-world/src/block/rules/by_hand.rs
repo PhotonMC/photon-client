@@ -22,6 +22,8 @@ pub enum HandUse {
 pub struct Opened {
     pub write: Write,
     pub sound: Option<HandSound>,
+    /// The player eats: the food level takes `FoodData.eat(2, 0.1)`.
+    pub eats: bool,
 }
 
 /// The sound a use plays at the middle of the block.
@@ -42,6 +44,12 @@ pub struct User {
     pub face: Direction,
     /// The height of the click in the block, 0 to 1.
     pub click_y: f64,
+    /// `Player.canEat(false)`.
+    pub can_eat: bool,
+    /// The main hand holds no stack.
+    pub main_hand_empty: bool,
+    /// The block has a block entity in the client's level.
+    pub block_entity: bool,
 }
 
 /// A use in progress.
@@ -162,6 +170,7 @@ fn done(write: Write, sound: &'static str, pitch: Option<f32>) -> Rule<HandUse> 
             volume: 1.0,
             pitch,
         }),
+        eats: false,
     }))
 }
 
@@ -275,6 +284,7 @@ fn comparator_use(hand: &Hand) -> Rule<HandUse> {
                 volume: 0.3,
                 pitch: Some(if to_subtract { 0.55 } else { 0.5 }),
             }),
+            eats: false,
         }))
     })
 }
@@ -297,6 +307,7 @@ fn repeater_use(hand: &Hand) -> Rule<HandUse> {
                     flags: 3,
                 },
                 sound: None,
+                eats: false,
             }))
         },
     )
@@ -357,7 +368,79 @@ const SERVER_WORK: &[BlockClass] = &[
 type UseFn = fn(&Hand) -> Rule<HandUse>;
 
 /// The classes with their own client branch, by the class that declares `useWithoutItem`.
+/// `CakeBlock.eat`: one more bite, or the cake gone with the last. `None` when the player cannot
+/// eat.
+fn bite(pos: (i32, i32, i32), cake: BlockStateId, user: &User) -> Option<Opened> {
+    if !user.can_eat {
+        return None;
+    }
+    let bites: u32 = property(cake, "bites")?.parse().ok()?;
+    let state = if bites < 6 {
+        with_property(cake, "bites", &(bites + 1).to_string())?
+    } else {
+        crate::constants::VANILLA_AIR_BLOCK_STATE_ID
+    };
+    Some(Opened {
+        write: Write {
+            pos,
+            state,
+            flags: 3,
+        },
+        sound: None,
+        eats: true,
+    })
+}
+
+fn eat(opened: Option<Opened>) -> Rule<HandUse> {
+    Rule::Known(opened.map_or(HandUse::Result(UseResult::Pass), HandUse::Set))
+}
+
+/// `CakeBlock.useWithoutItem`: the client eats; if it cannot, an empty hand consumes the use.
+fn cake_use(hand: &Hand) -> Rule<HandUse> {
+    match bite(hand.pos, hand.state, &hand.user) {
+        Some(opened) => Rule::Known(HandUse::Set(opened)),
+        None if hand.user.main_hand_empty => result(SERVER),
+        None => result(UseResult::Pass),
+    }
+}
+
+/// `CandleCakeBlock.useWithoutItem`: the cake under the candle is eaten, leaving a cake.
+fn candle_cake_use(hand: &Hand) -> Rule<HandUse> {
+    let cake = registry::block_index("minecraft:cake").map(default_state);
+    eat(cake.and_then(|cake| bite(hand.pos, cake, &hand.user)))
+}
+
+/// A use that is a success, with a swing, only where the block holds something the client knows
+/// of, and a pass otherwise.
+fn success_if_held(held: bool) -> Rule<HandUse> {
+    result(if held { SUCCESS } else { UseResult::Pass })
+}
+
 const USES: &[(BlockClass, UseFn)] = &[
+    // Charged, the server sets the spawn or explodes; the client consumes the use.
+    (BlockClass::RespawnAnchorBlock, |hand| {
+        result(if property(hand.state, "charges") == Some("0") {
+            UseResult::Pass
+        } else {
+            SERVER
+        })
+    }),
+    (BlockClass::JukeboxBlock, |hand| {
+        let record = property(hand.state, "has_record") == Some("true");
+        success_if_held(record && hand.user.block_entity)
+    }),
+    (BlockClass::LecternBlock, |hand| {
+        result(if property(hand.state, "has_book") == Some("true") {
+            SUCCESS
+        } else {
+            SERVER
+        })
+    }),
+    (BlockClass::DecoratedPotBlock, |hand| {
+        success_if_held(hand.user.block_entity)
+    }),
+    (BlockClass::CakeBlock, cake_use),
+    (BlockClass::CandleCakeBlock, candle_cake_use),
     (BlockClass::DoorBlock, door_use),
     (BlockClass::TrapDoorBlock, trapdoor_use),
     (BlockClass::FenceGateBlock, gate_use),
