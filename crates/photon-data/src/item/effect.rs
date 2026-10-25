@@ -7,7 +7,7 @@
 use super::attributes::ATTRIBUTES;
 use super::mob_effects::MOB_EFFECTS;
 
-/// `MobEffectCategory`: which colour its tooltip line takes.
+/// `MobEffectCategory`: which row of the HUD the effect sits in and its tooltip colour.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EffectCategory {
     Beneficial,
@@ -75,8 +75,8 @@ impl MobEffect {
     /// The formatting its tooltip line takes, by its category.
     pub fn style(&self) -> &'static str {
         match self.category {
-            EffectCategory::Beneficial => "BLUE",
-            EffectCategory::Neutral => "YELLOW",
+            // A neutral effect reads as blue as a beneficial one (`MobEffectCategory`).
+            EffectCategory::Beneficial | EffectCategory::Neutral => "BLUE",
             EffectCategory::Harmful => "RED",
         }
     }

@@ -10,7 +10,9 @@ reports and follow from its name and category.
 """
 from common import amount, header, load_case, run, rust_str, write
 
-CATEGORIES = {"BLUE": "beneficial", "RED": "harmful", "YELLOW": "neutral"}
+# `MobEffectCategory` and its tooltip formatting: a neutral effect is as blue as a beneficial one,
+# so the category is captured on its own and the formatting only checked against it.
+CATEGORIES = {"BENEFICIAL": ("beneficial", "BLUE"), "HARMFUL": ("harmful", "RED"), "NEUTRAL": ("neutral", "BLUE")}
 
 
 def generate(capture):
@@ -28,7 +30,10 @@ def generate(capture):
         path = effect["name"].split(":")[1]
         if effect["description_id"] != f"effect.minecraft.{path}":
             raise SystemExit(f"{effect['name']}: a description key that is not derived from the name")
-        call = f"MobEffect::{CATEGORIES[effect['style']]}({rust_str(effect['name'])}, 0x{effect['color']:06X})"
+        category, style = CATEGORIES[effect["category"]]
+        if effect["style"] != style:
+            raise SystemExit(f"{effect['name']}: a tooltip formatting its category does not give")
+        call = f"MobEffect::{category}({rust_str(effect['name'])}, 0x{effect['color']:06X})"
         if effect["modifiers"]:
             modifiers = ", ".join(
                 f"EffectModifier {{ attribute: {rust_str(attributes[m['attribute']])}, "
