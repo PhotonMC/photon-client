@@ -195,7 +195,9 @@ impl Context<'_> {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
-        let ready = entity.is_baby() && entity.age_lock_timer() == 0;
+        // `Tadpole.mobInteract` passes `true` for `isBaby`: a tadpole always counts.
+        let tadpole = photon_data::entity_type::name(entity.type_id) == Some("minecraft:tadpole");
+        let ready = (entity.is_baby() || tadpole) && entity.age_lock_timer() == 0;
         let barred = self
             .world
             .block_state_registry()

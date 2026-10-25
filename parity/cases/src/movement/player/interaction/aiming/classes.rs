@@ -6,7 +6,7 @@ use super::herding::{flagged_animal, sneaking_click};
 use super::{aims, facing};
 
 pub(super) fn rows() -> Vec<Value> {
-    [plain_rows(), tiny_rows(), health_rows(), worn_rows()].concat()
+    [plain_rows(), tiny_rows(), health_rows(), worn_rows(), placed_rows()].concat()
 }
 
 /// One use click, then a stretch of ticks with no input.
@@ -151,6 +151,39 @@ fn worn_rows() -> Vec<Value> {
             entity[key] = json!(worn);
             let clicks = if sneaking { sneaking_click() } else { once() };
             clicked(label, entity, (held, 30.0), clicks)
+        })
+        .collect()
+}
+
+/// Rows that put the entity where the test needs it: label, kind, flags, position, item, aim.
+type Placed = (&'static str, &'static str, &'static [&'static str], [f64; 3], &'static str, f64);
+
+const PLACED: &[Placed] = &[
+    // Within reach of the eyes, but more than three blocks from the feet.
+    ("use-far-ocelot-with-cod", "ocelot", &[], [0.5, 65.5, 3.7], "minecraft:cod", 0.0),
+    ("use-near-ocelot-with-cod", "ocelot", &[], [0.5, 65.5, 3.0], "minecraft:cod", 0.0),
+    ("use-locked-tadpole-with-slime", "tadpole", &["age_locked"], [0.5, 64.0, 2.5], "minecraft:slime_ball", 36.0),
+    ("use-tadpole-with-golden-dandelion", "tadpole", &[], [0.5, 64.0, 2.5], "minecraft:golden_dandelion", 36.0),
+    (
+        "use-locked-tadpole-with-golden-dandelion",
+        "tadpole",
+        &["age_locked"],
+        [0.5, 64.0, 2.5],
+        "minecraft:golden_dandelion",
+        36.0,
+    ),
+    ("use-bee-with-closed-eyeblossom", "bee", &[], [0.5, 64.0, 2.5], "minecraft:closed_eyeblossom", 30.0),
+];
+
+fn placed_rows() -> Vec<Value> {
+    PLACED
+        .iter()
+        .map(|&(label, kind, flags, [x, y, z], item, x_rot)| {
+            let mut entity = super::mob(31, kind, x, y, z);
+            for flag in flags {
+                entity[*flag] = json!(true);
+            }
+            clicked(label, entity, (item, x_rot), once())
         })
         .collect()
 }

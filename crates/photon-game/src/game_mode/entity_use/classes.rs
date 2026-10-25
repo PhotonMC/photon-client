@@ -1,7 +1,7 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: a panda that is scared or on its back, a trusting ocelot and its distance check, an allay
+//! Not covered: a panda that is scared or on its back, a trusting ocelot, an allay
 //! that is dancing (or whose hand shows a tick early), a sheared bogged, a scared armadillo, a piglin
 //! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
 //! maximum, and the sounds.
@@ -63,7 +63,12 @@ impl Context<'_> {
 
     /// `Ocelot.mobInteract`: food from an ocelot that is not yet trusting is used up.
     fn interact_ocelot(&mut self, id: EntityId, hand: u8) -> EntityUse {
-        if self.holds_tagged(hand, "minecraft:ocelot_food") {
+        let near = self.world.entities().at(id).is_some_and(|entity| {
+            let (at, own) = (entity.position(), self.player.position());
+            let (dx, dy, dz) = (own.x - at.0, own.y - at.1, own.z - at.2);
+            dx * dx + dy * dy + dz * dz < 9.0
+        });
+        if near && self.holds_tagged(hand, "minecraft:ocelot_food") {
             self.use_up(hand);
             return EntityUse::Success { swing: true };
         }
@@ -202,9 +207,10 @@ impl Context<'_> {
     /// `Bee.mobInteract`: a flower with a bee effect (the wither rose and the eyeblossoms) is
     /// used up; any other bee food is `Animal`'s feeding.
     fn interact_bee(&mut self, id: EntityId, hand: u8) -> EntityUse {
-        let effect = ["wither_rose", "open_eyeblossom", "closed_eyeblossom"]
-            .iter()
-            .any(|flower| self.holds_item(hand, &format!("minecraft:{flower}")));
+        let effect = self.holds_tagged(hand, "minecraft:bee_food")
+            && ["wither_rose", "open_eyeblossom"]
+                .iter()
+                .any(|flower| self.holds_item(hand, &format!("minecraft:{flower}")));
         if effect {
             self.use_up(hand);
             return EntityUse::Success { swing: true };

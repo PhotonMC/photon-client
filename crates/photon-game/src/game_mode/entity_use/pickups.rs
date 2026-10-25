@@ -61,6 +61,6 @@ impl Context<'_> {
             self.use_up(hand);
             return EntityUse::Success { swing: true };
         }
-        EntityUse::Pass
+        self.golden_dandelion_on_baby(id, hand)
     }
 }

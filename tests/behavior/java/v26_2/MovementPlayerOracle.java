@@ -156,6 +156,10 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     var setLocked = Reflect.method(net.minecraft.world.entity.AgeableMob.class, "setAgeLocked", boolean.class);
                     setLocked.invoke(ageable, true);
                 }
+                if (described.has("age_locked") && entity instanceof net.minecraft.world.entity.animal.frog.Tadpole tadpole) {
+                    var setLocked = Reflect.method(net.minecraft.world.entity.animal.frog.Tadpole.class, "setAgeLocked", boolean.class);
+                    setLocked.invoke(tadpole, true);
+                }
                 if (described.has("brown") && entity instanceof net.minecraft.world.entity.animal.cow.MushroomCow cow) {
                     var setVariant = Reflect.method(net.minecraft.world.entity.animal.cow.MushroomCow.class, "setVariant", net.minecraft.world.entity.animal.cow.MushroomCow.Variant.class);
                     setVariant.invoke(cow, net.minecraft.world.entity.animal.cow.MushroomCow.Variant.BROWN);
