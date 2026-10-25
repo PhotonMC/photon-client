@@ -52,7 +52,7 @@ pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
     update_context,
 };
-pub use openable::{OpenUse, Opened, use_openable};
+pub use openable::{OpenUse, Opened, User, use_openable};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -68,9 +68,14 @@ fn button(block: &str, powered: bool) -> Vec<Value> {
     )]
 }
 
+fn comparator(mode: &str) -> Vec<Value> {
+    vec![put_with(0, 64, 2, "minecraft:comparator", &[("facing", "north"), ("mode", mode), ("powered", "false")])]
+}
+
 pub fn rows() -> Vec<Value> {
     let around = [(0, 64, 2), (0, 65, 2)];
     let at_door = aim_at((0, 64, 2), "north", (0.5, 64.5, 2.0));
+    let on_top = aim_at((0, 64, 2), "up", (0.5, 64.125, 2.5));
     let at_upper = aim_at((0, 65, 2), "north", (0.5, 65.5, 2.0));
     let run = |aim: &Value| [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
     let twice = |aim: &Value| {
@@ -116,6 +121,9 @@ pub fn rows() -> Vec<Value> {
         row("button-bamboo-presses", button("minecraft:bamboo_button", false), &at_door).row(),
         row("button-cherry-presses", button("minecraft:cherry_button", false), &at_door).row(),
         row("button-warped-presses", button("minecraft:warped_button", false), &at_door).row(),
+        row("comparator-to-subtract", comparator("compare"), &on_top).row(),
+        row("comparator-to-compare", comparator("subtract"), &on_top).row(),
+        row("comparator-adventure-passes", comparator("compare"), &on_top).game_mode("adventure").row(),
         row("button-powered-consumes", button("minecraft:oak_button", true), &at_door).row(),
     ]
 }

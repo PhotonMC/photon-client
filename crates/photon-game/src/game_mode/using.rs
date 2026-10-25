@@ -293,9 +293,13 @@ impl GameMode {
         if let Some(result) = self.operator_block(ctx, state, pos) {
             return result;
         }
-        let facing =
-            photon_core::direction::Direction::from_y_rot(f64::from(ctx.player.rotation().0));
-        if let Rule::Known(open) = rules::use_openable(state, pos, facing) {
+        let user = rules::User {
+            facing: photon_core::direction::Direction::from_y_rot(f64::from(
+                ctx.player.rotation().0,
+            )),
+            may_build: ctx.mode != ClientPlayerGameMode::Adventure,
+        };
+        if let Rule::Known(open) = rules::use_openable(state, pos, user) {
             return Self::open_block(ctx, open);
         }
         match rules::use_without_item(state) {
@@ -316,11 +320,9 @@ impl GameMode {
         let position = ctx.player.position();
         ctx.world
             .set_block_with_updates(write.pos, write.state, write.flags, 512, position);
-        let pitch = if opened.random_pitch {
-            ctx.world.block_use_sound_pitch()
-        } else {
-            1.0
-        };
+        let pitch = opened
+            .pitch
+            .unwrap_or_else(|| ctx.world.block_use_sound_pitch());
         let at = (
             f64::from(write.pos.0) + 0.5,
             f64::from(write.pos.1) + 0.5,
@@ -329,7 +331,7 @@ impl GameMode {
         ctx.world.push_sound(LocalSound::at(
             opened.sound,
             LocalSoundSource::Blocks,
-            (1.0, pitch),
+            (opened.volume, pitch),
             at,
         ));
         UseResult::Success { swing: true }

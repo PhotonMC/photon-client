@@ -5,7 +5,7 @@
 use super::*;
 
 /// What `useWithoutItem` does to an openable block.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OpenUse {
     /// `InteractionResult.PASS`: the block cannot be opened by hand.
     Pass,
@@ -16,12 +16,13 @@ pub enum OpenUse {
 }
 
 /// The change an openable block makes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Opened {
     pub write: Write,
     pub sound: &'static str,
-    /// Whether the pitch is `nextFloat() * 0.1 + 0.9` (doors, trap doors, fence gates) or 1.
-    pub random_pitch: bool,
+    pub volume: f32,
+    /// The pitch, or `None` for `nextFloat() * 0.1 + 0.9` (doors, trap doors, fence gates).
+    pub pitch: Option<f32>,
 }
 
 /// The sound set of a block (`BlockSetType` and `WoodType`): door, trap door, button and fence
@@ -123,12 +124,13 @@ fn family(name: &str) -> (&'static Family, bool) {
     }
 }
 
-/// A set block that plays an event, its pitch random or 1.
-fn done(write: Write, sound: &'static str, random_pitch: bool) -> Rule<OpenUse> {
+/// A set block that plays an event at full volume, its pitch random or given.
+fn done(write: Write, sound: &'static str, pitch: Option<f32>) -> Rule<OpenUse> {
     Rule::Known(OpenUse::Done(Opened {
         write,
         sound,
-        random_pitch,
+        volume: 1.0,
+        pitch,
     }))
 }
 
@@ -163,7 +165,7 @@ fn gate_use(
             state: open,
             flags: 10,
         };
-        done(write, sound_of(state, family.gate), true)
+        done(write, sound_of(state, family.gate), None)
     })
 }
 
@@ -178,7 +180,7 @@ fn button_use(state: BlockStateId, pos: (i32, i32, i32), family: &Family) -> Rul
             state: pressed,
             flags: 3,
         };
-        done(write, family.button_on, false)
+        done(write, family.button_on, Some(1.0))
     })
 }
 
@@ -198,14 +200,44 @@ fn door_use(
                 flags,
             },
             sound_of(state, events),
-            true,
+            None,
         )
     })
 }
 
-/// `DoorBlock`, `TrapDoorBlock`, `FenceGateBlock` and `ButtonBlock.useWithoutItem` at `pos`,
-/// for a player facing `facing`. `Unported` for any other class.
-pub fn use_openable(state: BlockStateId, pos: (i32, i32, i32), facing: Direction) -> Rule<OpenUse> {
+/// `ComparatorBlock.useWithoutItem`: a player who may build changes its mode (flags 2). The
+/// output refresh that follows is the block entity's, which the client does not predict.
+fn comparator_use(state: BlockStateId, pos: (i32, i32, i32), may_build: bool) -> Rule<OpenUse> {
+    if !may_build {
+        return Rule::Known(OpenUse::Pass);
+    }
+    let to_subtract = property(state, "mode") == Some("compare");
+    let mode = if to_subtract { "subtract" } else { "compare" };
+    with_property(state, "mode", mode).map_or(Rule::Unported, |next| {
+        Rule::Known(OpenUse::Done(Opened {
+            write: Write {
+                pos,
+                state: next,
+                flags: 2,
+            },
+            sound: "minecraft:block.comparator.click",
+            volume: 0.3,
+            pitch: Some(if to_subtract { 0.55 } else { 0.5 }),
+        }))
+    })
+}
+
+/// Who uses the block: where they look and whether they may build.
+#[derive(Debug, Clone, Copy)]
+pub struct User {
+    pub facing: Direction,
+    pub may_build: bool,
+}
+
+/// `DoorBlock`, `TrapDoorBlock`, `FenceGateBlock`, `ButtonBlock` and `ComparatorBlock
+/// .useWithoutItem` at `pos`. `Unported` for any other class.
+pub fn use_openable(state: BlockStateId, pos: (i32, i32, i32), user: User) -> Rule<OpenUse> {
+    let User { facing, may_build } = user;
     let (Some(class), Some(block)) = (state_owner(state, Method::UseWithoutItem), block(state))
     else {
         return Rule::Unported;
@@ -217,6 +249,7 @@ pub fn use_openable(state: BlockStateId, pos: (i32, i32, i32), facing: Direction
         BlockClass::TrapDoorBlock => door_use(state, pos, (false, family.trapdoor)),
         BlockClass::FenceGateBlock => gate_use(state, pos, facing, family),
         BlockClass::ButtonBlock => button_use(state, pos, family),
+        BlockClass::ComparatorBlock => comparator_use(state, pos, may_build),
         _ => Rule::Unported,
     }
 }
