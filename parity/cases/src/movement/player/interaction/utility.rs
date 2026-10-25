@@ -68,6 +68,26 @@ pub fn rows() -> Vec<Value> {
     rows
 }
 
+/// The cooldown of a call holds a second click, in survival and in creative alike, and in the off
+/// hand all the same.
+fn horn_cooldown_rows() -> Vec<Value> {
+    let mut rows = Vec::new();
+    let click = || uses(1, None, &[]).clicks(1).go();
+    for (label, mode) in [("use-goat_horn-twice", "survival"), ("use-goat_horn-twice-creative", "creative")] {
+        let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
+        rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
+    }
+    let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
+    rows.push(
+        using("use-goat_horn-off-hand-twice", vec![], ticks)
+            .main_hand("minecraft:stick")
+            .off_hand("minecraft:goat_horn")
+            .count(1)
+            .row(),
+    );
+    rows
+}
+
 /// A trident one point from breaking fails the use; an unbreakable one starts it, and one with
 /// room left starts it too.
 fn trident_rows() -> Vec<Value> {
@@ -158,13 +178,7 @@ fn special_rows() -> Vec<Value> {
             .x_rot(20.0)
             .row(),
     );
-    // The cooldown of a call holds a second click, in survival and in creative alike.
-    let click = || uses(1, None, &[]).clicks(1).go();
-    for (label, mode) in [("use-goat_horn-twice", "survival"), ("use-goat_horn-twice-creative", "creative")] {
-        let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
-        rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
-    }
-    rows.extend([recipe_rows(), trident_rows(), horn_rows()].concat());
+    rows.extend([recipe_rows(), trident_rows(), horn_rows(), horn_cooldown_rows()].concat());
     // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
     // success: the eye starts a use all the same; a stick that passes gets none.
     for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {

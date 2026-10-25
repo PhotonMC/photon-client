@@ -554,6 +554,8 @@ class MovementPlayerOracle extends MovementWorldOracle {
             .flatMap(holder -> holder.unwrapKey()).map(key -> key.identifier().toString()).orElse(""));
         out.addProperty("main_hand_cooldown",
             !player.getMainHandItem().isEmpty() && player.getCooldowns().isOnCooldown(player.getMainHandItem()));
+        out.addProperty("off_hand_cooldown",
+            !player.getOffhandItem().isEmpty() && player.getCooldowns().isOnCooldown(player.getOffhandItem()));
         out.addProperty("off_hand_count", player.getOffhandItem().getCount());
         var states = new JsonArray();
         for (var element : attack.getAsJsonArray("watch")) {

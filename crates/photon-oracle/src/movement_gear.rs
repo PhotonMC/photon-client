@@ -190,6 +190,10 @@ pub(super) fn breaking_report(
             .local_player()
             .and_then(|state| state.inventory_slot(36))
             .is_some_and(|stack| stack.item_count() > 0 && cooldowns.is_on_cooldown(stack)),
+        "off_hand_cooldown": world
+            .local_player()
+            .and_then(|state| state.inventory_slot(45))
+            .is_some_and(|stack| stack.item_count() > 0 && cooldowns.is_on_cooldown(stack)),
         "off_hand_count": hand_count(world, 45),
         "watched_states": watched,
     });
