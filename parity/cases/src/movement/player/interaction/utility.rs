@@ -5,9 +5,10 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, using};
+use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
-const ITEMS: [&str; 7] = [
+const ITEMS: [&str; 13] = [
     "minecraft:ender_eye",
     "minecraft:oak_boat",
     "minecraft:fishing_rod",
@@ -15,6 +16,12 @@ const ITEMS: [&str; 7] = [
     "minecraft:pig_spawn_egg",
     "minecraft:trident",
     "minecraft:goat_horn",
+    "minecraft:carrot_on_a_stick",
+    "minecraft:warped_fungus_on_a_stick",
+    "minecraft:firework_rocket",
+    "minecraft:knowledge_book",
+    "minecraft:written_book",
+    "minecraft:bundle",
 ];
 
 /// One click, then three quiet ticks, watching the blocks around the target.
@@ -41,6 +48,9 @@ pub fn rows() -> Vec<Value> {
         ("minecraft:oak_boat", -60.0),
         ("minecraft:map", 39.0),
         ("minecraft:goat_horn", 39.0),
+        ("minecraft:carrot_on_a_stick", 39.0),
+        ("minecraft:firework_rocket", 39.0),
+        ("minecraft:knowledge_book", 39.0),
     ] {
         let name = item.trim_start_matches("minecraft:");
         rows.push(
@@ -69,6 +79,18 @@ fn special_rows() -> Vec<Value> {
         .count(2)
         .x_rot(39.0)
         .row(),
+    );
+    // A rocket in the hand of a glider is used (a swing); the server spawns it.
+    let rocket =
+        [keys(1, &["jump"]), keys(3, &[]), uses(1, None, &[]).clicks(1).go(), uses(3, None, &[]).go()].concat();
+    rows.push(
+        using("use-firework_rocket-gliding", vec![], rocket)
+            .main_hand("minecraft:firework_rocket")
+            .count(2)
+            .chest("minecraft:elytra")
+            .start(0.5, 100.0, 0.5)
+            .x_rot(20.0)
+            .row(),
     );
     // The cooldown of a call holds a second click, in survival and in creative alike.
     let click = || uses(1, None, &[]).clicks(1).go();

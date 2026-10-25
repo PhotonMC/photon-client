@@ -258,7 +258,12 @@ pub(super) fn class_item_use(
         | ItemClass::EmptyMapItem
         | ItemClass::TridentItem
         | ItemClass::InstrumentItem
-        | ItemClass::BottleItem => Some(super::utility::use_of(ctx, hand, class)),
+        | ItemClass::BottleItem
+        | ItemClass::FoodOnAStickItem
+        | ItemClass::FireworkRocketItem
+        | ItemClass::KnowledgeBookItem
+        | ItemClass::BundleItem => Some(super::utility::use_of(ctx, hand, class)),
+        ItemClass::WrittenBookItem => Some(UseResult::Success { swing: true }),
         ItemClass::SnowballItem
         | ItemClass::EggItem
         | ItemClass::EnderpearlItem

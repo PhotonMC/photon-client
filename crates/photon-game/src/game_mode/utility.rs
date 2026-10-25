@@ -16,9 +16,61 @@ pub(super) fn use_of(
         C::TridentItem => trident_use(ctx, hand),
         C::InstrumentItem => instrument_use(ctx, hand),
         C::BottleItem => super::bottles::bottle_use(ctx, hand),
+        C::FoodOnAStickItem | C::FireworkRocketItem | C::KnowledgeBookItem | C::BundleItem => {
+            carried_use(ctx, hand, class)
+        }
         // The cast, the reel and the new map are the server's; the client only swings (a rod's
         // sounds have no excluded player, so none is heard here).
         _ => UseResult::Success { swing: true },
+    }
+}
+
+/// The `use` of the food on a stick, the firework rocket, the knowledge book and the bundle.
+fn carried_use(
+    ctx: &mut Context<'_>,
+    hand: u8,
+    class: photon_data::item::classes::ItemClass,
+) -> UseResult {
+    use photon_data::item::classes::ItemClass as C;
+    match class {
+        // `isClientSide` returns Pass for the food on a stick.
+        C::FoodOnAStickItem => UseResult::Pass,
+        // The rocket flies only while gliding; the server spawns it.
+        C::FireworkRocketItem if ctx.player.is_fall_flying() => UseResult::Success { swing: true },
+        C::FireworkRocketItem => UseResult::Pass,
+        C::KnowledgeBookItem => knowledge_book_use(ctx, hand),
+        // `Player.startUsingItem`, then a success: the bundle drops its contents while used.
+        _ => {
+            ctx.player.start_using_item(hand != super::MAIN_HAND);
+            UseResult::Success { swing: true }
+        }
+    }
+}
+
+/// `KnowledgeBookItem.use`: the book is used up before anything is checked (unless materials are
+/// infinite); a book without recipes fails, the rest is the server's.
+fn knowledge_book_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
+    use crate::item::values::Values;
+    let Some(stack) = ctx
+        .world
+        .local_player()
+        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)))
+    else {
+        return UseResult::Pass;
+    };
+    let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
+    // `getOrDefault(RECIPES, List.of())`: a list is empty when its length prefix is 0.
+    let recipes = values
+        .raw(photon_data::item::component_types::RECIPES)
+        .is_some_and(|bytes| bytes.first().is_some_and(|length| *length != 0));
+    if !ctx.instabuild() {
+        let slot = ctx.hand_slot(hand);
+        ctx.world.shrink_local_player_slot(slot, 1);
+    }
+    if recipes {
+        UseResult::Success { swing: true }
+    } else {
+        UseResult::Fail
     }
 }
 
