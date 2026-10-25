@@ -27,6 +27,13 @@ fn other_rows() -> Vec<Value> {
         click("use-harness-on-happy-ghast", "happy_ghast", &[], "minecraft:red_harness"),
         click("use-harness-on-baby-happy-ghast", "happy_ghast", &["baby"], "minecraft:red_harness"),
         click("use-saddle-on-baby-camel", "camel", &["baby"], "minecraft:saddle"),
+        click("use-saddle-on-untamed-donkey", "donkey", &[], "minecraft:saddle"),
+        click("use-saddle-on-tamed-donkey", "donkey", &["tamed"], "minecraft:saddle"),
+        click("use-saddle-on-tamed-horse", "horse", &["tamed"], "minecraft:saddle"),
+        click("use-saddle-on-untamed-horse", "horse", &[], "minecraft:saddle"),
+        click("use-saddle-on-nautilus", "nautilus", &[], "minecraft:saddle"),
+        click("use-armor-on-nautilus", "nautilus", &[], "minecraft:iron_nautilus_armor"),
+        click("use-saddle-on-zombie-nautilus", "zombie_nautilus", &[], "minecraft:saddle"),
         click("use-saddle-on-camel", "camel", &[], "minecraft:saddle"),
         click("use-saddle-on-saddled-camel", "camel", &["saddled"], "minecraft:saddle"),
     ]

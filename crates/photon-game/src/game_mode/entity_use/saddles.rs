@@ -75,8 +75,9 @@ fn slot_named(name: &str) -> Option<photon_world::EquipmentSlot> {
     })
 }
 
-/// `LivingEntity.canUseSlot` for the mobs that restrict a slot to adults (the tamed-only
-/// mounts are not tracked and answer no).
+/// `LivingEntity.canUseSlot` for the mobs that restrict a slot to adults. A camel is always
+/// tame (`Camel.isTamed`); the nautilus' tame state is not tracked, so it answers no; the horse
+/// family never reaches here (its own `mobInteract` answers first).
 fn can_use_slot(name: &str, slot: photon_world::EquipmentSlot, baby: bool) -> bool {
     use photon_world::EquipmentSlot as Slot;
     match (name, slot) {
