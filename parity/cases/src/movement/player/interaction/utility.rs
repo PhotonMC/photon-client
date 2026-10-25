@@ -96,6 +96,14 @@ fn recipe_rows() -> Vec<Value> {
                 .row(),
         );
     }
+    // A patched empty list is read by its count: the book is consumed and the use fails.
+    rows.push(
+        using("use-knowledge_book-empty-list", vec![], ticks)
+            .main_hand("minecraft:knowledge_book")
+            .count(1)
+            .patch(patch(&[(RECIPES, nbt(&Tag::List(vec![])))]))
+            .row(),
+    );
     rows
 }
 
