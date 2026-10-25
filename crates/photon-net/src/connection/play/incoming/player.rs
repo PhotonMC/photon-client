@@ -292,8 +292,10 @@ impl PlaySession {
         if swapped {
             // The players of the old level are gone, and the profiles they kept.
             self.social.entity_profiles.clear();
-            // A new dimension is a new `ClientLevel` with no respawn data yet.
+            // A new dimension is a new `ClientLevel` with no respawn data yet, and new level data
+            // that keeps the difficulty but not its lock.
             self.level_info.respawn = None;
+            self.local.difficulty_locked = false;
         }
         self.level_info.dimension = spawn_info.dimension.clone();
         self.local.last_death = last_death_of(&spawn_info);
@@ -308,8 +310,6 @@ impl PlaySession {
         self.local.player = None;
         self.local.camera = None;
         self.local.permission_level = 0;
-        // A respawn makes new level data: the difficulty stays and the lock does not.
-        self.local.difficulty_locked = false;
         self.local.loaded = false;
         self.start_waiting_for_level(reason, bounds);
         self.level_info.level_reset = true;

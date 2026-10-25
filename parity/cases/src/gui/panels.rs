@@ -200,6 +200,10 @@ pub fn world_options_screen() -> Value {
             .steps(vec![json!({"do": "frame", "ms": 0})])
             .ms(1000)
             .row(),
+        at("click-rules-inactive").world(world("normal", false, 0)).steps(vec![click(100, 70)]).row(),
+        at("click-difficulty").world(world("normal", false, 2)).steps(vec![click(280, 70)]).row(),
+        at("click-lock").world(world("normal", true, 2)).steps(vec![click(350, 70)]).row(),
+        at("click-empty").world(world("normal", false, 2)).steps(vec![click(300, 150)]).row(),
         at("hover-done").world(world("normal", false, 0)).mouse(200, 224).row(),
         at("hover-lock").world(world("normal", true, 2)).mouse(350, 70).row(),
         tab("tab-once", 0, 1),
