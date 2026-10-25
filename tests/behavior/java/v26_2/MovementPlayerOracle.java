@@ -193,8 +193,18 @@ class MovementPlayerOracle extends MovementWorldOracle {
                     hurtMob.setHealth(described.get("hurt").getAsFloat());
                 }
                 if (described.has("armored") && entity instanceof net.minecraft.world.entity.Mob armoredMob) {
+                    // `armored` is true for wolf armor, or the id of the item worn on the body.
+                    var worn = described.get("armored").getAsJsonPrimitive().isString()
+                        ? net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(described.get("armored").getAsString()))
+                        : net.minecraft.world.item.Items.WOLF_ARMOR;
                     armoredMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.BODY,
-                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WOLF_ARMOR));
+                        new net.minecraft.world.item.ItemStack(worn));
+                }
+                if (described.has("offhand") && entity instanceof net.minecraft.world.entity.Mob offhandMob) {
+                    offhandMob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+                            net.minecraft.resources.Identifier.parse(described.get("offhand").getAsString()))));
                 }
                 if (described.has("tamed") && entity instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse) {
                     horse.setTamed(true);

@@ -1,8 +1,10 @@
 //! The `mobInteract` of the classes that answer one fixed way on the client: ocelot, dolphin, iron
 //! golem, allay, bogged, piglin, panda, happy ghast and armadillo.
 //!
-//! Not covered: a panda that is scared or on its back, a trusting ocelot and its distance check, an allay that is dancing, a sheared
-//! bogged, a scared armadillo, a piglin whose brain refuses to admire, and the sounds.
+//! Not covered: a panda that is scared or on its back, a trusting ocelot and its distance check, an allay
+//! that is dancing (or whose hand shows a tick early), a sheared bogged, a scared armadillo, a piglin
+//! whose brain refuses to admire, the iron golem's health after a repair and its attribute-based
+//! maximum, and the sounds.
 
 use super::*;
 use photon_world::local_player::{LocalSound, LocalSoundSource};
@@ -19,6 +21,7 @@ pub(super) fn handles(name: &str) -> bool {
             | "minecraft:armadillo"
             | "minecraft:panda"
             | "minecraft:happy_ghast"
+            | "minecraft:bee"
     )
 }
 
@@ -38,6 +41,7 @@ impl Context<'_> {
             "minecraft:piglin" => self.interact_piglin(id, hand),
             "minecraft:panda" => self.interact_panda(id, hand),
             "minecraft:happy_ghast" => self.interact_happy_ghast(id, hand),
+            "minecraft:bee" => self.interact_bee(id, hand),
             _ => self.interact_armadillo(id, hand),
         }
     }
@@ -126,12 +130,19 @@ impl Context<'_> {
 
     /// `Piglin.mobInteract` on the client: an adult admires the gold it is shown.
     fn interact_piglin(&self, id: EntityId, hand: u8) -> EntityUse {
-        let adult = self
-            .world
-            .entities()
-            .at(id)
-            .is_some_and(|entity| !entity.is_baby());
-        if adult && self.holds_item(hand, "minecraft:gold_ingot") {
+        let Some(entity) = self.world.entities().at(id) else {
+            return EntityUse::Pass;
+        };
+        // `getArmPose() != ADMIRING_ITEM`: a loved item in the off hand.
+        let admiring = entity
+            .equipment(photon_world::EquipmentSlot::OffHand)
+            .is_some_and(|worn| {
+                self.world
+                    .block_state_registry()
+                    .item_tags()
+                    .contains(worn.item_registry_id().0, "minecraft:piglin_loved")
+            });
+        if !entity.is_baby() && !admiring && self.holds_item(hand, "minecraft:gold_ingot") {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass
@@ -160,12 +171,13 @@ impl Context<'_> {
         let Some(entity) = self.world.entities().at(id) else {
             return EntityUse::Pass;
         };
-        let (baby, harnessed) = (
-            entity.is_baby(),
-            entity
-                .equipment(photon_world::EquipmentSlot::Body)
-                .is_some(),
-        );
+        let baby = entity.is_baby();
+        let harnessed = entity
+            .equipment(photon_world::EquipmentSlot::Body)
+            .and_then(|worn| photon_world::block::rules::item(worn.item_registry_id())?.equippable)
+            .is_some_and(|equip| {
+                equip.slot == "body" && equip.allowed.contains(&"minecraft:happy_ghast")
+            });
         if !baby {
             if self.equips_on_interact(id, hand) {
                 return EntityUse::Success { swing: true };
@@ -175,6 +187,19 @@ impl Context<'_> {
             }
         }
         self.feed_animal(id, hand, "minecraft:happy_ghast_food")
+    }
+
+    /// `Bee.mobInteract`: a flower with a bee effect (the wither rose and the eyeblossoms) is
+    /// used up; any other bee food is `Animal`'s feeding.
+    fn interact_bee(&mut self, id: EntityId, hand: u8) -> EntityUse {
+        let effect = ["wither_rose", "open_eyeblossom", "closed_eyeblossom"]
+            .iter()
+            .any(|flower| self.holds_item(hand, &format!("minecraft:{flower}")));
+        if effect {
+            self.use_up(hand);
+            return EntityUse::Success { swing: true };
+        }
+        self.feed_animal(id, hand, "minecraft:bee_food")
     }
 
     /// `Armadillo.mobInteract`: a brush takes a scute off an adult, otherwise its food.

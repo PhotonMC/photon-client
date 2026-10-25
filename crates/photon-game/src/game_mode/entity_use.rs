@@ -508,7 +508,6 @@ fn animal_food_tag(name: &str) -> Option<&'static str> {
         "minecraft:fox" => "minecraft:fox_food",
         "minecraft:hoglin" => "minecraft:hoglin_food",
         "minecraft:sniffer" => "minecraft:sniffer_food",
-        "minecraft:bee" => "minecraft:bee_food",
         _ => return None,
     })
 }

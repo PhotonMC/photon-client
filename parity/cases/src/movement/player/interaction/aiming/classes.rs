@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use super::herding::flagged_animal;
+use super::herding::{flagged_animal, sneaking_click};
 use super::{aims, facing};
 
 pub(super) fn rows() -> Vec<Value> {
@@ -35,6 +35,9 @@ pub(super) fn rows() -> Vec<Value> {
         none("use-hoglin-with-stone", "hoglin", "minecraft:stone"),
         baby("use-baby-hoglin-with-fungus", "hoglin", "minecraft:crimson_fungus"),
         none("use-bee-with-dandelion", "bee", "minecraft:dandelion"),
+        none("use-bee-with-wither-rose", "bee", "minecraft:wither_rose"),
+        none("use-bee-with-open-eyeblossom", "bee", "minecraft:open_eyeblossom"),
+        none("use-bee-with-poppy", "bee", "minecraft:poppy"),
         none("use-bee-with-stone", "bee", "minecraft:stone"),
         none("use-panda-with-bamboo", "panda", "minecraft:bamboo"),
         none("use-panda-with-stone", "panda", "minecraft:stone"),
@@ -57,5 +60,60 @@ pub(super) fn rows() -> Vec<Value> {
         none("use-allay-empty-handed", "allay", ""),
         none("use-panda-with-golden-dandelion", "panda", "minecraft:golden_dandelion"),
         baby("use-baby-panda-with-golden-dandelion", "panda", "minecraft:golden_dandelion"),
+    ]
+    .into_iter()
+    .chain(worn_rows())
+    .collect()
+}
+
+/// Rows that read the body or off hand slot of the mob.
+fn worn_rows() -> Vec<Value> {
+    let once = || [aims(1).use_clicks(1).inventory().go(), aims(3).inventory().go()].concat();
+    let worn = |label: &str, kind: &str, key: &str, item: &str, held: &'static str, click: Vec<Value>| {
+        let mut entity = flagged_animal(kind, &[]);
+        entity[key] = json!(item);
+        facing(label, vec![entity], click).main_hand(held).count(2).x_rot(30.0).row()
+    };
+    vec![
+        worn(
+            "use-harnessed-happy-ghast-with-stone",
+            "happy_ghast",
+            "armored",
+            "minecraft:red_harness",
+            "minecraft:stone",
+            once(),
+        ),
+        worn(
+            "use-harnessed-happy-ghast-sneaking",
+            "happy_ghast",
+            "armored",
+            "minecraft:red_harness",
+            "minecraft:stone",
+            sneaking_click(),
+        ),
+        worn(
+            "use-wolf-armored-happy-ghast-with-stone",
+            "happy_ghast",
+            "armored",
+            "minecraft:wolf_armor",
+            "minecraft:stone",
+            once(),
+        ),
+        worn(
+            "use-piglin-admiring-with-gold",
+            "piglin",
+            "offhand",
+            "minecraft:gold_ingot",
+            "minecraft:gold_ingot",
+            once(),
+        ),
+        worn(
+            "use-piglin-holding-stone-with-gold",
+            "piglin",
+            "offhand",
+            "minecraft:stone",
+            "minecraft:gold_ingot",
+            once(),
+        ),
     ]
 }
