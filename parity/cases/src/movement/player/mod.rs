@@ -1,6 +1,7 @@
 //! The movement family: the player and the world.
 
 mod containers;
+mod flight;
 mod interaction;
 mod light;
 mod rides;

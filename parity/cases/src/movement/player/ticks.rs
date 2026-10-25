@@ -382,6 +382,7 @@ pub fn local_player_ticks() -> Value {
         held_back(),
         border_rows(),
         portal_rows(),
+        super::flight::rows(),
     ]
     .concat();
     case("movement/local-player-ticks", "movement", "local_player_ticks", json!({"rows": rows}))
