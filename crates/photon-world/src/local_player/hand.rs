@@ -429,8 +429,9 @@ pub struct UseEdge {
     pub(super) item: Option<ItemId>,
     /// `lastKineticHitFeedbackTime`, in the player's own ticks: when a spear hit last kicked.
     pub(super) kinetic_hit: Option<i32>,
-    /// The crumbs the use threw since the frame last took them.
-    pub(super) crumbs: Vec<crate::particles::LevelParticles>,
+    /// The particles the player's tick threw since the frame last took them: a use's crumbs and
+    /// the effects' swirls.
+    pub(super) particles: Vec<crate::particles::LevelParticles>,
 }
 
 /// How the use of an item changes the field of view.

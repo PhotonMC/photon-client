@@ -289,12 +289,14 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
             .is_effect_ambient()
     );
 
+    // A simple particle (`angry_villager`, id 0) is a list the data takes, so the ambience after
+    // it is applied too.
     assert!(world.apply_entity_metadata(EntityId(37), &[10, 17, 1, 0, 11, 8, 0, 255]));
     assert!(
-        world
+        !world
             .entities()
             .at(EntityId(37))
-            .expect("ambient entity after unsupported particles")
+            .expect("entity after a simple particle and no ambience")
             .is_effect_ambient()
     );
 }
@@ -318,7 +320,7 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
             .entities()
             .at(EntityId(37))
             .expect("entity")
-            .effect_particle_type_ids()
+            .effect_particles()
             .is_empty()
     );
 
@@ -339,8 +341,11 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
             .entities()
             .at(EntityId(37))
             .expect("entity with effect particle")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .effect_particles(),
+        &[crate::EffectParticle {
+            type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            color: Some(0x1122_3344)
+        }]
     );
 
     assert!(world.apply_entity_metadata(EntityId(37), &[5, 8, 1, 255]));
@@ -349,8 +354,11 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
             .entities()
             .at(EntityId(37))
             .expect("entity after partial particle metadata")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .effect_particles(),
+        &[crate::EffectParticle {
+            type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            color: Some(0x1122_3344)
+        }]
     );
 
     assert!(world.apply_entity_metadata(EntityId(37), &[10, 0, 1, 255]));
@@ -359,8 +367,11 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
             .entities()
             .at(EntityId(37))
             .expect("entity after wrong particle serializer")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .effect_particles(),
+        &[crate::EffectParticle {
+            type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            color: Some(0x1122_3344)
+        }]
     );
 
     assert!(world.apply_entity_metadata(EntityId(37), &[10, 17, 1, 0, 255]));
@@ -368,9 +379,13 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
         world
             .entities()
             .at(EntityId(37))
-            .expect("entity after unsupported particle type")
-            .effect_particle_type_ids(),
-        &[crate::ENTITY_EFFECT_PARTICLE_TYPE_ID]
+            .expect("entity after a simple particle")
+            .effect_particles(),
+        // Any particle can be in the list; a simple one (`angry_villager`, id 0) carries nothing.
+        &[crate::EffectParticle {
+            type_id: 0,
+            color: None
+        }]
     );
 }
 

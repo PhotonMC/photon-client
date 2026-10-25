@@ -188,6 +188,7 @@ impl LocalPlayer {
         if self.invulnerable_time > 0 {
             self.invulnerable_time -= 1;
         }
+        self.throw_effect_particles(level);
         // LivingEntity.tick: the swimming pose eases in or out.
         let swim_amount = self.swim_amount.0;
         self.swim_amount = (

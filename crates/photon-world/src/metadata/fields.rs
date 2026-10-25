@@ -181,9 +181,11 @@ fn skip_structured_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()>
             photon_core::nbt::read_any_nbt(metadata).ok()?.as_ref()?;
         }
         7 => skip_item_stack(metadata)?,
-        16 => skip_effect_particle(metadata)?,
+        16 => {
+            read_effect_particle(metadata)?;
+        }
         ENTITY_DATA_SERIALIZER_PARTICLES_ID => {
-            read_effect_particle_type_ids(metadata)?;
+            read_effect_particles(metadata)?;
         }
         // Villager data: type, profession, level.
         18 => {
@@ -204,14 +206,6 @@ fn skip_item_stack(metadata: &mut &[u8]) -> Option<()> {
         crate::item_components::read_patch(metadata).ok()?;
     }
     Some(())
-}
-
-/// One particle, which only the entity effect's colour is known for.
-fn skip_effect_particle(metadata: &mut &[u8]) -> Option<()> {
-    if photon_core::wire::read_varint(metadata).ok()? != ENTITY_EFFECT_PARTICLE_TYPE_ID {
-        return None;
-    }
-    skip_bytes(metadata, 4)
 }
 
 /// Painting variant: a registry holder, or the variant itself.

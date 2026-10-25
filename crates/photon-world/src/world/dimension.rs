@@ -24,6 +24,7 @@ impl ClientWorld {
             local_player: None,
             sounds: local_player::SoundQueue::default(),
             entity_sound_random: Default::default(),
+            effect_particles: Default::default(),
             level_events: Default::default(),
             breaking_effects: Vec::new(),
             world_border: ClientWorldBorder::default(),

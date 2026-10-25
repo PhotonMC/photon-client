@@ -73,7 +73,7 @@ pub struct ClientEntity {
     pub(crate) arrow_count: i32,
     pub(crate) stinger_count: i32,
     pub(crate) effect_ambience: bool,
-    pub(crate) effect_particle_type_ids: Vec<i32>,
+    pub(crate) effect_particles: Vec<EffectParticle>,
     pub(crate) sleeping_pos: Option<photon_core::binary::BlockPos>,
     pub(crate) custom_name_present: bool,
     pub(crate) custom_name_visible: bool,

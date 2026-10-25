@@ -60,6 +60,24 @@ pub struct ClientAttributeState {
     pub(crate) modifiers: Vec<ClientAttributeModifierState>,
 }
 
+/// One of the particles a living entity's effects give off (`DATA_EFFECT_PARTICLES`): the entity
+/// effect's swirl in an ARGB colour, or a simple particle of an effect's own (oozing's slime).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EffectParticle {
+    pub type_id: i32,
+    pub color: Option<u32>,
+}
+
+impl EffectParticle {
+    /// The particle's options, as the engine makes it from them.
+    pub fn data(self) -> crate::particles::ParticleData {
+        self.color.map_or(
+            crate::particles::ParticleData::Plain,
+            crate::particles::ParticleData::Color,
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientMobEffectState {
     pub(crate) effect_id: i32,

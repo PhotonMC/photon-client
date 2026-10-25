@@ -238,7 +238,7 @@ impl ClientWorld {
                 arrow_count: 0,
                 stinger_count: 0,
                 effect_ambience: false,
-                effect_particle_type_ids: Vec::new(),
+                effect_particles: Vec::new(),
                 sleeping_pos: None,
                 custom_name_present: false,
                 custom_name_visible: false,

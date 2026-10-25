@@ -167,7 +167,7 @@ impl ClientWorld {
             player.arrow_count = previous.arrow_count;
             player.stinger_count = previous.stinger_count;
             player.effect_ambience = previous.effect_ambience;
-            player.effect_particle_type_ids = previous.effect_particle_type_ids;
+            player.effect_particles = previous.effect_particles;
             player.sleep.pos = previous.sleep.pos;
             player.air_supply = previous.air_supply;
             player.custom_name_present = previous.custom_name_present;
