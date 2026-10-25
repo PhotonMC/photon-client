@@ -59,8 +59,10 @@ fn knowledge_book_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
         return UseResult::Pass;
     };
     let values = Values::new(stack.item_registry_id(), stack.patch_bytes());
-    // `getOrDefault(RECIPES, List.of())`: the component has no stream codec of its own, so it is
-    // a network NBT list (tag 9, element type, int count); it is empty when the count is 0.
+    // `getOrDefault(RECIPES, List.of())`: the component has no stream codec of its own, so a
+    // value the server patches in is a network NBT list (tag 9, element type, int count); it is
+    // empty when the count is 0. Anything shorter than that header (no value, or the item's
+    // default) counts as empty.
     let recipes = values
         .raw(photon_data::item::component_types::RECIPES)
         .is_some_and(|bytes| bytes.len() >= 6 && bytes[2..6] != [0, 0, 0, 0]);
