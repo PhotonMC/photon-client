@@ -216,7 +216,7 @@ pub fn online_options_screen() -> Value {
         tab("tab-on-wrap", on(), 8),
         press("scroll-down", vec![wheel(-3)]),
         at("press-server-listing").steps(vec![click(200, 175)]).row(),
-        at("scroll-and-press-realms").steps(vec![wheel(-5), click(200, 150)]).row(),
+        at("scroll-and-press-realms").steps(vec![wheel(-5), click(200, 190)]).row(),
     ];
     gui("online-options-screen", "online_options_screen", rows)
 }
