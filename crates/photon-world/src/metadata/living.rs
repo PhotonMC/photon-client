@@ -160,15 +160,18 @@ pub(crate) fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool>
 
 /// `AreaEffectCloud`'s data: its radius (`DATA_RADIUS`, 3 until told), whether it still waits to
 /// take effect (`DATA_WAITING`), and the particle it gives off (`DATA_PARTICLE`, the plain
-/// entity effect swirl until told): what a lingering potion's cloud draws itself from.
-pub(crate) fn area_effect_cloud_from_metadata(metadata: &[u8]) -> (f32, bool, EffectParticle) {
-    let default = EffectParticle {
-        type_id: ENTITY_EFFECT_PARTICLE_TYPE_ID,
-        color: Some(u32::MAX),
-    };
+/// entity effect swirl until told, and any particle the data names): what a lingering potion's
+/// cloud draws itself from.
+pub(crate) fn area_effect_cloud_from_metadata(
+    metadata: &[u8],
+) -> (f32, bool, (i32, crate::particles::ParticleData)) {
+    let default = (
+        ENTITY_EFFECT_PARTICLE_TYPE_ID,
+        crate::particles::ParticleData::Color(u32::MAX),
+    );
     let particle = find_metadata_field(metadata, AREA_EFFECT_CLOUD_PARTICLE_DATA_ID)
         .filter(|(serializer, _)| *serializer == ENTITY_DATA_SERIALIZER_PARTICLE_ID)
-        .and_then(|(_, mut value)| read_effect_particle(&mut value))
+        .and_then(|(_, mut value)| crate::particles::read_particle_options(&mut value).ok()?)
         .unwrap_or(default);
     (
         metadata_float_value(metadata, AREA_EFFECT_CLOUD_RADIUS_DATA_ID).unwrap_or(3.0),

@@ -91,3 +91,22 @@ fn another_particle_drifts_and_a_waiting_cloud_shows_little() {
         assert!(waiting.take_effect_particles().len() <= 2);
     }
 }
+
+/// The data names any particle with its options: a dragon's breath carries its power, which the
+/// cloud hands on to each speck.
+#[test]
+fn a_dragons_breath_cloud_keeps_its_particle_and_power() {
+    let breath = photon_data::particle_type::id("dragon_breath").unwrap();
+    let mut data = Vec::new();
+    photon_core::wire::write_varint(breath, &mut data);
+    data.extend(1.0_f32.to_be_bytes());
+    let mut world = cloud(1.0, false, &data);
+    world.tick_entities();
+    let specks = world.take_effect_particles();
+    assert_eq!(specks.len(), 4);
+    for speck in &specks {
+        assert_eq!(speck.type_id, breath);
+        assert_eq!(speck.data, crate::particles::ParticleData::Power(1.0));
+        assert_eq!(speck.spread.1, 0.01);
+    }
+}
