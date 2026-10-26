@@ -347,7 +347,11 @@ impl Menu {
     /// The resource packs the connection settled on are put in use: the assets are read through
     /// the new stack and everything made of them is made again. A failure puts the stack that
     /// was in use back and says so.
-    fn reload_assets(&mut self, client: &mut Client, packs: &crate::packs::LoadedPacks) -> bool {
+    pub(super) fn reload_assets(
+        &mut self,
+        client: &mut Client,
+        packs: &crate::packs::LoadedPacks,
+    ) -> bool {
         let Ok(root) = env::var("PHOTON_ASSETS") else {
             return false;
         };

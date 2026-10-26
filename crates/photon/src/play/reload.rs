@@ -87,6 +87,12 @@ impl Play {
     /// Answer the reload the server's packs asked for: the packs go in use, or are reported as
     /// failed with the stack that was in use put back.
     pub(super) fn serve_pack_reload(&mut self) {
+        self.controls.pack_poll(&self.screen_assets);
+        if self.controls.take_pack_reload() {
+            // The player chose other packs: the server's go over them again.
+            let packs = crate::resources::server_packs();
+            self.reload_packs_forced(&packs);
+        }
         let source = self.session.packs().clone();
         crate::packs::serve_reload(&source, &mut |packs| self.reload_packs(packs));
     }
@@ -96,6 +102,11 @@ impl Play {
         if crate::resources::holds(packs) {
             return true;
         }
+        self.reload_packs_forced(packs)
+    }
+
+    /// The packs go in use whether or not the stack already holds the server's.
+    fn reload_packs_forced(&mut self, packs: &crate::packs::LoadedPacks) -> bool {
         let Ok(root) = env::var("PHOTON_ASSETS") else {
             return false;
         };

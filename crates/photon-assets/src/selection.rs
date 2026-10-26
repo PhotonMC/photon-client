@@ -101,6 +101,27 @@ fn folder_entry(name: &str, pack: &Pack) -> PackEntry {
     }
 }
 
+/// The game's own pack (`ClientPackSource.VANILLA_SELECTION_CONFIG`): always selected, at the
+/// bottom, named by the game's own texts; `icon` is its `pack.png`.
+pub fn vanilla_entry(icon: Option<Vec<u8>>) -> PackEntry {
+    let description =
+        photon_core::json::parse(r#"{"translate":"resourcePack.vanilla.description"}"#)
+            .unwrap_or(JsonValue::Null);
+    PackEntry {
+        id: "vanilla".to_owned(),
+        title: Title::Translatable("resourcePack.vanilla.name".to_owned()),
+        description,
+        compatibility: Compatibility::Compatible,
+        source: PackSource::BuiltIn,
+        config: SelectionConfig {
+            required: true,
+            fixed_position: false,
+            default_position: Position::Bottom,
+        },
+        icon,
+    }
+}
+
 /// Every pack of the folder (`FolderRepositorySource.loadPacks`): a directory or a zip with a
 /// readable `pack.mcmeta`. Anything else is passed over.
 pub fn discover_folder(folder: &Path, current: PackFormat) -> Vec<PackEntry> {
@@ -434,6 +455,7 @@ mod tests {
         }
     }
 
+    /// A required pack that also keeps its place, as a server's pack does.
     fn vanilla() -> PackEntry {
         let config = SelectionConfig {
             required: true,
@@ -455,6 +477,16 @@ mod tests {
 
     fn ids(model: &SelectionModel, side: Side) -> Vec<&str> {
         model.list(side).iter().map(String::as_str).collect()
+    }
+
+    #[test]
+    fn the_games_own_pack_is_required_at_the_bottom_and_listed_in_the_options() {
+        let own = vanilla_entry(None);
+        assert!(own.config.required && !own.config.fixed_position);
+        assert_eq!(own.config.default_position, Position::Bottom);
+        let model = SelectionModel::new(Repository::new(vec![own], &[]));
+        assert_eq!(ids(&model, Side::Selected), ["vanilla"]);
+        assert_eq!(options_lists(model.repository()).0, ["vanilla"]);
     }
 
     #[test]

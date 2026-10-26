@@ -7,6 +7,7 @@ use super::*;
 #[derive(Clone, Copy)]
 enum OptionScreen {
     CreditsAttribution,
+    Packs,
     Language,
     KeyBinds,
     Controls,
@@ -43,6 +44,7 @@ impl Controls {
                 self.credits_attribution_screen.is_some(),
                 OptionScreen::CreditsAttribution,
             ),
+            (self.pack_screen.is_some(), OptionScreen::Packs),
             (self.language_open(), OptionScreen::Language),
             (self.key_binds_screen.is_some(), OptionScreen::KeyBinds),
             (
@@ -80,6 +82,7 @@ impl Controls {
             OptionScreen::CreditsAttribution => {
                 self.credits_attribution_event(event, surface, assets);
             }
+            OptionScreen::Packs => self.packs_event(event, surface, assets),
             OptionScreen::Language => self.language_event(event, surface, assets),
             OptionScreen::KeyBinds => self.key_binds_event(event, surface, assets),
             OptionScreen::Controls => self.controls_event(event, surface, assets),
@@ -148,6 +151,7 @@ impl Controls {
                 match (action, target) {
                     (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(&url),
                     (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(&url),
+                    (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(&id),
                     _ => {}
                 }
             }

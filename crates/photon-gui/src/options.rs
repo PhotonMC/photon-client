@@ -9,6 +9,7 @@ pub mod language;
 pub mod list;
 pub mod mouse;
 pub mod online;
+pub mod packs;
 pub mod skin;
 pub mod sound;
 pub mod text;

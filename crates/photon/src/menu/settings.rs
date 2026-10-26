@@ -82,6 +82,10 @@ impl Menu {
             self.assets = self.gui.screen_assets();
             self.host.rebuild_menus(&client.surface, &self.assets);
         }
+        if self.host.take_pack_reload() {
+            let packs = crate::resources::server_packs();
+            self.reload_assets(client, &packs);
+        }
         if std::mem::take(&mut self.host.options_saved) {
             self.options = self.host.options.clone();
         }

@@ -66,6 +66,9 @@ fn draw_settings(
         }
         link.draw(frame, (atlas, font), mouse, 0);
     } else {
-        crate::gui::Gui::draw_option_screens((atlas, font, lang), host, frame, (size, mouse));
+        let at = (atlas, font, lang);
+        if !crate::gui::Gui::draw_packs(at, host, frame, (size, mouse)) {
+            crate::gui::Gui::draw_option_screens(at, host, frame, (size, mouse));
+        }
     }
 }

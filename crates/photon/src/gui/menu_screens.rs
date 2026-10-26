@@ -61,6 +61,9 @@ impl Gui {
         ) {
             return;
         }
+        if Self::draw_packs((atlas, font, lang), controls, frame, (gui_size, mouse)) {
+            return;
+        }
         if Self::draw_option_screens((atlas, font, lang), controls, frame, (gui_size, mouse)) {
             return;
         }
@@ -70,6 +73,28 @@ impl Gui {
             }
             pause.draw(frame, atlas, font, mouse, gui_size, Some(blurriness));
         }
+    }
+
+    /// The Resource Packs screen, when it is open: whether it was drawn.
+    pub(crate) fn draw_packs(
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+        controls: &mut Controls,
+        frame: &mut photon_render::gui::GuiFrame,
+        (gui_size, mouse): ((i32, i32), (i32, i32)),
+    ) -> bool {
+        let blurriness = controls.options.menu_background_blurriness;
+        let in_level = !controls.title_host;
+        let Some(screen) = controls.pack_screen.as_mut() else {
+            return false;
+        };
+        if in_level {
+            frame.blur_before_this_stratum(blurriness);
+        }
+        if screen.size() != gui_size {
+            screen.resize(gui_size);
+        }
+        screen.draw(frame, atlas, font, lang, mouse);
+        true
     }
 
     /// The world settings, when they are open, laid out again when the size or what the server

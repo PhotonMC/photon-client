@@ -46,6 +46,7 @@ impl Controls {
         self.sound_screen = None;
         self.controls_screen = None;
         self.language_screen = None;
+        self.pack_screen = None;
         self.mouse_screen = None;
         self.key_binds_screen = None;
         self.death = None;
@@ -126,6 +127,7 @@ impl Controls {
             self.sound_screen = None;
             self.controls_screen = None;
             self.language_screen = None;
+            self.pack_screen = None;
             self.mouse_screen = None;
             self.key_binds_screen = None;
             self.screen = None;

@@ -14,6 +14,9 @@ pub enum ConfirmTarget {
     Copy(String, Option<Next>),
     /// The same, offered for the chat box with the game as the screen after.
     Suggest(String),
+    /// `TransferableSelectionList.PackEntry.handlePackSelection`: the pack that does not fit the
+    /// game, selected once the player agrees.
+    Pack(String),
 }
 
 impl Controls {

@@ -7,6 +7,18 @@ use std::sync::{Arc, RwLock};
 use photon_assets::ResourceStack;
 
 static IN_USE: RwLock<Option<Arc<ResourceStack>>> = RwLock::new(None);
+/// The server's packs the stack in use holds (the top first), so that a change of the selected
+/// packs can put them over the new selection again.
+static SERVER_PACKS: RwLock<Vec<(photon_core::binary::Uuid, std::path::PathBuf)>> =
+    RwLock::new(Vec::new());
+
+/// The server packs now in use.
+pub(crate) fn server_packs() -> Vec<(photon_core::binary::Uuid, std::path::PathBuf)> {
+    SERVER_PACKS
+        .read()
+        .map(|packs| packs.clone())
+        .unwrap_or_default()
+}
 
 /// The stack in use, which holds the game's own assets alone until packs are chosen.
 pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
@@ -21,7 +33,7 @@ pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
 }
 
 /// The pack format of the running game (`SharedConstants.getCurrentVersion().packVersion`).
-const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
+pub(crate) const PACK_FORMAT: photon_assets::PackFormat = photon_assets::PackFormat::of(88, 0);
 
 /// Whether `Options.loadSelectedResourcePacks` keeps a pack: a compatible one that is not listed
 /// as incompatible, or an incompatible one the player listed. A compatible pack that is still
@@ -87,6 +99,9 @@ pub(crate) fn with_packs(
     for (id, path) in packs.iter().rev() {
         let name = format!("server/{}", id.to_string_java());
         stacked.push(open_pack(name, path)?);
+    }
+    if let Ok(mut kept) = SERVER_PACKS.write() {
+        *kept = packs.to_vec();
     }
     Ok(ResourceStack::new(stacked))
 }

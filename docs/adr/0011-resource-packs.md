@@ -16,6 +16,8 @@ Server resource packs ([#51](https://github.com/PhotonMC/photon-client/issues/51
 
 - **Sprite sources.** The atlas definitions' `filter` source uses the same `IdentifierPattern`, so `photon-assets` exports it and `photon-render` (and the oracle binary) may depend on `photon-assets`. The crate depends on `photon-core` alone, so no cycle appears.
 
+- **Pack lists.** The Resource Packs screen moves packs between two lists through the selection model of `photon-assets` (`PackSelectionModel` and `PackRepository` of the reference), so `photon-gui` may depend on `photon-assets` too; the crate still depends on `photon-core` alone.
+
 ## Consequences
 
 - The client now links a zip reader, which [ADR 0009](0009-xtask-downloads.md) kept out of it.

@@ -1501,6 +1501,7 @@ name = "photon-gui"
 version = "0.1.0"
 dependencies = [
  "glfw",
+ "photon-assets",
  "photon-core",
  "photon-data",
  "photon-game",

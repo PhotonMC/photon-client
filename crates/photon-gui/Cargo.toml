@@ -13,6 +13,7 @@ photon-data.workspace = true
 photon-world.workspace = true
 photon-game.workspace = true
 photon-render.workspace = true
+photon-assets.workspace = true
 glfw.workspace = true
 
 [lints]

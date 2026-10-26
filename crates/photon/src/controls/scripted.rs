@@ -230,6 +230,20 @@ impl Controls {
         Ok(true)
     }
 
+    /// A scripted press on the Resource Packs screen or the question over it. Whether one was up.
+    fn scripted_pack_press(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) -> bool {
+        if self.link_confirm.is_none() && self.pack_screen.is_none() {
+            return false;
+        }
+        let press = glfw::WindowEvent::MouseButton(
+            glfw::MouseButton::Button1,
+            glfw::Action::Press,
+            glfw::Modifiers::empty(),
+        );
+        self.host_event(press, surface, assets);
+        true
+    }
+
     /// A scripted press on the world settings, else on the screens of its own.
     fn scripted_press_screens(
         &mut self,
@@ -238,6 +252,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> std::result::Result<bool, Box<dyn std::error::Error>> {
         Ok(self.scripted_world_press(surface, assets)
+            || self.scripted_pack_press(surface, assets)
             || self.scripted_press_own(session, surface, assets)?)
     }
 
@@ -300,6 +315,8 @@ impl Controls {
             self.close_online();
         } else if self.font_screen.is_some() {
             self.close_font(surface, assets);
+        } else if self.pack_screen.is_some() {
+            self.close_packs();
         } else if self.language_screen.is_some() {
             self.language_screen = None;
         } else {

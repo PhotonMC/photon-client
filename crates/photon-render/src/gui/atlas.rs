@@ -13,7 +13,7 @@ mod unifont;
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 53] = [
+const WHOLE_TEXTURES: [&str; 54] = [
     "tab_header_background",
     "advancements/window",
     "advancements/backgrounds/adventure",
@@ -61,6 +61,7 @@ const WHOLE_TEXTURES: [&str; 53] = [
     "title/edition",
     "title/background/panorama_overlay",
     "textures/misc/unknown_server",
+    "textures/misc/unknown_pack",
     "textures/misc/credits_vignette",
     "textures/misc/powder_snow_outline",
     "textures/misc/vignette",

@@ -16,6 +16,29 @@ impl Options {
         self.list("incompatibleResourcePacks")
     }
 
+    /// `updateResourcePacks`: both lists replaced. A line the file lacks goes where the reference
+    /// writes it, before `lastServer`. Whether the selection changed.
+    pub fn set_resource_packs(&mut self, packs: &[String], incompatible: &[String]) -> bool {
+        let changed = self.resource_packs() != packs;
+        self.set_list("resourcePacks", packs, "lastServer");
+        self.set_list("incompatibleResourcePacks", incompatible, "lastServer");
+        changed
+    }
+
+    fn set_list(&mut self, key: &str, items: &[String], before: &str) {
+        let value = json_list(items);
+        if let Some(line) = self.lines.iter_mut().find(|(name, _)| name == key) {
+            line.1 = value;
+            return;
+        }
+        let at = self
+            .lines
+            .iter()
+            .position(|(name, _)| name == before || name == "lang")
+            .unwrap_or(self.lines.len());
+        self.lines.insert(at, (key.to_owned(), value));
+    }
+
     fn list(&self, key: &str) -> Vec<String> {
         self.lines
             .iter()
@@ -23,6 +46,35 @@ impl Options {
             .map(|(_, value)| string_list(value))
             .unwrap_or_default()
     }
+}
+
+/// `GSON::toJson` of a list of strings: compact, with the characters Gson keeps out of HTML
+/// written as escapes.
+fn json_list(items: &[String]) -> String {
+    let quoted: Vec<String> = items
+        .iter()
+        .map(|item| format!("\"{}\"", item.chars().map(escaped).collect::<String>()))
+        .collect();
+    format!("[{}]", quoted.join(","))
+}
+
+/// A character as Gson writes it inside a string.
+fn escaped(c: char) -> String {
+    match c {
+        '"' => "\\\"".to_owned(),
+        '\\' => "\\\\".to_owned(),
+        '\n' => "\\n".to_owned(),
+        '\r' => "\\r".to_owned(),
+        '\t' => "\\t".to_owned(),
+        '\u{8}' => "\\b".to_owned(),
+        '\u{c}' => "\\f".to_owned(),
+        c if needs_unicode_escape(c) => format!("\\u{:04x}", c as u32),
+        c => c.to_string(),
+    }
+}
+
+fn needs_unicode_escape(c: char) -> bool {
+    matches!(c, '<' | '>' | '&' | '=' | '\'' | '\u{2028}' | '\u{2029}') || (c as u32) < 0x20
 }
 
 /// `Options.readListOfStrings`: the strings of a JSON list; anything else is an empty list.
@@ -60,6 +112,15 @@ fn string_list(text: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_lists_are_written_as_gson_does() {
+        assert_eq!(json_list(&[]), "[]");
+        assert_eq!(
+            json_list(&["vanilla".to_owned(), "file/a \"b\"'.zip".to_owned()]),
+            r#"["vanilla","file/a \"b\"\u0027.zip"]"#
+        );
+    }
 
     #[test]
     fn the_selected_packs_read_as_a_json_list_of_strings() {

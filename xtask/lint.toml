@@ -28,7 +28,14 @@ photon-net = [
     "photon-protocol",
 ]
 photon-render = ["photon-core", "photon-data", "photon-world", "photon-assets"]
-photon-gui = ["photon-core", "photon-data", "photon-world", "photon-game", "photon-render"]
+photon-gui = [
+    "photon-core",
+    "photon-data",
+    "photon-world",
+    "photon-game",
+    "photon-render",
+    "photon-assets",
+]
 photon-audio = []
 photon = [
     "photon-assets",

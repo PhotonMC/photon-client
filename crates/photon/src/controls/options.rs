@@ -185,6 +185,7 @@ impl Controls {
             OptionsAction::Sounds => self.open_sound_options(surface, assets),
             OptionsAction::Controls => self.open_controls(surface, assets),
             OptionsAction::Language => self.open_language(surface, assets),
+            OptionsAction::ResourcePacks => self.open_packs(surface, assets),
             OptionsAction::CreditsAndAttribution => {
                 self.open_credits_attribution(surface, assets);
             }

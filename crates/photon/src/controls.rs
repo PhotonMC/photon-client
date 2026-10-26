@@ -133,6 +133,11 @@ pub struct Controls {
     /// The language screen, and the language it chose, for the game to load.
     pub language_screen: Option<LanguageSelectScreen>,
     pub(super) language_request: Option<String>,
+    /// `PackSelectionScreen`, over the options screen.
+    pub pack_screen: Option<photon_gui::options::packs::PackScreen>,
+    /// The selection changed: the resource packs are to be loaded again (`reloadResourcePacks`).
+    pub(super) pack_reload: bool,
+    pub(super) pack_watch: Option<packs::FolderWatch>,
     /// When and where the primary button last went down.
     pub(super) last_press: Option<(Instant, (i32, i32))>,
     pub mouse_screen: Option<MouseSettingsScreen>,
@@ -375,6 +380,7 @@ pub(crate) mod keybinds;
 
 mod options;
 mod pack_prompt;
+mod packs;
 
 mod pause;
 mod restrictions;
