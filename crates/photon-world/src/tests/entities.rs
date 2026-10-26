@@ -6,6 +6,7 @@ mod dimension_change;
 mod dimensions;
 mod eating;
 mod entity_collision;
+mod fireworks;
 mod flags;
 mod living_flags;
 mod lookup;
