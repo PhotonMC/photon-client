@@ -109,7 +109,9 @@ impl Play {
             }
         };
         crate::resources::replace(Arc::new(stack));
+        let started = std::time::Instant::now();
         let rebuilt = self.rebuild_assets(&root.to_string_lossy());
+        log::info!("resources rebuilt in {:?}", started.elapsed());
         match rebuilt {
             Ok(()) => true,
             Err(error) => {

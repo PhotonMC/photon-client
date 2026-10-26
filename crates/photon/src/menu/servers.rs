@@ -361,7 +361,10 @@ impl Menu {
             }
         };
         crate::resources::replace(std::sync::Arc::new(stack));
-        match self.rebuild_assets(client, root) {
+        let started = Instant::now();
+        let rebuilt = self.rebuild_assets(client, root);
+        log::info!("resources rebuilt in {:?}", started.elapsed());
+        match rebuilt {
             Ok(()) => true,
             Err(error) => {
                 log::warn!("resource reload failed: {error}");
@@ -387,6 +390,9 @@ impl Menu {
                 &root_text,
             )?))?;
         self.assets = self.gui.screen_assets();
+        // The new atlas holds no favicons: the list puts them in again.
+        self.icons_shown.clear();
+        self.icons_dirty = true;
         self.sound.reload_for_packs(&self.options);
         Ok(())
     }

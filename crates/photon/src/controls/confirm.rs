@@ -31,6 +31,11 @@ impl Controls {
         if self.pack_prompt.is_some() {
             self.confirm = None;
             self.answer_pack_prompt(action == ConfirmAction::Yes, session);
+            // `setScreen(null)`: the game has the mouse again unless something else holds it.
+            if self.screen.is_none() && self.disconnected.is_none() {
+                self.captured = true;
+                surface.set_cursor_captured(true);
+            }
             return Ok(());
         }
         match action {

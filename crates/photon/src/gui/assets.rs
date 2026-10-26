@@ -119,6 +119,8 @@ impl Gui {
             Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
         let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
             .ok_or("the HUD sprites could not be read")?;
+        // The first load makes the GPU's atlas; a reload points it at the new image.
+        backend.replace_gui_texture(&texture)?;
         backend.load_gui_texture(&texture)?;
         self.font = font;
         self.alt_font = alt_font;
