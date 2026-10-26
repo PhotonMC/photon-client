@@ -84,3 +84,32 @@ pub(super) fn potion_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseRes
     ctx.world.set_block_with_updates(pos, mud, 3, 512, position);
     UseResult::Success { swing: true }
 }
+
+/// `BeehiveBlock.useItemOn` with a glass bottle: the stack shrinks in any game mode, the player
+/// hears the fill, and the honey replaces an emptied stack or goes to the inventory (what does not
+/// fit is dropped, which the client does not predict).
+pub(super) fn take_honey(ctx: &mut Context<'_>, hand: u8) {
+    let slot = ctx.hand_slot(hand);
+    ctx.world.shrink_local_player_slot(slot, 1);
+    let at = ctx.player.position();
+    ctx.world.push_sound(LocalSound::at(
+        "minecraft:item.bottle.fill",
+        LocalSoundSource::Blocks,
+        (1.0, 1.0),
+        (at.x, at.y, at.z),
+    ));
+    let Some(honey) = crate::item::id_of("minecraft:honey_bottle") else {
+        return;
+    };
+    let fresh = ClientItemStackState::new(1, honey);
+    let emptied = ctx
+        .world
+        .local_player()
+        .and_then(|state| state.inventory_slot(slot))
+        .is_none_or(|stack| stack.item_count() <= 0);
+    if emptied {
+        ctx.world.put_local_player_slot(slot, fresh);
+    } else {
+        super::buckets::add_to_inventory(ctx, fresh);
+    }
+}

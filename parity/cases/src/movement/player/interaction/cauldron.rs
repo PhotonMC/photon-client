@@ -4,8 +4,9 @@
 
 use serde_json::Value;
 
-use super::aim_at;
 use super::item_on::{north, row};
+use super::placing::uses;
+use super::{aim_at, using};
 use crate::components::{BANNER_PATTERNS, DYED_COLOR, POTION_CONTENTS, patch, vi};
 use crate::movement::world::{put, put_with};
 
@@ -123,7 +124,7 @@ fn cauldron_containers() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [cauldron_containers(), cauldron_potions(), cauldron_cleaning(), mud()].concat()
+    [cauldron_containers(), cauldron_potions(), cauldron_cleaning(), mud(), beehives()].concat()
 }
 
 /// `PotionItem.useOn`: a water potion poured on dirt, not from below.
@@ -146,5 +147,35 @@ fn mud() -> Vec<Value> {
             .count(2)
             .patch(water)
             .row(),
+    ]
+}
+
+/// `BeehiveBlock.useItemOn`: a full hive gives a glass bottle honey; the inventory shows where the
+/// honey went.
+fn beehives() -> Vec<Value> {
+    let aim = north();
+    let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
+    let ticks =
+        [uses(1, Some(&aim), &around).clicks(1).inventory().go(), uses(3, Some(&aim), &around).inventory().go()]
+            .concat();
+    let hive =
+        |block: &str, honey: &str| vec![put_with(0, 64, 2, block, &[("facing", "north"), ("honey_level", honey)])];
+    let held = |label: &str, world: Vec<Value>, item: &'static str, count: i64| {
+        using(label, world, ticks.clone()).main_hand(item).count(count)
+    };
+    vec![
+        held("item-on-beehive-bottle", hive("minecraft:beehive", "5"), "minecraft:glass_bottle", 3).row(),
+        held("item-on-beehive-last-bottle", hive("minecraft:beehive", "5"), "minecraft:glass_bottle", 1).row(),
+        held("item-on-bee-nest-bottle", hive("minecraft:bee_nest", "5"), "minecraft:glass_bottle", 3).row(),
+        held("item-on-beehive-bottle-creative", hive("minecraft:beehive", "5"), "minecraft:glass_bottle", 3)
+            .game_mode("creative")
+            .row(),
+        held("item-on-beehive-bottle-partial", hive("minecraft:beehive", "4"), "minecraft:glass_bottle", 3).row(),
+        held("item-on-beehive-bottle-with-entity", hive("minecraft:beehive", "5"), "minecraft:glass_bottle", 3)
+            .block_entity((0, 64, 2), "minecraft:beehive")
+            .row(),
+        held("item-on-beehive-shears", hive("minecraft:beehive", "5"), "minecraft:shears", 1).row(),
+        held("item-on-beehive-stone", hive("minecraft:beehive", "5"), "minecraft:stone", 4).row(),
+        using("item-on-beehive-empty-hand", hive("minecraft:beehive", "5"), ticks.clone()).row(),
     ]
 }

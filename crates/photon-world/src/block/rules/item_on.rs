@@ -62,6 +62,7 @@ pub struct Held {
     /// `ItemTags.BOOKSHELF_BOOKS`.
     pub bookshelf_book: bool,
     pub cauldron: CauldronStack,
+    pub glass_bottle: bool,
 }
 
 /// Who uses the block with the stack, and where.
@@ -91,6 +92,9 @@ pub struct ItemOn {
     pub write: Option<Write>,
     /// One item of the stack is used up.
     pub shrink: bool,
+    /// A bottle of honey is taken: the stack shrinks whatever the game mode, the bottle fill is
+    /// heard and the honey goes to the hand or the inventory.
+    pub honey: bool,
 }
 
 impl ItemOn {
@@ -99,6 +103,7 @@ impl ItemOn {
             result,
             write: None,
             shrink: false,
+            honey: false,
         }
     }
 
@@ -107,6 +112,7 @@ impl ItemOn {
             result: SUCCESS,
             write: state.map(|state| Write { pos, state, flags }),
             shrink,
+            honey: false,
         }
     }
 }
@@ -360,6 +366,22 @@ fn sweet_berry_bush(use_: &Use) -> Option<ItemOn> {
     empty_hand()
 }
 
+/// `BeehiveBlock`: a full hive gives a glass bottle honey, and empties. Shears work on the server
+/// only, and where bees are angered or released nothing is seen by the client.
+fn beehive(use_: &Use) -> Option<ItemOn> {
+    if number(use_.state, "honey_level") >= 5 && use_.held.glass_bottle {
+        let mut taken = ItemOn::set(
+            use_.pos,
+            with_property(use_.state, "honey_level", "0"),
+            3,
+            false,
+        );
+        taken.honey = true;
+        return Some(taken);
+    }
+    empty_hand()
+}
+
 /// `ComposterBlock`: a compostable item is taken, on the server.
 fn composter(use_: &Use) -> Option<ItemOn> {
     if number(use_.state, "level") < 8 && use_.held.compostable {
@@ -431,6 +453,7 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
 
 const USES: &[(BlockClass, Rule1)] = &[
     (BlockClass::AbstractCauldronBlock, cauldron),
+    (BlockClass::BeehiveBlock, beehive),
     (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf),
     (BlockClass::ShelfBlock, shelf),
     (BlockClass::SignBlock, sign),

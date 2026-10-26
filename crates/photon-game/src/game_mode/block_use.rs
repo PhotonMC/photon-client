@@ -61,6 +61,7 @@ fn describe(ctx: &Context<'_>, hand: u8) -> Held {
         hanging_sign: rules::item(item).is_some_and(|row| row.class == ItemClass::HangingSignItem),
         candle: tagged("minecraft:candles").then_some(name),
         record: values.has(photon_data::item::component_types::JUKEBOX_PLAYABLE),
+        glass_bottle: name == "minecraft:glass_bottle",
         cauldron: cauldron_stack(name, &values, tagged("minecraft:cauldron_can_remove_dye")),
     }
 }
@@ -173,6 +174,9 @@ impl GameMode {
         if answer.shrink && !ctx.instabuild() {
             let slot = ctx.hand_slot(hand);
             ctx.world.shrink_local_player_slot(slot, 1);
+        }
+        if answer.honey {
+            super::bottles::take_honey(ctx, hand);
         }
         Some(answer.result)
     }
