@@ -95,6 +95,34 @@ fn limit_rows() -> Vec<Value> {
     ]
 }
 
+/// The atlases of the special models, the paintings, the particles and the sky.
+fn special_atlases() -> Vec<Value> {
+    let hex = |text: &str| text.bytes().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let file = |id: &str, text: &str| json!({"id": id, "hex": hex(text)});
+    let mut rows: Vec<Value> = [
+        "chests",
+        "shulker_boxes",
+        "banner_patterns",
+        "shield_patterns",
+        "decorated_pot",
+        "map_decorations",
+        "paintings",
+        "particles",
+        "celestials",
+    ]
+    .iter()
+    .map(|name| json!({"label": name.replace('_', "-"), "atlas": format!("minecraft:{name}")}))
+    .collect();
+    rows.push(json!({"label": "pack-chests-folder", "atlas": "minecraft:chests", "pack": [
+        file(
+            "minecraft:atlases/chests.json",
+            r#"{"sources":[{"type":"minecraft:directory","source":"entity/chest","prefix":"entity/chest/"}]}"#,
+        ),
+        file("minecraft:textures/entity/chest/extra.png", "x"),
+    ]}));
+    rows
+}
+
 pub fn cases() -> Vec<Value> {
     let rows = [ordering_rows(), limit_rows()].concat();
     // The sprites the game's own definition of the GUI atlas lists, which the stitcher then places.
@@ -156,6 +184,7 @@ pub fn cases() -> Vec<Value> {
             )),
         ]}),
     ];
+    let listed = [listed.to_vec(), special_atlases()].concat();
     vec![
         json!({"case_id": "atlas/stitch", "family": "atlas", "operation": "stitch", "rows": rows}),
         json!({"case_id": "atlas/sprite-ids", "family": "atlas", "operation": "sprite_ids", "rows": listed}),
