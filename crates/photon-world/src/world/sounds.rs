@@ -7,6 +7,19 @@ impl ClientWorld {
         self.sounds.0.push(sound);
     }
 
+    /// `CampfireBlock.dowse`: the smoke of a campfire a shovel puts out, for the particle engine.
+    pub fn push_campfire_dowse(&mut self, pos: (i32, i32, i32), signal: bool) {
+        self.level_events
+            .0
+            .push(LevelEvent::CampfireTick(CampfireSmoke {
+                pos,
+                signal,
+                rotation: 0,
+                cooking: [false; 4],
+                dowsed: true,
+            }));
+    }
+
     /// The pitch of an igniter's sound on a creeper, `random.nextFloat() * 0.4F + 0.8F`.
     pub fn entity_sound_pitch(&mut self) -> f32 {
         self.entity_sound_random.source().next_float() * 0.4 + 0.8
@@ -323,6 +336,9 @@ pub struct CampfireSmoke {
     pub rotation: i32,
     /// Which of its four slots hold food.
     pub cooking: [bool; 4],
+    /// A shovel put it out (`CampfireBlock.dowse` on a client): twenty puffs, each with a wisp,
+    /// instead of a tick's smoke.
+    pub dowsed: bool,
 }
 
 /// What the level plays when the particle engine takes it, in the order it came.

@@ -32,6 +32,7 @@ impl ClientWorld {
                 signal: property("signal_fire") == Some("true"),
                 rotation,
                 cooking,
+                dowsed: false,
             }));
     }
 }
