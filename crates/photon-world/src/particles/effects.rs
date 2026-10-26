@@ -41,3 +41,37 @@ pub fn effect_particle(
         count: 0,
     })
 }
+
+/// `LivingEntity.handleEntityEvent(46)`: 128 portal particles strewn along the way from where the
+/// entity was last tick to where it is, each in a box twice the entity's width, drifting a
+/// little. (The reference draws each from the entity's own unseeded source.)
+pub fn teleport_particles(
+    random: &mut RandomSource,
+    (from, to): (Vec3, Vec3),
+    (width, height): (f32, f32),
+) -> Vec<LevelParticles> {
+    let Some(type_id) = photon_data::particle_type::id("portal") else {
+        return Vec::new();
+    };
+    let lerp = |d: f64, a: f64, b: f64| a + d * (b - a);
+    (0..128)
+        .map(|i| {
+            let d = f64::from(i) / 127.0;
+            let mut drift = || (random.next_float() - 0.5) * 0.2;
+            let spread = (drift(), drift(), drift());
+            let x = lerp(d, from.x, to.x) + (random.next_double() - 0.5) * f64::from(width) * 2.0;
+            let y = lerp(d, from.y, to.y) + random.next_double() * f64::from(height);
+            let z = lerp(d, from.z, to.z) + (random.next_double() - 0.5) * f64::from(width) * 2.0;
+            LevelParticles {
+                type_id,
+                data: super::ParticleData::Plain,
+                override_limiter: false,
+                always_show: false,
+                at: (x, y, z),
+                spread,
+                max_speed: 1.0,
+                count: 0,
+            }
+        })
+        .collect()
+}

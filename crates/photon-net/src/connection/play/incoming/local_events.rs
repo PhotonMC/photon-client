@@ -44,6 +44,18 @@ impl PlaySession {
         }
     }
 
+    /// `LivingEntity.handleEntityEvent(46)`: the portal particles of a teleport, around the
+    /// local player or the entity the world holds.
+    pub(super) fn show_teleport(&mut self, id: EntityId, event: i8) {
+        if event != 46 {
+            return;
+        }
+        match self.local.player.as_mut() {
+            Some(player) if self.local.player_id == Some(id) => player.throw_teleport_particles(),
+            _ => self.world.throw_teleport_particles(id),
+        }
+    }
+
     /// What the local player takes from its own entity data: the shared flags' gliding bit (flag
     /// 7) is the server's word over the client's start, and the sleeping place puts it in a bed.
     pub(super) fn local_metadata(&mut self, packet: &EntityMetadataObservation) {

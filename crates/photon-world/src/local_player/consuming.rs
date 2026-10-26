@@ -167,6 +167,19 @@ impl LocalPlayer {
         self.use_edge.particles.extend(thrown);
     }
 
+    /// `LivingEntity.handleEntityEvent(46)` for the local player: the portal particles of a
+    /// teleport. A position packet resets the old position to the new one, so they gather where
+    /// the player arrived.
+    pub fn throw_teleport_particles(&mut self) {
+        let size = (self.dimensions.width(), self.dimensions.height());
+        let thrown = crate::particles::teleport_particles(
+            &mut self.random,
+            (self.old_position, self.position),
+            size,
+        );
+        self.use_edge.particles.extend(thrown);
+    }
+
     /// The particles the player's own tick threw since the last call.
     pub fn take_particles(&mut self) -> Vec<crate::particles::LevelParticles> {
         std::mem::take(&mut self.use_edge.particles)
@@ -328,5 +341,20 @@ mod tests {
         let sounds = player.take_sounds();
         assert_eq!(sounds.len(), 1);
         assert_eq!(sounds[0].event, "minecraft:item.spyglass.stop_using");
+    }
+
+    /// A server teleport moves the old position with the new one, so the portal particles
+    /// gather where the player arrived.
+    #[test]
+    fn a_teleported_player_throws_portal_particles_where_it_arrived() {
+        let mut player = using(bread());
+        player.position = Vec3::new(40.0, 70.0, -12.0);
+        player.old_position = player.position;
+        player.throw_teleport_particles();
+        let thrown = player.take_particles();
+        assert_eq!(thrown.len(), 128);
+        assert!(thrown.iter().all(|p| {
+            (p.at.0 - 40.0).abs() <= 0.6 && (p.at.2 + 12.0).abs() <= 0.6 && p.at.1 >= 70.0
+        }));
     }
 }

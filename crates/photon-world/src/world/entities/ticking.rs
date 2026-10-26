@@ -272,4 +272,25 @@ impl ClientWorld {
             queue.extend(crumb);
         }
     }
+
+    /// `LivingEntity.handleEntityEvent(46)`: the portal particles of a living entity that a
+    /// chorus fruit or its own teleport moved, along the way from last tick's place to this.
+    pub fn throw_teleport_particles(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.living_kind().is_some())
+        else {
+            return;
+        };
+        let (from, to) = (entity.old_position, entity.position());
+        let size = (entity.dimensions().width(), entity.dimensions().height());
+        let from = Vec3::new(from.x.get(), from.y.get(), from.z.get());
+        let (queue, random) = &mut self.effect_particles;
+        queue.extend(particles::teleport_particles(
+            random.source(),
+            (from, Vec3::new(to.0, to.1, to.2)),
+            size,
+        ));
+    }
 }
