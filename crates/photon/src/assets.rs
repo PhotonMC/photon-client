@@ -27,12 +27,14 @@ fn permuted_texture(
     sources: &dyn Fn(&photon_core::identifier::Identifier) -> Vec<PalettedPermutations>,
     name: &photon_core::identifier::Identifier,
 ) -> Option<Vec<u8>> {
-    // `SpriteSourceList.load` reads the atlas's file of the `minecraft` namespace alone.
+    // `SpriteSourceList.load` reads the atlas's file of the `minecraft` namespace alone, and the
+    // paths in it name `minecraft` pictures: no other namespace has a sprite made this way.
+    if name.namespace() != "minecraft" {
+        return None;
+    }
     let atlas = photon_core::identifier::Identifier::parse("minecraft:atlases/items.json").ok()?;
     let load = |path: &str| {
-        let id =
-            photon_core::identifier::Identifier::parse(&format!("{}:{path}", name.namespace()))
-                .ok()?;
+        let id = photon_core::identifier::Identifier::parse(&format!("minecraft:{path}")).ok()?;
         photon_render::texture::png::decode_rgba(&read(&id, "textures", ".png")?).ok()
     };
     // A later source replaces the sprite an earlier one made of the same name; one that cannot

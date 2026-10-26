@@ -109,13 +109,17 @@ impl Controls {
     pub(super) fn copy_confirmed_packs(&mut self, paths: &[PathBuf], assets: &ScreenAssets) {
         let folder = pack_directory(&game_directory());
         let (leftovers, failed) = copy_dropped(paths, &folder);
+        let found = leftovers.len() < paths.len();
         for path in &leftovers {
             log::warn!("Path {} does not seem like pack", path.display());
         }
         if failed {
             log::warn!("Failed to copy dropped packs to {}", folder.display());
         }
-        self.reload_pack_screen(assets);
+        // `reload` runs only when a pack was found.
+        if found {
+            self.reload_pack_screen(assets);
+        }
     }
 }
 
