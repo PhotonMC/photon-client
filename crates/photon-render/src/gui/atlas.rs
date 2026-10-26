@@ -288,9 +288,10 @@ fn register_favicon_slots(
 fn collect_images(
     resources: &dyn Resources,
     fonts: &[&crate::gui::font::Font],
+    side: i32,
 ) -> Option<(Stitcher, BTreeMap<String, DecodedImage>, BTreeSet<String>)> {
     let mut images = BTreeMap::new();
-    let mut stitcher = Stitcher::new(4096, 4096, 0, 0);
+    let mut stitcher = Stitcher::new(side, side, 0, 0);
     // The font's images go in whole, and glyphs are cut from them.
     for (name, image) in fonts.iter().flat_map(|font| &font.images) {
         stitcher.register_sprite(SpriteEntry {
@@ -356,8 +357,12 @@ impl GuiAtlas {
         resources: &dyn Resources,
         fonts: &[&crate::gui::font::Font],
     ) -> Option<(Self, DecodedImage)> {
-        let (mut stitcher, images, blurred) = collect_images(resources, fonts)?;
-        stitcher.stitch().ok()?;
+        // The atlas grows with the pictures (a high-resolution pack needs a larger one).
+        let (stitcher, images, blurred) = [4096, 8192, 16384].into_iter().find_map(|side| {
+            let (mut stitcher, images, blurred) = collect_images(resources, fonts, side)?;
+            stitcher.stitch().ok()?;
+            Some((stitcher, images, blurred))
+        })?;
         let width = stitcher.width().max(1) as u32;
         let height = stitcher.height().max(1) as u32;
         let mut atlas = DecodedImage {

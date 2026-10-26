@@ -13,6 +13,9 @@ use crate::texture::atlas::{AtlasSprite, SpriteEntry, Stitcher};
 /// Where a texture sits in the packed image: `u0, v0, u1, v1`.
 pub type TextureRect = [f32; 4];
 
+/// The sides the atlas may grow to, tried in turn.
+const MAX_SIDES: [i32; 3] = [4096, 8192, 16384];
+
 /// The packed textures and where each went.
 #[derive(Debug, Clone)]
 pub struct EntityTextures {
@@ -23,9 +26,17 @@ pub struct EntityTextures {
 impl EntityTextures {
     /// Pack the textures, each under its name (a path under `textures/`).
     pub fn build(textures: Vec<(String, DecodedImage)>) -> Option<Self> {
-        let mut stitcher = Stitcher::new(4096, 4096, 0, 0);
+        // The atlas grows with the textures (a high-resolution pack needs a larger one) up to
+        // what the devices the renderer targets all take.
+        MAX_SIDES
+            .iter()
+            .find_map(|side| Self::build_within(&textures, *side))
+    }
+
+    fn build_within(textures: &[(String, DecodedImage)], side: i32) -> Option<Self> {
+        let mut stitcher = Stitcher::new(side, side, 0, 0);
         let mut by_key: HashMap<String, (&str, &DecodedImage)> = HashMap::new();
-        for (name, image) in &textures {
+        for (name, image) in textures {
             let key = format!("minecraft:{name}");
             stitcher.register_sprite(SpriteEntry {
                 width: image.width as i32,
