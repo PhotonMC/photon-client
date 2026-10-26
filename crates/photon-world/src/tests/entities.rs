@@ -3,6 +3,7 @@ mod block_collision;
 mod boats;
 mod dimension_change;
 mod dimensions;
+mod eating;
 mod entity_collision;
 mod flags;
 mod living_flags;

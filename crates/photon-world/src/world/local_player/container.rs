@@ -346,7 +346,7 @@ fn use_effects(stack: Option<&ClientItemStackState>) -> UseEffects {
 
 /// `ItemStack.get(CONSUMABLE)`: the stack's own component, else the item's. A sound the patch
 /// gives inline (not by registry id) is not carried.
-fn consume_cue(stack: Option<&ClientItemStackState>) -> Option<ConsumeCue> {
+pub(in crate::world) fn consume_cue(stack: Option<&ClientItemStackState>) -> Option<ConsumeCue> {
     let stack = stack?;
     match stack.patched(crate::item_components::ids::CONSUMABLE) {
         Some(Some(value)) => patched_consume_cue(&value),
