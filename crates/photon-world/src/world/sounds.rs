@@ -1,3 +1,4 @@
+use super::campfire::CampfireSmoke;
 use crate::*;
 use photon_core::ids::BlockStateId;
 
@@ -5,19 +6,6 @@ impl ClientWorld {
     /// A sound the world makes at a place (`Level.playLocalSound`), for the sound engine to play.
     pub fn push_sound(&mut self, sound: local_player::LocalSound) {
         self.sounds.0.push(sound);
-    }
-
-    /// `CampfireBlock.dowse`: the smoke of a campfire a shovel puts out, for the particle engine.
-    pub fn push_campfire_dowse(&mut self, pos: (i32, i32, i32), signal: bool) {
-        self.level_events
-            .0
-            .push(LevelEvent::CampfireTick(CampfireSmoke {
-                pos,
-                signal,
-                rotation: 0,
-                cooking: [false; 4],
-                dowsed: true,
-            }));
     }
 
     /// The pitch of an igniter's sound on a creeper, `random.nextFloat() * 0.4F + 0.8F`.
@@ -326,21 +314,6 @@ impl PartialEq for LevelEventQueue {
 
 impl Eq for LevelEventQueue {}
 
-/// What a lit campfire's tick asks of the particle engine (`CampfireBlockEntity.particleTick`).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CampfireSmoke {
-    pub pos: (i32, i32, i32),
-    /// `CampfireBlock.SIGNAL_FIRE`: the tall, dark smoke.
-    pub signal: bool,
-    /// `Direction.get2DDataValue` of its facing.
-    pub rotation: i32,
-    /// Which of its four slots hold food.
-    pub cooking: [bool; 4],
-    /// A shovel put it out (`CampfireBlock.dowse` on a client): twenty puffs, each with a wisp,
-    /// instead of a tick's smoke.
-    pub dowsed: bool,
-}
-
 /// What the level plays when the particle engine takes it, in the order it came.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LevelEvent {
@@ -376,10 +349,10 @@ pub enum LevelEvent {
     VaultTick { pos: (i32, i32, i32) },
     /// A spawner's tick with a player near (`BaseSpawner.clientTick`): a puff of smoke and flame.
     SpawnerTick { pos: (i32, i32, i32) },
-    /// A lit campfire's tick (`CampfireBlockEntity.particleTick`): its smoke, and the smoke of
-    /// the food on it. `rotation` is `Direction.get2DDataValue` of its facing, `cooking` which
-    /// of its four slots hold food.
+    /// A lit campfire's tick (`CampfireBlockEntity.particleTick`).
     CampfireTick(CampfireSmoke),
+    /// A lit campfire put out (`CampfireBlock.dowse` on a client).
+    CampfireDowse { pos: (i32, i32, i32), signal: bool },
     /// A trial spawner's tick (`TrialSpawner.tickClient`), less its spin: the particles of its
     /// state and its ambient sound.
     TrialSpawnerTick { pos: (i32, i32, i32) },

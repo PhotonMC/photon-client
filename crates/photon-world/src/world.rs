@@ -41,6 +41,7 @@ mod rebind;
 mod recipes;
 mod sounds;
 mod sulfur;
-pub use sounds::{CampfireSmoke, LevelEvent, LevelEventQueue, block_sound_of};
+pub use campfire::CampfireSmoke;
+pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};
 pub(crate) use sulfur::{SulfurState, has_sulfur_ticker};
 mod weather;

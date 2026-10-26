@@ -254,18 +254,13 @@ impl ParticleEngine {
             signal,
             rotation,
             cooking,
-            dowsed,
         } = smoke;
-        if dowsed {
-            self.campfire_dowse(pos, signal, context);
-            return;
-        }
         let (bx, by, bz) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
         if context.level_random.next_float() < 0.11 {
             // The loop's bound is drawn again before each pass.
             let mut made = 0;
             while made < context.level_random.next_int_bound(2).unwrap_or(0) + 2 {
-                self.campfire_puff(pos, (signal, false), context);
+                self.campfire_puff(pos, signal, context);
                 made += 1;
             }
         }
@@ -288,11 +283,11 @@ impl ParticleEngine {
     }
 
     /// `CampfireBlock.makeParticles`: a puff of the campfire's tall smoke within a third of its
-    /// middle, and, when `smoking`, a wisp of ordinary smoke within a quarter.
+    /// middle.
     fn campfire_puff<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
-        (signal, smoking): (bool, bool),
+        signal: bool,
         context: &mut LevelEventContext<'_, F>,
     ) {
         let (bx, by, bz) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
@@ -308,27 +303,34 @@ impl ParticleEngine {
         let z =
             bz + 0.5 + random.next_double() / 3.0 * if random.next_boolean() { 1.0 } else { -1.0 };
         self.level_add_always_visible(context, smoke, (x, y, z), (0.0, 0.07, 0.0));
-        if smoking {
-            let random = &mut *context.level_random;
-            let x = bx
-                + 0.5
-                + random.next_double() / 4.0 * if random.next_boolean() { 1.0 } else { -1.0 };
-            let z = bz
-                + 0.5
-                + random.next_double() / 4.0 * if random.next_boolean() { 1.0 } else { -1.0 };
-            self.level_add(context, "smoke", (x, by + 0.4, z), (0.0, 0.005, 0.0));
-        }
+    }
+
+    /// `CampfireBlock.makeParticles` when `smoking`: a wisp of ordinary smoke within a quarter of
+    /// the campfire's middle, low among the logs.
+    fn campfire_wisp<F: FnMut() -> RandomSource>(
+        &mut self,
+        pos: (i32, i32, i32),
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let (bx, by, bz) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        let random = &mut *context.level_random;
+        let x =
+            bx + 0.5 + random.next_double() / 4.0 * if random.next_boolean() { 1.0 } else { -1.0 };
+        let z =
+            bz + 0.5 + random.next_double() / 4.0 * if random.next_boolean() { 1.0 } else { -1.0 };
+        self.level_add(context, "smoke", (x, by + 0.4, z), (0.0, 0.005, 0.0));
     }
 
     /// `CampfireBlock.dowse` on a client: twenty puffs, each with its wisp.
-    fn campfire_dowse<F: FnMut() -> RandomSource>(
+    pub(super) fn campfire_dowse<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
         signal: bool,
         context: &mut LevelEventContext<'_, F>,
     ) {
         for _ in 0..20 {
-            self.campfire_puff(pos, (signal, true), context);
+            self.campfire_puff(pos, signal, context);
+            self.campfire_wisp(pos, context);
         }
     }
 
