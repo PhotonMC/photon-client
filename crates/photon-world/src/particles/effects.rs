@@ -114,7 +114,7 @@ pub fn sprint_particle(
 pub fn area_effect_cloud_particles(
     random: &mut RandomSource,
     (x, y, z): (f64, f64, f64),
-    (radius, waiting, particle): (f32, bool, EffectParticle),
+    (radius, waiting, (particle, data)): (f32, bool, (i32, super::ParticleData)),
 ) -> Vec<LevelParticles> {
     if waiting && random.next_boolean() {
         return Vec::new();
@@ -127,10 +127,10 @@ pub fn area_effect_cloud_particles(
             radius,
         )
     };
-    let swirl = EffectParticle {
-        type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
-        color: Some(u32::MAX),
-    };
+    let swirl = (
+        crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+        super::ParticleData::Color(u32::MAX),
+    );
     let mut specks = Vec::new();
     for _ in 0..count {
         let angle = random.next_float() * (std::f64::consts::PI * 2.0) as f32;
@@ -140,26 +140,26 @@ pub fn area_effect_cloud_particles(
             y,
             z + f64::from(photon_core::math::mth_sin_f64(f64::from(angle)) * distance),
         );
-        let (shown, spread) = if particle.type_id == crate::ENTITY_EFFECT_PARTICLE_TYPE_ID {
+        let (shown, spread) = if particle == crate::ENTITY_EFFECT_PARTICLE_TYPE_ID {
             let shown = if waiting && random.next_boolean() {
                 swirl
             } else {
-                particle
+                (particle, data)
             };
             (shown, (0.0, 0.0, 0.0))
         } else if waiting {
-            (particle, (0.0, 0.0, 0.0))
+            ((particle, data), (0.0, 0.0, 0.0))
         } else {
             let drift = (
                 ((0.5 - random.next_double()) * 0.15) as f32,
                 0.01_f32,
                 ((0.5 - random.next_double()) * 0.15) as f32,
             );
-            (particle, drift)
+            ((particle, data), drift)
         };
         specks.push(LevelParticles {
-            type_id: shown.type_id,
-            data: shown.data(),
+            type_id: shown.0,
+            data: shown.1,
             override_limiter: false,
             always_show: true,
             at,
