@@ -16,7 +16,20 @@ pub struct Png<'a> {
     pub transparency: Option<&'a [u8]>,
     /// The filter type of each row; all `None` filters when empty.
     pub filters: &'a [u8],
+    /// Store the rows in Adam7 passes (whole-byte pixels only).
+    pub interlaced: bool,
 }
+
+/// The first column and row of each Adam7 pass, and the steps between them.
+const ADAM7: [((usize, usize), (usize, usize)); 7] = [
+    ((0, 0), (8, 8)),
+    ((4, 0), (8, 8)),
+    ((0, 4), (4, 8)),
+    ((2, 0), (4, 4)),
+    ((0, 2), (2, 4)),
+    ((1, 0), (2, 2)),
+    ((0, 1), (1, 2)),
+];
 
 fn chunk(kind: &[u8], payload: &[u8]) -> Vec<u8> {
     let mut crc = flate2::Crc::new();
@@ -68,7 +81,7 @@ impl Png<'_> {
         let height = self.rows.len() as u32;
         let mut header = self.width.to_be_bytes().to_vec();
         header.extend(height.to_be_bytes());
-        header.extend([self.bit_depth, self.colour_type, 0, 0, 0]);
+        header.extend([self.bit_depth, self.colour_type, 0, 0, u8::from(self.interlaced)]);
         let mut out = b"\x89PNG\r\n\x1a\n".to_vec();
         out.extend(chunk(b"IHDR", &header));
         if let Some(palette) = self.palette {
@@ -82,7 +95,44 @@ impl Png<'_> {
         out
     }
 
+    /// The filtered bytes of the image: one run of rows, or the rows of each Adam7 pass.
     fn filtered(&self) -> Vec<u8> {
+        if !self.interlaced {
+            return self.filtered_rows(self.rows);
+        }
+        let pixel = self.pixel_bytes();
+        let width = self.width as usize;
+        let mut raw = Vec::new();
+        for ((x0, y0), (dx, dy)) in ADAM7 {
+            let rows: Vec<Vec<u8>> = (y0..self.rows.len())
+                .step_by(dy)
+                .map(|y| {
+                    (x0..width)
+                        .step_by(dx)
+                        .flat_map(|x| self.rows[y][x * pixel..(x + 1) * pixel].to_vec())
+                        .collect::<Vec<u8>>()
+                })
+                .filter(|row| !row.is_empty())
+                .collect();
+            raw.extend(self.filtered_rows(&rows));
+        }
+        raw
+    }
+
+    fn channels(&self) -> usize {
+        match self.colour_type {
+            2 => 3,
+            4 => 2,
+            6 => 4,
+            _ => 1,
+        }
+    }
+
+    fn pixel_bytes(&self) -> usize {
+        (usize::from(self.bit_depth) * self.channels() / 8).max(1)
+    }
+
+    fn filtered_rows(&self, rows: &[Vec<u8>]) -> Vec<u8> {
         let channels = match self.colour_type {
             2 => 3,
             4 => 2,
@@ -92,8 +142,8 @@ impl Png<'_> {
         // Sample width in bytes for Sub/Average/Paeth; sub-byte depths use 1.
         let sample = (usize::from(self.bit_depth) * channels / 8).max(1);
         let mut raw = Vec::new();
-        let mut previous = vec![0; self.rows.first().map_or(0, Vec::len)];
-        for (index, row) in self.rows.iter().enumerate() {
+        let mut previous = vec![0; rows.first().map_or(0, Vec::len)];
+        for (index, row) in rows.iter().enumerate() {
             let kind = self.filters.get(index).copied().unwrap_or(0);
             raw.push(kind);
             raw.extend(filter(kind, row, &previous, sample));
@@ -111,6 +161,15 @@ fn compress(raw: &[u8]) -> Vec<u8> {
 
 /// An 8-bit RGBA PNG with unfiltered rows, as hex.
 pub fn rgba(width: u32, rows: &[Vec<u8>]) -> String {
-    let png = Png { width, colour_type: 6, bit_depth: 8, rows, palette: None, transparency: None, filters: &[] };
+    let png = Png {
+        width,
+        colour_type: 6,
+        bit_depth: 8,
+        rows,
+        palette: None,
+        transparency: None,
+        filters: &[],
+        interlaced: false,
+    };
     crate::bits::hex(&png.encode())
 }

@@ -24,6 +24,7 @@ struct Decode {
     paletted: bool,
     transparency: Option<&'static [u8]>,
     filters: &'static [u8],
+    interlaced: bool,
 }
 
 fn image(
@@ -33,10 +34,24 @@ fn image(
     rows: Vec<Vec<u8>>,
     filters: &'static [u8],
 ) -> Decode {
-    Decode { label, width, colour_type, bit_depth, rows, paletted: colour_type == 3, transparency: None, filters }
+    Decode {
+        label,
+        width,
+        colour_type,
+        bit_depth,
+        rows,
+        paletted: colour_type == 3,
+        transparency: None,
+        filters,
+        interlaced: false,
+    }
 }
 
 impl Decode {
+    fn interlaced(self) -> Self {
+        Self { interlaced: true, ..self }
+    }
+
     fn keyed(self, transparency: &'static [u8]) -> Self {
         Self { transparency: Some(transparency), ..self }
     }
@@ -91,9 +106,21 @@ fn keyed_rows() -> Vec<Decode> {
     ]
 }
 
+fn interlaced_rows() -> Vec<Decode> {
+    vec![
+        image("rgba8-interlaced", 11, RGBA8, rgba(11, 9), &[0, 1, 2, 3, 4]).interlaced(),
+        image("rgba8-interlaced-tiny", 3, RGBA8, rgba(3, 2), &[0, 4]).interlaced(),
+        image("rgb8-interlaced", 10, (2, 8), rgb(10, 7), SOME).interlaced(),
+        image("gray8-interlaced", 9, (0, 8), gray(9, 9), SOME).interlaced(),
+        image("indexed8-interlaced", 9, (3, 8), indexed(9, 6, 4), SOME).interlaced(),
+        image("rgba16-interlaced", 5, (6, 16), rgba16(5, 5), &[0, 1, 4]).interlaced(),
+        image("single-pixel-interlaced", 1, RGBA8, rgba(1, 1), &[0]).interlaced(),
+    ]
+}
+
 pub fn png_decode() -> Value {
     let palette = samples::palette();
-    let rows: Vec<Value> = [direct_rows(), packed_rows(), keyed_rows()]
+    let rows: Vec<Value> = [direct_rows(), packed_rows(), keyed_rows(), interlaced_rows()]
         .into_iter()
         .flatten()
         .map(|image| {
@@ -105,6 +132,7 @@ pub fn png_decode() -> Value {
                 palette: image.paletted.then_some(palette.as_slice()),
                 transparency: image.transparency,
                 filters: image.filters,
+                interlaced: image.interlaced,
             };
             json!({"label": image.label, "png": hex(&png.encode())})
         })

@@ -381,7 +381,6 @@
 "crates/photon-render/src/texture/mipmap.rs::generate_mip_levels_with" = 13
 "crates/photon-render/src/texture/mipmap.rs::solidify" = 13
 "crates/photon-render/src/texture/png.rs::Header::parse" = 11
-"crates/photon-render/src/texture/png.rs::decode_rgba" = 14
 "crates/photon-render/src/texture/png.rs::unfilter" = 13
 "crates/photon-render/src/visibility.rs::VisGraph::flood_fill" = 13
 "crates/photon-render/src/visibility.rs::VisGraph::resolve" = 13
@@ -826,7 +825,6 @@
 "crates/photon-render/src/sky/weather.rs::build" = 125
 "crates/photon-render/src/texture/atlas.rs::Region::add" = 75
 "crates/photon-render/src/texture/mipmap.rs::generate_mip_levels_with" = 81
-"crates/photon-render/src/texture/png.rs::decode_rgba" = 73
 "crates/photon-render/src/vulkan/device/create.rs::VulkanBackend::create" = 136
 "crates/photon-render/src/vulkan/device/instance.rs::create_instance" = 64
 "crates/photon-render/src/vulkan/device/logical.rs::create_logical_device" = 69

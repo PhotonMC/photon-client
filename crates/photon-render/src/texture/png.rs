@@ -39,8 +39,32 @@ pub struct DecodedImage {
 
 const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
+/// What a PNG's chunks hold.
+struct Parts {
+    header: Header,
+    palette: Vec<[u8; 3]>,
+    transparency: Vec<u8>,
+    compressed: Vec<u8>,
+}
+
 /// Decode a PNG the way the reference's loader does.
 pub fn decode_rgba(bytes: &[u8]) -> Result<DecodedImage, PngError> {
+    let parts = read_parts(bytes)?;
+    let header = parts.header;
+    let mut raw = Vec::new();
+    flate2::read::ZlibDecoder::new(parts.compressed.as_slice())
+        .read_to_end(&mut raw)
+        .map_err(|_| PngError::Inflate)?;
+    let rgba = decode_passes(&raw, &parts)?;
+    Ok(DecodedImage {
+        width: header.width,
+        height: header.height,
+        rgba,
+    })
+}
+
+/// The header, palette, transparency and compressed data of the chunks.
+fn read_parts(bytes: &[u8]) -> Result<Parts, PngError> {
     if bytes.len() < SIGNATURE.len() || bytes[..SIGNATURE.len()] != SIGNATURE {
         return Err(PngError::Signature);
     }
@@ -49,77 +73,100 @@ pub fn decode_rgba(bytes: &[u8]) -> Result<DecodedImage, PngError> {
     let mut palette: Vec<[u8; 3]> = Vec::new();
     let mut transparency: Vec<u8> = Vec::new();
     let mut compressed: Vec<u8> = Vec::new();
-
     while cursor + 8 <= bytes.len() {
-        let length = u32::from_be_bytes(
-            bytes[cursor..cursor + 4]
-                .try_into()
-                .map_err(|_| PngError::Truncated)?,
-        ) as usize;
-        let kind: [u8; 4] = bytes[cursor + 4..cursor + 8]
-            .try_into()
-            .map_err(|_| PngError::Truncated)?;
-        let body_start = cursor + 8;
-        let body_end = body_start.checked_add(length).ok_or(PngError::Truncated)?;
-        if body_end + 4 > bytes.len() {
-            return Err(PngError::Truncated);
-        }
-        let body = &bytes[body_start..body_end];
-        let stored = u32::from_be_bytes(
-            bytes[body_end..body_end + 4]
-                .try_into()
-                .map_err(|_| PngError::Truncated)?,
-        );
-        if crc32(&kind, body) != stored {
-            return Err(PngError::Checksum);
-        }
-
+        let (kind, body, next) = read_chunk(bytes, cursor)?;
         match &kind {
             b"IHDR" => header = Some(Header::parse(body)?),
-            b"PLTE" => {
-                if !body.len().is_multiple_of(3) {
-                    return Err(PngError::Truncated);
-                }
-                palette = body.as_chunks::<3>().0.to_vec();
-            }
+            b"PLTE" => palette = read_palette(body)?,
             b"tRNS" => transparency = body.to_vec(),
             b"IDAT" => compressed.extend_from_slice(body),
             b"IEND" => break,
             _ => {}
         }
-        cursor = body_end + 4;
+        cursor = next;
     }
 
-    let header = header.ok_or(PngError::Truncated)?;
-    let mut raw = Vec::new();
-    flate2::read::ZlibDecoder::new(compressed.as_slice())
-        .read_to_end(&mut raw)
-        .map_err(|_| PngError::Inflate)?;
+    Ok(Parts {
+        header: header.ok_or(PngError::Truncated)?,
+        palette,
+        transparency,
+        compressed,
+    })
+}
 
+/// The chunk at `cursor`: its type, its body (its checksum verified) and where the next starts.
+fn read_chunk(bytes: &[u8], cursor: usize) -> Result<([u8; 4], &[u8], usize), PngError> {
+    let word = |at: usize| -> Result<u32, PngError> {
+        let slice = bytes.get(at..at + 4).ok_or(PngError::Truncated)?;
+        Ok(u32::from_be_bytes(
+            slice.try_into().map_err(|_| PngError::Truncated)?,
+        ))
+    };
+    let length = word(cursor)? as usize;
+    let kind: [u8; 4] = bytes[cursor + 4..cursor + 8]
+        .try_into()
+        .map_err(|_| PngError::Truncated)?;
+    let body_start = cursor + 8;
+    let body_end = body_start.checked_add(length).ok_or(PngError::Truncated)?;
+    if body_end + 4 > bytes.len() {
+        return Err(PngError::Truncated);
+    }
+    let body = &bytes[body_start..body_end];
+    if crc32(&kind, body) != word(body_end)? {
+        return Err(PngError::Checksum);
+    }
+    Ok((kind, body, body_end + 4))
+}
+
+/// The colours of a `PLTE` chunk.
+fn read_palette(body: &[u8]) -> Result<Vec<[u8; 3]>, PngError> {
+    if !body.len().is_multiple_of(3) {
+        return Err(PngError::Truncated);
+    }
+    Ok(body.as_chunks::<3>().0.to_vec())
+}
+
+/// The pixels of the inflated rows: one run of rows, or the passes of Adam7, placed in the image.
+fn decode_passes(raw: &[u8], parts: &Parts) -> Result<Vec<u8>, PngError> {
+    let header = parts.header;
     let samples = header.samples_per_pixel();
     let bits_per_pixel = samples * usize::from(header.bit_depth);
-    // Rows are padded to a byte boundary, and the filter works on whole bytes,
-    // so a sub-byte pixel still borrows from one byte back.
-    let stride = (bits_per_pixel * header.width as usize).div_ceil(8);
     let bytes_per_pixel = bits_per_pixel.div_ceil(8);
-    let unfiltered = unfilter(&raw, stride, bytes_per_pixel, header.height as usize)?;
-
     let bytes_per_sample = usize::from(header.bit_depth).div_ceil(8);
-    let expanded_stride = samples * bytes_per_sample * header.width as usize;
-    let mut rgba = Vec::with_capacity(header.width as usize * header.height as usize * 4);
-    let mut expanded = vec![0_u8; expanded_stride];
-    for row in unfiltered.chunks_exact(stride) {
-        header.expand_row(row, &mut expanded);
-        for pixel in expanded.chunks_exact(samples * bytes_per_sample) {
-            rgba.extend_from_slice(&header.to_rgba(pixel, &palette, &transparency)?);
+    let (width, height) = (header.width as usize, header.height as usize);
+    let mut rgba = vec![0_u8; width * height * 4];
+    let mut consumed = 0;
+    for pass in header.passes() {
+        let (pass_width, pass_height) = pass.size(width, height);
+        if pass_width == 0 || pass_height == 0 {
+            continue;
+        }
+        // Rows are padded to a byte boundary, and the filter works on whole bytes,
+        // so a sub-byte pixel still borrows from one byte back.
+        let stride = (bits_per_pixel * pass_width).div_ceil(8);
+        let mut expanded = vec![0_u8; samples * bytes_per_sample * pass_width];
+        let unfiltered = unfilter(
+            &raw[consumed.min(raw.len())..],
+            stride,
+            bytes_per_pixel,
+            pass_height,
+        )?;
+        consumed += pass_height * (stride + 1);
+        for (row, packed) in unfiltered.chunks_exact(stride).enumerate() {
+            header.expand_row(packed, &mut expanded);
+            let pixels = expanded.chunks_exact(samples * bytes_per_sample);
+            for (column, pixel) in pixels.take(pass_width).enumerate() {
+                let (x, y) = pass.place(column, row);
+                let at = (y * width + x) * 4;
+                rgba[at..at + 4].copy_from_slice(&header.to_rgba(
+                    pixel,
+                    &parts.palette,
+                    &parts.transparency,
+                )?);
+            }
         }
     }
-
-    Ok(DecodedImage {
-        width: header.width,
-        height: header.height,
-        rgba,
-    })
+    Ok(rgba)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -128,9 +175,82 @@ struct Header {
     height: u32,
     bit_depth: u8,
     colour_type: u8,
+    interlaced: bool,
+}
+
+/// One pass of the image: the first column and row it holds and the steps between them.
+#[derive(Debug, Clone, Copy)]
+struct Pass {
+    start: (usize, usize),
+    step: (usize, usize),
+}
+
+/// The seven passes of Adam7 interlacing.
+const ADAM7: [Pass; 7] = [
+    Pass {
+        start: (0, 0),
+        step: (8, 8),
+    },
+    Pass {
+        start: (4, 0),
+        step: (8, 8),
+    },
+    Pass {
+        start: (0, 4),
+        step: (4, 8),
+    },
+    Pass {
+        start: (2, 0),
+        step: (4, 4),
+    },
+    Pass {
+        start: (0, 2),
+        step: (2, 4),
+    },
+    Pass {
+        start: (1, 0),
+        step: (2, 2),
+    },
+    Pass {
+        start: (0, 1),
+        step: (1, 2),
+    },
+];
+
+impl Pass {
+    /// The columns and rows the pass holds of an image of this size.
+    fn size(self, width: usize, height: usize) -> (usize, usize) {
+        let count = |length: usize, start: usize, step: usize| {
+            (length + step - 1 - start.min(length + step - 1)) / step
+        };
+        (
+            count(width, self.start.0, self.step.0),
+            count(height, self.start.1, self.step.1),
+        )
+    }
+
+    /// Where a pixel of the pass is in the image.
+    fn place(self, column: usize, row: usize) -> (usize, usize) {
+        (
+            self.start.0 + column * self.step.0,
+            self.start.1 + row * self.step.1,
+        )
+    }
 }
 
 impl Header {
+    /// The passes the image is stored in: one over everything, or the seven of Adam7.
+    fn passes(self) -> Vec<Pass> {
+        if self.interlaced {
+            ADAM7.to_vec()
+        } else {
+            vec![Pass {
+                start: (0, 0),
+                step: (1, 1),
+            }]
+        }
+    }
+
     fn parse(body: &[u8]) -> Result<Self, PngError> {
         if body.len() < 13 {
             return Err(PngError::Truncated);
@@ -145,7 +265,7 @@ impl Header {
         if body[11] != 0 {
             return Err(PngError::Unsupported("filter method"));
         }
-        if body[12] != 0 {
+        if body[12] > 1 {
             return Err(PngError::Unsupported("interlacing"));
         }
         if !matches!(bit_depth, 1 | 2 | 4 | 8 | 16) {
@@ -166,6 +286,7 @@ impl Header {
             height,
             bit_depth,
             colour_type,
+            interlaced: body[12] == 1,
         })
     }
 
