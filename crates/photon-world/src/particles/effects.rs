@@ -1,5 +1,6 @@
 //! The particles a living entity's effects give off (`LivingEntity.tickEffects` on a client).
 
+use photon_core::binary::BlockPos;
 use photon_core::math::Vec3;
 use photon_core::random::RandomSource;
 
@@ -74,4 +75,35 @@ pub fn teleport_particles(
             }
         })
         .collect()
+}
+
+/// `Entity.spawnSprintParticle`: a flake of the block the entity stands on, at a random place
+/// within its width (kept over that block when it stands on an edge, in `on`'s column), at its
+/// feet and a tenth up, thrown back against its motion and up.
+pub fn sprint_particle(
+    random: &mut RandomSource,
+    (state, on, here): (photon_core::ids::BlockStateId, BlockPos, BlockPos),
+    (position, width, motion): (Vec3, f32, Vec3),
+) -> Option<LevelParticles> {
+    let type_id = photon_data::particle_type::id("block")?;
+    let width = f64::from(width);
+    let mut x = position.x + (random.next_double() - 0.5) * width;
+    let mut z = position.z + (random.next_double() - 0.5) * width;
+    if here.x != on.x {
+        x = x.clamp(f64::from(on.x), f64::from(on.x) + 1.0);
+    }
+    if here.z != on.z {
+        z = z.clamp(f64::from(on.z), f64::from(on.z) + 1.0);
+    }
+    Some(LevelParticles {
+        type_id,
+        data: super::ParticleData::Block(state),
+        override_limiter: false,
+        always_show: false,
+        at: (x, position.y + 0.1, z),
+        // Count 0 reads the spread as the velocity.
+        spread: ((motion.x * -4.0) as f32, 1.5, (motion.z * -4.0) as f32),
+        max_speed: 1.0,
+        count: 0,
+    })
 }

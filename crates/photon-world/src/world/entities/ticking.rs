@@ -32,6 +32,7 @@ impl ClientWorld {
             entity.motion.y = JavaF64::new(0.0_f64);
             entity.motion.z = JavaF64::new(0.0_f64);
         }
+        self.throw_sprint_particle(entity_id);
         self.tick_entity_once(entity_id);
         self.throw_effect_particles(entity_id);
         self.throw_eating_particles(entity_id);
@@ -292,5 +293,59 @@ impl ClientWorld {
             (from, Vec3::new(to.0, to.1, to.2)),
             size,
         ));
+    }
+
+    /// `Entity.spawnSprintParticle` for a sprinting entity the server added, out of the fluids
+    /// and over a block that is drawn. (The reference ticks it before the entity moves.)
+    fn throw_sprint_particle(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.sprints_on_foot())
+        else {
+            return;
+        };
+        let (x, y, z) = entity.position();
+        let position = Vec3::new(x, y, z);
+        let dimensions = entity.dimensions();
+        let (m_x, m_y, m_z) = entity.motion();
+        let level = local_player::Level::new(self);
+        let Ok(found) = fluid::scan(
+            &level,
+            (
+                dimensions.make_bounding_box(position),
+                position,
+                dimensions.eye_height(),
+            ),
+            true,
+        ) else {
+            return;
+        };
+        // An entity the client does not move has no supporting block, so the floor under the
+        // feet's column decides.
+        let on = level.on_pos(None, position, 0.2);
+        let Some(state) = level.state_id(on) else {
+            return;
+        };
+        if found.water.height > 0.0
+            || found.lava.height > 0.0
+            || shadow::is_invisible_render_shape(block::state_or_air(state).block().name)
+        {
+            return;
+        }
+        let here = BlockPos::new(
+            position.x.floor() as i32,
+            position.y.floor() as i32,
+            position.z.floor() as i32,
+        );
+        let width = dimensions.width();
+        let motion = Vec3::new(m_x, m_y, m_z);
+        let (queue, random) = &mut self.effect_particles;
+        let flake = particles::sprint_particle(
+            random.source(),
+            (state, on, here),
+            (position, width, motion),
+        );
+        queue.extend(flake);
     }
 }
