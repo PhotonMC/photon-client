@@ -205,7 +205,10 @@ impl Play {
         }
         self.backend.set_gui_only(false);
         self.backend.set_panorama(None);
-        if self.controls.disconnected.is_none() && self.controls.screen.is_none() {
+        if self.controls.disconnected.is_none()
+            && self.controls.screen.is_none()
+            && self.controls.pack_prompt.is_none()
+        {
             self.controls.captured = true;
             self.surface.set_cursor_captured(true);
         }

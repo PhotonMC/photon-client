@@ -139,7 +139,7 @@ impl Play {
         if self.controls.disconnected.is_none() {
             self.end_backdrop();
         }
-        if self.controls.disconnected.is_none() {
+        if self.controls.disconnected.is_none() && self.controls.pack_prompt.is_none() {
             self.controls.captured = true;
             self.surface.set_cursor_captured(true);
         }
