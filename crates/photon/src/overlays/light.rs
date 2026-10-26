@@ -19,6 +19,7 @@ pub fn tick_hands(item_in_hand: &mut ItemInHand, session: &PlaySession, renderer
             .filter(|stack| stack.item_count() > 0)
     };
     let selected = session.status().selected_slot as i16;
+    item_in_hand.set_invisible(local.is_some_and(|state| state.is_invisible()));
     item_in_hand.tick(stack(36 + selected), stack(45), swap, false, &|item| {
         renderer.item_swap(item)
     });
@@ -59,7 +60,8 @@ pub fn hands(
         return HandVertices::default();
     }
     let (show_main, show_off) = super::hand_use::selection(player, (main_item, off_item));
-    let hand = if main_item.is_none() && show_main {
+    // `ItemInHandRenderer`: an invisible player's bare arm is not drawn.
+    let hand = if main_item.is_none() && show_main && !item_in_hand.invisible() {
         photon_render::entity::player_renderer::hand_vertices(model, &hand_view)
     } else {
         Vec::new()

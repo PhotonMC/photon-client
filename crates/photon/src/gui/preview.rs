@@ -31,10 +31,11 @@ fn player_preview(
         &mut crate::equipment::armor::Armor,
         &photon_render::entity::textures::EntityTextures,
     ),
-    (skin, worn, stacks): (
+    (skin, worn, stacks, invisible): (
         photon_render::entity::textures::TextureRect,
         crate::equipment::armor::Worn<'_>,
         Stacks<'_>,
+        bool,
     ),
     (area, size, offset_y, mouse): PreviewBox,
     held: HeldTools<'_>,
@@ -53,11 +54,11 @@ fn player_preview(
         attack_time: player.attack_anim(1.0),
         ..Default::default()
     };
-    let mut vertices = photon_render::entity::player_renderer::gui_player_vertices(
+    let mut vertices = body_vertices(
         player_model,
         &state,
         (area, size, offset_y, mouse),
-        skin,
+        (skin, invisible),
     );
     // What it wears, as the world draws the player's own model: the pose the box gave the model.
     let scene = photon_render::entity::player_renderer::gui_player(
@@ -83,6 +84,20 @@ fn player_preview(
         body: vertices,
         items: photon_render::entity::gui_view::gui_held_vertices(&in_hands, &scene.view),
     }
+}
+
+/// The box's player body; an invisible player keeps what it wears and holds, not its body
+/// (`LivingEntityRenderer.isBodyVisible`).
+fn body_vertices(
+    model: &mut PlayerModel,
+    state: &PlayerRenderState,
+    place: (Area, f32, f32, Mouse),
+    (skin, invisible): (photon_render::entity::textures::TextureRect, bool),
+) -> Vec<photon_render::gui::GuiItemVertex> {
+    if invisible {
+        return Vec::new();
+    }
+    photon_render::entity::player_renderer::gui_player_vertices(model, state, place, skin)
 }
 
 /// What the box's player holds in its hands and wears on its head, in the box's pose and without
@@ -161,11 +176,15 @@ pub(super) fn drawer<'a>(
     ),
 ) -> impl FnMut(Area, f32, f32, Mouse) -> GuiFigure + 'a {
     let (worn, stacks) = (worn(session), hand_stacks(session));
+    let invisible = session
+        .world()
+        .local_player()
+        .is_some_and(|state| state.is_invisible());
     move |area, size, offset_y, mouse| {
         player_preview(
             player,
             (&mut *player_model, &mut **armor.borrow_mut(), textures),
-            (skin, worn, stacks),
+            (skin, worn, stacks, invisible),
             (area, size, offset_y, mouse),
             (&mut *layers, tints),
         )

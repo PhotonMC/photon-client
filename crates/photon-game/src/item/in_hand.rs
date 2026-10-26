@@ -18,6 +18,7 @@ struct Hand {
 pub struct ItemInHand {
     main: Hand,
     off: Hand,
+    invisible: bool,
 }
 
 /// A client item's swap properties, by item id: whether a new stack dips
@@ -49,6 +50,15 @@ fn same_object(shown: Option<&ClientItemStackState>, next: Option<&ClientItemSta
 }
 
 impl ItemInHand {
+    /// Whether the player is invisible: its bare arm is then not drawn.
+    pub fn set_invisible(&mut self, invisible: bool) {
+        self.invisible = invisible;
+    }
+
+    pub fn invisible(&self) -> bool {
+        self.invisible
+    }
+
     /// `ItemInHandRenderer.tick`, with the player's stacks now, its item
     /// swap scale and whether its hands are busy.
     pub fn tick(
