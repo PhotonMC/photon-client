@@ -60,14 +60,29 @@ pub(super) fn shovel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
         play_at_block(ctx, "minecraft:item.shovel.flatten", (x, y, z));
         return UseResult::Success { swing: true };
     }
-    let campfire = matches!(name, "minecraft:campfire" | "minecraft:soul_campfire");
-    let property = |name| photon_world::block::rules::property(state, name);
-    if campfire && property("lit") == Some("true") {
-        ctx.world
-            .push_campfire_dowse((x, y, z), property("signal_fire") == Some("true"));
+    if dowse_lit_campfire(ctx, (x, y, z), state) {
         return UseResult::Success { swing: true };
     }
     UseResult::Pass
+}
+
+/// `CampfireBlock.dowse` on a client, for the shovel and the water of a bucket (`placeLiquid`):
+/// a lit campfire gives off twenty puffs of smoke. Whether `state` was one.
+pub(super) fn dowse_lit_campfire(
+    ctx: &mut Context<'_>,
+    pos: (i32, i32, i32),
+    state: photon_core::ids::BlockStateId,
+) -> bool {
+    let campfire = matches!(
+        block(state).name,
+        "minecraft:campfire" | "minecraft:soul_campfire"
+    );
+    let flag = |key| photon_world::block::rules::property(state, key) == Some("true");
+    let lit = campfire && flag("lit");
+    if lit {
+        ctx.world.push_campfire_dowse(pos, flag("signal_fire"));
+    }
+    lit
 }
 
 /// `AxeItem.STRIPPABLES`: the stripped block's name for a log, wood, stem, hyphae or bamboo block.
@@ -391,13 +406,12 @@ mod tests {
         assert_eq!(tillable("minecraft:stone"), None);
     }
 
-    /// The click that puts a lit campfire out with a shovel, played through the game mode: it
-    /// counts as done and the world is asked for the smoke of the dousing.
-    #[test]
-    fn a_shovel_on_a_lit_campfire_asks_for_its_smoke() {
+    /// Clicks a lit campfire at (1, 1, 1) with an item, from three blocks off and looking at it
+    /// from above, and returns what the world is asked for.
+    fn click_on_lit_campfire(item: &str) -> Vec<photon_world::LevelEvent> {
         use crate::game_mode::{Aim, Context, GameMode, Keys, Miner};
         use photon_world::{
-            ClientPlayerGameMode, ClientWorld, DimensionBounds, LevelEvent, SectionInput,
+            ClientPlayerGameMode, ClientWorld, DimensionBounds, SectionInput,
             local_player::LocalPlayer,
         };
 
@@ -417,17 +431,17 @@ mod tests {
         ));
         let mut player = LocalPlayer::new(
             photon_core::ids::EntityId(1),
-            photon_core::math::Vec3::new(1.5, 2.0, 3.5),
+            photon_core::math::Vec3::new(1.5, 1.0, 3.5),
             180.0,
-            0.0,
+            35.0,
             ClientPlayerGameMode::Survival,
             true,
         );
         world.set_local_player_id(player.entity_id());
-        let shovel = crate::item::id_of("minecraft:iron_shovel").expect("a shovel");
-        let stack = photon_world::ClientItemStackState::new(1, shovel);
+        let held = crate::item::id_of(item).expect("an item");
+        let stack = photon_world::ClientItemStackState::new(1, held);
         world.apply_local_player_container_slot(0, 0, 36, Some(&stack));
-        player.set_main_hand_item(shovel);
+        player.set_main_hand_item(held);
 
         let mut cooldowns = crate::item::cooldowns::ItemCooldowns::default();
         let mut game_mode = GameMode::default();
@@ -456,12 +470,29 @@ mod tests {
             inside: false,
         };
         game_mode.keys_tick(&mut ctx, keys, aim);
-        let events = world.take_level_events();
-        assert!(
-            events
-                .iter()
-                .any(|event| matches!(event, LevelEvent::CampfireTick(smoke) if smoke.dowsed)),
-            "{events:?}"
-        );
+        world.take_level_events()
+    }
+
+    fn dowsed(events: &[photon_world::LevelEvent]) -> bool {
+        events.iter().any(
+            |event| matches!(event, photon_world::LevelEvent::CampfireTick(smoke) if smoke.dowsed),
+        )
+    }
+
+    /// The click that puts a lit campfire out with a shovel, played through the game mode: it
+    /// counts as done and the world is asked for the smoke of the dousing.
+    #[test]
+    fn a_shovel_on_a_lit_campfire_asks_for_its_smoke() {
+        let events = click_on_lit_campfire("minecraft:iron_shovel");
+        assert!(dowsed(&events), "{events:?}");
+    }
+
+    /// `CampfireBlock.placeLiquid` dowses on the client too: a bucket of water on a lit campfire
+    /// asks for the smoke, and a bucket of lava or a stick does not.
+    #[test]
+    fn a_water_bucket_on_a_lit_campfire_asks_for_its_smoke() {
+        let events = click_on_lit_campfire("minecraft:water_bucket");
+        assert!(dowsed(&events), "{events:?}");
+        assert!(!dowsed(&click_on_lit_campfire("minecraft:stick")));
     }
 }

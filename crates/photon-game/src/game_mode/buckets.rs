@@ -147,6 +147,7 @@ fn empty_contents(
     // The client sets nothing in most containers; the server's waterlogging arrives.
     if container.is_some() {
         if let Some((wet, flags)) = rules::client_waterlogging(state) {
+            super::tools::dowse_lit_campfire(ctx, pos, state);
             let position = ctx.player.position();
             ctx.world
                 .set_block_with_updates(pos, wet, flags, 512, position);
