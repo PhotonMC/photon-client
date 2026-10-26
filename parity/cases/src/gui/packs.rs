@@ -16,13 +16,16 @@ fn with(mut pack: Value, field: &str, value: Value) -> Value {
     pack
 }
 
-/// The game's own pack as the reference lists it: required, at the bottom, not fixed.
+/// The game's own pack as the reference lists it: required, at the bottom, not fixed, named by
+/// the game's texts and from the built-in source.
 fn vanilla() -> Value {
-    with(
-        with(pack("vanilla", "Default", "The default look and feel of Minecraft", true), "required", json!(true)),
-        "top",
-        json!(false),
-    )
+    let mut vanilla = pack("vanilla", "", "", true);
+    vanilla["title_key"] = json!("resourcePack.vanilla.name");
+    vanilla["description_key"] = json!("resourcePack.vanilla.description");
+    vanilla["builtin"] = json!(true);
+    vanilla["required"] = json!(true);
+    vanilla["top"] = json!(false);
+    vanilla
 }
 
 fn few() -> Vec<Value> {
@@ -134,6 +137,24 @@ pub fn pack_selection_screen() -> Value {
 /// The rows with lists that scroll, three packs in use, and the arrows that move them.
 fn scrolling_rows() -> Vec<Value> {
     vec![
+        row("click-empty-area", few(), vec![click(100, 200)]),
+        row("click-empty-area-after-text", few(), vec![click(60, 72), click(300, 200)]),
+        {
+            let mut hover = row(
+                "unknown-and-hover",
+                vec![
+                    vanilla(),
+                    with(
+                        pack("file/Faithful", "Faithful32.zip", "The go-to 32x resource pack.", false),
+                        "compatibility",
+                        json!("UNKNOWN"),
+                    ),
+                ],
+                vec![],
+            );
+            hover["mouse"] = json!([10, 76]);
+            hover
+        },
         row("scrolling", many(), vec![]),
         row("three-selected", three(), vec![]),
         {

@@ -24,7 +24,14 @@ fn int_at(value: &Value) -> i32 {
 /// One pack of the row, and whether the row has it selected.
 fn pack_entry(pack: &Value) -> Result<(PackEntry, bool), String> {
     let flag = |key: &str| pack[key].as_bool().unwrap_or(false);
-    let literal = json!(pack["description"].as_str().unwrap_or_default()).to_string();
+    let description = match pack["description_key"].as_str() {
+        Some(key) => json!({"translate": key}).to_string(),
+        None => json!(pack["description"].as_str().unwrap_or_default()).to_string(),
+    };
+    let title = match pack["title_key"].as_str() {
+        Some(key) => Title::Translatable(key.to_owned()),
+        None => Title::Literal(pack["title"].as_str().unwrap_or_default().to_owned()),
+    };
     let compatibility = match pack["compatibility"].as_str().unwrap_or("COMPATIBLE") {
         "TOO_OLD" => Compatibility::TooOld,
         "TOO_NEW" => Compatibility::TooNew,
@@ -33,10 +40,14 @@ fn pack_entry(pack: &Value) -> Result<(PackEntry, bool), String> {
     };
     let entry = PackEntry {
         id: pack["id"].as_str().ok_or("pack id")?.to_owned(),
-        title: Title::Literal(pack["title"].as_str().unwrap_or_default().to_owned()),
-        description: photon_core::json::parse(&literal).map_err(|_| "description")?,
+        title,
+        description: photon_core::json::parse(&description).map_err(|_| "description")?,
         compatibility,
-        source: PackSource::Default,
+        source: if flag("builtin") {
+            PackSource::BuiltIn
+        } else {
+            PackSource::Default
+        },
         config: SelectionConfig {
             required: flag("required"),
             fixed_position: flag("fixed"),

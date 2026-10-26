@@ -383,9 +383,16 @@ class GuiSettingsOracle extends GuiScreenOracle {
             var position = pack.has("top") && !pack.get("top").getAsBoolean()
                 ? net.minecraft.server.packs.repository.Pack.Position.BOTTOM
                 : net.minecraft.server.packs.repository.Pack.Position.TOP;
-            var location = new net.minecraft.server.packs.PackLocationInfo(id,
-                net.minecraft.network.chat.Component.literal(pack.get("title").getAsString()),
-                net.minecraft.server.packs.repository.PackSource.DEFAULT, java.util.Optional.empty());
+            var source = pack.has("builtin") && pack.get("builtin").getAsBoolean()
+                ? net.minecraft.server.packs.repository.PackSource.BUILT_IN
+                : net.minecraft.server.packs.repository.PackSource.DEFAULT;
+            var title = pack.has("title_key")
+                ? net.minecraft.network.chat.Component.translatable(pack.get("title_key").getAsString())
+                : net.minecraft.network.chat.Component.literal(pack.get("title").getAsString());
+            var description = pack.has("description_key")
+                ? net.minecraft.network.chat.Component.translatable(pack.get("description_key").getAsString())
+                : net.minecraft.network.chat.Component.literal(pack.get("description").getAsString());
+            var location = new net.minecraft.server.packs.PackLocationInfo(id, title, source, java.util.Optional.empty());
             var resources = new net.minecraft.server.packs.repository.Pack.ResourcesSupplier() {
                 public net.minecraft.server.packs.PackResources openPrimary(net.minecraft.server.packs.PackLocationInfo info) {
                     return noResources();
@@ -396,8 +403,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 }
             };
             var metadata = new net.minecraft.server.packs.repository.Pack.Metadata(
-                net.minecraft.network.chat.Component.literal(pack.get("description").getAsString()),
-                compatibility, net.minecraft.world.flag.FeatureFlagSet.of(), java.util.List.of());
+                description, compatibility, net.minecraft.world.flag.FeatureFlagSet.of(), java.util.List.of());
             list.add(new net.minecraft.server.packs.repository.Pack(location, resources, metadata,
                 new net.minecraft.server.packs.PackSelectionConfig(required, position, fixed)));
             if (pack.has("selected") && pack.get("selected").getAsBoolean()) {
