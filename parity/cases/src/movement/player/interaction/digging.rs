@@ -164,6 +164,33 @@ fn breaking_rows_2() -> Vec<Value> {
     ]
 }
 
+/// Starting to break a redstone ore lights it: only when breaking starts from no progress, and
+/// not in adventure mode, where the block action is restricted.
+fn ore_rows() -> Vec<Value> {
+    let ore = |name: &str, lit: &str| vec![put_with(0, 64, 2, name, &[("lit", lit)])];
+    let first_click = || hits(1).clicks(1).go();
+    let hold = |count: usize| hits(count).go();
+    let swing = || [first_click(), hold(3)].concat();
+    let stone_then_ore = || {
+        cat![
+            vec![place(&target(), "minecraft:stone")],
+            vec![put_with(1, 64, 2, "minecraft:redstone_ore", &[("lit", "false")])]
+        ]
+    };
+    vec![
+        breaking("ore-unlit", ore("minecraft:redstone_ore", "false"), swing()).row(),
+        breaking("ore-lit", ore("minecraft:redstone_ore", "true"), swing()).row(),
+        breaking("ore-deepslate", ore("minecraft:deepslate_redstone_ore", "false"), swing()).row(),
+        breaking("ore-adventure", ore("minecraft:redstone_ore", "false"), swing()).game_mode("adventure").row(),
+        breaking(
+            "ore-after-other-target",
+            stone_then_ore(),
+            [first_click(), hold(2), hits(3).aim(Some(second())).go()].concat(),
+        )
+        .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [breaking_rows_1(), breaking_rows_2()].concat()
+    [breaking_rows_1(), breaking_rows_2(), ore_rows()].concat()
 }

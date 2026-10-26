@@ -166,6 +166,7 @@ impl GameMode {
             self.destroyed.push((state, 0.0));
             self.predict(ctx, out, |game_mode, ctx, sequence| {
                 let not_air = !is_air(state);
+                attack_block(ctx, state, pos, game_mode.destroy_progress);
                 if not_air && ctx.miner.destroy_progress(ctx.world, ctx.player, state) >= 1.0 {
                     destroy_block(ctx, pos);
                 } else {
@@ -250,6 +251,25 @@ impl GameMode {
         }
         self.crack(ctx);
         true
+    }
+}
+
+/// `BlockState.attack`, run when breaking starts on a block that is not air and has no progress
+/// (a redstone ore lights up).
+fn attack_block(
+    ctx: &mut Context<'_>,
+    state: photon_core::ids::BlockStateId,
+    pos: (i32, i32, i32),
+    progress: f32,
+) {
+    if is_air(state) || progress != 0.0 {
+        return;
+    }
+
+    if let Some(write) = rules::attack(state, pos) {
+        let position = ctx.player.position();
+        ctx.world
+            .set_block_with_updates(write.pos, write.state, write.flags, 512, position);
     }
 }
 

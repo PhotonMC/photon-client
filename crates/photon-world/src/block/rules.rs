@@ -56,7 +56,7 @@ pub use item::{
     update_context,
 };
 pub use item_on::{CauldronStack, Held, ItemOn, ItemUser, knows_item_on, use_item_with};
-pub use redstone::wire_use;
+pub use redstone::{attack, wire_use};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

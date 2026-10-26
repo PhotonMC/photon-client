@@ -85,6 +85,25 @@ pub fn wire_use(
     }))
 }
 
+/// `RedStoneOreBlock.attack`: starting to break an unlit ore lights it (flags 3). The block class
+/// is told by name: the two ores are the class's only blocks. The dust particles, and the
+/// `Level.random` draws they make, are not ported.
+pub fn attack(state: BlockStateId, pos: (i32, i32, i32)) -> Option<Write> {
+    let name = block(state)?.name;
+    if !matches!(
+        name,
+        "minecraft:redstone_ore" | "minecraft:deepslate_redstone_ore"
+    ) || property(state, "lit") != Some("false")
+    {
+        return None;
+    }
+    Some(Write {
+        pos,
+        state: with_property(state, "lit", "true")?,
+        flags: 3,
+    })
+}
+
 pub(super) fn update(
     state: BlockStateId,
     pos: (i32, i32, i32),
