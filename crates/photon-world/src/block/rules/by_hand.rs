@@ -549,6 +549,8 @@ const USES: &[(BlockClass, UseFn)] = &[
     (BlockClass::ComparatorBlock, comparator_use),
     (BlockClass::RepeaterBlock, repeater_use),
     (BlockClass::BellBlock, bell_use),
+    // The server removes a piston that lost its block entity; the client always passes.
+    (BlockClass::MovingPistonBlock, |_| result(UseResult::Pass)),
     // The server answers the client's bed use itself (`SUCCESS_SERVER`: no swing here).
     (BlockClass::BedBlock, |_| result(SERVER)),
     // `LeadItem.bindPlayerMobs` is the server's; the client passes.

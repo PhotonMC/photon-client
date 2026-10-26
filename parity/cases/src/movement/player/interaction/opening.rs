@@ -198,6 +198,12 @@ fn bells() -> Vec<Value> {
         hand_row("bell-wall-front", bell("single_wall"), &north()).row(),
         hand_row("bell-wall-side", bell("single_wall"), &east).row(),
         hand_row("bell-ceiling-side", bell("ceiling"), &east).row(),
+        hand_row(
+            "moving-piston",
+            vec![put_with(0, 64, 2, "minecraft:moving_piston", &[("facing", "north"), ("type", "normal")])],
+            &north(),
+        )
+        .row(),
     ]
 }
 
