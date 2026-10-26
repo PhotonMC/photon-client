@@ -1,10 +1,29 @@
 //! `CampfireBlockEntity.particleTick`: a lit campfire sends up smoke, and the food on it smokes.
 
-use super::sounds::CampfireSmoke;
 use crate::block::piston::Pos;
 use crate::*;
 
+/// What a lit campfire's tick asks of the particle engine.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CampfireSmoke {
+    pub pos: (i32, i32, i32),
+    /// `CampfireBlock.SIGNAL_FIRE`: the tall, dark smoke.
+    pub signal: bool,
+    /// `Direction.get2DDataValue` of its facing.
+    pub rotation: i32,
+    /// Which of its four slots hold food.
+    pub cooking: [bool; 4],
+}
+
 impl ClientWorld {
+    /// `CampfireBlock.dowse` on a client: the smoke of a campfire put out, for the particle
+    /// engine.
+    pub fn push_campfire_dowse(&mut self, pos: (i32, i32, i32), signal: bool) {
+        self.level_events
+            .0
+            .push(LevelEvent::CampfireDowse { pos, signal });
+    }
+
     /// The ticker a lit campfire has on a client: the smoke is asked of the particle engine,
     /// which draws it from the level's random source. A campfire that went out loses the ticker
     /// with its state; one that is not there any more loses it here.
@@ -32,7 +51,6 @@ impl ClientWorld {
                 signal: property("signal_fire") == Some("true"),
                 rotation,
                 cooking,
-                dowsed: false,
             }));
     }
 }

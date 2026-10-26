@@ -246,6 +246,10 @@ impl ParticleEngine {
                 self.create_fireworks(*launch, context);
                 Vec::new()
             }
+            LevelEvent::CampfireDowse { pos, signal } => {
+                self.campfire_dowse(pos, signal, context);
+                Vec::new()
+            }
             LevelEvent::NoxiousGasCloud { .. }
             | LevelEvent::ConduitSpecks { .. }
             | LevelEvent::VaultTick { .. }

@@ -474,9 +474,9 @@ mod tests {
     }
 
     fn dowsed(events: &[photon_world::LevelEvent]) -> bool {
-        events.iter().any(
-            |event| matches!(event, photon_world::LevelEvent::CampfireTick(smoke) if smoke.dowsed),
-        )
+        events
+            .iter()
+            .any(|event| matches!(event, photon_world::LevelEvent::CampfireDowse { .. }))
     }
 
     /// The click that puts a lit campfire out with a shovel, played through the game mode: it
