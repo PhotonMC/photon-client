@@ -2,10 +2,8 @@ use super::super::*;
 use crate::{DimensionBounds, SectionInput};
 use photon_core::ids::EntityId;
 
-/// An area effect cloud at (8.5, 64, 8.5), in a loaded chunk (an entity ticks only in one) with the data a lingering potion sends: a radius, a
-/// waiting flag and a particle, as the entity data lays them out (`DATA_RADIUS`, `DATA_WAITING`,
-/// `DATA_PARTICLE`).
-fn cloud(radius: f32, waiting: bool, particle: &[u8]) -> ClientWorld {
+/// An empty world with chunk (0, 0) loaded: an entity ticks only in a loaded chunk.
+pub(super) fn world_with_chunk() -> ClientWorld {
     let (blocks, biomes) = (vec![0; 4_096], vec![0; 64]);
     let mut world = ClientWorld::new(DimensionBounds::new(0, 128));
     assert!(world.replace_chunk(
@@ -18,6 +16,14 @@ fn cloud(radius: f32, waiting: bool, particle: &[u8]) -> ClientWorld {
             biomes: &biomes,
         }),
     ));
+    world
+}
+
+/// An area effect cloud at (8.5, 64, 8.5) with the data a lingering potion sends: a radius, a
+/// waiting flag and a particle, as the entity data lays them out (`DATA_RADIUS`, `DATA_WAITING`,
+/// `DATA_PARTICLE`).
+fn cloud(radius: f32, waiting: bool, particle: &[u8]) -> ClientWorld {
+    let mut world = world_with_chunk();
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(5),
         uuid: Uuid::new(1, 2),

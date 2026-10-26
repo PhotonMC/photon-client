@@ -38,6 +38,7 @@ impl ClientWorld {
         self.throw_effect_particles(entity_id);
         self.throw_eating_particles(entity_id);
         self.throw_cloud_particles(entity_id);
+        self.throw_free_rocket_trail(entity_id);
         if let Some(vehicle_id) = vehicle_id {
             self.position_entity_passenger(vehicle_id, entity_id);
         }
@@ -407,5 +408,42 @@ impl ClientWorld {
                 (width, Vec3::new(m_x, m_y, m_z)),
             ));
         }
+    }
+
+    /// `FireworkRocketEntity.tick`'s trail for a rocket that flies on its own; one attached to an
+    /// entity leaves its trail where it takes that entity's place.
+    fn throw_free_rocket_trail(&mut self, entity_id: EntityId) {
+        let free_rocket = self.entities.at(entity_id).is_some_and(|entity| {
+            photon_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
+                && entity.attached_target.is_none()
+        });
+        if free_rocket {
+            self.throw_rocket_trail(entity_id);
+        }
+    }
+
+    /// One tick's puff of the white spark a firework rocket leaves behind it, at its place,
+    /// drifting down with its climb and a little sideways.
+    pub(crate) fn throw_rocket_trail(&mut self, entity_id: EntityId) {
+        let Some(entity) = self.entities.at(entity_id) else {
+            return;
+        };
+        let Some(type_id) = photon_data::particle_type::id("firework") else {
+            return;
+        };
+        let (at, climb) = (entity.position(), entity.motion().1);
+        let (queue, random) = &mut self.effect_particles;
+        let random = random.source();
+        let sideways = (random.next_gaussian() * 0.05, random.next_gaussian() * 0.05);
+        queue.push(particles::LevelParticles {
+            type_id,
+            data: particles::ParticleData::Plain,
+            override_limiter: false,
+            always_show: false,
+            at,
+            spread: (sideways.0 as f32, (-climb * 0.5) as f32, sideways.1 as f32),
+            max_speed: 1.0,
+            count: 0,
+        });
     }
 }

@@ -66,5 +66,6 @@ impl ClientWorld {
         entity.motion.x = JavaF64::new(motion.0);
         entity.motion.y = JavaF64::new(motion.1);
         entity.motion.z = JavaF64::new(motion.2);
+        self.throw_rocket_trail(rocket);
     }
 }
