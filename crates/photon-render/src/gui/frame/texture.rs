@@ -340,7 +340,9 @@ impl GuiFrame {
                 colour: 0xFFFF_FFFF,
             });
         }
-        let first = v.rem_euclid(tile.1 as f32);
+        // The sampler takes the texel under each pixel's centre, so a fractional scroll is the
+        // texel offset rounded: whole rows, with no piece reaching into the next sprite.
+        let first = (v + 0.5).floor().rem_euclid(tile.1 as f32);
         let mut top = 0;
         let mut from_v = first;
         while top < h {
@@ -619,5 +621,20 @@ mod repeat_tests {
         );
         assert!(!frame.vertices.is_empty());
         assert!(inside(&frame));
+    }
+
+    #[test]
+    fn a_fractional_scroll_samples_whole_texel_rows_inside_the_sprite() {
+        let atlas = GuiAtlas::with_sprite("texture/menu_background", SPRITE);
+        let mut frame = GuiFrame::default();
+        frame.tile_texture_scrolled(&atlas, "menu_background", (32, 32), 17.4, (0, 0, 70, 90));
+        assert!(!frame.vertices.is_empty());
+        assert!(inside(&frame));
+        let [_, v0, _, v1] = atlas.sprite("texture/menu_background");
+        let step = (v1 - v0) / 32.0;
+        for vertex in &frame.vertices {
+            let texels = (vertex.uv[1] - v0) / step;
+            assert!((texels - texels.round()).abs() < 1e-3, "{texels}");
+        }
     }
 }
