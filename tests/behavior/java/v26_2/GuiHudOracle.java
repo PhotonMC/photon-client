@@ -923,7 +923,7 @@ class GuiHudOracle extends GuiCommandOracle {
                 out.add("profiles", profiles);
             }
             if (row.has("ops")) {
-                var directory = java.nio.file.Files.createTempDirectory("debug-profile").toFile();
+                var directory = ScratchDirectory.make("debug-profile");
                 var file = new java.io.File(directory, "debug-profile.json");
                 var list = new net.minecraft.client.gui.components.debug.DebugScreenEntryList(directory,
                     net.minecraft.util.datafix.DataFixers.getDataFixer());

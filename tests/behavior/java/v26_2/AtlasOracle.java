@@ -89,7 +89,7 @@ public final class AtlasOracle {
                 .build(new net.minecraft.server.packs.PackLocationInfo("vanilla",
                     net.minecraft.network.chat.Component.literal("vanilla"),
                     net.minecraft.server.packs.repository.PackSource.BUILT_IN, java.util.Optional.empty()));
-            packsRoot = java.nio.file.Files.createTempDirectory("atlas-packs");
+            packsRoot = ScratchDirectory.make("atlas-packs").toPath();
             int packNumber = 0;
             for (var element : request.get("rows").getAsJsonArray()) {
                 var row = element.getAsJsonObject();

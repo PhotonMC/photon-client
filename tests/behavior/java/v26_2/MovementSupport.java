@@ -319,7 +319,7 @@ class MovementSupport {
         var instanceField = Reflect.field(net.minecraft.client.Minecraft.class, "instance");
         instanceField.set(null, minecraft);
         setField(level, "minecraft", minecraft);
-        var workDir = java.nio.file.Files.createTempDirectory("oracle-options").toFile();
+        var workDir = ScratchDirectory.make("oracle-options");
         var options = new net.minecraft.client.Options(minecraft, workDir);
         options.autoJump().set(row.has("auto_jump") && row.get("auto_jump").getAsBoolean());
         setField(minecraft, "options", options);

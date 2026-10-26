@@ -101,6 +101,7 @@ impl Pins {
             "Reflect.java",
             "Game26_2.java",
             "Access26_2.java",
+            "ScratchDirectory.java",
         ]
         .into_iter()
         .map(source_path)

@@ -549,11 +549,14 @@ mod tests {
     fn loaded(text: &str) -> Options {
         static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let number = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let directory = std::env::temp_dir().join(format!("photon-options-{}", std::process::id()));
+        let directory =
+            std::env::temp_dir().join(format!("photon-options-{}-{number}", std::process::id()));
         std::fs::create_dir_all(&directory).unwrap();
-        let path = directory.join(format!("{number}.txt"));
+        let path = directory.join("options.txt");
         std::fs::write(&path, text).unwrap();
-        Options::load(&path)
+        let options = Options::load(&path);
+        std::fs::remove_dir_all(&directory).unwrap();
+        options
     }
 
     #[test]

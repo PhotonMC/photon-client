@@ -473,5 +473,6 @@ mod tests {
         assert!(saved.contains("renderClouds:\"false\"\n"));
         assert!(saved.contains("weatherRadius:10\n"));
         assert_eq!(super::super::Options::load(&path).quality, options.quality);
+        std::fs::remove_dir_all(&directory).unwrap();
     }
 }

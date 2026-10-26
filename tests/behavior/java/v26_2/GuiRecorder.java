@@ -242,7 +242,7 @@ class GuiRecorder extends GuiFonts {
             Map.of(net.minecraft.data.AtlasIds.GUI, constructor.newInstance(atlas, null)));
         set(atlasManager, "spriteLookup", new BannerSprites());
         set(minecraft, "atlasManager", atlasManager);
-        var directory = java.nio.file.Files.createTempDirectory("oracle-gui").toFile();
+        var directory = ScratchDirectory.make("oracle-gui");
         set(minecraft, "gameDirectory", directory);
         set(minecraft, "options", new net.minecraft.client.Options(minecraft, directory));
         var gui = unsafe.allocateInstance(net.minecraft.client.gui.Gui.class);

@@ -193,7 +193,7 @@ class GuiSocialOracle extends GuiCreditsOracle {
             SilentSounds.ASKED.clear();
             set(minecraft, "level", unsafe.allocateInstance(net.minecraft.client.multiplayer.ClientLevel.class));
             minecraft.options.reducedDebugInfo().set(row.get("reduced").getAsBoolean());
-            var directory = java.nio.file.Files.createTempDirectory("debug-options").toFile();
+            var directory = ScratchDirectory.make("debug-options");
             var list = new net.minecraft.client.gui.components.debug.DebugScreenEntryList(directory,
                 net.minecraft.util.datafix.DataFixers.getDataFixer());
             if (row.has("profile")) {
