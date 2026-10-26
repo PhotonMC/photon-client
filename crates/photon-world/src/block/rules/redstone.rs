@@ -45,6 +45,46 @@ fn connection_state(
     Some(state)
 }
 
+/// `RedStoneWireBlock.useWithoutItem`: a player who may build turns a dot into a cross and a cross
+/// into the shape its surroundings make (flags 3). A shape that does not change, a line and a
+/// player who may not build pass. The neighbour updates `updatesOnShapeChange` sends around a
+/// conductor beside a side that changed are not ported.
+pub fn wire_use(
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+    may_build: bool,
+    ctx: &PlaceContext<'_>,
+) -> Rule<HandUse> {
+    let pass = Rule::Known(HandUse::Result(UseResult::Pass));
+    if !may_build || !(is_cross(state) || is_dot(state)) {
+        return pass;
+    }
+    if super::survive::has_dynamic_neighbour(pos, ctx) {
+        return Rule::Unported;
+    }
+    let Some(power) = property(state, "power") else {
+        return pass;
+    };
+    // The state the shape is rebuilt from is a plain wire for a cross (which counts as a dot) and
+    // the cross for a dot (which does not); only that decides whether a bare wire stays bare.
+    let Some(next) = connection_state(power, is_cross(state), pos, ctx) else {
+        return Rule::Unported;
+    };
+    if next == state {
+        return pass;
+    }
+    Rule::Known(HandUse::Set(Opened {
+        write: Write {
+            pos,
+            state: next,
+            flags: 3,
+        },
+        sound: None,
+        eats: false,
+        gives: None,
+    }))
+}
+
 pub(super) fn update(
     state: BlockStateId,
     pos: (i32, i32, i32),

@@ -282,6 +282,9 @@ impl GameMode {
         if let Some(result) = self.operator_block(ctx, state, pos) {
             return result;
         }
+        if let Some(by_hand) = super::placing::redstone_wire_use(ctx, state, pos) {
+            return Self::by_hand(ctx, by_hand);
+        }
         if let Rule::Known(by_hand) = rules::use_by_hand(state, pos, user_of(ctx, aim)) {
             return Self::by_hand(ctx, by_hand);
         }

@@ -143,6 +143,42 @@ fn repeaters() -> Vec<Value> {
     ]
 }
 
+/// Redstone wire: a dot becomes a cross and a cross the shape its neighbours make.
+fn wires() -> Vec<Value> {
+    let wire = |at: (i64, i64, i64), sides: [&str; 4], power: &str| {
+        put_with(
+            at.0,
+            at.1,
+            at.2,
+            "minecraft:redstone_wire",
+            &[("east", sides[0]), ("north", sides[1]), ("power", power), ("south", sides[2]), ("west", sides[3])],
+        )
+    };
+    let dot = ["none"; 4];
+    let cross = ["side"; 4];
+    let line = ["none", "side", "side", "none"];
+    let top = aim_at((0, 64, 2), "up", (0.5, 64.0625, 2.5));
+    let around = |sides: [&str; 4]| {
+        let mut world = vec![wire((0, 64, 2), sides, "0")];
+        for at in [(0, 64, 1), (0, 64, 3), (1, 64, 2), (-1, 64, 2)] {
+            world.push(wire(at, dot, "0"));
+        }
+        world
+    };
+    vec![
+        hand_row("wire-dot", vec![wire((0, 64, 2), dot, "0")], &top).row(),
+        hand_row("wire-cross", vec![wire((0, 64, 2), cross, "0")], &top).row(),
+        hand_row("wire-line", vec![wire((0, 64, 2), line, "0")], &top).row(),
+        hand_row("wire-dot-adventure", vec![wire((0, 64, 2), dot, "0")], &top).game_mode("adventure").row(),
+        hand_row("wire-dot-powered", vec![wire((0, 64, 2), dot, "7")], &top).row(),
+        hand_row("wire-dot-stone", vec![wire((0, 64, 2), dot, "0")], &top).main_hand("minecraft:stone").count(4).row(),
+        hand_row("wire-cross-surrounded", around(cross), &top).row(),
+        hand_row("wire-dot-surrounded", around(dot), &top).row(),
+        hand_row("wire-cross-one-neighbour", vec![wire((0, 64, 2), cross, "0"), wire((0, 64, 1), dot, "0")], &top)
+            .row(),
+    ]
+}
+
 fn bells() -> Vec<Value> {
     let bell = |attachment: &str| {
         vec![put_with(
@@ -198,7 +234,7 @@ fn server_work() -> Vec<Value> {
 }
 
 fn hand_rows() -> Vec<Value> {
-    [bed_and_plants(), repeaters(), bells(), server_work()].concat()
+    [bed_and_plants(), repeaters(), wires(), bells(), server_work()].concat()
 }
 
 pub fn rows() -> Vec<Value> {

@@ -108,6 +108,27 @@ pub(super) fn can_place_beside(ctx: &Context<'_>, hand: u8, aim: Aim) -> Option<
     }
 }
 
+/// `RedStoneWireBlock.useWithoutItem`, which reads the wire's surroundings; `None` for any
+/// other block, and for a wire whose neighbours are not ported.
+pub(super) fn redstone_wire_use(
+    ctx: &Context<'_>,
+    state: photon_core::ids::BlockStateId,
+    pos: (i32, i32, i32),
+) -> Option<rules::HandUse> {
+    if photon_world::block::state_or_air(state).block().name != "minecraft:redstone_wire" {
+        return None;
+    }
+    let world: &ClientWorld = ctx.world;
+    let state_at = |x: i32, y: i32, z: i32| world.block_state_or_air(x, y, z);
+    let aimed = (pos, photon_core::direction::Direction::Up, (0.0, 0.0, 0.0));
+    let tags = world.block_state_registry().tags();
+    let place_ctx = rules::PlaceContext::new(&state_at, aimed, None, ctx.player.rotation(), tags);
+    match rules::wire_use(state, pos, ctx.player.abilities().may_build(), &place_ctx) {
+        Rule::Known(by_hand) => Some(by_hand),
+        Rule::Unported => None,
+    }
+}
+
 /// The segment `Item.getPlayerPOVHitResult` clips: from the eye along the look, as far as the
 /// block interaction range.
 pub(super) fn look_ray(ctx: &Context<'_>) -> (photon_core::math::Vec3, photon_core::math::Vec3) {
