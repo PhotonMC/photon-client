@@ -27,11 +27,8 @@ fn permuted_texture(
     sources: &dyn Fn(&photon_core::identifier::Identifier) -> Vec<PalettedPermutations>,
     name: &photon_core::identifier::Identifier,
 ) -> Option<Vec<u8>> {
-    let atlas = photon_core::identifier::Identifier::parse(&format!(
-        "{}:atlases/items.json",
-        name.namespace()
-    ))
-    .ok()?;
+    // `SpriteSourceList.load` reads the atlas's file of the `minecraft` namespace alone.
+    let atlas = photon_core::identifier::Identifier::parse("minecraft:atlases/items.json").ok()?;
     let load = |path: &str| {
         let id =
             photon_core::identifier::Identifier::parse(&format!("{}:{path}", name.namespace()))
