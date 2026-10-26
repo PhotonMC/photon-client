@@ -390,4 +390,78 @@ mod tests {
         assert_eq!(tillable("minecraft:rooted_dirt"), Some(false));
         assert_eq!(tillable("minecraft:stone"), None);
     }
+
+    /// The click that puts a lit campfire out with a shovel, played through the game mode: it
+    /// counts as done and the world is asked for the smoke of the dousing.
+    #[test]
+    fn a_shovel_on_a_lit_campfire_asks_for_its_smoke() {
+        use crate::game_mode::{Aim, Context, GameMode, Keys, Miner};
+        use photon_world::{
+            ClientPlayerGameMode, ClientWorld, DimensionBounds, LevelEvent, SectionInput,
+            local_player::LocalPlayer,
+        };
+
+        let mut blocks = vec![0; 4_096];
+        blocks[256 + 16 + 1] = named("minecraft:campfire").0;
+        let biomes = vec![0; 64];
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 1,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        ));
+        let mut player = LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            photon_core::math::Vec3::new(1.5, 2.0, 3.5),
+            180.0,
+            0.0,
+            ClientPlayerGameMode::Survival,
+            true,
+        );
+        world.set_local_player_id(player.entity_id());
+        let shovel = crate::item::id_of("minecraft:iron_shovel").expect("a shovel");
+        let stack = photon_world::ClientItemStackState::new(1, shovel);
+        world.apply_local_player_container_slot(0, 0, 36, Some(&stack));
+        player.set_main_hand_item(shovel);
+
+        let mut cooldowns = crate::item::cooldowns::ItemCooldowns::default();
+        let mut game_mode = GameMode::default();
+        let mut ctx = Context {
+            miner: &Miner::of(&world, 0),
+            world: &mut world,
+            player: &mut player,
+            mode: ClientPlayerGameMode::Survival,
+            selected_slot: 0,
+            cooldowns: &mut cooldowns,
+            instruments: &[],
+            spin_attack: &[],
+            game_master: false,
+            profile_id: None,
+        };
+        let keys = Keys {
+            use_clicks: 1,
+            ..Default::default()
+        };
+        let aim = Aim::Block {
+            x: 1,
+            y: 1,
+            z: 1,
+            face: 1,
+            location: [1.5, 1.4375, 1.5],
+            inside: false,
+        };
+        game_mode.keys_tick(&mut ctx, keys, aim);
+        let events = world.take_level_events();
+        assert!(
+            events
+                .iter()
+                .any(|event| matches!(event, LevelEvent::CampfireTick(smoke) if smoke.dowsed)),
+            "{events:?}"
+        );
+    }
 }
