@@ -235,6 +235,8 @@ impl Controls {
         }
         let incompatible = self.options.incompatible_resource_packs();
         self.options.set_resource_packs(&packs, &incompatible);
+        // `updateResourcePacks` saves before it reloads, and the load reads the file.
+        self.save_options();
         self.pack_reload = true;
     }
 

@@ -152,7 +152,7 @@ impl AccessibilityScreen {
             size,
             "options.accessibility.title",
             in_world,
-            |list| list.add_small(lang, rows(options)),
+            |list| list.add_small(lang, rows(options, high_contrast_pack)),
         );
         screen.add_help_button(lang, "options.accessibility.link");
         let mut accessibility = Self { screen };
@@ -277,7 +277,7 @@ impl AccessibilityScreen {
 
 /// The widgets of the list, in `addOptions`'s order: the narrator and the Controls link, then the
 /// rest two to a row.
-fn rows(options: &Options) -> Vec<(u8, Build)> {
+fn rows(options: &Options, high_contrast_pack: bool) -> Vec<(u8, Build)> {
     let mut rows = vec![
         (
             NARRATOR,
@@ -295,7 +295,7 @@ fn rows(options: &Options) -> Vec<(u8, Build)> {
         ),
         (CONTROLS, button("options.controls")),
     ];
-    rows.extend(first_options(options));
+    rows.extend(first_options(options, high_contrast_pack));
     rows.extend(chat_options(options));
     rows.extend(effect_options(options));
     rows.extend(other_options(options));
@@ -303,7 +303,7 @@ fn rows(options: &Options) -> Vec<(u8, Build)> {
     rows
 }
 
-fn first_options(options: &Options) -> Vec<(u8, Build)> {
+fn first_options(options: &Options, high_contrast_pack: bool) -> Vec<(u8, Build)> {
     vec![
         (
             SUBTITLES,
@@ -318,7 +318,11 @@ fn first_options(options: &Options) -> Vec<(u8, Build)> {
             boolean_tip(
                 "options.accessibility.high_contrast",
                 options.high_contrast(),
-                "options.accessibility.high_contrast.error.tooltip",
+                if high_contrast_pack {
+                    "options.accessibility.high_contrast.tooltip"
+                } else {
+                    "options.accessibility.high_contrast.error.tooltip"
+                },
             ),
         ),
         (
