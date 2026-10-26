@@ -351,10 +351,16 @@ pub(crate) const ENTITY_DATA_SERIALIZER_FLOAT_ID: i32 = 3;
 pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID: i32 = 6;
 pub(crate) const ENTITY_DATA_SERIALIZER_BOOLEAN_ID: i32 = 8;
 pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID: i32 = 11;
+pub(crate) const ENTITY_DATA_SERIALIZER_PARTICLE_ID: i32 = 16;
 pub(crate) const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
 pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID: i32 = 19;
 pub(crate) const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
 pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
+/// Where an area effect cloud's radius (a float), waiting flag (a boolean) and particle sit among
+/// its data.
+pub(crate) const AREA_EFFECT_CLOUD_RADIUS_DATA_ID: u8 = 8;
+pub(crate) const AREA_EFFECT_CLOUD_WAITING_DATA_ID: u8 = 9;
+pub(crate) const AREA_EFFECT_CLOUD_PARTICLE_DATA_ID: u8 = 10;
 pub(crate) const DEFAULT_AIR_SUPPLY: i32 = 300;
 pub(crate) const DEFAULT_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 pub(crate) const LIVING_ENTITY_HEAD_LERP_STEPS: u8 = 3;

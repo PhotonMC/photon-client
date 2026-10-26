@@ -1,6 +1,7 @@
 mod attributes;
 mod block_collision;
 mod boats;
+mod clouds;
 mod dimension_change;
 mod dimensions;
 mod eating;

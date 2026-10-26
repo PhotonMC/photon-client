@@ -36,6 +36,7 @@ impl ClientWorld {
         self.tick_entity_once(entity_id);
         self.throw_effect_particles(entity_id);
         self.throw_eating_particles(entity_id);
+        self.throw_cloud_particles(entity_id);
         if let Some(vehicle_id) = vehicle_id {
             self.position_entity_passenger(vehicle_id, entity_id);
         }
@@ -347,5 +348,23 @@ impl ClientWorld {
             (position, width, motion),
         );
         queue.extend(flake);
+    }
+
+    /// `AreaEffectCloud.clientTick`: the particles of a lingering potion's cloud over the
+    /// ground it covers, as its data says (the reference draws from the cloud's own source).
+    fn throw_cloud_particles(&mut self, entity_id: EntityId) {
+        let Some(entity) = self.entities.at(entity_id).filter(|entity| {
+            photon_data::entity_type::name(entity.type_id) == Some("minecraft:area_effect_cloud")
+        }) else {
+            return;
+        };
+        let data =
+            metadata::area_effect_cloud_from_metadata(entity.metadata.as_deref().unwrap_or(&[255]));
+        let (queue, random) = &mut self.effect_particles;
+        queue.extend(particles::area_effect_cloud_particles(
+            random.source(),
+            entity.position(),
+            data,
+        ));
     }
 }

@@ -107,3 +107,66 @@ pub fn sprint_particle(
         count: 0,
     })
 }
+
+/// `AreaEffectCloud.clientTick`: unless it is waiting and the draw says rest, the cloud's
+/// particles over its disc, a speck an area unit while it works, or two near the middle while it
+/// waits (some of them then the plain swirl). A swirl stands still; any other particle drifts.
+pub fn area_effect_cloud_particles(
+    random: &mut RandomSource,
+    (x, y, z): (f64, f64, f64),
+    (radius, waiting, particle): (f32, bool, EffectParticle),
+) -> Vec<LevelParticles> {
+    if waiting && random.next_boolean() {
+        return Vec::new();
+    }
+    let (count, disc) = if waiting {
+        (2, 0.2_f32)
+    } else {
+        (
+            (std::f32::consts::PI * radius * radius).ceil() as i32,
+            radius,
+        )
+    };
+    let swirl = EffectParticle {
+        type_id: crate::ENTITY_EFFECT_PARTICLE_TYPE_ID,
+        color: Some(u32::MAX),
+    };
+    let mut specks = Vec::new();
+    for _ in 0..count {
+        let angle = random.next_float() * (std::f64::consts::PI * 2.0) as f32;
+        let distance = random.next_float().sqrt() * disc;
+        let at = (
+            x + f64::from(photon_core::math::mth_cos_f64(f64::from(angle)) * distance),
+            y,
+            z + f64::from(photon_core::math::mth_sin_f64(f64::from(angle)) * distance),
+        );
+        let (shown, spread) = if particle.type_id == crate::ENTITY_EFFECT_PARTICLE_TYPE_ID {
+            let shown = if waiting && random.next_boolean() {
+                swirl
+            } else {
+                particle
+            };
+            (shown, (0.0, 0.0, 0.0))
+        } else if waiting {
+            (particle, (0.0, 0.0, 0.0))
+        } else {
+            let drift = (
+                ((0.5 - random.next_double()) * 0.15) as f32,
+                0.01_f32,
+                ((0.5 - random.next_double()) * 0.15) as f32,
+            );
+            (particle, drift)
+        };
+        specks.push(LevelParticles {
+            type_id: shown.type_id,
+            data: shown.data(),
+            override_limiter: false,
+            always_show: true,
+            at,
+            spread,
+            max_speed: 1.0,
+            count: 0,
+        });
+    }
+    specks
+}
