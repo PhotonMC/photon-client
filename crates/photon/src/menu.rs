@@ -267,8 +267,8 @@ impl Menu {
         Screen::Servers(JoinMultiplayerScreen::new(font, lang, size, names))
     }
 
-    /// Frames until a menu chooses or the window closes. `PHOTON_CAPTURE_PPM`: the tenth frame is
-    /// saved there and the client stops.
+    /// Frames until a menu chooses or the window closes. `PHOTON_CAPTURE_PPM`: the tenth frame (or
+    /// `PHOTON_CAPTURE_AFTER`'s) is saved there and the client stops.
     /// The title and the list follow the window's size; the forms, the question and the join keep
     /// the size they were opened in.
     fn fit_screen(&mut self, size: (i32, i32)) {
@@ -303,6 +303,10 @@ impl Menu {
 
     fn run(&mut self, client: &mut Client) -> Result<Choice> {
         let capture = env::var("PHOTON_CAPTURE_PPM").ok();
+        let capture_at = env::var("PHOTON_CAPTURE_AFTER")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(10);
         let mut frames = 0;
         while !client.surface.should_close() {
             let frame_start = Instant::now();
@@ -339,7 +343,7 @@ impl Menu {
             if !matches!(self.screen, Screen::Connecting(..)) {
                 frames += 1;
             }
-            if let Some(path) = capture.as_deref().filter(|_| frames == 10) {
+            if let Some(path) = capture.as_deref().filter(|_| frames == capture_at) {
                 let captured = client
                     .backend
                     .capture_scene([0.0, 0.0, 0.0, 1.0], IDENTITY)?;

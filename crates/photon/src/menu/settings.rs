@@ -7,7 +7,7 @@ use super::{Menu, Screen};
 use crate::play::Client;
 
 impl Menu {
-    /// `PHOTON_MENU_SCREEN=servers|options|video|language|credits|accessibility`: open on that
+    /// `PHOTON_MENU_SCREEN=servers|options|video|language|credits|roll|accessibility`: open on that
     /// screen, for a capture of it.
     pub(super) fn open_requested_screen(&mut self, client: &Client) {
         let Ok(name) = std::env::var("PHOTON_MENU_SCREEN") else {
@@ -22,6 +22,10 @@ impl Menu {
                 self.host.options = crate::controls::load_options();
                 self.host.open_title_video(&client.surface, &self.assets);
                 self.screen = Screen::Settings;
+                return;
+            }
+            "roll" => {
+                self.show_credits(super::gui_size(client));
                 return;
             }
             "options" => TitleAction::Options,
