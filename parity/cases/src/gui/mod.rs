@@ -27,6 +27,7 @@ mod language;
 mod locator;
 mod mob_tags;
 mod options;
+mod packs;
 mod panels;
 mod panorama;
 mod restrictions;
@@ -121,6 +122,7 @@ const ORDER: &[Generator] = &[
     || vec![effects::hud_effects()],
     || vec![effects::inventory_effects()],
     language::language_cases,
+    || vec![packs::pack_selection_screen()],
     || vec![locator::locator_bar()],
     language::settings_keys,
     || vec![draft::chat_draft()],

@@ -148,6 +148,7 @@ class GuiSettingsOracle extends GuiScreenOracle {
             }
             // No resource packs are available, as in Photon.
             set(minecraft, "resourcePackRepository", new net.minecraft.server.packs.repository.PackRepository());
+            var packSources = kind.equals("packs") ? syntheticPacks(row.getAsJsonArray("packs")) : null;
             var window = minecraft.getWindow();
             set(window, "monitorManager", unsafe.allocateInstance(NoMonitors.class));
             set(window, "framebufferWidth", row.get("framebuffer").getAsJsonArray().get(0).getAsInt());
@@ -216,6 +217,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
                 case "online" -> new net.minecraft.client.gui.screens.options.OnlineOptionsScreen(null, minecraft.options);
                 case "language" -> new net.minecraft.client.gui.screens.options.LanguageSelectScreen(
                     null, minecraft.options, languageManager(row.get("language").getAsString(), row.getAsJsonArray("codes")));
+                case "packs" -> new net.minecraft.client.gui.screens.packs.PackSelectionScreen(
+                    packSources, repository -> { }, java.nio.file.Path.of("/nonexistent-pack-folder"),
+                    net.minecraft.network.chat.Component.translatable("resourcePack.title"));
                 default -> throw new IllegalArgumentException(kind);
             };
             minecraft.current = video;
@@ -224,9 +228,11 @@ class GuiSettingsOracle extends GuiScreenOracle {
             set(video, "height", window.getGuiScaledHeight());
             var init = Reflect.method(kind.equals("world")
                 ? net.minecraft.client.gui.screens.options.WorldOptionsScreen.class
-                : net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "init");
+                : kind.equals("packs")
+                    ? net.minecraft.client.gui.screens.packs.PackSelectionScreen.class
+                    : net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "init");
             init.invoke(video);
-            if (kind.equals("language")) {
+            if (kind.equals("language") || kind.equals("packs")) {
                 var focus = Reflect.method(net.minecraft.client.gui.screens.Screen.class, "setInitialFocus");
                 focus.invoke(video);
             }
@@ -325,6 +331,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
                     .scrollAmount();
             } else if (kind.equals("world")) {
                 scrollAmount = 0;
+            } else if (kind.equals("packs")) {
+                scrollAmount = packList(video, "availablePackList").scrollAmount();
             } else {
                 var listField = Reflect.field(net.minecraft.client.gui.screens.options.OptionsSubScreen.class, "list");
                 scrollAmount = ((net.minecraft.client.gui.components.OptionsList) listField.get(video)).scrollAmount();
@@ -338,6 +346,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             var asked = new JsonArray();
             SilentSounds.ASKED.forEach(asked::add);
             out.add("sounds", asked);
+            if (kind.equals("packs")) {
+                packFacts(video, out);
+            }
             if (kind.equals("language")) {
                 var searchField = Reflect.field(video.getClass(), "search");
                 out.addProperty("search",
@@ -358,6 +369,86 @@ class GuiSettingsOracle extends GuiScreenOracle {
      * name box and what it shows of its data, with slots holding items that
      * draw nothing. After each row's `keys` and `typed` text.
      */
+    /** A repository over the packs a row lists: no resources, only what the screen shows of each. */
+    static net.minecraft.server.packs.repository.PackRepository syntheticPacks(JsonArray packs) {
+        var list = new java.util.ArrayList<net.minecraft.server.packs.repository.Pack>();
+        var selected = new java.util.ArrayList<String>();
+        for (var element : packs) {
+            var pack = element.getAsJsonObject();
+            String id = pack.get("id").getAsString();
+            var compatibility = net.minecraft.server.packs.repository.PackCompatibility.valueOf(
+                pack.has("compatibility") ? pack.get("compatibility").getAsString() : "COMPATIBLE");
+            boolean required = pack.has("required") && pack.get("required").getAsBoolean();
+            boolean fixed = pack.has("fixed") && pack.get("fixed").getAsBoolean();
+            var position = pack.has("top") && !pack.get("top").getAsBoolean()
+                ? net.minecraft.server.packs.repository.Pack.Position.BOTTOM
+                : net.minecraft.server.packs.repository.Pack.Position.TOP;
+            var location = new net.minecraft.server.packs.PackLocationInfo(id,
+                net.minecraft.network.chat.Component.literal(pack.get("title").getAsString()),
+                net.minecraft.server.packs.repository.PackSource.DEFAULT, java.util.Optional.empty());
+            var resources = new net.minecraft.server.packs.repository.Pack.ResourcesSupplier() {
+                public net.minecraft.server.packs.PackResources openPrimary(net.minecraft.server.packs.PackLocationInfo info) {
+                    return noResources();
+                }
+                public net.minecraft.server.packs.PackResources openFull(net.minecraft.server.packs.PackLocationInfo info,
+                    net.minecraft.server.packs.repository.Pack.Metadata metadata) {
+                    return noResources();
+                }
+            };
+            var metadata = new net.minecraft.server.packs.repository.Pack.Metadata(
+                net.minecraft.network.chat.Component.literal(pack.get("description").getAsString()),
+                compatibility, net.minecraft.world.flag.FeatureFlagSet.of(), java.util.List.of());
+            list.add(new net.minecraft.server.packs.repository.Pack(location, resources, metadata,
+                new net.minecraft.server.packs.PackSelectionConfig(required, position, fixed)));
+            if (pack.has("selected") && pack.get("selected").getAsBoolean()) {
+                selected.add(id);
+            }
+        }
+        var repository = new net.minecraft.server.packs.repository.PackRepository(
+            (net.minecraft.server.packs.repository.RepositorySource) result -> list.forEach(result));
+        repository.reload();
+        repository.setSelected(selected);
+        return repository;
+    }
+
+    /** A pack with no files: the icon is the default one. */
+    static net.minecraft.server.packs.PackResources noResources() {
+        return (net.minecraft.server.packs.PackResources) java.lang.reflect.Proxy.newProxyInstance(
+            GuiSettingsOracle.class.getClassLoader(),
+            new Class<?>[] {net.minecraft.server.packs.PackResources.class},
+            (proxy, method, args) -> method.getReturnType().isPrimitive() && method.getReturnType() != void.class
+                ? (method.getReturnType() == boolean.class ? (Object) false : (Object) 0)
+                : null);
+    }
+
+    static net.minecraft.client.gui.components.AbstractScrollArea packList(
+        net.minecraft.client.gui.screens.Screen screen, String field) throws Exception {
+        return (net.minecraft.client.gui.components.AbstractScrollArea) Reflect.field(screen.getClass(), field).get(screen);
+    }
+
+    /** What the pack screen has focused and what each list has selected. */
+    static void packFacts(net.minecraft.client.gui.screens.Screen screen, JsonObject out) throws Exception {
+        var focused = screen.getFocused();
+        String focus = "none";
+        if (focused == Reflect.field(screen.getClass(), "search").get(screen)) {
+            focus = "search";
+        } else if (focused == packList(screen, "availablePackList")) {
+            focus = "available";
+        } else if (focused == packList(screen, "selectedPackList")) {
+            focus = "selected";
+        }
+        out.addProperty("focus", focus);
+        var selected = new JsonArray();
+        for (String name : new String[] {"availablePackList", "selectedPackList"}) {
+            var list = (net.minecraft.client.gui.components.AbstractSelectionList<?>) packList(screen, name);
+            var entry = list.getSelected();
+            selected.add(entry == null ? "none"
+                : (String) Reflect.method(net.minecraft.client.gui.screens.packs.TransferableSelectionList.Entry.class,
+                    "getPackId").invoke(entry));
+        }
+        out.add("selected", selected);
+    }
+
     static JsonObject containerScreen(JsonObject request) throws Exception {
         var rows = new JsonArray();
         for (var element : request.getAsJsonArray("rows")) {

@@ -99,6 +99,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "key_mappings" -> keyMappings(request);
                 case "panorama_view" -> panoramaView(request);
                 case "language_screen" -> settingsScreen(request, "language");
+                case "pack_selection_screen" -> settingsScreen(request, "packs");
                 case "lang_text" -> langText(request);
                 case "death_screen" -> deathScreen(request);
                 case "credits_screen" -> creditsScreen(request);

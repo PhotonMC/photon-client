@@ -37,6 +37,7 @@ mod stored;
 use settings::*;
 mod container;
 mod loom;
+mod packs;
 use container::*;
 mod title;
 use title::*;
@@ -146,12 +147,15 @@ fn screen_case(
     if SETTINGS_SCREENS.contains(&operation) {
         return Some(chat_options_screen_case(ctx, row, operation));
     }
+    if operation == "pack_selection_screen" {
+        return Some(packs::pack_selection_screen_case(ctx, row));
+    }
     editing_case(ctx, row, operation)
 }
 
 /// The operations whose rows carry the sounds the interface asked for (the Java oracle writes
 /// them after the row's steps).
-const SOUND_OPERATIONS: [&str; 37] = [
+const SOUND_OPERATIONS: [&str; 38] = [
     "container_screen",
     "death_screen",
     "disconnected_screen",
@@ -189,6 +193,7 @@ const SOUND_OPERATIONS: [&str; 37] = [
     "controls_screen",
     "key_binds_screen",
     "language_screen",
+    "pack_selection_screen",
 ];
 
 /// The settings screens that take the same inputs.

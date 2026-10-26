@@ -146,6 +146,12 @@ impl PackScreen {
         scrollable: bool,
     ) {
         let row_width = ROW_WIDTH - if scrollable { SCROLLBAR_WIDTH } else { 0 };
+        if self.selected[list] == Some(Selected::Header) {
+            let left = self.list_x(list) + (LIST_WIDTH - ROW_WIDTH) / 2;
+            let top = self.entry_y(list, 0);
+            let rect = (left, top, left + row_width, top + HEADER_ENTRY_HEIGHT);
+            self.draw_outline(frame, atlas, list, rect);
+        }
         let header = &self.headers[list];
         frame.styled_text(
             atlas,
@@ -207,7 +213,7 @@ impl PackScreen {
                     &Style::default(),
                 );
                 let gray = Style {
-                    colour: Some(0x80_8080),
+                    colour: Some(0xAA_AAAA),
                     ..Style::default()
                 };
                 description = lang.runs(&Component::translatable(key), &gray);
@@ -230,7 +236,7 @@ impl PackScreen {
             .enumerate()
         {
             let y = cy + 12 + row as i32 * 9;
-            frame.styled_text(atlas, font, &line, cx + ICON + 2, y, 0xFF80_8080, true);
+            frame.styled_text(atlas, font, &line, cx + ICON + 2, y, 0xFFFF_FFFF, true);
         }
     }
 
@@ -253,13 +259,25 @@ impl PackScreen {
         if !matches!(&self.selected[list], Some(Selected::Pack(selected)) if selected == id) {
             return;
         }
+        let left = x + (LIST_WIDTH - ROW_WIDTH) / 2;
+        let rect = (left, top, left + ROW_WIDTH - bar, top + ENTRY_HEIGHT);
+        self.draw_outline(frame, atlas, list, rect);
+    }
+
+    /// `AbstractSelectionList.extractSelection`: the entry's rectangle in white while the list has
+    /// the focus and gray otherwise, with black inside.
+    fn draw_outline(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        list: usize,
+        rect: (i32, i32, i32, i32),
+    ) {
         let outline = if self.focus == Some(Focus::List(list)) {
             0xFFFF_FFFF
         } else {
             0xFF80_8080
         };
-        let left = x + (LIST_WIDTH - ROW_WIDTH) / 2;
-        let rect = (left, top, left + ROW_WIDTH - bar, top + ENTRY_HEIGHT);
         frame.fill(atlas, rect, outline);
         let inner = (rect.0 + 1, rect.1 + 1, rect.2 - 1, rect.3 - 1);
         frame.fill(atlas, inner, 0xFF00_0000);

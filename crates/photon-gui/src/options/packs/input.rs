@@ -266,6 +266,9 @@ impl PackScreen {
                 if input.confirm.is_some() {
                     self.set_selected(list, Selected::Pack(id));
                 }
+                // `ContainerEventHandler.mouseClicked`: the list that took the press gets the
+                // focus back after the entry moved the focus to the list it went to.
+                self.focus = Some(Focus::List(list));
                 return input;
             }
         }

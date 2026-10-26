@@ -428,6 +428,31 @@ impl PackScreen {
         self.list_x(list) + LIST_WIDTH - crate::widgets::scroll_area::SCROLLBAR_WIDTH
     }
 
+    /// What has the focus, for the oracle: `search`, `available`, `selected` or `none`.
+    pub fn focus_name(&self) -> &'static str {
+        match self.focus {
+            Some(Focus::Search) => "search",
+            Some(Focus::List(0)) => "available",
+            Some(Focus::List(_)) => "selected",
+            None => "none",
+        }
+    }
+
+    /// The pack each list has selected (the heading has an empty id), `none` for no entry.
+    pub fn selected_ids(&self) -> [String; 2] {
+        let name = |entry: &Option<Selected>| match entry {
+            None => "none".to_owned(),
+            Some(Selected::Header) => String::new(),
+            Some(Selected::Pack(id)) => id.clone(),
+        };
+        [name(&self.selected[0]), name(&self.selected[1])]
+    }
+
+    /// The available list's scroll.
+    pub fn scroll_amount(&self) -> f64 {
+        self.scroll[0]
+    }
+
     fn search_focused(&self) -> bool {
         self.focus == Some(Focus::Search)
     }
@@ -526,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn the_moved_pack_takes_the_focus_and_clicks_move_it() {
+    fn the_pressed_list_keeps_the_focus_and_the_moved_pack_is_selected() {
         let Some((font, lang)) = assets() else { return };
         let mut screen = screen(
             &font,
@@ -534,13 +559,14 @@ mod tests {
             vec![folder_pack("a", Compatibility::Compatible)],
         );
         screen.clicked(&font, first_icon(&screen, 0));
+        // The press was in the left list: it keeps the focus, the pack is selected in the right.
+        assert_eq!(screen.focus, Some(Focus::List(0)));
+        assert_eq!(screen.selected[1], Some(Selected::Pack("file/a".into())));
+        // A press on the text of the right list's first row moves the focus there.
+        let (x, y) = first_icon(&screen, 1);
+        screen.clicked(&font, (x + 40.0, y));
         assert_eq!(screen.focus, Some(Focus::List(1)));
         assert_eq!(screen.selected[1], Some(Selected::Pack("file/a".into())));
-        // A press on the text of the other list's row moves the focus and keeps this selection.
-        let (x, y) = first_icon(&screen, 1);
-        screen.clicked(&font, (x + 40.0, y + 36.0));
-        assert_eq!(screen.focus, Some(Focus::List(1)));
-        assert_eq!(screen.selected[1], Some(Selected::Pack("vanilla".into())));
         screen.refilter();
         assert_eq!(screen.selected, [None, None]);
     }
