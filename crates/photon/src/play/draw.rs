@@ -228,8 +228,8 @@ impl Play {
         hook_sprites: Vec<photon_render::scene::Vertex>,
     ) -> Result<Vec<crate::equipment::held_items::HeldItem>> {
         self.session.player().ok_or("no local player")?;
-        let mut held = Vec::new();
-        let invisible = self.local_invisible();
+        self.resolve_head_skins(view);
+        let (mut held, invisible) = (Vec::new(), self.local_invisible());
         let models = &mut self.entity_vertices;
         models.clear();
         overlays::remote_players(

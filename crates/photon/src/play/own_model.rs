@@ -7,6 +7,16 @@ impl Play {
         self.wear_own_skin();
     }
 
+    /// Ask for the skins of the player heads in view, before the meshes use them.
+    pub(super) fn resolve_head_skins(&mut self, view: crate::overlays::FrameView) {
+        crate::world::block_entities::resolve_skull_skins(
+            &self.session,
+            &mut self.mob_models,
+            (&mut self.entity_textures, &mut self.skins),
+            view,
+        );
+    }
+
     /// A skin written into the textures is there before the frame draws.
     pub(super) fn upload_skins(&mut self) -> Result<()> {
         let written = self.skins.take_dirty();

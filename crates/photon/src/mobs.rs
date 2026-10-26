@@ -283,6 +283,8 @@ pub struct MobModels {
     /// What shakes a creepy enderman: the renderer's own random source, which
     /// the reference does not seed.
     pub(crate) shake: photon_core::random::RandomSource,
+    /// Where the skin of each player head in view is this frame.
+    pub(crate) skull_skins: HashMap<(i32, i32, i32), photon_render::entity::textures::TextureRect>,
 }
 
 impl MobModels {
@@ -309,6 +311,7 @@ impl MobModels {
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_or(0, |elapsed| elapsed.as_nanos() as i64),
             ),
+            skull_skins: HashMap::new(),
         }
     }
 

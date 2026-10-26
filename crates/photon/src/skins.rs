@@ -2,6 +2,7 @@
 //! their own and drawn from places set aside in the entity textures. Until a skin is there, or
 //! where there is none, a player wears its default skin (`DefaultPlayerSkin.get`).
 
+pub(crate) mod profile;
 mod slots;
 mod worker;
 

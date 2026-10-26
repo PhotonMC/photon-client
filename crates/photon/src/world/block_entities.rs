@@ -12,13 +12,14 @@ use photon_render::block_entity::shulker_box;
 use photon_render::block_entity::skull::{SkullKind, ground_transformation, wall_transformation};
 use photon_render::entity::layering::Layering;
 use photon_render::entity::mob_model::{mob_vertices_posed, mob_vertices_tinted};
-use photon_render::entity::textures::EntityTextures;
+use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::joml::Pose;
 use photon_render::scene::Vertex;
 use photon_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
 
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, packed_light};
+use crate::skins::{Skins, Who, profile};
 
 /// `ChestRenderer.xmasTextures`, which the renderer reads once when it is made: the date at the
 /// first chest drawn, kept until the program ends (the reference keeps it until a reload).
@@ -45,6 +46,43 @@ fn max_light(first: i32, second: i32) -> i32 {
     let block = |packed: i32| packed >> 4 & 15;
     let sky = |packed: i32| packed >> 20 & 15;
     block(first).max(block(second)) << 4 | sky(first).max(sky(second)) << 20
+}
+
+/// The skins of the player heads near the camera that carry a profile, asked for before the
+/// frame's meshes are built (a head without one, or whose skin has not loaded, wears the default).
+pub fn resolve_skull_skins(
+    session: &PlaySession,
+    models: &mut MobModels,
+    (textures, skins): (&mut EntityTextures, &mut Skins),
+    view: FrameView,
+) {
+    models.skull_skins.clear();
+    let world = session.world();
+    for at in crate::objects::block_entity_items::in_view(world, view) {
+        let Some(skull) = world.skull_block_view(at, 0.0) else {
+            continue;
+        };
+        if !skull.name.contains("player_") {
+            continue;
+        }
+        let Some(tag) = world
+            .block_entity_at(at.0, at.1, at.2)
+            .and_then(|e| e.tag.as_deref())
+        else {
+            continue;
+        };
+        let Some(profile) = profile::static_profile(tag) else {
+            continue;
+        };
+        let who = Who {
+            id: profile.id,
+            properties: &profile.properties,
+            require_secure: false,
+        };
+        if let Some(resolved) = skins.resolve(textures, &who) {
+            models.skull_skins.insert(at, resolved.rect);
+        }
+    }
 }
 
 /// The block entities near the camera.
@@ -144,7 +182,13 @@ fn other_block_entity(
     } else if let Some(skull) = world.skull_block_view(at, partial) {
         let (base, light) = placement(session, view, at);
         let drawn = vertices.len();
-        vertices.extend(skull_vertices(models, textures, (&base, light), skull));
+        let skin = models.skull_skins.get(&at).copied();
+        vertices.extend(skull_vertices(
+            models,
+            textures,
+            (&base, light),
+            (skull, skin),
+        ));
         // `SkullBlockRenderer` draws as `entity_cutout_z_offset`: `VIEW_OFFSET_Z_LAYERING`.
         Layering::ViewOffset.apply(&mut vertices[drawn..], view.camera);
     } else {
@@ -349,14 +393,14 @@ pub(super) fn skull_vertices(
     models: &mut MobModels,
     textures: &EntityTextures,
     (base, light): (&Pose, i32),
-    skull: SkullBlockView,
+    (skull, skin): (SkullBlockView, Option<TextureRect>),
 ) -> Vec<Vertex> {
     // A wall head is named for its wall (`minecraft:zombie_wall_head`); the item's name is not.
     let Some(kind) = SkullKind::of_item(&skull.name.replace("_wall_", "_")) else {
         return Vec::new();
     };
-    let (Some(rect), Some(model)) = (textures.rect(kind.texture()), models.model(kind.layer()))
-    else {
+    let rect = skin.or_else(|| textures.rect(kind.texture()));
+    let (Some(rect), Some(model)) = (rect, models.model(kind.layer())) else {
         return Vec::new();
     };
     model.setup_skull(kind, skull.animation);

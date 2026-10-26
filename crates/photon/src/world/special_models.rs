@@ -99,7 +99,7 @@ fn other_special(
                 rotation,
                 animation: 0.0,
             };
-            Some(skull_vertices(models, textures, placed, skull))
+            Some(skull_vertices(models, textures, placed, (skull, None)))
         }
         SpecialModel::Banner { color, wall } => {
             let (wall, rotation) = props.wall_and_rotation(wall)?;
