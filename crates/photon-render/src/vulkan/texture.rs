@@ -126,27 +126,16 @@ impl VulkanBackend {
         rain: &DecodedImage,
         snow: &DecodedImage,
     ) -> Result<(), VulkanError> {
+        if self.replace_weather_textures(rain, snow)? {
+            return Ok(());
+        }
         // SAFETY: live handles; this only creates objects and stores them in the scene.
         unsafe {
             let Some(layout) = self.scene.as_ref().map(|scene| scene.descriptors.layout) else {
                 return Ok(());
             };
             let pool = self.scene.as_ref().expect("checked above").descriptors.pool;
-            let sampler = self
-                .device
-                .create_sampler(
-                    &vk::SamplerCreateInfo::default()
-                        .mag_filter(vk::Filter::NEAREST)
-                        .min_filter(vk::Filter::NEAREST)
-                        .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
-                        .address_mode_u(vk::SamplerAddressMode::REPEAT)
-                        .address_mode_v(vk::SamplerAddressMode::REPEAT)
-                        .address_mode_w(vk::SamplerAddressMode::REPEAT)
-                        .max_lod(0.0),
-                    None,
-                )
-                .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
-            let sampler = Sampler::new(&self.device, sampler);
+            let sampler = self.repeating_sampler()?;
             let mut textures = Vec::new();
             let mut sets = Vec::new();
             for image in [rain, snow] {
@@ -179,6 +168,56 @@ impl VulkanBackend {
             scene.weather_sets = sets;
             Ok(())
         }
+    }
+
+    /// A sampler at the nearest texel that repeats, as the reference's plain resource textures use.
+    ///
+    /// # Safety
+    ///
+    /// The device must be live.
+    unsafe fn repeating_sampler(&self) -> Result<Sampler, VulkanError> {
+        // SAFETY: the caller's contract; the create-info points at nothing that outlives the call.
+        let handle = unsafe {
+            self.device.create_sampler(
+                &vk::SamplerCreateInfo::default()
+                    .mag_filter(vk::Filter::NEAREST)
+                    .min_filter(vk::Filter::NEAREST)
+                    .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
+                    .address_mode_u(vk::SamplerAddressMode::REPEAT)
+                    .address_mode_v(vk::SamplerAddressMode::REPEAT)
+                    .address_mode_w(vk::SamplerAddressMode::REPEAT)
+                    .max_lod(0.0),
+                None,
+            )
+        }
+        .map_err(|result| VulkanError::Call("vkCreateSampler", result))?;
+        Ok(Sampler::new(&self.device, handle))
+    }
+
+    /// The rain and snow again (a join, or the packs reloaded): the two sets are kept and made to
+    /// point at the new images, since the pool never gives a set back. Whether they were there.
+    fn replace_weather_textures(
+        &mut self,
+        rain: &DecodedImage,
+        snow: &DecodedImage,
+    ) -> Result<bool, VulkanError> {
+        let Some(scene) = self.scene.as_ref() else {
+            return Ok(false);
+        };
+        let Some(sampler) = scene.weather_sampler.as_ref().map(|sampler| sampler.handle) else {
+            return Ok(false);
+        };
+        if scene.weather_sets.len() != 2 || scene.weather_textures.len() != 2 {
+            return Ok(false);
+        }
+        let sets = scene.weather_sets.clone();
+        for (index, image) in [rain, snow].into_iter().enumerate() {
+            let replaced = self.replace_image(image, sets[index], sampler)?;
+            if let Some(scene) = self.scene.as_mut() {
+                scene.weather_textures[index] = replaced;
+            }
+        }
+        Ok(true)
     }
 
     /// Load the forcefield texture the world border overlay samples,
