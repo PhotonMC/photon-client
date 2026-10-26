@@ -176,7 +176,7 @@ fn open_in_folder(path: &Path, current: PackFormat) -> Option<PackEntry> {
     let name = path.file_name()?.to_str()?.to_owned();
     let source: Box<dyn Source> = if path.is_dir() {
         Box::new(DirectorySource::new(path))
-    } else if name.to_lowercase().ends_with(".zip") {
+    } else if name.ends_with(".zip") {
         Box::new(ZipSource::open(path).ok()?)
     } else {
         return None;
