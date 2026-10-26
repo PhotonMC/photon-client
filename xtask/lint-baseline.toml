@@ -362,7 +362,7 @@
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 19
 "crates/photon-render/src/gui/frame.rs::glyph_quads" = 11
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 11
-"crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 19
+"crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 14
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 12
 "crates/photon-render/src/item_model/parse.rs::dye_colour" = 17
 "crates/photon-render/src/item_model/parse.rs::parse_item_model_node" = 11
@@ -483,7 +483,7 @@
 "crates/photon/src/controls.rs::menu_key" = 14
 "crates/photon/src/controls/book.rs::Controls::book_event" = 13
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 11
-"crates/photon/src/controls/events.rs::Controls::mapped_input" = 34
+"crates/photon/src/controls/events.rs::Controls::mapped_input" = 30
 "crates/photon/src/controls/events.rs::Controls::pause_event" = 13
 "crates/photon/src/controls/events.rs::Controls::screen_event" = 11
 "crates/photon/src/controls/events.rs::Controls::world_event" = 12
@@ -895,7 +895,7 @@
 "crates/photon/examples/bench.rs::world" = 71
 "crates/photon/src/bench.rs::Bench::report" = 76
 "crates/photon/src/controls/chat.rs::Controls::chat_event" = 69
-"crates/photon/src/controls/scripted.rs::Controls::script_step" = 68
+"crates/photon/src/controls/scripted.rs::Controls::script_step" = 66
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73

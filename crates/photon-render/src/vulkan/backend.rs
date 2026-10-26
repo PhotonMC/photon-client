@@ -169,4 +169,6 @@ pub struct VulkanBackend {
 pub(super) struct GuiRuns {
     pub(super) batches: Vec<(crate::gui::GuiBlend, u32, u32)>,
     pub(super) blur: Option<crate::gui::frame::GuiBlur>,
+    /// The scissors over runs of item vertices.
+    pub(super) item_scissors: Vec<crate::gui::frame::ItemScissor>,
 }

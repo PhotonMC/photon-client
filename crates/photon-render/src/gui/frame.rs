@@ -11,7 +11,7 @@ use super::atlas::GuiAtlas;
 use super::font::Glyph;
 use super::text_effect;
 
-pub use blur::{GuiBlur, split_batches};
+pub use blur::{ClipRect, GuiBlur, ItemScissor, scissor_pieces, split_batches};
 
 /// One GUI vertex, in GUI units.
 #[derive(Debug, Clone, Copy)]
@@ -197,6 +197,9 @@ pub struct GuiFrame {
     pub vertices: Vec<GuiVertex>,
     pub batches: Vec<(GuiBlend, u32, u32)>,
     pub items: Vec<crate::gui::items::GuiItemVertex>,
+    /// Where a scissor covers item vertices: the first and end of the run, and the rectangle
+    /// `(left, top, right, bottom)` in GUI units. The GPU cuts these; triangles are not cut here.
+    pub item_scissors: Vec<ItemScissor>,
     /// The clock a label that does not fit in its button scrolls by
     /// (`Util.getMillis`).
     pub millis: u64,
@@ -458,23 +461,18 @@ mod tests {
     }
 
     #[test]
-    fn a_scissor_flattens_item_triangles_wholly_outside() {
+    fn a_scissor_keeps_the_item_run_it_covers() {
         use crate::gui::items::GuiItemVertex;
         let mut frame = GuiFrame::default();
-        let mark = frame.mark();
-        let at = |x: f32, y: f32| GuiItemVertex {
-            position: [x, y, 0.0],
+        let at = GuiItemVertex {
+            position: [0.0; 3],
             uv: [0.0; 2],
             colour: [1.0; 4],
         };
-        frame
-            .items
-            .extend([at(0.0, 0.0), at(8.0, 0.0), at(0.0, 8.0)]);
-        frame
-            .items
-            .extend([at(0.0, 30.0), at(8.0, 30.0), at(0.0, 38.0)]);
+        frame.items.push(at);
+        let mark = frame.mark();
+        frame.items.extend([at, at, at]);
         frame.clip_from(mark, (0, 0, 10, 10));
-        assert_ne!(frame.items[0].position, frame.items[1].position);
-        assert_eq!(frame.items[3].position, frame.items[4].position);
+        assert_eq!(frame.item_scissors, [(1, 4, (0, 0, 10, 10))]);
     }
 }

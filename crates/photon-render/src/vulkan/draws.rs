@@ -235,6 +235,7 @@ impl VulkanBackend {
         self.gui_runs = GuiRuns {
             batches: frame.batches.clone(),
             blur: frame.blur,
+            item_scissors: frame.item_scissors.clone(),
         };
         if frame.blur.is_some() {
             self.ensure_blur_targets()?;

@@ -48,6 +48,41 @@ pub fn split_batches(batches: &[Batch], (vertices, items): (u32, u32)) -> (Vec<B
     (before, after)
 }
 
+/// A rectangle `(left, top, right, bottom)`.
+pub type ClipRect = (i32, i32, i32, i32);
+
+/// A scissor over item vertices: the first and end of the run, and the rectangle.
+pub type ItemScissor = (u32, u32, ClipRect);
+
+/// A run of item vertices cut at the edges of the scissors over it: each piece with the
+/// intersection of the scissors that cover it, or none where no scissor does.
+pub fn scissor_pieces(
+    (first, count): (u32, u32),
+    scissors: &[ItemScissor],
+) -> Vec<(u32, u32, Option<ClipRect>)> {
+    let end = first + count;
+    let mut cuts = vec![first, end];
+    for &(from, to, _) in scissors {
+        cuts.extend(
+            [from, to]
+                .into_iter()
+                .filter(|cut| (first..=end).contains(cut)),
+        );
+    }
+    cuts.sort_unstable();
+    cuts.dedup();
+    cuts.windows(2)
+        .map(|pair| {
+            let rect = scissors
+                .iter()
+                .filter(|&&(from, to, _)| from <= pair[0] && pair[1] <= to)
+                .map(|&(_, _, rect)| rect)
+                .reduce(|a, b| (a.0.max(b.0), a.1.max(b.1), a.2.min(b.2), a.3.min(b.3)));
+            (pair[0], pair[1] - pair[0], rect)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,5 +122,15 @@ mod tests {
         frame.blur_before_this_stratum(5);
         frame.blur_before_this_stratum(9);
         assert_eq!(frame.blur.map(|blur| blur.radius), Some(5));
+    }
+
+    #[test]
+    fn a_run_is_cut_where_a_scissor_starts_and_ends() {
+        let scissors = [(6, 12, (0, 0, 10, 10))];
+        assert_eq!(
+            scissor_pieces((0, 18), &scissors),
+            [(0, 6, None), (6, 6, Some((0, 0, 10, 10))), (12, 6, None)]
+        );
+        assert_eq!(scissor_pieces((0, 3), &[]), [(0, 3, None)]);
     }
 }

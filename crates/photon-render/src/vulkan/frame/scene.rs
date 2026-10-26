@@ -567,10 +567,58 @@ impl VulkanBackend {
                     run
                 }
             };
-            // SAFETY: recording (see `# Safety`); the pipeline, set and buffer are live.
-            unsafe {
-                self.draw_vertices(pipeline, (Some(set), &push), vertices, (first, count));
+            let pieces = match blend {
+                crate::gui::GuiBlend::ItemGlint
+                | crate::gui::GuiBlend::Items
+                | crate::gui::GuiBlend::Entity => {
+                    crate::gui::frame::scissor_pieces((first, count), &self.gui_runs.item_scissors)
+                }
+                _ => vec![(first, count, None)],
+            };
+            for (first, count, rect) in pieces {
+                // SAFETY: recording (see `# Safety`); the pipeline, set and buffer are live.
+                unsafe {
+                    self.set_gui_scissor(rect);
+                    self.draw_vertices(pipeline, (Some(set), &push), vertices, (first, count));
+                }
             }
+        }
+        // SAFETY: recording (see `# Safety`).
+        unsafe { self.set_gui_scissor(None) };
+    }
+
+    /// `GuiGraphics.enableScissor` for a run: the rectangle in GUI units cut to the window, or the
+    /// whole window.
+    ///
+    /// # Safety
+    ///
+    /// Recording inside the scene's rendering scope.
+    unsafe fn set_gui_scissor(&self, rect: Option<crate::gui::frame::ClipRect>) {
+        let extent = self.description.extent;
+        let area = match rect {
+            None => vk::Rect2D::default().extent(extent),
+            Some((left, top, right, bottom)) => {
+                let scale_x = extent.width as f32 / self.gui_size[0];
+                let scale_y = extent.height as f32 / self.gui_size[1];
+                let x0 = ((left as f32 * scale_x).floor().max(0.0) as u32).min(extent.width);
+                let y0 = ((top as f32 * scale_y).floor().max(0.0) as u32).min(extent.height);
+                let x1 = ((right as f32 * scale_x).ceil().max(0.0) as u32).min(extent.width);
+                let y1 = ((bottom as f32 * scale_y).ceil().max(0.0) as u32).min(extent.height);
+                vk::Rect2D {
+                    offset: vk::Offset2D {
+                        x: x0 as i32,
+                        y: y0 as i32,
+                    },
+                    extent: vk::Extent2D {
+                        width: x1.saturating_sub(x0),
+                        height: y1.saturating_sub(y0),
+                    },
+                }
+            }
+        };
+        // SAFETY: recording (see `# Safety`).
+        unsafe {
+            self.device.cmd_set_scissor(self.command_buffer, 0, &[area]);
         }
     }
 }
