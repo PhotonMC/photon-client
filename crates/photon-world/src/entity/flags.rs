@@ -236,6 +236,15 @@ impl ClientEntity {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_SPRINTING)
     }
 
+    /// `Entity.canSpawnSprintParticle` but for the fluids the world has to look up.
+    pub(crate) fn sprints_on_foot(&self) -> bool {
+        self.living_kind().is_some()
+            && self.alive
+            && self.is_sprinting()
+            && !self.is_spectator()
+            && !self.is_crouching()
+    }
+
     pub fn is_swimming(&self) -> bool {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
     }

@@ -29,41 +29,17 @@ impl LocalPlayer {
         {
             return;
         }
-        let Some(type_id) = photon_data::particle_type::id("block") else {
-            return;
-        };
-        let width = f64::from(self.dimensions.width());
         let here = BlockPos::new(
             self.position.x.floor() as i32,
             self.position.y.floor() as i32,
             self.position.z.floor() as i32,
         );
-        let mut x = self.position.x + (self.random.next_double() - 0.5) * width;
-        let mut z = self.position.z + (self.random.next_double() - 0.5) * width;
-        // Standing on the edge of a block, the flakes stay over the block they come from.
-        if here.x != pos.x {
-            x = x.clamp(f64::from(pos.x), f64::from(pos.x) + 1.0);
-        }
-        if here.z != pos.z {
-            z = z.clamp(f64::from(pos.z), f64::from(pos.z) + 1.0);
-        }
-        self.use_edge
-            .particles
-            .push(crate::particles::LevelParticles {
-                type_id,
-                data: crate::particles::ParticleData::Block(state),
-                override_limiter: false,
-                always_show: false,
-                at: (x, self.position.y + 0.1, z),
-                // Count 0 reads the spread as the velocity.
-                spread: (
-                    (self.delta.x * -4.0) as f32,
-                    1.5,
-                    (self.delta.z * -4.0) as f32,
-                ),
-                max_speed: 1.0,
-                count: 0,
-            });
+        let flake = crate::particles::sprint_particle(
+            &mut self.random,
+            (state, pos, here),
+            (self.position, self.dimensions.width(), self.delta),
+        );
+        self.use_edge.particles.extend(flake);
     }
 
     pub(super) fn update_auto_jump(
