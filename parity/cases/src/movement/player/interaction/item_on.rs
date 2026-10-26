@@ -53,6 +53,7 @@ fn simple() -> Vec<Value> {
 }
 
 /// Redstone ore: a block item that fits beside the face is placed, anything else is a success.
+/// The client's dust particles and their `Level.random` draws are not made (open in #126).
 fn redstone_ore() -> Vec<Value> {
     let ore = |lit: &str| vec![put_with(0, 64, 2, "minecraft:redstone_ore", &[("lit", lit)])];
     let beside = |block: &str| {
@@ -73,6 +74,10 @@ fn redstone_ore() -> Vec<Value> {
             .row(),
         row("item-on-ore-stick", ore("false"), &north()).main_hand("minecraft:stick").count(4).row(),
         row("item-on-ore-empty", ore("false"), &north()).row(),
+        // Items that place a block under another name are block items too.
+        row("item-on-ore-seeds", ore("false"), &north()).main_hand("minecraft:wheat_seeds").count(4).row(),
+        row("item-on-ore-string", ore("false"), &north()).main_hand("minecraft:string").count(4).row(),
+        row("item-on-ore-lily-pad", ore("false"), &north()).main_hand("minecraft:lily_pad").count(4).row(),
     ]
 }
 
