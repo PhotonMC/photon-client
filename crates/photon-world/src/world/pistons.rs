@@ -380,6 +380,7 @@ impl ClientWorld {
             id::CONDUIT => self.tick_conduit(pos),
             id::VAULT => self.tick_vault(pos),
             id::SPAWNER => self.tick_spawner(pos),
+            id::CAMPFIRE | id::SOUL_CAMPFIRE => self.tick_campfire(pos),
             id::TRIAL_SPAWNER => self.tick_trial_spawner(pos),
             _ => self.tick_end_gateway(pos),
         }
