@@ -1,7 +1,7 @@
 //! The resource packs in use: the one stack every reader of assets shares, so that a reload
 //! changes what all of them see.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use photon_assets::ResourceStack;
@@ -42,24 +42,49 @@ fn keeps(compatible: bool, listed_incompatible: bool) -> bool {
     compatible != listed_incompatible
 }
 
+/// The packs the game ships besides its own (`ClientPackSource`): the zips the asset index lists
+/// under `minecraft/resourcepacks`, by the id their file name gives, and where they are stored.
+pub(crate) fn built_in_zips(jar_assets: &Path) -> Vec<(String, PathBuf)> {
+    let Some(indexed) = crate::indexed::IndexedAssets::open(jar_assets) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(String, PathBuf)> = indexed
+        .paths()
+        .filter_map(|path| {
+            let id = path
+                .strip_prefix("minecraft/resourcepacks/")?
+                .strip_suffix(".zip")?;
+            Some((id.to_owned(), indexed.object_path(path)?))
+        })
+        .collect();
+    found.sort();
+    found
+}
+
 /// The game's own assets, then the packs `options.txt` selects (`resourcePacks`, the lowest
 /// first), as `Options.loadSelectedResourcePacks` keeps them. An id names `vanilla`, which is the
 /// bottom pack already, or a folder or zip of the `resourcepacks` folder in the game directory,
-/// with or without its `file/` prefix; the built-in `programmer_art` and `high_contrast` packs are
-/// not available yet. One that is missing, cannot be opened or is dropped by [`keeps`] is left
+/// with or without its `file/` prefix, or a built-in pack (`programmer_art`, `high_contrast`).
+/// One that is missing, cannot be opened or is dropped by [`keeps`] is left
 /// out, and a pack listed twice counts once.
 fn selected_packs(jar_assets: &Path) -> Vec<photon_assets::Pack> {
     let mut stacked = vec![crate::assets::vanilla_pack(jar_assets)];
     let directory = crate::controls::game_directory().join("resourcepacks");
     let options = crate::controls::load_options();
     let listed = options.incompatible_resource_packs();
+    let built_in = built_in_zips(jar_assets);
     for id in options.resource_packs() {
         if id == "vanilla" {
             continue;
         }
-        let name = id.strip_prefix("file/").unwrap_or(&id);
-        let full = format!("file/{name}");
-        match open_pack(full.clone(), &directory.join(name)) {
+        let (full, path) =
+            if let Some((built, path)) = built_in.iter().find(|(built, _)| *built == id) {
+                (built.clone(), path.clone())
+            } else {
+                let name = id.strip_prefix("file/").unwrap_or(&id);
+                (format!("file/{name}"), directory.join(name))
+            };
+        match open_pack(full.clone(), &path) {
             Ok(pack) if keeps(pack.is_compatible(), listed.contains(&id)) => {
                 if stacked.iter().all(|other| other.id() != full) {
                     stacked.push(pack);

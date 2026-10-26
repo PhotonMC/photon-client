@@ -24,3 +24,20 @@ pub fn sync_server_icon(
     }
     Some(sync)
 }
+
+/// The icons the Resource Packs screen still wants put into the atlas, which they are: whether
+/// the atlas changed and is to be sent to the GPU again.
+pub fn sync_pack_icons(
+    screen: &mut crate::options::packs::PackScreen,
+    atlas: &mut GuiAtlas,
+    atlas_image: &mut DecodedImage,
+) -> bool {
+    let mut changed = false;
+    for (id, bytes) in screen.icons_wanted() {
+        let (texture, placed) =
+            photon_render::gui::favicon::upload_pack_icon(atlas, atlas_image, &id, &bytes);
+        changed |= placed;
+        screen.set_icon(&id, texture);
+    }
+    changed
+}

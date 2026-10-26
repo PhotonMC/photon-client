@@ -321,6 +321,7 @@ impl Menu {
             self.frame_audio();
             self.sync_icons(client)?;
             self.host.pack_poll(&self.assets);
+            self.sync_pack_icons(client)?;
             self.ask_about_packs(client, size);
             if let Some(session) = self.poll_join(size) {
                 return Ok(Choice::Play(session));

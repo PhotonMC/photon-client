@@ -25,8 +25,24 @@ impl Options {
         changed
     }
 
+    /// `highContrast`: the High Contrast pack is in use. The line is kept as the file has it.
+    #[must_use]
+    pub fn high_contrast(&self) -> bool {
+        self.lines
+            .iter()
+            .any(|(name, value)| name == "highContrast" && value == "true")
+    }
+
+    /// Sets `highContrast`, written before `highContrastBlockOutline` as the reference does.
+    pub fn set_high_contrast(&mut self, on: bool) {
+        self.set_line("highContrast", on.to_string(), "highContrastBlockOutline");
+    }
+
     fn set_list(&mut self, key: &str, items: &[String], before: &str) {
-        let value = json_list(items);
+        self.set_line(key, json_list(items), before);
+    }
+
+    fn set_line(&mut self, key: &str, value: String, before: &str) {
         if let Some(line) = self.lines.iter_mut().find(|(name, _)| name == key) {
             line.1 = value;
             return;
@@ -131,5 +147,20 @@ mod tests {
         assert!(string_list("oops").is_empty());
         assert!(string_list("[]").is_empty());
         assert!(string_list(r#"["open"#).is_empty());
+    }
+
+    #[test]
+    fn high_contrast_is_a_line_before_the_block_outline() {
+        let mut options = Options::default();
+        options
+            .lines
+            .push(("highContrastBlockOutline".to_owned(), "false".to_owned()));
+        assert!(!options.high_contrast());
+        options.set_high_contrast(true);
+        assert!(options.high_contrast());
+        assert_eq!(options.lines[0].0, "highContrast");
+        options.set_high_contrast(false);
+        assert!(!options.high_contrast());
+        assert_eq!(options.lines.len(), 2);
     }
 }

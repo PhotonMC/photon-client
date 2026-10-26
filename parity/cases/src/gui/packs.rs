@@ -51,6 +51,24 @@ fn three() -> Vec<Value> {
     ]
 }
 
+/// Built-in, folder and own packs listed in an order the ids do not follow.
+fn mixed() -> Vec<Value> {
+    let built_in = |id: &str, title: &str, selected: bool| {
+        let mut pack = pack(id, "", "Made for the game", selected);
+        pack["title_key"] = json!(title);
+        pack["builtin"] = json!(true);
+        pack["top"] = json!(true);
+        pack
+    };
+    vec![
+        pack("file/Zed", "Zed", "Last of the folder", true),
+        vanilla(),
+        built_in("programmer_art", "resourcePack.programmer_art.name", true),
+        pack("file/Alpha", "Alpha", "First of the folder", false),
+        built_in("high_contrast", "resourcePack.high_contrast.name", false),
+    ]
+}
+
 fn many() -> Vec<Value> {
     let mut packs = vec![vanilla()];
     packs.push(pack(
@@ -130,6 +148,7 @@ pub fn pack_selection_screen() -> Value {
             hover
         },
     ];
+    rows.push(row("mixed-order", mixed(), vec![]));
     rows.extend(scrolling_rows());
     rows.extend(keyboard_rows());
     gui("pack-selection-screen", "pack_selection_screen", rows)

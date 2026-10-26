@@ -111,6 +111,7 @@ pub struct AccessibilityChoices {
     pub screen_effect_scale: f64,
     pub hide_lightning_flashes: bool,
     pub view_bobbing: bool,
+    pub high_contrast: bool,
     pub high_contrast_block_outline: bool,
     pub fov_effect_scale: f64,
     pub darkness_effect_scale: f64,
@@ -136,13 +137,14 @@ pub struct AccessibilityScreen {
 
 impl AccessibilityScreen {
     /// `init`, with the options as they are; `minecart_improvements` says the level has the
-    /// feature `rotateWithMinecart` needs.
+    /// feature `rotateWithMinecart` needs, and `high_contrast_pack` that the pack of that name can be
+    /// chosen.
     pub fn new(
         font: &Font,
         lang: &Lang,
         size: (i32, i32),
         in_world: bool,
-        (options, minecart_improvements): (&Options, bool),
+        (options, minecart_improvements, high_contrast_pack): (&Options, bool, bool),
     ) -> Self {
         let mut screen = SubScreen::new(
             font,
@@ -158,9 +160,9 @@ impl AccessibilityScreen {
         if let Some(control) = accessibility.screen.list.find_mut(NARRATOR) {
             control.set_active(false);
         }
-        // `highContrast.active = false` with the error tooltip: there is no resource pack.
+        // `highContrast.active = false` with the error tooltip when there is no such pack.
         if let Some(control) = accessibility.screen.list.find_mut(HIGH_CONTRAST) {
-            control.set_active(false);
+            control.set_active(high_contrast_pack);
         }
         if let Some(control) = accessibility.screen.list.find_mut(ROTATE_WITH_MINECART) {
             control.set_active(in_world && minecart_improvements);
@@ -206,6 +208,7 @@ impl AccessibilityScreen {
             screen_effect_scale: share(SCREEN_EFFECTS),
             hide_lightning_flashes: flag(LIGHTNING),
             view_bobbing: flag(VIEW_BOBBING),
+            high_contrast: flag(HIGH_CONTRAST),
             high_contrast_block_outline: flag(BLOCK_OUTLINE),
             fov_effect_scale: squares(FOV_EFFECTS),
             darkness_effect_scale: squares(DARKNESS_EFFECTS),
@@ -314,7 +317,7 @@ fn first_options(options: &Options) -> Vec<(u8, Build)> {
             HIGH_CONTRAST,
             boolean_tip(
                 "options.accessibility.high_contrast",
-                false,
+                options.high_contrast(),
                 "options.accessibility.high_contrast.error.tooltip",
             ),
         ),

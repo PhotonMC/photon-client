@@ -5,6 +5,16 @@ use photon_gui::screen::confirm::ConfirmBackground;
 /// `CommonLinks.ACCESSIBILITY_HELP`.
 const ACCESSIBILITY_HELP: &str = "https://aka.ms/MinecraftJavaAccessibility";
 
+/// Whether the pack the High Contrast option switches is there
+/// (`getAvailableIds().contains("high_contrast")`).
+fn high_contrast_available() -> bool {
+    std::env::var("PHOTON_ASSETS").is_ok_and(|root| {
+        crate::resources::built_in_zips(std::path::Path::new(&root))
+            .iter()
+            .any(|(id, _)| id == "high_contrast")
+    })
+}
+
 impl Controls {
     /// `AccessibilityOptionsScreen`, over the options screen.
     pub(super) fn open_accessibility(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
@@ -15,7 +25,7 @@ impl Controls {
             &assets.lang,
             Self::gui_size(surface),
             !self.title_host,
-            (&self.options, false),
+            (&self.options, false, high_contrast_available()),
         ));
     }
 
@@ -45,12 +55,17 @@ impl Controls {
         options.hide_lightning_flashes = choices.hide_lightning_flashes;
         options.view_bobbing = choices.view_bobbing;
         options.high_contrast_block_outline = choices.high_contrast_block_outline;
+        let high_contrast_changed = options.high_contrast() != choices.high_contrast;
+        options.set_high_contrast(choices.high_contrast);
         options.fov_effect_scale = choices.fov_effect_scale;
         options.darkness_effect_scale = choices.darkness_effect_scale;
         options.damage_tilt_strength = choices.damage_tilt_strength;
         options.glint_speed = choices.glint_speed;
         options.glint_strength = choices.glint_strength;
         options.menu_background_blurriness = choices.menu_blurriness;
+        if high_contrast_changed {
+            self.switch_high_contrast_pack(choices.high_contrast);
+        }
         let settings = photon_gui::chat::ChatSettings::from(&self.options);
         self.chat_log.set_settings(settings, &assets.creative.font);
     }

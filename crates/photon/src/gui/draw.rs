@@ -416,15 +416,36 @@ impl Gui {
             (&mut self.layers, &mut draw_item),
             (controls, &size, session),
         );
-        Self::present(
-            backend,
-            (&frame, &size),
-            (&self.atlas, &mut self.atlas_image),
-        )
+        let atlas = (&mut self.atlas, &mut self.atlas_image);
+        Self::finish(backend, (&frame, &size), (atlas, controls))
     }
 }
 
 impl Gui {
+    /// The frame sent to the GPU, after the icons the Resource Packs screen asked for were put
+    /// into the atlas (they show from the next frame).
+    fn finish(
+        backend: &mut VulkanBackend,
+        (frame, size): (
+            &photon_render::gui::GuiFrame,
+            &photon_render::window::WindowScale,
+        ),
+        ((atlas, image), controls): (
+            (
+                &mut GuiAtlas,
+                &mut photon_render::texture::png::DecodedImage,
+            ),
+            &mut Controls,
+        ),
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(screen) = controls.pack_screen.as_mut()
+            && photon_gui::favicon::sync_pack_icons(screen, atlas, image)
+        {
+            backend.replace_gui_texture(image)?;
+        }
+        Self::present(backend, (frame, size), (atlas, image))
+    }
+
     /// The game mode switcher and the disconnected screen, when one is open.
     fn draw_switcher_and_disconnect(
         (atlas, font, lang): (&GuiAtlas, &Arc<Font>, &Arc<Lang>),

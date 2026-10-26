@@ -3,7 +3,10 @@
 
 use std::time::{Duration, Instant};
 
-use photon_assets::{Repository, SelectionModel, discover_folder, options_lists, vanilla_entry};
+use photon_assets::{
+    PackEntry, Repository, SelectionModel, discover_built_in, discover_folder, options_lists,
+    vanilla_entry,
+};
 use photon_game::text::Component;
 use photon_gui::options::packs::{PackInput, PackScreen};
 use photon_gui::screen::confirm::ConfirmBackground;
@@ -55,15 +58,21 @@ fn vanilla_icon() -> Option<Vec<u8>> {
     crate::assets::vanilla_pack(std::path::Path::new(&root)).icon()
 }
 
+/// Every pack that can be chosen: the game's own, the built-in ones and the folder's.
+fn all_entries(folder: &std::path::Path) -> Vec<PackEntry> {
+    let mut entries = vec![vanilla_entry(vanilla_icon())];
+    if let Ok(root) = std::env::var("PHOTON_ASSETS") {
+        let zips = crate::resources::built_in_zips(std::path::Path::new(&root));
+        entries.extend(discover_built_in(&zips, crate::resources::PACK_FORMAT));
+    }
+    entries.extend(discover_folder(folder, crate::resources::PACK_FORMAT));
+    entries
+}
+
 impl Controls {
-    /// The packs the screen offers: the game's own, then the folder's, with the selection
-    /// `options.txt` holds.
+    /// The packs the screen offers, with the selection `options.txt` holds.
     fn pack_model(&self) -> SelectionModel {
-        let mut entries = vec![vanilla_entry(vanilla_icon())];
-        entries.extend(discover_folder(
-            &pack_folder(),
-            crate::resources::PACK_FORMAT,
-        ));
+        let entries = all_entries(&pack_folder());
         SelectionModel::new(Repository::new(entries, &self.options.resource_packs()))
     }
 
@@ -103,9 +112,7 @@ impl Controls {
         }
         if watch.reload_at.is_some_and(|at| now >= at) {
             watch.reload_at = None;
-            let entries = discover_folder(screen.folder(), crate::resources::PACK_FORMAT);
-            let mut all = vec![vanilla_entry(vanilla_icon())];
-            all.extend(entries);
+            let all = all_entries(screen.folder());
             screen.reload(&assets.lang, all);
         }
     }
@@ -198,9 +205,37 @@ impl Controls {
         };
         self.pack_watch = None;
         let (packs, incompatible) = options_lists(screen.commit());
+        // `PackEntry.toggleSelection` flips the option when the pack moves.
+        let had = self
+            .options
+            .resource_packs()
+            .iter()
+            .any(|id| id == "high_contrast");
+        if had != packs.iter().any(|id| id == "high_contrast") {
+            let flipped = !self.options.high_contrast();
+            self.options.set_high_contrast(flipped);
+        }
         let changed = self.options.set_resource_packs(&packs, &incompatible);
         self.save_options();
         self.pack_reload |= changed;
+    }
+
+    /// `Options.highContrast`'s callback: the pack is put on top of the selection, or taken off
+    /// it, and the resources are loaded again.
+    pub(super) fn switch_high_contrast_pack(&mut self, on: bool) {
+        const ID: &str = "high_contrast";
+        let mut packs = self.options.resource_packs();
+        let selected = packs.iter().any(|pack| pack == ID);
+        if on && !selected {
+            packs.push(ID.to_owned());
+        } else if !on && selected {
+            packs.retain(|pack| pack != ID);
+        } else {
+            return;
+        }
+        let incompatible = self.options.incompatible_resource_packs();
+        self.options.set_resource_packs(&packs, &incompatible);
+        self.pack_reload = true;
     }
 
     /// Whether the resources are to be loaded again, once.

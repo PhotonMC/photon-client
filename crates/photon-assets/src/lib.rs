@@ -12,7 +12,7 @@ pub use meta::{Compatibility, IdentifierPattern, PackFormat, format_range};
 pub use pack::{Pack, PackError};
 pub use selection::{
     PackEntry, PackSource, Position, Repository, SelectionConfig, SelectionModel, Side, Title,
-    discover_folder, options_lists, pack_directory, vanilla_entry,
+    discover_built_in, discover_folder, options_lists, pack_directory, vanilla_entry,
 };
 pub use source::{DirectorySource, Source, ZipSource};
 pub use stack::{Resource, ResourceStack};

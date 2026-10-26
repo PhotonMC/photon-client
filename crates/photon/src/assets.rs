@@ -63,6 +63,8 @@ fn texture_of(
 /// objects of the asset index around it, which the vanilla pack reads before the jar.
 struct AssetsFolder {
     jar: photon_assets::DirectorySource,
+    /// The jar's top, which holds `pack.png`.
+    top: photon_assets::DirectorySource,
     indexed: Option<crate::indexed::IndexedAssets>,
 }
 
@@ -79,6 +81,9 @@ impl AssetsFolder {
 
 impl photon_assets::Source for AssetsFolder {
     fn read(&self, path: &str) -> Option<Vec<u8>> {
+        if path == "pack.png" {
+            return self.top.read(path);
+        }
         let inside = Self::inside(path)?;
         let indexed = self.indexed.as_ref().and_then(|index| index.object(inside));
         indexed.or_else(|| self.jar.read(inside))
@@ -127,6 +132,7 @@ impl photon_assets::Source for AssetsFolder {
 pub(crate) fn vanilla_pack(root: &std::path::Path) -> photon_assets::Pack {
     let source = AssetsFolder {
         jar: photon_assets::DirectorySource::new(root),
+        top: photon_assets::DirectorySource::new(root.parent().unwrap_or(root)),
         indexed: crate::indexed::IndexedAssets::open(root),
     };
     photon_assets::Pack::built_in("vanilla", Box::new(source))

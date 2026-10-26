@@ -7,6 +7,18 @@ use super::{Menu, Result, Screen};
 use crate::play::Client;
 
 impl Menu {
+    /// The Resource Packs screen's icons, put into the atlas as the screen asks for them.
+    pub(super) fn sync_pack_icons(&mut self, client: &mut Client) -> Result<()> {
+        let Some(screen) = self.host.pack_screen.as_mut() else {
+            return Ok(());
+        };
+        let (atlas, image) = (&mut self.gui.atlas, &mut self.gui.atlas_image);
+        if photon_gui::favicon::sync_pack_icons(screen, atlas, image) {
+            client.backend.replace_gui_texture(&self.gui.atlas_image)?;
+        }
+        Ok(())
+    }
+
     /// A ping's favicon offered to the saved server of `index` (`handleStatusResponse`): a new one
     /// is kept, saved, and drawn from the next frame.
     pub(super) fn offer_ping_icon(&mut self, index: usize, favicon: &[u8]) {

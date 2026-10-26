@@ -122,6 +122,43 @@ pub fn vanilla_entry(icon: Option<Vec<u8>>) -> PackEntry {
     }
 }
 
+/// `ClientPackSource.BUILT_IN_SELECTION_CONFIG`: the packs the game ships besides its own.
+const BUILT_IN: SelectionConfig = SelectionConfig {
+    required: false,
+    fixed_position: false,
+    default_position: Position::Top,
+};
+
+/// `ClientPackSource.SPECIAL_PACK_NAMES`: the built-in packs that have a name of their own.
+fn built_in_title(id: &str) -> Title {
+    match id {
+        "programmer_art" | "high_contrast" => {
+            Title::Translatable(format!("resourcePack.{id}.name"))
+        }
+        _ => Title::Literal(id.to_owned()),
+    }
+}
+
+/// The built-in packs of `zips` (an id and the zip that holds it), those with a readable
+/// `pack.mcmeta` (`BuiltInPackSource.discoverPacksInPath`).
+pub fn discover_built_in(zips: &[(String, PathBuf)], current: PackFormat) -> Vec<PackEntry> {
+    zips.iter()
+        .filter_map(|(id, path)| {
+            let source = ZipSource::open(path).ok()?;
+            let pack = Pack::open(id.clone(), Box::new(source), current).ok()?;
+            Some(PackEntry {
+                id: id.clone(),
+                title: built_in_title(id),
+                description: pack.description().clone(),
+                compatibility: pack.compatibility(),
+                source: PackSource::BuiltIn,
+                config: BUILT_IN,
+                icon: pack.icon(),
+            })
+        })
+        .collect()
+}
+
 /// Every pack of the folder (`FolderRepositorySource.loadPacks`): a directory or a zip with a
 /// readable `pack.mcmeta`. Anything else is passed over.
 pub fn discover_folder(folder: &Path, current: PackFormat) -> Vec<PackEntry> {

@@ -42,8 +42,13 @@ impl IndexedAssets {
         self.hashes.keys().map(String::as_str)
     }
 
-    pub(crate) fn object(&self, index_path: &str) -> Option<Vec<u8>> {
+    /// Where the object of a path is stored.
+    pub(crate) fn object_path(&self, index_path: &str) -> Option<PathBuf> {
         let hash = self.hashes.get(index_path)?;
-        std::fs::read(self.root.join("objects").join(&hash[..2]).join(hash)).ok()
+        Some(self.root.join("objects").join(&hash[..2]).join(hash))
+    }
+
+    pub(crate) fn object(&self, index_path: &str) -> Option<Vec<u8>> {
+        std::fs::read(self.object_path(index_path)?).ok()
     }
 }

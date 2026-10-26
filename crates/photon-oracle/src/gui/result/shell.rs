@@ -87,6 +87,7 @@ pub(super) fn settings_shell(
             (
                 &options,
                 row["options"]["minecart"].as_bool().unwrap_or(false),
+                false,
             ),
         )),
         "mouse_settings_screen" => Shell::Mouse(MouseSettingsScreen::new(

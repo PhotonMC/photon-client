@@ -6,7 +6,13 @@ fn assets() -> Option<(Font, Lang)> {
 }
 
 fn screen(font: &Font, lang: &Lang) -> AccessibilityScreen {
-    AccessibilityScreen::new(font, lang, (427, 240), true, (&Options::default(), false))
+    AccessibilityScreen::new(
+        font,
+        lang,
+        (427, 240),
+        true,
+        (&Options::default(), false, false),
+    )
 }
 
 #[test]

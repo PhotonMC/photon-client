@@ -62,6 +62,8 @@ struct PackView {
     fixed_position: bool,
     /// The pack's icon texture, none for `unknown_pack`.
     icon: Option<String>,
+    /// Whether the host has been asked for the icon (it may have had none to give).
+    icon_checked: bool,
 }
 
 /// What has the focus: the search box, a list (0 available, 1 selected) or a button.
@@ -231,10 +233,10 @@ impl PackScreen {
 
     /// The views of every pack the model knows, in the language now loaded.
     pub fn rebuild_views(&mut self, lang: &Lang) {
-        let old: HashMap<String, Option<String>> = self
+        let old: HashMap<String, (Option<String>, bool)> = self
             .views
             .drain()
-            .map(|(id, view)| (id, view.icon))
+            .map(|(id, view)| (id, (view.icon, view.icon_checked)))
             .collect();
         let ids: Vec<String> = [Side::Selected, Side::Unselected]
             .into_iter()
@@ -269,7 +271,8 @@ impl PackScreen {
                 compatibility: entry.compatibility,
                 required: entry.config.required,
                 fixed_position: entry.config.fixed_position,
-                icon: old.get(&id).cloned().flatten(),
+                icon: old.get(&id).and_then(|(icon, _)| icon.clone()),
+                icon_checked: old.get(&id).is_some_and(|(_, checked)| *checked),
                 id: id.clone(),
             };
             self.views.insert(id, view);
@@ -307,6 +310,7 @@ impl PackScreen {
     pub fn set_icon(&mut self, id: &str, texture: Option<String>) {
         if let Some(view) = self.views.get_mut(id) {
             view.icon = texture;
+            view.icon_checked = true;
         }
     }
 
@@ -314,7 +318,7 @@ impl PackScreen {
     pub fn icons_wanted(&self) -> Vec<(String, Vec<u8>)> {
         self.views
             .values()
-            .filter(|view| view.icon.is_none())
+            .filter(|view| view.icon.is_none() && !view.icon_checked)
             .filter_map(|view| {
                 let bytes = self.model.entry(&view.id)?.icon.clone()?;
                 Some((view.id.clone(), bytes))
