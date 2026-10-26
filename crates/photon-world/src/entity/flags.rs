@@ -407,6 +407,8 @@ pub(crate) struct EntityState {
     /// `Entity.wasTouchingWater`: whether the entity's box found water last tick, so the tick it
     /// first does splashes.
     pub(crate) touching_water: bool,
+    /// `EntityFluidInteraction.isInFluid(LAVA)` as of last tick.
+    pub(crate) touching_lava: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
     /// `AbstractCubeMob.getSize` once the data has said (one before), and its squish.

@@ -34,9 +34,9 @@ impl ClientWorld {
         }
         self.throw_sprint_particle(entity_id);
         self.throw_water_splash(entity_id);
+        self.throw_eating_particles(entity_id);
         self.tick_entity_once(entity_id);
         self.throw_effect_particles(entity_id);
-        self.throw_eating_particles(entity_id);
         self.throw_cloud_particles(entity_id);
         self.throw_free_rocket_trail(entity_id);
         if let Some(vehicle_id) = vehicle_id {
@@ -241,7 +241,8 @@ impl ClientWorld {
 
     /// `Consumable.onUseTick` on a client for a living entity the server says is eating or
     /// drinking: five crumbs of the item in the used hand on the ticks the local player's own
-    /// would. (Its sound is not made yet.)
+    /// would, before the entity moves (`LivingEntity.tick` updates the use ahead of `aiStep`).
+    /// (Its sound is not made yet.)
     fn throw_eating_particles(&mut self, entity_id: EntityId) {
         let Some(entity) = self
             .entities
@@ -258,8 +259,8 @@ impl ClientWorld {
         let Some(stack) = entity.equipment(hand) else {
             return;
         };
-        // The tick that began the use counted 1; the reference's first `onUseTick` is the 0th.
-        let used = entity.living.using_item_ticks - 1;
+        // The ticks the flag was set so far: the reference's first `onUseTick` is the 0th.
+        let used = entity.living.using_item_ticks;
         let crumbs = super::super::local_player::consume_cue(Some(stack))
             .is_some_and(|cue| cue.particles && cue.emits(used));
         if !crumbs {
@@ -299,13 +300,14 @@ impl ClientWorld {
     }
 
     /// `Entity.spawnSprintParticle` for a sprinting entity the server added, out of the fluids
-    /// and over a block that is drawn. (The reference ticks it before the entity moves.)
+    /// (as of last tick) and over a block that is drawn. (The reference ticks it before the entity
+    /// moves.)
     fn throw_sprint_particle(&mut self, entity_id: EntityId) {
-        let Some(entity) = self
-            .entities
-            .at(entity_id)
-            .filter(|entity| entity.sprints_on_foot())
-        else {
+        let Some(entity) = self.entities.at(entity_id).filter(|entity| {
+            entity.sprints_on_foot()
+                && !entity.living.touching_water
+                && !entity.living.touching_lava
+        }) else {
             return;
         };
         let (x, y, z) = entity.position();
@@ -313,27 +315,13 @@ impl ClientWorld {
         let dimensions = entity.dimensions();
         let (m_x, m_y, m_z) = entity.motion();
         let level = local_player::Level::new(self);
-        let Ok(found) = fluid::scan(
-            &level,
-            (
-                dimensions.make_bounding_box(position),
-                position,
-                dimensions.eye_height(),
-            ),
-            true,
-        ) else {
-            return;
-        };
         // An entity the client does not move has no supporting block, so the floor under the
         // feet's column decides.
         let on = level.on_pos(None, position, 0.2);
         let Some(state) = level.state_id(on) else {
             return;
         };
-        if found.water.height > 0.0
-            || found.lava.height > 0.0
-            || shadow::is_invisible_render_shape(block::state_or_air(state).block().name)
-        {
+        if shadow::is_invisible_render_shape(block::state_or_air(state).block().name) {
             return;
         }
         let here = BlockPos::new(
@@ -371,7 +359,9 @@ impl ClientWorld {
     }
 
     /// `Entity.updateInWaterStateAndDoFluidPushing` for a living entity the server added: on the
-    /// tick its box first finds water (not the tick it appears) it splashes.
+    /// tick its box first finds water (not the tick it appears) it splashes. Its fluids are kept
+    /// for the next tick's sprint flake. (The splash sound is not made yet, and only living
+    /// entities splash.)
     fn throw_water_splash(&mut self, entity_id: EntityId) {
         let Some(entity) = self
             .entities
@@ -394,11 +384,12 @@ impl ClientWorld {
         ) else {
             return;
         };
-        let in_water = found.water.height > 0.0;
+        let (in_water, in_lava) = (found.water.height > 0.0, found.lava.height > 0.0);
         let splashes = in_water && !entity.living.touching_water && entity.tick_count > 0;
         let (width, (m_x, m_y, m_z)) = (dimensions.width(), entity.motion());
         if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.living.touching_water = in_water;
+            entity.living.touching_lava = in_lava;
         }
         if splashes {
             let (queue, random) = &mut self.effect_particles;
