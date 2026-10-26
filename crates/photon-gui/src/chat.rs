@@ -497,6 +497,24 @@ mod tests {
     }
 
     #[test]
+    fn a_character_after_a_used_match_asks_for_suggestions_at_once() {
+        let Some(font) = Font::load(std::path::Path::new(
+            &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+        )) else {
+            return;
+        };
+        let mut screen =
+            ChatScreen::new(Arc::new(font), (427, 240), "/g", Vec::new()).without_key();
+        screen.suggested(0, 1, 1, vec!["gamemode".into()]);
+        screen.key_pressed(glfw::Key::Tab, (false, false), &mut NoClip);
+        assert_eq!(screen.value(), "/gamemode");
+        // The next edit is the player's own: the space is not swallowed.
+        screen.char_typed(' ');
+        let (_, text) = screen.take_request().expect("a request");
+        assert_eq!(text, "/gamemode ");
+    }
+
+    #[test]
     fn a_line_from_the_history_shows_no_list_until_the_next_edit() {
         let Some(font) = Font::load(std::path::Path::new(
             &std::env::var("PHOTON_ASSETS").unwrap_or_default(),

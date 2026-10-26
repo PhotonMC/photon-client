@@ -319,3 +319,56 @@ impl CommandTree {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::NodeStub;
+
+    fn stub(kind: NodeKind, children: Vec<usize>, type_id: u8) -> NodeStub {
+        NodeStub {
+            kind,
+            children,
+            redirect: None,
+            executable: false,
+            custom_suggestions: false,
+            restricted: false,
+            type_id,
+        }
+    }
+
+    #[test]
+    fn the_space_after_a_literal_lists_its_argument() {
+        let tree = CommandTree::build(
+            vec![
+                stub(NodeKind::Root, vec![1], 0),
+                stub(NodeKind::Literal("gamemode".into()), vec![2], 0),
+                stub(
+                    NodeKind::Argument {
+                        name: "gamemode".into(),
+                        kind: ArgumentKind::GameMode,
+                    },
+                    vec![],
+                    42,
+                ),
+            ],
+            0,
+        )
+        .unwrap();
+        let ctx = SuggestContext {
+            players: &[],
+            teams: &[],
+            selected_entities: &[],
+            selectors: true,
+        };
+        let text = "/gamemode ";
+        let parse = tree.parse(text, 1, true);
+        let found = tree.suggestions(&parse, text.len(), &ctx);
+        assert!(!found.ask_server);
+        assert_eq!(found.start, text.len());
+        assert_eq!(
+            found.matches,
+            ["adventure", "creative", "spectator", "survival"]
+        );
+    }
+}

@@ -78,8 +78,6 @@ pub struct CommandSuggestions {
     /// The request to send: its id and text, and the id of the last sent.
     request: Option<(i32, String)>,
     pub(super) request_id: i32,
-    /// `keepSuggestions`: a match was just used, and that edit asks for nothing.
-    applied: bool,
     /// The command tree, which suggests what continues a command itself.
     commands: Option<Arc<CommandTree>>,
     /// The names the suggestions draw on: online players, and teams.
@@ -114,7 +112,6 @@ impl CommandSuggestions {
             usage_cursor: 0,
             request: None,
             request_id: 0,
-            applied: false,
             commands: None,
             players: Vec::new(),
             teams: Vec::new(),
@@ -165,11 +162,8 @@ impl CommandSuggestions {
     }
 
     /// `updateCommandInfo`: the list goes, and a command's text up to the cursor asks for its
-    /// matches. A match just used keeps the list and asks for nothing.
+    /// matches.
     pub fn edited(&mut self, edit: &mut EditBox) {
-        if std::mem::take(&mut self.applied) {
-            return;
-        }
         edit.set_suggestion(None);
         self.stale = true;
         let text = edit.value();
@@ -279,7 +273,6 @@ impl CommandSuggestions {
 
     /// `useSuggestion`: the box takes the match's text, the cursor after it.
     fn take_match(&mut self, edit: &mut EditBox, (text, end): (String, usize)) {
-        self.applied = true;
         edit.set_value(&text, &self.font);
         edit.set_cursor_position(end, &self.font);
         self.update_ghost(edit);

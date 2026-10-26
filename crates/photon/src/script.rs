@@ -155,8 +155,10 @@ impl HeldKeys {
                         }
                         ["type", text @ ..] => {
                             // A script is read once: its text lives on; a
-                            // slash in it is part of the text.
-                            keys.typed = Some(Box::leak(text.join("/").into_boxed_str()));
+                            // slash in it is part of the text, and `%20` is a
+                            // space (steps are trimmed).
+                            let text = text.join("/").replace("%20", " ");
+                            keys.typed = Some(Box::leak(text.into_boxed_str()));
                         }
                         _ if keys.parse_pointer_step(&parts, other)? => {}
                         _ => return Err(format!("unknown key {other} in PHOTON_SCRIPT")),
