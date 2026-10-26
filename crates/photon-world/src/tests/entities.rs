@@ -13,4 +13,5 @@ mod movement_collision;
 mod projectiles;
 mod remote_players;
 mod status;
+mod teleport;
 mod tick_state;

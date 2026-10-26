@@ -56,7 +56,7 @@ mod vibration;
 mod water;
 
 pub use ambience::{Ambience, AmbientParticle, NoAmbience};
-pub use effects::effect_particle;
+pub use effects::{effect_particle, teleport_particles};
 pub use elder_guardian::ElderGuardian;
 pub use engine::{
     AddView, Emitted, LevelParticles, ParticleData, ParticleEngine, ParticleStatus, PositionSource,
