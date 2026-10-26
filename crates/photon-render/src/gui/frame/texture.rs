@@ -388,6 +388,7 @@ impl GuiFrame {
         }
         let first = mark.vertices;
         let (left, top, right, bottom) = (left as f32, top as f32, right as f32, bottom as f32);
+        self.drop_items_outside(mark, (left, top, right, bottom));
         for quad in self.vertices[first..].as_chunks_mut::<6>().0.iter_mut() {
             let xs = quad.iter().map(|vertex| vertex.position[0]);
             let ys = quad.iter().map(|vertex| vertex.position[1]);
@@ -422,6 +423,32 @@ impl GuiFrame {
                 let y = if vertex.position[1] <= y0 { cy0 } else { cy1 };
                 vertex.uv = [u_at(x), v_at(y)];
                 vertex.position = [x, y];
+            }
+        }
+    }
+
+    /// The scissor over item triangles: one that lies wholly outside the rectangle is flattened
+    /// to nothing. Item triangles are not upright rectangles, so one that crosses an edge is
+    /// kept whole.
+    fn drop_items_outside(
+        &mut self,
+        mark: FrameMark,
+        (left, top, right, bottom): (f32, f32, f32, f32),
+    ) {
+        for triangle in self.items[mark.items..].as_chunks_mut::<3>().0.iter_mut() {
+            let xs = triangle.iter().map(|vertex| vertex.position[0]);
+            let ys = triangle.iter().map(|vertex| vertex.position[1]);
+            let (x0, x1) = (
+                xs.clone().fold(f32::INFINITY, f32::min),
+                xs.fold(f32::NEG_INFINITY, f32::max),
+            );
+            let (y0, y1) = (
+                ys.clone().fold(f32::INFINITY, f32::min),
+                ys.fold(f32::NEG_INFINITY, f32::max),
+            );
+            if x1 <= left || x0 >= right || y1 <= top || y0 >= bottom {
+                let corner = triangle[0];
+                triangle.fill(corner);
             }
         }
     }
