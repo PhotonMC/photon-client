@@ -313,6 +313,18 @@ impl PartialEq for LevelEventQueue {
 
 impl Eq for LevelEventQueue {}
 
+/// What a lit campfire's tick asks of the particle engine (`CampfireBlockEntity.particleTick`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CampfireSmoke {
+    pub pos: (i32, i32, i32),
+    /// `CampfireBlock.SIGNAL_FIRE`: the tall, dark smoke.
+    pub signal: bool,
+    /// `Direction.get2DDataValue` of its facing.
+    pub rotation: i32,
+    /// Which of its four slots hold food.
+    pub cooking: [bool; 4],
+}
+
 /// What the level plays when the particle engine takes it, in the order it came.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LevelEvent {
@@ -348,6 +360,10 @@ pub enum LevelEvent {
     VaultTick { pos: (i32, i32, i32) },
     /// A spawner's tick with a player near (`BaseSpawner.clientTick`): a puff of smoke and flame.
     SpawnerTick { pos: (i32, i32, i32) },
+    /// A lit campfire's tick (`CampfireBlockEntity.particleTick`): its smoke, and the smoke of
+    /// the food on it. `rotation` is `Direction.get2DDataValue` of its facing, `cooking` which
+    /// of its four slots hold food.
+    CampfireTick(CampfireSmoke),
     /// A trial spawner's tick (`TrialSpawner.tickClient`), less its spin: the particles of its
     /// state and its ambient sound.
     TrialSpawnerTick { pos: (i32, i32, i32) },

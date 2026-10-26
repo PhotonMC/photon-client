@@ -424,7 +424,7 @@ impl ParticleEngine {
 
     /// `Level.addAlwaysVisibleParticle` of a plain type: past the limiter, shown whatever the
     /// option.
-    fn level_add_always_visible<F: FnMut() -> RandomSource>(
+    pub(super) fn level_add_always_visible<F: FnMut() -> RandomSource>(
         &mut self,
         context: &mut LevelEventContext<'_, F>,
         name: &str,

@@ -205,6 +205,10 @@ impl ParticleEngine {
                 self.spawner_tick(pos, context);
                 Vec::new()
             }
+            LevelEvent::CampfireTick(smoke) => {
+                self.campfire_tick(smoke, context);
+                Vec::new()
+            }
             LevelEvent::Geyser { at, water_blocks } => {
                 self.add_geyser(context, at, water_blocks);
                 Vec::new()
@@ -246,6 +250,7 @@ impl ParticleEngine {
             | LevelEvent::ConduitSpecks { .. }
             | LevelEvent::VaultTick { .. }
             | LevelEvent::SpawnerTick { .. }
+            | LevelEvent::CampfireTick(_)
             | LevelEvent::TrialSpawnerTick { .. }
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }

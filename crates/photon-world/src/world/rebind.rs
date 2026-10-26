@@ -14,7 +14,18 @@ fn ticking_entity_of(block_name: &str) -> Option<&'static str> {
         "minecraft:potent_sulfur" => Some("minecraft:potent_sulfur"),
         "minecraft:enchanting_table" => Some("minecraft:enchanting_table"),
         "minecraft:beacon" => Some("minecraft:beacon"),
+        "minecraft:campfire" | "minecraft:soul_campfire" => Some("minecraft:campfire"),
         _ => None,
+    }
+}
+
+/// Whether the block entity keeps its ticker in this state: a dry sulfur block and an unlit
+/// campfire have none.
+fn keeps_ticker(kind: &str, state: BlockStateId) -> bool {
+    match kind {
+        "minecraft:potent_sulfur" => has_sulfur_ticker(state),
+        "minecraft:campfire" => block::rules::property(state, "lit") == Some("true"),
+        _ => true,
     }
 }
 
@@ -29,7 +40,7 @@ impl ClientWorld {
         if self.block_entity_or_new(pos, kind).is_none() {
             return;
         }
-        if kind != "minecraft:potent_sulfur" || has_sulfur_ticker(state) {
+        if keeps_ticker(kind, state) {
             self.block_tickers.register(pos);
         } else {
             self.block_tickers.unregister(pos);

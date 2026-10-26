@@ -241,6 +241,61 @@ impl ParticleEngine {
         }
     }
 
+    /// `CampfireBlockEntity.particleTick`: one tick in nine, two or three puffs of the campfire's
+    /// tall smoke; and, for each slot with food on it, one tick in five, four wisps of smoke
+    /// from where the food lies.
+    pub(super) fn campfire_tick<F: FnMut() -> RandomSource>(
+        &mut self,
+        smoke: crate::world::CampfireSmoke,
+        context: &mut LevelEventContext<'_, F>,
+    ) {
+        let crate::world::CampfireSmoke {
+            pos,
+            signal,
+            rotation,
+            cooking,
+        } = smoke;
+        let (bx, by, bz) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        let smoke = if signal {
+            "campfire_signal_smoke"
+        } else {
+            "campfire_cosy_smoke"
+        };
+        if context.level_random.next_float() < 0.11 {
+            // The loop's bound is drawn again before each pass.
+            let mut made = 0;
+            while made < context.level_random.next_int_bound(2).unwrap_or(0) + 2 {
+                // `CampfireBlock.makeParticles`: a puff within a third of the middle.
+                let random = &mut *context.level_random;
+                let x = bx
+                    + 0.5
+                    + random.next_double() / 3.0 * if random.next_boolean() { 1.0 } else { -1.0 };
+                let y = by + random.next_double() + random.next_double();
+                let z = bz
+                    + 0.5
+                    + random.next_double() / 3.0 * if random.next_boolean() { 1.0 } else { -1.0 };
+                self.level_add_always_visible(context, smoke, (x, y, z), (0.0, 0.07, 0.0));
+                made += 1;
+            }
+        }
+        // `Direction.get2DDataValue` order, as (step x, step z): south, west, north, east. The
+        // clockwise one is the next.
+        const STEPS: [(f64, f64); 4] = [(0.0, 1.0), (-1.0, 0.0), (0.0, -1.0), (1.0, 0.0)];
+        for (slot, food) in cooking.iter().enumerate() {
+            if !food || context.level_random.next_float() >= 0.2 {
+                continue;
+            }
+            let direction = (slot as i32 + rotation).rem_euclid(4) as usize;
+            let ((dx, dz), (cx, cz)) = (STEPS[direction], STEPS[(direction + 1) % 4]);
+            let distance = f64::from(0.3125_f32);
+            let x = bx + 0.5 - dx * distance + cx * distance;
+            let z = bz + 0.5 - dz * distance + cz * distance;
+            for _ in 0..4 {
+                self.level_add(context, "smoke", (x, by + 0.5, z), (0.0, 5.0E-4, 0.0));
+            }
+        }
+    }
+
     /// `FurnaceBlock`, `BlastFurnaceBlock` and `SmokerBlock` lit: a crackle one time in ten, and
     /// smoke (and a furnace's flame) out of the front, or a smoker's out of the top.
     fn furnace<F: FnMut() -> RandomSource>(
