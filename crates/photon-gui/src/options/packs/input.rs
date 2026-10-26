@@ -28,32 +28,57 @@ pub(super) enum Part {
     Down,
 }
 
+/// What a list has under a point.
+pub(super) enum Row<'a> {
+    Header,
+    /// A pack, and the point relative to its content.
+    Pack(&'a PackView, (i32, i32)),
+}
+
 impl PackScreen {
-    /// The pack entry of a list under `at`, with the pointer relative to its content.
-    pub(super) fn entry_at(&self, list: usize, at: (i32, i32)) -> Option<(&PackView, (i32, i32))> {
+    /// The row of a list under `at`.
+    pub(super) fn row_at(&self, list: usize, at: (i32, i32)) -> Option<Row<'_>> {
         let place = self.place();
         let x = self.list_x(list);
         if at.0 < x || at.0 >= x + LIST_WIDTH || at.1 < place.y || at.1 >= place.bottom() {
             return None;
         }
-        let width = ROW_WIDTH
-            - if self.scrollable(list) {
-                SCROLLBAR_WIDTH
-            } else {
-                0
-            };
         let left = x + (LIST_WIDTH - ROW_WIDTH) / 2;
-        if at.0 < left || at.0 >= left + width {
+        if at.0 < left || at.0 >= left + self.row_width(list) {
             return None;
+        }
+        let header = self.entry_y(list, 0);
+        if at.1 >= header && at.1 < header + HEADER_ENTRY_HEIGHT {
+            return Some(Row::Header);
         }
         self.shown(list)
             .into_iter()
             .enumerate()
             .find_map(|(index, view)| {
                 let top = self.entry_y(list, index + 1);
-                (at.1 >= top && at.1 < top + ENTRY_HEIGHT)
-                    .then_some((view, (at.0 - (left + PADDING), at.1 - (top + PADDING))))
+                (at.1 >= top && at.1 < top + ENTRY_HEIGHT).then_some(Row::Pack(
+                    view,
+                    (at.0 - (left + PADDING), at.1 - (top + PADDING)),
+                ))
             })
+    }
+
+    /// The pack entry of a list under `at`, with the point relative to its content.
+    pub(super) fn entry_at(&self, list: usize, at: (i32, i32)) -> Option<(&PackView, (i32, i32))> {
+        match self.row_at(list, at)? {
+            Row::Pack(view, rel) => Some((view, rel)),
+            Row::Header => None,
+        }
+    }
+
+    /// The width of a list's rows: the bar takes some of it when the list scrolls.
+    pub(super) fn row_width(&self, list: usize) -> i32 {
+        ROW_WIDTH
+            - if self.scrollable(list) {
+                SCROLLBAR_WIDTH
+            } else {
+                0
+            }
     }
 
     /// The part of the entry's icon the pointer is over, among those the pack offers
@@ -96,13 +121,65 @@ impl PackScreen {
     /// The pack is selected (it fits, or the player confirmed).
     pub fn select_confirmed(&mut self, id: &str) {
         self.model.toggle(id);
-        self.after_change();
+        self.transferred(id);
     }
 
-    fn after_change(&mut self) {
+    /// `populateLists` with the entry that moved: both lists are made again with nothing selected,
+    /// and the list that holds the pack takes the focus and selects it.
+    fn transferred(&mut self, id: &str) {
         self.update_done();
+        self.selected = [None, None];
         for list in 0..2 {
             self.set_scroll(list, self.scroll[list]);
+        }
+        let found = (0..2).find(|&list| self.shown(list).iter().any(|view| view.id == id));
+        if let Some(list) = found {
+            self.focus = Some(Focus::List(list));
+            self.set_selected(list, Selected::Pack(id.to_owned()));
+        }
+    }
+
+    /// `setSelected`: the entry is the list's, and the list scrolls to it when it sticks out.
+    fn set_selected(&mut self, list: usize, entry: Selected) {
+        let index = match &entry {
+            Selected::Header => 0,
+            Selected::Pack(id) => {
+                1 + self
+                    .shown(list)
+                    .iter()
+                    .position(|view| view.id == *id)
+                    .unwrap_or(0)
+            }
+        };
+        self.selected[list] = Some(entry);
+        let place = self.place();
+        let top = self.entry_y(list, index);
+        let height = self.entry_height(index);
+        if top + PADDING < place.y || top + height - PADDING > place.bottom() {
+            self.scroll_to_entry(list, index);
+        }
+    }
+
+    fn entry_height(&self, index: usize) -> i32 {
+        if index == 0 {
+            HEADER_ENTRY_HEIGHT
+        } else {
+            ENTRY_HEIGHT
+        }
+    }
+
+    /// `scrollToEntry`.
+    fn scroll_to_entry(&mut self, list: usize, index: usize) {
+        let place = self.place();
+        let top = self.entry_y(list, index);
+        let top_delta = top - place.y - PADDING;
+        if top_delta < 0 {
+            self.set_scroll(list, self.scroll[list] + f64::from(top_delta));
+        }
+        let top = self.entry_y(list, index);
+        let bottom_delta = place.bottom() - top - self.entry_height(index) - PADDING;
+        if bottom_delta < 0 {
+            self.set_scroll(list, self.scroll[list] - f64::from(bottom_delta));
         }
     }
 
@@ -113,7 +190,7 @@ impl PackScreen {
             Part::Up => self.model.move_up(id),
             Part::Down => self.model.move_down(id),
         }
-        self.after_change();
+        self.transferred(id);
         PackInput::default()
     }
 
@@ -145,17 +222,17 @@ impl PackScreen {
             && at.1 >= search.y
             && at.1 < search.y + search.height;
         if inside {
-            if !self.search_focused {
+            if !self.search_focused() {
                 self.searched_at = Instant::now();
             }
-            self.search_focused = true;
+            self.focus = Some(Focus::Search);
             self.search.click_at(at.0 - (search.x + 4), font);
         }
         inside
     }
 
-    /// A press over a list: its bar is taken, or an entry's icon pressed. None when the press
-    /// was not over a list.
+    /// A press over a list: its bar is taken, or a row pressed. None when the press was not over a
+    /// list; a press over a list that finds no row changes nothing.
     fn click_lists(&mut self, mouse: (f64, f64)) -> Option<PackInput> {
         let at = (mouse.0 as i32, mouse.1 as i32);
         let place = self.place();
@@ -163,19 +240,36 @@ impl PackScreen {
             let x = f64::from(self.list_x(list));
             mouse.0 >= x && mouse.0 < x + f64::from(LIST_WIDTH) && place.contains((0.0, mouse.1))
         })?;
-        self.search_focused = false;
         let bar = f64::from(self.bar_x(list));
         if self.scrollable(list) && mouse.0 >= bar && mouse.0 <= bar + f64::from(SCROLLBAR_WIDTH) {
             self.scrolling = Some(list);
+            self.focus = Some(Focus::List(list));
             return Some(PackInput::default());
         }
-        let hit = self
-            .entry_at(list, at)
-            .and_then(|(view, rel)| Some((view.id.clone(), self.part_at(view, rel)?)));
-        Some(match hit {
-            Some((id, part)) => self.press_part(&id, part),
-            None => PackInput::default(),
-        })
+        Some(self.press_row(list, at))
+    }
+
+    /// A press on a row of a list (or between rows): the list takes the focus and the row is
+    /// selected, or its icon part acts.
+    fn press_row(&mut self, list: usize, at: (i32, i32)) -> PackInput {
+        let pressed = match self.row_at(list, at) {
+            None => return PackInput::default(),
+            Some(Row::Header) => None,
+            Some(Row::Pack(view, rel)) => Some((view.id.clone(), self.part_at(view, rel))),
+        };
+        self.focus = Some(Focus::List(list));
+        match pressed {
+            None => self.set_selected(list, Selected::Header),
+            Some((id, None)) => self.set_selected(list, Selected::Pack(id)),
+            Some((id, Some(part))) => {
+                let input = self.press_part(&id, part);
+                if input.confirm.is_some() {
+                    self.set_selected(list, Selected::Pack(id));
+                }
+                return input;
+            }
+        }
+        PackInput::default()
     }
 
     /// The pointer moved by `dy` with the primary button down.
@@ -211,10 +305,18 @@ impl PackScreen {
         }
     }
 
+    /// The search text changed: both lists are made again from what matches, with nothing selected
+    /// (`updateFilteredEntries`).
+    fn refilter(&mut self) {
+        self.selected = [None, None];
+        for list in 0..2 {
+            self.set_scroll(list, self.scroll[list]);
+        }
+    }
+
     pub fn char_typed(&mut self, font: &Font, character: char) {
-        if self.search_focused {
-            self.search.char_typed(character, font);
-            self.after_change();
+        if self.search_focused() && self.search.char_typed(character, font) {
+            self.refilter();
         }
     }
 
@@ -225,12 +327,15 @@ impl PackScreen {
         (control, shift): (bool, bool),
         clipboard: &mut dyn Clipboard,
     ) {
-        if self.search_focused
+        if self.search_focused()
             && let Some(edit) = edit_key(key)
         {
+            let before = self.search.value();
             self.search
                 .key_pressed(edit, control, shift, font, clipboard);
-            self.after_change();
+            if self.search.value() != before {
+                self.refilter();
+            }
         }
     }
 }

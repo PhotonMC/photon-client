@@ -1,6 +1,7 @@
 use super::input::Part;
 use super::*;
 use crate::FrameRuns;
+use crate::widgets::scroll_area::SCROLLBAR_WIDTH;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
 /// `extractContent`'s incompatible backdrop and the icon's hover overlay.
@@ -10,7 +11,9 @@ const HOVER_OVERLAY: u32 = -1_601_138_544_i32 as u32;
 /// Where an entry's content starts, whether its list has a bar, and the pointer if it is over it.
 struct EntryAt {
     content: (i32, i32),
-    scrollable: bool,
+    /// The width of the row's content, and of the text beside the icon.
+    content_width: i32,
+    text_width: i32,
     hover: Option<(i32, i32)>,
 }
 
@@ -44,7 +47,7 @@ impl PackScreen {
 
     fn draw_search(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font) {
         let rect = self.arena.0[self.search_rect];
-        let focused = self.search_focused;
+        let focused = self.search_focused();
         let sprite = if focused {
             "widget/text_field_highlighted"
         } else {
@@ -117,11 +120,14 @@ impl PackScreen {
                 .as_ref()
                 .filter(|(id, _)| *id == view.id)
                 .map(|(_, rel)| *rel);
+            let bar = if scrollable { SCROLLBAR_WIDTH } else { 0 };
             let at = EntryAt {
                 content: (x + 2 * PADDING, top + PADDING),
-                scrollable,
+                content_width: ROW_WIDTH - 2 * PADDING - bar,
+                text_width: TEXT_WIDTH - bar,
                 hover,
             };
+            self.draw_selection(frame, atlas, list, &view.id, (x, top), bar);
             self.draw_entry(frame, atlas, (font, lang), view, &at);
         }
         frame.clip_from(mark, (x, place.y, x + LIST_WIDTH, place.bottom()));
@@ -137,7 +143,7 @@ impl PackScreen {
         list: usize,
         scrollable: bool,
     ) {
-        let row_width = ROW_WIDTH - if scrollable { 6 } else { 0 };
+        let row_width = ROW_WIDTH - if scrollable { SCROLLBAR_WIDTH } else { 0 };
         let header = &self.headers[list];
         frame.styled_text(
             atlas,
@@ -178,7 +184,7 @@ impl PackScreen {
         if !view.compatibility.is_compatible() {
             frame.fill(
                 atlas,
-                (cx - 1, cy - 1, cx + 192 + 1, cy + 32 + 1),
+                (cx - 1, cy - 1, cx + at.content_width + 1, cy + 32 + 1),
                 INCOMPATIBLE_BACKDROP,
             );
         }
@@ -186,7 +192,11 @@ impl PackScreen {
         frame.blit_texture(atlas, icon, (ICON, ICON), (0, 0), cx, cy, ICON, ICON);
         let mut title = view.title.clone();
         let mut description = view.description.clone();
-        if let Some(rel) = at.hover.filter(|_| !(view.fixed_position && view.required)) {
+        let hovered = at.hover.filter(|_| !(view.fixed_position && view.required));
+        let selected = self.is_selected(view);
+        let overlay = hovered.is_some() || selected;
+        if overlay && !(view.fixed_position && view.required) {
+            let part = hovered.and_then(|rel| self.part_at(view, rel));
             frame.fill(atlas, (cx, cy, cx + ICON, cy + ICON), HOVER_OVERLAY);
             if !view.compatibility.is_compatible() {
                 let key = format!("pack.incompatible.{}", view.compatibility.key());
@@ -198,12 +208,11 @@ impl PackScreen {
                     colour: Some(0x80_8080),
                     ..Style::default()
                 };
-                description =
-                    description_lines(font, &lang.runs(&Component::translatable(key), &gray));
+                description = lang.runs(&Component::translatable(key), &gray);
             }
-            self.draw_overlay(frame, atlas, view, at.content, self.part_at(view, rel));
+            self.draw_overlay(frame, atlas, view, at.content, part);
         }
-        let limit = TEXT_WIDTH - if at.scrollable { 6 } else { 0 };
+        let limit = at.text_width;
         let title = fit(font, title, limit);
         frame.styled_text(
             atlas,
@@ -214,11 +223,47 @@ impl PackScreen {
             0xFFFF_FFFF,
             true,
         );
-        for (row, line) in description.iter().enumerate() {
-            let line = fit(font, line.clone(), limit);
+        for (row, line) in description_lines(font, &description, limit)
+            .into_iter()
+            .enumerate()
+        {
             let y = cy + 12 + row as i32 * 9;
             frame.styled_text(atlas, font, &line, cx + ICON + 2, y, 0xFF80_8080, true);
         }
+    }
+
+    fn is_selected(&self, view: &PackView) -> bool {
+        self.focus
+            .is_some_and(|focus| matches!(focus, Focus::List(_)))
+            && self
+                .selected
+                .iter()
+                .any(|entry| matches!(entry, Some(Selected::Pack(id)) if *id == view.id))
+    }
+
+    /// The outline of the selected entry: white while its list has the focus, gray otherwise.
+    fn draw_selection(
+        &self,
+        frame: &mut GuiFrame,
+        atlas: &GuiAtlas,
+        list: usize,
+        id: &str,
+        (x, top): (i32, i32),
+        bar: i32,
+    ) {
+        if !matches!(&self.selected[list], Some(Selected::Pack(selected)) if selected == id) {
+            return;
+        }
+        let outline = if self.focus == Some(Focus::List(list)) {
+            0xFFFF_FFFF
+        } else {
+            0xFF80_8080
+        };
+        let left = x + (LIST_WIDTH - ROW_WIDTH) / 2;
+        let rect = (left, top, left + ROW_WIDTH - bar, top + ENTRY_HEIGHT);
+        frame.fill(atlas, rect, outline);
+        let inner = (rect.0 + 1, rect.1 + 1, rect.2 - 1, rect.3 - 1);
+        frame.fill(atlas, inner, 0xFF00_0000);
     }
 
     /// The icon's arrows: select, or unselect, up and down, highlighted under the pointer.

@@ -13,7 +13,7 @@ use crate::layout::{Arena, Grid, Item, Settings, horizontal, place_in_frame};
 use crate::widgets::edit_box::EditBox;
 use crate::widgets::scroll_area::Place;
 use crate::widgets::{Kind, Widget};
-use crate::{FontRuns, chat};
+use crate::{FontRuns, splitter};
 use photon_render::gui::font::Font;
 
 mod draw;
@@ -49,7 +49,8 @@ pub struct PackInput {
 struct PackView {
     id: String,
     title: Vec<Run>,
-    description: Vec<Vec<Run>>,
+    /// The description under its source, as the entry draws it.
+    description: Vec<Run>,
     /// The text the search looks in.
     haystack: String,
     compatibility: Compatibility,
@@ -57,6 +58,20 @@ struct PackView {
     fixed_position: bool,
     /// The pack's icon texture, none for `unknown_pack`.
     icon: Option<String>,
+}
+
+/// What has the focus: the search box or a list (0 available, 1 selected).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    Search,
+    List(usize),
+}
+
+/// A selected entry of a list: its heading is one too.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Selected {
+    Header,
+    Pack(String),
 }
 
 pub struct PackScreen {
@@ -75,7 +90,9 @@ pub struct PackScreen {
     scroll: [f64; 2],
     /// The list whose bar is held.
     scrolling: Option<usize>,
-    search_focused: bool,
+    focus: Option<Focus>,
+    /// The entry each list has selected (`AbstractSelectionList.getSelected`).
+    selected: [Option<Selected>; 2],
     folder: PathBuf,
     in_world: bool,
     size: (i32, i32),
@@ -189,19 +206,20 @@ impl PackScreen {
             headers: parts.headers,
             scroll: [0.0; 2],
             scrolling: None,
-            search_focused: true,
+            focus: Some(Focus::Search),
+            selected: [None, None],
             folder,
             in_world,
             size,
         };
-        screen.rebuild_views(font, lang);
+        screen.rebuild_views(lang);
         screen.arrange();
         screen.update_done();
         screen
     }
 
     /// The views of every pack the model knows, in the language now loaded.
-    pub fn rebuild_views(&mut self, font: &Font, lang: &Lang) {
+    pub fn rebuild_views(&mut self, lang: &Lang) {
         let old: HashMap<String, Option<String>> = self
             .views
             .drain()
@@ -225,14 +243,16 @@ impl PackScreen {
                 ..Style::default()
             };
             let description_runs = lang.runs(&extended_description(entry), &gray);
+            // The search looks in the description as the pack gave it, without its source.
+            let bare = Component::from_json(&entry.description).unwrap_or_else(Component::empty);
             let haystack = format!(
                 "{}\n{}\n{}",
                 id.to_lowercase(),
                 plain(&title).to_lowercase(),
-                plain(&description_runs).to_lowercase()
+                plain(&lang.runs(&bare, &Style::default())).to_lowercase()
             );
             let view = PackView {
-                description: description_lines(font, &description_runs),
+                description: description_runs,
                 title,
                 haystack,
                 compatibility: entry.compatibility,
@@ -292,10 +312,11 @@ impl PackScreen {
     }
 
     /// `findNewPacks` and the lists again, after the folder changed.
-    pub fn reload(&mut self, font: &Font, lang: &Lang, entries: Vec<PackEntry>) {
+    pub fn reload(&mut self, lang: &Lang, entries: Vec<PackEntry>) {
         self.model.find_new_packs(entries);
-        self.rebuild_views(font, lang);
+        self.rebuild_views(lang);
         self.update_done();
+        self.selected = [None, None];
         for side in 0..2 {
             self.set_scroll(side, self.scroll[side]);
         }
@@ -407,20 +428,24 @@ impl PackScreen {
         self.list_x(list) + LIST_WIDTH - crate::widgets::scroll_area::SCROLLBAR_WIDTH
     }
 
+    fn search_focused(&self) -> bool {
+        self.focus == Some(Focus::Search)
+    }
+
     pub fn search_text(&self) -> String {
         self.search.value()
     }
 }
 
-/// The description in lines of [`TEXT_WIDTH`], two at most with an ellipsis at the end of a
-/// longer text (`MultiLineTextWidget.setMaxRows(2)`).
-fn description_lines(font: &Font, runs: &[Run]) -> Vec<Vec<Run>> {
-    let mut lines = chat::wrap(runs, TEXT_WIDTH, font);
-    if lines.len() > 2 {
-        lines.truncate(2);
-        if let Some(last) = lines.last_mut() {
-            ellipsize(font, last, TEXT_WIDTH);
-        }
+/// The description in lines of `width`, two at most; a longer text ends in an ellipsis
+/// (`MultiLineLabel.create` with a row limit).
+fn description_lines(font: &Font, runs: &[Run], width: i32) -> Vec<Vec<Run>> {
+    let split = splitter::split_lines(runs, width, font, &Style::default());
+    let more = split.len() > 2;
+    let mut lines: Vec<Vec<Run>> = split.into_iter().take(2).map(|(line, _)| line).collect();
+    if more && let Some(last) = lines.last_mut() {
+        let own = font.width_of_runs(last);
+        ellipsize(font, last, own);
     }
     lines
 }

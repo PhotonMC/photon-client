@@ -232,7 +232,8 @@ impl Controls {
 
     /// A scripted press on the Resource Packs screen or the question over it. Whether one was up.
     fn scripted_pack_press(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) -> bool {
-        if self.link_confirm.is_none() && self.pack_screen.is_none() {
+        let asking = matches!(self.link_confirm, Some((_, ConfirmTarget::Pack(_))));
+        if !asking && (self.link_confirm.is_some() || self.pack_screen.is_none()) {
             return false;
         }
         let press = glfw::WindowEvent::MouseButton(

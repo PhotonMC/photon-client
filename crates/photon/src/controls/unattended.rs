@@ -139,6 +139,7 @@ impl Controls {
                     chat.insert_text(command, false);
                 }
             }
+            (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(id),
             _ => {}
         }
         Ok(())

@@ -103,7 +103,7 @@ impl Controls {
             let entries = discover_folder(screen.folder(), crate::resources::PACK_FORMAT);
             let mut all = vec![vanilla_entry(None)];
             all.extend(entries);
-            screen.reload(&assets.creative.font, &assets.lang, all);
+            screen.reload(&assets.lang, all);
         }
     }
 
