@@ -336,6 +336,9 @@ impl PlaySession {
         self.local.status.health = packet.health;
         self.local.status.food = packet.food;
         self.local.status.saturation = packet.saturation;
+        // `FoodData` is the player's own: the use of food reads it (`Player.canEat`).
+        self.world
+            .apply_local_player_health(packet.health, packet.food, packet.saturation);
         Ok(())
     }
 
