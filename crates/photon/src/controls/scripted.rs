@@ -107,6 +107,20 @@ impl Controls {
         Ok(())
     }
 
+    /// The files of `PHOTON_DROP` dropped on the window, when the step asks.
+    fn scripted_file_drop(
+        &mut self,
+        wanted: bool,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) {
+        if wanted {
+            let paths = std::env::var("PHOTON_DROP").unwrap_or_default();
+            let paths = paths.split(':').map(std::path::PathBuf::from).collect();
+            self.host_event(glfw::WindowEvent::FileDrop(paths), surface, assets);
+        }
+    }
+
     /// The scripted clicks and holds of the attack, use, pick and drop keys.
     fn scripted_keys(&mut self, held: HeldKeys) {
         script_key(&mut self.attack_key, held.attack, held.mine);
@@ -232,7 +246,10 @@ impl Controls {
 
     /// A scripted press on the Resource Packs screen or the question over it. Whether one was up.
     fn scripted_pack_press(&mut self, surface: &mut WindowSurface, assets: &ScreenAssets) -> bool {
-        let asking = matches!(self.link_confirm, Some((_, ConfirmTarget::Pack(_))));
+        let asking = matches!(
+            self.link_confirm,
+            Some((_, ConfirmTarget::Pack(_) | ConfirmTarget::Drop(_)))
+        );
         if !asking && (self.link_confirm.is_some() || self.pack_screen.is_none()) {
             return false;
         }
@@ -334,6 +351,7 @@ impl Controls {
         surface: &mut WindowSurface,
         assets: &ScreenAssets,
     ) -> Result {
+        self.scripted_file_drop(held.file_drop, surface, assets);
         if held.inventory {
             if self.screen.is_some() {
                 close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;

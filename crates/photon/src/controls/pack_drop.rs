@@ -10,8 +10,9 @@ use photon_gui::screen::confirm::ConfirmBackground;
 use super::unattended::ConfirmTarget;
 use super::*;
 
-/// `PackDetector`: a directory with a regular `pack.mcmeta`, or a regular `.zip` file. Links are
-/// followed by the metadata calls, like the reference's validated paths.
+/// `PackDetector`: a directory with a regular `pack.mcmeta`, or a regular file whose name ends in
+/// `.zip` (case matters). Links are followed by the metadata calls, like the reference's
+/// validated paths.
 fn is_pack(path: &Path) -> bool {
     let Ok(meta) = std::fs::metadata(path) else {
         return false;
@@ -21,49 +22,59 @@ fn is_pack(path: &Path) -> bool {
     }
     meta.is_file()
         && path
-            .extension()
-            .is_some_and(|extension| extension.eq_ignore_ascii_case("zip"))
+            .file_name()
+            .is_some_and(|name| name.to_string_lossy().ends_with(".zip"))
 }
 
-/// `PackSelectionScreen.copyPacks` for one pack: a file, or a directory with everything under it.
-fn copy_pack(from: &Path, folder: &Path) -> std::io::Result<()> {
+/// `PackSelectionScreen.copyPacks` for one pack: the pack and everything under it, each copied
+/// next to the others as `Util.copyBetweenDirs` does, without replacing what is there. A path
+/// that fails is skipped and the walk goes on; whether any failed is returned.
+fn copy_pack(from: &Path, folder: &Path) -> bool {
     let Some(name) = from.file_name() else {
-        return Ok(());
+        return false;
     };
     copy_tree(from, &folder.join(name))
 }
 
-fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
-    if std::fs::metadata(from)?.is_dir() {
-        std::fs::create_dir_all(to)?;
-        for entry in std::fs::read_dir(from)? {
-            let entry = entry?;
-            copy_tree(&entry.path(), &to.join(entry.file_name()))?;
-        }
-    } else {
-        std::fs::copy(from, to)?;
+fn copy_tree(from: &Path, to: &Path) -> bool {
+    let Ok(meta) = std::fs::metadata(from) else {
+        return true;
+    };
+    if !meta.is_dir() {
+        return copy_new(from, to).is_err();
     }
-    Ok(())
+    let mut failed = std::fs::create_dir(to).is_err();
+    match std::fs::read_dir(from) {
+        Ok(entries) => {
+            for entry in entries.flatten() {
+                failed |= copy_tree(&entry.path(), &to.join(entry.file_name()));
+            }
+        }
+        Err(_) => failed = true,
+    }
+    failed
 }
 
-/// The dropped paths that are packs are copied into `folder`; the ones that are not, and the
-/// failures, are returned.
-pub(super) fn copy_dropped(paths: &[PathBuf], folder: &Path) -> (Vec<PathBuf>, Vec<String>) {
+/// `Files.copy` with no options: an existing target is an error.
+fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut source = std::fs::File::open(from)?;
+    let mut target = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(to)?;
+    std::io::copy(&mut source, &mut target).map(|_| ())
+}
+
+/// The dropped paths that are packs are copied into `folder`; the ones that are not are
+/// returned, and whether any copy failed.
+pub(super) fn copy_dropped(paths: &[PathBuf], folder: &Path) -> (Vec<PathBuf>, bool) {
     let (packs, leftovers): (Vec<_>, Vec<_>) =
         paths.iter().cloned().partition(|path| is_pack(path));
-    let mut failures = Vec::new();
-    let made = if packs.is_empty() {
-        Ok(())
-    } else {
-        std::fs::create_dir_all(folder)
-    };
-    failures.extend(made.err().map(|error| error.to_string()));
+    let mut failed = !packs.is_empty() && std::fs::create_dir_all(folder).is_err();
     for pack in &packs {
-        if let Err(error) = copy_pack(pack, folder) {
-            failures.push(error.to_string());
-        }
+        failed |= copy_pack(pack, folder);
     }
-    (leftovers, failures)
+    (leftovers, failed)
 }
 
 impl Controls {
@@ -97,12 +108,12 @@ impl Controls {
     /// The player agreed: the packs are copied and the screen lists the folder again.
     pub(super) fn copy_confirmed_packs(&mut self, paths: &[PathBuf], assets: &ScreenAssets) {
         let folder = pack_directory(&game_directory());
-        let (leftovers, failures) = copy_dropped(paths, &folder);
+        let (leftovers, failed) = copy_dropped(paths, &folder);
         for path in &leftovers {
             log::warn!("Path {} does not seem like pack", path.display());
         }
-        for failure in &failures {
-            log::warn!("Failed to copy the dropped packs: {failure}");
+        if failed {
+            log::warn!("Failed to copy dropped packs to {}", folder.display());
         }
         self.reload_pack_screen(assets);
     }
@@ -137,12 +148,17 @@ mod tests {
             tree,
             bare.clone(),
         ];
-        let (leftovers, failures) = copy_dropped(&paths, &folder);
-        assert!(failures.is_empty());
+        let (leftovers, failed) = copy_dropped(&paths, &folder);
+        assert!(!failed);
         assert_eq!(leftovers, vec![source.join("notes.txt"), bare]);
         assert!(folder.join("Fancy.zip").is_file());
         assert!(folder.join("Tree/pack.mcmeta").is_file());
         assert!(folder.join("Tree/assets/minecraft/a.txt").is_file());
         assert!(!folder.join("notes.txt").exists());
+        // Dropping them again replaces nothing, and says so.
+        std::fs::write(folder.join("Fancy.zip"), b"mine").unwrap();
+        let (_, failed) = copy_dropped(&paths, &folder);
+        assert!(failed);
+        assert_eq!(std::fs::read(folder.join("Fancy.zip")).unwrap(), b"mine");
     }
 }

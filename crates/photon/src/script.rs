@@ -55,6 +55,8 @@ pub struct HeldKeys {
     pub mouse: Option<(f64, f64)>,
     /// A mouse press and release at the mouse: button and whether shift is held.
     pub press: Option<(i32, bool)>,
+    /// The files named in `PHOTON_DROP` (separated by `:`) dropped on the window.
+    pub file_drop: bool,
     /// Text typed into the open screen.
     pub typed: Option<&'static str>,
 }
@@ -251,7 +253,7 @@ fn click_type(id: i32) -> ClickType {
 }
 
 impl HeldKeys {
-    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen) and
+    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen), `filedrop` (the files of `PHOTON_DROP`) and
     /// `debug/K`. Whether `parts` was one of them.
     fn parse_pointer_step(&mut self, parts: &[&str], other: &str) -> Result<bool, String> {
         let keys = self;
@@ -281,6 +283,7 @@ impl HeldKeys {
                         .map_err(|_| format!("bad scroll {other} in PHOTON_SCRIPT"))?,
                 );
             }
+            ["filedrop"] => keys.file_drop = true,
             ["wheel", notches] => {
                 keys.wheel = Some(
                     notches
