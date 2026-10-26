@@ -7,7 +7,7 @@ use crate::item::values::Values;
 use photon_core::direction::Direction;
 use photon_core::ids::BlockStateId;
 use photon_data::item::classes::ItemClass;
-use photon_world::block::rules::{self, Held, ItemUser, Rule};
+use photon_world::block::rules::{self, CauldronStack, Held, ItemUser, Rule};
 
 const GLOWSTONE: &str = "minecraft:glowstone";
 
@@ -61,7 +61,57 @@ fn describe(ctx: &Context<'_>, hand: u8) -> Held {
         hanging_sign: rules::item(item).is_some_and(|row| row.class == ItemClass::HangingSignItem),
         candle: tagged("minecraft:candles").then_some(name),
         record: values.has(photon_data::item::component_types::JUKEBOX_PLAYABLE),
+        cauldron: cauldron_stack(name, &values, tagged("minecraft:cauldron_can_remove_dye")),
     }
+}
+
+const CAULDRON_ITEMS: &[(&str, CauldronStack)] = &[
+    ("minecraft:bucket", CauldronStack::EmptyBucket),
+    ("minecraft:lava_bucket", CauldronStack::LavaBucket),
+    ("minecraft:water_bucket", CauldronStack::WaterBucket),
+    (
+        "minecraft:powder_snow_bucket",
+        CauldronStack::PowderSnowBucket,
+    ),
+    ("minecraft:glass_bottle", CauldronStack::GlassBottle),
+];
+
+/// `PotionContents.is(Potions.WATER)`.
+pub(super) fn is_water_potion(values: &Values) -> bool {
+    values
+        .potion_contents()
+        .and_then(|contents| contents.potion)
+        .and_then(|id| photon_data::item::potions::POTIONS.get(usize::try_from(id).ok()?))
+        .is_some_and(|potion| potion.name == "minecraft:water")
+}
+
+/// The dyed and patterned stacks the water cauldron cleans.
+fn cleanable(name: &str, values: &Values, dyeable: bool) -> CauldronStack {
+    let banner = name.ends_with("_banner") && name != "minecraft:ominous_banner";
+    if dyeable && values.has(photon_data::item::component_types::DYED_COLOR) {
+        CauldronStack::Dyed
+    } else if banner && !values.banner_layers().is_empty() {
+        CauldronStack::PatternedBanner
+    } else if name.ends_with("_shulker_box") && name != "minecraft:shulker_box" {
+        CauldronStack::ShulkerBox
+    } else {
+        CauldronStack::Other
+    }
+}
+
+/// How a cauldron's interaction table sees the stack.
+fn cauldron_stack(name: &str, values: &Values, dyeable: bool) -> CauldronStack {
+    if let Some((_, kind)) = CAULDRON_ITEMS.iter().find(|(item, _)| *item == name) {
+        return *kind;
+    }
+    if name == "minecraft:potion" {
+        return if is_water_potion(values) {
+            CauldronStack::WaterPotion
+        } else {
+            CauldronStack::Potion
+        };
+    }
+    cleanable(name, values, dyeable)
 }
 
 impl GameMode {
@@ -108,6 +158,7 @@ impl GameMode {
             location,
             block_entity: ctx.world.block_entity_at(pos.0, pos.1, pos.2).is_some(),
             off_hand_glowstone: describe(ctx, other).glowstone,
+            water_above: rules::holds_water(ctx.state_at((pos.0, pos.1 + 1, pos.2))),
             waxed: ctx
                 .world
                 .sign_view(pos)
@@ -124,5 +175,26 @@ impl GameMode {
             ctx.world.shrink_local_player_slot(slot, 1);
         }
         Some(answer.result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn potion(patch_hex: &str) -> CauldronStack {
+        let bytes: Vec<u8> = (0..patch_hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&patch_hex[i..i + 2], 16).unwrap())
+            .collect();
+        let item = crate::item::id_of("minecraft:potion").unwrap();
+        cauldron_stack("minecraft:potion", &Values::new(item, &bytes), false)
+    }
+
+    #[test]
+    fn only_a_water_potion_is_water() {
+        assert_eq!(potion("0100330100000000"), CauldronStack::WaterPotion);
+        assert_eq!(potion("0100330103000000"), CauldronStack::Potion);
+        assert_eq!(potion(""), CauldronStack::Potion);
     }
 }

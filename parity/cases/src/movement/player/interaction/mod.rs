@@ -4,6 +4,7 @@
 
 mod aiming;
 mod bottling;
+mod cauldron;
 mod consuming;
 mod digging;
 mod effects;
@@ -241,6 +242,7 @@ pub fn cases() -> Vec<Value> {
                 utility::rows(),
                 opening::rows(),
                 item_on::rows(),
+                cauldron::rows(),
             ]
             .concat(),
         ),

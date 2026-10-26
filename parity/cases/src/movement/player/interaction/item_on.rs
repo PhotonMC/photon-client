@@ -8,13 +8,13 @@ use super::{aim_at, using};
 use crate::movement::world::{put, put_with};
 
 /// A use of the block at (0, 64, 2) aimed at, with the stack the row holds.
-fn row(label: &str, world: Vec<Value>, aim: &Value) -> super::Interaction {
+pub(super) fn row(label: &str, world: Vec<Value>, aim: &Value) -> super::Interaction {
     let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
     let ticks = [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
     using(label, world, ticks)
 }
 
-fn north() -> Value {
+pub(super) fn north() -> Value {
     aim_at((0, 64, 2), "north", (0.5, 64.5, 2.0))
 }
 

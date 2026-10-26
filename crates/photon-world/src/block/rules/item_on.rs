@@ -8,6 +8,28 @@ use super::*;
 const SUCCESS: UseResult = UseResult::Success { swing: true };
 const SERVER: UseResult = UseResult::Success { swing: false };
 
+/// What a cauldron's interaction table sees in the stack.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CauldronStack {
+    #[default]
+    Other,
+    EmptyBucket,
+    LavaBucket,
+    WaterBucket,
+    PowderSnowBucket,
+    GlassBottle,
+    /// A potion item whose potion is water.
+    WaterPotion,
+    /// Any other potion item.
+    Potion,
+    /// An item of `cauldron_can_remove_dye` holding a `dyed_color`.
+    Dyed,
+    /// A banner with at least one pattern layer.
+    PatternedBanner,
+    /// A dyed shulker box.
+    ShulkerBox,
+}
+
 /// What the stack in the used hand is, as far as the rules ask.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Held {
@@ -39,6 +61,7 @@ pub struct Held {
     pub hanging_sign: bool,
     /// `ItemTags.BOOKSHELF_BOOKS`.
     pub bookshelf_book: bool,
+    pub cauldron: CauldronStack,
 }
 
 /// Who uses the block with the stack, and where.
@@ -56,6 +79,8 @@ pub struct ItemUser {
     pub off_hand_glowstone: bool,
     /// The sign's block entity says it is waxed.
     pub waxed: bool,
+    /// The fluid above the block is water (`CauldronInteractions.isUnderWater`).
+    pub water_above: bool,
 }
 
 /// What `useItemOn` does on the client.
@@ -132,6 +157,41 @@ fn pumpkin(use_: &Use) -> Option<ItemOn> {
 /// `TntBlock`: fire starters prime it, on the server; a disabled game rule only matters there.
 fn tnt(use_: &Use) -> Option<ItemOn> {
     if use_.held.fire_starter {
+        return Some(ItemOn::answer(SUCCESS));
+    }
+    empty_hand()
+}
+
+/// Whether a cauldron's table has an entry for a bucket or bottle; `None` for another stack.
+fn container_taken(kind: &str, level3: bool, stack: CauldronStack) -> Option<bool> {
+    use CauldronStack::*;
+    let water = kind == "minecraft:water_cauldron";
+    Some(match stack {
+        LavaBucket | WaterBucket | PowderSnowBucket => true,
+        EmptyBucket => match kind {
+            "minecraft:lava_cauldron" => true,
+            "minecraft:cauldron" => false,
+            _ => level3,
+        },
+        GlassBottle => water,
+        WaterPotion => kind == "minecraft:cauldron" || (water && !level3),
+        _ => return None,
+    })
+}
+
+/// `CauldronInteractions`: every branch does its work on the server, so the client only learns
+/// whether the table took the stack.
+fn cauldron(use_: &Use) -> Option<ItemOn> {
+    use CauldronStack::*;
+    let kind = block(use_.state)?.name;
+    let stack = use_.held.cauldron;
+    if matches!(stack, LavaBucket | PowderSnowBucket) && use_.user.water_above {
+        return Some(ItemOn::answer(SERVER));
+    }
+    let taken = container_taken(kind, number(use_.state, "level") == 3, stack).unwrap_or(
+        matches!(stack, Dyed | PatternedBanner | ShulkerBox) && kind == "minecraft:water_cauldron",
+    );
+    if taken {
         return Some(ItemOn::answer(SUCCESS));
     }
     empty_hand()
@@ -370,6 +430,7 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
 }
 
 const USES: &[(BlockClass, Rule1)] = &[
+    (BlockClass::AbstractCauldronBlock, cauldron),
     (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf),
     (BlockClass::ShelfBlock, shelf),
     (BlockClass::SignBlock, sign),
@@ -444,6 +505,7 @@ mod tests {
             block_entity,
             off_hand_glowstone: false,
             waxed: false,
+            water_above: false,
         }
     }
 

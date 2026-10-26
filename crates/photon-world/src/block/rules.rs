@@ -55,7 +55,7 @@ pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
     update_context,
 };
-pub use item_on::{Held, ItemOn, ItemUser, knows_item_on, use_item_with};
+pub use item_on::{CauldronStack, Held, ItemOn, ItemUser, knows_item_on, use_item_with};
 
 /// A rule's answer, or that the class's rule is not written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

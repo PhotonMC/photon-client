@@ -44,3 +44,43 @@ pub(super) fn bottle_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
         None => UseResult::Success { swing: true },
     }
 }
+
+/// `PotionItem.useOn`: a water potion turns the dirt it is poured on (not from below) into mud and
+/// leaves a glass bottle. The sounds name no player, so none play here. The blocks of
+/// `BlockTags.CONVERTABLE_TO_MUD` are the vanilla ones.
+pub(super) fn potion_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult {
+    let Aim::Block { x, y, z, face, .. } = aim else {
+        return UseResult::Pass;
+    };
+    let pos = (x, y, z);
+    let convertable = matches!(
+        photon_world::block::state_or_air(ctx.state_at(pos))
+            .block()
+            .name,
+        "minecraft:dirt" | "minecraft:coarse_dirt" | "minecraft:rooted_dirt"
+    );
+    let water = ctx.held(hand).is_some_and(|(item, _)| {
+        let stack = ctx
+            .world
+            .local_player()
+            .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)));
+        stack.is_some_and(|stack| {
+            let values = crate::item::values::Values::new(item, stack.patch_bytes());
+            super::block_use::is_water_potion(&values)
+        })
+    });
+    if face == super::mining::DIRECTION_DOWN || !convertable || !water {
+        return UseResult::Pass;
+    }
+    let (Some(bottle), Some(mud)) = (
+        crate::item::id_of("minecraft:glass_bottle"),
+        photon_data::block::registry::block_index("minecraft:mud")
+            .map(|index| photon_data::block::registry::BLOCKS[index].default_state_id()),
+    ) else {
+        return UseResult::Success { swing: true };
+    };
+    super::buckets::filled_with(ctx, hand, ClientItemStackState::new(1, bottle));
+    let position = ctx.player.position();
+    ctx.world.set_block_with_updates(pos, mud, 3, 512, position);
+    UseResult::Success { swing: true }
+}

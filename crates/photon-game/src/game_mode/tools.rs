@@ -180,6 +180,7 @@ pub(super) fn use_on(
         C::FlintAndSteelItem => flint_and_steel_use_on(ctx, aim),
         C::FireChargeItem => fire_charge_use_on(ctx, hand, aim),
         C::ShearsItem => shears_use_on(ctx, aim),
+        C::PotionItem => super::bottles::potion_use_on(ctx, hand, aim),
         C::AxeItem => axe_use_on(ctx, hand, aim),
         C::ShovelItem => shovel_use_on(ctx, aim),
         C::EnderEyeItem => super::utility::ender_eye_use_on(ctx, aim),
