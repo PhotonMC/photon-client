@@ -47,13 +47,13 @@ pub(super) fn bottle_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
 
 /// `PotionItem.useOn`: a water potion turns the dirt it is poured on (not from below) into mud and
 /// leaves a glass bottle. The sounds name no player, so none play here. The blocks of
-/// `BlockTags.CONVERTABLE_TO_MUD` are the vanilla ones.
+/// the mud-convertible tag are the vanilla ones.
 pub(super) fn potion_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult {
     let Aim::Block { x, y, z, face, .. } = aim else {
         return UseResult::Pass;
     };
     let pos = (x, y, z);
-    let convertable = matches!(
+    let convertible = matches!(
         photon_world::block::state_or_air(ctx.state_at(pos))
             .block()
             .name,
@@ -69,7 +69,7 @@ pub(super) fn potion_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseRes
             super::block_use::is_water_potion(&values)
         })
     });
-    if face == super::mining::DIRECTION_DOWN || !convertable || !water {
+    if face == super::mining::DIRECTION_DOWN || !convertible || !water {
         return UseResult::Pass;
     }
     let (Some(bottle), Some(mud)) = (
