@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 
 use super::gui;
-use super::setting::{at, click, drag, key, release, wheel_at};
+use super::setting::{at, click, drag, frame, key, release, wheel_at};
 
 /// A pack the screen lists; `selected` puts it in the right list.
 fn pack(id: &str, title: &str, description: &str, selected: bool) -> Value {
@@ -131,7 +131,69 @@ pub fn pack_selection_screen() -> Value {
         },
     ];
     rows.extend(scrolling_rows());
+    rows.extend(keyboard_rows());
     gui("pack-selection-screen", "pack_selection_screen", rows)
+}
+
+/// Keys pressed with nothing clicked: Tab walks the focus, the arrows the entries of a list.
+fn keyboard_rows() -> Vec<Value> {
+    let keys = |names: &[&str]| names.iter().map(|name| key(name)).collect::<Vec<_>>();
+    let mut rows = vec![
+        row("tab-1", few(), keys(&["tab"])),
+        row("tab-2", few(), keys(&["tab", "tab"])),
+        row("tab-3", few(), keys(&["tab", "tab", "tab"])),
+        row("tab-4", few(), keys(&["tab", "tab", "tab", "tab"])),
+        row("tab-5", few(), keys(&["tab", "tab", "tab", "tab", "tab"])),
+        row("tab-6", few(), keys(&["tab", "tab", "tab", "tab", "tab", "tab"])),
+        row("shift-tab", few(), keys(&["shift+tab"])),
+        row("shift-tab-2", few(), keys(&["shift+tab", "shift+tab"])),
+        row("list-down", few(), keys(&["tab", "tab", "down"])),
+        row("list-down-2", few(), keys(&["tab", "tab", "down", "down"])),
+        row("list-down-past-end", few(), keys(&["tab", "tab", "down", "down", "down", "down"])),
+        row("list-up", few(), keys(&["tab", "tab", "up"])),
+        row("list-enter", few(), keys(&["tab", "tab", "down", "enter"])),
+        row("selected-shift-down", few(), keys(&["tab", "tab", "down", "shift+down"])),
+        row("selected-shift-up", few(), keys(&["tab", "tab", "down", "down", "shift+up"])),
+        row("selected-shift-up-top", few(), keys(&["tab", "tab", "down", "shift+up"])),
+        row("space-on-entry", few(), keys(&["tab", "tab", "down", "space"])),
+        row("enter-on-heading", few(), keys(&["tab", "tab", "enter"])),
+        row("left-in-list", few(), keys(&["tab", "tab", "down", "left"])),
+        row("enter-on-search", few(), keys(&["enter"])),
+        row("three-shift-up", three(), keys(&["tab", "tab", "down", "down", "shift+up"])),
+        row("three-shift-down", three(), keys(&["tab", "tab", "down", "down", "shift+down"])),
+        row("three-shift-down-twice", three(), keys(&["tab", "tab", "down", "down", "shift+down", "shift+down"])),
+        row("folder-enter", few(), keys(&["tab", "tab", "tab", "enter"])),
+        row("done-enter", few(), keys(&["tab", "tab", "tab", "tab", "enter"])),
+        row("right-from-available", few(), keys(&["tab", "down", "right"])),
+        row("right-from-selected", few(), keys(&["tab", "tab", "down", "right"])),
+        row("click-then-down", few(), vec![click(60, 72), key("down")]),
+        row("click-then-tab", few(), vec![click(60, 72), key("tab")]),
+        row("search-then-tab", few(), [typed("a"), vec![key("tab")]].concat()),
+        row("many-down", many(), keys(&["tab", "down", "down", "down", "down", "down", "down", "down"])),
+        row("many-up-from-end", many(), keys(&["shift+tab", "shift+tab", "shift+tab", "up"])),
+    ];
+    let incompatible = vec![
+        vanilla(),
+        with(pack("file/Old", "Old", "Made for an older game", false), "compatibility", json!("TOO_OLD")),
+    ];
+    rows.push(row("incompatible-enter", incompatible, keys(&["tab", "tab", "down", "enter"])));
+    let mut tooltip = row("open-folder-tooltip", few(), vec![click(130, 225), frame(0)]);
+    tooltip["mouse"] = json!([130, 225]);
+    tooltip["ms"] = json!(1000);
+    rows.push(tooltip);
+    let mut focused = row("open-folder-tooltip-keyboard", few(), keys(&["tab", "tab", "tab"]));
+    focused
+        .as_object_mut()
+        .map(|row| row.insert("steps".into(), json!([key("tab"), key("tab"), key("tab"), frame(0)])));
+    focused["ms"] = json!(1000);
+    rows.push(focused);
+    rows.push(row("done-click", few(), vec![click(292, 225)]));
+    rows.push(row("folder-click", few(), vec![click(130, 225)]));
+    let mut early = row("open-folder-tooltip-early", few(), vec![frame(0)]);
+    early["mouse"] = json!([130, 225]);
+    early["ms"] = json!(200);
+    rows.push(early);
+    rows
 }
 
 /// The rows with lists that scroll, three packs in use, and the arrows that move them.

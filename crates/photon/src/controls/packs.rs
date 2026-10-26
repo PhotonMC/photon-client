@@ -139,7 +139,8 @@ impl Controls {
             WindowEvent::Key(Key::Escape, _, Action::Press, _) => input.done = true,
             WindowEvent::Key(key, _, Action::Press | Action::Repeat, modifiers) => {
                 let shift = modifiers.contains(glfw::Modifiers::Shift);
-                screen.key_pressed(font, key, (control, shift), &mut WindowClipboard(surface));
+                input =
+                    screen.key_pressed(font, key, (control, shift), &mut WindowClipboard(surface));
             }
             WindowEvent::Char(character) => screen.char_typed(font, character),
             WindowEvent::MouseButton(MouseButton::Button1, Action::Press, _) => {

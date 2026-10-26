@@ -270,7 +270,8 @@ class GuiSettingsOracle extends GuiScreenOracle {
                         step.get("char").getAsString().codePointAt(0)));
                     case "key" -> {
                         String name = step.get("key").getAsString();
-                        int code = switch (name) {
+                        String bare = name.startsWith("shift+") ? name.substring(6) : name;
+                        int code = switch (bare) {
                             case "backspace" -> 259;
                             case "enter" -> 257;
                             case "space" -> 32;
@@ -282,10 +283,10 @@ class GuiSettingsOracle extends GuiScreenOracle {
                             case "escape" -> 256;
                             default -> {
                                 // Any other key by its GLFW code.
-                                if (!name.startsWith("code:")) {
+                                if (!bare.startsWith("code:")) {
                                     throw new IllegalArgumentException(name);
                                 }
-                                yield Integer.parseInt(name.substring(5));
+                                yield Integer.parseInt(bare.substring(5));
                             }
                         };
                         // `KeyboardHandler.keyPress` notes what kind of key it was.
@@ -442,6 +443,9 @@ class GuiSettingsOracle extends GuiScreenOracle {
             focus = "available";
         } else if (focused == packList(screen, "selectedPackList")) {
             focus = "selected";
+        } else if (focused instanceof net.minecraft.client.gui.components.AbstractWidget button) {
+            focus = button.getMessage().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents key
+                && key.getKey().equals("pack.openFolder") ? "folder" : "done";
         }
         out.addProperty("focus", focus);
         var selected = new JsonArray();

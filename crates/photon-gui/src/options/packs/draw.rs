@@ -1,6 +1,7 @@
 use super::input::Part;
 use super::*;
 use crate::FrameRuns;
+use crate::widgets::navigation::Rectangle;
 use crate::widgets::scroll_area::SCROLLBAR_WIDTH;
 use photon_render::gui::{GuiAtlas, GuiFrame};
 
@@ -40,9 +41,28 @@ impl PackScreen {
         for list in 0..2 {
             self.draw_list(frame, atlas, font, lang, list, mouse);
         }
-        for widget in [&self.open_folder, &self.done] {
-            let highlighted = widget.is_active() && widget.contains(&self.arena, mouse);
+        for (widget, focus) in [
+            (&self.open_folder, Focus::Folder),
+            (&self.done, Focus::Done),
+        ] {
+            let highlighted = widget.is_active()
+                && (widget.contains(&self.arena, mouse) || self.focus == Some(focus));
             widget.draw(frame, atlas, font, &self.arena, highlighted);
+        }
+        let rect = self.arena.0[self.open_folder.rect];
+        let hovered = self.open_folder.contains(&self.arena, mouse);
+        if let Some(pending) = self.folder_tooltip.refresh(
+            frame.millis,
+            (hovered, self.focus == Some(Focus::Folder)),
+            self.input.get(),
+            Rectangle {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            },
+        ) {
+            pending.draw(frame, atlas, font, mouse, self.size);
         }
     }
 

@@ -2,6 +2,7 @@
 //! the ones in use on the right (the top one wins), a search box over them and Open Folder and
 //! Done under.
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -10,13 +11,16 @@ use photon_assets::{Compatibility, PackEntry, SelectionModel, Side, Title};
 use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::layout::{Arena, Grid, Item, Settings, horizontal, place_in_frame};
+use crate::tooltip::Holder;
 use crate::widgets::edit_box::EditBox;
 use crate::widgets::scroll_area::Place;
+use crate::widgets::slider::InputType;
 use crate::widgets::{Kind, Widget};
 use crate::{FontRuns, splitter};
 use photon_render::gui::font::Font;
 
 mod draw;
+mod focus;
 mod input;
 
 /// `layout.setHeaderHeight(4 + 9 + 4 + 9 + 4 + 15 + 4)`, and the footer's default.
@@ -60,11 +64,13 @@ struct PackView {
     icon: Option<String>,
 }
 
-/// What has the focus: the search box or a list (0 available, 1 selected).
+/// What has the focus: the search box, a list (0 available, 1 selected) or a button.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Focus {
     Search,
     List(usize),
+    Folder,
+    Done,
 }
 
 /// A selected entry of a list: its heading is one too.
@@ -84,6 +90,9 @@ pub struct PackScreen {
     hint: Vec<Run>,
     open_folder: Widget,
     done: Widget,
+    /// Open Folder's tooltip, and how the last input came.
+    folder_tooltip: Holder,
+    input: Cell<InputType>,
     model: SelectionModel,
     views: HashMap<String, PackView>,
     headers: [Vec<Run>; 2],
@@ -201,6 +210,8 @@ impl PackScreen {
             hint: parts.hint,
             open_folder: parts.open_folder,
             done: parts.done,
+            folder_tooltip: Holder::of(lang, &Component::translatable("pack.folderInfo")),
+            input: Cell::new(InputType::Mouse),
             model,
             views: HashMap::new(),
             headers: parts.headers,
@@ -434,6 +445,8 @@ impl PackScreen {
             Some(Focus::Search) => "search",
             Some(Focus::List(0)) => "available",
             Some(Focus::List(_)) => "selected",
+            Some(Focus::Folder) => "folder",
+            Some(Focus::Done) => "done",
             None => "none",
         }
     }

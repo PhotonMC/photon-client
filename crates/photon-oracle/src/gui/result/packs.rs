@@ -77,6 +77,26 @@ fn pack_model(row: &Value) -> Result<SelectionModel, String> {
 }
 
 /// One input step of the row.
+/// A key named in a row, and whether Shift is down.
+fn pack_key(name: &str) -> Option<(glfw::Key, bool)> {
+    let (shift, bare) = match name.strip_prefix("shift+") {
+        Some(bare) => (true, bare),
+        None => (false, name),
+    };
+    let key = match bare {
+        "backspace" => glfw::Key::Backspace,
+        "tab" => glfw::Key::Tab,
+        "up" => glfw::Key::Up,
+        "down" => glfw::Key::Down,
+        "left" => glfw::Key::Left,
+        "right" => glfw::Key::Right,
+        "enter" => glfw::Key::Enter,
+        "space" => glfw::Key::Space,
+        _ => return None,
+    };
+    Some((key, shift))
+}
+
 fn pack_step(
     screen: &mut PackScreen,
     font: &Font,
@@ -92,16 +112,50 @@ fn pack_step(
                 screen.char_typed(font, character);
             }
         }
-        "key" => match step["key"].as_str().unwrap_or_default() {
-            "backspace" => {
-                screen.key_pressed(font, glfw::Key::Backspace, (false, false), &mut NoClipboard);
-            }
-            other => return Err(format!("unknown key {other}")),
-        },
+        "key" => {
+            let name = step["key"].as_str().unwrap_or_default();
+            let (key, shift) = pack_key(name).ok_or_else(|| format!("unknown key {name}"))?;
+            screen.key_pressed(font, key, (false, shift), &mut NoClipboard);
+        }
         "drag" => screen.dragged(at, at.1 - last.1),
         "release" => screen.released(),
         "scroll" => screen.scrolled(at, step["dy"].as_f64().unwrap_or(0.0)),
         other => return Err(format!("unknown step {other}")),
+    }
+    Ok(())
+}
+
+/// The row's steps, with the frame the reference draws between one event and the next.
+fn run_steps(
+    screen: &mut PackScreen,
+    (font, atlas, lang): (&Font, &GuiAtlas, &photon_game::text::Lang),
+    row: &Value,
+    mouse: (i32, i32),
+) -> Result<(), String> {
+    let mut last = (0.0, 0.0);
+    let mut clock = 0_u64;
+    for step in row["steps"].as_array().ok_or("steps")? {
+        if step["do"] == "frame" {
+            clock = step["ms"].as_u64().unwrap_or(0);
+            let mut thrown = GuiFrame {
+                millis: clock,
+                ..GuiFrame::default()
+            };
+            screen.draw(&mut thrown, atlas, font, lang, mouse);
+            continue;
+        }
+        // The reference draws a frame between one event and the next.
+        let mut between = GuiFrame {
+            millis: clock,
+            ..GuiFrame::default()
+        };
+        screen.draw(&mut between, atlas, font, lang, mouse);
+        let at = (
+            step["x"].as_f64().unwrap_or(last.0),
+            step["y"].as_f64().unwrap_or(last.1),
+        );
+        pack_step(screen, font, step, (at, last))?;
+        last = at;
     }
     Ok(())
 }
@@ -132,20 +186,13 @@ pub(super) fn pack_selection_screen_case(
         pack_model(row)?,
         std::path::PathBuf::new(),
     );
-    let mut last = (0.0, 0.0);
-    for step in row["steps"].as_array().ok_or("steps")? {
-        let at = (
-            step["x"].as_f64().unwrap_or(last.0),
-            step["y"].as_f64().unwrap_or(last.1),
-        );
-        pack_step(&mut screen, font, step, (at, last))?;
-        last = at;
-    }
+    let mouse = (int_at(&row["mouse"][0]), int_at(&row["mouse"][1]));
+    run_steps(&mut screen, (font, atlas, &lang), row, mouse)?;
     let mut frame = GuiFrame {
         log: Some(Vec::new()),
+        millis: row["ms"].as_u64().unwrap_or(0),
         ..GuiFrame::default()
     };
-    let mouse = (int_at(&row["mouse"][0]), int_at(&row["mouse"][1]));
     screen.draw(&mut frame, atlas, font, &lang, mouse);
     Ok(json!({
         "label": row["label"],

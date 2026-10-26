@@ -1,6 +1,9 @@
+use super::focus::Nav;
 use super::*;
 use crate::widgets::edit_box::{Clipboard, edit_key};
+use crate::widgets::navigation::Direction;
 use crate::widgets::scroll_area::SCROLLBAR_WIDTH;
+use crate::widgets::slider::InputType;
 
 /// `SelectableEntry`: the parts of the 32 by 32 icon a press means something in.
 fn over_icon((x, y): (i32, i32)) -> bool {
@@ -140,7 +143,7 @@ impl PackScreen {
     }
 
     /// `setSelected`: the entry is the list's, and the list scrolls to it when it sticks out.
-    fn set_selected(&mut self, list: usize, entry: Selected) {
+    pub(super) fn set_selected(&mut self, list: usize, entry: Selected) {
         let index = match &entry {
             Selected::Header => 0,
             Selected::Pack(id) => {
@@ -155,7 +158,11 @@ impl PackScreen {
         let place = self.place();
         let top = self.entry_y(list, index);
         let height = self.entry_height(index);
-        if top + PADDING < place.y || top + height - PADDING > place.bottom() {
+        let keyboard = matches!(
+            self.input.get(),
+            InputType::KeyboardArrow | InputType::KeyboardTab
+        );
+        if keyboard || top + PADDING < place.y || top + height - PADDING > place.bottom() {
             self.scroll_to_entry(list, index);
         }
     }
@@ -196,6 +203,7 @@ impl PackScreen {
 
     /// A press of the primary button at `mouse`.
     pub fn clicked(&mut self, font: &Font, mouse: (f64, f64)) -> PackInput {
+        self.input.set(InputType::Mouse);
         let at = (mouse.0 as i32, mouse.1 as i32);
         if self.click_search(font, at) {
             return PackInput::default();
@@ -206,9 +214,11 @@ impl PackScreen {
         let mut input = PackInput::default();
         if self.open_folder.is_active() && self.open_folder.contains(&self.arena, at) {
             crate::ui_sound::play_down_sound();
+            self.focus = Some(Focus::Folder);
             input.open_folder = true;
         } else if self.done.is_active() && self.done.contains(&self.arena, at) {
             crate::ui_sound::play_down_sound();
+            self.focus = Some(Focus::Done);
             input.done = true;
         }
         input
@@ -329,10 +339,49 @@ impl PackScreen {
         key: glfw::Key,
         (control, shift): (bool, bool),
         clipboard: &mut dyn Clipboard,
+    ) -> PackInput {
+        let nav = nav_of(key, shift);
+        // `KeyboardHandler.keyPress`: Tab and the arrows make the last input a keyboard's.
+        match nav {
+            Some(Nav::Tab(_)) => self.input.set(InputType::KeyboardTab),
+            Some(Nav::Arrow(_)) => self.input.set(InputType::KeyboardArrow),
+            None => {}
+        }
+        match self.focus {
+            Some(Focus::Search) if edit_key(key).is_some() => {
+                self.edit_search(font, key, (control, shift), clipboard);
+                return PackInput::default();
+            }
+            Some(Focus::Folder | Focus::Done) if is_confirmation(key) => {
+                crate::ui_sound::play_down_sound();
+                let folder = self.focus == Some(Focus::Folder);
+                return PackInput {
+                    open_folder: folder,
+                    done: !folder,
+                    ..PackInput::default()
+                };
+            }
+            Some(Focus::List(list)) => {
+                if let Some(input) = self.entry_key(list, key, shift) {
+                    return input;
+                }
+            }
+            _ => {}
+        }
+        if let Some(nav) = nav {
+            self.navigate(nav);
+        }
+        PackInput::default()
+    }
+
+    fn edit_search(
+        &mut self,
+        font: &Font,
+        key: glfw::Key,
+        (control, shift): (bool, bool),
+        clipboard: &mut dyn Clipboard,
     ) {
-        if self.search_focused()
-            && let Some(edit) = edit_key(key)
-        {
+        if let Some(edit) = edit_key(key) {
             let before = self.search.value();
             self.search
                 .key_pressed(edit, control, shift, font, clipboard);
@@ -341,4 +390,47 @@ impl PackScreen {
             }
         }
     }
+
+    /// `PackEntry.keyPressed` on the focused pack entry: Enter selects or unselects it, and
+    /// Shift with Up or Down moves it. None when the key is not the entry's.
+    fn entry_key(&mut self, list: usize, key: glfw::Key, shift: bool) -> Option<PackInput> {
+        let Some(Selected::Pack(id)) = self.selected[list].clone() else {
+            return None;
+        };
+        if !is_confirmation(key) && !(shift && matches!(key, glfw::Key::Up | glfw::Key::Down)) {
+            return None;
+        }
+        // The entry takes these keys whether or not it can act on them.
+        match self.entry_part(&id, key) {
+            Some(part) => Some(self.press_part(&id, part)),
+            None => Some(PackInput::default()),
+        }
+    }
+
+    /// What the entry does for Enter, or Shift with Up or Down.
+    fn entry_part(&self, id: &str, key: glfw::Key) -> Option<Part> {
+        match key {
+            glfw::Key::Up => self.model.can_move_up(id).then_some(Part::Up),
+            glfw::Key::Down => self.model.can_move_down(id).then_some(Part::Down),
+            _ if self.model.can_select(id) => Some(Part::Select),
+            _ => self.model.can_unselect(id).then_some(Part::Unselect),
+        }
+    }
+}
+
+fn is_confirmation(key: glfw::Key) -> bool {
+    matches!(key, glfw::Key::Enter | glfw::Key::KpEnter)
+}
+
+/// The focus navigation a key asks for.
+fn nav_of(key: glfw::Key, shift: bool) -> Option<Nav> {
+    use glfw::Key;
+    Some(match key {
+        Key::Tab => Nav::Tab(!shift),
+        Key::Left => Nav::Arrow(Direction::Left),
+        Key::Right => Nav::Arrow(Direction::Right),
+        Key::Up => Nav::Arrow(Direction::Up),
+        Key::Down => Nav::Arrow(Direction::Down),
+        _ => return None,
+    })
 }
