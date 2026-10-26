@@ -404,6 +404,9 @@ pub(crate) struct EntityState {
     pub(crate) hoglin_immune: bool,
     /// `Entity.isInWater` for the mobs that track it.
     pub(crate) in_water: bool,
+    /// `Entity.wasTouchingWater`: whether the entity's box found water last tick, so the tick it
+    /// first does splashes.
+    pub(crate) touching_water: bool,
     /// `GlowSquid.getDarkTicksRemaining`.
     pub(crate) glow_dark_ticks: i32,
     /// `AbstractCubeMob.getSize` once the data has said (one before), and its squish.

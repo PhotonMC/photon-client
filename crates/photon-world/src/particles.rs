@@ -58,6 +58,7 @@ mod water;
 pub use ambience::{Ambience, AmbientParticle, NoAmbience};
 pub use effects::{
     area_effect_cloud_particles, effect_particle, sprint_particle, teleport_particles,
+    water_splash_particles,
 };
 pub use elder_guardian::ElderGuardian;
 pub use engine::{

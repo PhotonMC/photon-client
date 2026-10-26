@@ -170,3 +170,48 @@ pub fn area_effect_cloud_particles(
     }
     specks
 }
+
+/// `Entity.doWaterSplashEffect`: bubbles and then splashes, a few for each tenth of a block of
+/// width, strewn over the entity's width at the water's surface (the block's top it entered),
+/// thrown the way it moved; the bubbles also sink a little.
+pub fn water_splash_particles(
+    random: &mut RandomSource,
+    (x, y, z): (f64, f64, f64),
+    (width, motion): (f32, Vec3),
+) -> Vec<LevelParticles> {
+    let (Some(bubble), Some(splash)) = (
+        photon_data::particle_type::id("bubble"),
+        photon_data::particle_type::id("splash"),
+    ) else {
+        return Vec::new();
+    };
+    // `Mth.floor(getY())` as a float, and one above it.
+    let top = f64::from(y.floor() as f32 + 1.0);
+    let wide = f64::from(width);
+    let count = |i: i32| (i as f32) < 1.0 + width * 20.0;
+    let mut specks = Vec::new();
+    for (type_id, sinks) in [(bubble, true), (splash, false)] {
+        let mut i = 0;
+        while count(i) {
+            let xo = (random.next_double() * 2.0 - 1.0) * wide;
+            let zo = (random.next_double() * 2.0 - 1.0) * wide;
+            let down = if sinks {
+                random.next_double() * f64::from(0.2_f32)
+            } else {
+                0.0
+            };
+            specks.push(LevelParticles {
+                type_id,
+                data: super::ParticleData::Plain,
+                override_limiter: false,
+                always_show: false,
+                at: (x + xo, top, z + zo),
+                spread: (motion.x as f32, (motion.y - down) as f32, motion.z as f32),
+                max_speed: 1.0,
+                count: 0,
+            });
+            i += 1;
+        }
+    }
+    specks
+}

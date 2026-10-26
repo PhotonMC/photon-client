@@ -13,6 +13,7 @@ mod menus;
 mod movement_collision;
 mod projectiles;
 mod remote_players;
+mod splashes;
 mod sprinting;
 mod status;
 mod teleport;
