@@ -34,6 +34,7 @@ impl ClientWorld {
         }
         self.tick_entity_once(entity_id);
         self.throw_effect_particles(entity_id);
+        self.throw_eating_particles(entity_id);
         if let Some(vehicle_id) = vehicle_id {
             self.position_entity_passenger(vehicle_id, entity_id);
         }
@@ -232,5 +233,43 @@ impl ClientWorld {
             body,
             random.source(),
         ));
+    }
+
+    /// `Consumable.onUseTick` on a client for a living entity the server says is eating or
+    /// drinking: five crumbs of the item in the used hand on the ticks the local player's own
+    /// would. (Its sound is not made yet.)
+    fn throw_eating_particles(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.living_kind().is_some() && entity.is_using_item())
+        else {
+            return;
+        };
+        let hand = if entity.used_item_is_off_hand() {
+            EquipmentSlot::OffHand
+        } else {
+            EquipmentSlot::MainHand
+        };
+        let Some(stack) = entity.equipment(hand) else {
+            return;
+        };
+        // The tick that began the use counted 1; the reference's first `onUseTick` is the 0th.
+        let used = entity.living.using_item_ticks - 1;
+        let crumbs = super::super::local_player::consume_cue(Some(stack))
+            .is_some_and(|cue| cue.particles && cue.emits(used));
+        if !crumbs {
+            return;
+        }
+        let item = stack.item_registry_id();
+        let (x, y, z) = entity.position();
+        let eye = Vec3::new(x, y + f64::from(entity.dimensions().eye_height()), z);
+        let (y_rot, x_rot, _) = entity.rotation();
+        let (queue, random) = &mut self.effect_particles;
+        for _ in 0..5 {
+            let crumb =
+                crate::local_player::crumb_particle(random.source(), item, eye, (y_rot, x_rot));
+            queue.extend(crumb);
+        }
     }
 }

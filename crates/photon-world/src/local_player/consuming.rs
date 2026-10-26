@@ -24,6 +24,35 @@ fn turn((x, y, z): (f64, f64, f64), radians: f32, axis: Axis) -> (f64, f64, f64)
     }
 }
 
+/// One crumb of `LivingEntity.spawnItemParticles`: an item particle thrown from 0.6 in front of
+/// the eyes, 0.3 to 0.9 below them, along the direction the entity looks. (The push goes through
+/// the packet's single floats.)
+pub(crate) fn crumb_particle(
+    random: &mut photon_core::random::RandomSource,
+    item: ItemId,
+    eye: Vec3,
+    (y_rot, x_rot): (f32, f32),
+) -> Option<crate::particles::LevelParticles> {
+    let type_id = photon_data::particle_type::id("item")?;
+    let (pitch, yaw) = (-x_rot * RADIANS, -y_rot * RADIANS);
+    let mut draw = || f64::from(random.next_float());
+    let push = ((draw() - 0.5) * 0.1, draw() * 0.1 + 0.1, 0.0);
+    let down = -draw() * 0.6 - 0.3;
+    let from = ((draw() - 0.5) * 0.3, down, 0.6);
+    let push = turn(turn(push, pitch, Axis::X), yaw, Axis::Y);
+    let from = turn(turn(from, pitch, Axis::X), yaw, Axis::Y);
+    Some(crate::particles::LevelParticles {
+        type_id,
+        data: crate::particles::ParticleData::Item(item),
+        override_limiter: false,
+        always_show: false,
+        at: (from.0 + eye.x, from.1 + eye.y, from.2 + eye.z),
+        spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
+        max_speed: 1.0,
+        count: 0,
+    })
+}
+
 /// What the consumable of a stack in use sounds like.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConsumeCue {
@@ -92,38 +121,22 @@ impl LocalPlayer {
     }
 
     /// `LivingEntity.spawnItemParticles`: crumbs of the item in use, thrown from in front of the
-    /// face along its direction. (The push goes through the packet's single floats.)
+    /// face along its direction.
     fn throw_crumbs(&mut self, count: usize) {
         let item = if self.hands.using_off_hand {
             self.hands.off_item
         } else {
             self.hands.main_item
         };
-        let Some(type_id) = photon_data::particle_type::id("item") else {
-            return;
-        };
-        let (y_rot, x_rot) = self.rotation();
-        let (pitch, yaw) = (-x_rot * RADIANS, -y_rot * RADIANS);
-        let (at, eye) = (self.position, f64::from(self.eye_height()));
+        let eye = Vec3::new(
+            self.position.x,
+            self.position.y + f64::from(self.eye_height()),
+            self.position.z,
+        );
+        let rotation = self.rotation();
         for _ in 0..count {
-            let mut draw = || f64::from(self.random.next_float());
-            let push = ((draw() - 0.5) * 0.1, draw() * 0.1 + 0.1, 0.0);
-            let down = -draw() * 0.6 - 0.3;
-            let from = ((draw() - 0.5) * 0.3, down, 0.6);
-            let push = turn(turn(push, pitch, Axis::X), yaw, Axis::Y);
-            let from = turn(turn(from, pitch, Axis::X), yaw, Axis::Y);
-            self.use_edge
-                .particles
-                .push(crate::particles::LevelParticles {
-                    type_id,
-                    data: crate::particles::ParticleData::Item(item),
-                    override_limiter: false,
-                    always_show: false,
-                    at: (from.0 + at.x, from.1 + at.y + eye, from.2 + at.z),
-                    spread: (push.0 as f32, (push.1 + 0.05) as f32, push.2 as f32),
-                    max_speed: 1.0,
-                    count: 0,
-                });
+            let crumb = crumb_particle(&mut self.random, item, eye, rotation);
+            self.use_edge.particles.extend(crumb);
         }
     }
 

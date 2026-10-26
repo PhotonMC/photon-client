@@ -45,6 +45,7 @@ mod sounds;
 pub use sounds::{LocalSound, LocalSoundSource, SoundQueue};
 mod consuming;
 pub use consuming::ConsumeCue;
+pub(crate) use consuming::crumb_particle;
 mod portal;
 mod screen_effect;
 mod underwater;
