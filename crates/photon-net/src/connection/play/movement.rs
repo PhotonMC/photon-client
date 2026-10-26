@@ -70,6 +70,8 @@ impl PlaySession {
                     action,
                     photon_game::game_mode::PlayerAction::ReleaseUseItem
                         | photon_game::game_mode::PlayerAction::Stab
+                        | photon_game::game_mode::PlayerAction::DropItem
+                        | photon_game::game_mode::PlayerAction::DropAllItems
                 ) {
                     self.mark_block(x, y, z);
                 }

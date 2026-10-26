@@ -138,17 +138,8 @@ impl Controls {
         let press = action == glfw::Action::Press;
         let names: Vec<&'static str> = self.options.mappings_of(input).collect();
         for name in names {
-            let held = |key: &mut AttackKey, captured: bool| {
-                if press && captured {
-                    key.press();
-                } else if !down {
-                    key.release();
-                }
-            };
             match name {
-                "key.attack" => held(&mut self.attack_key, self.captured),
-                "key.use" => held(&mut self.use_key, self.captured),
-                "key.pickItem" => held(&mut self.pick_key, self.captured),
+                click if self.click_key(click, (press, down)) => {}
                 "key.inventory" if press && self.captured => {
                     self.inventory_key((session, surface, assets), spectating);
                 }
@@ -169,6 +160,25 @@ impl Controls {
                 _ => {}
             }
         }
+    }
+
+    /// The attack, use, pick and drop keys (`KeyMapping.set` and `click`): pressed with the mouse
+    /// captured they click and are held, let go they are up. A repeat of a held key clicks again
+    /// for the drop key (`KeyboardHandler.keyPress`). Whether the mapping is one of them.
+    fn click_key(&mut self, name: &str, (press, down): (bool, bool)) -> bool {
+        let (key, repeats) = match name {
+            "key.attack" => (&mut self.attack_key, false),
+            "key.use" => (&mut self.use_key, false),
+            "key.pickItem" => (&mut self.pick_key, false),
+            "key.drop" => (&mut self.drop_key, true),
+            _ => return false,
+        };
+        if (press || (down && repeats)) && self.captured {
+            key.press();
+        } else if !down {
+            key.release();
+        }
+        true
     }
 
     /// `Minecraft.handleKeybinds` for the quick actions key: the dialog of the `quick_actions`
@@ -196,6 +206,7 @@ impl Controls {
         self.attack_key.release();
         self.use_key.release();
         self.pick_key.release();
+        self.drop_key.release();
     }
 
     /// `containerTick`: a container the server opens or closes opens or

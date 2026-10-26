@@ -347,7 +347,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     pick_clicks: attack
                         .get("pick_item")
                         .map_or(Ok(0), |pick| count_field(pick, "clicks"))?,
-                    control_down: false,
+                    ..Default::default()
                 };
                 let mut ctx = photon_game::game_mode::Context {
                     miner: &photon_game::game_mode::Miner::of(&world, 0),

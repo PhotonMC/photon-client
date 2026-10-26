@@ -103,10 +103,16 @@ impl Controls {
         }
         self.drain_screen_actions(session)?;
         self.scripted_scroll(held, session);
+        self.scripted_keys(held);
+        Ok(())
+    }
+
+    /// The scripted clicks and holds of the attack, use, pick and drop keys.
+    fn scripted_keys(&mut self, held: HeldKeys) {
         script_key(&mut self.attack_key, held.attack, held.mine);
         script_key(&mut self.use_key, held.use_click, held.hold_use);
         script_key(&mut self.pick_key, held.pick, false);
-        Ok(())
+        script_key(&mut self.drop_key, held.drop, false);
     }
 
     /// The scripted creative tab and scroll, and the wheel turned over the open screen.

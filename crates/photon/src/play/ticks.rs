@@ -460,17 +460,7 @@ impl Play {
                 pick(session.world(), player, eye_position(player, 1.0))
             });
         let grabbed = self.controls.captured || self.script.is_some();
-        session.keys(
-            photon_game::game_mode::Keys {
-                attack_clicks: self.controls.attack_key.take_clicks(),
-                attack_held: self.controls.attack_key.is_down() && grabbed,
-                use_clicks: self.controls.use_key.take_clicks(),
-                use_held: self.controls.use_key.is_down(),
-                pick_clicks: self.controls.pick_key.take_clicks(),
-                control_down: self.controls.mods.ctrl,
-            },
-            aim,
-        )?;
+        session.keys(self.controls.game_keys(grabbed), aim)?;
         for hand in session.take_items_used() {
             self.item_in_hand.item_used(hand);
         }

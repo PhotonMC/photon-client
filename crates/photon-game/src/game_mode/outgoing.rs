@@ -64,6 +64,8 @@ pub enum PlayerAction {
     StartDestroyBlock = 0,
     AbortDestroyBlock = 1,
     StopDestroyBlock = 2,
+    DropAllItems = 3,
+    DropItem = 4,
     ReleaseUseItem = 5,
     Stab = 7,
 }

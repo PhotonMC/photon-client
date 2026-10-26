@@ -24,6 +24,19 @@ pub(super) fn input_key(key: glfw::Key, scancode: glfw::Scancode) -> photon_data
 }
 
 impl Controls {
+    /// The attack, use, pick and drop keys as `handleKeybinds` spends them in one tick.
+    pub(crate) fn game_keys(&mut self, grabbed: bool) -> photon_game::game_mode::Keys {
+        photon_game::game_mode::Keys {
+            attack_clicks: self.attack_key.take_clicks(),
+            attack_held: self.attack_key.is_down() && grabbed,
+            use_clicks: self.use_key.take_clicks(),
+            use_held: self.use_key.is_down(),
+            pick_clicks: self.pick_key.take_clicks(),
+            drop_clicks: self.drop_key.take_clicks(),
+            control_down: self.mods.ctrl,
+        }
+    }
+
     /// `KeyBindsScreen`, over the controls screen.
     pub(super) fn open_key_binds(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
         self.key_binds_screen = Some(KeyBindsScreen::new(

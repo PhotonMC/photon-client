@@ -19,6 +19,8 @@ pub struct HeldKeys {
     pub mine: bool,
     /// A scripted press of the pick item key on this tick.
     pub pick: bool,
+    /// A scripted press of the drop key on this tick.
+    pub drop: bool,
     /// A scripted use click on this tick.
     pub use_click: bool,
     /// The use key held down on this tick.
@@ -73,6 +75,7 @@ const FLAGS: &[Flag] = &[
     ("mine", |keys| keys.mine = true),
     ("use", |keys| keys.use_click = true),
     ("pick", |keys| keys.pick = true),
+    ("drop", |keys| keys.drop = true),
     ("hold_use", |keys| keys.hold_use = true),
     ("inventory", |keys| keys.inventory = true),
     ("advancements", |keys| keys.advancements = true),

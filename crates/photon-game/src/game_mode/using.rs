@@ -424,6 +424,9 @@ impl GameMode {
         if self.right_click_delay > 0 {
             self.right_click_delay -= 1;
         }
+        for _ in 0..keys.drop_clicks {
+            super::dropping::drop_selected(ctx, keys.control_down, &mut out);
+        }
         let instant_attack = self.spend_clicks(ctx, keys, aim, &mut out);
         if keys.use_held && self.right_click_delay == 0 && !ctx.player.is_using_item() {
             self.start_use_item(ctx, aim, &mut out);
