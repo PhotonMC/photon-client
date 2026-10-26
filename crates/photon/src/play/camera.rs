@@ -303,5 +303,6 @@ pub(super) fn tick_view(
         ]
     });
     let darken = photon_world::particles::Ambience::sky_darken(&sky.ambience(session));
+    gui.tick_selected_name(session, controls.options.notification_display_time);
     gui.tick(eyes.map(|point| session.world().eye_brightness(point, darken)));
 }

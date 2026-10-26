@@ -7,6 +7,7 @@ pub mod effects;
 mod hotbar;
 pub mod locator;
 mod overlays;
+pub mod selected_name;
 pub mod subtitles;
 mod vitals;
 pub use overlays::{CameraOverlays, debug, sleep, vignette_colour};
@@ -149,6 +150,8 @@ pub struct Hud {
     /// `Hud.scopeScale`, and the time of the last frame it was eased at.
     scope_scale: f32,
     last_frame_millis: Option<u128>,
+    /// The held item's name over the hotbar.
+    selected_name: selected_name::SelectedName,
 }
 
 impl Default for Hud {
@@ -164,6 +167,7 @@ impl Default for Hud {
             vignette_brightness: 1.0,
             scope_scale: 0.0,
             last_frame_millis: None,
+            selected_name: selected_name::SelectedName::default(),
         }
     }
 }
@@ -177,6 +181,29 @@ impl Hud {
     /// `Hud.tick`: the HUD's tick count moves on.
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
+    }
+
+    /// The held item's name follows the selected stack (the part of `Hud.tick` about it).
+    pub fn tick_selected_name(
+        &mut self,
+        selected: Option<selected_name::SelectedItem>,
+        display_time: f64,
+    ) {
+        self.selected_name.tick(selected, display_time);
+    }
+
+    /// `Hud.extractSelectedItemName`, which a spectator does not get.
+    pub fn draw_selected_name(
+        &self,
+        frame: &mut GuiFrame,
+        (atlas, font): (&GuiAtlas, &photon_render::gui::font::Font),
+        size: (i32, i32),
+        (input, backdrop): (&HudInput, f32),
+    ) {
+        if !input.spectator {
+            self.selected_name
+                .draw(frame, (atlas, font), size, (input.survival, backdrop));
+        }
     }
 
     /// `Hud.extractRenderState` for what this client has: the crosshair,

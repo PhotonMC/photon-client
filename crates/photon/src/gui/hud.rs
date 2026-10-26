@@ -12,6 +12,31 @@ impl Gui {
         self.last_tick = std::time::Instant::now();
     }
 
+    /// The part of `Hud.tick` that follows the stack in the selected slot: its name shows over
+    /// the hotbar for a while after it changes.
+    pub fn tick_selected_name(&mut self, session: &photon_net::connection::PlaySession, time: f64) {
+        use photon_game::tooltip::{hover_name, styled_name};
+        let selected = session
+            .world()
+            .local_player()
+            .and_then(|state| state.inventory_slot(36 + session.status().selected_slot as i16))
+            .filter(|stack| stack.item_count() > 0)
+            .map(|stack| {
+                let values = photon_game::item::values::Values::new(
+                    stack.item_registry_id(),
+                    stack.patch_bytes(),
+                );
+                photon_gui::hud::selected_name::SelectedItem {
+                    item: stack.item_registry_id(),
+                    hover_name: hover_name(stack, &values),
+                    runs: self
+                        .lang
+                        .runs(&styled_name(stack, &values), &Style::default()),
+                }
+            });
+        self.hud.tick_selected_name(selected, time);
+    }
+
     /// `Hud.setNowPlaying`: "Now Playing:" and the name of the record the jukebox plays.
     pub fn show_now_playing(&mut self, song: usize) {
         use photon_game::text::{Component, Content};

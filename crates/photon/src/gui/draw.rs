@@ -94,13 +94,25 @@ impl Gui {
     fn finish_hud_frame(
         frame: &mut photon_render::gui::GuiFrame,
         (atlas, font, boss_bars): (&GuiAtlas, &Font, &mut BossBars),
-        (started_at, hidden): (std::time::Instant, bool),
-        (session, size): (&PlaySession, &photon_render::window::scale::WindowScale),
+        (started_at, hidden, hud): (std::time::Instant, bool, &Hud),
+        (session, size, input, options): (
+            &PlaySession,
+            &photon_render::window::scale::WindowScale,
+            &photon_gui::HudInput,
+            &photon_game::options::Options,
+        ),
     ) {
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
         frame.millis = started_at.elapsed().as_millis() as u64;
         if !hidden {
             boss_bars.draw(frame, atlas, font, gui_size, frame.millis);
+            // The held item's name comes before the veil, with the contextual bar's decorations.
+            let backdrop = if options.background_for_chat_only {
+                0.0
+            } else {
+                options.text_background_opacity as f32
+            };
+            hud.draw_selected_name(frame, (atlas, font), gui_size, (input, backdrop));
         }
         let timer = session
             .world()
@@ -207,8 +219,8 @@ impl Gui {
         Self::finish_hud_frame(
             &mut frame,
             (&self.atlas, &self.font, &mut self.boss_bars),
-            (self.started_at, hidden),
-            (session, &size),
+            (self.started_at, hidden, &self.hud),
+            (session, &size, &hud_input, &controls.options),
         );
         if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
             sidebar::draw(
