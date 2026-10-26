@@ -282,8 +282,8 @@ impl ParticleEngine {
         sounds.push(local_sound(event, (1.0, 1.0), center, context));
     }
 
-    /// `ParticleUtils.spawnSmashAttackParticles`: dust of the block struck, a third as many as
-    /// asked, about its top.
+    /// `ParticleUtils.spawnSmashAttackParticles`: dust of the block struck, a burst about its top
+    /// and a ring around it.
     fn smash_attack<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
@@ -291,30 +291,84 @@ impl ParticleEngine {
         context: &mut LevelEventContext<'_, F>,
     ) {
         let state = context.world.block_state_or_air(pos.0, pos.1, pos.2);
-        let (cx, cy, cz) = (
+        let center = (
             f64::from(pos.0) + 0.5,
             f64::from(pos.1) + 1.0,
             f64::from(pos.2) + 0.5,
         );
-        let fifth = f64::from(0.2_f32);
-        let mut made = 0;
-        while (made as f32) < count as f32 / 3.0 {
-            let random = &mut *context.level_random;
-            let x = cx + random.next_gaussian() / 2.0;
-            let z = cz + random.next_gaussian() / 2.0;
-            let push = (
-                random.next_gaussian() * fifth,
-                random.next_gaussian() * fifth,
-                random.next_gaussian() * fifth,
-            );
+        for (at, push) in smash_attack_dust(&mut *context.level_random, center, count) {
             self.level_add_data_pushed(
                 context,
                 "dust_pillar",
                 ParticleData::Block(state),
-                (x, cy, z),
+                at,
                 push,
             );
-            made += 1;
         }
+    }
+}
+
+/// One flake of the smash attack's dust: where it starts and how it is pushed.
+type DustFlake = ((f64, f64, f64), (f64, f64, f64));
+
+/// Where the smash attack's dust starts and how it moves: a third as many as asked in a burst
+/// about the center, then two thirds as many on a ring 3.5 out from it, each placed and pushed
+/// by gaussian draws (the ring's push is a quarter of the burst's).
+fn smash_attack_dust(
+    random: &mut RandomSource,
+    center: (f64, f64, f64),
+    count: i32,
+) -> Vec<DustFlake> {
+    let mut dust = Vec::new();
+    let mut burst = 0;
+    while (burst as f32) < count as f32 / 3.0 {
+        let x = center.0 + random.next_gaussian() / 2.0;
+        let z = center.2 + random.next_gaussian() / 2.0;
+        let fifth = f64::from(0.2_f32);
+        let push = (
+            random.next_gaussian() * fifth,
+            random.next_gaussian() * fifth,
+            random.next_gaussian() * fifth,
+        );
+        dust.push(((x, center.1, z), push));
+        burst += 1;
+    }
+    let mut ring = 0;
+    while (ring as f32) < count as f32 / 1.5 {
+        let angle = f64::from(ring);
+        let x = center.0 + 3.5 * fdlibm_cos(angle) + random.next_gaussian() / 2.0;
+        let z = center.2 + 3.5 * fdlibm_sin(angle) + random.next_gaussian() / 2.0;
+        let twentieth = f64::from(0.05_f32);
+        let push = (
+            random.next_gaussian() * twentieth,
+            random.next_gaussian() * twentieth,
+            random.next_gaussian() * twentieth,
+        );
+        dust.push(((x, center.1, z), push));
+        ring += 1;
+    }
+    dust
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The burst is a third of the count and the ring two thirds, the ring 3.5 out from the center
+    /// and its push gentler than the burst's.
+    #[test]
+    fn the_smash_attack_throws_a_burst_and_a_ring_of_dust() {
+        let mut random = RandomSource::create(42);
+        let center = (10.5, 65.0, -3.5);
+        let dust = smash_attack_dust(&mut random, center, 30);
+        assert_eq!(dust.len(), 10 + 20);
+        let (burst, ring) = dust.split_at(10);
+        let distance = |at: &(f64, f64, f64)| (at.0 - center.0).hypot(at.2 - center.2);
+        let mean = |part: &[DustFlake]| {
+            part.iter().map(|(at, _)| distance(at)).sum::<f64>() / part.len() as f64
+        };
+        assert!(mean(burst) < 1.5, "{}", mean(burst));
+        assert!((mean(ring) - 3.5).abs() < 0.8, "{}", mean(ring));
+        assert!(dust.iter().all(|(at, _)| at.1 == center.1));
     }
 }
