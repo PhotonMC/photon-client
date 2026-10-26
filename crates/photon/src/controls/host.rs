@@ -152,6 +152,9 @@ impl Controls {
                     (LinkAction::Yes, ConfirmTarget::Link(url)) => open_uri(&url),
                     (LinkAction::Copy, ConfirmTarget::Link(url)) => surface.set_clipboard(&url),
                     (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(&id),
+                    (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
+                        self.copy_confirmed_packs(&paths, assets);
+                    }
                     _ => {}
                 }
             }

@@ -112,8 +112,44 @@ impl Controls {
         }
         if watch.reload_at.is_some_and(|at| now >= at) {
             watch.reload_at = None;
+            self.reload_pack_screen(assets);
+        }
+    }
+
+    /// The screen lists the folder again (`PackSelectionScreen.reload`).
+    pub(super) fn reload_pack_screen(&mut self, assets: &ScreenAssets) {
+        if let Some(screen) = self.pack_screen.as_mut() {
             let all = all_entries(screen.folder());
             screen.reload(&assets.lang, all);
+        }
+        if let Some(watch) = self.pack_watch.as_mut() {
+            watch.reload_at = None;
+        }
+    }
+
+    /// The events that need no screen state: the pointer moving and files dropped. Whether it
+    /// was one.
+    fn packs_early_event(
+        &mut self,
+        event: &glfw::WindowEvent,
+        surface: &mut WindowSurface,
+        assets: &ScreenAssets,
+    ) -> bool {
+        match event {
+            glfw::WindowEvent::CursorPos(x, y) => {
+                let before = self.gui_mouse.1;
+                self.move_gui_mouse((*x, *y), surface);
+                let mouse = self.gui_mouse;
+                if let Some(screen) = self.pack_screen.as_mut() {
+                    screen.dragged(mouse, mouse.1 - before);
+                }
+                true
+            }
+            glfw::WindowEvent::FileDrop(paths) => {
+                self.ask_to_copy_packs(paths.clone(), surface, assets);
+                true
+            }
+            _ => false,
         }
     }
 
@@ -126,13 +162,7 @@ impl Controls {
     ) {
         use glfw::{Action, Key, MouseButton, WindowEvent};
         let font = &assets.creative.font;
-        if let WindowEvent::CursorPos(x, y) = event {
-            let before = self.gui_mouse.1;
-            self.move_gui_mouse((x, y), surface);
-            let mouse = self.gui_mouse;
-            if let Some(screen) = self.pack_screen.as_mut() {
-                screen.dragged(mouse, mouse.1 - before);
-            }
+        if self.packs_early_event(&event, surface, assets) {
             return;
         }
         let mouse = self.gui_mouse;

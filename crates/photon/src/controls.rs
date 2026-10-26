@@ -379,6 +379,7 @@ mod events;
 pub(crate) mod keybinds;
 
 mod options;
+mod pack_drop;
 mod pack_prompt;
 mod packs;
 

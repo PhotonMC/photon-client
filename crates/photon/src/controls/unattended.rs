@@ -17,6 +17,8 @@ pub enum ConfirmTarget {
     /// `TransferableSelectionList.PackEntry.handlePackSelection`: the pack that does not fit the
     /// game, selected once the player agrees.
     Pack(String),
+    /// `PackSelectionScreen.onFilesDrop`: the dropped paths, copied once the player agrees.
+    Drop(Vec<std::path::PathBuf>),
 }
 
 impl Controls {
@@ -140,6 +142,9 @@ impl Controls {
                 }
             }
             (LinkAction::Yes, ConfirmTarget::Pack(id)) => self.select_confirmed_pack(id),
+            (LinkAction::Yes, ConfirmTarget::Drop(paths)) => {
+                self.copy_confirmed_packs(paths, assets);
+            }
             _ => {}
         }
         Ok(())
