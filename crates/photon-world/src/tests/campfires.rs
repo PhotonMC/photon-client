@@ -56,3 +56,20 @@ fn only_a_lit_campfire_ticks_for_its_smoke() {
     world.tick_block_entities(None).unwrap();
     assert_eq!(world.take_level_events().len(), 1);
 }
+
+/// `CampfireBlock.dowse` on a client: a shovel putting out a campfire asks for its smoke.
+#[test]
+fn a_dowsed_campfire_asks_for_its_smoke() {
+    let mut world = ClientWorld::default();
+    world.push_campfire_dowse((4, 70, -2), true);
+    assert_eq!(
+        world.take_level_events(),
+        vec![LevelEvent::CampfireTick(crate::world::CampfireSmoke {
+            pos: (4, 70, -2),
+            signal: true,
+            rotation: 0,
+            cooking: [false; 4],
+            dowsed: true,
+        })]
+    );
+}

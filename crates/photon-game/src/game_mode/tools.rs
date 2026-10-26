@@ -45,7 +45,8 @@ fn flattenable(name: &str) -> bool {
 }
 
 /// `ShovelItem.useOn` for the client: a flattenable block with air above sounds the shovel, a lit
-/// campfire is dowsed (its smoke is not drawn), the bottom face and anything else pass.
+/// campfire is dowsed (the server puts it out; the client shows the smoke), the bottom face and
+/// anything else pass.
 pub(super) fn shovel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
     let Aim::Block { x, y, z, face, .. } = aim else {
         return UseResult::Pass;
@@ -60,7 +61,10 @@ pub(super) fn shovel_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
         return UseResult::Success { swing: true };
     }
     let campfire = matches!(name, "minecraft:campfire" | "minecraft:soul_campfire");
-    if campfire && photon_world::block::rules::property(state, "lit") == Some("true") {
+    let property = |name| photon_world::block::rules::property(state, name);
+    if campfire && property("lit") == Some("true") {
+        ctx.world
+            .push_campfire_dowse((x, y, z), property("signal_fire") == Some("true"));
         return UseResult::Success { swing: true };
     }
     UseResult::Pass
