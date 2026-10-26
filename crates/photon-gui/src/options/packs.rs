@@ -526,6 +526,26 @@ mod tests {
     }
 
     #[test]
+    fn the_moved_pack_takes_the_focus_and_clicks_move_it() {
+        let Some((font, lang)) = assets() else { return };
+        let mut screen = screen(
+            &font,
+            &lang,
+            vec![folder_pack("a", Compatibility::Compatible)],
+        );
+        screen.clicked(&font, first_icon(&screen, 0));
+        assert_eq!(screen.focus, Some(Focus::List(1)));
+        assert_eq!(screen.selected[1], Some(Selected::Pack("file/a".into())));
+        // A press on the text of the other list's row moves the focus and keeps this selection.
+        let (x, y) = first_icon(&screen, 1);
+        screen.clicked(&font, (x + 40.0, y + 36.0));
+        assert_eq!(screen.focus, Some(Focus::List(1)));
+        assert_eq!(screen.selected[1], Some(Selected::Pack("vanilla".into())));
+        screen.refilter();
+        assert_eq!(screen.selected, [None, None]);
+    }
+
+    #[test]
     fn a_pack_that_does_not_fit_is_asked_about_first() {
         let Some((font, lang)) = assets() else { return };
         let mut screen = screen(

@@ -12,6 +12,7 @@ const HOVER_OVERLAY: u32 = -1_601_138_544_i32 as u32;
 struct EntryAt {
     content: (i32, i32),
     /// The width of the row's content, and of the text beside the icon.
+    list: usize,
     content_width: i32,
     text_width: i32,
     hover: Option<(i32, i32)>,
@@ -123,6 +124,7 @@ impl PackScreen {
             let bar = if scrollable { SCROLLBAR_WIDTH } else { 0 };
             let at = EntryAt {
                 content: (x + 2 * PADDING, top + PADDING),
+                list,
                 content_width: ROW_WIDTH - 2 * PADDING - bar,
                 text_width: TEXT_WIDTH - bar,
                 hover,
@@ -193,7 +195,7 @@ impl PackScreen {
         let mut title = view.title.clone();
         let mut description = view.description.clone();
         let hovered = at.hover.filter(|_| !(view.fixed_position && view.required));
-        let selected = self.is_selected(view);
+        let selected = self.is_selected(at.list, view);
         let overlay = hovered.is_some() || selected;
         if overlay && !(view.fixed_position && view.required) {
             let part = hovered.and_then(|rel| self.part_at(view, rel));
@@ -232,13 +234,10 @@ impl PackScreen {
         }
     }
 
-    fn is_selected(&self, view: &PackView) -> bool {
-        self.focus
-            .is_some_and(|focus| matches!(focus, Focus::List(_)))
-            && self
-                .selected
-                .iter()
-                .any(|entry| matches!(entry, Some(Selected::Pack(id)) if *id == view.id))
+    /// Whether the entry is its list's selection and that list has the focus.
+    fn is_selected(&self, list: usize, view: &PackView) -> bool {
+        self.focus == Some(Focus::List(list))
+            && matches!(&self.selected[list], Some(Selected::Pack(id)) if *id == view.id)
     }
 
     /// The outline of the selected entry: white while its list has the focus, gray otherwise.

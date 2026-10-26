@@ -49,14 +49,17 @@ fn pack_folder() -> std::path::PathBuf {
     photon_assets::pack_directory(&game_directory())
 }
 
+/// The icon of the game's own pack, if the assets are there.
+fn vanilla_icon() -> Option<Vec<u8>> {
+    let root = std::env::var("PHOTON_ASSETS").ok()?;
+    crate::assets::vanilla_pack(std::path::Path::new(&root)).icon()
+}
+
 impl Controls {
     /// The packs the screen offers: the game's own, then the folder's, with the selection
     /// `options.txt` holds.
     fn pack_model(&self) -> SelectionModel {
-        let icon = std::env::var("PHOTON_ASSETS")
-            .ok()
-            .and_then(|root| crate::assets::vanilla_pack(std::path::Path::new(&root)).icon());
-        let mut entries = vec![vanilla_entry(icon)];
+        let mut entries = vec![vanilla_entry(vanilla_icon())];
         entries.extend(discover_folder(
             &pack_folder(),
             crate::resources::PACK_FORMAT,
@@ -101,7 +104,7 @@ impl Controls {
         if watch.reload_at.is_some_and(|at| now >= at) {
             watch.reload_at = None;
             let entries = discover_folder(screen.folder(), crate::resources::PACK_FORMAT);
-            let mut all = vec![vanilla_entry(None)];
+            let mut all = vec![vanilla_entry(vanilla_icon())];
             all.extend(entries);
             screen.reload(&assets.lang, all);
         }

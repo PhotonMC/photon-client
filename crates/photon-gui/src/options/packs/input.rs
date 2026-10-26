@@ -307,7 +307,7 @@ impl PackScreen {
 
     /// The search text changed: both lists are made again from what matches, with nothing selected
     /// (`updateFilteredEntries`).
-    fn refilter(&mut self) {
+    pub(super) fn refilter(&mut self) {
         self.selected = [None, None];
         for list in 0..2 {
             self.set_scroll(list, self.scroll[list]);
