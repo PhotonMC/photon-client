@@ -164,14 +164,15 @@ impl LocalPlayer {
         self.attack_anim_old = self.attack_anim;
         self.y_head_rot_old = self.y_head_rot;
         self.y_body_rot_old = self.y_body_rot;
-        // Entity.baseTick, as the living base tick runs it.
+        // Entity.baseTick, as the living base tick runs it: the sprint flake reads last tick's
+        // fluids, so it comes before the fluid update.
+        self.throw_sprint_particle(level);
         self.eyes.was_in_water = self.water.eyes_inside;
         self.update_fluid_interaction(level)?;
         self.update_swimming(level);
         if self.is_in_lava() {
             self.fall_distance *= 0.5;
         }
-        self.throw_sprint_particle(level);
         if self.position.y < f64::from(level.world.dimension().min_y - 64) {
             return unsupported("falling below the world");
         }

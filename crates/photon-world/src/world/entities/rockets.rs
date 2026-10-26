@@ -44,6 +44,9 @@ impl ClientWorld {
             } else if let Some(entity) = self.entities.at(target) {
                 (entity.position(), entity.motion())
             } else {
+                // `FireworkRocketEntity.tick` throws its trail whether or not it found the
+                // entity it is attached to.
+                self.throw_rocket_trail(rocket);
                 continue;
             };
             self.follow_target(rocket, position, motion);
