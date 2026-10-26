@@ -5,6 +5,67 @@ impl LocalPlayer {
         self.sprinting
     }
 
+    /// `Entity.canSpawnSprintParticle`.
+    fn can_spawn_sprint_particle(&self) -> bool {
+        self.sprinting
+            && !self.is_in_water()
+            && !self.is_spectator()
+            && self.pose != ClientEntityPose::Crouching
+            && !self.is_in_lava()
+            && self.health > 0.0
+    }
+
+    /// `Entity.spawnSprintParticle`: a sprinting player kicks up flakes of the block under its
+    /// feet, thrown back against its motion.
+    pub(super) fn throw_sprint_particle(&mut self, level: &Level<'_>) {
+        if !self.can_spawn_sprint_particle() {
+            return;
+        }
+        let pos = self.get_on_pos(level, 0.2);
+        let Some(state) = level.state_id(pos) else {
+            return;
+        };
+        if crate::shadow::is_invisible_render_shape(crate::block::state_or_air(state).block().name)
+        {
+            return;
+        }
+        let Some(type_id) = photon_data::particle_type::id("block") else {
+            return;
+        };
+        let width = f64::from(self.dimensions.width());
+        let here = BlockPos::new(
+            self.position.x.floor() as i32,
+            self.position.y.floor() as i32,
+            self.position.z.floor() as i32,
+        );
+        let mut x = self.position.x + (self.random.next_double() - 0.5) * width;
+        let mut z = self.position.z + (self.random.next_double() - 0.5) * width;
+        // Standing on the edge of a block, the flakes stay over the block they come from.
+        if here.x != pos.x {
+            x = x.clamp(f64::from(pos.x), f64::from(pos.x) + 1.0);
+        }
+        if here.z != pos.z {
+            z = z.clamp(f64::from(pos.z), f64::from(pos.z) + 1.0);
+        }
+        self.use_edge
+            .particles
+            .push(crate::particles::LevelParticles {
+                type_id,
+                data: crate::particles::ParticleData::Block(state),
+                override_limiter: false,
+                always_show: false,
+                at: (x, self.position.y + 0.1, z),
+                // Count 0 reads the spread as the velocity.
+                spread: (
+                    (self.delta.x * -4.0) as f32,
+                    1.5,
+                    (self.delta.z * -4.0) as f32,
+                ),
+                max_speed: 1.0,
+                count: 0,
+            });
+    }
+
     pub(super) fn update_auto_jump(
         &mut self,
         level: &Level<'_>,
@@ -246,5 +307,103 @@ impl LocalPlayer {
         !self.is_sprinting_possible(true)
             || !self.is_in_water()
             || !self.has_forward_impulse() && !self.on_ground && !self.input.key_presses.shift
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::*;
+    use crate::{ClientPlayerGameMode, DimensionBounds, SectionInput};
+
+    /// A player at the middle of a stone floor, sprinting east, with the floor's top at y = 64.
+    fn runner() -> (ClientWorld, LocalPlayer) {
+        let mut blocks = vec![0; 4_096];
+        let stone = photon_data::block::registry::default_state_named("minecraft:stone").0;
+        for z in 0..16 {
+            for x in 0..16 {
+                blocks[63 % 16 * 256 + z * 16 + x] = stone;
+            }
+        }
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 128));
+        let mut sections = Vec::new();
+        for section in 0..8 {
+            let states = if section == 3 {
+                blocks.clone()
+            } else {
+                vec![0; 4_096]
+            };
+            sections.push((section == 3, states));
+        }
+        world.replace_chunk(
+            0,
+            0,
+            sections.iter().map(|(floor, states)| SectionInput {
+                non_empty_block_count: if *floor { 256 } else { 0 },
+                fluid_count: 0,
+                block_states: states,
+                biomes: &[0; 64],
+            }),
+        );
+        let mut player = LocalPlayer::new(
+            photon_core::ids::EntityId(1),
+            Vec3::new(8.5, 64.0, 8.5),
+            0.0,
+            0.0,
+            ClientPlayerGameMode::Survival,
+            true,
+        );
+        player.sprinting = true;
+        player.delta = Vec3::new(0.2, 0.0, 0.0);
+        (world, player)
+    }
+
+    /// `Entity.spawnSprintParticle`: one flake of the block underfoot a tick, against the motion.
+    #[test]
+    fn a_sprinting_player_kicks_up_flakes_of_the_block_under_its_feet() {
+        let (world, mut player) = runner();
+        player.throw_sprint_particle(&Level::new(&world));
+        let flakes = player.take_particles();
+        assert_eq!(flakes.len(), 1);
+        let flake = flakes[0];
+        assert_eq!(flake.count, 0);
+        assert_eq!(
+            flake.type_id,
+            photon_data::particle_type::id("block").expect("the block particle")
+        );
+        assert_eq!(
+            flake.data,
+            crate::particles::ParticleData::Block(
+                photon_data::block::registry::default_state_named("minecraft:stone")
+            )
+        );
+        assert!((flake.at.1 - 64.1).abs() < 1e-9);
+        // Within the body's width of the player, thrown back and up.
+        assert!((flake.at.0 - 8.5).abs() <= 0.3 + 1e-9 && (flake.at.2 - 8.5).abs() <= 0.3 + 1e-9);
+        assert_eq!(flake.spread, (-0.8, 1.5, 0.0));
+    }
+
+    /// `Entity.canSpawnSprintParticle`: walking, crouching, spectating and dying throw nothing.
+    #[test]
+    fn only_a_sprinting_living_player_on_its_feet_kicks_up_flakes() {
+        let (world, mut walking) = runner();
+        walking.sprinting = false;
+        walking.throw_sprint_particle(&Level::new(&world));
+        assert!(walking.take_particles().is_empty());
+
+        let (world, mut crouching) = runner();
+        crouching.pose = ClientEntityPose::Crouching;
+        crouching.throw_sprint_particle(&Level::new(&world));
+        assert!(crouching.take_particles().is_empty());
+
+        let (world, mut dead) = runner();
+        dead.health = 0.0;
+        dead.throw_sprint_particle(&Level::new(&world));
+        assert!(dead.take_particles().is_empty());
+
+        // Over the air, with no block to kick up, nothing either.
+        let (world, mut flying) = runner();
+        flying.position = Vec3::new(8.5, 90.0, 8.5);
+        flying.throw_sprint_particle(&Level::new(&world));
+        assert!(flying.take_particles().is_empty());
     }
 }

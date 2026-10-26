@@ -171,6 +171,7 @@ impl LocalPlayer {
         if self.is_in_lava() {
             self.fall_distance *= 0.5;
         }
+        self.throw_sprint_particle(level);
         if self.position.y < f64::from(level.world.dimension().min_y - 64) {
             return unsupported("falling below the world");
         }
