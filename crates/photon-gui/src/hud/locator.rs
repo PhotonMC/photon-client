@@ -388,15 +388,16 @@ pub struct LocatorInput {
     pub viewer: Viewer,
 }
 
-/// `LocatorBar.extractBackground`.
+/// `LocatorBar.extractBackground`: a nine-slice sprite (12 by 5, a border of 5 at the sides and 1
+/// above and below, the middle tiled), laid out 182 by 5.
 pub fn background(frame: &mut GuiFrame, atlas: &GuiAtlas, (width, height): (i32, i32)) {
-    frame.sprite(
+    frame.nine_slice_edges(
         atlas,
         "hud/locator_bar_background",
-        width / 2 - 91,
-        height - 24 - 5,
-        182,
-        5,
+        (12, 5),
+        (5, 1, 5, 1),
+        false,
+        (width / 2 - 91, height - 24 - 5, 182, 5),
     );
 }
 
