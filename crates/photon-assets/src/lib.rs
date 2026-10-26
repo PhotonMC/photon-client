@@ -4,10 +4,15 @@
 
 mod meta;
 mod pack;
+mod selection;
 mod source;
 mod stack;
 
-pub use meta::{IdentifierPattern, PackFormat, format_range};
+pub use meta::{Compatibility, IdentifierPattern, PackFormat, format_range};
 pub use pack::{Pack, PackError};
+pub use selection::{
+    PackEntry, PackSource, Position, Repository, SelectionConfig, SelectionModel, Side, Title,
+    discover_folder, options_lists, pack_directory,
+};
 pub use source::{DirectorySource, Source, ZipSource};
 pub use stack::{Resource, ResourceStack};

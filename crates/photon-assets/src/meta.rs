@@ -135,11 +135,40 @@ fn declared_formats(section: &JsonObject) -> Option<(PackFormat, PackFormat)> {
     .range()
 }
 
-/// `PackCompatibility.forVersion(..) == COMPATIBLE` for the pack metadata `meta`.
-pub(crate) fn is_compatible(meta: &JsonObject, current: PackFormat) -> bool {
-    meta.object("pack")
-        .and_then(declared_formats)
-        .is_some_and(|(low, high)| high >= current && current >= low)
+/// `PackCompatibility`: how a pack's declared formats stand to the game's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Compatibility {
+    TooOld,
+    TooNew,
+    Unknown,
+    Compatible,
+}
+
+impl Compatibility {
+    pub fn is_compatible(self) -> bool {
+        self == Self::Compatible
+    }
+
+    /// The suffix of `pack.incompatible.<key>` and `pack.incompatible.confirm.<key>`.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::TooOld => "old",
+            Self::TooNew => "new",
+            Self::Unknown => "unknown",
+            Self::Compatible => "compatible",
+        }
+    }
+}
+
+/// `PackCompatibility.forVersion` for the pack metadata `meta`: a section that does not parse
+/// is read by the reference's fallback type, which declares no format at all (unknown).
+pub(crate) fn compatibility(meta: &JsonObject, current: PackFormat) -> Compatibility {
+    match meta.object("pack").and_then(declared_formats) {
+        None => Compatibility::Unknown,
+        Some((_, high)) if high < current => Compatibility::TooOld,
+        Some((low, _)) if current < low => Compatibility::TooNew,
+        Some(_) => Compatibility::Compatible,
+    }
 }
 
 /// The directories of the overlays that apply to `current` (`overlaysForVersion`), in the order

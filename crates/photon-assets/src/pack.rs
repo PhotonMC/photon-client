@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use photon_core::identifier::Identifier;
 use photon_core::json::{self, JsonObject, JsonValue};
 
-use crate::meta::{Filter, PackFormat, filter_of, is_compatible, overlays_for};
+use crate::meta::{Compatibility, Filter, PackFormat, compatibility, filter_of, overlays_for};
 use crate::source::Source;
 
 /// Why a pack cannot be used.
@@ -25,7 +25,9 @@ pub struct Pack {
     /// The folders to look in before the pack's own root, the topmost first.
     overlays: Vec<String>,
     filter: Option<Filter>,
-    compatible: bool,
+    compatibility: Compatibility,
+    /// The `description` of the `pack` section, as written (a text component).
+    description: JsonValue,
 }
 
 impl Pack {
@@ -42,12 +44,17 @@ impl Pack {
         if !section.has("description") {
             return Err(PackError::NoPackSection);
         }
+        let description = section
+            .get_str("description")
+            .cloned()
+            .unwrap_or(JsonValue::Null);
         let mut overlays = overlays_for(&meta, current);
         overlays.reverse();
         Ok(Self {
             id: id.into(),
             filter: filter_of(&meta),
-            compatible: is_compatible(&meta, current),
+            compatibility: compatibility(&meta, current),
+            description,
             overlays,
             source,
         })
@@ -60,13 +67,29 @@ impl Pack {
             source,
             overlays: Vec::new(),
             filter: None,
-            compatible: true,
+            compatibility: Compatibility::Compatible,
+            description: JsonValue::Null,
         }
     }
 
     /// Whether the pack's declared formats include the game's (`PackCompatibility.COMPATIBLE`).
     pub fn is_compatible(&self) -> bool {
-        self.compatible
+        self.compatibility.is_compatible()
+    }
+
+    /// `Pack.getCompatibility`.
+    pub fn compatibility(&self) -> Compatibility {
+        self.compatibility
+    }
+
+    /// `Pack.getDescription`, as the JSON the pack wrote.
+    pub fn description(&self) -> &JsonValue {
+        &self.description
+    }
+
+    /// The bytes of the pack's own `pack.png`, its icon.
+    pub fn icon(&self) -> Option<Vec<u8>> {
+        self.source.read("pack.png")
     }
 
     pub fn id(&self) -> &str {
