@@ -29,6 +29,7 @@ impl LocalPlayer {
         }
         if in_water && !self.was_touching_water && !self.first_tick {
             self.water_splash_sound();
+            self.throw_water_splash();
         }
         self.was_touching_water = in_water;
         if !self.abilities.flying {
@@ -40,6 +41,18 @@ impl LocalPlayer {
             }
         }
         Ok(())
+    }
+
+    /// `Entity.doWaterSplashEffect`, for the particles: bubbles and splashes where the player
+    /// broke the surface, after the sound.
+    fn throw_water_splash(&mut self) {
+        let (x, y, z) = (self.position.x, self.position.y, self.position.z);
+        let splash = crate::particles::water_splash_particles(
+            &mut self.random,
+            (x, y, z),
+            (self.dimensions.width(), self.delta),
+        );
+        self.use_edge.particles.extend(splash);
     }
 
     /// `Entity.getFluidInteractionBox`: the box a thousandth smaller, which the vehicle the player

@@ -33,6 +33,7 @@ impl ClientWorld {
             entity.motion.z = JavaF64::new(0.0_f64);
         }
         self.throw_sprint_particle(entity_id);
+        self.throw_water_splash(entity_id);
         self.tick_entity_once(entity_id);
         self.throw_effect_particles(entity_id);
         self.throw_eating_particles(entity_id);
@@ -366,5 +367,45 @@ impl ClientWorld {
             entity.position(),
             data,
         ));
+    }
+
+    /// `Entity.updateInWaterStateAndDoFluidPushing` for a living entity the server added: on the
+    /// tick its box first finds water (not the tick it appears) it splashes.
+    fn throw_water_splash(&mut self, entity_id: EntityId) {
+        let Some(entity) = self
+            .entities
+            .at(entity_id)
+            .filter(|entity| entity.living_kind().is_some())
+        else {
+            return;
+        };
+        let (x, y, z) = entity.position();
+        let position = Vec3::new(x, y, z);
+        let dimensions = entity.dimensions();
+        let Ok(found) = fluid::scan(
+            &local_player::Level::new(self),
+            (
+                dimensions.make_bounding_box(position),
+                position,
+                dimensions.eye_height(),
+            ),
+            true,
+        ) else {
+            return;
+        };
+        let in_water = found.water.height > 0.0;
+        let splashes = in_water && !entity.living.touching_water && entity.tick_count > 0;
+        let (width, (m_x, m_y, m_z)) = (dimensions.width(), entity.motion());
+        if let Some(entity) = self.entities.at_mut(entity_id) {
+            entity.living.touching_water = in_water;
+        }
+        if splashes {
+            let (queue, random) = &mut self.effect_particles;
+            queue.extend(particles::water_splash_particles(
+                random.source(),
+                (x, y, z),
+                (width, Vec3::new(m_x, m_y, m_z)),
+            ));
+        }
     }
 }
