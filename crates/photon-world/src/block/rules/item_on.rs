@@ -82,6 +82,9 @@ pub struct ItemUser {
     pub waxed: bool,
     /// The fluid above the block is water (`CauldronInteractions.isUnderWater`).
     pub water_above: bool,
+    /// `BlockPlaceContext.canPlace` for the stack in the hand against the face hit; `None` when
+    /// the block beside it has a replacement rule that is not ported.
+    pub can_place: Option<bool>,
 }
 
 /// What `useItemOn` does on the client.
@@ -451,7 +454,20 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
     }))
 }
 
+/// `RedStoneOreBlock.useItemOn`: the dust is the client's (particles); a block item that fits
+/// beside the face is placed instead.
+fn redstone_ore(use_: &Use) -> Option<ItemOn> {
+    if use_.held.block.is_none() {
+        return Some(ItemOn::answer(SUCCESS));
+    }
+    match use_.user.can_place? {
+        true => pass(),
+        false => Some(ItemOn::answer(SUCCESS)),
+    }
+}
+
 const USES: &[(BlockClass, Rule1)] = &[
+    (BlockClass::RedStoneOreBlock, redstone_ore),
     (BlockClass::AbstractCauldronBlock, cauldron),
     (BlockClass::BeehiveBlock, beehive),
     (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf),
@@ -529,6 +545,7 @@ mod tests {
             off_hand_glowstone: false,
             waxed: false,
             water_above: false,
+            can_place: Some(true),
         }
     }
 

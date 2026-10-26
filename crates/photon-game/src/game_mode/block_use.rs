@@ -160,6 +160,7 @@ impl GameMode {
             block_entity: ctx.world.block_entity_at(pos.0, pos.1, pos.2).is_some(),
             off_hand_glowstone: describe(ctx, other).glowstone,
             water_above: rules::holds_water(ctx.state_at((pos.0, pos.1 + 1, pos.2))),
+            can_place: super::placing::can_place_beside(ctx, hand, aim),
             waxed: ctx
                 .world
                 .sign_view(pos)

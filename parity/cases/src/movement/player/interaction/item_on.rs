@@ -52,6 +52,30 @@ fn simple() -> Vec<Value> {
     ]
 }
 
+/// Redstone ore: a block item that fits beside the face is placed, anything else is a success.
+fn redstone_ore() -> Vec<Value> {
+    let ore = |lit: &str| vec![put_with(0, 64, 2, "minecraft:redstone_ore", &[("lit", lit)])];
+    let beside = |block: &str| {
+        let mut world = ore("false");
+        world.push(put(0, 64, 1, block));
+        world
+    };
+    vec![
+        row("item-on-ore-stone-open", ore("false"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-ore-stone-lit", ore("true"), &north()).main_hand("minecraft:stone").count(4).row(),
+        row("item-on-ore-stone-blocked", beside("minecraft:stone"), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .row(),
+        row("item-on-ore-stone-grass", beside("minecraft:short_grass"), &north())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .row(),
+        row("item-on-ore-stick", ore("false"), &north()).main_hand("minecraft:stick").count(4).row(),
+        row("item-on-ore-empty", ore("false"), &north()).row(),
+    ]
+}
+
 fn lit_candles() -> Vec<Value> {
     let candle = |lit: &str| {
         vec![put_with(0, 64, 2, "minecraft:candle", &[("candles", "1"), ("lit", lit), ("waterlogged", "false")])]
@@ -409,6 +433,7 @@ fn shelves() -> Vec<Value> {
 pub fn rows() -> Vec<Value> {
     [
         simple(),
+        redstone_ore(),
         lit_candles(),
         anchors_and_statues(),
         records_and_books(),

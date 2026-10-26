@@ -64,6 +64,50 @@ pub(super) fn place(ctx: &mut Context<'_>, hand: u8, item: ItemId, aim: Aim) -> 
     UseResult::Success { swing: true }
 }
 
+/// `BlockPlaceContext.canPlace` for the stack in `hand` used on the block `aim` hits: the block
+/// clicked is not replaced, so the one beside the face must give way. `None` for an empty hand
+/// or a stack that places no block, and when the block beside has a rule that is not ported.
+pub(super) fn can_place_beside(ctx: &Context<'_>, hand: u8, aim: Aim) -> Option<bool> {
+    let Aim::Block {
+        x,
+        y,
+        z,
+        face,
+        location,
+        inside,
+    } = aim
+    else {
+        return None;
+    };
+    let item = ctx
+        .world
+        .local_player()?
+        .inventory_slot(ctx.hand_slot(hand))
+        .filter(|stack| stack.item_count() > 0)?
+        .item_registry_id();
+    rules::item(item)?.block?;
+    let world: &ClientWorld = ctx.world;
+    let state_at = |x: i32, y: i32, z: i32| world.block_state_or_air(x, y, z);
+    let face = photon_core::direction::Direction::from_3d_data_value(i32::from(face));
+    let aimed = ((x, y, z), face, (location[0], location[1], location[2]));
+    let tags = world.block_state_registry().tags();
+    let mut place_ctx =
+        rules::PlaceContext::new(&state_at, aimed, Some(item), ctx.player.rotation(), tags);
+    place_ctx.secondary_use = ctx.player.is_shift_key_down();
+    place_ctx.inside = inside;
+    let clicked = state_at(x, y, z);
+    match rules::can_be_replaced(clicked, &place_ctx) {
+        Rule::Known(true) => return Some(true),
+        Rule::Known(false) => place_ctx.replace_clicked = false,
+        Rule::Unported => return None,
+    }
+    let beside = place_ctx.clicked_pos();
+    match rules::can_be_replaced(state_at(beside.0, beside.1, beside.2), &place_ctx) {
+        Rule::Known(replaced) => Some(replaced),
+        Rule::Unported => None,
+    }
+}
+
 /// The segment `Item.getPlayerPOVHitResult` clips: from the eye along the look, as far as the
 /// block interaction range.
 pub(super) fn look_ray(ctx: &Context<'_>) -> (photon_core::math::Vec3, photon_core::math::Vec3) {
