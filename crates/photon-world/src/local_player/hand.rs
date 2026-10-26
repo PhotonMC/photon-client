@@ -128,10 +128,21 @@ impl LocalPlayer {
         self.follow_use_flags();
     }
 
-    /// `LocalPlayer.onSyncedDataUpdated`: the server's use flag acts only when it changes. A use
-    /// the client ended itself stays ended while the flag still says it is on.
+    /// `LocalPlayer.onSyncedDataUpdated`, polled: the use flags the world holds act when they
+    /// differ from the last ones seen. The packets act on each change as it comes
+    /// ([`Self::synced_use_flags`]), so a flag that went off and on again between two ticks is
+    /// not lost; this catches whatever the packets did not tell.
     fn follow_use_flags(&mut self) {
         let (server, off_hand) = (self.hands.using_item, self.hands.using_off_hand);
+        self.synced_use_flags(server, off_hand);
+        self.hands.using_item = self.use_edge.started;
+        self.hands.using_off_hand = self.use_edge.off_hand;
+    }
+
+    /// `LocalPlayer.onSyncedDataUpdated` for the living entity flags: the server's use flag acts
+    /// only when it changes. A use the client ended itself stays ended while the flag still says
+    /// it is on.
+    pub fn synced_use_flags(&mut self, server: bool, off_hand: bool) {
         let held = if off_hand {
             self.hands.off_item
         } else {
@@ -143,13 +154,12 @@ impl LocalPlayer {
                 edge.started = true;
                 edge.off_hand = off_hand;
                 edge.item = Some(held);
+                edge.ticks = 0;
             } else if !server {
                 edge.started = false;
             }
         }
         edge.server = server;
-        self.hands.using_item = edge.started;
-        self.hands.using_off_hand = edge.off_hand;
     }
 
     /// `LocalPlayer.startUsingItem`: a use starts at once when the hand holds something and no use
@@ -483,6 +493,21 @@ mod tests {
         player.set_hand_state(holding(true));
         assert!(!player.is_using_item());
         player.set_hand_state(holding(false));
+        player.set_hand_state(holding(true));
+        assert!(player.is_using_item());
+    }
+
+    /// The packets act on each flag change as it comes: a flag that went off and on between two
+    /// ticks starts the use again, though the world holds it on at both ticks.
+    #[test]
+    fn a_flag_that_blinks_between_ticks_starts_the_use() {
+        let mut player = player();
+        player.set_hand_state(holding(true));
+        player.release_using_item();
+        player.set_hand_state(holding(true));
+        assert!(!player.is_using_item());
+        player.synced_use_flags(false, false);
+        player.synced_use_flags(true, false);
         player.set_hand_state(holding(true));
         assert!(player.is_using_item());
     }

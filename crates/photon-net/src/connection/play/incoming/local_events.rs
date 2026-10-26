@@ -59,6 +59,11 @@ impl PlaySession {
         if let Some(bed) = photon_world::entity_sleeping_pos(&packet.metadata) {
             player.set_sleeping_pos(bed);
         }
+        // `onSyncedDataUpdated` acts on each packet's use flags, so a use the server ended and
+        // began again between two ticks still starts the client's own.
+        if let Some(flags) = photon_world::entity_living_flags(&packet.metadata) {
+            player.synced_use_flags(flags & 1 != 0, flags & 2 != 0);
+        }
     }
 
     /// `handleAnimate`'s wake-up (action 2) for the local player.

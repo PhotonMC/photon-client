@@ -203,6 +203,11 @@ pub fn entity_sleeping_pos(metadata: &[u8]) -> Option<Option<photon_core::binary
     metadata::sleeping_pos_from_metadata(metadata)
 }
 
+/// The living entity flags an entity data update carries: none when it holds no such field.
+pub fn entity_living_flags(metadata: &[u8]) -> Option<u8> {
+    metadata::living_flags_from_metadata(metadata)
+}
+
 /// `LivingEntity.setPosToBed`: where a sleeper lies, over the bed's middle.
 pub(crate) fn bed_position(bed: photon_core::binary::BlockPos) -> (f64, f64, f64) {
     (
