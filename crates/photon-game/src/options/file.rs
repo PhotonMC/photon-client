@@ -857,7 +857,7 @@ mod tests {
         std::fs::create_dir_all(&directory).unwrap();
         std::fs::write(
             &path,
-            "version:1\nkey_key.jump:key.keyboard.space\nfov:0.5\nbad line\nsoundCategory_master:0.8\n",
+            "version:1\nkey_key.jump:key.keyboard.space\nfov:0.5\nbad line\nfoo:bar\nautoJump:false\nsoundCategory_master:0.8\n",
         )
         .unwrap();
         let mut options = Options::load(&path);
@@ -875,7 +875,8 @@ mod tests {
         assert!(at("guiScale:0") < at("key_key.jump:key.keyboard.space"));
         assert!(at("key_key.jump:key.keyboard.space") < at("soundCategory_master:0.8"));
         assert!(at("soundCategory_master:0.8") < at("modelPart_cape:true"));
-        assert!(!lines.contains(&"bad line"));
+        assert!(!lines.contains(&"bad line") && !lines.contains(&"foo:bar"));
+        assert!(at("autoJump:false") < at("key_key.jump:key.keyboard.space"));
         assert!(lines.contains(&"chatWidth:0.25"));
         assert!(lines.contains(&"chatDelay:1.5"));
         assert!(lines.contains(&"tutorialStep:movement"));
