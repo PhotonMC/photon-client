@@ -17,6 +17,11 @@ pub fn rows() -> Vec<Value> {
         facing("stand-on-boat", boat_at("oak_boat", 0.5), keys(30, &[])).start(0.5, 65.0, 0.5).row(),
         facing("stand-on-bamboo-raft", boat_at("bamboo_raft", 0.5), keys(30, &[])).start(0.5, 65.0, 0.5).row(),
         facing("walk-into-boat", boat_at("oak_boat", 2.5), keys(25, &["forward"])).row(),
+        facing("walk-into-zombie", vec![boat(41, "zombie", (0.5, 64.0, 2.0))], keys(25, &["forward"])).row(),
+        facing("walk-into-minecart", vec![boat(42, "minecart", (0.5, 64.0, 2.0))], keys(25, &["forward"])).row(),
+        facing("sneak-off-boat-edge", boat_at("oak_boat", 0.5), keys(20, &["forward", "sneak"]))
+            .start(0.5, 64.5625, 0.5)
+            .row(),
         facing("jump-onto-boat", boat_at("oak_boat", 1.6), keys(30, &["forward", "jump"])).row(),
     ]
 }
