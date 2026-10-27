@@ -57,12 +57,14 @@ impl GuiFrame {
         holding: ItemHolding,
     ) {
         let first = self.items.len() as u32;
-        let drawn = draw(stack, (x, y), holding, &mut self.items) as u32;
+        let (drawn, skinned) = draw(stack, (x, y), holding, &mut self.items);
+        let drawn = drawn as u32;
         let added = self.items.len() as u32 - first;
         if added == 0 {
             return;
         }
         match self.batches.last_mut() {
+            _ if skinned => self.batches.push((GuiBlend::Entity, first, drawn)),
             Some((GuiBlend::Items, _, count)) => *count += drawn,
             _ => self.batches.push((GuiBlend::Items, first, drawn)),
         }

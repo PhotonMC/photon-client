@@ -10,8 +10,8 @@ fn no_items(
     _: (f32, f32),
     _: photon_render::gui::ItemHolding,
     _: &mut Vec<photon_render::gui::GuiItemVertex>,
-) -> usize {
-    0
+) -> (usize, bool) {
+    (0, false)
 }
 
 mod advancements_screen;

@@ -566,7 +566,7 @@ mod item_batch_tests {
                         out: &mut Vec<crate::gui::items::GuiItemVertex>| {
             let (item, glint) = draws.next().expect("one draw per item");
             out.extend(std::iter::repeat_n(vertex(), item + glint));
-            item
+            (item, false)
         };
         for x in 0..3 {
             frame.item(&mut draw, &stack, x * 18, 0);

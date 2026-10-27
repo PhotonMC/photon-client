@@ -4,6 +4,14 @@ impl Play {
     /// A frame begins for the skins, the local player's among them.
     pub(super) fn begin_skins(&mut self) {
         self.skins.begin_frame();
+        // The heads the GUI drew last frame are asked for, and the ones found are its to draw.
+        self.armor
+            .head_skins
+            .want(self.gui.items.heads.take_wanted());
+        self.gui
+            .items
+            .heads
+            .set_found(self.armor.head_skins.found());
         self.wear_own_skin();
     }
 

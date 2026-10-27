@@ -236,13 +236,14 @@ impl ItemHolding {
 
 /// Draws an item's triangles into the 16 by 16 slot at a GUI position (and what the player does
 /// with the stack), followed by its glint's if it has one; the count it gives back is how many of
-/// the vertices it added are the item's.
+/// the vertices it added are the item's, and whether they sample the entity pictures (a player
+/// head in the skin of its profile) instead of the item atlas.
 pub type ItemDrawer<'a> = dyn FnMut(
         &photon_world::ClientItemStackState,
         (f32, f32),
         ItemHolding,
         &mut Vec<crate::gui::items::GuiItemVertex>,
-    ) -> usize
+    ) -> (usize, bool)
     + 'a;
 
 /// The runs as the reference's character sequence yields them: neighbours in

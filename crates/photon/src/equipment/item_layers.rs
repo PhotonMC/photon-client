@@ -35,6 +35,8 @@ pub struct ItemLayerCache {
     cast: bool,
     /// Whether the stacks drawn next have no owner (`GuiGraphics.fakeItem`).
     fake: bool,
+    /// The player heads drawn in the GUI, in the skins of their profiles.
+    pub heads: super::head_items::GuiHeads,
 }
 
 /// The glints of the enchanted stacks drawn since they were last taken.
@@ -105,6 +107,7 @@ impl ItemLayerCache {
             seed: 0,
             cast: false,
             fake: false,
+            heads: Default::default(),
         }
     }
 
@@ -208,15 +211,19 @@ impl ItemLayerCache {
         (f32, f32),
         photon_render::gui::ItemHolding,
         &mut Vec<photon_render::gui::GuiItemVertex>,
-    ) -> usize
+    ) -> (usize, bool)
     + 'a {
         move |stack, at, holding, out| {
             self.set_cast(holding.cast);
             self.fake = holding.fake;
             self.set_seed(holding.seed);
+            let first = out.len();
             let drawn = self.gui_vertices(stack, holding.ticks, (renderer, tints), at, out);
             self.fake = false;
-            drawn
+            let skinned = self
+                .heads
+                .skin(stack, renderer, &mut out[first..first + drawn]);
+            (drawn, skinned)
         }
     }
 

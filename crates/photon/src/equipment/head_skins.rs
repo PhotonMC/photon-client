@@ -11,9 +11,9 @@ use crate::skins::dynamic::{Dynamic, Resolvable};
 use crate::skins::{Skins, Who};
 
 /// What tells one profile's skin from another's: the id and the packed textures.
-type Key = (u64, u64, String);
+pub type Key = (u64, u64, String);
 
-fn key_of(profile: &Resolvable) -> Key {
+pub fn key_of(profile: &Resolvable) -> Key {
     match profile {
         Resolvable::Static(profile) => {
             let textures = profile
@@ -36,6 +36,18 @@ pub struct HeadSkins {
 }
 
 impl HeadSkins {
+    /// The skins found for the frame, for the drawing that has no access to these.
+    pub fn found(&self) -> HashMap<Key, TextureRect> {
+        self.found.clone()
+    }
+
+    /// Heads that were drawn elsewhere, to be found for the next frame.
+    pub fn want(&mut self, profiles: Vec<Resolvable>) {
+        for profile in profiles {
+            self.wanted.insert(key_of(&profile), profile);
+        }
+    }
+
     /// The skin found for a head with this profile, which is asked for again for the next frame.
     pub fn rect(&mut self, profile: Resolvable) -> Option<TextureRect> {
         let key = key_of(&profile);
