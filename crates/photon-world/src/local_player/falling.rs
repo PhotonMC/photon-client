@@ -171,11 +171,9 @@ impl LocalPlayer {
         let movement_step = if movement.length_squared() == 0.0 {
             movement
         } else {
-            let colliders = level.colliders(
-                aabb.expand_towards_vec3(movement),
-                self.fall_distance,
-                self.position,
-            )?;
+            let area = aabb.expand_towards_vec3(movement);
+            let mut colliders = level.colliders(area, self.fall_distance, self.position)?;
+            colliders.extend(level.entity_colliders(self.entity_id, area, self.position));
             collide_entity_movement(movement, aabb, &colliders)
         };
         let x_collision = movement.x != movement_step.x;
@@ -197,7 +195,8 @@ impl LocalPlayer {
             if !on_ground_after_collision {
                 step_up_area = step_up_area.expand_towards(0.0, f64::from(-1.0e-5_f32), 0.0);
             }
-            let colliders = level.colliders(step_up_area, self.fall_distance, self.position)?;
+            let mut colliders = level.colliders(step_up_area, self.fall_distance, self.position)?;
+            colliders.extend(level.entity_colliders(self.entity_id, step_up_area, self.position));
             return Ok(select_step_up_movement(
                 movement,
                 movement_step,

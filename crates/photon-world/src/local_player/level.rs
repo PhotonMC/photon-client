@@ -180,6 +180,29 @@ impl Level<'_> {
         Ok(out)
     }
 
+    /// `Level.getEntityCollisions` for the local player: the boxes of the entities it cannot pass
+    /// (boats, shulkers, and what it can push), except those of the vehicle it rides.
+    pub(crate) fn entity_colliders(
+        &self,
+        player: EntityId,
+        area: Aabb,
+        source: Vec3,
+    ) -> Vec<VoxelShape> {
+        let type_id = Some(crate::VANILLA_PLAYER_ENTITY_TYPE_ID);
+        let candidates = self.world.indexed_entity_collision_candidates(
+            Some(player),
+            type_id,
+            Some(source),
+            area,
+        );
+        crate::collision::collect_entity_collision_shapes_for_source(
+            type_id,
+            true,
+            area,
+            &candidates,
+        )
+    }
+
     /// `Entity.collectColliders`: the world border's shape if `source` stands close inside it,
     /// then the blocks'.
     pub(crate) fn colliders(

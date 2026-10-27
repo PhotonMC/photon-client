@@ -6,6 +6,7 @@ mod aiming;
 mod bone_meal;
 mod bottling;
 mod cauldron;
+mod colliding;
 mod consuming;
 mod copper;
 mod digging;
@@ -275,6 +276,7 @@ pub fn cases() -> Vec<Value> {
         ),
         local("movement/breaking", digging::rows()),
         local("movement/entity-aim", aiming::rows()),
+        local("movement/entity-collision", colliding::rows()),
         local("movement/gliding", gliding::rows()),
         local("movement/pistons", pistons::rows()),
         local("movement/geysers", geysers::rows()),
