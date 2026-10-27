@@ -21,6 +21,38 @@ fn moved(uv: [f32; 2], from: [f32; 4], to: TextureRect) -> [f32; 2] {
     [along(uv[0], 0), along(uv[1], 1)]
 }
 
+/// An item mesh's vertices as the entity shader reads them: the entity shader lights a face from
+/// the normal its tint carries and takes its shade as the hurt overlay, where the item shader
+/// reads a shade the mesh already lit. The normal is the quad's, from its winding.
+fn as_entity_vertices(vertices: &mut [Vertex]) {
+    for quad in vertices.as_chunks_mut::<6>().0 {
+        let [a, b, c] = [quad[0].position, quad[1].position, quad[2].position];
+        let (u, v) = (
+            [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+            [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+        );
+        let normal = [
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        ];
+        let length = normal.iter().map(|part| part * part).sum::<f32>().sqrt();
+        for vertex in quad {
+            vertex.shade = 0.0;
+            vertex.tint = if length > 0.0 {
+                [
+                    normal[0] / length,
+                    normal[1] / length,
+                    normal[2] / length,
+                    0.0,
+                ]
+            } else {
+                [0.0; 4]
+            };
+        }
+    }
+}
+
 /// The vertices of the held items that are player heads with a profile, in the entity pictures;
 /// they leave `held`, whose rest the item pass draws.
 pub fn skinned_head_vertices(
@@ -54,11 +86,12 @@ pub fn skinned_head_vertices(
             rest.push(item);
             continue;
         };
-        let drawn = held_item_vertices(std::slice::from_ref(&item), layers, (renderer, tints));
-        vertices.extend(drawn.into_iter().map(|mut vertex| {
+        let mut drawn = held_item_vertices(std::slice::from_ref(&item), layers, (renderer, tints));
+        for vertex in &mut drawn {
             vertex.uv = moved(vertex.uv, default, resolved.rect);
-            vertex
-        }));
+        }
+        as_entity_vertices(&mut drawn);
+        vertices.extend(drawn);
     }
     *held = rest;
     vertices
@@ -67,6 +100,34 @@ pub fn skinned_head_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_meshs_normals_are_the_ones_a_model_gives_its_quads() {
+        use photon_render::entity::mob_model::{MobModel, mob_vertices_posed};
+        let layer = photon_data::entity_model::layer("minecraft:player_head#main").unwrap();
+        let model = MobModel::bake(layer);
+        let mut vertices = mob_vertices_posed(
+            &model,
+            &photon_render::joml::Pose::default(),
+            [0.0, 0.0, 1.0, 1.0],
+            (0, false),
+        );
+        let wanted: Vec<[f32; 4]> = vertices.iter().map(|vertex| vertex.tint).collect();
+        for vertex in &mut vertices {
+            vertex.tint = [1.0; 4];
+            vertex.shade = 0.7;
+        }
+        as_entity_vertices(&mut vertices);
+        for (vertex, wanted) in vertices.iter().zip(wanted) {
+            for axis in 0..3 {
+                assert!(
+                    (vertex.tint[axis] - wanted[axis]).abs() < 1e-4,
+                    "{vertex:?} {wanted:?}"
+                );
+            }
+            assert_eq!(vertex.shade, 0.0);
+        }
+    }
 
     #[test]
     fn a_coordinate_keeps_its_place_in_the_picture() {
