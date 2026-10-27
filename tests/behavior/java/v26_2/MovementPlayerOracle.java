@@ -458,6 +458,17 @@ class MovementPlayerOracle extends MovementWorldOracle {
                 described.add("breaking", breakingState(minecraft, level, gameMode, player,
                     input.getAsJsonObject("attack")));
             }
+            if (input.has("watch")) {
+                // The blocks a step may have changed, as block state ids.
+                var states = new JsonArray();
+                for (var place : input.getAsJsonArray("watch")) {
+                    var watched = place.getAsJsonObject();
+                    states.add(net.minecraft.world.level.block.Block.getId(level.getBlockState(new BlockPos(
+                        watched.get("x").getAsInt(), watched.get("y").getAsInt(),
+                        watched.get("z").getAsInt()))));
+                }
+                described.add("watched_states", states);
+            }
             ticks.add(described);
         }
         entry.addProperty("outcome", "ticked");

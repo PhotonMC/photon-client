@@ -213,6 +213,11 @@ impl LocalPlayer {
             .expect("the attributes read here are all registered for the player")
     }
 
+    /// The blocks stepped on since the last call, for the world to act on.
+    pub fn take_stepped_on(&mut self) -> Vec<BlockPos> {
+        std::mem::take(&mut self.trace.stepped_on)
+    }
+
     pub fn health(&self) -> f32 {
         self.health
     }
@@ -254,6 +259,9 @@ pub(crate) struct MoveTrace {
     pub(crate) movements: Vec<Movement>,
     pub(crate) piston_deltas: [f64; 3],
     pub(crate) piston_time: i64,
+    /// Blocks stepped on this tick that act on it (`Block.stepOn`), for the world to run once the
+    /// player's tick is over.
+    pub(crate) stepped_on: Vec<BlockPos>,
 }
 
 impl Default for MoveTrace {
@@ -262,6 +270,7 @@ impl Default for MoveTrace {
             movements: Vec::new(),
             piston_deltas: [0.0; 3],
             piston_time: i64::MIN,
+            stepped_on: Vec::new(),
         }
     }
 }

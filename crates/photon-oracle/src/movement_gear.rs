@@ -140,6 +140,7 @@ pub(super) fn tick_block_entities(
     events: Option<&Vec<Value>>,
 ) -> Result<(), String> {
     if events.is_none() {
+        world.apply_player_steps(player);
         return Ok(());
     }
     let pushed = world.tick_after_entities(Some(player));

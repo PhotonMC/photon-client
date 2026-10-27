@@ -335,9 +335,25 @@ impl ClientWorld {
         &mut self,
         player: Option<&mut LocalPlayer>,
     ) -> Result<(), Unsupported> {
+        let mut player = player;
+        if let Some(player) = player.as_deref_mut() {
+            self.apply_player_steps(player);
+        }
         let pushed = self.tick_block_entities(player);
         self.tick_sky_flash();
         pushed
+    }
+
+    /// `Block.stepOn` for the blocks the player stepped on in its tick: an ore the player walks
+    /// on lights up (flags 3). The block is read as it is now, so one already lit stays so. The
+    /// dust particles, and the `Level.random` draws they make, are not ported.
+    pub fn apply_player_steps(&mut self, player: &mut LocalPlayer) {
+        for pos in player.take_stepped_on() {
+            let state = self.block_state_or_air(pos.x, pos.y, pos.z);
+            if let Some(write) = rules::attack(state, (pos.x, pos.y, pos.z)) {
+                self.update_block_state(write.pos.0, write.pos.1, write.pos.2, write.state);
+            }
+        }
     }
 
     /// `Level.tickBlockEntities`: each block entity with a ticker ticks, in the order they were set

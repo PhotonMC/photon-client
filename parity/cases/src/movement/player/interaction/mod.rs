@@ -14,6 +14,7 @@ mod item_on;
 mod opening;
 mod pistons;
 mod placing;
+mod stepping;
 mod throwing;
 mod utility;
 
@@ -252,6 +253,7 @@ pub fn cases() -> Vec<Value> {
         local("movement/gliding", gliding::rows()),
         local("movement/pistons", pistons::rows()),
         local("movement/geysers", geysers::rows()),
+        local("movement/stepping", stepping::rows()),
         local("movement/effects", effects::rows()),
     ]
 }

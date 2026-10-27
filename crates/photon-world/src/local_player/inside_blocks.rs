@@ -1,4 +1,5 @@
 use super::*;
+use crate::block::rules;
 
 impl LocalPlayer {
     pub(super) fn apply_effects_from_blocks(
@@ -38,6 +39,9 @@ impl LocalPlayer {
         }
         if self.on_ground {
             let effect_pos = self.get_on_pos(level, 0.2);
+            if rules::steps_on(level.info(effect_pos).name) && !self.is_shift_key_down() {
+                self.trace.stepped_on.push(effect_pos);
+            }
             if level.info(effect_pos).name == "minecraft:slime_block" {
                 let abs_delta_y = self.delta.y.abs();
                 if abs_delta_y < 0.1 && !self.is_shift_key_down() {
