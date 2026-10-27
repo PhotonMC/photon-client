@@ -135,4 +135,5 @@ mod shadow_radius;
 pub use light::*;
 mod avatars;
 mod wear;
+pub use avatars::forget_gone_mannequins;
 pub use wear::*;

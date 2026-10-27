@@ -35,8 +35,9 @@ pub(super) fn avatar_look(
 }
 
 thread_local! {
-    /// The profile each mannequin last had a skin from (`ClientMannequin.skin`), by entity id.
-    static LAST_SKINS: std::cell::RefCell<std::collections::HashMap<i32, crate::skins::profile::StaticProfile>> =
+    /// The profile each mannequin last had a skin from (`ClientMannequin.skin`), by its UUID (entity
+    /// ids come back after a restart); the mannequins gone are dropped each frame.
+    static LAST_SKINS: std::cell::RefCell<std::collections::HashMap<(u64, u64), crate::skins::profile::StaticProfile>> =
         std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
@@ -48,7 +49,7 @@ fn mannequin_profile(
     skins: &mut crate::skins::Skins,
     entity: &photon_world::ClientEntity,
 ) -> Option<crate::skins::profile::StaticProfile> {
-    let id = entity.id().0;
+    let id = (entity.uuid.most, entity.uuid.least);
     let last = || LAST_SKINS.with(|last| last.borrow().get(&id).cloned());
     let Some(resolvable) = entity
         .mannequin_profile()
@@ -63,6 +64,23 @@ fn mannequin_profile(
     }
     LAST_SKINS.with(|last| last.borrow_mut().insert(id, found.clone()));
     Some(found)
+}
+
+/// Forget the skins of mannequins no longer in the world.
+pub fn forget_gone_mannequins(world: &photon_world::ClientWorld) {
+    LAST_SKINS.with(|last| {
+        let mut last = last.borrow_mut();
+        if last.is_empty() {
+            return;
+        }
+        let present: std::collections::HashSet<(u64, u64)> = world
+            .entities()
+            .drawn()
+            .filter(|entity| entity.is_avatar() && !entity.is_player())
+            .map(|entity| (entity.uuid.most, entity.uuid.least))
+            .collect();
+        last.retain(|id, _| present.contains(id));
+    });
 }
 
 /// The scoreboard name of an avatar: a player's profile name, a mannequin's UUID.

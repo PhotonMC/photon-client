@@ -213,6 +213,7 @@ impl Play {
     ) -> Result<Vec<crate::equipment::held_items::HeldItem>> {
         self.session.player().ok_or("no local player")?;
         self.resolve_head_skins(view);
+        overlays::forget_gone_mannequins(self.session.world());
         let (mut held, invisible) = (Vec::new(), self.local_invisible());
         let models = &mut self.entity_vertices;
         models.clear();
