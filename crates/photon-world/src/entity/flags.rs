@@ -251,7 +251,7 @@ impl ClientEntity {
 
     /// `getMainArm`: a mob's left-handed flag, an avatar's data.
     pub fn main_arm_is_left(&self) -> bool {
-        if self.is_player() {
+        if self.is_avatar() {
             self.living.main_arm_left
         } else {
             self.is_left_handed()

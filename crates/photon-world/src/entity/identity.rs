@@ -158,6 +158,12 @@ impl ClientEntity {
     pub fn is_player(&self) -> bool {
         is_vanilla_player_entity_type(self.type_id)
     }
+
+    /// An `Avatar`: a player or a mannequin, which share the main hand and the model layers.
+    pub fn is_avatar(&self) -> bool {
+        self.is_player()
+            || photon_data::entity_type::name(self.type_id) == Some("minecraft:mannequin")
+    }
 }
 
 pub(crate) fn is_vanilla_player_entity_type(entity_type_id: EntityTypeId) -> bool {

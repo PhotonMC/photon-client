@@ -5,8 +5,7 @@ use photon_net::connection::PlaySession;
 
 /// `AvatarRenderer`'s entities: players, and mannequins.
 pub(super) fn is_avatar(entity: &photon_world::ClientEntity) -> bool {
-    entity.is_player()
-        || photon_data::entity_type::name(entity.type_id) == Some("minecraft:mannequin")
+    entity.is_avatar()
 }
 
 /// The skin an avatar wears: a player's from its profile in the tab list; a mannequin's
