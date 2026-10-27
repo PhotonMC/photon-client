@@ -326,6 +326,15 @@ fn local_flip(session: &PlaySession, player: &LocalPlayer) -> (Option<f32>, f32,
     }
 }
 
+/// The local player's riptide spin, by the server's flag: its age, which the spin turns with.
+fn local_spin(session: &PlaySession, player: &LocalPlayer, partial: f32) -> Option<f32> {
+    let spinning = session
+        .world()
+        .local_player()
+        .is_some_and(|state| state.is_auto_spin_attack());
+    spinning.then(|| player.tick_count() as f32 + partial)
+}
+
 /// The lying of the local player while it sleeps.
 fn local_sleep(
     session: &PlaySession,
@@ -361,7 +370,7 @@ fn local_placement(
         death_time: 0.0,
         red_overlay: false,
         fall_flying: glide.map(|glide| glide.flight),
-        auto_spin: None,
+        auto_spin: local_spin(session, player, view.partial as f32),
         upside_down,
         sleeping: local_sleep(session, player, pose.body_rot),
     }

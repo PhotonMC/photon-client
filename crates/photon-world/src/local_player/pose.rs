@@ -108,6 +108,8 @@ impl LocalPlayer {
             ClientEntityPose::Swimming
         } else if self.elytra.fall_flying {
             ClientEntityPose::FallFlying
+        } else if self.hands.spin_attack {
+            ClientEntityPose::SpinAttack
         } else if self.is_shift_key_down() && !self.abilities.flying {
             ClientEntityPose::Crouching
         } else {

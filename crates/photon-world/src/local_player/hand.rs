@@ -391,6 +391,7 @@ impl Default for HandState {
             jump_boost: None,
             dolphins_grace: false,
             glider: false,
+            spin_attack: false,
         }
     }
 }
@@ -426,6 +427,8 @@ pub struct HandState {
     pub dolphins_grace: bool,
     /// Some worn or held stack lets the player glide (`canGlideUsing`); the connection fills it.
     pub glider: bool,
+    /// The server's living flag of a riptide spin (`isAutoSpinAttack`), which the pose follows.
+    pub spin_attack: bool,
 }
 
 /// `LocalPlayer.startedUsingItem` and `usingItemHand`, with the server's flag as last seen.

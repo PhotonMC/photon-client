@@ -259,6 +259,7 @@ impl ClientWorld {
             jump_boost: amplifier(JUMP_BOOST),
             dolphins_grace: amplifier(DOLPHINS_GRACE).is_some(),
             glider: false,
+            spin_attack: state.is_auto_spin_attack(),
         }
     }
 
