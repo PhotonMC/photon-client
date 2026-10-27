@@ -308,6 +308,8 @@ pub const TURTLE_HAS_EGG_DATA_ID: u8 = 18;
 pub const TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
 /// Where a hoglin's immunity to zombification sits among its data.
 pub const HOGLIN_IMMUNE_DATA_ID: u8 = 18;
+/// `Bogged.DATA_SHEARED`.
+pub const BOGGED_SHEARED_DATA_ID: u8 = 16;
 pub const PANDA_UNHAPPY_DATA_ID: u8 = 18;
 pub const PANDA_SNEEZE_DATA_ID: u8 = 19;
 pub const PANDA_EAT_DATA_ID: u8 = 20;

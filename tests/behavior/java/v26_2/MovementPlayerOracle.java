@@ -283,6 +283,9 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         sheep.setColor(net.minecraft.world.item.DyeColor.byId(described.get("dye").getAsInt()));
                     }
                 }
+                if (described.has("sheared") && entity instanceof net.minecraft.world.entity.monster.skeleton.Bogged bogged) {
+                    bogged.setSheared(true);
+                }
                 if (described.has("leash_holder") && entity instanceof net.minecraft.world.entity.Leashable leashed) {
                     // The server's SetEntityLink to the player, as `handleEntityLinkPacket` applies it.
                     leashed.setDelayedLeashHolderId(described.get("leash_holder").isJsonPrimitive() && described.get("leash_holder").getAsJsonPrimitive().isNumber() ? described.get("leash_holder").getAsInt() : player.getId());

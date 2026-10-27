@@ -39,7 +39,7 @@ impl Context<'_> {
             "minecraft:dolphin" => self.interact_dolphin(id, hand),
             "minecraft:iron_golem" => self.interact_iron_golem(id, hand),
             "minecraft:allay" => self.interact_allay(id, hand),
-            "minecraft:bogged" => self.interact_bogged(hand),
+            "minecraft:bogged" => self.interact_bogged(id, hand),
             _ => self.interact_listed_class_more(name, id, hand),
         }
     }
@@ -135,8 +135,13 @@ impl Context<'_> {
     }
 
     /// `Bogged.mobInteract`: shears work on a bogged that has not been sheared.
-    fn interact_bogged(&self, hand: u8) -> EntityUse {
-        if self.holds_item(hand, "minecraft:shears") {
+    fn interact_bogged(&self, id: EntityId, hand: u8) -> EntityUse {
+        let sheared = self
+            .world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_bogged_sheared());
+        if !sheared && self.holds_item(hand, "minecraft:shears") {
             EntityUse::Success { swing: true }
         } else {
             EntityUse::Pass

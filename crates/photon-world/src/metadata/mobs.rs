@@ -365,12 +365,15 @@ pub(crate) fn piglin_flags_from_metadata(
     )
 }
 
-/// A sheep's wool byte (`Sheep.DATA_WOOL_ID`), when the data holds it.
+/// A sheep's wool byte (`Sheep.DATA_WOOL_ID`), or the shorn bit alone for a bogged
+/// (`Bogged.DATA_SHEARED`), when the data holds it.
 pub(crate) fn sheep_wool_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<u8> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:sheep" {
-        return None;
+    match photon_data::entity_type::name(type_id)? {
+        "minecraft:sheep" => metadata_byte_value(metadata, SHEEP_WOOL_DATA_ID),
+        "minecraft:bogged" => metadata_boolean_value(metadata, BOGGED_SHEARED_DATA_ID)
+            .map(|shorn| u8::from(shorn) << 4),
+        _ => None,
     }
-    metadata_byte_value(metadata, SHEEP_WOOL_DATA_ID)
 }
 
 /// A creeper's fuse direction and ignited flag (`Creeper.DATA_SWELL_DIR`,

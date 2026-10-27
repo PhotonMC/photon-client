@@ -57,6 +57,11 @@ impl ClientEntity {
         self.living.animal.wool & 16 != 0
     }
 
+    /// `Bogged.isSheared`: the shorn bit of the same byte a sheep keeps its wool in.
+    pub fn is_bogged_sheared(&self) -> bool {
+        self.is_sheared()
+    }
+
     /// `Sheep.getHeadEatPositionScale` and `getHeadEatAngleScale` at a point
     /// between two ticks, with the pitch the sheep is drawn at, in degrees.
     pub fn sheep_head_eat_scales(&self, partial: f32, pitch: f32) -> (f32, f32) {

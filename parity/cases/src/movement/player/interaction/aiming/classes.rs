@@ -66,6 +66,8 @@ const PLAIN: &[(&str, &str, &str, &str)] = &[
     ("use-allay-with-stone", "", "allay", "minecraft:stone"),
     ("use-allay-with-diamond", "", "allay", "minecraft:diamond"),
     ("use-bogged-with-shears", "", "bogged", "minecraft:shears"),
+    ("use-sheared-bogged-with-shears", "sheared", "bogged", "minecraft:shears"),
+    ("use-sheared-bogged-with-stone", "sheared", "bogged", "minecraft:stone"),
     ("use-copper-golem-with-honeycomb", "", "copper_golem", "minecraft:honeycomb"),
     ("use-copper-golem-with-copper", "", "copper_golem", "minecraft:copper_ingot"),
     ("use-copper-golem-with-stone", "", "copper_golem", "minecraft:stone"),
@@ -83,7 +85,7 @@ fn plain_rows() -> Vec<Value> {
     PLAIN
         .iter()
         .map(|&(label, flag, kind, item)| {
-            let flags: &[&str] = if flag.is_empty() { &[] } else { &["baby"] };
+            let flags: &[&str] = if flag.is_empty() { &[] } else { &[flag] };
             clicked(label, flagged_animal(kind, flags), (item, 30.0), once())
         })
         .collect()
