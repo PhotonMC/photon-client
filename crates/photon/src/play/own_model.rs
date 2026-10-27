@@ -21,7 +21,18 @@ impl Play {
     }
 
     /// A skin written into the textures is there before the frame draws.
-    pub(super) fn upload_skins(&mut self) -> Result<()> {
+    pub(super) fn upload_skins(
+        &mut self,
+        held: &mut Vec<crate::equipment::held_items::HeldItem>,
+    ) -> Result<()> {
+        // The heads held in a hand wear their profile's skin, which is drawn with the entities.
+        let heads = crate::equipment::skinned_heads::skinned_head_vertices(
+            held,
+            &mut self.worn_layers,
+            (&self.block_renderer, &self.biome_tints),
+            (&mut self.entity_textures, &mut self.skins),
+        );
+        self.entity_vertices.extend(heads);
         let written = self.skins.take_dirty();
         if !written.is_empty() {
             self.backend.update_entity_texture(&written)?;

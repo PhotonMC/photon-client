@@ -7,3 +7,4 @@ pub(crate) mod head_skins;
 pub(crate) mod held_items;
 pub(crate) mod item_layers;
 pub(crate) mod needle;
+pub(crate) mod skinned_heads;

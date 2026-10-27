@@ -255,7 +255,7 @@ impl Play {
             let own = self.own_model(view, &mut held, invisible)?;
             self.entity_vertices.extend(own);
         }
-        self.upload_skins()?;
+        self.upload_skins(&mut held)?;
         self.backend.set_draw(
             photon_render::vulkan::DrawKind::Entities,
             &self.entity_vertices,
