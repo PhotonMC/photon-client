@@ -592,6 +592,13 @@ class MovementPlayerOracle extends MovementWorldOracle {
         out.addProperty("off_hand_cooldown",
             !player.getOffhandItem().isEmpty() && player.getCooldowns().isOnCooldown(player.getOffhandItem()));
         out.addProperty("off_hand_count", player.getOffhandItem().getCount());
+        out.addProperty("chest_item", net.minecraft.core.registries.BuiltInRegistries.ITEM
+            .getKey(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).getItem()).toString());
+        int carried = 0;
+        for (var stack : player.getInventory().getNonEquipmentItems()) {
+            carried += stack.getCount();
+        }
+        out.addProperty("inventory_count", carried);
         var states = new JsonArray();
         for (var element : attack.getAsJsonArray("watch")) {
             var watched = element.getAsJsonObject();

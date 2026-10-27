@@ -19,6 +19,14 @@ fn cauldron_cleaning() -> Vec<Value> {
     let dyed = patch(&[(DYED_COLOR, "00a06540".to_owned())]);
     let pattern = patch(&[(BANNER_PATTERNS, format!("{}{}{}", vi(1), vi(1), vi(14)))]);
     vec![
+        held("item-on-water-cauldron-iron-boots", water("2"), "minecraft:iron_boots"),
+        held("item-on-cauldron-iron-boots", empty(), "minecraft:iron_boots"),
+        held("item-on-water-cauldron-undyed-leather-boots", water("2"), "minecraft:leather_boots"),
+        row("item-on-water-cauldron-dyed-leather-boots", water("2"), &north())
+            .main_hand("minecraft:leather_boots")
+            .count(1)
+            .patch(dyed.clone())
+            .row(),
         held("item-on-water-cauldron-undyed-horse-armor", water("2"), "minecraft:leather_horse_armor"),
         row("item-on-water-cauldron-dyed-horse-armor", water("2"), &north())
             .main_hand("minecraft:leather_horse_armor")

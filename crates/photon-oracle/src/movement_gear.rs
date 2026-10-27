@@ -196,6 +196,10 @@ pub(super) fn breaking_report(
             .and_then(|state| state.inventory_slot(45))
             .is_some_and(|stack| stack.item_count() > 0 && cooldowns.is_on_cooldown(stack)),
         "off_hand_count": hand_count(world, 45),
+        "chest_item": hand_item(world, 6),
+        "inventory_count": (0..36_i16)
+            .map(|slot| hand_count(world, if slot < 9 { 36 + slot } else { slot }))
+            .sum::<i32>(),
         "watched_states": watched,
     });
     if attack.get("inventory").is_some() {
