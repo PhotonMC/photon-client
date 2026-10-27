@@ -4,8 +4,9 @@ use serde_json::{Value, json};
 
 use super::gui;
 use crate::components::{
-    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, LORE, MAP_ID, MAP_POST_PROCESSING, OMINOUS_BOTTLE_AMPLIFIER,
-    POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
+    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, INSTRUMENT, LORE, MAP_ID, MAP_POST_PROCESSING,
+    OMINOUS_BOTTLE_AMPLIFIER, POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, bundle, item_id, nbt_text as nbt, patch,
+    stack, text, vi,
 };
 
 /// `ItemContainerContents`: an optional stack per slot.
@@ -23,6 +24,21 @@ fn container(items: &[Option<Stack>]) -> String {
 /// `WrittenBookContent`: a title with no filtered form, no pages, resolved.
 fn book(author: &str, generation: i64) -> String {
     format!("{}00{}{}{}01", text("Title"), text(author), vi(generation), vi(0))
+}
+
+/// `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: a written-out sound with no fixed
+/// range, the use duration and range, and the description.
+fn written_horn() -> String {
+    let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    format!(
+        "{}{}{}00{}{}{}",
+        vi(0),
+        vi(0),
+        text("minecraft:item.goat_horn.sound.2"),
+        float(3.5),
+        float(64.0),
+        nbt("Old Horn")
+    )
 }
 
 const LOCK: i64 = 0;
@@ -118,6 +134,9 @@ pub fn tooltip_lines() -> Value {
         with("shulker many", "shulker_box", contents(&many)),
         advanced("shulker advanced", "shulker_box", contents(&[Some(stack("ender_pearl", 16))])),
         with("written book", "written_book", vec![(WRITTEN_BOOK_CONTENT, book("Alex", 1))]),
+        // `InstrumentComponent`: a registry call's description, and one written out in full.
+        with("horn sing", "goat_horn", vec![(INSTRUMENT, vi(7))]),
+        with("horn written out", "goat_horn", vec![(INSTRUMENT, written_horn())]),
         with("written book no author", "written_book", vec![(WRITTEN_BOOK_CONTENT, book(" ", 3))]),
         row("netherite template", "netherite_upgrade_smithing_template"),
         advanced("trim template advanced", "sentry_armor_trim_smithing_template", vec![]),

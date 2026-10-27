@@ -69,8 +69,20 @@ pub fn of_stack<'a>(
     }
 }
 
-/// `Instrument.DIRECT_STREAM_CODEC`: the sound, the use duration and the range (the description
-/// is not read).
+/// The description of an instrument written out in the component (`InstrumentComponent`'s
+/// tooltip line); none for a registry entry, whose description the registry holds.
+pub fn direct_description(values: &crate::item::values::Values) -> Option<crate::text::Component> {
+    let mut data = values.raw(photon_data::item::component_types::INSTRUMENT)?;
+    if read_varint(&mut data).ok()? != 0 {
+        return None;
+    }
+    direct(&mut data)?;
+    let tag = photon_core::nbt::read_any_nbt(&mut data).ok()??;
+    crate::text::Component::from_nbt(&tag)
+}
+
+/// `Instrument.DIRECT_STREAM_CODEC`: the sound, the use duration and the range, leaving the
+/// description to read.
 fn direct(data: &mut &[u8]) -> Option<Instrument> {
     let sound = match read_varint(data).ok()? {
         0 => {

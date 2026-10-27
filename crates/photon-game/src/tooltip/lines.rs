@@ -65,9 +65,7 @@ pub fn lines(
     }
     smithing_template_lines(item, &mut out);
     if shows(ids::INSTRUMENT)
-        && let Some(id) = values.holder_id(ids::INSTRUMENT)
-        && let Some(entry) = registries.instruments.get(id as usize)
-        && let Some(description) = entry.description.as_ref().and_then(json_component)
+        && let Some(description) = instrument_description(&values, registries)
     {
         out.push(description.with_style(&Style::coloured("gray")));
     }
@@ -307,4 +305,18 @@ pub fn search_lines(stack: &Stack, lang: &Lang, registries: &Registries) -> Vec<
     .map(|line| lang.plain(line).trim().to_owned())
     .filter(|line| !line.is_empty())
     .collect()
+}
+
+/// `InstrumentComponent.addToTooltip`: the description of the registry's instrument, or of the
+/// one written out in the component.
+fn instrument_description(values: &Values, registries: &Registries) -> Option<Component> {
+    match values.holder_id(ids::INSTRUMENT) {
+        Some(id) => registries
+            .instruments
+            .get(id as usize)?
+            .description
+            .as_ref()
+            .and_then(json_component),
+        None => crate::item::instrument::direct_description(values),
+    }
 }
