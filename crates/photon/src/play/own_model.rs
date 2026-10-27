@@ -28,6 +28,34 @@ impl Play {
             .resolve((&mut self.entity_textures, &mut self.skins), &self.session);
     }
 
+    /// What the hands draw, nothing with the HUD hidden.
+    pub(super) fn first_person_hands(&mut self, view: FrameView) -> overlays::HandVertices {
+        let player = self.session.player();
+        let cast = self.local_casts();
+        match player {
+            Some(player) if !self.controls.hud_hidden => hands(
+                player,
+                &self.item_in_hand,
+                (&mut self.held_item_layers, cast),
+                (&self.block_renderer, &self.biome_tints),
+                (&mut self.player_model, view),
+                |stack| {
+                    crate::equipment::skinned_heads::head_rect(
+                        stack,
+                        &self.block_renderer,
+                        (&mut self.entity_textures, &mut self.skins),
+                        &self.session,
+                    )
+                },
+            ),
+            _ => overlays::HandVertices {
+                hand: Vec::new(),
+                held: Vec::new(),
+                glint: Vec::new(),
+            },
+        }
+    }
+
     /// A skin written into the textures is there before the frame draws.
     pub(super) fn upload_skins(
         &mut self,

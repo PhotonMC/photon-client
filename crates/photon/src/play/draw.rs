@@ -124,27 +124,6 @@ impl Play {
         self.hand_over_layers(view)
     }
 
-    /// What the hands draw, nothing with the HUD hidden.
-    fn first_person_hands(&mut self, view: FrameView) -> overlays::HandVertices {
-        let player = self.session.player();
-        let cast = self.local_casts();
-        match player {
-            Some(player) if !self.controls.hud_hidden => hands(
-                player,
-                &self.item_in_hand,
-                (&mut self.held_item_layers, cast),
-                (&self.block_renderer, &self.biome_tints),
-                &mut self.player_model,
-                view,
-            ),
-            _ => overlays::HandVertices {
-                hand: Vec::new(),
-                held: Vec::new(),
-                glint: Vec::new(),
-            },
-        }
-    }
-
     /// The hands in first person unless the player only watches, the screen effects, and the
     /// totem animation in any view, all drawn in the hand pass.
     /// `CameraRenderState.isSleeping`: whether the camera entity sleeps.

@@ -46,8 +46,8 @@ pub fn hands(
     item_in_hand: &ItemInHand,
     (held_layers, cast): (&mut [ItemLayerCache; 2], [bool; 2]),
     (renderer, tints): (&BlockRenderer, &BiomeTints),
-    model: &mut PlayerModel,
-    view: FrameView,
+    (model, view): (&mut PlayerModel, FrameView),
+    mut head_skin: impl FnMut(&ClientItemStackState) -> Option<[f32; 4]>,
 ) -> HandVertices {
     let partial = view.partial as f32;
     let swap = |item: ItemId| renderer.item_swap(item);
@@ -61,7 +61,7 @@ pub fn hands(
     }
     let (show_main, show_off) = super::hand_use::selection(player, (main_item, off_item));
     // `ItemInHandRenderer`: an invisible player's bare arm is not drawn.
-    let hand = if main_item.is_none() && show_main && !item_in_hand.invisible() {
+    let mut hand = if main_item.is_none() && show_main && !item_in_hand.invisible() {
         photon_render::entity::player_renderer::hand_vertices(model, &hand_view)
     } else {
         Vec::new()
@@ -80,21 +80,19 @@ pub fn hands(
             continue;
         };
         let cache = &mut held_layers[usize::from(!right)];
-        cache.set_cast(cast[usize::from(!right)]);
-        // `ItemInHandRenderer`: the player's id plus the first-person context's ordinal.
-        cache.set_seed(player.entity_id().0 + if right { 4 } else { 3 });
-        let ticks = player.use_ticks_of(right);
-        let hit_feedback = player.ticks_since_kinetic_hit(partial);
-        let charge = cache.charge_duration(stack);
-        let motion =
-            super::hand_use::motion(stack, (ticks, partial), (right, charge, hit_feedback));
-        let layers = cache.get_in_use(stack, ticks, (renderer, tints));
-        let drawn = photon_render::entity::player_renderer::held_item_vertices(
-            &hand_view,
-            layers,
-            (right, attack, motion),
-            height,
+        let drawn = item_in_hand_vertices(
+            (player, stack),
+            (right, attack, height, cast[usize::from(!right)]),
+            cache,
+            (renderer, tints),
+            (&hand_view, partial),
         );
+        // A head with a profile is drawn in the skin it names, which the entity pictures hold.
+        if let Some(rect) = head_skin(stack) {
+            let light = photon_render::block::light::light_uv(hand_view.light);
+            hand.extend(wear_skin(drawn, renderer, rect, light));
+            continue;
+        }
         held_layers[usize::from(!right)].extend_with_glint(stack, drawn, &mut held);
     }
     let glint = held_layers
@@ -102,6 +100,45 @@ pub fn hands(
         .flat_map(|cache| cache.take_glint())
         .collect();
     HandVertices { hand, held, glint }
+}
+
+/// One held stack's triangles in the first-person view, in the hand's pose.
+fn item_in_hand_vertices(
+    (player, stack): (&LocalPlayer, &ClientItemStackState),
+    (right, attack, height, cast): (bool, f32, f32, bool),
+    cache: &mut ItemLayerCache,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    (hand_view, partial): (&HandView, f32),
+) -> Vec<Vertex> {
+    cache.set_cast(cast);
+    // `ItemInHandRenderer`: the player's id plus the first-person context's ordinal.
+    cache.set_seed(player.entity_id().0 + if right { 4 } else { 3 });
+    let ticks = player.use_ticks_of(right);
+    let hit_feedback = player.ticks_since_kinetic_hit(partial);
+    let charge = cache.charge_duration(stack);
+    let motion = super::hand_use::motion(stack, (ticks, partial), (right, charge, hit_feedback));
+    let layers = cache.get_in_use(stack, ticks, (renderer, tints));
+    photon_render::entity::player_renderer::held_item_vertices(
+        hand_view,
+        layers,
+        (right, attack, motion),
+        height,
+    )
+}
+
+/// A head's triangles in the skin its profile names, which the hand's run lights per vertex as
+/// it does the bare arm's.
+fn wear_skin(
+    mut drawn: Vec<Vertex>,
+    renderer: &BlockRenderer,
+    rect: [f32; 4],
+    light: [f32; 2],
+) -> Vec<Vertex> {
+    crate::equipment::skinned_heads::wear_skin(&mut drawn, renderer, rect);
+    for vertex in &mut drawn {
+        vertex.light = light;
+    }
+    drawn
 }
 
 /// The first-person view's triangles: the bare arm, the held items, and the items' glints.

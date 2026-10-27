@@ -9,6 +9,7 @@ use photon_render::scene::Vertex;
 use crate::equipment::held_items::{Carried, HeldItem, held_item_vertices};
 use crate::equipment::item_layers::ItemLayerCache;
 use crate::skins::{Skins, Who, item_profile};
+use photon_world::ClientItemStackState;
 
 /// The picture an item model gives a player head, which carries no skin of its own.
 const DEFAULT_SKIN: &str = "minecraft:entity/player/slim/steve";
@@ -53,6 +54,39 @@ fn as_entity_vertices(vertices: &mut [Vertex]) {
     }
 }
 
+/// Where the skin of a held player head with a profile is, once it has loaded.
+pub fn head_rect(
+    stack: &ClientItemStackState,
+    renderer: &BlockRenderer,
+    (textures, skins): (&mut EntityTextures, &mut Skins),
+    session: &photon_net::connection::PlaySession,
+) -> Option<TextureRect> {
+    let head = photon_data::item::registry::named("minecraft:player_head");
+    if stack.item_registry_id() != head || !renderer.atlas.sprites.contains_key(DEFAULT_SKIN) {
+        return None;
+    }
+    let profile = skins
+        .lookups
+        .profile(item_profile::stack_profile(stack)?, session);
+    let who = Who {
+        id: profile.id,
+        properties: &profile.properties,
+        require_secure: false,
+    };
+    Some(skins.resolve(textures, &who)?.rect)
+}
+
+/// A head's item mesh moved onto the skin at `rect`, in the vertices the entity pass reads.
+pub fn wear_skin(drawn: &mut [Vertex], renderer: &BlockRenderer, rect: TextureRect) {
+    let Some(default) = renderer.atlas.sprites.get(DEFAULT_SKIN).copied() else {
+        return;
+    };
+    for vertex in drawn.iter_mut() {
+        vertex.uv = moved(vertex.uv, default, rect);
+    }
+    as_entity_vertices(drawn);
+}
+
 /// The vertices of the held items that are player heads with a profile, in the entity pictures;
 /// they leave `held`, whose rest the item pass draws.
 pub fn skinned_head_vertices(
@@ -62,37 +96,19 @@ pub fn skinned_head_vertices(
     (textures, skins): (&mut EntityTextures, &mut Skins),
     session: &photon_net::connection::PlaySession,
 ) -> Vec<Vertex> {
-    let head = photon_data::item::registry::named("minecraft:player_head");
-    let Some(default) = renderer.atlas.sprites.get(DEFAULT_SKIN).copied() else {
-        return Vec::new();
-    };
     let mut vertices = Vec::new();
     let mut rest = Vec::new();
     for item in held.drain(..) {
-        let profile = match &item.stack {
-            Carried::Stack(stack) if stack.item_registry_id() == head => {
-                item_profile::stack_profile(stack)
-            }
+        let rect = match &item.stack {
+            Carried::Stack(stack) => head_rect(stack, renderer, (textures, skins), session),
             _ => None,
         };
-        let resolved = profile.and_then(|profile| {
-            let profile = skins.lookups.profile(profile, session);
-            let who = Who {
-                id: profile.id,
-                properties: &profile.properties,
-                require_secure: false,
-            };
-            skins.resolve(textures, &who)
-        });
-        let Some(resolved) = resolved else {
+        let Some(rect) = rect else {
             rest.push(item);
             continue;
         };
         let mut drawn = held_item_vertices(std::slice::from_ref(&item), layers, (renderer, tints));
-        for vertex in &mut drawn {
-            vertex.uv = moved(vertex.uv, default, resolved.rect);
-        }
-        as_entity_vertices(&mut drawn);
+        wear_skin(&mut drawn, renderer, rect);
         vertices.extend(drawn);
     }
     *held = rest;
