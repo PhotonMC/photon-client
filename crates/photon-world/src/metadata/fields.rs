@@ -168,6 +168,46 @@ fn skip_optional_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
 }
 
 /// The remaining serializers, whose values are read piece by piece.
+fn skip_string(metadata: &mut &[u8]) -> Option<()> {
+    let length = usize::try_from(photon_core::wire::read_varint(metadata).ok()?).ok()?;
+    skip_bytes(metadata, length)
+}
+
+/// `ByteBufCodecs.optional` of a value `skip` steps over.
+fn skip_optional(metadata: &mut &[u8], skip: impl FnOnce(&mut &[u8]) -> Option<()>) -> Option<()> {
+    let (&present, rest) = metadata.split_first()?;
+    *metadata = rest;
+    if present != 0 {
+        skip(metadata)
+    } else {
+        Some(())
+    }
+}
+
+/// `ResolvableProfile.STREAM_CODEC`: a complete game profile (id, name, properties) or a partial
+/// one (an optional name and id, properties), then the skin patch (optional body, cape and elytra
+/// textures and model).
+fn skip_resolvable_profile(metadata: &mut &[u8]) -> Option<()> {
+    let (&complete, rest) = metadata.split_first()?;
+    *metadata = rest;
+    if complete != 0 {
+        skip_bytes(metadata, 16)?;
+        skip_string(metadata)?;
+    } else {
+        skip_optional(metadata, skip_string)?;
+        skip_optional(metadata, |metadata| skip_bytes(metadata, 16))?;
+    }
+    for _ in 0..photon_core::wire::read_varint(metadata).ok()? {
+        skip_string(metadata)?;
+        skip_string(metadata)?;
+        skip_optional(metadata, skip_string)?;
+    }
+    for _ in 0..3 {
+        skip_optional(metadata, skip_string)?;
+    }
+    skip_optional(metadata, |metadata| skip_bytes(metadata, 1))
+}
+
 fn skip_structured_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()> {
     match serializer_id {
         2 => {
@@ -194,6 +234,7 @@ fn skip_structured_value(metadata: &mut &[u8], serializer_id: i32) -> Option<()>
             skip_varint(metadata)?;
         }
         34 => skip_painting_variant(metadata)?,
+        41 => skip_resolvable_profile(metadata)?,
         _ => return None,
     }
     Some(())
@@ -354,6 +395,21 @@ fn split_metadata(metadata: &[u8]) -> Option<Vec<(u8, &[u8])>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_mannequin_profile_is_stepped_over() {
+        // A partial profile named "Notch" (no id, one signed property), and a skin patch with a
+        // body texture and the slim model.
+        let mut profile = vec![0, 1, 5];
+        profile.extend(b"Notch");
+        profile.extend([0, 1, 1, b'a', 1, b'b', 1, 1, b'c']);
+        profile.extend([1, 1, b'x', 0, 0, 1, 1]);
+        let metadata = data(&[(17, 41, &profile), (18, 8, &[1])]);
+        assert_eq!(metadata_boolean_value(&metadata, 18), Some(true));
+        let complete = [vec![1], vec![0; 16], vec![0], vec![0], vec![0, 0, 0, 0]].concat();
+        let metadata = data(&[(17, 41, &complete), (18, 8, &[0])]);
+        assert_eq!(metadata_boolean_value(&metadata, 18), Some(false));
+    }
 
     /// Entity data as the wire writes it: fields of `(data id, serializer id,
     /// value bytes)`, ended by 255.

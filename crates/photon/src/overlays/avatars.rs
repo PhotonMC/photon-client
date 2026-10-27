@@ -34,17 +34,35 @@ pub(super) fn avatar_look(
     skins.resolve(textures, &who)
 }
 
-/// `ClientMannequin.updateSkin`: the profile's skin once known. A name or an id still being looked
-/// up (or not found) leaves `DEFAULT_SKIN`, the empty profile's.
+thread_local! {
+    /// The profile each mannequin last had a skin from (`ClientMannequin.skin`), by entity id.
+    static LAST_SKINS: std::cell::RefCell<std::collections::HashMap<i32, crate::skins::profile::StaticProfile>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// `ClientMannequin.updateSkin`: the profile's skin once known. While a name or an id is looked
+/// up, or when the lookup finds nothing, the mannequin keeps the skin it had (`ifPresent`), at
+/// first `DEFAULT_SKIN`, the empty profile's.
 fn mannequin_profile(
     session: &PlaySession,
     skins: &mut crate::skins::Skins,
     entity: &photon_world::ClientEntity,
 ) -> Option<crate::skins::profile::StaticProfile> {
-    let resolvable = crate::skins::item_profile::wire_profile(entity.mannequin_profile()?)?;
+    let id = entity.id().0;
+    let last = || LAST_SKINS.with(|last| last.borrow().get(&id).cloned());
+    let Some(resolvable) = entity
+        .mannequin_profile()
+        .and_then(crate::skins::item_profile::wire_profile)
+    else {
+        return last();
+    };
     let looked_up = matches!(resolvable, crate::skins::dynamic::Resolvable::Dynamic(_));
     let found = skins.lookups.profile(resolvable, session);
-    (!looked_up || !found.properties.is_empty()).then_some(found)
+    if looked_up && found.properties.is_empty() {
+        return last();
+    }
+    LAST_SKINS.with(|last| last.borrow_mut().insert(id, found.clone()));
+    Some(found)
 }
 
 /// The scoreboard name of an avatar: a player's profile name, a mannequin's UUID.
