@@ -499,3 +499,26 @@ fn love_and_taming_events_queue_a_burst_around_the_animal() {
     assert!(!world.apply_entity_event(EntityId(5), 7));
     assert!(world.take_level_events().is_empty());
 }
+
+#[test]
+fn an_ominous_item_spawner_ages_with_each_tick() {
+    let mut world = ClientWorld::default();
+    let spawner = photon_data::entity_type::id("minecraft:ominous_item_spawner").unwrap();
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(4),
+        uuid: Uuid::new(3, 4),
+        type_id: spawner,
+        x: 0.5,
+        y: 64.0,
+        z: 0.5,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    // As in a loaded chunk.
+    world.entities.at_mut(EntityId(4)).unwrap().ticking = true;
+    for _ in 0..3 {
+        world.tick_entities();
+    }
+    assert_eq!(world.entities().at(EntityId(4)).unwrap().tick_count(), 3);
+}
