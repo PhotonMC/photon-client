@@ -356,7 +356,8 @@ impl ClientWorld {
             let state = self.block_state_or_air(pos.x, pos.y, pos.z);
             self.push_ore_sparks((pos.x, pos.y, pos.z));
             if let Some(write) = rules::attack(state, (pos.x, pos.y, pos.z)) {
-                self.update_block_state(write.pos.0, write.pos.1, write.pos.2, write.state);
+                let position = player.position();
+                self.set_block_with_updates(write.pos, write.state, write.flags, 512, position);
             }
         }
     }
