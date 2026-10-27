@@ -362,8 +362,8 @@ const GHOST_ALPHA: u8 = 0x26;
 
 pub(crate) mod outline;
 pub(crate) use outline::{
-    record_item as record_item_outline, record_worn as with_outline, take as take_outlines,
-    take_items as take_item_outlines,
+    record_item as record_item_outline, record_item_holder, record_worn as with_outline,
+    take as take_outlines, take_items as take_item_outlines,
 };
 mod wild;
 pub use wild::*;

@@ -27,7 +27,11 @@ pub(crate) fn record_holder(holder: String, body: Vec<Vertex>) {
 
 /// Remember a glowing dropped item's model.
 pub(crate) fn record_item(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
-    let holder = entity.uuid.to_string_java();
+    record_item_holder(entity.uuid.to_string_java(), body);
+}
+
+/// Remember the atlas triangles of whatever has the scoreboard name `holder` and glows.
+pub(crate) fn record_item_holder(holder: String, body: Vec<Vertex>) {
     ITEM_SILHOUETTES.with(|list| list.borrow_mut().push((holder, body)));
 }
 

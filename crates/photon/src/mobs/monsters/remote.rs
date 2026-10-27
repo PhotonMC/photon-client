@@ -269,12 +269,8 @@ fn carried_block(pose: Pose, entity: &ClientEntity, placed: &MobPlacement) -> Op
     let state = entity
         .carried_block_state()
         .filter(|_| pose == Pose::Enderman)?;
-    Some(HeldItem::block(
-        state,
-        carried_block_pose(&placement_pose(placed)),
-        placed.light,
-        0.0,
-    ))
+    let carried = carried_block_pose(&placement_pose(placed));
+    Some(HeldItem::block(state, carried, placed.light, 0.0).outlined(entity))
 }
 
 /// Whether the local player sees an invisible entity as a ghost: a spectator does, and a

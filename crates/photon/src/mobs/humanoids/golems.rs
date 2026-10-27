@@ -157,7 +157,7 @@ pub fn remote_golems(
             (None, None, 0.0)
         };
         if let (Some(pose), Some(state)) = (pose, state) {
-            held.push(HeldItem::block(state, pose, placed.light, overlay));
+            held.push(HeldItem::block(state, pose, placed.light, overlay).outlined(entity));
         }
     }
 }

@@ -55,6 +55,8 @@ pub enum Carried {
         /// The overlay's code (`overlay_code`): zero where the layer submits
         /// `NO_OVERLAY`.
         overlay: f32,
+        /// The scoreboard name of the glowing entity whose outline the block joins.
+        outline: Option<String>,
     },
 }
 
@@ -89,10 +91,25 @@ impl HeldItem {
         }
     }
 
+    /// The block joins `entity`'s outline when the entity glows (`submitBlockModel`'s outline
+    /// colour).
+    pub fn outlined(mut self, entity: &photon_world::ClientEntity) -> Self {
+        if let Carried::Block { outline, .. } = &mut self.stack
+            && entity.is_glowing()
+        {
+            *outline = Some(entity.uuid.to_string_java());
+        }
+        self
+    }
+
     /// A block state drawn on an entity, from the pose its layer leaves.
     pub fn block(state: BlockStateId, pose: Pose, light: i32, overlay: f32) -> Self {
         Self {
-            stack: Carried::Block { state, overlay },
+            stack: Carried::Block {
+                state,
+                overlay,
+                outline: None,
+            },
             pose,
             place: Place::Head,
             light,
@@ -365,16 +382,23 @@ pub fn held_item_vertices(
         let cache = &mut layers[item.place.index()];
         let stack = match &item.stack {
             Carried::Stack(stack) => stack,
-            Carried::Block { state, overlay } => {
+            Carried::Block {
+                state,
+                overlay,
+                outline,
+            } => {
                 if let Some((layer, block_light)) = cache.block(*state, renderer) {
-                    vertices.extend(photon_render::objects::item::entity_block_vertices(
+                    let light =
+                        photon_render::entity::block::submit_light(item.light, *block_light);
+                    let drawn = photon_render::objects::item::entity_block_vertices(
                         layer,
                         &item.pose,
-                        (
-                            photon_render::entity::block::submit_light(item.light, *block_light),
-                            *overlay,
-                        ),
-                    ));
+                        (light, *overlay),
+                    );
+                    if let Some(holder) = outline {
+                        crate::mobs::record_item_holder(holder.clone(), drawn.clone());
+                    }
+                    vertices.extend(drawn);
                 }
                 continue;
             }

@@ -130,8 +130,8 @@ pub fn remote_minecarts(
         vertices.extend(crate::mobs::with_outline(entity, body));
         if let Some(block) = entity.minecart_display_block() {
             let lit = tnt_fuse.is_some_and(tnt_is_lit);
-            let carried = (&poses.block, light, lit);
-            carry_block((models, textures), (block, carried), (held, vertices));
+            let carried = (entity, block, (&poses.block, light, lit));
+            carry_block((models, textures), carried, (held, vertices));
         }
     }
 }
@@ -171,12 +171,9 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
         } else {
             0.0
         };
-        held.push(HeldItem::block(
-            block,
-            primed_tnt_pose(&base, fuse),
-            light,
-            overlay,
-        ));
+        held.push(
+            HeldItem::block(block, primed_tnt_pose(&base, fuse), light, overlay).outlined(entity),
+        );
     }
 }
 
@@ -184,15 +181,19 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
 /// minecart's flashes white while it is lit, `submitWhiteSolidBlock`).
 fn carry_block(
     (models, textures): (&mut MobModels, &EntityTextures),
-    (block, (pose, light, white)): (BlockStateId, (&Pose, i32, bool)),
+    (cart, block, (pose, light, white)): (
+        &photon_world::ClientEntity,
+        BlockStateId,
+        (&Pose, i32, bool),
+    ),
     (held, vertices): (&mut Vec<HeldItem>, &mut Vec<Vertex>),
 ) {
     let base = (block, pose, light);
     if let Some(special) =
         crate::world::special_models::special_block_vertices(models, textures, base)
     {
-        vertices.extend(special);
+        vertices.extend(crate::mobs::with_outline(cart, special));
     }
     let overlay = if white { overlay_code(false, 1.0) } else { 0.0 };
-    held.push(HeldItem::block(block, *pose, light, overlay));
+    held.push(HeldItem::block(block, *pose, light, overlay).outlined(cart));
 }
