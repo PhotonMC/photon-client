@@ -20,7 +20,8 @@ fn full_age(name: &str) -> Option<u8> {
     match name {
         "wheat" | "carrots" | "potatoes" | "melon_stem" | "pumpkin_stem" => Some(7),
         "beetroots" | "sweet_berry_bush" => Some(3),
-        "torchflower_crop" => Some(1),
+        // `getMaxAge` is two but the property stops at one: never fully grown.
+        "torchflower_crop" => Some(2),
         "cocoa" => Some(2),
         _ => None,
     }
@@ -81,9 +82,8 @@ fn surroundings_target(
     (above, below): (BlockStateId, BlockStateId),
 ) -> Option<bool> {
     match name {
-        "grass_block" | "crimson_nylium" | "warped_nylium" | "moss_block" | "pale_moss_block" => {
-            Some(is_air(above))
-        }
+        "grass_block" | "bamboo_sapling" | "crimson_nylium" | "warped_nylium" | "moss_block"
+        | "pale_moss_block" => Some(is_air(above)),
         "seagrass" => Some(block(above).name == "minecraft:water"),
         "sea_pickle" => Some(
             property(state, "waterlogged") == Some("true")
@@ -112,8 +112,6 @@ fn bonemealable_name(name: &str) -> bool {
         name,
         "short_grass"
             | "fern"
-            | "tall_grass"
-            | "large_fern"
             | "kelp"
             | "kelp_plant"
             | "twisting_vines"
@@ -157,7 +155,11 @@ pub(super) fn use_on(ctx: &Context<'_>, aim: Aim) -> Option<UseResult> {
     let (dx, dy, dz) = face.step();
     let beside = ctx.state_at((x + dx, y + dy, z + dz));
     let sturdy = photon_world::block::state(clicked).is_some_and(|info| info.is_face_sturdy(face));
-    let source = block(beside).name == "minecraft:water" && property(beside, "level") == Some("0");
+    // `FluidState.isFull`: a source, or the falling flow `LiquidBlock` gives levels from eight up.
+    let source = block(beside).name == "minecraft:water"
+        && property(beside, "level")
+            .and_then(|level| level.parse::<u8>().ok())
+            .is_some_and(|level| level == 0 || level >= 8);
     Some(if sturdy && source {
         UseResult::Success { swing: true }
     } else {

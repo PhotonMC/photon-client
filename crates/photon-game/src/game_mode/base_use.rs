@@ -55,8 +55,7 @@ enum BaseUse {
     Start,
     /// The item is swapped with what is worn in the equipment slot.
     Swap(&'static str),
-    /// What the item does is not predicted (a swap with the equipment slot, a meal eaten at once):
-    /// the click counts as done.
+    /// What the item does is not predicted (a meal eaten at once): the click counts as done.
     Unported,
 }
 
