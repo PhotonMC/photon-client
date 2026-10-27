@@ -11,7 +11,9 @@ use crate::components::{
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
-const ITEMS: [&str; 13] = [
+const ITEMS: [&str; 15] = [
+    "minecraft:iron_boots",
+    "minecraft:elytra",
     "minecraft:ender_eye",
     "minecraft:oak_boat",
     "minecraft:fishing_rod",
@@ -152,9 +154,33 @@ fn recipe_rows() -> Vec<Value> {
 }
 
 /// The rows that need a target, a world or a clock of their own.
+/// A wearable item used while something is worn in its slot (`swapWithEquipmentSlot`).
+fn swapping_rows() -> Vec<Value> {
+    let sky = |label: &str| using(label, vec![], run(None)).x_rot(-60.0);
+    let plate = "minecraft:iron_chestplate";
+    vec![
+        sky("use-chestplate-swap-single").main_hand(plate).chest("minecraft:diamond_chestplate").row(),
+        sky("use-chestplate-swap-stack").main_hand(plate).count(3).chest("minecraft:diamond_chestplate").row(),
+        sky("use-chestplate-swap-empty-slot").main_hand(plate).row(),
+        sky("use-chestplate-swap-same").main_hand(plate).chest(plate).row(),
+        sky("use-chestplate-swap-single-creative")
+            .main_hand(plate)
+            .chest("minecraft:diamond_chestplate")
+            .game_mode("creative")
+            .row(),
+        sky("use-chestplate-swap-stack-creative")
+            .main_hand(plate)
+            .count(3)
+            .chest("minecraft:diamond_chestplate")
+            .game_mode("creative")
+            .row(),
+        sky("use-chestplate-swap-empty-creative").main_hand(plate).game_mode("creative").row(),
+    ]
+}
+
 fn special_rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
-    let mut rows = Vec::new();
+    let mut rows = swapping_rows();
     rows.push(
         using(
             "use-ender_eye-portal-frame",

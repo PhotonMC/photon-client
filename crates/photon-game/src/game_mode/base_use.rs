@@ -53,6 +53,8 @@ enum BaseUse {
     Fail,
     /// A use starts that goes on until released or finished.
     Start,
+    /// The item is swapped with what is worn in the equipment slot.
+    Swap(&'static str),
     /// What the item does is not predicted (a swap with the equipment slot, a meal eaten at once):
     /// the click counts as done.
     Unported,
@@ -75,6 +77,9 @@ fn decide(
             Some(ticks) if ticks > 0 => BaseUse::Start,
             _ => BaseUse::Unported,
         };
+    }
+    if let Some(slot) = super::equipping::default_slot(values, item) {
+        return BaseUse::Swap(slot);
     }
     if swappable(values, item) {
         return BaseUse::Unported;
@@ -125,6 +130,9 @@ pub(super) fn base_item_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
                 ctx.player.play_own_sound(sound, (1.0, 1.0));
             }
             UseResult::Success { swing: false }
+        }
+        BaseUse::Swap(slot) => {
+            super::equipping::swap(ctx, hand, slot).unwrap_or(UseResult::Success { swing: false })
         }
         BaseUse::Unported => UseResult::Success { swing: false },
     }
@@ -329,7 +337,7 @@ mod tests {
         assert_eq!(decided("minecraft:iron_spear", 20, false), BaseUse::Start);
         assert_eq!(
             decided("minecraft:iron_helmet", 20, false),
-            BaseUse::Unported
+            BaseUse::Swap("head")
         );
         assert_eq!(decided("minecraft:stick", 20, false), BaseUse::Pass);
         // A carved pumpkin is worn, but not by using it.
