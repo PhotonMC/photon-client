@@ -132,8 +132,23 @@ class MovementEntityOracle extends MovementSupport {
             var other = element.getAsJsonObject();
             var otherType = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getValue(
                 net.minecraft.resources.Identifier.parse(other.get("type").getAsString()));
-            var entity = otherType.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
-                net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
+            // A player is made as the client makes another player: a bobber's owner must be one.
+            net.minecraft.world.entity.Entity entity = "minecraft:player".equals(other.get("type").getAsString())
+                ? new net.minecraft.client.player.RemotePlayer(level, new com.mojang.authlib.GameProfile(
+                    java.util.UUID.nameUUIDFromBytes(new byte[] {(byte) other.get("id").getAsInt()}), "Owner")) {
+                    // No connection lists its game mode: a survival player.
+                    @Override
+                    public boolean isSpectator() {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean isCreative() {
+                        return false;
+                    }
+                }
+                : otherType.create(level, new net.minecraft.world.entity.EntitySpawnRequest(
+                    net.minecraft.world.entity.EntitySpawnReason.LOAD, true));
             entity.setId(other.get("id").getAsInt());
             entity.snapTo(Oracle.f64(other, "x"), Oracle.f64(other, "y"), Oracle.f64(other, "z"), 0.0F, 0.0F);
             if (entity instanceof net.minecraft.world.entity.LivingEntity living) {

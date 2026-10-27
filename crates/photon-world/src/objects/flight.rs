@@ -99,7 +99,7 @@ fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
 }
 
 /// `Projectile.updateRotation`, which turns a fifth of the way to the movement.
-fn update_rotation(entity: &mut ClientEntity) {
+pub(crate) fn update_rotation(entity: &mut ClientEntity) {
     let movement = entity.motion();
     let horizontal = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
     let target_x = (mth_atan2(movement.1, horizontal) * PROJECTILE_DEGREES_PER_RADIAN) as f32;

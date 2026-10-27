@@ -42,6 +42,27 @@ fn orbs() -> Vec<Value> {
     ]
 }
 
+/// A bobber with a player to own it (the client drops one without), flying on its own.
+fn bobbers() -> Vec<Value> {
+    let bobber = |label: &str, blocks: Vec<Value>, from: (f64, f64, f64), motion: (f64, f64, f64)| {
+        proj(label, "minecraft:fishing_bobber", blocks, from, motion, 30).owner(30).others(vec![(
+            30,
+            "minecraft:player",
+            (0.5, 64.0, -3.5),
+        )])
+    };
+    let wall = || cat![floor(), (64..70).map(|y| put(0, y, 4, "minecraft:stone")).collect::<Vec<_>>()];
+    vec![
+        bobber("bobber-cast-over-floor", floor(), (0.5, 66.0, 0.5), (0.0, 0.3, 0.6)).row(),
+        bobber("bobber-cast-into-wall", wall(), (0.5, 66.0, 0.5), (0.0, 0.1, 0.8)).row(),
+        bobber("bobber-cast-aside", floor(), (0.5, 66.0, 0.5), (0.45, 0.2, 0.35)).row(),
+        bobber("bobber-drops", floor(), (0.5, 67.0, 0.5), (0.0, 0.0, 0.0)).row(),
+        bobber("bobber-eased", floor(), (0.5, 66.0, 0.5), (0.0, 0.2, 0.4))
+            .events(vec![move_by(4, 0, 0, 4096), move_by(9, 2048, 0, 2048)])
+            .row(),
+    ]
+}
+
 pub fn rows() -> Vec<Value> {
-    [boats(), boat_turns(), orbs()].concat()
+    [boats(), boat_turns(), orbs(), bobbers()].concat()
 }

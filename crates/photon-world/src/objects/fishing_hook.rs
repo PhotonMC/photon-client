@@ -18,6 +18,8 @@ use crate::{metadata_boolean_value, metadata_int_value};
 /// `FishingHook.DATA_HOOKED_ENTITY` and `DATA_BITING`.
 const HOOKED_ENTITY_DATA_ID: u8 = 8;
 const BITING_DATA_ID: u8 = 9;
+/// `Entity.getBlockPosBelowThatAffectsMyMovement`.
+const BELOW_OFFSET: f32 = 0.500_001;
 
 /// `FishingHook.FishHookState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -72,6 +74,8 @@ struct HookStep {
     position: Vec3,
     delta: Vec3,
     on_ground: bool,
+    /// The motion it moved with, which `updateRotation` turns it towards; none when it did not move.
+    moved_with: Option<Vec3>,
 }
 
 /// The water height at the bobber's block (`FluidState.getHeight` of water, else nothing).
@@ -102,7 +106,7 @@ fn steer(state: &mut HookState, position: Vec3, delta: Vec3, height: f32) -> Res
         HookPhase::Bobbing => {
             let mut force = position.y + delta.y - floor_f64(position.y) as f64 - f64::from(height);
             if force.abs() < 0.01 {
-                force += force.signum() * 0.1;
+                force += crate::java_math::signum(force) * 0.1;
             }
             let pull = force * f64::from(state.own.next_float()) * 0.2;
             let mut delta = Vec3::new(delta.x * 0.9, delta.y - pull, delta.z * 0.9);
@@ -136,34 +140,87 @@ fn hook_step(
                 position,
                 delta,
                 on_ground,
+                moved_with: None,
             };
         }
     };
+    if state.phase == HookPhase::Flying {
+        delta = clip_flight(level, position, delta);
+    }
     if !level.info(pos).is_water() && !on_ground && state.hooked == 0 {
         delta = delta.add_vec3(Vec3::new(0.0, -0.03, 0.0));
     }
-    move_hook(level, state.phase == HookPhase::Flying, position, delta)
+    move_hook(
+        level,
+        state.phase == HookPhase::Flying,
+        (position, delta, on_ground),
+    )
+}
+
+/// `FishingHook.checkCollision` against the blocks (`onHitBlock`): a flight that meets a block's
+/// collision shape this tick is cut down to the hit's distance, which `HitResult.distanceTo`
+/// measures squared.
+fn clip_flight(level: &Level<'_>, position: Vec3, delta: Vec3) -> Vec3 {
+    match level.world.clip_blocks(position, position.add_vec3(delta)) {
+        Some(hit) => delta.normalized().scale(hit.distance_to_sqr(position)),
+        None => delta,
+    }
 }
 
 /// `Entity.move` through the blocks, then a flying bobber stops on what it hit, and the drag.
-fn move_hook(level: &Level<'_>, flying: bool, position: Vec3, mut delta: Vec3) -> HookStep {
-    let bounding_box = hook_box(position);
-    let movement = match level.colliders(bounding_box.expand_towards_vec3(delta), 0.0, position) {
-        Ok(colliders) if delta.length_squared() != 0.0 => {
-            collide_entity_movement(delta, bounding_box, &colliders)
-        }
-        _ => delta,
+fn move_hook(
+    level: &Level<'_>,
+    flying: bool,
+    (position, mut delta, on_ground): (Vec3, Vec3, bool),
+) -> HookStep {
+    let moved_with = Some(delta);
+    let movement = collide_hook(level, position, delta);
+    let moved = movement.length_squared();
+    let position = if moved > 1.0e-7 || delta.length_squared() - moved < 1.0e-7 {
+        position.add_vec3(movement)
+    } else {
+        position
     };
-    let on_ground = delta.y != movement.y && delta.y < 0.0;
+    // The ground is felt only by a move with some height in it.
+    let on_ground = if delta.y.abs() > 0.0 {
+        delta.y != movement.y && delta.y < 0.0
+    } else {
+        on_ground
+    };
     let horizontal = delta.x != movement.x || delta.z != movement.z;
     if flying && (on_ground || horizontal) {
         delta = Vec3::ZERO;
     }
+    let speed = f64::from(speed_factor(level, position));
+    let delta = Vec3::new(delta.x * speed, delta.y, delta.z * speed);
     HookStep {
-        position: position.add_vec3(movement),
+        position,
         delta: delta.scale(0.92),
         on_ground,
+        moved_with,
     }
+}
+
+/// `Entity.collide` of the bobber's box through the blocks.
+fn collide_hook(level: &Level<'_>, position: Vec3, delta: Vec3) -> Vec3 {
+    let bounding_box = hook_box(position);
+    match level.colliders(bounding_box.expand_towards_vec3(delta), 0.0, position) {
+        Ok(colliders) if delta.length_squared() != 0.0 => {
+            collide_entity_movement(delta, bounding_box, &colliders)
+        }
+        _ => delta,
+    }
+}
+
+/// `Entity.getBlockSpeedFactor` where the bobber now is.
+fn speed_factor(level: &Level<'_>, position: Vec3) -> f32 {
+    let here = BlockPos::new(
+        floor_f64(position.x),
+        floor_f64(position.y),
+        floor_f64(position.z),
+    );
+    let below = level.on_pos(None, position, BELOW_OFFSET);
+    level.block_speed_factor(here, below)
 }
 
 impl ClientWorld {
@@ -229,6 +286,12 @@ impl ClientWorld {
         };
         if let Some(step) = step {
             entity.set_position((step.position.x, step.position.y, step.position.z));
+            if let Some(moved_with) = step.moved_with {
+                entity.motion.x = JavaF64::new(moved_with.x);
+                entity.motion.y = JavaF64::new(moved_with.y);
+                entity.motion.z = JavaF64::new(moved_with.z);
+                crate::objects::flight::update_rotation(entity);
+            }
             entity.motion.x = JavaF64::new(step.delta.x);
             entity.motion.y = JavaF64::new(step.delta.y);
             entity.motion.z = JavaF64::new(step.delta.z);
@@ -262,7 +325,7 @@ impl ClientWorld {
         };
         state.biting = biting;
         if biting {
-            let sink = -0.4 * (0.6 + state.synchronized.next_float() * 0.4);
+            let sink = -0.4 * (state.synchronized.next_float() * (1.0_f32 - 0.6) + 0.6);
             entity.motion.x = JavaF64::new(dx);
             entity.motion.y = JavaF64::new(f64::from(sink));
             entity.motion.z = JavaF64::new(dz);
