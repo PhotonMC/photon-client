@@ -63,8 +63,12 @@ struct Player {
     used: u64,
 }
 
+/// What a loaded skin belongs to: the profile's id and its packed textures, so two profiles that
+/// share an id (the zero one of heads that name none) do not replace each other.
+type PlayerKey = (u64, u64, String);
+
 struct Done {
-    id: (u64, u64),
+    id: PlayerKey,
     property: ProfileProperty,
     loaded: Option<Loaded>,
 }
@@ -85,8 +89,8 @@ pub(crate) struct Skins {
     rects: Vec<TextureRect>,
     cape_slots: Slots,
     cape_rects: Vec<TextureRect>,
-    players: HashMap<(u64, u64), Player>,
-    queue: VecDeque<((u64, u64), ProfileProperty)>,
+    players: HashMap<PlayerKey, Player>,
+    queue: VecDeque<(PlayerKey, ProfileProperty)>,
     loading: usize,
     finished: Receiver<Done>,
     sender: Sender<Done>,
@@ -179,7 +183,7 @@ impl Skins {
         }
     }
 
-    fn start(&mut self, id: (u64, u64), property: ProfileProperty) {
+    fn start(&mut self, id: PlayerKey, property: ProfileProperty) {
         self.loading += 1;
         let (sender, keys, cache) = (self.sender.clone(), self.keys.clone(), self.cache.clone());
         let load = self.load;
@@ -234,7 +238,7 @@ impl Skins {
         let Some(property) = who.properties.iter().find(|p| p.name == "textures") else {
             return fallback();
         };
-        let id = (who.id.most, who.id.least);
+        let id = (who.id.most, who.id.least, property.value.clone());
         let frame = self.frame;
         let stale = self.players.get(&id).is_none_or(|player| {
             player.property != *property
@@ -246,8 +250,8 @@ impl Skins {
                 state: State::Loading,
                 used: frame,
             };
-            self.players.insert(id, player);
-            self.queue.push_back((id, property.clone()));
+            self.players.insert(id.clone(), player);
+            self.queue.push_back((id.clone(), property.clone()));
         }
         let player = self.players.get_mut(&id)?;
         player.used = frame;

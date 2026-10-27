@@ -140,6 +140,33 @@ fn players_with_one_skin_share_a_place() {
 }
 
 #[test]
+fn profiles_with_one_id_and_other_textures_each_keep_their_skin() {
+    let mut atlas = textures();
+    let mut skins = Skins::with_loader(&atlas, PathBuf::new(), loader);
+    let (first, second) = ([property("aaa")], [property("bbb")]);
+    let one = settle(&mut skins, &mut atlas, &who(0, &first, false));
+    let two = settle(&mut skins, &mut atlas, &who(0, &second, false));
+    assert_ne!(one.rect, two.rect);
+    // Drawn in turn again, each is found at once and nothing is asked for anew.
+    skins.begin_frame();
+    assert_eq!(
+        skins
+            .resolve(&mut atlas, &who(0, &first, false))
+            .unwrap()
+            .rect,
+        one.rect
+    );
+    assert_eq!(
+        skins
+            .resolve(&mut atlas, &who(0, &second, false))
+            .unwrap()
+            .rect,
+        two.rect
+    );
+    assert!(skins.queue.is_empty());
+}
+
+#[test]
 fn another_player_needs_a_signed_property_but_the_local_player_does_not() {
     let mut atlas = textures();
     let mut skins = Skins::with_loader(&atlas, PathBuf::new(), loader);
