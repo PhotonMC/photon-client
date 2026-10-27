@@ -48,6 +48,17 @@ pub fn rows() -> Vec<Value> {
             (4.5, 68.0, 4.5),
         )
         .row(),
+        // A creative player is pushed until the double tap lifts it into flight, then left alone.
+        Scene::new(
+            "flying",
+            cat![floor(), geyser(at, "continuous", 1)],
+            [keys(1, &["jump"]), keys(1, &[]), keys(1, &["jump"]), keys(9, &[])].concat(),
+        )
+        .start(4.5, 68.0, 4.5)
+        .game_mode("creative")
+        .block_entity(at, "minecraft:potent_sulfur")
+        .block_events(vec![erupt(at)])
+        .row(),
         // A slab in the column cuts the force short: the player on it is above the reach.
         scene(
             "cut-short",
