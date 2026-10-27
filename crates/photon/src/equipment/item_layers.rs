@@ -235,6 +235,8 @@ impl ItemLayerCache {
         out: &mut Vec<Vertex>,
     ) {
         self.add_glint(stack, &drawn);
+        let mut drawn = drawn;
+        self.heads.skin_in_world(stack, &mut drawn);
         out.extend(drawn);
     }
 

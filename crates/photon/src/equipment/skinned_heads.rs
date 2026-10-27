@@ -76,15 +76,20 @@ pub fn head_rect(
     Some(skins.resolve(textures, &who)?.rect)
 }
 
-/// A head's item mesh moved onto the skin at `rect`, in the vertices the entity pass reads.
-pub fn wear_skin(drawn: &mut [Vertex], renderer: &BlockRenderer, rect: TextureRect) {
-    let Some(default) = renderer.atlas.sprites.get(DEFAULT_SKIN).copied() else {
-        return;
-    };
+/// A head's item mesh moved onto the skin at `rect`, in the vertices the entity pass reads;
+/// `default` is the picture the item model gives it.
+pub fn wear_skin_from(drawn: &mut [Vertex], default: [f32; 4], rect: TextureRect) {
     for vertex in drawn.iter_mut() {
         vertex.uv = moved(vertex.uv, default, rect);
     }
     as_entity_vertices(drawn);
+}
+
+/// [`wear_skin_from`] with the picture the renderer's item atlas has.
+pub fn wear_skin(drawn: &mut [Vertex], renderer: &BlockRenderer, rect: TextureRect) {
+    if let Some(default) = renderer.atlas.sprites.get(DEFAULT_SKIN).copied() {
+        wear_skin_from(drawn, default, rect);
+    }
 }
 
 /// The vertices of the held items that are player heads with a profile, in the entity pictures;

@@ -11,7 +11,11 @@ impl Play {
         self.gui
             .items
             .heads
-            .set_found(self.armor.head_skins.found());
+            .set_found(self.armor.head_skins.found(), &self.block_renderer);
+        let wanted = self
+            .item_layers
+            .exchange_heads(&self.armor.head_skins.found(), &self.block_renderer);
+        self.armor.head_skins.want(wanted);
         self.wear_own_skin();
     }
 
@@ -54,6 +58,21 @@ impl Play {
                 glint: Vec::new(),
             },
         }
+    }
+
+    /// The player heads lying in the world or framed are drawn with the entities, which were
+    /// handed over before the items were gathered.
+    pub(super) fn add_world_heads(&mut self) -> Result<()> {
+        let heads = self.item_layers.take_skinned_heads();
+        if heads.is_empty() {
+            return Ok(());
+        }
+        self.entity_vertices.extend(heads);
+        self.backend.set_draw(
+            photon_render::vulkan::DrawKind::Entities,
+            &self.entity_vertices,
+        )?;
+        Ok(())
     }
 
     /// A skin written into the textures is there before the frame draws.

@@ -121,6 +121,7 @@ impl Play {
             );
         }
         items.extend(held_item_vertices(&held, &mut self.worn_layers, tints));
+        self.add_world_heads()?;
         self.hand_over_layers(view)
     }
 

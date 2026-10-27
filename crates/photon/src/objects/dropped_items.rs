@@ -170,6 +170,40 @@ impl WorldItemLayers {
         self.frames.fixed_item(stack, pose, materials)
     }
 
+    /// Hand the skins found for the player heads to the caches that draw them, and take what
+    /// they asked for since.
+    pub fn exchange_heads(
+        &mut self,
+        found: &std::collections::HashMap<
+            crate::equipment::head_skins::Key,
+            photon_render::entity::textures::TextureRect,
+        >,
+        renderer: &BlockRenderer,
+    ) -> Vec<crate::skins::dynamic::Resolvable> {
+        let mut wanted = Vec::new();
+        for cache in self.caches() {
+            wanted.extend(cache.heads.take_wanted());
+            cache.heads.set_found(found.clone(), renderer);
+        }
+        wanted
+    }
+
+    /// The triangles of the player heads found, in the entity pass's vertices.
+    pub fn take_skinned_heads(&mut self) -> Vec<Vertex> {
+        self.caches()
+            .into_iter()
+            .flat_map(|cache| cache.heads.take_skinned())
+            .collect()
+    }
+
+    fn caches(&mut self) -> [&mut ItemLayerCache; 3] {
+        [
+            &mut self.ground,
+            &mut self.frames.layers,
+            &mut self.on_shelf,
+        ]
+    }
+
     /// Set how the frame's item glints move and where their texture is.
     pub fn set_glint(&mut self, frame: &GlintFrame) {
         for cache in [
