@@ -267,9 +267,43 @@ impl LocalPlayer {
         self.delta = self
             .delta
             .add_vec3(Vec3::new(f64::from(xd), f64::from(yd), f64::from(zd)));
+        // `Player.startAutoSpinAttack`: the spin itself (the pose) waits for the server's flag.
+        self.use_edge.spin_ticks = 20;
         if self.on_ground {
             let lift = Vec3::new(0.0, f64::from(1.199_999_9_f32), 0.0);
             self.move_self(&Level::new(world), lift)?;
+        }
+        Ok(())
+    }
+}
+
+impl LocalPlayer {
+    /// `LivingEntity.aiStep`'s travel and the push step's `checkAutoSpinAttack`: a spinning
+    /// player that sweeps into a living entity stops and bounces back, one that runs into a wall
+    /// stops (of the hit, only `onAttack` is the client's).
+    pub(super) fn travel_and_spin(
+        &mut self,
+        level: &Level<'_>,
+        input: Vec3,
+    ) -> Result<(), Unsupported> {
+        let before = self.bounding_box;
+        self.player_travel(level, input)?;
+        self.apply_effects_from_blocks(level)?;
+        if self.use_edge.spin_ticks <= 0 {
+            return Ok(());
+        }
+        self.use_edge.spin_ticks -= 1;
+        match level.world.touch(before.minmax(self.bounding_box)) {
+            crate::world::touch::Touch::Living => {
+                // `doAutoAttackOnTouch`: the attack's own client part, `onAttack`.
+                self.reset_only_attack_strength();
+                self.use_edge.spin_ticks = 0;
+                self.delta = self.delta.scale(-0.2);
+            }
+            crate::world::touch::Touch::Nothing if self.horizontal_collision => {
+                self.use_edge.spin_ticks = 0;
+            }
+            _ => {}
         }
         Ok(())
     }

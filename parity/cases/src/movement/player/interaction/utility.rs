@@ -4,7 +4,7 @@
 use serde_json::Value;
 
 use super::placing::uses;
-use super::{aim_at, using};
+use super::{aim_at, facing, using};
 use crate::components::{
     BINDING_CURSE, DAMAGE, ENCHANTMENTS, INSTRUMENT, PROTECTION, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt,
     patch, patch_of, vi,
@@ -124,6 +124,36 @@ fn trident_rows() -> Vec<Value> {
         row("use-trident-room-left", &[(DAMAGE, vi(248))]),
         row("use-trident-unbreakable-last-point", &[(DAMAGE, vi(249)), (UNBREAKABLE, String::new())]),
     ]
+}
+
+/// A riptide throw in the rain: what stops its spin (a living entity it sweeps into bounces it
+/// back, a wall), how long the trident must be held, and a stronger enchantment.
+fn riptide_throw_rows() -> Vec<Value> {
+    let spin = |level: i64| patch(&[(ENCHANTMENTS, enchantments(&[(RIPTIDE, level)]))]);
+    let held = |ticks: usize| {
+        [uses(1, None, &[]).clicks(1).down().go(), uses(ticks, None, &[]).down().go(), uses(12, None, &[]).go()]
+            .concat()
+    };
+    let throw = |label: &str, level: i64, ticks: usize| {
+        using(label, vec![], held(ticks)).main_hand("minecraft:trident").count(1).patch(spin(level)).raining(1.0)
+    };
+    let zombie = serde_json::json!({
+        "id": 40, "type": "minecraft:zombie",
+        "x": crate::bits::f64_bits(0.5), "y": crate::bits::f64_bits(64.0), "z": crate::bits::f64_bits(5.5),
+    });
+    let wall: Vec<Value> = (64..67).map(|y| put(0, y, 5, "minecraft:stone")).collect();
+    let mut rows: Vec<Value> = (8..12).map(|ticks| throw(&format!("riptide-held-{ticks}"), 1, ticks).row()).collect();
+    rows.extend([
+        throw("riptide-three", 3, 13).row(),
+        throw("riptide-into-a-wall", 1, 13).blocks(wall).row(),
+        facing("riptide-into-a-zombie", vec![zombie], held(13))
+            .main_hand("minecraft:trident")
+            .count(1)
+            .patch(spin(1))
+            .raining(1.0)
+            .row(),
+    ]);
+    rows
 }
 
 /// A horn names its call by the `instrument` component: the item's own is the ponder call, a patched
@@ -249,7 +279,7 @@ fn special_rows() -> Vec<Value> {
             .x_rot(20.0)
             .row(),
     );
-    rows.extend([recipe_rows(), trident_rows(), horn_rows(), horn_cooldown_rows()].concat());
+    rows.extend([recipe_rows(), trident_rows(), riptide_throw_rows(), horn_rows(), horn_cooldown_rows()].concat());
     // `ItemStack.use` begins a `use_cooldown` when the use duration is 0 and the result is a
     // success: the eye starts a use all the same; a stick that passes gets none.
     for (item, x_rot) in [("minecraft:ender_eye", -60.0), ("minecraft:ender_eye", 39.0), ("minecraft:stick", 39.0)] {

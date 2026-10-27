@@ -442,6 +442,8 @@ pub struct UseEdge {
     /// The particles the player's tick threw since the frame last took them: a use's crumbs and
     /// the effects' swirls.
     pub(super) particles: Vec<crate::particles::LevelParticles>,
+    /// `autoSpinAttackTicks`: the ticks a riptide throw spins on.
+    pub(super) spin_ticks: i32,
 }
 
 /// How the use of an item changes the field of view.

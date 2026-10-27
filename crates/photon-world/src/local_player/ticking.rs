@@ -539,8 +539,7 @@ impl LocalPlayer {
         if self.hands.slow_falling || self.hands.levitation.is_some() {
             self.fall_distance = 0.0;
         }
-        self.player_travel(level, input)?;
-        self.apply_effects_from_blocks(level)?;
+        self.travel_and_spin(level, input)?;
         // `calculateEntityAnimation`: the limbs swing with the distance
         // moved across the ground this tick.
         let x = self.position.x - self.old_position.x;
