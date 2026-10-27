@@ -91,13 +91,29 @@ pub(super) fn ender_eye_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: false }
 }
 
-/// `BoatItem.use`: a miss of the look (fluids included) passes; a block gets a boat. Not
-/// evaluated: a pickable entity around the eye (pass) and a boat that would not fit (fail).
+/// `BoatItem.use`: a miss of the look (fluids included) passes; a block gets a boat, which fails
+/// where its box meets a block (`noCollision`). Not evaluated: a pickable entity around the eye
+/// (pass) and an entity or the world border in the boat's way.
 pub(super) fn boat_use(ctx: &mut Context<'_>) -> UseResult {
     let (eye, to) = super::placing::look_ray(ctx);
-    match ctx.world.clip_outlines_and_fluids(eye, to) {
-        Some(_) => UseResult::Success { swing: true },
-        None => UseResult::Pass,
+    let Some(hit) = ctx.world.clip_outlines_and_fluids(eye, to) else {
+        return UseResult::Pass;
+    };
+    // The boat's box (1.375 by 0.5625) stands on the hit point.
+    let (half, height) = (f64::from(1.375_f32 / 2.0), f64::from(0.5625_f32));
+    let at = hit.location;
+    let area = photon_core::aabb::Aabb::new(
+        at.x - half,
+        at.y,
+        at.z - half,
+        at.x + half,
+        at.y + height,
+        at.z + half,
+    );
+    if ctx.world.no_block_collision_in_registry(area) {
+        UseResult::Success { swing: true }
+    } else {
+        UseResult::Fail
     }
 }
 

@@ -239,6 +239,15 @@ impl ClientWorld {
             && self.no_border_collision(source, bounding_box)
     }
 
+    /// Whether no block's collision shape (as the registry has it) meets the box.
+    pub fn no_block_collision_in_registry(&self, area: Aabb) -> bool {
+        let registry = &self.block_state_registry;
+        self.collect_block_collisions_with(area, |state, at| {
+            Some(registry.collision_shape_at(state, at))
+        })
+        .is_empty()
+    }
+
     /// Return whether the query has no loaded block collision.
     pub fn no_block_collision(
         &self,

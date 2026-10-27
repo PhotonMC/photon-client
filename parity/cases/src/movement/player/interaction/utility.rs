@@ -196,9 +196,23 @@ fn swapping_rows() -> Vec<Value> {
     ]
 }
 
+/// A boat aimed at the side of a block, where its box would meet the block.
+fn boat_rows() -> Vec<Value> {
+    let side = aim_at((0, 65, 2), "north", (0.5, 65.62, 2.0));
+    let beside = |label: &str, block: &str| {
+        using(label, vec![put(0, 65, 2, block)], run(Some(&side))).main_hand("minecraft:oak_boat").count(2).x_rot(0.0)
+    };
+    vec![
+        beside("use-oak_boat-into-wall", "minecraft:stone").row(),
+        beside("use-oak_boat-into-slab", "minecraft:stone_slab").row(),
+        beside("use-oak_boat-into-glass-pane", "minecraft:glass_pane").row(),
+        beside("use-oak_boat-into-water", "minecraft:water").row(),
+    ]
+}
+
 fn special_rows() -> Vec<Value> {
     let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
-    let mut rows = swapping_rows();
+    let mut rows = [swapping_rows(), boat_rows()].concat();
     rows.push(
         using(
             "use-ender_eye-portal-frame",
