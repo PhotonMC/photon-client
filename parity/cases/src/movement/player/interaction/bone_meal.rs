@@ -59,6 +59,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
         vec![put(0, 63, 2, under), put_with(0, 64, 2, "minecraft:sea_pickle", &[("waterlogged", wet)])]
     };
     let mut rows = plants(meal, &at);
+    rows.extend(columns(meal, &below));
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
@@ -152,6 +153,52 @@ fn plants(meal: &dyn Fn(&str, Vec<Value>) -> Value, at: &dyn Fn(&str) -> Vec<Val
         meal(
             "bone-meal-cave-vines-bare",
             vec![put_with(0, 64, 2, "minecraft:cave_vines_plant", &[("berries", "false")])],
+        ),
+    ]
+}
+
+/// Plants that grow along a column: the big dripleaf with its stem, and pale hanging moss.
+fn columns(meal: &dyn Fn(&str, Vec<Value>) -> Value, below: &dyn Fn(&str, &str) -> Vec<Value>) -> Vec<Value> {
+    let at = |block: &str| vec![put(0, 64, 2, block)];
+    vec![
+        meal("bone-meal-big-dripleaf-open", at("minecraft:big_dripleaf")),
+        meal(
+            "bone-meal-big-dripleaf-blocked",
+            vec![put(0, 64, 2, "minecraft:big_dripleaf"), put(0, 65, 2, "minecraft:stone")],
+        ),
+        meal(
+            "bone-meal-big-dripleaf-water",
+            vec![put(0, 64, 2, "minecraft:big_dripleaf"), put(0, 65, 2, "minecraft:water")],
+        ),
+        meal(
+            "bone-meal-big-dripleaf-small-above",
+            vec![
+                put(0, 64, 2, "minecraft:big_dripleaf"),
+                put_with(0, 65, 2, "minecraft:small_dripleaf", &[("half", "lower")]),
+            ],
+        ),
+        meal(
+            "bone-meal-dripleaf-stem-open",
+            vec![put(0, 64, 2, "minecraft:big_dripleaf_stem"), put(0, 65, 2, "minecraft:big_dripleaf")],
+        ),
+        meal(
+            "bone-meal-dripleaf-stem-blocked",
+            vec![
+                put(0, 64, 2, "minecraft:big_dripleaf_stem"),
+                put(0, 65, 2, "minecraft:big_dripleaf"),
+                put(0, 66, 2, "minecraft:stone"),
+            ],
+        ),
+        meal("bone-meal-dripleaf-stem-headless", vec![put(0, 64, 2, "minecraft:big_dripleaf_stem")]),
+        meal("bone-meal-hanging-moss-open", below("minecraft:pale_hanging_moss", "minecraft:air")),
+        meal("bone-meal-hanging-moss-blocked", below("minecraft:pale_hanging_moss", "minecraft:stone")),
+        meal(
+            "bone-meal-hanging-moss-chain",
+            vec![
+                put(0, 65, 2, "minecraft:pale_hanging_moss"),
+                put(0, 64, 2, "minecraft:pale_hanging_moss"),
+                put(0, 63, 2, "minecraft:air"),
+            ],
         ),
     ]
 }

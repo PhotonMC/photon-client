@@ -125,7 +125,45 @@ fn valid_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) ->
     if matches!(name, "short_grass" | "fern") {
         return tall_grass_target(ctx, name, pos, above);
     }
+    if let Some(target) = column_target(ctx, name, pos) {
+        return Some(target);
+    }
     surroundings_target(name, state, (above, below))
+}
+
+/// A big dripleaf (or its stem) grows into air, water or a small dripleaf above its head; pale
+/// hanging moss grows into the air below its tip.
+fn column_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Option<bool> {
+    let walk = |same: &str, step: i32| {
+        let mut at = pos;
+        while block(ctx.state_at(at))
+            .name
+            .trim_start_matches("minecraft:")
+            == same
+        {
+            at.1 += step;
+        }
+        at
+    };
+    let room = |at: (i32, i32, i32)| {
+        let name = block(ctx.state_at(at))
+            .name
+            .trim_start_matches("minecraft:");
+        matches!(
+            name,
+            "air" | "cave_air" | "void_air" | "water" | "small_dripleaf"
+        )
+    };
+    match name {
+        "big_dripleaf" => Some(room((pos.0, pos.1 + 1, pos.2))),
+        "big_dripleaf_stem" => {
+            let head = walk("big_dripleaf_stem", 1);
+            let leaf = block(ctx.state_at(head)).name == "minecraft:big_dripleaf";
+            Some(leaf && room((head.0, head.1 + 1, head.2)))
+        }
+        "pale_hanging_moss" => Some(is_air(ctx.state_at(walk("pale_hanging_moss", -1)))),
+        _ => None,
+    }
 }
 
 /// The targets decided by the blocks above and below, or by nothing at all.
@@ -170,10 +208,7 @@ fn bonemealable_name(name: &str) -> bool {
             | "glow_lichen"
             | "moss_carpet"
             | "pale_moss_carpet"
-            | "pale_hanging_moss"
             | "mangrove_propagule"
-            | "big_dripleaf"
-            | "big_dripleaf_stem"
             | "bamboo"
             | "bamboo_sapling"
             | "netherrack"
