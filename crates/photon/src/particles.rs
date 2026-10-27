@@ -451,10 +451,10 @@ impl Particles {
             self.engine.tick_explosions(&mut context);
             self.uniquifier = uniquifier;
         }
-        if let Some(center) = player {
-            sounds = self.animate_blocks(world, center, ambience);
-        }
         sounds.extend(self.tick_weather(world, ambience));
+        if let Some(center) = player {
+            sounds.extend(self.animate_blocks(world, center, ambience));
+        }
         self.engine.tick_pickups(|target| match target {
             None => local,
             Some(id) => world.entities().at(id).map(|entity| {
