@@ -174,6 +174,10 @@ impl Interaction {
         Self { scene: self.scene.x_rot(x_rot), ..self }
     }
 
+    pub fn raining(self, level: f64) -> Self {
+        Self { scene: self.scene.raining(level), ..self }
+    }
+
     pub fn auto_jump(self) -> Self {
         Self { scene: self.scene.auto_jump(), ..self }
     }

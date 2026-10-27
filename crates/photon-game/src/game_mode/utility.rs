@@ -145,8 +145,7 @@ pub(super) fn ender_eye_use_on(ctx: &Context<'_>, aim: Aim) -> UseResult {
 }
 
 /// `TridentItem.use`: a stack about to break fails, and so does one with the spin attack effect
-/// (riptide) out of the water; otherwise the use starts and nothing swings. The rain is not read,
-/// so a riptide trident in the rain on land fails here where the reference starts the use.
+/// (riptide) out of the water and the rain; otherwise the use starts and nothing swings.
 fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     let held = ctx
         .world
@@ -166,11 +165,18 @@ fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
                     .copied()
                     .unwrap_or(false)
         });
-    if stack.breaks_on_next_damage() || (spins && !ctx.player.is_in_water()) {
+    if stack.breaks_on_next_damage() || (spins && !in_water_or_rain(ctx)) {
         return UseResult::Fail;
     }
     ctx.player.start_using_item(hand != super::MAIN_HAND);
     UseResult::Success { swing: false }
+}
+
+/// `Entity.isInWaterOrRain` of the player.
+fn in_water_or_rain(ctx: &Context<'_>) -> bool {
+    let at = ctx.player.position();
+    let top = ctx.player.bounding_box().max_y;
+    ctx.player.is_in_water() || ctx.world.is_in_rain((at.x, at.y, at.z), top)
 }
 
 /// `InstrumentItem.use`: a stack with an instrument starts its use, plays the call as the player's

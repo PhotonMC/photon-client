@@ -23,6 +23,7 @@ impl ClientWorld {
             maps: BTreeMap::new(),
             local_player: None,
             sounds: local_player::SoundQueue::default(),
+            precipitation: Default::default(),
             entity_sound_random: Default::default(),
             level_random: Default::default(),
             effect_particles: Default::default(),

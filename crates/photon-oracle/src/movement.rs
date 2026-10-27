@@ -136,7 +136,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     let prevents_armor_change = vanilla_prevents_armor_change();
     for row in rows {
         let label = string(row, "label")?;
-        let mut world = movement_world(row)?;
+        let mut world = particles::sky_world(row)?;
         if let Some(border) = row.get("border") {
             world.apply_world_border_center(bits64(border, "x")?, bits64(border, "z")?);
             world.apply_world_border_size(bits64(border, "size")?);

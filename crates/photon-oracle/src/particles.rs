@@ -9,6 +9,17 @@ mod digest;
 mod events;
 mod extras;
 pub(crate) use extras::place_block_entities;
+
+/// A player row's world under its sky: the plains' rain, and the weather and light the row sets (the reference's
+/// scene applies them to every row).
+pub(crate) fn sky_world(row: &Value) -> Result<ClientWorld, String> {
+    let mut world = movement_world(row)?;
+    world.set_precipitation(Arc::new(OracleTerrain));
+    if row.get("weather").is_some() || row.get("light").is_some() {
+        extras::place(&mut world, row)?;
+    }
+    Ok(world)
+}
 mod terrain;
 use digest::digest_group;
 use terrain::OracleTerrain;

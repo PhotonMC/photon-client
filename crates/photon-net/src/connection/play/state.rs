@@ -6,6 +6,14 @@ impl PlaySession {
         &self.world
     }
 
+    /// Where the world reads what falls from the sky (`Level.isRainingAt`).
+    pub fn set_precipitation(
+        &mut self,
+        materials: std::sync::Arc<dyn photon_world::particles::TerrainMaterials + Send + Sync>,
+    ) {
+        self.world.set_precipitation(materials);
+    }
+
     /// Set which entities the frames leave out as wholly outside the view.
     pub fn set_entities_out_of_view(&mut self, ids: std::collections::BTreeSet<EntityId>) {
         self.world.entities_mut().set_out_of_view(ids);

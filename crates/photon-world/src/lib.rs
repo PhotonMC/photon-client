@@ -124,6 +124,8 @@ pub struct ClientWorld {
     local_player: Option<ClientPlayerState>,
     /// The sounds the world's own events made, until they are taken.
     sounds: local_player::SoundQueue,
+    /// Where rain rather than snow or nothing falls, by the biomes (`Biome.getPrecipitationAt`).
+    precipitation: world::rain::Precipitation,
     /// The source a sound made for an entity's click draws its pitch from (the reference keeps
     /// one per entity, unseeded).
     entity_sound_random: entity_random::EntityRandom,

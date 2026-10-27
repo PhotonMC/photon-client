@@ -152,19 +152,13 @@ impl Particle {
     }
 }
 
-/// `Level.isRainingAt`: it rains, the place has the sky above it (light fifteen, and nothing that
-/// stops motion over it), and rain falls there rather than snow.
+/// `Level.isRainingAt`, with the particle engine's materials.
 fn raining_at(
     world: &ClientWorld,
     materials: Option<&dyn TerrainMaterials>,
     (x, y, z): (i32, i32, i32),
 ) -> bool {
-    world.is_raining()
-        && world.sky_brightness(x, y, z) >= 15
-        && world.motion_blocking_height(x, z) <= y
-        && materials.is_some_and(|materials| {
-            materials.rains_at(world, photon_core::binary::BlockPos::new(x, y, z))
-        })
+    world.raining_at_with(materials, photon_core::binary::BlockPos::new(x, y, z))
 }
 
 impl ParticleEngine {

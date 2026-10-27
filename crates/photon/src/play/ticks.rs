@@ -451,6 +451,10 @@ impl Play {
         }
         // What the screen asked for as it was drawn (a bundle the mouse left).
         self.controls.drain_screen_actions(&mut self.session)?;
+        // A new level starts without it: the world reads its rain from the block materials.
+        if let Some(materials) = self.particles.materials() {
+            self.session.set_precipitation(materials);
+        }
         let session = &mut self.session;
         // `Minecraft.handleKeybinds`: the attack key is spent before the
         // player moves, aiming the way `GameRenderer.pick` aims.

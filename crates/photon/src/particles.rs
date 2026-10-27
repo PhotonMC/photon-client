@@ -61,6 +61,8 @@ pub(crate) struct Particles {
     most_alive: usize,
     /// The elder guardian's model the particle draws, baked when the first one flashes.
     elder_model: Option<photon_render::entity::mob_model::MobModel>,
+    /// The block materials, which also tell the world where it rains.
+    materials: Option<Arc<dyn TerrainMaterials + Send + Sync>>,
 }
 
 /// What the flakes of blocks are made with: the models' particle textures and the tint sources.
@@ -172,6 +174,7 @@ impl Particles {
             packets_heard: 0,
             most_alive: 0,
             elder_model: None,
+            materials: None,
         }
     }
 
@@ -187,6 +190,11 @@ impl Particles {
         self.engine.take_jukebox_changes()
     }
 
+    /// The block materials, once baked: what the world reads its rain from.
+    pub(crate) fn materials(&self) -> Option<Arc<dyn TerrainMaterials + Send + Sync>> {
+        self.materials.clone()
+    }
+
     /// The textures the particles are drawn in, to pack with the entity textures.
     pub(crate) fn textures(&self) -> &[String] {
         &self.textures
@@ -194,10 +202,12 @@ impl Particles {
 
     /// The block models and tints the flakes of blocks are made with, once they are baked.
     pub(crate) fn set_terrain(&mut self, renderer: Arc<BlockRenderer>, tints: Arc<BiomeTints>) {
-        self.engine.set_terrain(Arc::new(BlockMaterials {
+        let materials: Arc<dyn TerrainMaterials + Send + Sync> = Arc::new(BlockMaterials {
             renderer: Arc::clone(&renderer),
             tints,
-        }));
+        });
+        self.engine.set_terrain(materials.clone());
+        self.materials = Some(materials);
         self.renderer = Some(renderer);
     }
 

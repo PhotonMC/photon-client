@@ -54,6 +54,8 @@ pub struct Scene {
     camera_entity: Option<(i64, &'static str)>,
     flying_speed: Option<f64>,
     block_entities: Vec<Value>,
+    /// The rain level, with the sky lit so that the rain can reach the player.
+    rain: Option<f64>,
 }
 
 impl Scene {
@@ -71,6 +73,7 @@ impl Scene {
             block_events: Vec::new(),
             camera_entity: None,
             flying_speed: None,
+            rain: None,
             block_entities: Vec::new(),
         }
     }
@@ -127,6 +130,11 @@ impl Scene {
         Self { camera_entity: Some((id, kind)), ..self }
     }
 
+    /// Rain at `level` (thunder none), over a lit sky.
+    pub fn raining(self, level: f64) -> Self {
+        Self { rain: Some(level), ..self }
+    }
+
     pub fn row(self) -> Value {
         let mut row = json!({
             "label": self.label, "blocks": self.blocks, "chunk_radius": 1, "entity_id": 7,
@@ -146,6 +154,10 @@ impl Scene {
                 "y": f64_bits(self.start.1), "z": f64_bits(self.start.2),
             }]);
             row["camera_entity"] = json!(id);
+        }
+        if let Some(rain) = self.rain {
+            row["weather"] = json!([f32_bits(rain), f32_bits(0.0)]);
+            row["light"] = json!(true);
         }
         if let Some(speed) = self.flying_speed {
             row["flying_speed"] = json!(f32_bits(speed));
