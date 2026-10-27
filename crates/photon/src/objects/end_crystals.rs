@@ -68,7 +68,8 @@ pub fn remote_end_crystals(
         pose.translate(feet[0], feet[1], feet[2]);
         pose.scale(2.0, 2.0, 2.0);
         pose.translate(0.0, -0.5, 0.0);
-        vertices.extend(mob_vertices_posed(model, &pose, rect, (light, false)));
+        let body = mob_vertices_posed(model, &pose, rect, (light, false));
+        vertices.extend(crate::mobs::with_outline(entity, body));
         if let Some(target) = own.and_then(|own| own.beam_target()) {
             // The block's centre, from where the crystal is.
             let offset = (

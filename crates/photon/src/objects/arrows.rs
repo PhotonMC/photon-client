@@ -82,10 +82,11 @@ pub fn remote_arrows(
         let light = packed_light(world, Vec3::new(x, y + f64::from(entity.eye_height()), z));
         let drawn = boat_vertices(model, &pose, light, rect);
         // The arrow's pipeline culls back faces; the trident's does not.
-        vertices.extend(if trident {
+        let drawn = if trident {
             drawn
         } else {
             cull_back_faces(drawn, view.camera)
-        });
+        };
+        vertices.extend(crate::mobs::with_outline(entity, drawn));
     }
 }

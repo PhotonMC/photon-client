@@ -105,11 +105,7 @@ pub fn remote_minecarts(
                 .filter(|fuse| *fuse > -1.0 && *fuse < 10.0)
                 .map(tnt_swell_amount),
             new_render: track.is_some(),
-            rail: if track.is_some() {
-                None
-            } else {
-                rail_place(world, (x, y, z))
-            },
+            rail: rail_place(world, (x, y, z)).filter(|_| track.is_none()),
         };
         // `getRenderOffset`: the new behaviour's playback puts it where it says, not where the
         // entity is.
@@ -130,7 +126,8 @@ pub fn remote_minecarts(
         let mut base = photon_render::joml::Pose::default();
         base.translate(feet[0], feet[1], feet[2]);
         let poses = minecart_poses(&base, &state);
-        vertices.extend(boat_vertices(model, &poses.model, light, rect));
+        let body = boat_vertices(model, &poses.model, light, rect);
+        vertices.extend(crate::mobs::with_outline(entity, body));
         if let Some(block) = entity.minecart_display_block() {
             let lit = tnt_fuse.is_some_and(tnt_is_lit);
             let carried = (&poses.block, light, lit);

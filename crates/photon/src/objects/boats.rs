@@ -98,11 +98,10 @@ pub fn remote_boats(
         let placed = placement(world, &snapshot, view, entity.scale());
         let mut base = Pose::default();
         base.translate(placed.feet[0], placed.feet[1], placed.feet[2]);
-        vertices.extend(boat_vertices(
-            model,
-            &boat_pose(&base, &state),
-            placed.light,
-            rect,
+        // A glowing boat's body joins the outline.
+        vertices.extend(crate::mobs::with_outline(
+            entity,
+            boat_vertices(model, &boat_pose(&base, &state), placed.light, rect),
         ));
     }
 }
