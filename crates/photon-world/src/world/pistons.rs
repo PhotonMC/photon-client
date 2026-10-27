@@ -336,10 +336,14 @@ impl ClientWorld {
         player: Option<&mut LocalPlayer>,
     ) -> Result<(), Unsupported> {
         let mut player = player;
+        // A push runs the block effects once more, so the steps are acted on before and after.
         if let Some(player) = player.as_deref_mut() {
             self.apply_player_steps(player);
         }
-        let pushed = self.tick_block_entities(player);
+        let pushed = self.tick_block_entities(player.as_deref_mut());
+        if let Some(player) = player {
+            self.apply_player_steps(player);
+        }
         self.tick_sky_flash();
         pushed
     }
