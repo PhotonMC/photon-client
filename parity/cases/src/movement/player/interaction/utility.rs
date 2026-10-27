@@ -7,7 +7,7 @@ use super::placing::uses;
 use super::{aim_at, facing, using};
 use crate::components::{
     BINDING_CURSE, DAMAGE, ENCHANTMENTS, INSTRUMENT, PROTECTION, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt,
-    patch, patch_of, vi,
+    nbt_text, patch, patch_of, text, vi,
 };
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
@@ -164,9 +164,20 @@ fn horn_rows() -> Vec<Value> {
         using(label, vec![], ticks.clone()).main_hand("minecraft:goat_horn").count(1).patch(hex).row()
     };
     // The sing call is the seventh entry of the registry, a holder written as its id plus one.
+    // `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: the sound, the use duration, the range
+    // and the description; the sound itself written out (`SoundEvent.DIRECT_STREAM_CODEC`).
+    let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let direct = |sound: &str, fixed_range: Option<f32>, duration: f32, range: f32| {
+        let fixed = fixed_range.map_or("00".to_owned(), |range| format!("01{}", float(range)));
+        let instrument =
+            format!("{}{}{}{fixed}{}{}{}", vi(0), vi(0), text(sound), float(duration), float(range), nbt_text("Horn"));
+        patch(&[(INSTRUMENT, instrument)])
+    };
     vec![
         row("use-goat_horn-sing", patch(&[(INSTRUMENT, vi(7))])),
         row("use-goat_horn-no-instrument", patch_of(&[], &[INSTRUMENT])),
+        row("use-goat_horn-direct", direct("minecraft:item.goat_horn.sound.2", None, 3.5, 64.0)),
+        row("use-goat_horn-direct-pack-sound", direct("photon:horn.test", Some(32.0), 2.0, 48.0)),
     ]
 }
 
