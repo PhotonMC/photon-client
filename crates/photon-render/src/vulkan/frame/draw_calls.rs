@@ -284,8 +284,8 @@ impl VulkanBackend {
         }
     }
 
-    /// Draw the glowing entities' silhouettes with `pipeline`, over the entity textures, as
-    /// the entities are drawn.
+    /// Draw the glowing entities' silhouettes with `pipeline`, over the textures of `set` (the
+    /// entities' or the items'), as they are drawn.
     ///
     /// # Safety
     ///
@@ -293,10 +293,10 @@ impl VulkanBackend {
     /// image, and `scene` must be the live scene.
     pub(in super::super) unsafe fn draw_silhouettes(
         &self,
-        (scene, pipeline, list): (&SceneResources, &Pipeline, &DrawList),
+        (set, pipeline, list): (Option<vk::DescriptorSet>, &Pipeline, &DrawList),
         base: &[f32; 46],
     ) {
-        let (Some(buffer), Some(set)) = (list.buffer.as_ref(), scene.entity_set) else {
+        let (Some(buffer), Some(set)) = (list.buffer.as_ref(), set) else {
             return;
         };
         let mut push = [0.0_f32; 47];

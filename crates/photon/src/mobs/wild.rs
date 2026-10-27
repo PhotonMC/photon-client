@@ -142,6 +142,10 @@ pub fn hand_layers(
         &super::take_outlines(session.scoreboard()),
     )?;
     backend.set_draw(
+        photon_render::vulkan::DrawKind::ItemOutline,
+        &super::take_item_outlines(session.scoreboard()),
+    )?;
+    backend.set_draw(
         photon_render::vulkan::DrawKind::EntityGlint,
         &std::mem::take(&mut armor.glint),
     )?;

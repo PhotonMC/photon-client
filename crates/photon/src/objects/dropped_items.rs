@@ -65,6 +65,7 @@ pub fn dropped_items(
             ),
         );
         layers.set_owner(Some(ground_owner(entity)));
+        let first = vertices.len();
         draw_item(
             item,
             snapshot.position,
@@ -73,6 +74,10 @@ pub fn dropped_items(
             view,
             vertices,
         );
+        // `ItemEntityRenderer`: a glowing item's model draws its outline too.
+        if entity.is_glowing() {
+            crate::mobs::record_item_outline(entity, vertices[first..].to_vec());
+        }
     }
     ominous_spawners(session, layers, (renderer, tints), view, vertices);
     layers.set_owner(None);

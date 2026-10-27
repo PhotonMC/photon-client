@@ -31,6 +31,8 @@ pub(super) struct OutlineScene {
     /// The silhouettes' pipeline and the triangles it draws.
     silhouette: Pipeline,
     silhouettes: DrawList,
+    /// The glowing items' silhouettes, cut out by the item atlas.
+    item_silhouettes: DrawList,
     sobel: Pipeline,
     blur: Pipeline,
     composite: Pipeline,
@@ -43,6 +45,15 @@ pub(super) struct OutlineScene {
     /// The second image read smoothly, by the blur along x and by the final blend.
     set_b_linear: vk::DescriptorSet,
     targets: Option<Targets>,
+}
+
+/// The entities' or (`items`) the items' silhouettes.
+fn outline_list(outline: &mut OutlineScene, items: bool) -> &mut DrawList {
+    if items {
+        &mut outline.item_silhouettes
+    } else {
+        &mut outline.silhouettes
+    }
 }
 
 impl VulkanBackend {
@@ -94,6 +105,7 @@ impl VulkanBackend {
             Ok(OutlineScene {
                 silhouette,
                 silhouettes: DrawList::default(),
+                item_silhouettes: DrawList::default(),
                 sobel,
                 blur,
                 composite,
@@ -132,16 +144,20 @@ impl VulkanBackend {
         }
     }
 
-    /// Hand over the next frame's silhouettes. Nothing is kept for none, and the chain's images
-    /// are made for the first ones.
-    pub(super) fn set_silhouettes(&mut self, vertices: &[Vertex]) -> Result<(), VulkanError> {
+    /// Hand over the next frame's silhouettes (the items' when `items`). Nothing is kept for
+    /// none, and the chain's images are made for the first ones.
+    pub(super) fn set_silhouettes(
+        &mut self,
+        vertices: &[Vertex],
+        items: bool,
+    ) -> Result<(), VulkanError> {
         if vertices.is_empty() {
             if let Some(outline) = self
                 .scene
                 .as_mut()
                 .and_then(|scene| scene.backdrop.outline.as_mut())
             {
-                outline.silhouettes.count = 0;
+                outline_list(outline, items).count = 0;
             }
             return Ok(());
         }
@@ -150,7 +166,7 @@ impl VulkanBackend {
             .scene
             .as_mut()
             .and_then(|scene| scene.backdrop.outline.as_mut())
-            .map(|outline| std::mem::take(&mut outline.silhouettes))
+            .map(|outline| std::mem::take(outline_list(outline, items)))
         else {
             return Ok(());
         };
@@ -161,7 +177,7 @@ impl VulkanBackend {
             .as_mut()
             .and_then(|scene| scene.backdrop.outline.as_mut())
         {
-            outline.silhouettes = list;
+            *outline_list(outline, items) = list;
         }
         filled
     }
@@ -240,7 +256,8 @@ impl VulkanBackend {
             .targets
             .as_ref()
             .filter(|targets| targets.extent == self.description.extent)?;
-        (!self.gui_only && outline.silhouettes.count > 0).then_some((outline, targets))
+        (!self.gui_only && outline.silhouettes.count + outline.item_silhouettes.count > 0)
+            .then_some((outline, targets))
     }
 
     /// Draw the silhouettes and run the chain over them, before the frame's own rendering scope
@@ -302,7 +319,15 @@ impl VulkanBackend {
         // SAFETY: recording outside a scope (see `# Safety`).
         unsafe {
             self.begin_silhouettes(targets);
-            self.draw_silhouettes((scene, &outline.silhouette, &outline.silhouettes), base);
+            self.draw_silhouettes(
+                (scene.entity_set, &outline.silhouette, &outline.silhouettes),
+                base,
+            );
+            let items = Some(scene.descriptor_set);
+            self.draw_silhouettes(
+                (items, &outline.silhouette, &outline.item_silhouettes),
+                base,
+            );
             self.dynamic_rendering
                 .cmd_end_rendering(self.command_buffer);
             transition(

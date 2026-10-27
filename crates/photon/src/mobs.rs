@@ -361,7 +361,9 @@ pub(crate) fn visible_body(
 const GHOST_ALPHA: u8 = 0x26;
 
 pub(crate) mod outline;
-pub(crate) use outline::take as take_outlines;
+pub(crate) use outline::{
+    record_item as record_item_outline, take as take_outlines, take_items as take_item_outlines,
+};
 mod wild;
 pub use wild::*;
 mod pose;
