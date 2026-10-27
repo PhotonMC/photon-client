@@ -185,6 +185,13 @@ pub const PIGLIN_DANCING_DATA_ID: u8 = 19;
 /// carries it (`HumanoidArm`, an id: left is zero).
 pub const AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
 pub const HUMANOID_ARM_SERIALIZER_ID: i32 = 42;
+/// Where an avatar's model layers sit (a byte), and a mannequin's profile (`ResolvableProfile`),
+/// immovable flag and description (an optional component), with the profile's serializer.
+pub const AVATAR_CUSTOMISATION_DATA_ID: u8 = 16;
+pub const MANNEQUIN_PROFILE_DATA_ID: u8 = 17;
+pub const MANNEQUIN_IMMOVABLE_DATA_ID: u8 = 18;
+pub const MANNEQUIN_DESCRIPTION_DATA_ID: u8 = 19;
+pub const RESOLVABLE_PROFILE_SERIALIZER_ID: i32 = 41;
 /// Where a sheep's wool byte and a chicken's variant sit among their data,
 /// and the serializer that carries the chicken's.
 pub const SHEEP_WOOL_DATA_ID: u8 = 18;

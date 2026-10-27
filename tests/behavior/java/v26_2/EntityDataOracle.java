@@ -350,6 +350,10 @@ class EntityDataOracle extends EntityBossOracle {
             {net.minecraft.world.entity.animal.fish.TropicalFish.class, "DATA_ID_TYPE_VARIANT", "tropical-fish-variant"},
             {net.minecraft.world.entity.animal.fish.Pufferfish.class, "PUFF_STATE", "pufferfish-puff-state"},
             {net.minecraft.world.entity.monster.skeleton.Bogged.class, "DATA_SHEARED", "bogged-sheared"},
+            {net.minecraft.world.entity.Avatar.class, "DATA_PLAYER_MODE_CUSTOMISATION", "avatar-customisation"},
+            {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_PROFILE", "mannequin-profile"},
+            {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_IMMOVABLE", "mannequin-immovable"},
+            {net.minecraft.world.entity.decoration.Mannequin.class, "DATA_DESCRIPTION", "mannequin-description"},
         };
         for (var described : fields) {
             var field = Reflect.field(((Class<?>) described[0]), (String) described[1]);

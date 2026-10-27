@@ -2,6 +2,7 @@ use super::*;
 
 mod player;
 use player::*;
+mod data_fields;
 mod tables;
 use tables::*;
 
