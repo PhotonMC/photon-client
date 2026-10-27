@@ -46,8 +46,11 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
         meal("bone-meal-water-flowing", water("3")),
         meal("bone-meal-water-falling", water("8")),
         meal(
-            "bone-meal-water-glass",
-            vec![put(0, 64, 2, "minecraft:glass"), put_with(0, 64, 1, "minecraft:water", &[("level", "0")])],
+            "bone-meal-water-slab",
+            vec![
+                put_with(0, 64, 2, "minecraft:stone_slab", &[("type", "bottom")]),
+                put_with(0, 64, 1, "minecraft:water", &[("level", "0")]),
+            ],
         ),
         meal("bone-meal-bamboo-sapling", at("minecraft:bamboo_sapling")),
         meal("bone-meal-torchflower-0", crop("minecraft:torchflower_crop", "0")),
@@ -60,6 +63,8 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
         meal("bone-meal-cocoa-2", crop("minecraft:cocoa", "2")),
         meal("bone-meal-tall-flower", vec![put_with(0, 64, 2, "minecraft:sunflower", &[("half", "lower")])]),
         meal("bone-meal-tall-grass", vec![put_with(0, 64, 2, "minecraft:tall_grass", &[("half", "lower")])]),
+        meal("bone-meal-brown-mushroom", at("minecraft:brown_mushroom")),
+        meal("bone-meal-azalea", at("minecraft:azalea")),
         meal("bone-meal-pink-petals", at("minecraft:pink_petals")),
         meal("bone-meal-seagrass-wet", vec![put(0, 64, 2, "minecraft:seagrass"), put(0, 65, 2, "minecraft:water")]),
         meal("bone-meal-seagrass-dry", at("minecraft:seagrass")),
