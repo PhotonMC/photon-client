@@ -86,6 +86,12 @@ fn read_profile(bytes: &[u8]) -> Option<Resolvable> {
     Some(resolvable(name, id, reader.properties()?))
 }
 
+/// A `ResolvableProfile` as an entity's data carries it (a mannequin's), from the start of
+/// `bytes`.
+pub(crate) fn wire_profile(bytes: &[u8]) -> Option<Resolvable> {
+    read_profile(bytes)
+}
+
 /// The profile a stack carries when it names its skin itself.
 pub(crate) fn stack_profile(stack: &ClientItemStackState) -> Option<Resolvable> {
     let values =

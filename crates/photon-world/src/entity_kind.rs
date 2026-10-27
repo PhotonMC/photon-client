@@ -84,6 +84,7 @@ entity_kinds! {
     PrimedTnt(Box<crate::objects::primed_tnt::PrimedTntState> => crate::objects::primed_tnt::PrimedTntState) primed_tnt primed_tnt_mut primed_tnt_or_insert_with;
     Lightning(Box<crate::objects::lightning::LightningState> => crate::objects::lightning::LightningState) lightning lightning_mut lightning_or_insert_with;
     FishingHook(Box<crate::objects::fishing_hook::HookState> => crate::objects::fishing_hook::HookState) fishing_hook fishing_hook_mut fishing_hook_or_insert_with;
+    Mannequin(Box<crate::objects::mannequin::MannequinState> => crate::objects::mannequin::MannequinState) mannequin mannequin_mut mannequin_or_insert_with;
     Frog(Box<crate::mobs::frog::FrogState> => crate::mobs::frog::FrogState) frog frog_mut frog_or_insert_with;
     Panda(Box<crate::mobs::panda::PandaState> => crate::mobs::panda::PandaState) panda panda_mut panda_or_insert_with;
     Ravager(Box<crate::mobs::ravager::RavagerState> => crate::mobs::ravager::RavagerState) ravager ravager_mut ravager_or_insert_with;

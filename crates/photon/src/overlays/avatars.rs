@@ -21,12 +21,30 @@ pub(super) fn avatar_look(
     if entity.is_player() {
         return skins.of_player(session, textures, entity.uuid);
     }
-    let empty = crate::skins::Who {
-        id: photon_core::binary::Uuid::new(0, 0),
-        properties: &[],
+    let profile = mannequin_profile(session, skins, entity);
+    let (id, properties) = profile.map_or(
+        (photon_core::binary::Uuid::new(0, 0), Vec::new()),
+        |found| (found.id, found.properties),
+    );
+    let who = crate::skins::Who {
+        id,
+        properties: &properties,
         require_secure: false,
     };
-    skins.resolve(textures, &empty)
+    skins.resolve(textures, &who)
+}
+
+/// `ClientMannequin.updateSkin`: the profile's skin once known. A name or an id still being looked
+/// up (or not found) leaves `DEFAULT_SKIN`, the empty profile's.
+fn mannequin_profile(
+    session: &PlaySession,
+    skins: &mut crate::skins::Skins,
+    entity: &photon_world::ClientEntity,
+) -> Option<crate::skins::profile::StaticProfile> {
+    let resolvable = crate::skins::item_profile::wire_profile(entity.mannequin_profile()?)?;
+    let looked_up = matches!(resolvable, crate::skins::dynamic::Resolvable::Dynamic(_));
+    let found = skins.lookups.profile(resolvable, session);
+    (!looked_up || !found.properties.is_empty()).then_some(found)
 }
 
 /// The scoreboard name of an avatar: a player's profile name, a mannequin's UUID.

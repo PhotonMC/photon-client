@@ -9,6 +9,7 @@ pub mod evoker_fangs;
 pub mod fishing_hook;
 pub(crate) mod flight;
 pub mod lightning;
+pub mod mannequin;
 pub mod minecart;
 pub mod minecart_track;
 pub mod primed_tnt;
