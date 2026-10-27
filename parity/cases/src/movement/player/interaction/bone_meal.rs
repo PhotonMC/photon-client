@@ -60,6 +60,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     };
     let mut rows = plants(meal, &at);
     rows.extend(columns(meal, &below));
+    rows.extend([spreaders(meal), netherrack(meal), stalks(meal)].concat());
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
@@ -193,6 +194,15 @@ fn columns(meal: &dyn Fn(&str, Vec<Value>) -> Value, below: &dyn Fn(&str, &str) 
         meal("bone-meal-hanging-moss-open", below("minecraft:pale_hanging_moss", "minecraft:air")),
         meal("bone-meal-hanging-moss-blocked", below("minecraft:pale_hanging_moss", "minecraft:stone")),
         meal(
+            "bone-meal-hanging-moss-long",
+            vec![
+                put(0, 65, 2, "minecraft:pale_hanging_moss"),
+                put(0, 64, 2, "minecraft:pale_hanging_moss"),
+                put(0, 63, 2, "minecraft:pale_hanging_moss"),
+                put(0, 62, 2, "minecraft:air"),
+            ],
+        ),
+        meal(
             "bone-meal-hanging-moss-chain",
             vec![
                 put(0, 65, 2, "minecraft:pale_hanging_moss"),
@@ -200,5 +210,66 @@ fn columns(meal: &dyn Fn(&str, Vec<Value>) -> Value, below: &dyn Fn(&str, &str) 
                 put(0, 63, 2, "minecraft:air"),
             ],
         ),
+    ]
+}
+
+/// Plants that spread to an empty neighbour where the seed would survive.
+fn spreaders(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    let alone = |plant: &str| vec![put(0, 64, 2, plant)];
+    let spread = |plant: &str, ground: &str| vec![put(0, 64, 2, plant), put(1, 63, 2, ground)];
+    vec![
+        meal("bone-meal-tall-dry-grass-stone", alone("minecraft:tall_dry_grass")),
+        meal("bone-meal-tall-dry-grass-sand", spread("minecraft:tall_dry_grass", "minecraft:sand")),
+        meal("bone-meal-bush-stone", alone("minecraft:bush")),
+        meal("bone-meal-bush-grass", spread("minecraft:bush", "minecraft:grass_block")),
+        meal("bone-meal-firefly-bush-stone", alone("minecraft:firefly_bush")),
+        meal("bone-meal-firefly-bush-grass", spread("minecraft:firefly_bush", "minecraft:grass_block")),
+        meal(
+            "bone-meal-bush-grass-covered",
+            vec![
+                put(0, 64, 2, "minecraft:bush"),
+                put(1, 63, 2, "minecraft:grass_block"),
+                put(1, 64, 2, "minecraft:stone"),
+            ],
+        ),
+    ]
+}
+
+/// Netherrack grows nylium where light passes above it and nylium is near.
+fn netherrack(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    let near = |above: &str| {
+        vec![put(0, 64, 2, "minecraft:netherrack"), put(1, 63, 2, "minecraft:warped_nylium"), put(0, 65, 2, above)]
+    };
+    vec![
+        meal("bone-meal-netherrack-open", near("minecraft:air")),
+        meal("bone-meal-netherrack-covered", near("minecraft:stone")),
+        meal("bone-meal-netherrack-glass", near("minecraft:glass")),
+        meal("bone-meal-netherrack-slab", near("minecraft:stone_slab")),
+        meal("bone-meal-netherrack-water", near("minecraft:water")),
+        meal("bone-meal-netherrack-far", vec![put(0, 64, 2, "minecraft:netherrack")]),
+    ]
+}
+
+/// Bamboo grows up to sixteen blocks; a propagule hanging at its last age is done.
+fn stalks(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    let bamboo = |height: i64, stage: &str| -> Vec<Value> {
+        (0..height)
+            .map(|step| {
+                let top = step == height - 1;
+                put_with(0, 64 + step, 2, "minecraft:bamboo", &[("stage", if top { stage } else { "0" })])
+            })
+            .collect()
+    };
+    let propagule = |hanging: &str, age: &str| {
+        vec![put_with(0, 64, 2, "minecraft:mangrove_propagule", &[("hanging", hanging), ("age", age)])]
+    };
+    vec![
+        meal("bone-meal-bamboo-short", bamboo(3, "0")),
+        meal("bone-meal-bamboo-last-stage", bamboo(3, "1")),
+        meal("bone-meal-bamboo-tall", bamboo(15, "0")),
+        meal("bone-meal-bamboo-full", bamboo(16, "0")),
+        meal("bone-meal-propagule-planted", propagule("false", "4")),
+        meal("bone-meal-propagule-hanging-young", propagule("true", "2")),
+        meal("bone-meal-propagule-hanging-grown", propagule("true", "4")),
     ]
 }

@@ -77,19 +77,9 @@ fn growing_plant_target(
     })
 }
 
-/// `TallGrassBlock.isValidBonemealTarget`: the tall plant it grows into survives where it stands
-/// and the block above is air. `None` where the survival rule is not ported.
-fn tall_grass_target(
-    ctx: &Context<'_>,
-    name: &str,
-    pos: (i32, i32, i32),
-    above: BlockStateId,
-) -> Option<bool> {
-    let grown = if name == "fern" {
-        "minecraft:large_fern"
-    } else {
-        "minecraft:tall_grass"
-    };
+/// Whether `grown` survives at `pos` (`BlockState.canSurvive`); `None` where the survival rule is
+/// not ported.
+fn survives_at(ctx: &Context<'_>, grown: &str, pos: (i32, i32, i32)) -> Option<bool> {
     let grown = photon_data::block::registry::block_index(grown)?;
     let grown = photon_data::block::registry::BLOCKS[grown].default_state_id();
     let world: &photon_world::ClientWorld = ctx.world;
@@ -104,9 +94,73 @@ fn tall_grass_target(
         tags,
     );
     match photon_world::block::rules::can_survive(grown, pos, &place_ctx) {
-        photon_world::block::rules::Rule::Known(survives) => Some(survives && is_air(above)),
+        photon_world::block::rules::Rule::Known(survives) => Some(survives),
         photon_world::block::rules::Rule::Unported => None,
     }
+}
+
+/// `TallGrassBlock.isValidBonemealTarget`: the tall plant it grows into survives where it stands
+/// and the block above is air.
+fn tall_grass_target(
+    ctx: &Context<'_>,
+    name: &str,
+    pos: (i32, i32, i32),
+    above: BlockStateId,
+) -> Option<bool> {
+    let grown = if name == "fern" {
+        "minecraft:large_fern"
+    } else {
+        "minecraft:tall_grass"
+    };
+    Some(survives_at(ctx, grown, pos)? && is_air(above))
+}
+
+/// `NetherrackBlock.isValidBonemealTarget`: the block above lets skylight through and nylium is
+/// within one block in every direction.
+fn netherrack_target(ctx: &Context<'_>, pos: (i32, i32, i32), above: BlockStateId) -> bool {
+    if !photon_world::block::state_or_air(above).propagates_skylight_down {
+        return false;
+    }
+    (-1..=1).any(|dx| {
+        (-1..=1).any(|dy| {
+            (-1..=1).any(|dz| {
+                let near = ctx.state_at((pos.0 + dx, pos.1 + dy, pos.2 + dz));
+                matches!(
+                    block(near).name,
+                    "minecraft:crimson_nylium" | "minecraft:warped_nylium"
+                )
+            })
+        })
+    })
+}
+
+/// `BambooStalkBlock.isValidBonemealTarget`: the stalk is under sixteen blocks tall, its top is
+/// not at the last stage, and the block above the top is empty.
+fn bamboo_target(ctx: &Context<'_>, pos: (i32, i32, i32)) -> bool {
+    let is_bamboo = |y: i32| block(ctx.state_at((pos.0, y, pos.2))).name == "minecraft:bamboo";
+    let above = (1..=16).take_while(|step| is_bamboo(pos.1 + step)).count() as i32;
+    let below = (1..=16).take_while(|step| is_bamboo(pos.1 - step)).count() as i32;
+    let top = ctx.state_at((pos.0, pos.1 + above, pos.2));
+    above + below + 1 < 16
+        && property(top, "stage") != Some("1")
+        && is_air(ctx.state_at((pos.0, pos.1 + above + 1, pos.2)))
+}
+
+/// `BonemealableBlock.hasSpreadableNeighbourPos`: a horizontal neighbour that is empty and where
+/// the plant spreads to would survive.
+fn spreader_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Option<bool> {
+    let seed = match name {
+        "tall_dry_grass" => "minecraft:short_dry_grass",
+        "bush" => "minecraft:bush",
+        _ => "minecraft:firefly_bush",
+    };
+    for (dx, dz) in [(0, -1), (0, 1), (-1, 0), (1, 0)] {
+        let beside = (pos.0 + dx, pos.1, pos.2 + dz);
+        if is_air(ctx.state_at(beside)) && survives_at(ctx, seed, beside)? {
+            return Some(true);
+        }
+    }
+    Some(false)
 }
 
 /// `BonemealableBlock.isValidBonemealTarget` on the client for the block at `pos`: `Some` where
@@ -124,6 +178,18 @@ fn valid_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) ->
     }
     if matches!(name, "short_grass" | "fern") {
         return tall_grass_target(ctx, name, pos, above);
+    }
+    match name {
+        "netherrack" => return Some(netherrack_target(ctx, pos, above)),
+        "bamboo" => return Some(bamboo_target(ctx, pos)),
+        "mangrove_propagule" => {
+            let hanging = property(state, "hanging") == Some("true");
+            return Some(!hanging || property(state, "age") != Some("4"));
+        }
+        _ => {}
+    }
+    if matches!(name, "tall_dry_grass" | "bush" | "firefly_bush") {
+        return spreader_target(ctx, name, pos);
     }
     if let Some(target) = column_target(ctx, name, pos) {
         return Some(target);
@@ -208,14 +274,8 @@ fn bonemealable_name(name: &str) -> bool {
             | "glow_lichen"
             | "moss_carpet"
             | "pale_moss_carpet"
-            | "mangrove_propagule"
-            | "bamboo"
             | "bamboo_sapling"
-            | "netherrack"
-            | "tall_dry_grass"
             | "pitcher_crop"
-            | "bush"
-            | "firefly_bush"
     )
 }
 
