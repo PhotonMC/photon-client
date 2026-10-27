@@ -2,6 +2,7 @@
 //! their own and drawn from places set aside in the entity textures. Until a skin is there, or
 //! where there is none, a player wears its default skin (`DefaultPlayerSkin.get`).
 
+pub(crate) mod dynamic;
 pub(crate) mod item_profile;
 pub(crate) mod profile;
 mod slots;
@@ -23,9 +24,9 @@ use worker::{KeyCell, Loaded};
 /// How many downloaded skins the entity textures have room for at once.
 pub(crate) const SLOT_COUNT: usize = 64;
 /// How many skins load at the same time.
-const MAX_LOADING: usize = 4;
+pub(super) const MAX_LOADING: usize = 4;
 /// How long a skin that failed to load is left alone.
-const RETRY: Duration = Duration::from_secs(5 * 60);
+pub(super) const RETRY: Duration = Duration::from_secs(5 * 60);
 /// How many downloaded capes the entity textures have room for at once.
 pub(crate) const CAPE_SLOT_COUNT: usize = 32;
 /// A skin's width and height in the places; a cape has the same width and half the height.
@@ -101,6 +102,8 @@ pub(crate) struct Skins {
     frame: u64,
     /// Where the local player's cape is, if it has one: set by the frame that dresses it.
     pub(crate) own_cape: Option<TextureRect>,
+    /// The lookups of heads that name their owner by name or id.
+    pub(crate) lookups: dynamic::Lookups,
     /// The places written since the last call, for the GPU to take.
     dirty: Vec<photon_render::vulkan::AtlasRegion>,
 }
@@ -141,6 +144,7 @@ impl Skins {
             load,
             frame: 0,
             own_cape: None,
+            lookups: dynamic::Lookups::default(),
             dirty: Vec::new(),
         };
         skins.lay_out(textures);
@@ -162,6 +166,7 @@ impl Skins {
     /// A frame begins: the skins that finished loading are taken in, and more are started.
     pub(crate) fn begin_frame(&mut self) {
         self.frame += 1;
+        self.lookups.begin_frame();
         while let Ok(done) = self.finished.try_recv() {
             self.loading = self.loading.saturating_sub(1);
             if let Some(player) = self.players.get_mut(&done.id)

@@ -14,7 +14,7 @@ pub fn write_uuid(value: Uuid, output: &mut Vec<u8>) {
 }
 
 /// 128-bit identifier split into big-endian halves.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Uuid {
     pub most: u64,
     pub least: u64,

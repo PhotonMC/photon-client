@@ -5,6 +5,8 @@ use photon_core::binary::Uuid;
 use photon_core::nbt::{Field, FieldValue, read_nbt};
 use photon_net::skins::ProfileProperty;
 
+use super::dynamic::{Dynamic, Resolvable};
+
 /// A profile that names its skin itself (`ResolvableProfile.Static`).
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct StaticProfile {
@@ -12,22 +14,45 @@ pub(crate) struct StaticProfile {
     pub properties: Vec<ProfileProperty>,
 }
 
-/// The profile of a head block entity's tag, when it has properties to show. A name or an id
-/// alone is a dynamic profile, which the reference looks up at the profile service.
-pub(crate) fn static_profile(tag: &[u8]) -> Option<StaticProfile> {
-    let fields = read_nbt(&mut &tag[..]).ok().flatten()?;
-    let FieldValue::Compound(profile) = &field(&fields, "profile")? else {
-        return None;
-    };
-    let properties = properties(field(profile, "properties")?)?;
-    if properties.is_empty() {
-        return None;
+/// `ResolvableProfile.create` of a partial profile: a name or an id alone, with no properties,
+/// is looked up; any other is the profile it says (its id the given one, or the nil one).
+pub(crate) fn resolvable(
+    name: Option<String>,
+    id: Option<Uuid>,
+    properties: Vec<ProfileProperty>,
+) -> Resolvable {
+    match (name, id) {
+        (Some(name), None) if properties.is_empty() => Resolvable::Dynamic(Dynamic::Name(name)),
+        (None, Some(id)) if properties.is_empty() => Resolvable::Dynamic(Dynamic::Id(id)),
+        (_, id) => Resolvable::Static(StaticProfile {
+            id: id.unwrap_or(Uuid::new(0, 0)),
+            properties,
+        }),
     }
-    let id = match field(profile, "id") {
-        Some(FieldValue::IntArray(parts)) if parts.len() == 4 => uuid(parts),
-        _ => Uuid::new(0, 0),
+}
+
+/// The profile of a head block entity's tag: a name alone, or the compound with a name, an id
+/// and properties of which each may be missing.
+pub(crate) fn resolvable_profile(tag: &[u8]) -> Option<Resolvable> {
+    let fields = read_nbt(&mut &tag[..]).ok().flatten()?;
+    let profile = match field(&fields, "profile")? {
+        FieldValue::Str(name) => return Some(resolvable(Some(name.clone()), None, Vec::new())),
+        FieldValue::Compound(profile) => profile,
+        _ => return None,
     };
-    Some(StaticProfile { id, properties })
+    let name = match field(profile, "name") {
+        Some(FieldValue::Str(name)) => Some(name.clone()),
+        _ => None,
+    };
+    let id = match field(profile, "id") {
+        Some(FieldValue::IntArray(parts)) if parts.len() == 4 => Some(uuid(parts)),
+        _ => None,
+    };
+    let properties = match field(profile, "properties") {
+        Some(value) => properties(value)?,
+        None => Vec::new(),
+    };
+    Some(resolvable(name, id, properties))
 }
 
 fn field<'a>(fields: &'a [Field], key: &str) -> Option<&'a FieldValue> {
@@ -89,6 +114,13 @@ mod tests {
     use super::*;
     use photon_core::nbt::write_nbt;
 
+    fn static_of(tag: &[u8]) -> StaticProfile {
+        match resolvable_profile(tag) {
+            Some(Resolvable::Static(profile)) => profile,
+            other => panic!("{other:?}"),
+        }
+    }
+
     fn tag(profile: FieldValue) -> Vec<u8> {
         let root = [Field {
             key: "profile".into(),
@@ -120,7 +152,7 @@ mod tests {
                 value: FieldValue::List(vec![property]),
             },
         ]);
-        let found = static_profile(&tag(profile)).unwrap();
+        let found = static_of(&tag(profile));
         assert_eq!(found.id, Uuid::new(0x1_0000_0002, 0x3_ffff_fffc));
         assert_eq!(found.properties[0].name, "textures");
         assert_eq!(found.properties[0].signature, None);
@@ -136,13 +168,16 @@ mod tests {
             key: "properties".into(),
             value: map,
         }]);
-        let found = static_profile(&tag(profile)).unwrap();
+        let found = static_of(&tag(profile));
         assert_eq!(found.properties[0].value, "abc");
         assert_eq!(found.id, Uuid::new(0, 0));
     }
 
     #[test]
-    fn a_name_alone_is_not_static() {
-        assert_eq!(static_profile(&tag(FieldValue::Str("Steve".into()))), None);
+    fn a_name_alone_is_dynamic() {
+        assert_eq!(
+            resolvable_profile(&tag(FieldValue::Str("Steve".into()))),
+            Some(Resolvable::Dynamic(Dynamic::Name("Steve".into())))
+        );
     }
 }

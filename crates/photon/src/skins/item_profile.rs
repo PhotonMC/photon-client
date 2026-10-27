@@ -1,7 +1,8 @@
 //! The `minecraft:profile` component of a stack, as the wire carries it: what a player head item
 //! shows the skin of.
 
-use super::profile::StaticProfile;
+use super::dynamic::Resolvable;
+use super::profile::resolvable;
 use photon_core::binary::Uuid;
 use photon_net::skins::ProfileProperty;
 use photon_world::ClientItemStackState;
@@ -60,30 +61,33 @@ impl Reader<'_> {
     }
 }
 
-/// `ResolvableProfile.STREAM_CODEC`: a complete profile (id, name, properties), or the partial
-/// one a name or an id alone makes, whose properties are the server's to have filled in.
-fn read_profile(bytes: &[u8]) -> Option<StaticProfile> {
+/// `ResolvableProfile.STREAM_CODEC`: a complete game profile (id, name, properties), or the
+/// partial one of a name, an id and properties each of which may be missing.
+fn read_profile(bytes: &[u8]) -> Option<Resolvable> {
     let mut reader = Reader(bytes);
-    let id = if reader.boolean()? {
+    if reader.boolean()? {
         let id = reader.uuid()?;
         reader.string()?;
-        id
+        return Some(Resolvable::Static(super::profile::StaticProfile {
+            id,
+            properties: reader.properties()?,
+        }));
+    }
+    let name = if reader.boolean()? {
+        Some(reader.string()?)
     } else {
-        if reader.boolean()? {
-            reader.string()?;
-        }
-        if reader.boolean()? {
-            reader.uuid()?
-        } else {
-            Uuid::new(0, 0)
-        }
+        None
     };
-    let properties = reader.properties()?;
-    (!properties.is_empty()).then_some(StaticProfile { id, properties })
+    let id = if reader.boolean()? {
+        Some(reader.uuid()?)
+    } else {
+        None
+    };
+    Some(resolvable(name, id, reader.properties()?))
 }
 
 /// The profile a stack carries when it names its skin itself.
-pub(crate) fn stack_profile(stack: &ClientItemStackState) -> Option<StaticProfile> {
+pub(crate) fn stack_profile(stack: &ClientItemStackState) -> Option<Resolvable> {
     let values =
         photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes());
     read_profile(values.raw(photon_data::item::component_types::PROFILE)?)
@@ -91,6 +95,7 @@ pub(crate) fn stack_profile(stack: &ClientItemStackState) -> Option<StaticProfil
 
 #[cfg(test)]
 mod tests {
+    use super::super::dynamic::Dynamic;
     use super::*;
 
     fn string(out: &mut Vec<u8>, text: &str) {
@@ -108,18 +113,42 @@ mod tests {
         string(&mut bytes, "textures");
         string(&mut bytes, "abc");
         bytes.push(0);
-        let found = read_profile(&bytes).unwrap();
+        let Some(Resolvable::Static(found)) = read_profile(&bytes) else {
+            panic!("a complete profile is static");
+        };
         assert_eq!(found.id, Uuid::new(1, 2));
         assert_eq!(found.properties[0].value, "abc");
         assert_eq!(found.properties[0].signature, None);
     }
 
     #[test]
-    fn a_partial_profile_without_properties_is_not_static() {
+    fn a_name_alone_is_looked_up() {
         let mut bytes = vec![0, 1];
         string(&mut bytes, "Steve");
         bytes.extend([0, 0]);
-        assert_eq!(read_profile(&bytes), None);
+        assert_eq!(
+            read_profile(&bytes),
+            Some(Resolvable::Dynamic(Dynamic::Name("Steve".into())))
+        );
+    }
+
+    #[test]
+    fn an_id_alone_is_looked_up_and_both_are_not() {
+        let mut bytes = vec![0, 0, 1];
+        bytes.extend(3u64.to_be_bytes());
+        bytes.extend(4u64.to_be_bytes());
+        bytes.push(0);
+        assert_eq!(
+            read_profile(&bytes),
+            Some(Resolvable::Dynamic(Dynamic::Id(Uuid::new(3, 4))))
+        );
+        let mut both = vec![0, 1];
+        string(&mut both, "Steve");
+        both.push(1);
+        both.extend(3u64.to_be_bytes());
+        both.extend(4u64.to_be_bytes());
+        both.push(0);
+        assert!(matches!(read_profile(&both), Some(Resolvable::Static(_))));
     }
 
     #[test]

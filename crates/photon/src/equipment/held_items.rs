@@ -247,7 +247,7 @@ pub struct WornSkull {
     pub kind: SkullKind,
     pub pose: Pose,
     /// A player head's profile, when it names its skin itself.
-    pub profile: Option<crate::skins::profile::StaticProfile>,
+    pub profile: Option<crate::skins::dynamic::Resolvable>,
 }
 
 impl Hands<'_> {

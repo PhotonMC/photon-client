@@ -186,6 +186,38 @@ impl PlaySession {
             .map_or(&[], |info| info.properties.as_slice())
     }
 
+    /// `LocalPlayerResolver.fetchByName`: the tab list's player of this name (any case), with the
+    /// profile's properties.
+    pub fn tab_profile_by_name(
+        &self,
+        name: &str,
+    ) -> Option<(
+        photon_core::binary::Uuid,
+        &[photon_protocol::play::ProfileProperty],
+    )> {
+        self.social
+            .player_infos
+            .iter()
+            .find(|(_, info)| info.name.eq_ignore_ascii_case(name))
+            .map(|(id, info)| {
+                (
+                    photon_core::binary::Uuid::new(id.0, id.1),
+                    info.properties.as_slice(),
+                )
+            })
+    }
+
+    /// `LocalPlayerResolver.fetchById`: the properties of the tab list's player with this id.
+    pub fn tab_profile_by_id(
+        &self,
+        uuid: photon_core::binary::Uuid,
+    ) -> Option<&[photon_protocol::play::ProfileProperty]> {
+        self.social
+            .player_infos
+            .get(&(uuid.most, uuid.least))
+            .map(|info| info.properties.as_slice())
+    }
+
     /// `getOnlinePlayerIds` with their names, and the seen players who have left
     /// (`getSeenPlayers`), for the social interactions screen.
     pub fn social_players(&self) -> SocialPlayers {

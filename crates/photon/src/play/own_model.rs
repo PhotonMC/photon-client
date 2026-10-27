@@ -17,7 +17,7 @@ impl Play {
         );
         self.armor
             .head_skins
-            .resolve(&mut self.entity_textures, &mut self.skins);
+            .resolve((&mut self.entity_textures, &mut self.skins), &self.session);
     }
 
     /// A skin written into the textures is there before the frame draws.
@@ -31,6 +31,7 @@ impl Play {
             &mut self.worn_layers,
             (&self.block_renderer, &self.biome_tints),
             (&mut self.entity_textures, &mut self.skins),
+            &self.session,
         );
         self.entity_vertices.extend(heads);
         let written = self.skins.take_dirty();

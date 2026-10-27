@@ -60,6 +60,7 @@ pub fn skinned_head_vertices(
     layers: &mut [ItemLayerCache; 4],
     (renderer, tints): (&BlockRenderer, &BiomeTints),
     (textures, skins): (&mut EntityTextures, &mut Skins),
+    session: &photon_net::connection::PlaySession,
 ) -> Vec<Vertex> {
     let head = photon_data::item::registry::named("minecraft:player_head");
     let Some(default) = renderer.atlas.sprites.get(DEFAULT_SKIN).copied() else {
@@ -75,6 +76,7 @@ pub fn skinned_head_vertices(
             _ => None,
         };
         let resolved = profile.and_then(|profile| {
+            let profile = skins.lookups.profile(profile, session);
             let who = Who {
                 id: profile.id,
                 properties: &profile.properties,

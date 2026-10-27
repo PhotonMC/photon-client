@@ -71,9 +71,10 @@ pub fn resolve_skull_skins(
         else {
             continue;
         };
-        let Some(profile) = profile::static_profile(tag) else {
+        let Some(profile) = profile::resolvable_profile(tag) else {
             continue;
         };
+        let profile = skins.lookups.profile(profile, session);
         let who = Who {
             id: profile.id,
             properties: &profile.properties,
