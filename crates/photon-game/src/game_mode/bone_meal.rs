@@ -267,16 +267,7 @@ fn fixed_target(name: &str) -> Option<bool> {
 
 /// Whether the name is a block class with a `BonemealableBlock` rule not ported here.
 fn bonemealable_name(name: &str) -> bool {
-    matches!(
-        name,
-        "short_grass"
-            | "fern"
-            | "glow_lichen"
-            | "moss_carpet"
-            | "pale_moss_carpet"
-            | "bamboo_sapling"
-            | "pitcher_crop"
-    )
+    matches!(name, "glow_lichen" | "pale_moss_carpet" | "pitcher_crop")
 }
 
 /// `BoneMealItem.useOn`: swings where the clicked block grows, or where the block beside the face

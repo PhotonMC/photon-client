@@ -60,7 +60,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     };
     let mut rows = plants(meal, &at);
     rows.extend(columns(meal, &below));
-    rows.extend([spreaders(meal), netherrack(meal), stalks(meal)].concat());
+    rows.extend([spreaders(meal), netherrack(meal), stalks(meal), always(meal)].concat());
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
@@ -271,5 +271,18 @@ fn stalks(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
         meal("bone-meal-propagule-planted", propagule("false", "4")),
         meal("bone-meal-propagule-hanging-young", propagule("true", "2")),
         meal("bone-meal-propagule-hanging-grown", propagule("true", "4")),
+    ]
+}
+
+/// Plants whose bone meal check is always true, and the plain carpet that has none.
+fn always(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    let alone = |plant: &str| vec![put(0, 64, 2, plant)];
+    vec![
+        meal("bone-meal-moss-carpet", alone("minecraft:moss_carpet")),
+        meal("bone-meal-short-dry-grass", alone("minecraft:short_dry_grass")),
+        meal("bone-meal-wildflowers", alone("minecraft:wildflowers")),
+        meal("bone-meal-small-dripleaf", vec![put_with(0, 64, 2, "minecraft:small_dripleaf", &[("half", "lower")])]),
+        meal("bone-meal-lilac", vec![put_with(0, 64, 2, "minecraft:lilac", &[("half", "lower")])]),
+        meal("bone-meal-rose-bush", vec![put_with(0, 64, 2, "minecraft:rose_bush", &[("half", "lower")])]),
     ]
 }
