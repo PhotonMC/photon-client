@@ -91,3 +91,48 @@ pub fn other_chest_half(state: BlockStateId, pos: (i32, i32, i32)) -> Option<(i3
     }
     Some(offset(pos, connected_direction(state)?))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{scraped, waxed, waxed_off};
+
+    fn named(name: &str) -> photon_core::ids::BlockStateId {
+        super::registry::default_state_named(name)
+    }
+
+    fn name_of(state: Option<photon_core::ids::BlockStateId>) -> Option<&'static str> {
+        state.map(|state| crate::block::state_or_air(state).block().name)
+    }
+
+    #[test]
+    fn lightning_rods_and_blocks_age_and_wax() {
+        let rod = named("minecraft:exposed_lightning_rod");
+        assert_eq!(name_of(scraped(rod)), Some("minecraft:lightning_rod"));
+        assert_eq!(
+            name_of(waxed(rod)),
+            Some("minecraft:waxed_exposed_lightning_rod")
+        );
+        let waxed_rod = named("minecraft:waxed_lightning_rod");
+        assert_eq!(
+            name_of(waxed_off(waxed_rod)),
+            Some("minecraft:lightning_rod")
+        );
+        assert_eq!(scraped(waxed_rod), None);
+    }
+
+    #[test]
+    fn other_copper_things_are_left_alone() {
+        for name in [
+            "minecraft:copper_torch",
+            "minecraft:raw_copper_block",
+            "minecraft:copper_ore",
+            "minecraft:stone",
+        ] {
+            let state = named(name);
+            assert_eq!(scraped(state), None, "{name}");
+            assert_eq!(waxed(state), None, "{name}");
+            assert_eq!(waxed_off(state), None, "{name}");
+        }
+        assert_eq!(scraped(named("minecraft:copper_block")), None);
+    }
+}

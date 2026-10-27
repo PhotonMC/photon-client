@@ -45,6 +45,11 @@ fn simple() -> Vec<Value> {
         row("item-on-pumpkin-stone", pumpkin(), &north()).main_hand("minecraft:stone").count(4).row(),
         row("item-on-tnt-flint", tnt(), &north()).main_hand("minecraft:flint_and_steel").row(),
         row("item-on-tnt-fire-charge", tnt(), &north()).main_hand("minecraft:fire_charge").count(3).row(),
+        row("item-on-tnt-fire-charge-creative", tnt(), &north())
+            .main_hand("minecraft:fire_charge")
+            .count(3)
+            .game_mode("creative")
+            .row(),
         row("item-on-tnt-stone", tnt(), &north()).main_hand("minecraft:stone").count(4).row(),
         row("item-on-vault-active-stone", vault("active"), &north()).main_hand("minecraft:stone").count(4).row(),
         row("item-on-vault-inactive-stone", vault("inactive"), &north()).main_hand("minecraft:stone").count(4).row(),

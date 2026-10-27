@@ -331,8 +331,10 @@ pub(super) fn fire_charge_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> U
         ctx.world
             .set_block_with_updates(target, state, 3, 512, position);
     }
-    let slot = ctx.hand_slot(hand);
-    ctx.world.shrink_local_player_slot(slot, 1);
+    if !ctx.instabuild() {
+        let slot = ctx.hand_slot(hand);
+        ctx.world.shrink_local_player_slot(slot, 1);
+    }
     UseResult::Success { swing: true }
 }
 

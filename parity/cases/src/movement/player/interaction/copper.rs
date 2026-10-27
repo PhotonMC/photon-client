@@ -6,6 +6,11 @@ use super::item_on::{north, row};
 use crate::movement::world::{put, put_with};
 
 pub(super) fn copper_blocks() -> Vec<Value> {
+    [axe(), honeycomb()].concat()
+}
+
+/// Scraping and wax-off by axe.
+fn axe() -> Vec<Value> {
     let stairs = |block: &str| {
         vec![put_with(
             0,
@@ -16,7 +21,23 @@ pub(super) fn copper_blocks() -> Vec<Value> {
         )]
     };
     let plain = |block: &str| vec![put(0, 64, 2, block)];
+    let door = |block: &str, half: &str| {
+        put_with(
+            0,
+            64 + i64::from(half == "upper"),
+            2,
+            block,
+            &[("facing", "east"), ("half", half), ("hinge", "left"), ("open", "false"), ("powered", "false")],
+        )
+    };
     vec![
+        row(
+            "item-on-copper-axe-scrape-door",
+            vec![door("minecraft:exposed_copper_door", "lower"), door("minecraft:exposed_copper_door", "upper")],
+            &north(),
+        )
+        .main_hand("minecraft:iron_axe")
+        .row(),
         row("item-on-copper-axe-scrape", plain("minecraft:oxidized_copper"), &north())
             .main_hand("minecraft:iron_axe")
             .row(),
@@ -32,6 +53,22 @@ pub(super) fn copper_blocks() -> Vec<Value> {
         row("item-on-copper-axe-wax-off-stairs", stairs("minecraft:waxed_cut_copper_stairs"), &north())
             .main_hand("minecraft:iron_axe")
             .row(),
+    ]
+}
+
+/// Honeycomb on copper, waxed copper and stone, and in creative mode.
+fn honeycomb() -> Vec<Value> {
+    let stairs = |block: &str| {
+        vec![put_with(
+            0,
+            64,
+            2,
+            block,
+            &[("facing", "east"), ("half", "top"), ("shape", "straight"), ("waterlogged", "false")],
+        )]
+    };
+    let plain = |block: &str| vec![put(0, 64, 2, block)];
+    vec![
         row("item-on-copper-honeycomb", plain("minecraft:copper_block"), &north())
             .main_hand("minecraft:honeycomb")
             .count(3)
