@@ -15,6 +15,9 @@ impl Play {
             (&mut self.entity_textures, &mut self.skins),
             view,
         );
+        self.armor
+            .head_skins
+            .resolve(&mut self.entity_textures, &mut self.skins);
     }
 
     /// A skin written into the textures is there before the frame draws.

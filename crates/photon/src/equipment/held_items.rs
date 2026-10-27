@@ -242,20 +242,32 @@ pub fn skull_of(stack: &ClientItemStackState) -> Option<SkullKind> {
         .and_then(|item| SkullKind::of_item(item.name))
 }
 
+/// The skull on a head, and the pose it is drawn from.
+pub struct WornSkull {
+    pub kind: SkullKind,
+    pub pose: Pose,
+    /// A player head's profile, when it names its skin itself.
+    pub profile: Option<crate::skins::profile::StaticProfile>,
+}
+
 impl Hands<'_> {
     /// The skull on the head, and the pose it is drawn from (`CustomHeadLayer`'s `wornHeadType`
     /// branch; a skull is a model, not an item).
-    pub fn skull(&self) -> Option<(SkullKind, Pose)> {
-        let kind = skull_of(self.head?)?;
+    pub fn skull(&self) -> Option<WornSkull> {
+        let stack = self.head?;
+        let kind = skull_of(stack)?;
         let head = self
             .root
             .children()
             .iter()
             .find(|part| part.name() == "head")?;
-        Some((
+        Some(WornSkull {
             kind,
-            skull_pose(self.base, self.root, head, (0.0, self.head_transforms.1)),
-        ))
+            pose: skull_pose(self.base, self.root, head, (0.0, self.head_transforms.1)),
+            profile: (kind == SkullKind::Player)
+                .then(|| crate::skins::item_profile::stack_profile(stack))
+                .flatten(),
+        })
     }
 
     /// The part of the model named so.

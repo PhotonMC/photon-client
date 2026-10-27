@@ -91,6 +91,8 @@ pub struct Armor {
     /// The glints of the enchanted pieces drawn since they were last taken
     /// (`RenderTypes.armorEntityGlint`), for the renderer's glint pass.
     pub glint: Vec<Vertex>,
+    /// The skins of the player heads worn.
+    pub head_skins: super::head_skins::HeadSkins,
     /// The compass needles, shared by the caches that draw the local player's stacks.
     pub needles: super::needle::SharedNeedles,
     /// What `Util.getMillis` is counted from for the glint's movement.
@@ -104,6 +106,7 @@ pub struct Armor {
 pub type Place<'a> = &'a dyn Fn(&MobModel, TextureRect, Option<u32>) -> Vec<Vertex>;
 
 mod gates;
+mod skull;
 
 /// The layer types armor is drawn in, by `HumanoidArmorLayer`.
 const HUMANOID: &str = "humanoid";
@@ -148,6 +151,7 @@ impl Armor {
             trims: TrimData::load(&std::path::Path::new(root).with_file_name("data")),
             trim_names: None,
             glint: Vec::new(),
+            head_skins: Default::default(),
             needles: super::needle::SharedNeedles::default(),
             clock: std::time::Instant::now(),
             glint_speed: 0.5,
@@ -352,41 +356,6 @@ impl Armor {
             }
         }
         vertices
-    }
-
-    /// `CustomHeadLayer`'s skull: the skull's model, posed by the wearer's walk (a piglin's ears and a
-    /// dragon's jaw follow it), in its texture, from the pose the layer leaves.
-    pub fn skull_vertices(
-        &mut self,
-        skull: Option<(SkullKind, photon_render::joml::Pose)>,
-        animation_pos: f32,
-        textures: &EntityTextures,
-        (light, red_overlay): (i32, bool),
-    ) -> Vec<Vertex> {
-        let Some((kind, pose)) = skull else {
-            return Vec::new();
-        };
-        let Some(rect) = textures.rect(kind.texture()) else {
-            return Vec::new();
-        };
-        if !self.models.contains_key(kind.layer()) {
-            let Some(layer) = photon_data::entity_model::layer(kind.layer()) else {
-                return Vec::new();
-            };
-            self.models
-                .insert(kind.layer().to_owned(), MobModel::bake(layer));
-        }
-        let model = self
-            .models
-            .get_mut(kind.layer())
-            .expect("the model was just built");
-        model.setup_skull(kind, animation_pos);
-        photon_render::entity::mob_model::mob_vertices_posed(
-            model,
-            &pose,
-            rect,
-            (light, red_overlay),
-        )
     }
 
     /// `WingsLayer`: the wings of what is worn on the chest (an elytra), spread by the wearer's
