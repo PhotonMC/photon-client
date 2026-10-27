@@ -55,13 +55,39 @@ pub(super) fn place(ctx: &mut Context<'_>, hand: u8, item: ItemId, aim: Aim) -> 
     if !set_placed_blocks(ctx, &writes) {
         return UseResult::Fail;
     }
-    ctx.world.play_place_sound(pos, state);
-    // `ItemStack.consume`: used up unless materials are infinite.
-    if !ctx.instabuild() {
-        let slot = ctx.hand_slot(hand);
-        ctx.world.shrink_local_player_slot(slot, 1);
-    }
+    consume_placed(ctx, hand, item, pos, state);
     UseResult::Success { swing: true }
+}
+
+/// What follows a block placed: its sound, and the stack used up (`ItemStack.consume`, unless
+/// materials are infinite). A solid bucket sounds its own and leaves the emptied bucket
+/// (`SolidBucketItem.useOn`, `getEmptySuccessItem`).
+fn consume_placed(
+    ctx: &mut Context<'_>,
+    hand: u8,
+    item: ItemId,
+    pos: (i32, i32, i32),
+    state: photon_core::ids::BlockStateId,
+) {
+    let solid_bucket = rules::item(item).is_some_and(|row| row.class == ItemClass::SolidBucketItem);
+    if solid_bucket {
+        ctx.world
+            .play_place_sound_as(pos, state, "minecraft:item.bucket.empty_powder_snow");
+    } else {
+        ctx.world.play_place_sound(pos, state);
+    }
+    if ctx.instabuild() {
+        return;
+    }
+    let slot = ctx.hand_slot(hand);
+    ctx.world.shrink_local_player_slot(slot, 1);
+    if let Some(bucket) = solid_bucket
+        .then(|| crate::item::id_of("minecraft:bucket"))
+        .flatten()
+    {
+        ctx.world
+            .put_local_player_slot(slot, ClientItemStackState::new(1, bucket));
+    }
 }
 
 /// `BlockPlaceContext.canPlace` for the stack in `hand` used on the block `aim` hits: the block

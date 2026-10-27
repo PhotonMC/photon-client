@@ -67,6 +67,22 @@ impl ClientWorld {
         }
     }
 
+    /// `SolidBucketItem.getPlaceSound`: the bucket's own sound at the block's volume and pitch.
+    pub fn play_place_sound_as(
+        &mut self,
+        pos: (i32, i32, i32),
+        state: BlockStateId,
+        event: &'static str,
+    ) {
+        let place = photon_data::block_sound::SoundTypeRow::place_sound;
+        if let Some(mut sound) =
+            block_sound_of(pos, state, place, (|volume| (volume + 1.0) / 2.0, 0.8))
+        {
+            sound.event = event;
+            self.sounds.0.push(sound);
+        }
+    }
+
     /// `BlockItem.place`'s sound: the block placed, a little softer than loud and lower.
     pub fn play_place_sound(&mut self, pos: (i32, i32, i32), state: BlockStateId) {
         self.block_sound(

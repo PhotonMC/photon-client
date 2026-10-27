@@ -360,7 +360,9 @@ impl GameMode {
             ItemClass::Item => UseResult::Pass,
             // `PlaceOnWaterBlockItem.useOn` passes: the item is placed by its `use`.
             ItemClass::PlaceOnWaterBlockItem => UseResult::Pass,
-            ItemClass::BlockItem if rules::item_placement(item).is_some() => {
+            ItemClass::BlockItem | ItemClass::SolidBucketItem
+                if rules::item_placement(item).is_some() =>
+            {
                 super::placing::place(ctx, hand, item, aim)
             }
             class => super::tools::use_on(ctx, (hand, class), aim)

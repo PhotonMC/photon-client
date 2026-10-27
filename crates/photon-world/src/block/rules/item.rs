@@ -53,7 +53,7 @@ pub fn item_placement(item_id: ItemId) -> Option<ItemPlacement> {
     let item = item(item_id)?;
     item.block?;
     match item.class {
-        ItemClass::BlockItem => Some(ItemPlacement::Plain),
+        ItemClass::BlockItem | ItemClass::SolidBucketItem => Some(ItemPlacement::Plain),
         ItemClass::DoubleHighBlockItem => Some(ItemPlacement::DoubleHigh),
         ItemClass::BedItem => Some(ItemPlacement::Bed),
         ItemClass::ScaffoldingBlockItem => Some(ItemPlacement::Scaffolding),
@@ -496,8 +496,8 @@ mod tests {
             count.0 += 1;
             count.1 += usize::from(known);
         }
-        assert_eq!(plain.0, 938);
-        assert!(plain.1 >= 938, "plain block items predicted: {}", plain.1);
+        assert_eq!(plain.0, 939);
+        assert!(plain.1 >= 939, "plain block items predicted: {}", plain.1);
         assert!(other.1 >= 115, "other block items predicted: {}", other.1);
     }
 }

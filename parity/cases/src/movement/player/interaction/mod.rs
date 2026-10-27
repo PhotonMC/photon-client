@@ -16,6 +16,7 @@ mod item_on;
 mod opening;
 mod pistons;
 mod placing;
+mod solid_bucket;
 mod stepping;
 mod throwing;
 mod utility;
@@ -260,6 +261,7 @@ pub fn cases() -> Vec<Value> {
                 opening::rows(),
                 item_on::rows(),
                 cauldron::rows(),
+                solid_bucket::rows(),
             ]
             .concat(),
         ),
