@@ -281,6 +281,9 @@ pub struct PlayerRenderState {
     /// The spear each arm holds, which a spear pose raises the arm with.
     pub right_spear: Option<&'static photon_data::spear::Spear>,
     pub left_spear: Option<&'static photon_data::spear::Spear>,
+    /// The skin layers hidden (`PlayerModelPart` masks, `AvatarRenderer.extractRenderState`'s
+    /// `show*`): none hides nothing.
+    pub hidden_layers: u8,
 }
 
 impl Default for PlayerRenderState {
@@ -312,6 +315,7 @@ impl Default for PlayerRenderState {
             main_hand_empty: true,
             right_spear: None,
             left_spear: None,
+            hidden_layers: 0,
         }
     }
 }
@@ -433,10 +437,32 @@ impl PlayerModel {
         self.root.child(name)
     }
 
+    /// The outer layers by the part they hang on and their `PlayerModelPart` bit.
+    const LAYERS: [(&str, &str, u8); 6] = [
+        ("body", "jacket", 1),
+        ("left_arm", "left_sleeve", 2),
+        ("right_arm", "right_sleeve", 3),
+        ("left_leg", "left_pants", 4),
+        ("right_leg", "right_pants", 5),
+        ("head", "hat", 6),
+    ];
+
     /// `PlayerModel.setupAnim` and `HumanoidModel.setupAnim` for empty hands,
     /// on foot.
     pub fn setup_anim(&mut self, state: &PlayerRenderState) {
         humanoid_anim(&mut self.root, state);
+        // `PlayerModel.setupAnim`: each outer layer shows by its part's bit.
+        for (parent, layer, bit) in Self::LAYERS {
+            let shown = state.hidden_layers & (1 << bit) == 0;
+            if let Some(part) = self
+                .part(parent)
+                .children
+                .iter_mut()
+                .find(|child| child.name == layer)
+            {
+                part.visible = shown;
+            }
+        }
     }
 
     /// `AvatarRenderer.renderHand`: one arm alone, as the first-person view

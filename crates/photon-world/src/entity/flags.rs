@@ -172,13 +172,18 @@ impl ClientEntity {
             })
     }
 
-    /// `Avatar.isModelPartShown(CAPE)`: the cape bit of the skin layers the player's client
-    /// sent (none until it does).
-    pub fn shows_cape(&self) -> bool {
+    /// `Avatar.DATA_PLAYER_MODE_CUSTOMISATION`: the skin layers an avatar shows, a bit for each
+    /// `PlayerModelPart` (none until the server sends them; a mannequin's start as all).
+    pub fn model_parts(&self) -> u8 {
         self.metadata
             .as_deref()
             .and_then(crate::metadata::player_model_customisation_from_metadata)
-            .is_some_and(|parts| parts & 1 != 0)
+            .unwrap_or(0)
+    }
+
+    /// `Avatar.isModelPartShown(CAPE)`: the cape bit of the skin layers.
+    pub fn shows_cape(&self) -> bool {
+        self.model_parts() & 1 != 0
     }
 
     /// `AvatarRenderer.isEntityUpsideDown` for a player: the cape shows and the profile is named

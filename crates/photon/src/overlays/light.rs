@@ -519,6 +519,7 @@ pub(super) fn remote_render_state(
         swing_animation: spears.swing_animation,
         right_spear: spears.right,
         left_spear: spears.left,
+        hidden_layers: !entity.model_parts(),
         ..Default::default()
     };
     (state, spears)
