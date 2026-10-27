@@ -108,7 +108,26 @@ pub fn falling_blocks(
                 *coordinate += by;
             }
         }
+        if entity.is_glowing() {
+            crate::mobs::record_item_outline(entity, silhouette(&mesh));
+        }
         blocks.push((mesh, [shift[0] + 0.5, shift[1] + 0.5, shift[2] + 0.5]));
     }
     blocks
+}
+
+/// The triangles of a moving block's mesh as the outline draws them (`submitMovingBlock`'s
+/// outline colour): its places and its atlas coordinates, nothing of its light or shade.
+fn silhouette(mesh: &Mesh) -> Vec<photon_render::scene::Vertex> {
+    mesh.indices
+        .iter()
+        .filter_map(|&index| mesh.vertices.get(index as usize))
+        .map(|vertex| photon_render::scene::Vertex {
+            position: vertex.position,
+            uv: vertex.uv,
+            shade: 1.0,
+            tint: [1.0; 4],
+            light: [240.0, 240.0],
+        })
+        .collect()
 }

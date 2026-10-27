@@ -244,6 +244,7 @@ pub fn item_frames(
             frame_model(state, (model, &pose), (renderer, light), vertices);
             // `submitWithZOffset`: `entity_solid_z_offset_forward`, `VIEW_OFFSET_Z_LAYERING_FORWARD`.
             Layering::ViewOffsetForward.apply(&mut vertices[drawn..], view.camera);
+            outlined(entity, &vertices[drawn..]);
         }
         if let Some((id, data)) = map {
             let map_light = if glowing { GLOW_MAP_LIGHT } else { light };
@@ -254,8 +255,17 @@ pub fn item_frames(
             state.layers.set_owner(Some(frame_owner(entity, direction)));
             let layers = state.layers.get(stack, renderer, tints);
             let drawn = item_layer_vertices(layers, &[poses.item], item_light, false);
+            outlined(entity, &drawn);
             state.layers.extend_with_glint(stack, drawn, vertices);
         }
+    }
+}
+
+/// A glowing frame's model and item join its outline (a map does not: `MapRenderer.render` takes
+/// no outline colour).
+fn outlined(entity: &photon_world::ClientEntity, drawn: &[Vertex]) {
+    if entity.is_glowing() {
+        crate::mobs::record_item_outline(entity, drawn.to_vec());
     }
 }
 
