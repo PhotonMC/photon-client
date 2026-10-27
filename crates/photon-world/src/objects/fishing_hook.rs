@@ -1,0 +1,271 @@
+//! A fishing bobber's client tick (`FishingHook.tick`). The server tracks the bobber only every
+//! five ticks, so between its packets the client flies it, floats it and holds it to what it
+//! hooked, as the reference does.
+
+use photon_core::aabb::Aabb;
+use photon_core::binary::BlockPos;
+use photon_core::ids::EntityId;
+use photon_core::java_float::JavaF64;
+use photon_core::math::{Vec3, floor_f64};
+use photon_core::random::RandomSource;
+
+use crate::ClientWorld;
+use crate::collision::collide_entity_movement;
+use crate::entity::ClientEntityDimensions;
+use crate::local_player::Level;
+use crate::{metadata_boolean_value, metadata_int_value};
+
+/// `FishingHook.DATA_HOOKED_ENTITY` and `DATA_BITING`.
+const HOOKED_ENTITY_DATA_ID: u8 = 8;
+const BITING_DATA_ID: u8 = 9;
+
+/// `FishingHook.FishHookState`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum HookPhase {
+    #[default]
+    Flying,
+    HookedInEntity,
+    Bobbing,
+}
+
+/// What a bobber keeps between ticks.
+#[derive(Debug, Clone)]
+pub struct HookState {
+    phase: HookPhase,
+    /// The hooked entity's id plus one, none at zero (`DATA_HOOKED_ENTITY`).
+    hooked: i32,
+    biting: bool,
+    /// the synchronized random (`FishingHook`'s own), reseeded each tick from the bobber's UUID and the game time.
+    synchronized: RandomSource,
+    /// The entity's own random source, which the float draws from.
+    own: RandomSource,
+}
+
+/// The random sources are no part of what a bobber is equal to.
+impl PartialEq for HookState {
+    fn eq(&self, other: &Self) -> bool {
+        (self.phase, self.hooked, self.biting) == (other.phase, other.hooked, other.biting)
+    }
+}
+
+impl Eq for HookState {}
+
+impl HookState {
+    fn new(entity_id: EntityId) -> Self {
+        Self {
+            phase: HookPhase::Flying,
+            hooked: 0,
+            biting: false,
+            synchronized: RandomSource::create(0),
+            own: RandomSource::create(i64::from(entity_id.0)),
+        }
+    }
+}
+
+/// `EntityType.FISHING_BOBBER`'s size.
+fn hook_box(position: Vec3) -> Aabb {
+    ClientEntityDimensions::scalable(0.25, 0.25).make_bounding_box(position)
+}
+
+/// One tick's outcome: the new position, motion and ground flag.
+struct HookStep {
+    position: Vec3,
+    delta: Vec3,
+    on_ground: bool,
+}
+
+/// The water height at the bobber's block (`FluidState.getHeight` of water, else nothing).
+fn water_height(level: &Level<'_>, pos: BlockPos) -> f32 {
+    let info = level.info(pos);
+    if info.is_water() {
+        level.fluid_height(pos, &info)
+    } else {
+        0.0
+    }
+}
+
+/// The phase changes and the float, before gravity and the move; `Err` holds the motion the tick
+/// ends with when it ends there.
+fn steer(state: &mut HookState, position: Vec3, delta: Vec3, height: f32) -> Result<Vec3, Vec3> {
+    let in_water = height > 0.0;
+    match state.phase {
+        HookPhase::Flying if state.hooked > 0 => {
+            state.phase = HookPhase::HookedInEntity;
+            Err(Vec3::ZERO)
+        }
+        HookPhase::Flying if in_water => {
+            state.phase = HookPhase::Bobbing;
+            Err(Vec3::new(delta.x * 0.3, delta.y * 0.2, delta.z * 0.3))
+        }
+        HookPhase::Flying => Ok(delta),
+        HookPhase::HookedInEntity => Err(Vec3::ZERO),
+        HookPhase::Bobbing => {
+            let mut force = position.y + delta.y - floor_f64(position.y) as f64 - f64::from(height);
+            if force.abs() < 0.01 {
+                force += force.signum() * 0.1;
+            }
+            let pull = force * f64::from(state.own.next_float()) * 0.2;
+            let mut delta = Vec3::new(delta.x * 0.9, delta.y - pull, delta.z * 0.9);
+            if in_water && state.biting {
+                let sink = -0.1
+                    * f64::from(state.synchronized.next_float())
+                    * f64::from(state.synchronized.next_float());
+                delta = delta.add_vec3(Vec3::new(0.0, sink, 0.0));
+            }
+            Ok(delta)
+        }
+    }
+}
+
+/// `FishingHook.tick` after the interpolation and the base tick, as the client runs it.
+fn hook_step(
+    level: &Level<'_>,
+    state: &mut HookState,
+    (position, delta, on_ground): (Vec3, Vec3, bool),
+) -> HookStep {
+    let pos = BlockPos::new(
+        floor_f64(position.x),
+        floor_f64(position.y),
+        floor_f64(position.z),
+    );
+    let height = water_height(level, pos);
+    let mut delta = match steer(state, position, delta, height) {
+        Ok(delta) => delta,
+        Err(delta) => {
+            return HookStep {
+                position,
+                delta,
+                on_ground,
+            };
+        }
+    };
+    if !level.info(pos).is_water() && !on_ground && state.hooked == 0 {
+        delta = delta.add_vec3(Vec3::new(0.0, -0.03, 0.0));
+    }
+    move_hook(level, state.phase == HookPhase::Flying, position, delta)
+}
+
+/// `Entity.move` through the blocks, then a flying bobber stops on what it hit, and the drag.
+fn move_hook(level: &Level<'_>, flying: bool, position: Vec3, mut delta: Vec3) -> HookStep {
+    let bounding_box = hook_box(position);
+    let movement = match level.colliders(bounding_box.expand_towards_vec3(delta), 0.0, position) {
+        Ok(colliders) if delta.length_squared() != 0.0 => {
+            collide_entity_movement(delta, bounding_box, &colliders)
+        }
+        _ => delta,
+    };
+    let on_ground = delta.y != movement.y && delta.y < 0.0;
+    let horizontal = delta.x != movement.x || delta.z != movement.z;
+    if flying && (on_ground || horizontal) {
+        delta = Vec3::ZERO;
+    }
+    HookStep {
+        position: position.add_vec3(movement),
+        delta: delta.scale(0.92),
+        on_ground,
+    }
+}
+
+impl ClientWorld {
+    /// The entities the client moves between their packets: a dropped item and a bobber.
+    pub(crate) fn tick_client_moved(&mut self, entity_id: EntityId) {
+        self.tick_item_entity(entity_id);
+        self.tick_fishing_hook(entity_id);
+    }
+
+    /// One client tick of a fishing bobber's movement, after its interpolation.
+    pub(crate) fn tick_fishing_hook(&mut self, entity_id: EntityId) {
+        let game_time = self.game_time() as i64;
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return;
+        };
+        if !entity.is_fishing_bobber() {
+            return;
+        }
+        let seed = entity.uuid.least as i64 ^ game_time;
+        let (x, y, z) = entity.position();
+        let (dx, dy, dz) = entity.motion();
+        let motion = (Vec3::new(x, y, z), Vec3::new(dx, dy, dz), entity.on_ground);
+        let mut state = entity
+            .kind
+            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id)))
+            .clone();
+        state.synchronized.set_seed(seed);
+        if state.phase == HookPhase::HookedInEntity {
+            self.follow_hooked(entity_id, &mut state);
+            self.store_hook(entity_id, state, None);
+            return;
+        }
+        let step = hook_step(&Level::new(self), &mut state, motion);
+        self.store_hook(entity_id, state, Some(step));
+    }
+
+    /// The hooked phase: the bobber sits at the hooked entity, or flies again once it is gone.
+    fn follow_hooked(&mut self, entity_id: EntityId, state: &mut HookState) {
+        let hooked = (state.hooked > 0)
+            .then(|| self.entities.at(EntityId(state.hooked - 1)))
+            .flatten()
+            .map(|hooked| {
+                let (x, y, z) = hooked.position();
+                (x, y + f64::from(hooked.bb_height()) * 0.8, z)
+            });
+        match hooked {
+            Some(at) => {
+                if let Some(entity) = self.entities.at_mut(entity_id) {
+                    entity.set_position(at);
+                }
+            }
+            None if state.hooked > 0 => {
+                state.hooked = 0;
+                state.phase = HookPhase::Flying;
+            }
+            None => {}
+        }
+    }
+
+    fn store_hook(&mut self, entity_id: EntityId, state: HookState, step: Option<HookStep>) {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return;
+        };
+        if let Some(step) = step {
+            entity.set_position((step.position.x, step.position.y, step.position.z));
+            entity.motion.x = JavaF64::new(step.delta.x);
+            entity.motion.y = JavaF64::new(step.delta.y);
+            entity.motion.z = JavaF64::new(step.delta.z);
+            entity.on_ground = step.on_ground;
+        }
+        *entity
+            .kind
+            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id))) = state;
+    }
+
+    /// `FishingHook.onSyncedDataUpdated`: the hooked entity, and a bite that pulls the bobber
+    /// under.
+    pub fn apply_fishing_hook_metadata(&mut self, entity_id: EntityId, metadata: &[u8]) {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return;
+        };
+        if !entity.is_fishing_bobber() {
+            return;
+        }
+        let hooked = metadata_int_value(metadata, HOOKED_ENTITY_DATA_ID);
+        let biting = metadata_boolean_value(metadata, BITING_DATA_ID);
+        let (dx, _, dz) = entity.motion();
+        let state = entity
+            .kind
+            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id)));
+        if let Some(hooked) = hooked {
+            state.hooked = hooked;
+        }
+        let Some(biting) = biting else {
+            return;
+        };
+        state.biting = biting;
+        if biting {
+            let sink = -0.4 * (0.6 + state.synchronized.next_float() * 0.4);
+            entity.motion.x = JavaF64::new(dx);
+            entity.motion.y = JavaF64::new(f64::from(sink));
+            entity.motion.z = JavaF64::new(dz);
+        }
+    }
+}

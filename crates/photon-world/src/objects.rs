@@ -6,6 +6,7 @@ pub mod boat;
 pub mod display;
 pub mod end_crystal;
 pub mod evoker_fangs;
+pub mod fishing_hook;
 pub(crate) mod flight;
 pub mod lightning;
 pub mod minecart;

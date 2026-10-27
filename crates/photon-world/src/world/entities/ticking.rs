@@ -171,7 +171,7 @@ impl ClientWorld {
         if self.discard_spent_entity(entity_id) {
             return;
         }
-        self.tick_item_entity(entity_id);
+        self.tick_client_moved(entity_id);
         let position = self
             .entities
             .get(&entity_id)
