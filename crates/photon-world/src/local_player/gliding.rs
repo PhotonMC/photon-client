@@ -16,6 +16,8 @@ impl LocalPlayer {
         let position = (self.position.x, self.position.y, self.position.z);
         self.avatar.cloak.tick(position);
         self.elytra.previous_motion = [self.delta.x, self.delta.y, self.delta.z];
+        // Whether this tick is a passenger's: the view eases a rider's turns until the next one.
+        self.view.rode = self.is_passenger();
     }
 
     /// `getFallFlyingTicks`: how long the player has glided.
