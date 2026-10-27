@@ -21,6 +21,11 @@ impl ClientWorld {
             && self.level.dimension_key != "minecraft:the_end"
     }
 
+    /// `Level.getRainLevel`.
+    pub fn rain_level(&self) -> f32 {
+        self.weather.rain_level.get()
+    }
+
     /// `Level.isRaining`: the level can have weather and its rain is above a fifth.
     pub fn is_raining(&self) -> bool {
         self.can_have_weather() && self.weather.rain_level.get() > 0.2

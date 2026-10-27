@@ -1,9 +1,33 @@
 use crate::*;
 
 impl ClientWorld {
+    /// `LightningBolt.tick`: on its first tick a bolt plays its thunder, heard from afar, and its impact.
+    fn strike_sounds(&mut self, entity_id: EntityId) {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
+            return;
+        };
+        let Some((thunder, impact)) = entity.take_lightning_pitches() else {
+            return;
+        };
+        let at = entity.position();
+        for (event, volume, pitch) in [
+            ("minecraft:entity.lightning_bolt.thunder", 10000.0, thunder),
+            ("minecraft:entity.lightning_bolt.impact", 2.0, impact),
+        ] {
+            let sound = local_player::LocalSound::at(
+                event,
+                local_player::LocalSoundSource::Weather,
+                (volume, pitch),
+                at,
+            );
+            self.push_sound(sound);
+        }
+    }
+
     /// `PrimedTnt.tick` and `LightningBolt.tick`: a spent fuse, or a bolt with no flashes left,
     /// discards the entity.
     pub(crate) fn discard_spent_entity(&mut self, entity_id: EntityId) -> bool {
+        self.strike_sounds(entity_id);
         let spent = self.entities.at(entity_id).is_some_and(|entity| {
             entity
                 .primed_tnt()

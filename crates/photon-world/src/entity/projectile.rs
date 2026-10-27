@@ -234,6 +234,10 @@ impl ClientEntity {
         self.kind.lightning()
     }
 
+    pub(crate) fn take_lightning_pitches(&mut self) -> Option<(f32, f32)> {
+        self.kind.lightning_mut()?.take_pitches()
+    }
+
     pub(crate) fn lightning_finished(&self) -> bool {
         self.lightning_done
     }

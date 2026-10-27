@@ -15,6 +15,8 @@ pub struct LightningState {
     /// What the entity's random source is drawn from, and how many times it has been.
     entity_seed: i64,
     draws: i64,
+    /// The pitches (as bits) of the thunder and the impact the first tick found to play.
+    pitches: Option<[u32; 2]>,
 }
 
 impl LightningState {
@@ -29,6 +31,7 @@ impl LightningState {
             seed,
             entity_seed,
             draws: 0,
+            pitches: None,
         }
     }
 
@@ -36,6 +39,13 @@ impl LightningState {
     fn random(&mut self) -> RandomSource {
         self.draws += 1;
         RandomSource::create(self.entity_seed ^ self.draws.wrapping_mul(0x2545_F491_4F6C_DD1D))
+    }
+
+    /// The pitches of the thunder and the impact the bolt strikes with, once, on its first tick.
+    pub(crate) fn take_pitches(&mut self) -> Option<(f32, f32)> {
+        self.pitches
+            .take()
+            .map(|[thunder, impact]| (f32::from_bits(thunder), f32::from_bits(impact)))
     }
 
     /// `LightningBolt.seed`: what the bolt's shape is drawn from.
@@ -51,6 +61,12 @@ impl LightningState {
     /// `LightningBolt.tick` on the client: the life runs down; once it is spent, the bolt flashes
     /// again after a random wait with a new shape, or, with no flashes left, is discarded (true).
     pub(crate) fn tick(&mut self) -> bool {
+        if self.life == START_LIFE {
+            let mut random = self.random();
+            let thunder = 0.8 + random.next_float() * 0.2;
+            let impact = 0.5 + random.next_float() * 0.2;
+            self.pitches = Some([thunder.to_bits(), impact.to_bits()]);
+        }
         self.life -= 1;
         if self.life < 0 {
             if self.flashes == 0 {
@@ -85,6 +101,18 @@ mod tests {
         }
         // One to three flashes: the first seed and up to two new ones.
         assert!((1..=3).contains(&seeds.len()));
+    }
+
+    #[test]
+    fn a_bolt_strikes_once_on_its_first_tick() {
+        let mut bolt = LightningState::new(7);
+        assert_eq!(bolt.take_pitches(), None);
+        bolt.tick();
+        let (thunder, impact) = bolt.take_pitches().expect("the first tick strikes");
+        assert!((0.8..1.0).contains(&thunder) && (0.5..0.7).contains(&impact));
+        while !bolt.tick() {
+            assert_eq!(bolt.take_pitches(), None);
+        }
     }
 
     #[test]

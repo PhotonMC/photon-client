@@ -172,6 +172,8 @@ pub struct ParticleEngine {
     pub(super) jukeboxes: super::jukebox::Jukeboxes,
     /// The block a creative player's marker item stands for (`markerParticleTarget`).
     pub(super) marker_block: Option<usize>,
+    /// `ClientLevel.rainSoundTime`.
+    rain_sound_time: i32,
 }
 
 /// `ParticleLimit.SPORE_BLOSSOM`.
@@ -197,7 +199,12 @@ impl ParticleEngine {
             spore_blossoms: 0,
             jukeboxes: super::jukebox::Jukeboxes::default(),
             marker_block: None,
+            rain_sound_time: 0,
         }
+    }
+
+    pub(super) fn rain_sound_time(&mut self) -> &mut i32 {
+        &mut self.rain_sound_time
     }
 
     /// The block the marker particles show (`ClientLevel.getMarkerParticleTarget`): a barrier or a

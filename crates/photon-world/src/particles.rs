@@ -55,6 +55,7 @@ mod tracking;
 mod trial_tick;
 mod vibration;
 mod water;
+mod weather;
 
 pub use ambience::{Ambience, AmbientParticle, NoAmbience};
 pub use effects::{

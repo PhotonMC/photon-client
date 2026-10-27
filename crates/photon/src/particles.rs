@@ -393,6 +393,32 @@ impl Particles {
         sounds
     }
 
+    /// `ClientLevel.tickWeatherEffects` around the camera.
+    fn tick_weather(
+        &mut self,
+        world: &ClientWorld,
+        ambience: &dyn photon_world::particles::Ambience,
+    ) -> Option<photon_world::local_player::LocalSound> {
+        let view = AddView {
+            camera: self.camera,
+            status: ParticleStatus::All,
+        };
+        let mut uniquifier = self.uniquifier;
+        let mut context = photon_world::particles::LevelEventContext {
+            world,
+            view: &view,
+            level_random: &mut self.level_random,
+            particle_random: || RandomSource::create(unique_seed(&mut uniquifier)),
+            dripstone: self.dripstone,
+            local_player: self.local_player,
+            ambience,
+        };
+        let camera = (self.camera.x, self.camera.y, self.camera.z);
+        let sound = self.engine.tick_weather(camera, &mut context);
+        self.uniquifier = uniquifier;
+        sound
+    }
+
     /// One client tick: `ClientLevel.animateTick` around the player's block (`player`), then
     /// `ParticleEngine.tick`; the pickups head for where their takers are (`local`, the local
     /// player's place to head for, when there is one). The sounds the blocks played, in order.
@@ -428,6 +454,7 @@ impl Particles {
         if let Some(center) = player {
             sounds = self.animate_blocks(world, center, ambience);
         }
+        sounds.extend(self.tick_weather(world, ambience));
         self.engine.tick_pickups(|target| match target {
             None => local,
             Some(id) => world.entities().at(id).map(|entity| {
