@@ -1,5 +1,6 @@
-//! Player head items in the GUI that carry a profile: drawn in the skin it names, from the entity
-//! pictures, where every other item is drawn from the item atlas.
+//! Player head items (in the GUI, and lying, framed or displayed in the world) that carry a
+//! profile: drawn in the skin it names, from the entity pictures, where every other item is drawn
+//! from the item atlas.
 
 use std::collections::HashMap;
 

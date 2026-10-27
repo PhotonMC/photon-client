@@ -10,6 +10,15 @@ use photon_render::objects::item::item_glint_vertices;
 use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
+/// Whether the stack's model draws the enchantment glint: `ItemStack.hasFoil`, but the skull
+/// renderers (`SkullSpecialRenderer`, `PlayerHeadSpecialRenderer`) take the flag and leave it
+/// unused.
+fn shows_foil(stack: &ClientItemStackState) -> bool {
+    super::held_items::skull_of(stack).is_none()
+        && photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+            .has_foil()
+}
+
 /// Each stack's layers in one display context, built the first time a slot
 /// shows it: by item, then by component patch.
 pub struct ItemLayerCache {
@@ -35,7 +44,8 @@ pub struct ItemLayerCache {
     cast: bool,
     /// Whether the stacks drawn next have no owner (`GuiGraphics.fakeItem`).
     fake: bool,
-    /// The player heads drawn in the GUI, in the skins of their profiles.
+    /// The player heads this cache draws, in the skins of their profiles (the GUI's, or the world's
+    /// once skins are exchanged with it).
     pub heads: super::head_items::GuiHeads,
 }
 
@@ -159,10 +169,7 @@ impl ItemLayerCache {
         let Some((matrix, texture)) = self.glint.moving else {
             return;
         };
-        let foil =
-            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
-                .has_foil();
-        if foil {
+        if shows_foil(stack) {
             self.glint.vertices.extend(item_glint_vertices(
                 drawn,
                 &matrix,
@@ -186,9 +193,7 @@ impl ItemLayerCache {
         let layers = self.get_in_use(stack, ticks, (renderer, tints));
         photon_render::gui::items::item_vertices(layers, x, y, out);
         let drawn = out.len() - first;
-        let foil =
-            photon_game::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
-                .has_foil();
+        let foil = shows_foil(stack);
         if let (true, Some((matrix, texture))) = (foil, self.glint.moving) {
             let glint = photon_render::gui::items::glint_vertices(
                 &out[first..],
