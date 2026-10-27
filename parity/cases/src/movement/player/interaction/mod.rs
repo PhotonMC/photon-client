@@ -173,6 +173,10 @@ impl Interaction {
         Self { scene: self.scene.x_rot(x_rot), ..self }
     }
 
+    pub fn auto_jump(self) -> Self {
+        Self { scene: self.scene.auto_jump(), ..self }
+    }
+
     pub fn game_mode(self, game_mode: &'static str) -> Self {
         Self { scene: self.scene.game_mode(game_mode), ..self }
     }

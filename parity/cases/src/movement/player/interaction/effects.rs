@@ -27,7 +27,7 @@ fn ledge() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [speed_rows(), vertical_rows(), other_rows()].concat()
+    [speed_rows(), vertical_rows(), auto_jump_rows(), other_rows()].concat()
 }
 
 /// The movement speed: a potion's modifiers and the sprinting one, from the server and the client.
@@ -57,6 +57,23 @@ fn speed_rows() -> Vec<Value> {
         )
         .attribute("minecraft:movement_speed", walk_speed, &[speed(0), sprinting])
         .row(),
+    ]
+}
+
+/// Auto-jump at a wall two blocks high: the boost lets it climb, a ceiling stops it.
+fn auto_jump_rows() -> Vec<Value> {
+    use super::super::auto_jump::two_high;
+    let climb = |label: &str, blocks: Vec<Value>, amplifier: i64| {
+        breaking(label, blocks, keys(20, &["forward"]))
+            .effects(&[("minecraft:jump_boost", amplifier)])
+            .auto_jump()
+            .row()
+    };
+    let roof = (0..4).map(|z| put(0, 67, z, "minecraft:stone")).collect::<Vec<_>>();
+    vec![
+        climb("auto-jump-boost-i", two_high(), 0),
+        climb("auto-jump-boost-ii", two_high(), 1),
+        climb("auto-jump-boost-ii-roof", cat![two_high(), roof], 1),
     ]
 }
 
