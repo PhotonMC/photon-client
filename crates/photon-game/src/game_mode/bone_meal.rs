@@ -143,7 +143,9 @@ fn surroundings_target(
                 && block(below).name.ends_with("_coral_block")
                 && !block(below).name.starts_with("minecraft:dead_"),
         ),
-        "rooted_dirt" => Some(is_air(below)),
+        "rooted_dirt" | "mangrove_leaves" => Some(is_air(below)),
+        "crimson_fungus" => Some(block(below).name == "minecraft:crimson_nylium"),
+        "warped_fungus" => Some(block(below).name == "minecraft:warped_nylium"),
         n => fixed_target(n),
     }
 }
@@ -169,14 +171,11 @@ fn bonemealable_name(name: &str) -> bool {
             | "moss_carpet"
             | "pale_moss_carpet"
             | "pale_hanging_moss"
-            | "mangrove_leaves"
             | "mangrove_propagule"
             | "big_dripleaf"
             | "big_dripleaf_stem"
             | "bamboo"
             | "bamboo_sapling"
-            | "crimson_fungus"
-            | "warped_fungus"
             | "netherrack"
             | "tall_dry_grass"
             | "pitcher_crop"
