@@ -1,3 +1,4 @@
+use super::avatars::{avatar_look, is_avatar, outline_name};
 use super::remote_placement::{flipped, remote_placement};
 use super::*;
 use crate::equipment::arm_poses;
@@ -22,8 +23,8 @@ pub fn remote_players(
     let world = session.world();
     let partial = view.partial as f32;
     for entity in world.entities().drawn() {
-        // A player who only watches is not drawn.
-        if !entity.is_player() || entity.is_spectator() {
+        // A player who only watches is not drawn; a mannequin is drawn as a player.
+        if !is_avatar(entity) || entity.is_spectator() {
             continue;
         }
         let Some(mut snapshot) = world.entity_snapshot(entity.id(), partial) else {
@@ -32,7 +33,7 @@ pub fn remote_players(
         if flipped(session, entity) {
             snapshot.turn_upside_down(entity.leash_size().height);
         }
-        let Some(look) = skins.of_player(session, textures, entity.uuid) else {
+        let Some(look) = avatar_look(session, (skins, textures), entity) else {
             continue;
         };
         let textures = &*textures;
@@ -82,15 +83,6 @@ pub fn remote_players(
     }
 }
 
-/// The name a glowing player's outline is coloured by: its profile name.
-fn outline_name(session: &PlaySession, entity: &photon_world::ClientEntity) -> Option<String> {
-    let glows = crate::mobs::outline::player_glows(entity.is_glowing());
-    session
-        .player_name(entity.uuid)
-        .filter(|_| glows)
-        .map(str::to_owned)
-}
-
 /// The triangles of a player, which join the outline when the player glows: the colour is its
 /// team's, found by its profile name.
 fn glowing(
@@ -98,9 +90,8 @@ fn glowing(
     entity: &photon_world::ClientEntity,
     triangles: Vec<Vertex>,
 ) -> Vec<Vertex> {
-    let glows = crate::mobs::outline::player_glows(entity.is_glowing());
-    if let (true, Some(name)) = (glows, session.player_name(entity.uuid)) {
-        crate::mobs::outline::record_holder(name.to_owned(), triangles.clone());
+    if let Some(name) = outline_name(session, entity) {
+        crate::mobs::outline::record_holder(name, triangles.clone());
     }
     triangles
 }

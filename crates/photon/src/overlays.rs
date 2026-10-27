@@ -133,5 +133,6 @@ mod local_state;
 mod remote_placement;
 mod shadow_radius;
 pub use light::*;
+mod avatars;
 mod wear;
 pub use wear::*;
