@@ -152,7 +152,7 @@ impl Controls {
                 "key.fullscreen" if press => surface.toggle_fullscreen(),
                 "key.screenshot" if press => self.screenshot_pending = true,
                 "key.toggleGui" if press && self.captured => self.hud_hidden = !self.hud_hidden,
-                "key.playerlist" => self.tab_held = down && self.captured,
+                held if self.held_key(held, down) => {}
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
                     select_hotbar(session, hotbar, spectating);
                 }
@@ -160,6 +160,18 @@ impl Controls {
                 _ => {}
             }
         }
+    }
+
+    /// The keys whose being held is all that counts while the mouse is captured: the tab list and
+    /// the spectator outlines. Whether the mapping is one of them.
+    fn held_key(&mut self, name: &str, down: bool) -> bool {
+        let held = down && self.captured;
+        match name {
+            "key.playerlist" => self.tab_held = held,
+            "key.spectatorOutlines" => self.spectator_outlines_held = held,
+            _ => return false,
+        }
+        true
     }
 
     /// The attack, use, pick and drop keys (`KeyMapping.set` and `click`): pressed with the mouse
@@ -203,6 +215,7 @@ impl Controls {
     pub(super) fn release_keys(&mut self) {
         self.keys = HeldKeys::default();
         self.tab_held = false;
+        self.spectator_outlines_held = false;
         self.attack_key.release();
         self.use_key.release();
         self.pick_key.release();

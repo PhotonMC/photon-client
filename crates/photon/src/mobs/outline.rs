@@ -15,6 +15,20 @@ thread_local! {
         const { RefCell::new(Vec::new()) };
 }
 
+/// `Minecraft.shouldEntityAppearGlowing`'s second half: a spectator holding the spectator outlines
+/// key sees every player outlined. Set once a frame.
+static SPECTATOR_OUTLINES: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+pub(crate) fn set_spectator_outlines(on: bool) {
+    SPECTATOR_OUTLINES.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether a player appears glowing this frame: its own glow, or the spectator's key.
+pub(crate) fn player_glows(glowing: bool) -> bool {
+    glowing || SPECTATOR_OUTLINES.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Whose silhouette it is: the scoreboard name its team colour is found by, unless the entity
 /// names its own colour (a display's `glowColorOverride`).
 struct Holder {

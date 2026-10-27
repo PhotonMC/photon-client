@@ -46,6 +46,10 @@ impl Play {
     /// What the frame's overlays are drawn from.
     fn frame_view(&self, frame: &FrameCamera) -> FrameView {
         let options = &self.controls.options;
+        let spectating = self.session.game_mode().is_spectator();
+        crate::mobs::outline::set_spectator_outlines(
+            spectating && self.controls.spectator_outlines_held,
+        );
         FrameView {
             render_distance: frame.render_distance,
             partial: frame.partial,
@@ -58,7 +62,7 @@ impl Play {
             cape: self.skins.own_cape,
             view_bobbing: options.view_bobbing,
             damage_tilt: options.damage_tilt_strength,
-            spectating: self.session.game_mode().is_spectator(),
+            spectating,
         }
     }
 

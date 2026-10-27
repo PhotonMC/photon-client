@@ -92,7 +92,8 @@ fn glowing(
     entity: &photon_world::ClientEntity,
     triangles: Vec<Vertex>,
 ) -> Vec<Vertex> {
-    if let (true, Some(name)) = (entity.is_glowing(), session.player_name(entity.uuid)) {
+    let glows = crate::mobs::outline::player_glows(entity.is_glowing());
+    if let (true, Some(name)) = (glows, session.player_name(entity.uuid)) {
         crate::mobs::outline::record_holder(name.to_owned(), triangles.clone());
     }
     triangles

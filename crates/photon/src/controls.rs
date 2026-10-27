@@ -220,6 +220,8 @@ pub struct Controls {
     pub chat_log: ChatLog,
     /// Whether the tab list key is held.
     pub tab_held: bool,
+    /// Whether the spectator outlines key (`keySpectatorOutlines`) is held.
+    pub spectator_outlines_held: bool,
     /// `Hud.isHidden`: the interface hidden with F1.
     pub hud_hidden: bool,
     /// F2 was pressed: the next frame is written to a file.

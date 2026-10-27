@@ -452,10 +452,12 @@ pub fn player_model(
 /// The triangles of the local player's own model, which join the outline when it glows
 /// (colour by its profile name).
 fn glowing_local(session: &PlaySession, triangles: Vec<Vertex>) -> Vec<Vertex> {
-    let glowing = session
-        .world()
-        .local_player()
-        .is_some_and(|state| state.is_glowing());
+    let glowing = crate::mobs::outline::player_glows(
+        session
+            .world()
+            .local_player()
+            .is_some_and(|state| state.is_glowing()),
+    );
     if glowing {
         crate::mobs::outline::record_holder(session.local_name().to_owned(), triangles.clone());
     }
