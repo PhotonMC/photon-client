@@ -22,6 +22,21 @@ type Stacks<'a> = (
 
 type PreviewBox = ((i32, i32, i32, i32), f32, f32, (f32, f32));
 
+/// The box's player as it stands now.
+fn render_state(player: &photon_world::local_player::LocalPlayer) -> PlayerRenderState {
+    let pose = player.model_pose(1.0);
+    PlayerRenderState {
+        walk_position: pose.walk_position,
+        walk_speed: pose.walk_speed,
+        age_in_ticks: player.tick_count() as f32 + 1.0,
+        swim_amount: pose.swim_amount,
+        crouching: pose.crouching,
+        spectator: player.spectating(),
+        attack_time: player.attack_anim(1.0),
+        ..Default::default()
+    }
+}
+
 /// The local player in the box of its screen (`InventoryScreen.extractEntityInInventoryFollowsMouse`):
 /// its model as it stands now, turned to look at the mouse.
 fn player_preview(
@@ -43,17 +58,7 @@ fn player_preview(
     let Some(player) = player else {
         return GuiFigure::default();
     };
-    let pose = player.model_pose(1.0);
-    let state = PlayerRenderState {
-        walk_position: pose.walk_position,
-        walk_speed: pose.walk_speed,
-        age_in_ticks: player.tick_count() as f32 + 1.0,
-        swim_amount: pose.swim_amount,
-        crouching: pose.crouching,
-        spectator: player.spectating(),
-        attack_time: player.attack_anim(1.0),
-        ..Default::default()
-    };
+    let state = render_state(player);
     let mut vertices = body_vertices(
         player_model,
         &state,
@@ -75,7 +80,14 @@ fn player_preview(
         (&scene.state, &scene.placement),
         player.elytra_rotations(1.0),
     );
-    let in_hands = held_vertices((player_model, &scene.placement), (stacks, head), held);
+    let (in_hands, skull) = held_vertices(
+        (player_model, &scene.placement),
+        (stacks, head),
+        (armor, textures, state.walk_position),
+        held,
+    );
+    let mut dressed = dressed;
+    dressed.extend(skull);
     vertices.extend(photon_render::entity::player_renderer::gui_layer_vertices(
         &dressed,
         &scene.view,
@@ -108,8 +120,16 @@ fn held_vertices(
         &photon_render::entity::player_renderer::Placement,
     ),
     (stacks, head): (Stacks<'_>, Option<&ClientItemStackState>),
+    (armor, textures, walk_position): (
+        &mut crate::equipment::armor::Armor,
+        &photon_render::entity::textures::EntityTextures,
+        f32,
+    ),
     (layers, tints): HeldTools<'_>,
-) -> Vec<photon_render::scene::Vertex> {
+) -> (
+    Vec<photon_render::scene::Vertex>,
+    Vec<photon_render::scene::Vertex>,
+) {
     let hands = crate::equipment::held_items::Hands {
         base: &photon_render::entity::player_renderer::placement_pose(placement),
         root: &model.root,
@@ -125,11 +145,18 @@ fn held_vertices(
     };
     let mut held = Vec::new();
     hands.collect(&mut held);
+    // A skull on the head is a model of its own, posed by the walk, not an item mesh.
+    let skull = armor.skull_vertices(
+        hands.skull(),
+        walk_position,
+        textures,
+        (placement.light, false),
+    );
     let vertices = crate::equipment::held_items::held_item_vertices(&held, layers, tints);
     for cache in layers.iter_mut() {
         cache.take_glint();
     }
-    vertices
+    (vertices, skull)
 }
 
 /// What the local player has on each armor slot.
