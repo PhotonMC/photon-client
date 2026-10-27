@@ -41,6 +41,7 @@ impl PlaySession {
             instruments: &instruments,
             spin_attack: &spin_attack,
             prevents_armor_change: &prevents_armor_change,
+            difficulty: self.local.difficulty,
             game_master: self.local.permission_level >= 2,
             profile_id: self.state.profile_id,
         };

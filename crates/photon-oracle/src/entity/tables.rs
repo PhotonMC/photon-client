@@ -483,7 +483,10 @@ pub(super) fn entity_types_case() -> Result<Value, String> {
             photon_data::entity_type::name(photon_core::ids::EntityTypeId(id))
                 .map(|name| (id, name))
         })
-        .map(|(id, name)| json!({"label": name, "id": id}))
+        .map(|(id, name)| {
+            json!({"label": name, "id": id,
+                "allowed_in_peaceful": photon_data::entity_type::allowed_in_peaceful(name)})
+        })
         .collect();
     Ok(json!({"rows": rows}))
 }

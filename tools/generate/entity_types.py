@@ -19,6 +19,11 @@ def generate(capture):
     for row in rows:
         out.append(f"    {rust_str(row['label'])},")
     out.append("];")
+    out += ["", "/// The types built with `notInPeaceful` (`EntityType.isAllowedInPeaceful`).", "#[rustfmt::skip]"]
+    refused = [row["label"] for row in rows if not row["allowed_in_peaceful"]]
+    out.append(f"pub static NOT_IN_PEACEFUL: [&str; {len(refused)}] = [")
+    out += [f"    {rust_str(name)}," for name in refused]
+    out.append("];")
     write("entity_types.rs", out)
     print(f"entity_types={len(rows)}")
 

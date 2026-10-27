@@ -12,7 +12,7 @@ pub(super) fn use_of(
     match class {
         C::EnderEyeItem => ender_eye_use(ctx, hand),
         C::BoatItem => boat_use(ctx),
-        C::SpawnEggItem => spawn_egg_use(ctx),
+        C::SpawnEggItem => spawn_egg_use(ctx, hand),
         C::TridentItem => trident_use(ctx, hand),
         C::InstrumentItem => instrument_use(ctx, hand),
         C::BottleItem => super::bottles::bottle_use(ctx, hand),
@@ -119,9 +119,10 @@ pub(super) fn boat_use(ctx: &mut Context<'_>) -> UseResult {
 
 /// `SpawnEggItem.use` on the client: a miss of the look (sources only) passes, a block succeeds
 /// (the spawn is the server's).
-pub(super) fn spawn_egg_use(ctx: &mut Context<'_>) -> UseResult {
+pub(super) fn spawn_egg_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     let (eye, to) = super::placing::look_ray(ctx);
     match ctx.world.clip_outlines_and_sources(eye, to) {
+        Some(_) if super::spawn_egg::refused(ctx, hand) => UseResult::Fail,
         Some(_) => UseResult::Success { swing: true },
         None => UseResult::Pass,
     }

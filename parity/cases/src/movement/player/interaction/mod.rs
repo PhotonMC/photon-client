@@ -18,6 +18,7 @@ mod opening;
 mod pistons;
 mod placing;
 mod solid_bucket;
+mod spawn_egg;
 mod stepping;
 mod throwing;
 mod utility;
@@ -264,6 +265,7 @@ pub fn cases() -> Vec<Value> {
                 cauldron::rows(),
                 solid_bucket::rows(),
                 bone_meal::rows(),
+                spawn_egg::rows(),
             ]
             .concat(),
         ),

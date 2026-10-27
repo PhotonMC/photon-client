@@ -243,7 +243,7 @@ pub(super) fn use_on(
         C::PotionItem => super::bottles::potion_use_on(ctx, hand, aim),
         C::EnderEyeItem => super::utility::ender_eye_use_on(ctx, aim),
         // `SpawnEggItem.useOn` on the client: the spawn is the server's.
-        C::SpawnEggItem => UseResult::Success { swing: true },
+        C::SpawnEggItem => super::spawn_egg::use_on(ctx, hand),
         _ => return None,
     })
 }
@@ -481,6 +481,7 @@ mod tests {
             instruments: &[],
             spin_attack: &[],
             prevents_armor_change: &[],
+            difficulty: 2,
             game_master: false,
             profile_id: None,
         };

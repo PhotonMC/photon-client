@@ -339,7 +339,6 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                     None => photon_game::game_mode::Aim::Miss,
                 };
-                let keys = movement_gear::keys_of(attack)?;
                 let mut ctx = photon_game::game_mode::Context {
                     miner: &photon_game::game_mode::Miner::of(&world, 0),
                     world: &mut world,
@@ -350,10 +349,12 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     instruments: &instruments,
                     spin_attack: &spin_attack,
                     prevents_armor_change: &prevents_armor_change,
+                    // The reference's level is built peaceful.
+                    difficulty: 0,
                     game_master: false,
                     profile_id: row.get("player_uuid").map(|_| oracle_player_uuid()),
                 };
-                actions = game_mode.keys_tick(&mut ctx, keys, aim);
+                actions = game_mode.keys_tick(&mut ctx, movement_gear::keys_of(attack)?, aim);
             }
             // As the session does: the main hand the player ticks with is
             // the world's inventory now.

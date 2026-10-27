@@ -116,6 +116,7 @@ class EntityDataOracle extends EntityBossOracle {
             var out = new JsonObject();
             out.addProperty("label", registry.getKey(type).toString());
             out.addProperty("id", registry.getId(type));
+            out.addProperty("allowed_in_peaceful", type.isAllowedInPeaceful());
             rows.add(out);
         }
         var result = new JsonObject();

@@ -81,6 +81,7 @@ mod after_use;
 mod base_use;
 mod bone_meal;
 mod equipping;
+mod spawn_egg;
 pub use after_use::finish_use;
 mod block_use;
 mod bottles;

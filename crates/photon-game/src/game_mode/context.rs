@@ -65,6 +65,8 @@ pub struct Context<'a> {
     pub spin_attack: &'a [bool],
     /// Whether each enchantment of the registry, by id, has the prevent armor change effect.
     pub prevents_armor_change: &'a [bool],
+    /// The level's difficulty, 0 (peaceful) to 3 (hard).
+    pub difficulty: u8,
     /// The permission level is at least game master (`COMMANDS_GAMEMASTER`).
     pub game_master: bool,
     /// The player's profile id, as the server logged it in (`Player.getUUID`).

@@ -4,7 +4,7 @@
 use photon_core::ids::EntityTypeId;
 
 use crate::generated::entity_picks::ENTITY_PICKS;
-use crate::generated::entity_types::ENTITY_TYPES;
+use crate::generated::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
 
 /// The name of the type with this id (`minecraft:pig`).
 pub fn name(id: EntityTypeId) -> Option<&'static str> {
@@ -12,6 +12,11 @@ pub fn name(id: EntityTypeId) -> Option<&'static str> {
         .ok()
         .and_then(|index| ENTITY_TYPES.get(index))
         .copied()
+}
+
+/// `EntityType.isAllowedInPeaceful`: false for the types built with `notInPeaceful`.
+pub fn allowed_in_peaceful(name: &str) -> bool {
+    !NOT_IN_PEACEFUL.contains(&name)
 }
 
 /// The id of the type with this name.
