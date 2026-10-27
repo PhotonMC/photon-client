@@ -4,7 +4,22 @@
 use serde_json::Value;
 
 use super::item_on::{north, row};
+use super::placing::uses;
+use super::using;
 use crate::movement::world::{put, put_with};
+
+/// Bone meal used while sneaking, which skips the block's own use: a berried vine then reaches
+/// the item.
+fn sneaking(label: &str, world: Vec<Value>) -> Value {
+    let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
+    let aim = north();
+    let ticks = [
+        uses(1, Some(&aim), &around).clicks(1).held(&["sneak"]).go(),
+        uses(3, Some(&aim), &around).held(&["sneak"]).go(),
+    ]
+    .concat();
+    using(label, world, ticks).main_hand("minecraft:bone_meal").count(3).row()
+}
 
 pub(super) fn rows() -> Vec<Value> {
     let meal =
@@ -122,6 +137,14 @@ fn plants(meal: &dyn Fn(&str, Vec<Value>) -> Value, at: &dyn Fn(&str) -> Vec<Val
         meal(
             "bone-meal-weeping-plant",
             vec![put(0, 64, 2, "minecraft:weeping_vines_plant"), put(0, 63, 2, "minecraft:weeping_vines")],
+        ),
+        sneaking(
+            "bone-meal-sneaking-cave-vines-berries",
+            vec![put_with(0, 64, 2, "minecraft:cave_vines", &[("berries", "true")])],
+        ),
+        sneaking(
+            "bone-meal-sneaking-cave-vines-bare",
+            vec![put_with(0, 64, 2, "minecraft:cave_vines", &[("berries", "false")])],
         ),
         meal("bone-meal-cave-vines-berries", vec![put_with(0, 64, 2, "minecraft:cave_vines", &[("berries", "true")])]),
         meal(
