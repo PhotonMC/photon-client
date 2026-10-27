@@ -27,6 +27,56 @@ fn full_age(name: &str) -> Option<u8> {
     }
 }
 
+/// The head, the direction it grows in and the block it grows into, for each growing plant: the
+/// head's name and body's name come first.
+fn growing_plant(name: &str) -> Option<(&'static str, (i32, bool))> {
+    Some(match name {
+        "kelp" | "kelp_plant" => ("kelp", (1, false)),
+        "twisting_vines" | "twisting_vines_plant" => ("twisting_vines", (1, true)),
+        "weeping_vines" | "weeping_vines_plant" => ("weeping_vines", (-1, true)),
+        _ => return None,
+    })
+}
+
+/// `GrowingPlantHeadBlock` and `GrowingPlantBodyBlock.isValidBonemealTarget` (and the cave vines'
+/// own rule): the head, found by following the body along the growth direction, has a place to
+/// grow into. `None` for any other block.
+fn growing_plant_target(
+    ctx: &Context<'_>,
+    name: &str,
+    state: BlockStateId,
+    pos: (i32, i32, i32),
+) -> Option<bool> {
+    if name.starts_with("cave_vines") {
+        return Some(property(state, "berries") == Some("false"));
+    }
+    let (head, (step, into_air)) = growing_plant(name)?;
+    let body = format!("{head}_plant");
+    let named = |at: (i32, i32, i32)| {
+        block(ctx.state_at(at))
+            .name
+            .trim_start_matches("minecraft:")
+    };
+    let mut at = pos;
+    if name == body {
+        loop {
+            at.1 += step;
+            if named(at) != body {
+                break;
+            }
+        }
+        if named(at) != head {
+            return Some(false);
+        }
+    }
+    let grow = ctx.state_at((at.0, at.1 + step, at.2));
+    Some(if into_air {
+        is_air(grow)
+    } else {
+        block(grow).name == "minecraft:water"
+    })
+}
+
 /// `TallGrassBlock.isValidBonemealTarget`: the tall plant it grows into survives where it stands
 /// and the block above is air. `None` where the survival rule is not ported.
 fn tall_grass_target(
@@ -69,6 +119,9 @@ fn valid_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) ->
     }
     let above = ctx.state_at((pos.0, pos.1 + 1, pos.2));
     let below = ctx.state_at((pos.0, pos.1 - 1, pos.2));
+    if let Some(target) = growing_plant_target(ctx, name, state, pos) {
+        return Some(target);
+    }
     if matches!(name, "short_grass" | "fern") {
         return tall_grass_target(ctx, name, pos, above);
     }
@@ -112,14 +165,6 @@ fn bonemealable_name(name: &str) -> bool {
         name,
         "short_grass"
             | "fern"
-            | "kelp"
-            | "kelp_plant"
-            | "twisting_vines"
-            | "twisting_vines_plant"
-            | "weeping_vines"
-            | "weeping_vines_plant"
-            | "cave_vines"
-            | "cave_vines_plant"
             | "glow_lichen"
             | "moss_carpet"
             | "pale_moss_carpet"

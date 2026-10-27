@@ -41,7 +41,8 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     let pickle = |wet: &str, under: &str| {
         vec![put(0, 63, 2, under), put_with(0, 64, 2, "minecraft:sea_pickle", &[("waterlogged", wet)])]
     };
-    vec![
+    let mut rows = plants(meal, &at);
+    rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
         meal("bone-meal-water-falling", water("8")),
@@ -79,6 +80,48 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
         meal(
             "bone-meal-nylium-covered",
             vec![put(0, 64, 2, "minecraft:warped_nylium"), put(0, 65, 2, "minecraft:stone")],
+        ),
+    ]);
+    rows
+}
+
+/// Growing plants: the head or the body needs room to grow into.
+fn plants(meal: &dyn Fn(&str, Vec<Value>) -> Value, at: &dyn Fn(&str) -> Vec<Value>) -> Vec<Value> {
+    vec![
+        meal(
+            "bone-meal-kelp-open",
+            vec![put(0, 63, 2, "minecraft:sand"), put(0, 64, 2, "minecraft:kelp"), put(0, 65, 2, "minecraft:water")],
+        ),
+        meal("bone-meal-kelp-blocked", vec![put(0, 64, 2, "minecraft:kelp"), put(0, 65, 2, "minecraft:stone")]),
+        meal(
+            "bone-meal-kelp-plant-open",
+            vec![
+                put(0, 64, 2, "minecraft:kelp_plant"),
+                put(0, 65, 2, "minecraft:kelp"),
+                put(0, 66, 2, "minecraft:water"),
+            ],
+        ),
+        meal(
+            "bone-meal-kelp-plant-headless",
+            vec![put(0, 64, 2, "minecraft:kelp_plant"), put(0, 65, 2, "minecraft:water")],
+        ),
+        meal("bone-meal-twisting-open", at("minecraft:twisting_vines")),
+        meal(
+            "bone-meal-twisting-blocked",
+            vec![put(0, 64, 2, "minecraft:twisting_vines"), put(0, 65, 2, "minecraft:stone")],
+        ),
+        meal(
+            "bone-meal-twisting-plant",
+            vec![put(0, 64, 2, "minecraft:twisting_vines_plant"), put(0, 65, 2, "minecraft:twisting_vines")],
+        ),
+        meal(
+            "bone-meal-weeping-plant",
+            vec![put(0, 64, 2, "minecraft:weeping_vines_plant"), put(0, 63, 2, "minecraft:weeping_vines")],
+        ),
+        meal("bone-meal-cave-vines-berries", vec![put_with(0, 64, 2, "minecraft:cave_vines", &[("berries", "true")])]),
+        meal(
+            "bone-meal-cave-vines-bare",
+            vec![put_with(0, 64, 2, "minecraft:cave_vines_plant", &[("berries", "false")])],
         ),
     ]
 }
