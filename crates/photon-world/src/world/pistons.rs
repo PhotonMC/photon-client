@@ -336,6 +336,11 @@ impl ClientWorld {
         player: Option<&mut LocalPlayer>,
     ) -> Result<(), Unsupported> {
         let mut player = player;
+        // `ClientLevel.tick`: the border moves on, and the lids, bells and heads the blocks
+        // animate carry on.
+        self.world_border.tick();
+        self.block_animations.tick();
+        self.tick_skulls();
         // A push runs the block effects once more, so the steps are acted on before and after.
         if let Some(player) = player.as_deref_mut() {
             self.apply_player_steps(player);
