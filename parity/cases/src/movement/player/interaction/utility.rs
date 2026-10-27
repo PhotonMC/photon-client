@@ -104,6 +104,9 @@ fn trident_rows() -> Vec<Value> {
     let riptide = |label: &str, world: Vec<Value>, ticks: Vec<Value>| {
         using(label, world, ticks).main_hand("minecraft:trident").count(1).patch(spin.clone()).row()
     };
+    let release =
+        [uses(1, None, &[]).clicks(1).down().go(), uses(13, None, &[]).down().go(), uses(12, None, &[]).go()].concat();
+    let wet_release = [uses(3, None, &[]).go(), release.clone()].concat();
     let rain_row = |label: &str, world: Vec<Value>, ticks: Vec<Value>, rain: f64| {
         using(label, world, ticks).main_hand("minecraft:trident").count(1).patch(spin.clone()).raining(rain).row()
     };
@@ -114,6 +117,9 @@ fn trident_rows() -> Vec<Value> {
         rain_row("use-trident-riptide-rain", vec![], ticks.clone(), 1.0),
         rain_row("use-trident-riptide-rain-under-roof", vec![put(0, 67, 0, "minecraft:stone")], ticks.clone(), 1.0),
         rain_row("use-trident-riptide-light-rain", vec![], ticks.clone(), 0.15),
+        // Held past ten ticks and let go: the riptide throws the player along the look.
+        rain_row("use-trident-riptide-rain-release", vec![], release.clone(), 1.0),
+        riptide("use-trident-riptide-water-release", vec![put(0, 64, 0, "minecraft:water")], wet_release),
         row("use-trident-last-point", &[(DAMAGE, vi(249))]),
         row("use-trident-room-left", &[(DAMAGE, vi(248))]),
         row("use-trident-unbreakable-last-point", &[(DAMAGE, vi(249)), (UNBREAKABLE, String::new())]),

@@ -154,17 +154,7 @@ fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     let Some(stack) = held else {
         return UseResult::Pass;
     };
-    let spins = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
-        .enchantments(photon_world::item_components::ids::ENCHANTMENTS)
-        .iter()
-        .any(|&(id, level)| {
-            level > 0
-                && usize::try_from(id)
-                    .ok()
-                    .and_then(|id| ctx.spin_attack.get(id))
-                    .copied()
-                    .unwrap_or(false)
-        });
+    let spins = riptide_strength(ctx.spin_attack, stack) > 0.0;
     if stack.breaks_on_next_damage() || (spins && !in_water_or_rain(ctx)) {
         return UseResult::Fail;
     }
@@ -172,8 +162,62 @@ fn trident_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     UseResult::Success { swing: false }
 }
 
+/// `TridentItem.releaseUsing` on the client: a riptide trident held ten ticks or more, in water or
+/// rain and not riding, throws its user (the throw of a plain trident is the server's).
+pub(super) fn trident_release(ctx: &mut Context<'_>) {
+    let main = ctx.player.use_ticks_of(true).is_some();
+    let hand = if main {
+        super::MAIN_HAND
+    } else {
+        super::OFF_HAND
+    };
+    let Some(held) = ctx.player.use_ticks_of(main) else {
+        return;
+    };
+    let stack = ctx
+        .world
+        .local_player()
+        .and_then(|state| state.inventory_slot(ctx.hand_slot(hand)));
+    let Some(stack) = stack.filter(|stack| is_trident(stack)) else {
+        return;
+    };
+    let strength = riptide_strength(ctx.spin_attack, stack);
+    let riding = ctx.world.ridden_vehicle_of_local_player().is_some();
+    if held < 10
+        || strength <= 0.0
+        || !in_water_or_rain(ctx)
+        || riding
+        || stack.breaks_on_next_damage()
+    {
+        return;
+    }
+    // A launch the level cannot carry out (an unported block) leaves the player where it was.
+    let _ = ctx.player.riptide_launch(ctx.world, strength);
+}
+
+fn is_trident(stack: &photon_world::ClientItemStackState) -> bool {
+    crate::item::definition(stack.item_registry_id())
+        .is_some_and(|row| row.name == "minecraft:trident")
+}
+
+/// `EnchantmentHelper.getTridentSpinAttackStrength`: what the stack's enchantments add up to.
+pub(super) fn riptide_strength(
+    spin_attack: &[Option<crate::registries::SpinStrength>],
+    stack: &photon_world::ClientItemStackState,
+) -> f32 {
+    crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes())
+        .enchantments(photon_world::item_components::ids::ENCHANTMENTS)
+        .iter()
+        .filter(|&&(_, level)| level > 0)
+        .filter_map(|&(id, level)| {
+            let strength = (*spin_attack.get(usize::try_from(id).ok()?)?)?;
+            Some(strength.at_level(level))
+        })
+        .sum()
+}
+
 /// `Entity.isInWaterOrRain` of the player.
-fn in_water_or_rain(ctx: &Context<'_>) -> bool {
+pub(super) fn in_water_or_rain(ctx: &Context<'_>) -> bool {
     let at = ctx.player.position();
     let top = ctx.player.bounding_box().max_y;
     ctx.player.is_in_water() || ctx.world.is_in_rain((at.x, at.y, at.z), top)

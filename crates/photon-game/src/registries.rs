@@ -22,9 +22,9 @@ pub struct EnchantmentEntry {
     /// Whether it has the `prevent_armor_change` effect (armour it is on
     /// cannot be taken off but in creative).
     pub prevents_armor_change: bool,
-    /// Whether it has the `trident_spin_attack_strength` effect (riptide: a trident with it
-    /// needs water or rain to be used).
-    pub trident_spin_attack: bool,
+    /// Its `trident_spin_attack_strength` effect, if it has one (riptide: a trident with it needs
+    /// water or rain to be used, and throws its user).
+    pub trident_spin_attack: Option<SpinStrength>,
     /// `anvil_cost`.
     pub anvil_cost: i32,
     /// The item tag of `supported_items`, without its `#`.
@@ -92,6 +92,34 @@ const PREVENT_ARMOR_CHANGE: &str = "minecraft:prevent_armor_change";
 const SPIN_ATTACK: &str = "minecraft:trident_spin_attack_strength";
 
 /// Whether an enchantment entry lists the effect among its `effects`.
+/// `trident_spin_attack_strength`: an `add` of a level-based value, a constant or a linear one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpinStrength {
+    pub base: f32,
+    pub per_level_above_first: f32,
+}
+
+impl SpinStrength {
+    /// `LevelBasedValue.calculate` at an enchantment level, added to nothing.
+    pub fn at_level(self, level: i32) -> f32 {
+        self.base + self.per_level_above_first * (level - 1) as f32
+    }
+}
+
+fn spin_strength(entry: &JsonObject) -> Option<SpinStrength> {
+    let effect = entry.object("effects")?.object(SPIN_ATTACK)?;
+    match effect.object("value") {
+        Some(value) => Some(SpinStrength {
+            base: value.f32("base")?,
+            per_level_above_first: value.f32("per_level_above_first").unwrap_or(0.0),
+        }),
+        None => effect.f32("value").map(|base| SpinStrength {
+            base,
+            per_level_above_first: 0.0,
+        }),
+    }
+}
+
 fn has_effect(entry: &JsonObject, effect: &str) -> bool {
     entry
         .object("effects")
@@ -183,7 +211,7 @@ impl Registries {
                 let entry = read_entry(data_root, "enchantment", &name);
                 EnchantmentEntry {
                     prevents_armor_change: has_effect(&entry, PREVENT_ARMOR_CHANGE),
-                    trident_spin_attack: has_effect(&entry, SPIN_ATTACK),
+                    trident_spin_attack: spin_strength(&entry),
                     description: component(&entry, "description"),
                     anvil_cost: entry.i32("anvil_cost").unwrap_or(1),
                     supported_items: entry

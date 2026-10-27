@@ -245,3 +245,32 @@ impl LocalPlayer {
 pub(super) fn rot_lerp(partial_tick: f32, from: f32, to: f32) -> f32 {
     from + partial_tick * photon_core::math::wrap_degrees_f32(to - from)
 }
+
+impl LocalPlayer {
+    /// `TridentItem.releaseUsing` of a riptide trident: the player is pushed along its look by
+    /// the strength and, standing on the ground, lifted (`LocalPlayer.move`) a little over a block.
+    pub fn riptide_launch(
+        &mut self,
+        world: &ClientWorld,
+        strength: f32,
+    ) -> Result<(), Unsupported> {
+        use photon_core::math::{mth_cos_f64, mth_sin_f64, mth_sqrt_f32};
+        let radians = (std::f64::consts::PI / 180.0) as f32;
+        let (y_rot, x_rot) = (self.y_rot * radians, self.x_rot * radians);
+        let mut xd = -mth_sin_f64(f64::from(y_rot)) * mth_cos_f64(f64::from(x_rot));
+        let mut yd = -mth_sin_f64(f64::from(x_rot));
+        let mut zd = mth_cos_f64(f64::from(y_rot)) * mth_cos_f64(f64::from(x_rot));
+        let dist = mth_sqrt_f32(xd * xd + yd * yd + zd * zd);
+        xd *= strength / dist;
+        yd *= strength / dist;
+        zd *= strength / dist;
+        self.delta = self
+            .delta
+            .add_vec3(Vec3::new(f64::from(xd), f64::from(yd), f64::from(zd)));
+        if self.on_ground {
+            let lift = Vec3::new(0.0, f64::from(1.199_999_9_f32), 0.0);
+            self.move_self(&Level::new(world), lift)?;
+        }
+        Ok(())
+    }
+}

@@ -62,7 +62,7 @@ pub struct Context<'a> {
     /// The instruments of the registry, by id.
     pub instruments: &'a [Option<crate::item::instrument::Instrument>],
     /// Whether each enchantment of the registry, by id, has the trident spin attack effect.
-    pub spin_attack: &'a [bool],
+    pub spin_attack: &'a [Option<crate::registries::SpinStrength>],
     /// Whether each enchantment of the registry, by id, has the prevent armor change effect.
     pub prevents_armor_change: &'a [bool],
     /// The level's difficulty, 0 (peaceful) to 3 (hard).

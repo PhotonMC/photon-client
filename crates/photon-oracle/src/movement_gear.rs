@@ -321,7 +321,7 @@ pub(super) fn vanilla_instruments() -> Vec<Option<photon_game::item::instrument:
 }
 
 /// Which enchantments of the vanilla data pack carry the trident spin attack effect, by registry id.
-pub(super) fn vanilla_spin_attack() -> Vec<bool> {
+pub(super) fn vanilla_spin_attack() -> Vec<Option<photon_game::registries::SpinStrength>> {
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
     photon_game::registries::Registries::vanilla(&data_root)

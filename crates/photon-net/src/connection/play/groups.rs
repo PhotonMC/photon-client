@@ -95,7 +95,7 @@ pub(super) struct LocalState {
     /// `Player.getCooldowns`.
     pub(super) item_cooldowns: photon_game::item::cooldowns::ItemCooldowns,
     /// Whether each enchantment, by id, has the trident spin attack effect.
-    pub(super) spin_attack: std::sync::Arc<Vec<bool>>,
+    pub(super) spin_attack: std::sync::Arc<Vec<Option<photon_game::registries::SpinStrength>>>,
     /// Whether each enchantment, by id, has the prevent armor change effect.
     pub(super) prevents_armor_change: std::sync::Arc<Vec<bool>>,
     /// The instruments of the registry, by id, from the data pack.

@@ -486,6 +486,7 @@ impl GameMode {
             ctx.player
                 .play_own_sound("minecraft:item.spyglass.stop_using", (1.0, 1.0));
         }
+        super::utility::trident_release(ctx);
         ctx.player.release_using_item();
     }
 

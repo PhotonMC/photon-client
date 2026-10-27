@@ -163,7 +163,10 @@ impl PlaySession {
     }
 
     /// Which enchantments carry the trident spin attack effect, by registry id.
-    pub fn set_spin_attack(&mut self, spin_attack: Vec<bool>) {
+    pub fn set_spin_attack(
+        &mut self,
+        spin_attack: Vec<Option<photon_game::registries::SpinStrength>>,
+    ) {
         self.local.spin_attack = std::sync::Arc::new(spin_attack);
     }
 
