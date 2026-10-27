@@ -3,6 +3,7 @@
 //! entities in the crosshair.
 
 mod aiming;
+mod bone_meal;
 mod bottling;
 mod cauldron;
 mod consuming;
@@ -262,6 +263,7 @@ pub fn cases() -> Vec<Value> {
                 item_on::rows(),
                 cauldron::rows(),
                 solid_bucket::rows(),
+                bone_meal::rows(),
             ]
             .concat(),
         ),

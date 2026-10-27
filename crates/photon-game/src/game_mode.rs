@@ -79,6 +79,7 @@ impl Default for GameMode {
 
 mod after_use;
 mod base_use;
+mod bone_meal;
 mod equipping;
 pub use after_use::finish_use;
 mod block_use;

@@ -54,7 +54,7 @@ pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseRes
         .cloned();
     let creative = ctx.instabuild();
     if let Some(refused) = refusal(worn.as_ref(), &held, (creative, ctx.prevents_armor_change)) {
-        return refused;
+        return Some(refused);
     }
     let to_equipment = held.copy_with_count(1);
     if held.item_count() <= 1 {
@@ -77,13 +77,13 @@ pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseRes
     Some(UseResult::Success { swing: true })
 }
 
-/// Whether the swap stops before it starts: `Some(Some(Fail))` where the worn piece is bound
+/// Whether the swap stops before it starts: `Some(Fail)` where the worn piece is bound
 /// (`PREVENT_ARMOR_CHANGE`, outside creative) or the same stack is worn.
 fn refusal(
     worn: Option<&ClientItemStackState>,
     held: &ClientItemStackState,
     (creative, prevents): (bool, &[bool]),
-) -> Option<Option<UseResult>> {
+) -> Option<UseResult> {
     let worn = worn?;
     let values = Values::new(worn.item_registry_id(), worn.patch_bytes());
     let bound = values
@@ -98,8 +98,8 @@ fn refusal(
                     .unwrap_or(false)
         });
     if bound && !creative {
-        return Some(Some(UseResult::Fail));
+        return Some(UseResult::Fail);
     }
     worn.is_same_item_same_components(held)
-        .then_some(Some(UseResult::Fail))
+        .then_some(UseResult::Fail)
 }
