@@ -156,7 +156,8 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
     // `bobView` off leaves the hand without the sway.
     let bob = if view.view_bobbing { bob } else { 0.0 };
     let (x_bob, y_bob) = player.hand_bob(partial);
-    let (view_y_rot, view_x_rot) = player.rotation();
+    let view_x_rot = player.rotation().1;
+    let view_y_rot = player.view_y_rot(partial);
     HandView {
         bob_walked: walked,
         bob,
