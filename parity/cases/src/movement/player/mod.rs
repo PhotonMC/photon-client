@@ -1,5 +1,6 @@
 //! The movement family: the player and the world.
 
+mod auto_jump;
 mod containers;
 mod flight;
 mod interaction;
