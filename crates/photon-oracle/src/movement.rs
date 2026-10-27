@@ -432,7 +432,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     world
                         .take_level_events()
                         .iter()
-                        .filter_map(photon_world::LevelEvent::break_sound),
+                        .filter_map(|event| event.break_sound().or_else(|| event.geyser_sound())),
                 )
                 .map(|sound| {
                     let source = sound.source.name();

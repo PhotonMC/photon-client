@@ -226,6 +226,7 @@ use falling::*;
 mod fluids;
 pub use fluids::*;
 mod fluid_jump;
+mod geyser;
 mod gliding;
 mod hand;
 pub use hand::*;

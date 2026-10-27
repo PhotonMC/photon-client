@@ -1,6 +1,7 @@
 //! `PotentSulfurBlockEntity` as the client runs it: the water above a sulfur block, where its gas
 //! rises from, and the ticker that sends clouds of it up.
 
+use photon_core::aabb::Aabb;
 use photon_core::ids::BlockStateId;
 use photon_core::math::Vec3;
 use photon_data::block::blocks::id;
@@ -9,6 +10,7 @@ use photon_data::block::definition::Fluid;
 use super::sounds::LevelEvent;
 use crate::block::piston::Pos;
 use crate::block::{self, rules};
+use crate::local_player::LocalPlayer;
 use crate::*;
 
 /// `PotentSulfurState`.
@@ -131,9 +133,8 @@ impl ClientWorld {
         }
     }
 
-    /// Whether the block at a place is a potent sulfur block.
     /// What a potent sulfur block's ticker does this tick, by its state.
-    pub(super) fn tick_potent_sulfur(&mut self, pos: Pos) {
+    pub(super) fn tick_potent_sulfur(&mut self, pos: Pos, player: Option<&mut LocalPlayer>) {
         let state = self.block_state_or_air(pos.0, pos.1, pos.2);
         if self.block_entity_at(pos.0, pos.1, pos.2).is_none() {
             self.block_tickers.unregister(pos);
@@ -141,10 +142,45 @@ impl ClientWorld {
         }
         match SulfurState::of(state) {
             SulfurState::Wet | SulfurState::Dormant => self.tick_noxious_gas(pos),
-            SulfurState::Erupting => self.tick_geyser_plume(pos, ERUPTION_SOUND),
-            SulfurState::Continuous => self.tick_geyser_plume(pos, CONTINUOUS_SOUND),
+            SulfurState::Erupting => {
+                self.tick_geyser_plume(pos, ERUPTION_SOUND);
+                self.launch_entities(pos, player);
+            }
+            SulfurState::Continuous => {
+                self.tick_geyser_plume(pos, CONTINUOUS_SOUND);
+                self.launch_entities(pos, player);
+            }
             SulfurState::Dry => {}
         }
+    }
+
+    /// `LAUNCH_ENTITY_TICKER`: the entities in the geyser's column go up. The client only
+    /// simulates the local player, so the others are left to the server.
+    fn launch_entities(&self, pos: Pos, player: Option<&mut LocalPlayer>) {
+        let (Some(source), Some(player)) = (self.noxious_gas_source(pos), player) else {
+            return;
+        };
+        let water_blocks = source.1 - pos.1 - 1;
+        let height = self.unobstructed_block_count((pos.0, pos.1 + 1, pos.2), water_blocks);
+        let column = Aabb::new(
+            f64::from(pos.0),
+            f64::from(pos.1 + 1),
+            f64::from(pos.2),
+            f64::from(pos.0 + 1),
+            f64::from(pos.1 + 2),
+            f64::from(pos.2 + 1),
+        )
+        .expand_towards(0.0, f64::from(height - 1), 0.0);
+        player.launched_by_geyser(column, water_blocks);
+    }
+
+    /// `getUnobstructedBlockCount`: how many cells up from a place the geyser's force reaches,
+    /// at most six for each block of water.
+    fn unobstructed_block_count(&self, (x, y, z): Pos, water_blocks: i32) -> i32 {
+        let force_height = 6 * water_blocks;
+        (0..force_height)
+            .find(|&i| !self.is_geyser_passable((x, y + i, z)))
+            .unwrap_or(force_height)
     }
 
     /// `PotentSulfurBlockEntity.CLIENT_GEYSER_PLUME_TICKER`: every second since it erupted, the

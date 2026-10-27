@@ -8,6 +8,7 @@ mod cauldron;
 mod consuming;
 mod digging;
 mod effects;
+mod geysers;
 mod gliding;
 mod item_on;
 mod opening;
@@ -250,6 +251,7 @@ pub fn cases() -> Vec<Value> {
         local("movement/entity-aim", aiming::rows()),
         local("movement/gliding", gliding::rows()),
         local("movement/pistons", pistons::rows()),
+        local("movement/geysers", geysers::rows()),
         local("movement/effects", effects::rows()),
     ]
 }

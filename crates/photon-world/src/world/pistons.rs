@@ -374,7 +374,7 @@ impl ClientWorld {
         let block =
             usize::from(block::state_or_air(self.block_state_or_air(pos.0, pos.1, pos.2)).block);
         match block {
-            id::POTENT_SULFUR => self.tick_potent_sulfur(pos),
+            id::POTENT_SULFUR => self.tick_potent_sulfur(pos, player),
             id::ENCHANTING_TABLE => self.tick_enchanting_table(pos),
             id::BEACON => self.tick_beacon(pos),
             id::CONDUIT => self.tick_conduit(pos),

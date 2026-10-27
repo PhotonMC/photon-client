@@ -378,6 +378,24 @@ pub enum LevelEvent {
 }
 
 impl LevelEvent {
+    /// The sound a geyser plays (`Level.playLocalSound` of the blocks' kind); nothing for another
+    /// event.
+    pub fn geyser_sound(&self) -> Option<local_player::LocalSound> {
+        let Self::GeyserSound { at, sound } = *self else {
+            return None;
+        };
+        Some(local_player::LocalSound {
+            relative: false,
+            follows_player: false,
+            delay_ticks: 0,
+            event: sound,
+            source: local_player::LocalSoundSource::Blocks,
+            volume: 1.0,
+            pitch: 1.0,
+            position: at,
+        })
+    }
+
     /// The sound of a block broken (2001): its break sound, louder and lower, at its middle;
     /// nothing for air or another event.
     pub fn break_sound(&self) -> Option<local_player::LocalSound> {
