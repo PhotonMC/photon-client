@@ -48,6 +48,16 @@ pub fn rows() -> Vec<Value> {
             (4.5, 68.0, 4.5),
         )
         .row(),
+        // A slab in the column cuts the force short: the player on it is above the reach.
+        scene(
+            "cut-short",
+            cat![geyser(at, "continuous", 1), vec![put_with(4, 70, 4, "minecraft:stone_slab", &[("type", "bottom")])]],
+            at,
+            (4.5, 70.5, 4.5),
+        )
+        .row(),
+        // Falling in from above, slowly enough that the fall distance is held down.
+        scene("fall-held", geyser(at, "continuous", 1), at, (4.5, 73.5, 4.5)).row(),
         // Standing on the ground of the plume (the player stands up in the water, then is lifted).
         scene("standing", geyser(at, "continuous", 1), at, (4.5, 66.0, 4.5)).row(),
     ]
