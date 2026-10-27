@@ -196,12 +196,14 @@ impl WorldItemLayers {
             .collect()
     }
 
-    fn caches(&mut self) -> [&mut ItemLayerCache; 3] {
-        [
+    fn caches(&mut self) -> Vec<&mut ItemLayerCache> {
+        let mut caches = vec![
             &mut self.ground,
             &mut self.frames.layers,
             &mut self.on_shelf,
-        ]
+        ];
+        caches.extend(self.displays.caches());
+        caches
     }
 
     /// Set how the frame's item glints move and where their texture is.

@@ -55,6 +55,11 @@ impl DisplayLayers {
         }
     }
 
+    /// The caches of every context.
+    pub fn caches(&mut self) -> impl Iterator<Item = &mut ItemLayerCache> {
+        self.contexts.iter_mut()
+    }
+
     /// The glints of the displays' items drawn this frame.
     pub fn take_glint(&mut self) -> Vec<Vertex> {
         self.contexts

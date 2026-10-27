@@ -90,6 +90,10 @@ impl GuiHeads {
         stack: &ClientItemStackState,
         drawn: &mut Vec<photon_render::scene::Vertex>,
     ) {
+        // A cache nobody exchanges skins with asks for none.
+        let Some(default) = self.default else {
+            return;
+        };
         if stack.item_registry_id() != photon_data::item::registry::named("minecraft:player_head") {
             return;
         }
@@ -98,7 +102,7 @@ impl GuiHeads {
         };
         let key = key_of(&profile);
         self.wanted.push(profile);
-        let (Some(rect), Some(default)) = (self.found.get(&key).copied(), self.default) else {
+        let Some(rect) = self.found.get(&key).copied() else {
             return;
         };
         super::skinned_heads::wear_skin_from(drawn, default, rect);
