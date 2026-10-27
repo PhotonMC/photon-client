@@ -9,8 +9,17 @@ use crate::movement::world::{put, put_with};
 
 /// A use of the block at (0, 64, 2) aimed at, with the stack the row holds.
 pub(super) fn row(label: &str, world: Vec<Value>, aim: &Value) -> super::Interaction {
-    let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
-    let ticks = [uses(1, Some(aim), &around).clicks(1).go(), uses(3, Some(aim), &around).go()].concat();
+    row_around(label, world, aim, &[(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)])
+}
+
+/// A use like [`row`] that watches the given blocks, such as one placed beneath the clicked one.
+pub(super) fn row_around(
+    label: &str,
+    world: Vec<Value>,
+    aim: &Value,
+    around: &[(i64, i64, i64)],
+) -> super::Interaction {
+    let ticks = [uses(1, Some(aim), around).clicks(1).go(), uses(3, Some(aim), around).go()].concat();
     using(label, world, ticks)
 }
 
@@ -344,41 +353,6 @@ fn signs() -> Vec<Value> {
     ]
 }
 
-fn hanging_signs() -> Vec<Value> {
-    let at = (0, 64, 2);
-    let hanging = || {
-        vec![put_with(
-            0,
-            64,
-            2,
-            "minecraft:oak_hanging_sign",
-            &[("attached", "false"), ("rotation", "0"), ("waterlogged", "false")],
-        )]
-    };
-    let wall = || {
-        vec![put_with(0, 64, 2, "minecraft:oak_wall_hanging_sign", &[("facing", "north"), ("waterlogged", "false")])]
-    };
-    let kind = "minecraft:hanging_sign";
-    vec![
-        row("item-on-hanging-sign-stone", hanging(), &north())
-            .main_hand("minecraft:stone")
-            .count(4)
-            .block_entity(at, kind)
-            .row(),
-        row("item-on-hanging-sign-dye", hanging(), &north())
-            .main_hand("minecraft:black_dye")
-            .count(4)
-            .block_entity(at, kind)
-            .row(),
-        row("item-on-wall-hanging-sign-empty", wall(), &north()).block_entity(at, kind).row(),
-        row("item-on-wall-hanging-sign-stone", wall(), &north())
-            .main_hand("minecraft:stone")
-            .count(4)
-            .block_entity(at, kind)
-            .row(),
-    ]
-}
-
 fn bookshelves() -> Vec<Value> {
     let at = (0, 64, 2);
     let bookshelf = |occupied: &[&str]| {
@@ -474,7 +448,7 @@ pub fn rows() -> Vec<Value> {
         with_block_entities(),
         pots_bushes_and_composters(),
         signs(),
-        hanging_signs(),
+        super::hanging::hanging_signs(),
         bookshelves(),
         shelves(),
     ]

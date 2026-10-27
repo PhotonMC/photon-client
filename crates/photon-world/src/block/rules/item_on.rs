@@ -425,12 +425,29 @@ fn sign(use_: &Use) -> Option<ItemOn> {
     }))
 }
 
-/// The hanging signs chain another hanging sign under them, which is not ported.
-fn hanging_sign(use_: &Use) -> Option<ItemOn> {
-    if use_.held.hanging_sign {
+/// `CeilingHangingSignBlock.useItemOn`: a hanging sign held against the underside passes, so
+/// another hangs below. A waxed sign may carry click commands, which are not known here.
+fn ceiling_hanging_sign(use_: &Use) -> Option<ItemOn> {
+    chaining(use_, use_.user.face == Direction::Down)
+}
+
+/// `WallHangingSignBlock.useItemOn`: a hanging sign held against a side that is not the editable
+/// one (along the sign's own axis) passes.
+fn wall_hanging_sign(use_: &Use) -> Option<ItemOn> {
+    let along = property(use_.state, "facing")
+        .and_then(Direction::from_name)
+        .is_some_and(|facing| facing.axis() == use_.user.face.axis());
+    chaining(use_, !along)
+}
+
+fn chaining(use_: &Use, side: bool) -> Option<ItemOn> {
+    if !use_.held.hanging_sign || !use_.user.block_entity {
+        return sign(use_);
+    }
+    if use_.user.waxed {
         return None;
     }
-    sign(use_)
+    if side { pass() } else { sign(use_) }
 }
 
 fn slot_hit(use_: &Use, size: (i32, i32)) -> Option<i32> {
@@ -491,8 +508,8 @@ const USES: &[(BlockClass, Rule1)] = &[
     (BlockClass::ChiseledBookShelfBlock, chiseled_bookshelf),
     (BlockClass::ShelfBlock, shelf),
     (BlockClass::SignBlock, sign),
-    (BlockClass::CeilingHangingSignBlock, hanging_sign),
-    (BlockClass::WallHangingSignBlock, hanging_sign),
+    (BlockClass::CeilingHangingSignBlock, ceiling_hanging_sign),
+    (BlockClass::WallHangingSignBlock, wall_hanging_sign),
     (BlockClass::FlowerPotBlock, flower_pot),
     (BlockClass::SweetBerryBushBlock, sweet_berry_bush),
     (BlockClass::ComposterBlock, composter),
@@ -619,7 +636,7 @@ mod tests {
         );
     }
 
-    /// A waxed sign is a success with a swing for any stack; the hanging sign chain is not ported.
+    /// A waxed sign is a success with a swing for any stack.
     #[test]
     fn a_waxed_sign_is_a_success_for_any_stack() {
         let sign = state(
@@ -651,7 +668,53 @@ mod tests {
             hanging_sign: true,
             ..stone()
         };
-        assert_eq!(use_item_with(hanging, at, sign_item, user(true)), None);
+        // A waxed hanging sign may carry click commands, which are not known here.
+        assert_eq!(use_item_with(hanging, at, sign_item, waxed), None);
+    }
+
+    /// A hanging sign held against the underside of a ceiling one, or a side of a wall one that
+    /// is not its editable face, passes so that another hangs from it.
+    #[test]
+    fn a_hanging_sign_chains_under_a_hanging_sign() {
+        let at = (0, 64, 2);
+        let sign_item = Held {
+            hanging_sign: true,
+            ..stone()
+        };
+        let facing = |face| ItemUser { face, ..user(true) };
+        let ceiling = state(
+            "minecraft:oak_hanging_sign",
+            &[
+                ("attached", "false"),
+                ("rotation", "0"),
+                ("waterlogged", "false"),
+            ],
+        );
+        let result = |state, held, user| use_item_with(state, at, held, user).map(|on| on.result);
+        assert_eq!(
+            result(ceiling, sign_item, facing(Direction::Down)),
+            Some(UseResult::Pass)
+        );
+        assert_eq!(
+            result(ceiling, sign_item, facing(Direction::North)),
+            Some(SERVER)
+        );
+        assert_eq!(
+            result(ceiling, stone(), facing(Direction::Down)),
+            Some(SERVER)
+        );
+        let wall = state(
+            "minecraft:oak_wall_hanging_sign",
+            &[("facing", "north"), ("waterlogged", "false")],
+        );
+        assert_eq!(
+            result(wall, sign_item, facing(Direction::East)),
+            Some(UseResult::Pass)
+        );
+        assert_eq!(
+            result(wall, sign_item, facing(Direction::North)),
+            Some(SERVER)
+        );
     }
 
     /// The weathering statue passes without its block entity, and turns with it.

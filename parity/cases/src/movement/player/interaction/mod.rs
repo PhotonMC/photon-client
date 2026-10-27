@@ -11,6 +11,7 @@ mod digging;
 mod effects;
 mod geysers;
 mod gliding;
+mod hanging;
 mod item_on;
 mod opening;
 mod pistons;
