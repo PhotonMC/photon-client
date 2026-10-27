@@ -25,6 +25,16 @@ impl Uuid {
         Self { most, least }
     }
 
+    /// `UUIDUtil.createOfflinePlayerUUID`: `UUID.nameUUIDFromBytes` of `OfflinePlayer:` and the
+    /// name, the MD5 digest with the version 3 and the variant of RFC 4122 set.
+    pub fn offline_player(name: &str) -> Self {
+        let mut digest = super::md5::md5(format!("OfflinePlayer:{name}").as_bytes());
+        digest[6] = digest[6] & 0x0f | 0x30;
+        digest[8] = digest[8] & 0x3f | 0x80;
+        let half = |bytes: &[u8]| u64::from_be_bytes(bytes.try_into().unwrap_or_default());
+        Self::new(half(&digest[..8]), half(&digest[8..]))
+    }
+
     /// `UUID.toString`: eight, four, four, four and twelve lowercase hex digits.
     pub fn to_string_java(self) -> String {
         format!(
@@ -52,5 +62,18 @@ mod uuid_tests {
             Uuid::new(0, 7).to_string_java(),
             "00000000-0000-0000-0000-000000000007"
         );
+    }
+}
+#[cfg(test)]
+mod offline_tests {
+    use super::Uuid;
+
+    #[test]
+    fn an_offline_player_id_is_a_version_3_id_of_the_name() {
+        let id = Uuid::offline_player("Steve");
+        assert_eq!(id.most >> 12 & 0xf, 3);
+        assert_eq!(id.least >> 62, 0b10);
+        assert_ne!(id, Uuid::offline_player("steve"));
+        assert_eq!(id, Uuid::offline_player("Steve"));
     }
 }

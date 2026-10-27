@@ -29,5 +29,6 @@ mod section_pos;
 pub use section_pos::*;
 mod traversal;
 pub use traversal::*;
+mod md5;
 mod uuid;
 pub use uuid::*;

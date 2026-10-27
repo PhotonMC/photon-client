@@ -58,7 +58,7 @@ fn partial(dynamic: &Dynamic) -> StaticProfile {
     StaticProfile {
         id: match dynamic {
             Dynamic::Id(id) => *id,
-            Dynamic::Name(_) => Uuid::new(0, 0),
+            Dynamic::Name(name) => super::profile::offline_id(Some(name)),
         },
         properties: Vec::new(),
     }

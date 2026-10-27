@@ -14,6 +14,11 @@ pub(crate) struct StaticProfile {
     pub properties: Vec<ProfileProperty>,
 }
 
+/// `createPartialProfile`'s id of a profile that gives none: the name's offline one, else nil.
+pub(crate) fn offline_id(name: Option<&str>) -> Uuid {
+    name.map_or(Uuid::new(0, 0), Uuid::offline_player)
+}
+
 /// `ResolvableProfile.create` of a partial profile: a name or an id alone, with no properties,
 /// is looked up; any other is the profile it says (its id the given one, or the nil one).
 pub(crate) fn resolvable(
@@ -24,8 +29,8 @@ pub(crate) fn resolvable(
     match (name, id) {
         (Some(name), None) if properties.is_empty() => Resolvable::Dynamic(Dynamic::Name(name)),
         (None, Some(id)) if properties.is_empty() => Resolvable::Dynamic(Dynamic::Id(id)),
-        (_, id) => Resolvable::Static(StaticProfile {
-            id: id.unwrap_or(Uuid::new(0, 0)),
+        (name, id) => Resolvable::Static(StaticProfile {
+            id: id.unwrap_or_else(|| offline_id(name.as_deref())),
             properties,
         }),
     }
