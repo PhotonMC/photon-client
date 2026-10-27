@@ -16,27 +16,43 @@ impl LocalPlayer {
         self.set_pos(boat.rider_position);
         self.y_rot += boat.delta_rotation;
         self.y_head_rot += boat.delta_rotation;
-        let (_, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot, self.y_rot, boat.y_rot,
+        let (y_rot_old, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
+            self.y_rot,
+            self.view.y_rot_old,
+            boat.y_rot,
         );
+        self.view.y_rot_old = y_rot_old;
         self.y_rot = y_rot;
         self.y_head_rot = self.y_rot;
         self.y_body_rot = boat.y_rot;
+    }
+
+    /// `LocalPlayer.getViewYRot`: a rider's view eases between ticks, anyone else's is the yaw.
+    pub fn view_y_rot(&self, partial_tick: f32) -> f32 {
+        if self.is_passenger() && partial_tick != 1.0 {
+            photon_core::math::mth_lerp_f32(partial_tick, self.view.y_rot_old, self.y_rot)
+        } else {
+            self.y_rot
+        }
     }
 
     /// `ClientPacketListener.handleSetEntityPassengersPacket` for a player who has just boarded a
     /// boat: it looks the way the boat faces.
     pub fn face_boat(&mut self, boat_y_rot: f32) {
         self.y_rot = boat_y_rot;
+        self.view.y_rot_old = boat_y_rot;
         self.y_head_rot = boat_y_rot;
     }
 
     /// `AbstractBoat.onPassengerTurned`, after the mouse turned the player: held within a quarter
     /// turn of where the boat faces.
     pub fn clamp_in_boat(&mut self, boat_y_rot: f32) {
-        let (_, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot, self.y_rot, boat_y_rot,
+        let (y_rot_old, y_rot) = crate::entity::vanilla_boat_passenger_rotation_clamped_values(
+            self.y_rot,
+            self.view.y_rot_old,
+            boat_y_rot,
         );
+        self.view.y_rot_old = y_rot_old;
         self.y_rot = y_rot;
         self.y_head_rot = y_rot;
         self.y_body_rot = boat_y_rot;
@@ -75,6 +91,8 @@ impl LocalPlayer {
 
     /// Turn the view, as the mouse handler does between ticks.
     pub fn set_rotation(&mut self, y_rot: f32, x_rot: f32) {
+        // `Entity.turn` moves the last tick's yaw with the yaw, so a turn is not eased.
+        self.view.y_rot_old += y_rot - self.y_rot;
         self.y_rot = y_rot;
         self.x_rot = x_rot.clamp(-90.0, 90.0);
     }
@@ -84,6 +102,7 @@ impl LocalPlayer {
         self.set_pos(position);
         self.old_position = position;
         self.set_rotation(y_rot, x_rot);
+        self.view.y_rot_old = self.y_rot;
     }
 
     /// `Entity.absSnapTo`: the position, kept inside the world's limits,
@@ -105,6 +124,7 @@ impl LocalPlayer {
         self.delta = delta;
         self.old_position = position;
         self.set_rotation(y_rot, x_rot);
+        self.view.y_rot_old = self.y_rot;
     }
 
     /// `Entity.turn`: the mouse's accumulated movement, already scaled by
@@ -114,6 +134,7 @@ impl LocalPlayer {
         let y_delta = y_rot_delta as f32 * 0.15;
         self.x_rot = (self.x_rot + x_delta).clamp(-90.0, 90.0);
         self.y_rot += y_delta;
+        self.view.y_rot_old += y_delta;
     }
 
     /// The sprint command of `LocalPlayer.sendPosition`, which a spectated view still sends.

@@ -162,6 +162,7 @@ impl LocalPlayer {
     pub(super) fn living_tick(&mut self, level: &Level<'_>) -> Result<(), Unsupported> {
         // LivingEntity.baseTick keeps last tick's swing and facings.
         self.attack_anim_old = self.attack_anim;
+        self.view.y_rot_old = self.y_rot;
         self.y_head_rot_old = self.y_head_rot;
         self.y_body_rot_old = self.y_body_rot;
         // Entity.baseTick, as the living base tick runs it: the sprint flake reads last tick's

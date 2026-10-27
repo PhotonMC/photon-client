@@ -47,7 +47,11 @@ impl Play {
             let (x, y, z) = snapshot.position;
             return (Vec3::new(x, y, z), (y_rot, snapshot.pitch));
         }
-        (player.interpolated_position(partial), player.rotation())
+        let (_, x_rot) = player.rotation();
+        (
+            player.interpolated_position(partial),
+            (player.view_y_rot(partial as f32), x_rot),
+        )
     }
 
     /// `Camera.alignWithEntity` for a sleeper in first person: the view turns to the foot of the

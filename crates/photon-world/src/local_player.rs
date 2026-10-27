@@ -257,6 +257,8 @@ pub(crate) use travel::*;
 pub(super) struct ViewState {
     pub(super) controlled_camera: bool,
     pub(super) sleeping_pos: Option<BlockPos>,
+    /// `Entity.yRotO`: the yaw at the start of the tick, which a rider's view eases from.
+    pub(super) y_rot_old: f32,
 }
 
 impl Default for ViewState {
@@ -264,6 +266,7 @@ impl Default for ViewState {
         Self {
             controlled_camera: true,
             sleeping_pos: None,
+            y_rot_old: 0.0,
         }
     }
 }
