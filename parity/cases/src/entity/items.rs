@@ -54,6 +54,18 @@ pub fn item_pose() -> Vec<Value> {
     vec![entity("item-entity-pose", "item_entity_pose", rows)]
 }
 
+/// A trial spawner drop's poses (`OminousItemSpawnerRenderer.submit`): the growth over fifty
+/// ticks and the spin, with one and several copies of a thick and a flat model.
+pub fn ominous_pose() -> Vec<Value> {
+    let mut rows = Vec::new();
+    for age in [0.0, 0.5, 12.25, 25.0, 49.75, 50.0, 50.5, 80.0, 1000.25] {
+        let name = float_text(age);
+        rows.push(item_row(format!("block-{name}"), (age, 0.0), 1, 187, BLOCK));
+        rows.push(item_row(format!("sprite-17-{name}"), (age, 0.0), 3, 187, SPRITE));
+    }
+    vec![entity("ominous-item-pose", "ominous_item_pose", rows)]
+}
+
 /// The pig and the cow, grown and baby, from the layer table, posed by the
 /// reference's `QuadrupedModel.setupAnim`: standing, looking about, walking
 /// at several points of the stride and speeds.

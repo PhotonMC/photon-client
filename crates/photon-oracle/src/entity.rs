@@ -10,7 +10,7 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         "walk_animation" => walk_animation_result(request),
         "model_layers" => Ok(model_layers_result()),
         "quadruped_model" => quadruped_model_result(request),
-        "item_entity_pose" => item_entity_pose_result(request),
+        "item_entity_pose" | "ominous_item_pose" => item_entity_pose_result(request),
         "living_pose" => living_pose_result(request),
         "held_item_pose" => held_item_pose_result(request),
         "spear_table" => Ok(spear_table_result()),

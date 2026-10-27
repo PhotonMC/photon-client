@@ -138,7 +138,9 @@ pub(super) fn living_pose_result(request: &Value) -> Result<Value, String> {
 
 /// A dropped item's poses for a model of a given extent.
 pub(super) fn item_entity_pose_result(request: &Value) -> Result<Value, String> {
-    use photon_render::objects::item::{ModelExtent, item_entity_poses};
+    use photon_render::objects::item::{ModelExtent, item_entity_poses, ominous_item_poses};
+    // A trial spawner's drop grows and spins instead of bobbing (`OminousItemSpawnerRenderer`).
+    let ominous = request["operation"].as_str() == Some("ominous_item_pose");
     let bits = |row: &Value, key: &str| -> Result<f32, String> {
         let text = row[key].as_str().ok_or(format!("{key} must be a string"))?;
         u32::from_str_radix(text, 16)
@@ -157,14 +159,23 @@ pub(super) fn item_entity_pose_result(request: &Value) -> Result<Value, String> 
             max_y: 0.0,
             depth: moved("max_z")? - moved("min_z")?,
         };
-        let poses = item_entity_poses(
-            Default::default(),
+        let (age, count, seed) = (
             bits(row, "age")?,
-            bits(row, "bob")?,
             row["count"].as_i64().ok_or("count")? as i32,
             row["seed"].as_i64().ok_or("seed")? as i32,
-            extent,
         );
+        let poses = if ominous {
+            ominous_item_poses(Default::default(), age, count, seed, extent)
+        } else {
+            item_entity_poses(
+                Default::default(),
+                age,
+                bits(row, "bob")?,
+                count,
+                seed,
+                extent,
+            )
+        };
         let described: Vec<Vec<String>> = poses
             .into_iter()
             .map(|mut pose| {

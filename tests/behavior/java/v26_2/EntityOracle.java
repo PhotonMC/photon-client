@@ -425,6 +425,9 @@ public final class EntityOracle extends EntityWildOracle {
         if (operation.equals("item_entity_pose")) {
             return itemEntityPose(request);
         }
+        if (operation.equals("ominous_item_pose")) {
+            return ominousItemPose(request);
+        }
         if (operation.equals("living_pose")) {
             return livingPose(request);
         }

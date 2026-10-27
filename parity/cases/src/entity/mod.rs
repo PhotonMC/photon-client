@@ -163,6 +163,7 @@ const ORDER: &[Cases] = &[
     || vec![table("types", "entity_types")],
     items::quadruped,
     items::item_pose,
+    items::ominous_pose,
 ];
 
 pub fn cases() -> Vec<Value> {

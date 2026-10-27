@@ -85,6 +85,50 @@ class EntityPoseOracle extends EntityLayerOracle {
         return result;
     }
 
+    /** A trial spawner drop's poses as the reference's own renderer submits them: the growth, the spin, then each copy. */
+    static JsonObject ominousItemPose(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var renderer = (net.minecraft.client.renderer.entity.OminousItemSpawnerRenderer) UNSAFE.allocateInstance(
+                net.minecraft.client.renderer.entity.OminousItemSpawnerRenderer.class);
+            var randomField = Reflect.field(net.minecraft.client.renderer.entity.OminousItemSpawnerRenderer.class, "random");
+            randomField.set(renderer, net.minecraft.util.RandomSource.create());
+            var state = new net.minecraft.client.renderer.entity.state.ItemClusterRenderState();
+            state.ageInTicks = Oracle.f32(row, "age");
+            state.count = row.get("count").getAsInt();
+            state.seed = row.get("seed").getAsInt();
+            var min = new org.joml.Vector3f(Oracle.f32(row, "min_x"), Oracle.f32(row, "min_y"), Oracle.f32(row, "min_z"));
+            var max = new org.joml.Vector3f(Oracle.f32(row, "max_x"), Oracle.f32(row, "max_y"), Oracle.f32(row, "max_z"));
+            state.item.newLayer().setExtents(() -> new org.joml.Vector3fc[] {min, max});
+            var poses = new JsonArray();
+            var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                EntityOracle.class.getClassLoader(),
+                new Class<?>[] {net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitItem")) {
+                        var stack = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        var matrix = new float[16];
+                        stack.last().pose().get(matrix);
+                        var described = new JsonArray();
+                        for (float value : matrix) {
+                            described.add(Oracle.bits(value));
+                        }
+                        poses.add(described);
+                    }
+                    return null;
+                });
+            renderer.submit(state, new com.mojang.blaze3d.vertex.PoseStack(), collector, null);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.add("poses", poses);
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /**
      * Every item that is a kinetic weapon or does not swing as the default does: the registry's own
      * numbers a spear is posed and timed by (its swing, and its kinetic weapon's delay and conditions).
