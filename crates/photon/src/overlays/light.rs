@@ -427,7 +427,7 @@ pub fn player_model(
         eye: None,
         motions: HandActions::of_local(spears.motions, (session, player), stacks.0),
     };
-    hands.collect(held);
+    hands.collect_outlined(held, crate::mobs::outline::local_holder(session));
     let mut vertices = local_body(session, (model, &placement), invisible);
     vertices.extend(armor.skull_vertices(
         hands.skull(),
@@ -452,14 +452,8 @@ pub fn player_model(
 /// The triangles of the local player's own model, which join the outline when it glows
 /// (colour by its profile name).
 fn glowing_local(session: &PlaySession, triangles: Vec<Vertex>) -> Vec<Vertex> {
-    let glowing = crate::mobs::outline::player_glows(
-        session
-            .world()
-            .local_player()
-            .is_some_and(|state| state.is_glowing()),
-    );
-    if glowing {
-        crate::mobs::outline::record_holder(session.local_name().to_owned(), triangles.clone());
+    if let Some(name) = crate::mobs::outline::local_holder(session) {
+        crate::mobs::outline::record_holder(name, triangles.clone());
     }
     triangles
 }

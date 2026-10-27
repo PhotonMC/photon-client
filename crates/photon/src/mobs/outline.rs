@@ -29,6 +29,16 @@ pub(crate) fn player_glows(glowing: bool) -> bool {
     glowing || SPECTATOR_OUTLINES.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// The name the local player's outline is coloured by, while it glows (or the spectator's key
+/// outlines every player).
+pub(crate) fn local_holder(session: &photon_net::connection::PlaySession) -> Option<String> {
+    let glowing = session
+        .world()
+        .local_player()
+        .is_some_and(|state| state.is_glowing());
+    player_glows(glowing).then(|| session.local_name().to_owned())
+}
+
 /// Whose silhouette it is: the scoreboard name its team colour is found by, unless the entity
 /// names its own colour (a display's `glowColorOverride`).
 struct Holder {
