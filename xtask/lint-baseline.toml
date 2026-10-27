@@ -205,7 +205,7 @@
 "crates/photon-game/src/text.rs::named_colour" = 17
 "crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 14
 "crates/photon-game/src/text/translatable.rs::Component::from_nbt" = 16
-"crates/photon-game/src/tooltip/lines.rs::lines" = 61
+"crates/photon-game/src/tooltip/lines.rs::lines" = 59
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
 "crates/photon-gui/src/chat/screen.rs::ChatScreen::key_pressed" = 18
 "crates/photon-gui/src/chat/suggestions.rs::SuggestionsList::draw" = 14
@@ -594,7 +594,7 @@
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
 "crates/photon-game/src/text.rs::flat_strings" = 83
 "crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 71
-"crates/photon-game/src/tooltip/lines.rs::lines" = 272
+"crates/photon-game/src/tooltip/lines.rs::lines" = 270
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 75
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 115
@@ -913,7 +913,7 @@
 "crates/photon/src/objects/displays.rs::display_texts" = 75
 "crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 70
 "crates/photon/src/objects/leashes.rs::leashes" = 98
-"crates/photon/src/objects/minecarts.rs::remote_minecarts" = 87
+"crates/photon/src/objects/minecarts.rs::remote_minecarts" = 84
 "crates/photon/src/overlays/light.rs::player_model" = 71
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 87
 "crates/photon/src/overlays/wear.rs::remote_players" = 74
