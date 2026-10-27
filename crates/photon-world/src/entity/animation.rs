@@ -119,6 +119,9 @@ impl ClientEntity {
         if self.is_primed_tnt() {
             self.primed_tnt_mut().tick();
         }
+        if self.is_fishing_bobber() {
+            self.tick_position_interpolation();
+        }
         if self.is_lightning_bolt() {
             let seed = i64::from(self.id.0);
             self.lightning_done = self

@@ -259,6 +259,7 @@ impl ClientEntity {
             || self.is_minecart()
             || self.kind.display().is_some()
             || self.is_boat()
+            || self.is_fishing_bobber()
             || vanilla_projectile_kind(self.type_id) == Some(VanillaProjectileKind::ExperienceOrb)
     }
 

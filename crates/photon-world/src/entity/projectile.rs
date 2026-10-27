@@ -224,6 +224,11 @@ impl ClientEntity {
         )
     }
 
+    /// Whether this is a fishing bobber (`FishingHook`).
+    pub fn is_fishing_bobber(&self) -> bool {
+        photon_data::entity_type::name(self.type_id) == Some("minecraft:fishing_bobber")
+    }
+
     /// Whether this is a lightning bolt (`LightningBolt`).
     pub fn is_lightning_bolt(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:lightning_bolt")
