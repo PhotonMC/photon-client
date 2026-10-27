@@ -260,12 +260,8 @@ impl ClientWorld {
     /// The hooked phase: the bobber sits at the hooked entity, or flies again once it is gone.
     fn follow_hooked(&mut self, entity_id: EntityId, state: &mut HookState) {
         let hooked = (state.hooked > 0)
-            .then(|| self.entities.at(EntityId(state.hooked - 1)))
-            .flatten()
-            .map(|hooked| {
-                let (x, y, z) = hooked.position();
-                (x, y + f64::from(hooked.bb_height()) * 0.8, z)
-            });
+            .then(|| self.hooked_at(EntityId(state.hooked - 1)))
+            .flatten();
         match hooked {
             Some(at) => {
                 if let Some(entity) = self.entities.at_mut(entity_id) {
@@ -278,6 +274,22 @@ impl ClientWorld {
             }
             None => {}
         }
+    }
+
+    /// `Entity.getY(0.8)` of what a bobber hooked: an entity of the level, or the local player
+    /// (whom `ClientLevel.getEntity` finds too).
+    fn hooked_at(&self, hooked: EntityId) -> Option<(f64, f64, f64)> {
+        if let Some(entity) = self.entities.at(hooked) {
+            let (x, y, z) = entity.position();
+            return Some((x, y + f64::from(entity.bb_height()) * 0.8, z));
+        }
+        let player = self
+            .local_player
+            .as_ref()
+            .filter(|player| player.id == hooked)?;
+        let (x, y, z) = player.position();
+        let height = player.pose.player_dimensions().height();
+        Some((x, y + f64::from(height) * 0.8, z))
     }
 
     fn store_hook(&mut self, entity_id: EntityId, state: HookState, step: Option<HookStep>) {
