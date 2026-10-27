@@ -78,7 +78,7 @@ pub fn remote_armor_stands(
                 eye: None,
                 motions: Default::default(),
             };
-            hands.collect(held);
+            hands.collect_outlined(held, HeldItem::glow_holder(entity));
             vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
             vertices.extend(armor.skull_vertices(
                 hands.skull(),

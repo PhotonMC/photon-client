@@ -63,7 +63,7 @@ pub fn remote_players(
             eye: arm_poses::eye_arm_of(session, entity, snapshot.attack_time, partial),
             motions: HandActions::of_entity(spears.motions, session, entity),
         };
-        hands.collect(held);
+        hands.collect_outlined(held, outline_name(session, entity));
         let skull = hands.skull();
         vertices.extend(armor.skull_vertices(
             skull,
@@ -83,6 +83,15 @@ pub fn remote_players(
             (textures, partial),
         ));
     }
+}
+
+/// The name a glowing player's outline is coloured by: its profile name.
+fn outline_name(session: &PlaySession, entity: &photon_world::ClientEntity) -> Option<String> {
+    let glows = crate::mobs::outline::player_glows(entity.is_glowing());
+    session
+        .player_name(entity.uuid)
+        .filter(|_| glows)
+        .map(str::to_owned)
 }
 
 /// The triangles of a player, which join the outline when the player glows: the colour is its

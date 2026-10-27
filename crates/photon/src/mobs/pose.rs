@@ -76,7 +76,7 @@ pub(super) fn remote_humanoids(
                         (world.game_time(), partial),
                     ),
                 };
-                hands.collect(held);
+                hands.collect_outlined(held, HeldItem::glow_holder(entity));
                 skull = hands.skull();
             }
             vertices.extend(visible_body(entity, model, (&placement, rect)));

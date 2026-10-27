@@ -55,8 +55,6 @@ pub enum Carried {
         /// The overlay's code (`overlay_code`): zero where the layer submits
         /// `NO_OVERLAY`.
         overlay: f32,
-        /// The scoreboard name of the glowing entity whose outline the block joins.
-        outline: Option<String>,
     },
 }
 
@@ -74,6 +72,8 @@ pub struct HeldItem {
     pub owner: Option<Owner>,
     /// The stack is the local player's own, on its body: the seed of its needle's spin.
     pub local: Option<i32>,
+    /// The scoreboard name of the glowing entity whose outline the stack or block joins.
+    pub outline: Option<String>,
 }
 
 impl HeldItem {
@@ -88,28 +88,26 @@ impl HeldItem {
             cast: false,
             owner: None,
             local: None,
+            outline: None,
         }
     }
 
-    /// The block joins `entity`'s outline when the entity glows (`submitBlockModel`'s outline
-    /// colour).
+    /// The stack or block joins `entity`'s outline when the entity glows (the outline colour the
+    /// layers submit it with).
     pub fn outlined(mut self, entity: &photon_world::ClientEntity) -> Self {
-        if let Carried::Block { outline, .. } = &mut self.stack
-            && entity.is_glowing()
-        {
-            *outline = Some(entity.uuid.to_string_java());
-        }
+        self.outline = Self::glow_holder(entity);
         self
+    }
+
+    /// The outline holder of an entity that glows: its scoreboard name, the UUID.
+    pub fn glow_holder(entity: &photon_world::ClientEntity) -> Option<String> {
+        entity.is_glowing().then(|| entity.uuid.to_string_java())
     }
 
     /// A block state drawn on an entity, from the pose its layer leaves.
     pub fn block(state: BlockStateId, pose: Pose, light: i32, overlay: f32) -> Self {
         Self {
-            stack: Carried::Block {
-                state,
-                overlay,
-                outline: None,
-            },
+            stack: Carried::Block { state, overlay },
             pose,
             place: Place::Head,
             light,
@@ -117,6 +115,7 @@ impl HeldItem {
             cast: false,
             owner: None,
             local: None,
+            outline: None,
         }
     }
 }
@@ -308,6 +307,17 @@ impl Hands<'_> {
             cast: self.motions.cast[index],
             owner: self.motions.owner_at(place),
             local: self.motions.local_at(place),
+            outline: None,
+        }
+    }
+
+    /// [`Self::collect`], each stack joining the outline of the glowing holder named `outline`
+    /// (`ItemInHandLayer` and `CustomHeadLayer` submit with the holder's outline colour).
+    pub fn collect_outlined(&self, out: &mut Vec<HeldItem>, outline: Option<String>) {
+        let first = out.len();
+        self.collect(out);
+        for item in &mut out[first..] {
+            item.outline.clone_from(&outline);
         }
     }
 
@@ -366,6 +376,7 @@ impl Hands<'_> {
                 cast: false,
                 owner: self.motions.owner_at(Place::Head),
                 local: self.motions.local_at(Place::Head),
+                outline: None,
             });
         }
     }
@@ -382,11 +393,7 @@ pub fn held_item_vertices(
         let cache = &mut layers[item.place.index()];
         let stack = match &item.stack {
             Carried::Stack(stack) => stack,
-            Carried::Block {
-                state,
-                overlay,
-                outline,
-            } => {
+            Carried::Block { state, overlay } => {
                 if let Some((layer, block_light)) = cache.block(*state, renderer) {
                     let light =
                         photon_render::entity::block::submit_light(item.light, *block_light);
@@ -395,7 +402,7 @@ pub fn held_item_vertices(
                         &item.pose,
                         (light, *overlay),
                     );
-                    if let Some(holder) = outline {
+                    if let Some(holder) = &item.outline {
                         crate::mobs::record_item_holder(holder.clone(), drawn.clone());
                     }
                     vertices.extend(drawn);
@@ -414,6 +421,9 @@ pub fn held_item_vertices(
             item.light,
             item.place == Place::Left,
         );
+        if let Some(holder) = &item.outline {
+            crate::mobs::record_item_holder(holder.clone(), drawn.clone());
+        }
         cache.extend_with_glint(stack, drawn, &mut vertices);
     }
     vertices

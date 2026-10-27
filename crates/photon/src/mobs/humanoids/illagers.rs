@@ -158,7 +158,7 @@ pub fn remote_illagers(
             eye: None,
             motions: Default::default(),
         }
-        .collect(held);
+        .collect_outlined(held, HeldItem::glow_holder(entity));
         // `IllusionerRenderer.isBodyVisible` is always true.
         if illager.kind == Kind::Illusioner {
             vertices.extend(mob_vertices(model, &placed, rect));
