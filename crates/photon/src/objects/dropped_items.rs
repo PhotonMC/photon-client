@@ -8,7 +8,8 @@ use photon_render::block::world_mesh::BlockRenderer;
 use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
 use photon_render::objects::item::{
-    item_entity_poses, item_entity_vertices, model_extent, rendered_amount, seed_for_stack,
+    item_entity_poses, item_entity_vertices, model_extent, ominous_item_poses, rendered_amount,
+    seed_for_stack,
 };
 use photon_render::scene::Vertex;
 use photon_world::particles::{ItemPickup, PickedUp};
@@ -73,9 +74,59 @@ pub fn dropped_items(
             vertices,
         );
     }
+    ominous_spawners(session, layers, (renderer, tints), view, vertices);
     layers.set_owner(None);
     picked_up_items(session, pickups, layers, (renderer, tints), view, vertices);
 }
+
+/// `OminousItemSpawnerRenderer`: the stack of a trial spawner's drop grows and spins at full
+/// light.
+fn ominous_spawners(
+    session: &PlaySession,
+    layers: &mut ItemLayerCache,
+    (renderer, tints): (&BlockRenderer, &BiomeTints),
+    view: FrameView,
+    vertices: &mut Vec<Vertex>,
+) {
+    let Some(spawner) = photon_data::entity_type::id("minecraft:ominous_item_spawner") else {
+        return;
+    };
+    let world = session.world();
+    let partial = view.partial as f32;
+    for entity in world.entities().drawn() {
+        let (true, Some(stack), Some(snapshot)) = (
+            entity.type_id == spawner,
+            entity.item_stack(),
+            world.entity_snapshot(entity.id(), partial),
+        ) else {
+            continue;
+        };
+        if stack.item_count() <= 0 {
+            continue;
+        }
+        layers.set_owner(Some(ground_owner(entity)));
+        let item_layers = layers.get(stack, renderer, tints);
+        let (x, y, z) = snapshot.position;
+        let mut start = Pose::default();
+        start.translate(
+            (x - f64::from(view.origin[0])) as f32,
+            (y - f64::from(view.origin[1])) as f32,
+            (z - f64::from(view.origin[2])) as f32,
+        );
+        let poses = ominous_item_poses(
+            start,
+            entity.tick_count() as f32 + partial,
+            rendered_amount(stack.item_count()),
+            seed_for_stack(stack.item_registry_id(), 0),
+            model_extent(item_layers),
+        );
+        let drawn = item_entity_vertices(item_layers, &poses, FULL_LIGHT);
+        layers.extend_with_glint(stack, drawn, vertices);
+    }
+}
+
+/// `LightCoordsUtil.FULL_BRIGHT`.
+const FULL_LIGHT: i32 = 15_728_880;
 
 /// `ItemPickupParticleGroup`: the items flying to whoever took them, as they were when taken,
 /// lit where they were.

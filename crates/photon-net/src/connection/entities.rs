@@ -92,15 +92,23 @@ pub fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObservation)
 const ITEM_STACK_SERIALIZER_ID: i32 = photon_data::entity_type::serializer_named("ITEM_STACK");
 const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
+/// A dropped item, a thrown item, a firework rocket or an ominous item spawner keeps its stack in
+/// the same data.
+fn keeps_stack_in_item_data(entity: &photon_world::ClientEntity) -> bool {
+    let is = |name| photon_data::entity_type::id(name) == Some(entity.type_id);
+    is("minecraft:item")
+        || is("minecraft:ominous_item_spawner")
+        || is("minecraft:firework_rocket")
+        || entity.thrown_item_look().is_some()
+}
+
 /// `handleSetEntityData`, and for a dropped item the stack it holds.
 pub fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
     let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
-    // A dropped item, a thrown item or a firework rocket keeps its stack in the same data.
-    let is_item = world.entities().at(packet.entity_id).is_some_and(|entity| {
-        photon_data::entity_type::id("minecraft:item") == Some(entity.type_id)
-            || entity.thrown_item_look().is_some()
-            || photon_data::entity_type::id("minecraft:firework_rocket") == Some(entity.type_id)
-    });
+    let is_item = world
+        .entities()
+        .at(packet.entity_id)
+        .is_some_and(keeps_stack_in_item_data);
     // An item frame keeps its item after the direction `HangingEntity` has.
     let is_frame = world
         .entities()

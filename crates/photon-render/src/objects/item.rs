@@ -62,6 +62,34 @@ pub fn item_entity_poses(
     cluster_poses(base, count, seed, extent)
 }
 
+/// `OminousItemSpawnerRenderer.submit`: the cluster grows over its first 50 ticks and spins
+/// 40 degrees a tick (wrapped to a half turn either way) about the spawner's feet.
+pub fn ominous_item_poses(
+    start: Pose,
+    age_in_ticks: f32,
+    count: i32,
+    seed: i32,
+    extent: ModelExtent,
+) -> Vec<Pose> {
+    let mut base = start;
+    if age_in_ticks <= 50.0 {
+        let scale = age_in_ticks.min(50.0) / 50.0;
+        base.scale(scale, scale, scale);
+    }
+    // `Mth.wrapDegrees`.
+    let mut degrees = (age_in_ticks * 40.0) % 360.0;
+    if degrees >= 180.0 {
+        degrees -= 360.0;
+    }
+    if degrees < -180.0 {
+        degrees += 360.0;
+    }
+    base.rotate(&Quaternion::rotation_y(Quaternion::degrees_to_radians(
+        degrees,
+    )));
+    cluster_poses(base, count, seed, extent)
+}
+
 /// `ItemEntityRenderer.submitMultipleFromCount`: the pose of each copy of a stack of `count`
 /// items, from `base`, in the order they are submitted. The offsets are drawn from `seed`.
 pub fn cluster_poses(mut base: Pose, count: i32, seed: i32, extent: ModelExtent) -> Vec<Pose> {
@@ -300,6 +328,22 @@ mod tests {
             .map(rendered_amount)
             .collect();
         assert_eq!(shown, [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    }
+
+    #[test]
+    fn an_ominous_cluster_grows_for_fifty_ticks_then_keeps_its_size() {
+        let extent = ModelExtent {
+            min_y: 0.0,
+            max_y: 1.0,
+            depth: 0.0625,
+        };
+        let size = |age: f32| {
+            let poses = ominous_item_poses(Pose::default(), age, 1, 187, extent);
+            poses[0].pose.transform_position(0.0, 1.0, 0.0)[1]
+        };
+        assert!((size(25.0) - 0.5).abs() < 1e-6);
+        assert!((size(50.0) - 1.0).abs() < 1e-6);
+        assert!((size(80.0) - 1.0).abs() < 1e-6);
     }
 
     #[test]
