@@ -8,7 +8,7 @@ fn oracle_player_uuid() -> photon_core::binary::Uuid {
 }
 
 /// A click count of a row: a non-negative int.
-fn count_field(value: &Value, key: &str) -> Result<u32, String> {
+pub(super) fn count_field(value: &Value, key: &str) -> Result<u32, String> {
     u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
 }
 
@@ -133,6 +133,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         .ok_or("movement rows must be an array")?;
     let mut out = Vec::with_capacity(rows.len());
     let (instruments, spin_attack) = (vanilla_instruments(), vanilla_spin_attack());
+    let prevents_armor_change = vanilla_prevents_armor_change();
     for row in rows {
         let label = string(row, "label")?;
         let mut world = movement_world(row)?;
@@ -338,17 +339,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     }
                     None => photon_game::game_mode::Aim::Miss,
                 };
-                let use_ = attack.get("use");
-                let keys = photon_game::game_mode::Keys {
-                    attack_clicks: count_field(attack, "clicks")?,
-                    attack_held: flag(attack, "down")?,
-                    use_clicks: use_.map_or(Ok(0), |use_| count_field(use_, "clicks"))?,
-                    use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
-                    pick_clicks: attack
-                        .get("pick_item")
-                        .map_or(Ok(0), |pick| count_field(pick, "clicks"))?,
-                    ..Default::default()
-                };
+                let keys = movement_gear::keys_of(attack)?;
                 let mut ctx = photon_game::game_mode::Context {
                     miner: &photon_game::game_mode::Miner::of(&world, 0),
                     world: &mut world,
@@ -358,6 +349,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                     cooldowns: &mut cooldowns,
                     instruments: &instruments,
                     spin_attack: &spin_attack,
+                    prevents_armor_change: &prevents_armor_change,
                     game_master: false,
                     profile_id: row.get("player_uuid").map(|_| oracle_player_uuid()),
                 };

@@ -35,9 +35,8 @@ pub(super) fn default_slot(
     (equippable.swappable && equippable.player).then_some(equippable.slot)
 }
 
-/// `Equippable.swapWithEquipmentSlot` for the stack in `hand`, whose slot is `slot`. A worn item
-/// with enchantments may carry the curse that stops the change, which is not read, so the result
-/// then stays unpredicted (`None`).
+/// `Equippable.swapWithEquipmentSlot` for the stack in `hand`, whose slot is `slot`. `None`
+/// where the slot is not predicted.
 pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseResult> {
     let Some(worn_slot) = menu_slot(slot) else {
         // A slot the player has none of: `canUseSlot` fails and the use passes.
@@ -54,7 +53,7 @@ pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseRes
         .filter(|s| s.item_count() > 0)
         .cloned();
     let creative = ctx.instabuild();
-    if let Some(refused) = refusal(worn.as_ref(), &held, creative) {
+    if let Some(refused) = refusal(worn.as_ref(), &held, (creative, ctx.prevents_armor_change)) {
         return refused;
     }
     let to_equipment = held.copy_with_count(1);
@@ -78,20 +77,28 @@ pub(super) fn swap(ctx: &mut Context<'_>, hand: u8, slot: &str) -> Option<UseRes
     Some(UseResult::Success { swing: true })
 }
 
-/// Whether the swap stops before it starts: `Some(None)` where it is not predicted (a worn
-/// enchanted item may be cursed with binding), `Some(Some(Fail))` where the same stack is worn.
+/// Whether the swap stops before it starts: `Some(Some(Fail))` where the worn piece is bound
+/// (`PREVENT_ARMOR_CHANGE`, outside creative) or the same stack is worn.
 fn refusal(
     worn: Option<&ClientItemStackState>,
     held: &ClientItemStackState,
-    creative: bool,
+    (creative, prevents): (bool, &[bool]),
 ) -> Option<Option<UseResult>> {
     let worn = worn?;
     let values = Values::new(worn.item_registry_id(), worn.patch_bytes());
-    let enchanted = !values
+    let bound = values
         .enchantments(photon_world::item_components::ids::ENCHANTMENTS)
-        .is_empty();
-    if enchanted && !creative {
-        return Some(None);
+        .iter()
+        .any(|&(id, level)| {
+            level > 0
+                && usize::try_from(id)
+                    .ok()
+                    .and_then(|id| prevents.get(id))
+                    .copied()
+                    .unwrap_or(false)
+        });
+    if bound && !creative {
+        return Some(Some(UseResult::Fail));
     }
     worn.is_same_item_same_components(held)
         .then_some(Some(UseResult::Fail))

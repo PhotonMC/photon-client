@@ -129,8 +129,11 @@ class MovementPlayerOracle extends MovementWorldOracle {
             if (breaking_.has("chest")) {
                 var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
                     net.minecraft.resources.Identifier.parse(breaking_.get("chest").getAsString()));
-                player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
-                    new net.minecraft.world.item.ItemStack(item));
+                var worn = new net.minecraft.world.item.ItemStack(item);
+                if (breaking_.has("chest_patch")) {
+                    applyWirePatch(worn, breaking_.get("chest_patch").getAsString(), level.registryAccess());
+                }
+                player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, worn);
             }
             if (breaking_.has("rockets")) {
                 // Fireworks that fly with the player, as the server's use of a rocket makes them.

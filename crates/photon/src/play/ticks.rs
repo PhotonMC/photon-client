@@ -549,6 +549,13 @@ pub(super) fn share_registries(
             .map(|entry| entry.trident_spin_attack)
             .collect(),
     );
+    session.set_prevents_armor_change(
+        registries
+            .enchantments
+            .iter()
+            .map(|entry| entry.prevents_armor_change)
+            .collect(),
+    );
     session.set_instruments(photon_game::item::instrument::instruments_of(registries));
     particles.set_jukebox_songs(registries);
 }

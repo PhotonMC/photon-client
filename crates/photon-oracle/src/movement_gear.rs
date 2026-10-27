@@ -331,6 +331,17 @@ pub(super) fn vanilla_spin_attack() -> Vec<bool> {
         .collect()
 }
 
+/// Which enchantments of the vanilla data pack stop armor from being taken off, by registry id.
+pub(super) fn vanilla_prevents_armor_change() -> Vec<bool> {
+    let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../.data/minecraft/assets/jar/data");
+    photon_game::registries::Registries::vanilla(&data_root)
+        .enchantments
+        .iter()
+        .map(|entry| entry.prevents_armor_change)
+        .collect()
+}
+
 /// The entity events a tick brings to the player: a damage event, the death event and the end of
 /// a used item (event 9).
 pub(super) fn server_events(
@@ -535,4 +546,24 @@ pub(super) fn told_entities(
         }
     }
     Ok(())
+}
+
+/// The clicks and held keys a tick's attack object brings.
+pub(super) fn keys_of(attack: &Value) -> Result<photon_game::game_mode::Keys, String> {
+    let flag = |row: &Value, key: &str| {
+        row[key]
+            .as_bool()
+            .ok_or_else(|| format!("{key} must be a bool"))
+    };
+    let use_ = attack.get("use");
+    Ok(photon_game::game_mode::Keys {
+        attack_clicks: count_field(attack, "clicks")?,
+        attack_held: flag(attack, "down")?,
+        use_clicks: use_.map_or(Ok(0), |use_| count_field(use_, "clicks"))?,
+        use_held: use_.map_or(Ok(false), |use_| flag(use_, "down"))?,
+        pick_clicks: attack
+            .get("pick_item")
+            .map_or(Ok(0), |pick| count_field(pick, "clicks"))?,
+        ..Default::default()
+    })
 }

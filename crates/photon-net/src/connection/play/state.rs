@@ -159,6 +159,11 @@ impl PlaySession {
         self.local.spin_attack = std::sync::Arc::new(spin_attack);
     }
 
+    /// Which enchantments stop armor from being taken off (binding), by registry id.
+    pub fn set_prevents_armor_change(&mut self, prevents: Vec<bool>) {
+        self.local.prevents_armor_change = std::sync::Arc::new(prevents);
+    }
+
     /// What `InstrumentItem` reads of the instruments, which the data pack says.
     pub fn set_instruments(
         &mut self,

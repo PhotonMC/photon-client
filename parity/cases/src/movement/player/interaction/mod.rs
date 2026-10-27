@@ -44,6 +44,7 @@ pub struct Interaction {
     off_hand: Option<&'static str>,
     /// Components on the off hand's stack, as `DataComponentPatch.STREAM_CODEC` hex.
     off_hand_patch: Option<String>,
+    chest_patch: Option<String>,
     chest: Option<&'static str>,
     rockets: Option<i64>,
     effects: Option<Vec<Value>>,
@@ -63,6 +64,7 @@ fn interaction(label: &str, blocks: Vec<Value>, ticks: Vec<Value>, count: Option
         patch: None,
         off_hand: None,
         off_hand_patch: None,
+        chest_patch: None,
         chest: None,
         rockets: None,
         effects: None,
@@ -120,6 +122,10 @@ impl Interaction {
         Self { use_remainder: Some(item), ..self }
     }
 
+    pub fn chest_patch(self, hex: String) -> Self {
+        Self { chest_patch: Some(hex), ..self }
+    }
+
     pub fn off_hand_patch(self, hex: String) -> Self {
         Self { off_hand_patch: Some(hex), ..self }
     }
@@ -168,6 +174,15 @@ impl Interaction {
         Self { scene: self.scene.game_mode(game_mode), ..self }
     }
 
+    /// The chest piece the player wears, with its component patch.
+    fn add_worn(chest: Option<&str>, chest_patch: &Option<String>, held: &mut Value) {
+        let Some(item) = chest else { return };
+        held["chest"] = json!(item);
+        if let Some(hex) = chest_patch {
+            held["chest_patch"] = json!(hex);
+        }
+    }
+
     /// The components a row puts on the main hand's stack.
     fn add_stack_components(&self, held: &mut Value) {
         if let Some(seconds) = self.use_cooldown {
@@ -203,9 +218,7 @@ impl Interaction {
         if let Some(count) = self.rockets {
             held["rockets"] = json!(count);
         }
-        if let Some(item) = self.chest {
-            held["chest"] = json!(item);
-        }
+        Self::add_worn(self.chest, &self.chest_patch, &mut held);
         if let Some(effects) = self.effects {
             held["effects"] = json!(effects);
         }

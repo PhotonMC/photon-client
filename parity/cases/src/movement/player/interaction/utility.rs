@@ -6,7 +6,8 @@ use serde_json::Value;
 use super::placing::uses;
 use super::{aim_at, using};
 use crate::components::{
-    DAMAGE, ENCHANTMENTS, INSTRUMENT, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt, patch, patch_of, vi,
+    BINDING_CURSE, DAMAGE, ENCHANTMENTS, INSTRUMENT, PROTECTION, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt,
+    patch, patch_of, vi,
 };
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
@@ -158,7 +159,24 @@ fn recipe_rows() -> Vec<Value> {
 fn swapping_rows() -> Vec<Value> {
     let sky = |label: &str| using(label, vec![], run(None)).x_rot(-60.0);
     let plate = "minecraft:iron_chestplate";
+    let worn = |id: i64| patch(&[(ENCHANTMENTS, enchantments(&[(id, 4)]))]);
     vec![
+        sky("use-chestplate-swap-protection")
+            .main_hand(plate)
+            .chest("minecraft:diamond_chestplate")
+            .chest_patch(worn(PROTECTION))
+            .row(),
+        sky("use-chestplate-swap-binding")
+            .main_hand(plate)
+            .chest("minecraft:diamond_chestplate")
+            .chest_patch(worn(BINDING_CURSE))
+            .row(),
+        sky("use-chestplate-swap-binding-creative")
+            .main_hand(plate)
+            .chest("minecraft:diamond_chestplate")
+            .chest_patch(worn(BINDING_CURSE))
+            .game_mode("creative")
+            .row(),
         sky("use-chestplate-swap-single").main_hand(plate).chest("minecraft:diamond_chestplate").row(),
         sky("use-chestplate-swap-stack").main_hand(plate).count(3).chest("minecraft:diamond_chestplate").row(),
         sky("use-chestplate-swap-empty-slot").main_hand(plate).row(),

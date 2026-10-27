@@ -30,6 +30,7 @@ impl PlaySession {
         player.set_hand_state(hands);
         let instruments = self.local.instruments.clone();
         let spin_attack = self.local.spin_attack.clone();
+        let prevents_armor_change = self.local.prevents_armor_change.clone();
         let mut ctx = Context {
             miner: &Miner::of(&self.world, self.local.status.selected_slot),
             world: &mut self.world,
@@ -39,6 +40,7 @@ impl PlaySession {
             cooldowns: &mut self.local.item_cooldowns,
             instruments: &instruments,
             spin_attack: &spin_attack,
+            prevents_armor_change: &prevents_armor_change,
             game_master: self.local.permission_level >= 2,
             profile_id: self.state.profile_id,
         };

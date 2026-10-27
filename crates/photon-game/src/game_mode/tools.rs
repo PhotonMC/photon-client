@@ -479,6 +479,7 @@ mod tests {
             cooldowns: &mut cooldowns,
             instruments: &[],
             spin_attack: &[],
+            prevents_armor_change: &[],
             game_master: false,
             profile_id: None,
         };
