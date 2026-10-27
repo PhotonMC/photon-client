@@ -739,7 +739,6 @@
 "crates/photon-oracle/src/pose.rs::fishing_hook_result" = 62
 "crates/photon-oracle/src/pose.rs::leash_strip_result" = 61
 "crates/photon-oracle/src/pose.rs::minecart_pose_result" = 69
-"crates/photon-oracle/src/projectiles.rs::item_entity_ticks_result" = 98
 "crates/photon-oracle/src/projectiles.rs::projectile_ticks_result" = 82
 "crates/photon-oracle/src/resource.rs::clamping_lazy_max_int_range_result" = 73
 "crates/photon-oracle/src/resource.rs::resources_result" = 85

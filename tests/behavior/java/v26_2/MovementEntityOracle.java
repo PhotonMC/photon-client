@@ -43,35 +43,7 @@ class MovementEntityOracle extends MovementSupport {
         }
         var ticks = new JsonArray();
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
-            // The packets that arrived since the last tick, as the listener
-            // handles them.
-            for (var element : row.getAsJsonArray("events")) {
-                var event = element.getAsJsonObject();
-                if (event.get("tick").getAsInt() != tick) {
-                    continue;
-                }
-                boolean onGround = event.has("on_ground") && event.get("on_ground").getAsBoolean();
-                switch (event.get("type").getAsString()) {
-                    case "move" -> listener.handleMoveEntity(
-                        new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Pos(entityId,
-                            (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
-                            (short) event.get("za").getAsInt(), onGround));
-                    case "sync" -> listener.handleEntityPositionSync(
-                        new net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket(entityId,
-                            new net.minecraft.world.entity.PositionMoveRotation(
-                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"),
-                                    Oracle.f64(event, "y"), Oracle.f64(event, "z")),
-                                new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
-                                    Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z")),
-                                0.0F, 0.0F),
-                            onGround));
-                    case "motion" -> listener.handleSetEntityMotion(
-                        new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(entityId,
-                            new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
-                                Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z"))));
-                    default -> throw new IllegalArgumentException("Unknown event " + event);
-                }
-            }
+            applyEvents(listener, row, tick, entityId);
             level.tickNonPassenger(item);
             var described = new JsonObject();
             described.addProperty("x", Oracle.bits(item.getX()));
@@ -86,6 +58,50 @@ class MovementEntityOracle extends MovementSupport {
         entry.addProperty("outcome", "ticked");
         entry.add("ticks", ticks);
         return entry;
+    }
+
+    /** The packets that arrived since the last tick, as the listener handles them. */
+    static void applyEvents(net.minecraft.client.multiplayer.ClientPacketListener listener, JsonObject row,
+        int tick, int entityId) {
+        for (var element : row.getAsJsonArray("events")) {
+            var event = element.getAsJsonObject();
+            if (event.get("tick").getAsInt() != tick) {
+                continue;
+            }
+            boolean onGround = event.has("on_ground") && event.get("on_ground").getAsBoolean();
+            switch (event.get("type").getAsString()) {
+                case "move" -> {
+                    if (event.has("y_rot_byte") || event.has("x_rot_byte")) {
+                        listener.handleMoveEntity(
+                            new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.PosRot(entityId,
+                                (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
+                                (short) event.get("za").getAsInt(),
+                                (byte) (event.has("y_rot_byte") ? event.get("y_rot_byte").getAsInt() : 0),
+                                (byte) (event.has("x_rot_byte") ? event.get("x_rot_byte").getAsInt() : 0),
+                                onGround));
+                    } else {
+                        listener.handleMoveEntity(
+                            new net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Pos(entityId,
+                                (short) event.get("xa").getAsInt(), (short) event.get("ya").getAsInt(),
+                                (short) event.get("za").getAsInt(), onGround));
+                    }
+                }
+                case "sync" -> listener.handleEntityPositionSync(
+                    new net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket(entityId,
+                        new net.minecraft.world.entity.PositionMoveRotation(
+                            new net.minecraft.world.phys.Vec3(Oracle.f64(event, "x"),
+                                Oracle.f64(event, "y"), Oracle.f64(event, "z")),
+                            new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
+                                Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z")),
+                            0.0F, 0.0F),
+                        onGround));
+                case "motion" -> listener.handleSetEntityMotion(
+                    new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(entityId,
+                        new net.minecraft.world.phys.Vec3(Oracle.f64(event, "motion_x"),
+                            Oracle.f64(event, "motion_y"), Oracle.f64(event, "motion_z"))));
+                default -> throw new IllegalArgumentException("Unknown event " + event);
+            }
+        }
     }
 
     /**
@@ -151,6 +167,9 @@ class MovementEntityOracle extends MovementSupport {
         level.addEntity(projectile);
         var ticks = new JsonArray();
         for (int tick = 0; tick < row.get("tick_count").getAsInt(); tick++) {
+            if (row.has("events")) {
+                applyEvents(listener, row, tick, projectileId);
+            }
             if (!projectile.isRemoved()) {
                 level.tickNonPassenger(projectile);
             }

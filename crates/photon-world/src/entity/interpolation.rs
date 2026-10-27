@@ -252,9 +252,14 @@ impl ClientEntity {
     }
 
     /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
-    /// living, the minecarts and the displays ease to the positions the server sends.
+    /// living, the minecarts, the displays, the boats and the experience orbs ease to the
+    /// positions the server sends.
     pub(crate) fn has_interpolation_handler(&self) -> bool {
-        self.living_kind().is_some() || self.is_minecart() || self.kind.display().is_some()
+        self.living_kind().is_some()
+            || self.is_minecart()
+            || self.kind.display().is_some()
+            || self.is_boat()
+            || vanilla_projectile_kind(self.type_id) == Some(VanillaProjectileKind::ExperienceOrb)
     }
 
     /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or

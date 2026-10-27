@@ -60,6 +60,7 @@ pub struct Projectile {
     others: Vec<(i64, &'static str, Vec3)>,
     owner: Option<i64>,
     dangerous: Option<bool>,
+    events: Option<Vec<Value>>,
 }
 
 pub fn proj(label: &str, kind: &str, blocks: Vec<Value>, position: Vec3, motion: Vec3, ticks: i64) -> Projectile {
@@ -75,6 +76,7 @@ pub fn proj(label: &str, kind: &str, blocks: Vec<Value>, position: Vec3, motion:
         others: vec![],
         owner: None,
         dangerous: None,
+        events: None,
     }
 }
 
@@ -99,6 +101,11 @@ impl Projectile {
         Self { dangerous: Some(dangerous), ..self }
     }
 
+    /// The server's packets between the ticks (see `events`).
+    pub fn events(self, events: Vec<Value>) -> Self {
+        Self { events: Some(events), ..self }
+    }
+
     pub fn row(self) -> Value {
         let others: Vec<Value> = self
             .others
@@ -117,6 +124,9 @@ impl Projectile {
         }
         if let Some(dangerous) = self.dangerous {
             out["dangerous"] = json!(dangerous);
+        }
+        if let Some(events) = self.events {
+            out["events"] = json!(events);
         }
         out
     }

@@ -83,6 +83,7 @@ impl ClientEntity {
     }
 
     pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
+        self.tick_position_interpolation();
         if self.first_tick {
             self.first_tick = false;
             return;

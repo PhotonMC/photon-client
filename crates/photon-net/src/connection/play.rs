@@ -191,8 +191,13 @@ mod tests {
         }
     }
 
+    /// An entity that has no interpolation handler, so a step puts it at the place at once.
     fn add_entity(id: u32, x: f64) -> Vec<u8> {
-        add_entity_of_type(id, 94, x)
+        add_entity_of_type(
+            id,
+            photon_data::entity_type::named("minecraft:arrow").0 as u32,
+            x,
+        )
     }
 
     fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {

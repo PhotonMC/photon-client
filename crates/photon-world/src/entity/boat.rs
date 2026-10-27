@@ -99,6 +99,8 @@ impl ClientEntity {
         let Some(under_water) = under_water else {
             return;
         };
+        // `AbstractBoat.tick`: the easing runs after `super.tick`, before the boat moves.
+        self.tick_position_interpolation();
         let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
         let tick_count = self.tick_count;
         self.kind
@@ -108,6 +110,7 @@ impl ClientEntity {
 
     /// The part of a ridden boat's tick before its own movement.
     pub(crate) fn tick_boat_start(&mut self) {
+        self.tick_position_interpolation();
         self.kind
             .boat_or_insert_with(Default::default)
             .tick_start(false);

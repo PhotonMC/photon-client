@@ -11,6 +11,7 @@ mod living;
 mod pick_table;
 mod prelude;
 mod projectiles;
+mod remote_moves;
 mod scene;
 mod shadows;
 pub(crate) mod world;
@@ -27,6 +28,7 @@ pub fn cases() -> Vec<Value> {
         ticks("movement/living-entity-animations", "living_entity_ticks", animation::rows()),
         pick_table::entity_pick_table(),
         ticks("movement/projectile-ticks", "projectile_ticks", projectiles::rows()),
+        ticks("movement/remote-moves", "projectile_ticks", remote_moves::rows()),
         ticks("movement/entity-shadows", "entity_shadows", shadows::rows()),
         ticks("movement/chunk-heightmaps", "chunk_heightmaps", heightmaps::rows()),
         ticks("movement/block-lighting", "block_lighting", lighting::rows()),

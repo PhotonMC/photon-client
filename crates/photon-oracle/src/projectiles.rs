@@ -28,6 +28,85 @@ pub(super) fn client_world_entity_firework_tick_result(request: &Value) -> Resul
     client_world_entity_tick_result(request, 53)
 }
 
+fn event_bits64(row: &Value, key: &str) -> Result<f64, String> {
+    u64::from_str_radix(string(row, key)?, 16)
+        .map(f64::from_bits)
+        .map_err(|error| format!("{key}: {error}"))
+}
+
+/// The packets that arrived since the last tick, as the net layer hands them to the world.
+fn apply_events(
+    world: &mut ClientWorld,
+    row: &Value,
+    tick: i32,
+    entity_id: EntityId,
+) -> Result<(), String> {
+    let bits64 = event_bits64;
+    for event in row["events"].as_array().map_or(&[][..], Vec::as_slice) {
+        if i32_field(event, "tick")? != tick {
+            continue;
+        }
+        let on_ground = event["on_ground"].as_bool().unwrap_or(false);
+        match string(event, "type")? {
+            "move" => {
+                // A turn is given as the packed byte the packet carries.
+                let turn = |key: &str| {
+                    event
+                        .get(key)
+                        .and_then(Value::as_i64)
+                        .map(|byte| photon_core::math::unpack_degrees_i8(byte as i8))
+                };
+                world.apply_entity_move(photon_world::EntityMoveInput {
+                    entity_id,
+                    delta_x: i32_field(event, "xa")? as i16,
+                    delta_y: i32_field(event, "ya")? as i16,
+                    delta_z: i32_field(event, "za")? as i16,
+                    has_position: true,
+                    y_rot: turn("y_rot_byte"),
+                    x_rot: turn("x_rot_byte"),
+                });
+                world.apply_entity_ground_state(entity_id, on_ground);
+            }
+            "sync" => {
+                world.apply_entity_position_sync(
+                    entity_id,
+                    (
+                        bits64(event, "x")?,
+                        bits64(event, "y")?,
+                        bits64(event, "z")?,
+                    ),
+                    (0.0, 0.0),
+                );
+                world.apply_entity_ground_state(entity_id, on_ground);
+            }
+            "motion" => {
+                world
+                    .entities_mut()
+                    .apply_motion(photon_world::EntityMotionInput {
+                        entity_id,
+                        x: bits64(event, "motion_x")?,
+                        y: bits64(event, "motion_y")?,
+                        z: bits64(event, "motion_z")?,
+                    });
+            }
+            other => return Err(format!("unknown event {other}")),
+        }
+    }
+    Ok(())
+}
+
+/// One level tick, after the packets of that tick.
+fn tick_with_events(
+    world: &mut ClientWorld,
+    row: &Value,
+    tick: i32,
+    entity_id: EntityId,
+) -> Result<(), String> {
+    apply_events(world, row, tick, entity_id)?;
+    world.tick_entities();
+    Ok(())
+}
+
 /// `item_entity_ticks`: a dropped item put in the scene by the server's
 /// packets (place, motion, ground flag), then ticked with the level.
 pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String> {
@@ -68,51 +147,7 @@ pub(super) fn item_entity_ticks_result(request: &Value) -> Result<Value, String>
         }
         let mut ticks = Vec::new();
         for tick in 0..i32_field(row, "tick_count")? {
-            // The packets that arrived since the last tick, as the net layer
-            // hands them to the world.
-            for event in row["events"].as_array().ok_or("events must be an array")? {
-                if i32_field(event, "tick")? != tick {
-                    continue;
-                }
-                let on_ground = event["on_ground"].as_bool().unwrap_or(false);
-                match string(event, "type")? {
-                    "move" => {
-                        world.apply_entity_move(photon_world::EntityMoveInput {
-                            entity_id,
-                            delta_x: i32_field(event, "xa")? as i16,
-                            delta_y: i32_field(event, "ya")? as i16,
-                            delta_z: i32_field(event, "za")? as i16,
-                            has_position: true,
-                            y_rot: None,
-                            x_rot: None,
-                        });
-                        world.apply_entity_ground_state(entity_id, on_ground);
-                    }
-                    "sync" => {
-                        world.apply_entity_position_sync(
-                            entity_id,
-                            (
-                                bits64(event, "x")?,
-                                bits64(event, "y")?,
-                                bits64(event, "z")?,
-                            ),
-                            (0.0, 0.0),
-                        );
-                        world.apply_entity_ground_state(entity_id, on_ground);
-                    }
-                    "motion" => {
-                        world
-                            .entities_mut()
-                            .apply_motion(photon_world::EntityMotionInput {
-                                entity_id,
-                                x: bits64(event, "motion_x")?,
-                                y: bits64(event, "motion_y")?,
-                                z: bits64(event, "motion_z")?,
-                            });
-                    }
-                    other => return Err(format!("unknown event {other}")),
-                }
-            }
+            apply_events(&mut world, row, tick, entity_id)?;
             world.tick_entities();
             let entity = world
                 .entities()
@@ -193,8 +228,8 @@ pub(super) fn projectile_ticks_result(request: &Value) -> Result<Value, String> 
             world.apply_entity_metadata(entity_id, &[8, 8, u8::from(dangerous), 255]);
         }
         let mut ticks = Vec::new();
-        for _ in 0..i32_field(row, "tick_count")? {
-            world.tick_entities();
+        for tick in 0..i32_field(row, "tick_count")? {
+            tick_with_events(&mut world, row, tick, entity_id)?;
             let described = match world.entities().at(entity_id) {
                 Some(entity) => {
                     let (x, y, z) = entity.position();

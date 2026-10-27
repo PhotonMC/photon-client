@@ -9,6 +9,14 @@ pub fn move_item(tick: i64, xa: i64, ya: i64, za: i64) -> Value {
     json!({"tick": tick, "type": "move", "xa": xa, "ya": ya, "za": za, "on_ground": false})
 }
 
+/// A relative move that turns the entity to the packed angles the packet carries.
+pub fn move_turn(tick: i64, delta: (i64, i64, i64), turn: (i64, i64)) -> Value {
+    json!({
+        "tick": tick, "type": "move", "xa": delta.0, "ya": delta.1, "za": delta.2,
+        "y_rot_byte": turn.0, "x_rot_byte": turn.1, "on_ground": false,
+    })
+}
+
 /// A relative move that leaves the entity on the ground.
 pub fn move_ground(tick: i64, xa: i64, ya: i64, za: i64) -> Value {
     json!({"tick": tick, "type": "move", "xa": xa, "ya": ya, "za": za, "on_ground": true})
