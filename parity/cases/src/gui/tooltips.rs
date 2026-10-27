@@ -135,6 +135,7 @@ pub fn tooltip_lines() -> Value {
         advanced("shulker advanced", "shulker_box", contents(&[Some(stack("ender_pearl", 16))])),
         with("written book", "written_book", vec![(WRITTEN_BOOK_CONTENT, book("Alex", 1))]),
         // `InstrumentComponent`: a registry call's description, and one written out in full.
+        row("horn plain", "goat_horn"),
         with("horn sing", "goat_horn", vec![(INSTRUMENT, vi(7))]),
         with("horn written out", "goat_horn", vec![(INSTRUMENT, written_horn())]),
         with("written book no author", "written_book", vec![(WRITTEN_BOOK_CONTENT, book(" ", 3))]),

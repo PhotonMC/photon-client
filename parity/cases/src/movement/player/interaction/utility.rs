@@ -81,6 +81,13 @@ fn horn_cooldown_rows() -> Vec<Value> {
         rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).game_mode(mode).row());
     }
     let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
+    // A written-out call cools down for its own use duration: a quarter second is over before the
+    // second click seven ticks on, half a second is not.
+    for (label, duration) in [("use-goat_horn-direct-short-twice", 0.25), ("use-goat_horn-direct-long-twice", 0.5)] {
+        let ticks = [click(), uses(6, None, &[]).go(), click(), uses(2, None, &[]).go()].concat();
+        let horn = direct("minecraft:item.goat_horn.sound.2", None, duration, 64.0);
+        rows.push(using(label, vec![], ticks).main_hand("minecraft:goat_horn").count(1).patch(horn).row());
+    }
     rows.push(
         using("use-goat_horn-off-hand-twice", vec![], ticks)
             .main_hand("minecraft:stick")
@@ -89,6 +96,16 @@ fn horn_cooldown_rows() -> Vec<Value> {
             .row(),
     );
     rows
+}
+
+/// `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: the sound, the use duration, the range
+/// and the description; the sound itself written out (`SoundEvent.DIRECT_STREAM_CODEC`).
+fn direct(sound: &str, fixed_range: Option<f32>, duration: f32, range: f32) -> String {
+    let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let fixed = fixed_range.map_or("00".to_owned(), |range| format!("01{}", float(range)));
+    let instrument =
+        format!("{}{}{}{fixed}{}{}{}", vi(0), vi(0), text(sound), float(duration), float(range), nbt_text("Horn"));
+    patch(&[(INSTRUMENT, instrument)])
 }
 
 /// A trident one point from breaking fails the use; an unbreakable one starts it, and one with
@@ -164,15 +181,6 @@ fn horn_rows() -> Vec<Value> {
         using(label, vec![], ticks.clone()).main_hand("minecraft:goat_horn").count(1).patch(hex).row()
     };
     // The sing call is the seventh entry of the registry, a holder written as its id plus one.
-    // `Instrument.DIRECT_STREAM_CODEC` after the holder's 0: the sound, the use duration, the range
-    // and the description; the sound itself written out (`SoundEvent.DIRECT_STREAM_CODEC`).
-    let float = |value: f32| value.to_be_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>();
-    let direct = |sound: &str, fixed_range: Option<f32>, duration: f32, range: f32| {
-        let fixed = fixed_range.map_or("00".to_owned(), |range| format!("01{}", float(range)));
-        let instrument =
-            format!("{}{}{}{fixed}{}{}{}", vi(0), vi(0), text(sound), float(duration), float(range), nbt_text("Horn"));
-        patch(&[(INSTRUMENT, instrument)])
-    };
     vec![
         row("use-goat_horn-sing", patch(&[(INSTRUMENT, vi(7))])),
         row("use-goat_horn-no-instrument", patch_of(&[], &[INSTRUMENT])),
