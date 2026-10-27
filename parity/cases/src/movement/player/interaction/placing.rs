@@ -214,6 +214,8 @@ fn using_rows_4() -> Vec<Value> {
             "sneak-place-on-crafting-table",
             table(),
             [
+                // The crouch takes hold a tick after its key goes down.
+                uses(2, None, &around).held(&["sneak"]).go(),
                 uses(1, Some(&on_table), &around).clicks(1).held(&["sneak"]).go(),
                 uses(3, Some(&top_of), &around).held(&["sneak"]).go(),
             ]

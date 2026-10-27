@@ -13,7 +13,9 @@ use crate::movement::world::{put, put_with};
 fn sneaking(label: &str, world: Vec<Value>) -> Value {
     let around = [(0, 64, 1), (0, 64, 2), (0, 65, 2), (0, 64, 3)];
     let aim = north();
+    // The crouch takes hold a tick after its key goes down, so the click comes after two ticks of it.
     let ticks = [
+        uses(2, None, &around).held(&["sneak"]).go(),
         uses(1, Some(&aim), &around).clicks(1).held(&["sneak"]).go(),
         uses(3, Some(&aim), &around).held(&["sneak"]).go(),
     ]
