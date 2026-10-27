@@ -83,18 +83,11 @@ impl Options {
         }
     }
 
-    /// The value a `key_` line is written with (`KeyMapping.saveString`); none for another line.
-    pub(super) fn key_binding_line(&self, line: &str) -> Option<String> {
-        let mapping = line.strip_prefix("key_")?;
-        self.key_binding(mapping).map(key_name)
-    }
-
-    /// The `key_` lines the file did not have, to add.
-    pub(super) fn missing_key_lines(&self) -> Vec<(String, String)> {
+    /// Every `key_` line as `save` writes it, in `keyMappings` order.
+    pub(super) fn key_lines(&self) -> Vec<(String, String)> {
         mappings()
             .zip(&self.key_bindings)
             .map(|(row, key)| (line_name(row.name), key_name(*key)))
-            .filter(|(name, _)| !self.lines.iter().any(|(known, _)| known == name))
             .collect()
     }
 }

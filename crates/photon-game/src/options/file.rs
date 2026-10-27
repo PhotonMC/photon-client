@@ -486,30 +486,35 @@ impl Options {
         }
     }
 
-    /// `Options.save`: the version, then the lines as they were read with
-    /// the values this holds, then the options the file did not have.
+    /// `Options.save`: the version, then every option in the order `processOptions` visits them.
+    /// A line the file had for an option not modelled here keeps its value; a line no option
+    /// reads is dropped, as Java drops it.
     pub fn save(&self, path: &Path) -> io::Result<()> {
         let mut text = format!("version:{DATA_VERSION}\n");
-        let mut written = Vec::new();
-        for (name, value) in &self.lines {
-            if name == "version" {
-                continue;
+        let mut put = |name: &str, value: &str| text.push_str(&format!("{name}:{value}\n"));
+        let kept = |name: &str| self.lines.iter().find(|(known, _)| known == name);
+        for name in WRITE_ORDER {
+            match name {
+                "key_" => {
+                    for (line, value) in self.key_lines() {
+                        put(&line, &value);
+                    }
+                }
+                "soundCategory_" | "modelPart_" => {
+                    for (known, key) in KEYS {
+                        if known.starts_with(name) {
+                            put(known, &self.write(key));
+                        }
+                    }
+                }
+                _ => match KEYS.iter().find(|(known, _)| *known == name) {
+                    Some((_, key)) => put(name, &self.write(*key)),
+                    None => kept(name).iter().for_each(|(_, value)| put(name, value)),
+                },
             }
-            let known = KEYS.iter().find(|(known, _)| known == name);
-            let value = known.map_or_else(
-                || self.key_binding_line(name).unwrap_or_else(|| value.clone()),
-                |(_, key)| self.write(*key),
-            );
-            text.push_str(&format!("{name}:{value}\n"));
-            written.push(name.as_str());
         }
-        for (name, key) in KEYS {
-            if !written.contains(&name) {
-                text.push_str(&format!("{name}:{}\n", self.write(key)));
-            }
-        }
-        for (name, value) in self.missing_key_lines() {
-            text.push_str(&format!("{name}:{value}\n"));
+        if let Some((_, value)) = kept("fullscreenResolution") {
+            put("fullscreenResolution", value);
         }
         if let Some(directory) = path.parent() {
             std::fs::create_dir_all(directory)?;
@@ -616,13 +621,9 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["key.jump"]
         );
-        assert_eq!(
-            options.key_binding_line("key_key.jump").as_deref(),
-            Some("key.keyboard.j")
-        );
         assert!(
             options
-                .missing_key_lines()
+                .key_lines()
                 .contains(&("key_key.forward".to_owned(), "key.keyboard.w".to_owned()))
         );
     }
@@ -850,7 +851,7 @@ mod tests {
     }
 
     #[test]
-    fn what_is_saved_reads_back_and_what_is_not_known_stays() {
+    fn what_is_saved_reads_back_in_the_order_java_writes() {
         let directory = std::env::temp_dir().join("photon-options-roundtrip");
         let path = directory.join("options.txt");
         std::fs::create_dir_all(&directory).unwrap();
@@ -868,9 +869,13 @@ mod tests {
         let text = std::fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines[0], "version:4903");
-        assert_eq!(lines[1], "key_key.jump:key.keyboard.space");
-        assert_eq!(lines[2], "fov:0.75");
-        assert_eq!(lines[3], "soundCategory_master:0.8");
+        let at = |line: &str| lines.iter().position(|known| *known == line).unwrap();
+        // The order `processOptions` visits, not the order of the file; a line it never reads goes.
+        assert!(at("fov:0.75") < at("guiScale:0"));
+        assert!(at("guiScale:0") < at("key_key.jump:key.keyboard.space"));
+        assert!(at("key_key.jump:key.keyboard.space") < at("soundCategory_master:0.8"));
+        assert!(at("soundCategory_master:0.8") < at("modelPart_cape:true"));
+        assert!(!lines.contains(&"bad line"));
         assert!(lines.contains(&"chatWidth:0.25"));
         assert!(lines.contains(&"chatDelay:1.5"));
         assert!(lines.contains(&"tutorialStep:movement"));
