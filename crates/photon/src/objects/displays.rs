@@ -129,6 +129,22 @@ fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     out
 }
 
+/// `Display.getGlowColorOverride`: -1 for none.
+fn glow_colour(display: &photon_world::objects::display::DisplayState) -> i32 {
+    display
+        .render_state()
+        .map_or(-1, |state| state.glow_color_override)
+}
+
+/// A display's special-model triangles (over the entity textures) join its outline when it glows.
+fn outlined(shown: &Shown<'_>, (atlas, drawn): (bool, &[Vertex])) {
+    if !shown.entity.is_glowing() {
+        return;
+    }
+    let colour = glow_colour(shown.display);
+    crate::mobs::record_display_outline(shown.entity, colour, (atlas, drawn.to_vec()));
+}
+
 /// The block displays whose state has a special model (`BuiltInBlockModels`), which are drawn
 /// in the entity pass with the entity textures.
 pub fn special_displays(
@@ -142,7 +158,9 @@ pub fn special_displays(
             continue;
         };
         let at = (block, &shown.pose, shown.light);
-        vertices.extend(special_block_vertices(models, textures, at).unwrap_or_default());
+        let drawn = special_block_vertices(models, textures, at).unwrap_or_default();
+        outlined(&shown, (false, &drawn));
+        vertices.extend(drawn);
         end_cube(models, block, &shown.pose);
     }
 }
@@ -173,14 +191,13 @@ pub fn displays(
             }
             let cache = &mut layers.contexts[0];
             if let Some((layer, block_light)) = cache.block(block, renderer) {
-                vertices.extend(entity_block_vertices(
-                    layer,
-                    &pose,
-                    (
-                        photon_render::entity::block::submit_light(light, *block_light),
-                        0.0,
-                    ),
-                ));
+                let light = photon_render::entity::block::submit_light(light, *block_light);
+                let drawn = entity_block_vertices(layer, &pose, (light, 0.0));
+                if entity.is_glowing() {
+                    let colour = glow_colour(display);
+                    crate::mobs::record_display_outline(entity, colour, (true, drawn.clone()));
+                }
+                vertices.extend(drawn);
             }
         } else if let Some(context) = display.item_context()
             && let Some(stack) = entity.item_stack().filter(|stack| stack.item_count() > 0)
@@ -188,6 +205,10 @@ pub fn displays(
             let cache = &mut layers.contexts[context_index(context)];
             let layers = cache.get(stack, renderer, tints);
             let drawn = item_layer_vertices(layers, &[item_display_pose(&pose)], light, false);
+            if entity.is_glowing() {
+                let colour = glow_colour(display);
+                crate::mobs::record_display_outline(entity, colour, (true, drawn.clone()));
+            }
             cache.extend_with_glint(stack, drawn, vertices);
         }
     }

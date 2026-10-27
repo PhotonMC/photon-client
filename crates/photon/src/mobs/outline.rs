@@ -8,11 +8,18 @@ use photon_render::scene::Vertex;
 
 thread_local! {
     /// The body of each glowing mob drawn since the last hand-over, with its scoreboard name, which is its unique id.
-    static SILHOUETTES: RefCell<Vec<(String, Vec<Vertex>)>> =
+    static SILHOUETTES: RefCell<Vec<(Holder, Vec<Vertex>)>> =
         const { RefCell::new(Vec::new()) };
     /// The same for the glowing dropped items, whose models are drawn over the item atlas.
-    static ITEM_SILHOUETTES: RefCell<Vec<(String, Vec<Vertex>)>> =
+    static ITEM_SILHOUETTES: RefCell<Vec<(Holder, Vec<Vertex>)>> =
         const { RefCell::new(Vec::new()) };
+}
+
+/// Whose silhouette it is: the scoreboard name its team colour is found by, unless the entity
+/// names its own colour (a display's `glowColorOverride`).
+struct Holder {
+    name: String,
+    colour: Option<u32>,
 }
 
 /// Remember a glowing mob's body, as the vertices of its model.
@@ -22,6 +29,10 @@ pub(crate) fn record(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
 
 /// Remember the triangles of whatever has the scoreboard name `holder` and glows.
 pub(crate) fn record_holder(holder: String, body: Vec<Vertex>) {
+    let holder = Holder {
+        name: holder,
+        colour: None,
+    };
     SILHOUETTES.with(|list| list.borrow_mut().push((holder, body)));
 }
 
@@ -32,7 +43,34 @@ pub(crate) fn record_item(entity: &photon_world::ClientEntity, body: Vec<Vertex>
 
 /// Remember the atlas triangles of whatever has the scoreboard name `holder` and glows.
 pub(crate) fn record_item_holder(holder: String, body: Vec<Vertex>) {
+    let holder = Holder {
+        name: holder,
+        colour: None,
+    };
     ITEM_SILHOUETTES.with(|list| list.borrow_mut().push((holder, body)));
+}
+
+/// Remember a glowing display's triangles (over the item atlas when `atlas`, else the entity
+/// textures): `Display.getTeamColor` is its glow colour override when it has one (not -1).
+pub(crate) fn record_display(
+    entity: &photon_world::ClientEntity,
+    glow_colour_override: i32,
+    (atlas, body): (bool, Vec<Vertex>),
+) {
+    if !entity.is_glowing() {
+        return;
+    }
+    let colour = (glow_colour_override != -1).then_some(glow_colour_override as u32 & 0x00FF_FFFF);
+    let holder = Holder {
+        name: entity.uuid.to_string_java(),
+        colour,
+    };
+    let list = if atlas {
+        &ITEM_SILHOUETTES
+    } else {
+        &SILHOUETTES
+    };
+    list.with(|list| list.borrow_mut().push((holder, body)));
 }
 
 /// Remember what a mob wears, when it glows: its armor and wings draw in the outline too
@@ -75,10 +113,12 @@ pub(crate) fn take_items(board: &Scoreboard) -> Vec<Vertex> {
     )
 }
 
-fn coloured_silhouettes(recorded: Vec<(String, Vec<Vertex>)>, board: &Scoreboard) -> Vec<Vertex> {
+fn coloured_silhouettes(recorded: Vec<(Holder, Vec<Vertex>)>, board: &Scoreboard) -> Vec<Vertex> {
     let mut vertices = Vec::new();
     for (holder, body) in recorded {
-        let rgb = photon_gui::entity_name::team_colour(&holder, board);
+        let rgb = holder
+            .colour
+            .unwrap_or_else(|| photon_gui::entity_name::team_colour(&holder.name, board));
         let colour = if rgb == 0 {
             -1.0
         } else {
