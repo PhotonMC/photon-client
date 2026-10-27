@@ -261,6 +261,8 @@ pub fn layer_vertices(
 /// What places the first-person hand.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HandView {
+    /// `isModelPartShown(RIGHT_SLEEVE)`: the arm wears its sleeve (`renderHand`'s `hasSleeve`).
+    pub sleeve: bool,
     /// The view bob's walked distance and bob.
     pub bob_walked: f32,
     pub bob: f32,
@@ -418,7 +420,7 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     pose.translate(invert * 5.6, 0.0, 0.0);
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
-    for corners in model.render_arm(crate::entity::player_model::Arm::Right, &pose) {
+    for corners in model.render_arm(crate::entity::player_model::Arm::Right, &pose, view.sleeve) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {

@@ -468,7 +468,7 @@ impl PlayerModel {
     /// `AvatarRenderer.renderHand`: one arm alone, as the first-person view
     /// draws it, reset to where the mesh put it, turned out a tenth of a
     /// radian, with its sleeve.
-    pub fn render_arm(&mut self, arm: Arm, pose: &Pose) -> Vec<[ModelVertex; 4]> {
+    pub fn render_arm(&mut self, arm: Arm, pose: &Pose, sleeve: bool) -> Vec<[ModelVertex; 4]> {
         let name = match arm {
             Arm::Left => "left_arm",
             Arm::Right => "right_arm",
@@ -477,7 +477,7 @@ impl PlayerModel {
         part.reset();
         part.visible = true;
         for child in &mut part.children {
-            child.visible = true;
+            child.visible = sleeve;
         }
         part.z_rot = match arm {
             Arm::Left => -0.1,

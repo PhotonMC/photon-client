@@ -135,5 +135,5 @@ mod shadow_radius;
 pub use light::*;
 mod avatars;
 mod wear;
-pub use avatars::forget_gone_mannequins;
+pub use avatars::{forget_gone_mannequins, local_hidden_layers, set_local_layers};
 pub use wear::*;

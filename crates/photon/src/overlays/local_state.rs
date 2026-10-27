@@ -33,6 +33,7 @@ pub(super) fn local_render_state(
         swing_animation: spears.swing_animation,
         right_spear: spears.right,
         left_spear: spears.left,
+        hidden_layers: super::avatars::local_hidden_layers(),
         ..Default::default()
     }
 }

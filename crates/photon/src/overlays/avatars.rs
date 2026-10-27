@@ -66,6 +66,22 @@ fn mannequin_profile(
     Some(found)
 }
 
+/// The skin layers the local player's own data names (the server's echo of what Photon sent),
+/// set once a frame for the model and the inventory doll; all until the server says.
+static LOCAL_LAYERS: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0x7f);
+
+pub fn set_local_layers(world: &photon_world::ClientWorld) {
+    let layers = world
+        .local_player()
+        .map_or(0x7f, |state| state.model_customisation());
+    LOCAL_LAYERS.store(layers, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The local player's hidden skin layers, as `PlayerRenderState.hidden_layers` takes them.
+pub fn local_hidden_layers() -> u8 {
+    !LOCAL_LAYERS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Forget the skins of mannequins no longer in the world.
 pub fn forget_gone_mannequins(world: &photon_world::ClientWorld) {
     LAST_SKINS.with(|last| {

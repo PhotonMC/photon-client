@@ -159,6 +159,7 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
     let view_x_rot = player.rotation().1;
     let view_y_rot = player.view_y_rot(partial);
     HandView {
+        sleeve: crate::overlays::local_hidden_layers() & (1 << 3) == 0,
         bob_walked: walked,
         bob,
         view_x_rot,

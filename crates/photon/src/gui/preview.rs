@@ -33,6 +33,7 @@ fn render_state(player: &photon_world::local_player::LocalPlayer) -> PlayerRende
         crouching: pose.crouching,
         spectator: player.spectating(),
         attack_time: player.attack_anim(1.0),
+        hidden_layers: crate::overlays::local_hidden_layers(),
         ..Default::default()
     }
 }

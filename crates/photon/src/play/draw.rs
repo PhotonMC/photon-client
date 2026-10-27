@@ -214,6 +214,7 @@ impl Play {
         self.session.player().ok_or("no local player")?;
         self.resolve_head_skins(view);
         overlays::forget_gone_mannequins(self.session.world());
+        overlays::set_local_layers(self.session.world());
         let (mut held, invisible) = (Vec::new(), self.local_invisible());
         let models = &mut self.entity_vertices;
         models.clear();
