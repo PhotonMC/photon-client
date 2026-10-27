@@ -22,6 +22,7 @@ mod by_hand;
 mod chest;
 mod chorus;
 mod connect;
+mod copper;
 mod directional;
 mod dripleaf;
 mod faces;
@@ -51,6 +52,7 @@ pub use bucket::{
     Pickup, client_waterlogging, holds_water, pickup, replaceable_by_fluid, water_container,
 };
 pub use by_hand::{HandSound, HandUse, Opened, User, use_by_hand};
+pub use copper::{other_chest_half, scraped, waxed, waxed_off};
 pub use item::{
     ItemPlacement, PlaceWrites, Write, item_placement, place_writes, placement_state,
     update_context,

@@ -428,12 +428,12 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 .into_iter()
                 .chain(world.take_sounds())
                 // A block the player broke plays its sound as a level event.
-                .chain(
-                    world
-                        .take_level_events()
-                        .iter()
-                        .filter_map(|event| event.break_sound().or_else(|| event.geyser_sound())),
-                )
+                .chain(world.take_level_events().iter().filter_map(|event| {
+                    event
+                        .break_sound()
+                        .or_else(|| event.geyser_sound())
+                        .or_else(|| event.wax_sound())
+                }))
                 .map(|sound| {
                     let source = sound.source.name();
                     // The swim, splash, hurt and death sounds' pitch is random in Java and is compared by volume only.

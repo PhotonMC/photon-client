@@ -101,20 +101,10 @@ fn stripped(name: &str) -> Option<String> {
     strippable.then(|| format!("minecraft:stripped_{path}"))
 }
 
-/// A block the axe scrapes or waxes off (the keys of `WeatheringCopper.PREVIOUS_BY_BLOCK` and
-/// `HoneycombItem.WAX_OFF_BY_BLOCK`: every copper block that is exposed, weathered, oxidized or
-/// waxed), whose tables are not ported: the click counts as done.
-fn weathering_copper(name: &str) -> bool {
-    name.strip_prefix("minecraft:").is_some_and(|path| {
-        ["exposed_", "weathered_", "oxidized_", "waxed_"]
-            .iter()
-            .any(|prefix| path.starts_with(prefix))
-    })
-}
-
 /// `AxeItem.useOn` for the client: not with a blocking item in the off hand unless sneaking; a
 /// log strips to its stripped block (axis kept), sounding the axe and setting the block as the
-/// reference does on the client too. Copper is not ported; anything else passes.
+/// reference does on the client too; weathered copper scrapes one age back and waxed copper loses
+/// its wax; anything else passes.
 pub(super) fn axe_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult {
     let Aim::Block { x, y, z, .. } = aim else {
         return UseResult::Pass;
@@ -134,11 +124,18 @@ pub(super) fn axe_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult
     let state = ctx.state_at((x, y, z));
     let name = block(state).name;
     let Some(target) = stripped(name) else {
-        return if weathering_copper(name) {
-            UseResult::Success { swing: true }
-        } else {
-            UseResult::Pass
+        let position = ctx.player.position();
+        let (changed, sound) = match photon_world::block::rules::scraped(state) {
+            Some(scraped) => (scraped, "minecraft:item.axe.scrape"),
+            None => match photon_world::block::rules::waxed_off(state) {
+                Some(unwaxed) => (unwaxed, "minecraft:item.axe.wax_off"),
+                None => return UseResult::Pass,
+            },
         };
+        play_at_block(ctx, sound, (x, y, z));
+        ctx.world
+            .set_block_with_updates((x, y, z), changed, 11, 512, position);
+        return UseResult::Success { swing: true };
     };
     let axis = photon_world::block::rules::property(state, "axis");
     let new_state = photon_data::block::registry::BLOCKS
@@ -155,6 +152,32 @@ pub(super) fn axe_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult
     let position = ctx.player.position();
     ctx.world
         .set_block_with_updates((x, y, z), new_state, 11, 512, position);
+    UseResult::Success { swing: true }
+}
+
+/// `HoneycombItem.useOn` for the client: a copper block takes its wax (flags 11), the stack
+/// shrinks, and the wax event plays for the block and the other half of a double chest; any other
+/// block passes.
+pub(super) fn honeycomb_use_on(ctx: &mut Context<'_>, hand: u8, aim: Aim) -> UseResult {
+    let Aim::Block { x, y, z, .. } = aim else {
+        return UseResult::Pass;
+    };
+    let old = ctx.state_at((x, y, z));
+    let Some(waxed) = photon_world::block::rules::waxed(old) else {
+        return UseResult::Pass;
+    };
+    // `performUseItemOn` gives a creative player's stack back its count.
+    if !ctx.instabuild() {
+        let slot = ctx.hand_slot(hand);
+        ctx.world.shrink_local_player_slot(slot, 1);
+    }
+    let position = ctx.player.position();
+    ctx.world
+        .set_block_with_updates((x, y, z), waxed, 11, 512, position);
+    ctx.world.apply_level_event(3003, (x, y, z), 0);
+    if let Some(other) = photon_world::block::rules::other_chest_half(old, (x, y, z)) {
+        ctx.world.apply_level_event(3003, other, 0);
+    }
     UseResult::Success { swing: true }
 }
 
@@ -187,6 +210,21 @@ pub(super) fn shears_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
     UseResult::Success { swing: true }
 }
 
+/// `Item.useOn` of the hoe, axe, honeycomb and shovel.
+fn ground_tool_use_on(
+    ctx: &mut Context<'_>,
+    (hand, class): (u8, photon_data::item::classes::ItemClass),
+    aim: Aim,
+) -> UseResult {
+    use photon_data::item::classes::ItemClass as C;
+    match class {
+        C::HoeItem => hoe_use_on(ctx, aim),
+        C::AxeItem => axe_use_on(ctx, hand, aim),
+        C::HoneycombItem => honeycomb_use_on(ctx, hand, aim),
+        _ => shovel_use_on(ctx, aim),
+    }
+}
+
 /// `Item.useOn` of the tools whose class the client decides: `None` for any other class.
 pub(super) fn use_on(
     ctx: &mut Context<'_>,
@@ -195,13 +233,13 @@ pub(super) fn use_on(
 ) -> Option<UseResult> {
     use photon_data::item::classes::ItemClass as C;
     Some(match class {
-        C::HoeItem => hoe_use_on(ctx, aim),
+        C::HoeItem | C::AxeItem | C::HoneycombItem | C::ShovelItem => {
+            ground_tool_use_on(ctx, (hand, class), aim)
+        }
         C::FlintAndSteelItem => flint_and_steel_use_on(ctx, aim),
         C::FireChargeItem => fire_charge_use_on(ctx, hand, aim),
         C::ShearsItem => shears_use_on(ctx, aim),
         C::PotionItem => super::bottles::potion_use_on(ctx, hand, aim),
-        C::AxeItem => axe_use_on(ctx, hand, aim),
-        C::ShovelItem => shovel_use_on(ctx, aim),
         C::EnderEyeItem => super::utility::ender_eye_use_on(ctx, aim),
         // `SpawnEggItem.useOn` on the client: the spawn is the server's.
         C::SpawnEggItem => UseResult::Success { swing: true },
@@ -318,7 +356,7 @@ pub(super) fn hoe_use_on(ctx: &mut Context<'_>, aim: Aim) -> UseResult {
 
 #[cfg(test)]
 mod tests {
-    use super::{stripped, tillable, weathering_copper};
+    use super::{stripped, tillable};
 
     #[test]
     fn logs_strip_and_stripped_logs_do_not() {
@@ -336,21 +374,6 @@ mod tests {
         );
         assert_eq!(stripped("minecraft:stripped_oak_log"), None);
         assert_eq!(stripped("minecraft:oak_planks"), None);
-        for name in [
-            "minecraft:waxed_cut_copper",
-            "minecraft:exposed_lightning_rod",
-            "minecraft:waxed_lightning_rod",
-        ] {
-            assert!(weathering_copper(name), "{name}");
-        }
-        for name in [
-            "minecraft:copper_block",
-            "minecraft:copper_torch",
-            "minecraft:raw_copper_block",
-            "minecraft:copper_ore",
-        ] {
-            assert!(!weathering_copper(name), "{name}");
-        }
     }
 
     #[test]

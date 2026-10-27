@@ -6,6 +6,7 @@ mod aiming;
 mod bottling;
 mod cauldron;
 mod consuming;
+mod copper;
 mod digging;
 mod effects;
 mod geysers;

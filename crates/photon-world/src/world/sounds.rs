@@ -404,6 +404,26 @@ impl LevelEvent {
         })
     }
 
+    /// The sound of wax put on (3003), at the block's middle; nothing for another event.
+    pub fn wax_sound(&self) -> Option<local_player::LocalSound> {
+        let Self::Level {
+            event: 3003, pos, ..
+        } = *self
+        else {
+            return None;
+        };
+        Some(local_player::LocalSound::at(
+            "minecraft:item.honeycomb.wax_on",
+            local_player::LocalSoundSource::Blocks,
+            (1.0, 1.0),
+            (
+                f64::from(pos.0) + 0.5,
+                f64::from(pos.1) + 0.5,
+                f64::from(pos.2) + 0.5,
+            ),
+        ))
+    }
+
     /// The sound of a block broken (2001): its break sound, louder and lower, at its middle;
     /// nothing for air or another event.
     pub fn break_sound(&self) -> Option<local_player::LocalSound> {

@@ -4,7 +4,7 @@ use super::directional::chest_joins;
 use super::*;
 
 /// `ChestBlock.getConnectedDirection`: the side the other half stands on.
-fn connected_direction(state: BlockStateId) -> Option<Direction> {
+pub(super) fn connected_direction(state: BlockStateId) -> Option<Direction> {
     let facing = facing(state)?;
     Some(if property(state, "type") == Some("left") {
         facing.clockwise(Axis::Y)
@@ -14,7 +14,7 @@ fn connected_direction(state: BlockStateId) -> Option<Direction> {
 }
 
 /// `Block.withPropertiesOf`: the block of `like`, with the properties `state` has.
-fn with_properties_of(like: BlockStateId, state: BlockStateId) -> Option<BlockStateId> {
+pub(super) fn with_properties_of(like: BlockStateId, state: BlockStateId) -> Option<BlockStateId> {
     let (target, _) = registry::block_for_state(like)?;
     let (source, offset) = registry::block_for_state(state)?;
     let chosen: BTreeMap<String, String> = source
