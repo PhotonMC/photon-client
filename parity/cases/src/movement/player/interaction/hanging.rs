@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::aim_at;
 use super::item_on::{north, row, row_around};
-use crate::movement::world::put_with;
+use crate::movement::world::{put, put_with};
 
 fn below() -> Value {
     aim_at((0, 64, 2), "down", (0.5, 64.0, 2.5))
@@ -51,13 +51,19 @@ fn editing() -> Vec<Value> {
     ]
 }
 
+/// The world with the place under the sign emptied, where the chained sign goes.
+fn with_air_below(mut world: Vec<Value>) -> Vec<Value> {
+    world.push(put(0, 63, 2, "minecraft:air"));
+    world
+}
+
 fn chaining() -> Vec<Value> {
     let at = (0, 64, 2);
     let kind = "minecraft:hanging_sign";
     vec![
         row_around(
             "item-on-hanging-sign-chain",
-            hanging(),
+            with_air_below(hanging()),
             &below(),
             &[(0, 63, 2), (0, 64, 2), (0, 64, 1), (0, 64, 3)],
         )
@@ -72,7 +78,7 @@ fn chaining() -> Vec<Value> {
             .row(),
         row_around(
             "item-on-hanging-sign-chain-stone",
-            hanging(),
+            with_air_below(hanging()),
             &below(),
             &[(0, 63, 2), (0, 64, 2), (0, 64, 1), (0, 64, 3)],
         )
@@ -80,11 +86,16 @@ fn chaining() -> Vec<Value> {
         .count(4)
         .block_entity(at, kind)
         .row(),
-        row("item-on-wall-hanging-sign-chain-side", wall(), &aim_at((0, 64, 2), "east", (1.0, 64.5, 2.5)))
-            .main_hand("minecraft:oak_hanging_sign")
-            .count(4)
-            .block_entity(at, kind)
-            .row(),
+        row_around(
+            "item-on-wall-hanging-sign-chain-side",
+            wall(),
+            &aim_at((0, 64, 2), "east", (1.0, 64.5, 2.5)),
+            &[(1, 64, 2), (0, 64, 2), (0, 64, 1), (0, 64, 3)],
+        )
+        .main_hand("minecraft:oak_hanging_sign")
+        .count(4)
+        .block_entity(at, kind)
+        .row(),
         row("item-on-wall-hanging-sign-chain-front", wall(), &north())
             .main_hand("minecraft:oak_hanging_sign")
             .count(4)
