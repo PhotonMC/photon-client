@@ -65,12 +65,9 @@ pub fn remote_players(
         };
         hands.collect_outlined(held, outline_name(session, entity));
         let skull = hands.skull();
-        vertices.extend(armor.skull_vertices(
-            skull,
-            snapshot.walk_position,
-            textures,
-            (placement.light, snapshot.red_overlay),
-        ));
+        let worn_skull = (placement.light, snapshot.red_overlay);
+        let skull = armor.skull_vertices(skull, snapshot.walk_position, textures, worn_skull);
+        vertices.extend(glowing(session, entity, skull));
         let ghost = ghosted(entity, view, &snapshot);
         vertices.extend(shown_body(session, entity, (model, &placement), ghost));
         let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));

@@ -80,12 +80,8 @@ pub fn remote_armor_stands(
             };
             hands.collect_outlined(held, HeldItem::glow_holder(entity));
             vertices.extend(crate::mobs::visible_body(entity, model, (&placed, rect)));
-            vertices.extend(armor.skull_vertices(
-                hands.skull(),
-                0.0,
-                textures,
-                (placed.light, false),
-            ));
+            let skull = armor.skull_vertices(hands.skull(), 0.0, textures, (placed.light, false));
+            vertices.extend(crate::mobs::with_outline(entity, skull));
         }
         vertices.extend(stand_armor(
             armor,

@@ -81,12 +81,9 @@ pub(super) fn remote_humanoids(
             }
             vertices.extend(visible_body(entity, model, (&placement, rect)));
         }
-        vertices.extend(armor.skull_vertices(
-            skull,
-            snapshot.walk_position,
-            textures,
-            (placement.light, snapshot.red_overlay),
-        ));
+        let worn_skull = (placement.light, snapshot.red_overlay);
+        let skull = armor.skull_vertices(skull, snapshot.walk_position, textures, worn_skull);
+        vertices.extend(crate::mobs::with_outline(entity, skull));
         vertices.extend(worn_layers(
             armor,
             (worn, textures),

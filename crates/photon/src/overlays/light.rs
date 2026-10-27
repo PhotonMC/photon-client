@@ -429,12 +429,9 @@ pub fn player_model(
     };
     hands.collect_outlined(held, crate::mobs::outline::local_holder(session));
     let mut vertices = local_body(session, (model, &placement), invisible);
-    vertices.extend(armor.skull_vertices(
-        hands.skull(),
-        pose.walk_position,
-        textures,
-        (placement.light, false),
-    ));
+    let lit = (placement.light, false);
+    let skull = armor.skull_vertices(hands.skull(), pose.walk_position, textures, lit);
+    vertices.extend(glowing_local(session, skull));
     let dressed = wear(armor, worn, model.slim, textures, (&state, &placement));
     vertices.extend(glowing_local(session, dressed));
     let hang = cape::own_hang(session, player, (view, invisible));
