@@ -266,6 +266,11 @@ fn attack_block(
         return;
     }
 
+    if photon_world::block::rules::is_redstone_ore(
+        photon_world::block::state_or_air(state).block().name,
+    ) {
+        ctx.world.push_ore_sparks(pos);
+    }
     if let Some(write) = rules::attack(state, pos) {
         let position = ctx.player.position();
         ctx.world

@@ -246,7 +246,7 @@ impl ParticleEngine {
     }
 
     /// `RedStoneOreBlock.spawnParticles`: dust on each face that is not against a solid block.
-    fn redstone_ore_particles<F: FnMut() -> RandomSource>(
+    pub(super) fn redstone_ore_particles<F: FnMut() -> RandomSource>(
         &mut self,
         pos: (i32, i32, i32),
         context: &mut LevelEventContext<'_, F>,

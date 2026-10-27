@@ -455,7 +455,7 @@ fn shelf(use_: &Use) -> Option<ItemOn> {
 }
 
 /// `RedStoneOreBlock.useItemOn`: a block item that fits beside the face is placed instead. The
-/// client's dust particles, and the `Level.random` draws they make, are not ported.
+/// client's dust is the caller's (`ClientWorld::push_ore_sparks`).
 fn redstone_ore(use_: &Use) -> Option<ItemOn> {
     if use_.held.block.is_none() {
         return Some(ItemOn::answer(SUCCESS));

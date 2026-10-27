@@ -112,6 +112,11 @@ pub fn block_event(tick: i64, pos: Block, b0: i64, b1: i64) -> Value {
     json!({"tick": tick, "type": "block_event", "x": pos.0, "y": pos.1, "z": pos.2, "b0": b0, "b1": b1})
 }
 
+/// A redstone ore touched (`BlockState.attack`): its dust, and it lights up.
+pub fn ore_touch(tick: i64, pos: Block) -> Value {
+    json!({"tick": tick, "type": "ore_touch", "x": pos.0, "y": pos.1, "z": pos.2})
+}
+
 /// The server's clock told to the level.
 pub fn game_time(tick: i64, time: i64) -> Value {
     json!({"tick": tick, "type": "game_time", "time": time})

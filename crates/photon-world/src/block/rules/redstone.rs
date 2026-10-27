@@ -85,9 +85,9 @@ pub fn wire_use(
     }))
 }
 
-/// Whether a block of this name acts on being stepped on at all on a client
-/// (`RedStoneOreBlock.stepOn`; the others' steps are the server's).
-pub fn steps_on(name: &str) -> bool {
+/// Whether a block of this name is one of the two ores of `RedStoneOreBlock`, which a client lights
+/// and sparks when touched (stepped on, hit, or used with an item).
+pub fn is_redstone_ore(name: &str) -> bool {
     matches!(
         name,
         "minecraft:redstone_ore" | "minecraft:deepslate_redstone_ore"
@@ -95,8 +95,8 @@ pub fn steps_on(name: &str) -> bool {
 }
 
 /// `RedStoneOreBlock.attack`: starting to break an unlit ore lights it (flags 3). The block class
-/// is told by name: the two ores are the class's only blocks. The dust particles, and the
-/// `Level.random` draws they make, are not ported.
+/// is told by name: the two ores are the class's only blocks. The dust is the caller's
+/// (`ClientWorld::push_ore_sparks`).
 pub fn attack(state: BlockStateId, pos: (i32, i32, i32)) -> Option<Write> {
     let name = block(state)?.name;
     if !matches!(

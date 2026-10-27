@@ -259,6 +259,10 @@ impl ParticleEngine {
             | LevelEvent::ParrotImitation { .. }
             | LevelEvent::Geyser { .. }
             | LevelEvent::GeyserSound { .. } => self.block_entity_level_event(level_event, context),
+            LevelEvent::OreSparks { pos } => {
+                self.redstone_ore_particles(pos, context);
+                Vec::new()
+            }
             LevelEvent::PistonSound => {
                 // `PistonBaseBlock.triggerEvent`: the pitch is asked of the level's random source
                 // whether or not the client plays the sound (the server does that for the player).

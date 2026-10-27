@@ -14,6 +14,7 @@ mod engine_rows_late;
 mod events;
 mod fireworks;
 mod layouts;
+mod ore_rows;
 mod parrot_rows;
 mod pickup;
 mod piston_rows;

@@ -612,6 +612,13 @@ class MovementParticleOracle extends MovementMenuOracle {
                         event.get("b1").getAsInt());
                     continue;
                 }
+                if (event.get("type").getAsString().equals("ore_touch")) {
+                    // `BlockState.attack`: a redstone ore sparks and lights up.
+                    var at = new net.minecraft.core.BlockPos(
+                        event.get("x").getAsInt(), event.get("y").getAsInt(), event.get("z").getAsInt());
+                    level.getBlockState(at).attack(level, at, null);
+                    continue;
+                }
                 if (event.get("type").getAsString().equals("set_block")) {
                     level.setBlock(new net.minecraft.core.BlockPos(event.get("x").getAsInt(),
                         event.get("y").getAsInt(), event.get("z").getAsInt()),

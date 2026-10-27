@@ -8,6 +8,12 @@ impl ClientWorld {
         self.sounds.0.push(sound);
     }
 
+    /// `RedStoneOreBlock.spawnParticles` for a touch of the ore (a step, a hit, an item used on
+    /// it), for the particle engine.
+    pub fn push_ore_sparks(&mut self, pos: (i32, i32, i32)) {
+        self.level_events.0.push(LevelEvent::OreSparks { pos });
+    }
+
     /// The pitch of an igniter's sound on a creeper, `random.nextFloat() * 0.4F + 0.8F`.
     pub fn entity_sound_pitch(&mut self) -> f32 {
         self.entity_sound_random.source().next_float() * 0.4 + 0.8
@@ -351,6 +357,8 @@ pub enum LevelEvent {
     SpawnerTick { pos: (i32, i32, i32) },
     /// A lit campfire's tick (`CampfireBlockEntity.particleTick`).
     CampfireTick(CampfireSmoke),
+    /// A redstone ore touched (`RedStoneOreBlock.spawnParticles`): dust on its open faces.
+    OreSparks { pos: (i32, i32, i32) },
     /// A lit campfire put out (`CampfireBlock.dowse` on a client).
     CampfireDowse { pos: (i32, i32, i32), signal: bool },
     /// A trial spawner's tick (`TrialSpawner.tickClient`), less its spin: the particles of its

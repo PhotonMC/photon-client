@@ -349,11 +349,12 @@ impl ClientWorld {
     }
 
     /// `Block.stepOn` for the blocks the player stepped on in its tick: an ore the player walks
-    /// on lights up (flags 3). The block is read as it is now, so one already lit stays so. The
-    /// dust particles, and the `Level.random` draws they make, are not ported.
+    /// on lights up (flags 3) and gives off its dust. The block is read as it is now, so one already
+    /// lit stays so.
     pub fn apply_player_steps(&mut self, player: &mut LocalPlayer) {
         for pos in player.take_stepped_on() {
             let state = self.block_state_or_air(pos.x, pos.y, pos.z);
+            self.push_ore_sparks((pos.x, pos.y, pos.z));
             if let Some(write) = rules::attack(state, (pos.x, pos.y, pos.z)) {
                 self.update_block_state(write.pos.0, write.pos.1, write.pos.2, write.state);
             }

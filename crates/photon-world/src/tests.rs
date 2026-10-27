@@ -106,6 +106,7 @@ mod campfires;
 mod chunks;
 mod entities;
 mod local_player;
+mod ore_steps;
 mod passengers;
 mod presentation;
 mod spawners;

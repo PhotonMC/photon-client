@@ -167,6 +167,10 @@ impl GameMode {
                 .is_some_and(|sign| crate::sign::is_waxed(sign.tag)),
         };
         let answer = rules::use_item_with(state, pos, describe(ctx, hand), user)?;
+        // `RedStoneOreBlock.useItemOn`: a client shows the dust, whatever the answer.
+        if rules::is_redstone_ore(photon_world::block::state_or_air(state).block().name) {
+            ctx.world.push_ore_sparks(pos);
+        }
         if let Some(write) = answer.write {
             let position = ctx.player.position();
             ctx.world

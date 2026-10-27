@@ -37,6 +37,7 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
             world.apply_global_level_event(i32_field(event, "event")?, pos()?);
         }
         "block_event" => queue_block_event(event, world)?,
+        "ore_touch" => touch_ore(world, pos()?),
         "set_block" => {
             let state = super::state_of(&json!({"state": event["state"]}))?;
             world.update_block_state(
@@ -55,6 +56,15 @@ pub(super) fn queues(event: &Value, world: &mut ClientWorld) -> Result<bool, Str
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+/// An `ore_touch` event: the ore sparks, and an unlit one lights up (`RedStoneOreBlock.attack`).
+fn touch_ore(world: &mut ClientWorld, pos: (i32, i32, i32)) {
+    world.push_ore_sparks(pos);
+    let state = world.block_state_or_air(pos.0, pos.1, pos.2);
+    if let Some(write) = photon_world::block::rules::attack(state, pos) {
+        world.update_block_state(pos.0, pos.1, pos.2, write.state);
+    }
 }
 
 /// An `explode` event: the explosion the server reports, queued in the world.
