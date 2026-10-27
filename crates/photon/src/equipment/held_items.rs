@@ -55,6 +55,8 @@ pub enum Carried {
         /// The overlay's code (`overlay_code`): zero where the layer submits
         /// `NO_OVERLAY`.
         overlay: f32,
+        /// Drawn; when not, only its outline is (`submitOnlyOutline`).
+        shown: bool,
     },
 }
 
@@ -99,6 +101,15 @@ impl HeldItem {
         self
     }
 
+    /// The block is not drawn, only its outline (`submitOnlyOutline`, a hidden block of a glowing
+    /// entity).
+    pub fn outline_only(mut self) -> Self {
+        if let Carried::Block { shown, .. } = &mut self.stack {
+            *shown = false;
+        }
+        self
+    }
+
     /// The outline holder of an entity that glows: its scoreboard name, the UUID.
     pub fn glow_holder(entity: &photon_world::ClientEntity) -> Option<String> {
         entity.is_glowing().then(|| entity.uuid.to_string_java())
@@ -107,7 +118,11 @@ impl HeldItem {
     /// A block state drawn on an entity, from the pose its layer leaves.
     pub fn block(state: BlockStateId, pose: Pose, light: i32, overlay: f32) -> Self {
         Self {
-            stack: Carried::Block { state, overlay },
+            stack: Carried::Block {
+                state,
+                overlay,
+                shown: true,
+            },
             pose,
             place: Place::Head,
             light,
@@ -393,7 +408,11 @@ pub fn held_item_vertices(
         let cache = &mut layers[item.place.index()];
         let stack = match &item.stack {
             Carried::Stack(stack) => stack,
-            Carried::Block { state, overlay } => {
+            Carried::Block {
+                state,
+                overlay,
+                shown,
+            } => {
                 if let Some((layer, block_light)) = cache.block(*state, renderer) {
                     let light =
                         photon_render::entity::block::submit_light(item.light, *block_light);
@@ -405,7 +424,9 @@ pub fn held_item_vertices(
                     if let Some(holder) = &item.outline {
                         crate::mobs::record_item_holder(holder.clone(), drawn.clone());
                     }
-                    vertices.extend(drawn);
+                    if *shown {
+                        vertices.extend(drawn);
+                    }
                 }
                 continue;
             }

@@ -147,7 +147,7 @@ pub fn remote_golems(
                 default_state("minecraft:poppy"),
                 0.0,
             )
-        } else if !is_iron && entity.has_pumpkin() && !entity.is_invisible() {
+        } else if !is_iron && pumpkin_shows(entity) {
             (
                 part("head").map(|head| snow_golem_head_pose(&entity_pose, head)),
                 default_state("minecraft:carved_pumpkin"),
@@ -157,7 +157,26 @@ pub fn remote_golems(
             (None, None, 0.0)
         };
         if let (Some(pose), Some(state)) = (pose, state) {
-            held.push(HeldItem::block(state, pose, placed.light, overlay).outlined(entity));
+            held.push(golem_block(entity, (state, pose, placed.light, overlay)));
         }
+    }
+}
+
+/// `SnowGolemHeadLayer`: the pumpkin shows on a visible golem, and as its outline alone on an
+/// invisible golem that glows.
+fn pumpkin_shows(entity: &photon_world::ClientEntity) -> bool {
+    entity.has_pumpkin() && (!entity.is_invisible() || entity.is_glowing())
+}
+
+/// A golem's block, joining its outline when it glows; an invisible golem's only as the outline.
+fn golem_block(
+    entity: &photon_world::ClientEntity,
+    (state, pose, light, overlay): (BlockStateId, photon_render::joml::Pose, i32, f32),
+) -> HeldItem {
+    let block = HeldItem::block(state, pose, light, overlay).outlined(entity);
+    if entity.is_invisible() {
+        block.outline_only()
+    } else {
+        block
     }
 }
