@@ -237,10 +237,28 @@ fn copper_golem_statue(use_: &Use) -> Option<ItemOn> {
     Some(next_pose(use_))
 }
 
-/// `WeatheringCopperGolemStatueBlock`: an axe frees the golem, which is not ported.
+/// `WeatheringCopperGolemStatueBlock`: an axe on an unaffected statue with its block entity frees
+/// the golem: the client makes it, its spawn sound is a `playSound(null, ..)` that plays nothing,
+/// `addFreshEntity` adds nothing to a client level, and the block is removed (`removeBlock`: the
+/// fluid's own block, flags 3). A more weathered statue passes.
 fn weathering_copper_golem_statue(use_: &Use) -> Option<ItemOn> {
     if use_.held.axe {
-        return None;
+        let unaffected =
+            block(use_.state).is_some_and(|block| block.name == "minecraft:copper_golem_statue");
+        if !use_.user.block_entity || !unaffected {
+            return pass();
+        }
+        let left = if is(use_, "waterlogged", "true") {
+            "minecraft:water"
+        } else {
+            "minecraft:air"
+        };
+        return Some(ItemOn::set(
+            use_.pos,
+            Some(registry::default_state_named(left)),
+            3,
+            false,
+        ));
     }
     if !use_.user.block_entity || use_.held.honeycomb {
         return pass();
@@ -636,8 +654,7 @@ mod tests {
         assert_eq!(use_item_with(hanging, at, sign_item, user(true)), None);
     }
 
-    /// The weathering statue passes without its block entity, and turns with it; an axe is not
-    /// ported.
+    /// The weathering statue passes without its block entity, and turns with it.
     #[test]
     fn a_weathering_statue_turns_with_its_block_entity() {
         let statue = state(
@@ -669,10 +686,21 @@ mod tests {
             use_item_with(statue, at, honey, user(true)).map(|on| on.result),
             Some(UseResult::Pass)
         );
+        // An axe frees the golem of an unaffected statue that has its block entity, and passes
+        // without the block entity (the reference always has it) or on a weathered one.
         let axe = Held {
             axe: true,
             ..stone()
         };
-        assert_eq!(use_item_with(statue, at, axe, user(true)), None);
+        let freed = use_item_with(statue, at, axe, user(true)).expect("known");
+        assert_eq!(freed.result, SUCCESS);
+        assert_eq!(
+            freed.write.map(|write| write.state),
+            Some(registry::default_state_named("minecraft:air"))
+        );
+        assert_eq!(
+            use_item_with(statue, at, axe, user(false)).map(|on| on.result),
+            Some(UseResult::Pass)
+        );
     }
 }

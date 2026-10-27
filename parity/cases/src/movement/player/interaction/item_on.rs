@@ -205,6 +205,10 @@ fn with_block_entities() -> Vec<Value> {
             &[("copper_golem_pose", pose), ("facing", "north"), ("waterlogged", "false")],
         )]
     };
+    let statue_of = |block: &str, wet: &str| {
+        vec![put_with(0, 64, 2, block, &[("copper_golem_pose", "sitting"), ("facing", "north"), ("waterlogged", wet)])]
+    };
+    let wet_statue = || statue_of("minecraft:copper_golem_statue", "true");
     let pot = || {
         vec![put_with(
             0,
@@ -223,6 +227,14 @@ fn with_block_entities() -> Vec<Value> {
             .block_entity(at, statue_kind)
             .row(),
         row("item-on-weathering-statue-star", statue("star"), &north()).block_entity(at, statue_kind).row(),
+        row("item-on-weathering-statue-axe", statue("sitting"), &north())
+            .main_hand("minecraft:iron_axe")
+            .block_entity(at, statue_kind)
+            .row(),
+        row("item-on-weathering-statue-axe-waterlogged", wet_statue(), &north())
+            .main_hand("minecraft:iron_axe")
+            .block_entity(at, statue_kind)
+            .row(),
         row("item-on-pot-stone", pot(), &north())
             .main_hand("minecraft:stone")
             .count(3)
