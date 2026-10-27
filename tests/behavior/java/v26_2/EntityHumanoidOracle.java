@@ -227,6 +227,18 @@ class EntityHumanoidOracle extends EntityHeldOracle {
             var row = element.getAsJsonObject();
             String id = row.get("layer").getAsString();
             var root = bakedLayer(id);
+            if (id.equals("minecraft:bogged#main")) {
+                // The bogged's own model hides its mushrooms once it is sheared.
+                var bogged = new net.minecraft.client.renderer.entity.state.BoggedRenderState();
+                humanoidFields(bogged, row);
+                bogged.isAggressive = row.get("aggressive").getAsBoolean();
+                bogged.isHoldingBow = row.get("holding_bow").getAsBoolean();
+                bogged.isSheared = row.has("sheared") && row.get("sheared").getAsBoolean();
+                var boggedModel = new net.minecraft.client.model.monster.skeleton.BoggedModel(root);
+                boggedModel.setupAnim(bogged);
+                rows.add(posedQuads(row.get("label").getAsString(), boggedModel));
+                continue;
+            }
             var state = new net.minecraft.client.renderer.entity.state.SkeletonRenderState();
             humanoidFields(state, row);
             state.isAggressive = row.get("aggressive").getAsBoolean();

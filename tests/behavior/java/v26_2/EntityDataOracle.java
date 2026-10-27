@@ -349,6 +349,7 @@ class EntityDataOracle extends EntityBossOracle {
             {net.minecraft.world.entity.animal.fish.Salmon.class, "DATA_TYPE", "salmon-type"},
             {net.minecraft.world.entity.animal.fish.TropicalFish.class, "DATA_ID_TYPE_VARIANT", "tropical-fish-variant"},
             {net.minecraft.world.entity.animal.fish.Pufferfish.class, "PUFF_STATE", "pufferfish-puff-state"},
+            {net.minecraft.world.entity.monster.skeleton.Bogged.class, "DATA_SHEARED", "bogged-sheared"},
         };
         for (var described : fields) {
             var field = Reflect.field(((Class<?>) described[0]), (String) described[1]);

@@ -131,6 +131,17 @@ impl MobModel {
         humanoid_anim(&mut self.root, state);
     }
 
+    /// `BoggedModel.setupAnim`: a sheared bogged does not draw its mushrooms.
+    pub fn set_bogged_sheared(&mut self, sheared: bool) {
+        if let Some(mushrooms) = self
+            .root
+            .child_mut("head")
+            .and_then(|head| head.child_mut("mushrooms"))
+        {
+            mushrooms.visible = !sheared;
+        }
+    }
+
     /// `SkeletonModel.setupAnim`: the humanoid pose, and an aggressive
     /// skeleton without a bow swings its arms out in front.
     pub fn setup_skeleton(&mut self, state: &SkeletonState) {

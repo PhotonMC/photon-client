@@ -55,6 +55,15 @@ pub(super) fn entity_variants_case() -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// The sheared flag of a bogged: a boolean on its own id.
+fn bogged_field() -> (&'static str, i64, i64) {
+    (
+        "bogged-sheared",
+        i64::from(photon_world::BOGGED_SHEARED_DATA_ID),
+        8,
+    )
+}
+
 pub(super) fn entity_variant_fields_case() -> Result<Value, String> {
     use photon_world::{
         ARMOR_STAND_FLAGS_DATA_ID, ARMOR_STAND_HEAD_POSE_DATA_ID, AVATAR_MAIN_HAND_DATA_ID,
@@ -462,7 +471,7 @@ pub(super) fn entity_variant_fields_case() -> Result<Value, String> {
         ),
     ];
     Ok(json!({"rows": fields
-        .iter()
+        .iter().chain([&bogged_field()])
         .map(|(label, data_id, serializer)| {
             json!({"label": label, "data_id": data_id, "serializer": serializer})
         })

@@ -339,11 +339,14 @@ pub(super) fn pose_humanoid(
             aggressive,
             drowned,
         }),
-        Family::Skeleton => model.setup_skeleton(&SkeletonState {
-            humanoid,
-            aggressive,
-            holding_bow,
-        }),
+        Family::Skeleton => {
+            model.setup_skeleton(&SkeletonState {
+                humanoid,
+                aggressive,
+                holding_bow,
+            });
+            model.set_bogged_sheared(entity.is_bogged_sheared());
+        }
         Family::Piglin { zombified } => model.setup_piglin(&PiglinState {
             humanoid,
             aggressive,

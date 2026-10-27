@@ -15,6 +15,7 @@ pub(crate) fn skeleton_model_result(request: &Value) -> Result<Value, String> {
             aggressive: row["aggressive"].as_bool().ok_or("aggressive")?,
             holding_bow: row["holding_bow"].as_bool().ok_or("holding_bow")?,
         });
+        model.set_bogged_sheared(row["sheared"].as_bool().unwrap_or(false));
         out.push(json!({"label": row["label"], "quads": posed_quads(&model)}));
     }
     Ok(json!({"rows": out}))

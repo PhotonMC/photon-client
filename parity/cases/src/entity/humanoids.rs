@@ -102,7 +102,16 @@ pub fn skeleton() -> Vec<Value> {
         "minecraft:parched#main",
         "minecraft:wither_skeleton#main",
     ];
-    vec![entity("skeleton-model", "skeleton_model", every(&layers, &defaults, &poses))]
+    let mut rows = every(&layers, &defaults, &poses);
+    // A sheared bogged does not draw its mushrooms; the flag is read by that layer alone.
+    let shorn: [(&str, Fields); 2] = [
+        ("sheared", fields!(sheared = true)),
+        ("sheared-walking", fields!(sheared = true, walk_position = 7.3, walk_speed = 0.83)),
+    ];
+    for (label, set) in shorn {
+        rows.push(layer_row("minecraft:bogged#main", label, &defaults, set));
+    }
+    vec![entity("skeleton-model", "skeleton_model", rows)]
 }
 
 fn piglin_defaults() -> Vec<(&'static str, Field)> {
