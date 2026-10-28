@@ -1,0 +1,376 @@
+//! Every block state property, named after the field that holds it in the
+//! reference.
+//!
+//! This table is maintained by hand; the parity families compare it with the reference.
+
+use crate::block::definition::{Property, PropertyKind};
+
+#[rustfmt::skip]
+pub static SNOWY: Property = Property { name: "snowy", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static AXIS: Property = Property { name: "axis", kind: PropertyKind::Enum, values: &["x", "y", "z"] };
+#[rustfmt::skip]
+pub static STAGE: Property = Property { name: "stage", kind: PropertyKind::Integer, values: &["0", "1"] };
+#[rustfmt::skip]
+pub static AGE_4: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static HANGING: Property = Property { name: "hanging", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static WATERLOGGED: Property = Property { name: "waterlogged", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static LEVEL: Property = Property { name: "level", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"] };
+#[rustfmt::skip]
+pub static DUSTED: Property = Property { name: "dusted", kind: PropertyKind::Integer, values: &["0", "1", "2", "3"] };
+#[rustfmt::skip]
+pub static DISTANCE: Property = Property { name: "distance", kind: PropertyKind::Integer, values: &["1", "2", "3", "4", "5", "6", "7"] };
+#[rustfmt::skip]
+pub static PERSISTENT: Property = Property { name: "persistent", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static FACING: Property = Property { name: "facing", kind: PropertyKind::Enum, values: &["north", "east", "south", "west", "up", "down"] };
+#[rustfmt::skip]
+pub static TRIGGERED: Property = Property { name: "triggered", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static NOTEBLOCK_INSTRUMENT: Property = Property { name: "instrument", kind: PropertyKind::Enum, values: &["harp", "basedrum", "snare", "hat", "bass", "flute", "bell", "guitar", "chime", "xylophone", "iron_xylophone", "cow_bell", "didgeridoo", "bit", "banjo", "pling", "trumpet", "trumpet_exposed", "trumpet_oxidized", "trumpet_weathered", "zombie", "skeleton", "creeper", "dragon", "wither_skeleton", "piglin", "custom_head"] };
+#[rustfmt::skip]
+pub static NOTE: Property = Property { name: "note", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24"] };
+#[rustfmt::skip]
+pub static POWERED: Property = Property { name: "powered", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static HORIZONTAL_FACING: Property = Property { name: "facing", kind: PropertyKind::Enum, values: &["north", "south", "west", "east"] };
+#[rustfmt::skip]
+pub static OCCUPIED: Property = Property { name: "occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static BED_PART: Property = Property { name: "part", kind: PropertyKind::Enum, values: &["head", "foot"] };
+#[rustfmt::skip]
+pub static RAIL_SHAPE_STRAIGHT: Property = Property { name: "shape", kind: PropertyKind::Enum, values: &["north_south", "east_west", "ascending_east", "ascending_west", "ascending_north", "ascending_south"] };
+#[rustfmt::skip]
+pub static EXTENDED: Property = Property { name: "extended", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static DOUBLE_BLOCK_HALF: Property = Property { name: "half", kind: PropertyKind::Enum, values: &["upper", "lower"] };
+#[rustfmt::skip]
+pub static SHORT: Property = Property { name: "short", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static PISTON_TYPE: Property = Property { name: "type", kind: PropertyKind::Enum, values: &["normal", "sticky"] };
+#[rustfmt::skip]
+pub static UNSTABLE: Property = Property { name: "unstable", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_0_OCCUPIED: Property = Property { name: "slot_0_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_1_OCCUPIED: Property = Property { name: "slot_1_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_2_OCCUPIED: Property = Property { name: "slot_2_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_3_OCCUPIED: Property = Property { name: "slot_3_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_4_OCCUPIED: Property = Property { name: "slot_4_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLOT_5_OCCUPIED: Property = Property { name: "slot_5_occupied", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SIDE_CHAIN_PART: Property = Property { name: "side_chain", kind: PropertyKind::Enum, values: &["unconnected", "right", "center", "left"] };
+#[rustfmt::skip]
+pub static AGE_15: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"] };
+#[rustfmt::skip]
+pub static EAST: Property = Property { name: "east", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static NORTH: Property = Property { name: "north", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SOUTH: Property = Property { name: "south", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static UP: Property = Property { name: "up", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static WEST: Property = Property { name: "west", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static CREAKING_HEART_STATE: Property = Property { name: "creaking_heart_state", kind: PropertyKind::Enum, values: &["uprooted", "dormant", "awake"] };
+#[rustfmt::skip]
+pub static NATURAL: Property = Property { name: "natural", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static HALF: Property = Property { name: "half", kind: PropertyKind::Enum, values: &["top", "bottom"] };
+#[rustfmt::skip]
+pub static STAIRS_SHAPE: Property = Property { name: "shape", kind: PropertyKind::Enum, values: &["straight", "inner_left", "inner_right", "outer_left", "outer_right"] };
+#[rustfmt::skip]
+pub static CHEST_TYPE: Property = Property { name: "type", kind: PropertyKind::Enum, values: &["single", "left", "right"] };
+#[rustfmt::skip]
+pub static EAST_REDSTONE: Property = Property { name: "east", kind: PropertyKind::Enum, values: &["up", "side", "none"] };
+#[rustfmt::skip]
+pub static NORTH_REDSTONE: Property = Property { name: "north", kind: PropertyKind::Enum, values: &["up", "side", "none"] };
+#[rustfmt::skip]
+pub static POWER: Property = Property { name: "power", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"] };
+#[rustfmt::skip]
+pub static SOUTH_REDSTONE: Property = Property { name: "south", kind: PropertyKind::Enum, values: &["up", "side", "none"] };
+#[rustfmt::skip]
+pub static WEST_REDSTONE: Property = Property { name: "west", kind: PropertyKind::Enum, values: &["up", "side", "none"] };
+#[rustfmt::skip]
+pub static AGE_7: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7"] };
+#[rustfmt::skip]
+pub static MOISTURE: Property = Property { name: "moisture", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7"] };
+#[rustfmt::skip]
+pub static LIT: Property = Property { name: "lit", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static ROTATION_16: Property = Property { name: "rotation", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"] };
+#[rustfmt::skip]
+pub static DOOR_HINGE: Property = Property { name: "hinge", kind: PropertyKind::Enum, values: &["left", "right"] };
+#[rustfmt::skip]
+pub static OPEN: Property = Property { name: "open", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static RAIL_SHAPE: Property = Property { name: "shape", kind: PropertyKind::Enum, values: &["north_south", "east_west", "ascending_east", "ascending_west", "ascending_north", "ascending_south", "south_east", "south_west", "north_west", "north_east"] };
+#[rustfmt::skip]
+pub static ATTACHED: Property = Property { name: "attached", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static ATTACH_FACE: Property = Property { name: "face", kind: PropertyKind::Enum, values: &["floor", "wall", "ceiling"] };
+#[rustfmt::skip]
+pub static LAYERS: Property = Property { name: "layers", kind: PropertyKind::Integer, values: &["1", "2", "3", "4", "5", "6", "7", "8"] };
+#[rustfmt::skip]
+pub static HAS_RECORD: Property = Property { name: "has_record", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static HORIZONTAL_AXIS: Property = Property { name: "axis", kind: PropertyKind::Enum, values: &["x", "z"] };
+#[rustfmt::skip]
+pub static BITES: Property = Property { name: "bites", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6"] };
+#[rustfmt::skip]
+pub static DELAY: Property = Property { name: "delay", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static LOCKED: Property = Property { name: "locked", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static DOWN: Property = Property { name: "down", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static IN_WALL: Property = Property { name: "in_wall", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SLAB_TYPE: Property = Property { name: "type", kind: PropertyKind::Enum, values: &["top", "bottom", "double"] };
+#[rustfmt::skip]
+pub static EAST_WALL: Property = Property { name: "east", kind: PropertyKind::Enum, values: &["none", "low", "tall"] };
+#[rustfmt::skip]
+pub static NORTH_WALL: Property = Property { name: "north", kind: PropertyKind::Enum, values: &["none", "low", "tall"] };
+#[rustfmt::skip]
+pub static SOUTH_WALL: Property = Property { name: "south", kind: PropertyKind::Enum, values: &["none", "low", "tall"] };
+#[rustfmt::skip]
+pub static WEST_WALL: Property = Property { name: "west", kind: PropertyKind::Enum, values: &["none", "low", "tall"] };
+#[rustfmt::skip]
+pub static AGE_3: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3"] };
+#[rustfmt::skip]
+pub static HAS_BOTTLE_0: Property = Property { name: "has_bottle_0", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static HAS_BOTTLE_1: Property = Property { name: "has_bottle_1", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static HAS_BOTTLE_2: Property = Property { name: "has_bottle_2", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static LEVEL_CAULDRON: Property = Property { name: "level", kind: PropertyKind::Integer, values: &["1", "2", "3"] };
+#[rustfmt::skip]
+pub static EYE: Property = Property { name: "eye", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static AGE_2: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2"] };
+#[rustfmt::skip]
+pub static DISARMED: Property = Property { name: "disarmed", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static CONDITIONAL: Property = Property { name: "conditional", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static MODE_COMPARATOR: Property = Property { name: "mode", kind: PropertyKind::Enum, values: &["compare", "subtract"] };
+#[rustfmt::skip]
+pub static INVERTED: Property = Property { name: "inverted", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static ENABLED: Property = Property { name: "enabled", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static FACING_HOPPER: Property = Property { name: "facing", kind: PropertyKind::Enum, values: &["down", "north", "south", "west", "east"] };
+#[rustfmt::skip]
+pub static AGE_5: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5"] };
+#[rustfmt::skip]
+pub static AGE_1: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1"] };
+#[rustfmt::skip]
+pub static AGE_25: Property = Property { name: "age", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"] };
+#[rustfmt::skip]
+pub static EGGS: Property = Property { name: "eggs", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static HATCH: Property = Property { name: "hatch", kind: PropertyKind::Integer, values: &["0", "1", "2"] };
+#[rustfmt::skip]
+pub static DRIED_GHAST_HYDRATION_LEVELS: Property = Property { name: "hydration", kind: PropertyKind::Integer, values: &["0", "1", "2", "3"] };
+#[rustfmt::skip]
+pub static PICKLES: Property = Property { name: "pickles", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static BAMBOO_LEAVES: Property = Property { name: "leaves", kind: PropertyKind::Enum, values: &["none", "small", "large"] };
+#[rustfmt::skip]
+pub static DRAG: Property = Property { name: "drag", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static BOTTOM: Property = Property { name: "bottom", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static STABILITY_DISTANCE: Property = Property { name: "distance", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7"] };
+#[rustfmt::skip]
+pub static HAS_BOOK: Property = Property { name: "has_book", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static BELL_ATTACHMENT: Property = Property { name: "attachment", kind: PropertyKind::Enum, values: &["floor", "ceiling", "single_wall", "double_wall"] };
+#[rustfmt::skip]
+pub static SIGNAL_FIRE: Property = Property { name: "signal_fire", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static STRUCTUREBLOCK_MODE: Property = Property { name: "mode", kind: PropertyKind::Enum, values: &["save", "load", "corner", "data"] };
+#[rustfmt::skip]
+pub static ORIENTATION: Property = Property { name: "orientation", kind: PropertyKind::Enum, values: &["down_east", "down_north", "down_south", "down_west", "up_east", "up_north", "up_south", "up_west", "west_up", "east_up", "north_up", "south_up"] };
+#[rustfmt::skip]
+pub static TEST_BLOCK_MODE: Property = Property { name: "mode", kind: PropertyKind::Enum, values: &["start", "log", "fail", "accept"] };
+#[rustfmt::skip]
+pub static LEVEL_COMPOSTER: Property = Property { name: "level", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5", "6", "7", "8"] };
+#[rustfmt::skip]
+pub static LEVEL_HONEY: Property = Property { name: "honey_level", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4", "5"] };
+#[rustfmt::skip]
+pub static RESPAWN_ANCHOR_CHARGES: Property = Property { name: "charges", kind: PropertyKind::Integer, values: &["0", "1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static CANDLES: Property = Property { name: "candles", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static POTENT_SULFUR_STATE: Property = Property { name: "potent_sulfur_state", kind: PropertyKind::Enum, values: &["dry", "wet", "dormant", "erupting", "continuous"] };
+#[rustfmt::skip]
+pub static SCULK_SENSOR_PHASE: Property = Property { name: "sculk_sensor_phase", kind: PropertyKind::Enum, values: &["inactive", "active", "cooldown"] };
+#[rustfmt::skip]
+pub static BLOOM: Property = Property { name: "bloom", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static CAN_SUMMON: Property = Property { name: "can_summon", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static SHRIEKING: Property = Property { name: "shrieking", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static COPPER_GOLEM_POSE: Property = Property { name: "copper_golem_pose", kind: PropertyKind::Enum, values: &["standing", "sitting", "running", "star"] };
+#[rustfmt::skip]
+pub static SPELEOTHEM_THICKNESS: Property = Property { name: "thickness", kind: PropertyKind::Enum, values: &["tip_merge", "tip", "frustum", "middle", "base"] };
+#[rustfmt::skip]
+pub static VERTICAL_DIRECTION: Property = Property { name: "vertical_direction", kind: PropertyKind::Enum, values: &["up", "down"] };
+#[rustfmt::skip]
+pub static BERRIES: Property = Property { name: "berries", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static FLOWER_AMOUNT: Property = Property { name: "flower_amount", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static SEGMENT_AMOUNT: Property = Property { name: "segment_amount", kind: PropertyKind::Integer, values: &["1", "2", "3", "4"] };
+#[rustfmt::skip]
+pub static TILT: Property = Property { name: "tilt", kind: PropertyKind::Enum, values: &["none", "unstable", "partial", "full"] };
+#[rustfmt::skip]
+pub static CRACKED: Property = Property { name: "cracked", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static CRAFTING: Property = Property { name: "crafting", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static OMINOUS: Property = Property { name: "ominous", kind: PropertyKind::Boolean, values: &["true", "false"] };
+#[rustfmt::skip]
+pub static TRIAL_SPAWNER_STATE: Property = Property { name: "trial_spawner_state", kind: PropertyKind::Enum, values: &["inactive", "waiting_for_players", "active", "waiting_for_reward_ejection", "ejecting_reward", "cooldown"] };
+#[rustfmt::skip]
+pub static VAULT_STATE: Property = Property { name: "vault_state", kind: PropertyKind::Enum, values: &["inactive", "active", "unlocking", "ejecting"] };
+#[rustfmt::skip]
+pub static TIP: Property = Property { name: "tip", kind: PropertyKind::Boolean, values: &["true", "false"] };
+
+/// Every property with the name of the field that holds it, in the order
+/// the registry first uses them.
+#[rustfmt::skip]
+pub static FIELDS: [(&str, &Property); 121] = [
+    ("SNOWY", &SNOWY),
+    ("AXIS", &AXIS),
+    ("STAGE", &STAGE),
+    ("AGE_4", &AGE_4),
+    ("HANGING", &HANGING),
+    ("WATERLOGGED", &WATERLOGGED),
+    ("LEVEL", &LEVEL),
+    ("DUSTED", &DUSTED),
+    ("DISTANCE", &DISTANCE),
+    ("PERSISTENT", &PERSISTENT),
+    ("FACING", &FACING),
+    ("TRIGGERED", &TRIGGERED),
+    ("NOTEBLOCK_INSTRUMENT", &NOTEBLOCK_INSTRUMENT),
+    ("NOTE", &NOTE),
+    ("POWERED", &POWERED),
+    ("HORIZONTAL_FACING", &HORIZONTAL_FACING),
+    ("OCCUPIED", &OCCUPIED),
+    ("BED_PART", &BED_PART),
+    ("RAIL_SHAPE_STRAIGHT", &RAIL_SHAPE_STRAIGHT),
+    ("EXTENDED", &EXTENDED),
+    ("DOUBLE_BLOCK_HALF", &DOUBLE_BLOCK_HALF),
+    ("SHORT", &SHORT),
+    ("PISTON_TYPE", &PISTON_TYPE),
+    ("UNSTABLE", &UNSTABLE),
+    ("SLOT_0_OCCUPIED", &SLOT_0_OCCUPIED),
+    ("SLOT_1_OCCUPIED", &SLOT_1_OCCUPIED),
+    ("SLOT_2_OCCUPIED", &SLOT_2_OCCUPIED),
+    ("SLOT_3_OCCUPIED", &SLOT_3_OCCUPIED),
+    ("SLOT_4_OCCUPIED", &SLOT_4_OCCUPIED),
+    ("SLOT_5_OCCUPIED", &SLOT_5_OCCUPIED),
+    ("SIDE_CHAIN_PART", &SIDE_CHAIN_PART),
+    ("AGE_15", &AGE_15),
+    ("EAST", &EAST),
+    ("NORTH", &NORTH),
+    ("SOUTH", &SOUTH),
+    ("UP", &UP),
+    ("WEST", &WEST),
+    ("CREAKING_HEART_STATE", &CREAKING_HEART_STATE),
+    ("NATURAL", &NATURAL),
+    ("HALF", &HALF),
+    ("STAIRS_SHAPE", &STAIRS_SHAPE),
+    ("CHEST_TYPE", &CHEST_TYPE),
+    ("EAST_REDSTONE", &EAST_REDSTONE),
+    ("NORTH_REDSTONE", &NORTH_REDSTONE),
+    ("POWER", &POWER),
+    ("SOUTH_REDSTONE", &SOUTH_REDSTONE),
+    ("WEST_REDSTONE", &WEST_REDSTONE),
+    ("AGE_7", &AGE_7),
+    ("MOISTURE", &MOISTURE),
+    ("LIT", &LIT),
+    ("ROTATION_16", &ROTATION_16),
+    ("DOOR_HINGE", &DOOR_HINGE),
+    ("OPEN", &OPEN),
+    ("RAIL_SHAPE", &RAIL_SHAPE),
+    ("ATTACHED", &ATTACHED),
+    ("ATTACH_FACE", &ATTACH_FACE),
+    ("LAYERS", &LAYERS),
+    ("HAS_RECORD", &HAS_RECORD),
+    ("HORIZONTAL_AXIS", &HORIZONTAL_AXIS),
+    ("BITES", &BITES),
+    ("DELAY", &DELAY),
+    ("LOCKED", &LOCKED),
+    ("DOWN", &DOWN),
+    ("IN_WALL", &IN_WALL),
+    ("SLAB_TYPE", &SLAB_TYPE),
+    ("EAST_WALL", &EAST_WALL),
+    ("NORTH_WALL", &NORTH_WALL),
+    ("SOUTH_WALL", &SOUTH_WALL),
+    ("WEST_WALL", &WEST_WALL),
+    ("AGE_3", &AGE_3),
+    ("HAS_BOTTLE_0", &HAS_BOTTLE_0),
+    ("HAS_BOTTLE_1", &HAS_BOTTLE_1),
+    ("HAS_BOTTLE_2", &HAS_BOTTLE_2),
+    ("LEVEL_CAULDRON", &LEVEL_CAULDRON),
+    ("EYE", &EYE),
+    ("AGE_2", &AGE_2),
+    ("DISARMED", &DISARMED),
+    ("CONDITIONAL", &CONDITIONAL),
+    ("MODE_COMPARATOR", &MODE_COMPARATOR),
+    ("INVERTED", &INVERTED),
+    ("ENABLED", &ENABLED),
+    ("FACING_HOPPER", &FACING_HOPPER),
+    ("AGE_5", &AGE_5),
+    ("AGE_1", &AGE_1),
+    ("AGE_25", &AGE_25),
+    ("EGGS", &EGGS),
+    ("HATCH", &HATCH),
+    ("DRIED_GHAST_HYDRATION_LEVELS", &DRIED_GHAST_HYDRATION_LEVELS),
+    ("PICKLES", &PICKLES),
+    ("BAMBOO_LEAVES", &BAMBOO_LEAVES),
+    ("DRAG", &DRAG),
+    ("BOTTOM", &BOTTOM),
+    ("STABILITY_DISTANCE", &STABILITY_DISTANCE),
+    ("HAS_BOOK", &HAS_BOOK),
+    ("BELL_ATTACHMENT", &BELL_ATTACHMENT),
+    ("SIGNAL_FIRE", &SIGNAL_FIRE),
+    ("STRUCTUREBLOCK_MODE", &STRUCTUREBLOCK_MODE),
+    ("ORIENTATION", &ORIENTATION),
+    ("TEST_BLOCK_MODE", &TEST_BLOCK_MODE),
+    ("LEVEL_COMPOSTER", &LEVEL_COMPOSTER),
+    ("LEVEL_HONEY", &LEVEL_HONEY),
+    ("RESPAWN_ANCHOR_CHARGES", &RESPAWN_ANCHOR_CHARGES),
+    ("CANDLES", &CANDLES),
+    ("POTENT_SULFUR_STATE", &POTENT_SULFUR_STATE),
+    ("SCULK_SENSOR_PHASE", &SCULK_SENSOR_PHASE),
+    ("BLOOM", &BLOOM),
+    ("CAN_SUMMON", &CAN_SUMMON),
+    ("SHRIEKING", &SHRIEKING),
+    ("COPPER_GOLEM_POSE", &COPPER_GOLEM_POSE),
+    ("SPELEOTHEM_THICKNESS", &SPELEOTHEM_THICKNESS),
+    ("VERTICAL_DIRECTION", &VERTICAL_DIRECTION),
+    ("BERRIES", &BERRIES),
+    ("FLOWER_AMOUNT", &FLOWER_AMOUNT),
+    ("SEGMENT_AMOUNT", &SEGMENT_AMOUNT),
+    ("TILT", &TILT),
+    ("CRACKED", &CRACKED),
+    ("CRAFTING", &CRAFTING),
+    ("OMINOUS", &OMINOUS),
+    ("TRIAL_SPAWNER_STATE", &TRIAL_SPAWNER_STATE),
+    ("VAULT_STATE", &VAULT_STATE),
+    ("TIP", &TIP),
+];

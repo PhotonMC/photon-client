@@ -1,7 +1,7 @@
 //! The sounds of the blocks (`SoundType`): the volume and pitch they play at, and the sound each
 //! of breaking, stepping, placing, hitting and falling makes.
 
-use crate::generated::block_sounds::{BLOCK_SOUND_TYPES, SOUND_TYPES, STATE_SOUND_TYPES};
+use crate::tables::block_sounds::{BLOCK_SOUND_TYPES, SOUND_TYPES, STATE_SOUND_TYPES};
 
 /// One sound type (`SoundType`).
 #[derive(Debug, Clone, Copy, PartialEq)]

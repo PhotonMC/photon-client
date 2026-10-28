@@ -1,7 +1,7 @@
 //! The statistics' registries: the stat types and the custom statistics with their ids (their
 //! places in the lists, which is what the wire carries) and how each custom value is written.
 
-use crate::generated::registry_names::{CUSTOM_STAT_FORMATTERS, CUSTOM_STATS, STAT_TYPES};
+use crate::tables::registry_names::{CUSTOM_STAT_FORMATTERS, CUSTOM_STATS, STAT_TYPES};
 
 /// A statistic as the wire names it: the stat type's id, then the id of the value in the registry
 /// that type counts (`Stat.STREAM_CODEC`).

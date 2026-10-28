@@ -3,4 +3,4 @@
 pub mod definition;
 pub mod registry;
 
-pub use crate::generated::block::{blocks, classes, properties, tints};
+pub use crate::tables::block::{blocks, classes, properties, tints};

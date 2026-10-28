@@ -1,7 +1,7 @@
 //! The block entity type registry: each type's name, and its id (its place in
 //! the list, which is what the wire carries).
 
-use crate::generated::registry_names::BLOCK_ENTITY_TYPES;
+use crate::tables::registry_names::BLOCK_ENTITY_TYPES;
 
 /// The name of the type with this id (`minecraft:mob_spawner`).
 pub fn name(id: i32) -> Option<&'static str> {

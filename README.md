@@ -114,7 +114,7 @@ You need:
 
 - Rust (pinned in `rust-toolchain.toml`), CMake and a C/C++ compiler;
 - a Vulkan driver (MoltenVK on macOS);
-- Java 25 for the reference tooling, and Python 3.9+ to regenerate the data tables (`tools/generate`).
+- Java 25 for the reference tooling.
 
 ```sh
 cargo xtask install-hooks

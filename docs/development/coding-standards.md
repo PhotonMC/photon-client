@@ -22,7 +22,7 @@ Rules that a machine can check are enforced by `cargo xtask lint`, clippy and ru
 | Lints | Clippy with `-D warnings`, `unwrap_used` and `undocumented_unsafe_blocks` | clippy |
 | Commit messages | Conventional Commits, English ASCII, subject at most 72 characters, no tool attribution | `commit-msg` hook |
 
-Generated code (`photon-data/src/generated/`, files marked as generated) is exempt from the size rules.
+Data tables (`photon-data/src/tables/`, kept by hand and checked against the reference) and files marked as generated are exempt from the size rules.
 
 ### The baseline
 

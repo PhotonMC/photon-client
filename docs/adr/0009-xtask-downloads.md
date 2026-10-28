@@ -21,4 +21,4 @@ Two capabilities were missing from the workspace: fetching files over HTTPS and 
 
 - Python is no longer needed for development or for the `setup` step in CI.
 - A first `cargo xtask` build compiles a TLS stack. The dev profile builds xtask with optimisation already, so the hooks stay fast once it is built.
-- The generators in `tools/generate/` and the render scripts in `tools/render/` are still Python; they move with #14 and the render track.
+- The render scripts in `tools/render/` are still Python and move with the render track. The table generators are gone: the tables are kept by hand ([#163](https://github.com/PhotonMC/photon-client/issues/163)).

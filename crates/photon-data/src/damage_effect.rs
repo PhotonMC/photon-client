@@ -1,7 +1,7 @@
 //! What a damage type does to the one it hurts (`DamageType.effects`), and the sound the player
 //! makes for it (`DamageEffects.sound`).
 
-use crate::generated::damage_effects::{DAMAGE_EFFECT_SOUNDS, DAMAGE_TYPE_EFFECTS};
+use crate::tables::damage_effects::{DAMAGE_EFFECT_SOUNDS, DAMAGE_TYPE_EFFECTS};
 
 /// Every effect and the sound it makes, by its serialized name.
 pub fn effect_sounds() -> impl Iterator<Item = (&'static str, &'static str)> {

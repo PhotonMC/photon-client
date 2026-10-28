@@ -3,8 +3,8 @@
 
 use photon_core::ids::EntityTypeId;
 
-use crate::generated::entity_picks::ENTITY_PICKS;
-use crate::generated::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
+use crate::tables::entity_picks::ENTITY_PICKS;
+use crate::tables::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
 
 /// Every type's name, in id order.
 pub fn names() -> &'static [&'static str] {
@@ -48,7 +48,7 @@ pub const fn named(name: &str) -> EntityTypeId {
 /// The id of the entity data serializer with this name (`ITEM_STACK`), resolved while
 /// compiling: a name the registry lacks stops the build.
 pub const fn serializer_named(name: &str) -> i32 {
-    let table = &crate::generated::entity_serializers::ENTITY_DATA_SERIALIZERS;
+    let table = &crate::tables::entity_serializers::ENTITY_DATA_SERIALIZERS;
     let mut id = 0;
     while id < table.len() {
         if crate::name::same(table[id], name) {
@@ -179,31 +179,31 @@ pub struct PaintingVariant {
 
 /// Every painting variant, by name.
 pub fn painting_variants() -> impl Iterator<Item = &'static PaintingVariant> {
-    crate::generated::painting_variants::PAINTING_VARIANTS.iter()
+    crate::tables::painting_variants::PAINTING_VARIANTS.iter()
 }
 
 /// The painting variant with this name (`minecraft:kebab`).
 pub fn painting_variant(name: &str) -> Option<&'static PaintingVariant> {
-    crate::generated::painting_variants::PAINTING_VARIANTS
+    crate::tables::painting_variants::PAINTING_VARIANTS
         .iter()
         .find(|variant| variant.name == name)
 }
 
 /// Every wolf variant, by name.
 pub fn wolf_variants() -> impl Iterator<Item = &'static WolfVariant> {
-    crate::generated::wolf_variants::WOLF_VARIANTS.iter()
+    crate::tables::wolf_variants::WOLF_VARIANTS.iter()
 }
 
 /// The wolf variant with this name (`minecraft:ashen`).
 pub fn wolf_variant(name: &str) -> Option<&'static WolfVariant> {
-    crate::generated::wolf_variants::WOLF_VARIANTS
+    crate::tables::wolf_variants::WOLF_VARIANTS
         .iter()
         .find(|variant| variant.name == name)
 }
 
 /// The variant of that kind with this name (`minecraft:cold`).
 pub fn variant(kind: &str, name: &str) -> Option<&'static EntityVariant> {
-    crate::generated::entity_variants::ENTITY_VARIANTS
+    crate::tables::entity_variants::ENTITY_VARIANTS
         .iter()
         .find(|variant| variant.kind == kind && variant.name == name)
 }
@@ -211,7 +211,7 @@ pub fn variant(kind: &str, name: &str) -> Option<&'static EntityVariant> {
 /// Every variant of a kind.
 pub fn variants(kind: &str) -> impl Iterator<Item = &'static EntityVariant> {
     let kind = kind.to_owned();
-    crate::generated::entity_variants::ENTITY_VARIANTS
+    crate::tables::entity_variants::ENTITY_VARIANTS
         .iter()
         .filter(move |variant| variant.kind == kind)
 }
@@ -227,18 +227,18 @@ pub struct AttributeRange {
 
 /// Every attribute, in registry order.
 pub fn attribute_ranges() -> &'static [AttributeRange] {
-    &crate::generated::entity_attributes::ATTRIBUTE_RANGES
+    &crate::tables::entity_attributes::ATTRIBUTE_RANGES
 }
 
 /// What each living entity type starts with: its name and the base value of
 /// each attribute it has, in registry order of entity types.
 pub fn default_attributes() -> &'static [(&'static str, &'static [(&'static str, f64)])] {
-    &crate::generated::entity_attributes::ENTITY_ATTRIBUTES
+    &crate::tables::entity_attributes::ENTITY_ATTRIBUTES
 }
 
 /// The attribute with this name: its place in the registry and its range.
 pub fn attribute(name: &str) -> Option<(usize, &'static AttributeRange)> {
-    crate::generated::entity_attributes::ATTRIBUTE_RANGES
+    crate::tables::entity_attributes::ATTRIBUTE_RANGES
         .iter()
         .enumerate()
         .find(|(_, attribute)| attribute.name == name)
@@ -248,13 +248,13 @@ pub fn attribute(name: &str) -> Option<(usize, &'static AttributeRange)> {
 pub fn attribute_by_id(id: i32) -> Option<&'static AttributeRange> {
     usize::try_from(id)
         .ok()
-        .and_then(|index| crate::generated::entity_attributes::ATTRIBUTE_RANGES.get(index))
+        .and_then(|index| crate::tables::entity_attributes::ATTRIBUTE_RANGES.get(index))
 }
 
 /// The base value a new entity of this type gives an attribute
 /// (`DefaultAttributes`), if the type has the attribute.
 pub fn default_attribute(entity_type: &str, attribute: &str) -> Option<f64> {
-    crate::generated::entity_attributes::ENTITY_ATTRIBUTES
+    crate::tables::entity_attributes::ENTITY_ATTRIBUTES
         .iter()
         .find(|(name, _)| *name == entity_type)?
         .1
@@ -266,28 +266,26 @@ pub fn default_attribute(entity_type: &str, attribute: &str) -> Option<f64> {
 /// What a sheep's wool of this dye (`DyeColor.getId`) is multiplied by, as
 /// ARGB (`ColorLerper.Type.SHEEP`).
 pub fn sheep_colour(dye: usize) -> Option<u32> {
-    crate::generated::sheep_colors::SHEEP_COLORS
-        .get(dye)
-        .copied()
+    crate::tables::sheep_colors::SHEEP_COLORS.get(dye).copied()
 }
 
 /// `DyeColor.getTextureDiffuseColor` of this dye (`DyeColor.getId`), as the
 /// reference's int (a wolf's collar).
 pub fn dye_texture_colour(dye: usize) -> Option<u32> {
-    crate::generated::sheep_colors::DYE_TEXTURE_COLORS
+    crate::tables::sheep_colors::DYE_TEXTURE_COLORS
         .get(dye)
         .copied()
 }
 
 /// How many dyes there are.
-pub const DYE_COUNT: usize = crate::generated::sheep_colors::SHEEP_COLORS.len();
+pub const DYE_COUNT: usize = crate::tables::sheep_colors::SHEEP_COLORS.len();
 
 /// The name of the entity data serializer the wire numbers `id`
 /// (`PIG_VARIANT`).
 pub fn data_serializer(id: i32) -> Option<&'static str> {
     usize::try_from(id)
         .ok()
-        .and_then(|index| crate::generated::entity_serializers::ENTITY_DATA_SERIALIZERS.get(index))
+        .and_then(|index| crate::tables::entity_serializers::ENTITY_DATA_SERIALIZERS.get(index))
         .copied()
 }
 

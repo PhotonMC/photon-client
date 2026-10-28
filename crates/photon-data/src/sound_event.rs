@@ -1,7 +1,7 @@
 //! The sound event registry: each event's name, and its id (its place in the list, which is
 //! what the sound packets carry).
 
-use crate::generated::sound_events::SOUND_EVENTS;
+use crate::tables::sound_events::SOUND_EVENTS;
 
 /// The name of the event with this id (`minecraft:block.stone.break`).
 pub fn name(id: i32) -> Option<&'static str> {

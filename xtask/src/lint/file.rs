@@ -122,7 +122,7 @@ fn wire_types(path: &str, text: &str, package: Option<&Package>, findings: &mut 
 
 /// Output of a code generator, which is held to its generator instead.
 fn generated(path: &str, text: &str) -> bool {
-    path.contains("/generated/")
+    path.starts_with("crates/photon-data/src/tables/")
         || text
             .lines()
             .take(5)

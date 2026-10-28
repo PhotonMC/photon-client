@@ -18,17 +18,17 @@ pub struct MapDecorationType {
 pub fn decoration_type(id: i32) -> Option<&'static MapDecorationType> {
     usize::try_from(id)
         .ok()
-        .and_then(|index| crate::generated::map_data::MAP_DECORATION_TYPES.get(index))
+        .and_then(|index| crate::tables::map_data::MAP_DECORATION_TYPES.get(index))
 }
 
 /// Every decoration type, in the server's numbering.
 pub fn decoration_types() -> &'static [MapDecorationType] {
-    &crate::generated::map_data::MAP_DECORATION_TYPES
+    &crate::tables::map_data::MAP_DECORATION_TYPES
 }
 
 /// `MapColor.getColorFromPackedId`: the ARGB colour of a packed map colour.
 pub fn packed_color(packed: u8) -> u32 {
-    crate::generated::map_data::MAP_COLORS[usize::from(packed)]
+    crate::tables::map_data::MAP_COLORS[usize::from(packed)]
 }
 
 /// The RGBA bytes a map's texture holds for a packed colour.
@@ -44,7 +44,7 @@ pub fn packed_rgba(packed: u8) -> [u8; 4] {
 
 /// `BlockState.getMapColor(..).id` of a state of a block.
 pub fn state_map_color(block: &str, state: u32) -> u8 {
-    use crate::generated::map_colors::{BLOCK_MAP_COLORS, STATE_MAP_COLORS};
+    use crate::tables::map_colors::{BLOCK_MAP_COLORS, STATE_MAP_COLORS};
     if let Ok(index) = STATE_MAP_COLORS.binary_search_by_key(&state, |(id, _)| *id) {
         return STATE_MAP_COLORS[index].1;
     }
@@ -61,7 +61,7 @@ pub fn base_color(id: u8) -> i32 {
 
 /// `FallingBlock.getDustColor` of a falling block; none for another block.
 pub fn dust_color(block: &str) -> Option<i32> {
-    crate::generated::map_colors::DUST_COLORS
+    crate::tables::map_colors::DUST_COLORS
         .iter()
         .find(|(name, _)| *name == block)
         .map(|(_, color)| *color)
@@ -74,8 +74,8 @@ pub type MapColorTables = (
     &'static [(&'static str, i32)],
 );
 
-/// The map colour tables, as generated.
+/// The map colour tables, as captured.
 pub fn map_color_tables() -> MapColorTables {
-    use crate::generated::map_colors::{BLOCK_MAP_COLORS, DUST_COLORS, STATE_MAP_COLORS};
+    use crate::tables::map_colors::{BLOCK_MAP_COLORS, DUST_COLORS, STATE_MAP_COLORS};
     (&BLOCK_MAP_COLORS, &STATE_MAP_COLORS, &DUST_COLORS)
 }

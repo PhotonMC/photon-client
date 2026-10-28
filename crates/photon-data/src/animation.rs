@@ -80,12 +80,12 @@ pub struct Definition {
 
 /// The definition with this name.
 pub fn definition(name: &str) -> Option<&'static Definition> {
-    crate::generated::animations::ANIMATIONS
+    crate::tables::animations::ANIMATIONS
         .iter()
         .find(|definition| definition.name == name)
 }
 
 /// Every definition, in the order the reference's classes declare them.
 pub fn definitions() -> &'static [Definition] {
-    &crate::generated::animations::ANIMATIONS
+    &crate::tables::animations::ANIMATIONS
 }

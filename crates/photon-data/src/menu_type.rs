@@ -1,7 +1,7 @@
 //! The menu type registry: each type's name, and its id (its place in
 //! the list, which is what the wire carries).
 
-use crate::generated::registry_names::MENU_TYPES;
+use crate::tables::registry_names::MENU_TYPES;
 
 /// The name of the type with this id (`minecraft:generic_9x3`).
 pub fn name(id: i32) -> Option<&'static str> {

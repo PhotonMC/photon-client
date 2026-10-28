@@ -2,7 +2,7 @@
 //! wire carries) and the hat each one's texture asks for
 //! (`VillagerMetadataSection.Hat`).
 
-use crate::generated::villager_registries::{VILLAGER_PROFESSIONS, VILLAGER_TYPES};
+use crate::tables::villager_registries::{VILLAGER_PROFESSIONS, VILLAGER_TYPES};
 
 /// How much of the head a texture's hat covers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

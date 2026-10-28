@@ -1,6 +1,6 @@
 //! The shadow each entity type's renderer sets up (`EntityRenderer.shadowRadius`, `shadowStrength`).
 
-use crate::generated::entity_shadows::{SHADOWS, UNBUILT};
+use crate::tables::entity_shadows::{SHADOWS, UNBUILT};
 
 /// A type's renderer-set shadow radius and strength; none for a type with no renderer listed.
 pub fn of(entity_type: &str) -> Option<(f32, f32)> {

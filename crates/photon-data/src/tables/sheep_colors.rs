@@ -1,0 +1,44 @@
+//! What a sheep's wool is multiplied by, for each dye.
+//!
+//! This table is maintained by hand; the parity families compare it with the reference.
+
+#[rustfmt::skip]
+pub static SHEEP_COLORS: [u32; 16] = [
+    0xFFE6E6E6,
+    0xFFBA6015,
+    0xFF953A8D,
+    0xFF2B86A3,
+    0xFFBEA22D,
+    0xFF609517,
+    0xFFB6687F,
+    0xFF353B3D,
+    0xFF757571,
+    0xFF107575,
+    0xFF66258A,
+    0xFF2D337F,
+    0xFF623F25,
+    0xFF465D10,
+    0xFF84221C,
+    0xFF151518,
+];
+
+/// `DyeColor.getTextureDiffuseColor` (a wolf's collar), by dye id.
+#[rustfmt::skip]
+pub static DYE_TEXTURE_COLORS: [u32; 16] = [
+    0xFFF9FFFE,
+    0xFFF9801D,
+    0xFFC74EBD,
+    0xFF3AB3DA,
+    0xFFFED83D,
+    0xFF80C71F,
+    0xFFF38BAA,
+    0xFF474F52,
+    0xFF9D9D97,
+    0xFF169C9C,
+    0xFF8932B8,
+    0xFF3C44AA,
+    0xFF835432,
+    0xFF5E7C16,
+    0xFFB02E26,
+    0xFF1D1D21,
+];

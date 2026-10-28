@@ -1,6 +1,6 @@
 //! The blocks fire catches on (`FireBlock.igniteOdds` and `burnOdds`).
 
-use crate::generated::fire::FLAMMABLE;
+use crate::tables::fire::FLAMMABLE;
 
 /// A block's ignite and burn odds; none for a block fire does not catch on.
 pub fn odds(block: &str) -> Option<(u8, u8)> {

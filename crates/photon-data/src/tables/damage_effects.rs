@@ -1,0 +1,70 @@
+//! What damage does to the one it hurts.
+//!
+//! This table is maintained by hand; the parity families compare it with the reference.
+
+/// Each effect's serialized name and the player's sound for it.
+#[rustfmt::skip]
+pub static DAMAGE_EFFECT_SOUNDS: [(&str, &str); 6] = [
+    ("hurt", "minecraft:entity.player.hurt"),
+    ("thorns", "minecraft:entity.player.hurt"),
+    ("drowning", "minecraft:entity.player.hurt_drown"),
+    ("burning", "minecraft:entity.player.hurt_on_fire"),
+    ("poking", "minecraft:entity.player.hurt_sweet_berry_bush"),
+    ("freezing", "minecraft:entity.player.hurt_freeze"),
+];
+
+/// Each damage type's effect, by the type's registry name.
+#[rustfmt::skip]
+pub static DAMAGE_TYPE_EFFECTS: [(&str, &str); 51] = [
+    ("minecraft:arrow", "hurt"),
+    ("minecraft:bad_respawn_point", "hurt"),
+    ("minecraft:cactus", "hurt"),
+    ("minecraft:campfire", "burning"),
+    ("minecraft:cramming", "hurt"),
+    ("minecraft:dragon_breath", "hurt"),
+    ("minecraft:drown", "drowning"),
+    ("minecraft:dry_out", "hurt"),
+    ("minecraft:ender_pearl", "hurt"),
+    ("minecraft:explosion", "hurt"),
+    ("minecraft:fall", "hurt"),
+    ("minecraft:falling_anvil", "hurt"),
+    ("minecraft:falling_block", "hurt"),
+    ("minecraft:falling_stalactite", "hurt"),
+    ("minecraft:fireball", "burning"),
+    ("minecraft:fireworks", "hurt"),
+    ("minecraft:fly_into_wall", "hurt"),
+    ("minecraft:freeze", "freezing"),
+    ("minecraft:generic", "hurt"),
+    ("minecraft:generic_kill", "hurt"),
+    ("minecraft:hot_floor", "burning"),
+    ("minecraft:in_fire", "burning"),
+    ("minecraft:in_wall", "hurt"),
+    ("minecraft:indirect_magic", "hurt"),
+    ("minecraft:lava", "burning"),
+    ("minecraft:lightning_bolt", "hurt"),
+    ("minecraft:mace_smash", "hurt"),
+    ("minecraft:magic", "hurt"),
+    ("minecraft:mob_attack", "hurt"),
+    ("minecraft:mob_attack_no_aggro", "hurt"),
+    ("minecraft:mob_projectile", "hurt"),
+    ("minecraft:on_fire", "burning"),
+    ("minecraft:out_of_world", "hurt"),
+    ("minecraft:outside_border", "hurt"),
+    ("minecraft:player_attack", "hurt"),
+    ("minecraft:player_explosion", "hurt"),
+    ("minecraft:sonic_boom", "hurt"),
+    ("minecraft:spear", "hurt"),
+    ("minecraft:spit", "hurt"),
+    ("minecraft:stalagmite", "hurt"),
+    ("minecraft:starve", "hurt"),
+    ("minecraft:sting", "hurt"),
+    ("minecraft:sulfur_cube_hot", "burning"),
+    ("minecraft:sweet_berry_bush", "poking"),
+    ("minecraft:thorns", "thorns"),
+    ("minecraft:thrown", "hurt"),
+    ("minecraft:trident", "hurt"),
+    ("minecraft:unattributed_fireball", "burning"),
+    ("minecraft:wind_charge", "hurt"),
+    ("minecraft:wither", "hurt"),
+    ("minecraft:wither_skull", "hurt"),
+];

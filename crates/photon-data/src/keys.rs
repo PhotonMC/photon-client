@@ -1,6 +1,6 @@
 //! The key mappings (`KeyMapping`) and the names of keys (`InputConstants`).
 
-use crate::generated::key_mappings::{KEY_CATEGORIES, KEY_MAPPINGS, NAMED_KEYS};
+use crate::tables::key_mappings::{KEY_CATEGORIES, KEY_MAPPINGS, NAMED_KEYS};
 
 /// One key mapping of `Options.keyMappings`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -2,10 +2,10 @@
 //! the size of its texture and the tree of parts (a pose, cubes and child
 //! parts) that the entity models bake and the renderers pose.
 //!
-//! The layers themselves are in `generated/entity_models.rs`; this holds the
+//! The layers themselves are in `tables/entity_models.rs`; this holds the
 //! types they are written with and the lookup.
 
-use crate::generated::entity_models::LAYERS;
+use crate::tables::entity_models::LAYERS;
 
 /// `Direction`, in the order of its names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

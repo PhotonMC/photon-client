@@ -1,0 +1,19 @@
+//! The leaves blocks' falling leaves.
+//!
+//! This table is maintained by hand; the parity families compare it with the reference.
+
+/// Name, chance, the leaf's particle type (`tinted`: the block's tint), and its colour.
+#[rustfmt::skip]
+pub static LEAVES: [(&str, f32, &str, Option<i32>); 11] = [
+    ("minecraft:oak_leaves", 0.01, "tinted", None),
+    ("minecraft:spruce_leaves", 0.01, "tinted", None),
+    ("minecraft:birch_leaves", 0.01, "tinted", None),
+    ("minecraft:jungle_leaves", 0.01, "tinted", None),
+    ("minecraft:acacia_leaves", 0.01, "tinted", None),
+    ("minecraft:cherry_leaves", 0.1, "minecraft:cherry_leaves", None),
+    ("minecraft:dark_oak_leaves", 0.01, "tinted", None),
+    ("minecraft:pale_oak_leaves", 0.02, "minecraft:pale_oak_leaves", None),
+    ("minecraft:mangrove_leaves", 0.01, "tinted", None),
+    ("minecraft:azalea_leaves", 0.01, "minecraft:tinted_leaves", Some(-9399763)),
+    ("minecraft:flowering_azalea_leaves", 0.01, "minecraft:tinted_leaves", Some(-9399763)),
+];

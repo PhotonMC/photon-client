@@ -1,14 +1,10 @@
 //! Tables taken from the reference.
 //!
 //! The reference builds these in code when it starts (block registry, shapes,
-//! item defaults, creative tabs...). They are captured by the Java oracle,
-//! written here by `tools/generate/*.py` (`tools/generate/all.py` runs them
-//! all), and compared whole with the reference on every parity run.
-//!
-//! Everything under `generated/` is written by the generators and never edited by
-//! hand; regeneration overwrites it. What is written by hand (`block/` and
-//! `item/` outside `generated/`) holds the types the tables share and the
-//! lookups on them.
+//! item defaults, creative tabs...). They were captured by the Java oracle once and are
+//! maintained by hand in `tables/`; the parity families compare them whole with the
+//! reference on every run. What sits beside them (`block/`, `item/`) holds the types the tables
+//! share and the lookups on them.
 
 pub mod advancement;
 pub mod animation;
@@ -24,7 +20,6 @@ pub mod entity_shadow;
 pub mod entity_type;
 pub mod fire;
 pub mod game_mode;
-mod generated;
 pub mod item;
 pub mod item_components;
 pub mod item_stack;
@@ -41,5 +36,6 @@ pub mod particle_values;
 pub mod sound_event;
 pub mod spear;
 pub mod stat;
+mod tables;
 pub mod version_registries;
 pub mod villager;

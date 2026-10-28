@@ -9,10 +9,10 @@
 use photon_core::version::Version;
 
 use crate::block::registry::BLOCKS;
-use crate::generated::entity_types::ENTITY_TYPES;
-use crate::generated::sound_events::SOUND_EVENTS;
 use crate::item::registry::ITEMS;
 use crate::particle_type::PARTICLE_TYPES;
+use crate::tables::entity_types::ENTITY_TYPES;
+use crate::tables::sound_events::SOUND_EVENTS;
 use crate::{block_entity_type, menu_type};
 
 /// The numbering of one registry in one version: wire id <-> canonical id.
