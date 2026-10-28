@@ -35,6 +35,13 @@ pub(super) fn light_coords(world: &ClientWorld, pos: BlockPos) -> i32 {
     }
 }
 
+impl ClientWorld {
+    /// `LightCoordsUtil.getLightCoords(level, pos)`, which block entities are lit by too.
+    pub fn block_light_coords(&self, x: i32, y: i32, z: i32) -> i32 {
+        light_coords(self, BlockPos::new(x, y, z))
+    }
+}
+
 /// What `Particle.getLightCoords` answers for a position: `ClientLevel.hasChunk` says yes for
 /// every chunk, so it is always the level's light.
 pub(super) fn particle_light(world: &ClientWorld, x: f64, y: f64, z: f64) -> i32 {

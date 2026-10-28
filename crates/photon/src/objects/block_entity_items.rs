@@ -1,7 +1,6 @@
 //! The items block entities show: the item a suspicious block holds, rising out of its dust
 //! (`BrushableBlockRenderer`), and those on a shelf (`ShelfRenderer`).
 
-use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block::biome_tint::BiomeTints;
 use photon_render::block::world_mesh::BlockRenderer;
@@ -14,7 +13,7 @@ use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
 
 use crate::equipment::item_layers::ItemLayerCache;
-use crate::overlays::{FrameView, packed_light};
+use crate::overlays::{FrameView, block_light};
 
 /// How far from the camera, in chunks, block entities are drawn.
 const RADIUS_CHUNKS: i32 = 8;
@@ -77,10 +76,7 @@ pub fn brushable_items(
         }
         // The light is the one of the face that was brushed.
         let (dx, dy, dz) = brushable.hit_direction.step();
-        let light = packed_light(
-            world,
-            Vec3::new(f64::from(x + dx), f64::from(y + dy), f64::from(z + dz)),
-        );
+        let light = block_light(world, (x + dx, y + dy, z + dz));
         let mut base = Pose::default();
         base.translate(
             (x - view.origin[0]) as f32,
@@ -107,7 +103,7 @@ pub fn shelf_items(
         let Some(shelf) = world.shelf_view((x, y, z)) else {
             continue;
         };
-        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let light = block_light(world, (x, y, z));
         let mut base = Pose::default();
         base.translate(
             (x - view.origin[0]) as f32,
@@ -147,7 +143,7 @@ pub fn conduits(
         if !within_view(held.position, view) {
             continue;
         }
-        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let light = block_light(world, (x, y, z));
         let mut base = Pose::default();
         base.translate(
             (x - view.origin[0]) as f32,
@@ -181,7 +177,7 @@ pub fn campfire_items(
         let Some(fire) = world.campfire_view((x, y, z)) else {
             continue;
         };
-        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let light = block_light(world, (x, y, z));
         let mut base = Pose::default();
         base.translate(
             (x - view.origin[0]) as f32,
@@ -215,7 +211,7 @@ pub fn vault_items(
         let Some(shown) = world.vault_view((x, y, z)) else {
             continue;
         };
-        let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+        let light = block_light(world, (x, y, z));
         let mut base = Pose::default();
         base.translate(
             (x - view.origin[0]) as f32,

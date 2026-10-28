@@ -38,6 +38,12 @@ pub fn packed_light(world: &photon_world::ClientWorld, at: Vec3) -> i32 {
         | (i32::from(world.sky_brightness(x, y, z)) << 20)
 }
 
+/// `LightCoordsUtil.getLightCoords(level, pos)`: the light a block entity at the block is drawn
+/// with, the block's own glow counted.
+pub fn block_light(world: &photon_world::ClientWorld, at: (i32, i32, i32)) -> i32 {
+    world.block_light_coords(at.0, at.1, at.2)
+}
+
 /// `ItemInHandRenderer.submitHandsWithItems`: the arm when the main hand is
 /// empty, and each held stack in its hand, the main hand on the main arm's side. The
 /// swing is the main hand's, since which arm swings is not tracked yet.

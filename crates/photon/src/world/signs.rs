@@ -8,7 +8,7 @@ use photon_render::block_entity::sign::{OUTLINE_DISTANCE_SQR, SignKind, sign_tex
 use photon_render::joml::Pose;
 use photon_render::scene::Vertex;
 
-use crate::overlays::{FrameView, packed_light};
+use crate::overlays::{FrameView, block_light};
 
 /// The sign being written on: its block, whether its front, and its lines as they stand.
 pub type SignEditing<'a> = Option<((i32, i32, i32), bool, &'a [String; 4])>;
@@ -78,10 +78,7 @@ pub fn sign_texts(
             &base,
             kind,
             (&kind.transformations(sign.wall, sign.rotation), faces),
-            (
-                scoping || near,
-                packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z))),
-            ),
+            (scoping || near, block_light(world, (x, y, z))),
             font,
         );
         vertices.extend(sign_text_vertices(&submits, (font, atlas)));
