@@ -441,8 +441,7 @@ impl Gui {
         if let Some((entries, objective)) = tab_entries {
             tab_list::draw(
                 frame,
-                atlas,
-                font,
+                (atlas, font),
                 width,
                 &entries,
                 (header, footer),

@@ -599,7 +599,7 @@
 "crates/photon-gui/src/hud/locator.rs::draw_dots" = 62
 "crates/photon-gui/src/hud/locator.rs::set_brightness" = 67
 "crates/photon-gui/src/hud/sidebar.rs::draw" = 62
-"crates/photon-gui/src/hud/tab_list.rs::draw" = 110
+"crates/photon-gui/src/hud/tab_list.rs::draw" = 109
 "crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 87
 "crates/photon-gui/src/options.rs::OptionsScreen::new" = 126
 "crates/photon-gui/src/options/chat.rs::ChatOptionsScreen::new" = 123
@@ -686,7 +686,7 @@
 "crates/photon-oracle/src/gui/result/chat.rs::chat_draft_case" = 61
 "crates/photon-oracle/src/gui/result/container.rs::container_screen_case" = 151
 "crates/photon-oracle/src/gui/result/dialog.rs::dialog_screen_case" = 67
-"crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 63
+"crates/photon-oracle/src/gui/result/hud.rs::tab_list_case" = 62
 "crates/photon-oracle/src/gui/result/keybinds.rs::key_binds_screen_case" = 98
 "crates/photon-oracle/src/gui/result/screens.rs::confirm_screen_case" = 62
 "crates/photon-oracle/src/gui/result/settings.rs::chat_options_screen_case" = 74
@@ -984,7 +984,6 @@
 [fn-params]
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
-"crates/photon-gui/src/hud/tab_list.rs::draw" = 7
 "crates/photon-gui/src/options/video/size.rs::VideoSettingsScreen::new" = 7
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::new" = 7

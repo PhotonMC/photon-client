@@ -516,8 +516,7 @@ pub(super) fn tab_list_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
     let mut health = HealthStates::default();
     tab_list::draw(
         &mut frame,
-        atlas,
-        font,
+        (atlas, font),
         int("width"),
         &entries,
         (&runs("header"), &runs("footer")),

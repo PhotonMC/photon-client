@@ -366,8 +366,7 @@ fn draw_score(
 /// `PlayerTabOverlay.extractRenderState`.
 pub fn draw(
     frame: &mut GuiFrame,
-    atlas: &GuiAtlas,
-    font: &Font,
+    (atlas, font): (&GuiAtlas, &Font),
     screen_width: i32,
     entries: &[TabEntry],
     (header, footer): (&[Run], &[Run]),
