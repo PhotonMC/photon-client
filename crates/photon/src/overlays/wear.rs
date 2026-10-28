@@ -371,7 +371,7 @@ fn entity_tags(
         } else {
             light
         };
-        let light = if snapshot.burning {
+        let light = if snapshot.full_block_light {
             (light & !0xFFFF) | (15 << 4)
         } else {
             light

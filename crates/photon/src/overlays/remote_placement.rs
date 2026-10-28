@@ -48,7 +48,10 @@ pub(super) fn remote_placement(
         in_water: false,
         visually_swimming: snapshot.pose == photon_world::ClientEntityPose::Swimming,
         crouching,
-        light: burning_light(packed_light(session.world(), eye), snapshot.burning),
+        light: burning_light(
+            packed_light(session.world(), eye),
+            snapshot.full_block_light,
+        ),
         skin,
         death_time: snapshot.death_time,
         red_overlay: snapshot.red_overlay,

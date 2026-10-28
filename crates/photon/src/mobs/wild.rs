@@ -242,7 +242,7 @@ pub(crate) fn placement(
                             snapshot.light_probe.2,
                         ),
                     ),
-                    snapshot.burning,
+                    snapshot.full_block_light,
                 )
             },
             |(_, light)| light,

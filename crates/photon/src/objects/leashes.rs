@@ -194,7 +194,7 @@ pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex
             position[1] + f64::from(size.eye_height),
             position[2],
         ];
-        let lights = ends_light(session, (eye, snapshot.burning), &holder);
+        let lights = ends_light(session, (eye, snapshot.full_block_light), &holder);
         let ((start_block, start_sky), (end_block, end_sky)) = lights;
         let state = |offset: [f64; 3], end: [f64; 3], slack: bool| LeashState {
             offset,

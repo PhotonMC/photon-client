@@ -30,7 +30,7 @@ pub struct EntitySnapshot {
     pub shaking: bool,
     /// `Entity.isOnFire`, or a type whose renderer answers 15 (`getBlockLightLevel`): it is lit
     /// at full block light.
-    pub burning: bool,
+    pub full_block_light: bool,
     /// An invisible entity the local player sees as a ghost because of a team.
     pub friendly_ghost: bool,
     /// A mob a spawner shows: where it is put and how it turns (`SpawnerRenderer`).
