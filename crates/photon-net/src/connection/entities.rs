@@ -66,6 +66,7 @@ pub fn rotate_head(world: &mut ClientWorld, packet: &EntityHeadRotationObservati
 /// `handleSetEquipment`: each slot the packet names, in order; a slot the
 /// game has no name for is left alone.
 pub fn equipment(world: &mut ClientWorld, packet: &EntityEquipmentObservation) -> bool {
+    log::trace!("equipment {packet:?}");
     let mut applied = false;
     for (ordinal, stack) in &packet.slots {
         if let Some(slot) = EquipmentSlot::from_ordinal(*ordinal) {
