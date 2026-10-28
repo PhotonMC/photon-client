@@ -145,10 +145,7 @@ impl GuiFrame {
             (100, 100),
             9,
             false,
-            x0,
-            y0,
-            padded_w,
-            padded_h,
+            (x0, y0, padded_w, padded_h),
         );
         self.nine_slice(
             atlas,
@@ -156,10 +153,7 @@ impl GuiFrame {
             (100, 100),
             10,
             true,
-            x0,
-            y0,
-            padded_w,
-            padded_h,
+            (x0, y0, padded_w, padded_h),
         );
     }
 

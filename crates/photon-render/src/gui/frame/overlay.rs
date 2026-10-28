@@ -220,10 +220,7 @@ impl GuiFrame {
             "textures/misc/spyglass_scope",
             (size, size),
             (0, 0),
-            left,
-            top,
-            size,
-            size,
+            (left, top, size, size),
         );
         let black = 0xFF00_0000;
         self.fill(atlas, (0, bottom, width, height), black);

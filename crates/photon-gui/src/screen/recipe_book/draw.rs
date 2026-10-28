@@ -170,10 +170,7 @@ impl RecipeBookPanel {
             "recipe_book",
             (256, 256),
             (1, 1),
-            xo,
-            yo,
-            PANEL.0,
-            PANEL.1,
+            (xo, yo, PANEL.0, PANEL.1),
         );
         // The search box: the field sprite, the text or the hint in it.
         let field = if self.focused {
@@ -187,10 +184,7 @@ impl RecipeBookPanel {
             (200, 20),
             1,
             false,
-            xo + 25,
-            yo + 13,
-            81,
-            14,
+            (xo + 25, yo + 13, 81, 14),
         );
         if self.search.is_empty() && !self.focused {
             let hint = [Run {

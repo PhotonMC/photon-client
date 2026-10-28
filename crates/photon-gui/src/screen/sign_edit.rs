@@ -220,14 +220,14 @@ impl SignEditScreen {
         let (offset, text_scale) = match self.board {
             SignBoard::Hanging => {
                 let texture = format!("hanging_signs/{}", self.wood);
-                frame.blit_texture(atlas, &texture, (16, 16), (0, 0), -8, -8, 16, 16);
+                frame.blit_texture(atlas, &texture, (16, 16), (0, 0), (-8, -8, 16, 16));
                 frame.transform_from(mark, [4.5, 0.0, 0.0, 4.5, middle, 125.0 - 13.0]);
                 (125.0, 1.0)
             }
             board => {
                 let shown = if board == SignBoard::Wall { 12 } else { 26 };
                 let texture = format!("signs/{}", self.wood);
-                frame.blit_texture(atlas, &texture, (24, 26), (0, 0), -12, -13, 24, shown);
+                frame.blit_texture(atlas, &texture, (24, 26), (0, 0), (-12, -13, 24, shown));
                 frame.transform_from(mark, [3.9, 0.0, 0.0, 3.9, middle, 90.0 + 27.0]);
                 (90.0, STANDING_TEXT_SCALE)
             }

@@ -272,10 +272,7 @@ impl StatsScreen {
             "footer_separator",
             (32, 2),
             (0, 0),
-            0,
-            height - FOOTER_HEIGHT,
-            width,
-            2,
+            (0, height - FOOTER_HEIGHT, width, 2),
         );
         let highlighted = self.done.contains(&self.arena, mouse) || self.focus == ScreenFocus::Done;
         self.done.draw(frame, atlas, font, &self.arena, highlighted);
@@ -345,10 +342,7 @@ impl StatsScreen {
             "header_separator",
             (32, 2),
             (0, 0),
-            0,
-            line_y,
-            first,
-            2,
+            (0, line_y, first, 2),
         );
         let after_last = first + tab_width * TABS as i32;
         frame.blit_texture(
@@ -356,10 +350,7 @@ impl StatsScreen {
             "header_separator",
             (32, 2),
             (0, 0),
-            after_last,
-            line_y,
-            self.size.0,
-            2,
+            (after_last, line_y, self.size.0, 2),
         );
         for tab in 0..TABS {
             let x = first + tab as i32 * tab_width;

@@ -425,7 +425,7 @@ impl CommandBlockScreen {
         } else {
             "widget/text_field"
         };
-        frame.nine_slice(atlas, sprite, (200, 20), 1, false, x, y, width, 20);
+        frame.nine_slice(atlas, sprite, (200, 20), 1, false, (x, y, width, 20));
         edit.draw_formatted(
             frame,
             atlas,

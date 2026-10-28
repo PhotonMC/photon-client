@@ -363,7 +363,7 @@ impl BookEditScreen {
         let (width, height) = self.size;
         frame.fill_gradient(atlas, (0, 0, width, height), 0xC010_1010, 0xD010_1010);
         let left = self.left();
-        frame.blit_texture(atlas, "book", (256, 256), (0, 0), left, 2, IMAGE, IMAGE);
+        frame.blit_texture(atlas, "book", (256, 256), (0, 0), (left, 2, IMAGE, IMAGE));
         self.page.draw(frame, atlas, font);
         let point = (f64::from(mouse.0), f64::from(mouse.1));
         for (forward, focus) in [(false, Focus::Back), (true, Focus::Forward)] {

@@ -188,20 +188,14 @@ pub fn draw_logo(frame: &mut GuiFrame, atlas: &GuiAtlas, width: i32, top: i32) {
         "title/minecraft",
         (256, 64),
         (0, 0),
-        width / 2 - 128,
-        top,
-        256,
-        44,
+        (width / 2 - 128, top, 256, 44),
     );
     frame.blit_texture(
         atlas,
         "title/edition",
         (128, 16),
         (0, 0),
-        width / 2 - 64,
-        top + 44 - 7,
-        128,
-        14,
+        (width / 2 - 64, top + 44 - 7, 128, 14),
     );
 }
 

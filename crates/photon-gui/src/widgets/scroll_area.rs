@@ -106,20 +106,14 @@ impl Place {
             &self.texture("header_separator"),
             (32, 2),
             (0, 0),
-            0,
-            self.y - 2,
-            self.width,
-            2,
+            (0, self.y - 2, self.width, 2),
         );
         frame.blit_texture(
             atlas,
             &self.texture("footer_separator"),
             (32, 2),
             (0, 0),
-            0,
-            self.bottom(),
-            self.width,
-            2,
+            (0, self.bottom(), self.width, 2),
         );
         self.draw_scrollbar(frame, atlas, bar_x, scroll, content_height);
     }
@@ -140,10 +134,7 @@ impl Place {
                 (SCROLLBAR_WIDTH, 32),
                 1,
                 false,
-                bar_x,
-                self.y,
-                SCROLLBAR_WIDTH,
-                self.height,
+                (bar_x, self.y, SCROLLBAR_WIDTH, self.height),
             );
             frame.nine_slice(
                 atlas,
@@ -151,10 +142,12 @@ impl Place {
                 (SCROLLBAR_WIDTH, 32),
                 1,
                 false,
-                bar_x,
-                self.scrollbar_y(scroll, content_height),
-                SCROLLBAR_WIDTH,
-                self.scroller_height(content_height),
+                (
+                    bar_x,
+                    self.scrollbar_y(scroll, content_height),
+                    SCROLLBAR_WIDTH,
+                    self.scroller_height(content_height),
+                ),
             );
         }
     }

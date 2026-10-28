@@ -315,10 +315,7 @@ impl AdvancementsScreen {
             "advancements/window",
             (256, 256),
             (0, 0),
-            self.left,
-            self.top,
-            WINDOW_WIDTH,
-            WINDOW_HEIGHT,
+            (self.left, self.top, WINDOW_WIDTH, WINDOW_HEIGHT),
         );
         let window = (self.left, self.top);
         if self.tabs.len() > 1 {

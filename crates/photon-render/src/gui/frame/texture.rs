@@ -179,10 +179,7 @@ impl GuiFrame {
             tex,
             border,
             false,
-            x - u,
-            y - v,
-            size.0,
-            size.1,
+            (x - u, y - v, size.0, size.1),
         );
         self.clip_from(mark, (x, y, x + w, y + h));
         if let Some(DrawOp::Sprite { rect, .. }) = self.log.as_mut().and_then(|log| log.last_mut())
@@ -441,24 +438,17 @@ impl GuiFrame {
 
     /// `GuiGraphics.blit` of a region of a whole texture: `(u, v)` and the
     /// drawn size in texels of a texture `texture_size` big.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn blit_texture(
         &mut self,
         atlas: &GuiAtlas,
         name: &str,
         texture_size: (i32, i32),
         uv: (i32, i32),
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
+        rect: (i32, i32, i32, i32),
     ) {
         // A region wider or taller than the texture repeats it, as the reference's sampler does;
         // an atlas cannot, so it is drawn in pieces (one when it fits).
-        self.tile_texture_from(atlas, name, texture_size, uv, (x, y, w, h));
+        self.tile_texture_from(atlas, name, texture_size, uv, rect);
     }
 
     /// `GuiGraphics.blit` of a region `(u, v, width, height)` of a whole texture stretched over
@@ -518,10 +508,6 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of a nine-slice sprite whose border is the
     /// same on every side: see [`Self::nine_slice_edges`].
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn nine_slice(
         &mut self,
         atlas: &GuiAtlas,
@@ -529,13 +515,10 @@ impl GuiFrame {
         tex: (i32, i32),
         border: i32,
         stretch_inner: bool,
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
+        rect: (i32, i32, i32, i32),
     ) {
         let edges = (border, border, border, border);
-        self.nine_slice_edges(atlas, name, tex, edges, stretch_inner, (x, y, w, h));
+        self.nine_slice_edges(atlas, name, tex, edges, stretch_inner, rect);
     }
 }
 
@@ -596,7 +579,7 @@ mod repeat_tests {
     fn a_blit_wider_than_its_texture_never_leaves_the_sprite() {
         let atlas = GuiAtlas::with_sprite("texture/header_separator", SPRITE);
         let mut frame = GuiFrame::default();
-        frame.blit_texture(&atlas, "header_separator", (32, 2), (0, 0), 0, 30, 100, 2);
+        frame.blit_texture(&atlas, "header_separator", (32, 2), (0, 0), (0, 30, 100, 2));
         // 100 wide over a 32 wide texture: three whole copies and a quarter, 6 vertices each.
         assert_eq!(frame.vertices.len(), 4 * 6);
         assert!(inside(&frame));

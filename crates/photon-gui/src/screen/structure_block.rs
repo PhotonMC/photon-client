@@ -325,7 +325,14 @@ impl StructureBlockScreen {
             "widget/text_field"
         };
         let at = self.rectangle(slot);
-        frame.nine_slice(atlas, sprite, (200, 20), 1, false, at.x, at.y, at.width, 20);
+        frame.nine_slice(
+            atlas,
+            sprite,
+            (200, 20),
+            1,
+            false,
+            (at.x, at.y, at.width, 20),
+        );
         self.edits[index].draw_formatted(
             frame,
             atlas,

@@ -267,7 +267,7 @@ impl ServerFormScreen {
         } else {
             "widget/text_field"
         };
-        frame.nine_slice(atlas, sprite, (200, 20), 1, false, x, y, 200, 20);
+        frame.nine_slice(atlas, sprite, (200, 20), 1, false, (x, y, 200, 20));
         let text_at = (x + 4, y + (20 - 8) / 2);
         field.edit.draw_formatted(
             frame,

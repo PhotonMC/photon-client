@@ -59,10 +59,7 @@ impl RecipeBookPanel {
             (32, 32),
             4,
             false,
-            overlay.x,
-            overlay.y,
-            width * 25 + 8,
-            height * 25 + 8,
+            (overlay.x, overlay.y, width * 25 + 8, height * 25 + 8),
         );
         let folder = if matches!(self.kind, BookKind::Furnace(_)) {
             "furnace"

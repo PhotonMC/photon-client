@@ -203,10 +203,7 @@ fn slot(
             (24, 24),
             4,
             false,
-            draw_x,
-            draw_y,
-            SLOT,
-            SLOT,
+            (draw_x, draw_y, SLOT, SLOT),
         );
     };
     nine(draw, back);
@@ -275,10 +272,7 @@ fn progress_bar(
         (6, 6),
         2,
         false,
-        x + 1,
-        y,
-        fill,
-        BAR_HEIGHT,
+        (x + 1, y, fill, BAR_HEIGHT),
     );
     draw.frame.nine_slice(
         draw.atlas,
@@ -286,10 +280,7 @@ fn progress_bar(
         (12, 12),
         2,
         false,
-        x,
-        y,
-        GRID_WIDTH,
-        BAR_HEIGHT,
+        (x, y, GRID_WIDTH, BAR_HEIGHT),
     );
     let key = if numerator == 0 {
         Some("item.minecraft.bundle.empty")

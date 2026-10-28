@@ -308,10 +308,7 @@ impl JoinMultiplayerScreen {
                 .unwrap_or("textures/misc/unknown_server"),
             (ICON, ICON),
             (0, 0),
-            x,
-            y,
-            ICON,
-            ICON,
+            (x, y, ICON, ICON),
         );
         let status_x = x + ROW_WIDTH - 4 - 10 - 5;
         let ping = self.pings[index].as_ref();

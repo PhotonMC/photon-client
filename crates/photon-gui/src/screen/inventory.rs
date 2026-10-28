@@ -302,10 +302,7 @@ impl Screen for InventoryScreen {
             "container/inventory",
             (256, 256),
             (0, 0),
-            left,
-            top,
-            IMAGE.0,
-            IMAGE.1,
+            (left, top, IMAGE.0, IMAGE.1),
         );
         let model = (draw.player)(
             (left + 26, top + 8, left + 75, top + 78),

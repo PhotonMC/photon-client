@@ -80,10 +80,7 @@ impl PackScreen {
             (200, 20),
             1,
             false,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
+            (rect.x, rect.y, rect.width, rect.height),
         );
         let text_at = (rect.x + 4, rect.y + (rect.height - 8) / 2);
         self.search.draw_formatted(
@@ -194,7 +191,7 @@ impl PackScreen {
             ("footer_separator", place.bottom()),
         ] {
             let sprite = format!("{prefix}{name}");
-            frame.blit_texture(atlas, &sprite, (32, 2), (0, 0), x, y, LIST_WIDTH, 2);
+            frame.blit_texture(atlas, &sprite, (32, 2), (0, 0), (x, y, LIST_WIDTH, 2));
         }
         let content = self.content_height(list);
         place.draw_scrollbar(frame, atlas, self.bar_x(list), self.scroll[list], content);
@@ -217,7 +214,7 @@ impl PackScreen {
             );
         }
         let icon = view.icon.as_deref().unwrap_or("textures/misc/unknown_pack");
-        frame.blit_texture(atlas, icon, (ICON, ICON), (0, 0), cx, cy, ICON, ICON);
+        frame.blit_texture(atlas, icon, (ICON, ICON), (0, 0), (cx, cy, ICON, ICON));
         let mut title = view.title.clone();
         let mut description = view.description.clone();
         let hovered = at.hover.filter(|_| !(view.fixed_position && view.required));

@@ -306,10 +306,7 @@ impl Screen for BookScreen {
             "book",
             (256, 256),
             (0, 0),
-            left,
-            top,
-            IMAGE,
-            IMAGE,
+            (left, top, IMAGE, IMAGE),
         );
         let point = (mouse.0 as i32, mouse.1 as i32);
         for (widget, _) in &self.buttons {

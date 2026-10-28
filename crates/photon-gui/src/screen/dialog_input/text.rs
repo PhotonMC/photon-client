@@ -124,10 +124,7 @@ impl Text {
             (200, 20),
             1,
             false,
-            at.x,
-            at.y,
-            at.width,
-            at.height,
+            (at.x, at.y, at.width, at.height),
         );
         self.edit.draw_formatted(
             frame,

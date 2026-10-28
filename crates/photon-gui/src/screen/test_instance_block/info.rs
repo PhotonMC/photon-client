@@ -132,10 +132,7 @@ impl TestInstanceBlockScreen {
             (200, 20),
             1,
             false,
-            at.x,
-            at.y,
-            at.width,
-            at.height,
+            (at.x, at.y, at.width, at.height),
         );
         let mark = frame.mark();
         for (row, line) in self.info_lines(font).iter().enumerate() {

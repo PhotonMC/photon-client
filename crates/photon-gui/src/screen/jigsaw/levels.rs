@@ -146,10 +146,7 @@ impl LevelsSlider {
             (200, 20),
             1,
             false,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
+            (rect.x, rect.y, rect.width, rect.height),
         );
         let handle = if hovered || self.can_change {
             "widget/slider_handle_highlighted"

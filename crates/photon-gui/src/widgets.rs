@@ -155,10 +155,7 @@ impl Widget {
             (200, 20),
             3,
             false,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
+            (rect.x, rect.y, rect.width, rect.height),
         );
     }
 }

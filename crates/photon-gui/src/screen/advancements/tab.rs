@@ -326,10 +326,7 @@ impl AdvancementTab {
                         name,
                         (16, 16),
                         (0, 0),
-                        origin.0 + left + 16 * x,
-                        origin.1 + top + 16 * y,
-                        16,
-                        16,
+                        (origin.0 + left + 16 * x, origin.1 + top + 16 * y, 16, 16),
                     );
                 }
             }

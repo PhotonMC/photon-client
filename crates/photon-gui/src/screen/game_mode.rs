@@ -107,10 +107,7 @@ impl GameModeSwitcherScreen {
             "container/gamemode_switcher",
             (128, 128),
             (0, 0),
-            width / 2 - 62,
-            height / 2 - 31 - 27,
-            125,
-            75,
+            (width / 2 - 62, height / 2 - 31 - 27, 125, 75),
         );
         let name = lang.text(icon(self.hovered).1);
         frame.text_with_shadow(

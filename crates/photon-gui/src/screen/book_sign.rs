@@ -251,7 +251,7 @@ impl BookSignScreen {
         let (width, height) = self.size;
         frame.fill_gradient(atlas, (0, 0, width, height), 0xC010_1010, 0xD010_1010);
         let left = (width - IMAGE) / 2;
-        frame.blit_texture(atlas, "book", (256, 256), (0, 0), left, 2, IMAGE, IMAGE);
+        frame.blit_texture(atlas, "book", (256, 256), (0, 0), (left, 2, IMAGE, IMAGE));
         let focused = (self.focus == Some(Focus::Title)).then_some(self.focused_at);
         self.title.draw_formatted(
             frame,

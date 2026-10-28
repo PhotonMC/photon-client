@@ -97,10 +97,7 @@ impl MerchantPanel {
                 (200, 20),
                 3,
                 false,
-                x,
-                y,
-                BUTTON.0,
-                BUTTON.1,
+                (x, y, BUTTON.0, BUTTON.1),
             );
         }
     }

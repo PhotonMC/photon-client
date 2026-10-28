@@ -211,7 +211,7 @@ impl MultiLineEditBox {
         } else {
             "widget/text_field"
         };
-        frame.nine_slice(atlas, sprite, (200, 20), 1, false, x, y, width, height);
+        frame.nine_slice(atlas, sprite, (200, 20), 1, false, (x, y, width, height));
         let mark = frame.mark();
         self.draw_contents(frame, (atlas, font), rect);
         if self.scroll != 0.0 {

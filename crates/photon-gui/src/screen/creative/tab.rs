@@ -277,10 +277,7 @@ impl CreativeScreen {
             background,
             (256, 256),
             (0, 0),
-            left,
-            top,
-            IMAGE.0,
-            IMAGE.1,
+            (left, top, IMAGE.0, IMAGE.1),
         );
         if CREATIVE_TABS[selected].can_scroll {
             let sprite = if self.can_scroll() {

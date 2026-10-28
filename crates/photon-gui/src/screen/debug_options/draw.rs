@@ -92,10 +92,7 @@ impl DebugOptionsScreen {
             (200, 20),
             1,
             false,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height,
+            (rect.x, rect.y, rect.width, rect.height),
         );
         let text_at = (rect.x + 4, rect.y + (rect.height - 8) / 2);
         let focused = focused.then_some(self.focused_at);

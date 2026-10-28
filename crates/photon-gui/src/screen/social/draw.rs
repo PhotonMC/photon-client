@@ -51,10 +51,7 @@ impl SocialInteractionsScreen {
             (200, 20),
             1,
             false,
-            field_x,
-            field_y,
-            200,
-            15,
+            (field_x, field_y, 200, 15),
         );
         let text_at = (field_x + 4, field_y + (15 - 8) / 2);
         let focused = self.focus == Focus::Search;

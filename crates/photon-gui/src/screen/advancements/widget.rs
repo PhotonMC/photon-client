@@ -219,10 +219,12 @@ impl AdvancementWidget {
                 (200, 26),
                 10,
                 false,
-                ox + layout.title_left,
-                oy + top,
-                self.width,
-                background_height,
+                (
+                    ox + layout.title_left,
+                    oy + top,
+                    self.width,
+                    background_height,
+                ),
             );
         }
         self.draw_box(frame, atlas, &layout, origin);
@@ -257,10 +259,7 @@ impl AdvancementWidget {
                 (200, 26),
                 10,
                 false,
-                left,
-                top,
-                self.width,
-                height,
+                (left, top, self.width, height),
             );
         } else {
             let second = self.width - layout.first_half_width;

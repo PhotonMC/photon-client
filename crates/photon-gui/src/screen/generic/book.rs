@@ -69,20 +69,14 @@ impl GenericScreen {
                     texture,
                     (256, 256),
                     (0, 0),
-                    left,
-                    top,
-                    width,
-                    upper,
+                    (left, top, width, upper),
                 );
                 draw.frame.blit_texture(
                     draw.atlas,
                     texture,
                     (256, 256),
                     (0, 126),
-                    left,
-                    top + upper,
-                    width,
-                    96,
+                    (left, top + upper, width, 96),
                 );
             }
             other => {
@@ -111,10 +105,7 @@ impl GenericScreen {
                     texture,
                     size,
                     (0, 0),
-                    left,
-                    top,
-                    width,
-                    height,
+                    (left, top, width, height),
                 );
             }
         }
