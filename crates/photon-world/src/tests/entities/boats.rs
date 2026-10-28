@@ -128,6 +128,49 @@ fn a_turn_through_the_half_circle_is_drawn_the_short_way_round() {
     assert!((entity.y_rot_at(0.5).abs() - 180.0).abs() < 1.0e-3);
 }
 
+/// A dropped item riding a marker stand (a hub's floating display item) stays at the stand: the
+/// marker is 0 tall, so the seat is the stand's own height, and a riding item does not fall.
+#[test]
+fn an_item_riding_a_marker_stand_does_not_fall() {
+    let stand = photon_data::entity_type::id("minecraft:armor_stand").expect("the stand");
+    let item = photon_data::entity_type::id("minecraft:item").expect("the item");
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let (blocks, biomes) = section(0, 0);
+    world.replace_chunk(
+        0,
+        0,
+        [SectionInput {
+            non_empty_block_count: 0,
+            fluid_count: 0,
+            block_states: &blocks,
+            biomes: &biomes,
+        }],
+    );
+    for (id, type_id) in [(37, stand), (38, item)] {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(1, u64::from(id as u32)),
+            type_id,
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+    assert!(world.apply_entity_metadata(
+        EntityId(37),
+        &[crate::constants::ARMOR_STAND_FLAGS_DATA_ID, 0, 16, 255]
+    ));
+    assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
+    for _ in 0..40 {
+        world.tick();
+    }
+    let rider = world.entities().at(EntityId(38)).expect("rider");
+    assert_eq!(rider.position().1, 9.0);
+}
+
 #[test]
 fn a_passenger_of_an_armor_stand_follows_it() {
     // `EntityType.ARMOR_STAND` is 1.975 tall; a small stand is half that, a marker has none.
