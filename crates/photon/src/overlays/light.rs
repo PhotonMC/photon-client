@@ -79,7 +79,9 @@ pub fn hands(
         let Some(stack) = stack else {
             continue;
         };
-        let cache = &mut held_layers[usize::from(!right)];
+        // The cache of the hand's context (`FIRST_PERSON_RIGHT_HAND` first): by the side it is on.
+        let side = usize::from(right == crate::overlays::local_main_arm_left());
+        let cache = &mut held_layers[side];
         let drawn = item_in_hand_vertices(
             (player, stack),
             (right, attack, height, cast[usize::from(!right)]),
@@ -93,7 +95,7 @@ pub fn hands(
             hand.extend(wear_skin(drawn, renderer, rect, light));
             continue;
         }
-        held_layers[usize::from(!right)].extend_with_glint(stack, drawn, &mut held);
+        held_layers[side].extend_with_glint(stack, drawn, &mut held);
     }
     let glint = held_layers
         .iter_mut()
@@ -301,7 +303,7 @@ pub(super) fn local_arms(
         session,
         stacks,
         &arm_poses::ArmSource {
-            main_arm_left: false,
+            main_arm_left: crate::overlays::local_main_arm_left(),
             swinging: player.is_swinging(),
             using_item: player.is_using_item(),
             used_off_hand: player.used_item_is_off_hand(),
@@ -405,7 +407,7 @@ pub fn player_model(
     let spears = arm_poses::stacks_spear_view(
         stacks,
         arm_poses::SpearRest {
-            main_arm: Arm::Right,
+            main_arm: crate::overlays::local_main_arm(),
             attack: (attack_time, attack_arm),
             arm_poses,
             using: (arms.using_item, arms.use_main_hand, arms.ticks_using_item),
@@ -427,8 +429,8 @@ pub fn player_model(
         hand_shift: if model.slim { 0.5 } else { 0.0 },
         baby: false,
         light: placement.light,
-        right: stacks.0,
-        left: stacks.1,
+        right: crate::overlays::local_by_arm(stacks).0,
+        left: crate::overlays::local_by_arm(stacks).1,
         head: worn.head_item(armor),
         head_transforms: HEAD_TRANSFORMS,
         eye: None,

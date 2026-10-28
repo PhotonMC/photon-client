@@ -34,6 +34,7 @@ fn render_state(player: &photon_world::local_player::LocalPlayer) -> PlayerRende
         spectator: player.spectating(),
         attack_time: player.attack_anim(1.0),
         hidden_layers: crate::overlays::local_hidden_layers(),
+        main_arm: crate::overlays::local_main_arm(),
         ..Default::default()
     }
 }
@@ -137,8 +138,8 @@ fn held_vertices(
         hand_shift: if model.slim { 0.5 } else { 0.0 },
         baby: false,
         light: placement.light,
-        right: stacks.0,
-        left: stacks.1,
+        right: crate::overlays::local_by_arm(stacks).0,
+        left: crate::overlays::local_by_arm(stacks).1,
         head,
         head_transforms: crate::equipment::held_items::HEAD_TRANSFORMS,
         eye: None,

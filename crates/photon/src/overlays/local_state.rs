@@ -34,6 +34,7 @@ pub(super) fn local_render_state(
         right_spear: spears.right,
         left_spear: spears.left,
         hidden_layers: super::avatars::local_hidden_layers(),
+        main_arm: super::avatars::local_main_arm(),
         ..Default::default()
     }
 }

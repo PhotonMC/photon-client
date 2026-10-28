@@ -121,6 +121,24 @@ pub fn local_main_arm_left() -> bool {
     LOCAL_MAIN_LEFT.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// The local player's main arm (`Player.getMainArm`).
+pub fn local_main_arm() -> photon_render::entity::player_model::Arm {
+    if local_main_arm_left() {
+        photon_render::entity::player_model::Arm::Left
+    } else {
+        photon_render::entity::player_model::Arm::Right
+    }
+}
+
+/// The local player's (main, off) hand stacks as (right arm, left arm).
+pub fn local_by_arm<T>((main, off): (T, T)) -> (T, T) {
+    if local_main_arm_left() {
+        (off, main)
+    } else {
+        (main, off)
+    }
+}
+
 /// The local player's hidden skin layers, as `PlayerRenderState.hidden_layers` takes them.
 pub fn local_hidden_layers() -> u8 {
     !LOCAL_LAYERS.load(std::sync::atomic::Ordering::Relaxed)
