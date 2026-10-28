@@ -23,6 +23,10 @@ pub struct Facts {
     pub unsafes: Vec<usize>,
     /// Lines comparing an id-like value with a numeric literal.
     pub registry_literals: Vec<usize>,
+    /// Lines wrapping a direct varint read in a canonical id type.
+    pub raw_id_wraps: Vec<usize>,
+    /// Lines comparing a `Version` value.
+    pub version_compares: Vec<usize>,
     /// Inclusive line ranges of inline `#[cfg(test)] mod name { }` items.
     pub test_modules: Vec<(usize, usize)>,
 }
@@ -104,7 +108,17 @@ impl<'ast> Visit<'ast> for Facts {
         }
     }
 
+    fn visit_expr_call(&mut self, expr: &'ast syn::ExprCall) {
+        if raw_id_wrap(expr) {
+            self.raw_id_wraps.push(expr.span().start().line);
+        }
+        visit::visit_expr_call(self, expr);
+    }
+
     fn visit_expr_binary(&mut self, expr: &'ast ExprBinary) {
+        if is_comparison(&expr.op) && (names_version(&expr.left) || names_version(&expr.right)) {
+            self.version_compares.push(expr.span().start().line);
+        }
         if matches!(expr.op, syn::BinOp::Eq(_) | syn::BinOp::Ne(_))
             && (registry_literal(&expr.left, &expr.right)
                 || registry_literal(&expr.right, &expr.left))
@@ -113,6 +127,42 @@ impl<'ast> Visit<'ast> for Facts {
         }
         visit::visit_expr_binary(self, expr);
     }
+}
+
+/// `ItemId(read_varint(..)?)` and its kin: a canonical id made straight from the wire.
+fn raw_id_wrap(call: &syn::ExprCall) -> bool {
+    let named = |expr: &Expr, names: &[&str]| match expr {
+        Expr::Path(path) => path
+            .path
+            .segments
+            .last()
+            .is_some_and(|segment| names.iter().any(|name| segment.ident == name)),
+        _ => false,
+    };
+    if !named(&call.func, &["ItemId", "BlockStateId", "EntityTypeId"]) {
+        return false;
+    }
+    let Some(Expr::Try(argument)) = call.args.first() else {
+        return false;
+    };
+    matches!(&*argument.expr, Expr::Call(read) if named(&read.func, &["read_varint", "varint"]))
+}
+
+fn is_comparison(op: &syn::BinOp) -> bool {
+    matches!(
+        op,
+        syn::BinOp::Eq(_)
+            | syn::BinOp::Ne(_)
+            | syn::BinOp::Lt(_)
+            | syn::BinOp::Le(_)
+            | syn::BinOp::Gt(_)
+            | syn::BinOp::Ge(_)
+    )
+}
+
+/// An expression that is a `Version::..` path.
+fn names_version(expr: &Expr) -> bool {
+    matches!(expr, Expr::Path(path) if path.path.segments.first().is_some_and(|s| s.ident == "Version"))
 }
 
 /// `value` reads like a registry or protocol id and `literal` is a non-zero
@@ -180,5 +230,15 @@ mod tests {
         assert_eq!(facts.unsafes, [2]);
         assert_eq!(facts.registry_literals, [2]);
         assert_eq!(facts.test_modules, [(3, 6)]);
+    }
+
+    #[test]
+    fn finds_raw_id_wraps_and_version_comparisons() {
+        let source = "fn f() { let a = ItemId(read_varint(i, \"x\")?); \
+            let b = ItemId(map.canonical(read_varint(i, \"x\")?)); \
+            if v >= Version::V26_2 {} if n == 3 {} }\n";
+        let facts = collect(&syn::parse_file(source).expect("valid Rust"));
+        assert_eq!(facts.raw_id_wraps, [1]);
+        assert_eq!(facts.version_compares, [1]);
     }
 }

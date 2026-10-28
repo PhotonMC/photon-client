@@ -9,6 +9,9 @@ unsafe_allowed = ["crates/photon-render/src/vulkan"]
 # Translations and text-handling test data.
 non_ascii_allowed = []
 
+# Where `Version` values may be compared: version modules and the dispatch points (ADR 0013).
+version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/version_registries.rs", "crates/photon-data/src/block/definition.rs", "crates/photon-data/src/item/definition.rs"]
+
 # Each package may depend only on the workspace packages listed for it.
 # Dependencies flow one way: core -> data -> world -> game -> net / render -> app.
 # render -> game and audio -> game are known debts (GUI and sound-engine types

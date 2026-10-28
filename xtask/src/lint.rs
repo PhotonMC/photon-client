@@ -33,25 +33,32 @@ pub enum Rule {
     Unsafe,
     Print,
     RegistryLiteral,
+    RawIdWrap,
+    VersionCompare,
+    WireType,
     Layer,
 }
 
 impl Rule {
     pub fn name(self) -> &'static str {
-        match self {
-            Self::FileLines => "file-lines",
-            Self::FnComplexity => "fn-complexity",
-            Self::FnLength => "fn-length",
-            Self::FnParams => "fn-params",
-            Self::FnNesting => "fn-nesting",
-            Self::FileName => "file-name",
-            Self::NonAscii => "non-ascii",
-            Self::LimitSuppression => "limit-suppression",
-            Self::Unsafe => "unsafe",
-            Self::Print => "print",
-            Self::RegistryLiteral => "registry-literal",
-            Self::Layer => "layer",
-        }
+        const NAMES: [&str; 15] = [
+            "file-lines",
+            "fn-complexity",
+            "fn-length",
+            "fn-params",
+            "fn-nesting",
+            "file-name",
+            "non-ascii",
+            "limit-suppression",
+            "unsafe",
+            "print",
+            "registry-literal",
+            "raw-id-wrap",
+            "version-compare",
+            "wire-type",
+            "layer",
+        ];
+        NAMES[self as usize]
     }
 
     /// The highest value that is not a violation.
@@ -63,6 +70,22 @@ impl Rule {
             Self::FnParams => 6,
             Self::FnNesting => 4,
             _ => 0,
+        }
+    }
+
+    /// The hints of the rules that keep ids and versions apart.
+    fn id_hint(self) -> &'static str {
+        match self {
+            Self::RegistryLiteral => {
+                "ids compared with number literals; ids differ per game version, resolve them by name"
+            }
+            Self::RawIdWrap => {
+                "a canonical id wrapped around a raw read; read a wire id type and translate it"
+            }
+            Self::VersionCompare => {
+                "Version compared outside the version modules listed in xtask/lint.toml"
+            }
+            _ => "wire id types outside photon-protocol and photon-net",
         }
     }
 
@@ -86,8 +109,8 @@ impl Rule {
             }
             Self::Unsafe => "unsafe outside the modules listed in xtask/lint.toml",
             Self::Print => "terminal printing in a library; use `log`",
-            Self::RegistryLiteral => {
-                "ids compared with number literals; ids differ per game version, resolve them by name"
+            Self::RegistryLiteral | Self::RawIdWrap | Self::VersionCompare | Self::WireType => {
+                self.id_hint()
             }
             Self::Layer => "crate dependency not allowed by the layer table in xtask/lint.toml",
         }

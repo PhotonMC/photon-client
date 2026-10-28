@@ -18,6 +18,8 @@ pub struct Config {
     pub unsafe_allowed: Vec<String>,
     /// Path prefixes that may hold non-ASCII text (translations, test data).
     pub non_ascii_allowed: Vec<String>,
+    /// Path prefixes and fragments where `Version` values may be compared (ADR 0013).
+    pub version_allowed: Vec<String>,
 }
 
 pub fn load() -> Result<Config, String> {

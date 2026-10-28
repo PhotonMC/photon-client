@@ -73,7 +73,51 @@ pub fn check(path: &str, config: &Config, packages: &[Package]) -> Result<Vec<Fi
         &facts.registry_literals,
         &mut findings,
     );
+    version_rules(path, (&text, &facts), (config, package), &mut findings);
     Ok(findings)
+}
+
+/// The rules of the multi-version content model (ADR 0013).
+fn version_rules(
+    path: &str,
+    source: (&str, &items::Facts),
+    context: (&Config, Option<&Package>),
+    findings: &mut Vec<Finding>,
+) {
+    let ((text, facts), (config, package)) = (source, context);
+    count(path, Rule::RawIdWrap, &facts.raw_id_wraps, findings);
+    if !version_allowed(config, path) {
+        count(
+            path,
+            Rule::VersionCompare,
+            &facts.version_compares,
+            findings,
+        );
+    }
+    wire_types(path, text, package, findings);
+}
+
+fn version_allowed(config: &Config, path: &str) -> bool {
+    path.contains("/versions/") || config::allowed(&config.version_allowed, path)
+}
+
+/// Wire id types belong to the packet boundary: the protocol and the connection.
+fn wire_types(path: &str, text: &str, package: Option<&Package>, findings: &mut Vec<Finding>) {
+    const OWNERS: &[&str] = &["photon-protocol", "photon-net", "xtask"];
+    if package.is_none_or(|package| OWNERS.contains(&package.name.as_str())) {
+        return;
+    }
+    let lines: Vec<usize> = text
+        .lines()
+        .enumerate()
+        .filter(|(_, line)| {
+            ["WireItemId", "WireBlockStateId", "WireEntityTypeId"]
+                .iter()
+                .any(|name| line.contains(name))
+        })
+        .map(|(index, _)| index + 1)
+        .collect();
+    count(path, Rule::WireType, &lines, findings);
 }
 
 /// Output of a code generator, which is held to its generator instead.
