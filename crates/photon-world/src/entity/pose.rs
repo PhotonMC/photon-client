@@ -65,16 +65,28 @@ pub fn living_entity_dimensions(
     }
 }
 
+/// What Java's resize gate reads besides the sizes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ResizeContext {
+    pub level_is_client_side: bool,
+    pub first_tick: bool,
+    pub no_physics: bool,
+    pub is_player: bool,
+}
+
 /// Refresh dimensions at the current position and evaluate Java's resize gate.
 pub fn refresh_entity_dimensions(
     old_dimensions: ClientEntityDimensions,
     new_dimensions: ClientEntityDimensions,
     position: Vec3,
-    level_is_client_side: bool,
-    first_tick: bool,
-    no_physics: bool,
-    is_player: bool,
+    context: ResizeContext,
 ) -> ClientEntityDimensionsRefresh {
+    let ResizeContext {
+        level_is_client_side,
+        first_tick,
+        no_physics,
+        is_player,
+    } = context;
     let is_small = new_dimensions.width() <= 4.0 && new_dimensions.height() <= 4.0;
     let grew = new_dimensions.width() > old_dimensions.width()
         || new_dimensions.height() > old_dimensions.height();

@@ -75,8 +75,7 @@ pub fn world_border(
     eye: Vec3,
     origin: [i32; 3],
     partial: f32,
-    render_distance_chunks: i32,
-    cloud_range_chunks: i32,
+    (render_distance_chunks, cloud_range_chunks): (i32, i32),
     time_millis: i64,
 ) -> Vec<Vertex> {
     let border = session.world().world_border();

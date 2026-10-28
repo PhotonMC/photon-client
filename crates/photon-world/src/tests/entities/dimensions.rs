@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::ResizeContext;
 use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityId;
 
@@ -81,10 +82,12 @@ fn refresh_entity_dimensions_reapplies_box_and_client_gate() {
         old_dimensions,
         new_dimensions,
         position,
-        true,
-        false,
-        false,
-        false,
+        ResizeContext {
+            level_is_client_side: true,
+            first_tick: false,
+            no_physics: false,
+            is_player: false,
+        },
     );
     assert_eq!(refreshed.dimensions, new_dimensions);
     assert_eq!(
@@ -97,10 +100,12 @@ fn refresh_entity_dimensions_reapplies_box_and_client_gate() {
         old_dimensions,
         new_dimensions,
         position,
-        false,
-        false,
-        false,
-        false,
+        ResizeContext {
+            level_is_client_side: false,
+            first_tick: false,
+            no_physics: false,
+            is_player: false,
+        },
     );
     assert!(server_resize.should_fudge_position);
 
@@ -108,10 +113,12 @@ fn refresh_entity_dimensions_reapplies_box_and_client_gate() {
         old_dimensions,
         new_dimensions,
         position,
-        false,
-        false,
-        false,
-        true,
+        ResizeContext {
+            level_is_client_side: false,
+            first_tick: false,
+            no_physics: false,
+            is_player: true,
+        },
     );
     assert!(!player_resize.should_fudge_position);
 }

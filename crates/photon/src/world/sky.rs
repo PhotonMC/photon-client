@@ -74,8 +74,7 @@ fn set_world_border(
         camera.eye,
         camera.origin,
         partial,
-        camera.render_distance,
-        CLOUD_RANGE,
+        (camera.render_distance, CLOUD_RANGE),
         time_millis,
     );
     backend.set_world_border(&border_vertices)

@@ -86,7 +86,7 @@ use photon_world::{
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
     ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
     ClientWorldCollisionSource, DimensionBounds, EntityInput, EntityMotionInput, EntityMoveInput,
-    EntityTeleportInput, LightLayerInput, LightUpdateInput, SectionInput,
+    EntityTeleportInput, LightLayerInput, LightUpdateInput, ResizeContext, SectionInput,
     apply_entity_movement_state, collect_candidate_step_up_heights,
     collect_entity_collision_shapes, collide_entity_movement, collide_entity_movement_state,
     is_minor_horizontal_collision, living_entity_dimensions, refresh_entity_dimensions,

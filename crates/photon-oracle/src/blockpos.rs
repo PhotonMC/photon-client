@@ -24,9 +24,7 @@ pub(super) fn key_mapping_result(request: &Value) -> Result<Value, String> {
     let initial = key_mapping_state(&registry, primary, secondary, other)?;
     let initial_properties = key_mapping_properties(
         &registry,
-        primary,
-        secondary,
-        other,
+        [primary, secondary, other],
         key_event,
         unknown_key_event,
         mouse_button,
@@ -113,9 +111,7 @@ pub(super) fn key_mapping_result(request: &Value) -> Result<Value, String> {
     }
     let properties = key_mapping_properties(
         &registry,
-        primary,
-        secondary,
-        other,
+        [primary, secondary, other],
         key_event,
         unknown_key_event,
         mouse_button,
@@ -174,9 +170,7 @@ pub(super) fn toggle_key_mapping_result(request: &Value) -> Result<Value, String
     let initial = key_mapping_state(&registry, primary, secondary, other)?;
     let initial_properties = key_mapping_properties(
         &registry,
-        primary,
-        secondary,
-        other,
+        [primary, secondary, other],
         key_event,
         unknown_key_event,
         mouse_button,
@@ -256,9 +250,7 @@ pub(super) fn toggle_key_mapping_result(request: &Value) -> Result<Value, String
     }
     let properties = key_mapping_properties(
         &registry,
-        primary,
-        secondary,
-        other,
+        [primary, secondary, other],
         key_event,
         unknown_key_event,
         mouse_button,

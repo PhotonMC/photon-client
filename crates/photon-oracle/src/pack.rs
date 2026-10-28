@@ -370,9 +370,7 @@ pub(super) fn key_mapping_property(
 
 pub(super) fn key_mapping_properties(
     registry: &KeyMappingRegistry,
-    primary: usize,
-    secondary: usize,
-    other: usize,
+    [primary, secondary, other]: [usize; 3],
     key_event: (i32, i32),
     unknown_key_event: (i32, i32),
     mouse_button: i32,

@@ -143,26 +143,22 @@ pub(super) fn entity_dimensions_refresh_case(request: &Value) -> Result<Value, S
             let old_dimensions = dimensions("old_dimensions")?;
             let new_dimensions = dimensions("new_dimensions")?;
             let position = f64_vec3(input.get("position").ok_or("position must be an object")?)?;
+            let flag = |name: &str| {
+                input
+                    .get(name)
+                    .and_then(Value::as_bool)
+                    .ok_or(format!("{name} must be a boolean"))
+            };
             let refreshed = refresh_entity_dimensions(
                 old_dimensions,
                 new_dimensions,
                 position,
-                input
-                    .get("level_client_side")
-                    .and_then(Value::as_bool)
-                    .ok_or("level_client_side must be a boolean")?,
-                input
-                    .get("first_tick")
-                    .and_then(Value::as_bool)
-                    .ok_or("first_tick must be a boolean")?,
-                input
-                    .get("no_physics")
-                    .and_then(Value::as_bool)
-                    .ok_or("no_physics must be a boolean")?,
-                input
-                    .get("is_player")
-                    .and_then(Value::as_bool)
-                    .ok_or("is_player must be a boolean")?,
+                ResizeContext {
+                    level_is_client_side: flag("level_client_side")?,
+                    first_tick: flag("first_tick")?,
+                    no_physics: flag("no_physics")?,
+                    is_player: flag("is_player")?,
+                },
             );
             Ok(json!({
                 "label": input

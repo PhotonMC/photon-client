@@ -649,8 +649,8 @@
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
 "crates/photon-oracle/src/animation.rs::copper_golem_layers_result" = 70
 "crates/photon-oracle/src/block.rs::block_result" = 434
-"crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 125
-"crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 142
+"crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 121
+"crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 138
 "crates/photon-oracle/src/blockstate.rs::model_state_result" = 62
 "crates/photon-oracle/src/boat.rs::flier_item_pose_result" = 83
 "crates/photon-oracle/src/boat.rs::sound_registry_result" = 104
@@ -747,7 +747,7 @@
 "crates/photon-oracle/src/shape/border.rs::world_border_collision_shape_moving_case" = 89
 "crates/photon-oracle/src/shape/border.rs::world_border_render_state" = 147
 "crates/photon-oracle/src/shape/collision.rs::entity_movement_state_retention_case" = 73
-"crates/photon-oracle/src/shape/dimensions.rs::entity_dimensions_refresh_case" = 72
+"crates/photon-oracle/src/shape/dimensions.rs::entity_dimensions_refresh_case" = 68
 "crates/photon-oracle/src/shape/packets.rs::player_game_mode_event_case" = 69
 "crates/photon-oracle/src/shape/world_collision.rs::client_world_collision_case" = 73
 "crates/photon-oracle/src/shape/world_collision.rs::client_world_happy_ghast_collision_case" = 104
@@ -997,7 +997,6 @@
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::new" = 7
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 7
-"crates/photon-oracle/src/pack.rs::key_mapping_properties" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/block/world_mesh/mesh.rs::add_face" = 7
 "crates/photon-render/src/block/world_mesh/mesh.rs::build_world_mesh" = 7
@@ -1010,10 +1009,8 @@
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::nine_slice" = 9
 "crates/photon-world/src/block/state/shape.rs::compute" = 7
 "crates/photon-world/src/collision.rs::select_step_up_movement" = 7
-"crates/photon-world/src/entity/pose.rs::refresh_entity_dimensions" = 7
 "crates/photon-world/src/input/keyboard.rs::Input::new" = 7
 "crates/photon-world/src/particles/smoke.rs::Particle::ash_smoke" = 7
-"crates/photon/src/world/atmosphere.rs::world_border" = 7
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1
