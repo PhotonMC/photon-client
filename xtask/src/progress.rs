@@ -51,7 +51,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     };
     let path = readme();
     let text = fs::read_to_string(&path).map_err(|error| format!("README.md: {error}"))?;
-    let mut updated = markers::replace(&text, BLOCK, &block()?)?;
+    let fresh = block()?;
+    let mut updated = markers::replace(&text, BLOCK, &fresh)?;
     if !check {
         updated = markers::replace(&updated, MILESTONES, &milestones::table()?)?;
     }
@@ -60,6 +61,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
         return Ok(());
     }
     if check {
+        for line in fresh.lines().filter(|line| !text.contains(line)) {
+            eprintln!("  computed, not in the README: {line}");
+        }
         return Err("progress: the README block is stale; run `cargo xtask progress`".to_owned());
     }
     fs::write(&path, updated).map_err(|error| format!("README.md: {error}"))?;
