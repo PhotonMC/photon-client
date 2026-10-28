@@ -211,14 +211,7 @@ impl PlaySession {
         &mut self,
         packet: AddEntityObservation,
     ) -> Result<(), ConnectionError> {
-        log::trace!(
-            "add entity {} type {:?} at ({}, {}, {})",
-            packet.entity_id.0,
-            packet.entity_type_id,
-            packet.x,
-            packet.y,
-            packet.z
-        );
+        log::trace!("add entity {packet:?}");
         if self.local.removed_player_vehicle == Some(packet.entity_id) {
             self.local.removed_player_vehicle = None;
         }
@@ -232,13 +225,7 @@ impl PlaySession {
         &mut self,
         packet: EntityMotionObservation,
     ) -> Result<(), ConnectionError> {
-        log::trace!(
-            "motion {} ({}, {}, {})",
-            packet.entity_id.0,
-            packet.x,
-            packet.y,
-            packet.z
-        );
+        log::trace!("motion {packet:?}");
         if self.local_motion(&packet) {
             return Ok(());
         }
@@ -376,14 +363,7 @@ impl PlaySession {
         &mut self,
         packet: EntityPositionSyncObservation,
     ) -> Result<(), ConnectionError> {
-        log::trace!(
-            "position sync {} ({}, {}, {}) yaw {}",
-            packet.entity_id.0,
-            packet.x,
-            packet.y,
-            packet.z,
-            packet.y_rot
-        );
+        log::trace!("position sync {packet:?}");
         entities::position_sync(&mut self.world, &packet);
         Ok(())
     }
@@ -392,18 +372,7 @@ impl PlaySession {
         &mut self,
         packet: EntityTeleportObservation,
     ) -> Result<(), ConnectionError> {
-        log::trace!(
-            "teleport {} ({}, {}, {}) delta ({}, {}, {}) yaw {} flags {}",
-            packet.entity_id.0,
-            packet.x,
-            packet.y,
-            packet.z,
-            packet.delta_x,
-            packet.delta_y,
-            packet.delta_z,
-            packet.y_rot,
-            packet.relative_flags
-        );
+        log::trace!("teleport {packet:?}");
         if !self.world.has_entity(packet.entity_id)
             && self.local.removed_player_vehicle == Some(packet.entity_id)
         {
@@ -415,14 +384,7 @@ impl PlaySession {
     }
 
     fn on_move_entity_pos(&mut self, packet: EntityMoveObservation) -> Result<(), ConnectionError> {
-        log::trace!(
-            "move {} delta ({}, {}, {}) yaw {:?}",
-            packet.entity_id.0,
-            packet.delta_x,
-            packet.delta_y,
-            packet.delta_z,
-            packet.y_rot
-        );
+        log::trace!("move {packet:?}");
         entities::step(&mut self.world, &packet);
         Ok(())
     }
@@ -431,27 +393,13 @@ impl PlaySession {
         &mut self,
         packet: EntityMoveObservation,
     ) -> Result<(), ConnectionError> {
-        log::trace!(
-            "move {} delta ({}, {}, {}) yaw {:?}",
-            packet.entity_id.0,
-            packet.delta_x,
-            packet.delta_y,
-            packet.delta_z,
-            packet.y_rot
-        );
+        log::trace!("move {packet:?}");
         entities::step(&mut self.world, &packet);
         Ok(())
     }
 
     fn on_move_entity_rot(&mut self, packet: EntityMoveObservation) -> Result<(), ConnectionError> {
-        log::trace!(
-            "move {} delta ({}, {}, {}) yaw {:?}",
-            packet.entity_id.0,
-            packet.delta_x,
-            packet.delta_y,
-            packet.delta_z,
-            packet.y_rot
-        );
+        log::trace!("move {packet:?}");
         entities::step(&mut self.world, &packet);
         Ok(())
     }
@@ -537,6 +485,7 @@ impl PlaySession {
         &mut self,
         packet: EntityMetadataObservation,
     ) -> Result<(), ConnectionError> {
+        log::trace!("data {} {:02x?}", packet.entity_id.0, packet.metadata);
         entities::metadata(&mut self.world, &packet);
         self.local_metadata(&packet);
         if let Some(Some(bed)) = photon_world::entity_sleeping_pos(&packet.metadata) {
