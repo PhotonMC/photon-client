@@ -594,7 +594,7 @@
 "crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 71
 "crates/photon-game/src/tooltip/lines.rs::lines" = 258
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
-"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 75
+"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 73
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 115
 "crates/photon-gui/src/hud/locator.rs::draw_dots" = 62
 "crates/photon-gui/src/hud/locator.rs::set_brightness" = 67
@@ -982,7 +982,6 @@
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
 
 [fn-params]
-"crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 7
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
 "crates/photon-gui/src/hud/boss_bar.rs::BossBars::add" = 7

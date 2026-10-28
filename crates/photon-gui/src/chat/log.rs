@@ -269,7 +269,7 @@ impl ChatLog {
         gui: (i32, i32),
         focused: bool,
     ) {
-        self.draw_with(frame, atlas, font, gui, focused, None, &Lang::default());
+        self.draw_with(frame, (atlas, font, &Lang::default()), gui, focused, None);
     }
 
     /// `forEachLine`'s first pass: each visible line's background.
@@ -346,19 +346,13 @@ impl ChatLog {
     /// [`Self::draw`] with the mouse, for the tooltip of a tag it is over.
     /// Everything is drawn in the chat's own units, under a pose that scales
     /// by the option and moves 4 right.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the reference's render call"
-    )]
     pub fn draw_with(
         &self,
         frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &Font,
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
         (gui_width, gui_height): (i32, i32),
         focused: bool,
         mouse: Option<(i32, i32)>,
-        lang: &Lang,
     ) -> Option<Vec<Vec<Run>>> {
         let first = (frame.vertices.len(), frame.log.as_ref().map_or(0, Vec::len));
         let scale = self.settings.scale as f32;

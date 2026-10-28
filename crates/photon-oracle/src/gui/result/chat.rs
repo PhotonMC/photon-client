@@ -195,7 +195,7 @@ pub(super) fn chat_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, Stri
             mouse[1].as_i64().unwrap_or(0) as i32,
         )
     });
-    let tooltip = log.draw_with(&mut frame, atlas, font, gui, focused, mouse, &lang);
+    let tooltip = log.draw_with(&mut frame, (atlas, font, &lang), gui, focused, mouse);
     if let (Some(lines), Some(mouse)) = (tooltip, mouse) {
         frame.tooltip(atlas, font, &lines, mouse, gui);
     }

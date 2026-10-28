@@ -23,12 +23,10 @@ impl Gui {
         let focused = controls.chat.is_some();
         controls.chat_log.draw_with(
             frame,
-            atlas,
-            font,
+            (atlas, font, lang),
             (size.gui_scaled_width(), size.gui_scaled_height()),
             focused,
             focused.then_some((controls.gui_mouse.0 as i32, controls.gui_mouse.1 as i32)),
-            lang,
         )
     }
 
