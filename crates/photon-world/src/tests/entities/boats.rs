@@ -130,39 +130,49 @@ fn a_turn_through_the_half_circle_is_drawn_the_short_way_round() {
 
 #[test]
 fn a_passenger_of_an_armor_stand_follows_it() {
-    let stand = photon_data::entity_type::id("minecraft:armor_stand").expect("the armor stand");
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
-    let (blocks, biomes) = section(0, 0);
-    world.replace_chunk(
-        0,
-        0,
-        [SectionInput {
-            non_empty_block_count: 0,
-            fluid_count: 0,
-            block_states: &blocks,
-            biomes: &biomes,
-        }],
-    );
-    for (id, y) in [(37, 5.0), (38, 5.0)] {
-        assert!(world.apply_entity(EntityInput {
-            entity_id: EntityId(id),
-            uuid: Uuid::new(1, u64::from(id as u32)),
-            type_id: stand,
-            x: 0.0,
-            y,
-            z: 0.0,
-            movement: (0.0, 0.0, 0.0),
-            rotation: (0.0, 0.0, 0.0),
-            data: 0,
-        }));
+    // `EntityType.ARMOR_STAND` is 1.975 tall; a small stand is half that, a marker has none.
+    for (flags, height) in [
+        (0_u8, f64::from(1.975_f32)),
+        (1, f64::from(0.9875_f32)),
+        (16, 0.0),
+    ] {
+        let stand = photon_data::entity_type::id("minecraft:armor_stand").expect("the stand");
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let (blocks, biomes) = section(0, 0);
+        world.replace_chunk(
+            0,
+            0,
+            [SectionInput {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: &blocks,
+                biomes: &biomes,
+            }],
+        );
+        for id in [37, 38] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id: EntityId(id),
+                uuid: Uuid::new(1, u64::from(id as u32)),
+                type_id: stand,
+                x: 0.0,
+                y: 5.0,
+                z: 0.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(world.apply_entity_metadata(
+            EntityId(37),
+            &[crate::constants::ARMOR_STAND_FLAGS_DATA_ID, 0, flags, 255]
+        ));
+        assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
+        let vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
+        vehicle.set_position((0.0, 9.0, 0.0));
+        world.tick();
+        let rider = world.entities().at(EntityId(38)).expect("rider");
+        assert_eq!(rider.position().1, 9.0 + height, "flags {flags}");
     }
-    assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
-    let vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
-    vehicle.set_position((0.0, 9.0, 0.0));
-    world.tick();
-    let rider = world.entities().at(EntityId(38)).expect("rider");
-    // An armor stand is 1.975 blocks tall (`EntityType.ARMOR_STAND`).
-    assert_eq!(rider.position().1, 9.0 + f64::from(1.975_f32));
 }
 
 #[test]

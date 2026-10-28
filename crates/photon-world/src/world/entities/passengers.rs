@@ -109,24 +109,32 @@ impl ClientWorld {
         // Only the vehicles whose seat is Java's default point (the top of the box) are ported:
         // the stand and the displays that hologram setups ride; the other types have seats of
         // their own, which stay where they were.
-        if ![
-            "armor_stand",
-            "item_display",
-            "block_display",
-            "text_display",
-        ]
-        .iter()
-        .any(|name| {
-            photon_data::entity_type::id(&format!("minecraft:{name}")) == Some(vehicle.type_id)
-        }) {
+        static DEFAULT_SEATS: std::sync::LazyLock<[Option<EntityTypeId>; 4]> =
+            std::sync::LazyLock::new(|| {
+                [
+                    "armor_stand",
+                    "item_display",
+                    "block_display",
+                    "text_display",
+                ]
+                .map(|name| photon_data::entity_type::id(&format!("minecraft:{name}")))
+            });
+        if !DEFAULT_SEATS.contains(&Some(vehicle.type_id)) {
             return None;
         }
         let (x, y, z) = vehicle.position();
         let passenger = self.entities.at(passenger_id)?;
         let attachment = vanilla_passenger_vehicle_attachment_y(passenger.type_id, passenger.baby);
+        // `ArmorStand.getDimensions`: a marker has none and a small stand is half the size.
+        let stand = (DEFAULT_SEATS[0] == Some(vehicle.type_id)).then(|| vehicle.armor_stand());
+        let height = match stand {
+            Some(stand) if stand.is_marker() => 0.0,
+            Some(stand) if stand.is_small() => vehicle.bb_height() * 0.5,
+            _ => vehicle.bb_height(),
+        };
         Some(photon_core::math::Vec3::new(
             x,
-            y + f64::from(vehicle.bb_height()) - attachment,
+            y + f64::from(height) - attachment,
             z,
         ))
     }
