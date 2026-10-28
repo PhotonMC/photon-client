@@ -34,6 +34,10 @@ pub fn item_pose() -> Vec<Value> {
     for age in [0.0, 0.5, 7.0, 31.25, 100.75, 1200.5, 20000.0] {
         rows.push(item_row(format!("age-{}", float_text(age)), (age, 0.7), 1, 5, BLOCK));
     }
+    // The spin is edge-on near 62.8 and 125.7 ticks for a bob offset of zero.
+    for age in [61.5, 62.0, 62.83, 63.5, 64.0, 125.0, 125.66, 126.5] {
+        rows.push(item_row(format!("edge-{}", float_text(age)), (age, 0.0), 1, 5, SPRITE));
+    }
     for bob in [0.0, 1.0, 3.1415927, 6.2831855] {
         rows.push(item_row(format!("bob-{}", float_text(bob)), (40.0, bob), 2, 5, SPRITE));
     }
