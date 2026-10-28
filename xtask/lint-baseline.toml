@@ -601,7 +601,7 @@
 "crates/photon-gui/src/hud/locator.rs::set_brightness" = 67
 "crates/photon-gui/src/hud/sidebar.rs::draw" = 62
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 110
-"crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 88
+"crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 87
 "crates/photon-gui/src/options.rs::OptionsScreen::new" = 126
 "crates/photon-gui/src/options/chat.rs::ChatOptionsScreen::new" = 123
 "crates/photon-gui/src/options/keybinds.rs::KeyBindsScreen::arrow" = 61
@@ -921,7 +921,7 @@
 "crates/photon/src/play/ticks.rs::Play::start" = 148
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
-"crates/photon/src/window_probe/world.rs::load_world" = 91
+"crates/photon/src/window_probe/world.rs::load_world" = 90
 "crates/photon/src/world/signs.rs::sign_texts" = 66
 
 [fn-nesting]
@@ -983,15 +983,12 @@
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
 
 [fn-params]
-"crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 7
-"crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 7
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 7
 "crates/photon-gui/src/chat/suggestions.rs::SuggestionsList::new" = 7
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
 "crates/photon-gui/src/hud/boss_bar.rs::BossBars::add" = 7
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 7
-"crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 7
 "crates/photon-gui/src/options/video/size.rs::VideoSettingsScreen::new" = 7
 "crates/photon-gui/src/runs.rs::GuiFrame::item_with_count" = 8
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
@@ -999,7 +996,6 @@
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/block/world_mesh/mesh.rs::add_face" = 7
-"crates/photon-render/src/block/world_mesh/mesh.rs::build_world_mesh" = 7
 "crates/photon-render/src/entity/player_model.rs::Cube::grown" = 7
 "crates/photon-render/src/entity/player_model.rs::Cube::sized" = 7
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::blit_part" = 9

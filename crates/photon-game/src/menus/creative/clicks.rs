@@ -104,28 +104,22 @@ impl CreativeMenu {
                 effects.push(Effect::SetSlot(index as i16, None));
             }
         } else if inventory_tab {
-            self.inventory_tab_click(target, slot_id, button, input, menu, player, &mut effects);
+            self.inventory_tab_click(target, (slot_id, button, input), menu, player, &mut effects);
         } else if input != ClickType::QuickCraft
             && let Some(Target::Window(slot)) = target
         {
             self.window_click(slot, button, input, quick_key, menu, &mut effects);
         } else {
-            self.picker_click(target, slot_id, button, input, menu, player, &mut effects);
+            self.picker_click(target, (slot_id, button, input), menu, player, &mut effects);
         }
         effects
     }
 
     /// The inventory tab: the player's own menu, seen through other places.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
     pub(super) fn inventory_tab_click(
         &mut self,
         target: Option<Target>,
-        slot_id: i32,
-        button: i32,
-        input: ClickType,
+        (slot_id, button, input): (i32, i32, ClickType),
         menu: &mut ContainerMenu,
         player: Player,
         effects: &mut Vec<Effect>,
@@ -249,16 +243,10 @@ impl CreativeMenu {
     /// The picker's own slots: the hotbar, and a drag over it. The click runs
     /// in a menu that holds only the hotbar, since the window's slots take no
     /// part in it.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
     pub(super) fn picker_click(
         &mut self,
         target: Option<Target>,
-        slot_id: i32,
-        button: i32,
-        input: ClickType,
+        (slot_id, button, input): (i32, i32, ClickType),
         menu: &mut ContainerMenu,
         player: Player,
         effects: &mut Vec<Effect>,

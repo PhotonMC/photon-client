@@ -249,8 +249,7 @@ fn draw_hearts(
     atlas: &GuiAtlas,
     font: &Font,
     scores: &mut TabScores,
-    key: &str,
-    score: i32,
+    (key, score): (&str, i32),
     (left, right, y): (i32, i32, i32),
 ) {
     let health = scores
@@ -355,8 +354,7 @@ fn draw_score(
             atlas,
             font,
             scores,
-            &entry.profile_name,
-            entry.score,
+            (&entry.profile_name, entry.score),
             (left, right, y),
         );
     } else if let Some(text) = &entry.score_text {

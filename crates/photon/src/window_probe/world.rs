@@ -120,8 +120,7 @@ pub(super) fn load_world(
             photon_render::block::biome_tint::TintKind::DryFoliage => 0xFFA0_7545,
             photon_render::block::biome_tint::TintKind::Water => 0xFF3F_76E4,
         },
-        origin,
-        size,
+        (origin, size),
         requested,
     )
     .map_err(|error| format!("world mesh: {error:?}"))?;

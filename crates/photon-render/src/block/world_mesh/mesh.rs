@@ -462,8 +462,7 @@ pub fn build_world_mesh(
     read: impl Fn(i32, i32, i32) -> Option<BlockStateId>,
     light: impl Fn(i32, i32, i32) -> (u8, u8),
     biome_tint: impl Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
-    origin: [i32; 3],
-    size: [i32; 3],
+    (origin, size): ([i32; 3], [i32; 3]),
     mip_level: i32,
 ) -> Result<WorldMesh, ResolveError> {
     let renderer = BlockRenderer::new(source, (mip_level, 0))?;
