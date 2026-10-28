@@ -304,7 +304,7 @@ fn open_screen_and_container_close_parsers_preserve_java_fields() {
     photon_core::wire::write_varint(2, &mut open_payload);
     open_payload.extend_from_slice(&title_payload);
     assert_eq!(
-        parse_open_screen_packet(&open_payload).expect("open screen packet"),
+        parse_open_screen_packet(&open_payload, &registries()).expect("open screen packet"),
         super::super::OpenScreenObservation {
             container_id: 7,
             menu_type_id: 2,

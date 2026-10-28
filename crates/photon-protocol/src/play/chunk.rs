@@ -161,15 +161,18 @@ fn read_heightmaps(input: &mut &[u8]) -> Result<Vec<HeightmapObservation>, Conne
 /// The block entities of a chunk packet, each placed by its packed in-chunk column.
 fn read_block_entities(
     input: &mut &[u8],
-    chunk_x: i32,
-    chunk_z: i32,
+    chunk: (i32, i32),
+    registries: &VersionRegistries,
 ) -> Result<Vec<BlockEntityObservation>, ConnectionError> {
+    let (chunk_x, chunk_z) = chunk;
     let count = read_count(input, "block entity count")?;
     let mut block_entities = Vec::with_capacity(count);
     for _ in 0..count {
         let packed_xz = read_byte(input, "block entity packed xz")?;
         let y = i32::from(read_i16(input, "block entity y")?);
-        let type_id = read_varint(input, "block entity type")?;
+        let type_id = registries
+            .block_entity_types
+            .canonical_or_unknown(read_varint(input, "block entity type")?);
         let tag = read_nbt_bytes(input, "block entity nbt")?;
         let local_x = i32::from(packed_xz >> 4);
         let local_z = i32::from(packed_xz & 0x0f);
@@ -201,7 +204,7 @@ pub fn parse_chunk_packet(
     let section_data_length = section_data.len();
     let section_observations = parse_section_data(section_data, registries)?;
 
-    let block_entities = read_block_entities(&mut input, x, z)?;
+    let block_entities = read_block_entities(&mut input, (x, z), registries)?;
     let block_entity_count = block_entities.len();
 
     let light_data = parse_light_data(&mut input)?;

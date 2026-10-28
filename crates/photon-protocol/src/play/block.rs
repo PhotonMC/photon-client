@@ -82,13 +82,16 @@ pub fn parse_block_update_packet(
 
 pub fn parse_block_entity_data_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<BlockEntityObservation, ConnectionError> {
     let mut input = input;
     let position = photon_core::binary::BlockPos::unpack(read_i64(
         &mut input,
         "block entity position",
     )? as u64);
-    let type_id = read_varint(&mut input, "block entity type")?;
+    let type_id = registries
+        .block_entity_types
+        .canonical_or_unknown(read_varint(&mut input, "block entity type")?);
     let tag = read_nbt_bytes(&mut input, "block entity nbt")?;
     if !input.is_empty() {
         return Err(ConnectionError::Codec("block entity trailing payload"));
@@ -147,7 +150,7 @@ wrapped_packet!(
     /// `ClientboundBlockDestructionPacket`.
     BlockDestruction(BlockDestructionObservation) = parse_block_destruction_packet
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundBlockEntityDataPacket`.
     BlockEntityData(BlockEntityObservation) = parse_block_entity_data_packet
 );

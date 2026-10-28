@@ -1,10 +1,15 @@
 use super::*;
 use photon_core::ids::EntityId;
 
-pub fn parse_open_screen_packet(input: &[u8]) -> Result<OpenScreenObservation, ConnectionError> {
+pub fn parse_open_screen_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<OpenScreenObservation, ConnectionError> {
     let mut input = input;
     let container_id = read_varint(&mut input, "open screen container id")?;
-    let menu_type_id = read_varint(&mut input, "open screen menu type")?;
+    let menu_type_id = registries
+        .menu_types
+        .canonical_or_unknown(read_varint(&mut input, "open screen menu type")?);
     let title_input = input;
     let title = photon_core::nbt::read_any_nbt(&mut input)
         .map_err(|_| ConnectionError::Codec("open screen title"))?;
@@ -334,7 +339,7 @@ impl ParsedItemStackObservation {
     }
 }
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundOpenScreenPacket`.
     OpenScreen(OpenScreenObservation) = parse_open_screen_packet
 );

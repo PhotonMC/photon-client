@@ -20,7 +20,8 @@ fn block_entity_data_packet_parser_decodes_packed_position_and_nbt() {
     photon_core::wire::write_varint(42, &mut payload);
     payload.extend_from_slice(&[10, 0]);
 
-    let observation = parse_block_entity_data_packet(&payload).expect("block entity data");
+    let observation =
+        parse_block_entity_data_packet(&payload, &registries()).expect("block entity data");
     assert_eq!(observation.x, -12);
     assert_eq!(observation.y, -63);
     assert_eq!(observation.z, 9);
@@ -29,7 +30,7 @@ fn block_entity_data_packet_parser_decodes_packed_position_and_nbt() {
     assert!(!observation.applied_to_world);
 
     payload.push(0);
-    assert!(parse_block_entity_data_packet(&payload).is_err());
+    assert!(parse_block_entity_data_packet(&payload, &registries()).is_err());
 }
 
 #[test]

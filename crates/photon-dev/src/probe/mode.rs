@@ -526,7 +526,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.entity_move_observations.push(observation);
             }
             PLAY_CLIENTBOUND_OPEN_SCREEN_PACKET_ID => {
-                let mut observation = parse_open_screen_packet(payload)?;
+                let mut observation = parse_open_screen_packet(payload, &registries())?;
                 observation.applied_to_world = trace.world.apply_local_player_open_menu(
                     observation.container_id,
                     observation.menu_type_id,
@@ -602,7 +602,7 @@ pub(super) fn connect_and_probe_with_mode(
                     .push(parse_block_destruction_packet(payload)?);
             }
             PLAY_CLIENTBOUND_BLOCK_ENTITY_DATA_PACKET_ID => {
-                let mut observation = parse_block_entity_data_packet(payload)?;
+                let mut observation = parse_block_entity_data_packet(payload, &registries())?;
                 observation.applied_to_world =
                     trace.world.apply_block_entity_update(BlockEntityInput {
                         x: observation.x,
