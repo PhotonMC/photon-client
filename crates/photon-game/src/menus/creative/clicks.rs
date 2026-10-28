@@ -19,7 +19,11 @@ impl CreativeMenu {
                 }
             }
             TabKind::Category | TabKind::Search => {
-                for entry in CREATIVE_TABS[tab].items {
+                for entry in CREATIVE_TABS[tab]
+                    .items
+                    .iter()
+                    .filter(|entry| offered(entry))
+                {
                     self.items.push(Some(Shown {
                         stack: table_stack(entry, &self.registries),
                         locked: false,

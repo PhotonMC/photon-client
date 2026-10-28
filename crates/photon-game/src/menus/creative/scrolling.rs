@@ -56,9 +56,11 @@ impl CreativeMenu {
         let items = search_tab().items;
         self.items = places
             .iter()
-            .map(|&place| {
+            .map(|&place| &items[usize::from(place)])
+            .filter(|entry| offered(entry))
+            .map(|entry| {
                 Some(Shown {
-                    stack: table_stack(&items[usize::from(place)], &self.registries),
+                    stack: table_stack(entry, &self.registries),
                     locked: false,
                 })
             })

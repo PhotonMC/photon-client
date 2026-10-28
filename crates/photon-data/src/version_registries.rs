@@ -141,6 +141,13 @@ impl VersionRegistries {
         self.version
     }
 
+    /// Whether the item named exists in this version; the filter for lists built from the union
+    /// tables (creative tabs, the recipe book, command suggestions).
+    pub fn has_item(&self, name: &str) -> bool {
+        crate::item::registry::index(name)
+            .is_some_and(|index| self.items.to_wire(index as u32).is_some())
+    }
+
     /// Every registry's name and map, for checks that cover them all.
     pub fn all(&self) -> [(&'static str, &IdMap); 7] {
         [
@@ -158,6 +165,13 @@ impl VersionRegistries {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn has_item_tells_a_listed_item_from_an_unknown_name() {
+        let registries = VersionRegistries::for_version(Version::V26_2);
+        assert!(registries.has_item("minecraft:stone"));
+        assert!(!registries.has_item("minecraft:not_an_item"));
+    }
 
     #[test]
     fn the_newest_version_numbers_every_registry_as_the_identity() {

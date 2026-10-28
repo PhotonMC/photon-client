@@ -23,6 +23,12 @@ pub fn table_stack(entry: &CreativeStack, registries: &Registries) -> Stack {
 }
 
 /// The search tab, which lists every stack the other tabs do.
+/// Whether the session's version has the entry's item, `registries.has(..)`: a tab lists the union
+/// of every version's items.
+pub(super) fn offered(entry: &CreativeStack) -> bool {
+    photon_data::version_registries::VersionRegistries::newest().has_item(entry.item)
+}
+
 pub(super) fn search_tab() -> &'static photon_data::item::creative::CreativeTab {
     CREATIVE_TABS
         .iter()
