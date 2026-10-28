@@ -41,10 +41,10 @@ impl Play {
         (line_width, hook_lines): (f32, Vec<photon_render::block::outline::LineVertex>),
     ) -> (Vec<photon_render::block::outline::LineVertex>, usize) {
         let high_contrast = self.controls.options.high_contrast_block_outline;
-        let may_build = !matches!(
+        let aimed_menu = crate::view::camera_aim(&self.session, player, view.partial as f32);
+        let may_build = crate::view::local_may_outline(
             self.session.game_mode(),
-            photon_world::ClientPlayerGameMode::Adventure
-                | photon_world::ClientPlayerGameMode::Spectator
+            crate::view::aim_has_menu_provider(self.session.world(), &aimed_menu),
         );
         let kind = crate::view::CameraKind::of(self.session.world(), self.session.camera_entity());
         let (mut lines, backing) =

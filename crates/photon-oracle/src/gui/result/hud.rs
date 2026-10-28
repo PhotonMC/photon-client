@@ -180,6 +180,7 @@ fn quiet_input() -> HudInput {
         cooldowns: Vec::new(),
         first_person: true,
         spectator: false,
+        spectator_menu_target: false,
         three_dimensional_crosshair: false,
         survival: false,
         selected_slot: 0,
@@ -229,6 +230,7 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let input = HudInput {
         first_person: !flag("third_person"),
         spectator: flag("spectator"),
+        spectator_menu_target: false,
         three_dimensional_crosshair: row.get("debug").is_some_and(|debug| {
             let mut list = photon_gui::hud::debug::EntryList::default();
             list.set_overlay_visible(debug["overlay"].as_bool().unwrap_or(false));

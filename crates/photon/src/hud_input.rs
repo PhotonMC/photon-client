@@ -63,6 +63,21 @@ fn crosshair_target_is_living(
     })
 }
 
+/// `Hud.canRenderCrosshairForSpectator`: the crosshair is on a block or an entity with a menu
+/// provider. Only asked of a spectator.
+fn spectator_menu_target(
+    session: &PlaySession,
+    player: Option<&photon_world::local_player::LocalPlayer>,
+) -> bool {
+    session.game_mode() == photon_world::ClientPlayerGameMode::Spectator
+        && player.is_some_and(|player| {
+            crate::view::aim_has_menu_provider(
+                session.world(),
+                &crate::view::camera_aim(session, player, 1.0),
+            )
+        })
+}
+
 /// The locator bar's input, when the server tracks any waypoints.
 fn locator_input(
     session: &PlaySession,
@@ -253,6 +268,7 @@ pub fn hud_input(
         first_person,
         three_dimensional_crosshair: false,
         spectator: game_mode == photon_world::ClientPlayerGameMode::Spectator,
+        spectator_menu_target: spectator_menu_target(session, player),
         survival: game_mode.is_survival(),
         selected_slot: status.selected_slot,
         health: player.map_or(status.health, |player| player.health()),

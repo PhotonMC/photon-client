@@ -84,6 +84,9 @@ pub struct HudInput {
     /// The camera is in the player's eyes: the crosshair shows.
     pub first_person: bool,
     pub spectator: bool,
+    /// What the crosshair is on has a menu provider, which is all a spectator's crosshair shows for
+    /// (`Hud.canRenderCrosshairForSpectator`).
+    pub spectator_menu_target: bool,
     /// The `3d_crosshair` debug entry is shown now, which takes the flat crosshair's place.
     pub three_dimensional_crosshair: bool,
     /// Survival or adventure: `canHurtPlayer` and `hasExperience`.
@@ -341,7 +344,7 @@ impl Hud {
         height: i32,
         input: &HudInput,
     ) {
-        if !input.first_person || input.spectator || input.three_dimensional_crosshair {
+        if !crosshair_shown(input) {
             return;
         }
         let invert = GuiBlend::Invert;
@@ -528,5 +531,34 @@ mod tests {
             HeartType::Poisoned.sprite(true, false, true),
             "hud/heart/poisoned_hardcore_full_blinking"
         );
+    }
+}
+
+/// `Hud.extractCrosshair`'s gates: the eyes' view, no `3d_crosshair`, and for a spectator only a
+/// menu target.
+fn crosshair_shown(input: &HudInput) -> bool {
+    crosshair_gate(
+        input.first_person,
+        input.spectator,
+        input.spectator_menu_target,
+        input.three_dimensional_crosshair,
+    )
+}
+
+fn crosshair_gate(first_person: bool, spectator: bool, menu_target: bool, three_d: bool) -> bool {
+    first_person && (!spectator || menu_target) && !three_d
+}
+
+#[cfg(test)]
+mod crosshair_tests {
+    use super::crosshair_gate;
+
+    #[test]
+    fn a_spectator_sees_the_crosshair_only_on_a_menu_target() {
+        assert!(crosshair_gate(true, false, false, false));
+        assert!(!crosshair_gate(true, true, false, false));
+        assert!(crosshair_gate(true, true, true, false));
+        assert!(!crosshair_gate(false, false, false, false));
+        assert!(!crosshair_gate(true, false, false, true));
     }
 }

@@ -111,6 +111,39 @@ fn camera_viewer(
     Some((viewer, eye))
 }
 
+/// The local player's share of `shouldRenderBlockOutline` for a block aimed at: a player who
+/// can build always has an outline; a spectator has one on a block with a menu provider. An
+/// adventure player's tool exception is not ported (no outline).
+pub fn local_may_outline(
+    game_mode: photon_world::ClientPlayerGameMode,
+    block_has_menu_provider: bool,
+) -> bool {
+    use photon_world::ClientPlayerGameMode::{Adventure, Spectator};
+    match game_mode {
+        Adventure => false,
+        Spectator => block_has_menu_provider,
+        _ => true,
+    }
+}
+
+/// Whether what the aim is on has a menu provider: a block state's, or an entity type's.
+pub fn aim_has_menu_provider(
+    world: &photon_world::ClientWorld,
+    aim: &photon_game::game_mode::Aim,
+) -> bool {
+    use photon_game::game_mode::Aim;
+    use photon_world::block::menu_provider::{entity_has_menu_provider, has_menu_provider};
+    match *aim {
+        Aim::Block { x, y, z, .. } => world.block_state_at(x, y, z).is_some_and(has_menu_provider),
+        Aim::Entity { id, .. } => world
+            .entities()
+            .at(id)
+            .and_then(|entity| photon_data::entity_type::name(entity.type_id))
+            .is_some_and(entity_has_menu_provider),
+        _ => false,
+    }
+}
+
 /// `Minecraft.crosshairPickEntity`: the entity the crosshair is on, as the nearest thing along
 /// the aim.
 pub fn crosshair_entity(
@@ -482,6 +515,16 @@ mod camera_viewer_tests {
             CameraKind::RemotePlayer
         );
         assert_eq!(CameraKind::of(&world, Some(EntityId(2))), CameraKind::Other);
+    }
+
+    #[test]
+    fn a_spectator_outlines_only_blocks_with_a_menu() {
+        use photon_world::ClientPlayerGameMode::{Adventure, Creative, Spectator, Survival};
+        assert!(local_may_outline(Survival, false));
+        assert!(local_may_outline(Creative, false));
+        assert!(!local_may_outline(Adventure, true));
+        assert!(local_may_outline(Spectator, true));
+        assert!(!local_may_outline(Spectator, false));
     }
 
     #[test]
