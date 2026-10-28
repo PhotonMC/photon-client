@@ -171,13 +171,17 @@ pub(crate) fn blockpos_between_corners_direction_case(request: &Value) -> Result
             BlockPos::between_corners_in_direction(first, second, direction),
         ),
         "coordinates": blockpos_position_list(
-            BlockPos::between_corners_in_direction_coordinates(
-                i32_string_field(request, "first_x")?,
-                i32_string_field(request, "first_y")?,
-                i32_string_field(request, "first_z")?,
-                i32_string_field(request, "second_x")?,
-                i32_string_field(request, "second_y")?,
-                i32_string_field(request, "second_z")?,
+            BlockPos::between_corners_in_direction(
+                BlockPos::new(
+                    i32_string_field(request, "first_x")?,
+                    i32_string_field(request, "first_y")?,
+                    i32_string_field(request, "first_z")?,
+                ),
+                BlockPos::new(
+                    i32_string_field(request, "second_x")?,
+                    i32_string_field(request, "second_y")?,
+                    i32_string_field(request, "second_z")?,
+                ),
                 direction,
             ),
         ),
@@ -482,12 +486,8 @@ pub(crate) fn blockpos_random_ranges_case(request: &Value) -> Result<Value, Stri
     let between = BlockPos::random_between_closed(
         &mut between_random,
         limit,
-        min_x,
-        min_y,
-        min_z,
-        max_x,
-        max_y,
-        max_z,
+        BlockPos::new(min_x, min_y, min_z),
+        BlockPos::new(max_x, max_y, max_z),
     )
     .map_err(|_| "bound must be positive".to_owned())?;
     let after_between = between_random.next_int();

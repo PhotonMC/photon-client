@@ -523,7 +523,6 @@
 
 [fn-length]
 "crates/photon-core/src/aabb/clipping.rs::clip_bounds" = 119
-"crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 74
 "crates/photon-core/src/shape/rotation.rs::Shapes::rotate_transform_with_center" = 103
 "crates/photon-core/src/utf8.rs::decode_java_utf8" = 101
 "crates/photon-dev/examples/connection_probe.rs::main" = 120
@@ -985,8 +984,6 @@
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
 
 [fn-params]
-"crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 7
-"crates/photon-core/src/binary/traversal.rs::BlockPos::random_between_closed" = 8
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 7
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 7

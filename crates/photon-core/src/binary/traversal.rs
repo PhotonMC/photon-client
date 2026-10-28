@@ -226,21 +226,14 @@ impl BlockPos {
     }
 
     /// Enumerate Java's bounded random block positions in x, y, z draw order.
-    // The six coordinates mirror Java's public overload exactly.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
     pub fn random_between_closed(
         random: &mut RandomSource,
         limit: i32,
-        min_x: i32,
-        min_y: i32,
-        min_z: i32,
-        max_x: i32,
-        max_y: i32,
-        max_z: i32,
+        min: Self,
+        max: Self,
     ) -> Result<Vec<Self>, RandomError> {
+        let (min_x, min_y, min_z) = (min.x, min.y, min.z);
+        let (max_x, max_y, max_z) = (max.x, max.y, max.z);
         let width = max_x.wrapping_sub(min_x).wrapping_add(1);
         let height = max_y.wrapping_sub(min_y).wrapping_add(1);
         let depth = max_z.wrapping_sub(min_z).wrapping_add(1);
@@ -266,15 +259,19 @@ impl BlockPos {
         center: Self,
         size_to_scan_in_all_directions: i32,
     ) -> Result<Vec<Self>, RandomError> {
+        let reach = size_to_scan_in_all_directions;
+        let shifted = |offset: fn(i32, i32) -> i32| {
+            Self::new(
+                offset(center.x, reach),
+                offset(center.y, reach),
+                offset(center.z, reach),
+            )
+        };
         Self::random_between_closed(
             random,
             limit,
-            center.x.wrapping_sub(size_to_scan_in_all_directions),
-            center.y.wrapping_sub(size_to_scan_in_all_directions),
-            center.z.wrapping_sub(size_to_scan_in_all_directions),
-            center.x.wrapping_add(size_to_scan_in_all_directions),
-            center.y.wrapping_add(size_to_scan_in_all_directions),
-            center.z.wrapping_add(size_to_scan_in_all_directions),
+            shifted(i32::wrapping_sub),
+            shifted(i32::wrapping_add),
         )
     }
 
@@ -342,40 +339,26 @@ impl BlockPos {
 
     /// Enumerate the AABB corner traversal after Java floor conversion.
     pub fn between_corners_in_direction_aabb(value: Aabb, direction: Vec3) -> Vec<Self> {
-        Self::between_corners_in_direction_coordinates(
-            math::floor_f64(value.min_x),
-            math::floor_f64(value.min_y),
-            math::floor_f64(value.min_z),
-            math::floor_f64(value.max_x),
-            math::floor_f64(value.max_y),
-            math::floor_f64(value.max_z),
+        Self::between_corners_in_direction(
+            Self::new(
+                math::floor_f64(value.min_x),
+                math::floor_f64(value.min_y),
+                math::floor_f64(value.min_z),
+            ),
+            Self::new(
+                math::floor_f64(value.max_x),
+                math::floor_f64(value.max_y),
+                math::floor_f64(value.max_z),
+            ),
             direction,
         )
     }
 
-    /// Enumerate the corner traversal between two BlockPos values.
-    pub fn between_corners_in_direction(first: Self, second: Self, direction: Vec3) -> Vec<Self> {
-        Self::between_corners_in_direction_coordinates(
-            first.x, first.y, first.z, second.x, second.y, second.z, direction,
-        )
-    }
-
     /// Enumerate normalized integer corners in the direction-prioritized order.
-    pub fn between_corners_in_direction_coordinates(
-        first_x: i32,
-        first_y: i32,
-        first_z: i32,
-        second_x: i32,
-        second_y: i32,
-        second_z: i32,
-        direction: Vec3,
-    ) -> Vec<Self> {
-        let min_x = first_x.min(second_x);
-        let min_y = first_y.min(second_y);
-        let min_z = first_z.min(second_z);
-        let max_x = first_x.max(second_x);
-        let max_y = first_y.max(second_y);
-        let max_z = first_z.max(second_z);
+    pub fn between_corners_in_direction(first: Self, second: Self, direction: Vec3) -> Vec<Self> {
+        let (min_x, max_x) = (first.x.min(second.x), first.x.max(second.x));
+        let (min_y, max_y) = (first.y.min(second.y), first.y.max(second.y));
+        let (min_z, max_z) = (first.z.min(second.z), first.z.max(second.z));
         let diff_x = max_x.wrapping_sub(min_x);
         let diff_y = max_y.wrapping_sub(min_y);
         let diff_z = max_z.wrapping_sub(min_z);
@@ -396,9 +379,7 @@ impl BlockPos {
                 axis.get_negative()
             }
         };
-        let first_step = axis_direction(first_axis).step();
-        let second_step = axis_direction(second_axis).step();
-        let third_step = axis_direction(third_axis).step();
+        let steps = [first_axis, second_axis, third_axis].map(|axis| axis_direction(axis).step());
         let first_max = first_axis.choose_i32(diff_x, diff_y, diff_z);
         let second_max = second_axis.choose_i32(diff_x, diff_y, diff_z);
         let third_max = third_axis.choose_i32(diff_x, diff_y, diff_z);
@@ -408,18 +389,10 @@ impl BlockPos {
         let mut positions = Vec::new();
 
         loop {
-            let x = start_x
-                .wrapping_add(first_step.0.wrapping_mul(first_index))
-                .wrapping_add(second_step.0.wrapping_mul(second_index))
-                .wrapping_add(third_step.0.wrapping_mul(third_index));
-            let y = start_y
-                .wrapping_add(first_step.1.wrapping_mul(first_index))
-                .wrapping_add(second_step.1.wrapping_mul(second_index))
-                .wrapping_add(third_step.1.wrapping_mul(third_index));
-            let z = start_z
-                .wrapping_add(first_step.2.wrapping_mul(first_index))
-                .wrapping_add(second_step.2.wrapping_mul(second_index))
-                .wrapping_add(third_step.2.wrapping_mul(third_index));
+            let indices = [first_index, second_index, third_index];
+            let x = offset_along(start_x, steps, indices, |step| step.0);
+            let y = offset_along(start_y, steps, indices, |step| step.1);
+            let z = offset_along(start_z, steps, indices, |step| step.2);
             positions.push(Self::new(x, y, z));
 
             if third_index < third_max {
@@ -451,4 +424,16 @@ pub enum TraversalNodeStatus {
     Accept,
     Skip,
     Stop,
+}
+
+/// `start` moved along the three steps by their indices, one wrapping add after another.
+fn offset_along(
+    start: i32,
+    steps: [(i32, i32, i32); 3],
+    indices: [i32; 3],
+    pick: fn((i32, i32, i32)) -> i32,
+) -> i32 {
+    steps.iter().zip(indices).fold(start, |at, (step, index)| {
+        at.wrapping_add(pick(*step).wrapping_mul(index))
+    })
 }
