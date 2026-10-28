@@ -45,7 +45,7 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 - **Screens.** HUD, chat, every container and inventory with click prediction, recipe book, advancements, statistics, the F3 debug overlay, options screens, toasts, tutorial, dialogs, and the command, structure and jigsaw block screens.
 - **Sound.** Positioned sound, music, subtitles, block, entity and UI sounds.
 
-Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Version 1.0 is multiplayer-only: Singleplayer and Realms are out of scope for it ([#168](https://github.com/PhotonMC/photon-client/issues/168)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
+Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Version 1.0 is multiplayer-only: Singleplayer and Realms are out of scope for it and stay inactive on the title screen ([ADR 0014](docs/adr/0014-multiplayer-only-first-release.md)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
 
 ## Progress
 
