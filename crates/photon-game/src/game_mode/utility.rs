@@ -123,7 +123,7 @@ pub(super) fn boat_use(ctx: &mut Context<'_>) -> UseResult {
         at.y + height,
         at.z + half,
     );
-    if ctx.world.boat_fits(at, area) {
+    if ctx.world.boat_fits(at, area, ctx.player.bounding_box()) {
         UseResult::Success { swing: true }
     } else {
         UseResult::Fail

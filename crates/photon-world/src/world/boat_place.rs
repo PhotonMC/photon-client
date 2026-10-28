@@ -23,7 +23,9 @@ impl ClientWorld {
 
     /// `Level.noCollision(boat, box)` for a boat about to stand at `position`: the blocks, the
     /// entities a boat cannot pass (pushable ones too, a boat being the source), and the border.
-    pub fn boat_fits(&self, position: Vec3, area: Aabb) -> bool {
+    ///
+    /// `player` is the local player's box, which is not among the entities.
+    pub fn boat_fits(&self, position: Vec3, area: Aabb, player: Aabb) -> bool {
         let boat = photon_data::entity_type::id("minecraft:oak_boat");
         let candidates = self.indexed_entity_collision_candidates(None, boat, None, area);
         let entities = crate::collision::collect_entity_collision_shapes_for_source(
@@ -35,6 +37,33 @@ impl ClientWorld {
         let source = crate::collision::ClientWorldCollisionSource { position };
         self.no_block_collision_in_registry(area)
             && entities.is_empty()
+            && !player.intersects(area)
+            && !self.pushable_in(area)
             && self.no_border_collision(Some(source), area)
+    }
+
+    /// The living entities `collision_candidate` leaves out that a boat cannot pass: `isPushable`
+    /// is alive, not a spectator and not climbing, but for bats and armor stands (never), horses
+    /// carrying a rider and parrots (always).
+    fn pushable_in(&self, area: Aabb) -> bool {
+        let query = area.inflate_all(1.0e-7);
+        self.entities.values().any(|entity| {
+            entity.is_living_entity()
+                && entity
+                    .collision_candidate(None, None, None, false)
+                    .is_none()
+                && entity.bounding_box().intersects(query)
+                && Self::is_pushable_mob(entity)
+        })
+    }
+
+    fn is_pushable_mob(entity: &crate::ClientEntity) -> bool {
+        let name = photon_data::entity_type::name(entity.type_id);
+        match name {
+            Some("minecraft:bat" | "minecraft:armor_stand") => false,
+            Some("minecraft:parrot") => true,
+            _ if entity.is_horse() && entity.is_vehicle() => false,
+            _ => !entity.is_dead_or_dying() && !entity.is_spectator() && !entity.on_climbable,
+        }
     }
 }

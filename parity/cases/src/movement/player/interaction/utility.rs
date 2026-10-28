@@ -272,8 +272,20 @@ fn boat_rows() -> Vec<Value> {
         beside("use-oak_boat-into-water", "minecraft:water").row(),
         // An entity in the boat's box fails the placing; one around the eye passes the use on.
         in_the_way("use-oak_boat-into-boat", "oak_boat", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-into-zombie", "zombie", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-into-armor-stand", "armor_stand", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-into-bat", "bat", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-into-parrot", "parrot", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-into-item", "item", 1.0, 2.5).row(),
+        underfoot("use-oak_boat-into-the-player").row(),
         in_the_way("use-oak_boat-eye-in-pickable", "zombie", 0.5, 0.5).row(),
     ]
+}
+
+/// A boat aimed at the floor beside the player's feet, where its box meets the player's.
+fn underfoot(label: &str) -> super::Interaction {
+    let feet = aim_at((0, 63, 0), "up", (0.5, 64.0, 0.9));
+    using(label, vec![], run(Some(&feet))).main_hand("minecraft:oak_boat").count(2).x_rot(80.0)
 }
 
 /// An entity standing at (x, 64, z) while a boat is aimed at the floor ahead.
