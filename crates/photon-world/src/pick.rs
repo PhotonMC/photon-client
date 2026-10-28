@@ -96,6 +96,25 @@ impl ClientEntity {
         }
     }
 
+    /// The renderers that light their entity at full block light whatever is around it
+    /// (`getBlockLightLevel` returns 15): allay, blaze, magma cube, vex, wither, and the
+    /// dragon fireball, shulker bullet and wither skull.
+    pub fn renderer_full_block_light(&self) -> bool {
+        photon_data::entity_type::name(self.type_id).is_some_and(|name| {
+            matches!(
+                name,
+                "minecraft:allay"
+                    | "minecraft:blaze"
+                    | "minecraft:magma_cube"
+                    | "minecraft:vex"
+                    | "minecraft:wither"
+                    | "minecraft:dragon_fireball"
+                    | "minecraft:shulker_bullet"
+                    | "minecraft:wither_skull"
+            )
+        })
+    }
+
     /// The height a sitting camel's or a digging sniffer's size gives (`pose_dimensions`), which
     /// its tag hangs by.
     pub fn pose_height(&self) -> Option<f32> {

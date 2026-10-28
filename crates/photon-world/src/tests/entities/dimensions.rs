@@ -1,5 +1,6 @@
 use super::super::*;
 use photon_core::ids::BlockStateId;
+use photon_core::ids::EntityId;
 
 #[test]
 fn entity_dimensions_and_block_fit_follow_java_epsilon() {
@@ -291,5 +292,42 @@ fn player_pose_selection_follows_java_priority_and_fit_fallbacks() {
     for (input, desired, actual) in cases {
         assert_eq!(input.desired_pose(), desired);
         assert_eq!(input.updated_pose(), actual);
+    }
+}
+
+/// The renderers whose `getBlockLightLevel` answers 15 light their entity at full block light;
+/// a pig's does not.
+#[test]
+fn some_renderers_light_their_entity_at_full_block_light() {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let names = [
+        ("minecraft:allay", true),
+        ("minecraft:blaze", true),
+        ("minecraft:magma_cube", true),
+        ("minecraft:vex", true),
+        ("minecraft:wither", true),
+        ("minecraft:dragon_fireball", true),
+        ("minecraft:shulker_bullet", true),
+        ("minecraft:wither_skull", true),
+        ("minecraft:pig", false),
+        ("minecraft:slime", false),
+        ("minecraft:ghast", false),
+    ];
+    for (id, (name, _)) in (1..).zip(names) {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(1, u64::from(id as u32)),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+    for (id, (name, full)) in (1..).zip(names) {
+        let entity = world.entities().at(EntityId(id)).expect("the entity");
+        assert_eq!(entity.renderer_full_block_light(), full, "{name}");
     }
 }
