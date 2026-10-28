@@ -9,8 +9,7 @@ impl VideoSettingsScreen {
         lang: &Lang,
         size: (i32, i32),
         in_world: bool,
-        gui_scale: i32,
-        max_gui_scale: i32,
+        (gui_scale, max_gui_scale): (i32, i32),
         values: VideoValues,
     ) -> Self {
         let screen = SubScreen::new(font, lang, size, "options.videoTitle", in_world, |list| {

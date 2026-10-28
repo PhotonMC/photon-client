@@ -562,8 +562,14 @@ mod tests {
     #[test]
     fn done_leaves_and_a_gui_scale_press_asks_the_window_for_a_size() {
         let Some((font, lang)) = assets() else { return };
-        let mut screen =
-            VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, VideoValues::default());
+        let mut screen = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            (2, 2),
+            VideoValues::default(),
+        );
         let mut asked = Vec::new();
         let mut resize = |scale: i32| {
             asked.push(scale);
@@ -588,7 +594,7 @@ mod tests {
             particles: photon_game::options::ParticleStatus::Minimal,
             ..VideoValues::default()
         };
-        let screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, shown);
+        let screen = VideoSettingsScreen::new(&font, &lang, (427, 240), true, (2, 2), shown);
         let back = screen.values(VideoValues::default());
         assert_eq!(back.gamma, 0.8);
         assert_eq!(
@@ -600,8 +606,14 @@ mod tests {
     #[test]
     fn a_preset_puts_the_options_it_controls_to_its_values() {
         let Some((font, lang)) = assets() else { return };
-        let mut screen =
-            VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, VideoValues::default());
+        let mut screen = VideoSettingsScreen::new(
+            &font,
+            &lang,
+            (427, 240),
+            true,
+            (2, 2),
+            VideoValues::default(),
+        );
         screen
             .screen
             .list
@@ -638,7 +650,7 @@ mod tests {
             quality: values.quality,
             ..VideoValues::default()
         };
-        let reopened = VideoSettingsScreen::new(&font, &lang, (427, 240), true, 2, 2, stored);
+        let reopened = VideoSettingsScreen::new(&font, &lang, (427, 240), true, (2, 2), stored);
         assert_eq!(
             reopened.values(VideoValues::default()).quality,
             values.quality

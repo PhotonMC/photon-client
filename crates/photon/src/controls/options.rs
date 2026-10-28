@@ -201,8 +201,10 @@ impl Controls {
             &assets.lang,
             (scale.gui_scaled_width(), scale.gui_scaled_height()),
             !self.title_host,
-            self.options.gui_scale,
-            scale.calculate_scale(0, self.options.font.force_unicode),
+            (
+                self.options.gui_scale,
+                scale.calculate_scale(0, self.options.font.force_unicode),
+            ),
             Self::video_values(&self.options),
         ));
     }

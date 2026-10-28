@@ -100,8 +100,7 @@ pub(super) fn video_settings_screen_case(
         &lang,
         (window.gui_scaled_width(), window.gui_scaled_height()),
         row["in_world"].as_bool().unwrap_or(false),
-        gui_scale,
-        max_scale,
+        (gui_scale, max_scale),
         super::stored::stored_values(row),
     );
     let mut last = (0.0, 0.0);
