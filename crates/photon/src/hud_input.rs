@@ -187,11 +187,24 @@ fn hand_in_use(player: &photon_world::local_player::LocalPlayer) -> Option<(bool
 /// Everything the HUD draws from, the camera in first person or not.
 /// `Hud.getPlayerVehicleWithHealth`: the mount of the camera player, when it is a living entity.
 fn vehicle_input(session: &PlaySession) -> Option<photon_gui::VehicleInput> {
-    if session.camera_entity().is_some() {
-        return None;
-    }
-    let id = session.world().local_player()?.vehicle_id()?;
-    let vehicle = session.world().entities().at(id)?;
+    camera_player_vehicle(session.world(), session.camera_entity())
+}
+
+/// The mount `Hud.getPlayerVehicleWithHealth` reads: of the local player, or of the camera
+/// entity when that is a player (any other camera entity is no camera player).
+fn camera_player_vehicle(
+    world: &photon_world::ClientWorld,
+    camera: Option<photon_core::ids::EntityId>,
+) -> Option<photon_gui::VehicleInput> {
+    let rider = match camera {
+        Some(id) => world
+            .entities()
+            .at(id)
+            .filter(|entity| entity.is_player())
+            .map(|_| id)?,
+        None => world.local_player()?.id(),
+    };
+    let vehicle = world.entities().at(world.entity_vehicle_id(rider)?)?;
     vehicle
         .is_living_entity()
         .then(|| photon_gui::VehicleInput {
@@ -312,4 +325,44 @@ pub fn frame_input(
         input.effects.clear();
     }
     input
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photon_core::binary::Uuid;
+    use photon_core::ids::EntityId;
+    use photon_world::{ClientWorld, DimensionBounds, EntityInput};
+
+    fn spawn(world: &mut ClientWorld, id: i32, name: &str) {
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(1, u64::try_from(id).expect("positive")),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+
+    #[test]
+    fn a_camera_player_shows_its_mount_and_other_camera_entities_none() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        spawn(&mut world, 1, "minecraft:player");
+        spawn(&mut world, 2, "minecraft:horse");
+        spawn(&mut world, 3, "minecraft:pig");
+        spawn(&mut world, 4, "minecraft:oak_boat");
+        spawn(&mut world, 5, "minecraft:player");
+        assert!(world.apply_entity_passengers(EntityId(2), &[EntityId(1)]));
+        assert!(world.apply_entity_passengers(EntityId(3), &[EntityId(2)]));
+        assert!(world.apply_entity_passengers(EntityId(4), &[EntityId(5)]));
+        let shown = |camera| camera_player_vehicle(&world, Some(EntityId(camera))).is_some();
+        // A player on a horse; the horse itself is no camera player; a player in a boat.
+        assert!(shown(1));
+        assert!(!shown(2));
+        assert!(!shown(5));
+    }
 }
