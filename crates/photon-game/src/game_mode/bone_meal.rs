@@ -191,15 +191,19 @@ fn valid_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) ->
     if matches!(name, "tall_dry_grass" | "bush" | "firefly_bush") {
         return spreader_target(ctx, name, pos);
     }
-    if let Some(target) = column_target(ctx, name, pos) {
+    if let Some(target) = column_target(ctx, name, (state, pos)) {
         return Some(target);
     }
     surroundings_target(name, state, (above, below))
 }
 
 /// A big dripleaf (or its stem) grows into air, water or a small dripleaf above its head; pale
-/// hanging moss grows into the air below its tip.
-fn column_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Option<bool> {
+/// hanging moss grows into the air below its tip; a pitcher crop by its own rule.
+fn column_target(
+    ctx: &Context<'_>,
+    name: &str,
+    (state, pos): (BlockStateId, (i32, i32, i32)),
+) -> Option<bool> {
     let walk = |same: &str, step: i32| {
         let mut at = pos;
         while block(ctx.state_at(at))
@@ -228,8 +232,34 @@ fn column_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Option<
             Some(leaf && room((head.0, head.1 + 1, head.2)))
         }
         "pale_hanging_moss" => Some(is_air(ctx.state_at(walk("pale_hanging_moss", -1)))),
+        "pitcher_crop" => Some(pitcher_target(ctx, state, pos)),
         _ => None,
     }
+}
+
+/// `PitcherCropBlock.isValidBonemealTarget`: the lower half (found from either) can grow one more
+/// age: not full grown, lit enough, below the build height, and where it turns double, with
+/// air or a pitcher crop above.
+fn pitcher_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) -> bool {
+    let is_lower = |state: BlockStateId| {
+        block(state).name == "minecraft:pitcher_crop" && property(state, "half") == Some("lower")
+    };
+    let lower = if is_lower(state) {
+        pos
+    } else if is_lower(ctx.state_at((pos.0, pos.1 - 1, pos.2))) {
+        (pos.0, pos.1 - 1, pos.2)
+    } else {
+        return false;
+    };
+    let age = property(ctx.state_at(lower), "age")
+        .and_then(|age| age.parse::<u8>().ok())
+        .unwrap_or(0);
+    let dimension = ctx.world.dimension();
+    let above = ctx.state_at((lower.0, lower.1 + 1, lower.2));
+    age < 4
+        && ctx.world.max_local_raw_brightness(lower, 0) >= 8
+        && lower.1 + 1 < dimension.min_y + dimension.height
+        && (age + 1 < 3 || is_air(above) || block(above).name == "minecraft:pitcher_crop")
 }
 
 /// The targets decided by the blocks above and below, or by nothing at all.
@@ -267,7 +297,7 @@ fn fixed_target(name: &str) -> Option<bool> {
 
 /// Whether the name is a block class with a `BonemealableBlock` rule not ported here.
 fn bonemealable_name(name: &str) -> bool {
-    matches!(name, "glow_lichen" | "pale_moss_carpet" | "pitcher_crop")
+    matches!(name, "glow_lichen" | "pale_moss_carpet")
 }
 
 /// `BoneMealItem.useOn`: swings where the clicked block grows, or where the block beside the face

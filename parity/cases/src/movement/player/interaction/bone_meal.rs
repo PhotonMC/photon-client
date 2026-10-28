@@ -60,6 +60,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     };
     let mut rows = plants(meal, &at);
     rows.extend(columns(meal, &below));
+    rows.extend(pitchers(meal));
     rows.extend([spreaders(meal), netherrack(meal), stalks(meal), always(meal)].concat());
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
@@ -284,5 +285,34 @@ fn always(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
         meal("bone-meal-small-dripleaf", vec![put_with(0, 64, 2, "minecraft:small_dripleaf", &[("half", "lower")])]),
         meal("bone-meal-lilac", vec![put_with(0, 64, 2, "minecraft:lilac", &[("half", "lower")])]),
         meal("bone-meal-rose-bush", vec![put_with(0, 64, 2, "minecraft:rose_bush", &[("half", "lower")])]),
+    ]
+}
+
+/// A pitcher crop's lower half at the aimed block, with whatever stands above it.
+fn pitcher(half: &str, age: &str, above: Option<&str>) -> Vec<Value> {
+    let mut world = vec![put_with(0, 64, 2, "minecraft:pitcher_crop", &[("half", half), ("age", age)])];
+    world.extend(above.map(|block| put(0, 65, 2, block)));
+    world
+}
+
+/// A pitcher crop: its age, what stands above it, and either half.
+fn pitchers(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    vec![
+        meal("bone-meal-pitcher-young", pitcher("lower", "0", None)),
+        meal("bone-meal-pitcher-grown", pitcher("lower", "4", None)),
+        meal("bone-meal-pitcher-turns-double", pitcher("lower", "2", None)),
+        meal("bone-meal-pitcher-turns-double-blocked", pitcher("lower", "2", Some("minecraft:stone"))),
+        meal("bone-meal-pitcher-small-blocked", pitcher("lower", "1", Some("minecraft:stone"))),
+        meal(
+            "bone-meal-pitcher-upper-half",
+            vec![
+                put_with(0, 64, 2, "minecraft:pitcher_crop", &[("half", "upper"), ("age", "3")]),
+                put_with(0, 63, 2, "minecraft:pitcher_crop", &[("half", "lower"), ("age", "3")]),
+            ],
+        ),
+        meal(
+            "bone-meal-pitcher-upper-half-orphan",
+            vec![put_with(0, 64, 2, "minecraft:pitcher_crop", &[("half", "upper"), ("age", "3")])],
+        ),
     ]
 }
