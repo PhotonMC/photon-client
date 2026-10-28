@@ -45,6 +45,7 @@ impl Play {
         let may_build = crate::view::local_may_outline(
             self.session.game_mode(),
             crate::view::aim_has_menu_provider(self.session.world(), &aimed_menu),
+            crate::view::held_item_fits_block(&self.session, &aimed_menu),
         );
         let kind = crate::view::CameraKind::of(self.session.world(), self.session.camera_entity());
         let (mut lines, backing) =

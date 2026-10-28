@@ -112,18 +112,50 @@ fn camera_viewer(
 }
 
 /// The local player's share of `shouldRenderBlockOutline` for a block aimed at: a player who
-/// can build always has an outline; a spectator has one on a block with a menu provider. An
-/// adventure player's tool exception is not ported (no outline).
+/// can build always has an outline; a spectator has one on a block with a menu provider; an
+/// adventure player on a block the held item can break or be placed on.
 pub fn local_may_outline(
     game_mode: photon_world::ClientPlayerGameMode,
     block_has_menu_provider: bool,
+    held_item_fits_block: bool,
 ) -> bool {
     use photon_world::ClientPlayerGameMode::{Adventure, Spectator};
     match game_mode {
-        Adventure => false,
+        Adventure => held_item_fits_block,
         Spectator => block_has_menu_provider,
         _ => true,
     }
+}
+
+/// `itemStack.canBreakBlockInAdventureMode || canPlaceOnBlockInAdventureMode` for the block the
+/// aim is on, with the item in the main hand.
+pub fn held_item_fits_block(
+    session: &photon_net::connection::PlaySession,
+    aim: &photon_game::game_mode::Aim,
+) -> bool {
+    use photon_world::item_components::{adventure_matches, adventure_predicate, ids};
+    let photon_game::game_mode::Aim::Block { x, y, z, .. } = *aim else {
+        return false;
+    };
+    let world = session.world();
+    let (Some(state), Some(stack)) = (
+        world.block_state_at(x, y, z),
+        world.local_player().and_then(|local| {
+            local.inventory_slot(36 + i16::from(session.status().selected_slot as i8))
+        }),
+    ) else {
+        return false;
+    };
+    [ids::CAN_BREAK, ids::CAN_PLACE_ON].into_iter().any(|id| {
+        let Some(Some(value)) = stack.patched(id) else {
+            return false;
+        };
+        adventure_predicate(&value).is_some_and(|all| {
+            adventure_matches(&all, state, |tag| {
+                world.block_state_registry().is_state_in_tag(state, tag)
+            })
+        })
+    })
 }
 
 /// Whether what the aim is on has a menu provider: a block state's, or an entity type's.
@@ -520,11 +552,12 @@ mod camera_viewer_tests {
     #[test]
     fn a_spectator_outlines_only_blocks_with_a_menu() {
         use photon_world::ClientPlayerGameMode::{Adventure, Creative, Spectator, Survival};
-        assert!(local_may_outline(Survival, false));
-        assert!(local_may_outline(Creative, false));
-        assert!(!local_may_outline(Adventure, true));
-        assert!(local_may_outline(Spectator, true));
-        assert!(!local_may_outline(Spectator, false));
+        assert!(local_may_outline(Survival, false, false));
+        assert!(local_may_outline(Creative, false, false));
+        assert!(!local_may_outline(Adventure, true, false));
+        assert!(local_may_outline(Adventure, false, true));
+        assert!(local_may_outline(Spectator, true, false));
+        assert!(!local_may_outline(Spectator, false, true));
     }
 
     #[test]
