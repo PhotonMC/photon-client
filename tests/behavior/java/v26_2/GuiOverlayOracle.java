@@ -227,6 +227,12 @@ class GuiOverlayOracle extends GuiHudOracle {
             entity.setPose(net.minecraft.world.entity.Pose.valueOf(row.get("pose").getAsString().toUpperCase()));
             entity.refreshDimensions();
         }
+        if (row.has("sniffer_state") && entity instanceof net.minecraft.world.entity.animal.sniffer.Sniffer sniffer) {
+            sniffer.getEntityData().set(Reflect.get(null, net.minecraft.world.entity.animal.sniffer.Sniffer.class, "DATA_STATE") instanceof net.minecraft.network.syncher.EntityDataAccessor<?> accessor
+                ? (net.minecraft.network.syncher.EntityDataAccessor<net.minecraft.world.entity.animal.sniffer.Sniffer.State>) accessor : null,
+                net.minecraft.world.entity.animal.sniffer.Sniffer.State.valueOf(row.get("sniffer_state").getAsString().toUpperCase()));
+            entity.refreshDimensions();
+        }
         if (row.has("stand_flags") && entity instanceof net.minecraft.world.entity.decoration.ArmorStand stand) {
             stand.getEntityData().set(net.minecraft.world.entity.decoration.ArmorStand.DATA_CLIENT_FLAGS,
                 (byte) row.get("stand_flags").getAsInt());

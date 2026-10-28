@@ -229,6 +229,10 @@ fn entity_metadata(row: &Value) -> Vec<u8> {
     if let Some(flags) = row["stand_flags"].as_u64() {
         metadata.extend([15, 0, flags as u8]);
     }
+    if row["sniffer_state"].as_str() == Some("digging") {
+        // `Sniffer.DATA_STATE`, a `Sniffer.State` (id 5) of the sniffer state serializer.
+        metadata.extend([18, 35, 5]);
+    }
     metadata.push(255);
     metadata
 }

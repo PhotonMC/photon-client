@@ -74,7 +74,16 @@ impl ClientEntity {
         use crate::ClientEntityPose::{LongJumping, Sitting};
         let pick = photon_data::entity_type::pick(self.type_id)?;
         let (width, height, eye) = pick.baby.filter(|_| self.baby).unwrap_or(pick.size);
-        match (photon_data::entity_type::name(self.type_id)?, self.pose()) {
+        let name = photon_data::entity_type::name(self.type_id)?;
+        if name == "minecraft:sniffer" && self.sniffer().is_some_and(|state| state.is_digging()) {
+            // `Sniffer.DIGGING_DIMENSIONS`: 0.4 shorter with an eye at 0.81, scaled by the age.
+            let (width, height) = (pick.size.0, pick.size.1 - 0.4);
+            let age = if self.baby { 0.5 } else { 1.0 };
+            return Some(
+                ClientEntityDimensions::from_values(width, height, 0.81, false).scale(age, age),
+            );
+        }
+        match (name, self.pose()) {
             ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.baby {
                 ClientEntityDimensions::from_values(0.95, 0.425, 0.41, false)
             } else {
@@ -87,10 +96,11 @@ impl ClientEntity {
         }
     }
 
-    /// The height a sitting camel's size gives (`pose_dimensions`), which its tag hangs by.
+    /// The height a sitting camel's or a digging sniffer's size gives (`pose_dimensions`), which
+    /// its tag hangs by.
     pub fn pose_height(&self) -> Option<f32> {
-        let sitting = self.pose() == crate::ClientEntityPose::Sitting;
-        sitting
+        let digging = self.sniffer().is_some_and(|state| state.is_digging());
+        (digging || self.pose() == crate::ClientEntityPose::Sitting)
             .then(|| self.pose_dimensions().map(|dimensions| dimensions.height()))
             .flatten()
     }

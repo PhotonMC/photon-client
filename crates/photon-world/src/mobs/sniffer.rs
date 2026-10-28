@@ -45,6 +45,11 @@ pub struct SnifferState {
 }
 
 impl SnifferState {
+    /// `Sniffer.getState() == DIGGING`, which shrinks its size.
+    pub fn is_digging(&self) -> bool {
+        self.mode == SnifferMode::Digging
+    }
+
     /// `Sniffer.isSearching`.
     pub fn is_searching(&self) -> bool {
         self.mode == SnifferMode::Searching

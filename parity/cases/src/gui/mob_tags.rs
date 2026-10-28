@@ -20,6 +20,8 @@ struct Mob {
     /// `ArmorStand.DATA_CLIENT_FLAGS`: small is 1, marker 16.
     stand_flags: Option<u8>,
     pose: Option<&'static str>,
+    /// `Sniffer.DATA_STATE`, by the state's name.
+    sniffer_state: Option<&'static str>,
     reach: Option<f64>,
     below: Option<f64>,
     tag: Tag,
@@ -35,6 +37,7 @@ const MOB: Mob = Mob {
     scale: None,
     stand_flags: None,
     pose: None,
+    sniffer_state: None,
     reach: None,
     below: None,
     tag: TAG,
@@ -56,6 +59,9 @@ fn mob(label: &str, mob: Mob) -> Value {
     if let Some(pose) = mob.pose {
         row["pose"] = json!(pose);
     }
+    if let Some(state) = mob.sniffer_state {
+        row["sniffer_state"] = json!(state);
+    }
     if let Some(flags) = mob.stand_flags {
         row["stand_flags"] = json!(flags);
     }
@@ -74,7 +80,7 @@ fn at(distance: f64) -> Tag {
 
 fn visibility_rows() -> Vec<Value> {
     let plain = Mob { kind: "minecraft:minecart", renderer: "entity", ..MOB };
-    vec![
+    let mut rows = vec![
         mob("mob-visible", MOB),
         mob("mob-hidden", Mob { visible: false, ..MOB }),
         mob("mob-hidden-picked", Mob { visible: false, picked: true, ..MOB }),
@@ -110,17 +116,6 @@ fn visibility_rows() -> Vec<Value> {
             "stand-small-marker",
             Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(25), ..MOB },
         ),
-        mob("villager-sleeping", Mob { kind: "minecraft:villager", pose: Some("sleeping"), ..MOB }),
-        mob(
-            "villager-sleeping-scaled",
-            Mob { kind: "minecraft:villager", pose: Some("sleeping"), scale: Some(2.0), ..MOB },
-        ),
-        mob("camel-sitting", Mob { kind: "minecraft:camel", pose: Some("sitting"), ..MOB }),
-        mob("camel-sitting-baby", Mob { kind: "minecraft:camel", pose: Some("sitting"), baby: true, ..MOB }),
-        mob("camel-husk-sitting", Mob { kind: "minecraft:camel_husk", pose: Some("sitting"), ..MOB }),
-        mob("goat-long-jumping", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), ..MOB }),
-        mob("goat-long-jumping-baby", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), baby: true, ..MOB }),
-        mob("zombie-sleeping", Mob { pose: Some("sleeping"), ..MOB }),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(
             "stand-hidden-picked",
@@ -130,6 +125,31 @@ fn visibility_rows() -> Vec<Value> {
             "stand-ridden",
             Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", tag: Tag { vehicle: true, ..TAG }, ..MOB },
         ),
+    ];
+    rows.extend(size_rows());
+    rows
+}
+
+/// The sizes poses and states change: sleeping, sitting, long jumping and digging.
+fn size_rows() -> Vec<Value> {
+    vec![
+        mob("villager-sleeping", Mob { kind: "minecraft:villager", pose: Some("sleeping"), ..MOB }),
+        mob(
+            "villager-sleeping-scaled",
+            Mob { kind: "minecraft:villager", pose: Some("sleeping"), scale: Some(2.0), ..MOB },
+        ),
+        mob("camel-sitting", Mob { kind: "minecraft:camel", pose: Some("sitting"), ..MOB }),
+        mob("camel-sitting-baby", Mob { kind: "minecraft:camel", pose: Some("sitting"), baby: true, ..MOB }),
+        mob("camel-husk-sitting", Mob { kind: "minecraft:camel_husk", pose: Some("sitting"), ..MOB }),
+        mob("sniffer-idle", Mob { kind: "minecraft:sniffer", ..MOB }),
+        mob("sniffer-digging", Mob { kind: "minecraft:sniffer", sniffer_state: Some("digging"), ..MOB }),
+        mob(
+            "sniffer-digging-baby",
+            Mob { kind: "minecraft:sniffer", sniffer_state: Some("digging"), baby: true, ..MOB },
+        ),
+        mob("goat-long-jumping", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), ..MOB }),
+        mob("goat-long-jumping-baby", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), baby: true, ..MOB }),
+        mob("zombie-sleeping", Mob { pose: Some("sleeping"), ..MOB }),
     ]
 }
 
