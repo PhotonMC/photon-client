@@ -145,10 +145,7 @@ impl GenericScreen {
                 &format!("container/{folder}/lit_progress"),
                 (14, 14),
                 (0, 14 - height),
-                left + 56,
-                top + 36 + 14 - height,
-                14,
-                height,
+                (left + 56, top + 36 + 14 - height, 14, height),
             );
         }
         let (current, total) = (data(2), data(3));
@@ -164,10 +161,7 @@ impl GenericScreen {
             &format!("container/{folder}/burn_progress"),
             (24, 16),
             (0, 0),
-            left + 79,
-            top + 34,
-            width,
-            16,
+            (left + 79, top + 34, width, 16),
         );
     }
 

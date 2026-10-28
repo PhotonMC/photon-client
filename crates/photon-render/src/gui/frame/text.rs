@@ -304,10 +304,6 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of part of a sprite: the sprite is taken as
     /// `size` units, and the part from `(u, v)` as big as the drawn area.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn blit_part(
         &mut self,
         atlas: &GuiAtlas,
@@ -315,11 +311,9 @@ impl GuiFrame {
         name: &str,
         size: (i32, i32),
         uv: (i32, i32),
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
+        rect: (i32, i32, i32, i32),
     ) {
+        let (x, y, w, h) = rect;
         self.blit_region(atlas, blend, name, size, (uv.0, uv.1, w, h), (x, y, w, h));
     }
 
@@ -347,7 +341,7 @@ impl GuiFrame {
                 colour: 0xFFFF_FFFF,
             });
         }
-        self.blit_part(atlas, GuiBlend::Translucent, name, size, uv, x, y, w, h);
+        self.blit_part(atlas, GuiBlend::Translucent, name, size, uv, (x, y, w, h));
     }
 
     /// A region of a sprite, `(u, v, width, height)` of a sprite `size`

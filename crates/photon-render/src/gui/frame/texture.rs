@@ -229,7 +229,7 @@ impl GuiFrame {
                 colour: 0xFFFF_FFFF,
             });
         }
-        self.blit_part(atlas, blend, name, size, uv, x, y, w, h);
+        self.blit_part(atlas, blend, name, size, uv, (x, y, w, h));
     }
 
     /// `GuiGraphics.blitSprite` of the left `w` by `h` part of a sprite
@@ -310,10 +310,7 @@ impl GuiFrame {
                     &format!("texture/{name}"),
                     tile,
                     (from_u, from_v),
-                    x + left,
-                    y + top,
-                    piece_w,
-                    piece_h,
+                    (x + left, y + top, piece_w, piece_h),
                 );
                 left += piece_w;
             }
