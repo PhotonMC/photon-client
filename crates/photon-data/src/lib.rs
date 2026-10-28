@@ -41,4 +41,5 @@ pub mod particle_values;
 pub mod sound_event;
 pub mod spear;
 pub mod stat;
+pub mod version_registries;
 pub mod villager;
