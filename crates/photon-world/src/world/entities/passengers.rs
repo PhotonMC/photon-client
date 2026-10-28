@@ -98,12 +98,33 @@ impl ClientWorld {
         ))
     }
 
+    /// `Entity.positionRider` for a vehicle with no seat geometry of its own: the passenger
+    /// sits at the top of the vehicle's box, less its own vehicle attachment.
+    fn default_rider_position(
+        &self,
+        vehicle_id: EntityId,
+        passenger_id: EntityId,
+    ) -> Option<photon_core::math::Vec3> {
+        let vehicle = self.entities.at(vehicle_id)?;
+        let (x, y, z) = vehicle.position();
+        let passenger = self.entities.at(passenger_id)?;
+        let attachment = vanilla_passenger_vehicle_attachment_y(passenger.type_id, passenger.baby);
+        Some(photon_core::math::Vec3::new(
+            x,
+            y + f64::from(vehicle.bb_height()) - attachment,
+            z,
+        ))
+    }
+
     pub(crate) fn position_entity_passenger(
         &mut self,
         vehicle_id: EntityId,
         passenger_id: EntityId,
     ) {
-        let Some(target) = self.boat_rider_position(vehicle_id, passenger_id) else {
+        let Some(target) = self
+            .boat_rider_position(vehicle_id, passenger_id)
+            .or_else(|| self.default_rider_position(vehicle_id, passenger_id))
+        else {
             return;
         };
         let target_position = (target.x, target.y, target.z);
