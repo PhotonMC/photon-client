@@ -984,7 +984,6 @@
 
 [fn-params]
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 7
-"crates/photon-gui/src/chat/suggestions.rs::SuggestionsList::new" = 7
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
 "crates/photon-gui/src/hud/boss_bar.rs::BossBars::add" = 7

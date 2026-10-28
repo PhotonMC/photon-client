@@ -252,8 +252,7 @@ impl CommandSuggestions {
         self.list = SuggestionsList::new(
             matches,
             (start, length),
-            &value,
-            &typed,
+            (&value, &typed),
             (&self.settings, screen),
             &self.font,
             (text_x, inner_width),

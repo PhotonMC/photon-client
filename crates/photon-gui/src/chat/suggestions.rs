@@ -72,8 +72,7 @@ impl SuggestionsList {
     pub fn new(
         matches: Vec<String>,
         (start, length): (usize, usize),
-        original: &str,
-        typed: &str,
+        (original, typed): (&str, &str),
         (settings, screen): (&SuggestionSettings, (i32, i32)),
         font: &Font,
         (text_x, box_width): (i32, i32),
