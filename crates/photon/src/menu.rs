@@ -188,12 +188,12 @@ impl Menu {
         }
         let splash = pick_splash(root);
         let game_directory = crate::controls::game_directory();
-        let screen = Screen::Title(TitleScreen::new(
+        let screen = title_screen(
             gui.text_assets().0,
             gui.lang(),
             gui_size(client),
             splash.as_deref(),
-        ));
+        );
         let (sound, music) = audio::take(client, root, &options);
         let assets = gui.screen_assets();
         Ok(Self {
@@ -219,7 +219,7 @@ impl Menu {
 
     fn title(&self, size: (i32, i32)) -> Screen {
         let (font, lang) = (self.gui.text_assets().0, self.gui.lang());
-        Screen::Title(TitleScreen::new(font, lang, size, self.splash.as_deref()))
+        title_screen(font, lang, size, self.splash.as_deref())
     }
 
     /// `ConnectScreen.startConnecting`: the join starts on its own thread.
@@ -405,6 +405,16 @@ impl Menu {
 }
 
 /// `SplashManager.getSplash`: the splash of the title screen for today.
+/// The title screen of this client: multiplayer-only (ADR 0014).
+fn title_screen(
+    font: &photon_render::gui::font::Font,
+    lang: &photon_game::text::Lang,
+    size: (i32, i32),
+    splash: Option<&str>,
+) -> Screen {
+    Screen::Title(TitleScreen::new(font, lang, size, splash).multiplayer_only(lang))
+}
+
 fn pick_splash(root: &Path) -> Option<String> {
     let user = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
     let seed = std::time::SystemTime::now()

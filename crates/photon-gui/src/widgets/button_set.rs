@@ -54,6 +54,11 @@ impl<A: Copy> ButtonSet<A> {
         rect
     }
 
+    /// The tooltip of the button at `index` of those added, `component` in words.
+    pub fn set_tooltip(&mut self, index: usize, lang: &Lang, component: &Component) {
+        self.buttons[index].2 = Some(Holder::of(lang, component));
+    }
+
     /// Wake or still the button at `index` of those added.
     pub fn set_active(&mut self, index: usize, active: bool) {
         self.buttons[index].0.active = active;

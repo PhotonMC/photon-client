@@ -2,7 +2,7 @@
 //! and the copyright line, over the panorama's overlay.
 
 use crate::{FontRuns, FrameRuns};
-use photon_game::text::{Lang, Run, Style};
+use photon_game::text::{Component, Lang, Run, Style};
 
 use crate::widgets::Kind;
 use crate::widgets::button_set::ButtonSet;
@@ -26,6 +26,14 @@ pub enum TitleAction {
 /// `SplashRenderer`'s place: right of the middle, below the logo, turned by a ninth of a half turn.
 const SPLASH_OFFSET: (f32, f32) = (123.0, 69.0);
 const SPLASH_ANGLE: f32 = (-std::f64::consts::PI / 9.0) as f32;
+
+/// The place of the Singleplayer and Realms buttons among those added.
+const SINGLEPLAYER: usize = 0;
+const REALMS: usize = 2;
+
+/// What the stilled buttons say (ours: the reference has no such state).
+const MULTIPLAYER_ONLY: &str =
+    "Photon 1.0 is multiplayer-only. Singleplayer and Realms are not available yet.";
 
 pub struct TitleScreen {
     buttons: ButtonSet<TitleAction>,
@@ -149,6 +157,18 @@ impl TitleScreen {
         }
     }
 
+    /// The screen of a client without a server of its own (ADR 0014): Singleplayer and Realms
+    /// are shown but still, and say why. The reference's screen has them active, so the parity
+    /// cases build the screen without this.
+    pub fn multiplayer_only(mut self, lang: &Lang) -> Self {
+        let reason = Component::translatable_or("photon.title.multiplayer_only", MULTIPLAYER_ONLY);
+        for index in [SINGLEPLAYER, REALMS] {
+            self.buttons.set_active(index, false);
+            self.buttons.set_tooltip(index, lang, &reason);
+        }
+        self
+    }
+
     pub fn buttons(&mut self) -> &mut ButtonSet<TitleAction> {
         &mut self.buttons
     }
@@ -230,4 +250,44 @@ fn draw_splash(frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, splash: &[Ru
         true,
     );
     frame.transform_from(mark, pose);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn screen(multiplayer_only: bool) -> TitleScreen {
+        let (font, lang) = (Font::default(), Lang::default());
+        let screen = TitleScreen::new(&font, &lang, (427, 240), None);
+        if multiplayer_only {
+            screen.multiplayer_only(&lang)
+        } else {
+            screen
+        }
+    }
+
+    /// A point inside the button at row `row` of the column.
+    fn row(row: i32) -> (i32, i32) {
+        (427 / 2, 240 / 4 + 48 + 24 * row + 10)
+    }
+
+    #[test]
+    fn the_reference_screen_has_every_button_active() {
+        let screen = screen(false);
+        let buttons = &screen.buttons;
+        assert_eq!(buttons.clicked(row(0)), Some(TitleAction::Singleplayer));
+        assert_eq!(buttons.clicked(row(1)), Some(TitleAction::Multiplayer));
+        assert_eq!(buttons.clicked(row(2)), Some(TitleAction::Realms));
+    }
+
+    #[test]
+    fn multiplayer_only_stills_singleplayer_and_realms_only() {
+        let screen = screen(true);
+        let buttons = &screen.buttons;
+        assert_eq!(buttons.clicked(row(0)), None);
+        assert_eq!(buttons.clicked(row(1)), Some(TitleAction::Multiplayer));
+        assert_eq!(buttons.clicked(row(2)), None);
+        let (x, y) = row(4);
+        assert_eq!(buttons.clicked((x - 50, y)), Some(TitleAction::Options));
+    }
 }

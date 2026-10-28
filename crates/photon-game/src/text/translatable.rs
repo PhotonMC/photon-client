@@ -17,6 +17,20 @@ impl Component {
         Self::translatable_with(key, Vec::new())
     }
 
+    /// A translatable that reads `fallback` when no language file has `key`: a text of ours that
+    /// the reference's language files do not carry.
+    pub fn translatable_or(key: impl Into<String>, fallback: impl Into<String>) -> Self {
+        Self {
+            content: Content::Translatable {
+                key: key.into(),
+                fallback: Some(fallback.into()),
+                args: Vec::new(),
+            },
+            style: Style::default(),
+            siblings: Vec::new(),
+        }
+    }
+
     pub fn translatable_with(key: impl Into<String>, args: Vec<Component>) -> Self {
         Self {
             content: Content::Translatable {
