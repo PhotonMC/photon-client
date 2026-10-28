@@ -23,5 +23,6 @@ Decisions:
 - [0008 Vanilla and Enhanced](adr/0008-vanilla-and-enhanced.md) (superseded by 0010)
 - [0009 Downloads and archives in xtask](adr/0009-xtask-downloads.md)
 - [0010 One product](adr/0010-one-product.md)
+- [0013 Multi-version content model](adr/0013-multi-version-content-model.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).

@@ -1,6 +1,6 @@
 # ADR 0004: Multi-version support through translation
 
-- Status: accepted (2026-10-10), not yet implemented
+- Status: accepted (2026-10-10); version packs, the extractor and protocol translation are replaced by [ADR 0013](0013-multi-version-content-model.md)
 
 ## Context
 

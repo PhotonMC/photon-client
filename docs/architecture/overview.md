@@ -82,4 +82,6 @@ State is held in large structs today:
 
 ## Versions
 
-Protocol 776 (Java Edition 26.2) is the only version today. The packet ids and generated tables are version-specific. The path to more versions is in [ADR 0004](../adr/0004-version-support.md).
+Protocol 776 (Java Edition 26.2) is the only version today. The packet ids and generated tables are version-specific.
+
+More versions follow [ADR 0013](../adr/0013-multi-version-content-model.md): one binary that picks the version at connect time, content as the union of all supported versions, and version differences as Rust code in `versions/` modules. Game code uses canonical ids; per-version wire ids exist only at the protocol boundary and are translated by a per-session `Registries`. The earlier plan in [ADR 0004](../adr/0004-version-support.md) (data packs, extractor, translation layer) is replaced.
