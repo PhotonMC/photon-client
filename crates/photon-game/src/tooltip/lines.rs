@@ -257,7 +257,17 @@ pub fn lines(
             potion_tooltip(&effects, 1.0, context, &mut out);
         }
     }
-    if shows(ids::BLOCK_STATE)
+    honey_line(&values, shows(ids::BLOCK_STATE), &mut out);
+    adventure_tooltips(&values, &shows, &mut out);
+    if flags.advanced {
+        advanced_lines(stack, &values, shows, &mut out);
+    }
+    out
+}
+
+/// `BlockItemStateProperties.addToTooltip`: only the honey level shows.
+fn honey_line(values: &Values, shown: bool, out: &mut Vec<Component>) {
+    if shown
         && let Some((_, level)) = values
             .block_state()
             .into_iter()
@@ -271,10 +281,48 @@ pub fn lines(
             .with_colour("gray"),
         );
     }
-    if flags.advanced {
-        advanced_lines(stack, &values, shows, &mut out);
+}
+
+/// The `can_break` and `can_place_on` sections.
+fn adventure_tooltips(values: &Values, shows: &dyn Fn(i32) -> bool, out: &mut Vec<Component>) {
+    for (component, header) in [
+        (ids::CAN_BREAK, "item.canBreak"),
+        (ids::CAN_PLACE_ON, "item.canPlace"),
+    ] {
+        if shows(component)
+            && let Some(value) = values.raw(component)
+        {
+            adventure_lines(value, header, out);
+        }
     }
-    out
+}
+
+/// `AdventureModePredicate.addToTooltip` after its header.
+fn adventure_lines(value: &[u8], header: &str, out: &mut Vec<Component>) {
+    use crate::item_components::{AdventureTooltip, adventure_tooltip};
+    let Some(tooltip) = adventure_tooltip(value) else {
+        return;
+    };
+    out.push(Component::empty());
+    out.push(Component::translatable(header).with_colour("gray"));
+    match tooltip {
+        AdventureTooltip::Unknown => {
+            out.push(Component::translatable("item.canUse.unknown").with_colour("gray"));
+        }
+        AdventureTooltip::Blocks(blocks) => {
+            for block in blocks {
+                let name = photon_data::block::registry::BLOCKS
+                    .get(block as usize)
+                    .map(|block| block.name.replacen(':', ".", 1));
+                if let Some(name) = name {
+                    out.push(
+                        Component::translatable(format!("block.{name}")).with_colour("dark_gray"),
+                    );
+                }
+            }
+        }
+        AdventureTooltip::Tagged => {}
+    }
 }
 
 pub(super) fn attribute_tooltips_if(

@@ -4,9 +4,9 @@ use serde_json::{Value, json};
 
 use super::gui;
 use crate::components::{
-    BANNER_PATTERNS, CONTAINER, CUSTOM_NAME, DAMAGE, INSTRUMENT, LORE, MAP_ID, MAP_POST_PROCESSING,
-    OMINOUS_BOTTLE_AMPLIFIER, POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, bundle, item_id, nbt_text as nbt, patch,
-    stack, text, vi,
+    BANNER_PATTERNS, CAN_BREAK, CAN_PLACE_ON, CONTAINER, CUSTOM_NAME, DAMAGE, INSTRUMENT, LORE, MAP_ID,
+    MAP_POST_PROCESSING, OMINOUS_BOTTLE_AMPLIFIER, POTION_CONTENTS, Stack, WRITTEN_BOOK_CONTENT, adventure_blocks,
+    bundle, item_id, nbt_text as nbt, patch, stack, text, vi,
 };
 
 /// `ItemContainerContents`: an optional stack per slot.
@@ -94,6 +94,20 @@ fn effect_time_rows() -> Vec<Tooltip> {
     ]
 }
 
+/// `AdventureModePredicate.addToTooltip`: the named blocks, each once; a predicate with no block
+/// set makes the line unknown.
+fn adventure_rows() -> Vec<Tooltip> {
+    let with = |label, added: Vec<(i64, String)>| Tooltip { added, ..row(label, "stick") };
+    vec![
+        with("can break", vec![(CAN_BREAK, adventure_blocks(&[1, 9, 1]))]),
+        with(
+            "can place and break",
+            vec![(CAN_BREAK, adventure_blocks(&[9])), (CAN_PLACE_ON, adventure_blocks(&[1, 8]))],
+        ),
+        with("can break unknown", vec![(CAN_BREAK, format!("{}{}", vi(1), "0000000000"))]),
+    ]
+}
+
 /// Tooltip lines of stacks whose items or components add lines: maps with
 /// and without the client's map data and post-processing, container
 /// contents up to the cut-off, written books, smithing templates, the
@@ -151,6 +165,7 @@ pub fn tooltip_lines() -> Value {
         ),
     ];
     rows.extend(effect_time_rows());
+    rows.extend(adventure_rows());
     gui("tooltip-lines", "tooltip_lines", rows.into_iter().map(Tooltip::row).collect())
 }
 
