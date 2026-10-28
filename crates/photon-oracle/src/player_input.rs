@@ -112,26 +112,16 @@ pub(super) fn client_world_player_keyboard_input_result(request: &Value) -> Resu
             .collect::<Result<Vec<_>, _>>()?;
         let operation_player_id = entity_id_field(operation, "player_id")?;
         let accepted = world.apply_local_player_attributes(operation_player_id, &attributes);
+        let key = |name: &str| {
+            operation[name]
+                .as_bool()
+                .ok_or(format!("{name} must be a boolean"))
+        };
         let keys = Input::new(
-            operation["up"].as_bool().ok_or("up must be a boolean")?,
-            operation["down"]
-                .as_bool()
-                .ok_or("down must be a boolean")?,
-            operation["left"]
-                .as_bool()
-                .ok_or("left must be a boolean")?,
-            operation["right"]
-                .as_bool()
-                .ok_or("right must be a boolean")?,
-            operation["jump"]
-                .as_bool()
-                .ok_or("jump must be a boolean")?,
-            operation["shift"]
-                .as_bool()
-                .ok_or("shift must be a boolean")?,
-            operation["sprint"]
-                .as_bool()
-                .ok_or("sprint must be a boolean")?,
+            (key("up")?, key("down")?, key("left")?, key("right")?),
+            key("jump")?,
+            key("shift")?,
+            key("sprint")?,
         );
         let mut keyboard = KeyboardInput::new(keys);
         keyboard.tick();

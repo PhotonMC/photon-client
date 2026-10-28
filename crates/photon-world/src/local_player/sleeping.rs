@@ -29,7 +29,7 @@ mod tests {
         assert_eq!((at.x, at.y, at.z), (3.5, 70.6875, -3.5));
         own.tick(
             &world,
-            Input::new(false, false, false, false, false, false, false),
+            Input::new((false, false, false, false), false, false, false),
         )
         .expect("tick");
         assert_eq!(own.pose(), ClientEntityPose::Sleeping);
@@ -38,7 +38,7 @@ mod tests {
         own.set_sleeping_pos(None);
         own.tick(
             &world,
-            Input::new(false, false, false, false, false, false, false),
+            Input::new((false, false, false, false), false, false, false),
         )
         .expect("tick");
         assert_eq!(own.pose(), ClientEntityPose::Standing);

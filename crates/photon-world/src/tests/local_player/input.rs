@@ -136,7 +136,7 @@ fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
     };
 
     assert!(world.apply_local_player_keyboard_input(
-        Input::new(true, false, false, false, false, false, false),
+        Input::new((true, false, false, false), false, false, false),
         true,
         modifiers,
     ));
@@ -160,7 +160,7 @@ fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
         ..modifiers
     };
     assert!(world.apply_local_player_keyboard_input(
-        Input::new(true, false, true, false, true, false, false),
+        Input::new((true, false, true, false), true, false, false),
         true,
         sneaking_modifiers,
     ));
@@ -170,7 +170,7 @@ fn local_player_keyboard_input_binds_keys_before_world_modifiers() {
     assert!(player.is_jumping());
 
     assert!(world.apply_local_player_keyboard_input(
-        Input::new(true, true, true, true, true, true, true),
+        Input::new((true, true, true, true), true, true, true),
         true,
         sneaking_modifiers,
     ));

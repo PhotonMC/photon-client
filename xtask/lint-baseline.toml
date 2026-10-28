@@ -718,7 +718,7 @@
 "crates/photon-oracle/src/model.rs::model_rotation_result" = 70
 "crates/photon-oracle/src/model.rs::model_winding_result" = 67
 "crates/photon-oracle/src/model_layers.rs::entity_block_layers_result" = 68
-"crates/photon-oracle/src/movement.rs::movement_result" = 483
+"crates/photon-oracle/src/movement.rs::movement_result" = 475
 "crates/photon-oracle/src/nbt_cases.rs::nbt_result" = 101
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
@@ -731,7 +731,7 @@
 "crates/photon-oracle/src/passenger_rotations.rs::client_world_entity_passenger_rotation_result" = 147
 "crates/photon-oracle/src/passenger_rotations.rs::client_world_entity_passenger_turn_result" = 153
 "crates/photon-oracle/src/player_attributes.rs::client_world_player_attribute_water_result" = 71
-"crates/photon-oracle/src/player_input.rs::client_world_player_keyboard_input_result" = 77
+"crates/photon-oracle/src/player_input.rs::client_world_player_keyboard_input_result" = 67
 "crates/photon-oracle/src/player_input.rs::client_world_player_sprint_trigger_result" = 63
 "crates/photon-oracle/src/player_input.rs::client_world_player_tick_result" = 127
 "crates/photon-oracle/src/pose.rs::fishing_hook_result" = 62
@@ -988,7 +988,6 @@
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::blit_texture" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::nine_slice" = 9
-"crates/photon-world/src/input/keyboard.rs::Input::new" = 7
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1

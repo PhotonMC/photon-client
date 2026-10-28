@@ -93,10 +93,7 @@ const FLAGS: &[Flag] = &[
 impl HeldKeys {
     pub fn input(self) -> photon_world::input::Input {
         photon_world::input::Input::new(
-            self.forward,
-            self.backward,
-            self.left,
-            self.right,
+            (self.forward, self.backward, self.left, self.right),
             self.jump,
             self.sneak,
             self.sprint,

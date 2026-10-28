@@ -12,6 +12,22 @@ pub(super) fn count_field(value: &Value, key: &str) -> Result<u32, String> {
     u32::try_from(i32_field(value, key)?).map_err(|e| e.to_string())
 }
 
+fn flag(row: &Value, key: &str) -> Result<bool, String> {
+    row[key]
+        .as_bool()
+        .ok_or_else(|| format!("{key} must be a bool"))
+}
+
+/// The forward, backward, left and right keys of a tick.
+fn walk_flags(tick: &Value) -> Result<(bool, bool, bool, bool), String> {
+    Ok((
+        flag(tick, "forward")?,
+        flag(tick, "backward")?,
+        flag(tick, "left")?,
+        flag(tick, "right")?,
+    ))
+}
+
 pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
     use photon_world::ClientPlayerGameMode;
     use photon_world::local_player::LocalPlayer;
@@ -27,11 +43,6 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         u32::from_str_radix(text, 16)
             .map(f32::from_bits)
             .map_err(|error| format!("{key}: {error}"))
-    }
-    fn flag(row: &Value, key: &str) -> Result<bool, String> {
-        row[key]
-            .as_bool()
-            .ok_or_else(|| format!("{key} must be a bool"))
     }
 
     if string(request, "operation")? == "light_changes" {
@@ -257,10 +268,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
         {
             apply_block_events(&mut world, block_events, index)?;
             let keys = photon_world::input::Input::new(
-                flag(tick, "forward")?,
-                flag(tick, "backward")?,
-                flag(tick, "left")?,
-                flag(tick, "right")?,
+                walk_flags(tick)?,
                 flag(tick, "jump")?,
                 flag(tick, "sneak")?,
                 flag(tick, "sprint")?,

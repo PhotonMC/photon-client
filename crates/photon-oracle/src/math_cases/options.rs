@@ -19,12 +19,14 @@ pub(super) fn vec2_case(request: &Value) -> Result<Value, String> {
 
 pub(super) fn keyboard_input_case(request: &Value) -> Result<Value, String> {
     let keys = Input::new(
-        request["up"].as_bool().ok_or("up must be a boolean")?,
-        request["down"].as_bool().ok_or("down must be a boolean")?,
-        request["left"].as_bool().ok_or("left must be a boolean")?,
-        request["right"]
-            .as_bool()
-            .ok_or("right must be a boolean")?,
+        (
+            request["up"].as_bool().ok_or("up must be a boolean")?,
+            request["down"].as_bool().ok_or("down must be a boolean")?,
+            request["left"].as_bool().ok_or("left must be a boolean")?,
+            request["right"]
+                .as_bool()
+                .ok_or("right must be a boolean")?,
+        ),
         request["jump"].as_bool().ok_or("jump must be a boolean")?,
         request["shift"]
             .as_bool()

@@ -148,13 +148,11 @@ pub struct LocalPlayerInputState {
 }
 
 impl Input {
-    pub const EMPTY: Self = Self::new(false, false, false, false, false, false, false);
+    pub const EMPTY: Self = Self::new((false, false, false, false), false, false, false);
 
+    /// `walk` is forward, backward, left and right.
     pub const fn new(
-        forward: bool,
-        backward: bool,
-        left: bool,
-        right: bool,
+        (forward, backward, left, right): (bool, bool, bool, bool),
         jump: bool,
         shift: bool,
         sprint: bool,

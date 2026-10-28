@@ -2,14 +2,16 @@ use super::*;
 
 pub(crate) fn sprint_trigger_input(value: &Value) -> Result<Input, String> {
     Ok(Input::new(
-        value["forward"]
-            .as_bool()
-            .ok_or("forward must be a boolean")?,
-        value["backward"]
-            .as_bool()
-            .ok_or("backward must be a boolean")?,
-        value["left"].as_bool().ok_or("left must be a boolean")?,
-        value["right"].as_bool().ok_or("right must be a boolean")?,
+        (
+            value["forward"]
+                .as_bool()
+                .ok_or("forward must be a boolean")?,
+            value["backward"]
+                .as_bool()
+                .ok_or("backward must be a boolean")?,
+            value["left"].as_bool().ok_or("left must be a boolean")?,
+            value["right"].as_bool().ok_or("right must be a boolean")?,
+        ),
         value["jump"].as_bool().ok_or("jump must be a boolean")?,
         value["shift"].as_bool().ok_or("shift must be a boolean")?,
         value["sprint"]

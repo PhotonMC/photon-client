@@ -110,7 +110,7 @@ fn local_player_sprint_trigger_tracks_previous_input_and_window() {
         moving_slowly: false,
     };
     let empty = Input::EMPTY;
-    let forward = Input::new(true, false, false, false, false, false, false);
+    let forward = Input::new((true, false, false, false), false, false, false);
 
     assert!(world.apply_local_player_sprint_trigger(empty, Vec2::ZERO, 7, conditions,));
     assert_eq!(

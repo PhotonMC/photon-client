@@ -20,7 +20,7 @@ mod tests {
     }
 
     fn forward() -> Input {
-        Input::new(true, false, false, false, false, false, false)
+        Input::new((true, false, false, false), false, false, false)
     }
 
     fn moves(sent: &[ServerboundMovement]) -> usize {

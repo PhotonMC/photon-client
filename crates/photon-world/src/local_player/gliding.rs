@@ -180,7 +180,7 @@ mod tests {
     }
 
     fn jump() -> Input {
-        Input::new(false, false, false, false, true, false, false)
+        Input::new((false, false, false, false), true, false, false)
     }
 
     fn started(sent: &[ServerboundMovement]) -> bool {
@@ -254,7 +254,7 @@ mod tests {
         player
             .tick(
                 &world,
-                Input::new(false, false, false, false, false, false, false),
+                Input::new((false, false, false, false), false, false, false),
             )
             .expect("tick");
         assert_eq!(player.pose(), ClientEntityPose::FallFlying);
@@ -262,7 +262,7 @@ mod tests {
         player
             .tick(
                 &world,
-                Input::new(false, false, false, false, false, false, false),
+                Input::new((false, false, false, false), false, false, false),
             )
             .expect("tick");
         assert!(!player.is_fall_flying());
@@ -279,7 +279,7 @@ mod tests {
         player
             .tick(
                 &world,
-                Input::new(false, false, false, false, false, false, false),
+                Input::new((false, false, false, false), false, false, false),
             )
             .expect("tick");
         assert_eq!(player.pose(), ClientEntityPose::FallFlying);
@@ -289,7 +289,7 @@ mod tests {
         player
             .tick(
                 &world,
-                Input::new(false, false, false, false, false, false, false),
+                Input::new((false, false, false, false), false, false, false),
             )
             .expect("tick");
         assert!(!player.is_moving_slowly());
@@ -305,20 +305,20 @@ mod tests {
         falling
             .tick(
                 &world,
-                Input::new(false, false, false, false, false, false, false),
+                Input::new((false, false, false, false), false, false, false),
             )
             .expect("tick");
         for _ in 0..10 {
             gliding
                 .tick(
                     &world,
-                    Input::new(false, false, false, false, false, false, false),
+                    Input::new((false, false, false, false), false, false, false),
                 )
                 .expect("tick");
             falling
                 .tick(
                     &world,
-                    Input::new(false, false, false, false, false, false, false),
+                    Input::new((false, false, false, false), false, false, false),
                 )
                 .expect("tick");
         }
