@@ -795,7 +795,7 @@
 "crates/photon-render/src/entity/mob_model/nether.rs::MobModel::setup_ravager" = 65
 "crates/photon-render/src/entity/mob_model/nether.rs::MobModel::setup_strider" = 95
 "crates/photon-render/src/entity/mob_model/villagers.rs::illager_arms" = 93
-"crates/photon-render/src/entity/player_model.rs::Cube::grown" = 74
+"crates/photon-render/src/entity/player_model.rs::Cube::grown" = 72
 "crates/photon-render/src/entity/player_model.rs::PlayerModel::new" = 102
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 64
 "crates/photon-render/src/entity/player_model/pose.rs::humanoid_anim" = 65
@@ -992,8 +992,6 @@
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::new" = 7
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
-"crates/photon-render/src/entity/player_model.rs::Cube::grown" = 7
-"crates/photon-render/src/entity/player_model.rs::Cube::sized" = 7
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::blit_part" = 9
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::sprite_cut" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::blit_texture" = 8

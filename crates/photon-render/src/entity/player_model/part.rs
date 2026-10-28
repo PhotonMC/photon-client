@@ -62,18 +62,15 @@ impl Part {
                         Face::West => Direction::West,
                     })
                     .collect();
-                Cube::grown(
-                    (cube.uv[0] as i32, cube.uv[1] as i32),
-                    cube.origin,
-                    cube.dimensions,
-                    cube.grow,
-                    cube.mirror,
-                    (
+                let mapping = Mapping {
+                    tex: (cube.uv[0] as i32, cube.uv[1] as i32),
+                    mirror: cube.mirror,
+                    texture: (
                         texture.0 as f32 * cube.uv_scale[0],
                         texture.1 as f32 * cube.uv_scale[1],
                     ),
-                    &faces,
-                )
+                };
+                Cube::grown(mapping, cube.origin, cube.dimensions, cube.grow, &faces)
             })
             .collect();
         Self::posed(

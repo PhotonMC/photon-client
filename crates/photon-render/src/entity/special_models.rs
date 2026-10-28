@@ -8,7 +8,7 @@
 //! model's own space, in blocks, where the item model's `transformation`
 //! finds it.
 
-use crate::entity::player_model::{Cube, ModelVertex, Part};
+use crate::entity::player_model::{Cube, Mapping, ModelVertex, Part};
 use photon_core::direction::Direction;
 
 /// A model's faces in one texture.
@@ -53,7 +53,7 @@ fn cube(texture: (f32, f32), tex: (i32, i32), min: [f32; 3], size: [f32; 3]) -> 
 }
 
 fn grown(texture: (f32, f32), tex: (i32, i32), min: [f32; 3], size: [f32; 3], grow: f32) -> Cube {
-    Cube::sized(tex, min, size, grow, false, texture, &FACES)
+    Cube::sized(Mapping::new(tex, false, texture), min, size, grow, &FACES)
 }
 
 const FACES: [Direction; 6] = [
@@ -187,7 +187,7 @@ fn head(kind: &str, texture: &str) -> Vec<ModelLayer> {
         "dragon" => {
             let size = (256.0, 256.0);
             let mirrored = |tex: (i32, i32), min: [f32; 3], extent: [f32; 3]| {
-                Cube::sized(tex, min, extent, 0.0, true, size, &FACES)
+                Cube::sized(Mapping::new(tex, true, size), min, extent, 0.0, &FACES)
             };
             root(vec![Part::posed(
                 "head",
@@ -296,7 +296,13 @@ fn trident() -> Vec<ModelLayer> {
         |name: &'static str, tex: (i32, i32), min: [f32; 3], size_of: [f32; 3], mirror: bool| {
             Part::new(
                 name,
-                vec![Cube::sized(tex, min, size_of, 0.0, mirror, size, &FACES)],
+                vec![Cube::sized(
+                    Mapping::new(tex, mirror, size),
+                    min,
+                    size_of,
+                    0.0,
+                    &FACES,
+                )],
                 [0.0; 3],
                 Vec::new(),
             )
@@ -368,12 +374,10 @@ fn decorated_pot() -> Vec<ModelLayer> {
         Part::posed(
             name,
             vec![Cube::sized(
-                (1, 0),
+                Mapping::new((1, 0), false, side_size),
                 [0.0, 0.0, 0.0],
                 [14.0, 16.0, 0.0],
                 0.0,
-                false,
-                side_size,
                 &[Direction::North],
             )],
             offset,

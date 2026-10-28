@@ -37,40 +37,60 @@ struct Polygon {
     normal: [f32; 3],
 }
 
+/// Where a box's faces lie in its texture: the corner of its unfolded layout, whether it is
+/// mirrored, and the size of the texture.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Mapping {
+    pub(crate) tex: (i32, i32),
+    pub(crate) mirror: bool,
+    pub(crate) texture: (f32, f32),
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Cube {
     polygons: Vec<Polygon>,
+}
+
+impl Mapping {
+    pub(crate) fn new(tex: (i32, i32), mirror: bool, texture: (f32, f32)) -> Self {
+        Self {
+            tex,
+            mirror,
+            texture,
+        }
+    }
 }
 
 impl Cube {
     /// `ModelPart.Cube` in the player's 64x64 texture, with every face
     /// visible.
     fn new(tex: (i32, i32), min: [f32; 3], size: [f32; 3], grow: f32, mirror: bool) -> Self {
-        Self::sized(tex, min, size, grow, mirror, (64.0, 64.0), &ALL_FACES)
+        let mapping = Mapping {
+            tex,
+            mirror,
+            texture: (64.0, 64.0),
+        };
+        Self::sized(mapping, min, size, grow, &ALL_FACES)
     }
 
     /// `ModelPart.Cube` in a texture of any size, with only the faces given
     /// visible.
     pub(crate) fn sized(
-        tex: (i32, i32),
+        mapping: Mapping,
         min: [f32; 3],
         size: [f32; 3],
         grow: f32,
-        mirror: bool,
-        texture: (f32, f32),
         visible: &[Direction],
     ) -> Self {
-        Self::grown(tex, min, size, [grow; 3], mirror, texture, visible)
+        Self::grown(mapping, min, size, [grow; 3], visible)
     }
 
     /// `ModelPart.Cube` with a growth of its own along each axis.
     pub(crate) fn grown(
-        tex: (i32, i32),
+        mapping: Mapping,
         min: [f32; 3],
         size: [f32; 3],
         grow: [f32; 3],
-        mirror: bool,
-        texture: (f32, f32),
         visible: &[Direction],
     ) -> Self {
         let [width, height, depth] = size;
@@ -80,7 +100,7 @@ impl Cube {
         let mut max_x = min[0] + width + grow[0];
         let max_y = min[1] + height + grow[1];
         let max_z = min[2] + depth + grow[2];
-        if mirror {
+        if mapping.mirror {
             std::mem::swap(&mut min_x, &mut max_x);
         }
         let t0 = [min_x, min_y, min_z];
@@ -91,7 +111,7 @@ impl Cube {
         let l1 = [max_x, min_y, max_z];
         let l2 = [max_x, max_y, max_z];
         let l3 = [min_x, max_y, max_z];
-        let (tex_u, tex_v) = (tex.0 as f32, tex.1 as f32);
+        let (tex_u, tex_v) = (mapping.tex.0 as f32, mapping.tex.1 as f32);
         let u0 = tex_u;
         let u1 = tex_u + depth;
         let u2 = tex_u + depth + width;
@@ -102,7 +122,7 @@ impl Cube {
         let v1 = tex_v + depth;
         let v2 = tex_v + depth + height;
         let face = |corners: [[f32; 3]; 4], uv: [f32; 4], facing: Direction| {
-            polygon(corners, uv, mirror, facing, texture)
+            polygon(corners, uv, mapping.mirror, facing, mapping.texture)
         };
         let faces = [
             (
