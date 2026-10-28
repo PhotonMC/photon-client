@@ -226,26 +226,18 @@ impl Play {
     ) -> [[f32; 4]; 4] {
         let options = &self.controls.options;
         // Only the player's own avatar sways the view; a living camera entity still flinches it.
-        if let Some(id) = self.session.camera_entity() {
-            let hurt = self
-                .session
-                .world()
-                .entities()
-                .at(id)
-                .filter(|entity| entity.is_living_entity());
-            let hurt = hurt.map_or_else(photon_render::camera::HurtView::none, |entity| {
-                camera_entity_hurt(entity, partial, options.damage_tilt_strength)
-            });
-            return photon_render::scene::multiply(
-                photon_render::camera::view_hurt(&hurt),
-                photon_render::camera::view_bob(0.0, 0.0),
-            );
-        }
-        let motion = player_motion(
-            player,
-            partial,
-            (options.view_bobbing, options.damage_tilt_strength),
-        );
+        let motion = match self.session.camera_entity() {
+            Some(id) => camera_entity_motion(
+                self.session.world().entities().at(id),
+                partial,
+                options.damage_tilt_strength,
+            ),
+            None => player_motion(
+                player,
+                partial,
+                (options.view_bobbing, options.damage_tilt_strength),
+            ),
+        };
         let nausea = crate::world::fog::nausea_blend(&self.session, partial);
         let portal = player.portal_effect_intensity(partial);
         let scale = self.controls.options.screen_effect_scale as f32;
@@ -279,20 +271,29 @@ fn player_motion(
     photon_render::scene::multiply(hurt, bob)
 }
 
-/// What `Camera.extractRenderState` reads of a living camera entity for `bobHurt`.
-fn camera_entity_hurt(
-    entity: &photon_world::ClientEntity,
+/// What the view is moved by while the camera is another entity: `bobHurt` from a living one's
+/// flinch and death roll (`Camera.extractRenderState`), and no sway.
+fn camera_entity_motion(
+    entity: Option<&photon_world::ClientEntity>,
     partial: f32,
     tilt_strength: f64,
-) -> photon_render::camera::HurtView {
-    photon_render::camera::HurtView {
-        hurt_time: entity.hurt_time() as f32 - partial,
-        hurt_duration: 10,
-        hurt_dir: entity.hurt_dir(),
-        dying: entity.is_dead_or_dying(),
-        death_time: entity.death_time() as f32 + partial,
-        tilt_strength,
-    }
+) -> [[f32; 4]; 4] {
+    let hurt = entity
+        .filter(|entity| entity.is_living_entity())
+        .map_or_else(photon_render::camera::HurtView::none, |entity| {
+            photon_render::camera::HurtView {
+                hurt_time: entity.hurt_time() as f32 - partial,
+                hurt_duration: 10,
+                hurt_dir: entity.hurt_dir(),
+                dying: entity.is_dead_or_dying(),
+                death_time: entity.death_time() as f32 + partial,
+                tilt_strength,
+            }
+        });
+    photon_render::scene::multiply(
+        photon_render::camera::view_hurt(&hurt),
+        photon_render::camera::view_bob(0.0, 0.0),
+    )
 }
 
 /// `Entity.getEyeHeight` of the camera entity: the player's, or that of the entity a spectator
@@ -348,4 +349,36 @@ pub(super) fn tick_view(
     let darken = photon_world::particles::Ambience::sky_darken(&sky.ambience(session));
     gui.tick_selected_name(session, controls.options.notification_display_time);
     gui.tick(eyes.map(|point| session.world().eye_brightness(point, darken)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use photon_core::binary::Uuid;
+    use photon_core::ids::EntityId;
+    use photon_world::{ClientWorld, DimensionBounds, EntityInput};
+
+    fn flinched(name: &str) -> [[f32; 4]; 4] {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: Uuid::new(1, 5),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.entities_mut().apply_hurt_animation(EntityId(5), 0.0));
+        camera_entity_motion(world.entities().at(EntityId(5)), 0.0, 1.0)
+    }
+
+    #[test]
+    fn a_living_camera_entity_flinches_the_view_and_others_do_not() {
+        let none = camera_entity_motion(None, 0.0, 1.0);
+        assert_ne!(flinched("minecraft:pig"), none);
+        assert_eq!(flinched("minecraft:oak_boat"), none);
+    }
 }
