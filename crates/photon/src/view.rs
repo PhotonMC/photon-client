@@ -30,13 +30,49 @@ pub fn camera_feet(
         )
 }
 
+/// `Minecraft.pick`: what the crosshair lands on, from the eyes of the camera entity (the
+/// player, or the entity a spectator was handed to) along its look, held to the player's ranges.
+pub fn camera_aim(
+    session: &photon_net::connection::PlaySession,
+    player: &photon_world::local_player::LocalPlayer,
+    partial: f32,
+) -> photon_game::game_mode::Aim {
+    use photon_game::input::pick::{Viewer, pick, pick_from};
+    let world = session.world();
+    let camera = session.camera_entity().and_then(|id| {
+        let entity = world.entities().at(id)?;
+        let snapshot = world.entity_snapshot(id, partial)?;
+        let (x, y, z) = snapshot.position;
+        let y_rot = if entity.is_living_entity() {
+            snapshot.head_yaw
+        } else {
+            snapshot.yaw
+        };
+        let eye = photon_core::math::Vec3::new(
+            x,
+            y + f64::from(entity.scaled_dimensions().eye_height()),
+            z,
+        );
+        let viewer = Viewer {
+            entity_id: id,
+            rotation: (y_rot, snapshot.pitch),
+            bounds: entity.bounding_box(),
+        };
+        Some((viewer, eye))
+    });
+    match camera {
+        Some((viewer, eye)) => pick_from(world, &viewer, eye),
+        None => pick(world, player, eye_position(player, f64::from(partial))),
+    }
+}
+
 /// `Minecraft.crosshairPickEntity`: the entity the crosshair is on, as the nearest thing along
 /// the aim.
 pub fn crosshair_entity(
     session: &photon_net::connection::PlaySession,
 ) -> Option<photon_core::ids::EntityId> {
     let player = session.player()?;
-    match photon_game::input::pick::pick(session.world(), player, eye_position(player, 1.0)) {
+    match camera_aim(session, player, 1.0) {
         photon_game::game_mode::Aim::Entity { id, .. } => Some(id),
         _ => None,
     }

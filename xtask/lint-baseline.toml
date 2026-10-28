@@ -580,7 +580,6 @@
 "crates/photon-game/src/game_mode/outgoing.rs::Outgoing::encode_body" = 97
 "crates/photon-game/src/input/event.rs::PreeditEvent::create_from_callback" = 64
 "crates/photon-game/src/input/key_mapping.rs::keysym_name" = 69
-"crates/photon-game/src/input/pick.rs::pick" = 66
 "crates/photon-game/src/item/default_components.rs::encode" = 131
 "crates/photon-game/src/menus/container/anvil.rs::ContainerMenu::anvil_create_result" = 144
 "crates/photon-game/src/menus/container/bundle.rs::ContainerMenu::bundle_click" = 62

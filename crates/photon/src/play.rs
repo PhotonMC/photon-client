@@ -35,11 +35,10 @@ use crate::profile::{self, FrameProfile, Span};
 use crate::screens::ScreenAssets;
 use crate::script::{HeldKeys, Script};
 use crate::sound::SoundSystem;
-use crate::view::{CLOUD_RANGE, CameraType, camera_position, eye_position, player_camera};
+use crate::view::{CLOUD_RANGE, CameraType, camera_position, player_camera};
 use crate::world::animated_atlas::AnimatedAtlas;
 use crate::world::sections::SectionMeshes;
 use crate::world::sky::{Sky, SkyCamera};
-use photon_game::input::pick::pick;
 use photon_game::options::UNLIMITED_FRAMERATE_CUTOFF;
 use photon_world::local_player::LocalPlayer;
 

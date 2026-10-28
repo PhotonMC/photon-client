@@ -461,7 +461,7 @@ impl Play {
         let aim = session
             .player()
             .map_or(photon_game::game_mode::Aim::Miss, |player| {
-                pick(session.world(), player, eye_position(player, 1.0))
+                crate::view::camera_aim(session, player, 1.0)
             });
         let grabbed = self.controls.captured || self.script.is_some();
         session.keys(self.controls.game_keys(grabbed), aim)?;

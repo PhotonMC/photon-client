@@ -3,7 +3,6 @@
 
 use photon_data::item::registry::AIR_ITEM;
 use photon_game::game_mode::Aim;
-use photon_game::input::pick::pick;
 use photon_game::options::AttackIndicator;
 use photon_gui::hud::locator::{LocatorCamera, LocatorInput, Viewer};
 use photon_net::connection::PlaySession;
@@ -11,7 +10,6 @@ use photon_world::ClientPlayerState;
 use photon_world::local_player::attack_strength_delay;
 
 use crate::objects::fishing_hooks::local_casts;
-use crate::view::eye_position;
 
 const ARMOR: i32 = 1;
 const ATTACK_SPEED: i32 = 5;
@@ -53,8 +51,7 @@ fn crosshair_target_is_living(
     player: Option<&photon_world::local_player::LocalPlayer>,
 ) -> bool {
     player.is_some_and(|player| {
-        let Aim::Entity { id, .. } = pick(session.world(), player, eye_position(player, 1.0))
-        else {
+        let Aim::Entity { id, .. } = crate::view::camera_aim(session, player, 1.0) else {
             return false;
         };
         session
