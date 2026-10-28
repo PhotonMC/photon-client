@@ -10,29 +10,7 @@ use photon_core::math::{mth_lerp_f64, mth_rot_lerp_f32};
 /// The ticks a batch of steps is played over (`NewMinecartBehavior.POS_ROT_LERP_TICKS`).
 const LERP_TICKS: i32 = 3;
 
-/// `NewMinecartBehavior.MinecartStep`.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct MinecartStep {
-    pub position: (f64, f64, f64),
-    pub movement: (f64, f64, f64),
-    pub y_rot: f32,
-    pub x_rot: f32,
-    pub weight: f32,
-}
-
-// A step is made of finite numbers: never NaN.
-impl Eq for MinecartStep {}
-
-impl MinecartStep {
-    /// `MinecartStep.ZERO`.
-    pub const ZERO: Self = Self {
-        position: (0.0, 0.0, 0.0),
-        movement: (0.0, 0.0, 0.0),
-        y_rot: 0.0,
-        x_rot: 0.0,
-        weight: 0.0,
-    };
-}
+pub use photon_core::minecart_step::MinecartStep;
 
 /// Where the playback puts the minecart (the part of a step that is lerped).
 #[derive(Debug, Clone, Copy, PartialEq)]

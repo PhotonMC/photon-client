@@ -3,7 +3,7 @@
 //! it (`SelectableRecipe.SingleInputSet`, without the recipes themselves,
 //! which the server keeps).
 
-use photon_core::ids::ItemId;
+use crate::ids::ItemId;
 
 /// An `Ingredient` as the network writes it: items, or a tag of them.
 #[derive(Debug, Clone, PartialEq, Eq)]

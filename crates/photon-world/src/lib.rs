@@ -57,7 +57,7 @@ pub mod particles;
 mod pick;
 mod player;
 mod prediction;
-mod recipes;
+pub use photon_core::recipes;
 mod region_copy;
 mod ride;
 mod shadow;

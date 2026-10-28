@@ -278,18 +278,7 @@ impl ClientWorldBorder {
     }
 }
 
-/// Fields carried by Java's initialize-border packet.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ClientWorldBorderInitialization {
-    pub center_x: f64,
-    pub center_z: f64,
-    pub old_size: f64,
-    pub new_size: f64,
-    pub lerp_time: i64,
-    pub absolute_max_size: i32,
-    pub warning_blocks: i32,
-    pub warning_time: i32,
-}
+pub use photon_core::border_init::ClientWorldBorderInitialization;
 
 pub(crate) fn calculate_world_border_size(from: f64, to: f64, duration: i64, progress: i64) -> f64 {
     let progress = (duration as f64 - progress as f64) / duration as f64;
