@@ -45,6 +45,7 @@ public final class Oracle {
                     case "entity" -> "EntityOracle";
                     case "gui" -> "GuiOracle";
                     case "sound" -> "SoundOracle";
+                    case "registry" -> "RegistryOracle";
                     default -> throw new IllegalArgumentException("Unknown scenario family");
                 };
                 var response = new JsonObject();

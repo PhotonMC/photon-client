@@ -163,28 +163,49 @@ pub(super) fn command_suggest_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": rows}))
 }
 
+/// The families whose answer is one function of the request.
+fn plain_family(family: &str, request: &Value) -> Option<Result<Value, String>> {
+    Some(match family {
+        "wire" => wire_result(request),
+        "timer" => timer_result(request),
+        "math" => math_result(request),
+        "utf8" => utf8_result(request),
+        "binary" => binary_result(request),
+        "nbt" => nbt_result(request),
+        "resources" => resources_result(request),
+        "window" => window_result(request),
+        "atlas" => atlas_result(request),
+        _ => return None,
+    })
+}
+
+/// The families of the game's content, each one function of the request.
+fn content_family(family: &str, request: &Value) -> Option<Result<Value, String>> {
+    Some(match family {
+        "block" => block_case(request),
+        "registry" => registry::registry_result(request),
+        "image" => image_result(request),
+        "model" => model_result(request),
+        "json" => json_result(request),
+        "movement" => movement_result(request),
+        "entity" => entity_family_result(request),
+        "gui" => gui::gui_result(request),
+        _ => return None,
+    })
+}
+
 pub(super) fn respond(request: Value) -> Result<Value, String> {
     if request["schema_version"].as_u64() != Some(1) {
         return Err("unsupported schema_version".into());
     }
     let case_id = string(&request, "case_id")?;
-    let result = match string(&request, "family")? {
-        "wire" => wire_result(&request)?,
-        "timer" => timer_result(&request)?,
-        "math" => math_result(&request)?,
-        "utf8" => utf8_result(&request)?,
-        "binary" => binary_result(&request)?,
-        "nbt" => nbt_result(&request)?,
-        "resources" => resources_result(&request)?,
-        "window" => window_result(&request)?,
-        "atlas" => atlas_result(&request)?,
-        "block" => block_case(&request)?,
-        "image" => image_result(&request)?,
-        "model" => model_result(&request)?,
-        "json" => json_result(&request)?,
-        "movement" => movement_result(&request)?,
-        "entity" => entity_family_result(&request)?,
-        "gui" => gui::gui_result(&request)?,
+    let family = string(&request, "family")?;
+    if let Some(result) =
+        plain_family(family, &request).or_else(|| content_family(family, &request))
+    {
+        return Ok(json!({"schema_version": 1, "case_id": case_id, "result": result?}));
+    }
+    let result = match family {
         "sound" => match string(&request, "operation")? {
             "sound_events" => {
                 let rows: Vec<Value> = (0..)

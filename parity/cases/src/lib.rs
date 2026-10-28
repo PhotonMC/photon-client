@@ -24,6 +24,7 @@ mod model;
 mod movement;
 mod nbt;
 mod ordered;
+mod registry;
 mod resources;
 mod sound;
 mod timer;
@@ -48,6 +49,7 @@ const GENERATORS: &[(&str, Generator)] = &[
     ("model", model::cases),
     ("movement", movement::cases),
     ("nbt", nbt::cases),
+    ("registry", registry::cases),
     ("resources", resources::cases),
     ("sound", sound::cases),
     ("timer", timer::cases),

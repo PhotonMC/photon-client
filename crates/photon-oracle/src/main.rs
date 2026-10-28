@@ -101,6 +101,7 @@ use std::rc::Rc;
 mod data_tables;
 mod hex;
 mod music;
+mod registry;
 mod wire_crypto;
 use hex::*;
 mod information;

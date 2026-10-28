@@ -60,8 +60,8 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 | Entity types with a renderer, named by the client | 141 / 156 |
 | Block entity types with a renderer, named by the client | 24 / 26 |
 | Particle types named by the client | 120 / 125 |
-| Parity cases | 4,776 in 17 families |
-| Lint baseline entries | 970 (at introduction: 1,234) |
+| Parity cases | 4,777 in 18 families |
+| Lint baseline entries | 969 (at introduction: 1,234) |
 <!-- progress:end -->
 
 Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
@@ -80,10 +80,10 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 <!-- milestones:start -->
 | Milestone | Closed / issues |
 | --- | --- |
-| [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 5 / 8 |
+| [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 6 / 8 |
 | [Infra: parity v2](https://github.com/PhotonMC/photon-client/milestone/2) | 7 / 8 |
 | [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 4 / 8 |
-| [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 1 / 7 |
+| [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 2 / 7 |
 | [Infra: rendering](https://github.com/PhotonMC/photon-client/milestone/5) | 0 / 5 |
 | [Infra: mod platform](https://github.com/PhotonMC/photon-client/milestone/6) | 0 / 2 |
 | [Infra: launcher and accounts](https://github.com/PhotonMC/photon-client/milestone/7) | 1 / 1 |
@@ -95,7 +95,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | [M9 Server compatibility](https://github.com/PhotonMC/photon-client/milestone/13) | 5 / 5 |
 | [M10 Parity closure and distribution](https://github.com/PhotonMC/photon-client/milestone/14) | 0 / 1 |
 | [Parity leftovers](https://github.com/PhotonMC/photon-client/milestone/15) | 7 / 26 |
-| [R1 First release](https://github.com/PhotonMC/photon-client/milestone/16) | 0 / 7 |
+| [R1 First release](https://github.com/PhotonMC/photon-client/milestone/16) | 1 / 7 |
 | [Later (post-1.0)](https://github.com/PhotonMC/photon-client/milestone/17) | 0 / 6 |
 <!-- milestones:end -->
 

@@ -52,7 +52,7 @@ The pre-push hook runs parity when engine crates or reference sources changed. R
 
 ## Families
 
-`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` NaN bit patterns were recorded on x86-64 Linux and differ on arm64.
+`atlas`, `binary`, `block`, `entity`, `gui`, `image`, `json`, `math`, `model`, `movement`, `nbt`, `registry`, `resources`, `sound`, `timer`, `utf8`, `window`, `wire`. `math` NaN bit patterns were recorded on x86-64 Linux and differ on arm64.
 
 The GUI family has its own page: [GUI oracle](gui-oracle.md).
 

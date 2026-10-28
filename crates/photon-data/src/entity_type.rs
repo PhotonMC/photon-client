@@ -6,6 +6,11 @@ use photon_core::ids::EntityTypeId;
 use crate::generated::entity_picks::ENTITY_PICKS;
 use crate::generated::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
 
+/// Every type's name, in id order.
+pub fn names() -> &'static [&'static str] {
+    &ENTITY_TYPES
+}
+
 /// The name of the type with this id (`minecraft:pig`).
 pub fn name(id: EntityTypeId) -> Option<&'static str> {
     usize::try_from(id.0)

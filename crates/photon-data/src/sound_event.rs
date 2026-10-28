@@ -11,6 +11,11 @@ pub fn name(id: i32) -> Option<&'static str> {
         .copied()
 }
 
+/// Every event's name, in id order.
+pub fn names() -> &'static [&'static str] {
+    &SOUND_EVENTS
+}
+
 /// The id of the event with this name.
 pub fn id(name: &str) -> Option<i32> {
     SOUND_EVENTS

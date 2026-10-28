@@ -37,6 +37,7 @@ pub const FAMILIES: &[&str] = &[
     "model",
     "movement",
     "nbt",
+    "registry",
     "resources",
     "sound",
     "timer",
