@@ -235,9 +235,14 @@ impl HandActions {
         ),
         main: Option<&ClientItemStackState>,
     ) -> Self {
-        let mut actions = Self::new(motions, player.arm_uses()).with_cast(
-            crate::objects::fishing_hooks::local_casts(session, player, main),
-        );
+        // The uses and the casts by arm: the main hand's on the main arm.
+        let mut uses = player.arm_uses();
+        let mut casts = crate::objects::fishing_hooks::local_casts(session, player, main);
+        if crate::overlays::local_main_arm_left() {
+            uses.swap(0, 1);
+            casts.swap(0, 1);
+        }
+        let mut actions = Self::new(motions, uses).with_cast(casts);
         actions.local = Some(player.entity_id().0);
         actions
     }

@@ -405,7 +405,7 @@ pub fn player_model(
     let (arms, attack_arm) = local_arms(session, player, stacks, partial);
     let arm_poses = (arms.right, arms.left);
     let spears = arm_poses::stacks_spear_view(
-        stacks,
+        crate::overlays::local_by_arm(stacks),
         arm_poses::SpearRest {
             main_arm: crate::overlays::local_main_arm(),
             attack: (attack_time, attack_arm),
