@@ -132,6 +132,10 @@ impl ClientWorld {
                 f64::from_bits(decode_entity_delta(current.2, input.delta_z)),
             )
         });
+        if self.is_locally_authoritative(input.entity_id) {
+            self.keep_packet_base_only(input.entity_id, new_position);
+            return false;
+        }
         let ticking = new_position.map(|position| {
             let (chunk_x, chunk_z) = entity_chunk_key(position);
             self.contains_chunk(chunk_x, chunk_z)
@@ -153,19 +157,10 @@ impl ClientWorld {
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
                 entity.move_or_interpolate_to(target_position, target_y_rot, target_x_rot);
             } else {
+                entity.set_plain_position(new_position, (input.y_rot, input.x_rot));
                 if input.has_position {
-                    let (x, y, z) = new_position.expect("position was requested");
-                    entity.position.x = JavaF64::new(x);
-                    entity.position.y = JavaF64::new(y);
-                    entity.position.z = JavaF64::new(z);
                     entity.ticking =
                         entity.always_ticking || ticking.expect("position ticking state");
-                }
-                if let Some(y_rot) = input.y_rot {
-                    entity.y_rot = JavaF32::new(y_rot % 360.0);
-                }
-                if let Some(x_rot) = input.x_rot {
-                    entity.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
                 }
             }
             if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -217,6 +212,7 @@ impl ClientWorld {
         else {
             return false;
         };
+        let authoritative = self.is_locally_authoritative(entity_id);
         let position;
         {
             let entity = self
@@ -225,6 +221,9 @@ impl ClientWorld {
                 .expect("entity position was checked above");
             if mode == EntityPositionUpdateMode::PositionSync {
                 entity.set_packet_base(target_position);
+                if authoritative {
+                    return false;
+                }
             }
             if entity.has_interpolation_handler() {
                 let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
@@ -247,19 +246,34 @@ impl ClientWorld {
                     entity.snap_to(target_position, rotation.0, rotation.1);
                 }
             } else {
-                entity.position.x = JavaF64::new(target_position.0);
-                entity.position.y = JavaF64::new(target_position.1);
-                entity.position.z = JavaF64::new(target_position.2);
-                if let Some((y_rot, x_rot)) = target_rotation {
-                    entity.y_rot = JavaF32::new(y_rot % 360.0);
-                    entity.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
-                }
+                entity.set_plain_position(
+                    Some(target_position),
+                    (target_rotation.map(|r| r.0), target_rotation.map(|r| r.1)),
+                );
             }
             entity.ticking = entity.always_ticking || ticking;
             position = entity.position();
         }
         self.update_entity_section(entity_id, previous_position, position);
         true
+    }
+
+    /// `handleMoveEntity` for a vehicle this client drives: only the packet base follows.
+    fn keep_packet_base_only(&mut self, entity_id: EntityId, position: Option<(f64, f64, f64)>) {
+        if let Some(position) = position
+            && let Some(entity) = self.entities.at_mut(entity_id)
+        {
+            entity.set_packet_base(position);
+        }
+    }
+
+    /// `Entity.isLocalInstanceAuthoritative` of a vehicle: the local player steers it.
+    fn is_locally_authoritative(&self, entity_id: EntityId) -> bool {
+        self.entities.at(entity_id).is_some_and(|entity| {
+            self.boat_is_local_instance_authoritative(entity)
+                && vanilla_boat_max_passengers(entity.type_id).is_some()
+                || self.mount_kind_of(entity).is_some()
+        })
     }
 
     pub fn apply_entity_ground_state(&mut self, entity_id: EntityId, on_ground: bool) -> bool {

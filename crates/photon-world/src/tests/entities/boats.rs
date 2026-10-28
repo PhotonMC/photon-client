@@ -159,8 +159,37 @@ fn a_passenger_of_an_armor_stand_follows_it() {
     assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
     let vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
     vehicle.set_position((0.0, 9.0, 0.0));
-    let height = f64::from(vehicle.bb_height());
     world.tick();
     let rider = world.entities().at(EntityId(38)).expect("rider");
-    assert_eq!(rider.position().1, 9.0 + height);
+    // An armor stand is 1.975 blocks tall (`EntityType.ARMOR_STAND`).
+    assert_eq!(rider.position().1, 9.0 + f64::from(1.975_f32));
+}
+
+#[test]
+fn a_boat_the_local_player_steers_ignores_the_servers_moves() {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(37),
+        uuid: Uuid::new(1, 37),
+        type_id: photon_core::ids::EntityTypeId(89),
+        x: 12.5,
+        y: 8.0,
+        z: -4.25,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (0.0, 0.0, 0.0),
+        data: 0,
+    }));
+    world.set_local_player_id(EntityId(38));
+    assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
+    world.apply_entity_move(EntityMoveInput {
+        entity_id: EntityId(37),
+        delta_x: 4_096,
+        delta_y: 0,
+        delta_z: 0,
+        has_position: true,
+        y_rot: None,
+        x_rot: None,
+    });
+    let boat = world.entities().at(EntityId(37)).expect("the boat");
+    assert_eq!(boat.interpolation_position(), (12.5, 8.0, -4.25));
 }

@@ -27,6 +27,25 @@ impl ClientEntity {
         (x, y, z)
     }
 
+    /// A position and turn a packet gave to an entity that does not interpolate.
+    pub(crate) fn set_plain_position(
+        &mut self,
+        position: Option<(f64, f64, f64)>,
+        (y_rot, x_rot): (Option<f32>, Option<f32>),
+    ) {
+        if let Some((x, y, z)) = position {
+            self.position.x = JavaF64::new(x);
+            self.position.y = JavaF64::new(y);
+            self.position.z = JavaF64::new(z);
+        }
+        if let Some(y_rot) = y_rot {
+            self.y_rot = JavaF32::new(y_rot % 360.0);
+        }
+        if let Some(x_rot) = x_rot {
+            self.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
+        }
+    }
+
     pub(crate) fn set_packet_base(&mut self, base: (f64, f64, f64)) {
         self.tracking.packet_base_bits = [base.0.to_bits(), base.1.to_bits(), base.2.to_bits()];
     }
