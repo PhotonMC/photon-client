@@ -49,6 +49,8 @@ pub(crate) struct Resolved {
     pub rect: TextureRect,
     pub slim: bool,
     pub cape: Option<TextureRect>,
+    /// The elytra texture the profile names (`PlayerSkin.elytra`).
+    pub elytra: Option<TextureRect>,
 }
 
 enum State {
@@ -102,6 +104,8 @@ pub(crate) struct Skins {
     frame: u64,
     /// Where the local player's cape is, if it has one: set by the frame that dresses it.
     pub(crate) own_cape: Option<TextureRect>,
+    /// Where the local player's elytra texture is, if its profile names one.
+    pub(crate) own_elytra: Option<TextureRect>,
     /// The lookups of heads that name their owner by name or id.
     pub(crate) lookups: dynamic::Lookups,
     /// The places written since the last call, for the GPU to take.
@@ -144,6 +148,7 @@ impl Skins {
             load,
             frame: 0,
             own_cape: None,
+            own_elytra: None,
             lookups: dynamic::Lookups::default(),
             dirty: Vec::new(),
         };
@@ -238,6 +243,7 @@ impl Skins {
                 rect,
                 slim: default.slim,
                 cape: None,
+                elytra: None,
             })
         };
         let Some(property) = who.properties.iter().find(|p| p.name == "textures") else {
@@ -275,23 +281,26 @@ impl Skins {
             blit(textures, rect, &loaded.rgba);
             self.dirty.push(region_of(textures, rect, &loaded.rgba));
         }
-        let cape = self.place_cape(textures, &loaded, frame);
+        let cape = self.place_cape(textures, loaded.cape.as_ref(), frame);
+        let elytra = self.place_cape(textures, loaded.elytra.as_ref(), frame);
         Some(Resolved {
             rect,
             slim: loaded.slim,
             cape,
+            elytra,
         })
     }
 
-    /// The place of the cape of a loaded skin, written when it was not there yet. None where
-    /// there is no cape, or no place is free in this frame (the player goes without).
+    /// The place of the cape (or elytra texture, which is cut the same) of a loaded skin, written
+    /// when it was not there yet. None where there is none, or no place is free in this frame
+    /// (the player goes without).
     fn place_cape(
         &mut self,
         textures: &mut EntityTextures,
-        loaded: &Loaded,
+        cape: Option<&worker::Cape>,
         frame: u64,
     ) -> Option<TextureRect> {
-        let cape = loaded.cape.as_ref()?;
+        let cape = cape?;
         let (index, fresh) = self.cape_slots.take(&cape.hash, frame)?;
         let rect = *self.cape_rects.get(index)?;
         if fresh {

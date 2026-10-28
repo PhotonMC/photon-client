@@ -54,6 +54,10 @@ fn loader(property: &ProfileProperty, _: &KeyCell, _: &Path) -> Option<Loaded> {
             hash: format!("{}-cape", property.value),
             rgba: Arc::new(vec![b'c'; 64 * 32 * 4]),
         }),
+        elytra: property.value.ends_with("+elytra").then(|| worker::Cape {
+            hash: format!("{}-elytra", property.value),
+            rgba: Arc::new(vec![b'e'; 64 * 32 * 4]),
+        }),
     })
 }
 
@@ -87,6 +91,7 @@ fn a_player_wears_the_default_skin_without_textures_and_while_loading() {
         rect: atlas.rect(default.texture).unwrap(),
         slim: default.slim,
         cape: None,
+        elytra: None,
     };
     skins.begin_frame();
     assert_eq!(
@@ -234,5 +239,25 @@ fn a_skin_without_a_cape_has_none() {
     assert_eq!(
         settle(&mut skins, &mut atlas, &who(1, &properties, false)).cape,
         None
+    );
+}
+
+#[test]
+fn a_loaded_elytra_texture_has_a_place_apart_from_the_cape() {
+    let mut atlas = textures();
+    let mut skins = Skins::with_loader(&atlas, PathBuf::new(), loader);
+    let properties = [property("wide+elytra")];
+    let found = settle(&mut skins, &mut atlas, &who(1, &properties, false));
+    let elytra = found.elytra.expect("an elytra texture");
+    assert!(skins.cape_rects.contains(&elytra));
+    assert_eq!(found.cape, None);
+    let (width, height) = (atlas.image.width as f32, atlas.image.height as f32);
+    let (x, y) = (
+        (elytra[0] * width).round() as usize,
+        (elytra[1] * height).round() as usize,
+    );
+    assert_eq!(
+        atlas.image.rgba[(y * atlas.image.width as usize + x) * 4],
+        b'e'
     );
 }

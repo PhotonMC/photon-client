@@ -12,6 +12,8 @@ use photon_world::local_player::CloakState;
 pub(super) struct Hang {
     /// Where the cape is, or none where the avatar has none.
     pub rect: Option<TextureRect>,
+    /// Where the profile's own elytra texture is, if it names one.
+    pub elytra: Option<TextureRect>,
     /// `state.showCape`.
     pub shows_cape: bool,
     /// `state.isInvisible`.
@@ -85,7 +87,10 @@ pub(super) fn back(
         chest,
         (false, placement.crouching, spread),
         // `WingsLayer.getPlayerElytraTexture`: the cape of a player who shows it is the wings'.
-        (textures, hang.rect.filter(|_| hang.shows_cape)),
+        (
+            textures,
+            hang.elytra.or(hang.rect.filter(|_| hang.shows_cape)),
+        ),
         &|model, rect, colour| {
             photon_render::entity::player_renderer::layer_vertices(model, placement, rect, colour)
         },
@@ -96,13 +101,18 @@ pub(super) fn back(
 /// The cape and wings of a remote player, whose cape (if it has one) is at `rect`.
 pub(super) fn remote_back(
     armor: &mut Armor,
-    (entity, rect): (&photon_world::ClientEntity, Option<TextureRect>),
+    (entity, rect, elytra): (
+        &photon_world::ClientEntity,
+        Option<TextureRect>,
+        Option<TextureRect>,
+    ),
     (model, placement): (&PlayerModel, &Placement),
     (textures, partial): (&EntityTextures, f32),
 ) -> Vec<Vertex> {
     let position = entity.interpolated_position(partial);
     let hang = Hang {
         rect,
+        elytra,
         shows_cape: entity.shows_cape(),
         invisible: entity.is_invisible(),
         cloak: Hang::remote_cloak(entity.cloak(), partial),
@@ -133,6 +143,7 @@ pub(super) fn own_hang(
         .is_some_and(|state| state.model_customisation() & 1 != 0);
     cape::Hang {
         rect: view.cape,
+        elytra: view.elytra,
         shows_cape: shown,
         invisible,
         cloak: player.cloak_state(partial),
@@ -148,6 +159,7 @@ mod tests {
     fn hang(cloak: [f64; 3], position: [f64; 3], glide_ticks: i32) -> Hang {
         Hang {
             rect: None,
+            elytra: None,
             shows_cape: true,
             invisible: false,
             cloak: CloakState {

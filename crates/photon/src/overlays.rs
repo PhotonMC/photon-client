@@ -43,6 +43,7 @@ pub struct FrameView {
     /// Where the skin the local player wears is in the entity textures, and its cape.
     pub skin: photon_render::entity::textures::TextureRect,
     pub cape: Option<photon_render::entity::textures::TextureRect>,
+    pub elytra: Option<photon_render::entity::textures::TextureRect>,
     /// The `bobView` option.
     pub view_bobbing: bool,
     /// The `damageTiltStrength` option.

@@ -60,6 +60,7 @@ impl Play {
             rotation: frame.rotation,
             skin: self.skin_rect,
             cape: self.skins.own_cape,
+            elytra: self.skins.own_elytra,
             view_bobbing: options.view_bobbing,
             damage_tilt: options.damage_tilt_strength,
             spectating,

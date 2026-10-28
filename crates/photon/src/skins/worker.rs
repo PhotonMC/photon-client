@@ -25,6 +25,8 @@ pub(super) struct Loaded {
     pub rgba: std::sync::Arc<Vec<u8>>,
     /// The cape the property names, if it has one that loaded.
     pub cape: Option<Cape>,
+    /// The elytra texture the property names, if it has one that loaded.
+    pub elytra: Option<Cape>,
 }
 
 /// A cape ready for the textures.
@@ -100,6 +102,10 @@ pub(super) fn load(property: &ProfileProperty, keys: &KeyCell, cache: &Path) -> 
             .cape
             .as_ref()
             .and_then(|cape| load_cape(cape, cache)),
+        elytra: textures
+            .elytra
+            .as_ref()
+            .and_then(|elytra| load_cape(elytra, cache)),
     })
 }
 

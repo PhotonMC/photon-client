@@ -58,6 +58,9 @@ fn patched(
     if let Some(cape) = rect(&patch.cape) {
         resolved.cape = Some(cape);
     }
+    if let Some(elytra) = rect(&patch.elytra) {
+        resolved.elytra = Some(elytra);
+    }
     if let Some(slim) = patch.slim {
         resolved.slim = slim;
     }

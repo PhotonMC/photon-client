@@ -73,10 +73,10 @@ pub fn remote_players(
         vertices.extend(shown_body(session, entity, (model, &placement), ghost));
         let wearing = wear(armor, worn, model.slim, textures, (&state, &placement));
         vertices.extend(glowing(session, entity, wearing));
-        let (own, drawn) = (look.cape, (&*model, &placement));
+        let (own, drawn) = ((look.cape, look.elytra), (&*model, &placement));
         vertices.extend(cape::remote_back(
             armor,
-            (entity, own),
+            (entity, own.0, own.1),
             drawn,
             (textures, partial),
         ));
