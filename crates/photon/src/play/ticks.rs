@@ -380,7 +380,7 @@ impl Play {
 
     /// The screens that tick with the game: the death screen, the credits, the confirmations,
     /// the waiting dialog, the sign, the bed's chat box and the chat's lines.
-    fn tick_screens(&mut self) -> Result<()> {
+    pub(super) fn tick_screens(&mut self) -> Result<()> {
         let session = &mut self.session;
         if let Some(death) = self.controls.death.as_mut() {
             death.tick();
@@ -403,7 +403,7 @@ impl Play {
     }
 
     /// The sound engine and the music manager for one tick.
-    fn tick_sound(&mut self) {
+    pub(super) fn tick_sound(&mut self) {
         let Some(sound) = self.sound.as_mut() else {
             return;
         };
@@ -417,7 +417,7 @@ impl Play {
     }
 
     /// What the player's own tick sounded.
-    fn tick_player_sounds(&mut self) {
+    pub(super) fn tick_player_sounds(&mut self) {
         let session = &mut self.session;
         let mut own_sounds = session
             .player_mut()
@@ -441,63 +441,6 @@ impl Play {
             }
             self.ambient.tick(session, sound);
         }
-    }
-
-    /// One client tick.
-    pub(super) fn tick(&mut self, held: HeldKeys) -> Result<()> {
-        self.tick_sound();
-        if let Some(screen) = self.controls.screen.as_mut() {
-            screen.tick(self.session.active_menu());
-        }
-        // What the screen asked for as it was drawn (a bundle the mouse left).
-        self.controls.drain_screen_actions(&mut self.session)?;
-        // A new level starts without it: the world reads its rain from the block materials.
-        if let Some(materials) = self.particles.materials() {
-            self.session.set_precipitation(materials);
-        }
-        let session = &mut self.session;
-        // `Minecraft.handleKeybinds`: the attack key is spent before the
-        // player moves, aiming the way `GameRenderer.pick` aims.
-        let aim = session
-            .player()
-            .map_or(photon_game::game_mode::Aim::Miss, |player| {
-                crate::view::camera_aim(session, player, 1.0)
-            });
-        let grabbed = self.controls.captured || self.script.is_some();
-        session.keys(self.controls.game_keys(grabbed), aim)?;
-        for hand in session.take_items_used() {
-            self.item_in_hand.item_used(hand);
-        }
-        self.tutorial_before_tick(&aim, &held);
-        let session = &mut self.session;
-        // After the keys and before the player ticks.
-        tick_hands(&mut self.item_in_hand, session, &self.block_renderer);
-        session.tick(held.input())?;
-        self.tutorial_tick();
-        self.tick_player_sounds();
-        let session = &mut self.session;
-        self.animated_atlas.tick();
-        // What the level's own tick queued (a sulfur block's gas) joins the particles in this tick.
-        super::effects::route_level_events(
-            session,
-            (&mut self.particles, &mut self.gui, self.sound.as_mut()),
-        );
-        let breaking = session.take_breaking_effects();
-        self.particles.breaking(session.world(), breaking);
-        super::effects::tick_blocks(
-            session,
-            (&mut self.particles, &self.sky),
-            self.sound.as_mut(),
-        );
-        super::camera::tick_view(
-            (&mut self.camera, &mut self.gui),
-            session,
-            (&self.sky, &self.controls),
-        );
-        self.tick_screens()?;
-        self.sky.tick(&self.session, &self.controls.options);
-        self.ticks += 1;
-        Ok(())
     }
 }
 

@@ -5,7 +5,7 @@
 //! resource until it is split into resources and components of its own.
 
 use bevy_ecs::prelude::{In, IntoScheduleConfigs, NonSend, NonSendMut, Res, ResMut, Resource};
-use bevy_ecs::schedule::{Schedule, ScheduleLabel, SingleThreadedExecutor};
+use bevy_ecs::schedule::{Schedule, ScheduleLabel, SingleThreadedExecutor, SystemSet};
 use bevy_ecs::system::IntoSystem;
 use bevy_ecs::world::World;
 
@@ -18,6 +18,45 @@ pub(super) struct Frame;
 /// One client tick.
 #[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
 struct Tick;
+
+/// The named parts of a frame, in the order they run. Every system of the `Frame` schedule is in
+/// one, so a version or a mod can put a system before or after a part, or replace one.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) enum FrameSet {
+    /// The frame's start: the time taken, the profile parts dropped.
+    Begin,
+    /// The window's events, the settings sent to the server, the language and the swapchain.
+    Events,
+    /// The time since the last frame, and the ticks it owes.
+    Clock,
+    /// What the connection delivered, the open container and the level reset.
+    Session,
+    /// The effects the session's events asked for.
+    Effects,
+    /// The ticks the clock owes.
+    Ticks,
+    /// The mouse's accumulated movement turning the player.
+    Turn,
+    /// The picture, or the screen that stands in for it.
+    Draw,
+    /// The frame rate limit.
+    Limit,
+}
+
+/// The named parts of a tick, in the order they run.
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) enum TickSet {
+    /// The sound engine, and the open screen with what it asked for.
+    Interface,
+    /// The keys, the items they used and the hands.
+    Input,
+    /// The local player's own tick.
+    LocalPlayer,
+    /// The effects the tick leaves in the world: textures, level events, particles.
+    Effects,
+    /// The camera, the screens and the sky.
+    View,
+}
 
 /// What the frame in hand has measured.
 #[derive(Resource)]
@@ -84,34 +123,84 @@ pub(super) fn take_play(world: &mut World) -> Play {
 fn tick_schedule() -> Schedule {
     let mut schedule = Schedule::new(Tick);
     schedule.set_executor(SingleThreadedExecutor::new());
-    schedule.add_systems(tick.pipe(record));
+    configure_tick_sets(&mut schedule);
+    schedule.add_systems((
+        tick_interface.pipe(record).in_set(TickSet::Interface),
+        tick_input.pipe(record).in_set(TickSet::Input),
+        tick_local_player.pipe(record).in_set(TickSet::LocalPlayer),
+        tick_effects.in_set(TickSet::Effects),
+        tick_view.pipe(record).in_set(TickSet::View),
+    ));
     schedule
+}
+
+/// The tick's parts in the order the tick always had, each after the one before it and only
+/// while nothing has failed.
+fn configure_tick_sets(schedule: &mut Schedule) {
+    schedule.configure_sets(
+        (
+            TickSet::Interface,
+            TickSet::Input,
+            TickSet::LocalPlayer,
+            TickSet::Effects,
+            TickSet::View,
+        )
+            .chain()
+            .distributive_run_if(unbroken),
+    );
+}
+
+/// The frame's parts in the order the loop ran them, each after the one before it and only while
+/// nothing has failed or stopped the frame.
+fn configure_frame_sets(schedule: &mut Schedule) {
+    schedule.configure_sets(
+        (
+            FrameSet::Begin,
+            FrameSet::Events,
+            FrameSet::Clock,
+            FrameSet::Session,
+            FrameSet::Effects,
+            FrameSet::Ticks,
+            FrameSet::Turn,
+            FrameSet::Draw,
+            FrameSet::Limit,
+        )
+            .chain()
+            .distributive_run_if(unbroken),
+    );
 }
 
 /// The frame's systems, in the order the loop ran them.
 fn frame_schedule() -> Schedule {
     let mut schedule = Schedule::new(Frame);
     schedule.set_executor(SingleThreadedExecutor::new());
-    schedule.add_systems(
+    configure_frame_sets(&mut schedule);
+    schedule.add_systems((
+        begin_frame.in_set(FrameSet::Begin),
         (
-            begin_frame,
             poll_events.pipe(record),
             send_client_information.pipe(record),
             reload_language,
             fit_swapchain.pipe(record),
-            advance_clock,
+        )
+            .chain()
+            .distributive_run_if(unbroken)
+            .in_set(FrameSet::Events),
+        advance_clock.in_set(FrameSet::Clock),
+        (
             receive_session.pipe(record),
             container_tick.pipe(record),
             reset_level.pipe(record),
-            route_effects,
-            run_ticks,
-            turn_player,
-            draw_frame.pipe(record),
-            limit_frame,
         )
             .chain()
-            .distributive_run_if(unbroken),
-    );
+            .distributive_run_if(unbroken)
+            .in_set(FrameSet::Session),
+        route_effects.in_set(FrameSet::Effects),
+        run_ticks.in_set(FrameSet::Ticks),
+        turn_player.in_set(FrameSet::Turn),
+        draw_frame.pipe(record).in_set(FrameSet::Draw),
+        limit_frame.in_set(FrameSet::Limit),
+    ));
     schedule
 }
 
@@ -214,8 +303,24 @@ fn run_ticks(world: &mut World) {
     clock.ticked = Instant::now();
 }
 
-fn tick(mut play: NonSendMut<Play>, input: Res<TickInput>) -> Result<()> {
-    play.tick(input.0)
+fn tick_interface(mut play: NonSendMut<Play>) -> Result<()> {
+    play.tick_interface()
+}
+
+fn tick_input(mut play: NonSendMut<Play>, input: Res<TickInput>) -> Result<()> {
+    play.tick_input(&input.0)
+}
+
+fn tick_local_player(mut play: NonSendMut<Play>, input: Res<TickInput>) -> Result<()> {
+    play.tick_local_player(&input.0)
+}
+
+fn tick_effects(mut play: NonSendMut<Play>) {
+    play.tick_effects();
+}
+
+fn tick_view(mut play: NonSendMut<Play>) -> Result<()> {
+    play.tick_view()
 }
 
 fn draw_frame(mut play: NonSendMut<Play>, clock: Res<Clock>, mut stop: ResMut<Stop>) -> Result<()> {
@@ -244,4 +349,90 @@ fn draw_frame(mut play: NonSendMut<Play>, clock: Res<Clock>, mut stop: ResMut<St
 
 fn limit_frame(mut play: NonSendMut<Play>) {
     play.limit_frame();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Resource, Default)]
+    struct Log(Vec<String>);
+
+    /// The order the sets run in when their systems are added last to first.
+    fn order_of<S: SystemSet + Copy + std::fmt::Debug>(
+        configure: fn(&mut Schedule),
+        sets: &[S],
+    ) -> Vec<String> {
+        let mut world = World::new();
+        world.insert_non_send(Failure(None));
+        world.insert_resource(Stop(false));
+        world.init_resource::<Log>();
+        let mut schedule = Schedule::new(Frame);
+        schedule.set_executor(SingleThreadedExecutor::new());
+        configure(&mut schedule);
+        for set in sets.iter().rev() {
+            let name = format!("{set:?}");
+            schedule
+                .add_systems((move |mut log: ResMut<Log>| log.0.push(name.clone())).in_set(*set));
+        }
+        schedule.run(&mut world);
+        world.resource::<Log>().0.clone()
+    }
+
+    #[test]
+    fn the_frame_runs_its_sets_in_the_order_the_loop_always_had() {
+        let order = order_of(
+            configure_frame_sets,
+            &[
+                FrameSet::Limit,
+                FrameSet::Draw,
+                FrameSet::Turn,
+                FrameSet::Ticks,
+                FrameSet::Effects,
+                FrameSet::Session,
+                FrameSet::Clock,
+                FrameSet::Events,
+                FrameSet::Begin,
+            ],
+        );
+        assert_eq!(
+            order,
+            [
+                "Begin", "Events", "Clock", "Session", "Effects", "Ticks", "Turn", "Draw", "Limit"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_tick_runs_its_sets_in_the_order_the_tick_always_had() {
+        let order = order_of(
+            configure_tick_sets,
+            &[
+                TickSet::View,
+                TickSet::Effects,
+                TickSet::LocalPlayer,
+                TickSet::Input,
+                TickSet::Interface,
+            ],
+        );
+        assert_eq!(
+            order,
+            ["Interface", "Input", "LocalPlayer", "Effects", "View"]
+        );
+    }
+
+    #[test]
+    fn a_failure_stops_the_sets_after_it() {
+        let mut world = World::new();
+        world.insert_non_send(Failure(Some("failed".into())));
+        world.insert_resource(Stop(false));
+        world.init_resource::<Log>();
+        let mut schedule = Schedule::new(Tick);
+        schedule.set_executor(SingleThreadedExecutor::new());
+        configure_tick_sets(&mut schedule);
+        schedule
+            .add_systems((|mut log: ResMut<Log>| log.0.push("ran".into())).in_set(TickSet::Input));
+        schedule.run(&mut world);
+        assert!(world.resource::<Log>().0.is_empty());
+    }
 }

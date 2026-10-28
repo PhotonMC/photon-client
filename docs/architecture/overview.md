@@ -63,7 +63,7 @@ Target ([ADR 0003](../adr/0003-bevy-ecs.md)):
 
 ## Main loop
 
-`crates/photon/src/play/schedule.rs` runs the `Frame` schedule (single-threaded, systems chained in this order), and its `run_ticks` system runs the `Tick` schedule once per owed tick. Per frame:
+`crates/photon/src/play/schedule.rs` runs the `Frame` schedule (single-threaded, systems chained in this order), and its `run_ticks` system runs the `Tick` schedule once per owed tick. Every system belongs to a named `SystemSet`, chained in the order below, so a version or a mod can name a place to insert or replace a system. The frame's sets are `Begin`, `Events`, `Clock`, `Session`, `Effects`, `Ticks`, `Turn`, `Draw` and `Limit`; the tick's are `Interface`, `Input`, `LocalPlayer`, `Effects` and `View`. A test pins both orders. Per frame:
 
 1. Poll window events.
 2. Fit the swapchain.

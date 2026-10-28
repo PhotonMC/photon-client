@@ -608,6 +608,7 @@ mod social_toast;
 mod switch;
 pub(crate) use loading::LoadingView;
 pub(crate) use switch::SwitchView;
+mod tick_parts;
 mod ticks;
 mod tutorial;
 mod world_text;
