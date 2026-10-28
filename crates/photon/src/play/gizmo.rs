@@ -41,13 +41,24 @@ impl Play {
         (line_width, hook_lines): (f32, Vec<photon_render::block::outline::LineVertex>),
     ) -> (Vec<photon_render::block::outline::LineVertex>, usize) {
         let high_contrast = self.controls.options.high_contrast_block_outline;
-        let (mut lines, backing) = crate::overlays::outline(
-            &self.session,
-            player,
-            view,
-            camera,
-            (line_width, high_contrast),
+        let may_build = !matches!(
+            self.session.game_mode(),
+            photon_world::ClientPlayerGameMode::Adventure
+                | photon_world::ClientPlayerGameMode::Spectator
         );
+        let kind = crate::view::CameraKind::of(self.session.world(), self.session.camera_entity());
+        let (mut lines, backing) =
+            if crate::view::outline_allowed(kind, self.controls.hud_hidden, may_build) {
+                crate::overlays::outline(
+                    &self.session,
+                    player,
+                    view,
+                    camera,
+                    (line_width, high_contrast),
+                )
+            } else {
+                (Vec::new(), 0)
+            };
         lines.extend(hook_lines);
         lines.extend(self.chunk_borders(player, view, camera));
         lines.extend(self.entity_hitboxes(view, camera));

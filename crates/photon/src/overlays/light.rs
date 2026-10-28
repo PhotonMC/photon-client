@@ -209,8 +209,8 @@ pub fn hud_fov(player: &LocalPlayer, effect_scale: f32) -> f32 {
     }
 }
 
-/// `extractBlockOutline`: the block aimed at this frame, unless the player
-/// cannot build (adventure and spectator, whose exceptions are not ported).
+/// `extractBlockOutline`: the block aimed at this frame (`view::outline_allowed` says whether
+/// one is drawn at all).
 pub fn outline(
     session: &PlaySession,
     player: &LocalPlayer,
@@ -218,16 +218,6 @@ pub fn outline(
     eye: [f32; 3],
     (line_width, high_contrast): (f32, bool),
 ) -> (Vec<LineVertex>, usize) {
-    if !crate::view::camera_is_player(session.world(), session.camera_entity()) {
-        return (Vec::new(), 0);
-    }
-    if matches!(
-        session.game_mode(),
-        photon_world::ClientPlayerGameMode::Adventure
-            | photon_world::ClientPlayerGameMode::Spectator
-    ) {
-        return (Vec::new(), 0);
-    }
     let Aim::Block { x, y, z, .. } = crate::view::camera_aim(session, player, view.partial as f32)
     else {
         return (Vec::new(), 0);

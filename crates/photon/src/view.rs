@@ -48,18 +48,42 @@ pub fn camera_aim(
     }
 }
 
-/// `GameRenderer.shouldRenderBlockOutline`: only a player camera (the local player, or a player
-/// a spectator was handed to) outlines blocks.
-pub fn camera_is_player(
-    world: &photon_world::ClientWorld,
-    camera: Option<photon_core::ids::EntityId>,
-) -> bool {
-    camera.is_none_or(|id| {
-        world
-            .entities()
-            .at(id)
-            .is_some_and(|entity| entity.is_player())
-    })
+/// Whose eyes the world is seen from, for the block outline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraKind {
+    /// The local player.
+    Local,
+    /// Another player a spectator (or `SetCamera`) handed the view to.
+    RemotePlayer,
+    /// Any other entity.
+    Other,
+}
+
+impl CameraKind {
+    pub fn of(
+        world: &photon_world::ClientWorld,
+        camera: Option<photon_core::ids::EntityId>,
+    ) -> Self {
+        match camera.map(|id| world.entities().at(id)) {
+            None => Self::Local,
+            Some(Some(entity)) if entity.is_player() => Self::RemotePlayer,
+            Some(_) => Self::Other,
+        }
+    }
+}
+
+/// `GameRenderer.shouldRenderBlockOutline` without its exceptions for players who cannot build
+/// (a spectator's menu-provider blocks, an adventure player's tool): a player camera outlines
+/// the block aimed at unless the HUD is hidden, and one that cannot build outlines nothing. A
+/// remote player's abilities are never updated here, so it may always build; the local player
+/// may not in adventure or spectator mode.
+pub fn outline_allowed(camera: CameraKind, hud_hidden: bool, local_may_build: bool) -> bool {
+    match camera {
+        CameraKind::Other => false,
+        _ if hud_hidden => false,
+        CameraKind::Local => local_may_build,
+        CameraKind::RemotePlayer => true,
+    }
 }
 
 /// The camera entity as a pick's viewer, with its eyes: interpolated position plus the scaled
@@ -437,7 +461,7 @@ mod camera_viewer_tests {
     }
 
     #[test]
-    fn only_a_player_camera_outlines_blocks() {
+    fn the_camera_kind_follows_the_entity() {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         for (id, name) in [(1, "minecraft:player"), (2, "minecraft:pig")] {
             assert!(world.apply_entity(EntityInput {
@@ -452,9 +476,24 @@ mod camera_viewer_tests {
                 data: 0,
             }));
         }
-        assert!(camera_is_player(&world, None));
-        assert!(camera_is_player(&world, Some(EntityId(1))));
-        assert!(!camera_is_player(&world, Some(EntityId(2))));
+        assert_eq!(CameraKind::of(&world, None), CameraKind::Local);
+        assert_eq!(
+            CameraKind::of(&world, Some(EntityId(1))),
+            CameraKind::RemotePlayer
+        );
+        assert_eq!(CameraKind::of(&world, Some(EntityId(2))), CameraKind::Other);
+    }
+
+    #[test]
+    fn the_outline_follows_the_camera_the_hud_and_the_ability_to_build() {
+        use CameraKind::{Local, Other, RemotePlayer};
+        assert!(outline_allowed(Local, false, true));
+        assert!(!outline_allowed(Local, false, false));
+        assert!(!outline_allowed(Local, true, true));
+        // A remote player's abilities keep their default, whatever the local game mode is.
+        assert!(outline_allowed(RemotePlayer, false, false));
+        assert!(!outline_allowed(RemotePlayer, true, true));
+        assert!(!outline_allowed(Other, false, true));
     }
 
     #[test]
