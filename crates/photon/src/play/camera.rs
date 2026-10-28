@@ -225,10 +225,19 @@ impl Play {
         partial: f32,
     ) -> [[f32; 4]; 4] {
         let options = &self.controls.options;
-        // Only the player's own avatar sways the view and flinches it here.
-        if self.session.camera_entity().is_some() {
+        // Only the player's own avatar sways the view; a living camera entity still flinches it.
+        if let Some(id) = self.session.camera_entity() {
+            let hurt = self
+                .session
+                .world()
+                .entities()
+                .at(id)
+                .filter(|entity| entity.is_living_entity());
+            let hurt = hurt.map_or_else(photon_render::camera::HurtView::none, |entity| {
+                camera_entity_hurt(entity, partial, options.damage_tilt_strength)
+            });
             return photon_render::scene::multiply(
-                photon_render::camera::view_hurt(&photon_render::camera::HurtView::none()),
+                photon_render::camera::view_hurt(&hurt),
                 photon_render::camera::view_bob(0.0, 0.0),
             );
         }
@@ -268,6 +277,22 @@ fn player_motion(
         tilt_strength: damage_tilt,
     });
     photon_render::scene::multiply(hurt, bob)
+}
+
+/// What `Camera.extractRenderState` reads of a living camera entity for `bobHurt`.
+fn camera_entity_hurt(
+    entity: &photon_world::ClientEntity,
+    partial: f32,
+    tilt_strength: f64,
+) -> photon_render::camera::HurtView {
+    photon_render::camera::HurtView {
+        hurt_time: entity.hurt_time() as f32 - partial,
+        hurt_duration: 10,
+        hurt_dir: entity.hurt_dir(),
+        dying: entity.is_dead_or_dying(),
+        death_time: entity.death_time() as f32 + partial,
+        tilt_strength,
+    }
 }
 
 /// `Entity.getEyeHeight` of the camera entity: the player's, or that of the entity a spectator

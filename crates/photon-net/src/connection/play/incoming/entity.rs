@@ -472,7 +472,7 @@ impl PlaySession {
     }
 
     fn on_hurt_animation(&mut self, (id, yaw): (EntityId, f32)) -> Result<(), ConnectionError> {
-        self.world.entities_mut().apply_hurt_animation(id);
+        self.world.entities_mut().apply_hurt_animation(id, yaw);
         if self.local.player_id == Some(id)
             && let Some(player) = self.local.player.as_mut()
         {

@@ -121,12 +121,16 @@ impl Entities {
         true
     }
 
-    /// `handleHurtAnimation` (`LivingEntity.animateHurt`).
-    pub fn apply_hurt_animation(&mut self, entity_id: EntityId) -> bool {
+    /// `handleHurtAnimation` (`LivingEntity.animateHurt`; `Player.animateHurt` also keeps the
+    /// yaw).
+    pub fn apply_hurt_animation(&mut self, entity_id: EntityId, yaw: f32) -> bool {
         let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.living.hurt_time = 10;
+        if entity.is_player() {
+            entity.living.hurt_dir = yaw.to_bits();
+        }
         true
     }
 

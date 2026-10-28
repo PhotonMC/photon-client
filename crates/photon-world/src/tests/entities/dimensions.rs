@@ -387,3 +387,26 @@ fn camera_eye_height_follows_pose_and_scale() {
     near(eye("minecraft:player", Some(Crouching), 2.0), 2.54);
     near(eye("minecraft:player", Some(Sleeping), 2.0), 0.2);
 }
+
+#[test]
+fn hurt_animation_keeps_the_yaw_for_players_only() {
+    let hurt = |name: &str| {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: Uuid::new(1, 5),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        assert!(world.entities_mut().apply_hurt_animation(EntityId(5), 90.0));
+        let entity = world.entities().at(EntityId(5)).expect("the entity");
+        (entity.hurt_time(), entity.hurt_dir())
+    };
+    assert_eq!(hurt("minecraft:player"), (10, 90.0));
+    assert_eq!(hurt("minecraft:pig"), (10, 0.0));
+}

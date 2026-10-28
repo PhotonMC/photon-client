@@ -6,7 +6,7 @@ pub(crate) fn damage_event(world: &mut ClientWorld, entity_id: EntityId) -> Resu
 }
 
 pub(crate) fn hurt_event(world: &mut ClientWorld, entity_id: EntityId) -> Result<(), String> {
-    world.entities_mut().apply_hurt_animation(entity_id);
+    world.entities_mut().apply_hurt_animation(entity_id, 0.0);
     Ok(())
 }
 

@@ -104,6 +104,12 @@ impl ClientEntity {
         self.living.death_time
     }
 
+    /// `getHurtDir`: a player keeps the yaw its last hurt animation came with; any other living
+    /// entity has none.
+    pub fn hurt_dir(&self) -> f32 {
+        f32::from_bits(self.living.hurt_dir)
+    }
+
     /// `LivingEntity.baseTick`'s share: `hurtTime` counts down, and a dying
     /// entity's `deathTime` up (`tickDeath`; the server removes it later) while
     /// the level says deaths tick here (`shouldTickDeath`).
@@ -333,6 +339,8 @@ pub(crate) fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct EntityState {
     pub(crate) hurt_time: i32,
+    /// `Player.hurtDir`, as bits so the state stays `Eq`.
+    pub(crate) hurt_dir: u32,
     pub(crate) death_time: i32,
     /// How many ticks the item in use has been used (`getTicksUsingItem`, whole).
     pub(crate) using_item_ticks: i32,
