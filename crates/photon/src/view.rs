@@ -48,6 +48,20 @@ pub fn camera_aim(
     }
 }
 
+/// `GameRenderer.shouldRenderBlockOutline`: only a player camera (the local player, or a player
+/// a spectator was handed to) outlines blocks.
+pub fn camera_is_player(
+    world: &photon_world::ClientWorld,
+    camera: Option<photon_core::ids::EntityId>,
+) -> bool {
+    camera.is_none_or(|id| {
+        world
+            .entities()
+            .at(id)
+            .is_some_and(|entity| entity.is_player())
+    })
+}
+
 /// The camera entity as a pick's viewer, with its eyes: interpolated position plus the scaled
 /// eye height, and the look a living entity has where its head turns.
 fn camera_viewer(
@@ -420,6 +434,27 @@ mod camera_viewer_tests {
         let (viewer, eye) = camera_viewer(&world, EntityId(5), 1.0).expect("the viewer");
         assert_eq!(eye.y, 9.0 + f64::from(eye_height));
         (viewer, eye)
+    }
+
+    #[test]
+    fn only_a_player_camera_outlines_blocks() {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        for (id, name) in [(1, "minecraft:player"), (2, "minecraft:pig")] {
+            assert!(world.apply_entity(EntityInput {
+                entity_id: EntityId(id),
+                uuid: Uuid::new(1, u64::try_from(id).expect("positive")),
+                type_id: photon_data::entity_type::id(name).expect("the type"),
+                x: 0.0,
+                y: 9.0,
+                z: 0.0,
+                movement: (0.0, 0.0, 0.0),
+                rotation: (0.0, 0.0, 0.0),
+                data: 0,
+            }));
+        }
+        assert!(camera_is_player(&world, None));
+        assert!(camera_is_player(&world, Some(EntityId(1))));
+        assert!(!camera_is_player(&world, Some(EntityId(2))));
     }
 
     #[test]

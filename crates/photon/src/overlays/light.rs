@@ -218,6 +218,9 @@ pub fn outline(
     eye: [f32; 3],
     (line_width, high_contrast): (f32, bool),
 ) -> (Vec<LineVertex>, usize) {
+    if !crate::view::camera_is_player(session.world(), session.camera_entity()) {
+        return (Vec::new(), 0);
+    }
     if matches!(
         session.game_mode(),
         photon_world::ClientPlayerGameMode::Adventure
