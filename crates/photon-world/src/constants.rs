@@ -407,6 +407,9 @@ pub(crate) const SHARED_FLAG_FALL_FLYING: u8 = 7;
 pub const PAINTING_VARIANT_DATA_ID: u8 = 9;
 pub const PAINTING_VARIANT_SERIALIZER_ID: i32 = 34;
 
+/// The place of a dropped item's stack among its data (`ItemEntity.DATA_ITEM`).
+pub const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+
 /// Where an item frame's item and its turn sit among its data (`HangingEntity` has the direction
 /// before them).
 pub const ITEM_FRAME_ITEM_DATA_ID: u8 = 9;

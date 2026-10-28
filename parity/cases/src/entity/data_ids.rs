@@ -176,6 +176,7 @@ const ACCESSORS: &[(&str, &str)] = &[
     ("net.minecraft.world.entity.vehicle.minecart.MinecartFurnace", "DATA_ID_FUEL"),
     ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE"),
     ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID"),
+    ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM"),
 ];
 
 pub fn data_ids() -> Vec<Value> {

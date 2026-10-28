@@ -88,10 +88,8 @@ pub fn passengers(world: &mut ClientWorld, packet: &EntityPassengersObservation)
     world.apply_entity_passengers(packet.vehicle_id, &packet.passenger_ids)
 }
 
-/// `ItemStack`'s id among the entity data serializers, and the place of a
-/// dropped item's stack among its data (`ItemEntity.DATA_ITEM`).
+/// `ItemStack`'s id among the entity data serializers.
 const ITEM_STACK_SERIALIZER_ID: i32 = photon_data::entity_type::serializer_named("ITEM_STACK");
-const ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 /// A dropped item, a thrown item, a firework rocket or an ominous item spawner keeps its stack in
 /// the same data.
@@ -129,7 +127,7 @@ pub fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> 
     } else if is_item_display {
         photon_world::objects::display::ITEM_STACK_DATA_ID
     } else {
-        ITEM_ENTITY_STACK_DATA_ID
+        photon_world::ITEM_ENTITY_STACK_DATA_ID
     };
     if applied
         && (is_item || is_frame || is_item_display)

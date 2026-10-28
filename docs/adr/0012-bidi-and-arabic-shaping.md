@@ -23,5 +23,5 @@ Photon draws such text in logical order today. The result differs from the Java 
 ## Consequences
 
 - One new dependency, with its licence checked against the project's policy before it is added.
-- Unifont coverage ([#35](https://github.com/PhotonMC/photon-client/issues/35)) is a precondition for visible Arabic and Hebrew glyphs; the pass is useless without it.
+- The glyphs for Arabic and Hebrew come from the existing unifont provider; this ADR only changes the order and forms of the code points handed to it.
 - Input method composition stays a separate slice.

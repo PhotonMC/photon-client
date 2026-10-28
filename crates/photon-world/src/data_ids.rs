@@ -179,4 +179,5 @@ pub const DATA_IDS: &[(&str, &str, u8)] = &[
     ("net.minecraft.world.entity.Display$TextDisplay", "DATA_STYLE_FLAGS_ID", crate::objects::display::data_ids::STYLE_FLAGS_DATA_ID),
     ("net.minecraft.world.entity.monster.Phantom", "ID_SIZE", PHANTOM_SIZE_DATA_ID),
     ("net.minecraft.world.entity.monster.illager.SpellcasterIllager", "DATA_SPELL_CASTING_ID", SPELLCASTER_CASTING_DATA_ID),
+    ("net.minecraft.world.entity.item.ItemEntity", "DATA_ITEM", ITEM_ENTITY_STACK_DATA_ID),
 ];
