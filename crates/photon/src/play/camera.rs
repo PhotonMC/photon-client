@@ -281,7 +281,7 @@ fn camera_eye_height(
         .and_then(|id| session.world().entities().at(id))
         .map_or_else(
             || player.eye_height(),
-            |entity| entity.leash_size().eye_height,
+            |entity| entity.scaled_dimensions().eye_height(),
         )
 }
 

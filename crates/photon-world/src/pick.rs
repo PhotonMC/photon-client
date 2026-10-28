@@ -159,6 +159,17 @@ impl ClientEntity {
         }
     }
 
+    /// `LivingEntity.getDimensions(pose)` of the entity as it is: the pose's size grown by the
+    /// scale attribute, a player's too, and a sleeping one's fixed size as it is.
+    pub fn scaled_dimensions(&self) -> ClientEntityDimensions {
+        let scale = if self.has_sleeping_size() {
+            1.0
+        } else {
+            self.scale()
+        };
+        self.dimensions().scale(scale, scale)
+    }
+
     /// The size a leash is tied by (`getBbWidth`, `getBbHeight`, `getEyeHeight`): the size the
     /// type starts with, grown by the scale attribute.
     pub fn leash_size(&self) -> photon_data::leash::Size {

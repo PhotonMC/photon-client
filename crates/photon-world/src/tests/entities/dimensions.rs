@@ -338,3 +338,52 @@ fn some_renderers_light_their_entity_at_full_block_light() {
         assert_eq!(entity.renderer_full_block_light(), full, "{name}");
     }
 }
+
+/// What the camera entity's eyes sit at (`LivingEntity.getDimensions(pose)`): the pose's eye
+/// height grown by the scale attribute, a player's too, and the sleeping size left alone. The
+/// numbers are the reference's: a pig's default eye is 0.85 of its 0.9 height, a player's is
+/// 1.62 standing and 1.27 crouching, a sleeper's is 0.2.
+#[test]
+fn camera_eye_height_follows_pose_and_scale() {
+    let eye = |name: &str, pose: Option<crate::ClientEntityPose>, scale: f64| {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: Uuid::new(1, 5),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let scale_id = photon_data::item::effect::attribute_named("minecraft:scale");
+        assert!(world.entities_mut().apply_attributes(
+            EntityId(5),
+            &[ClientAttributeState::new(scale_id, scale, Vec::new())],
+        ));
+        if let Some(pose) = pose {
+            let mut metadata = vec![
+                crate::ENTITY_POSE_DATA_ID,
+                crate::ENTITY_DATA_SERIALIZER_POSE_ID as u8,
+            ];
+            photon_core::wire::write_varint(i32::from(pose.id()), &mut metadata);
+            metadata.push(255);
+            assert!(world.apply_entity_metadata(EntityId(5), &metadata));
+        }
+        let entity = world.entities().at(EntityId(5)).expect("the entity");
+        entity.scaled_dimensions().eye_height()
+    };
+    use crate::ClientEntityPose::{Crouching, Sleeping};
+    let near = |actual: f32, expected: f32| {
+        assert!((actual - expected).abs() < 1e-5, "{actual} != {expected}");
+    };
+    near(eye("minecraft:pig", None, 1.0), 0.9 * 0.85);
+    near(eye("minecraft:pig", None, 2.0), 0.9 * 0.85 * 2.0);
+    near(eye("minecraft:pig", Some(Sleeping), 2.0), 0.2);
+    near(eye("minecraft:player", None, 1.0), 1.62);
+    near(eye("minecraft:player", None, 2.0), 3.24);
+    near(eye("minecraft:player", Some(Crouching), 2.0), 2.54);
+    near(eye("minecraft:player", Some(Sleeping), 2.0), 0.2);
+}
