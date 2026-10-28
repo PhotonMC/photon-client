@@ -114,7 +114,7 @@ pub use attributes::*;
 mod boat;
 mod cloak;
 pub use boat::*;
-mod equipment;
+pub(crate) mod equipment;
 pub use equipment::*;
 mod flags;
 pub(crate) use flags::*;

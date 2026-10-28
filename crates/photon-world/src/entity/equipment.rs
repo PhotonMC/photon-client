@@ -65,7 +65,7 @@ impl ClientEntity {
     }
 }
 
-pub(super) fn armor_stand_type_id() -> EntityTypeId {
+pub(crate) fn armor_stand_type_id() -> EntityTypeId {
     photon_data::entity_type::id("minecraft:armor_stand").unwrap_or(EntityTypeId(-1))
 }
 

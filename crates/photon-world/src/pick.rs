@@ -50,6 +50,17 @@ impl ClientEntity {
     }
 
     pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+        if self.type_id == crate::entity::equipment::armor_stand_type_id() {
+            // `ArmorStand.getDefaultDimensions`: a marker has no size and a small stand is the
+            // stand's halved, with the eye at its top.
+            let stand = self.armor_stand();
+            if stand.is_marker() {
+                return ClientEntityDimensions::from_values(0.0, 0.0, 0.0, false);
+            }
+            if stand.is_small() {
+                return ClientEntityDimensions::from_values(0.25, 0.9875, 0.9875, false);
+            }
+        }
         match photon_data::entity_type::pick(self.type_id) {
             Some(pick) if !self.is_player() => {
                 let (width, height, eye_height) = match pick.baby {

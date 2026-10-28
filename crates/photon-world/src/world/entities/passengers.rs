@@ -130,13 +130,8 @@ impl ClientWorld {
         let (x, y, z) = vehicle.position();
         let passenger = self.entities.at(passenger_id)?;
         let attachment = vanilla_passenger_vehicle_attachment_y(passenger.type_id, passenger.baby);
-        // `ArmorStand.getDimensions`: a marker has none and a small stand is half the size.
-        let stand = (DEFAULT_SEATS[0] == Some(vehicle.type_id)).then(|| vehicle.armor_stand());
-        let height = match stand {
-            Some(stand) if stand.is_marker() => 0.0,
-            Some(stand) if stand.is_small() => vehicle.bb_height() * 0.5,
-            _ => vehicle.bb_height(),
-        };
+        // The stand's own size already is a marker's none and a small stand's half.
+        let height = vehicle.bb_height();
         Some(photon_core::math::Vec3::new(
             x,
             y + f64::from(height) - attachment,
