@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::{affected, git, lint, parity, process, workspace};
+use crate::{affected, git, lint, parity, process, progress, workspace};
 
 /// Sources whose change invalidates the saved Java reference outputs.
 const REFERENCE_SOURCES: &[&str] = &["tests/behavior/", "parity/cases/"];
@@ -96,6 +96,7 @@ pub fn pre_push() -> Result<(), String> {
             &args.iter().map(String::as_str).collect::<Vec<_>>(),
         )?;
     }
+    progress::check_if_possible()?;
     let reference_changed = changed.iter().any(|path| {
         REFERENCE_SOURCES
             .iter()

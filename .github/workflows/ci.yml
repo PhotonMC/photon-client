@@ -82,9 +82,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: parity
+      # The decompiled source stays on the runner like the rest of .data/; the progress check
+      # reads it and prints numbers only.
       - name: Fetch the pinned game from Mojang
-        run: cargo xtask setup --named
+        run: cargo xtask setup --named --decompile
       - run: cargo xtask parity
+      - name: README progress block is current
+        run: cargo xtask progress --check
 
   deny:
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@
 
 mod local;
 mod markers;
+mod milestones;
 mod reference;
 
 use std::fs;
@@ -13,6 +14,7 @@ use std::fs;
 use crate::process;
 
 const BLOCK: &str = "progress";
+const MILESTONES: &str = "milestones";
 
 fn readme() -> std::path::PathBuf {
     process::root().join("README.md")
@@ -30,6 +32,16 @@ fn block() -> Result<String, String> {
     Ok(out)
 }
 
+/// The staleness check for the pre-push hook: skipped without the decompiled reference, which
+/// the numbers need.
+pub fn check_if_possible() -> Result<(), String> {
+    if !process::root().join(".data/minecraft/source").is_dir() {
+        println!("progress: no decompiled reference, skipped");
+        return Ok(());
+    }
+    run(&["--check".to_owned()])
+}
+
 /// `cargo xtask progress [--check]`
 pub fn run(args: &[String]) -> Result<(), String> {
     let check = match args {
@@ -39,7 +51,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
     };
     let path = readme();
     let text = fs::read_to_string(&path).map_err(|error| format!("README.md: {error}"))?;
-    let updated = markers::replace(&text, BLOCK, &block()?)?;
+    let mut updated = markers::replace(&text, BLOCK, &block()?)?;
+    if !check {
+        updated = markers::replace(&updated, MILESTONES, &milestones::table()?)?;
+    }
     if updated == text {
         println!("progress: README block is current");
         return Ok(());
