@@ -40,6 +40,8 @@ pub struct EntitySnapshot {
     /// `Pose.SLEEPING`: the step in x and z of the direction of the bed it lies in (none without
     /// one) and its eye height standing.
     pub sleeping: Option<(Option<(i32, i32)>, f32)>,
+    /// `Entity.getLightProbePosition`: where the light is sampled for it.
+    pub light_probe: (f64, f64, f64),
 }
 
 impl EntitySnapshot {

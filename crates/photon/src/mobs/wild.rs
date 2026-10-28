@@ -234,7 +234,14 @@ pub(crate) fn placement(
         light: cage.map_or_else(
             || {
                 burning_light(
-                    packed_light(world, Vec3::new(x, y + 0.5, z)),
+                    packed_light(
+                        world,
+                        Vec3::new(
+                            snapshot.light_probe.0,
+                            snapshot.light_probe.1,
+                            snapshot.light_probe.2,
+                        ),
+                    ),
                     snapshot.burning,
                 )
             },

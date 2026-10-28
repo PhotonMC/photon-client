@@ -81,7 +81,13 @@ impl ClientWorld {
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
             upside_down: None,
             sleeping: self.sleeping_lie(entity),
+            light_probe: (0.0, 0.0, 0.0),
         };
+        snapshot.light_probe = self.light_probe(
+            entity,
+            snapshot.position,
+            f64::from(entity.leash_size().eye_height),
+        );
         if let Some(height) = upside_down {
             snapshot.turn_upside_down(height);
         }

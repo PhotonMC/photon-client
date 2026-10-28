@@ -48,7 +48,13 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
                 tag.with_score(entity, viewer, inputs.score)
             })
         };
-        out.push(described_tag(row, tag.as_ref(), &font)?);
+        let mut described = described_tag(row, tag.as_ref(), &font)?;
+        if kind.is_some() {
+            // `Entity.getLightProbePosition`: the eyes, which light the entity and its tag.
+            let snapshot = world.entity_snapshot(ids.0, 0.0).ok_or("snapshot")?;
+            described["probe_y"] = json!(format!("{:016x}", snapshot.light_probe.1.to_bits()));
+        }
+        out.push(described);
     }
     Ok(json!({"rows": out}))
 }

@@ -4,7 +4,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
-use photon_render::entity::tag_rules::{NameRules, entity_name_tag, eye_height, rules_of};
+use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -367,8 +367,8 @@ fn entity_tags(
             tag.render_offset = frame_tag::render_offset(entity);
         }
         let (x, y, z) = snapshot.position;
-        let eye = Vec3::new(x, y + eye_height(entity).unwrap_or(0.0), z);
-        let light = packed_light(world, eye);
+        let (probe_x, probe_y, probe_z) = snapshot.light_probe;
+        let light = packed_light(world, Vec3::new(probe_x, probe_y, probe_z));
         let light = if rules == NameRules::ItemFrame && is_glow_frame(entity) {
             // `ItemFrameRenderer.getBlockLightLevel`: a glow frame is lit to 5 at least.
             (light & !0xFFFF) | (((light >> 4) & 15).max(5) << 4)

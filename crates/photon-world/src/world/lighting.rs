@@ -42,6 +42,67 @@ impl ClientWorld {
         self.light.light_value(light::LightLayer::Block, (x, y, z))
     }
 
+    /// `Entity.getLightProbePosition`: the eyes, and for a marker armor stand the centre of the
+    /// brightest block of the box its full size would fill (`ArmorStand.getLightProbePosition`).
+    pub fn light_probe(
+        &self,
+        entity: &crate::ClientEntity,
+        position: (f64, f64, f64),
+        eye_height: f64,
+    ) -> (f64, f64, f64) {
+        let (x, y, z) = position;
+        if entity.type_id != crate::entity::equipment::armor_stand_type_id()
+            || !entity.armor_stand().is_marker()
+        {
+            return (x, y + eye_height, z);
+        }
+        // `getDimensionsMarker(false)`: a small stand's, or the type's.
+        let (width, height) = if entity.armor_stand().is_small() {
+            (0.25, 0.9875_f32)
+        } else {
+            (0.5, 1.975_f32)
+        };
+        let half = width / 2.0;
+        let floor = |value: f64| value.floor() as i32;
+        let (min, max) = (
+            (floor(x - half), floor(y), floor(z - half)),
+            (
+                floor(x + half),
+                floor(y + f64::from(height)),
+                floor(z + half),
+            ),
+        );
+        let mut probe = (floor(x), floor(y), floor(z));
+        let mut brightest = i32::MIN;
+        // `BlockPos.betweenClosed` counts x fastest, then y, then z.
+        for pz in min.2..=max.2 {
+            for py in min.1..=max.1 {
+                for px in min.0..=max.0 {
+                    let brightness = i32::from(
+                        self.block_brightness(px, py, pz)
+                            .max(self.sky_brightness(px, py, pz)),
+                    );
+                    if brightness == 15 {
+                        return (
+                            f64::from(px) + 0.5,
+                            f64::from(py) + 0.5,
+                            f64::from(pz) + 0.5,
+                        );
+                    }
+                    if brightness > brightest {
+                        brightest = brightness;
+                        probe = (px, py, pz);
+                    }
+                }
+            }
+        }
+        (
+            f64::from(probe.0) + 0.5,
+            f64::from(probe.1) + 0.5,
+            f64::from(probe.2) + 0.5,
+        )
+    }
+
     pub fn light_engine(&self) -> &light::LevelLightEngine {
         &self.light
     }
