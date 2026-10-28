@@ -21,7 +21,12 @@ impl ContainerMouse {
         if count > 0 || text.is_some() {
             let shown = text.map(|text| (text, 0xFFFF_FF55));
             draw.frame.item_with_count(
-                draw.atlas, draw.font, draw.item, carried, count, shown, x, y,
+                draw.atlas,
+                draw.font,
+                draw.item,
+                carried,
+                (count, shown),
+                (x, y),
             );
         }
     }

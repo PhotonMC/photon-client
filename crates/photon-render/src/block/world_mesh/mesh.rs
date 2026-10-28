@@ -493,8 +493,7 @@ pub(super) fn add_face(
     mesh: &mut Mesh,
     corners: [[f32; 3]; 4],
     uv: [[f32; 2]; 4],
-    shade: f32,
-    tint: [f32; 4],
+    (shade, tint): (f32, [f32; 4]),
     light: [f32; 2],
     back_face: bool,
 ) {

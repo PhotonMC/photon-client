@@ -201,20 +201,14 @@ pub trait ItemSlots {
     );
 
     /// [`Self::item_with_count_seeded`] with the seed of an item drawn outside a slot.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     fn item_with_count(
         &mut self,
         atlas: &photon_render::gui::GuiAtlas,
         font: &photon_render::gui::font::Font,
         draw: &mut photon_render::gui::ItemDrawer<'_>,
         stack: &photon_world::ClientItemStackState,
-        count: i32,
-        text: Option<(&str, u32)>,
-        x: i32,
-        y: i32,
+        shown: (i32, Option<(&str, u32)>),
+        at: (i32, i32),
     );
 }
 
@@ -225,19 +219,10 @@ impl ItemSlots for photon_render::gui::GuiFrame {
         font: &photon_render::gui::font::Font,
         draw: &mut photon_render::gui::ItemDrawer<'_>,
         stack: &photon_world::ClientItemStackState,
-        count: i32,
-        text: Option<(&str, u32)>,
-        x: i32,
-        y: i32,
+        shown: (i32, Option<(&str, u32)>),
+        (x, y): (i32, i32),
     ) {
-        self.item_with_count_seeded(
-            atlas,
-            font,
-            draw,
-            stack,
-            (count, text),
-            (x, y, Default::default()),
-        );
+        self.item_with_count_seeded(atlas, font, draw, stack, shown, (x, y, Default::default()));
     }
 
     fn item_bar(

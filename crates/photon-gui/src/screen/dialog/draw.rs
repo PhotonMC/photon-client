@@ -35,10 +35,8 @@ impl DialogScreen {
                         font,
                         item,
                         &stack,
-                        shown.count,
-                        None,
-                        rect.x,
-                        rect.y,
+                        (shown.count, None),
+                        (rect.x, rect.y),
                     );
                 } else {
                     frame.item(item, &stack, rect.x, rect.y);

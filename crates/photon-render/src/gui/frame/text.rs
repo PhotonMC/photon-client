@@ -174,7 +174,7 @@ impl GuiFrame {
         y: i32,
         colour: u32,
     ) {
-        self.glyphs(atlas, font, text, x, y, colour, false);
+        self.glyphs(atlas, font, text, (x, y), colour, false);
     }
 
     /// `GuiGraphics.text` with its shadow: each glyph's copy a unit right and
@@ -188,25 +188,20 @@ impl GuiFrame {
         y: i32,
         colour: u32,
     ) {
-        self.glyphs(atlas, font, text, x, y, colour, true);
+        self.glyphs(atlas, font, text, (x, y), colour, true);
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub(super) fn glyphs(
         &mut self,
         atlas: &GuiAtlas,
         font: &crate::gui::font::Font,
         text: &str,
-        x: i32,
-        y: i32,
+        at: (i32, i32),
         colour: u32,
         shadow: bool,
     ) {
         let runs = [TextRun::plain(text)];
-        self.styled_text_runs(atlas, font, &runs, (x, y), colour, shadow);
+        self.styled_text_runs(atlas, font, &runs, at, colour, shadow);
     }
 
     /// Keeps a text call for a test that asked for the calls.

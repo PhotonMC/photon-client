@@ -112,10 +112,8 @@ impl MerchantPanel {
             draw.font,
             draw.item,
             stack,
-            stack.item_count(),
-            text.map(|text| (text, 0xFFFF_FFFF)),
-            at.0,
-            at.1,
+            (stack.item_count(), text.map(|text| (text, 0xFFFF_FFFF))),
+            at,
         );
     }
 

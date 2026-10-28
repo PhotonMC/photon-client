@@ -332,8 +332,7 @@ where
                 mesh,
                 corners,
                 uv,
-                1.0,
-                scaled_tint(tint, self.shade(Direction::Up)),
+                (1.0, scaled_tint(tint, self.shade(Direction::Up))),
                 light,
                 self.shows_backward_up_face(water, x, y, z),
             );
@@ -350,8 +349,7 @@ where
                     [lx, ly + bottom, lz + 1.0],
                 ],
                 [[u0, v0], [u1, v0], [u1, v1], [u0, v1]],
-                1.0,
-                scaled_tint(tint, self.shade(Direction::Down)),
+                (1.0, scaled_tint(tint, self.shade(Direction::Down))),
                 self.fluid_light(x, y - 1, z),
                 false,
             );
@@ -427,8 +425,7 @@ where
                     [u(0.5), v(0.5)],
                     [u(0.0), v(0.5)],
                 ],
-                1.0,
-                scaled_tint(tint, shade),
+                (1.0, scaled_tint(tint, shade)),
                 self.fluid_light(x, y, z),
                 !overlay,
             );
