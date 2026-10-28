@@ -61,7 +61,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     let mut rows = plants(meal, &at);
     rows.extend(columns(meal, &below));
     rows.extend(pitchers(meal));
-    rows.extend([spreaders(meal), netherrack(meal), stalks(meal), always(meal)].concat());
+    rows.extend([spreaders(meal), lichens(meal), netherrack(meal), stalks(meal), always(meal)].concat());
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
@@ -314,5 +314,33 @@ fn pitchers(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
             "bone-meal-pitcher-upper-half-orphan",
             vec![put_with(0, 64, 2, "minecraft:pitcher_crop", &[("half", "upper"), ("age", "3")])],
         ),
+    ]
+}
+
+/// Glow lichen on the floor, fenced on every side, with one side then made something else: the
+/// target is where the lichen could spread to.
+fn lichens(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    let lichen = |faces: &[&'static str]| {
+        let set: Vec<(&str, &str)> = faces.iter().map(|face| (*face, "true")).collect();
+        put_with(0, 64, 2, "minecraft:glow_lichen", &set)
+    };
+    let fenced = |north: Option<Value>| {
+        let mut world = vec![
+            lichen(&["down"]),
+            put(1, 64, 2, "minecraft:oak_fence"),
+            put(-1, 64, 2, "minecraft:oak_fence"),
+            put(0, 64, 3, "minecraft:oak_fence"),
+        ];
+        world.push(north.unwrap_or_else(|| put(0, 64, 1, "minecraft:oak_fence")));
+        world
+    };
+    vec![
+        meal("bone-meal-lichen-fenced", fenced(None)),
+        meal("bone-meal-lichen-stone-beside", fenced(Some(put(0, 64, 1, "minecraft:stone")))),
+        meal("bone-meal-lichen-leaves-beside", fenced(Some(put(0, 64, 1, "minecraft:oak_leaves")))),
+        meal("bone-meal-lichen-air-beside", fenced(Some(put(0, 64, 1, "minecraft:air")))),
+        meal("bone-meal-lichen-water-beside", fenced(Some(put_with(0, 64, 1, "minecraft:water", &[("level", "0")])))),
+        meal("bone-meal-lichen-flowing-beside", fenced(Some(put_with(0, 64, 1, "minecraft:water", &[("level", "1")])))),
+        meal("bone-meal-lichen-all-faces", vec![lichen(&["down", "up", "north", "south", "east", "west"])]),
     ]
 }

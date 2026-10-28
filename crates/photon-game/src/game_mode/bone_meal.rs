@@ -150,9 +150,16 @@ fn bamboo_target(ctx: &Context<'_>, pos: (i32, i32, i32)) -> bool {
 /// the plant spreads to would survive.
 fn spreader_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Option<bool> {
     let seed = match name {
+        "glow_lichen" => {
+            return Some(photon_world::block::multiface::lichen_can_spread(
+                &|at| ctx.state_at(at),
+                pos,
+            ));
+        }
         "tall_dry_grass" => "minecraft:short_dry_grass",
         "bush" => "minecraft:bush",
-        _ => "minecraft:firefly_bush",
+        "firefly_bush" => "minecraft:firefly_bush",
+        _ => return None,
     };
     for (dx, dz) in [(0, -1), (0, 1), (-1, 0), (1, 0)] {
         let beside = (pos.0 + dx, pos.1, pos.2 + dz);
@@ -188,8 +195,8 @@ fn valid_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) ->
         }
         _ => {}
     }
-    if matches!(name, "tall_dry_grass" | "bush" | "firefly_bush") {
-        return spreader_target(ctx, name, pos);
+    if let Some(target) = spreader_target(ctx, name, pos) {
+        return Some(target);
     }
     if let Some(target) = column_target(ctx, name, (state, pos)) {
         return Some(target);
@@ -297,7 +304,7 @@ fn fixed_target(name: &str) -> Option<bool> {
 
 /// Whether the name is a block class with a `BonemealableBlock` rule not ported here.
 fn bonemealable_name(name: &str) -> bool {
-    matches!(name, "glow_lichen" | "pale_moss_carpet")
+    name == "pale_moss_carpet"
 }
 
 /// `BoneMealItem.useOn`: swings where the clicked block grows, or where the block beside the face
