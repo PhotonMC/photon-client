@@ -52,6 +52,12 @@ Not there yet: Microsoft account sign-in inside the client, server resource pack
 <!-- progress:start -->
 | Measure | Now |
 | --- | --- |
+| Clientbound play packets handled | 121 / 141 |
+| Serverbound play packets sent | 58 / 69 |
+| Screens named by the client | 53 / 98 |
+| Entity types with a renderer, named by the client | 141 / 156 |
+| Block entity types with a renderer, named by the client | 24 / 26 |
+| Particle types named by the client | 120 / 125 |
 | Parity cases | 4,776 in 17 families |
 | Lint baseline entries | 970 (at introduction: 1,234) |
 <!-- progress:end -->

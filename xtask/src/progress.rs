@@ -6,6 +6,7 @@
 
 mod local;
 mod markers;
+mod reference;
 
 use std::fs;
 
@@ -20,6 +21,7 @@ fn readme() -> std::path::PathBuf {
 /// The markdown table of the metrics.
 fn block() -> Result<String, String> {
     let mut rows = Vec::new();
+    rows.extend(reference::rows()?);
     rows.extend(local::rows()?);
     let mut out = String::from("| Measure | Now |\n| --- | --- |\n");
     for (label, value) in rows {

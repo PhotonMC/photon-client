@@ -12,9 +12,9 @@ use std::path::Path;
 use crate::process;
 
 /// The reference's renderer registry, below `.data/minecraft/source`.
-const REGISTRY: &str = "net/minecraft/client/renderer/entity/EntityRenderers.java";
+pub(crate) const REGISTRY: &str = "net/minecraft/client/renderer/entity/EntityRenderers.java";
 /// Where the client's behaviour lives; the generated tables list every type and prove nothing.
-const CLIENT: &[&str] = &[
+pub(crate) const CLIENT: &[&str] = &[
     "crates/photon/src",
     "crates/photon-render/src",
     "crates/photon-world/src",
@@ -22,7 +22,7 @@ const CLIENT: &[&str] = &[
 const CASES: &str = "parity/cases/src";
 
 /// The `register(EntityTypes.X, Renderer...)` pairs, in the registry's order.
-fn registered(source: &str) -> Vec<(String, String)> {
+pub(crate) fn registered(source: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     let mut rest = source;
     while let Some(at) = rest.find("EntityTypes.") {
@@ -51,7 +51,7 @@ fn source_before_register(source: &str, name: &str) -> bool {
         || source.contains(&format!("EntityTypes.{name})"))
 }
 
-fn rust_files(dir: &Path, out: &mut Vec<String>) {
+pub(crate) fn rust_files(dir: &Path, out: &mut Vec<String>) {
     for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -62,7 +62,7 @@ fn rust_files(dir: &Path, out: &mut Vec<String>) {
     }
 }
 
-fn corpus(dirs: &[&str]) -> Vec<String> {
+pub(crate) fn corpus(dirs: &[&str]) -> Vec<String> {
     let root = process::root();
     let mut out = Vec::new();
     for dir in dirs {
@@ -72,7 +72,7 @@ fn corpus(dirs: &[&str]) -> Vec<String> {
 }
 
 /// Whether `text` holds `needle` as a whole word: not part of a longer name.
-fn has_word(text: &str, needle: &str) -> bool {
+pub(crate) fn has_word(text: &str, needle: &str) -> bool {
     text.match_indices(needle).any(|(at, _)| {
         let before = text[..at].chars().next_back();
         let after = text[at + needle.len()..].chars().next();
@@ -83,7 +83,7 @@ fn has_word(text: &str, needle: &str) -> bool {
 
 /// How many files spell the type as `minecraft:name`, as a quoted bare `name` (alone or before a
 /// model layer's `#`), or as the hyphenated case name `snow-golem`.
-fn mentions(files: &[String], name: &str) -> usize {
+pub(crate) fn mentions(files: &[String], name: &str) -> usize {
     let spellings = [
         format!("minecraft:{name}"),
         format!("\"{name}"),
