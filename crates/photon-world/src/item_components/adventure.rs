@@ -185,13 +185,21 @@ impl BlockPredicate {
 
 impl Matcher {
     /// Whether the value passes, by its place among the property's values (`compareTo`: booleans
-    /// order false first, where the registry lists true first).
+    /// order false first, directions by ordinal).
     fn accepts(&self, property: &photon_data::block::definition::Property, current: &str) -> bool {
         let values = property.values;
         let boolean = property.kind == photon_data::block::definition::PropertyKind::Boolean;
         let place = |text: &str| {
             let at = values.iter().position(|value| *value == text)?;
-            Some(if boolean { values.len() - 1 - at } else { at })
+            if boolean {
+                return Some(values.len() - 1 - at);
+            }
+            // A direction's `compareTo` is its ordinal, not its place in the property's list.
+            const DIRECTIONS: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
+            if values.iter().all(|value| DIRECTIONS.contains(value)) {
+                return DIRECTIONS.iter().position(|name| *name == text);
+            }
+            Some(at)
         };
         match self {
             Self::Exact(wanted) => place(wanted).is_some() && wanted == current,

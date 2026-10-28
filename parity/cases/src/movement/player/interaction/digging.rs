@@ -182,6 +182,10 @@ fn breaking_rows_2() -> Vec<Value> {
 fn adventure_rows() -> Vec<Value> {
     const LEVER: i64 = 258;
     let lever = |powered: &str| vec![put_with(0, 64, 2, "minecraft:lever", &[("powered", powered)])];
+    const CAKE: i64 = 298;
+    const DISPENSER: i64 = 105;
+    let cake = |bites: &str| vec![put_with(0, 64, 2, "minecraft:cake", &[("bites", bites)])];
+    let dispenser = |facing: &str| vec![put_with(0, 64, 2, "minecraft:dispenser", &[("facing", facing)])];
     let swing = || [hits(1).clicks(1).go(), hits(4).go()].concat();
     let range = |min: &str| format!("0001{}00", text(min));
     let held = |label: &str, blocks: Vec<Value>, can_break: String| {
@@ -200,6 +204,17 @@ fn adventure_rows() -> Vec<Value> {
         ),
         held("adventure-can-break-bool-min-true", lever("false"), adventure_state(LEVER, "powered", &range("true"))),
         held("adventure-can-break-bool-min-false", lever("false"), adventure_state(LEVER, "powered", &range("false"))),
+        held("adventure-can-break-int-min", cake("2"), adventure_state(CAKE, "bites", &range("2"))),
+        held("adventure-can-break-int-min-above", cake("2"), adventure_state(CAKE, "bites", &range("3"))),
+        held("adventure-can-break-int-max", cake("2"), adventure_state(CAKE, "bites", &format!("000001{}", text("1")))),
+        held("adventure-can-break-face-min", lever("false"), adventure_state(LEVER, "face", &range("wall"))),
+        held("adventure-can-break-face-min-above", lever("false"), adventure_state(LEVER, "face", &range("ceiling"))),
+        held("adventure-can-break-dir-min", dispenser("east"), adventure_state(DISPENSER, "facing", &range("south"))),
+        held(
+            "adventure-can-break-dir-max",
+            dispenser("up"),
+            adventure_state(DISPENSER, "facing", &format!("000001{}", text("north"))),
+        ),
         held(
             "adventure-can-break-exact",
             lever("false"),
