@@ -35,8 +35,24 @@ fn attachment(entity: &ClientEntity) -> Option<Vec3> {
     } else {
         pick.name_tag
     }?;
-    let scale = f64::from(entity.scale());
+    let scale = f64::from(entity.scale()) * stand_size(entity);
     Some(Vec3::new(x * scale, y * scale, z * scale))
+}
+
+/// `ArmorStand.getDimensions`: a marker has no size at all (its tag sits at its feet) and a small
+/// stand is the stand's dimensions halved.
+fn stand_size(entity: &ClientEntity) -> f64 {
+    if rules_of(entity) != Some(NameRules::ArmorStand) {
+        return 1.0;
+    }
+    let stand = entity.armor_stand();
+    if stand.is_marker() {
+        0.0
+    } else if stand.is_small() {
+        0.5
+    } else {
+        1.0
+    }
 }
 
 /// Which renderer's rules name an entity, or none where it makes no tag (yet): a player names

@@ -17,6 +17,8 @@ struct Mob {
     picked: bool,
     baby: bool,
     scale: Option<f64>,
+    /// `ArmorStand.DATA_CLIENT_FLAGS`: small is 1, marker 16.
+    stand_flags: Option<u8>,
     reach: Option<f64>,
     below: Option<f64>,
     tag: Tag,
@@ -30,6 +32,7 @@ const MOB: Mob = Mob {
     picked: false,
     baby: false,
     scale: None,
+    stand_flags: None,
     reach: None,
     below: None,
     tag: TAG,
@@ -47,6 +50,9 @@ fn mob(label: &str, mob: Mob) -> Value {
     }
     if let Some(scale) = mob.scale {
         row["scale"] = json!(f64_bits(scale));
+    }
+    if let Some(flags) = mob.stand_flags {
+        row["stand_flags"] = json!(flags);
     }
     if let Some(reach) = mob.below {
         row["below_name_distance"] = json!(f64_bits(reach));
@@ -90,6 +96,15 @@ fn visibility_rows() -> Vec<Value> {
             Mob { kind: "minecraft:ender_dragon", renderer: "entity", tag: Tag { invisible: true, ..TAG }, ..MOB },
         ),
         mob("stand-visible", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", ..MOB }),
+        mob("stand-small", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(1), ..MOB }),
+        mob(
+            "stand-marker",
+            Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(16), ..MOB },
+        ),
+        mob(
+            "stand-small-marker",
+            Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(25), ..MOB },
+        ),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(
             "stand-hidden-picked",

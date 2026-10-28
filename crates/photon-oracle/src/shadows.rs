@@ -217,6 +217,9 @@ fn entity_metadata(row: &Value) -> Vec<u8> {
     if flag(row, "baby") {
         metadata.extend([16, 8, 1]);
     }
+    if let Some(flags) = row["stand_flags"].as_u64() {
+        metadata.extend([15, 0, flags as u8]);
+    }
     metadata.push(255);
     metadata
 }
