@@ -277,10 +277,7 @@ impl MerchantPanel {
                 "container/villager/experience_bar_current",
                 (102, 5),
                 (0, 0),
-                xo + 136,
-                yo + 16,
-                width,
-                5,
+                (xo + 136, yo + 16, width, 5),
             );
             if menu.future_xp > 0 {
                 let future = ((menu.future_xp as f32 * multiplier).floor() as i32).min(102 - width);
@@ -289,10 +286,7 @@ impl MerchantPanel {
                     "container/villager/experience_bar_result",
                     (102, 5),
                     (width, 0),
-                    xo + 136 + width,
-                    yo + 16,
-                    future,
-                    5,
+                    (xo + 136 + width, yo + 16, future, 5),
                 );
             }
         }

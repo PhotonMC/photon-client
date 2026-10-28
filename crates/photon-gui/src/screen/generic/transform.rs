@@ -298,10 +298,7 @@ fn brewing_progress(
             "container/brewing_stand/fuel_length",
             (18, 4),
             (0, 0),
-            left + 60,
-            top + 44,
-            fuel_length,
-            4,
+            (left + 60, top + 44, fuel_length, 4),
         );
     }
     if ticks > 0 {
@@ -312,10 +309,7 @@ fn brewing_progress(
                 "container/brewing_stand/brew_progress",
                 (9, 28),
                 (0, 0),
-                left + 97,
-                top + 16,
-                9,
-                length,
+                (left + 97, top + 16, 9, length),
             );
         }
         let length = BUBBLE_LENGTHS[(ticks / 2 % 7) as usize];
@@ -325,10 +319,7 @@ fn brewing_progress(
                 "container/brewing_stand/bubbles",
                 (12, 29),
                 (0, 29 - length),
-                left + 63,
-                top + 14 + 29 - length,
-                12,
-                length,
+                (left + 63, top + 14 + 29 - length, 12, length),
             );
         }
     }

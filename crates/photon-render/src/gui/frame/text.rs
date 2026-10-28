@@ -319,21 +319,15 @@ impl GuiFrame {
 
     /// `GuiGraphics.blitSprite` of part of a sprite as the reference's draw log records it: one
     /// sprite at the rectangle drawn.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn sprite_cut(
         &mut self,
         atlas: &GuiAtlas,
         name: &str,
         size: (i32, i32),
         uv: (i32, i32),
-        x: i32,
-        y: i32,
-        w: i32,
-        h: i32,
+        rect: (i32, i32, i32, i32),
     ) {
+        let (x, y, w, h) = rect;
         if let Some(log) = &mut self.log {
             log.push(DrawOp::Sprite {
                 name: name.to_owned(),
