@@ -240,11 +240,12 @@ pub(super) fn select_step_up_movement_case(request: &Value) -> Result<Value, Str
     let selected = select_step_up_movement(
         movement,
         movement_step,
-        bounding_box,
-        grounded_box,
+        (bounding_box, grounded_box),
         &shapes,
-        f32_field(request, "max_step_height")?,
-        f32_field(request, "step_height_to_skip")?,
+        (
+            f32_field(request, "max_step_height")?,
+            f32_field(request, "step_height_to_skip")?,
+        ),
     );
     Ok(json!({"movement": vec3_snapshot(selected)}))
 }

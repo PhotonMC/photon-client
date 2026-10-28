@@ -149,22 +149,24 @@ fn step_up_selection_uses_first_strictly_longer_candidate() {
     let selected = select_step_up_movement(
         Vec3::new(2.0, 0.0, 0.0),
         Vec3::ZERO,
-        Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
-        Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+        (
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+        ),
         &low_obstacle,
-        0.6,
-        0.0,
+        (0.6, 0.0),
     );
     assert_eq!((selected.x, selected.y, selected.z), (2.0, 0.5, 0.0));
 
     let tie = select_step_up_movement(
         Vec3::new(2.0, 0.0, 0.0),
         Vec3::new(2.0, 0.0, 0.0),
-        Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
-        Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+        (
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+            Aabb::new(0.0, 0.0, 0.0, 1.0, 1.0, 1.0),
+        ),
         &low_obstacle,
-        0.6,
-        0.0,
+        (0.6, 0.0),
     );
     assert_eq!((tie.x, tie.y, tie.z), (2.0, 0.0, 0.0));
 
@@ -172,11 +174,12 @@ fn step_up_selection_uses_first_strictly_longer_candidate() {
     let corrected = select_step_up_movement(
         Vec3::new(2.0, -1.0, 0.0),
         Vec3::new(0.0, -0.5, 0.0),
-        Aabb::new(0.0, 1.0, 0.0, 1.0, 2.0, 1.0),
-        Aabb::new(0.0, 0.5, 0.0, 1.0, 1.5, 1.0),
+        (
+            Aabb::new(0.0, 1.0, 0.0, 1.0, 2.0, 1.0),
+            Aabb::new(0.0, 0.5, 0.0, 1.0, 1.5, 1.0),
+        ),
         &offset,
-        0.6,
-        -0.5,
+        (0.6, -0.5),
     );
     assert_eq!((corrected.x, corrected.y, corrected.z), (2.0, 0.0, 0.0));
 }

@@ -10,14 +10,12 @@ use super::sprites::SpriteSet;
 impl Particle {
     /// `BaseAshSmokeParticle(..)`: a particle that rises, darkens at random and follows
     /// its sprite set as it ages.
-    #[allow(clippy::too_many_arguments)]
     pub(super) fn ash_smoke(
         random: RandomSource,
         at: (f64, f64, f64),
         direction: (f32, f32, f32),
         push: (f64, f64, f64),
-        scale: f32,
-        sprites: &Arc<SpriteSet>,
+        (scale, sprites): (f32, &Arc<SpriteSet>),
         (color_random, max_lifetime, gravity, has_physics): (f32, i32, f32, bool),
     ) -> Self {
         let mut particle = Self::thrown(
@@ -65,8 +63,7 @@ impl Particle {
             at,
             (0.1, 0.1, 0.1),
             push,
-            scale,
-            sprites,
+            (scale, sprites),
             (0.3, 8, -0.1, true),
         )
     }
@@ -90,8 +87,7 @@ impl Particle {
             at,
             (0.1, -0.1, 0.1),
             (0.0, 0.0, 0.0),
-            1.0,
-            sprites,
+            (1.0, sprites),
             (0.5, 20, 0.1, false),
         )
     }
@@ -112,8 +108,7 @@ impl Particle {
             at,
             (0.1, -0.1, 0.1),
             (xa, ya, za),
-            1.0,
-            sprites,
+            (1.0, sprites),
             (0.0, 20, 0.0125, false),
         );
         let [r, g, b] = WHITE_ASH_RGB;
@@ -134,8 +129,7 @@ impl Particle {
             at,
             (0.7, 0.6, 0.7),
             (push.0, push.1 + f64::from(0.15_f32), push.2),
-            1.0,
-            sprites,
+            (1.0, sprites),
             (0.5, 7, 0.5, false),
         );
         particle.kind = Kind::AshSmoke { decays: true };

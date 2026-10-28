@@ -272,11 +272,9 @@ pub fn collect_candidate_step_up_heights(
 pub fn select_step_up_movement(
     movement: Vec3,
     movement_step: Vec3,
-    bounding_box: Aabb,
-    grounded_bounding_box: Aabb,
+    (bounding_box, grounded_bounding_box): (Aabb, Aabb),
     colliders: &[VoxelShape],
-    max_step_height: f32,
-    step_height_to_skip: f32,
+    (max_step_height, step_height_to_skip): (f32, f32),
 ) -> Vec3 {
     let candidates = collect_candidate_step_up_heights(
         grounded_bounding_box,

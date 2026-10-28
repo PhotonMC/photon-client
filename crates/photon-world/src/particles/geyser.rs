@@ -105,8 +105,7 @@ impl Particle {
             (x, y, z),
             (burst, burst, burst),
             push,
-            size,
-            sprites,
+            (size, sprites),
             (0.0, 0, 0.0, true),
         );
         particle.friction = 0.725;

@@ -200,11 +200,9 @@ impl LocalPlayer {
             return Ok(select_step_up_movement(
                 movement,
                 movement_step,
-                aabb,
-                grounded,
+                (aabb, grounded),
                 &colliders,
-                max_up_step,
-                movement_step.y as f32,
+                (max_up_step, movement_step.y as f32),
             ));
         }
         Ok(movement_step)

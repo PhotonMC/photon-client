@@ -61,8 +61,7 @@ impl Particle {
             at,
             (0.1, 0.1, 0.1),
             push,
-            scale,
-            sprites,
+            (scale, sprites),
             (0.3, 5, -0.02, true),
         );
         particle.r_col = 1.0;
