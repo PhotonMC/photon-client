@@ -154,6 +154,10 @@ pub fn hand_layers(
         &std::mem::take(&mut models.glow),
     )?;
     backend.set_draw(
+        photon_render::vulkan::DrawKind::EntityMask,
+        &std::mem::take(&mut models.water_masks),
+    )?;
+    backend.set_draw(
         photon_render::vulkan::DrawKind::EntitySwirl,
         &std::mem::take(&mut models.swirl),
     )?;
@@ -269,10 +273,7 @@ pub fn remote_mobs(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    models.glow.clear();
-    models.swirl.clear();
-    models.dissolve.clear();
-    models.rays.clear();
+    models.clear_layers();
     for entity in world.drawn_mobs() {
         let Some(kind) = models.kinds.get(&entity.type_id).copied() else {
             continue;

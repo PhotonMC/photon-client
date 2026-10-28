@@ -83,12 +83,7 @@ impl VulkanBackend {
             let sampler = self.atlas_sampler(1.0)?;
             let descriptors = Descriptors::create(&self.device)?;
             let descriptor_set = self.atlas_set(&descriptors, texture.view, sampler.handle)?;
-            // The terrain's own sampler, anisotropic if the options ask for it.
-            let terrain_sampler = self.atlas_sampler(self.filtering.anisotropy)?;
-            let terrain = super::terrain_filter::TerrainSet {
-                set: self.atlas_set(&descriptors, texture.view, terrain_sampler.handle)?,
-                sampler: terrain_sampler,
-            };
+            let terrain = self.terrain_set(&descriptors, texture.view)?;
 
             let pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Terrain)?;
             let translucent_pipeline =
@@ -112,6 +107,8 @@ impl VulkanBackend {
             let text_translucent_pipeline =
                 self.create_pipeline(descriptors.layout, PipelineKind::TextTranslucent)?;
             let shadow_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Shadow)?;
+            let mask_pipeline =
+                self.create_pipeline(descriptors.layout, PipelineKind::EntityMask)?;
             let swirl_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Swirl)?;
             let glint_pipeline = self.create_pipeline(descriptors.layout, PipelineKind::Glint)?;
             let dissolve_pipeline =
@@ -148,6 +145,7 @@ impl VulkanBackend {
                 text_see_through_pipeline,
                 text_translucent_pipeline,
                 shadow_pipeline,
+                mask_pipeline,
                 swirl_pipeline,
                 glint_pipeline,
                 dissolve_pipeline,

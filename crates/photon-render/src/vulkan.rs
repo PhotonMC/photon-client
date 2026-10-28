@@ -57,6 +57,7 @@ mod owned;
 mod panorama;
 mod pipeline;
 mod pipeline_cache;
+mod pipeline_states;
 mod portal;
 mod regions;
 mod scene;

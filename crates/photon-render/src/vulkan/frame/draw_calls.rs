@@ -3,6 +3,20 @@ use super::*;
 /// A range of push constants: its stages, its offset and its bytes.
 pub(super) type PushRange<'a> = (vk::ShaderStageFlags, u32, &'a [u8]);
 
+impl FlatDraws {
+    /// The list a run draws, for the runs that are flat shapes.
+    pub(super) fn of(&self, run: Run) -> Option<&DrawList> {
+        Some(match run {
+            Run::Shadow => &self.shadow,
+            Run::Glow => &self.glow,
+            Run::Mask => &self.mask,
+            Run::Swirl => &self.swirl,
+            Run::Glint => &self.glint,
+            _ => return None,
+        })
+    }
+}
+
 impl VulkanBackend {
     /// Record the draw for one swapchain image.
     ///
@@ -263,11 +277,10 @@ impl VulkanBackend {
         match run {
             Run::Ground | Run::GroundTranslucent => self.ground_range(run),
             Run::Entity => list(&self.entity),
-            Run::Shadow => list(&self.shadow),
             Run::Dissolve => list(&self.dissolve),
-            Run::Glow => list(&self.glow),
-            Run::Swirl => list(&self.swirl),
-            Run::Glint => list(&self.glint),
+            Run::Shadow | Run::Mask | Run::Glow | Run::Swirl | Run::Glint => {
+                list(self.flat.of(run).expect("a flat run"))
+            }
             Run::Rays => list(&self.rays),
             Run::Orb => list(&self.orb),
             Run::Particle => list(&self.particle),

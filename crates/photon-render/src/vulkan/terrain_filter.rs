@@ -111,6 +111,26 @@ impl VulkanBackend {
         }
     }
 
+    /// The terrain's own sampler, anisotropic if the options ask for it, with its set.
+    ///
+    /// # Safety
+    ///
+    /// The device, the pool and the view must be live.
+    pub(super) unsafe fn terrain_set(
+        &self,
+        descriptors: &Descriptors,
+        view: vk::ImageView,
+    ) -> Result<TerrainSet, VulkanError> {
+        // SAFETY: the caller's contract.
+        unsafe {
+            let sampler = self.atlas_sampler(self.filtering.anisotropy)?;
+            Ok(TerrainSet {
+                set: self.atlas_set(descriptors, view, sampler.handle)?,
+                sampler,
+            })
+        }
+    }
+
     /// A set from the scene's pool holding the atlas `view` with `sampler`.
     ///
     /// # Safety

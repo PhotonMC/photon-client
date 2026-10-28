@@ -66,6 +66,8 @@ pub(super) enum PipelineKind {
     /// World text's shaders over the entity textures, blended and not written
     /// to the depth (`ENTITY_TRANSLUCENT_CULL`): an experience orb.
     TextTranslucent,
+    /// The boats' water patch (`WATER_MASK`): the entity shaders, the depth written and no colour.
+    EntityMask,
     /// An entity's shadow (`ENTITY_SHADOW`): the entity textures, blended, no
     /// light, tested but not written to the depth.
     Shadow,
@@ -245,6 +247,7 @@ pub(super) struct SceneResources {
     pub(super) text_see_through_pipeline: Pipeline,
     pub(super) text_translucent_pipeline: Pipeline,
     pub(super) shadow_pipeline: Pipeline,
+    pub(super) mask_pipeline: Pipeline,
     pub(super) swirl_pipeline: Pipeline,
     pub(super) glint_pipeline: Pipeline,
     pub(super) dissolve_pipeline: Pipeline,
@@ -531,6 +534,36 @@ pub(super) struct DrawList {
     /// How many of the last `count` vertices are translucent quads, drawn after the rest
     /// (dropped items).
     pub(super) translucent: u32,
+}
+
+/// The entities' flat shapes, which sample the entity textures.
+#[derive(Default)]
+pub(super) struct FlatDraws {
+    /// The entity shadows' triangles.
+    pub(super) shadow: DrawList,
+    /// The glowing layers' triangles (`RenderTypes.eyes`): unlit and blended, tested but not
+    /// written to the depth.
+    pub(super) glow: DrawList,
+    /// The boats' water patches (`WATER_MASK`): depth only.
+    pub(super) mask: DrawList,
+    /// The energy swirls' triangles (`RenderTypes.energySwirl`).
+    pub(super) swirl: DrawList,
+    /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
+    pub(super) glint: DrawList,
+}
+
+impl FlatDraws {
+    pub(super) fn clear_buffers(&mut self) {
+        for list in [
+            &mut self.shadow,
+            &mut self.glow,
+            &mut self.mask,
+            &mut self.swirl,
+            &mut self.glint,
+        ] {
+            list.buffer.clear();
+        }
+    }
 }
 
 /// The line strips: the aimed block's outline, and the F3 3D crosshair, which is in view space and

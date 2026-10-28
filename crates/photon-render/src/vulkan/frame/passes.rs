@@ -72,6 +72,8 @@ pub(super) enum Run {
     /// The dropped items' quads of translucent sprites, blended over what is drawn.
     GroundTranslucent,
     Entity,
+    /// The boats' water patches: the depth only, over what the entities wrote.
+    Mask,
     /// Blended quads of the shadow texture over the blocks' tops.
     Shadow,
     /// Dissolving entities (a dying dragon's body): the push constants carry where the masks are.
@@ -117,9 +119,10 @@ pub(super) enum Run {
 /// What the entities pass draws, in order. The ground items and the entities come first, then the
 /// flat shapes: shadows before what they lie under, the glowing layers, the additive ones, orbs,
 /// maps, and the name tags last.
-pub(super) const ENTITY_RUNS: [Run; 14] = [
+pub(super) const ENTITY_RUNS: [Run; 15] = [
     Run::Ground,
     Run::Entity,
+    Run::Mask,
     Run::GroundTranslucent,
     Run::Shadow,
     Run::Dissolve,
@@ -175,14 +178,17 @@ impl Run {
                 &scene.held_pipelines[usize::from(self.is_item_translucent())]
             }
             Self::Entity | Self::Hand | Self::Particle => &scene.entity_pipeline,
+            Self::Mask => &scene.mask_pipeline,
             Self::Shadow | Self::Glow => &scene.shadow_pipeline,
             Self::Dissolve => &scene.dissolve_pipeline,
             Self::Swirl => &scene.swirl_pipeline,
             Self::Glint | Self::HandGlint => &scene.glint_pipeline,
             Self::Rays => &scene.rays_pipeline,
-            Self::Orb | Self::MapDecoration => &scene.text_translucent_pipeline,
-            Self::Map | Self::NameTag => &scene.text_pipeline,
-            Self::NameTagSeeThrough => &scene.text_see_through_pipeline,
+            Self::Orb
+            | Self::MapDecoration
+            | Self::Map
+            | Self::NameTag
+            | Self::NameTagSeeThrough => scene.text_pipeline_of(self),
             Self::Outline | Self::OutlineBacking | Self::Gizmo => scene.lines_pipeline(self),
             Self::Cracks => &scene.crumbling_pipeline,
         }
@@ -206,6 +212,7 @@ impl Run {
             Self::Outline | Self::OutlineBacking | Self::Gizmo => Sampled::Unbound,
             Self::Cracks => Sampled::Crack,
             Self::Entity
+            | Self::Mask
             | Self::Shadow
             | Self::Dissolve
             | Self::Glow
@@ -222,6 +229,15 @@ impl Run {
 }
 
 impl SceneResources {
+    /// The pipeline of a run drawn with the text shaders.
+    fn text_pipeline_of(&self, run: Run) -> &Pipeline {
+        match run {
+            Run::Orb | Run::MapDecoration => &self.text_translucent_pipeline,
+            Run::NameTagSeeThrough => &self.text_see_through_pipeline,
+            _ => &self.text_pipeline,
+        }
+    }
+
     /// The pipeline of a line run: the backing of the outline writes no depth.
     fn lines_pipeline(&self, run: Run) -> &Pipeline {
         &self.lines_pipelines[usize::from(run == Run::OutlineBacking)]
@@ -262,8 +278,8 @@ mod tests {
     #[test]
     fn the_entities_pass_draws_items_and_entities_before_the_shapes_over_them() {
         assert_eq!(
-            ENTITY_RUNS[..3],
-            [Run::Ground, Run::Entity, Run::GroundTranslucent]
+            ENTITY_RUNS[..4],
+            [Run::Ground, Run::Entity, Run::Mask, Run::GroundTranslucent]
         );
         let position = |run| ENTITY_RUNS.iter().position(|&own| own == run).unwrap();
         // Shadows lie under the entities' flat shapes; name tags are the last of all.

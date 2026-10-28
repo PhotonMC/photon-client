@@ -1,5 +1,6 @@
 //! Building a graphics pipeline.
 
+use super::pipeline_states::{crumbling_or_mask_blend, uses_entity_shaders};
 use super::shaders::*;
 use super::vertex_attributes::*;
 use super::*;
@@ -29,7 +30,7 @@ impl VulkanBackend {
         let rays = kind == PipelineKind::Rays;
         let portal = kind == PipelineKind::Portal;
         let world_border = kind == PipelineKind::WorldBorder;
-        let entity = matches!(kind, PipelineKind::Entity | PipelineKind::EntityOutline) || dissolve;
+        let entity = uses_entity_shaders(kind) || dissolve;
         let shadow = kind == PipelineKind::Shadow;
         let swirl = kind == PipelineKind::Swirl;
         let gui_glint = kind == PipelineKind::GuiGlint;
@@ -166,108 +167,101 @@ impl VulkanBackend {
                 .depth_test_enable(!sky && !gui && !text_see_through && !screen_effect)
                 .depth_write_enable(writes_depth(kind))
                 .depth_compare_op(depth_compare(kind));
-            let blends = [if crumbling {
-                // Source times destination, twice: darkens and lightens.
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::DST_COLOR)
-                    .dst_color_blend_factor(vk::BlendFactor::SRC_COLOR)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::GuiInvert {
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::GuiVignette {
-                // The credits' `VIGNETTE`: the destination darkened by the source colour.
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::ZERO)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ZERO)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::GuiHighlight {
-                // `BlendFunction.ADDITIVE`.
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::ONE)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if kind == PipelineKind::SkyOverlay || rays || world_border {
-                // Added by its alpha (`BlendFunction.LIGHTNING`/`BlendFunction.OVERLAY`:
-                // the same factors).
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if glint {
-                // `BlendFunction.GLINT`: added by its own colour, the alpha kept.
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::SRC_COLOR)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ZERO)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if swirl {
-                // Added to what is behind (`BlendFunction.ADDITIVE`).
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::ONE)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else if translucent
-                || sky
-                || clouds
-                || weather
-                || entity
-                || text
-                || text_see_through
-                || gui
-                || gui_item
-                || lines
-                || screen_effect
-            {
-                vk::PipelineColorBlendAttachmentState::default()
-                    .blend_enable(true)
-                    .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
-                    .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-                    .color_blend_op(vk::BlendOp::ADD)
-                    .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                    .dst_alpha_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
-                    .alpha_blend_op(vk::BlendOp::ADD)
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            } else {
-                vk::PipelineColorBlendAttachmentState::default()
-                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-            }];
+            let blends = [
+                if let Some(blend) = crumbling_or_mask_blend(kind, crumbling) {
+                    blend
+                } else if kind == PipelineKind::GuiInvert {
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if kind == PipelineKind::GuiVignette {
+                    // The credits' `VIGNETTE`: the destination darkened by the source colour.
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::ZERO)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if kind == PipelineKind::GuiHighlight {
+                    // `BlendFunction.ADDITIVE`.
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::ONE)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if kind == PipelineKind::SkyOverlay || rays || world_border {
+                    // Added by its alpha (`BlendFunction.LIGHTNING`/`BlendFunction.OVERLAY`:
+                    // the same factors).
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if glint {
+                    // `BlendFunction.GLINT`: added by its own colour, the alpha kept.
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::SRC_COLOR)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if swirl {
+                    // Added to what is behind (`BlendFunction.ADDITIVE`).
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::ONE)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if translucent
+                    || sky
+                    || clouds
+                    || weather
+                    || entity
+                    || text
+                    || text_see_through
+                    || gui
+                    || gui_item
+                    || lines
+                    || screen_effect
+                {
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .blend_enable(true)
+                        .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+                        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                        .color_blend_op(vk::BlendOp::ADD)
+                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+                        .dst_alpha_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_ALPHA)
+                        .alpha_blend_op(vk::BlendOp::ADD)
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else {
+                    vk::PipelineColorBlendAttachmentState::default()
+                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                },
+            ];
             let blend = vk::PipelineColorBlendStateCreateInfo::default().attachments(&blends);
 
             let push_ranges = [
@@ -372,6 +366,7 @@ fn writes_depth(kind: PipelineKind) -> bool {
             | PipelineKind::Clouds
             | PipelineKind::Entity
             | PipelineKind::EntityOutline
+            | PipelineKind::EntityMask
             | PipelineKind::Held
             | PipelineKind::HeldTranslucent
             | PipelineKind::Dissolve
@@ -430,6 +425,11 @@ const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
     ),
     (
         PipelineKind::Entity,
+        &ENTITY_VERTEX_SHADER,
+        &ENTITY_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::EntityMask,
         &ENTITY_VERTEX_SHADER,
         &ENTITY_FRAGMENT_SHADER,
     ),

@@ -12,6 +12,9 @@ use photon_render::scene::Vertex;
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
 
+/// The water patch's model layer (`ModelLayers.BOAT_WATER_PATCH`).
+const WATER_PATCH_LAYER: &str = "minecraft:boat#water_patch";
+
 /// The textures (under `textures/`) of a boat and a chest boat of each wood (and
 /// the bamboo's rafts).
 const TEXTURES: [&str; 20] = [
@@ -98,11 +101,23 @@ pub fn remote_boats(
         let placed = placement(world, &snapshot, view, entity.scale());
         let mut base = Pose::default();
         base.translate(placed.feet[0], placed.feet[1], placed.feet[2]);
+        let pose = boat_pose(&base, &state);
         // A glowing boat's body joins the outline.
         vertices.extend(crate::mobs::with_outline(
             entity,
-            boat_vertices(model, &boat_pose(&base, &state), placed.light, rect),
+            boat_vertices(model, &pose, placed.light, rect),
         ));
+        // `BoatRenderer.submitTypeAdditions`: the patch that keeps the water out of the hull,
+        // unless the boat is under water; the rafts have none.
+        let raft = photon_data::entity_type::name(entity.type_id)
+            .is_some_and(|name| name.contains("_raft") || name.contains("_chest_raft"));
+        if !raft
+            && !state.is_under_water
+            && let Some(patch) = models.model(WATER_PATCH_LAYER)
+        {
+            let mask = boat_vertices(patch, &pose, placed.light, rect);
+            models.water_masks.extend(mask);
+        }
     }
 }
 

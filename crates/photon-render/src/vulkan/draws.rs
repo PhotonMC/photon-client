@@ -12,6 +12,9 @@ pub enum DrawKind {
     /// The next frame's glowing layers, as triangles that sample the
     /// entity textures, each vertex's tint its colour.
     EntityGlow,
+    /// The next frame's water patches of the boats (`WATER_MASK`): depth only, the entity
+    /// textures' triangles.
+    EntityMask,
     /// The next frame's entity silhouettes in their outline colours, which the outline chain
     /// turns into the glowing entities' outlines: the entity textures' triangles, each vertex's
     /// fourth tint component the colour as `0xRRGGBB`, or minus one for black.
@@ -178,12 +181,13 @@ impl VulkanBackend {
     fn draw_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
         match kind {
             DrawKind::Entities => &mut self.entity,
-            DrawKind::EntityGlow => &mut self.glow,
+            DrawKind::EntityGlow => &mut self.flat.glow,
+            DrawKind::EntityMask => &mut self.flat.mask,
             DrawKind::EntityOutline | DrawKind::ItemOutline => {
                 unreachable!("set_draw hands these to the outline chain")
             }
-            DrawKind::EntitySwirl => &mut self.swirl,
-            DrawKind::EntityGlint => &mut self.glint,
+            DrawKind::EntitySwirl => &mut self.flat.swirl,
+            DrawKind::EntityGlint => &mut self.flat.glint,
             DrawKind::DragonRays => &mut self.rays,
             DrawKind::EndPortal => &mut self.portal,
             DrawKind::GroundItems => &mut self.ground,
@@ -197,7 +201,7 @@ impl VulkanBackend {
     /// The lists of the shapes drawn flat over the entity textures and the block atlas.
     fn flat_list_mut(&mut self, kind: DrawKind) -> &mut DrawList {
         match kind {
-            DrawKind::Shadows => &mut self.shadow,
+            DrawKind::Shadows => &mut self.flat.shadow,
             DrawKind::ExperienceOrbs => &mut self.orb,
             DrawKind::Particles => &mut self.particle,
             _ => &mut self.block_particle,

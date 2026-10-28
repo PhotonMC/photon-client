@@ -79,15 +79,8 @@ pub struct VulkanBackend {
     pub(super) particle: DrawList,
     /// The flakes of blocks' triangles, which sample the block atlas.
     pub(super) block_particle: DrawList,
-    /// The entity shadows' triangles, which sample the entity textures.
-    pub(super) shadow: DrawList,
-    /// The glowing layers' triangles (`RenderTypes.eyes`): the entity
-    /// textures, unlit and blended, tested but not written to the depth.
-    pub(super) glow: DrawList,
-    /// The energy swirls' triangles (`RenderTypes.energySwirl`).
-    pub(super) swirl: DrawList,
-    /// The enchantment glints' triangles (`RenderTypes.armorEntityGlint`).
-    pub(super) glint: DrawList,
+    /// The entities' flat shapes over the entity textures.
+    pub(super) flat: FlatDraws,
     /// The maps' quads, drawn with the text pipeline over the maps' image.
     pub(super) map: DrawList,
     /// The decorations' sprites on them, blended over the entity textures.

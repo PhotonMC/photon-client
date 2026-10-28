@@ -268,6 +268,8 @@ pub struct MobModels {
     /// What the glowing layers drew this frame (eyes), for the frame to hand
     /// to the renderer after the mobs.
     pub(crate) glow: Vec<Vertex>,
+    /// The boats' water patches this frame, which only write the depth.
+    pub(crate) water_masks: Vec<Vertex>,
     /// What the energy swirls drew this frame (a charged creeper's).
     pub(crate) swirl: Vec<Vertex>,
     /// What the dissolving entities drew this frame (a dying dragon's body), and where a
@@ -288,6 +290,15 @@ pub struct MobModels {
 }
 
 impl MobModels {
+    /// Forget the layers of the last frame.
+    pub(crate) fn clear_layers(&mut self) {
+        self.glow.clear();
+        self.water_masks.clear();
+        self.swirl.clear();
+        self.dissolve.clear();
+        self.rays.clear();
+    }
+
     pub fn new() -> Self {
         Self {
             kinds: KINDS
@@ -300,6 +311,7 @@ impl MobModels {
                 .collect(),
             models: HashMap::new(),
             glow: Vec::new(),
+            water_masks: Vec::new(),
             swirl: Vec::new(),
             dissolve: Vec::new(),
             dissolve_mask_offset: [0.0; 2],
