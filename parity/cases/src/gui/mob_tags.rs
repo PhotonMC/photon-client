@@ -111,6 +111,10 @@ fn visibility_rows() -> Vec<Value> {
             Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(25), ..MOB },
         ),
         mob("villager-sleeping", Mob { kind: "minecraft:villager", pose: Some("sleeping"), ..MOB }),
+        mob(
+            "villager-sleeping-scaled",
+            Mob { kind: "minecraft:villager", pose: Some("sleeping"), scale: Some(2.0), ..MOB },
+        ),
         mob("zombie-sleeping", Mob { pose: Some("sleeping"), ..MOB }),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(

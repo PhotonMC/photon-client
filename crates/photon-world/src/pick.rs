@@ -64,9 +64,13 @@ impl ClientEntity {
                 ));
             }
         }
-        let sleeping = self.pose() == crate::ClientEntityPose::Sleeping;
-        (sleeping && !self.is_player() && self.is_living_entity())
+        (!self.is_player() && self.has_sleeping_size())
             .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
+    }
+
+    /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
+    fn has_sleeping_size(&self) -> bool {
+        self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
     }
 
     pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
@@ -95,7 +99,12 @@ impl ClientEntity {
     /// The size a leash is tied by (`getBbWidth`, `getBbHeight`, `getEyeHeight`): the size the
     /// type starts with, grown by the scale attribute.
     pub fn leash_size(&self) -> photon_data::leash::Size {
-        let scale = if self.is_player() { 1.0 } else { self.scale() };
+        // A player's own size is scaled by the callers, and a sleeping mob's is never.
+        let scale = if self.is_player() || self.has_sleeping_size() {
+            1.0
+        } else {
+            self.scale()
+        };
         let dimensions = self.dimensions().scale(scale, scale);
         photon_data::leash::Size {
             width: dimensions.width(),
