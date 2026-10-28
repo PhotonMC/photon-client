@@ -270,8 +270,8 @@ fn player_motion(
     photon_render::scene::multiply(hurt, bob)
 }
 
-/// `Entity.getEyeHeight` of the camera entity: the player's, or the standing height of the entity
-/// a spectator was handed to.
+/// `Entity.getEyeHeight` of the camera entity: the player's, or that of the entity a spectator
+/// was handed to in its pose, age and scale.
 fn camera_eye_height(
     session: &photon_net::connection::PlaySession,
     player: &photon_world::local_player::LocalPlayer,
@@ -279,8 +279,10 @@ fn camera_eye_height(
     session
         .camera_entity()
         .and_then(|id| session.world().entities().at(id))
-        .and_then(photon_render::entity::tag_rules::eye_height)
-        .map_or_else(|| player.eye_height(), |height| height as f32)
+        .map_or_else(
+            || player.eye_height(),
+            |entity| entity.leash_size().eye_height,
+        )
 }
 
 /// One tick of what follows the player's eyes: the camera, and the HUD with the brightness of the

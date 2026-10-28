@@ -104,18 +104,6 @@ fn class_rules(entity: &ClientEntity, name: &str) -> Option<NameRules> {
     }
 }
 
-/// `Entity.getEyeHeight()` of a standing entity: the table's eye height of its type (a baby's
-/// for a baby) in its scale.
-pub fn eye_height(entity: &ClientEntity) -> Option<f64> {
-    let pick = photon_data::entity_type::pick(entity.type_id)?;
-    let (_, _, eye) = if entity.is_baby() {
-        pick.baby.unwrap_or(pick.size)
-    } else {
-        pick.size
-    };
-    Some(f64::from(eye) * f64::from(entity.scale()))
-}
-
 /// `EntityRenderer.extractNameTags` for an entity that is not a player, with the name it would
 /// show; `picked` is whether the crosshair is on it (`crosshairPickEntity`).
 pub fn entity_name_tag(
