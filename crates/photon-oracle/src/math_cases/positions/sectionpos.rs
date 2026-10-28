@@ -66,12 +66,12 @@ pub(crate) fn sectionpos_as_long_case(request: &Value) -> Result<Value, String> 
     Ok(json!({
         "value": sectionpos_as_long_snapshot(
             u64_hex_field(request, "block_node")?,
-            coordinate("x")?,
-            coordinate("y")?,
-            coordinate("z")?,
-            coordinate("section_x")?,
-            coordinate("section_y")?,
-            coordinate("section_z")?,
+            (coordinate("x")?, coordinate("y")?, coordinate("z")?),
+            SectionPos::new(
+                coordinate("section_x")?,
+                coordinate("section_y")?,
+                coordinate("section_z")?,
+            ),
         ),
     }))
 }

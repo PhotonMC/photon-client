@@ -203,10 +203,8 @@ impl VoxelShape {
 
                         while is_xz_rectangle_full(
                             &remaining,
-                            x,
-                            end_x + 1,
-                            start_z,
-                            z,
+                            x..end_x + 1,
+                            start_z..z,
                             end_y + 1,
                             grid,
                         ) {

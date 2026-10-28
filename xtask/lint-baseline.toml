@@ -987,7 +987,6 @@
 [fn-params]
 "crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 7
 "crates/photon-core/src/binary/traversal.rs::BlockPos::random_between_closed" = 8
-"crates/photon-core/src/shape/grid.rs::is_xz_rectangle_full" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 7
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 7
@@ -1002,7 +1001,6 @@
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::new" = 7
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 7
-"crates/photon-oracle/src/chunkpos.rs::sectionpos_as_long_snapshot" = 7
 "crates/photon-oracle/src/pack.rs::key_mapping_properties" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/block/world_mesh/mesh.rs::add_face" = 7
@@ -1014,7 +1012,6 @@
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::sprite_cut" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::blit_texture" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::nine_slice" = 9
-"crates/photon-render/src/objects/leash.rs::vertex_pair" = 8
 "crates/photon-world/src/block/state/shape.rs::compute" = 7
 "crates/photon-world/src/collision.rs::select_step_up_movement" = 7
 "crates/photon-world/src/entity/pose.rs::refresh_entity_dimensions" = 7

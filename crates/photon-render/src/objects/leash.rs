@@ -44,15 +44,14 @@ fn lerp(delta: f32, from: f32, to: f32) -> f32 {
 }
 
 /// `LeashFeatureRenderer.addVertexPair`.
-#[expect(clippy::too_many_arguments, reason = "mirrors the reference's method")]
+///
+/// `shift` is the reference's `[dxOff, fudge, dzOff]` and `step` its `(k, backwards)`.
 fn vertex_pair(
     out: &mut Vec<LeashVertex>,
     pose: &Pose,
     [dx, dy, dz]: [f32; 3],
-    fudge: f32,
-    [dx_off, dz_off]: [f32; 2],
-    k: i32,
-    backwards: bool,
+    [dx_off, fudge, dz_off]: [f32; 3],
+    (k, backwards): (i32, bool),
     state: &LeashState,
 ) {
     let progress = k as f32 / STEPS as f32;
@@ -122,15 +121,20 @@ pub fn leash_vertices(pose: &Pose, state: &LeashState) -> Vec<LeashVertex> {
             &mut out,
             &pose,
             [dx, dy, dz],
-            WIDTH,
-            offsets,
-            k,
-            false,
+            [offsets[0], WIDTH, offsets[1]],
+            (k, false),
             state,
         );
     }
     for k in (0..=STEPS).rev() {
-        vertex_pair(&mut out, &pose, [dx, dy, dz], 0.0, offsets, k, true, state);
+        vertex_pair(
+            &mut out,
+            &pose,
+            [dx, dy, dz],
+            [offsets[0], 0.0, offsets[1]],
+            (k, true),
+            state,
+        );
     }
     out
 }

@@ -104,17 +104,13 @@ pub(super) fn sectionpos_packed_transformations_snapshot(
 
 pub(super) fn sectionpos_as_long_snapshot(
     block_node: u64,
-    x: i32,
-    y: i32,
-    z: i32,
-    section_x: i32,
-    section_y: i32,
-    section_z: i32,
+    (x, y, z): (i32, i32, i32),
+    section: SectionPos,
 ) -> Value {
     json!({
         "from_block_pos": format!("{:x}", SectionPos::as_long_from_block_pos(BlockPos::unpack(block_node))),
         "coordinates": format!("{:x}", SectionPos::as_long_coordinates(x, y, z)),
-        "instance": format!("{:x}", SectionPos::new(section_x, section_y, section_z).as_long()),
+        "instance": format!("{:x}", section.as_long()),
     })
 }
 

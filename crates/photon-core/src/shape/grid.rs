@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Range;
 
 pub(crate) fn point_distance_squared(first: Vec3, second: Vec3) -> f64 {
     let dx = first.x - second.x;
@@ -169,14 +170,15 @@ pub(crate) fn is_z_strip_full(
 
 pub(crate) fn is_xz_rectangle_full(
     cells: &[bool],
-    start_x: usize,
-    end_x: usize,
-    start_z: usize,
-    end_z: usize,
+    xs: Range<usize>,
+    zs: Range<usize>,
     y: usize,
     grid: Grid,
 ) -> bool {
-    y < grid.y_size && (start_x..end_x).all(|x| is_z_strip_full(cells, start_z, end_z, x, y, grid))
+    y < grid.y_size
+        && xs
+            .into_iter()
+            .all(|x| is_z_strip_full(cells, zs.start, zs.end, x, y, grid))
 }
 
 impl Grid {
