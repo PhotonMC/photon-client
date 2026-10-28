@@ -15,6 +15,8 @@ pub const ITEM_NAME: i64 = 9;
 pub const LORE: i64 = 11;
 pub const RARITY: i64 = 12;
 pub const ENCHANTMENTS: i64 = 13;
+pub const CAN_PLACE_ON: i64 = 14;
+pub const CAN_BREAK: i64 = 15;
 pub const REPAIR_COST: i64 = 19;
 pub const GLINT: i64 = 21;
 pub const STORED_ENCHANTMENTS: i64 = 42;
@@ -226,4 +228,11 @@ pub fn bundle(items: &[Stack]) -> String {
     let stacks: String =
         items.iter().map(|(item, count, inner)| format!("{}{}{inner}", vi(item_id(item)), vi(*count))).collect();
     patch(&[(BUNDLE_CONTENTS, format!("{}{stacks}", vi(items.len() as i64)))])
+}
+
+/// `can_break` or `can_place_on` naming blocks by registry id: a list of one predicate with only
+/// the block set (`blocks` present; no state, nbt or component tests).
+pub fn adventure_blocks(blocks: &[i64]) -> String {
+    let ids: String = blocks.iter().map(|id| vi(*id)).collect();
+    format!("{}01{}{ids}00000000", vi(1), vi(blocks.len() as i64 + 1))
 }

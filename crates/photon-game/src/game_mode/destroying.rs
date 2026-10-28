@@ -143,7 +143,7 @@ impl GameMode {
         face: u8,
         out: &mut Vec<Outgoing>,
     ) -> bool {
-        if ctx.block_action_restricted() || !ctx.within_border(pos) {
+        if ctx.block_action_restricted(pos) || !ctx.within_border(pos) {
             return false;
         }
         if ctx.instabuild() {
@@ -280,7 +280,7 @@ fn attack_block(
 
 /// `destroyBlock`: the block becomes the fluid it held, as a prediction.
 pub(super) fn destroy_block(ctx: &mut Context<'_>, pos: (i32, i32, i32)) -> bool {
-    if ctx.block_action_restricted() {
+    if ctx.block_action_restricted(pos) {
         return false;
     }
     let old = ctx.state_at(pos);

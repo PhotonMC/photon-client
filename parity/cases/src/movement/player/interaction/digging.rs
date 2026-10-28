@@ -6,6 +6,7 @@
 use serde_json::{Value, json};
 
 use super::{breaking, place};
+use crate::components::{CAN_BREAK, adventure_blocks, patch};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{cat, put, put_with};
 
@@ -161,6 +162,16 @@ fn breaking_rows_2() -> Vec<Value> {
             .game_mode("creative")
             .row(),
         breaking("adventure-bare-hand", dirt(), [first_click(), hold(4)].concat()).game_mode("adventure").row(),
+        breaking("adventure-can-break-dirt", dirt(), [first_click(), hold(4)].concat())
+            .main_hand("minecraft:stick")
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_BREAK, adventure_blocks(&[9]))]))
+            .row(),
+        breaking("adventure-can-break-stone", dirt(), [first_click(), hold(4)].concat())
+            .main_hand("minecraft:stick")
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_BREAK, adventure_blocks(&[1]))]))
+            .row(),
     ]
 }
 

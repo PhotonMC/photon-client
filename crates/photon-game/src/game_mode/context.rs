@@ -109,14 +109,46 @@ impl Context<'_> {
             < range * range
     }
 
-    /// `Player.blockActionRestricted`: spectators cannot break, and in
-    /// adventure mode nothing can be broken without a `can_break` predicate,
-    /// which is not evaluated.
-    pub(super) fn block_action_restricted(&self) -> bool {
-        matches!(
-            self.mode,
-            ClientPlayerGameMode::Adventure | ClientPlayerGameMode::Spectator
+    /// `Player.blockActionRestricted`: spectators cannot break, and an adventure player only
+    /// with a main-hand item whose `can_break` predicate matches the block.
+    pub(super) fn block_action_restricted(&self, pos: (i32, i32, i32)) -> bool {
+        match self.mode {
+            ClientPlayerGameMode::Spectator => true,
+            ClientPlayerGameMode::Adventure => !self.main_hand_adventure_matches(
+                photon_world::item_components::ids::CAN_BREAK,
+                self.state_at(pos),
+            ),
+            _ => false,
+        }
+    }
+
+    /// `ItemStack.canPlaceOnBlockInAdventureMode` for the block the aim is on.
+    pub(super) fn can_place_on(&self, aim: super::Aim) -> bool {
+        let super::Aim::Block { x, y, z, .. } = aim else {
+            return false;
+        };
+        self.main_hand_adventure_matches(
+            photon_world::item_components::ids::CAN_PLACE_ON,
+            self.state_at((x, y, z)),
         )
+    }
+
+    /// `ItemStack.canBreakBlockInAdventureMode` / `canPlaceOnBlockInAdventureMode` of the main
+    /// hand's stack, by the component's id, for a block state.
+    pub(super) fn main_hand_adventure_matches(&self, component: i32, state: BlockStateId) -> bool {
+        use photon_world::item_components::{adventure_matches, adventure_predicate};
+        let Some(Some(value)) = self
+            .world
+            .local_player()
+            .and_then(|local| local.inventory_slot(36 + self.selected_slot as i16))
+            .and_then(|stack| stack.patched(component))
+        else {
+            return false;
+        };
+        let registry = self.world.block_state_registry();
+        adventure_predicate(&value).is_some_and(|all| {
+            adventure_matches(&all, state, |tag| registry.is_state_in_tag(state, tag))
+        })
     }
 
     pub(super) fn swing(&mut self, out: &mut Vec<Outgoing>) {

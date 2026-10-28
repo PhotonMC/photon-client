@@ -5,6 +5,7 @@
 use serde_json::{Value, json};
 
 use super::{aim_at, using};
+use crate::components::{CAN_PLACE_ON, adventure_blocks, patch};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{put, put_with};
 
@@ -231,6 +232,18 @@ fn using_rows_4() -> Vec<Value> {
             .main_hand("minecraft:stone")
             .count(4)
             .game_mode("adventure")
+            .row(),
+        using("adventure-can-place-on-stone", vec![], [start(&top_of), rest(&top_of)].concat())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[1]))]))
+            .row(),
+        using("adventure-can-place-on-dirt", vec![], [start(&top_of), rest(&top_of)].concat())
+            .main_hand("minecraft:stone")
+            .count(4)
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[9]))]))
             .row(),
         using("place-last-block", vec![], [start(&top_of), rest(&top_of)].concat())
             .main_hand("minecraft:stone")
