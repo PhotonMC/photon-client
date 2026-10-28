@@ -5,7 +5,7 @@
 //! warnings. Violations that predate a rule live in the baseline and may
 //! only shrink.
 
-mod baseline;
+pub(crate) mod baseline;
 mod config;
 mod file;
 mod functions;

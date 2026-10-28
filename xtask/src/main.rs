@@ -13,6 +13,7 @@ mod hooks;
 mod lint;
 mod parity;
 mod process;
+mod progress;
 mod workspace;
 
 use std::process::ExitCode;
@@ -43,6 +44,7 @@ usage: cargo xtask <command>
         [--route still|run|dive|void] [--vsync on|off] [--fps-limit <n>]
         [--render-distance <n>] [--validation] [--no-build]
                             fixed scripted run, frame timing report in .data/runs/bench
+  progress [--check]        rewrite (or verify) the README's computed progress block
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
                             scripted client run, first frame in .data/runs/shots";
@@ -66,6 +68,7 @@ const COMMANDS: &[(&str, Command)] = &[
     ("bench", dev::bench),
     ("shot", dev::shot),
     ("entities", entities::run),
+    ("progress", progress::run),
 ];
 
 fn main() -> ExitCode {

@@ -49,6 +49,13 @@ Not there yet: Microsoft account sign-in inside the client, server resource pack
 
 ## Progress
 
+<!-- progress:start -->
+| Measure | Now |
+| --- | --- |
+| Parity cases | 4,776 in 17 families |
+| Lint baseline entries | 970 (at introduction: 1,234) |
+<!-- progress:end -->
+
 Status per milestone, with its issue counts on GitHub. Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
 
 ### Game
