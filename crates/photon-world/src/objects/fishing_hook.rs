@@ -16,8 +16,8 @@ use crate::local_player::Level;
 use crate::{metadata_boolean_value, metadata_int_value};
 
 /// `FishingHook.DATA_HOOKED_ENTITY` and `DATA_BITING`.
-const HOOKED_ENTITY_DATA_ID: u8 = 8;
-const BITING_DATA_ID: u8 = 9;
+pub(crate) const HOOKED_ENTITY_DATA_ID: u8 = 8;
+pub(crate) const BITING_DATA_ID: u8 = 9;
 /// `Entity.getBlockPosBelowThatAffectsMyMovement`.
 const BELOW_OFFSET: f32 = 0.500_001;
 

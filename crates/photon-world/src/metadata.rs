@@ -12,6 +12,6 @@ mod living;
 pub(crate) use living::*;
 mod mobs;
 pub(crate) use mobs::*;
-mod player;
+pub(crate) mod player;
 mod vehicles;
 pub(crate) use vehicles::*;

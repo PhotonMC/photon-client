@@ -49,8 +49,8 @@ impl ClientWorld {
 }
 
 /// `AbstractMinecart`'s data ids, then `MinecartCommandBlock`'s: the command and the last output.
-const MINECART_COMMAND_DATA_ID: u8 = 13;
-const MINECART_LAST_OUTPUT_DATA_ID: u8 = 14;
+pub(crate) const MINECART_COMMAND_DATA_ID: u8 = 13;
+pub(crate) const MINECART_LAST_OUTPUT_DATA_ID: u8 = 14;
 /// The serializers of a string and of a component.
 const STRING_SERIALIZER: i32 = 4;
 const COMPONENT_SERIALIZER: i32 = 5;

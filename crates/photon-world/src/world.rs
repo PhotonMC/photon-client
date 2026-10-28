@@ -16,7 +16,7 @@ mod blocks;
 mod border;
 mod chunks;
 mod collision;
-mod command_block;
+pub(crate) mod command_block;
 mod jigsaw;
 mod structure_block;
 pub use command_block::{CommandBlockMode, CommandBlockView, CommandMinecartView};

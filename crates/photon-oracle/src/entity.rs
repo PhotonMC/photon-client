@@ -130,17 +130,30 @@ fn entity_result(request: &Value) -> Result<Value, String> {
     }
 }
 
-/// The id the client reads each accessor by, found in the table that pairs them.
+/// The id the client reads each accessor by, found in the table that pairs them. Every table
+/// entry must be asked for, and entries for one accessor must agree.
 fn entity_data_ids_result(request: &Value) -> Result<Value, String> {
+    let asked = request["rows"].as_array().ok_or("rows")?;
     let mut rows = Vec::new();
-    for row in request["rows"].as_array().ok_or("rows")? {
+    for row in asked {
         let (class, field) = (string(row, "class")?, string(row, "field")?);
-        let id = photon_world::DATA_IDS
+        let mut ids = photon_world::DATA_IDS
             .iter()
-            .find(|(known, name, _)| *known == class && *name == field)
-            .map(|(_, _, id)| *id)
+            .filter(|(known, name, _)| *known == class && *name == field)
+            .map(|(_, _, id)| *id);
+        let id = ids
+            .next()
             .ok_or(format!("{class}.{field} is not in the table"))?;
+        if ids.any(|other| other != id) {
+            return Err(format!("{class}.{field} has differing ids in the table"));
+        }
         rows.push(json!({"label": row["label"], "id": id}));
+    }
+    for (class, field, _) in photon_world::DATA_IDS {
+        let known = |row: &&Value| row["class"] == *class && row["field"] == *field;
+        if !asked.iter().any(|row| known(&row)) {
+            return Err(format!("{class}.{field} is in the table but not asked for"));
+        }
     }
     Ok(json!({"rows": rows}))
 }

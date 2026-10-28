@@ -8,7 +8,7 @@ use crate::metadata::{
     find_metadata_field, metadata_byte_value, metadata_float_value, metadata_int_value,
 };
 
-mod data_ids;
+pub(crate) mod data_ids;
 pub use data_ids::*;
 mod render_state;
 pub use render_state::*;
