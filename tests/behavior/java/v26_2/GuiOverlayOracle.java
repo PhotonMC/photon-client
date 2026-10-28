@@ -166,6 +166,7 @@ class GuiOverlayOracle extends GuiHudOracle {
             "extractNameTags", net.minecraft.world.entity.LivingEntity.class,
             net.minecraft.client.renderer.entity.state.LivingEntityRenderState.class, float.class);
         extract.invoke(renderer, remote, state, 0.0F);
+        entry.addProperty("probe_y", Oracle.bits(remote.getLightProbePosition(0.0F).y));
         entry.addProperty("shown", state.nameTag != null);
         var submits = new JsonArray();
         if (state.nameTag != null) {

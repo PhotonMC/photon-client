@@ -86,7 +86,13 @@ impl ClientWorld {
         snapshot.light_probe = self.light_probe(
             entity,
             snapshot.position,
-            f64::from(entity.leash_size().eye_height),
+            // A player's own size is scaled here (`LivingEntity.getDimensions`), a sleeping one's is not.
+            f64::from(entity.leash_size().eye_height)
+                * if entity.is_player() && entity.pose() != ClientEntityPose::Sleeping {
+                    f64::from(entity.scale())
+                } else {
+                    1.0
+                },
         );
         if let Some(height) = upside_down {
             snapshot.turn_upside_down(height);

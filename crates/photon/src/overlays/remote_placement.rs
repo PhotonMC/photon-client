@@ -28,7 +28,11 @@ pub(super) fn remote_placement(
 ) -> Placement {
     let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;
     let (x, y, z) = snapshot.position;
-    let eye = Vec3::new(x, y + if crouching { 1.27 } else { 1.62 }, z);
+    let eye = Vec3::new(
+        snapshot.light_probe.0,
+        snapshot.light_probe.1,
+        snapshot.light_probe.2,
+    );
     let partial = view.partial as f32;
     let sleeping = (snapshot.pose == photon_world::ClientEntityPose::Sleeping)
         .then(|| in_bed(session.world(), entity.sleeping_pos(), snapshot.body_yaw));
