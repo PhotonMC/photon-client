@@ -207,8 +207,10 @@ impl Controls {
                 Self::gui_size(surface),
                 &Component::translatable("pack.incompatible.confirm.title"),
                 &Component::translatable(format!("pack.incompatible.confirm.{key}")),
-                &Component::translatable("gui.yes"),
-                &Component::translatable("gui.no"),
+                (
+                    &Component::translatable("gui.yes"),
+                    &Component::translatable("gui.no"),
+                ),
             )
             .with_background(ConfirmBackground::Menu {
                 in_world: !self.title_host,

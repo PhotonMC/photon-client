@@ -229,8 +229,7 @@ impl Controls {
                 gui_size(surface),
                 &translated("menu.custom_screen_info.title"),
                 &translated("menu.custom_screen_info.contents"),
-                &translated("menu.disconnect"),
-                &translated("gui.back"),
+                (&translated("menu.disconnect"), &translated("gui.back")),
             )
             .with_background(ConfirmBackground::Menu { in_world: true }),
         );

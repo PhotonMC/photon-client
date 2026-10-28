@@ -136,8 +136,7 @@ impl ConfirmScreen {
         size: (i32, i32),
         title: &Component,
         message: &Component,
-        yes: &Component,
-        no: &Component,
+        (yes, no): (&Component, &Component),
     ) -> Self {
         Self::build(
             font,
@@ -193,7 +192,7 @@ impl ConfirmScreen {
             ),
             None => header,
         };
-        Self::new(font, lang, size, &title, &message, &yes, &no)
+        Self::new(font, lang, size, &title, &message, (&yes, &no))
     }
 
     /// `ClientPacketListener.openSendConfirmationWindow`: the message `message_key` names with the
@@ -222,8 +221,7 @@ impl ConfirmScreen {
             size,
             &translated("multiplayer.confirm_command.title"),
             &message,
-            &translated(accept),
-            &back,
+            (&translated(accept), &back),
         )
     }
 

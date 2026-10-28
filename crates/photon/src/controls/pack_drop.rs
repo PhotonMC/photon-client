@@ -96,8 +96,10 @@ impl Controls {
             Self::gui_size(surface),
             &Component::translatable("pack.dropConfirm"),
             &Component::literal(names.join(", ")),
-            &Component::translatable("gui.yes"),
-            &Component::translatable("gui.no"),
+            (
+                &Component::translatable("gui.yes"),
+                &Component::translatable("gui.no"),
+            ),
         )
         .with_background(ConfirmBackground::Menu {
             in_world: !self.title_host,

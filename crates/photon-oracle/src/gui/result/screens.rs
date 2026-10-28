@@ -111,8 +111,7 @@ fn confirm_screen(
             size,
             &text("title"),
             &text("message"),
-            &text("yes"),
-            &text("no"),
+            (&text("yes"), &text("no")),
         ),
     }
     .with_background(background)

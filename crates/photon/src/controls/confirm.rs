@@ -12,8 +12,10 @@ impl Controls {
             size,
             &Component::translatable("deathScreen.quit.confirm"),
             &Component::empty(),
-            &Component::translatable("deathScreen.titleScreen"),
-            &Component::translatable("deathScreen.respawn"),
+            (
+                &Component::translatable("deathScreen.titleScreen"),
+                &Component::translatable("deathScreen.respawn"),
+            ),
         )
         .with_background(ConfirmBackground::Death);
         confirm.set_delay(20);

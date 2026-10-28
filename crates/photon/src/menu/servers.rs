@@ -271,8 +271,10 @@ impl Menu {
                 "selectServer.deleteWarning",
                 vec![Component::literal(&server.name)],
             ),
-            &Component::translatable("selectServer.deleteButton"),
-            &Component::translatable("gui.cancel"),
+            (
+                &Component::translatable("selectServer.deleteButton"),
+                &Component::translatable("gui.cancel"),
+            ),
         ))
     }
 
