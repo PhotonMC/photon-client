@@ -41,3 +41,39 @@ impl crate::ClientEntity {
         self.kind.mannequin().map(|state| state.profile.as_slice())
     }
 }
+
+/// `Mannequin.DATA_DESCRIPTION`: the line under a mannequin's name (`ClientMannequin.belowNameDisplay`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum MannequinDescription {
+    /// `DEFAULT_DESCRIPTION`, `entity.minecraft.mannequin.label`: the data was never changed.
+    Default,
+    /// `hide_description`: none.
+    Hidden,
+    /// A text component of the server's.
+    Text(photon_core::nbt::FieldValue),
+}
+
+impl crate::ClientEntity {
+    /// A mannequin's description; none for any other entity.
+    pub fn mannequin_description(&self) -> Option<MannequinDescription> {
+        if photon_data::entity_type::name(self.type_id) != Some("minecraft:mannequin") {
+            return None;
+        }
+        let field = self.metadata.as_deref().and_then(|metadata| {
+            crate::entity_metadata_field(metadata, crate::MANNEQUIN_DESCRIPTION_DATA_ID)
+        });
+        let Some((serializer, value)) = field else {
+            return Some(MannequinDescription::Default);
+        };
+        // An optional component: a presence flag, then the component as a tag.
+        if serializer != 6 {
+            return Some(MannequinDescription::Default);
+        }
+        let (&present, mut rest) = value.split_first()?;
+        if present == 0 {
+            return Some(MannequinDescription::Hidden);
+        }
+        let tag = photon_core::nbt::read_any_nbt(&mut rest).ok()??;
+        Some(MannequinDescription::Text(tag))
+    }
+}

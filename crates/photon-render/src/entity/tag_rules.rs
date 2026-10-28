@@ -48,10 +48,10 @@ fn attachment(entity: &ClientEntity) -> Option<Vec3> {
 pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
     let name = photon_data::entity_type::name(entity.type_id)?;
     match name {
-        "minecraft:player"
-        | "minecraft:mannequin"
-        | "minecraft:lightning_bolt"
-        | "minecraft:ominous_item_spawner" => None,
+        "minecraft:player" | "minecraft:lightning_bolt" | "minecraft:ominous_item_spawner" => None,
+        // `AvatarRenderer.shouldShowName`: `LivingEntityRenderer`'s, then a visible name or a
+        // custom one under the crosshair, as a mob's.
+        "minecraft:mannequin" => Some(NameRules::Mob),
         "minecraft:item" | "minecraft:falling_block" | "minecraft:villager"
             if !entity.has_custom_name() =>
         {

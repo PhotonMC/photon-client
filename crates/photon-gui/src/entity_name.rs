@@ -69,7 +69,7 @@ pub fn tag_inputs(
         Some(name) if entity.is_player() => player_name_runs(name, (lang, board)),
         _ => entity_name_runs(entity, (lang, board, &own)),
     };
-    let score = board.below_name(&own).map(|score| {
+    let score = below_name(entity, (board, &own)).map(|score| {
         let runs = lang.runs(&score, &Style::default());
         crate::draw_runs(&runs)
             .into_iter()
@@ -80,6 +80,20 @@ pub fn tag_inputs(
         runs,
         teams: teams_of(board, &own, viewer_name),
         score,
+    }
+}
+
+/// `Entity.belowNameDisplay`: the below-name objective's score, or a mannequin's description
+/// (`ClientMannequin`).
+fn below_name(entity: &ClientEntity, (board, own): (&Scoreboard, &str)) -> Option<Component> {
+    use photon_world::objects::mannequin::MannequinDescription;
+    match entity.mannequin_description() {
+        None => board.below_name(own),
+        Some(MannequinDescription::Default) => {
+            Some(Component::translatable("entity.minecraft.mannequin.label"))
+        }
+        Some(MannequinDescription::Hidden) => None,
+        Some(MannequinDescription::Text(tag)) => Component::from_nbt(&tag),
     }
 }
 
