@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
  */
 class BlockPlacementOracle extends BlockItemOracle {
     /** A level whose blocks are the ones the row lists, and air everywhere else. */
-    static final class ScriptedLevel extends net.minecraft.client.multiplayer.ClientLevel {
+    static class ScriptedLevel extends net.minecraft.client.multiplayer.ClientLevel {
         static final net.minecraft.util.RandomSource RANDOM = net.minecraft.util.RandomSource.create(0L);
 
         @Override
@@ -119,6 +119,68 @@ class BlockPlacementOracle extends BlockItemOracle {
         public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
             return net.minecraft.world.flag.FeatureFlagSet.of();
         }
+    }
+
+    /** A scripted level that makes the block entity of any block that has one. */
+    static final class MenuLevel extends ScriptedLevel {
+        /** No cat sits on a chest here; a row for the blocked chest is a separate matter. */
+        @Override
+        public <T extends net.minecraft.world.entity.Entity> java.util.List<T> getEntitiesOfClass(
+                Class<T> baseClass, net.minecraft.world.phys.AABB bb,
+                java.util.function.Predicate<? super T> selector) {
+            return java.util.List.of();
+        }
+
+        @Override
+        public net.minecraft.world.level.block.entity.BlockEntity getBlockEntity(
+                net.minecraft.core.BlockPos at) {
+            var state = this.getBlockState(at);
+            return state.getBlock() instanceof net.minecraft.world.level.block.EntityBlock block
+                ? block.newBlockEntity(at, state) : null;
+        }
+    }
+
+    /**
+     * Which block states have a menu provider (`BlockState.getMenuProvider`), asked on a level
+     * that makes the block entity of any block that has one, as a client level does. A state the
+     * game cannot answer on this level is listed apart, so nothing is skipped silently.
+     */
+    static JsonObject menuProviders(JsonObject row) {
+        var entry = new JsonObject();
+        entry.addProperty("label", row.get("label").getAsString());
+        entry.addProperty("outcome", "listed");
+        int count = net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY.size();
+        long[] words = new long[(count + 63) / 64];
+        var failed = new JsonArray();
+        var pos = new net.minecraft.core.BlockPos(0, 64, 0);
+        MenuLevel level;
+        try {
+            level = (MenuLevel) Reflect.unsafe().allocateInstance(MenuLevel.class);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
+        level.states = new java.util.HashMap<>();
+        level.writes = new java.util.ArrayList<>();
+        for (var state : net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY) {
+            int id = net.minecraft.world.level.block.Block.getId(state);
+            level.states.clear();
+            level.states.put(pos.asLong(), state);
+            try {
+                if (state.getMenuProvider(level, pos) != null) {
+                    words[id / 64] |= 1L << (id % 64);
+                }
+            } catch (RuntimeException error) {
+                failed.add(id + ":" + error.getClass().getSimpleName());
+            }
+        }
+        entry.addProperty("state_count", count);
+        var packed = new JsonArray();
+        for (long word : words) {
+            packed.add(String.format("%016x", word));
+        }
+        entry.add("words", packed);
+        entry.add("failed", failed);
+        return entry;
     }
 
     /** A player that only has a view direction. */

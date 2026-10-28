@@ -19,6 +19,7 @@ const TABLES: &[(&str, &str)] = &[
     ("offset-properties", "offset_properties"),
     ("fluid-overlay-blocks", "fluid_overlay_blocks"),
     ("motion-blocking", "motion_blocking"),
+    ("menu-providers", "menu_providers"),
     ("fluid-flow-properties", "fluid_flow_properties"),
     ("light-properties", "light_properties"),
     ("face-occlusion", "face_occlusion"),

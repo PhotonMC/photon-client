@@ -26,6 +26,7 @@ public final class BlockOracle extends BlockDeclarationOracle {
                 case "light_properties" -> rows.add(lightProperties(element.getAsJsonObject()));
                 case "offset_properties" -> rows.add(offsetProperties(element.getAsJsonObject()));
                 case "fluid_overlay_blocks" -> rows.add(fluidOverlayBlocks(element.getAsJsonObject()));
+                case "menu_providers" -> rows.add(menuProviders(element.getAsJsonObject()));
                 case "motion_blocking" -> rows.add(motionBlocking(element.getAsJsonObject()));
                 case "fluid_flow_properties" -> rows.add(fluidFlowProperties(element.getAsJsonObject()));
                 case "destroy_properties" -> rows.add(destroyProperties(element.getAsJsonObject()));

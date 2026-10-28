@@ -4,6 +4,7 @@ pub(super) fn block_case(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "registry_names" => registry_names(request),
         "placement_rules" => placement_rules(request),
+        "menu_providers" => menu_providers(request),
         _ => block_result(request),
     }
 }
@@ -467,4 +468,32 @@ fn registry_names(request: &Value) -> Result<Value, String> {
         }));
     }
     Ok(json!({"rows": out}))
+}
+
+/// Which block states have a menu provider, as the bits of every state id.
+fn menu_providers(request: &Value) -> Result<Value, String> {
+    use photon_data::block::registry;
+    let count = registry::state_count();
+    let mut words = vec![0_u64; count.div_ceil(64) as usize];
+    for id in 0..count {
+        if photon_world::block::menu_provider::has_menu_provider(BlockStateId(id as i32)) {
+            words[id as usize / 64] |= 1 << (id % 64);
+        }
+    }
+    let words: Vec<String> = words.iter().map(|word| format!("{word:016x}")).collect();
+    let rows: Vec<Value> = request["rows"]
+        .as_array()
+        .ok_or("block rows must be an array")?
+        .iter()
+        .map(|row| {
+            json!({
+                "label": row["label"],
+                "outcome": "listed",
+                "state_count": count,
+                "words": words,
+                "failed": [],
+            })
+        })
+        .collect();
+    Ok(json!({"rows": rows}))
 }

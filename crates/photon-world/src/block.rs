@@ -6,6 +6,7 @@ pub mod bed;
 pub(crate) mod chest;
 pub(crate) mod entity;
 pub mod fire;
+pub mod menu_provider;
 pub mod multiface;
 pub(crate) mod piston;
 pub mod registry;
