@@ -94,19 +94,14 @@ pub fn world_border(
     let half_height_y =
         ((render_distance_chunks * 16 * 4) as f32).max((cloud_range_chunks * 16) as f32);
     let mut vertices = Vec::new();
-    for (_, quad) in photon_render::border::quads(
-        min_x,
-        max_x,
-        min_z,
-        max_z,
-        [eye.x, eye.y, eye.z],
-        origin,
+    let wall = photon_render::border::Wall {
+        bounds: [min_x, max_x, min_z, max_z],
         render_distance,
         half_height_y,
         time_millis,
-        extract.tint,
-        extract.alpha as f32,
-    ) {
+        tint: extract.rgba(),
+    };
+    for (_, quad) in photon_render::border::quads(&wall, [eye.x, eye.y, eye.z], origin) {
         vertices.extend(photon_render::border::triangulate(quad));
     }
     vertices

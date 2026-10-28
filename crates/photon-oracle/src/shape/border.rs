@@ -334,17 +334,15 @@ fn world_border_render_state(entry: &Value) -> Result<Value, String> {
         Vec::new()
     } else {
         photon_render::border::quads(
-            min_x,
-            max_x,
-            min_z,
-            max_z,
+            &photon_render::border::Wall {
+                bounds: [min_x, max_x, min_z, max_z],
+                render_distance,
+                half_height_y,
+                time_millis,
+                tint: extract.rgba(),
+            },
             [camera_x, camera_y, camera_z],
             [0, 0, 0],
-            render_distance,
-            half_height_y,
-            time_millis,
-            extract.tint,
-            extract.alpha as f32,
         )
         .into_iter()
         .map(|(side, corners)| {

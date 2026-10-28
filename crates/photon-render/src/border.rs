@@ -98,28 +98,39 @@ pub fn closest_sides(
     sides
 }
 
+impl BorderExtract {
+    /// The tint with its alpha, as the vertices carry it.
+    pub fn rgba(&self) -> [f32; 4] {
+        let [red, green, blue] = self.tint;
+        [red, green, blue, self.alpha as f32]
+    }
+}
+
+/// What the border wall is laid out from: the border's `[min_x, max_x, min_z, max_z]`, how far
+/// out walls are drawn, the half height of the wall, the clock for the texture scroll and the
+/// RGBA tint.
+#[derive(Clone, Copy)]
+pub struct Wall {
+    pub bounds: [f64; 4],
+    pub render_distance: f64,
+    pub half_height_y: f32,
+    pub time_millis: i64,
+    pub tint: [f32; 4],
+}
+
 /// `WorldBorderRenderer.rebuildWorldBorderBuffer` and `render`'s per-vertex
 /// math, placed directly in world space (minus the mesh `origin`) and only
 /// for the sides `closest_sides` finds within `render_distance`, nearest
 /// first -- the reference draws in that same order, though its blend mode
 /// (`BlendFunction.OVERLAY`) makes the order invisible on screen.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "mirrors the reference method's own parameter list"
-)]
-pub fn quads(
-    border_min_x: f64,
-    border_max_x: f64,
-    border_min_z: f64,
-    border_max_z: f64,
-    camera: [f64; 3],
-    origin: [i32; 3],
-    render_distance: f64,
-    half_height_y: f32,
-    time_millis: i64,
-    tint: [f32; 3],
-    alpha: f32,
-) -> Vec<(u8, [Vertex; 4])> {
+pub fn quads(wall: &Wall, camera: [f64; 3], origin: [i32; 3]) -> Vec<(u8, [Vertex; 4])> {
+    let Wall {
+        bounds: [border_min_x, border_max_x, border_min_z, border_max_z],
+        render_distance,
+        half_height_y,
+        time_millis,
+        tint,
+    } = *wall;
     let [camera_x, camera_y, camera_z] = camera;
     let min_z = (lfloor_f64(camera_z - render_distance) as f64).max(border_min_z);
     let max_z = f64::from(ceil_f64(camera_z + render_distance)).min(border_max_z);
@@ -147,7 +158,7 @@ pub fn quads(
         position,
         uv: [uv[0] + scroll, uv[1] + scroll],
         shade: 1.0,
-        tint: [tint[0], tint[1], tint[2], alpha],
+        tint,
         light: [240.0, 240.0],
     };
     let quad_for = |side: u8| -> [Vertex; 4] {

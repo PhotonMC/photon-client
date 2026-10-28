@@ -1,5 +1,14 @@
 use super::*;
 
+/// The named fields as doubles, in the order given.
+fn f64_fields<const N: usize>(request: &Value, names: [&str; N]) -> Result<[f64; N], String> {
+    let mut values = [0.0; N];
+    for (value, name) in values.iter_mut().zip(names) {
+        *value = f64_field(request, name)?;
+    }
+    Ok(values)
+}
+
 pub(crate) fn mth_clamped_lerp_case(request: &Value) -> Result<Value, String> {
     let width = string(request, "type")?;
     let bits = match width {
@@ -93,17 +102,13 @@ pub(crate) fn mth_interpolation_case(request: &Value) -> Result<Value, String> {
         "lerp3" => format!(
             "{:016x}",
             math::mth_lerp3_f64(
-                f64_field(request, "alpha1")?,
-                f64_field(request, "alpha2")?,
-                f64_field(request, "alpha3")?,
-                f64_field(request, "x000")?,
-                f64_field(request, "x100")?,
-                f64_field(request, "x010")?,
-                f64_field(request, "x110")?,
-                f64_field(request, "x001")?,
-                f64_field(request, "x101")?,
-                f64_field(request, "x011")?,
-                f64_field(request, "x111")?,
+                f64_fields(request, ["alpha1", "alpha2", "alpha3"])?,
+                f64_fields(
+                    request,
+                    [
+                        "x000", "x100", "x010", "x110", "x001", "x101", "x011", "x111"
+                    ],
+                )?,
             )
             .to_bits()
         ),

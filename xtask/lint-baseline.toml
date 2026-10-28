@@ -746,7 +746,7 @@
 "crates/photon-oracle/src/shape.rs::shape_result" = 78
 "crates/photon-oracle/src/shape/border.rs::client_world_border_state_case" = 61
 "crates/photon-oracle/src/shape/border.rs::world_border_collision_shape_moving_case" = 89
-"crates/photon-oracle/src/shape/border.rs::world_border_render_state" = 149
+"crates/photon-oracle/src/shape/border.rs::world_border_render_state" = 147
 "crates/photon-oracle/src/shape/collision.rs::entity_movement_state_retention_case" = 73
 "crates/photon-oracle/src/shape/dimensions.rs::entity_dimensions_refresh_case" = 72
 "crates/photon-oracle/src/shape/packets.rs::player_game_mode_event_case" = 69
@@ -780,7 +780,7 @@
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 134
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::new" = 80
 "crates/photon-render/src/block/world_mesh/states.rs::bake_states" = 75
-"crates/photon-render/src/border.rs::quads" = 82
+"crates/photon-render/src/border.rs::quads" = 77
 "crates/photon-render/src/entity/mob_model/bears.rs::MobModel::setup_panda" = 95
 "crates/photon-render/src/entity/mob_model/bears.rs::panda_rotate" = 77
 "crates/photon-render/src/entity/mob_model/bosses.rs::MobModel::setup_warden" = 70
@@ -987,7 +987,6 @@
 [fn-params]
 "crates/photon-core/src/binary/traversal.rs::BlockPos::between_corners_in_direction_coordinates" = 7
 "crates/photon-core/src/binary/traversal.rs::BlockPos::random_between_closed" = 8
-"crates/photon-core/src/math/lerp.rs::mth_lerp3_f64" = 11
 "crates/photon-core/src/shape/grid.rs::is_xz_rectangle_full" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::inventory_tab_click" = 7
 "crates/photon-game/src/menus/creative/clicks.rs::CreativeMenu::picker_click" = 7
@@ -1008,7 +1007,6 @@
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/block/world_mesh/mesh.rs::add_face" = 7
 "crates/photon-render/src/block/world_mesh/mesh.rs::build_world_mesh" = 7
-"crates/photon-render/src/border.rs::quads" = 11
 "crates/photon-render/src/entity/player_model.rs::Cube::grown" = 7
 "crates/photon-render/src/entity/player_model.rs::Cube::sized" = 7
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::blit_part" = 9

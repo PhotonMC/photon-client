@@ -112,24 +112,11 @@ pub fn mth_lerp2_f64(alpha1: f64, alpha2: f64, x00: f64, x10: f64, x01: f64, x11
     mth_lerp_f64(alpha2, lower, upper)
 }
 
-/// Return Java `Mth.lerp3(double, ...)` with its two plane calls in source order.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the reference method's parameters, in its order"
-)]
-pub fn mth_lerp3_f64(
-    alpha1: f64,
-    alpha2: f64,
-    alpha3: f64,
-    x000: f64,
-    x100: f64,
-    x010: f64,
-    x110: f64,
-    x001: f64,
-    x101: f64,
-    x011: f64,
-    x111: f64,
-) -> f64 {
+/// Return Java `Mth.lerp3(double, ...)` with its two plane calls in source order. The corners are
+/// in the reference's parameter order: x000, x100, x010, x110, x001, x101, x011, x111.
+pub fn mth_lerp3_f64(alphas: [f64; 3], corners: [f64; 8]) -> f64 {
+    let [alpha1, alpha2, alpha3] = alphas;
+    let [x000, x100, x010, x110, x001, x101, x011, x111] = corners;
     let lower = mth_lerp2_f64(alpha1, alpha2, x000, x100, x010, x110);
     let upper = mth_lerp2_f64(alpha1, alpha2, x001, x101, x011, x111);
     mth_lerp_f64(alpha3, lower, upper)
