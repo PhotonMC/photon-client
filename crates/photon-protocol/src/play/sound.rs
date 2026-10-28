@@ -3,6 +3,7 @@ use super::*;
 /// `SoundEvent.STREAM_CODEC`: a registry place plus one, or zero and the event whole.
 pub(super) fn read_sound_holder(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<photon_core::sound_packets::SoundHolder, ConnectionError> {
     use photon_core::sound_packets::SoundHolder;
     let holder = read_varint(input, "sound holder")?;
@@ -18,7 +19,7 @@ pub(super) fn read_sound_holder(
             fixed_range,
         });
     }
-    let id = holder - 1;
+    let id = registries.sound_events.canonical_or_unknown(holder - 1);
     if photon_data::sound_event::name(id).is_none() {
         return Err(ConnectionError::Codec("unknown sound event id"));
     }
@@ -37,8 +38,9 @@ pub(super) fn read_sound_source(
 /// `ClientboundSoundPacket`, read from the front of `input` (what follows is the caller's).
 pub fn read_sound_packet(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<photon_core::sound_packets::SoundPacket, ConnectionError> {
-    let sound = read_sound_holder(input)?;
+    let sound = read_sound_holder(input, registries)?;
     let source = read_sound_source(input)?;
     // The packet carries eighths of a block as ints; the reference divides as a float.
     let place = |input: &mut &[u8], name| -> Result<f64, ConnectionError> {
@@ -62,9 +64,10 @@ pub fn read_sound_packet(
 /// `ClientboundSoundEntityPacket`, read from the front of `input`.
 pub fn read_sound_entity_packet(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<photon_core::sound_packets::SoundEntityPacket, ConnectionError> {
     Ok(photon_core::sound_packets::SoundEntityPacket {
-        sound: read_sound_holder(input)?,
+        sound: read_sound_holder(input, registries)?,
         source: read_sound_source(input)?,
         entity_id: photon_core::ids::EntityId(read_varint(input, "sound entity id")?),
         volume: read_f32(input, "sound volume")?,
@@ -96,13 +99,19 @@ pub struct Sound(pub photon_core::sound_packets::SoundCommand);
 
 impl Sound {
     /// The sound packet with this id, parsed.
-    pub fn decode_packet(packet_id: i32, payload: &[u8]) -> Result<Self, ConnectionError> {
+    pub fn decode_packet(
+        packet_id: i32,
+        payload: &[u8],
+        registries: &VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         use photon_core::sound_packets::SoundCommand;
         let mut input = payload;
         let command = match packet_id {
-            PLAY_CLIENTBOUND_SOUND_PACKET_ID => SoundCommand::At(read_sound_packet(&mut input)?),
+            PLAY_CLIENTBOUND_SOUND_PACKET_ID => {
+                SoundCommand::At(read_sound_packet(&mut input, registries)?)
+            }
             PLAY_CLIENTBOUND_SOUND_ENTITY_PACKET_ID => {
-                SoundCommand::FollowingEntity(read_sound_entity_packet(&mut input)?)
+                SoundCommand::FollowingEntity(read_sound_entity_packet(&mut input, registries)?)
             }
             _ => SoundCommand::Stop(read_stop_sound_packet(&mut input)?),
         };

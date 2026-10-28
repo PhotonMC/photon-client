@@ -180,9 +180,11 @@ impl ClientboundPacket for LevelParticlesPacket {
 fn decode_sound(
     packet_id: i32,
     payload: &[u8],
-    _registries: &VersionRegistries,
+    registries: &VersionRegistries,
 ) -> Result<Incoming, ConnectionError> {
-    Ok(Box::new(Sound::decode_packet(packet_id, payload)?))
+    Ok(Box::new(Sound::decode_packet(
+        packet_id, payload, registries,
+    )?))
 }
 
 impl ClientboundPacket for Sound {

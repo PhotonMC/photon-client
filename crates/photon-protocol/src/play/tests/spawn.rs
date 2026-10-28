@@ -157,7 +157,7 @@ fn explode_parser_reads_the_push_the_particles_and_the_sound() {
     payload.extend_from_slice(&0.5_f32.to_be_bytes());
     payload.extend_from_slice(&1.0_f32.to_be_bytes());
     photon_core::wire::write_varint(3, &mut payload);
-    let (read, knockback) = super::super::parse_explode_packet(&payload)
+    let (read, knockback) = super::super::parse_explode_packet(&payload, &registries())
         .expect("explode")
         .expect("known options");
     assert_eq!(knockback, Some((0.25, 0.5, 0.0)));

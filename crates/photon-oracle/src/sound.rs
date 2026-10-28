@@ -375,6 +375,10 @@ pub(super) fn sound_decode_result(request: &Value) -> Result<Value, String> {
     Ok(json!({"rows": out}))
 }
 
+fn reg() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+    photon_data::version_registries::VersionRegistries::newest()
+}
+
 /// `packets` (the sound family): the three sound packets read from the bytes a scenario gives.
 pub(super) fn sound_packets_result(request: &Value) -> Result<Value, String> {
     use photon_game::sounds::SoundHolder;
@@ -405,7 +409,7 @@ pub(super) fn sound_packets_result(request: &Value) -> Result<Value, String> {
         let mut input = bytes.as_slice();
         let mut described = json!({"label": row["label"]});
         let read = match row["kind"].as_str().ok_or("kind")? {
-            "sound" => read_sound_packet(&mut input).map(|packet| {
+            "sound" => read_sound_packet(&mut input, &reg()).map(|packet| {
                 holder(&mut described, &packet.sound);
                 described["source"] = json!(packet.source.ordinal());
                 described["x"] = json!(wide(packet.position.0));
@@ -415,7 +419,7 @@ pub(super) fn sound_packets_result(request: &Value) -> Result<Value, String> {
                 described["pitch"] = json!(bits(packet.pitch));
                 described["seed"] = json!(packet.seed.to_string());
             }),
-            "sound_entity" => read_sound_entity_packet(&mut input).map(|packet| {
+            "sound_entity" => read_sound_entity_packet(&mut input, &reg()).map(|packet| {
                 holder(&mut described, &packet.sound);
                 described["source"] = json!(packet.source.ordinal());
                 described["entity"] = json!(packet.entity_id.0);

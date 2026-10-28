@@ -171,7 +171,13 @@ pub(crate) fn area_effect_cloud_from_metadata(
     );
     let particle = find_metadata_field(metadata, AREA_EFFECT_CLOUD_PARTICLE_DATA_ID)
         .filter(|(serializer, _)| *serializer == ENTITY_DATA_SERIALIZER_PARTICLE_ID)
-        .and_then(|(_, mut value)| crate::particles::read_particle_options(&mut value).ok()?)
+        .and_then(|(_, mut value)| {
+            crate::particles::read_particle_options(
+                &mut value,
+                &photon_data::version_registries::VersionRegistries::newest(),
+            )
+            .ok()?
+        })
         .unwrap_or(default);
     (
         metadata_float_value(metadata, AREA_EFFECT_CLOUD_RADIUS_DATA_ID).unwrap_or(3.0),

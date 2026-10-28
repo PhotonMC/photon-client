@@ -1,4 +1,5 @@
 use super::super::read_level_particles_packet;
+use super::registries;
 
 fn payload(type_id: i32, extra: &[u8]) -> Vec<u8> {
     let mut bytes = vec![1, 0];
@@ -19,7 +20,9 @@ fn a_level_particles_packet_of_a_plain_type_is_read_whole() {
     let smoke = photon_data::particle_type::id("smoke").unwrap();
     let bytes = payload(smoke, &[]);
     let mut input = bytes.as_slice();
-    let packet = read_level_particles_packet(&mut input).unwrap().unwrap();
+    let packet = read_level_particles_packet(&mut input, &registries())
+        .unwrap()
+        .unwrap();
     assert!(input.is_empty());
     assert_eq!(packet.type_id, smoke);
     assert!(packet.override_limiter && !packet.always_show);
@@ -35,7 +38,9 @@ fn a_block_particle_carries_the_state_it_is_made_of() {
     photon_core::wire::write_varint(1234, &mut state);
     let bytes = payload(block, &state);
     let mut input = bytes.as_slice();
-    let packet = read_level_particles_packet(&mut input).unwrap().unwrap();
+    let packet = read_level_particles_packet(&mut input, &registries())
+        .unwrap()
+        .unwrap();
     assert!(input.is_empty());
     assert_eq!(
         (packet.type_id, packet.data.block_state()),
@@ -48,7 +53,9 @@ fn the_dragons_breath_reads_its_power() {
     let dragon_breath = photon_data::particle_type::id("dragon_breath").unwrap();
     let bytes = payload(dragon_breath, &1.5_f32.to_be_bytes());
     let mut input = bytes.as_slice();
-    let packet = read_level_particles_packet(&mut input).unwrap().unwrap();
+    let packet = read_level_particles_packet(&mut input, &registries())
+        .unwrap()
+        .unwrap();
     assert!(input.is_empty());
     assert_eq!(
         packet.data,
@@ -59,7 +66,7 @@ fn the_dragons_breath_reads_its_power() {
 #[test]
 fn an_unknown_type_or_a_short_packet_is_an_error() {
     let bytes = payload(9999, &[]);
-    assert!(read_level_particles_packet(&mut bytes.as_slice()).is_err());
+    assert!(read_level_particles_packet(&mut bytes.as_slice(), &registries()).is_err());
     let bytes = payload(0, &[]);
-    assert!(read_level_particles_packet(&mut &bytes[..20]).is_err());
+    assert!(read_level_particles_packet(&mut &bytes[..20], &registries()).is_err());
 }

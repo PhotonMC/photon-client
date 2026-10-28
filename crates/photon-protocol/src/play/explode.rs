@@ -6,8 +6,21 @@ pub type ExplodeObservation = (
     Option<(f64, f64, f64)>,
 );
 
+/// The name of a registered sound; a sound sent whole has none.
+fn registered_sound_name(holder: photon_core::sound_packets::SoundHolder) -> Option<&'static str> {
+    match holder {
+        photon_core::sound_packets::SoundHolder::Registered(id) => {
+            photon_data::sound_event::name(id)
+        }
+        photon_core::sound_packets::SoundHolder::Direct { .. } => None,
+    }
+}
+
 /// `ClientboundExplodePacket`. Nothing for one whose particles' options are not read yet.
-pub fn parse_explode_packet(input: &[u8]) -> Result<Option<ExplodeObservation>, ConnectionError> {
+pub fn parse_explode_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<Option<ExplodeObservation>, ConnectionError> {
     const NAME: &str = "explode";
     use photon_data::particle_values::{Explosion, ExplosionParticle};
     let mut input = input;
@@ -27,19 +40,14 @@ pub fn parse_explode_packet(input: &[u8]) -> Result<Option<ExplodeObservation>, 
     } else {
         None
     };
-    let Some(particle) = read_particle_options(input)? else {
+    let Some(particle) = read_particle_options(input, registries)? else {
         return Ok(None);
     };
-    let sound = match read_sound_holder(input)? {
-        photon_core::sound_packets::SoundHolder::Registered(id) => {
-            photon_data::sound_event::name(id)
-        }
-        photon_core::sound_packets::SoundHolder::Direct { .. } => None,
-    };
+    let sound = registered_sound_name(read_sound_holder(input, registries)?);
     let count = read_varint(input, NAME)?;
     let mut block_particles = Vec::new();
     for _ in 0..count.max(0) {
-        let Some((type_id, data)) = read_particle_options(input)? else {
+        let Some((type_id, data)) = read_particle_options(input, registries)? else {
             return Ok(None);
         };
         let scaling = read_f32(input, NAME)?;
@@ -67,7 +75,7 @@ pub fn parse_explode_packet(input: &[u8]) -> Result<Option<ExplodeObservation>, 
     Ok(Some((explosion, knockback)))
 }
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundExplodePacket`: nothing for a particle the client does not know.
     Explode(Option<ExplodeObservation>) = parse_explode_packet,
     OnError::Ignore("explode")

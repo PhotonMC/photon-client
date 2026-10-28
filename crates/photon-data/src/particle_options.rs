@@ -6,6 +6,7 @@ use photon_core::ids::{BlockStateId, EntityId, ItemId};
 use photon_core::wire::read_varint;
 
 use crate::particle_values::{ParticleData, PositionSource};
+use crate::version_registries::VersionRegistries;
 
 /// The next `N` bytes of `input`.
 fn take<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], &'static str> {
@@ -36,23 +37,32 @@ fn varint(input: &mut &[u8]) -> Result<i32, &'static str> {
 /// not read yet, after which nothing more of the input can be read.
 pub fn read_particle_options(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<Option<(i32, ParticleData)>, &'static str> {
-    let type_id = varint(input)?;
+    let type_id = registries
+        .particle_types
+        .canonical_or_unknown(varint(input)?);
     let Some(name) = crate::particle_type::name(type_id) else {
         return Err("unknown particle type id");
     };
     let data = if crate::particle_type::carries_block_state(type_id) {
-        Some(ParticleData::Block(BlockStateId(varint(input)?)))
+        Some(ParticleData::Block(BlockStateId(
+            registries.block_states.canonical_or_unknown(varint(input)?),
+        )))
     } else if crate::particle_type::is_simple(type_id) {
         Some(ParticleData::Plain)
     } else {
-        read_named_options(name, input)?
+        read_named_options(name, input, registries)?
     };
     Ok(data.map(|data| (type_id, data)))
 }
 
 /// The options of the types that tint: a colour, and a power or a size with it.
-fn read_named_options(name: &str, input: &mut &[u8]) -> Result<Option<ParticleData>, &'static str> {
+fn read_named_options(
+    name: &str,
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<Option<ParticleData>, &'static str> {
     let color = |input: &mut &[u8]| int(input).map(|value| value as u32);
     Ok(Some(match name {
         "entity_effect" | "tinted_leaves" | "flash" => ParticleData::Color(color(input)?),
@@ -70,12 +80,16 @@ fn read_named_options(name: &str, input: &mut &[u8]) -> Result<Option<ParticleDa
             to: color(input)?,
             scale: float(input)?.clamp(0.01, 4.0),
         },
-        _ => return read_other_options(name, input),
+        _ => return read_other_options(name, input, registries),
     }))
 }
 
 /// The options of the rest.
-fn read_other_options(name: &str, input: &mut &[u8]) -> Result<Option<ParticleData>, &'static str> {
+fn read_other_options(
+    name: &str,
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<Option<ParticleData>, &'static str> {
     Ok(Some(match name {
         "sculk_charge" => ParticleData::Roll(float(input)?),
         "dragon_breath" => ParticleData::Power(float(input)?),
@@ -88,7 +102,7 @@ fn read_other_options(name: &str, input: &mut &[u8]) -> Result<Option<ParticleDa
             duration: varint(input)?,
         },
         "vibration" => read_vibration(input)?,
-        "item" => read_item(input)?,
+        "item" => read_item(input, registries)?,
         _ => return Ok(None),
     }))
 }
@@ -113,8 +127,11 @@ fn read_vibration(input: &mut &[u8]) -> Result<ParticleData, &'static str> {
 
 /// `ItemParticleOption`, an `ItemStackTemplate.STREAM_CODEC`: the item, its count and its
 /// components.
-fn read_item(input: &mut &[u8]) -> Result<ParticleData, &'static str> {
-    let item = ItemId(varint(input)?);
+fn read_item(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<ParticleData, &'static str> {
+    let item = ItemId(registries.items.canonical_or_unknown(varint(input)?));
     varint(input)?;
     crate::item_components::read_patch(input).map_err(|_| "particle item components")?;
     Ok(ParticleData::Item(item))
