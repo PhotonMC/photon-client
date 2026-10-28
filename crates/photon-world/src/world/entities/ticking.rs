@@ -120,7 +120,8 @@ impl ClientWorld {
                 .at_mut(entity_id)
                 .expect("entity position was checked above");
             entity.capture_old_transform();
-            if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
+            // `AbstractClientPlayer.tick` and `ClientMannequin.tick`: an avatar's cloak follows it.
+            if entity.is_avatar() {
                 entity.tick_cloak();
             }
             entity.tick_count = entity.tick_count.wrapping_add(1);
