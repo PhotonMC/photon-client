@@ -115,9 +115,21 @@ pub fn remote_boats(
             && !state.is_under_water
             && let Some(patch) = models.model(WATER_PATCH_LAYER)
         {
-            let mask = boat_vertices(patch, &pose, placed.light, rect);
+            let mut mask = boat_vertices(patch, &pose, placed.light, rect);
+            on_opaque_texels(&mut mask, rect);
             models.water_masks.extend(mask);
         }
+    }
+}
+
+/// The water patch's layer has no texture size (`LayerDefinition.create(mesh, 0, 0)`; the mask
+/// shader never reads it), so its coordinates are not numbers. The entity shader discards the
+/// transparent, so they go to a texel of the boat's own planks.
+fn on_opaque_texels(vertices: &mut [Vertex], rect: [f32; 4]) {
+    let at = |from: f32, to: f32| from + (to - from) * (8.0 / 128.0);
+    let uv = [at(rect[0], rect[2]), at(rect[1], rect[3])];
+    for vertex in vertices {
+        vertex.uv = uv;
     }
 }
 

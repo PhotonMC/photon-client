@@ -174,9 +174,11 @@ pub(super) fn gui_item_attributes() -> [vk::VertexInputAttributeDescription; 3] 
 pub(super) fn cull_mode(kind: PipelineKind) -> vk::CullModeFlags {
     use PipelineKind::*;
     match kind {
-        SkyTranslucent | SkyOverlay | Weather | Entity | Dissolve | Swirl | Glint | Rays
-        | WorldBorder | Text | TextTranslucent | Shadow | TextSeeThrough | Gui | GuiInvert
-        | GuiHighlight | GuiVignette | GuiItem | GuiGlint | Lines => vk::CullModeFlags::NONE,
+        SkyTranslucent | SkyOverlay | Weather | Entity | EntityMask | Dissolve | Swirl | Glint
+        | Rays | WorldBorder | Text | TextTranslucent | Shadow | TextSeeThrough | Gui
+        | GuiInvert | GuiHighlight | GuiVignette | GuiItem | GuiGlint | Lines => {
+            vk::CullModeFlags::NONE
+        }
         _ => vk::CullModeFlags::BACK,
     }
 }
