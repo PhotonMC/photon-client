@@ -4,31 +4,10 @@
 use photon_core::random::RandomSource;
 
 use super::super::local_player::{LocalSound, LocalSoundSource};
-use super::engine::{ParticleData, ParticleEngine, ParticleStatus, Spawn};
+use super::engine::{ParticleEngine, ParticleStatus, Spawn};
 use super::level_events::LevelEventContext;
 
-/// One kind of particle an explosion scatters (`ExplosionParticleInfo`), with its weight.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ExplosionParticle {
-    pub type_id: i32,
-    pub data: ParticleData,
-    pub scaling: f32,
-    pub speed: f32,
-    pub weight: i32,
-}
-
-/// An explosion the server reports.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Explosion {
-    pub center: (f64, f64, f64),
-    pub radius: f32,
-    pub block_count: i32,
-    /// The particle at its centre.
-    pub particle: (i32, ParticleData),
-    /// Its sound; none for one the client does not know by name.
-    pub sound: Option<&'static str>,
-    pub block_particles: Vec<ExplosionParticle>,
-}
+pub use photon_data::particle_values::{Explosion, ExplosionParticle};
 
 /// `ClientExplosionTracker.MAX_PARTICLES_PER_TICK`.
 const MAX_PARTICLES_PER_TICK: i32 = 512;

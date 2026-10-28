@@ -15,7 +15,7 @@
 pub struct Malformed;
 
 /// The registry ids of the data component types, named.
-pub use photon_data::item::component_types as ids;
+pub use crate::item::component_types as ids;
 
 mod adventure;
 pub use adventure::*;

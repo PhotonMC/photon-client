@@ -5,7 +5,7 @@ use photon_core::binary::BlockPos;
 use photon_core::ids::{BlockStateId, EntityId, ItemId};
 use photon_core::wire::read_varint;
 
-use super::engine::{ParticleData, PositionSource};
+use crate::particle_values::{ParticleData, PositionSource};
 
 /// The next `N` bytes of `input`.
 fn take<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], &'static str> {
@@ -38,12 +38,12 @@ pub fn read_particle_options(
     input: &mut &[u8],
 ) -> Result<Option<(i32, ParticleData)>, &'static str> {
     let type_id = varint(input)?;
-    let Some(name) = photon_data::particle_type::name(type_id) else {
+    let Some(name) = crate::particle_type::name(type_id) else {
         return Err("unknown particle type id");
     };
-    let data = if photon_data::particle_type::carries_block_state(type_id) {
+    let data = if crate::particle_type::carries_block_state(type_id) {
         Some(ParticleData::Block(BlockStateId(varint(input)?)))
-    } else if photon_data::particle_type::is_simple(type_id) {
+    } else if crate::particle_type::is_simple(type_id) {
         Some(ParticleData::Plain)
     } else {
         read_named_options(name, input)?

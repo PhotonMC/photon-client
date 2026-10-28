@@ -39,7 +39,7 @@ mod level_events_trial;
 mod level_events_vault;
 mod light;
 mod look;
-mod options;
+
 mod parrots;
 mod particle;
 mod pickup;
@@ -77,8 +77,8 @@ pub use level_events_dripstone::DripstoneAttributes;
 pub use level_events_vault::PlayerSpot;
 pub(crate) use level_events_vault::shared_data as vault_shared_data;
 pub(crate) use level_events_vault::uuid_of as uuid_of_tag;
-pub use options::read_particle_options;
 pub use particle::{Particle, ParticleAtlas};
+pub use photon_data::particle_options::read_particle_options;
 pub use pickup::{ItemPickup, PickedUp, pickup_target};
 pub use resources::ParticleResources;
 pub use sprites::SpriteSet;

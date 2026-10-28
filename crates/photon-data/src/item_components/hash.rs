@@ -214,7 +214,7 @@ fn item_template(cursor: &mut Cursor, enchantments: &[String]) -> Option<u32> {
     let patch = cursor.patch().ok()?;
     let mut entries = vec![(
         string("id"),
-        string(photon_data::item::registry::ITEMS.get(item)?.name),
+        string(crate::item::registry::ITEMS.get(item)?.name),
     )];
     if count != 1 {
         entries.push((string("count"), int(count)));
@@ -229,7 +229,7 @@ fn item_template(cursor: &mut Cursor, enchantments: &[String]) -> Option<u32> {
 /// removed one under `!` and its id with the unit (an empty map).
 fn patch_map(patch: &super::Patch, enchantments: &[String]) -> Option<u32> {
     let name = |id: i32| {
-        photon_data::item::component_types::NAMES
+        crate::item::component_types::NAMES
             .get(usize::try_from(id).ok()?)
             .copied()
     };

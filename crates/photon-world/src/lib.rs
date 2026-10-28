@@ -42,7 +42,7 @@ pub(crate) mod entity_kind;
 mod entity_random;
 mod fluid;
 mod heightmap;
-pub mod item_components;
+pub use photon_data::item_components;
 mod item_physics;
 mod java_math;
 mod level;

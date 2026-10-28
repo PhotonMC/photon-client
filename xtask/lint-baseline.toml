@@ -412,10 +412,10 @@
 "crates/photon-world/src/input/fluids.rs::local_player_travel_in_water" = 12
 "crates/photon-world/src/input/sprint.rs::can_start_local_player_sprinting" = 12
 "crates/photon-world/src/input/travel.rs::local_player_travel_dispatch" = 12
-"crates/photon-world/src/item_components/components.rs::Cursor::component" = 56
-"crates/photon-world/src/item_components/cursor.rs::Cursor::tag_payload" = 14
-"crates/photon-world/src/item_components/hash.rs::component_hash" = 14
-"crates/photon-world/src/item_components/hash.rs::tag" = 14
+"crates/photon-data/src/item_components/components.rs::Cursor::component" = 56
+"crates/photon-data/src/item_components/cursor.rs::Cursor::tag_payload" = 14
+"crates/photon-data/src/item_components/hash.rs::component_hash" = 14
+"crates/photon-data/src/item_components/hash.rs::tag" = 14
 "crates/photon-world/src/item_physics.rs::item_step" = 15
 "crates/photon-world/src/lib.rs::apply_special_data" = 27
 "crates/photon-world/src/light/engine.rs::Engine::propagate_increase" = 11
@@ -841,7 +841,7 @@
 "crates/photon-world/src/fluid.rs::scan_in" = 62
 "crates/photon-world/src/input/travel.rs::local_player_travel_dispatch" = 100
 "crates/photon-world/src/input/travel.rs::local_player_travel_in_air" = 64
-"crates/photon-world/src/item_components/components.rs::Cursor::component" = 237
+"crates/photon-data/src/item_components/components.rs::Cursor::component" = 237
 "crates/photon-world/src/item_physics.rs::item_step" = 75
 "crates/photon-world/src/lib.rs::apply_special_data" = 97
 "crates/photon-world/src/light/sky_sources.rs::Engine::propagate_sky_sources" = 75

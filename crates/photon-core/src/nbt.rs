@@ -346,3 +346,16 @@ pub fn write_nbt(root: Option<&[Field]>, output: &mut Vec<u8>) {
     let value = root.map(|fields| FieldValue::Compound(fields.to_vec()));
     write_any_nbt(value.as_ref(), output);
 }
+
+/// A numeric tag as an `i32` (the way the reference's `getIntOr` reads one).
+pub fn numeric_nbt_value(value: &FieldValue) -> Option<i32> {
+    match value {
+        FieldValue::Byte(value) => Some(i32::from(*value)),
+        FieldValue::Short(value) => Some(i32::from(*value)),
+        FieldValue::Int(value) => Some(*value),
+        FieldValue::Long(value) => Some(*value as i32),
+        FieldValue::Float(value) => Some(*value as i32),
+        FieldValue::Double(value) => Some(*value as i32),
+        _ => None,
+    }
+}

@@ -8,7 +8,7 @@ use photon_core::math::mth_atan2;
 use photon_core::random::RandomSource;
 
 use super::super::ClientWorld;
-use super::engine::PositionSource;
+use super::engine::{PositionSource, PositionSourceExt};
 use super::particle::{Kind, Particle};
 use super::sprites::SpriteSet;
 

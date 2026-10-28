@@ -458,8 +458,8 @@ pub fn firework_colors(value: &[u8]) -> Option<Vec<i32>> {
 }
 
 /// `fireworks` (`Fireworks.STREAM_CODEC`): the explosions of a rocket, in order.
-pub fn fireworks(value: &[u8]) -> Option<Vec<crate::particles::FireworkExplosion>> {
-    use crate::particles::{FireworkExplosion, FireworkShape};
+pub fn fireworks(value: &[u8]) -> Option<Vec<crate::particle_values::FireworkExplosion>> {
+    use crate::particle_values::{FireworkExplosion, FireworkShape};
     let mut cursor = Cursor { data: value };
     // The flight duration.
     cursor.varint().ok()?;
@@ -527,7 +527,7 @@ mod tests {
 
     #[test]
     fn a_rockets_explosions_read_in_order() {
-        use crate::particles::FireworkShape;
+        use crate::particle_values::FireworkShape;
         // Flight duration 2; two explosions: a star in red with a fade and a trail, and a burst
         // with no colours that twinkles.
         let mut bytes = vec![2, 2, 2, 1];

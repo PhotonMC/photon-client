@@ -151,10 +151,10 @@ pub fn adventure_tooltip(value: &[u8]) -> Option<AdventureTooltip> {
 impl BlockPredicate {
     /// `BlockPredicate.matches(BlockInWorld)`, without the block entity tests.
     fn matches(&self, state: BlockStateId, in_tag: &impl Fn(&str) -> bool) -> bool {
-        let Some((block, offset)) = photon_data::block::registry::block_for_state(state) else {
+        let Some((block, offset)) = crate::block::registry::block_for_state(state) else {
             return false;
         };
-        let Some((index, _)) = photon_data::block::registry::block_index_for_state(state) else {
+        let Some((index, _)) = crate::block::registry::block_index_for_state(state) else {
             return false;
         };
         if self.needs_entity {
@@ -186,9 +186,9 @@ impl BlockPredicate {
 impl Matcher {
     /// Whether the value passes, by its place among the property's values (`compareTo`: booleans
     /// order false first, directions by ordinal).
-    fn accepts(&self, property: &photon_data::block::definition::Property, current: &str) -> bool {
+    fn accepts(&self, property: &crate::block::definition::Property, current: &str) -> bool {
         let values = property.values;
-        let boolean = property.kind == photon_data::block::definition::PropertyKind::Boolean;
+        let boolean = property.kind == crate::block::definition::PropertyKind::Boolean;
         let place = |text: &str| {
             let at = values.iter().position(|value| *value == text)?;
             if boolean {
@@ -259,7 +259,7 @@ mod tests {
     }
 
     fn state(name: &str) -> BlockStateId {
-        photon_data::block::registry::BLOCKS
+        crate::block::registry::BLOCKS
             .iter()
             .find(|block| block.name == name)
             .unwrap()
@@ -267,7 +267,7 @@ mod tests {
     }
 
     fn index(name: &str) -> i32 {
-        photon_data::block::registry::BLOCKS
+        crate::block::registry::BLOCKS
             .iter()
             .position(|block| block.name == name)
             .unwrap() as i32

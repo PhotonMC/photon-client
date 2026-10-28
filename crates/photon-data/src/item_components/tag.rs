@@ -48,7 +48,7 @@ fn potion_contents(value: &FieldValue) -> Option<Vec<u8>> {
     };
     let mut out = Vec::new();
     let index = potion.and_then(|name| {
-        photon_data::item::potions::POTIONS
+        crate::item::potions::POTIONS
             .iter()
             .position(|potion| potion.name == name)
     });
@@ -73,7 +73,7 @@ fn item_enchantments(levels: &[Field], registry: &[String]) -> Vec<u8> {
         .iter()
         .filter_map(|entry| {
             let id = registry.iter().position(|name| *name == entry.key)?;
-            let level = crate::block::entity::numeric_nbt_value(&entry.value)?;
+            let level = photon_core::nbt::numeric_nbt_value(&entry.value)?;
             ((1..=255).contains(&level)).then_some((id as i32, level))
         })
         .collect();

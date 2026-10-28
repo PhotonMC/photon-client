@@ -1,7 +1,7 @@
 //! `ParticleEngine`: the particles of the level, and how they get in.
 
 use photon_core::ids::BlockStateId;
-use photon_core::ids::{EntityId, ItemId};
+use photon_core::ids::EntityId;
 use std::collections::VecDeque;
 
 use photon_core::binary::BlockPos;
@@ -14,6 +14,8 @@ use super::super::ClientWorld;
 use super::group::ParticleGroup;
 use super::particle::Particle;
 use super::resources::ParticleResources;
+
+pub use photon_data::particle_values::{LevelParticles, ParticleData, PositionSource};
 
 /// `ParticleStatus`: the particles option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,62 +33,15 @@ pub struct AddView {
     pub status: ParticleStatus,
 }
 
-/// What a particle type carries after its id (`ParticleOptions`).
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum ParticleData {
-    /// `SimpleParticleType`: nothing.
-    #[default]
-    Plain,
-    /// `BlockParticleOption`: a block state.
-    Block(BlockStateId),
-    /// `ColorParticleOption`: an ARGB colour.
-    Color(u32),
-    /// `SpellParticleOption`: a colour and how fast it goes.
-    Spell { color: u32, power: f32 },
-    /// `DustParticleOptions`: an RGB colour and a size (held between 0.01 and 4).
-    Dust { color: u32, scale: f32 },
-    /// `DustColorTransitionOptions`: from one colour to another, and a size.
-    DustTransition { from: u32, to: u32, scale: f32 },
-    /// `SculkChargeParticleOptions`: how far the quad is turned.
-    Roll(f32),
-    /// `ItemParticleOption`: the item, by its registry id (its components are not read).
-    Item(ItemId),
-    /// `VibrationParticleOption`: where it is headed, and how many ticks until it arrives.
-    Vibration {
-        destination: PositionSource,
-        arrival_in_ticks: i32,
-    },
-    /// `TrailParticleOption`: where it is headed, its colour, and how long it takes.
-    Trail {
-        target: (f64, f64, f64),
-        color: u32,
-        duration: i32,
-    },
-    /// `ShriekParticleOption`: how many ticks before it starts ageing.
-    Shriek { delay: i32 },
-    /// What a firework's starter (or a spark with a trail) makes a `firework` spark with.
-    FireworkSpark(super::firework::SparkOptions),
-    /// `PowerParticleOption`: how hard it is thrown.
-    Power(f32),
-    /// `GeyserParticleOptions`: how many blocks of water the geyser rises through.
-    Geyser { water_blocks: i32 },
-    /// `GeyserBaseParticleOptions`: the same, and how hard the spray at its foot is thrown.
-    GeyserBase { water_blocks: i32, burst: f32 },
+/// `PositionSource.getPosition` for the world's entities.
+pub trait PositionSourceExt {
+    fn position(self, world: &ClientWorld) -> Option<(f64, f64, f64)>;
 }
 
-/// `world.level.gameevent.PositionSource`: a fixed block (`BlockPositionSource`), or an entity
-/// tracked by id with a vertical offset (`EntityPositionSource`, resolved each tick the way
-/// `ClientLevel.getEntity` does).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PositionSource {
-    Block(BlockPos),
-    Entity { id: EntityId, y_offset: f32 },
-}
-
-impl PositionSource {
+impl PositionSourceExt for PositionSource {
     /// `PositionSource.getPosition`: a block's centre, or a tracked entity's position (gone once
     /// it cannot be found), with the entity source's vertical offset added.
-    pub fn position(self, world: &ClientWorld) -> Option<(f64, f64, f64)> {
+    fn position(self, world: &ClientWorld) -> Option<(f64, f64, f64)> {
         match self {
             Self::Block(pos) => Some((
                 f64::from(pos.x) + 0.5,
@@ -97,16 +52,6 @@ impl PositionSource {
                 let (x, y, z) = world.entities().at(id)?.position();
                 Some((x, y + f64::from(y_offset), z))
             }
-        }
-    }
-}
-
-impl ParticleData {
-    /// The block state of a type that carries one.
-    pub fn block_state(self) -> Option<BlockStateId> {
-        match self {
-            Self::Block(state) => Some(state),
-            _ => None,
         }
     }
 }
@@ -130,20 +75,6 @@ pub enum Emitted {
     Sound(crate::local_player::LocalSound),
     /// A gas cloud asks the level for a place near the cell it hangs in to send gas to.
     GasProbe([i32; 3]),
-}
-
-/// `ClientboundLevelParticlesPacket`, of a type that is only its id or a block state.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct LevelParticles {
-    pub type_id: i32,
-    /// What the type carries.
-    pub data: ParticleData,
-    pub override_limiter: bool,
-    pub always_show: bool,
-    pub at: (f64, f64, f64),
-    pub spread: (f32, f32, f32),
-    pub max_speed: f32,
-    pub count: i32,
 }
 
 #[derive(Debug, Clone)]

@@ -13,64 +13,9 @@ use super::level_events::LevelEventContext;
 use super::particle::{Kind, Particle};
 use super::sprites::SpriteSet;
 
-/// `FireworkExplosion.Shape`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Shape {
-    SmallBall,
-    LargeBall,
-    Star,
-    Creeper,
-    Burst,
-}
-
-impl Shape {
-    /// `Shape.BY_ID`: an id out of range is the first.
-    pub fn from_id(id: i32) -> Self {
-        match id {
-            1 => Self::LargeBall,
-            2 => Self::Star,
-            3 => Self::Creeper,
-            4 => Self::Burst,
-            _ => Self::SmallBall,
-        }
-    }
-}
-
-/// `FireworkExplosion`: one burst of a rocket.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Explosion {
-    pub shape: Shape,
-    pub colors: Vec<i32>,
-    pub fade_colors: Vec<i32>,
-    pub trail: bool,
-    pub twinkle: bool,
-}
-
-/// What a spark is made with (`SparkParticle`'s state besides its motion), and what a spark that
-/// leaves a trail hands the one it leaves.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SparkOptions {
-    pub trail: bool,
-    pub twinkle: bool,
-    /// The tint, as the particle holds it.
-    pub color: [f32; 3],
-    /// The tint it fades toward.
-    pub fade: Option<[f32; 3]>,
-    /// Born half through its life (a spark left by a trail).
-    pub half_aged: bool,
-}
-
-impl Default for SparkOptions {
-    fn default() -> Self {
-        Self {
-            trail: false,
-            twinkle: false,
-            color: [1.0; 3],
-            fade: None,
-            half_aged: false,
-        }
-    }
-}
+pub use photon_data::particle_values::{
+    FireworkExplosion as Explosion, FireworkShape as Shape, SparkOptions,
+};
 
 /// `SparkParticle`.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -480,14 +480,4 @@ pub(crate) fn spawner_int_number(
         .unwrap_or(default)
 }
 
-pub(crate) fn numeric_nbt_value(value: &photon_core::nbt::FieldValue) -> Option<i32> {
-    match value {
-        photon_core::nbt::FieldValue::Byte(value) => Some(i32::from(*value)),
-        photon_core::nbt::FieldValue::Short(value) => Some(i32::from(*value)),
-        photon_core::nbt::FieldValue::Int(value) => Some(*value),
-        photon_core::nbt::FieldValue::Long(value) => Some(*value as i32),
-        photon_core::nbt::FieldValue::Float(value) => Some(*value as i32),
-        photon_core::nbt::FieldValue::Double(value) => Some(*value as i32),
-        _ => None,
-    }
-}
+pub(crate) use photon_core::nbt::numeric_nbt_value;
