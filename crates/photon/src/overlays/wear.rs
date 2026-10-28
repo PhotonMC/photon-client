@@ -197,6 +197,7 @@ struct Tags<'a> {
     ),
     camera: &'a TagCamera,
     orientation: photon_render::joml::Quaternion,
+    background_opacity: f32,
     see_through: Vec<Vertex>,
     normal: Vec<Vertex>,
 }
@@ -223,7 +224,13 @@ impl Tags<'_> {
                 .as_ref()
                 .map_or(0, |score| font.width_of_text_runs(score)),
         );
-        for submit in submits(tag, placement, widths, (light, 0.25), &self.orientation) {
+        for submit in submits(
+            tag,
+            placement,
+            widths,
+            (light, self.background_opacity),
+            &self.orientation,
+        ) {
             let runs = match (&tag.score, submit.score) {
                 (Some(score), true) => score,
                 _ => &tag.runs,
@@ -239,8 +246,8 @@ impl Tags<'_> {
 
 /// `EntityRenderer.submitNameDisplay` for the other players, then for the other entities: the
 /// text seen through blocks, and the text tested against the depth, each as triangles from the
-/// mesh origin. The background is the options' default for chat only, as the option that
-/// changes it is not carried.
+/// mesh origin. The background opacity is `Options.getBackgroundOpacity(0.25F)`, given by the
+/// caller.
 pub fn name_tags(
     session: &PlaySession,
     (lang, font, atlas): (
@@ -249,7 +256,7 @@ pub fn name_tags(
         &photon_render::gui::GuiAtlas,
     ),
     camera: &TagCamera,
-    view: FrameView,
+    (view, background_opacity): (FrameView, f32),
 ) -> (Vec<Vertex>, Vec<Vertex>) {
     use photon_render::entity::name_tag::{Viewer, camera_orientation};
     let viewer = Viewer {
@@ -261,6 +268,7 @@ pub fn name_tags(
         text: (font, atlas),
         camera,
         orientation: camera_orientation(camera.rotation.0, camera.rotation.1),
+        background_opacity,
         see_through: Vec::new(),
         normal: Vec::new(),
     };

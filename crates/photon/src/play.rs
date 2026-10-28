@@ -611,3 +611,4 @@ pub(crate) use loading::LoadingView;
 pub(crate) use switch::SwitchView;
 mod ticks;
 mod tutorial;
+mod world_text;

@@ -260,7 +260,7 @@ pub fn display_texts(
         &photon_render::gui::font::Font,
         &photon_render::gui::GuiAtlas,
     ),
-    view: FrameView,
+    (view, default_background): (FrameView, f32),
 ) -> (Vec<Vertex>, Vec<Vertex>) {
     use photon_render::objects::display::text_submit;
     let world = session.world();
@@ -313,7 +313,7 @@ pub fn display_texts(
                 text.text_opacity.get(progress),
                 text.background.get(progress),
             ),
-            (&widths, 0.25),
+            (&widths, default_background),
         );
         let light = displayed_light(
             packed_light(world, Vec3::new(x, y, z)),

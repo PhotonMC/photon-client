@@ -117,6 +117,15 @@ pub struct Options {
 }
 
 impl Options {
+    /// `Options.getBackgroundOpacity`: the default when the background is for the chat only.
+    pub fn background_opacity(&self, default: f32) -> f32 {
+        if self.background_for_chat_only {
+            default
+        } else {
+            self.text_background_opacity as f32
+        }
+    }
+
     /// The GUI scale option and whether the Unicode font is forced, which the scale follows.
     pub fn gui_scaling(&self) -> (i32, bool) {
         (self.gui_scale, self.font.force_unicode)

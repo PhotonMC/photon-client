@@ -1,6 +1,5 @@
 use super::glints::set_item_glints;
 use super::*;
-use crate::objects::displays;
 use crate::objects::leashes;
 use crate::world::sections;
 
@@ -297,26 +296,8 @@ impl Play {
             spectating,
             hud_hidden: self.controls.hud_hidden,
         };
-        let (font, atlas) = self.gui.text_assets();
-        let assets = (self.gui.lang(), font, atlas);
-        let (mut see_through, mut normal) =
-            overlays::name_tags(&self.session, assets, &camera, view);
-        let (shown_through, shown) = displays::display_texts(&self.session, assets, view);
-        see_through.extend(shown_through);
-        normal.extend(shown);
-        let first_person = self.controls.camera_type == CameraType::FirstPerson;
-        normal.extend(crate::world::signs::sign_texts(
-            &self.session,
-            assets,
-            view,
-            (
-                first_person,
-                self.controls
-                    .sign_edit
-                    .as_ref()
-                    .map(|edit| (edit.pos, edit.front, edit.screen.messages())),
-            ),
-        ));
+        let (see_through, normal) = self.world_texts(&camera, view);
+        let mut normal = normal;
         // The leads are a flat colour lit by the lightmap, as the world text is.
         leashes::leashes(&self.session, view, &mut normal);
         self.backend.set_name_tags(&see_through, &normal)?;
