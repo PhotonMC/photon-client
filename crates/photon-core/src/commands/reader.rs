@@ -56,7 +56,7 @@ impl CommandSyntaxException {
     }
 }
 
-pub use photon_core::java_float::{java_double, java_float};
+pub use crate::java_float::{java_double, java_float};
 
 #[derive(Debug, Clone)]
 pub struct StringReader {

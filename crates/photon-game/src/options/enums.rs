@@ -1,11 +1,4 @@
-/// `ChatVisiblity`: which chat the client shows, and tells the server it
-/// wants.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChatVisibility {
-    Full,
-    System,
-    Hidden,
-}
+pub use photon_core::chat::ChatVisibility;
 
 /// `InactivityFpsLimit`: when the frame rate is lowered for a window nobody is using.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,25 +72,6 @@ pub enum MusicToast {
     Never,
     Pause,
     PauseAndToast,
-}
-
-impl ChatVisibility {
-    pub const fn id(self) -> i32 {
-        match self {
-            Self::Full => 0,
-            Self::System => 1,
-            Self::Hidden => 2,
-        }
-    }
-
-    pub const fn from_id(id: i32) -> Option<Self> {
-        match id {
-            0 => Some(Self::Full),
-            1 => Some(Self::System),
-            2 => Some(Self::Hidden),
-            _ => None,
-        }
-    }
 }
 
 /// `ParticleStatus`: how many particles the client makes, and tells the server it wants.

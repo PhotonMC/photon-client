@@ -1,9 +1,9 @@
 //! Items, menus and the player's actions, built on the client's world copy.
 
 pub mod advancements;
-pub mod chat;
+pub use photon_core::chat;
 pub mod chat_abilities;
-pub mod commands;
+pub use photon_core::commands;
 pub use photon_core::dialog;
 pub mod game_mode;
 pub mod item;
@@ -15,7 +15,7 @@ pub mod language;
 pub mod menus;
 pub mod options;
 pub mod registries;
-pub mod scoreboard;
+pub use photon_core::scoreboard;
 pub use photon_core::server_links;
 pub mod server_status;
 pub mod servers;
@@ -29,4 +29,4 @@ pub mod test_instance;
 pub use photon_core::text;
 pub mod toast;
 pub mod tooltip;
-pub mod waypoint;
+pub use photon_core::waypoint;
