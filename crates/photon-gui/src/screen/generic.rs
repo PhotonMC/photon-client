@@ -220,8 +220,7 @@ impl Screen for GenericScreen {
         let outside = self.outside(mouse);
         let clicks = self.mouse.clicked(
             double,
-            slot,
-            outside,
+            (slot, outside),
             button,
             shift,
             button == 2 && menu.creative(),

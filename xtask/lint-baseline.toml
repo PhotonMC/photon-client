@@ -985,7 +985,6 @@
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
-"crates/photon-gui/src/screen/container.rs::ContainerMouse::clicked" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::blit_part" = 9
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::sprite_cut" = 8

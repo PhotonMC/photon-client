@@ -205,7 +205,7 @@ impl Screen for CreativeScreen {
         };
         let clicks = self
             .mouse
-            .clicked(double, slot, outside, button, shift, button == 2, &view);
+            .clicked(double, (slot, outside), button, shift, button == 2, &view);
         self.actions(clicks)
     }
 

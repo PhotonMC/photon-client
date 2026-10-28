@@ -91,15 +91,11 @@ impl ContainerMouse {
     }
 
     /// `mouseClicked`, after the widgets did not take the press.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
+    /// `target` is the slot under the mouse and whether the press landed outside the window.
     pub fn clicked(
         &mut self,
         double: bool,
-        slot: Option<usize>,
-        outside: bool,
+        (slot, outside): (Option<usize>, bool),
         button: i32,
         shift: bool,
         cloning: bool,

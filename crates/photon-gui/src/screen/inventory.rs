@@ -204,8 +204,7 @@ impl Screen for InventoryScreen {
                 .claims(mouse, (self.layout.left(), self.layout.top()), IMAGE.1);
         let clicks = self.mouse.clicked(
             double,
-            slot,
-            outside,
+            (slot, outside),
             button,
             shift,
             button == 2 && menu.creative(),
