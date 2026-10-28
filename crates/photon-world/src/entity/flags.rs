@@ -161,15 +161,18 @@ impl ClientEntity {
         crate::metadata::custom_name_from_metadata(self.metadata.as_deref()?)?
     }
 
-    /// `LivingEntityRenderer.isEntityUpsideDown` for the entities that are not players: a living
-    /// entity named Dinnerbone or Grumm (the text of its name, whatever its style).
+    /// `LivingEntityRenderer.isEntityUpsideDown` for the entities that are not avatars: a living
+    /// entity named Dinnerbone or Grumm. An avatar's renderer asks its cape first.
     pub fn is_upside_down(&self) -> bool {
-        self.is_living_entity()
-            && !self.is_player()
-            && self.custom_name().is_some_and(|name| {
-                let text = literal_text(&name);
-                text == "Dinnerbone" || text == "Grumm"
-            })
+        self.is_living_entity() && !self.is_avatar() && self.has_upside_down_name()
+    }
+
+    /// A custom name of Dinnerbone or Grumm (the text of the name, whatever its style).
+    pub fn has_upside_down_name(&self) -> bool {
+        self.custom_name().is_some_and(|name| {
+            let text = literal_text(&name);
+            text == "Dinnerbone" || text == "Grumm"
+        })
     }
 
     /// `Avatar.DATA_PLAYER_MODE_CUSTOMISATION`: the skin layers an avatar shows, a bit for each

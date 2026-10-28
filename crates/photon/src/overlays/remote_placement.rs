@@ -4,8 +4,14 @@ use super::*;
 use crate::equipment::arm_poses;
 use photon_render::entity::player_renderer::Sleep;
 
-/// Whether a player is upside down: the cape shows and the profile is named Dinnerbone or Grumm.
+/// Whether an avatar is upside down: the cape shows and a player's profile, or a mannequin's custom
+/// name, is Dinnerbone or Grumm.
 pub(super) fn flipped(session: &PlaySession, entity: &photon_world::ClientEntity) -> bool {
+    if !entity.is_player() {
+        // `AvatarRenderer.isEntityUpsideDown` for a mannequin: the cape shows, then the living rule
+        // (a custom name of Dinnerbone or Grumm).
+        return entity.shows_cape() && entity.has_upside_down_name();
+    }
     session
         .player_name(entity.uuid)
         .is_some_and(|name| entity.is_upside_down_player(name))
