@@ -4,6 +4,7 @@
 
 pub use super::classes::{ItemClass, ItemMethod};
 use super::component::Component;
+use photon_core::version::{Version, VersionSpan};
 
 /// The blocks a tool rule covers.
 #[derive(Debug)]
@@ -118,6 +119,8 @@ pub struct Item {
     pub block: Option<&'static str>,
     /// The other default components the client reads.
     pub components: &'static [Component],
+    /// The versions the item exists in (every version unless `since` or `until` say otherwise).
+    pub versions: VersionSpan,
 }
 
 impl Item {
@@ -144,7 +147,25 @@ impl Item {
             brewing_ingredient: false,
             block: None,
             components: &[],
+            versions: VersionSpan::ALL,
         }
+    }
+
+    /// The first version that has the item.
+    pub const fn since(mut self, version: Version) -> Self {
+        self.versions = self.versions.since(version);
+        self
+    }
+
+    /// The last version that has the item; a newer version removed it.
+    pub const fn until(mut self, version: Version) -> Self {
+        self.versions = self.versions.until(version);
+        self
+    }
+
+    /// Whether the item exists in `version`.
+    pub const fn exists_in(&self, version: Version) -> bool {
+        self.versions.contains(version)
     }
 
     /// What a furnace burns the item for, in ticks (`FuelValues`).

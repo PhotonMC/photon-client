@@ -31,6 +31,59 @@ impl Version {
     }
 }
 
+impl Version {
+    /// The position in [`Version::ALL`], oldest first; usable in `const` code.
+    pub const fn index(self) -> usize {
+        match self {
+            Version::V26_2 => 0,
+        }
+    }
+}
+
+/// The versions a definition exists in: from `since` and up to and including `until`; with
+/// neither it exists in every version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VersionSpan {
+    since: Option<Version>,
+    until: Option<Version>,
+}
+
+impl VersionSpan {
+    /// Every version.
+    pub const ALL: VersionSpan = VersionSpan {
+        since: None,
+        until: None,
+    };
+
+    /// The first version that has the definition.
+    pub const fn since(mut self, version: Version) -> Self {
+        self.since = Some(version);
+        self
+    }
+
+    /// The last version that has the definition; a newer version removed it.
+    pub const fn until(mut self, version: Version) -> Self {
+        self.until = Some(version);
+        self
+    }
+
+    /// Whether the definition exists in `version`.
+    pub const fn contains(self, version: Version) -> bool {
+        let at = version.index();
+        if let Some(since) = self.since
+            && at < since.index()
+        {
+            return false;
+        }
+        if let Some(until) = self.until
+            && at > until.index()
+        {
+            return false;
+        }
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,5 +105,20 @@ mod tests {
     fn the_list_runs_oldest_first_and_ends_at_the_newest() {
         assert!(Version::ALL.windows(2).all(|pair| pair[0] < pair[1]));
         assert_eq!(Version::ALL.last(), Some(&Version::NEWEST));
+    }
+
+    #[test]
+    fn a_span_without_bounds_covers_every_version() {
+        for version in Version::ALL {
+            assert!(VersionSpan::ALL.contains(version));
+        }
+    }
+
+    #[test]
+    fn since_and_until_bound_the_span_inclusively() {
+        let v = Version::V26_2;
+        assert!(VersionSpan::ALL.since(v).contains(v));
+        assert!(VersionSpan::ALL.until(v).contains(v));
+        assert!(VersionSpan::ALL.since(v).until(v).contains(v));
     }
 }

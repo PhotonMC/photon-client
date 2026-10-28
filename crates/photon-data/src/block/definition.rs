@@ -5,6 +5,7 @@
 //! shapes is computed, not stored.
 
 use super::classes::{BlockClass, BlockInterface, Method};
+use photon_core::version::{Version, VersionSpan};
 
 /// What kind of values a property takes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -131,6 +132,11 @@ pub struct Block {
     pub fluid: Fluid,
     /// `asItem`, when it is not the item named like the block.
     pub item: Option<&'static str>,
+    /// The versions the block exists in (every version unless `since` or `until` say otherwise).
+    pub versions: VersionSpan,
+    /// Properties a newer version added, by name and the first version that has them; older
+    /// versions read such a property as its default value.
+    pub property_since: &'static [(&'static str, Version)],
 }
 
 impl Block {
@@ -169,7 +175,40 @@ impl Block {
             redstone_conductor: Rule::Default,
             fluid: Fluid::Empty,
             item: None,
+            versions: VersionSpan::ALL,
+            property_since: &[],
         }
+    }
+
+    /// The first version that has the block.
+    pub const fn since(mut self, version: Version) -> Self {
+        self.versions = self.versions.since(version);
+        self
+    }
+
+    /// The last version that has the block; a newer version removed it.
+    pub const fn until(mut self, version: Version) -> Self {
+        self.versions = self.versions.until(version);
+        self
+    }
+
+    /// Properties a newer version added, with the first version that has each.
+    pub const fn property_since(mut self, properties: &'static [(&'static str, Version)]) -> Self {
+        self.property_since = properties;
+        self
+    }
+
+    /// Whether the block exists in `version`.
+    pub const fn exists_in(&self, version: Version) -> bool {
+        self.versions.contains(version)
+    }
+
+    /// Whether the named property is part of the block's states in `version`.
+    pub fn has_property_in(&self, name: &str, version: Version) -> bool {
+        self.property_since
+            .iter()
+            .find(|(property, _)| *property == name)
+            .is_none_or(|(_, since)| version.index() >= since.index())
     }
 
     /// The state definition: the properties and the default state's values.

@@ -236,6 +236,24 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
+    fn every_block_exists_in_every_version_until_a_definition_says_otherwise() {
+        for version in photon_core::version::Version::ALL {
+            assert!(BLOCKS.iter().all(|block| block.exists_in(version)));
+        }
+    }
+
+    #[test]
+    fn a_property_a_newer_version_added_is_listed_by_name() {
+        use photon_core::version::Version;
+        let stone = Block::of("minecraft:stone", crate::block::classes::BlockClass::Block)
+            .since(Version::V26_2)
+            .property_since(&[("snowy", Version::V26_2)]);
+        assert!(stone.exists_in(Version::V26_2));
+        assert!(stone.has_property_in("snowy", Version::V26_2));
+        assert!(stone.has_property_in("axis", Version::V26_2));
+    }
+
+    #[test]
     fn the_registry_numbers_every_state() {
         assert_eq!(state_count(), 32366);
         assert_eq!(

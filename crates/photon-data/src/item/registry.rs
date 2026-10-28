@@ -48,6 +48,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_item_exists_in_every_version_until_a_definition_says_otherwise() {
+        for version in photon_core::version::Version::ALL {
+            assert!(ITEMS.iter().all(|item| item.exists_in(version)));
+        }
+    }
+
+    #[test]
+    fn since_and_until_set_the_versions_an_item_exists_in() {
+        use photon_core::version::Version;
+        let item = Item::of("minecraft:stick", crate::item::definition::ItemClass::Item)
+            .since(Version::V26_2)
+            .until(Version::V26_2);
+        assert!(item.exists_in(Version::V26_2));
+    }
+
+    #[test]
     fn every_item_is_found_at_its_own_place() {
         for (index, item) in ITEMS.iter().enumerate() {
             assert_eq!(named(item.name).0 as usize, index, "{}", item.name);
