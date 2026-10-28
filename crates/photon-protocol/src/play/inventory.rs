@@ -36,12 +36,20 @@ pub fn encode_creative_item_slot(
 /// `ServerboundSetCreativeModeSlotPacket`: a slot and its stack as the
 /// network encodes an optional item stack for the server, component patch
 /// included, each value behind its length.
-pub fn encode_creative_slot(output: &mut Vec<u8>, slot: i16, stack: Option<&ClientItemStackState>) {
+pub fn encode_creative_slot(
+    output: &mut Vec<u8>,
+    slot: i16,
+    stack: Option<&ClientItemStackState>,
+    registries: &VersionRegistries,
+) {
     output.extend_from_slice(&slot.to_be_bytes());
     match stack {
         Some(stack) if stack.item_count() > 0 => {
             wire::write_varint(stack.item_count(), output);
-            wire::write_varint(stack.item_registry_id().0, output);
+            wire::write_varint(
+                WireItemId::from_canonical(stack.item_registry_id(), registries).0,
+                output,
+            );
             // The server reads a client's components behind their lengths. A
             // patch this cannot read is left off rather than sent wrong.
             match photon_data::item_components::delimit(stack.patch_bytes()) {

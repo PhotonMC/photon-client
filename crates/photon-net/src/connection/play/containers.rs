@@ -210,6 +210,7 @@ impl PlaySession {
         if !player.infinite_materials {
             return Ok(());
         }
+        let registries = self.registries.clone();
         for effect in effects {
             match effect {
                 Effect::Swing => self.swing_hand()?,
@@ -217,7 +218,7 @@ impl PlaySession {
                     self.send(
                         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
                         |output| {
-                            encode_creative_slot(output, slot, stack.as_ref());
+                            encode_creative_slot(output, slot, stack.as_ref(), &registries);
                             Ok(())
                         },
                     )?;
@@ -226,7 +227,7 @@ impl PlaySession {
                     self.send(
                         PLAY_SERVERBOUND_SET_CREATIVE_MODE_SLOT_PACKET_ID,
                         |output| {
-                            encode_creative_slot(output, -1, Some(&stack));
+                            encode_creative_slot(output, -1, Some(&stack), &registries);
                             Ok(())
                         },
                     )?;

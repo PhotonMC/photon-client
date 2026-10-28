@@ -33,7 +33,12 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     use photon_data::item_stack::ClientItemStackState as Stack;
     // A stack made here has no patch: both counts are zero.
     let mut payload = Vec::new();
-    encode_creative_slot(&mut payload, 38, Some(&Stack::new(3, ItemId(1_044))));
+    encode_creative_slot(
+        &mut payload,
+        38,
+        Some(&Stack::new(3, ItemId(1_044))),
+        &registries(),
+    );
     let mut input = &payload[2..];
     assert_eq!(
         i16::from_be_bytes(payload[..2].try_into().expect("slot")),
@@ -51,7 +56,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     // A stack with a patch writes each value behind its length.
     let s = Stack::from_wire(1, ItemId(5), vec![103], vec![]).with_patch_bytes(vec![1, 0, 103, 1]);
     let mut payload = Vec::new();
-    encode_creative_slot(&mut payload, -1, Some(&s));
+    encode_creative_slot(&mut payload, -1, Some(&s), &registries());
     assert_eq!(
         i16::from_be_bytes(payload[..2].try_into().expect("slot")),
         -1
@@ -59,7 +64,7 @@ fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
     assert_eq!(&payload[2..], &[1, 5, 1, 0, 103, 1, 1]);
     // No stack is a count of zero.
     let mut payload = Vec::new();
-    encode_creative_slot(&mut payload, 36, None);
+    encode_creative_slot(&mut payload, 36, None, &registries());
     assert_eq!(&payload[2..], &[0]);
 }
 
