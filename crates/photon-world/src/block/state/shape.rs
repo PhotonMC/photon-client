@@ -45,11 +45,7 @@ pub(super) fn build() -> States {
     let states = work
         .into_iter()
         .zip(own_shapes)
-        .map(|((index, block, offset), shapes)| {
-            compute(
-                index, block, offset, shapes, &mut faces, &mut facts, &mut pool,
-            )
-        })
+        .map(|(state, shapes)| compute(state, shapes, &mut faces, &mut facts, &mut pool))
         .collect();
     let faces = faces.shapes;
     let count = faces.len();
@@ -77,9 +73,7 @@ pub(super) fn horizontal_axis(block: &Block, offset: u32) -> Axis {
 }
 
 pub(super) fn compute(
-    index: usize,
-    block: &'static Block,
-    offset: u32,
+    (index, block, offset): (usize, &'static Block, u32),
     (outline, collision): (VoxelShape, VoxelShape),
     faces: &mut Faces,
     facts: &mut ShapeFacts,

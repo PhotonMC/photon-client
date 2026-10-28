@@ -988,7 +988,6 @@
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::blit_texture" = 8
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::nine_slice" = 9
-"crates/photon-world/src/block/state/shape.rs::compute" = 7
 "crates/photon-world/src/input/keyboard.rs::Input::new" = 7
 
 [unsafe]
