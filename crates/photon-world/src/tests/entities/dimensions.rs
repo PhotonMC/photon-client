@@ -410,3 +410,32 @@ fn hurt_animation_keeps_the_yaw_for_players_only() {
     assert_eq!(hurt("minecraft:player"), (10, 90.0));
     assert_eq!(hurt("minecraft:pig"), (10, 0.0));
 }
+
+#[test]
+fn camera_bob_belongs_to_players() {
+    let bob = |name: &str| {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: Uuid::new(1, 5),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 0.0,
+            y: 9.0,
+            z: 0.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+        let entity = world
+            .entities_mut()
+            .at_mut(EntityId(5))
+            .expect("the entity");
+        entity.living.cloak.update_bob(0.1);
+        entity.camera_bob(1.0)
+    };
+    assert_eq!(
+        bob("minecraft:player").to_bits(),
+        (0.1_f32 * 0.4_f32).to_bits()
+    );
+    assert_eq!(bob("minecraft:pig"), 0.0);
+}

@@ -21,6 +21,16 @@ impl ClientEntity {
         self.living.cloak.update_bob(target);
     }
 
+    /// `ClientAvatarState.getInterpolatedBob` as `Camera.extractRenderState` reads it for
+    /// `bobView`: a player's, no other entity has one.
+    pub fn camera_bob(&self, partial: f32) -> f32 {
+        if self.is_player() {
+            self.living.cloak.interpolated_bob(partial)
+        } else {
+            0.0
+        }
+    }
+
     /// The cloak and the bob of the avatar's cape.
     pub fn cloak(&self) -> &crate::cloak::Cloak {
         &self.living.cloak

@@ -230,7 +230,7 @@ impl Play {
             Some(id) => camera_entity_motion(
                 self.session.world().entities().at(id),
                 partial,
-                options.damage_tilt_strength,
+                (options.view_bobbing, options.damage_tilt_strength),
             ),
             None => player_motion(
                 player,
@@ -272,11 +272,13 @@ fn player_motion(
 }
 
 /// What the view is moved by while the camera is another entity: `bobHurt` from a living one's
-/// flinch and death roll (`Camera.extractRenderState`), and no sway.
+/// flinch and death roll, and `bobView` for a player (`Camera.extractRenderState`). A remote
+/// player never walks the avatar's distance here (its position is set, not moved), so only its
+/// bob sways the view.
 fn camera_entity_motion(
     entity: Option<&photon_world::ClientEntity>,
     partial: f32,
-    tilt_strength: f64,
+    (view_bobbing, tilt_strength): (bool, f64),
 ) -> [[f32; 4]; 4] {
     let hurt = entity
         .filter(|entity| entity.is_living_entity())
@@ -290,9 +292,12 @@ fn camera_entity_motion(
                 tilt_strength,
             }
         });
+    let bob = entity
+        .filter(|_| view_bobbing)
+        .map_or(0.0, |entity| entity.camera_bob(partial));
     photon_render::scene::multiply(
         photon_render::camera::view_hurt(&hurt),
-        photon_render::camera::view_bob(0.0, 0.0),
+        photon_render::camera::view_bob(0.0, bob),
     )
 }
 
@@ -372,12 +377,12 @@ mod tests {
             data: 0,
         }));
         assert!(world.entities_mut().apply_hurt_animation(EntityId(5), 0.0));
-        camera_entity_motion(world.entities().at(EntityId(5)), 0.0, 1.0)
+        camera_entity_motion(world.entities().at(EntityId(5)), 0.0, (true, 1.0))
     }
 
     #[test]
     fn a_living_camera_entity_flinches_the_view_and_others_do_not() {
-        let none = camera_entity_motion(None, 0.0, 1.0);
+        let none = camera_entity_motion(None, 0.0, (true, 1.0));
         assert_ne!(flinched("minecraft:pig"), none);
         assert_eq!(flinched("minecraft:oak_boat"), none);
     }
