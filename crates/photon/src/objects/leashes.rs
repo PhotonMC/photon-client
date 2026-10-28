@@ -1,7 +1,7 @@
 //! The leads (`EntityRenderer.extractRenderState`'s leash states and `LeashFeatureRenderer`): the
 //! line from each leashed entity to whoever holds it. A lead whose holder this client does not
 //! know is not drawn. Not carried: a holder that glides with an elytra or spins with a trident
-//! (`Player.getRopeHoldPosition`'s other branch), the light a burning or glowing entity gives
+//! (`Player.getRopeHoldPosition`'s other branch), a burning local player, the glow squid's light
 //! (`getBlockLightLevel`), the camel's sitting size, the passenger offset of a ridden entity.
 
 use photon_core::math::Vec3;
@@ -33,6 +33,8 @@ struct Holder {
     /// The type's name, for the four points a holder of four lines has.
     name: Option<&'static str>,
     size: photon_data::leash::Size,
+    /// Its renderer's `getBlockLightLevel` answers 15: it burns, or its type is full-bright.
+    full_light: bool,
 }
 
 fn vec(vector: Vec3) -> [f64; 3] {
@@ -77,6 +79,7 @@ fn local_holder(player: &LocalPlayer, partial: f32) -> Holder {
             height: 1.8,
             eye_height: player.eye_height(),
         },
+        full_light: false,
     }
 }
 
@@ -117,16 +120,34 @@ fn world_holder(entity: &photon_world::ClientEntity, partial: f32, position: [f6
         body_rot: entity.precise_body_rotation(partial),
         name,
         size,
+        full_light: entity.is_burning() || entity.renderer_full_block_light(),
     }
 }
 
-/// `BlockPos.containing` of a point and the block and sky light there.
-fn light_at(session: &PlaySession, at: [f64; 3]) -> (i32, i32) {
+/// `BlockPos.containing` of a point and the block and sky light there; a renderer that lights
+/// at full block light (`getBlockLightLevel`) answers 15 for the block light.
+fn light_at(session: &PlaySession, at: [f64; 3], full: bool) -> (i32, i32) {
     let [x, y, z] = at.map(|value| value.floor() as i32);
     let world = session.world();
     (
-        i32::from(world.block_brightness(x, y, z)),
+        if full {
+            15
+        } else {
+            i32::from(world.block_brightness(x, y, z))
+        },
         i32::from(world.sky_brightness(x, y, z)),
+    )
+}
+
+/// The light at the leashed entity's eye and at the holder's.
+fn ends_light(
+    session: &PlaySession,
+    (eye, burning): ([f64; 3], bool),
+    holder: &Holder,
+) -> ((i32, i32), (i32, i32)) {
+    (
+        light_at(session, eye, burning),
+        light_at(session, holder.eye, holder.full_light),
     )
 }
 
@@ -173,8 +194,8 @@ pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex
             position[1] + f64::from(size.eye_height),
             position[2],
         ];
-        let (start_block, start_sky) = light_at(session, eye);
-        let (end_block, end_sky) = light_at(session, holder.eye);
+        let lights = ends_light(session, (eye, snapshot.burning), &holder);
+        let ((start_block, start_sky), (end_block, end_sky)) = lights;
         let state = |offset: [f64; 3], end: [f64; 3], slack: bool| LeashState {
             offset,
             start: [
