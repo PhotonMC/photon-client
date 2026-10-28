@@ -21,8 +21,6 @@ use crate::equipment::armor::{Armor, Worn};
 use crate::equipment::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::equipment::item_layers::ItemLayerCache;
 use crate::hud_input::attack_speed;
-use crate::view::eye_position;
-use photon_game::input::pick::pick;
 
 /// Where the frame is drawn from: how far between ticks, the light at the
 /// eyes (packed block and sky light), and the point meshes are measured

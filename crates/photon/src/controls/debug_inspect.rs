@@ -39,11 +39,7 @@ impl Controls {
             return;
         }
         let world = session.world();
-        let (command, feedback) = match photon_game::input::pick::pick(
-            world,
-            player,
-            crate::view::eye_position(player, 1.0),
-        ) {
+        let (command, feedback) = match crate::view::camera_aim(session, player, 1.0) {
             Aim::Block { x, y, z, .. } => (
                 setblock_command(
                     (x, y, z),

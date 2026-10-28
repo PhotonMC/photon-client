@@ -37,33 +37,40 @@ pub fn camera_aim(
     player: &photon_world::local_player::LocalPlayer,
     partial: f32,
 ) -> photon_game::game_mode::Aim {
-    use photon_game::input::pick::{Viewer, pick, pick_from};
+    use photon_game::input::pick::{pick, pick_from};
     let world = session.world();
-    let camera = session.camera_entity().and_then(|id| {
-        let entity = world.entities().at(id)?;
-        let snapshot = world.entity_snapshot(id, partial)?;
-        let (x, y, z) = snapshot.position;
-        let y_rot = if entity.is_living_entity() {
-            snapshot.head_yaw
-        } else {
-            snapshot.yaw
-        };
-        let eye = photon_core::math::Vec3::new(
-            x,
-            y + f64::from(entity.scaled_dimensions().eye_height()),
-            z,
-        );
-        let viewer = Viewer {
-            entity_id: id,
-            rotation: (y_rot, snapshot.pitch),
-            bounds: entity.bounding_box(),
-        };
-        Some((viewer, eye))
-    });
+    let camera = session
+        .camera_entity()
+        .and_then(|id| camera_viewer(world, id, partial));
     match camera {
         Some((viewer, eye)) => pick_from(world, &viewer, eye),
         None => pick(world, player, eye_position(player, f64::from(partial))),
     }
+}
+
+/// The camera entity as a pick's viewer, with its eyes: interpolated position plus the scaled
+/// eye height, and the look a living entity has where its head turns.
+fn camera_viewer(
+    world: &photon_world::ClientWorld,
+    id: photon_core::ids::EntityId,
+    partial: f32,
+) -> Option<(photon_game::input::pick::Viewer, photon_core::math::Vec3)> {
+    let entity = world.entities().at(id)?;
+    let snapshot = world.entity_snapshot(id, partial)?;
+    let (x, y, z) = snapshot.position;
+    let y_rot = if entity.is_living_entity() {
+        snapshot.head_yaw
+    } else {
+        snapshot.yaw
+    };
+    let eye =
+        photon_core::math::Vec3::new(x, y + f64::from(entity.scaled_dimensions().eye_height()), z);
+    let viewer = photon_game::input::pick::Viewer {
+        entity_id: id,
+        rotation: (y_rot, snapshot.pitch),
+        bounds: entity.bounding_box(),
+    };
+    Some((viewer, eye))
 }
 
 /// `Minecraft.crosshairPickEntity`: the entity the crosshair is on, as the nearest thing along
@@ -381,5 +388,43 @@ mod culling_tests {
             assert!(offset.is_visible([0.0, 64.0, 0.0], [8.0, 72.0, 8.0]));
             assert!(offset.section_visible(section_along(look, 48.0)));
         }
+    }
+}
+
+#[cfg(test)]
+mod camera_viewer_tests {
+    use super::*;
+    use photon_core::binary::Uuid;
+    use photon_core::ids::EntityId;
+    use photon_world::{ClientWorld, DimensionBounds, EntityInput};
+
+    fn viewer(name: &str) -> (photon_game::input::pick::Viewer, photon_core::math::Vec3) {
+        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(5),
+            uuid: Uuid::new(1, 5),
+            type_id: photon_data::entity_type::id(name).expect("the type"),
+            x: 1.0,
+            y: 9.0,
+            z: 2.0,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (10.0, 5.0, 70.0),
+            data: 0,
+        }));
+        let eye_height = world
+            .entities()
+            .at(EntityId(5))
+            .expect("the entity")
+            .scaled_dimensions()
+            .eye_height();
+        let (viewer, eye) = camera_viewer(&world, EntityId(5), 1.0).expect("the viewer");
+        assert_eq!(eye.y, 9.0 + f64::from(eye_height));
+        (viewer, eye)
+    }
+
+    #[test]
+    fn a_living_camera_entity_looks_where_its_head_turns_and_others_where_they_face() {
+        assert_eq!(viewer("minecraft:pig").0.rotation, (70.0, 5.0));
+        assert_eq!(viewer("minecraft:oak_boat").0.rotation, (10.0, 5.0));
     }
 }

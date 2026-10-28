@@ -225,8 +225,7 @@ pub fn outline(
     ) {
         return (Vec::new(), 0);
     }
-    let Aim::Block { x, y, z, .. } =
-        pick(session.world(), player, eye_position(player, view.partial))
+    let Aim::Block { x, y, z, .. } = crate::view::camera_aim(session, player, view.partial as f32)
     else {
         return (Vec::new(), 0);
     };
