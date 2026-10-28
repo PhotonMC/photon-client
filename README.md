@@ -30,8 +30,8 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 | | |
 | --- | --- |
 | **Reference** | Java Edition 26.2, protocol 776 |
-| **Parity cases** | 4,600+ scenarios compared against the Java client before every push (pre-push hook) |
-| **Code** | ~395k lines of Rust in 12 crates |
+| **Parity cases** | Compared against the Java client before every push (pre-push hook); the count is in [Progress](#progress) |
+| **Code** | ~375k lines of Rust in 13 crates |
 | **Started** | 2026-09-07 |
 
 ## What works today
@@ -45,9 +45,11 @@ Photon is one client. Out of the box it behaves as the Java client does; planned
 - **Screens.** HUD, chat, every container and inventory with click prediction, recipe book, advancements, statistics, the F3 debug overlay, options screens, toasts, tutorial, dialogs, and the command, structure and jigsaw block screens.
 - **Sound.** Positioned sound, music, subtitles, block, entity and UI sounds.
 
-Not there yet: Microsoft account sign-in inside the client, server resource packs, the screens shown while a server moves the player to another, local placement of many block types, fallback fonts (unifont, bidi, IME), other protocol versions, mods and packaged releases. Each one has an issue.
+Not there yet, in the order of the first release ([R1](https://github.com/PhotonMC/photon-client/milestone/16)): Microsoft account sign-in inside the client, secure chat, downloading the game's assets after sign-in, first run and updates inside the client, and packaged releases. Version 1.0 is multiplayer-only: Singleplayer and Realms are out of scope for it ([#168](https://github.com/PhotonMC/photon-client/issues/168)). Later: other protocol versions, mods, fallback fonts (unifont, bidi, IME) and the leftovers in the [parity milestone](https://github.com/PhotonMC/photon-client/milestone/15). Each one has an issue.
 
 ## Progress
+
+The table is computed by `cargo xtask progress` and checked in CI. Counts of things in the reference are *named by the client*: the client sources spell the identifier. That is a lower bound for what exists, never proof that it behaves right; parity proves behaviour, and every parity case must pass before a push.
 
 <!-- progress:start -->
 | Measure | Now |
@@ -62,36 +64,14 @@ Not there yet: Microsoft account sign-in inside the client, server resource pack
 | Lint baseline entries | 970 (at introduction: 1,234) |
 <!-- progress:end -->
 
-Status per milestone, with its issue counts on GitHub. Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
+Features finished before the move to GitHub issues (2026-10-10) are summarised in [history](docs/history.md).
 
-### Game
+### Where the work stands
 
-| Milestone | Status | Open / closed |
-| --- | --- | --- |
-| Foundation: connection, world, movement, rendering, block actions, items, inventories | ✅ Done | — |
-| M3.d Containers opened by the server | ✅ Done | — |
-| [M4 Entities](https://github.com/PhotonMC/photon-client/milestone/8) | 🟢 Done; coverage audit open | 1 / 0 |
-| [M5 Text and chat](https://github.com/PhotonMC/photon-client/milestone/9) | 🟡 Fallback fonts, bidi, IME open | 1 / 1 |
-| [M6 Screens and settings](https://github.com/PhotonMC/photon-client/milestone/10) | 🟢 Mostly done; start flow and option screens open | 2 / 5 |
-| [M7 Sound](https://github.com/PhotonMC/photon-client/milestone/11) | 🟢 Mostly done; event sounds and screen music open | 1 / 1 |
-| [M8 Particles, effects and block entities](https://github.com/PhotonMC/photon-client/milestone/12) | ✅ Done | 0 / 6 |
-| [M9 Server compatibility](https://github.com/PhotonMC/photon-client/milestone/13) | 🟡 Resource packs and server switching open | 2 / 3 |
-| [Gameplay debts](https://github.com/PhotonMC/photon-client/milestone/15) | 🟡 Placement, lighting, movement leftovers | 6 / 1 |
-| [M10 Parity closure and distribution](https://github.com/PhotonMC/photon-client/milestone/14) | ⚪ Not started | 4 / 0 |
-
-### Infrastructure
-
-| Track | Status | Open / closed | Decision |
-| --- | --- | --- | --- |
-| [Repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 🟢 Gate done; lint baseline burn-down open | 2 / 4 | [Coding standards](docs/development/coding-standards.md) |
-| [Parity v2](https://github.com/PhotonMC/photon-client/milestone/2) | 🟢 Rust runner, cache, affected-only and parallel runs done | 3 / 5 | [ADR 0005](docs/adr/0005-parity-v2.md) |
-| [ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 🟡 `bevy_ecs` in; entity and packet split open | 4 / 1 | [ADR 0003](docs/adr/0003-bevy-ecs.md) |
-| [Versions](https://github.com/PhotonMC/photon-client/milestone/3) | 🟡 Typed packets and ids in progress | 4 / 0 | [ADR 0004](docs/adr/0004-version-support.md) |
-| [Launcher and accounts](https://github.com/PhotonMC/photon-client/milestone/7) | 🟡 Encryption and session join done; sign-in open | 4 / 1 | [ADR 0007](docs/adr/0007-assets-and-accounts.md) |
-| [Rendering performance](https://github.com/PhotonMC/photon-client/milestone/5) | ⚪ Planned | 3 / 0 | [Rendering](docs/architecture/rendering.md) |
-| [Mod platform](https://github.com/PhotonMC/photon-client/milestone/6) | ⚪ Planned | 3 / 0 | [ADR 0006](docs/adr/0006-mod-platform.md) |
-
-✅ done · 🟢 mostly done · 🟡 in progress · ⚪ planned
+- **Done:** the foundation (connection, world, movement, rendering, block actions, items, inventories), containers opened by the server, entities, screens and settings, sound, particles, effects and block entities, and server compatibility (milestones M4, M6, M7, M8 and M9).
+- **Now:** the first release, [R1](https://github.com/PhotonMC/photon-client/milestone/16): sign-in, secure chat, asset download, first run and updates, packaging, and the server resource pack flow. The order of work is in [#171](https://github.com/PhotonMC/photon-client/issues/171).
+- **In parallel:** the architecture line that makes more versions and mods possible: a pure protocol crate, named schedule sets, a version skeleton, and entities as components ([ADR 0003](docs/adr/0003-bevy-ecs.md), [ADR 0004](docs/adr/0004-version-support.md)).
+- **Later:** performance work, the mod platform ([ADR 0006](docs/adr/0006-mod-platform.md)) and the [post-1.0 milestone](https://github.com/PhotonMC/photon-client/milestone/17).
 
 ### Issue counts
 
@@ -121,12 +101,12 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 
 ## Priorities
 
-Work is picked by priority label, not by size:
+Work is picked by the roadmap order in [#171](https://github.com/PhotonMC/photon-client/issues/171), then by priority label:
 
-- **[P0](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP0): playable on real servers.** Start flow and reconfiguring screens, server switching through proxies, block placement, Microsoft sign-in.
-- **[P1](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP1): visible bugs, and the infrastructure every new feature is written against.** Typed packets and a packet listener, entities as ECS components, typed ids, parity in CI, the portable oracle, server resource packs.
+- **[P0](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP0): playable on real servers.**
+- **[P1](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP1): visible bugs, and the infrastructure every new feature is written against.**
 - **[P2](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP2): parity leftovers and feature completion.**
-- **[P3](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP3): additive work, deferred.** Rendering performance (about 500 fps today in a typical scene on an RX 9060 XT at 1280x720), the mod platform, the launcher, other versions, packaging.
+- **[P3](https://github.com/PhotonMC/photon-client/issues?q=is%3Aissue+is%3Aopen+label%3AP3): additive work, deferred.** Rendering performance (about 500 fps today in a typical scene on an RX 9060 XT at 1280x720), the mod platform, other versions.
 
 ## Build and run
 
