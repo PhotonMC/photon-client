@@ -247,6 +247,12 @@ class MovementPlayerOracle extends MovementWorldOracle {
                         setCollar.invoke(wolf, net.minecraft.world.item.DyeColor.byId(described.get("collar").getAsInt()));
                     }
                 }
+                if (described.has("stand_flags") && entity instanceof net.minecraft.world.entity.decoration.ArmorStand stand) {
+                    // `ArmorStand.DATA_CLIENT_FLAGS`: small is 1, marker 16.
+                    stand.getEntityData().set(net.minecraft.world.entity.decoration.ArmorStand.DATA_CLIENT_FLAGS,
+                        (byte) described.get("stand_flags").getAsInt());
+                    entity.refreshDimensions();
+                }
                 if (described.has("grounded")) {
                     entity.setOnGround(true);
                 }

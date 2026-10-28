@@ -469,6 +469,9 @@ fn apply_pet_flags(
         data.push(255);
         world.apply_entity_metadata(id, &data);
     }
+    if let Some(flags) = described.get("stand_flags").and_then(Value::as_u64) {
+        world.apply_entity_metadata(id, &[15, 0, flags as u8, 255]);
+    }
     if described.get("grounded").is_some() {
         world.apply_entity_ground_state(id, true);
     }

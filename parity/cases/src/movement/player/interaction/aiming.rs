@@ -89,6 +89,13 @@ fn mob(id: i64, kind: &str, x: f64, y: f64, z: f64) -> Value {
     json!({"id": id, "type": format!("minecraft:{kind}"), "x": f64_bits(x), "y": f64_bits(y), "z": f64_bits(z)})
 }
 
+/// A small armor stand (`ArmorStand.DATA_CLIENT_FLAGS` bit 1) on the line the player faces.
+fn small_stand(y: f64) -> Value {
+    let mut stand = mob(23, "armor_stand", 0.5, y, 2.5);
+    stand["stand_flags"] = json!(1);
+    stand
+}
+
 fn entity_rows_1() -> Vec<Value> {
     let zombie = || mob(20, "zombie", 0.5, 64.0, 2.5);
     let hit_short = || [aims(1).clicks(1).go(), aims(2).go()].concat();
@@ -131,6 +138,10 @@ fn entity_rows_1() -> Vec<Value> {
         alone("pig-from-above", mob(21, "pig", 0.5, 64.0, 2.5), hit_short()).x_rot(30.0).row(),
         alone("cow-below-the-aim", mob(22, "cow", 0.5, 64.0, 2.5), hit_short()).row(),
         alone("armor-stand", mob(23, "armor_stand", 0.5, 64.0, 2.5), hit_short()).row(),
+        // A small stand is half as tall: aimed at the eye's height, the one standing so its
+        // top is above is hit, and the one a full-size stand would still reach is missed.
+        alone("small-stand-hit", small_stand(64.7), hit_short()).row(),
+        alone("small-stand-below-the-aim", small_stand(64.5), hit_short()).row(),
     ]
 }
 
