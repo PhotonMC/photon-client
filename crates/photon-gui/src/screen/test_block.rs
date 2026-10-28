@@ -214,18 +214,17 @@ impl TestBlockScreen {
             atlas,
             font,
             &title,
-            middle - title_width / 2,
-            10,
+            (middle - title_width / 2, 10),
             0xFFFF_FFFF,
             true,
         );
         let mode = *self.mode.value();
         if mode != TestBlockMode::Start {
             let label = runs("test_block.message");
-            frame.styled_text(atlas, font, &label, middle - 153, 70, LABEL_GREY, true);
+            frame.styled_text(atlas, font, &label, (middle - 153, 70), LABEL_GREY, true);
         }
         let info = runs(&format!("test_block.mode_info.{}", mode.name()));
-        frame.styled_text(atlas, font, &info, middle - 153, 174, LABEL_GREY, true);
+        frame.styled_text(atlas, font, &info, (middle - 153, 174), LABEL_GREY, true);
     }
 
     /// `EditBox.extractWidgetRenderState` with its border: the sprite, the text and the cursor.

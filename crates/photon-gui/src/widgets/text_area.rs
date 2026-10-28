@@ -221,7 +221,7 @@ impl MultiLineEditBox {
         self.draw_scrollbar(frame, atlas, rect);
         if let Some(runs) = count {
             let at = x + width - font.width_of_runs(runs);
-            frame.styled_text(atlas, font, runs, at, y + height + 4, 0xFFA0_A0A0, true);
+            frame.styled_text(atlas, font, runs, (at, y + height + 4), 0xFFA0_A0A0, true);
         }
     }
 

@@ -95,7 +95,7 @@ impl Widget {
             Kind::Lock { locked } => self.draw_lock(frame, atlas, arena, (*locked, highlighted)),
             Kind::Text { text } => {
                 let y = rect.y + (rect.height - 9) / 2;
-                frame.styled_text(atlas, font, text, rect.x, y, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, text, (rect.x, y), 0xFFFF_FFFF, true);
             }
             Kind::PlainText { text } => {
                 // `PlainTextButton`: hovered or focused, the message merged with an underline.
@@ -110,7 +110,7 @@ impl Widget {
                     })
                     .collect();
                 let text = if highlighted { &underlined } else { text };
-                frame.styled_text(atlas, font, text, rect.x, rect.y, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, text, (rect.x, rect.y), 0xFFFF_FFFF, true);
             }
         }
     }
@@ -196,8 +196,7 @@ pub fn draw_label(
             atlas,
             font,
             &runs,
-            left - position as i32,
-            text_top,
+            (left - position as i32, text_top),
             0xFFFF_FFFF,
             true,
         );
@@ -205,6 +204,6 @@ pub fn draw_label(
     } else {
         let centre = (left + right) / 2;
         let x = centre.clamp(left + width / 2, right - width / 2) - width / 2;
-        frame.styled_text(atlas, font, &runs, x, text_top, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, &runs, (x, text_top), 0xFFFF_FFFF, true);
     }
 }

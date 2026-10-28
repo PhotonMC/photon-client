@@ -330,8 +330,7 @@ impl CommandBlockScreen {
             atlas,
             font,
             &label,
-            width / 2 - 149,
-            previous_y - 10,
+            (width / 2 - 149, previous_y - 10),
             LABEL_GREY,
             true,
         );
@@ -361,8 +360,7 @@ impl CommandBlockScreen {
             atlas,
             font,
             &title,
-            width / 2 - title_width / 2,
-            20,
+            (width / 2 - title_width / 2, 20),
             0xFFFF_FFFF,
             true,
         );
@@ -370,8 +368,7 @@ impl CommandBlockScreen {
             atlas,
             font,
             &runs("advMode.command"),
-            width / 2 - 149,
-            40,
+            (width / 2 - 149, 40),
             LABEL_GREY,
             true,
         );

@@ -333,8 +333,7 @@ impl JigsawScreen {
                             atlas,
                             font,
                             &runs(key),
-                            width / 2 + x,
-                            *y,
+                            (width / 2 + x, *y),
                             LABEL_GREY,
                             true,
                         );

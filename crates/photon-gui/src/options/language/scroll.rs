@@ -249,8 +249,7 @@ impl LanguageSelectScreen {
                 atlas,
                 font,
                 &self.hint,
-                text_at.0,
-                text_at.1,
+                (text_at.0, text_at.1),
                 0xFFE0_E0E0,
                 true,
             );
@@ -294,8 +293,7 @@ impl LanguageSelectScreen {
                 atlas,
                 font,
                 &text,
-                x,
-                y + PADDING + (ENTRY_HEIGHT - 4) / 2 - 4,
+                (x, y + PADDING + (ENTRY_HEIGHT - 4) / 2 - 4),
                 0xFFFF_FFFF,
                 true,
             );

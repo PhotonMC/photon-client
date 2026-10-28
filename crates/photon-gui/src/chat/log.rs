@@ -321,7 +321,7 @@ impl ChatLog {
             let opacity = alpha * text_opacity;
             let text = ((opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
             let line = &self.lines[i + self.scroll];
-            frame.styled_text(atlas, font, &line.runs, 0, text_top, text, true);
+            frame.styled_text(atlas, font, &line.runs, (0, text_top), text, true);
             if let Some(point) = local
                 && let Some(style) =
                     crate::text_hit::style_under(font, &line.runs, (0, text_top), point)

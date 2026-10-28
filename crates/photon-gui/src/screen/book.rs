@@ -343,8 +343,7 @@ impl Screen for BookScreen {
             draw.atlas,
             draw.font,
             &runs,
-            left + 148 - width,
-            top + 16,
+            (left + 148 - width, top + 16),
             0xFFFF_FFFF,
             true,
         );
@@ -353,8 +352,7 @@ impl Screen for BookScreen {
                 draw.atlas,
                 draw.font,
                 line,
-                left + 36,
-                top + 30 + index as i32 * 9,
+                (left + 36, top + 30 + index as i32 * 9),
                 0xFFFF_FFFF,
                 true,
             );

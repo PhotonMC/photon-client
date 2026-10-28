@@ -68,8 +68,7 @@ impl SocialInteractionsScreen {
                 atlas,
                 font,
                 &self.search_hint,
-                text_at.0,
-                text_at.1,
+                (text_at.0, text_at.1),
                 0xFFFF_FFFF,
                 true,
             );
@@ -85,8 +84,7 @@ impl SocialInteractionsScreen {
                 atlas,
                 font,
                 &self.server_label,
-                self.margin_x() + 8,
-                35,
+                (self.margin_x() + 8, 35),
                 0xFFFF_FFFF,
                 true,
             );
@@ -107,8 +105,7 @@ impl SocialInteractionsScreen {
                     atlas,
                     font,
                     text,
-                    x,
-                    (72 + self.list_end()) / 2,
+                    (x, (72 + self.list_end()) / 2),
                     0xFFFF_FFFF,
                     true,
                 );
@@ -177,8 +174,7 @@ impl SocialInteractionsScreen {
                 atlas,
                 font,
                 status,
-                text_x,
-                text_y + 12,
+                (text_x, text_y + 12),
                 PLAYER_STATUS_COLOUR,
                 true,
             );
@@ -198,7 +194,7 @@ impl SocialInteractionsScreen {
             text: entry.player.name.clone(),
             style: Style::default(),
         }];
-        frame.styled_text(atlas, font, &name, text_x, text_y, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, &name, (text_x, text_y), 0xFFFF_FFFF, true);
         if entry.removed {
             frame.fill(
                 atlas,

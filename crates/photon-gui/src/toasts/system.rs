@@ -113,8 +113,7 @@ impl SystemToast {
                 atlas,
                 env.font,
                 line,
-                18,
-                first_y + index as i32 * 12,
+                (18, first_y + index as i32 * 12),
                 colour,
                 false,
             );

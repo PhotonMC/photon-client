@@ -303,7 +303,7 @@ impl Control {
                 };
                 frame.sprite(atlas, sprite, rect.x, rect.y, BOX, BOX);
                 let (x, y) = (rect.x + BOX + GAP, rect.y + BOX / 2 - 9 / 2);
-                frame.styled_text(atlas, font, label, x, y, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, label, (x, y), 0xFFFF_FFFF, true);
             }
         }
     }

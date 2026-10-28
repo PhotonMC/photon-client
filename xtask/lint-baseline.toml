@@ -598,24 +598,22 @@
 "crates/photon-gui/src/hud.rs::Hud::player_health" = 115
 "crates/photon-gui/src/hud/locator.rs::draw_dots" = 62
 "crates/photon-gui/src/hud/locator.rs::set_brightness" = 67
-"crates/photon-gui/src/hud/sidebar.rs::draw" = 62
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 109
 "crates/photon-gui/src/hud/tab_list.rs::draw_hearts" = 87
 "crates/photon-gui/src/options.rs::OptionsScreen::new" = 126
 "crates/photon-gui/src/options/chat.rs::ChatOptionsScreen::new" = 123
 "crates/photon-gui/src/options/keybinds.rs::KeyBindsScreen::arrow" = 61
-"crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::draw" = 89
+"crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::draw" = 88
 "crates/photon-gui/src/options/keybinds/list.rs::KeyBindsList::refresh" = 63
 "crates/photon-gui/src/options/language/scroll.rs::LanguageSelectScreen::new" = 87
 "crates/photon-gui/src/options/mouse.rs::MouseSettingsScreen::new" = 63
 "crates/photon-gui/src/options/sound.rs::SoundOptionsScreen::new" = 90
 "crates/photon-gui/src/options/video.rs::display_options" = 94
-"crates/photon-gui/src/screen/book.rs::BookScreen::build" = 61
 "crates/photon-gui/src/screen/confirm.rs::ConfirmScreen::build" = 78
 "crates/photon-gui/src/screen/container.rs::ContainerMouse::released" = 98
 "crates/photon-gui/src/screen/creative/tab.rs::CreativeScreen::build_tooltip" = 69
 "crates/photon-gui/src/screen/dialog.rs::DialogScreen::new" = 84
-"crates/photon-gui/src/screen/game_mode.rs::GameModeSwitcherScreen::draw" = 71
+"crates/photon-gui/src/screen/game_mode.rs::GameModeSwitcherScreen::draw" = 70
 "crates/photon-gui/src/screen/generic.rs::GenericScreen::build" = 82
 "crates/photon-gui/src/screen/generic.rs::slot_position" = 64
 "crates/photon-gui/src/screen/generic/merchant.rs::MerchantPanel::contents" = 75
@@ -626,14 +624,14 @@
 "crates/photon-gui/src/screen/generic/transform/stone.rs::GenericScreen::stone_draw" = 64
 "crates/photon-gui/src/screen/pause.rs::PauseScreen::new" = 121
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw" = 69
-"crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_panel" = 86
+"crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_panel" = 85
 "crates/photon-gui/src/screen/recipe_book/draw.rs::RecipeBookPanel::draw_recipes" = 102
 "crates/photon-gui/src/screen/server_form.rs::ServerFormScreen::new" = 105
-"crates/photon-gui/src/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 100
+"crates/photon-gui/src/screen/servers.rs::JoinMultiplayerScreen::draw_server" = 99
 "crates/photon-gui/src/screen/social.rs::SocialInteractionsScreen::new" = 62
 "crates/photon-gui/src/screen/social.rs::layout" = 70
-"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 89
-"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 106
+"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw" = 86
+"crates/photon-gui/src/screen/social/draw.rs::SocialInteractionsScreen::draw_entry" = 105
 "crates/photon-gui/src/screen/title.rs::TitleScreen::new" = 104
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::draw_formatted" = 95
 "crates/photon-gui/src/widgets/edit_box.rs::EditBox::key_pressed" = 64
@@ -981,7 +979,6 @@
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
 
 [fn-params]
-"crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 
 [unsafe]

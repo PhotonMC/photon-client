@@ -300,7 +300,7 @@ impl JoinMultiplayerScreen {
             text: self.names[index].clone(),
             style: Style::default(),
         }];
-        frame.styled_text(atlas, font, &name, x + ICON + 3, y + 1, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, &name, (x + ICON + 3, y + 1), 0xFFFF_FFFF, true);
         frame.blit_texture(
             atlas,
             self.icons[index]
@@ -327,8 +327,7 @@ impl JoinMultiplayerScreen {
                     atlas,
                     font,
                     text,
-                    x + ICON + 3,
-                    y + 12 + 9 * line,
+                    (x + ICON + 3, y + 12 + 9 * line),
                     GREY,
                     true,
                 );
@@ -338,7 +337,7 @@ impl JoinMultiplayerScreen {
         let status = ping.map_or(&[][..], |view| view.status.as_slice());
         let status_width = font.width_of_runs(status);
         let text_x = status_x - status_width - 5;
-        frame.styled_text(atlas, font, status, text_x, y + 1, GREY, true);
+        frame.styled_text(atlas, font, status, (text_x, y + 1), GREY, true);
         let mut tooltip = None;
         if mouse.0 >= status_x && mouse.0 <= status_x + 10 && mouse.1 >= y && mouse.1 <= y + 8 {
             tooltip = Some(vec![ping.map_or_else(
@@ -405,8 +404,7 @@ impl JoinMultiplayerScreen {
             atlas,
             font,
             &self.scanning,
-            centre - width / 2,
-            y + 2,
+            (centre - width / 2, y + 2),
             0xFFFF_FFFF,
             true,
         );

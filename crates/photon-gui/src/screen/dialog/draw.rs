@@ -19,7 +19,7 @@ impl DialogScreen {
                 for (line, runs) in lines.iter().enumerate() {
                     let x = middle - font.width_of_runs(runs) / 2;
                     let y = rect.y + PADDING + line as i32 * 9;
-                    frame.styled_text(atlas, font, runs, x, y, 0xFFFF_FFFF, true);
+                    frame.styled_text(atlas, font, runs, (x, y), 0xFFFF_FFFF, true);
                 }
             }
             // `ItemDisplayWidget`: the item at the widget's corner. The items are not cut by the

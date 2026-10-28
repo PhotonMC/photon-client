@@ -415,7 +415,7 @@ impl ConfirmScreen {
         let mut y = rect.y;
         for line in &self.message {
             let x = middle - font.width_of_runs(line) / 2;
-            frame.styled_text(atlas, font, line, x, y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, line, (x, y), 0xFFFF_FFFF, true);
             y += 9;
         }
         for (index, (widget, _)) in self.buttons.iter().enumerate() {

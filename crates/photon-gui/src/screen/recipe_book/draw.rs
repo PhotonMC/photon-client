@@ -199,8 +199,7 @@ impl RecipeBookPanel {
                 draw.atlas,
                 draw.font,
                 &hint,
-                xo + 29,
-                yo + 16,
+                (xo + 29, yo + 16),
                 0xFFFF_FFFF,
                 true,
             );

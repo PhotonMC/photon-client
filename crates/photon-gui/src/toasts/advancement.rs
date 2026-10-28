@@ -63,7 +63,7 @@ impl AdvancementToast {
     /// `Graphics.text`, which draws nothing in a colour with no alpha.
     fn text(frame: &mut GuiFrame, atlas: &GuiAtlas, env: &ToastEnv<'_>, line: &Line<'_>) {
         if line.colour >> 24 != 0 {
-            frame.styled_text(atlas, env.font, line.runs, 30, line.y, line.colour, false);
+            frame.styled_text(atlas, env.font, line.runs, (30, line.y), line.colour, false);
         }
     }
 

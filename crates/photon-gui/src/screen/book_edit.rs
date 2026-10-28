@@ -389,8 +389,7 @@ impl BookEditScreen {
             atlas,
             font,
             &self.indicator,
-            left + 148 - indicator_width,
-            2 + 16,
+            (left + 148 - indicator_width, 2 + 16),
             0xFFFF_FFFF,
             true,
         );

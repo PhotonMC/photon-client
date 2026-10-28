@@ -96,8 +96,7 @@ impl PackScreen {
                 atlas,
                 font,
                 &self.hint,
-                text_at.0,
-                text_at.1,
+                (text_at.0, text_at.1),
                 0xFFE0_E0E0,
                 true,
             );
@@ -174,8 +173,10 @@ impl PackScreen {
             atlas,
             font,
             header,
-            self.list_x(list) + PADDING + row_width / 2 - font.width_of_runs(header) / 2,
-            self.entry_y(list, 0) + PADDING + (HEADER_ENTRY_HEIGHT - 4) / 2 - 4,
+            (
+                self.list_x(list) + PADDING + row_width / 2 - font.width_of_runs(header) / 2,
+                self.entry_y(list, 0) + PADDING + (HEADER_ENTRY_HEIGHT - 4) / 2 - 4,
+            ),
             0xFFFF_FFFF,
             true,
         );
@@ -243,8 +244,7 @@ impl PackScreen {
             atlas,
             font,
             &title,
-            cx + ICON + 2,
-            cy + 1,
+            (cx + ICON + 2, cy + 1),
             0xFFFF_FFFF,
             true,
         );
@@ -253,7 +253,7 @@ impl PackScreen {
             .enumerate()
         {
             let y = cy + 12 + row as i32 * 9;
-            frame.styled_text(atlas, font, &line, cx + ICON + 2, y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, &line, (cx + ICON + 2, y), 0xFFFF_FFFF, true);
         }
     }
 

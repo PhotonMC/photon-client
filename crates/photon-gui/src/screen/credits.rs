@@ -300,7 +300,7 @@ impl CreditsScreen {
                 } else {
                     logo_x
                 };
-                frame.styled_text(atlas, font, line, x, y_pos, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, line, (x, y_pos), 0xFFFF_FFFF, true);
                 frame.transform_from(mark, [1.0, 0.0, 0.0, 1.0, 0.0, shift]);
             }
             y_pos += LINE_HEIGHT;

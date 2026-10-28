@@ -24,7 +24,7 @@ fn menu_background(frame: &mut GuiFrame, atlas: &GuiAtlas, (width, height): (i32
 /// Centred text with its shadow (`GuiGraphics.centeredText`).
 fn centred(frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, text: &[Run], (x, y): (i32, i32)) {
     let width = font.width_of_runs(text);
-    frame.styled_text(atlas, font, text, x - width / 2, y, 0xFFFF_FFFF, true);
+    frame.styled_text(atlas, font, text, (x - width / 2, y), 0xFFFF_FFFF, true);
 }
 
 pub struct ConnectScreen {
@@ -143,8 +143,7 @@ impl ReconfigScreen {
             atlas,
             font,
             &self.title,
-            self.title_at.0,
-            self.title_at.1,
+            (self.title_at.0, self.title_at.1),
             0xFFFF_FFFF,
             true,
         );

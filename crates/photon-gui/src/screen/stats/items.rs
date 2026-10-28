@@ -440,7 +440,7 @@ impl ItemsList {
                 frame.text_with_shadow(atlas, font, &text, left, text_y, colour);
             } else {
                 let left = at - crate::FontRuns::width_of_runs(font, &self.none);
-                frame.styled_text(atlas, font, &self.none, left, text_y, colour, true);
+                frame.styled_text(atlas, font, &self.none, (left, text_y), colour, true);
             }
         }
     }

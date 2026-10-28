@@ -69,6 +69,6 @@ impl CommandSuggestions {
             72
         };
         frame.fill(atlas, (-1, y, width + 1, y + 12), self.settings.fill);
-        frame.styled_text(atlas, &self.font, &runs, 0, y + 2, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, &self.font, &runs, (0, y + 2), 0xFFFF_FFFF, true);
     }
 }

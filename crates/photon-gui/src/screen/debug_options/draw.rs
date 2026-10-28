@@ -33,7 +33,7 @@ impl DebugOptionsScreen {
         let middle = rect.x + rect.width / 2;
         for (line, y) in self.subtitle.iter().zip((rect.y..).step_by(9)) {
             let x = middle - font.width_of_runs(line) / 2;
-            frame.styled_text(atlas, font, line, x, y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, line, (x, y), 0xFFFF_FFFF, true);
         }
         self.draw_list(frame, atlas, font, mouse);
         let footer = [
@@ -100,7 +100,7 @@ impl DebugOptionsScreen {
             .draw_formatted(frame, atlas, font, text_at, focused, None);
         if self.search.is_empty() && self.focus != Focus::Search {
             let hint = &self.search_hint;
-            frame.styled_text(atlas, font, hint, text_at.0, text_at.1, 0xFFE0_E0E0, true);
+            frame.styled_text(atlas, font, hint, (text_at.0, text_at.1), 0xFFE0_E0E0, true);
         }
     }
 
@@ -140,7 +140,7 @@ impl DebugOptionsScreen {
         match row {
             Row::Category(text) => {
                 let at = x + content_width / 2 - font.width_of_runs(text) / 2;
-                frame.styled_text(atlas, font, text, at, y + 5, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, text, (at, y + 5), 0xFFFF_FFFF, true);
             }
             Row::Entry { name, allowed, .. } => {
                 let colour = if *allowed {
@@ -148,7 +148,7 @@ impl DebugOptionsScreen {
                 } else {
                     DISALLOWED_COLOUR
                 };
-                frame.styled_text(atlas, font, name, x, y + 5, colour, true);
+                frame.styled_text(atlas, font, name, (x, y + 5), colour, true);
             }
         }
     }

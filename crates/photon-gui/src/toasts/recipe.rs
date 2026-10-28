@@ -86,13 +86,12 @@ impl Toast for RecipeToast {
 
     fn draw(&self, frame: &mut GuiFrame, atlas: &GuiAtlas, env: &ToastEnv<'_>) {
         frame.sprite(atlas, "toast/recipe", 0, 0, self.width(env), self.height());
-        frame.styled_text(atlas, env.font, &self.title, 30, 7, 0xFF50_0050, false);
+        frame.styled_text(atlas, env.font, &self.title, (30, 7), 0xFF50_0050, false);
         frame.styled_text(
             atlas,
             env.font,
             &self.description,
-            30,
-            18,
+            (30, 18),
             0xFF00_0000,
             false,
         );

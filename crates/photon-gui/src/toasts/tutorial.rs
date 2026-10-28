@@ -145,7 +145,7 @@ impl Toast for TutorialToast {
         let top = 7 + (self.content_height() - text_height) / 2;
         for (index, runs) in self.lines.iter().enumerate() {
             let y = top + index as i32 * 11;
-            frame.styled_text(atlas, env.font, runs, 30, y, 0xFF00_0000, false);
+            frame.styled_text(atlas, env.font, runs, (30, y), 0xFF00_0000, false);
         }
         if self.progressable {
             let y = height - 4;

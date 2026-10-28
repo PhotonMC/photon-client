@@ -205,8 +205,7 @@ impl SignEditScreen {
             atlas,
             font,
             &self.title,
-            width / 2 - title_width / 2,
-            40,
+            (width / 2 - title_width / 2, 40),
             0xFFFF_FFFF,
             true,
         );

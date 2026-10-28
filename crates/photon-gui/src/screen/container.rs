@@ -91,7 +91,7 @@ impl ContainerMouse {
     }
 
     /// `mouseClicked`, after the widgets did not take the press.
-    /// `target` is the slot under the mouse and whether the press landed outside the window.
+    /// `(slot, outside)`: the slot under the mouse and whether the press fell outside the window.
     pub fn clicked(
         &mut self,
         double: bool,

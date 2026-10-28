@@ -234,7 +234,7 @@ impl RestrictionsScreen {
             for (line, runs) in part.lines.iter().flatten().enumerate() {
                 let x = rect.x + rect.width / 2 - font.width_of_runs(runs) / 2;
                 let y = rect.y + PADDING + line as i32 * 9;
-                frame.styled_text(atlas, font, runs, x, y, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, runs, (x, y), 0xFFFF_FFFF, true);
             }
         }
     }

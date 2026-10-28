@@ -160,13 +160,12 @@ impl MobsList {
             view.draw_selection(frame, atlas, index);
             let (x, top) = (view.row_left() + PADDING, y + PADDING + 1);
             let shade = |on: bool| if on { 0xFFBA_BABA } else { 0xFF80_8080 };
-            frame.styled_text(atlas, font, &row.name, x + 2, top, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, &row.name, (x + 2, top), 0xFFFF_FFFF, true);
             frame.styled_text(
                 atlas,
                 font,
                 &row.kills,
-                x + 12,
-                top + 9,
+                (x + 12, top + 9),
                 shade(row.has_kills),
                 true,
             );
@@ -174,8 +173,7 @@ impl MobsList {
                 atlas,
                 font,
                 &row.killed_by,
-                x + 12,
-                top + 18,
+                (x + 12, top + 18),
                 shade(row.was_killed_by),
                 true,
             );

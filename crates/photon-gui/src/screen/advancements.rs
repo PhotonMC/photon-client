@@ -290,7 +290,7 @@ impl AdvancementsScreen {
                 (&self.sad_label, origin.1 + 113 - 9),
             ] {
                 let x = middle - font.width_of_runs(label) / 2;
-                frame.styled_text(atlas, font, label, x, y, 0xFFFF_FFFF, true);
+                frame.styled_text(atlas, font, label, (x, y), 0xFFFF_FFFF, true);
             }
             return;
         };
@@ -333,8 +333,7 @@ impl AdvancementsScreen {
             atlas,
             font,
             title,
-            self.left + 8,
-            self.top + 6,
+            (self.left + 8, self.top + 6),
             0xFF40_4040,
             false,
         );

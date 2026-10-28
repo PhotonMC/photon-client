@@ -134,8 +134,7 @@ impl NowPlayingToast {
             atlas,
             env.font,
             &Self::song_runs(env),
-            30,
-            15 - 9 / 2,
+            (30, 15 - 9 / 2),
             TEXT_COLOUR,
             true,
         );

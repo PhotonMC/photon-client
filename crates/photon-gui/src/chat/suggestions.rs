@@ -265,7 +265,7 @@ impl SuggestionsList {
                 text: self.matches[row + self.offset].clone(),
                 style: photon_game::text::Style::default(),
             }];
-            frame.styled_text(atlas, font, &runs, rx + 1, top + 2, colour, true);
+            frame.styled_text(atlas, font, &runs, (rx + 1, top + 2), colour, true);
         }
     }
 }

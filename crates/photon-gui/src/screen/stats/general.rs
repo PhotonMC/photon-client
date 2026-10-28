@@ -126,7 +126,7 @@ impl GeneralList {
                 0xFFBA_BABA
             };
             let left = view.row_left() + PADDING + 2;
-            frame.styled_text(atlas, font, &entry.name, left, text_y, colour, true);
+            frame.styled_text(atlas, font, &entry.name, (left, text_y), colour, true);
             let key = StatKey {
                 stat_type: self.custom_type,
                 value: entry.id,

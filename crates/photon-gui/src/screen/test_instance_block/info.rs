@@ -137,7 +137,7 @@ impl TestInstanceBlockScreen {
         let mark = frame.mark();
         for (row, line) in self.info_lines(font).iter().enumerate() {
             let y = at.y + PADDING + 9 * row as i32;
-            frame.styled_text(atlas, font, line, at.x + PADDING, y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, line, (at.x + PADDING, y), 0xFFFF_FFFF, true);
         }
         if self.info_scroll != 0.0 {
             frame.transform_from(mark, [1.0, 0.0, 0.0, 1.0, 0.0, -(self.info_scroll as f32)]);

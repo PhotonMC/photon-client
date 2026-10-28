@@ -291,7 +291,7 @@ fn draw_hearts(
             crate::chat::plain_runs(&number)
         };
         let x = (right + left - font.width_of_runs(&text)) / 2;
-        frame.styled_text(atlas, font, &text, x, y, 0xFF00_0000 | colour, true);
+        frame.styled_text(atlas, font, &text, (x, y), 0xFF00_0000 | colour, true);
         return;
     }
     let container = if blink {
@@ -359,7 +359,7 @@ fn draw_score(
         );
     } else if let Some(text) = &entry.score_text {
         let width = font.width_of_runs(text);
-        frame.styled_text(atlas, font, text, right - width, y, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, text, (right - width, y), 0xFFFF_FFFF, true);
     }
 }
 
@@ -427,7 +427,7 @@ pub fn draw(
         );
         for line in lines {
             let x = screen_width / 2 - font.width_of_runs(line) / 2;
-            frame.styled_text(atlas, font, line, x, y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, line, (x, y), 0xFFFF_FFFF, true);
             y += 9;
         }
     };
@@ -447,7 +447,7 @@ pub fn draw(
         } else {
             0xFFFF_FFFF
         };
-        frame.styled_text(atlas, font, &entry.name, x, row_y, colour, true);
+        frame.styled_text(atlas, font, &entry.name, (x, row_y), colour, true);
         if !entry.spectator {
             let left = x + max_name + 1;
             draw_score(

@@ -93,7 +93,7 @@ fn tooltip(
         } else {
             let line = &lines[index - usize::from(index > image_at)];
             draw.frame
-                .styled_text(draw.atlas, draw.font, line, x, local_y, WHITE, true);
+                .styled_text(draw.atlas, draw.font, line, (x, local_y), WHITE, true);
             10
         };
         local_y += line_height + if index == 0 { 2 } else { 0 };
@@ -140,8 +140,7 @@ fn image(
                 draw.atlas,
                 draw.font,
                 line,
-                left,
-                y + index as i32 * 9,
+                (left, y + index as i32 * 9),
                 0xFFAA_AAAA,
                 true,
             );
@@ -301,7 +300,7 @@ fn progress_bar(
 fn centred_text(draw: &mut ScreenDraw<'_, '_>, runs: &[Run], x: i32, y: i32) {
     let width = draw.font.width_of_runs(runs);
     draw.frame
-        .styled_text(draw.atlas, draw.font, runs, x - width / 2, y, WHITE, true);
+        .styled_text(draw.atlas, draw.font, runs, (x - width / 2, y), WHITE, true);
 }
 
 fn plain(text: &str) -> Vec<Run> {

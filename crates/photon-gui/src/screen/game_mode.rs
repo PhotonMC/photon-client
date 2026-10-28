@@ -127,8 +127,7 @@ impl GameModeSwitcherScreen {
             atlas,
             font,
             &text,
-            width / 2 - font.width_of_runs(&text) / 2,
-            height / 2 + 5,
+            (width / 2 - font.width_of_runs(&text) / 2, height / 2 + 5),
             0xFFFF_FFFF,
             true,
         );

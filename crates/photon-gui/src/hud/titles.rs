@@ -169,8 +169,7 @@ impl Titles {
                     atlas,
                     font,
                     message,
-                    x,
-                    height - 72,
+                    (x, height - 72),
                     self.overlay_colour(partial, alpha),
                     true,
                 );
@@ -188,7 +187,7 @@ impl Titles {
         let mut line = |runs: &[Run], scale: f32, y: i32| {
             let first = (frame.vertices.len(), frame.log.as_ref().map_or(0, Vec::len));
             let x = -(font.width_of_runs(runs) / 2);
-            frame.styled_text(atlas, font, runs, x, y, colour, true);
+            frame.styled_text(atlas, font, runs, (x, y), colour, true);
             frame.scale_from(first, scale, centre);
         };
         line(title, 4.0, -10);

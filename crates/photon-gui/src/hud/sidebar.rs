@@ -57,21 +57,19 @@ pub fn draw(
         atlas,
         font,
         title,
-        left + width / 2 - title_width / 2,
-        header_y - 9,
+        (left + width / 2 - title_width / 2, header_y - 9),
         0xFFFF_FFFF,
         false,
     );
     for (index, (name, score)) in lines.iter().enumerate() {
         let y = bottom - (count - index as i32) * 9;
-        frame.styled_text(atlas, font, name, left, y, 0xFFFF_FFFF, false);
+        frame.styled_text(atlas, font, name, (left, y), 0xFFFF_FFFF, false);
         let score_width = font.width_of_runs(score);
         frame.styled_text(
             atlas,
             font,
             score,
-            right - score_width,
-            y,
+            (right - score_width, y),
             0xFFFF_FFFF,
             false,
         );

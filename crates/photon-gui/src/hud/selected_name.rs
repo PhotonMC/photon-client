@@ -79,8 +79,7 @@ impl SelectedName {
             atlas,
             font,
             &last.runs,
-            x,
-            y,
+            (x, y),
             (alpha as u32) << 24 | 0x00FF_FFFF,
             true,
         );

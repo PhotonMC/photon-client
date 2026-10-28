@@ -90,7 +90,7 @@ impl ChatLog {
         let runs = self.prompt_runs(font, lang, max_width);
         let top = self.prompt_top(chat_bottom, shown);
         let colour = ((text_opacity * 255.0) as u32) << 24 | 0x00FF_FFFF;
-        frame.styled_text(atlas, font, &runs, 0, top, colour, true);
+        frame.styled_text(atlas, font, &runs, (0, top), colour, true);
         crate::text_hit::style_under(font, &runs, (0, top), hover?).cloned()
     }
 

@@ -84,17 +84,12 @@ impl FontRuns for photon_render::gui::font::Font {
 
 /// Drawing text components' runs; the screens' view of [`photon_render::gui::GuiFrame`].
 pub trait FrameRuns {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     fn styled_text(
         &mut self,
         atlas: &photon_render::gui::GuiAtlas,
         font: &photon_render::gui::font::Font,
         runs: &[photon_game::text::Run],
-        x: i32,
-        y: i32,
+        at: (i32, i32),
         default_colour: u32,
         shadow: bool,
     );
@@ -123,19 +118,11 @@ impl FrameRuns for photon_render::gui::GuiFrame {
         atlas: &photon_render::gui::GuiAtlas,
         font: &photon_render::gui::font::Font,
         runs: &[photon_game::text::Run],
-        x: i32,
-        y: i32,
+        at: (i32, i32),
         default_colour: u32,
         shadow: bool,
     ) {
-        self.styled_text_runs(
-            atlas,
-            font,
-            &draw_runs(runs),
-            (x, y),
-            default_colour,
-            shadow,
-        );
+        self.styled_text_runs(atlas, font, &draw_runs(runs), at, default_colour, shadow);
     }
 
     fn tooltip(

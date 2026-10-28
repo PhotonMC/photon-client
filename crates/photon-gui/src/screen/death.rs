@@ -126,14 +126,14 @@ impl DeathScreen {
         let middle = width / 2;
         let first = (frame.vertices.len(), frame.log.as_ref().map_or(0, Vec::len));
         let x = middle / 2 - font.width_of_runs(&self.title) / 2;
-        frame.styled_text(atlas, font, &self.title, x, 30, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, &self.title, (x, 30), 0xFFFF_FFFF, true);
         frame.scale_from(first, 2.0, (0.0, 0.0));
         if let Some(cause) = &self.cause {
             let x = middle - font.width_of_runs(cause) / 2;
-            frame.styled_text(atlas, font, cause, x, 85, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, cause, (x, 85), 0xFFFF_FFFF, true);
         }
         let x = middle - font.width_of_runs(&self.score) / 2;
-        frame.styled_text(atlas, font, &self.score, x, 100, 0xFFFF_FFFF, true);
+        frame.styled_text(atlas, font, &self.score, (x, 100), 0xFFFF_FFFF, true);
     }
 
     /// A press of the primary button at `mouse`.

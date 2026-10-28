@@ -37,13 +37,12 @@ impl TestInstanceBlockScreen {
             atlas,
             font,
             &title,
-            width / 2 - title_width / 2,
-            10,
+            (width / 2 - title_width / 2, 10),
             0xFFFF_FFFF,
             true,
         );
         let label = |frame: &mut GuiFrame, key: &str, x: i32, y: i32| {
-            frame.styled_text(atlas, font, &runs(key), x, y, LABEL_GREY, true);
+            frame.styled_text(atlas, font, &runs(key), (x, y), LABEL_GREY, true);
         };
         label(frame, "test_instance_block.test_id", left, 30);
         label(frame, "test_instance_block.size", left, 150);

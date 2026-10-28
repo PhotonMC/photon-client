@@ -105,9 +105,15 @@ fn draw_entry(
         };
         let (atlas, font) = (draw.atlas, draw.font);
         draw.frame
-            .styled_text(atlas, font, &shown, x0 + 32, y0 + 7, 0xFFFF_FFFF, true);
-        draw.frame
-            .styled_text(atlas, font, &duration, x0 + 32, y0 + 16, 0xFF80_8080, true);
+            .styled_text(atlas, font, &shown, (x0 + 32, y0 + 7), 0xFFFF_FFFF, true);
+        draw.frame.styled_text(
+            atlas,
+            font,
+            &duration,
+            (x0 + 32, y0 + 16),
+            0xFF80_8080,
+            true,
+        );
     }
     let over = (x0..=x0 + width).contains(&mouse.0) && (y0..=y0 + y_step).contains(&mouse.1);
     let tooltip = (compact && over).then(|| vec![name, duration]);

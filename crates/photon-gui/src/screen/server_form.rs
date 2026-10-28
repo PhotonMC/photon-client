@@ -234,13 +234,12 @@ impl ServerFormScreen {
             atlas,
             font,
             &self.title,
-            width / 2 - title_width / 2,
-            self.title_y,
+            (width / 2 - title_width / 2, self.title_y),
             0xFFFF_FFFF,
             true,
         );
         for (label, y) in &self.labels {
-            frame.styled_text(atlas, font, label, width / 2 - 99, *y, LABEL_GREY, true);
+            frame.styled_text(atlas, font, label, (width / 2 - 99, *y), LABEL_GREY, true);
         }
         if let Some(name) = &self.name {
             let focused = self.focus == Some(Focus::Name);
@@ -278,7 +277,7 @@ impl ServerFormScreen {
             None,
         );
         if let Some(hint) = hint.filter(|_| field.edit.is_empty() && !focused) {
-            frame.styled_text(atlas, font, hint, text_at.0, text_at.1, TEXT_COLOUR, true);
+            frame.styled_text(atlas, font, hint, (text_at.0, text_at.1), TEXT_COLOUR, true);
         }
     }
 

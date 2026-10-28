@@ -273,8 +273,7 @@ impl BookSignScreen {
             atlas,
             font,
             &self.label,
-            centred(&self.label),
-            34,
+            (centred(&self.label), 34),
             BLACK,
             false,
         );
@@ -282,8 +281,7 @@ impl BookSignScreen {
             atlas,
             font,
             &self.author,
-            centred(&self.author),
-            60,
+            (centred(&self.author), 60),
             BLACK,
             false,
         );
@@ -292,8 +290,7 @@ impl BookSignScreen {
                 atlas,
                 font,
                 line,
-                left + 36,
-                82 + index as i32 * 9,
+                (left + 36, 82 + index as i32 * 9),
                 BLACK,
                 false,
             );

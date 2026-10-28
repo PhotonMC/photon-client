@@ -278,8 +278,7 @@ impl StructureBlockScreen {
             atlas,
             font,
             &title,
-            middle - title_width / 2,
-            10,
+            (middle - title_width / 2, 10),
             0xFFFF_FFFF,
             true,
         );
@@ -300,7 +299,7 @@ impl StructureBlockScreen {
                             Side::Left(x) => middle + x,
                             Side::Right(x) => middle + x - font.width_of_runs(&label),
                         };
-                        frame.styled_text(atlas, font, &label, x, *y, LABEL_GREY, true);
+                        frame.styled_text(atlas, font, &label, (x, *y), LABEL_GREY, true);
                     }
                     Item::Box(slot) if shown(*slot, self.mode()) => {
                         self.draw_box((frame, atlas, font), *slot);
@@ -310,7 +309,7 @@ impl StructureBlockScreen {
             }
         }
         let info = runs(&format!("structure_block.mode_info.{}", mode.name()));
-        frame.styled_text(atlas, font, &info, middle - 153, 174, LABEL_GREY, true);
+        frame.styled_text(atlas, font, &info, (middle - 153, 174), LABEL_GREY, true);
     }
 
     /// `EditBox.extractWidgetRenderState` with its border: the sprite, the text and the cursor.

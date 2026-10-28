@@ -209,8 +209,7 @@ impl Subtitle {
             atlas,
             font,
             &text,
-            centre_x - text_width / 2,
-            centre_y - half_height,
+            (centre_x - text_width / 2, centre_y - half_height),
             colour,
             true,
         );

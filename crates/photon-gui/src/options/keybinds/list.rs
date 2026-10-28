@@ -334,8 +334,7 @@ impl KeyBindsList {
                         atlas,
                         font,
                         text,
-                        text_x,
-                        y + TEXT_PADDING,
+                        (text_x, y + TEXT_PADDING),
                         0xFFFF_FFFF,
                         true,
                     );
@@ -353,7 +352,7 @@ impl KeyBindsList {
                         widget.draw(frame, atlas, font, &self.arena, lit);
                     }
                     let name_x = self.row_left() + 2;
-                    frame.styled_text(atlas, font, name, name_x, y + 6, 0xFFFF_FFFF, true);
+                    frame.styled_text(atlas, font, name, (name_x, y + 6), 0xFFFF_FFFF, true);
                     let change_rect = self.arena.0[change.rect];
                     if *collision {
                         let left = change_rect.x - 6;

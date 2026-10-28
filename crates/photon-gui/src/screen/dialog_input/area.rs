@@ -149,7 +149,7 @@ impl Area {
         rect: Rectangle,
     ) {
         if let Some(label) = &self.label {
-            frame.styled_text(atlas, font, label, rect.x, rect.y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, label, (rect.x, rect.y), 0xFFFF_FFFF, true);
         }
         let at = self.box_rect(rect);
         // `gui.multiLineEditBox.character_limit`, in UTF-16 units as `String.length` counts.

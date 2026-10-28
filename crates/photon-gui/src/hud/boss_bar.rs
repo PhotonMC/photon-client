@@ -148,7 +148,7 @@ impl BossBars {
             let x = width / 2 - 91;
             self.draw_bar(frame, atlas, x, y, bar, now);
             let name_x = width / 2 - font.width_of_runs(&bar.name) / 2;
-            frame.styled_text(atlas, font, &bar.name, name_x, y - 9, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, &bar.name, (name_x, y - 9), 0xFFFF_FFFF, true);
             y += 10 + 9;
             if y >= height / 3 {
                 break;

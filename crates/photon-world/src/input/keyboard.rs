@@ -150,7 +150,7 @@ pub struct LocalPlayerInputState {
 impl Input {
     pub const EMPTY: Self = Self::new((false, false, false, false), false, false, false);
 
-    /// `walk` is forward, backward, left and right.
+    /// `(forward, backward, left, right)` are the walking keys.
     pub const fn new(
         (forward, backward, left, right): (bool, bool, bool, bool),
         jump: bool,

@@ -110,7 +110,7 @@ impl Text {
         focused: bool,
     ) {
         if let Some(label) = &self.label {
-            frame.styled_text(atlas, font, label, rect.x, rect.y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, label, (rect.x, rect.y), 0xFFFF_FFFF, true);
         }
         let at = self.box_rect(rect);
         let sprite = if focused {

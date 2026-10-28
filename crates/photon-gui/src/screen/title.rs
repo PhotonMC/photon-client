@@ -221,6 +221,13 @@ fn draw_splash(frame: &mut GuiFrame, atlas: &GuiAtlas, font: &Font, splash: &[Ru
         SPLASH_OFFSET.1,
     ];
     let mark = frame.mark();
-    frame.styled_text(atlas, font, splash, -text_width / 2, -8, 0xFFFF_FFFF, true);
+    frame.styled_text(
+        atlas,
+        font,
+        splash,
+        (-text_width / 2, -8),
+        0xFFFF_FFFF,
+        true,
+    );
     frame.transform_from(mark, pose);
 }

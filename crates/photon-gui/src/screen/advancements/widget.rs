@@ -311,7 +311,7 @@ impl AdvancementWidget {
             } else {
                 ox + scroll.0 + self.x + self.width - width - 5
             };
-            frame.styled_text(atlas, font, text, x, progress_y, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, font, text, (x, progress_y), 0xFFFF_FFFF, true);
         }
         let description_y = if layout.top_side {
             title_top - layout.description_text_height + 1
@@ -343,7 +343,7 @@ fn multiline(
     colour: u32,
 ) {
     for (index, line) in lines.iter().enumerate() {
-        frame.styled_text(atlas, font, line, x, y + index as i32 * 9, colour, true);
+        frame.styled_text(atlas, font, line, (x, y + index as i32 * 9), colour, true);
     }
 }
 

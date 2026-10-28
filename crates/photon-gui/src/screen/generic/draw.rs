@@ -137,8 +137,7 @@ impl GenericScreen {
             draw.atlas,
             draw.font,
             &title,
-            left + 49 + 276 / 2 - width / 2,
-            top + 6,
+            (left + 49 + 276 / 2 - width / 2, top + 6),
             colour,
             false,
         );

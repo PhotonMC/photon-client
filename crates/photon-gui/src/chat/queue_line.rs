@@ -93,7 +93,7 @@ impl ChatLog {
         let runs = self.queue_runs(lang);
         let top = chat_bottom + 1;
         let colour = (((0.5 * text_opacity) * 255.0) as u32) << 24 | 0x00FF_FFFF;
-        frame.styled_text(atlas, font, &runs, 0, top, colour, true);
+        frame.styled_text(atlas, font, &runs, (0, top), colour, true);
         crate::text_hit::style_under(font, &runs, (0, top), hover?).cloned()
     }
 }

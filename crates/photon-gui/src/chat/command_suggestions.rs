@@ -420,7 +420,7 @@ impl CommandSuggestions {
                 self.settings.fill,
             );
             let runs = parsed.lang.runs(line, &Style::default());
-            frame.styled_text(atlas, &self.font, &runs, x, y + 2, 0xFFFF_FFFF, true);
+            frame.styled_text(atlas, &self.font, &runs, (x, y + 2), 0xFFFF_FFFF, true);
         }
     }
 }

@@ -419,8 +419,7 @@ impl StatsScreen {
             atlas,
             font,
             &self.pending,
-            centre - text_width / 2,
-            top + 2,
+            (centre - text_width / 2, top + 2),
             0xFFFF_FFFF,
             true,
         );
