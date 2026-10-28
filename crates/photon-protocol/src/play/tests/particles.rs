@@ -52,7 +52,7 @@ fn the_dragons_breath_reads_its_power() {
     assert!(input.is_empty());
     assert_eq!(
         packet.data,
-        photon_world::particles::ParticleData::Power(1.5)
+        photon_data::particle_values::ParticleData::Power(1.5)
     );
 }
 

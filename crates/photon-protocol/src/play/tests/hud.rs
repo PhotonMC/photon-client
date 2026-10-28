@@ -19,7 +19,7 @@ fn title_packets_read_their_fields() {
     assert_eq!(
         super::super::parse_hud_packet(114, &title).unwrap(),
         Some(super::super::HudEvent::Title(
-            photon_game::text::Component::literal("hi")
+            photon_core::text::Component::literal("hi")
         ))
     );
 }
@@ -35,7 +35,7 @@ fn boss_event_packets_read_each_operation() {
         Some(super::super::HudEvent::Boss {
             id: 7,
             operation: super::super::BossOperation::Add {
-                name: photon_game::text::Component::literal("hi"),
+                name: photon_core::text::Component::literal("hi"),
                 progress: 0.5,
                 color: 3,
                 overlay: 2,
@@ -59,7 +59,7 @@ fn boss_event_packets_read_each_operation() {
 
 #[test]
 fn a_waypoint_packet_reads_its_operation_id_icon_and_place() {
-    use photon_game::waypoint::{WaypointId, WaypointKind, WaypointOperation};
+    use photon_core::waypoint::{WaypointId, WaypointKind, WaypointOperation};
     // Track, a UUID, the default style with no colour, a block position.
     let mut track = vec![0, 1];
     track.extend(5u128.to_be_bytes());
@@ -94,8 +94,8 @@ fn a_waypoint_packet_reads_its_operation_id_icon_and_place() {
 
 #[test]
 fn scoreboard_packets_read_their_fields() {
-    use photon_game::scoreboard::{NumberFormat, ScoreboardEvent};
-    use photon_game::text::Component;
+    use photon_core::scoreboard::{NumberFormat, ScoreboardEvent};
+    use photon_core::text::Component;
     // Objective "o": add, display name "hi", hearts, a blank number format.
     let mut objective = vec![1, b'o', 0, 8, 0, 2, b'h', b'i', 1, 1, 0];
     assert_eq!(

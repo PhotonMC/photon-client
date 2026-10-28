@@ -1,13 +1,11 @@
 //! Configuration registry-data packet codec for the pinned Java protocol.
 
 use photon_core::binary;
+use photon_core::dimension_values::{CardinalLightType, DimensionBounds, DimensionSkybox};
 use photon_core::identifier::{self, Identifier};
 use photon_core::nbt::{self, FieldValue};
 use photon_core::wire;
-use photon_world::{
-    CardinalLightType, DimensionBounds, DimensionEnvironment, DimensionEnvironmentInput,
-    DimensionSkybox,
-};
+use photon_data::dimension_environment::{DimensionEnvironment, DimensionEnvironmentInput};
 
 /// Registry-data decoder failures using the runner's error categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -312,9 +310,9 @@ fn map_nbt_error(error: nbt::ReadError) -> ReadError {
 #[cfg(test)]
 mod tests {
     use super::{PackedRegistryEntry, ReadError};
+    use photon_core::dimension_values::{CardinalLightType, DimensionBounds, DimensionSkybox};
     use photon_core::identifier::Identifier;
     use photon_core::nbt::{Field, FieldValue};
-    use photon_world::{CardinalLightType, DimensionBounds, DimensionSkybox};
 
     fn dimension_type_data(min_y: i32, height: i32) -> FieldValue {
         FieldValue::Compound(vec![

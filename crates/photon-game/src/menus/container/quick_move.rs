@@ -1,4 +1,5 @@
 use super::*;
+use crate::menus::merchant::{ItemCostExt, MerchantOfferExt};
 
 impl ContainerMenu {
     /// `BeaconMenu.quickMoveStack`: a single payment item goes to the empty payment slot.

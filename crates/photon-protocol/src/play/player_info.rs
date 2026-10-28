@@ -98,7 +98,7 @@ pub struct PlayerInfo {
     pub game_mode: i32,
     pub latency: i32,
     pub listed: bool,
-    pub display_name: Option<photon_game::text::Component>,
+    pub display_name: Option<photon_core::text::Component>,
     pub list_order: i32,
     /// The profile's properties (`GameProfile.properties`), among them the packed textures.
     pub properties: Vec<ProfileProperty>,
@@ -123,7 +123,7 @@ pub enum InfoAction {
     GameMode(i32),
     Listed(bool),
     Latency(i32),
-    DisplayName(Option<photon_game::text::Component>),
+    DisplayName(Option<photon_core::text::Component>),
     ListOrder(i32),
 }
 

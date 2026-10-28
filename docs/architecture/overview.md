@@ -13,7 +13,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | `photon-data` | Tables generated from the reference, plus typed lookups over them |
 | `photon-world` | The client's copy of the world: chunks, block states, light, entities, the local player, movement and particles |
 | `photon-game` | Game rules: items and components, menus and inventories, tooltips, options, sound selection, text |
-| `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`) |
+| `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`); depends on `photon-core` and `photon-data` only, so it knows no world or game state |
 | `photon-net` | Connections over sockets: phases driven, the play session (packet `handle` steps, reader thread), a `Recorder` hook that production leaves empty |
 | `photon-dev` | Developer tooling, not shipped: live-server probes that watch the client against a real server |
 | `photon-render` | Vulkan backend, models, atlases (their sprite lists come from `atlases/<name>.json` of every pack, `atlas_sources`) and meshes, sky and weather, and what the GUI draws with (`GuiFrame`, font, atlas, item icons); knows nothing of game rules; `GuiFrame` is the boundary the screens draw through (immediate-mode calls, with `DrawOp` as the test log) |

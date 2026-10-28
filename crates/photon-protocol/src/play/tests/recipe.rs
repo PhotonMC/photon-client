@@ -15,23 +15,23 @@ fn recipe_book_add_reads_a_shaped_entry_and_its_flags() {
     );
     assert_eq!(
         entry.display,
-        photon_world::RecipeDisplay::Shaped {
+        photon_core::recipes::RecipeDisplay::Shaped {
             width: 2,
             height: 1,
             ingredients: vec![
-                photon_world::SlotDisplay::Item(photon_core::ids::ItemId(10)),
-                photon_world::SlotDisplay::Empty
+                photon_core::recipes::SlotDisplay::Item(photon_core::ids::ItemId(10)),
+                photon_core::recipes::SlotDisplay::Empty
             ],
-            result: photon_world::SlotDisplay::Item(photon_core::ids::ItemId(20)),
+            result: photon_core::recipes::SlotDisplay::Item(photon_core::ids::ItemId(20)),
         }
     );
     assert_eq!(
         entry.requirements,
-        Some(vec![photon_world::Ingredient::Items(vec![
+        Some(vec![photon_core::recipes::Ingredient::Items(vec![
             photon_core::ids::ItemId(10)
         ])])
     );
-    let mut book = photon_world::RecipeBook::default();
+    let mut book = photon_core::recipes::RecipeBook::default();
     book.add(entries, replace);
     assert!(book.highlight.contains(&7));
 }

@@ -3,7 +3,7 @@ use super::*;
 /// `ClientboundInitializeBorderPacket`: the whole border state of a level.
 pub fn parse_initialize_border_packet(
     input: &[u8],
-) -> Result<photon_world::ClientWorldBorderInitialization, ConnectionError> {
+) -> Result<photon_core::border_init::ClientWorldBorderInitialization, ConnectionError> {
     const NAME: &str = "initialize border";
     let mut input = input;
     let input = &mut input;
@@ -16,7 +16,7 @@ pub fn parse_initialize_border_packet(
     let absolute_max_size = read_varint(input, NAME)?;
     let warning_blocks = read_varint(input, NAME)?;
     let warning_time = read_varint(input, NAME)?;
-    Ok(photon_world::ClientWorldBorderInitialization {
+    Ok(photon_core::border_init::ClientWorldBorderInitialization {
         center_x,
         center_z,
         old_size,
@@ -95,7 +95,7 @@ impl Decode for SetBorderWarningDistance {
 }
 
 /// `ClientboundInitializeBorderPacket`.
-pub struct InitializeBorder(pub photon_world::ClientWorldBorderInitialization);
+pub struct InitializeBorder(pub photon_core::border_init::ClientWorldBorderInitialization);
 
 impl Decode for InitializeBorder {
     fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {

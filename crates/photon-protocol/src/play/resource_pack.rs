@@ -17,7 +17,7 @@ pub struct PackRequest {
     pub url: String,
     pub hash: String,
     pub required: bool,
-    pub prompt: Option<photon_game::text::Component>,
+    pub prompt: Option<photon_core::text::Component>,
 }
 
 impl PackRequest {

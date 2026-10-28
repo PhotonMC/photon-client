@@ -13,11 +13,11 @@ use crate::frame::{self, FrameError, MAX_FRAME_LENGTH};
 use crate::phase::ConnectionProtocol;
 use photon_core::binary::{BitSet, Uuid};
 use photon_core::ids::{EntityTypeId, ItemId};
+use photon_core::minecart_step::MinecartStep;
 use photon_core::wire;
-use photon_world::objects::minecart_track::MinecartStep;
-use photon_world::{
-    ClientAttributeModifierState, ClientAttributeState, ClientItemStackState, ClientPlayerGameMode,
-};
+use photon_data::attribute_state::{ClientAttributeModifierState, ClientAttributeState};
+use photon_data::game_mode::ClientPlayerGameMode;
+use photon_data::item_stack::ClientItemStackState;
 
 #[cfg(test)]
 mod tests;

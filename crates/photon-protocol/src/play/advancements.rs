@@ -1,6 +1,6 @@
 use super::*;
-pub use photon_game::advancements::UpdateAdvancements;
-use photon_game::advancements::{Advancement, AdvancementType, DisplayInfo, Progress};
+pub use photon_data::advancement::UpdateAdvancements;
+use photon_data::advancement::{Advancement, AdvancementType, DisplayInfo, Progress};
 
 /// A count the packet's lists and maps start with: not negative, and no more than there are bytes
 /// left to hold that many entries.
@@ -24,7 +24,7 @@ fn read_display(input: &mut &[u8]) -> Result<DisplayInfo, ConnectionError> {
     // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
     let item = ItemId(read_varint(input, "advancement icon")?);
     let count = read_varint(input, "advancement icon count")?;
-    let patch = photon_game::item_components::read_patch(input)
+    let patch = photon_data::item_components::read_patch(input)
         .map_err(|_| ConnectionError::Codec("advancement icon components"))?;
     let frame = AdvancementType::from_ordinal(read_varint(input, "advancement frame")?)
         .ok_or(ConnectionError::Codec("advancement frame"))?;

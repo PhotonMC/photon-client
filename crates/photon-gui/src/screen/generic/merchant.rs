@@ -3,6 +3,7 @@
 
 use crate::ItemSlots;
 use photon_game::menus::container::ContainerMenu;
+use photon_game::menus::merchant::MerchantOfferExt;
 use photon_game::menus::merchant::{MerchantOffer, can_level_up, level_xp_range};
 use photon_world::ClientItemStackState as Stack;
 

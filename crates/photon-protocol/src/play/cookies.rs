@@ -54,7 +54,7 @@ cookie_packet!(
 );
 
 /// `ClientboundServerLinksPacket`: the links as the server wrote them.
-pub struct ServerLinksPacket(pub Vec<photon_game::server_links::UntrustedEntry>);
+pub struct ServerLinksPacket(pub Vec<photon_core::server_links::UntrustedEntry>);
 
 impl Decode for ServerLinksPacket {
     fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {

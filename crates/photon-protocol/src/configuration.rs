@@ -11,7 +11,7 @@ pub enum WriteError {
     EncoderError,
 }
 
-pub use photon_game::options::ChatVisibility;
+pub use photon_core::chat::ChatVisibility;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MainHand {

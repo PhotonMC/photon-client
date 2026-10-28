@@ -3,7 +3,7 @@ use super::*;
 /// `ClientboundDisconnectPacket`: the reason the server gives.
 pub fn read_disconnect_reason(
     input: &mut &[u8],
-) -> Result<photon_game::text::Component, ConnectionError> {
+) -> Result<photon_core::text::Component, ConnectionError> {
     read_chat_component(input, "disconnect reason")
 }
 
@@ -27,15 +27,15 @@ pub struct SystemChatObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChatHolder {
     Registry(i32),
-    Direct(photon_game::chat::ChatDecoration),
+    Direct(photon_core::chat::ChatDecoration),
 }
 
 /// `ChatType.Bound`: the type, the sender's name and the target's.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChatBound {
     pub holder: ChatHolder,
-    pub name: photon_game::text::Component,
-    pub target: Option<photon_game::text::Component>,
+    pub name: photon_core::text::Component,
+    pub target: Option<photon_core::text::Component>,
 }
 
 /// A `MessageSignature`: 256 bytes.
@@ -68,7 +68,7 @@ pub struct PlayerChatPacket {
     pub signed_text: String,
     pub timestamp_millis: i64,
     pub last_seen: Vec<PackedSignature>,
-    pub unsigned: Option<photon_game::text::Component>,
+    pub unsigned: Option<photon_core::text::Component>,
     pub filter: FilterMask,
     pub bound: ChatBound,
 }
@@ -78,12 +78,12 @@ pub struct PlayerChatPacket {
 pub enum ChatEvent {
     /// `ClientboundSystemChatPacket`: the action bar when `overlay`.
     System {
-        content: photon_game::text::Component,
+        content: photon_core::text::Component,
         overlay: bool,
     },
     /// `ClientboundDisguisedChatPacket`.
     Disguised {
-        content: photon_game::text::Component,
+        content: photon_core::text::Component,
         bound: ChatBound,
     },
     /// `ClientboundPlayerChatPacket`, its signatures looked up; whether the
@@ -107,11 +107,11 @@ pub struct SignatureCache {
 pub(super) fn read_chat_component(
     input: &mut &[u8],
     name: &'static str,
-) -> Result<photon_game::text::Component, ConnectionError> {
+) -> Result<photon_core::text::Component, ConnectionError> {
     photon_core::nbt::read_any_nbt(input)
         .ok()
         .flatten()
-        .and_then(|tag| photon_game::text::Component::from_nbt(&tag))
+        .and_then(|tag| photon_core::text::Component::from_nbt(&tag))
         .ok_or(ConnectionError::Codec(name))
 }
 
@@ -128,24 +128,24 @@ pub(super) fn read_chat_string(
 /// `ChatTypeDecoration.STREAM_CODEC`.
 pub(super) fn read_chat_decoration(
     input: &mut &[u8],
-) -> Result<photon_game::chat::ChatDecoration, ConnectionError> {
+) -> Result<photon_core::chat::ChatDecoration, ConnectionError> {
     let translation_key = read_chat_string(input, 32767, "chat decoration key")?;
     let count = read_varint(input, "chat decoration parameters")?;
     let mut parameters = Vec::new();
     for _ in 0..count {
         let id = read_varint(input, "chat decoration parameter")?;
         parameters.push(
-            photon_game::chat::ChatParameter::from_id(id)
+            photon_core::chat::ChatParameter::from_id(id)
                 .ok_or(ConnectionError::Codec("chat decoration parameter"))?,
         );
     }
     let style = photon_core::nbt::read_any_nbt(input)
         .ok()
         .flatten()
-        .and_then(|tag| photon_game::text::Component::from_nbt(&tag))
+        .and_then(|tag| photon_core::text::Component::from_nbt(&tag))
         .map(|component| component.style)
         .ok_or(ConnectionError::Codec("chat decoration style"))?;
-    Ok(photon_game::chat::ChatDecoration {
+    Ok(photon_core::chat::ChatDecoration {
         translation_key,
         parameters,
         style,
@@ -376,7 +376,7 @@ wrapped_packet!(
 );
 
 /// `ClientboundDisconnectPacket`: why the server ended the connection.
-pub struct Disconnect(pub photon_game::text::Component);
+pub struct Disconnect(pub photon_core::text::Component);
 
 impl Decode for Disconnect {
     fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {

@@ -30,7 +30,7 @@ fn creative_stone_slot_encoder_matches_java_optional_item_stack() {
 
 #[test]
 fn creative_slot_encoder_writes_the_patch_the_stack_carries() {
-    use photon_world::ClientItemStackState as Stack;
+    use photon_data::item_stack::ClientItemStackState as Stack;
     // A stack made here has no patch: both counts are zero.
     let mut payload = Vec::new();
     encode_creative_slot(&mut payload, 38, Some(&Stack::new(3, ItemId(1_044))));

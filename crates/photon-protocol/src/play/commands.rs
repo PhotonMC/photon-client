@@ -25,8 +25,8 @@ pub fn parse_command_suggestions(input: &[u8]) -> Result<CommandSuggestions, Con
 /// `ClientboundCommandsPacket`: the entries, linked into a tree.
 pub fn parse_commands_packet(
     input: &[u8],
-) -> Result<photon_game::commands::CommandTree, ConnectionError> {
-    use photon_game::commands::{CommandTree, NodeKind, NodeStub};
+) -> Result<photon_core::commands::CommandTree, ConnectionError> {
+    use photon_core::commands::{CommandTree, NodeKind, NodeStub};
     let mut input = input;
     let input = &mut input;
     let count = read_count(input, "command node count")?;
@@ -77,8 +77,8 @@ pub fn parse_commands_packet(
 pub(super) fn read_argument_kind(
     input: &mut &[u8],
     id: i32,
-) -> Result<photon_game::commands::ArgumentKind, ConnectionError> {
-    use photon_game::commands::{ArgumentKind as K, StringType};
+) -> Result<photon_core::commands::ArgumentKind, ConnectionError> {
+    use photon_core::commands::{ArgumentKind as K, StringType};
     let name = "command argument parameters";
     Ok(match id {
         0 => K::Bool,
@@ -207,6 +207,6 @@ wrapped_packet!(
 );
 wrapped_packet!(
     /// `ClientboundCommandsPacket`: the commands the server has.
-    Commands(photon_game::commands::CommandTree) = parse_commands_packet,
+    Commands(photon_core::commands::CommandTree) = parse_commands_packet,
     OnError::Warn("commands")
 );

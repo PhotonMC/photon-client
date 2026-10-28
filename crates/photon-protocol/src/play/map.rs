@@ -4,8 +4,8 @@ use super::*;
 /// patch of colours (a width of zero is none).
 pub fn parse_map_item_data_packet(
     input: &[u8],
-) -> Result<photon_world::map::MapItemDataInput, ConnectionError> {
-    use photon_world::map::{MapDecoration, MapItemDataInput, MapPatch};
+) -> Result<photon_core::map_values::MapItemDataInput, ConnectionError> {
+    use photon_core::map_values::{MapDecoration, MapItemDataInput, MapPatch};
     let mut input = input;
     let map_id = read_varint(&mut input, "map id")?;
     let scale = read_byte(&mut input, "map scale")? as i8;
@@ -73,6 +73,6 @@ pub fn parse_map_item_data_packet(
 
 wrapped_packet!(
     /// `ClientboundMapItemDataPacket`.
-    MapItemData(photon_world::map::MapItemDataInput) = parse_map_item_data_packet,
+    MapItemData(photon_core::map_values::MapItemDataInput) = parse_map_item_data_packet,
     OnError::Ignore("map_item_data")
 );

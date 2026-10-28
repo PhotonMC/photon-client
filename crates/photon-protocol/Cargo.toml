@@ -10,8 +10,6 @@ include = ["/Cargo.toml", "/src/**"]
 [dependencies]
 photon-core.workspace = true
 photon-data.workspace = true
-photon-world.workspace = true
-photon-game.workspace = true
 flate2.workspace = true
 aes.workspace = true
 cfb8.workspace = true

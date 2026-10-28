@@ -1,8 +1,8 @@
 //! The dialog packets: `ClientboundShowDialogPacket`, `ClientboundClearDialogPacket` and the
 //! client's `ServerboundCustomClickActionPacket`.
 
+use photon_core::dialog::Dialog;
 use photon_core::nbt::FieldValue;
-use photon_game::dialog::Dialog;
 
 use super::reader::read_varint;
 use super::*;

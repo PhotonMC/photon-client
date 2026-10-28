@@ -28,7 +28,7 @@ impl ClientItemStackState {
     pub fn breaks_on_next_damage(&self) -> bool {
         let durability = usize::try_from(self.item_registry_id.0)
             .ok()
-            .and_then(|index| photon_data::item::registry::ITEMS.get(index))
+            .and_then(|index| crate::item::registry::ITEMS.get(index))
             .map_or(0, |item| item.max_damage);
         let durable = durability > 0;
         let damageable = self.has_durability_component(ids::MAX_DAMAGE, durable)

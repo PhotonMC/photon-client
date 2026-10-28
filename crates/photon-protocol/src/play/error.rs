@@ -14,7 +14,7 @@ pub enum ConnectionError {
     },
     ServerDisconnected,
     /// The server ended the connection and said why (a login or configuration `Disconnect`).
-    Disconnected(Box<photon_game::text::Component>),
+    Disconnected(Box<photon_core::text::Component>),
     /// The session server did not accept the client's join (`authenticateServer`).
     LoginFailed(LoginFailure),
     InvalidArgument(&'static str),

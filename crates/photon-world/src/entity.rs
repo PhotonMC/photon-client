@@ -111,6 +111,7 @@ pub struct ClientEntity {
 mod animation;
 mod attributes;
 pub use attributes::*;
+pub use photon_data::attribute_state::{ClientAttributeModifierState, ClientAttributeState};
 mod boat;
 mod cloak;
 pub use boat::*;

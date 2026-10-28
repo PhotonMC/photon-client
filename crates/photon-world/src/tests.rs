@@ -108,6 +108,7 @@ mod chunks;
 mod entities;
 mod lids;
 mod local_player;
+mod map_data;
 mod ore_steps;
 mod passengers;
 mod presentation;

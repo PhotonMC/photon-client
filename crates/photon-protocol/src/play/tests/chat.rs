@@ -108,6 +108,6 @@ fn player_chat_reads_the_text_the_type_and_the_sender() {
     assert_eq!(packet.bound.holder, super::super::ChatHolder::Registry(0));
     assert_eq!(
         packet.bound.name,
-        photon_game::text::Component::literal("Bob")
+        photon_core::text::Component::literal("Bob")
     );
 }

@@ -1,5 +1,5 @@
 use super::*;
-use photon_core::java_float::{JavaF32, JavaF64};
+use photon_core::java_float::JavaF32;
 
 impl ClientEntity {
     /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
@@ -46,20 +46,6 @@ pub(crate) fn effective_attribute(
     ))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClientAttributeModifierState {
-    pub(crate) id: String,
-    pub(crate) amount: JavaF64,
-    pub(crate) operation: u8,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClientAttributeState {
-    pub(crate) attribute_id: i32,
-    pub(crate) base_value: JavaF64,
-    pub(crate) modifiers: Vec<ClientAttributeModifierState>,
-}
-
 /// One of the particles a living entity's effects give off (`DATA_EFFECT_PARTICLES`): the entity
 /// effect's swirl in an ARGB colour, or a simple particle of an effect's own (oozing's slime).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,32 +72,6 @@ pub struct ClientMobEffectState {
     pub(crate) flags: u8,
     /// `MobEffectInstance.BlendState`: how far the effect has faded in, this tick and the last.
     pub(crate) blend: (JavaF32, JavaF32),
-}
-
-impl ClientAttributeModifierState {
-    pub fn new(id: String, amount: f64, operation: u8) -> Self {
-        Self {
-            id,
-            amount: JavaF64::new(amount),
-            operation,
-        }
-    }
-
-    pub fn from_wire(id: String, amount: f64, operation: u8) -> Self {
-        Self::new(id, amount, operation)
-    }
-
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn amount(&self) -> f64 {
-        self.amount.get()
-    }
-
-    pub fn operation(&self) -> u8 {
-        self.operation
-    }
 }
 
 impl ClientMobEffectState {
@@ -251,73 +211,5 @@ impl ClientMobEffectState {
     /// `MobEffectInstance.getBlendFactor`: between the last tick's and this one's.
     pub fn blend_factor(&self, partial: f32) -> f32 {
         photon_core::math::mth_lerp_f32(partial, self.blend.1.get(), self.blend.0.get())
-    }
-}
-
-impl ClientAttributeState {
-    pub fn new(
-        attribute_id: i32,
-        base_value: f64,
-        modifiers: Vec<ClientAttributeModifierState>,
-    ) -> Self {
-        Self {
-            attribute_id,
-            base_value: JavaF64::new(base_value),
-            modifiers,
-        }
-    }
-
-    pub fn from_wire(
-        attribute_id: i32,
-        base_value: f64,
-        modifiers: Vec<ClientAttributeModifierState>,
-    ) -> Self {
-        Self::new(attribute_id, base_value, modifiers)
-    }
-
-    pub fn attribute_id(&self) -> i32 {
-        self.attribute_id
-    }
-
-    pub fn base_value(&self) -> f64 {
-        self.base_value.get()
-    }
-
-    pub fn modifiers(&self) -> &[ClientAttributeModifierState] {
-        &self.modifiers
-    }
-
-    /// Calculate the effective value using Java's AttributeInstance operation order.
-    pub fn effective_value(&self, min_value: f64, max_value: f64) -> f64 {
-        assert!(min_value <= max_value, "attribute range must be ordered");
-
-        let mut base = self.base_value();
-        for modifier in self.modifiers.iter().filter(|modifier| {
-            modifier.operation() == 0 || (modifier.operation() != 1 && modifier.operation() != 2)
-        }) {
-            base += modifier.amount();
-        }
-
-        let mut result = base;
-        for modifier in self
-            .modifiers
-            .iter()
-            .filter(|modifier| modifier.operation() == 1)
-        {
-            result += base * modifier.amount();
-        }
-        for modifier in self
-            .modifiers
-            .iter()
-            .filter(|modifier| modifier.operation() == 2)
-        {
-            result *= 1.0 + modifier.amount();
-        }
-
-        if result.is_nan() {
-            min_value
-        } else {
-            result.clamp(min_value, max_value)
-        }
     }
 }

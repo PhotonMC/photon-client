@@ -23,9 +23,7 @@ use crate::input::{
     local_player_travel_in_lava, local_player_travel_in_water,
     local_player_update_fall_flying_movement,
 };
-use photon_core::math::{
-    Vec2, Vec3, clamp_f32, floor_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32,
-};
+use photon_core::math::{Vec2, Vec3, clamp_f32, mth_lerp_f32, mth_lerp_f64, mth_rot_lerp_f32};
 
 /// What the local player's sleep is: where its bed is (the sleeping position of its entity data)
 /// and `Player.sleepCounter`.
@@ -105,8 +103,7 @@ pub struct ClientPlayerState {
     pub(crate) passenger_ids: Vec<EntityId>,
 }
 
-mod game_mode;
-pub use game_mode::*;
+pub use photon_data::game_mode::{ClientPlayerAbilities, ClientPlayerGameMode};
 mod inventory;
 mod motion;
 mod pose;

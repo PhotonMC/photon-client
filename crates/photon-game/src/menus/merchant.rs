@@ -3,38 +3,17 @@
 //! the payment slots buy.
 
 use crate::menus::container::max_stack_size;
-use photon_core::ids::ItemId;
+pub use photon_data::merchant::{ItemCost, MerchantOffer, MerchantState, Trader};
 use photon_world::ClientItemStackState as Stack;
-use photon_world::item_components::Patch;
 
-/// `ItemCost`: an item, how many, and the components the payment must carry.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ItemCost {
-    /// The item's registry id.
-    pub item: ItemId,
-    pub count: i32,
-    /// `DataComponentExactPredicate`: each component's type id and its value's bytes.
-    pub components: Vec<(i32, Vec<u8>)>,
+/// `ItemCost.test`, which reads the item's own components.
+pub trait ItemCostExt {
+    /// `ItemCost.test`: the item, and each named component the same on the stack.
+    fn test(&self, stack: Option<&Stack>) -> bool;
 }
 
-impl ItemCost {
-    /// `ItemCost.itemStack` for a count: the item with the components the cost names.
-    pub fn stack(&self, count: i32) -> Stack {
-        let stack = Stack::new(count, self.item);
-        if self.components.is_empty() {
-            return stack;
-        }
-        stack.with_patch_bytes(
-            Patch {
-                added: self.components.clone(),
-                removed: Vec::new(),
-            }
-            .trusted(),
-        )
-    }
-
-    /// `ItemCost.test`: the item, and each named component the same on the stack.
-    pub fn test(&self, stack: Option<&Stack>) -> bool {
+impl ItemCostExt for ItemCost {
+    fn test(&self, stack: Option<&Stack>) -> bool {
         let Some(stack) = stack else {
             return false;
         };
@@ -48,54 +27,33 @@ impl ItemCost {
     }
 }
 
-/// `MerchantOffer`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MerchantOffer {
-    pub cost_a: ItemCost,
-    pub cost_b: Option<ItemCost>,
-    pub result: Stack,
-    pub uses: i32,
-    pub max_uses: i32,
-    pub xp: i32,
-    pub special_price_diff: i32,
-    pub demand: i32,
-    pub price_multiplier: f32,
+/// The offer's prices and trades, which need the item's stack size and components.
+pub trait MerchantOfferExt {
+    /// `getCostA`: the first payment at the price now.
+    fn cost_a_now(&self) -> Stack;
+    /// `satisfiedBy`.
+    fn satisfied_by(&self, buy_a: Option<&Stack>, buy_b: Option<&Stack>) -> bool;
+    /// `take`: what the payments lose when the offer is taken, if they satisfy it.
+    fn take(&self, buy_a: &mut Option<Stack>, buy_b: &mut Option<Stack>) -> bool;
 }
 
-impl MerchantOffer {
-    /// `getModifiedCostCount`: the base count, raised by the demand and moved by the special price,
-    /// at least one and at most a stack.
-    fn modified_count(&self, cost: &ItemCost) -> i32 {
-        let base = cost.count;
-        let demand = (base.wrapping_mul(self.demand) as f32 * self.price_multiplier).floor() as i32;
-        let max = max_stack_size(&cost.stack(1));
-        (base + demand.max(0) + self.special_price_diff).clamp(1, max.max(1))
+/// `getModifiedCostCount`: the base count, raised by the demand and moved by the special price,
+/// at least one and at most a stack.
+fn modified_count(offer: &MerchantOffer, cost: &ItemCost) -> i32 {
+    let base = cost.count;
+    let demand = (base.wrapping_mul(offer.demand) as f32 * offer.price_multiplier).floor() as i32;
+    let max = max_stack_size(&cost.stack(1));
+    (base + demand.max(0) + offer.special_price_diff).clamp(1, max.max(1))
+}
+
+impl MerchantOfferExt for MerchantOffer {
+    fn cost_a_now(&self) -> Stack {
+        self.cost_a.stack(modified_count(self, &self.cost_a))
     }
 
-    /// `getCostA`: the first payment at the price now.
-    pub fn cost_a_now(&self) -> Stack {
-        self.cost_a.stack(self.modified_count(&self.cost_a))
-    }
-
-    /// `getCostB`: the second payment, if there is one.
-    pub fn cost_b_now(&self) -> Option<Stack> {
-        self.cost_b.as_ref().map(|cost| cost.stack(cost.count))
-    }
-
-    /// `getBaseCostA`: the first payment at its base price.
-    pub fn base_cost_a(&self) -> Stack {
-        self.cost_a.stack(self.cost_a.count)
-    }
-
-    /// `isOutOfStock`.
-    pub fn is_out_of_stock(&self) -> bool {
-        self.uses >= self.max_uses
-    }
-
-    /// `satisfiedBy`.
-    pub fn satisfied_by(&self, buy_a: Option<&Stack>, buy_b: Option<&Stack>) -> bool {
+    fn satisfied_by(&self, buy_a: Option<&Stack>, buy_b: Option<&Stack>) -> bool {
         let count = |stack: Option<&Stack>| stack.map_or(0, Stack::item_count);
-        if !self.cost_a.test(buy_a) || count(buy_a) < self.modified_count(&self.cost_a) {
+        if !self.cost_a.test(buy_a) || count(buy_a) < modified_count(self, &self.cost_a) {
             return false;
         }
         match &self.cost_b {
@@ -104,12 +62,11 @@ impl MerchantOffer {
         }
     }
 
-    /// `take`: what the payments lose when the offer is taken, if they satisfy it.
-    pub fn take(&self, buy_a: &mut Option<Stack>, buy_b: &mut Option<Stack>) -> bool {
+    fn take(&self, buy_a: &mut Option<Stack>, buy_b: &mut Option<Stack>) -> bool {
         if !self.satisfied_by(buy_a.as_ref(), buy_b.as_ref()) {
             return false;
         }
-        let price = self.modified_count(&self.cost_a);
+        let price = modified_count(self, &self.cost_a);
         if let Some(stack) = buy_a.as_mut() {
             stack.shrink(price);
         }
@@ -142,22 +99,6 @@ pub fn recipe_for(
     offers
         .iter()
         .position(|offer| offer.satisfied_by(buy_a, buy_b))
-}
-
-/// What the server tells of the merchant it opened a menu on besides its offers.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Trader {
-    pub level: i32,
-    pub xp: i32,
-    pub show_progress: bool,
-    pub can_restock: bool,
-}
-
-/// What `ClientboundMerchantOffersPacket` carries.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct MerchantState {
-    pub offers: Vec<MerchantOffer>,
-    pub trader: Trader,
 }
 
 /// `VillagerData.getMinXpPerLevel` and `getMaxXpPerLevel`: the experience a level starts and

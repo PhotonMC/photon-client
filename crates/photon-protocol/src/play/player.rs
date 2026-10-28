@@ -57,7 +57,7 @@ pub fn resolve_player_position(
 /// `ClientboundPlayerCombatKillPacket`: who died and the message for them.
 pub fn parse_player_combat_kill_packet(
     input: &[u8],
-) -> Result<(EntityId, photon_game::text::Component), ConnectionError> {
+) -> Result<(EntityId, photon_core::text::Component), ConnectionError> {
     let mut input = input;
     let id = EntityId(read_varint(&mut input, "combat kill player id")?);
     Ok((id, read_chat_component(&mut input, "combat kill message")?))
@@ -316,7 +316,7 @@ wrapped_packet!(
 );
 wrapped_packet!(
     /// `ClientboundPlayerCombatKillPacket`: who died, and the message of the death.
-    PlayerCombatKill((EntityId, photon_game::text::Component)) = parse_player_combat_kill_packet
+    PlayerCombatKill((EntityId, photon_core::text::Component)) = parse_player_combat_kill_packet
 );
 wrapped_packet!(
     /// `ClientboundGameEventPacket`.

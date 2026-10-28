@@ -1,6 +1,6 @@
 #[test]
 fn a_commands_packet_links_into_a_tree() {
-    use photon_game::commands::NodeKind;
+    use photon_core::commands::NodeKind;
     // Node 0 is the root with children 1; node 1 literal "a" (executable)
     // with child 2; node 2 an integer argument "n" from 1 to 5.
     let mut packet = vec![3];

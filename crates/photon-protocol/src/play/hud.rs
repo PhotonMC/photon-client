@@ -32,12 +32,12 @@ pub fn parse_waypoint_packet(
     input: &[u8],
 ) -> Result<
     (
-        photon_game::waypoint::WaypointOperation,
-        photon_game::waypoint::TrackedWaypoint,
+        photon_core::waypoint::WaypointOperation,
+        photon_core::waypoint::TrackedWaypoint,
     ),
     ConnectionError,
 > {
-    use photon_game::waypoint::{
+    use photon_core::waypoint::{
         TrackedWaypoint, WaypointIcon, WaypointId, WaypointKind, WaypointOperation,
     };
     let mut input = input;
@@ -133,8 +133,8 @@ pub fn parse_hud_packet(id: i32, input: &[u8]) -> Result<Option<HudEvent>, Conne
 /// What the title packets, the action bar and the tab list ask the HUD to show.
 #[derive(Debug, Clone, PartialEq)]
 pub enum HudEvent {
-    Title(photon_game::text::Component),
-    Subtitle(photon_game::text::Component),
+    Title(photon_core::text::Component),
+    Subtitle(photon_core::text::Component),
     /// `ClientboundSetTitlesAnimationPacket`, in ticks.
     Times {
         fade_in: i32,
@@ -144,10 +144,10 @@ pub enum HudEvent {
     Clear {
         reset_times: bool,
     },
-    ActionBar(photon_game::text::Component),
+    ActionBar(photon_core::text::Component),
     TabList {
-        header: photon_game::text::Component,
-        footer: photon_game::text::Component,
+        header: photon_core::text::Component,
+        footer: photon_core::text::Component,
     },
     /// `ClientboundBossEventPacket`.
     Boss {
@@ -160,7 +160,7 @@ pub enum HudEvent {
 #[derive(Debug, Clone, PartialEq)]
 pub enum BossOperation {
     Add {
-        name: photon_game::text::Component,
+        name: photon_core::text::Component,
         progress: f32,
         /// `BossBarColor` ordinal: pink, blue, red, green, yellow, purple, white.
         color: u8,
@@ -170,7 +170,7 @@ pub enum BossOperation {
     },
     Remove,
     Progress(f32),
-    Name(photon_game::text::Component),
+    Name(photon_core::text::Component),
     Style {
         color: u8,
         overlay: u8,
@@ -182,8 +182,8 @@ wrapped_packet!(
     /// `ClientboundTrackedWaypointPacket`: the operation and the waypoint it is done to.
     Waypoint(
         (
-            photon_game::waypoint::WaypointOperation,
-            photon_game::waypoint::TrackedWaypoint,
+            photon_core::waypoint::WaypointOperation,
+            photon_core::waypoint::TrackedWaypoint,
         )
     ) = parse_waypoint_packet,
     OnError::Warn("waypoint")

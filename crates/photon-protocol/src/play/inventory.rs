@@ -44,7 +44,7 @@ pub fn encode_creative_slot(output: &mut Vec<u8>, slot: i16, stack: Option<&Clie
             wire::write_varint(stack.item_registry_id().0, output);
             // The server reads a client's components behind their lengths. A
             // patch this cannot read is left off rather than sent wrong.
-            match photon_game::item_components::delimit(stack.patch_bytes()) {
+            match photon_data::item_components::delimit(stack.patch_bytes()) {
                 Some(patch) if !stack.patch_bytes().is_empty() => output.extend_from_slice(&patch),
                 _ => {
                     wire::write_varint(0, output);

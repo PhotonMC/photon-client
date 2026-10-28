@@ -1,5 +1,7 @@
-use super::*;
+//! The four Java game modes the local player can be in.
+
 use photon_core::java_float::JavaF32;
+use photon_core::math::floor_f32;
 
 /// The four Java game-mode values applied to the local player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -9,25 +11,6 @@ pub enum ClientPlayerGameMode {
     Creative,
     Adventure,
     Spectator,
-}
-
-/// The six ability values carried by Java's clientbound player-abilities packet,
-/// plus the local game-mode-derived build permission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ClientPlayerAbilities {
-    pub(crate) invulnerable: bool,
-    pub(crate) flying: bool,
-    pub(crate) may_fly: bool,
-    pub(crate) instabuild: bool,
-    pub(crate) may_build: bool,
-    pub(crate) flying_speed: JavaF32,
-    pub(crate) walking_speed: JavaF32,
-}
-
-impl Default for ClientPlayerAbilities {
-    fn default() -> Self {
-        Self::new(false, false, false, false, 0.05, 0.1)
-    }
 }
 
 impl ClientPlayerGameMode {
@@ -105,6 +88,25 @@ impl ClientPlayerGameMode {
         }
         abilities.may_build = !matches!(self, Self::Adventure | Self::Spectator);
         abilities
+    }
+}
+
+/// The six ability values carried by Java's clientbound player-abilities packet,
+/// plus the local game-mode-derived build permission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClientPlayerAbilities {
+    pub invulnerable: bool,
+    pub flying: bool,
+    pub may_fly: bool,
+    pub instabuild: bool,
+    pub may_build: bool,
+    pub flying_speed: JavaF32,
+    pub walking_speed: JavaF32,
+}
+
+impl Default for ClientPlayerAbilities {
+    fn default() -> Self {
+        Self::new(false, false, false, false, 0.05, 0.1)
     }
 }
 

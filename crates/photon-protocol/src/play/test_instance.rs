@@ -1,5 +1,5 @@
 use super::*;
-use photon_game::text::Component;
+use photon_core::text::Component;
 
 /// `ClientboundTestInstanceBlockStatus`: the status line the test instance block shows, and the
 /// size of the test's structure when the server knows it.

@@ -122,7 +122,7 @@ fn combat_kill_names_who_died_and_the_message() {
     let packet = [0xE8, 0x07, 8, 0, 2, b'h', b'i'];
     let (id, message) = super::super::parse_player_combat_kill_packet(&packet).unwrap();
     assert_eq!(id, photon_core::ids::EntityId(1000));
-    assert_eq!(message, photon_game::text::Component::literal("hi"));
+    assert_eq!(message, photon_core::text::Component::literal("hi"));
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn a_disconnect_carries_its_reason() {
     let mut input: &[u8] = &[8, 0, 2, b'h', b'i'];
     assert_eq!(
         super::super::read_disconnect_reason(&mut input).unwrap(),
-        photon_game::text::Component::literal("hi")
+        photon_core::text::Component::literal("hi")
     );
 }
 
@@ -184,7 +184,7 @@ fn test_instance_status_carries_the_words_and_an_optional_size() {
     let with_size = [8, 0, 2, b'h', b'i', 1, 3, 4, 5];
     let packet =
         <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&with_size).unwrap();
-    assert_eq!(packet.status, photon_game::text::Component::literal("hi"));
+    assert_eq!(packet.status, photon_core::text::Component::literal("hi"));
     assert_eq!(packet.size, Some((3, 4, 5)));
     let without = [8, 0, 2, b'h', b'i', 0];
     assert_eq!(

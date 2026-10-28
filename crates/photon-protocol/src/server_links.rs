@@ -1,6 +1,6 @@
 //! `ClientboundServerLinksPacket`, which the configuration and the play phase share.
 
-use photon_game::server_links::{LinkType, UntrustedEntry};
+use photon_core::server_links::{LinkType, UntrustedEntry};
 
 use crate::play::ConnectionError;
 
@@ -28,7 +28,7 @@ pub fn parse_server_links(input: &[u8]) -> Result<Vec<UntrustedEntry>, Connectio
             let component = photon_core::nbt::read_any_nbt(&mut input)
                 .ok()
                 .flatten()
-                .and_then(|tag| photon_game::text::Component::from_nbt(&tag))
+                .and_then(|tag| photon_core::text::Component::from_nbt(&tag))
                 .ok_or_else(|| codec("server link name"))?;
             LinkType::Custom(component)
         };
@@ -68,7 +68,7 @@ mod tests {
         assert_eq!(entries[0].link, "https://example.com");
         assert_eq!(
             entries[1].link_type,
-            LinkType::Custom(photon_game::text::Component::literal("Wiki"))
+            LinkType::Custom(photon_core::text::Component::literal("Wiki"))
         );
         assert_eq!(entries[1].link, "https://wiki.example");
     }

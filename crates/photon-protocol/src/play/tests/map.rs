@@ -33,12 +33,6 @@ fn map_item_data_parser_reads_decorations_and_a_patch_of_colours() {
         (10, 20, 2, 2)
     );
 
-    let mut world = photon_world::ClientWorld::new(photon_world::DimensionBounds::default());
-    world.apply_map_item_data(&packet);
-    let map = world.map_data(7).expect("the map");
-    assert_eq!(map.colors()[10 + 20 * 128], 1);
-    assert_eq!(map.colors()[11 + 21 * 128], 4);
-
     // A width of zero is no patch, and no decorations is none sent.
     let bare = [vec![7_u8, 0, 0, 0, 0]].concat();
     let none = parse_map_item_data_packet(&bare).expect("bare");

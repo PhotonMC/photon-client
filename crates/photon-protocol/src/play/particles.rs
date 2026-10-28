@@ -4,7 +4,7 @@ use super::*;
 /// options are not read yet (the packet ends with them).
 pub fn read_level_particles_packet(
     input: &mut &[u8],
-) -> Result<Option<photon_world::particles::LevelParticles>, ConnectionError> {
+) -> Result<Option<photon_data::particle_values::LevelParticles>, ConnectionError> {
     const NAME: &str = "level particles";
     let override_limiter = read_bool(input, NAME)?;
     let always_show = read_bool(input, NAME)?;
@@ -24,7 +24,7 @@ pub fn read_level_particles_packet(
         *input = &[];
         return Ok(None);
     };
-    Ok(Some(photon_world::particles::LevelParticles {
+    Ok(Some(photon_data::particle_values::LevelParticles {
         type_id,
         data,
         override_limiter,
@@ -40,12 +40,12 @@ pub fn read_level_particles_packet(
 /// read yet, after which nothing more of the input can be read.
 pub fn read_particle_options(
     input: &mut &[u8],
-) -> Result<Option<(i32, photon_world::particles::ParticleData)>, ConnectionError> {
-    photon_world::particles::read_particle_options(input).map_err(ConnectionError::Codec)
+) -> Result<Option<(i32, photon_data::particle_values::ParticleData)>, ConnectionError> {
+    photon_data::particle_options::read_particle_options(input).map_err(ConnectionError::Codec)
 }
 
 /// `ClientboundLevelParticlesPacket`: nothing for a particle the client does not know.
-pub struct LevelParticlesPacket(pub Option<photon_world::particles::LevelParticles>);
+pub struct LevelParticlesPacket(pub Option<photon_data::particle_values::LevelParticles>);
 
 impl Decode for LevelParticlesPacket {
     fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {

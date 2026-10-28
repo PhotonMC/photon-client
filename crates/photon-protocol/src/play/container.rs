@@ -164,7 +164,7 @@ pub(super) fn parse_optional_item_stack(
     }
     let item_registry_id = ItemId(read_varint(input, name)?);
     let patch_start = *input;
-    let patch = photon_game::item_components::read_patch(input)
+    let patch = photon_data::item_components::read_patch(input)
         .map_err(|_| ConnectionError::Codec(name))?;
     let positive_component_type_ids = patch.added.iter().map(|(id, _)| *id).collect();
     let negative_component_type_ids = patch.removed;

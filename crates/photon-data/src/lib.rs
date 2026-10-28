@@ -10,24 +10,30 @@
 //! `item/` outside `generated/`) holds the types the tables share and the
 //! lookups on them.
 
+pub mod advancement;
 pub mod animation;
+pub mod attribute_state;
 pub mod block;
 pub mod block_entity_type;
 pub mod block_sound;
 pub mod compost;
 pub mod damage_effect;
+pub mod dimension_environment;
 pub mod entity_model;
 pub mod entity_shadow;
 pub mod entity_type;
 pub mod fire;
+pub mod game_mode;
 mod generated;
 pub mod item;
 pub mod item_components;
+pub mod item_stack;
 pub mod keys;
 pub mod leash;
 pub mod leaves;
 pub mod map;
 pub mod menu_type;
+pub mod merchant;
 mod name;
 pub mod particle_options;
 pub mod particle_type;

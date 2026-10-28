@@ -1,12 +1,15 @@
 use super::*;
 
 /// An explosion for the level, and the push the local player takes.
-pub type ExplodeObservation = (photon_world::particles::Explosion, Option<(f64, f64, f64)>);
+pub type ExplodeObservation = (
+    photon_data::particle_values::Explosion,
+    Option<(f64, f64, f64)>,
+);
 
 /// `ClientboundExplodePacket`. Nothing for one whose particles' options are not read yet.
 pub fn parse_explode_packet(input: &[u8]) -> Result<Option<ExplodeObservation>, ConnectionError> {
     const NAME: &str = "explode";
-    use photon_world::particles::{Explosion, ExplosionParticle};
+    use photon_data::particle_values::{Explosion, ExplosionParticle};
     let mut input = input;
     let input = &mut input;
     let vec3 = |input: &mut &[u8]| -> Result<(f64, f64, f64), ConnectionError> {
@@ -28,8 +31,10 @@ pub fn parse_explode_packet(input: &[u8]) -> Result<Option<ExplodeObservation>, 
         return Ok(None);
     };
     let sound = match read_sound_holder(input)? {
-        photon_game::sounds::SoundHolder::Registered(id) => photon_data::sound_event::name(id),
-        photon_game::sounds::SoundHolder::Direct { .. } => None,
+        photon_core::sound_packets::SoundHolder::Registered(id) => {
+            photon_data::sound_event::name(id)
+        }
+        photon_core::sound_packets::SoundHolder::Direct { .. } => None,
     };
     let count = read_varint(input, NAME)?;
     let mut block_particles = Vec::new();

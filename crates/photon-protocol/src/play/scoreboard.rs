@@ -4,8 +4,8 @@ use super::*;
 pub fn parse_scoreboard_packet(
     id: i32,
     input: &[u8],
-) -> Result<Option<photon_game::scoreboard::ScoreboardEvent>, ConnectionError> {
-    use photon_game::scoreboard::ScoreboardEvent;
+) -> Result<Option<photon_core::scoreboard::ScoreboardEvent>, ConnectionError> {
+    use photon_core::scoreboard::ScoreboardEvent;
     let mut input = input;
     let input = &mut input;
     let string = |input: &mut &[u8], name| read_chat_string(input, 32767, name);
@@ -25,7 +25,7 @@ pub fn parse_scoreboard_packet(
                 ScoreboardEvent::Objective {
                     name,
                     method,
-                    display_name: photon_game::text::Component::empty(),
+                    display_name: photon_core::text::Component::empty(),
                     hearts: false,
                     number_format: None,
                 }
@@ -86,8 +86,8 @@ pub fn parse_scoreboard_packet(
 /// A team's display name, dressing, name tag visibility, colour and options.
 fn read_team_parameters(
     input: &mut &[u8],
-) -> Result<photon_game::scoreboard::TeamParameters, ConnectionError> {
-    use photon_game::scoreboard::{NameTagVisibility, TeamParameters};
+) -> Result<photon_core::scoreboard::TeamParameters, ConnectionError> {
+    use photon_core::scoreboard::{NameTagVisibility, TeamParameters};
     let display_name = read_chat_component(input, "team display name")?;
     let prefix = read_chat_component(input, "team prefix")?;
     let suffix = read_chat_component(input, "team suffix")?;
@@ -114,8 +114,8 @@ fn read_team_parameters(
 /// styled, fixed) and what it holds.
 pub(super) fn read_number_format(
     input: &mut &[u8],
-) -> Result<Option<photon_game::scoreboard::NumberFormat>, ConnectionError> {
-    use photon_game::scoreboard::NumberFormat;
+) -> Result<Option<photon_core::scoreboard::NumberFormat>, ConnectionError> {
+    use photon_core::scoreboard::NumberFormat;
     if !read_bool(input, "number format present")? {
         return Ok(None);
     }
@@ -125,7 +125,7 @@ pub(super) fn read_number_format(
             photon_core::nbt::read_any_nbt(input)
                 .ok()
                 .flatten()
-                .and_then(|tag| photon_game::text::Style::from_nbt(&tag))
+                .and_then(|tag| photon_core::text::Style::from_nbt(&tag))
                 .ok_or(ConnectionError::Codec("number format style"))?,
         ),
         2 => NumberFormat::Fixed(read_chat_component(input, "number format value")?),
@@ -136,7 +136,7 @@ pub(super) fn read_number_format(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photon_game::scoreboard::NameTagVisibility;
+    use photon_core::scoreboard::NameTagVisibility;
 
     /// A team's parameters on the wire: three plain texts, then the rest.
     fn parameters(visibility: u8, options: u8) -> Vec<u8> {
@@ -150,7 +150,7 @@ mod tests {
         bytes
     }
 
-    fn read(visibility: u8, options: u8) -> photon_game::scoreboard::TeamParameters {
+    fn read(visibility: u8, options: u8) -> photon_core::scoreboard::TeamParameters {
         let bytes = parameters(visibility, options);
         read_team_parameters(&mut bytes.as_slice()).expect("parameters")
     }
