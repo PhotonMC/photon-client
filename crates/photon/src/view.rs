@@ -129,8 +129,7 @@ pub fn player_camera(
     fov: f32,
     far: f32,
     eye: [f32; 3],
-    y_rot: f32,
-    x_rot: f32,
+    [y_rot, x_rot]: [f32; 2],
     bob: [[f32; 4]; 4],
 ) -> [[f32; 4]; 4] {
     let (right, up, forward) = view_basis(y_rot, x_rot);

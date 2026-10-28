@@ -724,7 +724,7 @@
 "crates/photon-oracle/src/particles.rs::particle_engine_result" = 160
 "crates/photon-oracle/src/particles.rs::particle_quads_result" = 62
 "crates/photon-oracle/src/particles.rs::particle_terrain_result" = 148
-"crates/photon-oracle/src/particles/factory.rs::particle_of" = 287
+"crates/photon-oracle/src/particles/factory.rs::particle_of" = 285
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_player_position_result" = 137
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passenger_position_result" = 151
 "crates/photon-oracle/src/passenger_positions.rs::client_world_entity_passengers_result" = 78
@@ -865,12 +865,12 @@
 "crates/photon-world/src/particles/drip.rs::drip_of" = 66
 "crates/photon-world/src/particles/explosion.rs::ParticleEngine::explosion_particle" = 67
 "crates/photon-world/src/particles/firework.rs::Particle::firework_starter_tick" = 74
-"crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 104
+"crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 103
 "crates/photon-world/src/particles/level_events.rs::ParticleEngine::level_event" = 77
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::last_level_event" = 76
 "crates/photon-world/src/particles/level_events_last.rs::ParticleEngine::sculk_charge" = 104
 "crates/photon-world/src/particles/resources.rs::ParticleResources::create" = 96
-"crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 85
+"crates/photon-world/src/particles/resources.rs::ParticleResources::create_own" = 84
 "crates/photon-world/src/particles/resources.rs::provider_of" = 73
 "crates/photon-world/src/particles/water.rs::Particle::water_tick" = 91
 "crates/photon-world/src/player/motion.rs::ClientPlayerState::new" = 67
@@ -917,7 +917,6 @@
 "crates/photon/src/overlays/wear.rs::entity_shadows" = 87
 "crates/photon/src/overlays/wear.rs::remote_players" = 71
 "crates/photon/src/particles.rs::Particles::vertices" = 78
-"crates/photon/src/play/camera.rs::Play::frame_camera" = 61
 "crates/photon/src/play/draw.rs::Play::draw" = 75
 "crates/photon/src/play/ticks.rs::Play::start" = 148
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
@@ -1013,10 +1012,7 @@
 "crates/photon-world/src/collision.rs::select_step_up_movement" = 7
 "crates/photon-world/src/entity/pose.rs::refresh_entity_dimensions" = 7
 "crates/photon-world/src/input/keyboard.rs::Input::new" = 7
-"crates/photon-world/src/light/sky_sources.rs::ChunkSkyLightSources::update_edge" = 7
-"crates/photon-world/src/particles/hit.rs::Particle::hit_provider" = 7
 "crates/photon-world/src/particles/smoke.rs::Particle::ash_smoke" = 7
-"crates/photon/src/view.rs::player_camera" = 7
 "crates/photon/src/world/atmosphere.rs::world_border" = 7
 
 [unsafe]

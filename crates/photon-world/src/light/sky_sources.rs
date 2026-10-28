@@ -383,10 +383,8 @@ impl ChunkSkyLightSources {
             &state,
             index,
             current,
-            (x, y + 1, z),
-            top,
-            (x, y, z),
-            middle,
+            ((x, y + 1, z), top),
+            ((x, y, z), middle),
         ) {
             return true;
         }
@@ -395,26 +393,19 @@ impl ChunkSkyLightSources {
             &state,
             index,
             current,
-            (x, y, z),
-            middle,
-            (x, y - 1, z),
-            bottom,
+            ((x, y, z), middle),
+            ((x, y - 1, z), bottom),
         )
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the reference method's parameters, in its order"
-    )]
+    /// The reference's `updateEdge`, with each position paired with its state.
     pub(super) fn update_edge(
         &mut self,
         state: &impl Fn(i32, i32, i32) -> BlockStateId,
         index: usize,
         old_top_edge_y: i32,
-        top_pos: (i32, i32, i32),
-        top_state: BlockStateId,
-        bottom_pos: (i32, i32, i32),
-        bottom_state: BlockStateId,
+        (top_pos, top_state): ((i32, i32, i32), BlockStateId),
+        (bottom_pos, bottom_state): ((i32, i32, i32), BlockStateId),
     ) -> bool {
         let checked = top_pos.1;
         if is_edge_occluded(top_state, bottom_state) {

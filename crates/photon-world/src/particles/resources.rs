@@ -493,8 +493,7 @@ impl ParticleResources {
                 world,
                 random(),
                 motion,
-                sprites,
-                engine_random,
+                (sprites, engine_random),
                 data,
             );
         }

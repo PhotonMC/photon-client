@@ -119,6 +119,25 @@ impl Play {
         Ok(())
     }
 
+    /// What the locator bar needs of the camera.
+    fn locator_camera(
+        &self,
+        camera: Vec3,
+        [y_rot, x_rot]: [f32; 2],
+        fov: f32,
+        far: f32,
+    ) -> photon_gui::hud::locator::LocatorCamera {
+        photon_gui::hud::locator::LocatorCamera {
+            y_rot,
+            x_rot,
+            position: [camera.x, camera.y, camera.z],
+            fov,
+            size: (self.aspect, 1.0),
+            z_near: 0.05,
+            z_far: far,
+        }
+    }
+
     /// `Camera.alignWithEntity` and the projection: the front view turns
     /// round, and a detached camera backs away from the eyes until a block
     /// is in the way.
@@ -149,15 +168,8 @@ impl Play {
         let render_distance = self.effective_render_distance();
         let far = ((render_distance * 16 * 4) as f32).max((CLOUD_RANGE * 16) as f32);
         let bob = self.view_motion(player, partial as f32);
-        let locator = photon_gui::hud::locator::LocatorCamera {
-            y_rot,
-            x_rot,
-            position: [camera.x, camera.y, camera.z],
-            fov,
-            size: (self.aspect, 1.0),
-            z_near: 0.05,
-            z_far: far,
-        };
+        let locator = self.locator_camera(camera, [y_rot, x_rot], fov, far);
+        let projection = |eye| player_camera(self.aspect, fov, far, eye, [y_rot, x_rot], bob);
         FrameCamera {
             locator,
             partial,
@@ -165,8 +177,8 @@ impl Play {
             camera,
             relative,
             rotation: (y_rot, x_rot),
-            view_projection: player_camera(self.aspect, fov, far, relative, y_rot, x_rot, bob),
-            sky_view_projection: player_camera(self.aspect, fov, far, [0.0; 3], y_rot, x_rot, bob),
+            view_projection: projection(relative),
+            sky_view_projection: projection([0.0; 3]),
             render_distance,
             fog: crate::world::fog::fog_view(
                 &self.session,

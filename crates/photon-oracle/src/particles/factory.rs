@@ -142,8 +142,7 @@ pub(super) fn particle_of(
                 world,
                 random,
                 motion,
-                sprites,
-                &mut engine_random,
+                (sprites, &mut engine_random),
                 data,
             )
             .ok_or_else(|| "no shriek".to_owned())
@@ -283,8 +282,7 @@ pub(super) fn particle_of(
             world,
             random,
             motion,
-            sprites,
-            &mut engine_random,
+            (sprites, &mut engine_random),
             event_data(row, name),
         )
         .ok_or_else(|| format!("unknown particle {name}")),

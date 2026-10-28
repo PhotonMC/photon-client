@@ -102,14 +102,12 @@ pub(super) enum Emitter {
 impl Particle {
     /// The provider of a type of this file by its name; nothing for another type, or where its
     /// options are not the ones it reads.
-    #[allow(clippy::too_many_arguments)]
     pub fn hit_provider(
         name: &str,
         world: &ClientWorld,
         random: RandomSource,
         (at, push): ((f64, f64, f64), (f64, f64, f64)),
-        sprites: &Arc<SpriteSet>,
-        provider_random: &mut RandomSource,
+        (sprites, provider_random): (&Arc<SpriteSet>, &mut RandomSource),
         data: ParticleData,
     ) -> Option<Self> {
         let mark = Mark::of(name)?;
