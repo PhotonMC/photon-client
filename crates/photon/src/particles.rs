@@ -1,6 +1,7 @@
 //! The level's particles on the client: the engine, the random sources the reference seeds from
 //! the clock, and the sprite lists of `particles/*.json`.
 
+mod reload;
 mod tracking;
 
 use photon_core::identifier::Identifier;

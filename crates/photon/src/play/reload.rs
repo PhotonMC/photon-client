@@ -177,6 +177,7 @@ impl Play {
     /// The entity pictures and the particles, which share the entity texture atlas.
     fn rebuild_entities(&mut self, root: &str, data_root: &std::path::Path) -> Result<()> {
         let mut particles = crate::particles::Particles::load(root);
+        particles.carry_over(&mut self.particles);
         particles.set_terrain(
             Arc::clone(&self.block_renderer),
             Arc::clone(&self.biome_tints),

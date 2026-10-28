@@ -180,6 +180,14 @@ pub struct ParticleEngine {
 const SPORE_BLOSSOM_LIMIT: i32 = 1000;
 
 impl ParticleEngine {
+    /// A resource reload keeps the particles alive (`ParticleEngine.clearParticles` runs only
+    /// from `setLevel`): the engine takes the sprites of the freshly loaded one and gives its
+    /// own state to it.
+    pub fn carry_over(&mut self, old: &mut Self) {
+        std::mem::swap(&mut self.resources, &mut old.resources);
+        std::mem::swap(self, old);
+    }
+
     /// An engine whose own random source (the one it picks a flame's picture and lets
     /// particles in past the reservoir's start with) is this one.
     pub fn new(random: RandomSource, resources: ParticleResources) -> Self {

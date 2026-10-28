@@ -40,6 +40,41 @@ impl ElderGuardian {
 mod tests {
     use super::*;
 
+    /// A resource reload does not clear the particles (`ParticleEngine.clearParticles` runs only
+    /// from `setLevel`).
+    #[test]
+    fn a_reload_keeps_the_particles_alive() {
+        use crate::{ClientWorld, DimensionBounds};
+        use photon_core::math::Vec3;
+        use photon_core::random::RandomSource;
+
+        let world = ClientWorld::new(DimensionBounds::default());
+        let mut old =
+            super::super::ParticleEngine::new(RandomSource::create(0), Default::default());
+        let view = super::super::AddView {
+            camera: Vec3::new(0.0, 0.0, 0.0),
+            status: super::super::ParticleStatus::All,
+        };
+        let spawn = super::super::Spawn {
+            type_id: photon_data::particle_type::id("elder_guardian").unwrap(),
+            data: super::super::ParticleData::Plain,
+            override_limiter: true,
+            always_show: false,
+            at: (0.0, 0.0, 0.0),
+            push: (0.0, 0.0, 0.0),
+        };
+        let mut level_random = RandomSource::create(1);
+        let mut random = || RandomSource::create(2);
+        old.add_particle(&world, &spawn, &view, &mut level_random, &mut random);
+        for _ in 0..2 {
+            old.tick(&world, &view, &mut level_random, &mut random);
+        }
+        let mut fresh =
+            super::super::ParticleEngine::new(RandomSource::create(5), Default::default());
+        fresh.carry_over(&mut old);
+        assert_eq!(fresh.elder_guardians().count(), 1);
+    }
+
     #[test]
     fn the_engine_makes_one_for_its_type_and_it_goes_after_thirty_ticks() {
         use crate::{ClientWorld, DimensionBounds};
