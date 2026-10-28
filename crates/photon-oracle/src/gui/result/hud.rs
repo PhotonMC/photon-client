@@ -248,12 +248,9 @@ pub(super) fn hud_hotbar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value
     let mut draw_item = no_items;
     hud_of(row)?.draw(
         &mut frame,
-        atlas,
-        font,
-        int("width"),
-        int("height"),
-        &input,
-        row["scope"]["millis"].as_u64().unwrap_or(0).into(),
+        (atlas, font),
+        (int("width"), int("height")),
+        (&input, row["scope"]["millis"].as_u64().unwrap_or(0).into()),
         &mut draw_item,
     );
 

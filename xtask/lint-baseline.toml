@@ -891,7 +891,7 @@
 "crates/photon/src/controls/settings.rs::Controls::controls_event" = 81
 "crates/photon/src/controls/social.rs::Controls::social_event" = 80
 "crates/photon/src/equipment/armor.rs::Armor::vertices" = 73
-"crates/photon/src/gui/draw.rs::Gui::draw" = 241
+"crates/photon/src/gui/draw.rs::Gui::draw" = 238
 "crates/photon/src/mobs/animals/farm_animals.rs::appearance" = 75
 "crates/photon/src/mobs/animals/farm_animals.rs::pose" = 72
 "crates/photon/src/mobs/animals/farm_animals/gear.rs::layers" = 90
@@ -981,8 +981,6 @@
 "crates/photon/src/window_probe/version.rs::grid_mesh" = 5
 
 [fn-params]
-"crates/photon-gui/src/hud.rs::Hud::build" = 7
-"crates/photon-gui/src/hud.rs::Hud::draw" = 8
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 

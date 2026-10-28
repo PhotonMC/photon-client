@@ -205,12 +205,9 @@ impl Gui {
             }
         } else {
             self.hud.build(
-                &self.atlas,
-                &self.font,
-                size.gui_scaled_width(),
-                size.gui_scaled_height(),
-                &hud_input,
-                self.started_at.elapsed().as_millis(),
+                (&self.atlas, &self.font),
+                (size.gui_scaled_width(), size.gui_scaled_height()),
+                (&hud_input, self.started_at.elapsed().as_millis()),
                 &mut draw_item,
             )
         };

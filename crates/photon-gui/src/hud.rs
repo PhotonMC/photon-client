@@ -211,19 +211,12 @@ impl Hud {
 
     /// `Hud.extractRenderState` for what this client has: the crosshair,
     /// then the hotbar and its decorations.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn draw(
         &mut self,
         frame: &mut GuiFrame,
-        atlas: &GuiAtlas,
-        font: &photon_render::gui::font::Font,
-        width: i32,
-        height: i32,
-        input: &HudInput,
-        now_millis: u128,
+        (atlas, font): (&GuiAtlas, &photon_render::gui::font::Font),
+        (width, height): (i32, i32),
+        (input, now_millis): (&HudInput, u128),
         draw_item: &mut ItemDrawer<'_>,
     ) {
         self.camera_overlays_and_crosshair(frame, atlas, (width, height), (input, now_millis));
@@ -242,18 +235,11 @@ impl Hud {
     }
 
     /// `draw` into a new frame.
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the parameters of the reference's `GuiGraphics` call"
-    )]
     pub fn build(
         &mut self,
-        atlas: &GuiAtlas,
-        font: &photon_render::gui::font::Font,
-        width: i32,
-        height: i32,
-        input: &HudInput,
-        now_millis: u128,
+        (atlas, font): (&GuiAtlas, &photon_render::gui::font::Font),
+        size: (i32, i32),
+        (input, now_millis): (&HudInput, u128),
         draw_item: &mut ItemDrawer<'_>,
     ) -> GuiFrame {
         let mut frame = GuiFrame {
@@ -261,7 +247,11 @@ impl Hud {
             ..GuiFrame::default()
         };
         self.draw(
-            &mut frame, atlas, font, width, height, input, now_millis, draw_item,
+            &mut frame,
+            (atlas, font),
+            size,
+            (input, now_millis),
+            draw_item,
         );
         frame
     }
