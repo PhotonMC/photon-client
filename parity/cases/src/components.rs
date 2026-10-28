@@ -236,3 +236,14 @@ pub fn adventure_blocks(blocks: &[i64]) -> String {
     let ids: String = blocks.iter().map(|id| vi(*id)).collect();
     format!("{}01{}{ids}00000000", vi(1), vi(blocks.len() as i64 + 1))
 }
+
+/// A `can_break` predicate naming one block and one state property: `matcher` is the value
+/// matcher's hex (an exact value, or a range of two optional bounds).
+pub fn adventure_state(block: i64, property: &str, matcher: &str) -> String {
+    format!("{}01{}{}01{}{}{matcher}000000", vi(1), vi(2), vi(block), vi(1), text(property))
+}
+
+/// A predicate naming a block tag.
+pub fn adventure_tag(tag: &str) -> String {
+    format!("{}01{}{}00000000", vi(1), vi(0), text(tag))
+}

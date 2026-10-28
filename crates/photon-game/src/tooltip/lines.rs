@@ -297,6 +297,15 @@ fn adventure_tooltips(values: &Values, shows: &dyn Fn(i32) -> bool, out: &mut Ve
     }
 }
 
+/// `Block.getDescriptionId`: a wall variant (torch, sign, banner, skull) is named after the block
+/// it stands for, which the coral fans' wall variants are not.
+fn block_description_key(block: &photon_data::block::definition::Block) -> String {
+    let wall = block.name.contains("wall_") && !block.name.ends_with("coral_wall_fan");
+    let named = if wall { block.item_name() } else { block.name };
+    let (namespace, path) = named.split_once(':').unwrap_or(("minecraft", named));
+    format!("block.{namespace}.{path}")
+}
+
 /// `AdventureModePredicate.addToTooltip` after its header.
 fn adventure_lines(value: &[u8], header: &str, out: &mut Vec<Component>) {
     use crate::item_components::{AdventureTooltip, adventure_tooltip};
@@ -311,12 +320,10 @@ fn adventure_lines(value: &[u8], header: &str, out: &mut Vec<Component>) {
         }
         AdventureTooltip::Blocks(blocks) => {
             for block in blocks {
-                let name = photon_data::block::registry::BLOCKS
-                    .get(block as usize)
-                    .map(|block| block.name.replacen(':', ".", 1));
-                if let Some(name) = name {
+                if let Some(block) = photon_data::block::registry::BLOCKS.get(block as usize) {
                     out.push(
-                        Component::translatable(format!("block.{name}")).with_colour("dark_gray"),
+                        Component::translatable(block_description_key(block))
+                            .with_colour("dark_gray"),
                     );
                 }
             }

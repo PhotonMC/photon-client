@@ -353,7 +353,7 @@ impl GameMode {
     ) -> UseResult {
         // A player who may not build passes, unless the stack's `can_place_on`
         // allows the block.
-        if ctx.mode == ClientPlayerGameMode::Adventure && !ctx.can_place_on(aim) {
+        if ctx.mode == ClientPlayerGameMode::Adventure && !ctx.can_place_on(hand, aim) {
             return UseResult::Pass;
         }
         match rules::item_use_on_owner(item) {

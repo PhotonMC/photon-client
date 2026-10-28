@@ -6,7 +6,7 @@
 use serde_json::{Value, json};
 
 use super::{breaking, place};
-use crate::components::{CAN_BREAK, adventure_blocks, patch};
+use crate::components::{CAN_BREAK, adventure_blocks, adventure_state, adventure_tag, patch, text};
 use crate::movement::player::scene::keys;
 use crate::movement::world::{cat, put, put_with};
 
@@ -177,6 +177,37 @@ fn breaking_rows_2() -> Vec<Value> {
 
 /// Starting to break a redstone ore lights it: only when breaking starts from no progress, and
 /// not in adventure mode, where the block action is restricted.
+/// `can_break` predicates beyond a plain block set: a block tag, and a state property's value
+/// (booleans order false before true).
+fn adventure_rows() -> Vec<Value> {
+    const LEVER: i64 = 258;
+    let lever = |powered: &str| vec![put_with(0, 64, 2, "minecraft:lever", &[("powered", powered)])];
+    let swing = || [hits(1).clicks(1).go(), hits(4).go()].concat();
+    let range = |min: &str| format!("0001{}00", text(min));
+    let held = |label: &str, blocks: Vec<Value>, can_break: String| {
+        breaking(label, blocks, swing())
+            .main_hand("minecraft:stick")
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_BREAK, can_break)]))
+            .row()
+    };
+    vec![
+        held("adventure-can-break-tag", vec![place(&target(), "minecraft:dirt")], adventure_tag("minecraft:dirt")),
+        held(
+            "adventure-can-break-other-tag",
+            vec![place(&target(), "minecraft:dirt")],
+            adventure_tag("minecraft:logs"),
+        ),
+        held("adventure-can-break-bool-min-true", lever("false"), adventure_state(LEVER, "powered", &range("true"))),
+        held("adventure-can-break-bool-min-false", lever("false"), adventure_state(LEVER, "powered", &range("false"))),
+        held(
+            "adventure-can-break-exact",
+            lever("false"),
+            adventure_state(LEVER, "powered", &format!("01{}", text("false"))),
+        ),
+    ]
+}
+
 fn ore_rows() -> Vec<Value> {
     let ore = |name: &str, lit: &str| vec![put_with(0, 64, 2, name, &[("lit", lit)])];
     let first_click = || hits(1).clicks(1).go();
@@ -203,5 +234,5 @@ fn ore_rows() -> Vec<Value> {
 }
 
 pub fn rows() -> Vec<Value> {
-    [breaking_rows_1(), breaking_rows_2(), ore_rows()].concat()
+    [breaking_rows_1(), breaking_rows_2(), ore_rows(), adventure_rows()].concat()
 }

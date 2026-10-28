@@ -401,6 +401,20 @@ fn bucket_rows_3() -> Vec<Value> {
             .game_mode("adventure")
             .x_rot(look)
             .row(),
+        using("water-bucket-adventure-can-place-on", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[1]))]))
+            .x_rot(look)
+            .row(),
+        using("water-bucket-adventure-other-block", vec![], run(&top_of))
+            .main_hand("minecraft:water_bucket")
+            .count(1)
+            .game_mode("adventure")
+            .patch(patch(&[(CAN_PLACE_ON, adventure_blocks(&[9]))]))
+            .x_rot(look)
+            .row(),
     ]
 }
 

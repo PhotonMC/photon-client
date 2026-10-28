@@ -114,7 +114,8 @@ impl Context<'_> {
     pub(super) fn block_action_restricted(&self, pos: (i32, i32, i32)) -> bool {
         match self.mode {
             ClientPlayerGameMode::Spectator => true,
-            ClientPlayerGameMode::Adventure => !self.main_hand_adventure_matches(
+            ClientPlayerGameMode::Adventure => !self.held_adventure_matches(
+                MAIN_HAND,
                 photon_world::item_components::ids::CAN_BREAK,
                 self.state_at(pos),
             ),
@@ -123,24 +124,30 @@ impl Context<'_> {
     }
 
     /// `ItemStack.canPlaceOnBlockInAdventureMode` for the block the aim is on.
-    pub(super) fn can_place_on(&self, aim: super::Aim) -> bool {
+    pub(super) fn can_place_on(&self, hand: u8, aim: super::Aim) -> bool {
         let super::Aim::Block { x, y, z, .. } = aim else {
             return false;
         };
-        self.main_hand_adventure_matches(
+        self.held_adventure_matches(
+            hand,
             photon_world::item_components::ids::CAN_PLACE_ON,
             self.state_at((x, y, z)),
         )
     }
 
-    /// `ItemStack.canBreakBlockInAdventureMode` / `canPlaceOnBlockInAdventureMode` of the main
-    /// hand's stack, by the component's id, for a block state.
-    pub(super) fn main_hand_adventure_matches(&self, component: i32, state: BlockStateId) -> bool {
+    /// `ItemStack.canBreakBlockInAdventureMode` / `canPlaceOnBlockInAdventureMode` of the
+    /// stack in `hand`, by the component's id, for a block state.
+    pub(super) fn held_adventure_matches(
+        &self,
+        hand: u8,
+        component: i32,
+        state: BlockStateId,
+    ) -> bool {
         use photon_world::item_components::{adventure_matches, adventure_predicate};
         let Some(Some(value)) = self
             .world
             .local_player()
-            .and_then(|local| local.inventory_slot(36 + self.selected_slot as i16))
+            .and_then(|local| local.inventory_slot(self.hand_slot(hand)))
             .and_then(|stack| stack.patched(component))
         else {
             return false;

@@ -99,10 +99,15 @@ fn effect_time_rows() -> Vec<Tooltip> {
 fn adventure_rows() -> Vec<Tooltip> {
     let with = |label, added: Vec<(i64, String)>| Tooltip { added, ..row(label, "stick") };
     vec![
-        with("can break", vec![(CAN_BREAK, adventure_blocks(&[1, 9, 1]))]),
+        with("can break", vec![(CAN_BREAK, adventure_blocks(&[1, 9, 1, 258, 195]))]),
         with(
             "can place and break",
             vec![(CAN_BREAK, adventure_blocks(&[9])), (CAN_PLACE_ON, adventure_blocks(&[1, 8]))],
+        ),
+        // Wall variants named after the block they stand for, except the coral fans.
+        with(
+            "can break wall variants",
+            vec![(CAN_BREAK, adventure_blocks(&[274, 224, 579, 783, 778, 454, 460, 255, 202, 388]))],
         ),
         with("can break unknown", vec![(CAN_BREAK, format!("{}{}", vi(1), "0000000000"))]),
     ]

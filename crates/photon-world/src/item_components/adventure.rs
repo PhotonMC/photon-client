@@ -1,8 +1,8 @@
 //! `AdventureModePredicate` (`can_break`, `can_place_on`): the blocks an adventure player's stack
 //! may break or be placed on.
 //!
-//! A predicate that tests block entity data (`nbt`, data components) never matches here: the
-//! client keeps no block entity data to test it against.
+//! A predicate that tests block entity data (`nbt`, data components) never matches here: those
+//! tests are not ported.
 
 use super::*;
 use photon_core::ids::BlockStateId;
@@ -26,7 +26,7 @@ enum Matcher {
 pub struct BlockPredicate {
     blocks: Option<Blocks>,
     properties: Vec<(String, Matcher)>,
-    /// It tests block entity data, which this does not have.
+    /// It tests block entity data, which is not ported.
     needs_entity: bool,
 }
 
@@ -149,7 +149,7 @@ pub fn adventure_tooltip(value: &[u8]) -> Option<AdventureTooltip> {
 }
 
 impl BlockPredicate {
-    /// `BlockPredicate.matches(BlockInWorld)` for a block with no entity data.
+    /// `BlockPredicate.matches(BlockInWorld)`, without the block entity tests.
     fn matches(&self, state: BlockStateId, in_tag: &impl Fn(&str) -> bool) -> bool {
         let Some((block, offset)) = photon_data::block::registry::block_for_state(state) else {
             return false;
@@ -178,15 +178,21 @@ impl BlockPredicate {
                     .properties_at(offset)
                     .and_then(|all| all.into_iter().find(|(key, _)| key == name))
                     .map(|(_, value)| value);
-                current.is_some_and(|value| matcher.accepts(property.values, value))
+                current.is_some_and(|value| matcher.accepts(property, value))
             })
     }
 }
 
 impl Matcher {
-    /// Whether the value passes, by its place among the property's values.
-    fn accepts(&self, values: &[&str], current: &str) -> bool {
-        let place = |text: &str| values.iter().position(|value| *value == text);
+    /// Whether the value passes, by its place among the property's values (`compareTo`: booleans
+    /// order false first, where the registry lists true first).
+    fn accepts(&self, property: &photon_data::block::definition::Property, current: &str) -> bool {
+        let values = property.values;
+        let boolean = property.kind == photon_data::block::definition::PropertyKind::Boolean;
+        let place = |text: &str| {
+            let at = values.iter().position(|value| *value == text)?;
+            Some(if boolean { values.len() - 1 - at } else { at })
+        };
         match self {
             Self::Exact(wanted) => place(wanted).is_some() && wanted == current,
             Self::Range(min, max) => {

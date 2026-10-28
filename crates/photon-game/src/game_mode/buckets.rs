@@ -62,12 +62,18 @@ pub(super) fn bucket_use(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> UseRe
     let Some(hit) = pov_hit(ctx, content == Content::Empty) else {
         return UseResult::Pass;
     };
-    // `Player.mayUseItemAt`: a player who may not build needs the stack's `can_place_on`, which is
-    // not evaluated.
-    if !ctx.player.abilities().may_build() {
+    let (pos, direction) = (pos_of(&hit), hit.direction);
+    // `Player.mayUseItemAt` of the block beside the face: a player who may not build needs the
+    // stack's `can_place_on` to name the block the face is on.
+    if !ctx.player.abilities().may_build()
+        && !ctx.held_adventure_matches(
+            hand,
+            photon_world::item_components::ids::CAN_PLACE_ON,
+            ctx.state_at(pos),
+        )
+    {
         return UseResult::Fail;
     }
-    let (pos, direction) = (pos_of(&hit), hit.direction);
     let clicked = ctx.state_at(pos);
     let container = water_container(ctx, content, clicked).is_some();
     let place_at = if container {
