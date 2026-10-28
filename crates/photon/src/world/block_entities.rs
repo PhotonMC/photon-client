@@ -3,7 +3,6 @@
 //! as far swung as the server's block events have it.
 
 use photon_core::direction::Direction;
-use photon_core::math::Vec3;
 use photon_net::connection::PlaySession;
 use photon_render::block_entity::banner;
 use photon_render::block_entity::bell;
@@ -18,7 +17,7 @@ use photon_render::scene::Vertex;
 use photon_world::{BannerView, DYES, ShulkerBoxView, SkullBlockView};
 
 use crate::mobs::MobModels;
-use crate::overlays::{FrameView, packed_light};
+use crate::overlays::{FrameView, block_light};
 use crate::skins::{Skins, Who, profile};
 
 /// `ChestRenderer.xmasTextures`, which the renderer reads once when it is made: the date at the
@@ -119,11 +118,9 @@ pub fn block_entities(
         ) else {
             continue;
         };
-        let at =
-            |pos: (i32, i32, i32)| Vec3::new(f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
-        let mut light = packed_light(world, at((x, y, z)));
+        let mut light = block_light(world, (x, y, z));
         if let Some(other) = chest.partner {
-            light = max_light(light, packed_light(world, at(other)));
+            light = max_light(light, block_light(world, other));
         }
         let open = world.chest_openness((x, y, z), chest.partner, partial);
         model.setup_chest(eased_open(open));
@@ -199,10 +196,7 @@ fn other_block_entity(
 
 /// The pose of a block's corner and the light it is lit by.
 fn placement(session: &PlaySession, view: FrameView, (x, y, z): (i32, i32, i32)) -> (Pose, i32) {
-    let light = packed_light(
-        session.world(),
-        Vec3::new(f64::from(x), f64::from(y), f64::from(z)),
-    );
+    let light = block_light(session.world(), (x, y, z));
     let mut base = Pose::default();
     base.translate(
         (x - view.origin[0]) as f32,
@@ -362,7 +356,7 @@ fn shulker_box_vertices(
     ) else {
         return Vec::new();
     };
-    let light = packed_light(world, Vec3::new(f64::from(x), f64::from(y), f64::from(z)));
+    let light = block_light(world, (x, y, z));
     model.setup_shulker_box(world.shulker_box_progress((x, y, z), view.partial as f32));
     let mut base = Pose::default();
     base.translate(
