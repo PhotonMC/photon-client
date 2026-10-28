@@ -261,7 +261,9 @@ pub fn layer_vertices(
 /// What places the first-person hand.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HandView {
-    /// `isModelPartShown(RIGHT_SLEEVE)`: the arm wears its sleeve (`renderHand`'s `hasSleeve`).
+    /// The bare arm is the right (`getMainArm`); else the left, mirrored.
+    pub right_arm: bool,
+    /// `isModelPartShown(*_SLEEVE)` of that arm: it wears its sleeve (`renderHand`'s `hasSleeve`).
     pub sleeve: bool,
     /// The view bob's walked distance and bob.
     pub bob_walked: f32,
@@ -386,14 +388,14 @@ fn entity_light(normal: [f32; 3]) -> f32 {
 
 /// The first-person hand's triangles, in view space: the view bob, the
 /// hand's lag behind the view, then `ItemInHandRenderer.renderPlayerArm`
-/// for an empty right hand.
+/// for the empty main hand's arm.
 pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     let rad = Quaternion::degrees_to_radians;
     let sin = |value: f32| photon_core::math::mth_sin_f64(f64::from(value));
     let pi = std::f64::consts::PI as f32;
     let mut pose = view_pose(view);
-    // `renderPlayerArm`, the right arm.
-    let invert = 1.0_f32;
+    // `renderPlayerArm`: the right arm, or the left mirrored.
+    let invert = if view.right_arm { 1.0_f32 } else { -1.0 };
     let attack = view.attack;
     let sqrt_attack = f64::from(attack).sqrt() as f32;
     let x_swing = -0.3 * sin(sqrt_attack * pi);
@@ -420,7 +422,12 @@ pub fn hand_vertices(model: &mut PlayerModel, view: &HandView) -> Vec<Vertex> {
     pose.translate(invert * 5.6, 0.0, 0.0);
     let light = crate::block::light::light_uv(view.light);
     let mut vertices = Vec::new();
-    for corners in model.render_arm(crate::entity::player_model::Arm::Right, &pose, view.sleeve) {
+    let arm = if view.right_arm {
+        crate::entity::player_model::Arm::Right
+    } else {
+        crate::entity::player_model::Arm::Left
+    };
+    for corners in model.render_arm(arm, &pose, view.sleeve) {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {

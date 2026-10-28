@@ -215,6 +215,7 @@ impl Play {
         self.resolve_head_skins(view);
         overlays::forget_gone_mannequins(self.session.world());
         overlays::set_local_layers(self.session.world());
+        overlays::set_local_main_arm(self.session.main_arm_is_left());
         let (mut held, invisible) = (Vec::new(), self.local_invisible());
         let models = &mut self.entity_vertices;
         models.clear();

@@ -39,7 +39,7 @@ pub fn packed_light(world: &photon_world::ClientWorld, at: Vec3) -> i32 {
 }
 
 /// `ItemInHandRenderer.submitHandsWithItems`: the arm when the main hand is
-/// empty, and each held stack in its hand, the main hand on the right. The
+/// empty, and each held stack in its hand, the main hand on the main arm's side. The
 /// swing is the main hand's, since which arm swings is not tracked yet.
 pub fn hands(
     player: &LocalPlayer,
@@ -112,7 +112,9 @@ fn item_in_hand_vertices(
 ) -> Vec<Vertex> {
     cache.set_cast(cast);
     // `ItemInHandRenderer`: the player's id plus the first-person context's ordinal.
-    cache.set_seed(player.entity_id().0 + if right { 4 } else { 3 });
+    // The side the hand is on: the main hand on the main arm's.
+    let arm_right = right != crate::overlays::local_main_arm_left();
+    cache.set_seed(player.entity_id().0 + if arm_right { 4 } else { 3 });
     let ticks = player.use_ticks_of(right);
     let hit_feedback = player.ticks_since_kinetic_hit(partial);
     let charge = cache.charge_duration(stack);
@@ -121,7 +123,7 @@ fn item_in_hand_vertices(
     photon_render::entity::player_renderer::held_item_vertices(
         hand_view,
         layers,
-        (right, attack, motion),
+        (arm_right, attack, motion),
         height,
     )
 }
@@ -158,8 +160,12 @@ fn hand_view(player: &LocalPlayer, view: FrameView, inverse_arm_height: f32) -> 
     let (x_bob, y_bob) = player.hand_bob(partial);
     let view_x_rot = player.rotation().1;
     let view_y_rot = player.view_y_rot(partial);
+    let right_arm = !crate::overlays::local_main_arm_left();
+    // `RIGHT_SLEEVE` is bit 3, `LEFT_SLEEVE` bit 2.
+    let sleeve_bit = if right_arm { 3 } else { 2 };
     HandView {
-        sleeve: crate::overlays::local_hidden_layers() & (1 << 3) == 0,
+        right_arm,
+        sleeve: crate::overlays::local_hidden_layers() & (1 << sleeve_bit) == 0,
         bob_walked: walked,
         bob,
         view_x_rot,

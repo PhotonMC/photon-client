@@ -6,6 +6,11 @@ impl PlaySession {
         &self.world
     }
 
+    /// The local player's main arm is the left (`Options.mainHand`, as the server was told).
+    pub fn main_arm_is_left(&self) -> bool {
+        self.link.client_information.main_hand == photon_protocol::configuration::MainHand::Left
+    }
+
     /// Where the world reads what falls from the sky (`Level.isRainingAt`).
     pub fn set_precipitation(
         &mut self,

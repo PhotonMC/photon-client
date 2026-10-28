@@ -110,6 +110,17 @@ pub fn set_local_layers(world: &photon_world::ClientWorld) {
     LOCAL_LAYERS.store(layers, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// The local player's main arm is the left (`Player.getMainArm`), set once a frame.
+static LOCAL_MAIN_LEFT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_local_main_arm(left: bool) {
+    LOCAL_MAIN_LEFT.store(left, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn local_main_arm_left() -> bool {
+    LOCAL_MAIN_LEFT.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// The local player's hidden skin layers, as `PlayerRenderState.hidden_layers` takes them.
 pub fn local_hidden_layers() -> u8 {
     !LOCAL_LAYERS.load(std::sync::atomic::Ordering::Relaxed)
