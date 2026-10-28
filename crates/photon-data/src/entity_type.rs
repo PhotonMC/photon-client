@@ -7,8 +7,8 @@ use crate::tables::entity_picks::ENTITY_PICKS;
 use crate::tables::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
 
 /// Every type's name, in id order.
-pub fn names() -> &'static [&'static str] {
-    &ENTITY_TYPES
+pub fn names() -> impl Iterator<Item = &'static str> {
+    crate::named::names(&ENTITY_TYPES)
 }
 
 /// The name of the type with this id (`minecraft:pig`).
@@ -16,7 +16,7 @@ pub fn name(id: EntityTypeId) -> Option<&'static str> {
     usize::try_from(id.0)
         .ok()
         .and_then(|index| ENTITY_TYPES.get(index))
-        .copied()
+        .map(|entry| entry.name)
 }
 
 /// `EntityType.isAllowedInPeaceful`: false for the types built with `notInPeaceful`.
@@ -28,7 +28,7 @@ pub fn allowed_in_peaceful(name: &str) -> bool {
 pub fn id(name: &str) -> Option<EntityTypeId> {
     ENTITY_TYPES
         .iter()
-        .position(|candidate| *candidate == name)
+        .position(|candidate| candidate.name == name)
         .map(|index| EntityTypeId(index as i32))
 }
 
@@ -37,7 +37,7 @@ pub fn id(name: &str) -> Option<EntityTypeId> {
 pub const fn named(name: &str) -> EntityTypeId {
     let mut index = 0;
     while index < ENTITY_TYPES.len() {
-        if crate::name::same(ENTITY_TYPES[index], name) {
+        if crate::name::same(ENTITY_TYPES[index].name, name) {
             return EntityTypeId(index as i32);
         }
         index += 1;

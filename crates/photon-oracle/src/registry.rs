@@ -40,8 +40,6 @@ fn entries(
     registries: &VersionRegistries,
     version: Version,
 ) -> Result<Vec<Value>, String> {
-    let strings =
-        |names: &[&str]| -> Vec<String> { names.iter().map(|name| (*name).to_owned()).collect() };
     Ok(match label {
         "item" => listed(
             ITEMS.iter().map(|item| item.name.to_owned()),
@@ -50,11 +48,11 @@ fn entries(
         "block" => blocks(version),
         "block_state" => block_states(registries, version),
         "entity_type" => listed(
-            strings(photon_data::entity_type::names()).into_iter(),
+            photon_data::entity_type::names().map(str::to_owned),
             &registries.entity_types,
         ),
         "sound_event" => listed(
-            strings(photon_data::sound_event::names()).into_iter(),
+            photon_data::sound_event::names().map(str::to_owned),
             &registries.sound_events,
         ),
         "particle_type" => listed(
@@ -64,11 +62,11 @@ fn entries(
             &registries.particle_types,
         ),
         "menu" => listed(
-            strings(photon_data::menu_type::names()).into_iter(),
+            photon_data::menu_type::names().map(str::to_owned),
             &registries.menu_types,
         ),
         "block_entity_type" => listed(
-            strings(photon_data::block_entity_type::names()).into_iter(),
+            photon_data::block_entity_type::names().map(str::to_owned),
             &registries.block_entity_types,
         ),
         _ => return Err("unknown registry".into()),

@@ -8,18 +8,18 @@ pub fn name(id: i32) -> Option<&'static str> {
     usize::try_from(id)
         .ok()
         .and_then(|index| SOUND_EVENTS.get(index))
-        .copied()
+        .map(|entry| entry.name)
 }
 
 /// Every event's name, in id order.
-pub fn names() -> &'static [&'static str] {
-    &SOUND_EVENTS
+pub fn names() -> impl Iterator<Item = &'static str> {
+    crate::named::names(&SOUND_EVENTS)
 }
 
 /// The id of the event with this name.
 pub fn id(name: &str) -> Option<i32> {
     SOUND_EVENTS
         .iter()
-        .position(|candidate| *candidate == name)
+        .position(|candidate| candidate.name == name)
         .map(|index| index as i32)
 }

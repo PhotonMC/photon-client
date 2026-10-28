@@ -10,10 +10,11 @@ use photon_core::version::Version;
 
 use crate::block::registry::BLOCKS;
 use crate::item::registry::ITEMS;
+use crate::named::presence;
 use crate::particle_type::PARTICLE_TYPES;
 use crate::tables::entity_types::ENTITY_TYPES;
+use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, MENU_TYPES};
 use crate::tables::sound_events::SOUND_EVENTS;
-use crate::{block_entity_type, menu_type};
 
 /// The numbering of one registry in one version: wire id <-> canonical id.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,18 +113,21 @@ pub struct VersionRegistries {
 impl VersionRegistries {
     /// The numbering of `version`, computed by walking the union list filtered to it.
     pub fn for_version(version: Version) -> Self {
-        let all = |len: usize| IdMap::from_presence(std::iter::repeat_n(true, len));
         Self {
             version,
             items: IdMap::from_presence(ITEMS.iter().map(|item| item.exists_in(version))),
             block_states: IdMap::from_presence(BLOCKS.iter().flat_map(|block| {
                 std::iter::repeat_n(block.exists_in(version), block.state_count() as usize)
             })),
-            entity_types: all(ENTITY_TYPES.len()),
-            sound_events: all(SOUND_EVENTS.len()),
-            particle_types: all(PARTICLE_TYPES.len()),
-            menu_types: all(menu_type::names().len()),
-            block_entity_types: all(block_entity_type::names().len()),
+            entity_types: IdMap::from_presence(presence(&ENTITY_TYPES, version)),
+            sound_events: IdMap::from_presence(presence(&SOUND_EVENTS, version)),
+            particle_types: IdMap::from_presence(
+                PARTICLE_TYPES
+                    .iter()
+                    .map(|particle| particle.exists_in(version)),
+            ),
+            menu_types: IdMap::from_presence(presence(&MENU_TYPES, version)),
+            block_entity_types: IdMap::from_presence(presence(&BLOCK_ENTITY_TYPES, version)),
         }
     }
 
@@ -206,6 +210,21 @@ mod tests {
         assert_eq!(map.wire_or_unknown(past_the_end), past_the_end);
         assert_eq!(map.canonical_or_unknown(-3), -3);
         assert_eq!(map.canonical_or_unknown(7), 7);
+    }
+
+    #[test]
+    fn a_named_entry_follows_its_span_into_the_numbering() {
+        use crate::named::Named;
+        // Only one version exists yet, so no span can leave a gap here; the gap itself is
+        // covered by `a_missing_entry_leaves_a_gap_and_shifts_the_ids_after_it`.
+        let entries = [
+            Named::new("minecraft:all"),
+            Named::new("minecraft:since").since(Version::V26_2),
+            Named::new("minecraft:until").until(Version::V26_2),
+        ];
+        let present: Vec<bool> = presence(&entries, Version::V26_2).collect();
+        assert_eq!(present, [true, true, true]);
+        assert!(IdMap::from_presence(present).is_identity());
     }
 
     #[test]

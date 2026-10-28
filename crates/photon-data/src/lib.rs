@@ -30,6 +30,7 @@ pub mod map;
 pub mod menu_type;
 pub mod merchant;
 mod name;
+pub mod named;
 pub mod particle_options;
 pub mod particle_type;
 pub mod particle_values;

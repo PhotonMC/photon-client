@@ -3,6 +3,8 @@
 //! The table is written from `ParticleTypes` and compared with the reference's own registry
 //! on every parity run (`particle_types`).
 
+use photon_core::version::{Version, VersionSpan};
+
 /// A particle type of the registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParticleType {
@@ -14,6 +16,15 @@ pub struct ParticleType {
     pub simple: bool,
     /// Whether the type carries a block state (`BlockParticleOption`).
     pub block_state: bool,
+    /// The versions that have the type.
+    pub versions: VersionSpan,
+}
+
+impl ParticleType {
+    /// Whether the type exists in `version`.
+    pub const fn exists_in(&self, version: Version) -> bool {
+        self.versions.contains(version)
+    }
 }
 
 const fn particle(
@@ -27,6 +38,7 @@ const fn particle(
         overrides_limiter,
         simple,
         block_state,
+        versions: VersionSpan::ALL,
     }
 }
 

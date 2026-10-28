@@ -460,8 +460,8 @@ fn registry_names(request: &Value) -> Result<Value, String> {
     for row in rows {
         out.push(json!({
             "label": string(row, "label")?,
-            "block_entity_types": photon_data::block_entity_type::names(),
-            "menu_types": photon_data::menu_type::names(),
+            "block_entity_types": photon_data::block_entity_type::names().collect::<Vec<_>>(),
+            "menu_types": photon_data::menu_type::names().collect::<Vec<_>>(),
             "stat_types": photon_data::stat::type_names(),
             "custom_stats": photon_data::stat::custom_names(),
             "custom_stat_formatters": photon_data::stat::custom_formatter_names(),
