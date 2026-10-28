@@ -106,3 +106,24 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
     assert_eq!(boat.boat_delta_rotation(), 0.0);
     assert_eq!(boat.paddle_state(), (false, false));
 }
+
+#[test]
+fn a_turn_through_the_half_circle_is_drawn_the_short_way_round() {
+    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    assert!(world.apply_entity(EntityInput {
+        entity_id: EntityId(37),
+        uuid: Uuid::new(1, 37),
+        type_id: photon_core::ids::EntityTypeId(89),
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        movement: (0.0, 0.0, 0.0),
+        rotation: (179.0, 0.0, 0.0),
+        data: 0,
+    }));
+    let entity = world.entities_mut().at_mut(EntityId(37)).expect("the boat");
+    entity.old_y_rot = photon_core::java_float::JavaF32::new(179.0);
+    entity.y_rot = photon_core::java_float::JavaF32::new(-179.0);
+    // Halfway between 179 and -179 is the far side (180), not the front (0).
+    assert!((entity.y_rot_at(0.5).abs() - 180.0).abs() < 1.0e-3);
+}

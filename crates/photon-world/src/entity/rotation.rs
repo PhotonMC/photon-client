@@ -76,14 +76,14 @@ impl ClientEntity {
         )
     }
 
-    /// `Entity.getYRot(partialTick)`: the turn between two ticks, a plain
-    /// lerp (a boat's own, which does not wrap).
+    /// `Entity.getYRot(partialTick)`: the turn between two ticks, by the short way round
+    /// (`Mth.rotLerp`), so a turn through the half circle does not swing back.
     pub fn y_rot_at(&self, partial_tick: f32) -> f32 {
         let current = self.rotation().0;
         if partial_tick == 1.0 {
             return current;
         }
-        mth_lerp_f32(partial_tick, self.previous_rotation().0, current)
+        mth_rot_lerp_f32(partial_tick, self.previous_rotation().0, current)
     }
 
     /// `Entity.getXRot(partialTick)`: the pitch between two ticks, a plain lerp.
