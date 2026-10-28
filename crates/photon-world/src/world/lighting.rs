@@ -56,6 +56,8 @@ impl ClientWorld {
         {
             return (x, y + eye_height, z);
         }
+        // `position()` and `blockPosition()`: this tick's, not between two ticks.
+        let (x, y, z) = entity.position();
         // `getDimensionsMarker(false)`: a small stand's, or the type's.
         let (width, height) = if entity.armor_stand().is_small() {
             (0.25, 0.9875_f32)

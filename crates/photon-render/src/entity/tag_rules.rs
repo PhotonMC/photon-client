@@ -29,6 +29,10 @@ pub enum NameRules {
 /// table's point of a grown or a baby entity of the type. No type has a sideways part, so the
 /// entity's turn does not move it.
 fn attachment(entity: &ClientEntity) -> Option<Vec3> {
+    if entity.is_living_entity() && entity.pose() == photon_world::ClientEntityPose::Sleeping {
+        // `LivingEntity.SLEEPING_DIMENSIONS`: 0.2 high whatever the type, and not scaled.
+        return Some(Vec3::new(0.0, 0.2_f32 as f64, 0.0));
+    }
     let pick = photon_data::entity_type::pick(entity.type_id)?;
     let (x, y, z) = if entity.is_baby() {
         pick.baby_name_tag.or(pick.name_tag)

@@ -19,6 +19,7 @@ struct Mob {
     scale: Option<f64>,
     /// `ArmorStand.DATA_CLIENT_FLAGS`: small is 1, marker 16.
     stand_flags: Option<u8>,
+    pose: Option<&'static str>,
     reach: Option<f64>,
     below: Option<f64>,
     tag: Tag,
@@ -33,6 +34,7 @@ const MOB: Mob = Mob {
     baby: false,
     scale: None,
     stand_flags: None,
+    pose: None,
     reach: None,
     below: None,
     tag: TAG,
@@ -50,6 +52,9 @@ fn mob(label: &str, mob: Mob) -> Value {
     }
     if let Some(scale) = mob.scale {
         row["scale"] = json!(f64_bits(scale));
+    }
+    if let Some(pose) = mob.pose {
+        row["pose"] = json!(pose);
     }
     if let Some(flags) = mob.stand_flags {
         row["stand_flags"] = json!(flags);
@@ -105,6 +110,8 @@ fn visibility_rows() -> Vec<Value> {
             "stand-small-marker",
             Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", stand_flags: Some(25), ..MOB },
         ),
+        mob("villager-sleeping", Mob { kind: "minecraft:villager", pose: Some("sleeping"), ..MOB }),
+        mob("zombie-sleeping", Mob { pose: Some("sleeping"), ..MOB }),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(
             "stand-hidden-picked",

@@ -222,6 +222,10 @@ class GuiOverlayOracle extends GuiHudOracle {
         if (row.get("baby").getAsBoolean() && entity instanceof net.minecraft.world.entity.Mob mob) {
             mob.setBaby(true);
         }
+        if (row.has("pose")) {
+            entity.setPose(net.minecraft.world.entity.Pose.valueOf(row.get("pose").getAsString().toUpperCase()));
+            entity.refreshDimensions();
+        }
         if (row.has("stand_flags") && entity instanceof net.minecraft.world.entity.decoration.ArmorStand stand) {
             stand.getEntityData().set(net.minecraft.world.entity.decoration.ArmorStand.DATA_CLIENT_FLAGS,
                 (byte) row.get("stand_flags").getAsInt());

@@ -49,17 +49,29 @@ impl ClientEntity {
         self.dimensions().height()
     }
 
-    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+    /// The sizes that are not the type's: a marker or small armor stand
+    /// (`ArmorStand.getDefaultDimensions`: no size, or half with the eye at its top) and a
+    /// sleeping mob (`LivingEntity.SLEEPING_DIMENSIONS`, 0.2 whatever it is and not scaled).
+    fn special_dimensions(&self) -> Option<ClientEntityDimensions> {
         if self.type_id == crate::entity::equipment::armor_stand_type_id() {
-            // `ArmorStand.getDefaultDimensions`: a marker has no size and a small stand is the
-            // stand's halved, with the eye at its top.
             let stand = self.armor_stand();
             if stand.is_marker() {
-                return ClientEntityDimensions::from_values(0.0, 0.0, 0.0, false);
+                return Some(ClientEntityDimensions::from_values(0.0, 0.0, 0.0, false));
             }
             if stand.is_small() {
-                return ClientEntityDimensions::from_values(0.25, 0.9875, 0.9875, false);
+                return Some(ClientEntityDimensions::from_values(
+                    0.25, 0.9875, 0.9875, false,
+                ));
             }
+        }
+        let sleeping = self.pose() == crate::ClientEntityPose::Sleeping;
+        (sleeping && !self.is_player() && self.is_living_entity())
+            .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
+    }
+
+    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+        if let Some(fixed) = self.special_dimensions() {
+            return fixed;
         }
         match photon_data::entity_type::pick(self.type_id) {
             Some(pick) if !self.is_player() => {
