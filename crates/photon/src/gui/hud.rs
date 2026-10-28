@@ -98,7 +98,7 @@ impl Gui {
                         } => {
                             let name = runs(&self.lang, &name);
                             self.boss_bars
-                                .add(id, name, progress, color, overlay, flags, now);
+                                .add(id, name, progress, (color, overlay, flags), now);
                         }
                         BossOperation::Remove => self.boss_bars.remove(id),
                         BossOperation::Progress(progress) => {

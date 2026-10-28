@@ -397,9 +397,11 @@ pub(super) fn boss_bar_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, 
             index as u128 + 1,
             photon_gui::chat::plain_runs(bar["name"].as_str().unwrap_or_default()),
             bar["progress"].as_f64().unwrap_or(0.0) as f32,
-            bar["color"].as_u64().unwrap_or(0) as u8,
-            bar["overlay"].as_u64().unwrap_or(0) as u8,
-            0,
+            (
+                bar["color"].as_u64().unwrap_or(0) as u8,
+                bar["overlay"].as_u64().unwrap_or(0) as u8,
+                0,
+            ),
             0,
         );
     }

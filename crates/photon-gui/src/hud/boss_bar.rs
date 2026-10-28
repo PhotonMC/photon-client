@@ -57,18 +57,12 @@ impl BossBars {
 
     /// `add`: a bar of the same id is replaced where it stood in the map's
     /// order (`LinkedHashMap.put` keeps the first position).
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "mirrors the reference's `ClientboundBossEventPacket.Handler.add`"
-    )]
     pub fn add(
         &mut self,
         id: u128,
         name: Vec<Run>,
         progress: f32,
-        color: u8,
-        overlay: u8,
-        flags: u8,
+        (color, overlay, flags): (u8, u8, u8),
         now: u64,
     ) {
         let bar = Bar {
@@ -212,7 +206,7 @@ mod tests {
     #[test]
     fn a_change_eases_in_over_a_tenth_of_a_second() {
         let mut bars = BossBars::default();
-        bars.add(1, Vec::new(), 0.0, 0, 0, 0, 1000);
+        bars.add(1, Vec::new(), 0.0, (0, 0, 0), 1000);
         bars.set_progress(1, 1.0, 1000);
         assert_eq!(bars.bars[0].progress(1000), 0.0);
         assert_eq!(bars.bars[0].progress(1050), 0.5);
@@ -225,18 +219,18 @@ mod tests {
     #[test]
     fn only_the_music_flag_asks_for_boss_music() {
         let mut bars = BossBars::default();
-        bars.add(1, Vec::new(), 0.0, 0, 0, 1, 0);
+        bars.add(1, Vec::new(), 0.0, (0, 0, 1), 0);
         assert!(!bars.plays_music());
-        bars.add(2, Vec::new(), 0.0, 0, 0, 2, 0);
+        bars.add(2, Vec::new(), 0.0, (0, 0, 2), 0);
         assert!(bars.plays_music());
     }
 
     #[test]
     fn re_adding_keeps_the_place() {
         let mut bars = BossBars::default();
-        bars.add(1, Vec::new(), 0.0, 0, 0, 0, 0);
-        bars.add(2, Vec::new(), 0.0, 0, 0, 0, 0);
-        bars.add(1, Vec::new(), 0.5, 1, 0, 0, 0);
+        bars.add(1, Vec::new(), 0.0, (0, 0, 0), 0);
+        bars.add(2, Vec::new(), 0.0, (0, 0, 0), 0);
+        bars.add(1, Vec::new(), 0.5, (1, 0, 0), 0);
         assert_eq!(bars.bars[0].id, 1);
         assert_eq!(bars.bars[0].color, 1);
     }

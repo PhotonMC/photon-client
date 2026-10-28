@@ -984,7 +984,6 @@
 [fn-params]
 "crates/photon-gui/src/hud.rs::Hud::build" = 7
 "crates/photon-gui/src/hud.rs::Hud::draw" = 8
-"crates/photon-gui/src/hud/boss_bar.rs::BossBars::add" = 7
 "crates/photon-gui/src/hud/tab_list.rs::draw" = 7
 "crates/photon-gui/src/options/video/size.rs::VideoSettingsScreen::new" = 7
 "crates/photon-gui/src/runs.rs::GuiFrame::styled_text" = 7
