@@ -39,3 +39,14 @@ pub fn has_menu_provider(state: BlockStateId) -> bool {
     }
     MENU_BLOCKS.binary_search(&block.name).is_ok()
 }
+
+/// Whether the entities of the type are menu providers (`ContainerEntity`): the chest boats and
+/// rafts, and the chest and hopper minecarts.
+pub fn entity_has_menu_provider(name: &str) -> bool {
+    name.ends_with("_chest_boat")
+        || name.ends_with("_chest_raft")
+        || matches!(
+            name,
+            "minecraft:chest_minecart" | "minecraft:hopper_minecart"
+        )
+}

@@ -107,16 +107,52 @@ class EntityDataOracle extends EntityBossOracle {
         return result;
     }
 
-    /** The entity type registry: each type's id and name, in id order. */
+    /** A scripted level with every feature of the game on, so each entity type can be made. */
+    static final class FullLevel extends BlockPlacementOracle.ScriptedLevel {
+        @Override
+        public net.minecraft.world.flag.FeatureFlagSet enabledFeatures() {
+            return net.minecraft.world.flag.FeatureFlags.REGISTRY.allFlags();
+        }
+
+        @Override
+        public net.minecraft.world.scores.Scoreboard getScoreboard() {
+            return new net.minecraft.world.scores.Scoreboard();
+        }
+
+        @Override
+        public net.minecraft.world.Difficulty getDifficulty() {
+            return net.minecraft.world.Difficulty.NORMAL;
+        }
+
+        @Override
+        public net.minecraft.world.attribute.EnvironmentAttributeSystem environmentAttributes() {
+            return net.minecraft.world.attribute.EnvironmentAttributeSystem.builder().build();
+        }
+    }
+
+    /** The entity type registry: each type's id, name and whether its entities are menu providers. */
     static JsonObject entityTypes() {
         Game26_2.vanillaRegistries();
         var registry = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE;
         var rows = new JsonArray();
+        net.minecraft.world.level.Level level;
+        try {
+            level = (net.minecraft.world.level.Level) Reflect.unsafe().allocateInstance(
+                FullLevel.class);
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException(failure);
+        }
         for (var type : registry) {
             var out = new JsonObject();
             out.addProperty("label", registry.getKey(type).toString());
             out.addProperty("id", registry.getId(type));
             out.addProperty("allowed_in_peaceful", type.isAllowedInPeaceful());
+            try {
+                var entity = type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD);
+                out.addProperty("menu_provider", entity instanceof net.minecraft.world.MenuProvider);
+            } catch (RuntimeException | Error failure) {
+                throw new IllegalStateException("cannot make " + registry.getKey(type), failure);
+            }
             rows.add(out);
         }
         var result = new JsonObject();
