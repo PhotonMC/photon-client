@@ -107,17 +107,22 @@ impl ClientWorld {
     ) -> Option<photon_core::math::Vec3> {
         let vehicle = self.entities.at(vehicle_id)?;
         // Only the vehicles whose seat is Java's default point (the top of the box) are ported:
-        // the stand and the displays that hologram setups ride; the other types have seats of
+        // the stand, the displays, and the small entities that hologram setups ride; the other types have seats of
         // their own, which stay where they were.
-        static DEFAULT_SEATS: std::sync::LazyLock<[Option<EntityTypeId>; 4]> =
+        static DEFAULT_SEATS: std::sync::LazyLock<Vec<Option<EntityTypeId>>> =
             std::sync::LazyLock::new(|| {
                 [
                     "armor_stand",
                     "item_display",
                     "block_display",
                     "text_display",
+                    "marker",
+                    "area_effect_cloud",
+                    "falling_block",
+                    "item",
                 ]
                 .map(|name| photon_data::entity_type::id(&format!("minecraft:{name}")))
+                .to_vec()
             });
         if !DEFAULT_SEATS.contains(&Some(vehicle.type_id)) {
             return None;
