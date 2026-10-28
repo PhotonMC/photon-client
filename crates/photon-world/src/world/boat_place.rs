@@ -37,14 +37,14 @@ impl ClientWorld {
         let source = crate::collision::ClientWorldCollisionSource { position };
         self.no_block_collision_in_registry(area)
             && entities.is_empty()
-            && !player.intersects(area)
+            && !player.intersects(area.inflate_all(1.0e-7))
             && !self.pushable_in(area)
             && self.no_border_collision(Some(source), area)
     }
 
     /// The living entities `collision_candidate` leaves out that a boat cannot pass: `isPushable`
-    /// is alive, not a spectator and not climbing, but for bats and armor stands (never), horses
-    /// carrying a rider and parrots (always).
+    /// is alive, not a spectator and not climbing, but for bats and armor stands (never), horses,
+    /// llamas and camels carrying a rider (never) and parrots (always).
     fn pushable_in(&self, area: Aabb) -> bool {
         let query = area.inflate_all(1.0e-7);
         self.entities.values().any(|entity| {
@@ -62,6 +62,7 @@ impl ClientWorld {
         match name {
             Some("minecraft:bat" | "minecraft:armor_stand") => false,
             Some("minecraft:parrot") => true,
+            Some("minecraft:llama" | "minecraft:trader_llama") if entity.is_vehicle() => false,
             _ if entity.is_horse() && entity.is_vehicle() => false,
             _ => !entity.is_dead_or_dying() && !entity.is_spectator() && !entity.on_climbable,
         }
