@@ -27,10 +27,11 @@ impl LocalPlayer {
         self.y_body_rot = boat.y_rot;
     }
 
-    /// `LocalPlayer.getViewYRot`: a rider's view eases between ticks, anyone else's is the yaw.
+    /// `LocalPlayer.getViewYRot`: a rider's view eases between ticks by the short way round
+    /// (`Mth.rotLerp`), anyone else's is the yaw.
     pub fn view_y_rot(&self, partial_tick: f32) -> f32 {
         if self.view.rode && partial_tick != 1.0 {
-            photon_core::math::mth_lerp_f32(partial_tick, self.view.y_rot_old, self.y_rot)
+            photon_core::math::mth_rot_lerp_f32(partial_tick, self.view.y_rot_old, self.y_rot)
         } else {
             self.y_rot
         }
