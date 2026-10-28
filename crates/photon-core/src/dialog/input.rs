@@ -1,7 +1,7 @@
 //! The inputs of a dialog (`net.minecraft.server.dialog.input`): what the server asks for and the
 //! values the buttons send.
 
-use photon_core::nbt::{Field, FieldValue};
+use crate::nbt::{Field, FieldValue};
 
 use super::{get, text, width};
 use crate::text::Component;
@@ -336,6 +336,6 @@ pub fn range_text(value: f32) -> String {
     if value as i32 as f32 == value {
         (value as i32).to_string()
     } else {
-        crate::commands::reader::java_float(value)
+        crate::java_float::java_float(value)
     }
 }

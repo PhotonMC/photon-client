@@ -1,7 +1,7 @@
 //! The button list dialogs: `ServerLinksDialog` and `DialogListDialog`, whose buttons come from
 //! the session when the screen is made.
 
-use photon_core::nbt::{Field, FieldValue};
+use crate::nbt::{Field, FieldValue};
 
 use super::{
     Action, ActionButton, AfterAction, CommonData, Dialog, DialogRef, columns, exit_action, get,

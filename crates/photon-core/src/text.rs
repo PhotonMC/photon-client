@@ -10,8 +10,8 @@
 
 use std::collections::HashMap;
 
-use photon_core::json::{JsonObject, JsonValue};
-use photon_core::nbt::FieldValue;
+use crate::json::{JsonObject, JsonValue};
+use crate::nbt::FieldValue;
 
 /// `ChatFormatting`'s colours, by name.
 pub fn named_colour(name: &str) -> Option<u32> {
@@ -107,7 +107,7 @@ impl Style {
         }
     }
 
-    fn from_fields(fields: &[photon_core::nbt::Field]) -> Self {
+    fn from_fields(fields: &[crate::nbt::Field]) -> Self {
         let get = |key: &str| {
             fields
                 .iter()
@@ -241,14 +241,14 @@ fn uuid_text(parts: &[i32]) -> Option<String> {
 }
 
 /// `ClickEvent.CODEC` from the tag.
-fn click_from_nbt(event: &[photon_core::nbt::Field]) -> Option<ClickEvent> {
+fn click_from_nbt(event: &[crate::nbt::Field]) -> Option<ClickEvent> {
     ClickEvent::from_nbt_fields(event, "action")
 }
 
 impl ClickEvent {
     /// A click event from the tag's fields, its kind named by `kind_key` (`action` in a
     /// component, `type` in a dialog's static action).
-    pub fn from_nbt_fields(event: &[photon_core::nbt::Field], kind_key: &str) -> Option<Self> {
+    pub fn from_nbt_fields(event: &[crate::nbt::Field], kind_key: &str) -> Option<Self> {
         let get = |key: &str| {
             event
                 .iter()
@@ -278,7 +278,7 @@ impl ClickEvent {
 }
 
 /// `HoverEvent.CODEC` from the tag.
-fn hover_from_nbt(event: &[photon_core::nbt::Field]) -> Option<HoverEvent> {
+fn hover_from_nbt(event: &[crate::nbt::Field]) -> Option<HoverEvent> {
     let get = |key: &str| {
         event
             .iter()
@@ -422,14 +422,14 @@ pub struct Lang {
 mod translatable;
 
 mod lang_texts;
-pub(crate) use lang_texts::apply_deprecated;
+pub use lang_texts::apply_deprecated;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn component(json: &str) -> Component {
-        Component::from_json(&photon_core::json::parse(json).expect("json")).expect("component")
+        Component::from_json(&crate::json::parse(json).expect("json")).expect("component")
     }
 
     #[test]
@@ -519,7 +519,7 @@ mod tests {
 
     #[test]
     fn json_and_nbt_components_read_alike() {
-        let json = photon_core::json::parse(
+        let json = crate::json::parse(
             r##"{"translate":"item.a","color":"#FF0000","italic":true,"extra":["x"]}"##,
         )
         .expect("json");
@@ -528,11 +528,11 @@ mod tests {
         assert_eq!(from_json.style.italic, Some(true));
         assert_eq!(lang().plain(&from_json), "Applex");
         let nbt = FieldValue::Compound(vec![
-            photon_core::nbt::Field {
+            crate::nbt::Field {
                 key: "translate".into(),
                 value: FieldValue::Str("item.a".into()),
             },
-            photon_core::nbt::Field {
+            crate::nbt::Field {
                 key: "italic".into(),
                 value: FieldValue::Byte(1),
             },

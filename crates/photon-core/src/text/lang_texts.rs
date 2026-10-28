@@ -1,5 +1,5 @@
-use photon_core::identifier::Identifier;
-use photon_core::resources::Resources;
+use crate::identifier::Identifier;
+use crate::resources::Resources;
 
 use super::*;
 
@@ -14,7 +14,7 @@ impl Lang {
     /// The default language from `assets/minecraft/lang/en_us.json`, with
     /// the deprecated keys removed and renamed (`Language.loadDefault`).
     pub fn load(assets_root: &std::path::Path) -> Self {
-        let folder = photon_core::resources::FolderResources::new(assets_root);
+        let folder = crate::resources::FolderResources::new(assets_root);
         Self::load_from(&folder, assets_root)
     }
 
@@ -49,7 +49,7 @@ impl Lang {
     }
 
     /// `en_us.json` as it is, for a language read over it.
-    pub(crate) fn load_raw(assets_root: &std::path::Path) -> Self {
+    pub fn load_raw(assets_root: &std::path::Path) -> Self {
         let Ok(text) = std::fs::read_to_string(assets_root.join("minecraft/lang/en_us.json"))
         else {
             return Self::default();
@@ -200,9 +200,8 @@ impl Lang {
 /// `DeprecatedTranslationsInfo.applyToMap` with the jar's
 /// `lang/deprecated.json`: removed keys go, and a renamed key's text moves to
 /// its new key (which goes too when the old one is missing).
-pub(crate) fn apply_deprecated(assets_root: &std::path::Path, texts: &mut HashMap<String, String>) {
-    let Some(info) =
-        photon_core::json::read_object(&assets_root.join("minecraft/lang/deprecated.json"))
+pub fn apply_deprecated(assets_root: &std::path::Path, texts: &mut HashMap<String, String>) {
+    let Some(info) = crate::json::read_object(&assets_root.join("minecraft/lang/deprecated.json"))
     else {
         return;
     };

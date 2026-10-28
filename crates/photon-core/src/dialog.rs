@@ -12,7 +12,7 @@ pub use input::{
 pub use list::{DialogContext, DialogSet, ListSource};
 pub use template::{Template, escape_without_quotes};
 
-use photon_core::nbt::{Field, FieldValue};
+use crate::nbt::{Field, FieldValue};
 
 use crate::text::{ClickEvent, Component};
 

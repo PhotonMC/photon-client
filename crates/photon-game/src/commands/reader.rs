@@ -56,69 +56,7 @@ impl CommandSyntaxException {
     }
 }
 
-/// The text of a number as the reference prints it (`Double.toString`).
-pub fn java_double(value: f64) -> String {
-    java_float_digits(
-        value.is_finite(),
-        value == 0.0,
-        value < 0.0,
-        &format!("{value:e}"),
-        value,
-    )
-}
-
-/// `Float.toString`.
-pub fn java_float(value: f32) -> String {
-    java_float_digits(
-        value.is_finite(),
-        value == 0.0,
-        value < 0.0,
-        &format!("{value:e}"),
-        f64::from(value),
-    )
-}
-
-fn java_float_digits(finite: bool, zero: bool, negative: bool, sci: &str, value: f64) -> String {
-    if !finite {
-        return if value.is_nan() {
-            "NaN".to_owned()
-        } else if negative {
-            "-Infinity".to_owned()
-        } else {
-            "Infinity".to_owned()
-        };
-    }
-    if zero {
-        return if negative { "-0.0" } else { "0.0" }.to_owned();
-    }
-    // `sci` is the shortest digits and the exponent: "-1.2345e-5".
-    let (mantissa, exponent) = sci.split_once('e').unwrap_or((sci, "0"));
-    let exponent: i32 = exponent.parse().unwrap_or(0);
-    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
-    let sign = if negative { "-" } else { "" };
-    if (-3..7).contains(&exponent) {
-        let point = exponent + 1;
-        let body = if point <= 0 {
-            format!("0.{}{}", "0".repeat((-point) as usize), digits)
-        } else if digits.len() as i32 <= point {
-            format!(
-                "{}{}.0",
-                digits,
-                "0".repeat((point - digits.len() as i32) as usize)
-            )
-        } else {
-            format!(
-                "{}.{}",
-                &digits[..point as usize],
-                &digits[point as usize..]
-            )
-        };
-        format!("{sign}{body}")
-    } else {
-        let rest = if digits.len() > 1 { &digits[1..] } else { "0" };
-        format!("{sign}{}.{rest}E{exponent}", &digits[..1])
-    }
-}
+pub use photon_core::java_float::{java_double, java_float};
 
 #[derive(Debug, Clone)]
 pub struct StringReader {

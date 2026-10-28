@@ -160,7 +160,7 @@
 "crates/photon-game/src/commands/arguments.rs::balanced" = 11
 "crates/photon-game/src/commands/arguments.rs::entity" = 24
 "crates/photon-game/src/commands/arguments/argument_kind_items.rs::ArgumentKind::read_as" = 61
-"crates/photon-game/src/commands/reader.rs::java_float_digits" = 11
+"crates/photon-core/src/java_float.rs::java_float_digits" = 11
 "crates/photon-game/src/commands/suggest.rs::argument" = 19
 "crates/photon-game/src/commands/suggest.rs::coordinates" = 11
 "crates/photon-game/src/commands/suggest.rs::entities" = 13
@@ -200,11 +200,11 @@
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 17
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 15
 "crates/photon-game/src/sounds/music.rs::MusicManager::tick" = 12
-"crates/photon-game/src/text.rs::ClickEvent::from_nbt_fields" = 12
-"crates/photon-game/src/text.rs::flat_strings" = 20
-"crates/photon-game/src/text.rs::named_colour" = 17
-"crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 14
-"crates/photon-game/src/text/translatable.rs::Component::from_nbt" = 16
+"crates/photon-core/src/text.rs::ClickEvent::from_nbt_fields" = 12
+"crates/photon-core/src/text.rs::flat_strings" = 20
+"crates/photon-core/src/text.rs::named_colour" = 17
+"crates/photon-core/src/text/lang_texts.rs::Lang::push_template" = 14
+"crates/photon-core/src/text/translatable.rs::Component::from_nbt" = 16
 "crates/photon-game/src/tooltip/lines.rs::lines" = 57
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 16
 "crates/photon-gui/src/chat/screen.rs::ChatScreen::key_pressed" = 18
@@ -590,8 +590,8 @@
 "crates/photon-game/src/registries.rs::Registries::load" = 80
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::play" = 79
 "crates/photon-game/src/sounds/engine/volume.rs::SoundEngine::tick_in_game_sound" = 81
-"crates/photon-game/src/text.rs::flat_strings" = 83
-"crates/photon-game/src/text/lang_texts.rs::Lang::push_template" = 71
+"crates/photon-core/src/text.rs::flat_strings" = 83
+"crates/photon-core/src/text/lang_texts.rs::Lang::push_template" = 71
 "crates/photon-game/src/tooltip/lines.rs::lines" = 258
 "crates/photon-game/src/tooltip/name.rs::attribute_tooltips" = 75
 "crates/photon-gui/src/chat/log.rs::ChatLog::draw_with" = 73
