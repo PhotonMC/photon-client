@@ -115,6 +115,11 @@ fn visibility_rows() -> Vec<Value> {
             "villager-sleeping-scaled",
             Mob { kind: "minecraft:villager", pose: Some("sleeping"), scale: Some(2.0), ..MOB },
         ),
+        mob("camel-sitting", Mob { kind: "minecraft:camel", pose: Some("sitting"), ..MOB }),
+        mob("camel-sitting-baby", Mob { kind: "minecraft:camel", pose: Some("sitting"), baby: true, ..MOB }),
+        mob("camel-husk-sitting", Mob { kind: "minecraft:camel_husk", pose: Some("sitting"), ..MOB }),
+        mob("goat-long-jumping", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), ..MOB }),
+        mob("goat-long-jumping-baby", Mob { kind: "minecraft:goat", pose: Some("long_jumping"), baby: true, ..MOB }),
         mob("zombie-sleeping", Mob { pose: Some("sleeping"), ..MOB }),
         mob("stand-hidden", Mob { kind: "minecraft:armor_stand", renderer: "armor_stand", visible: false, ..MOB }),
         mob(

@@ -68,13 +68,47 @@ impl ClientEntity {
             .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
     }
 
+    /// The sizes the poses of a few species change: a sitting camel (`Camel.getDefaultDimensions`)
+    /// and a goat's long jump, seven tenths of its size.
+    fn pose_dimensions(&self) -> Option<ClientEntityDimensions> {
+        use crate::ClientEntityPose::{LongJumping, Sitting};
+        let pick = photon_data::entity_type::pick(self.type_id)?;
+        let (width, height, eye) = pick.baby.filter(|_| self.baby).unwrap_or(pick.size);
+        match (photon_data::entity_type::name(self.type_id)?, self.pose()) {
+            ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.baby {
+                ClientEntityDimensions::from_values(0.95, 0.425, 0.41, false)
+            } else {
+                ClientEntityDimensions::from_values(width, height - 1.43, 0.845, false)
+            }),
+            ("minecraft:goat", LongJumping) => {
+                Some(ClientEntityDimensions::from_values(width, height, eye, false).scale(0.7, 0.7))
+            }
+            _ => None,
+        }
+    }
+
+    /// The height a sitting camel's size gives (`pose_dimensions`), which its tag hangs by.
+    pub fn pose_height(&self) -> Option<f32> {
+        let sitting = self.pose() == crate::ClientEntityPose::Sitting;
+        sitting
+            .then(|| self.pose_dimensions().map(|dimensions| dimensions.height()))
+            .flatten()
+    }
+
+    /// How a pose scales the size and the attachments of a goat (`Goat.getDefaultDimensions`).
+    pub fn pose_scale(&self) -> f32 {
+        let long_jumping = self.pose() == crate::ClientEntityPose::LongJumping;
+        let goat = photon_data::entity_type::name(self.type_id) == Some("minecraft:goat");
+        if long_jumping && goat { 0.7 } else { 1.0 }
+    }
+
     /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
     fn has_sleeping_size(&self) -> bool {
         self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
     }
 
     pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
-        if let Some(fixed) = self.special_dimensions() {
+        if let Some(fixed) = self.special_dimensions().or_else(|| self.pose_dimensions()) {
             return fixed;
         }
         match photon_data::entity_type::pick(self.type_id) {

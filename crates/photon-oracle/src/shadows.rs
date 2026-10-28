@@ -104,6 +104,8 @@ fn pose_id(row: &Value) -> u8 {
     match row["pose"].as_str() {
         Some("fall_flying") => 1,
         Some("sleeping") => 2,
+        Some("long_jumping") => photon_world::ClientEntityPose::LongJumping.id(),
+        Some("sitting") => photon_world::ClientEntityPose::Sitting.id(),
         Some("swimming") => 4,
         _ if flag(row, "crouching") => 5,
         _ => 0,

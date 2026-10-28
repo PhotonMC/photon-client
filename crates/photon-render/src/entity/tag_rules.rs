@@ -33,13 +33,21 @@ fn attachment(entity: &ClientEntity) -> Option<Vec3> {
         // `LivingEntity.SLEEPING_DIMENSIONS`: 0.2 high whatever the type, and not scaled.
         return Some(Vec3::new(0.0, 0.2_f32 as f64, 0.0));
     }
+    if let Some(height) = entity.pose_height() {
+        // A pose's own size has no attachments but the default: the tag sits at its top.
+        return Some(Vec3::new(
+            0.0,
+            f64::from(height) * f64::from(entity.scale()),
+            0.0,
+        ));
+    }
     let pick = photon_data::entity_type::pick(entity.type_id)?;
     let (x, y, z) = if entity.is_baby() {
         pick.baby_name_tag.or(pick.name_tag)
     } else {
         pick.name_tag
     }?;
-    let scale = f64::from(entity.scale()) * stand_size(entity);
+    let scale = f64::from(entity.scale()) * stand_size(entity) * f64::from(entity.pose_scale());
     Some(Vec3::new(x * scale, y * scale, z * scale))
 }
 
