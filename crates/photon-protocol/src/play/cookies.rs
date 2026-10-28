@@ -6,7 +6,10 @@ use super::*;
 pub struct StartConfiguration;
 
 impl Decode for StartConfiguration {
-    fn decode(_payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        _payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         Ok(Self)
     }
 }
@@ -18,7 +21,10 @@ macro_rules! cookie_packet {
         pub struct $name(pub $ty);
 
         impl Decode for $name {
-            fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+            fn decode(
+                payload: &[u8],
+                _registries: &photon_data::version_registries::VersionRegistries,
+            ) -> Result<Self, ConnectionError> {
                 <$ty>::decode(&mut &payload[..])
                     .map(Self)
                     .map_err(|_| ConnectionError::Codec($label))
@@ -57,7 +63,10 @@ cookie_packet!(
 pub struct ServerLinksPacket(pub Vec<photon_core::server_links::UntrustedEntry>);
 
 impl Decode for ServerLinksPacket {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         crate::server_links::parse_server_links(payload).map(Self)
     }
 }
@@ -69,7 +78,10 @@ pub struct OpenSignEditor {
 }
 
 impl Decode for OpenSignEditor {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let pos = photon_core::binary::BlockPos::unpack(read_section_position(&mut input)? as u64);
         let front = read_bool(&mut input, "open sign editor")?;
@@ -81,7 +93,10 @@ impl Decode for OpenSignEditor {
 pub struct OpenBook(pub i32);
 
 impl Decode for OpenBook {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         read_varint(&mut input, "open book").map(Self)
     }

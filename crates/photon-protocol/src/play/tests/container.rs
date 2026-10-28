@@ -11,7 +11,7 @@ fn container_slot_parser_matches_empty_optional_item_stack() {
     photon_core::wire::write_varint(0, &mut payload);
 
     assert_eq!(
-        parse_container_set_slot_packet(&payload).expect("container slot packet"),
+        parse_container_set_slot_packet(&payload, &registries()).expect("container slot packet"),
         super::super::ContainerSetSlotObservation {
             container_id: 0,
             state_id: 7,
@@ -44,7 +44,8 @@ fn container_slot_parser_skips_custom_model_data_component() {
     photon_core::wire::write_varint(0, &mut payload);
 
     assert_eq!(
-        parse_container_set_slot_packet(&payload).expect("component-bearing container slot"),
+        parse_container_set_slot_packet(&payload, &registries())
+            .expect("component-bearing container slot"),
         super::super::ContainerSetSlotObservation {
             container_id: 0,
             state_id: 8,
@@ -80,7 +81,8 @@ fn container_slot_parser_skips_food_component() {
     payload.push(1);
 
     assert_eq!(
-        parse_container_set_slot_packet(&payload).expect("food component-bearing container slot"),
+        parse_container_set_slot_packet(&payload, &registries())
+            .expect("food component-bearing container slot"),
         super::super::ContainerSetSlotObservation {
             container_id: 0,
             state_id: 10,
@@ -140,7 +142,8 @@ fn container_slot_parser_skips_damage_tool_and_weapon_components() {
     payload.extend_from_slice(&0.0_f32.to_be_bytes());
 
     assert_eq!(
-        parse_container_set_slot_packet(&payload).expect("tool component-bearing slot"),
+        parse_container_set_slot_packet(&payload, &registries())
+            .expect("tool component-bearing slot"),
         super::super::ContainerSetSlotObservation {
             container_id: 0,
             state_id: 9,
@@ -172,7 +175,8 @@ fn container_content_parser_matches_empty_hotbar_stack() {
     photon_core::wire::write_varint(0, &mut payload);
 
     assert_eq!(
-        parse_container_set_content_packet(&payload).expect("container content packet"),
+        parse_container_set_content_packet(&payload, &registries())
+            .expect("container content packet"),
         super::super::ContainerSetContentObservation {
             container_id: 0,
             state_id: 9,
@@ -214,8 +218,8 @@ fn container_content_parser_observes_main_inventory_slot_zero() {
     }
     photon_core::wire::write_varint(0, &mut payload);
 
-    let observation =
-        parse_container_set_content_packet(&payload).expect("main inventory slot packet");
+    let observation = parse_container_set_content_packet(&payload, &registries())
+        .expect("main inventory slot packet");
     assert_eq!(observation.main_inventory_slot_zero_item_count, Some(1));
     assert_eq!(
         observation.main_inventory_slot_zero_item_registry_id,
@@ -249,7 +253,7 @@ fn container_content_parser_observes_main_inventory_slot_zero() {
 fn cursor_and_direct_player_inventory_parsers_match_java_optional_stack_codecs() {
     let cursor_payload = [0];
     assert_eq!(
-        parse_cursor_item_packet(&cursor_payload).expect("empty cursor item packet"),
+        parse_cursor_item_packet(&cursor_payload, &registries()).expect("empty cursor item packet"),
         super::super::CursorItemObservation {
             item_count: None,
             item_registry_id: None,
@@ -267,7 +271,7 @@ fn cursor_and_direct_player_inventory_parsers_match_java_optional_stack_codecs()
     photon_core::wire::write_varint(0, &mut inventory_payload);
     photon_core::wire::write_varint(0, &mut inventory_payload);
     assert_eq!(
-        parse_set_player_inventory_packet(&inventory_payload)
+        parse_set_player_inventory_packet(&inventory_payload, &registries())
             .expect("direct player inventory packet"),
         super::super::SetPlayerInventoryObservation {
             slot: 0,
@@ -351,7 +355,7 @@ fn merchant_offers_read_each_offer_and_the_traders_standing() {
         write_varint(value, &mut payload);
     }
     payload.extend_from_slice(&[1, 0]);
-    let (container, state) = parse_merchant_offers_packet(&payload).unwrap();
+    let (container, state) = parse_merchant_offers_packet(&payload, &registries()).unwrap();
     assert_eq!(container, 5);
     let offer = &state.offers[0];
     assert_eq!((offer.cost_a.item, offer.cost_a.count), (ItemId(4), 3));

@@ -4,12 +4,13 @@ use super::*;
 pub(super) fn read_slot_display(
     input: &mut &[u8],
     depth: usize,
+    registries: &VersionRegistries,
 ) -> Result<photon_core::recipes::SlotDisplay, ConnectionError> {
     use photon_core::recipes::SlotDisplay as D;
     if depth > 16 {
         return Err(ConnectionError::Codec("slot display too deep"));
     }
-    let next = |input: &mut &[u8]| read_slot_display(input, depth + 1);
+    let next = |input: &mut &[u8]| read_slot_display(input, depth + 1, registries);
     Ok(match read_varint(input, "slot display type")? {
         0 => D::Empty,
         1 => D::AnyFuel,
@@ -18,14 +19,8 @@ pub(super) fn read_slot_display(
             let source = next(input)?;
             D::OnlyWithComponent(Box::new(source), read_varint(input, "display component")?)
         }
-        4 => D::Item(ItemId(read_varint(input, "display item")?)),
-        5 => {
-            let item = ItemId(read_varint(input, "display stack item")?);
-            let count = read_varint(input, "display stack count")?;
-            photon_data::item_components::read_patch(input)
-                .map_err(|_| ConnectionError::Codec("display stack components"))?;
-            D::ItemStack(item, count)
-        }
+        4 => D::Item(WireItemId::read(input, "display item")?.canonical(registries)),
+        5 => read_display_stack(input, registries)?,
         6 => D::Tag(read_identifier_string(input, "display tag")?),
         7 => {
             let dye = next(input)?;
@@ -64,9 +59,22 @@ pub(super) fn read_slot_display(
     })
 }
 
+/// A slot display of an item stack: the item, the count and the components (which are skipped).
+fn read_display_stack(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<photon_core::recipes::SlotDisplay, ConnectionError> {
+    let item = WireItemId::read(input, "display stack item")?.canonical(registries);
+    let count = read_varint(input, "display stack count")?;
+    photon_data::item_components::read_patch(input)
+        .map_err(|_| ConnectionError::Codec("display stack components"))?;
+    Ok(photon_core::recipes::SlotDisplay::ItemStack(item, count))
+}
+
 /// `Ingredient.CONTENTS_STREAM_CODEC`: a tag, or the items it lists.
 pub(super) fn read_ingredient(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<photon_core::recipes::Ingredient, ConnectionError> {
     let marker = read_varint(input, "ingredient marker")?;
     if marker == 0 {
@@ -76,12 +84,15 @@ pub(super) fn read_ingredient(
     }
     let mut items = Vec::new();
     for _ in 0..marker - 1 {
-        items.push(ItemId(read_varint(input, "ingredient item")?));
+        items.push(WireItemId::read(input, "ingredient item")?.canonical(registries));
     }
     Ok(photon_core::recipes::Ingredient::Items(items))
 }
 
-pub fn parse_update_recipes_packet(input: &[u8]) -> Result<RecipeUpdate, ConnectionError> {
+pub fn parse_update_recipes_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<RecipeUpdate, ConnectionError> {
     let mut input = input;
     let sets = read_varint(&mut input, "recipe property set count")?;
     let mut out = Vec::new();
@@ -97,8 +108,8 @@ pub fn parse_update_recipes_packet(input: &[u8]) -> Result<RecipeUpdate, Connect
     let entries = read_varint(&mut input, "stonecutter recipe count")?;
     let mut stonecutter = Vec::new();
     for _ in 0..entries {
-        let ingredient = read_ingredient(&mut input)?;
-        let display = read_slot_display(&mut input, 0)?;
+        let ingredient = read_ingredient(&mut input, registries)?;
+        let display = read_slot_display(&mut input, 0, registries)?;
         stonecutter.push(photon_core::recipes::StonecutterEntry {
             input: ingredient,
             display,
@@ -112,11 +123,12 @@ pub fn parse_update_recipes_packet(input: &[u8]) -> Result<RecipeUpdate, Connect
 
 pub(super) fn read_slot_displays(
     input: &mut &[u8],
+    registries: &VersionRegistries,
 ) -> Result<Vec<photon_core::recipes::SlotDisplay>, ConnectionError> {
     let count = read_varint(input, "recipe display count")?;
     let mut all = Vec::new();
     for _ in 0..count {
-        all.push(read_slot_display(input, 0)?);
+        all.push(read_slot_display(input, 0, registries)?);
     }
     Ok(all)
 }
@@ -126,15 +138,18 @@ type DisplayWithStation = (
     photon_core::recipes::SlotDisplay,
 );
 
-fn read_shaped_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
+fn read_shaped_display(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<DisplayWithStation, ConnectionError> {
     let width = read_varint(input, "shaped width")?;
     let height = read_varint(input, "shaped height")?;
-    let ingredients = read_slot_displays(input)?;
+    let ingredients = read_slot_displays(input, registries)?;
     if i64::from(width) * i64::from(height) != ingredients.len() as i64 {
         return Err(ConnectionError::Codec("shaped recipe size"));
     }
-    let result = read_slot_display(input, 0)?;
-    let station = read_slot_display(input, 0)?;
+    let result = read_slot_display(input, 0, registries)?;
+    let station = read_slot_display(input, 0, registries)?;
     let shaped = photon_core::recipes::RecipeDisplay::Shaped {
         width,
         height,
@@ -144,11 +159,14 @@ fn read_shaped_display(input: &mut &[u8]) -> Result<DisplayWithStation, Connecti
     Ok((shaped, station))
 }
 
-fn read_furnace_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
-    let ingredient = read_slot_display(input, 0)?;
-    let fuel = read_slot_display(input, 0)?;
-    let result = read_slot_display(input, 0)?;
-    let station = read_slot_display(input, 0)?;
+fn read_furnace_display(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<DisplayWithStation, ConnectionError> {
+    let ingredient = read_slot_display(input, 0, registries)?;
+    let fuel = read_slot_display(input, 0, registries)?;
+    let result = read_slot_display(input, 0, registries)?;
+    let station = read_slot_display(input, 0, registries)?;
     read_varint(input, "furnace duration")?;
     read_f32(input, "furnace experience")?;
     let furnace = photon_core::recipes::RecipeDisplay::Furnace {
@@ -160,12 +178,15 @@ fn read_furnace_display(input: &mut &[u8]) -> Result<DisplayWithStation, Connect
 }
 
 /// `RecipeDisplay.STREAM_CODEC`: the display and the crafting station each one ends with.
-pub fn read_recipe_display(input: &mut &[u8]) -> Result<DisplayWithStation, ConnectionError> {
+pub fn read_recipe_display(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<DisplayWithStation, ConnectionError> {
     use photon_core::recipes::RecipeDisplay as R;
-    let slot = |input: &mut &[u8]| read_slot_display(input, 0);
+    let slot = |input: &mut &[u8]| read_slot_display(input, 0, registries);
     Ok(match read_varint(input, "recipe display type")? {
         0 => {
-            let ingredients = read_slot_displays(input)?;
+            let ingredients = read_slot_displays(input, registries)?;
             let result = slot(input)?;
             let station = slot(input)?;
             (
@@ -176,8 +197,8 @@ pub fn read_recipe_display(input: &mut &[u8]) -> Result<DisplayWithStation, Conn
                 station,
             )
         }
-        1 => read_shaped_display(input)?,
-        2 => read_furnace_display(input)?,
+        1 => read_shaped_display(input, registries)?,
+        2 => read_furnace_display(input, registries)?,
         3 => {
             slot(input)?;
             let result = slot(input)?;
@@ -200,13 +221,14 @@ pub fn read_recipe_display(input: &mut &[u8]) -> Result<DisplayWithStation, Conn
 /// whether they replace the book.
 pub fn parse_recipe_book_add_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<(Vec<(photon_core::recipes::RecipeDisplayEntry, u8)>, bool), ConnectionError> {
     let mut input = input;
     let count = read_varint(&mut input, "recipe book add count")?;
     let mut entries = Vec::new();
     for _ in 0..count {
         let id = read_varint(&mut input, "recipe id")?;
-        let (display, station) = read_recipe_display(&mut input)?;
+        let (display, station) = read_recipe_display(&mut input, registries)?;
         let group = match read_varint(&mut input, "recipe group")? {
             0 => None,
             value => Some(value - 1),
@@ -216,7 +238,7 @@ pub fn parse_recipe_book_add_packet(
             let count = read_varint(&mut input, "recipe requirement count")?;
             let mut all = Vec::new();
             for _ in 0..count {
-                all.push(read_ingredient(&mut input)?);
+                all.push(read_ingredient(&mut input, registries)?);
             }
             Some(all)
         } else {
@@ -266,10 +288,11 @@ pub fn parse_recipe_book_settings_packet(
 /// `ClientboundPlaceGhostRecipePacket`.
 pub fn parse_place_ghost_recipe_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<(i32, photon_core::recipes::RecipeDisplay), ConnectionError> {
     let mut input = input;
     let container = read_varint(&mut input, "ghost container")?;
-    Ok((container, read_recipe_display(&mut input)?.0))
+    Ok((container, read_recipe_display(&mut input, registries)?.0))
 }
 
 /// What a clientbound update-recipes packet carries: the item sets by name
@@ -280,7 +303,7 @@ pub struct RecipeUpdate {
     pub stonecutter: Vec<photon_core::recipes::StonecutterEntry>,
 }
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundRecipeBookAddPacket`: the entries, and whether they replace the book's.
     RecipeBookAdd((Vec<(photon_core::recipes::RecipeDisplayEntry, u8)>, bool)) = parse_recipe_book_add_packet,
     OnError::Warn("recipe book add")
@@ -295,12 +318,12 @@ wrapped_packet!(
     RecipeBookSettings([photon_core::recipes::BookTypeSettings; 4]) = parse_recipe_book_settings_packet,
     OnError::Warn("recipe book settings")
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundPlaceGhostRecipePacket`.
     PlaceGhostRecipe((i32, photon_core::recipes::RecipeDisplay)) = parse_place_ghost_recipe_packet,
     OnError::Warn("place ghost recipe")
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundUpdateRecipesPacket`.
     UpdateRecipes(RecipeUpdate) = parse_update_recipes_packet,
     OnError::Warn("recipes")

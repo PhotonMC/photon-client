@@ -83,7 +83,11 @@ fn play_against(
         serve(Transport::from(listener.accept().expect("accept").0));
     });
     let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-    let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+    let incoming = spawn_reader(
+        stream.try_clone().expect("clone"),
+        None,
+        VersionRegistries::newest(),
+    );
     let state = ConnectionState {
         packs: packs.clone(),
         ..ConnectionState::default()

@@ -9,7 +9,10 @@ pub struct TestInstanceBlockStatus {
 }
 
 impl Decode for TestInstanceBlockStatus {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let status = read_chat_component(&mut input, "test instance status")?;
         let size = if read_bool(&mut input, "test instance has size")? {

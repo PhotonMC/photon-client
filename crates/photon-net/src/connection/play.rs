@@ -7,6 +7,7 @@
 //! local player and sends what the tick asked for, then the tick-end marker,
 //! as `Minecraft.tick` does.
 
+use photon_data::version_registries::VersionRegistries;
 use std::net::SocketAddr;
 
 use super::transport::Transport;
@@ -105,6 +106,8 @@ pub struct PlaySession {
     social: Social,
     effects: Effects,
     level_info: LevelInfo,
+    /// The numbering of the connection's version, for ids that arrive after the packet is parsed.
+    registries: std::sync::Arc<VersionRegistries>,
 }
 
 /// `ClientClockManager`'s state for one world clock.

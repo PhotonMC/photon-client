@@ -181,13 +181,14 @@ fn inventory_item_component_conformance_parser_consumes_table_codecs() {
         write_component_fixture(spec.codec, &mut payload);
 
         let mut input = payload.as_slice();
-        let observation = parse_optional_item_stack(&mut input, "table component item stack")
-            .unwrap_or_else(|error| {
-                panic!(
-                    "table component item stack {}: {error:?}",
-                    spec.component_path
-                )
-            });
+        let observation =
+            parse_optional_item_stack(&mut input, "table component item stack", &registries())
+                .unwrap_or_else(|error| {
+                    panic!(
+                        "table component item stack {}: {error:?}",
+                        spec.component_path
+                    )
+                });
         assert_eq!(
             observation.item_count,
             Some(1),

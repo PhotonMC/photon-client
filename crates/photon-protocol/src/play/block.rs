@@ -59,13 +59,16 @@ pub struct BlockDestructionObservation {
     pub progress: u8,
 }
 
-pub fn parse_block_update_packet(input: &[u8]) -> Result<BlockUpdateObservation, ConnectionError> {
+pub fn parse_block_update_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<BlockUpdateObservation, ConnectionError> {
     let mut input = input;
     let position = photon_core::binary::BlockPos::unpack(read_i64(
         &mut input,
         "block update position",
     )? as u64);
-    let state_id = BlockStateId(read_varint(&mut input, "block update state")?);
+    let state_id = WireBlockStateId::read(&mut input, "block update state")?.canonical(registries);
     if !input.is_empty() {
         return Err(ConnectionError::Codec("block update trailing payload"));
     }
@@ -136,7 +139,7 @@ pub struct LevelEvent {
 /// Position, event id and event data of a block event.
 pub type BlockEvent = ((i32, i32, i32), u8, u8);
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundBlockUpdatePacket`.
     BlockUpdate(BlockUpdateObservation) = parse_block_update_packet
 );
@@ -157,7 +160,10 @@ wrapped_packet!(
 pub struct LevelEventPacket(pub LevelEvent);
 
 impl Decode for LevelEventPacket {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let event = read_level_event_packet(&mut input)?;
         if !input.is_empty() {
@@ -171,7 +177,10 @@ impl Decode for LevelEventPacket {
 pub struct BlockChangedAck(pub i32);
 
 impl Decode for BlockChangedAck {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         read_varint(&mut &payload[..], "block changed ack sequence").map(Self)
     }
 }
@@ -183,7 +192,10 @@ pub struct SectionBlocksUpdate {
 }
 
 impl Decode for SectionBlocksUpdate {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let section = read_section_position(&mut input)?;
         let section_x = (section >> 42) as i32;
@@ -195,7 +207,7 @@ impl Decode for SectionBlocksUpdate {
         for _ in 0..count {
             let packed = wire::read_varlong(&mut input)
                 .map_err(|_| ConnectionError::Codec("section blocks update"))?;
-            let state = BlockStateId((packed as u64 >> 12) as i32);
+            let state = WireBlockStateId((packed as u64 >> 12) as i32).canonical(registries);
             let local = (packed & 0xfff) as i32;
             blocks.push((
                 [

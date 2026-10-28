@@ -130,3 +130,9 @@ mod recipe;
 mod serverbound;
 mod spawn;
 mod state;
+
+fn registries() -> photon_data::version_registries::VersionRegistries {
+    photon_data::version_registries::VersionRegistries::for_version(
+        photon_core::version::Version::NEWEST,
+    )
+}

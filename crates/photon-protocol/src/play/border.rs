@@ -46,7 +46,10 @@ pub struct SetBorderCenter {
 }
 
 impl Decode for SetBorderCenter {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         const NAME: &str = "set border center";
         let mut input = payload;
         let x = read_f64(&mut input, NAME)?;
@@ -61,7 +64,10 @@ pub struct SetBorderSize {
 }
 
 impl Decode for SetBorderSize {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let size = read_f64(&mut input, "set border size")?;
         Ok(Self { size })
@@ -74,7 +80,10 @@ pub struct SetBorderWarningDelay {
 }
 
 impl Decode for SetBorderWarningDelay {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let time = read_varint(&mut input, "set border warning delay")?;
         Ok(Self { time })
@@ -87,7 +96,10 @@ pub struct SetBorderWarningDistance {
 }
 
 impl Decode for SetBorderWarningDistance {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let blocks = read_varint(&mut input, "set border warning distance")?;
         Ok(Self { blocks })
@@ -98,7 +110,10 @@ impl Decode for SetBorderWarningDistance {
 pub struct InitializeBorder(pub photon_core::border_init::ClientWorldBorderInitialization);
 
 impl Decode for InitializeBorder {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         parse_initialize_border_packet(payload).map(Self)
     }
 }
@@ -111,7 +126,10 @@ pub struct SetBorderLerpSize {
 }
 
 impl Decode for SetBorderLerpSize {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let (old_size, new_size, time) = parse_set_border_lerp_size_packet(payload)?;
         Ok(Self {
             old_size,

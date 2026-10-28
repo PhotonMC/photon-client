@@ -91,7 +91,10 @@ wrapped_packet!(
 pub struct ClearDialog;
 
 impl Decode for ClearDialog {
-    fn decode(_payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        _payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         Ok(Self)
     }
 }

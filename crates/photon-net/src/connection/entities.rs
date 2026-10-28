@@ -102,7 +102,11 @@ fn keeps_stack_in_item_data(entity: &photon_world::ClientEntity) -> bool {
 }
 
 /// `handleSetEntityData`, and for a dropped item the stack it holds.
-pub fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> bool {
+pub fn metadata(
+    world: &mut ClientWorld,
+    packet: &EntityMetadataObservation,
+    registries: &photon_data::version_registries::VersionRegistries,
+) -> bool {
     let applied = world.apply_entity_metadata(packet.entity_id, &packet.metadata);
     world.apply_fishing_hook_metadata(packet.entity_id, &packet.metadata);
     world.apply_mannequin_metadata(packet.entity_id, &packet.metadata);
@@ -136,7 +140,7 @@ pub fn metadata(world: &mut ClientWorld, packet: &EntityMetadataObservation) -> 
     {
         world.entities_mut().apply_item_stack(
             packet.entity_id,
-            photon_protocol::play::parse_entity_item_stack(value),
+            photon_protocol::play::parse_entity_item_stack(value, registries),
         );
     }
     applied

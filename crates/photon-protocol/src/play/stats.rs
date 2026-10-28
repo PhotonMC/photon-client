@@ -8,7 +8,10 @@ pub use photon_data::stat::StatKey;
 pub struct AwardStats(pub Vec<(StatKey, i32)>);
 
 impl Decode for AwardStats {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let count = read_varint(&mut input, "award stats count")?;
         let count =

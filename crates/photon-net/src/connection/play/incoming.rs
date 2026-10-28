@@ -32,7 +32,7 @@ pub(super) trait ClientboundPacket: Send {
 pub(super) type Incoming = Box<dyn ClientboundPacket>;
 
 /// Parses the packet with this id from its payload.
-type Decoder = fn(i32, &[u8]) -> Result<Incoming, ConnectionError>;
+type Decoder = fn(i32, &[u8], &VersionRegistries) -> Result<Incoming, ConnectionError>;
 
 /// The packets of the families that are typed, by packet id.
 fn decoders() -> &'static HashMap<i32, Decoder> {
@@ -49,7 +49,7 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
             entity::DECODERS,
             effects::DECODERS,
             session::DECODERS,
-            &[(PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID, |_, _| {
+            &[(PLAY_CLIENTBOUND_BUNDLE_DELIMITER_PACKET_ID, |_, _, _| {
                 Ok(Box::new(BundleDelimiter))
             })],
         ]
@@ -61,20 +61,27 @@ fn decoders() -> &'static HashMap<i32, Decoder> {
 
 /// Parse the packet in `body` (its id, then its payload). A packet the client has no use for is
 /// dropped, as the reference drops one it does not know.
-pub(super) fn decode_packet(body: &[u8]) -> Result<Incoming, ConnectionError> {
+pub(super) fn decode_packet(
+    body: &[u8],
+    registries: &VersionRegistries,
+) -> Result<Incoming, ConnectionError> {
     let (packet_id, payload) = split_packet(body)?;
     match decoders().get(&packet_id) {
-        Some(decode) => decode(packet_id, payload),
+        Some(decode) => decode(packet_id, payload, registries),
         None => Ok(Box::new(Ignored)),
     }
 }
 
 /// The decoder of a packet type, as its table row holds it.
-fn typed<P>(_packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError>
+fn typed<P>(
+    _packet_id: i32,
+    payload: &[u8],
+    registries: &VersionRegistries,
+) -> Result<Incoming, ConnectionError>
 where
     P: Decode + ClientboundPacket + 'static,
 {
-    match P::decode(payload) {
+    match P::decode(payload, registries) {
         Ok(packet) => Ok(Box::new(packet)),
         Err(error) => match P::ON_ERROR {
             OnError::Fail => Err(error),
@@ -146,6 +153,6 @@ impl PlaySession {
     /// A packet's bytes, parsed and applied: the way a test hands one over.
     #[cfg(test)]
     pub(super) fn handle_bytes(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
-        self.handle_incoming(decode_packet(body)?)
+        self.handle_incoming(decode_packet(body, &VersionRegistries::newest())?)
     }
 }

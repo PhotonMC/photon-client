@@ -18,11 +18,14 @@ fn read_utf(input: &mut &[u8], name: &'static str) -> Result<String, ConnectionE
 }
 
 /// `DisplayInfo.fromNetwork`.
-fn read_display(input: &mut &[u8]) -> Result<DisplayInfo, ConnectionError> {
+fn read_display(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<DisplayInfo, ConnectionError> {
     let title = read_chat_component(input, "advancement title")?;
     let description = read_chat_component(input, "advancement description")?;
     // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
-    let item = ItemId(read_varint(input, "advancement icon")?);
+    let item = WireItemId::read(input, "advancement icon")?.canonical(registries);
     let count = read_varint(input, "advancement icon count")?;
     let patch = photon_data::item_components::read_patch(input)
         .map_err(|_| ConnectionError::Codec("advancement icon components"))?;
@@ -48,13 +51,16 @@ fn read_display(input: &mut &[u8]) -> Result<DisplayInfo, ConnectionError> {
 }
 
 /// `AdvancementHolder.STREAM_CODEC`.
-fn read_advancement(input: &mut &[u8]) -> Result<Advancement, ConnectionError> {
+fn read_advancement(
+    input: &mut &[u8],
+    registries: &VersionRegistries,
+) -> Result<Advancement, ConnectionError> {
     let id = read_identifier_string(input, "advancement id")?;
     let parent = read_bool(input, "advancement parent")?
         .then(|| read_identifier_string(input, "advancement parent id"))
         .transpose()?;
     let display = read_bool(input, "advancement display")?
-        .then(|| read_display(input))
+        .then(|| read_display(input, registries))
         .transpose()?;
     let groups = read_count(input, "advancement requirements")?;
     let mut requirements = Vec::with_capacity(groups);
@@ -90,13 +96,16 @@ fn read_progress(input: &mut &[u8]) -> Result<Progress, ConnectionError> {
 }
 
 impl Decode for UpdateAdvancements {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let reset = read_bool(&mut input, "advancements reset")?;
         let added_count = read_count(&mut input, "advancements added")?;
         let mut added = Vec::with_capacity(added_count);
         for _ in 0..added_count {
-            added.push(read_advancement(&mut input)?);
+            added.push(read_advancement(&mut input, registries)?);
         }
         let removed_count = read_count(&mut input, "advancements removed")?;
         let mut removed = Vec::with_capacity(removed_count);
@@ -134,7 +143,10 @@ impl Decode for UpdateAdvancements {
 pub struct SelectAdvancementsTab(pub Option<String>);
 
 impl Decode for SelectAdvancementsTab {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let tab = read_bool(&mut input, "advancements tab")?
             .then(|| read_identifier_string(&mut input, "advancements tab id"))

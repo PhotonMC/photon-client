@@ -151,6 +151,7 @@ pub(super) struct ParsedItemStackObservation {
 pub(super) fn parse_optional_item_stack(
     input: &mut &[u8],
     name: &'static str,
+    registries: &VersionRegistries,
 ) -> Result<ParsedItemStackObservation, ConnectionError> {
     let item_count = read_varint(input, name)?;
     if item_count <= 0 {
@@ -162,7 +163,7 @@ pub(super) fn parse_optional_item_stack(
             patch_bytes: Vec::new(),
         });
     }
-    let item_registry_id = ItemId(read_varint(input, name)?);
+    let item_registry_id = WireItemId::read(input, name)?.canonical(registries);
     let patch_start = *input;
     let patch = photon_data::item_components::read_patch(input)
         .map_err(|_| ConnectionError::Codec(name))?;
@@ -180,17 +181,20 @@ pub(super) fn parse_optional_item_stack(
 
 /// An item stack as an entity's data holds it (`ItemStack.OPTIONAL_STREAM_CODEC`
 /// at the start of `value`): none when the field is empty or cannot be read.
-pub fn parse_entity_item_stack(value: &[u8]) -> Option<ClientItemStackState> {
+pub fn parse_entity_item_stack(
+    value: &[u8],
+    registries: &VersionRegistries,
+) -> Option<ClientItemStackState> {
     let mut input = value;
-    parse_optional_item_stack(&mut input, "entity item stack")
+    parse_optional_item_stack(&mut input, "entity item stack", registries)
         .ok()?
         .client_state()
 }
 
 pub fn parse_container_set_content_packet(
-    input: &[u8],
+    mut input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<ContainerSetContentObservation, ConnectionError> {
-    let mut input = input;
     let container_id = read_varint(&mut input, "container content container id")?;
     let state_id = read_varint(&mut input, "container content state id")?;
     let item_count = read_count(&mut input, "container content item count")?;
@@ -203,9 +207,9 @@ pub fn parse_container_set_content_packet(
     let mut main_inventory_slot_zero_positive_component_type_ids = Vec::new();
     let mut main_inventory_slot_zero_negative_component_type_ids = Vec::new();
     let mut items = Vec::with_capacity(item_count);
+    let mut stack = |name| parse_optional_item_stack(&mut input, name, registries);
     for slot in 0..item_count {
-        let item = parse_optional_item_stack(&mut input, "container content item stack")?;
-        let client_state = item.client_state();
+        let item = stack("container content item stack")?;
         if slot == 36 {
             hotbar_slot_zero_item_count = item.item_count;
             hotbar_slot_zero_item_registry_id = item.item_registry_id;
@@ -219,9 +223,9 @@ pub fn parse_container_set_content_packet(
             main_inventory_slot_zero_negative_component_type_ids =
                 item.negative_component_type_ids.clone();
         }
-        items.push(client_state);
+        items.push(item.client_state());
     }
-    let carried_item = parse_optional_item_stack(&mut input, "container content carried item")?;
+    let carried_item = stack("container content carried item")?;
     let carried_client_state = carried_item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container content trailing payload"));
@@ -250,12 +254,13 @@ pub fn parse_container_set_content_packet(
 
 pub fn parse_container_set_slot_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<ContainerSetSlotObservation, ConnectionError> {
     let mut input = input;
     let container_id = read_varint(&mut input, "container slot container id")?;
     let state_id = read_varint(&mut input, "container slot state id")?;
     let slot = read_i16(&mut input, "container slot index")?;
-    let item = parse_optional_item_stack(&mut input, "container slot item stack")?;
+    let item = parse_optional_item_stack(&mut input, "container slot item stack", registries)?;
     let client_state = item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("container slot trailing payload"));
@@ -273,9 +278,12 @@ pub fn parse_container_set_slot_packet(
     })
 }
 
-pub fn parse_cursor_item_packet(input: &[u8]) -> Result<CursorItemObservation, ConnectionError> {
+pub fn parse_cursor_item_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<CursorItemObservation, ConnectionError> {
     let mut input = input;
-    let item = parse_optional_item_stack(&mut input, "cursor item stack")?;
+    let item = parse_optional_item_stack(&mut input, "cursor item stack", registries)?;
     let client_state = item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("cursor item trailing payload"));
@@ -292,10 +300,11 @@ pub fn parse_cursor_item_packet(input: &[u8]) -> Result<CursorItemObservation, C
 
 pub fn parse_set_player_inventory_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<SetPlayerInventoryObservation, ConnectionError> {
     let mut input = input;
     let slot = read_varint(&mut input, "player inventory slot")?;
-    let item = parse_optional_item_stack(&mut input, "player inventory item stack")?;
+    let item = parse_optional_item_stack(&mut input, "player inventory item stack", registries)?;
     let client_state = item.client_state();
     if !input.is_empty() {
         return Err(ConnectionError::Codec("player inventory trailing payload"));
@@ -333,7 +342,7 @@ wrapped_packet!(
     /// `ClientboundContainerClosePacket`.
     ContainerClose(ContainerCloseObservation) = parse_container_close_packet
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundContainerSetContentPacket`. An item with a component the parser does not know
     /// leaves that stack unknown rather than the session.
     ContainerSetContent(ContainerSetContentObservation) = parse_container_set_content_packet,
@@ -343,17 +352,17 @@ wrapped_packet!(
     /// `ClientboundContainerSetDataPacket`.
     ContainerSetData(ContainerDataObservation) = parse_container_set_data_packet
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundContainerSetSlotPacket`.
     ContainerSetSlot(ContainerSetSlotObservation) = parse_container_set_slot_packet,
     OnError::Warn("inventory")
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundSetCursorItemPacket`.
     SetCursorItem(CursorItemObservation) = parse_cursor_item_packet,
     OnError::Warn("inventory")
 );
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundSetPlayerInventoryPacket`.
     SetPlayerInventory(SetPlayerInventoryObservation) = parse_set_player_inventory_packet,
     OnError::Warn("inventory")
@@ -367,7 +376,10 @@ pub struct MountScreenOpen {
 }
 
 impl Decode for MountScreenOpen {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let container_id = read_varint(&mut input, "mount screen container id")?;
         let columns = read_varint(&mut input, "mount screen columns")?;
@@ -389,7 +401,10 @@ pub struct Cooldown {
 }
 
 impl Decode for Cooldown {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let group = photon_core::identifier::read_identifier(&mut input)
             .map_err(|_| ConnectionError::Codec("cooldown group"))?

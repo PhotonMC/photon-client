@@ -511,13 +511,19 @@ pub fn parse_set_chunk_cache_center_packet(
 }
 
 impl Decode for ChunkPacketObservation {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         parse_chunk_packet(payload)
     }
 }
 
 impl Decode for LightUpdateObservation {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         parse_light_update_packet(payload)
     }
 }
@@ -539,7 +545,10 @@ wrapped_packet!(
 pub struct ChunkBatchFinished;
 
 impl Decode for ChunkBatchFinished {
-    fn decode(_payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        _payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         Ok(Self)
     }
 }

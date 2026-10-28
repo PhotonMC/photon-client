@@ -339,7 +339,10 @@ pub struct SetExperience {
 }
 
 impl Decode for SetExperience {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         Ok(Self {
             progress: read_f32(&mut input, "float")?,
@@ -353,7 +356,10 @@ impl Decode for SetExperience {
 pub struct SetHeldSlot(pub i32);
 
 impl Decode for SetHeldSlot {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         read_varint(&mut input, "held slot").map(Self)
     }
@@ -366,7 +372,10 @@ pub struct TickingState {
 }
 
 impl Decode for TickingState {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         Ok(Self {
             tick_rate: read_f32(&mut input, "tick rate")?,
@@ -379,7 +388,10 @@ impl Decode for TickingState {
 pub struct TickingStep(pub i32);
 
 impl Decode for TickingStep {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         read_varint(&mut input, "tick steps").map(Self)
     }

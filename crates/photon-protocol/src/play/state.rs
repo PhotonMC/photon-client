@@ -161,13 +161,14 @@ pub fn parse_entity_metadata_packet(
 /// top bit says another follows) and stack.
 pub fn parse_entity_equipment_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<EntityEquipmentObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "set equipment entity id")?;
     let mut slots = Vec::new();
     loop {
         let slot_byte = read_byte(&mut input, "set equipment slot")?;
-        let stack = parse_optional_item_stack(&mut input, "set equipment item stack")?;
+        let stack = parse_optional_item_stack(&mut input, "set equipment item stack", registries)?;
         slots.push((usize::from(slot_byte & 127), stack.client_state()));
         if slot_byte & 128 == 0 {
             break;
@@ -242,7 +243,10 @@ wrapped_packet!(
 );
 
 impl Decode for crate::common::ClientboundKeepAlivePacket {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         crate::common::ClientboundKeepAlivePacket::decode(&mut input)
             .map_err(|_| ConnectionError::Codec("play keep alive"))
@@ -250,7 +254,10 @@ impl Decode for crate::common::ClientboundKeepAlivePacket {
 }
 
 impl Decode for crate::common::ClientboundPingPacket {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         crate::common::ClientboundPingPacket::decode(&mut input)
             .map_err(|_| ConnectionError::Codec("play ping"))
@@ -261,7 +268,10 @@ impl Decode for crate::common::ClientboundPingPacket {
 pub struct UpdateTags(pub photon_core::tags::ClientboundUpdateTagsPacket);
 
 impl Decode for UpdateTags {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         photon_core::tags::ClientboundUpdateTagsPacket::decode(&mut input)
             .map(Self)
@@ -277,7 +287,10 @@ pub struct SetTime {
 }
 
 impl Decode for SetTime {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let game_time = read_section_position(&mut input)?;
         let count =
@@ -306,7 +319,10 @@ pub struct SetDefaultSpawn {
 }
 
 impl Decode for SetDefaultSpawn {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         Ok(Self {
             dimension: read_identifier_string(&mut input, "default spawn dimension")?,
@@ -352,7 +368,7 @@ wrapped_packet!(
     OnError::Ignore("entity_metadata")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundSetEquipmentPacket`.
     SetEquipment(EntityEquipmentObservation) = parse_entity_equipment_packet,
     OnError::Ignore("entity_equipment")

@@ -379,7 +379,10 @@ wrapped_packet!(
 pub struct Disconnect(pub photon_core::text::Component);
 
 impl Decode for Disconnect {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         read_disconnect_reason(&mut input).map(Self)
     }

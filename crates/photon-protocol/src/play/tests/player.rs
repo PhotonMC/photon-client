@@ -182,21 +182,28 @@ fn player_abilities_parser_matches_java_flag_and_float_order() {
 #[test]
 fn test_instance_status_carries_the_words_and_an_optional_size() {
     let with_size = [8, 0, 2, b'h', b'i', 1, 3, 4, 5];
-    let packet =
-        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&with_size).unwrap();
+    let packet = <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(
+        &with_size,
+        &registries(),
+    )
+    .unwrap();
     assert_eq!(packet.status, photon_core::text::Component::literal("hi"));
     assert_eq!(packet.size, Some((3, 4, 5)));
     let without = [8, 0, 2, b'h', b'i', 0];
     assert_eq!(
-        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&without)
-            .unwrap()
-            .size,
+        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(
+            &without,
+            &registries()
+        )
+        .unwrap()
+        .size,
         None
     );
     assert!(
-        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(&[
-            8, 0, 2, b'h', b'i', 0, 0
-        ])
+        <crate::play::TestInstanceBlockStatus as crate::play::Decode>::decode(
+            &[8, 0, 2, b'h', b'i', 0, 0],
+            &registries(),
+        )
         .is_err()
     );
 }

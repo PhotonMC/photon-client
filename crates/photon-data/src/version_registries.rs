@@ -63,6 +63,31 @@ impl IdMap {
         self.to_canonical.get(wire as usize).copied()
     }
 
+    /// The canonical id of a wire id as the wire carries it. An id the version does not have
+    /// stays outside the canonical range (and a negative one stays as it is), so a bad id from a
+    /// server is still a bad id after the translation, as it is for the reference.
+    pub fn canonical_or_unknown(&self, wire: i32) -> i32 {
+        let Ok(index) = u32::try_from(wire) else {
+            return wire;
+        };
+        match self.to_canonical(index) {
+            Some(canonical) => canonical as i32,
+            None => wire.saturating_add((self.canonical_len() - self.wire_len()) as i32),
+        }
+    }
+
+    /// The wire id of a canonical id as game code holds it, for a packet going out; an id the
+    /// version does not have stays outside the wire range.
+    pub fn wire_or_unknown(&self, canonical: i32) -> i32 {
+        let Ok(index) = u32::try_from(canonical) else {
+            return canonical;
+        };
+        match self.to_wire(index) {
+            Some(wire) => wire as i32,
+            None => canonical.saturating_sub((self.canonical_len() - self.wire_len()) as i32),
+        }
+    }
+
     /// Whether every canonical id is its own wire id.
     pub fn is_identity(&self) -> bool {
         self.canonical_len() == self.wire_len()
@@ -100,6 +125,15 @@ impl VersionRegistries {
             menu_types: all(menu_type::names().len()),
             block_entity_types: all(block_entity_type::names().len()),
         }
+    }
+
+    /// The numbering of the newest version, built on first use and shared by every session of it.
+    pub fn newest() -> std::sync::Arc<Self> {
+        static NEWEST: std::sync::OnceLock<std::sync::Arc<VersionRegistries>> =
+            std::sync::OnceLock::new();
+        NEWEST
+            .get_or_init(|| std::sync::Arc::new(Self::for_version(Version::NEWEST)))
+            .clone()
     }
 
     /// The version the numbering is for.
@@ -148,6 +182,25 @@ mod tests {
         }
         assert_eq!(map.to_wire(map.canonical_len() as u32), None);
         assert_eq!(map.to_canonical(map.wire_len() as u32), None);
+    }
+
+    #[test]
+    fn an_unknown_id_stays_unknown_and_a_negative_one_is_left_alone() {
+        let map = VersionRegistries::for_version(Version::V26_2).items;
+        let past_the_end = map.canonical_len() as i32 + 5;
+        assert_eq!(map.canonical_or_unknown(past_the_end), past_the_end);
+        assert_eq!(map.wire_or_unknown(past_the_end), past_the_end);
+        assert_eq!(map.canonical_or_unknown(-3), -3);
+        assert_eq!(map.canonical_or_unknown(7), 7);
+    }
+
+    #[test]
+    fn a_gap_shifts_the_ids_after_it_both_ways() {
+        let map = IdMap::from_presence([true, false, true, true]);
+        assert_eq!(map.canonical_or_unknown(1), 2);
+        assert_eq!(map.canonical_or_unknown(2), 3);
+        assert_eq!(map.wire_or_unknown(3), 2);
+        assert_eq!(map.wire_or_unknown(1), 0);
     }
 
     #[test]

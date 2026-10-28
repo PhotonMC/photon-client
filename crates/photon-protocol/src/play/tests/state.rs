@@ -65,7 +65,7 @@ fn set_equipment_reads_each_slot_until_the_one_without_the_continue_bit() {
     // The main hand holds two of item 10 (no component changes), the head
     // is emptied.
     payload.extend_from_slice(&[128, 2, 10, 0, 0, 5, 0]);
-    let packet = parse_entity_equipment_packet(&payload).expect("set equipment");
+    let packet = parse_entity_equipment_packet(&payload, &registries()).expect("set equipment");
     assert_eq!(packet.entity_id, photon_core::ids::EntityId(5));
     assert_eq!(packet.slots.len(), 2);
     assert_eq!(packet.slots[0].0, 0);
@@ -75,7 +75,7 @@ fn set_equipment_reads_each_slot_until_the_one_without_the_continue_bit() {
         (2, ItemId(10))
     );
     assert_eq!(packet.slots[1], (5, None));
-    assert!(parse_entity_equipment_packet(&payload[..4]).is_err());
+    assert!(parse_entity_equipment_packet(&payload[..4], &registries()).is_err());
 }
 
 #[test]

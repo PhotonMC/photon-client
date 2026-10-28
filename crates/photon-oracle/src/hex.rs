@@ -404,22 +404,27 @@ pub(super) fn login_compression_result(request: &Value) -> Result<Value, String>
 fn award_stats_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{AwardStats, Decode};
     let bytes = decode_hex(string(request, "hex")?)?;
-    Ok(match AwardStats::decode(&bytes) {
-        Ok(AwardStats(stats)) => {
-            let mut last = std::collections::HashMap::new();
-            for (key, amount) in stats {
-                last.insert((key.stat_type, key.value), amount);
+    Ok(
+        match AwardStats::decode(
+            &bytes,
+            &photon_data::version_registries::VersionRegistries::newest(),
+        ) {
+            Ok(AwardStats(stats)) => {
+                let mut last = std::collections::HashMap::new();
+                for (key, amount) in stats {
+                    last.insert((key.stat_type, key.value), amount);
+                }
+                let mut rows: Vec<_> = last.into_iter().collect();
+                rows.sort_unstable();
+                let stats: Vec<Value> = rows
+                    .into_iter()
+                    .map(|((stat_type, value), amount)| json!([stat_type, value, amount]))
+                    .collect();
+                json!({"outcome": "value", "stats": stats})
             }
-            let mut rows: Vec<_> = last.into_iter().collect();
-            rows.sort_unstable();
-            let stats: Vec<Value> = rows
-                .into_iter()
-                .map(|((stat_type, value), amount)| json!([stat_type, value, amount]))
-                .collect();
-            json!({"outcome": "value", "stats": stats})
-        }
-        Err(_) => json!({"outcome": "error"}),
-    })
+            Err(_) => json!({"outcome": "error"}),
+        },
+    )
 }
 
 /// `UpdateAdvancements` on bytes, as the game's codec is read: see `update_advancements` of the
@@ -428,7 +433,10 @@ fn update_advancements_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{Decode, UpdateAdvancements};
     let bytes = decode_hex(string(request, "hex")?)?;
     let lang = photon_game::text::Lang::new(std::iter::empty());
-    let Ok(packet) = UpdateAdvancements::decode(&bytes) else {
+    let Ok(packet) = UpdateAdvancements::decode(
+        &bytes,
+        &photon_data::version_registries::VersionRegistries::newest(),
+    ) else {
         return Ok(json!({"outcome": "error"}));
     };
     let added: Vec<Value> = packet
@@ -486,10 +494,17 @@ fn update_advancements_result(request: &Value) -> Result<Value, String> {
 fn select_advancements_tab_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{Decode, SelectAdvancementsTab};
     let bytes = decode_hex(string(request, "hex")?)?;
-    Ok(match SelectAdvancementsTab::decode(&bytes) {
-        Ok(SelectAdvancementsTab(tab)) => without_nulls(json!({"outcome": "value", "tab": tab})),
-        Err(_) => json!({"outcome": "error"}),
-    })
+    Ok(
+        match SelectAdvancementsTab::decode(
+            &bytes,
+            &photon_data::version_registries::VersionRegistries::newest(),
+        ) {
+            Ok(SelectAdvancementsTab(tab)) => {
+                without_nulls(json!({"outcome": "value", "tab": tab}))
+            }
+            Err(_) => json!({"outcome": "error"}),
+        },
+    )
 }
 
 /// The oracle leaves out what is null (Gson drops a null member), so a member that is not there is

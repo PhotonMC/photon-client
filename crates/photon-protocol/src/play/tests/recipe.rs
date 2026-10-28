@@ -6,7 +6,8 @@ fn recipe_book_add_reads_a_shaped_entry_and_its_flags() {
     let payload = [
         1, 7, 1, 2, 1, 2, 4, 10, 0, 4, 20, 0, 0, 3, 1, 1, 2, 10, 2, 1,
     ];
-    let (entries, replace) = super::super::parse_recipe_book_add_packet(&payload).unwrap();
+    let (entries, replace) =
+        super::super::parse_recipe_book_add_packet(&payload, &super::registries()).unwrap();
     assert!(replace);
     let (entry, flags) = &entries[0];
     assert_eq!(

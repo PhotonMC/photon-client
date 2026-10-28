@@ -15,7 +15,7 @@ fn add_entity_parser_matches_java_spawn_field_order() {
     photon_core::wire::write_varint(0, &mut payload);
 
     assert_eq!(
-        parse_add_entity_packet(&payload).expect("add entity"),
+        parse_add_entity_packet(&payload, &registries()).expect("add entity"),
         super::super::AddEntityObservation {
             entity_id: EntityId(37),
             uuid: photon_core::binary::Uuid::new(0, 0),

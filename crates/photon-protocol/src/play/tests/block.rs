@@ -38,7 +38,7 @@ fn block_update_parser_matches_java_packed_position_and_state() {
     photon_core::wire::write_varint(123, &mut payload);
 
     assert_eq!(
-        parse_block_update_packet(&payload).expect("block update"),
+        parse_block_update_packet(&payload, &registries()).expect("block update"),
         super::super::BlockUpdateObservation {
             x: -12,
             y: -63,

@@ -85,12 +85,16 @@ pub struct EntityPassengerTickObservation {
     pub after_passenger_body_y_rotation: f32,
 }
 
-pub fn parse_add_entity_packet(input: &[u8]) -> Result<AddEntityObservation, ConnectionError> {
+pub fn parse_add_entity_packet(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<AddEntityObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "add entity id")?;
     let uuid = photon_core::binary::read_uuid(&mut input)
         .map_err(|_| ConnectionError::Codec("add entity uuid"))?;
-    let entity_type_id = EntityTypeId(read_varint(&mut input, "add entity type")?);
+    let entity_type_id =
+        WireEntityTypeId::read(&mut input, "add entity type")?.canonical(registries);
     let x = read_f64(&mut input, "add entity x")?;
     let y = read_f64(&mut input, "add entity y")?;
     let z = read_f64(&mut input, "add entity z")?;
@@ -198,7 +202,7 @@ pub fn parse_set_passengers_packet(
     })
 }
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundAddEntityPacket`.
     AddEntity(AddEntityObservation) = parse_add_entity_packet,
     OnError::Ignore("add_entity")

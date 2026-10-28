@@ -177,7 +177,11 @@ impl ClientboundPacket for LevelParticlesPacket {
     }
 }
 
-fn decode_sound(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+fn decode_sound(
+    packet_id: i32,
+    payload: &[u8],
+    _registries: &VersionRegistries,
+) -> Result<Incoming, ConnectionError> {
     Ok(Box::new(Sound::decode_packet(packet_id, payload)?))
 }
 
@@ -219,7 +223,11 @@ impl ClientboundPacket for SetTime {
 /// A title, a bar, a boss bar or the tab list: what the HUD shows.
 struct Hud(HudEvent);
 
-fn decode_hud(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+fn decode_hud(
+    packet_id: i32,
+    payload: &[u8],
+    _registries: &VersionRegistries,
+) -> Result<Incoming, ConnectionError> {
     Ok(match parse_hud_packet(packet_id, payload) {
         Ok(Some(event)) => Box::new(Hud(event)),
         Ok(None) => Box::new(Ignored),
@@ -237,7 +245,11 @@ impl ClientboundPacket for Hud {
 /// An objective, a score or a team.
 struct Scoreboard(photon_game::scoreboard::ScoreboardEvent);
 
-fn decode_scoreboard(packet_id: i32, payload: &[u8]) -> Result<Incoming, ConnectionError> {
+fn decode_scoreboard(
+    packet_id: i32,
+    payload: &[u8],
+    _registries: &VersionRegistries,
+) -> Result<Incoming, ConnectionError> {
     Ok(match parse_scoreboard_packet(packet_id, payload) {
         Ok(Some(event)) => Box::new(Scoreboard(event)),
         Ok(None) => Box::new(Ignored),

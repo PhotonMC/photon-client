@@ -12,12 +12,25 @@ pub(super) fn resolve_host(host: &str, port: i32) -> Result<SocketAddr, Connecti
         .ok_or(ConnectionError::InvalidArgument("transfer host"))
 }
 
+/// What a transfer carries to the next server: the account, the cookies, the packs and the stage.
+fn transfer_state(state: ConnectionState) -> ConnectionState {
+    ConnectionState {
+        account: state.account,
+        cookies: state.cookies,
+        packs: state.packs,
+        login_stage: state.login_stage,
+        transferring: true,
+        ..ConnectionState::default()
+    }
+}
+
 /// Read play packets off `reader` in the background, one at a time into the channel, until the
 /// connection ends or the server starts the configuration phase (`Packet.isTerminal`): nothing
 /// after that packet is a play packet.
 pub(super) fn spawn_reader(
     mut reader: Transport,
     compression_threshold: Option<usize>,
+    registries: std::sync::Arc<VersionRegistries>,
 ) -> Receiver<Result<Incoming, ConnectionError>> {
     let (sender, incoming) = mpsc::channel();
     std::thread::spawn(move || {
@@ -33,7 +46,7 @@ pub(super) fn spawn_reader(
                 split_packet(&body),
                 Ok((PLAY_CLIENTBOUND_START_CONFIGURATION_PACKET_ID, _))
             );
-            let (packet, failed) = match incoming::decode_packet(&body) {
+            let (packet, failed) = match incoming::decode_packet(&body, &registries) {
                 Ok(packet) => (packet, false),
                 Err(error) => (incoming::failed(error), true),
             };
@@ -315,19 +328,14 @@ impl PlaySession {
                 }) => {
                     address = resolve_host(&next_host, port)?;
                     host = Some(next_host);
-                    carried = ConnectionState {
-                        account: state.account,
-                        cookies: state.cookies,
-                        packs: state.packs,
-                        login_stage: state.login_stage,
-                        transferring: true,
-                        ..ConnectionState::default()
-                    };
+                    carried = transfer_state(state);
                 }
                 opened => {
                     let (stream, compression_threshold) = opened?;
                     stream.set_read_timeout(None)?;
-                    let incoming = spawn_reader(stream.try_clone()?, compression_threshold);
+                    let registries = VersionRegistries::newest();
+                    let incoming =
+                        spawn_reader(stream.try_clone()?, compression_threshold, registries);
                     let mut session = Self::assemble(
                         stream,
                         compression_threshold,
@@ -379,6 +387,7 @@ impl PlaySession {
         };
         Self {
             link: Link::new(writer, compression_threshold, incoming, login),
+            registries: VersionRegistries::newest(),
             world: state.new_world(),
             state,
             local: LocalState::default(),

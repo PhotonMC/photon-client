@@ -486,7 +486,7 @@ impl PlaySession {
         packet: EntityMetadataObservation,
     ) -> Result<(), ConnectionError> {
         log::trace!("data {} {:02x?}", packet.entity_id.0, packet.metadata);
-        entities::metadata(&mut self.world, &packet);
+        entities::metadata(&mut self.world, &packet, &self.registries);
         self.local_metadata(&packet);
         if let Some(Some(bed)) = photon_world::entity_sleeping_pos(&packet.metadata) {
             self.world.lie_in_bed(packet.entity_id, bed);

@@ -258,7 +258,7 @@ fn configure_again(
         Err(error) => Err(error),
         Ok(_) => {
             stream.set_read_timeout(None)?;
-            let incoming = spawn_reader(stream, compression_threshold);
+            let incoming = spawn_reader(stream, compression_threshold, VersionRegistries::newest());
             let mut fresh = PlaySession::assemble(
                 writer,
                 compression_threshold,
@@ -326,7 +326,11 @@ mod tests {
             assert_eq!(id, CONFIG_FINISH_PACKET_ID);
         });
         let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let incoming = spawn_reader(
+            stream.try_clone().expect("clone"),
+            None,
+            VersionRegistries::newest(),
+        );
         let mut session = PlaySession::assemble(
             stream,
             None,
@@ -361,7 +365,11 @@ mod tests {
             then(stream);
         });
         let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let incoming = spawn_reader(
+            stream.try_clone().expect("clone"),
+            None,
+            VersionRegistries::newest(),
+        );
         let mut session = PlaySession::assemble(stream, None, incoming, state, ("Tester", false));
         session.wait(Duration::from_secs(5)).expect("started");
         assert_eq!(session.switching(), Some(SwitchKind::Reconfiguring));
@@ -596,7 +604,11 @@ mod tests {
             std::thread::sleep(Duration::from_millis(500));
         });
         let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let incoming = spawn_reader(
+            stream.try_clone().expect("clone"),
+            None,
+            VersionRegistries::newest(),
+        );
         let first = ConnectionState {
             dimension_type_registry_bounds: vec![
                 Some(photon_world::DimensionBounds::new(-64, 384)),
@@ -664,7 +676,11 @@ mod tests {
             assert!(body.ends_with(&[1, 2, 7, 9]));
         });
         let stream = Transport::from(TcpStream::connect(address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let incoming = spawn_reader(
+            stream.try_clone().expect("clone"),
+            None,
+            VersionRegistries::newest(),
+        );
         let mut session = PlaySession::assemble(
             stream,
             None,
@@ -722,7 +738,11 @@ mod tests {
             std::thread::sleep(Duration::from_millis(300));
         });
         let stream = Transport::from(TcpStream::connect(origin_address).expect("connect"));
-        let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+        let incoming = spawn_reader(
+            stream.try_clone().expect("clone"),
+            None,
+            VersionRegistries::newest(),
+        );
         let mut session = PlaySession::assemble(
             stream,
             None,

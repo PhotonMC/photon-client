@@ -48,7 +48,10 @@ pub fn read_particle_options(
 pub struct LevelParticlesPacket(pub Option<photon_data::particle_values::LevelParticles>);
 
 impl Decode for LevelParticlesPacket {
-    fn decode(payload: &[u8]) -> Result<Self, ConnectionError> {
+    fn decode(
+        payload: &[u8],
+        _registries: &photon_data::version_registries::VersionRegistries,
+    ) -> Result<Self, ConnectionError> {
         let mut input = payload;
         let packet = read_level_particles_packet(&mut input)?;
         if !input.is_empty() {

@@ -14,7 +14,11 @@ fn session() -> (PlaySession, TcpListener) {
     let stream = Transport::from(
         TcpStream::connect(listener.local_addr().expect("address")).expect("connect"),
     );
-    let incoming = spawn_reader(stream.try_clone().expect("clone"), None);
+    let incoming = spawn_reader(
+        stream.try_clone().expect("clone"),
+        None,
+        VersionRegistries::newest(),
+    );
     let session = PlaySession::assemble(
         stream,
         None,

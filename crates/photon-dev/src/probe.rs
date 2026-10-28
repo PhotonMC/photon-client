@@ -21,6 +21,20 @@ use photon_world::{
 };
 
 use crate::trace::*;
+
+/// `handleSetEntityData` on the probe's world.
+fn apply_metadata(
+    world: &mut photon_world::ClientWorld,
+    observation: &photon_protocol::play::EntityMetadataObservation,
+) -> bool {
+    entities::metadata(world, observation, &registries())
+}
+
+/// The numbering of the version the probe speaks.
+fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+    photon_data::version_registries::VersionRegistries::newest()
+}
+
 use photon_net::connection::entities;
 use photon_net::connection::{read_packet, send_packet};
 use photon_protocol::play::*;

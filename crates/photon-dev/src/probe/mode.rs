@@ -98,7 +98,7 @@ pub(super) fn connect_and_probe_with_mode(
 
         match packet_id {
             PLAY_CLIENTBOUND_ADD_ENTITY_PACKET_ID => {
-                let mut observation = parse_add_entity_packet(payload)?;
+                let mut observation = parse_add_entity_packet(payload, &registries())?;
                 observation.applied_to_world = entities::add(&mut trace.world, &observation);
                 observation.applied_rotation = trace
                     .world
@@ -282,7 +282,7 @@ pub(super) fn connect_and_probe_with_mode(
             }
             PLAY_CLIENTBOUND_SET_ENTITY_DATA_PACKET_ID => {
                 let mut observation = parse_entity_metadata_packet(payload)?;
-                observation.applied_to_world = entities::metadata(&mut trace.world, &observation);
+                observation.applied_to_world = apply_metadata(&mut trace.world, &observation);
                 trace.entity_metadata_observations.push(observation);
             }
             PLAY_CLIENTBOUND_ENTITY_POSITION_SYNC_PACKET_ID => {
@@ -542,7 +542,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.container_close_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_CONTENT_PACKET_ID => {
-                let mut observation = parse_container_set_content_packet(payload)?;
+                let mut observation = parse_container_set_content_packet(payload, &registries())?;
                 observation.applied_to_world = trace.world.apply_local_player_container_content(
                     observation.container_id,
                     observation.state_id,
@@ -552,7 +552,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.container_content_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CONTAINER_SET_SLOT_PACKET_ID => {
-                let mut observation = parse_container_set_slot_packet(payload)?;
+                let mut observation = parse_container_set_slot_packet(payload, &registries())?;
                 observation.applied_to_world = trace.world.apply_local_player_container_slot(
                     observation.container_id,
                     observation.state_id,
@@ -562,14 +562,14 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.container_slot_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_CURSOR_ITEM_PACKET_ID => {
-                let mut observation = parse_cursor_item_packet(payload)?;
+                let mut observation = parse_cursor_item_packet(payload, &registries())?;
                 observation.applied_to_world = trace
                     .world
                     .apply_local_player_carried_item(observation.item.as_ref());
                 trace.cursor_item_observations.push(observation);
             }
             PLAY_CLIENTBOUND_SET_PLAYER_INVENTORY_PACKET_ID => {
-                let mut observation = parse_set_player_inventory_packet(payload)?;
+                let mut observation = parse_set_player_inventory_packet(payload, &registries())?;
                 observation.applied_to_world = trace
                     .world
                     .apply_local_player_inventory_slot(observation.slot, observation.item.as_ref());
@@ -614,7 +614,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.block_entity_observations.push(observation);
             }
             PLAY_CLIENTBOUND_BLOCK_UPDATE_PACKET_ID => {
-                let observation = parse_block_update_packet(payload)?;
+                let observation = parse_block_update_packet(payload, &registries())?;
                 trace.world.update_block_state(
                     observation.x,
                     observation.y,
