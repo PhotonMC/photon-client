@@ -156,6 +156,12 @@ fn spreader_target(ctx: &Context<'_>, name: &str, pos: (i32, i32, i32)) -> Optio
                 pos,
             ));
         }
+        "pale_moss_carpet" => {
+            return Some(photon_world::block::multiface::moss_carpet_can_grow_topper(
+                &|at| ctx.state_at(at),
+                pos,
+            ));
+        }
         "tall_dry_grass" => "minecraft:short_dry_grass",
         "bush" => "minecraft:bush",
         "firefly_bush" => "minecraft:firefly_bush",
@@ -298,13 +304,8 @@ fn fixed_target(name: &str) -> Option<bool> {
         | "short_dry_grass" | "small_dripleaf" => Some(true),
         "brown_mushroom" | "red_mushroom" => Some(false),
         n if n.ends_with("_sapling") || n.ends_with("azalea") => Some(false),
-        n => (!bonemealable_name(n)).then_some(false),
+        _ => Some(false),
     }
-}
-
-/// Whether the name is a block class with a `BonemealableBlock` rule not ported here.
-fn bonemealable_name(name: &str) -> bool {
-    name == "pale_moss_carpet"
 }
 
 /// `BoneMealItem.useOn`: swings where the clicked block grows, or where the block beside the face

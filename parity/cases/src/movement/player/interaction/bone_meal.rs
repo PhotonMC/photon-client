@@ -61,7 +61,7 @@ fn more(meal: &dyn Fn(&str, Vec<Value>) -> Value, crop: &dyn Fn(&str, &str) -> V
     let mut rows = plants(meal, &at);
     rows.extend(columns(meal, &below));
     rows.extend(pitchers(meal));
-    rows.extend([spreaders(meal), lichens(meal), netherrack(meal), stalks(meal), always(meal)].concat());
+    rows.extend([spreaders(meal), lichens(meal), carpets(meal), netherrack(meal), stalks(meal), always(meal)].concat());
     rows.extend(vec![
         meal("bone-meal-water-source", water("0")),
         meal("bone-meal-water-flowing", water("3")),
@@ -342,5 +342,65 @@ fn lichens(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
         meal("bone-meal-lichen-water-beside", fenced(Some(put_with(0, 64, 1, "minecraft:water", &[("level", "0")])))),
         meal("bone-meal-lichen-flowing-beside", fenced(Some(put_with(0, 64, 1, "minecraft:water", &[("level", "1")])))),
         meal("bone-meal-lichen-all-faces", vec![lichen(&["down", "up", "north", "south", "east", "west"])]),
+    ]
+}
+
+/// Pale moss carpet with its base: a topper grows above it where a wall beside that space can
+/// carry a side and the space is empty or holds a carpet of another shape.
+fn carpets(meal: &dyn Fn(&str, Vec<Value>) -> Value) -> Vec<Value> {
+    // A side the carpet below lacks is none on the topper too, so the carpet has them all.
+    let carpet = || {
+        put_with(
+            0,
+            64,
+            2,
+            "minecraft:pale_moss_carpet",
+            &[("bottom", "true"), ("north", "low"), ("south", "low"), ("east", "low"), ("west", "low")],
+        )
+    };
+    let walls = || {
+        vec![
+            put(1, 65, 2, "minecraft:stone"),
+            put(-1, 65, 2, "minecraft:stone"),
+            put(0, 65, 3, "minecraft:stone"),
+            put(0, 65, 1, "minecraft:stone"),
+        ]
+    };
+    let with = |extra: Vec<Value>| {
+        let mut world = vec![carpet()];
+        world.extend(walls());
+        world.extend(extra);
+        world
+    };
+    vec![
+        meal("bone-meal-carpet-bare", vec![carpet()]),
+        meal(
+            "bone-meal-carpet-sideless",
+            vec![
+                put_with(0, 64, 2, "minecraft:pale_moss_carpet", &[("bottom", "true")]),
+                put(1, 65, 2, "minecraft:stone"),
+            ],
+        ),
+        meal("bone-meal-carpet-walled", with(vec![])),
+        meal("bone-meal-carpet-one-wall", vec![carpet(), put(1, 65, 2, "minecraft:stone")]),
+        meal("bone-meal-carpet-stone-above", with(vec![put(0, 65, 2, "minecraft:stone")])),
+        meal(
+            "bone-meal-carpet-base-above",
+            with(vec![put_with(0, 65, 2, "minecraft:pale_moss_carpet", &[("bottom", "true")])]),
+        ),
+        meal(
+            "bone-meal-carpet-same-above",
+            with(vec![put_with(
+                0,
+                65,
+                2,
+                "minecraft:pale_moss_carpet",
+                &[("bottom", "false"), ("north", "low"), ("south", "low"), ("east", "low"), ("west", "low")],
+            )]),
+        ),
+        meal(
+            "bone-meal-carpet-other-above",
+            with(vec![put_with(0, 65, 2, "minecraft:pale_moss_carpet", &[("bottom", "false"), ("north", "low")])]),
+        ),
     ]
 }

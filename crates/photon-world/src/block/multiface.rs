@@ -71,3 +71,58 @@ pub fn lichen_can_spread(state_at: &dyn Fn(Pos) -> BlockStateId, pos: Pos) -> bo
             })
     })
 }
+
+const HORIZONTAL: [Direction; 4] = [
+    Direction::North,
+    Direction::East,
+    Direction::South,
+    Direction::West,
+];
+
+/// `MossyCarpetBlock.isValidBonemealTarget`: the carpet has its base and a topper could be made
+/// above it (`createTopperWithSideChance` when every side survives its chance).
+pub fn moss_carpet_can_grow_topper(state_at: &dyn Fn(Pos) -> BlockStateId, pos: Pos) -> bool {
+    const CARPET: &str = "minecraft:pale_moss_carpet";
+    if property(state_at(pos), "bottom") != Some("true") {
+        return false;
+    }
+    let above = beside(pos, Direction::Up);
+    let previous = state_at(above);
+    let carpet_above = is_named(previous, CARPET);
+    let replaceable = carpet_above || super::state_or_air(previous).block().replaceable;
+    if (carpet_above && property(previous, "bottom") == Some("true")) || !replaceable {
+        return false;
+    }
+    let sides = topper_sides(state_at, pos);
+    let unchanged = carpet_above
+        && property(previous, "bottom") == Some("false")
+        && HORIZONTAL
+            .iter()
+            .zip(sides)
+            .all(|(dir, side)| property(previous, dir.name()) == Some(side));
+    sides.iter().any(|side| *side != "none") && !unchanged
+}
+
+/// `MossyCarpetBlock.getUpdatedState` for a topper without a base above `pos`: a side is low
+/// where the neighbour can carry it, tall under a carpet side of the block over it, and none
+/// over a side the carpet at `pos` lacks.
+fn topper_sides(state_at: &dyn Fn(Pos) -> BlockStateId, pos: Pos) -> [&'static str; 4] {
+    const CARPET: &str = "minecraft:pale_moss_carpet";
+    let above = beside(pos, Direction::Up);
+    let over = state_at(beside(above, Direction::Up));
+    let below = state_at(pos);
+    let has_side = |state: BlockStateId, dir: Direction| {
+        is_named(state, CARPET) && property(state, dir.name()).is_some_and(|side| side != "none")
+    };
+    HORIZONTAL.map(|dir| {
+        if !can_attach_to(state_at, above, dir)
+            || (is_named(below, CARPET) && !has_side(below, dir))
+        {
+            "none"
+        } else if has_side(over, dir) && property(over, "bottom") != Some("true") {
+            "tall"
+        } else {
+            "low"
+        }
+    })
+}
