@@ -1,7 +1,7 @@
 //! The leads (`EntityRenderer.extractRenderState`'s leash states and `LeashFeatureRenderer`): the
 //! line from each leashed entity to whoever holds it. A lead whose holder this client does not
 //! know is not drawn. Not carried: a holder that glides with an elytra or spins with a trident
-//! (`Player.getRopeHoldPosition`'s other branch), a burning local player, the glow squid's light
+//! (`Player.getRopeHoldPosition`'s other branch), the glow squid's light
 //! (`getBlockLightLevel`), the camel's sitting size, the passenger offset of a ridden entity.
 
 use photon_core::math::Vec3;
@@ -139,6 +139,32 @@ fn light_at(session: &PlaySession, at: [f64; 3], full: bool) -> (i32, i32) {
     )
 }
 
+/// Whoever holds a lead: the local player, or an entity the world knows.
+fn holder_of(
+    session: &PlaySession,
+    holder_id: photon_core::ids::EntityId,
+    partial: f32,
+) -> Option<Holder> {
+    let world = session.world();
+    if let Some(player) = session
+        .player()
+        .filter(|player| player.entity_id() == holder_id)
+    {
+        return Some(Holder {
+            full_light: world
+                .local_player()
+                .is_some_and(photon_world::ClientPlayerState::is_on_fire),
+            ..local_holder(player, partial)
+        });
+    }
+    let roper = world
+        .entities()
+        .all()
+        .find(|roper| roper.id() == holder_id)?;
+    let (x, y, z) = world.entity_snapshot(holder_id, partial)?.position;
+    Some(world_holder(roper, partial, [x, y, z]))
+}
+
 /// The light at the leashed entity's eye and at the holder's.
 fn ends_light(
     session: &PlaySession,
@@ -156,7 +182,6 @@ fn ends_light(
 pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex>) {
     let world = session.world();
     let partial = view.partial as f32;
-    let player = session.player();
     let game_time = world.game_time() as i64;
     for entity in world.entities().all() {
         let Some(holder_id) = entity.leash_holder_id() else {
@@ -171,19 +196,8 @@ pub fn leashes(session: &PlaySession, view: FrameView, vertices: &mut Vec<Vertex
         let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
             continue;
         };
-        let holder = match player {
-            Some(player) if player.entity_id() == holder_id => local_holder(player, partial),
-            _ => {
-                let Some(roper) = world.entities().all().find(|roper| roper.id() == holder_id)
-                else {
-                    continue;
-                };
-                let Some(roper_snapshot) = world.entity_snapshot(holder_id, partial) else {
-                    continue;
-                };
-                let (x, y, z) = roper_snapshot.position;
-                world_holder(roper, partial, [x, y, z])
-            }
+        let Some(holder) = holder_of(session, holder_id, partial) else {
+            continue;
         };
         let (x, y, z) = snapshot.position;
         let position = [x, y, z];
