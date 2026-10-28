@@ -278,6 +278,8 @@ fn boat_rows() -> Vec<Value> {
         in_the_way("use-oak_boat-into-parrot", "parrot", 1.0, 2.5).row(),
         in_the_way("use-oak_boat-into-item", "item", 1.0, 2.5).row(),
         underfoot("use-oak_boat-into-the-player").row(),
+        in_the_way("use-oak_boat-inside-border", "zombie", 4.0, 2.5).border(0.5, 0.5, 8.0).row(),
+        in_the_way("use-oak_boat-into-border", "zombie", 4.0, 2.5).border(0.5, 0.5, 5.0).row(),
         in_the_way("use-oak_boat-eye-in-pickable", "zombie", 0.5, 0.5).row(),
     ]
 }

@@ -170,6 +170,11 @@ impl Interaction {
         Self { scene: self.scene.y_rot(y_rot), ..self }
     }
 
+    /// A world border of `size` around (x, z).
+    pub fn border(self, x: f64, z: f64, size: f64) -> Self {
+        Self { scene: self.scene.border(x, z, size), ..self }
+    }
+
     pub fn x_rot(self, x_rot: f64) -> Self {
         Self { scene: self.scene.x_rot(x_rot), ..self }
     }
