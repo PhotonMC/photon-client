@@ -44,6 +44,7 @@ mod sulfur;
 pub use campfire::CampfireSmoke;
 pub use sounds::{LevelEvent, LevelEventQueue, block_sound_of};
 pub(crate) use sulfur::{SulfurState, has_sulfur_ticker};
+pub(crate) mod boat_place;
 pub(crate) mod rain;
 pub(crate) mod touch;
 mod weather;

@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use super::placing::uses;
 use super::{aim_at, facing, using};
+use crate::bits::f64_bits;
 use crate::components::{
     BINDING_CURSE, DAMAGE, ENCHANTMENTS, INSTRUMENT, PROTECTION, RECIPES, RIPTIDE, Tag, UNBREAKABLE, enchantments, nbt,
     nbt_text, patch, patch_of, text, vi,
@@ -269,7 +270,20 @@ fn boat_rows() -> Vec<Value> {
         beside("use-oak_boat-into-slab", "minecraft:stone_slab").row(),
         beside("use-oak_boat-into-glass-pane", "minecraft:glass_pane").row(),
         beside("use-oak_boat-into-water", "minecraft:water").row(),
+        // An entity in the boat's box fails the placing; one around the eye passes the use on.
+        in_the_way("use-oak_boat-into-boat", "oak_boat", 1.0, 2.5).row(),
+        in_the_way("use-oak_boat-eye-in-pickable", "zombie", 0.5, 0.5).row(),
     ]
+}
+
+/// An entity standing at (x, 64, z) while a boat is aimed at the floor ahead.
+fn in_the_way(label: &str, kind: &str, x: f64, z: f64) -> super::Interaction {
+    let top_of = aim_at((0, 63, 2), "up", (0.5, 64.0, 2.5));
+    let zombie = serde_json::json!({
+        "id": 20, "type": format!("minecraft:{kind}"),
+        "x": f64_bits(x), "y": f64_bits(64.0), "z": f64_bits(z),
+    });
+    super::facing(label, vec![zombie], run(Some(&top_of))).main_hand("minecraft:oak_boat").count(2).x_rot(39.0)
 }
 
 fn special_rows() -> Vec<Value> {
