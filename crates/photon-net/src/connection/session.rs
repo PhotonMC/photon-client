@@ -78,7 +78,7 @@ pub fn send_handshake_to(
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
     let intention = ClientIntentionPacket::new(
-        PROTOCOL_VERSION,
+        photon_core::version::Version::NEWEST.protocol(),
         host.encode_utf16().collect(),
         i32::from(port),
         intent,

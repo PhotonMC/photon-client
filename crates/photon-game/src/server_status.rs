@@ -2,11 +2,9 @@
 //! makes of it (`ServerStatusPinger.handleStatusResponse`, `onPingFailed`).
 
 use photon_core::json::{JsonValue, parse};
+use photon_core::version::Version;
 
 use crate::text::{Component, Style};
-
-/// The pinned protocol: a server of another is incompatible.
-pub const PROTOCOL_VERSION: i32 = 776;
 
 /// `ServerStatus.Players`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,7 +174,7 @@ impl Pinged {
             ),
         };
         Self {
-            state: if protocol == PROTOCOL_VERSION {
+            state: if Version::from_protocol(protocol).is_some() {
                 PingState::Successful
             } else {
                 PingState::Incompatible

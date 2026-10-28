@@ -33,5 +33,6 @@ pub mod tags;
 pub mod text;
 pub mod timer;
 pub mod utf8;
+pub mod version;
 pub mod waypoint;
 pub mod wire;

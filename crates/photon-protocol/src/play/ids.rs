@@ -1,6 +1,4 @@
 use photon_core::ids::ItemId;
-pub const PROTOCOL_VERSION: i32 = 776;
-
 pub const LOGIN_INTENTION_PACKET_ID: i32 = 0;
 
 pub const LOGIN_HELLO_PACKET_ID: i32 = 0;
