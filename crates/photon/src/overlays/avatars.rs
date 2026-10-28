@@ -22,36 +22,68 @@ pub(super) fn avatar_look(
         return skins.of_player(session, textures, entity.uuid);
     }
     let profile = mannequin_profile(session, skins, entity);
-    let (id, properties) = profile.map_or(
-        (photon_core::binary::Uuid::new(0, 0), Vec::new()),
-        |found| (found.id, found.properties),
+    let (id, properties, patch) = profile.map_or(
+        (
+            photon_core::binary::Uuid::new(0, 0),
+            Vec::new(),
+            SkinPatch::default(),
+        ),
+        |(found, patch)| (found.id, found.properties, patch),
     );
     let who = crate::skins::Who {
         id,
         properties: &properties,
         require_secure: false,
     };
-    skins.resolve(textures, &who)
+    let resolved = skins.resolve(textures, &who)?;
+    Some(patched(resolved, &patch, textures))
 }
 
+use crate::skins::item_profile::SkinPatch;
+
+/// `PlayerSkin.with(patch)`: what the profile's patch names replaces the skin's (a texture only
+/// where it is among the entity textures, the model always).
+fn patched(
+    mut resolved: crate::skins::Resolved,
+    patch: &SkinPatch,
+    textures: &photon_render::entity::textures::EntityTextures,
+) -> crate::skins::Resolved {
+    let rect = |id: &Option<String>| {
+        let id = id.as_deref()?;
+        textures.rect(id.strip_prefix("minecraft:").unwrap_or(id))
+    };
+    if let Some(body) = rect(&patch.body) {
+        resolved.rect = body;
+    }
+    if let Some(cape) = rect(&patch.cape) {
+        resolved.cape = Some(cape);
+    }
+    if let Some(slim) = patch.slim {
+        resolved.slim = slim;
+    }
+    resolved
+}
+
+type Remembered = (crate::skins::profile::StaticProfile, SkinPatch);
+
 thread_local! {
-    /// The profile each mannequin last had a skin from (`ClientMannequin.skin`), by its UUID (entity
-    /// ids come back after a restart); the mannequins gone are dropped each frame.
-    static LAST_SKINS: std::cell::RefCell<std::collections::HashMap<(u64, u64), crate::skins::profile::StaticProfile>> =
+    /// The profile each mannequin last had a skin from (`ClientMannequin.skin`), with its patch, by
+    /// its UUID (entity ids come back after a restart); the mannequins gone are dropped each frame.
+    static LAST_SKINS: std::cell::RefCell<std::collections::HashMap<(u64, u64), Remembered>> =
         std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
-/// `ClientMannequin.updateSkin`: the profile's skin once known. While a name or an id is looked
-/// up, or when the lookup finds nothing, the mannequin keeps the skin it had (`ifPresent`), at
-/// first `DEFAULT_SKIN`, the empty profile's.
+/// `ClientMannequin.updateSkin`: the profile's skin once known (`RenderInfo`, with the patch).
+/// While a name or an id is looked up, or when the lookup finds nothing, the mannequin keeps the
+/// skin it had (`ifPresent`), at first `DEFAULT_SKIN`, the empty profile's, unpatched.
 fn mannequin_profile(
     session: &PlaySession,
     skins: &mut crate::skins::Skins,
     entity: &photon_world::ClientEntity,
-) -> Option<crate::skins::profile::StaticProfile> {
+) -> Option<Remembered> {
     let id = (entity.uuid.most, entity.uuid.least);
     let last = || LAST_SKINS.with(|last| last.borrow().get(&id).cloned());
-    let Some(resolvable) = entity
+    let Some((resolvable, patch)) = entity
         .mannequin_profile()
         .and_then(crate::skins::item_profile::wire_profile)
     else {
@@ -62,8 +94,9 @@ fn mannequin_profile(
     if looked_up && found.properties.is_empty() {
         return last();
     }
-    LAST_SKINS.with(|last| last.borrow_mut().insert(id, found.clone()));
-    Some(found)
+    let remembered = (found, patch);
+    LAST_SKINS.with(|last| last.borrow_mut().insert(id, remembered.clone()));
+    Some(remembered)
 }
 
 /// The skin layers the local player's own data names (the server's echo of what Photon sent),

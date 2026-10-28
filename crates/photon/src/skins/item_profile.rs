@@ -61,10 +61,23 @@ impl Reader<'_> {
     }
 }
 
+/// `PlayerSkin.Patch`: the textures (as identifiers) and the model a profile sets over its skin.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct SkinPatch {
+    pub body: Option<String>,
+    pub cape: Option<String>,
+    pub elytra: Option<String>,
+    /// Slim (true) or wide.
+    pub slim: Option<bool>,
+}
+
 /// `ResolvableProfile.STREAM_CODEC`: a complete game profile (id, name, properties), or the
 /// partial one of a name, an id and properties each of which may be missing.
 fn read_profile(bytes: &[u8]) -> Option<Resolvable> {
-    let mut reader = Reader(bytes);
+    read_profile_from(&mut Reader(bytes))
+}
+
+fn read_profile_from(reader: &mut Reader<'_>) -> Option<Resolvable> {
     if reader.boolean()? {
         let id = reader.uuid()?;
         reader.string()?;
@@ -87,9 +100,32 @@ fn read_profile(bytes: &[u8]) -> Option<Resolvable> {
 }
 
 /// A `ResolvableProfile` as an entity's data carries it (a mannequin's), from the start of
-/// `bytes`.
-pub(crate) fn wire_profile(bytes: &[u8]) -> Option<Resolvable> {
-    read_profile(bytes)
+/// `bytes`, with its skin patch (`PlayerSkin.Patch.STREAM_CODEC`).
+pub(crate) fn wire_profile(bytes: &[u8]) -> Option<(Resolvable, SkinPatch)> {
+    let mut reader = Reader(bytes);
+    let profile = read_profile_from(&mut reader)?;
+    let mut texture = || {
+        if reader.boolean()? {
+            reader.string().map(Some)
+        } else {
+            Some(None)
+        }
+    };
+    let (body, cape, elytra) = (texture()?, texture()?, texture()?);
+    let slim = if reader.boolean()? {
+        Some(reader.boolean()?)
+    } else {
+        None
+    };
+    Some((
+        profile,
+        SkinPatch {
+            body,
+            cape,
+            elytra,
+            slim,
+        },
+    ))
 }
 
 /// The profile a stack carries when it names its skin itself.
