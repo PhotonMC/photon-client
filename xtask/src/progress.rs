@@ -4,6 +4,7 @@
 //! `--check` can compare it with a fresh computation (CI and the pre-push hook do). Numbers only:
 //! nothing derived from the reference leaves `.data/` in any other form.
 
+mod classes;
 mod local;
 mod markers;
 mod milestones;

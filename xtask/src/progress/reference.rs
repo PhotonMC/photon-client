@@ -4,10 +4,10 @@
 //! The client side is name-based: a thing is "named" when the client sources spell its identifier.
 //! That is a lower bound for what exists, not proof that it behaves right (parity proves that).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
 
+use super::classes;
 use super::local::group;
 use crate::entities::{self, CLIENT, has_word, mentions, registered};
 use crate::process;
@@ -15,6 +15,9 @@ use crate::process;
 const SOURCE: &str = ".data/minecraft/source/net/minecraft";
 /// Crates that read and write the play packets.
 const WIRE: &[&str] = &["crates/photon-net/src", "crates/photon-protocol/src"];
+/// The screens' package in the client jar, and the class they all extend.
+const SCREEN_PACKAGE: &str = "net/minecraft/client/gui/screens/";
+const SCREEN_ROOT: &str = "net/minecraft/client/gui/screens/Screen";
 /// Crates that draw screens, besides `CLIENT`.
 const SCREENS: &[&str] = &["crates/photon-gui/src", "crates/photon/src"];
 
@@ -196,69 +199,14 @@ fn type_rows() -> Result<Vec<(String, String)>, String> {
     ])
 }
 
-/// Every non-abstract class below `client/gui/screens` that extends `Screen`, directly or not.
-fn screen_classes() -> Result<Vec<String>, String> {
-    let mut parents = BTreeMap::new();
-    let mut abstracts = BTreeSet::new();
-    let mut files = Vec::new();
-    collect(
-        &process::root().join(SOURCE).join("client/gui/screens"),
-        &mut files,
-    );
-    for file in files {
-        let text = fs::read_to_string(&file).map_err(|error| error.to_string())?;
-        for line in text.lines() {
-            if let Some((class, parent)) = declaration(line) {
-                if line.contains("abstract class") {
-                    abstracts.insert(class.clone());
-                }
-                parents.insert(class, parent);
-            }
-        }
-    }
-    let extends_screen = |class: &String| {
-        let mut at = class.clone();
-        for _ in 0..16 {
-            match parents.get(&at) {
-                Some(parent) if parent == "Screen" => return true,
-                Some(parent) => at = parent.clone(),
-                None => return false,
-            }
-        }
-        false
-    };
-    Ok(parents
-        .keys()
-        .filter(|class| !abstracts.contains(*class) && extends_screen(class))
-        .cloned()
-        .collect())
-}
-
-fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
-    for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            collect(&path, out);
-        } else if path.extension().is_some_and(|ext| ext == "java") {
-            out.push(path);
-        }
-    }
-}
-
-/// `(class, parent)` of a `class X extends Y` declaration line, generics removed.
-fn declaration(line: &str) -> Option<(String, String)> {
-    let line = line.trim();
-    let after = line.split("class ").nth(1)?;
-    let (class, rest) = after.split_once(" extends ")?;
-    let class = class.split('<').next()?.trim();
-    let parent = rest
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .next()?;
-    (!class.is_empty() && !parent.is_empty()).then(|| (class.to_owned(), parent.to_owned()))
-}
-
 fn screen_rows() -> Result<Vec<(String, String)>, String> {
-    let classes = screen_classes()?;
+    let jar = process::root().join(".data/minecraft/runtime/client-26.2.jar");
+    let headers = classes::headers(&jar, SCREEN_PACKAGE)?;
+    let screens = classes::concrete_subclasses(&headers, SCREEN_ROOT);
+    let classes: Vec<&str> = screens
+        .iter()
+        .map(|header| classes::simple_name(&header.name))
+        .collect();
     let mut dirs: Vec<&str> = CLIENT.to_vec();
     dirs.extend(SCREENS);
     let text = entities::corpus(&dirs);
@@ -313,15 +261,5 @@ mod tests {
         assert!(!is_used(defined_only, "PLAY_X_PACKET_ID"));
         let with_use = format!("{defined_only}\nmatch id {{ PLAY_X_PACKET_ID => {{}} }}");
         assert!(is_used(&with_use, "PLAY_X_PACKET_ID"));
-    }
-
-    #[test]
-    fn reads_class_declarations() {
-        let line = "public class AbcScreen<T> extends Other<T> implements Q {";
-        assert_eq!(
-            declaration(line),
-            Some(("AbcScreen".to_owned(), "Other".to_owned()))
-        );
-        assert_eq!(declaration("public class Plain {"), None);
     }
 }
