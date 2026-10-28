@@ -1,6 +1,5 @@
 //! Packet codecs, wire observations, and frame serialization for the Java protocol.
 
-use std::collections::BTreeSet;
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::time::Duration;

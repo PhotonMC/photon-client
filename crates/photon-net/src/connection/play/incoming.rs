@@ -153,6 +153,6 @@ impl PlaySession {
     /// A packet's bytes, parsed and applied: the way a test hands one over.
     #[cfg(test)]
     pub(super) fn handle_bytes(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
-        self.handle_incoming(decode_packet(body, &VersionRegistries::newest())?)
+        self.handle_incoming(decode_packet(body, &self.registries)?)
     }
 }

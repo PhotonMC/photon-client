@@ -12,7 +12,8 @@ fn chunk_packet_parser_consumes_empty_java_payload() {
         photon_core::wire::write_varint(0, &mut payload);
     }
 
-    let observation = parse_chunk_packet(&payload).expect("empty chunk payload");
+    let observation =
+        parse_chunk_packet(&payload, &super::registries()).expect("empty chunk payload");
     assert_eq!(observation.x, -17);
     assert_eq!(observation.z, 23);
     assert_eq!(observation.heightmap_count, 0);
@@ -45,7 +46,8 @@ fn chunk_packet_parser_consumes_nullable_block_entity_nbt() {
         photon_core::wire::write_varint(0, &mut payload);
     }
 
-    let observation = parse_chunk_packet(&payload).expect("nullable block entity tag");
+    let observation =
+        parse_chunk_packet(&payload, &super::registries()).expect("nullable block entity tag");
     assert_eq!(observation.block_entity_count, 1);
     assert_eq!(
         observation.block_entities,
@@ -91,7 +93,8 @@ fn chunk_packet_parser_records_heightmap_and_light_lengths() {
     photon_core::wire::write_varint(2_048, &mut payload);
     payload.extend_from_slice(&[0x3c; 2_048]);
 
-    let observation = parse_chunk_packet(&payload).expect("heightmap and light lengths");
+    let observation =
+        parse_chunk_packet(&payload, &super::registries()).expect("heightmap and light lengths");
     assert_eq!(observation.heightmap_count, 2);
     assert_eq!(
         observation.heightmap_observations,
@@ -197,7 +200,7 @@ fn chunk_packet_parser_rejects_trailing_payload() {
     }
     payload.push(0xff);
 
-    match parse_chunk_packet(&payload) {
+    match parse_chunk_packet(&payload, &super::registries()) {
         Err(super::super::ConnectionError::Codec(name)) => {
             assert_eq!(name, "chunk trailing payload");
         }
@@ -225,7 +228,8 @@ fn section_parser_matches_java_palette_storage_layout() {
     section.extend_from_slice(&0x249_u64.to_be_bytes());
     section.resize(section.len() + 3 * 8, 0);
 
-    let observations = parse_section_data(&section).expect("serialized section");
+    let observations =
+        parse_section_data(&section, &super::registries()).expect("serialized section");
     assert_eq!(observations.len(), 1);
     let observation = &observations[0];
     assert_eq!(observation.non_empty_block_count, 7);
@@ -258,7 +262,8 @@ fn section_parser_reads_zero_bit_palettes_without_storage() {
     section.push(0);
     photon_core::wire::write_varint(0, &mut section);
 
-    let observations = parse_section_data(&section).expect("single-valued section");
+    let observations =
+        parse_section_data(&section, &super::registries()).expect("single-valued section");
     assert_eq!(observations.len(), 1);
     assert_eq!(observations[0].block_state_bits_per_entry, 0);
     assert_eq!(observations[0].block_state_palette_entry_count, 1);
@@ -289,14 +294,14 @@ fn section_with_block_states(container: &[u8]) -> Vec<u8> {
 fn section_parser_rejects_more_than_32_bits_per_entry() {
     let block_states = section_with_block_states(&[33]);
     assert!(matches!(
-        parse_section_data(&block_states),
+        parse_section_data(&block_states, &super::registries()),
         Err(super::super::ConnectionError::Codec("block state bits"))
     ));
 
     let mut biomes = section_with_block_states(&[0, 0]);
     biomes.push(33);
     assert!(matches!(
-        parse_section_data(&biomes),
+        parse_section_data(&biomes, &super::registries()),
         Err(super::super::ConnectionError::Codec("biome bits"))
     ));
 }
@@ -306,7 +311,10 @@ fn section_parser_rejects_a_palette_larger_than_its_capacity() {
     let mut block_states = vec![4];
     photon_core::wire::write_varint(17, &mut block_states);
     assert!(matches!(
-        parse_section_data(&section_with_block_states(&block_states)),
+        parse_section_data(
+            &section_with_block_states(&block_states),
+            &super::registries()
+        ),
         Err(super::super::ConnectionError::Codec("block state palette"))
     ));
 
@@ -314,7 +322,7 @@ fn section_parser_rejects_a_palette_larger_than_its_capacity() {
     biomes.push(1);
     photon_core::wire::write_varint(3, &mut biomes);
     assert!(matches!(
-        parse_section_data(&biomes),
+        parse_section_data(&biomes, &super::registries()),
         Err(super::super::ConnectionError::Codec("biome palette"))
     ));
 }

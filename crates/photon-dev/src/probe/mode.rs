@@ -919,7 +919,7 @@ pub(super) fn connect_and_probe_with_mode(
                 trace.mob_effect_update_observations.push(observation);
             }
             PLAY_CLIENTBOUND_CHUNK_PACKET_ID => {
-                let mut chunk = parse_chunk_packet(payload)?;
+                let mut chunk = parse_chunk_packet(payload, &registries())?;
                 trace.world.replace_chunk(
                     chunk.x,
                     chunk.z,
