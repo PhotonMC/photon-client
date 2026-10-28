@@ -6,7 +6,14 @@ mod data_fields;
 mod tables;
 use tables::*;
 
-pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
+pub(super) fn entity_family_result(request: &Value) -> Result<Value, String> {
+    if string(request, "operation")? == "entity_data_ids" {
+        return entity_data_ids_result(request);
+    }
+    entity_result(request)
+}
+
+fn entity_result(request: &Value) -> Result<Value, String> {
     match string(request, "operation")? {
         "walk_animation" => walk_animation_result(request),
         "model_layers" => Ok(model_layers_result()),
@@ -121,4 +128,19 @@ pub(super) fn entity_result(request: &Value) -> Result<Value, String> {
         other => block_pose_result(other, request)
             .unwrap_or_else(|| Err("unknown entity operation".into())),
     }
+}
+
+/// The id the client reads each accessor by, found in the table that pairs them.
+fn entity_data_ids_result(request: &Value) -> Result<Value, String> {
+    let mut rows = Vec::new();
+    for row in request["rows"].as_array().ok_or("rows")? {
+        let (class, field) = (string(row, "class")?, string(row, "field")?);
+        let id = photon_world::DATA_IDS
+            .iter()
+            .find(|(known, name, _)| *known == class && *name == field)
+            .map(|(_, _, id)| *id)
+            .ok_or(format!("{class}.{field} is not in the table"))?;
+        rows.push(json!({"label": row["label"], "id": id}));
+    }
+    Ok(json!({"rows": rows}))
 }

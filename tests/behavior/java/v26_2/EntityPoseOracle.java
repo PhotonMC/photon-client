@@ -85,6 +85,24 @@ class EntityPoseOracle extends EntityLayerOracle {
         return result;
     }
 
+    /** The ids of the reference's static data accessors, which the client's constants must equal. */
+    static JsonObject entityDataIds(final JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.get("rows").getAsJsonArray()) {
+            var row = element.getAsJsonObject();
+            var owner = Class.forName(row.get("class").getAsString());
+            var accessor = (net.minecraft.network.syncher.EntityDataAccessor<?>) Reflect.get(
+                null, owner, row.get("field").getAsString());
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            out.addProperty("id", accessor.id());
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
+
     /** A trial spawner drop's poses as the reference's own renderer submits them: the growth, the spin, then each copy. */
     static JsonObject ominousItemPose(final JsonObject request) throws Exception {
         var rows = new JsonArray();

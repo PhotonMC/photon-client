@@ -183,7 +183,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
         "model" => model_result(&request)?,
         "json" => json_result(&request)?,
         "movement" => movement_result(&request)?,
-        "entity" => entity_result(&request)?,
+        "entity" => entity_family_result(&request)?,
         "gui" => gui::gui_result(&request)?,
         "sound" => match string(&request, "operation")? {
             "sound_events" => {

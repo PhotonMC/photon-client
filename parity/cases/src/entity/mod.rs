@@ -5,6 +5,7 @@ mod aquatic;
 mod banner;
 mod beacon;
 mod bosses;
+mod data_ids;
 mod effects;
 mod farm;
 mod flyers;
@@ -51,6 +52,7 @@ const ORDER: &[Cases] = &[
     humanoids::skeleton,
     humanoids::piglin,
     items::xp_orb,
+    data_ids::data_ids,
     player::living_pose,
     held::held_item,
     || vec![entity("spear-table", "spear_table", vec![])],

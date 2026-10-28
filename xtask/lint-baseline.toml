@@ -924,7 +924,7 @@
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 91
-"crates/photon/src/world/signs.rs::sign_texts" = 69
+"crates/photon/src/world/signs.rs::sign_texts" = 66
 
 [fn-nesting]
 "crates/photon-core/src/binary/traversal.rs::BlockPos::breadth_first_traversal" = 5
