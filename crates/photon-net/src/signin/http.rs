@@ -71,6 +71,18 @@ pub(super) fn get_bearer((host, path): (&str, &str), token: &str) -> Result<Answ
     Ok(read(&mut response))
 }
 
+/// A POST without a body that carries a bearer token.
+pub(super) fn post_bearer((host, path): (&str, &str), token: &str) -> Result<Answer, SignInError> {
+    let url = checked(host, path)?;
+    let mut response = agent()
+        .post(&url)
+        .header("Authorization", &format!("Bearer {token}"))
+        .header("Accept", "application/json")
+        .send_empty()
+        .map_err(|_| SignInError::Unavailable)?;
+    Ok(read(&mut response))
+}
+
 fn read(response: &mut ureq::http::Response<ureq::Body>) -> Answer {
     Answer {
         status: response.status().as_u16(),

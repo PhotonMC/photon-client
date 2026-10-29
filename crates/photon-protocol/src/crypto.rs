@@ -4,8 +4,8 @@
 use aes::Aes128;
 use cfb8::cipher::generic_array::GenericArray;
 use cfb8::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
-use rsa::pkcs8::DecodePublicKey;
-use rsa::{Pkcs1v15Encrypt, RsaPublicKey};
+use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
+use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
 use sha1::{Digest, Sha1};
 
 /// The bytes of the shared secret.
@@ -88,6 +88,18 @@ pub fn verify_sha1_rsa(public_key_der: &[u8], message: &[u8], signature: &[u8]) 
         .is_ok()
 }
 
+/// Whether `private_key_der` (PKCS#8) and `public_key_der` (X.509) are the two halves of one RSA
+/// key, which is what a profile key pair has to be before anything is signed with it.
+pub fn key_pair_matches(private_key_der: &[u8], public_key_der: &[u8]) -> bool {
+    let (Ok(private), Ok(public)) = (
+        RsaPrivateKey::from_pkcs8_der(private_key_der),
+        RsaPublicKey::from_public_key_der(public_key_der),
+    ) else {
+        return false;
+    };
+    private.to_public_key() == public
+}
+
 /// `Crypt.encryptUsingKey`: RSA with PKCS#1 v1.5 padding under the server's public key.
 pub fn encrypt_with_public_key(public_key_der: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptError> {
     let key =
@@ -167,7 +179,19 @@ impl StreamCipher {
 mod tests {
     use super::*;
     use rsa::RsaPrivateKey;
-    use rsa::pkcs8::EncodePublicKey;
+    use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+
+    #[test]
+    fn a_key_pair_matches_only_its_own_halves() {
+        let one = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
+        let other = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
+        let private = one.to_pkcs8_der().expect("der");
+        let own = one.to_public_key().to_public_key_der().expect("der");
+        let foreign = other.to_public_key().to_public_key_der().expect("der");
+        assert!(key_pair_matches(private.as_bytes(), own.as_bytes()));
+        assert!(!key_pair_matches(private.as_bytes(), foreign.as_bytes()));
+        assert!(!key_pair_matches(b"not a key", own.as_bytes()));
+    }
 
     #[test]
     fn rsa_round_trip_through_der_key() {
