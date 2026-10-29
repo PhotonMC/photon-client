@@ -232,4 +232,27 @@ mod initial_kind_tests {
             assert_eq!(horse, made == "Horse", "{name}");
         }
     }
+
+    #[test]
+    fn what_the_guards_admit_has_its_state() {
+        for name in photon_data::entity_type::names() {
+            let id = photon_data::entity_type::named(name);
+            let made = variant(&initial_kind(id, EntityId(7)));
+            // The minecart and boat guards are written over names and over id lists.
+            let minecart = crate::objects::minecart::default_display_offset(name).is_some();
+            assert_eq!(minecart, made == "Minecart", "{name}");
+            let boat = super::boat::vanilla_boat_max_passengers(id).is_some();
+            assert_eq!(boat, made == "Boat", "{name}");
+            // The horse metadata readers admit exactly these (and the camels, in the table).
+            for (guard, kind) in [
+                (crate::ride::mount::is_horse_type(id), "Horse"),
+                (
+                    matches!(name, "minecraft:llama" | "minecraft:trader_llama"),
+                    "Horse",
+                ),
+            ] {
+                assert!(!guard || made == kind, "{name}");
+            }
+        }
+    }
 }
