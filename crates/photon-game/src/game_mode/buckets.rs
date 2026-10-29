@@ -5,6 +5,7 @@ use super::*;
 use crate::menus::container::max_stack_size;
 use photon_core::aabb::BlockHitResult;
 use photon_core::ids::{BlockStateId, ItemId};
+use photon_data::item::ids;
 use photon_world::local_player::{LocalSound, LocalSoundSource};
 
 /// `BucketItem.content`.
@@ -18,10 +19,10 @@ enum Content {
 }
 
 fn content_of(item: ItemId) -> Content {
-    match crate::item::definition(item).map(|row| row.name) {
-        Some("minecraft:bucket") => Content::Empty,
-        Some("minecraft:lava_bucket") => Content::Lava,
-        Some("minecraft:sulfur_cube_bucket") => Content::Cube,
+    match item {
+        ids::BUCKET => Content::Empty,
+        ids::LAVA_BUCKET => Content::Lava,
+        ids::SULFUR_CUBE_BUCKET => Content::Cube,
         _ => Content::Water,
     }
 }
@@ -82,11 +83,7 @@ pub(super) fn bucket_use(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> UseRe
         relative(pos, direction)
     };
     if empty_contents(ctx, (item, content), place_at, Some(&hit)) {
-        let emptied = if ctx.instabuild() {
-            item
-        } else {
-            empty_bucket()
-        };
+        let emptied = if ctx.instabuild() { item } else { ids::BUCKET };
         return filled_result(ctx, hand, emptied);
     }
     if content != Content::Empty {
@@ -103,10 +100,6 @@ pub(super) fn bucket_use(ctx: &mut Context<'_>, hand: u8, item: ItemId) -> UseRe
         Some(taken) => filled_result(ctx, hand, taken),
         None => UseResult::Success { swing: true },
     }
-}
-
-fn empty_bucket() -> ItemId {
-    crate::item::id_of("minecraft:bucket").expect("the bucket item exists")
 }
 
 /// `LiquidBlockContainer.canPlaceLiquid` of the block for the content; `None` for no container.
@@ -217,9 +210,7 @@ fn filled_result(ctx: &mut Context<'_>, hand: u8, new: ItemId) -> UseResult {
 
 /// A bucket milked from a cow or goat: `createFilledResult` with a milk bucket.
 pub(super) fn milk_result(ctx: &mut Context<'_>, hand: u8) {
-    if let Some(milk) = crate::item::id_of("minecraft:milk_bucket") {
-        filled_result(ctx, hand, milk);
-    }
+    filled_result(ctx, hand, ids::MILK_BUCKET);
 }
 
 /// `createFilledResult` for a stack that carries components.

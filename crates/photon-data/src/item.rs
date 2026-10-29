@@ -5,6 +5,7 @@ pub mod component;
 pub mod creative;
 pub mod definition;
 pub mod effect;
+pub mod ids;
 pub mod registry;
 
 pub use crate::tables::item::{

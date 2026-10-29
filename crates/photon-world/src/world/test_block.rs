@@ -15,7 +15,7 @@ impl ClientWorld {
     pub fn test_block_view(&self, pos: (i32, i32, i32)) -> Option<TestBlockView<'_>> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         let info = crate::block::state_or_air(state);
-        if info.block().name != "minecraft:test_block" {
+        if info.block().index() != photon_data::block::ids::TEST_BLOCK {
             return None;
         }
         let entity = self.block_entity_at(pos.0, pos.1, pos.2)?;

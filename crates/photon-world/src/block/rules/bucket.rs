@@ -97,7 +97,7 @@ pub fn pickup(state: BlockStateId) -> Option<Pickup> {
         if property(state, "level") != Some("0") {
             return None;
         }
-        return Some(if block.name == "minecraft:lava" {
+        return Some(if block.index() == photon_data::block::ids::LAVA {
             Pickup {
                 bucket: "minecraft:lava_bucket",
                 sound: "minecraft:item.bucket.fill_lava",

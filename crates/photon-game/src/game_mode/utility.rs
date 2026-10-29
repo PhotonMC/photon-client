@@ -83,7 +83,9 @@ pub(super) fn ender_eye_use(ctx: &mut Context<'_>, hand: u8) -> UseResult {
     let (eye, to) = super::placing::look_ray(ctx);
     if let Some(hit) = ctx.world.clip_outlines(eye, to) {
         let state = ctx.state_at((hit.block_pos.x, hit.block_pos.y, hit.block_pos.z));
-        if photon_world::block::state_or_air(state).block().name == "minecraft:end_portal_frame" {
+        if photon_world::block::state_or_air(state).block().index()
+            == photon_data::block::ids::END_PORTAL_FRAME
+        {
             return UseResult::Pass;
         }
     }
@@ -148,8 +150,8 @@ pub(super) fn ender_eye_use_on(ctx: &Context<'_>, aim: Aim) -> UseResult {
         return UseResult::Pass;
     };
     let state = ctx.state_at((x, y, z));
-    let frame =
-        photon_world::block::state_or_air(state).block().name == "minecraft:end_portal_frame";
+    let frame = photon_world::block::state_or_air(state).block().index()
+        == photon_data::block::ids::END_PORTAL_FRAME;
     if frame && rules::property(state, "eye") == Some("false") {
         UseResult::Success { swing: true }
     } else {
@@ -209,8 +211,7 @@ pub(super) fn trident_release(ctx: &mut Context<'_>) {
 }
 
 fn is_trident(stack: &photon_world::ClientItemStackState) -> bool {
-    crate::item::definition(stack.item_registry_id())
-        .is_some_and(|row| row.name == "minecraft:trident")
+    stack.item_registry_id() == photon_data::item::ids::TRIDENT
 }
 
 /// `EnchantmentHelper.getTridentSpinAttackStrength`: what the stack's enchantments add up to.

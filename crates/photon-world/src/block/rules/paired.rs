@@ -47,8 +47,8 @@ pub(super) fn campfire(
     if direction != Direction::Down {
         return state;
     }
-    let hay =
-        block(ctx.state(offset(pos, direction))).is_some_and(|b| b.name == "minecraft:hay_block");
+    let hay = block(ctx.state(offset(pos, direction)))
+        .is_some_and(|b| b.index() == photon_data::block::ids::HAY_BLOCK);
     with_property(state, "signal_fire", flag(hay)).unwrap_or(state)
 }
 
@@ -104,7 +104,7 @@ pub(super) fn attached_stem(
 }
 
 fn is_bamboo(state: BlockStateId) -> bool {
-    block(state).is_some_and(|b| b.name == "minecraft:bamboo")
+    block(state).is_some_and(|b| b.index() == photon_data::block::ids::BAMBOO)
 }
 
 /// `BambooSaplingBlock.updateShape`: air where it cannot survive; bamboo above it makes it

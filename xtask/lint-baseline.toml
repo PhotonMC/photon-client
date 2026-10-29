@@ -979,12 +979,12 @@
 photon = 429
 photon-core = 10
 photon-data = 65
-photon-game = 595
+photon-game = 574
 photon-gui = 46
 photon-net = 35
 photon-protocol = 6
-photon-render = 243
-photon-world = 1192
+photon-render = 242
+photon-world = 1168
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1

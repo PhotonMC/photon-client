@@ -441,9 +441,8 @@ fn potted_plant(pot: &str) -> Option<&'static str> {
 /// the server's word); an empty pot consumes the use.
 fn flower_pot_use(hand: &Hand) -> Rule<HandUse> {
     let emptied = block(hand.state)
-        .filter(|block| block.name != "minecraft:flower_pot")
-        .and_then(|_| registry::block_index("minecraft:flower_pot"))
-        .map(default_state);
+        .filter(|block| block.index() != photon_data::block::ids::FLOWER_POT)
+        .map(|_| default_state(photon_data::block::ids::FLOWER_POT));
     match emptied {
         Some(state) => Rule::Known(HandUse::Set(Opened {
             write: Write {

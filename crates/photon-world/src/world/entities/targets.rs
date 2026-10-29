@@ -48,7 +48,7 @@ impl ClientWorld {
         let dz = f64::from(jukebox.2) + 0.5 - z;
         let state = self.block_state_or_air(jukebox.0, jukebox.1, jukebox.2);
         dx * dx + dy * dy + dz * dz < 3.46 * 3.46
-            && crate::block::state_or_air(state).block().name == "minecraft:jukebox"
+            && crate::block::state_or_air(state).block().index() == photon_data::block::ids::JUKEBOX
     }
 
     /// `LevelEventHandler.notifyNearbyEntities`: the living entities within three blocks of a

@@ -45,7 +45,7 @@ impl BlockRenderer {
         biome_tint: &impl Fn(crate::block::biome_tint::TintKind, [i32; 3]) -> u32,
     ) -> Option<i32> {
         let (block, offset) = registry::block_for_state(state)?;
-        if block.name == "minecraft:grass_block" {
+        if block.index() == photon_data::block::ids::GRASS_BLOCK {
             return Some(-1);
         }
         let properties: BTreeMap<String, String> = block

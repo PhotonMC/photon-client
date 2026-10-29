@@ -310,7 +310,7 @@ impl Context<'_> {
             .is_some_and(|entity| !entity.is_baby());
         let bucket = self
             .held(hand)
-            .is_some_and(|(item, _)| crate::item::id_of("minecraft:bucket") == Some(item));
+            .is_some_and(|(item, _)| item == photon_data::item::ids::BUCKET);
         if !(grown && bucket) {
             // `Animal.mobInteract`.
             return self.feed_animal(id, hand, food);

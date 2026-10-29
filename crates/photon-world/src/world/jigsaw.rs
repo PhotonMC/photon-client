@@ -15,7 +15,7 @@ impl ClientWorld {
     pub fn jigsaw_block_view(&self, pos: (i32, i32, i32)) -> Option<JigsawBlockView<'_>> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
         let info = crate::block::state_or_air(state);
-        if info.block().name != "minecraft:jigsaw" {
+        if info.block().index() != photon_data::block::ids::JIGSAW {
             return None;
         }
         let entity = self.block_entity_at(pos.0, pos.1, pos.2)?;

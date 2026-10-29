@@ -92,7 +92,8 @@ impl ParticleEngine {
         }
         let portal = |dx: i32| {
             let state = context.world.block_state_or_air(bx + dx, by, bz);
-            crate::block::state_or_air(state).block().name == "minecraft:nether_portal"
+            crate::block::state_or_air(state).block().index()
+                == photon_data::block::ids::NETHER_PORTAL
         };
         let along_x = portal(-1) || portal(1);
         for _ in 0..4 {

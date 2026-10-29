@@ -34,7 +34,7 @@ pub fn has_menu_provider(state: BlockStateId) -> bool {
     let Some((block, offset)) = photon_data::block::registry::block_for_state(state) else {
         return false;
     };
-    if block.name == "minecraft:lectern" {
+    if block.index() == photon_data::block::ids::LECTERN {
         return block.flag(offset, &HAS_BOOK);
     }
     MENU_BLOCKS.binary_search(&block.name).is_ok()

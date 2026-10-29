@@ -138,7 +138,7 @@ pub(super) fn same_item(a: Option<&Stack>, b: &Stack) -> bool {
 
 /// `FurnaceFuelSlot.isBucket`.
 pub(super) fn is_bucket(stack: &Stack) -> bool {
-    stacking(stack).is_some_and(|item| item.name == "minecraft:bucket")
+    stack.item_registry_id() == photon_data::item::ids::BUCKET
 }
 
 /// `Item.canFitInsideContainerItems`: every item but a shulker box.

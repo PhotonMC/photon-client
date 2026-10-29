@@ -243,8 +243,8 @@ fn copper_golem_statue(use_: &Use) -> Option<ItemOn> {
 /// fluid's own block, flags 3). A more weathered statue passes.
 fn weathering_copper_golem_statue(use_: &Use) -> Option<ItemOn> {
     if use_.held.axe {
-        let unaffected =
-            block(use_.state).is_some_and(|block| block.name == "minecraft:copper_golem_statue");
+        let unaffected = block(use_.state)
+            .is_some_and(|block| block.index() == photon_data::block::ids::COPPER_GOLEM_STATUE);
         if !use_.user.block_entity || !unaffected {
             return pass();
         }
@@ -373,7 +373,7 @@ fn flower_pot(use_: &Use) -> Option<ItemOn> {
     let Some(plant) = use_.held.block.and_then(potted) else {
         return empty_hand();
     };
-    if block(use_.state).is_none_or(|block| block.name != "minecraft:flower_pot") {
+    if block(use_.state).is_none_or(|block| block.index() != photon_data::block::ids::FLOWER_POT) {
         return Some(ItemOn::answer(SERVER));
     }
     Some(ItemOn::set(use_.pos, Some(plant), 3, true))
