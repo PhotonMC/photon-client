@@ -168,12 +168,12 @@ impl EntityView<'_> {
 
 impl EntityViewMut<'_> {
     pub(crate) fn end_crystal_mut(&mut self) -> &mut crate::objects::end_crystal::EndCrystalState {
-        let _seed = i64::from(self.id.0);
+        let _seed = i64::from(self.net.id.0);
         self.kind.end_crystal_state()
     }
 
     pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::mobs::ender_dragon::EnderDragonState {
-        let _seed = i64::from(self.id.0);
+        let _seed = i64::from(self.net.id.0);
         self.kind.ender_dragon_state()
     }
 
@@ -187,7 +187,7 @@ impl EntityViewMut<'_> {
 
     /// The creaking's state, made if it has none yet.
     pub(crate) fn creaking_mut(&mut self) -> &mut crate::mobs::creaking::CreakingState {
-        let _seed = i64::from(self.id.0);
+        let _seed = i64::from(self.net.id.0);
         self.kind.creaking_state()
     }
 

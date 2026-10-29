@@ -2,10 +2,6 @@ use super::*;
 use photon_core::ids::EntityId;
 
 impl ClientEntity {
-    pub fn id(&self) -> EntityId {
-        self.id
-    }
-
     /// Whether the type is a `LivingEntity`.
     pub fn is_living_entity(&self) -> bool {
         self.living_kind().is_some()
@@ -139,7 +135,7 @@ impl EntityView<'_> {
         };
         Some(ClientEntityCollisionCandidate {
             bounding_box,
-            is_source: source_entity_id == Some(self.id),
+            is_source: source_entity_id == Some(self.net.id),
             spectator: self.status.spectator,
             can_be_collided_with,
             is_pushable,
@@ -165,6 +161,18 @@ impl EntityView<'_> {
     }
 }
 
+/// The id the server knows an entity by. The store's index is from this id to the ECS entity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct NetworkId {
+    pub(crate) id: EntityId,
+}
+
+impl NetworkId {
+    pub(crate) fn of(id: EntityId) -> Self {
+        Self { id }
+    }
+}
+
 /// The entities one is tied to: the vehicle it rides, its passengers, and what holds its lead.
 #[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct Links {
@@ -185,6 +193,10 @@ impl Default for Links {
 }
 
 impl EntityView<'_> {
+    pub fn id(&self) -> EntityId {
+        self.net.id
+    }
+
     pub fn vehicle_id(&self) -> Option<EntityId> {
         self.links.vehicle_id
     }

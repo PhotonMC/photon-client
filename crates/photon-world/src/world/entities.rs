@@ -219,8 +219,8 @@ impl ClientWorld {
                 item: DroppedItem::new(bob_offset(entity.uuid)),
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
+                net: NetworkId::of(entity.entity_id),
                 entity: ClientEntity {
-                    id: entity.entity_id,
                     uuid: entity.uuid,
                     type_id: entity.type_id,
                     tick_count: 0,

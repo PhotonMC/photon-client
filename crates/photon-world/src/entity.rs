@@ -11,7 +11,6 @@ use photon_core::math::{
 
 #[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
 pub struct ClientEntity {
-    pub(crate) id: EntityId,
     pub uuid: photon_core::binary::Uuid,
     pub type_id: EntityTypeId,
     pub(crate) tick_count: i32,

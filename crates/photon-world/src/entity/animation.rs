@@ -269,7 +269,7 @@ impl EntityViewMut<'_> {
             self.tick_position_interpolation();
         }
         if self.is_lightning_bolt() {
-            let _seed = i64::from(self.id.0);
+            let _seed = i64::from(self.net.id.0);
             self.lightning_done = self.kind.lightning_state().tick();
         }
     }

@@ -79,7 +79,7 @@ impl ClientWorld {
         let parts = self
             .entities
             .values()
-            .filter(move |entity| entity.is_ender_dragon() && entity.id != except)
+            .filter(move |entity| entity.is_ender_dragon() && entity.net.id != except)
             .flat_map(|dragon| {
                 dragon
                     .kind
@@ -95,7 +95,7 @@ impl ClientWorld {
                         );
                         let (x, y, z) = part.position;
                         PickableBox {
-                            id: EntityId(dragon.id.0 + 1 + index as i32),
+                            id: EntityId(dragon.net.id.0 + 1 + index as i32),
                             position: part.position,
                             bounds: size.make_bounding_box(Vec3::new(x, y, z)),
                             pick_radius: 0.0,
@@ -107,9 +107,9 @@ impl ClientWorld {
         let others = self
             .entities
             .values()
-            .filter(move |entity| entity.id != except && entity.is_pickable())
+            .filter(move |entity| entity.net.id != except && entity.is_pickable())
             .map(|entity| PickableBox {
-                id: entity.id,
+                id: entity.net.id,
                 position: entity.position(),
                 bounds: entity.bounding_box(),
                 pick_radius: entity.pick_radius(),

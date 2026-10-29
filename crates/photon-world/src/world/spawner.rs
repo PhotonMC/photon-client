@@ -109,7 +109,7 @@ impl ClientWorld {
         let id = EntityId(
             self.spawner_displays
                 .iter()
-                .map(|shown| shown.entity.id().0)
+                .map(|shown| shown.entity.net.id.0)
                 .min()
                 .unwrap_or(-1)
                 - 1,
@@ -174,7 +174,7 @@ impl ClientWorld {
     pub(crate) fn spawner_display_entity(&self, entity_id: EntityId) -> Option<EntityView<'_>> {
         self.spawner_displays
             .iter()
-            .find(|shown| shown.entity.id() == entity_id)
+            .find(|shown| shown.entity.net.id == entity_id)
             .map(|shown| shown.entity.view())
     }
 
@@ -197,7 +197,7 @@ impl ClientWorld {
         let shown = self
             .spawner_displays
             .iter()
-            .find(|shown| shown.entity.id() == entity_id)?;
+            .find(|shown| shown.entity.net.id == entity_id)?;
         let spin = &self
             .block_entity_at(shown.pos.0, shown.pos.1, shown.pos.2)?
             .events

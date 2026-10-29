@@ -90,6 +90,7 @@ entity_components! {
     vitals: Vitals,
     status: EntityStatus,
     anim: BodyAnimation,
+    net: NetworkId,
 }
 
 impl<'a> EntityView<'a> {
