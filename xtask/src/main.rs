@@ -11,6 +11,7 @@ mod gate;
 mod git;
 mod hooks;
 mod lint;
+mod package;
 mod parity;
 mod process;
 mod progress;
@@ -47,6 +48,7 @@ usage: cargo xtask <command>
                             fixed scripted run, frame timing report in .data/runs/bench;
                             --save keeps it as the route's baseline, --compare fails on a p99 rise;
                             --cpu: no server or window, chunk apply and light only
+  package [--no-build]      release archive of this platform; fails on any file outside the release set
   progress [--check]        rewrite (or verify) the README's computed progress block
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
@@ -72,6 +74,7 @@ const COMMANDS: &[(&str, Command)] = &[
     ("shot", dev::shot),
     ("entities", entities::run),
     ("progress", progress::run),
+    ("package", package::run),
 ];
 
 fn main() -> ExitCode {

@@ -71,6 +71,11 @@ jobs:
         run: |
           cargo build --release -p photon
           ./target/release/photon --version
+      - name: Release archive holds only the release set
+        # Makes the archive of this platform and fails if it lists anything outside the binary,
+        # the licences and the readme. It is not uploaded.
+        shell: bash
+        run: cargo xtask package --no-build
       - name: CPU bench report
         # Chunk apply and light over a made-up world: no assets, no GPU. It reports; the
         # baseline is machine-specific, so CI compares nothing.
