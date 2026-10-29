@@ -10,7 +10,7 @@ All crates live under `crates/`, plus the `xtask` automation crate. Dependencies
 | --- | --- |
 | `photon-core` | Java-semantics basics: maths (fdlibm ports, Java float rules), AABB and voxel shapes, wire/binary/NBT/JSON/UTF-8 codecs, identifiers, randomness, timer |
 | `photon-assets` | Resource packs: folder and zip sources, `pack.mcmeta` (overlays, filters) and the ordered stack the assets are read through ([ADR 0011](../adr/0011-resource-packs.md)) |
-| `photon-data` | Tables generated from the reference, plus typed lookups over them |
+| `photon-data` | Tables kept by hand and verified against the reference, plus typed lookups over them |
 | `photon-world` | The client's copy of the world: chunks, block states, light, entities, the local player, movement and particles |
 | `photon-game` | Game rules: items and components, menus and inventories, tooltips, options, sound selection, text |
 | `photon-protocol` | The Java protocol's wire format: phases, framing, handshake, login, configuration and the play packet codecs (`Decode`); depends on `photon-core` and `photon-data` only, so it knows no world or game state |
@@ -82,7 +82,7 @@ State is held in large structs today:
 
 ## Versions
 
-Protocol 776 (Java Edition 26.2) is the only version today. The packet ids and generated tables are version-specific.
+Protocol 776 (Java Edition 26.2) is the newest version; 26.1 (protocol 775) is being added ([#17](https://github.com/PhotonMC/photon-client/issues/17)). The packet ids and tables are version-specific.
 
 More versions follow [ADR 0013](../adr/0013-multi-version-content-model.md): one binary that picks the version at connect time, content as the union of all supported versions, and version differences as Rust code in `versions/` modules. Game code uses canonical ids; per-version wire ids exist only at the protocol boundary and are translated by a per-session `Registries`. The earlier plan in [ADR 0004](../adr/0004-version-support.md) (data packs, extractor, translation layer) is replaced.
 

@@ -25,8 +25,8 @@ const NOT_PRODUCTION: &[&str] = &["photon-oracle", "photon-dev", "parity-cases",
 pub fn check(path: &str, config: &Config, packages: &[Package]) -> Result<Vec<Finding>, String> {
     let text = fs::read_to_string(process::root().join(path))
         .map_err(|error| format!("{path}: {error}"))?;
-    if generated(path, &text) {
-        return Ok(Vec::new());
+    if let Some(findings) = generated_or_table(path, &text) {
+        return Ok(findings);
     }
     let package = workspace::owner(packages, path);
     let mut findings = Vec::new();
@@ -169,13 +169,25 @@ fn wire_types(path: &str, text: &str, package: Option<&Package>, findings: &mut 
     count(path, Rule::WireType, &lines, findings);
 }
 
-/// Output of a code generator, which is held to its generator instead.
-fn generated(path: &str, text: &str) -> bool {
+/// A table file is exempt from the other rules, a source that claims to be generated is a finding.
+fn generated_or_table(path: &str, text: &str) -> Option<Vec<Finding>> {
+    if let Some(finding) = generated_source(path, text) {
+        return Some(vec![finding]);
+    }
     path.starts_with("crates/photon-data/src/tables/")
+        .then(Vec::new)
+}
+
+/// Sources that claim to be generated, or sit in a `generated` directory. The tables are kept by
+/// hand ([ADR 0013](../../../docs/adr/0013-multi-version-content-model.md)); the big ones in
+/// `photon-data/src/tables/` are only exempt from the size and style rules.
+fn generated_source(path: &str, text: &str) -> Option<Finding> {
+    let marked = path.contains("/generated/")
         || text
             .lines()
             .take(5)
-            .any(|line| line.contains("@generated") || line.contains("This file is generated"))
+            .any(|line| line.contains("@generated") || line.contains("This file is generated"));
+    marked.then(|| Finding::new(Rule::Generated, path.to_owned(), path.to_owned(), 1))
 }
 
 fn file_lines(path: &str, code: &[bool], facts: &items::Facts, findings: &mut Vec<Finding>) {
@@ -231,5 +243,27 @@ fn count(path: &str, rule: Rule, lines: &[usize], findings: &mut Vec<Finding>) {
             value: lines.len() as u64,
             ..Finding::new(rule, path.to_owned(), path.to_owned(), *first)
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_generated_marker_or_directory_is_a_finding() {
+        assert!(generated_source("crates/a/src/generated/x.rs", "fn f() {}").is_some());
+        assert!(generated_source("crates/a/src/x.rs", "// @generated\nfn f() {}").is_some());
+        assert!(generated_source("crates/a/src/x.rs", "fn f() {}").is_none());
+    }
+
+    #[test]
+    fn the_hand_kept_tables_are_exempt_from_the_other_rules() {
+        let table = "crates/photon-data/src/tables/block.rs";
+        assert_eq!(
+            generated_or_table(table, "const A: u8 = 1;").map(|f| f.len()),
+            Some(0)
+        );
+        assert!(generated_or_table("crates/a/src/x.rs", "fn f() {}").is_none());
     }
 }

@@ -40,11 +40,12 @@ pub enum Rule {
     NewestVersion,
     RegistryName,
     Layer,
+    Generated,
 }
 
 impl Rule {
     pub fn name(self) -> &'static str {
-        const NAMES: [&str; 17] = [
+        const NAMES: [&str; 18] = [
             "file-lines",
             "fn-complexity",
             "fn-length",
@@ -62,6 +63,7 @@ impl Rule {
             "newest-version",
             "registry-name",
             "layer",
+            "generated",
         ];
         NAMES[self as usize]
     }
@@ -100,6 +102,16 @@ impl Rule {
         }
     }
 
+    /// The hints of the rules about where code may come from and depend on.
+    fn source_hint(self) -> &'static str {
+        match self {
+            Self::Generated => {
+                "generated sources; tables are kept by hand (ADR 0013), do not add a generator"
+            }
+            _ => "crate dependency not allowed by the layer table in xtask/lint.toml",
+        }
+    }
+
     pub fn hint(self) -> &'static str {
         match self {
             Self::FileLines => {
@@ -126,7 +138,7 @@ impl Rule {
             | Self::VersionCompare
             | Self::WireType
             | Self::NewestVersion => self.id_hint(),
-            Self::Layer => "crate dependency not allowed by the layer table in xtask/lint.toml",
+            Self::Layer | Self::Generated => self.source_hint(),
         }
     }
 }
