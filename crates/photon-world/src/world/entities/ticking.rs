@@ -72,7 +72,11 @@ impl ClientWorld {
             let path_open = kind.is_some_and(|kind| {
                 self.projectile_path_is_open(
                     entity.position(),
-                    kind.next_position(entity.position(), entity.motion(), entity.no_gravity),
+                    kind.next_position(
+                        entity.position(),
+                        entity.motion(),
+                        entity.status.no_gravity,
+                    ),
                 )
             });
             // A saddled horse is driven by the player in its first seat.

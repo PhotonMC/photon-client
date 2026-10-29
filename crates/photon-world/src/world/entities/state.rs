@@ -10,10 +10,10 @@ impl ClientWorld {
         state_id: BlockStateId,
     ) -> bool {
         let on_climbable = self.block_state_registry.is_climbable_state(state_id);
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
-        entity.on_climbable = on_climbable;
+        entity.status.on_climbable = on_climbable;
         true
     }
 
@@ -31,14 +31,14 @@ impl ClientWorld {
         } else {
             is_climbable
         };
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
-        entity.on_climbable = on_climbable;
+        entity.status.on_climbable = on_climbable;
         if fall_flying {
-            entity.shared_flags |= 1 << SHARED_FLAG_FALL_FLYING;
+            entity.status.shared_flags |= 1 << SHARED_FLAG_FALL_FLYING;
         } else {
-            entity.shared_flags &= !(1 << SHARED_FLAG_FALL_FLYING);
+            entity.status.shared_flags &= !(1 << SHARED_FLAG_FALL_FLYING);
         }
         true
     }
@@ -120,10 +120,11 @@ impl Entities {
         below_is_ladder: bool,
         ladder_facing: &str,
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
+        entity.status.on_climbable =
+            trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
         true
     }
 
@@ -136,16 +137,16 @@ impl Entities {
         still_timeout: bool,
         is_vehicle: bool,
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID {
             return false;
         }
-        entity.baby = baby;
-        entity.alive = alive;
-        entity.happy_ghast_still_timeout = still_timeout;
-        entity.happy_ghast_is_vehicle = is_vehicle;
+        entity.status.baby = baby;
+        entity.status.alive = alive;
+        entity.status.happy_ghast_still_timeout = still_timeout;
+        entity.status.happy_ghast_is_vehicle = is_vehicle;
         true
     }
 
@@ -157,24 +158,24 @@ impl Entities {
         spectator: bool,
         on_climbable: bool,
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.alive = alive;
-        entity.spectator = spectator;
-        entity.on_climbable = on_climbable;
+        entity.status.alive = alive;
+        entity.status.spectator = spectator;
+        entity.status.on_climbable = on_climbable;
         true
     }
 
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
     pub fn apply_player_flying_state(&mut self, entity_id: EntityId, flying: bool) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_PLAYER_ENTITY_TYPE_ID {
             return false;
         }
-        entity.flying = flying;
+        entity.status.flying = flying;
         true
     }
 }
@@ -276,7 +277,7 @@ impl ClientWorld {
             entity.living.charging_crossbow = charging;
         }
         if let Some(baby) = piglin_baby {
-            entity.baby = baby;
+            entity.status.baby = baby;
         }
         if let Some(dancing) = piglin_dancing {
             entity.living.dancing = dancing;
@@ -401,13 +402,13 @@ impl ClientWorld {
             entity.living.animal.set_ignited(ignited);
         }
         if let Some(shared_flags) = shared_flags {
-            entity.shared_flags = shared_flags;
+            entity.status.shared_flags = shared_flags;
         }
         if let Some(living_flags) = living_flags {
-            entity.living_flags = living_flags;
+            entity.status.living_flags = living_flags;
         }
         if let Some(mob_flags) = mob_flags {
-            entity.mob_flags = mob_flags;
+            entity.status.mob_flags = mob_flags;
         }
         if let Some(air_supply) = air_supply {
             entity.vitals.air_supply = air_supply;
@@ -415,7 +416,7 @@ impl ClientWorld {
         if let Some(health) = health {
             entity.vitals.health = Some(health.to_bits());
             // `isAlive` of a living entity: not removed, health left.
-            entity.alive = health > 0.0;
+            entity.status.alive = health > 0.0;
         }
         if let Some(arrow_count) = arrow_count {
             entity.vitals.arrow_count = arrow_count;
@@ -433,16 +434,16 @@ impl ClientWorld {
             entity.vitals.sleeping_pos = sleeping_pos;
         }
         if let Some(custom_name_present) = custom_name_present {
-            entity.custom_name_present = custom_name_present;
+            entity.status.custom_name_present = custom_name_present;
         }
         if let Some(custom_name_visible) = custom_name_visible {
-            entity.custom_name_visible = custom_name_visible;
+            entity.status.custom_name_visible = custom_name_visible;
         }
         if let Some(no_gravity) = no_gravity {
-            entity.no_gravity = no_gravity;
+            entity.status.no_gravity = no_gravity;
         }
         if let Some(silent) = silent {
-            entity.silent = silent;
+            entity.status.silent = silent;
         }
         if let Some(pose) = pose {
             entity.set_pose(pose);
@@ -452,7 +453,7 @@ impl ClientWorld {
         if (entity.is_zombie_type() || entity.is_ageable_mob())
             && let Some(zombie_baby) = zombie_baby
         {
-            entity.baby = zombie_baby;
+            entity.status.baby = zombie_baby;
         }
         if let Some(ticks_frozen) = ticks_frozen {
             entity.vitals.ticks_frozen = ticks_frozen;

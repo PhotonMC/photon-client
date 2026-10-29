@@ -1,10 +1,6 @@
 use super::super::*;
 
-impl ClientEntity {
-    pub fn is_aggressive(&self) -> bool {
-        shared_flag_is_set(self.mob_flags, MOB_FLAG_AGGRESSIVE)
-    }
-}
+impl ClientEntity {}
 
 impl EntityViewMut<'_> {
     /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.
@@ -143,5 +139,11 @@ impl EntityView<'_> {
         } else {
             (std::f64::consts::PI / 5.0) as f32
         }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn is_aggressive(&self) -> bool {
+        shared_flag_is_set(self.status.mob_flags, MOB_FLAG_AGGRESSIVE)
     }
 }

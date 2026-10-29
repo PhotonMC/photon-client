@@ -200,7 +200,7 @@ impl ClientWorld {
             on_ground: entity.on_ground,
             main_supporting_block: entity.tracking.support.main_block,
             on_ground_no_blocks: entity.tracking.support.no_blocks,
-            no_gravity: entity.no_gravity,
+            no_gravity: entity.status.no_gravity,
         };
         let Some(step) = item_step(&Level::new(self), &state) else {
             return;

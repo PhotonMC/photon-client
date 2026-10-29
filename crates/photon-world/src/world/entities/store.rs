@@ -39,25 +39,40 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals) =
-            self.ecs
-                .get_entity(entity)
-                .ok()?
-                .get_components::<(
-                    &ClientEntity,
-                    &Rotation,
-                    &Position,
-                    &Motion,
-                    &Interpolation,
-                    &crate::entity_kind::EntityKind,
-                    &Equipment,
-                    &EntityState,
-                    &DroppedItem,
-                    &Riding,
-                    &Links,
-                    &Vitals,
-                )>()
-                .ok()?;
+        let (
+            entity,
+            rotation,
+            pos,
+            vel,
+            lerp,
+            kind,
+            worn,
+            living,
+            item,
+            ride,
+            links,
+            vitals,
+            status,
+        ) = self
+            .ecs
+            .get_entity(entity)
+            .ok()?
+            .get_components::<(
+                &ClientEntity,
+                &Rotation,
+                &Position,
+                &Motion,
+                &Interpolation,
+                &crate::entity_kind::EntityKind,
+                &Equipment,
+                &EntityState,
+                &DroppedItem,
+                &Riding,
+                &Links,
+                &Vitals,
+                &EntityStatus,
+            )>()
+            .ok()?;
         Some(EntityView {
             entity,
             rotation,
@@ -71,6 +86,7 @@ impl Entities {
             ride,
             links,
             vitals,
+            status,
         })
     }
 
@@ -96,7 +112,21 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals) = ecs
+        let (
+            entity,
+            rotation,
+            pos,
+            vel,
+            lerp,
+            kind,
+            worn,
+            living,
+            item,
+            ride,
+            links,
+            vitals,
+            status,
+        ) = ecs
             .get_entity_mut(entity)
             .ok()?
             .into_components_mut::<(
@@ -112,6 +142,7 @@ impl Entities {
                 &mut Riding,
                 &mut Links,
                 &mut Vitals,
+                &mut EntityStatus,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -127,6 +158,7 @@ impl Entities {
             ride: ride.into_inner(),
             links: links.into_inner(),
             vitals: vitals.into_inner(),
+            status: status.into_inner(),
         })
     }
 
@@ -160,6 +192,7 @@ impl Entities {
                 ride: std::mem::replace(view.ride, parts.ride),
                 links: std::mem::replace(view.links, parts.links),
                 vitals: std::mem::replace(view.vitals, parts.vitals),
+                status: std::mem::replace(view.status, parts.status),
             });
         }
         let spawned = self
@@ -177,6 +210,7 @@ impl Entities {
                 parts.ride,
                 parts.links,
                 parts.vitals,
+                parts.status,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -200,10 +234,25 @@ impl Entities {
             Riding,
             Links,
             Vitals,
+            EntityStatus,
         )>();
         self.ecs.despawn(entity);
         parts.map(
-            |(entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals)| {
+            |(
+                entity,
+                rotation,
+                pos,
+                vel,
+                lerp,
+                kind,
+                worn,
+                living,
+                item,
+                ride,
+                links,
+                vitals,
+                status,
+            )| {
                 EntityParts {
                     entity,
                     rotation,
@@ -217,6 +266,7 @@ impl Entities {
                     ride,
                     links,
                     vitals,
+                    status,
                 }
             },
         )

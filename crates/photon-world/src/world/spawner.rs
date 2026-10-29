@@ -132,7 +132,7 @@ impl ClientWorld {
         }
         let mut entity = self.entities.remove(id).filter(|_| placed)?;
         // `loadEntityRecursive`: the tag sets the mob up before it is shown.
-        entity.baby = traits.baby && reads_is_baby(type_name);
+        entity.status.baby = traits.baby && reads_is_baby(type_name);
         if let Some(size) = traits.cube_size.filter(|_| entity.is_cube_mob()) {
             entity.view_mut().set_cube_size(size);
         }

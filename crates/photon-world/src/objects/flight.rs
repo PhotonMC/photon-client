@@ -222,7 +222,7 @@ impl ClientWorld {
         let position = vec3(entity.position());
         let target = position.add_vec3(movement);
         let in_water = entity.living.in_water;
-        let no_gravity = entity.no_gravity;
+        let no_gravity = entity.status.no_gravity;
         let bounds = entity.bounding_box();
         let mut entity = self
             .entities

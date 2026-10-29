@@ -18,12 +18,6 @@ impl ClientEntity {
             && photon_data::entity_type::name(self.type_id) != Some("minecraft:mannequin")
     }
 
-    /// Whether this is an invisible mob: not a player and not an armor stand, which are drawn
-    /// by their own rules.
-    pub fn is_invisible_mob(&self) -> bool {
-        self.is_invisible() && self.living_kind() == Some(LivingKind::Mob)
-    }
-
     /// Which kind of living entity this is, as far as its drawn pose goes.
     pub(crate) fn living_kind(&self) -> Option<LivingKind> {
         if self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -111,7 +105,7 @@ impl EntityView<'_> {
             return None;
         };
         let (x, y, z) = self.position();
-        let dimensions = if is_vanilla_happy_ghast_entity_type(self.type_id) && self.baby {
+        let dimensions = if is_vanilla_happy_ghast_entity_type(self.type_id) && self.status.baby {
             ClientEntityDimensions::scalable(width, height).scale(0.2375, 0.2375)
         } else {
             ClientEntityDimensions::scalable(width, height)
@@ -122,31 +116,31 @@ impl EntityView<'_> {
             dimensions.make_bounding_box(Vec3::new(x, y, z))
         };
         let can_be_collided_with = if is_vanilla_happy_ghast_entity_type(self.type_id) {
-            !self.baby
-                && self.alive
+            !self.status.baby
+                && self.status.alive
                 && ((source_type_id == Some(VANILLA_PLAYER_ENTITY_TYPE_ID)
                     && source_position.is_some_and(|position| position.y >= bounding_box.max_y))
                     || (source_type_id == Some(VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID)
-                        && self.happy_ghast_is_vehicle)
-                    || self.happy_ghast_still_timeout)
+                        && self.status.happy_ghast_is_vehicle)
+                    || self.status.happy_ghast_still_timeout)
         } else {
             is_vanilla_boat_entity_type(self.type_id)
                 || is_vanilla_shulker_entity_type(self.type_id)
         };
         let health_bits = self.vitals.health;
         let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
-            self.alive
-                && !self.spectator
-                && (self.flying || !self.on_climbable)
+            self.status.alive
+                && !self.status.spectator
+                && (self.status.flying || !self.status.on_climbable)
                 && health_bits.is_none_or(|bits| f32::from_bits(bits) > 0.0)
         } else {
             is_vanilla_pushable_entity_type(self.type_id)
-                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive)
+                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.status.alive)
         };
         Some(ClientEntityCollisionCandidate {
             bounding_box,
             is_source: source_entity_id == Some(self.id),
-            spectator: self.spectator,
+            spectator: self.status.spectator,
             can_be_collided_with,
             is_pushable,
             same_vehicle,
@@ -202,5 +196,13 @@ impl EntityView<'_> {
     /// The id of the entity this one is leashed to, if it is.
     pub fn leash_holder_id(&self) -> Option<EntityId> {
         (self.links.leash_holder_id != EntityId(0)).then_some(self.links.leash_holder_id)
+    }
+}
+
+impl EntityView<'_> {
+    /// Whether this is an invisible mob: not a player and not an armor stand, which are drawn
+    /// by their own rules.
+    pub fn is_invisible_mob(&self) -> bool {
+        self.is_invisible() && self.living_kind() == Some(LivingKind::Mob)
     }
 }

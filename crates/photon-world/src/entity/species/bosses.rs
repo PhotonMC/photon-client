@@ -52,7 +52,7 @@ impl EntityViewMut<'_> {
         }
         let y_rot = photon_core::math::wrap_degrees_f32(self.rotation.y_rot.get());
         self.rotation.y_rot = JavaF32::new(y_rot);
-        let (motion, no_ai, y) = (self.motion(), self.is_no_ai(), self.position().1);
+        let (motion, no_ai, y) = (self.motion(), self.as_view().is_no_ai(), self.position().1);
         self.ender_dragon_mut().fly(motion, no_ai, (y, y_rot));
         if !no_ai {
             self.tick_position_interpolation();
@@ -201,7 +201,7 @@ impl EntityViewMut<'_> {
         if !self.is_breeze() {
             return;
         }
-        let (pose, tick_count) = (self.pose, self.tick_count);
+        let (pose, tick_count) = (self.status.pose, self.tick_count);
         self.kind.breeze_state().tick(pose, tick_count);
     }
 

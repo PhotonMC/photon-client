@@ -44,7 +44,7 @@ pub(super) fn write_back_camel(
     let horse = entity.kind.horse_state();
     if ride.stand_up {
         horse.camel.stand_up(game_time);
-        entity.pose = crate::entity::ClientEntityPose::Standing;
+        entity.status.pose = crate::entity::ClientEntityPose::Standing;
     }
     if let Some(cooldown) = ride.dash_cooldown {
         let horse = entity.kind.horse_mut().expect("made above");
@@ -55,7 +55,7 @@ pub(super) fn write_back_camel(
     let horse = entity.kind.horse_mut().expect("made above");
     if horse.camel.sitting() && in_water {
         horse.camel.stand_up_instantly(game_time);
-        entity.pose = crate::entity::ClientEntityPose::Standing;
+        entity.status.pose = crate::entity::ClientEntityPose::Standing;
     }
 }
 

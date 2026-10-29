@@ -1,15 +1,6 @@
 use super::*;
 
-impl ClientEntity {
-    pub fn pose(&self) -> ClientEntityPose {
-        self.pose
-    }
-
-    /// Return player/Avatar dimensions for a remote player entity.
-    pub fn player_dimensions(&self) -> Option<ClientEntityDimensions> {
-        (self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID).then(|| self.pose.player_dimensions())
-    }
-}
+impl ClientEntity {}
 
 /// Resolve Java `LivingEntity.getDimensions` from default dimensions and scales.
 pub fn living_entity_dimensions(
@@ -279,7 +270,7 @@ impl EntityViewMut<'_> {
     /// `Frog.onSyncedDataUpdated(DATA_POSE)`: the pose the data names starts
     /// or stops the frog's animations.
     pub(crate) fn set_pose(&mut self, pose: ClientEntityPose) {
-        self.pose = pose;
+        self.status.pose = pose;
         if self.is_frog() {
             let tick_count = self.tick_count;
             self.kind.frog_state().set_pose(pose, tick_count);
@@ -308,5 +299,17 @@ impl EntityView<'_> {
             }
             _ => 1.0,
         }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn pose(&self) -> ClientEntityPose {
+        self.status.pose
+    }
+
+    /// Return player/Avatar dimensions for a remote player entity.
+    pub fn player_dimensions(&self) -> Option<ClientEntityDimensions> {
+        (self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID)
+            .then(|| self.status.pose.player_dimensions())
     }
 }

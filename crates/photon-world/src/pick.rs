@@ -16,16 +16,6 @@ use photon_core::math::Vec3;
 use crate::{ClientEntity, ClientEntityDimensions, ClientWorld, EntityView, EntityViewMut};
 
 impl ClientEntity {
-    /// `Entity.isPickable` of the entity as it stands: the type's answer,
-    /// and a player who only watches is not aimed at.
-    pub fn is_pickable(&self) -> bool {
-        if self.is_player() {
-            // `Player.isPickable`.
-            return !self.is_spectator();
-        }
-        photon_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
-    }
-
     /// The renderers that light their entity at full block light whatever is around it
     /// (`getBlockLightLevel` returns 15): allay, blaze, magma cube, vex, wither, and the
     /// dragon fireball, shulker bullet and wither skull.
@@ -43,18 +33,6 @@ impl ClientEntity {
                     | "minecraft:wither_skull"
             )
         })
-    }
-
-    /// How a pose scales the size and the attachments of a goat (`Goat.getDefaultDimensions`).
-    pub fn pose_scale(&self) -> f32 {
-        let long_jumping = self.pose() == crate::ClientEntityPose::LongJumping;
-        let goat = photon_data::entity_type::name(self.type_id) == Some("minecraft:goat");
-        if long_jumping && goat { 0.7 } else { 1.0 }
-    }
-
-    /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
-    fn has_sleeping_size(&self) -> bool {
-        self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
     }
 
     /// `Entity.getPickRadius`: what the aim inflates the box by.
@@ -275,18 +253,18 @@ impl EntityView<'_> {
     fn pose_dimensions(&self) -> Option<ClientEntityDimensions> {
         use crate::ClientEntityPose::{LongJumping, Sitting};
         let pick = photon_data::entity_type::pick(self.type_id)?;
-        let (width, height, eye) = pick.baby.filter(|_| self.baby).unwrap_or(pick.size);
+        let (width, height, eye) = pick.baby.filter(|_| self.status.baby).unwrap_or(pick.size);
         let name = photon_data::entity_type::name(self.type_id)?;
         if name == "minecraft:sniffer" && self.sniffer().is_some_and(|state| state.is_digging()) {
             // `Sniffer.DIGGING_DIMENSIONS`: 0.4 shorter with an eye at 0.81, scaled by the age.
             let (width, height) = (pick.size.0, pick.size.1 - 0.4);
-            let age = if self.baby { 0.5 } else { 1.0 };
+            let age = if self.status.baby { 0.5 } else { 1.0 };
             return Some(
                 ClientEntityDimensions::from_values(width, height, 0.81, false).scale(age, age),
             );
         }
         match (name, self.pose()) {
-            ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.baby {
+            ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.status.baby {
                 ClientEntityDimensions::from_values(0.95, 0.425, 0.41, false)
             } else {
                 ClientEntityDimensions::from_values(width, height - 1.43, 0.845, false)
@@ -333,7 +311,7 @@ impl EntityView<'_> {
         match photon_data::entity_type::pick(self.type_id) {
             Some(pick) if !self.is_player() => {
                 let (width, height, eye_height) = match pick.baby {
-                    Some(baby) if self.baby => baby,
+                    Some(baby) if self.status.baby => baby,
                     _ => pick.size,
                 };
                 let scale = if self.is_cube_mob() {
@@ -345,7 +323,7 @@ impl EntityView<'_> {
                 ClientEntityDimensions::from_values(width, height, eye_height, false)
                     .scale(scale, scale)
             }
-            _ => self.pose.player_dimensions(),
+            _ => self.status.pose.player_dimensions(),
         }
     }
 }
@@ -480,6 +458,30 @@ impl EntityView<'_> {
         }
         (!self.is_player() && self.has_sleeping_size())
             .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
+    }
+}
+
+impl EntityView<'_> {
+    /// `Entity.isPickable` of the entity as it stands: the type's answer,
+    /// and a player who only watches is not aimed at.
+    pub fn is_pickable(&self) -> bool {
+        if self.is_player() {
+            // `Player.isPickable`.
+            return !self.is_spectator();
+        }
+        photon_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
+    }
+
+    /// How a pose scales the size and the attachments of a goat (`Goat.getDefaultDimensions`).
+    pub fn pose_scale(&self) -> f32 {
+        let long_jumping = self.pose() == crate::ClientEntityPose::LongJumping;
+        let goat = photon_data::entity_type::name(self.type_id) == Some("minecraft:goat");
+        if long_jumping && goat { 0.7 } else { 1.0 }
+    }
+
+    /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
+    fn has_sleeping_size(&self) -> bool {
+        self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
     }
 }
 

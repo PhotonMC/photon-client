@@ -14,46 +14,28 @@ impl EntityViewMut<'_> {
                 })
         })
     }
-
-    /// `Camel.updateWalkAnimation`: only a standing camel that is not dashing walks, and its
-    /// stride is quicker to settle.
-    fn tick_camel_walk(&mut self, moved: (f64, f64)) {
-        let walking = self.pose == ClientEntityPose::Standing
-            && !self
-                .kind
-                .horse()
-                .is_some_and(|horse| horse.camel.is_dash_animation_started());
-        let target = if walking {
-            ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
-        } else {
-            0.0
-        };
-        self.entity
-            .walk
-            .update(target, 0.2, if self.entity.baby { 3.0 } else { 1.0 });
-    }
 }
 
 impl EntityViewMut<'_> {
     /// What a living entity does each tick besides moving: hurt and death,
     /// its pose, its swing, and what its kind does of its own.
     pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
-        self.living.using_item_ticks = if self.is_using_item() {
+        self.living.using_item_ticks = if self.as_view().is_using_item() {
             self.living.using_item_ticks.saturating_add(1)
         } else {
             0
         };
         let (mx, my, mz) = self.motion();
         self.living.previous_motion = [mx.to_bits(), my.to_bits(), mz.to_bits()];
-        self.living.fall_fly_ticks = if self.is_fall_flying() {
+        self.living.fall_fly_ticks = if self.as_view().is_fall_flying() {
             self.living.fall_fly_ticks.saturating_add(1)
         } else {
             0
         };
         let elytra_input = crate::elytra::ElytraInput {
-            fall_flying: self.is_fall_flying(),
+            fall_flying: self.as_view().is_fall_flying(),
             motion: self.motion(),
-            crouching: self.is_crouching(),
+            crouching: self.as_view().is_crouching(),
         };
         self.living.elytra.tick(elytra_input);
         self.tick_hurt_and_death(tick_death);
@@ -69,12 +51,12 @@ impl EntityViewMut<'_> {
         match photon_data::entity_type::name(self.type_id) {
             Some("minecraft:sheep") => self.living.animal.tick_sheep(),
             Some("minecraft:chicken") => self.living.animal.tick_chicken(self.entity.on_ground),
-            Some("minecraft:creeper") => self.living.animal.tick_creeper(self.entity.alive),
+            Some("minecraft:creeper") => self.living.animal.tick_creeper(self.status.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
             Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
             Some("minecraft:ravager") => {
-                let alive = self.alive;
+                let alive = self.status.alive;
                 self.kind.ravager_state().tick(alive);
             }
             Some("minecraft:bee") => {
@@ -93,14 +75,14 @@ impl EntityViewMut<'_> {
                 | "minecraft:camel_husk",
             ) => self.tick_horse_like(game_time),
             Some("minecraft:rabbit") => {
-                let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
+                let (tick_count, no_ai) = (self.tick_count, self.as_view().is_no_ai());
                 self.kind.rabbit_state().tick(tick_count, no_ai);
             }
             Some("minecraft:copper_golem") => {
                 let (action, tick_count, flags) = (
                     self.living.copper_golem_action,
                     self.tick_count,
-                    (self.is_no_ai(), self.alive),
+                    (self.as_view().is_no_ai(), self.status.alive),
                 );
                 self.kind
                     .copper_golem_state()
@@ -109,7 +91,7 @@ impl EntityViewMut<'_> {
             Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
             Some("minecraft:fox") => self.living.fox.tick(),
             Some("minecraft:wolf") => {
-                let (alive, interested) = (self.alive, self.living.wolf_interested);
+                let (alive, interested) = (self.status.alive, self.living.wolf_interested);
                 self.living.wolf.tick(alive, interested);
             }
             _ => {}
@@ -121,7 +103,7 @@ impl EntityViewMut<'_> {
     /// What a horse, a llama or a camel does of its own each tick (`aiStep`).
     fn tick_horse_like(&mut self, game_time: u64) {
         let (alive, camel) = (
-            self.alive,
+            self.status.alive,
             matches!(
                 photon_data::entity_type::name(self.type_id),
                 Some("minecraft:camel" | "minecraft:camel_husk")
@@ -183,7 +165,7 @@ impl EntityViewMut<'_> {
             self.old_swim_amount = self.swim_amount;
             self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
                 self.swim_amount.get(),
-                self.pose == ClientEntityPose::Swimming,
+                self.status.pose == ClientEntityPose::Swimming,
             ));
         }
         let mut body = self.rotation.y_body_rot.get();
@@ -226,7 +208,7 @@ impl EntityViewMut<'_> {
     fn tick_walk_animation(&mut self, moved: (f64, f64)) {
         // `calculateEntityAnimation`: a rider or a dead entity stands still.
         // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
-        if self.links.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
+        if self.links.vehicle_id.is_none() && self.status.alive && !self.is_ender_dragon() {
             let camel = matches!(
                 photon_data::entity_type::name(self.type_id),
                 Some("minecraft:camel" | "minecraft:camel_husk")
@@ -244,11 +226,11 @@ impl EntityViewMut<'_> {
                 );
                 self.entity
                     .walk
-                    .update(target, 0.4, if self.entity.baby { 3.0 } else { 1.0 });
+                    .update(target, 0.4, if self.status.baby { 3.0 } else { 1.0 });
             } else {
                 self.entity
                     .walk
-                    .follow(moved.0.hypot(moved.1), self.entity.baby);
+                    .follow(moved.0.hypot(moved.1), self.status.baby);
             }
         } else {
             self.walk.stop();
@@ -290,5 +272,25 @@ impl EntityViewMut<'_> {
             let _seed = i64::from(self.id.0);
             self.lightning_done = self.kind.lightning_state().tick();
         }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Camel.updateWalkAnimation`: only a standing camel that is not dashing walks, and its
+    /// stride is quicker to settle.
+    fn tick_camel_walk(&mut self, moved: (f64, f64)) {
+        let walking = self.status.pose == ClientEntityPose::Standing
+            && !self
+                .kind
+                .horse()
+                .is_some_and(|horse| horse.camel.is_dash_animation_started());
+        let target = if walking {
+            ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
+        } else {
+            0.0
+        };
+        self.entity
+            .walk
+            .update(target, 0.2, if self.status.baby { 3.0 } else { 1.0 });
     }
 }

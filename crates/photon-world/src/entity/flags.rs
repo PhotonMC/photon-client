@@ -12,47 +12,6 @@ impl ClientEntity {
         old + partial_tick * (self.swim_amount.get() - old)
     }
 
-    pub fn shared_flags(&self) -> u8 {
-        self.shared_flags
-    }
-
-    pub fn living_flags(&self) -> u8 {
-        self.living_flags
-    }
-
-    pub fn mob_flags(&self) -> u8 {
-        self.mob_flags
-    }
-
-    pub fn is_no_ai(&self) -> bool {
-        shared_flag_is_set(self.mob_flags, MOB_FLAG_NO_AI)
-    }
-
-    pub fn is_left_handed(&self) -> bool {
-        shared_flag_is_set(self.mob_flags, MOB_FLAG_LEFT_HANDED)
-    }
-
-    pub fn is_using_item(&self) -> bool {
-        shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
-    }
-
-    /// `Entity.isCrouching`: the crouching pose.
-    pub fn is_crouching(&self) -> bool {
-        self.pose == ClientEntityPose::Crouching
-    }
-
-    pub fn used_item_is_off_hand(&self) -> bool {
-        shared_flag_is_set(self.living_flags, LIVING_FLAG_OFF_HAND)
-    }
-
-    pub fn is_auto_spin_attack(&self) -> bool {
-        shared_flag_is_set(self.living_flags, LIVING_FLAG_SPIN_ATTACK)
-    }
-
-    pub fn has_custom_name(&self) -> bool {
-        self.custom_name_present
-    }
-
     /// `Entity.getCustomName`: the component the server sent, as its NBT tag.
     pub fn custom_name(&self) -> Option<photon_core::nbt::FieldValue> {
         crate::metadata::custom_name_from_metadata(self.metadata.as_deref()?)?
@@ -92,51 +51,6 @@ impl ClientEntity {
         self.shows_cape() && matches!(profile_name, "Dinnerbone" | "Grumm")
     }
 
-    pub fn is_custom_name_visible(&self) -> bool {
-        self.custom_name_visible
-    }
-
-    pub fn should_show_name(&self) -> bool {
-        self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID || self.custom_name_visible
-    }
-
-    pub fn is_no_gravity(&self) -> bool {
-        self.no_gravity
-    }
-
-    pub fn is_silent(&self) -> bool {
-        self.silent
-    }
-
-    pub fn is_baby(&self) -> bool {
-        self.baby
-    }
-
-    pub fn is_on_fire(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_ON_FIRE)
-    }
-
-    pub fn is_shift_key_down(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SHIFT_KEY_DOWN)
-    }
-
-    pub fn is_sprinting(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SPRINTING)
-    }
-
-    /// `Entity.canSpawnSprintParticle` but for the fluids the world has to look up.
-    pub(crate) fn sprints_on_foot(&self) -> bool {
-        self.living_kind().is_some()
-            && self.alive
-            && self.is_sprinting()
-            && !self.is_spectator()
-            && !self.is_crouching()
-    }
-
-    pub fn is_swimming(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
-    }
-
     /// Whether the entity's water state is tracked (`Entity.isInWater`): the
     /// mobs that draw differently in water.
     pub(crate) fn tracks_water(&self) -> bool {
@@ -153,23 +67,6 @@ impl ClientEntity {
                         | "minecraft:elder_guardian"
                 )
             )
-    }
-
-    /// Whether the player only watches (its game mode, as the server told).
-    pub fn is_spectator(&self) -> bool {
-        self.spectator
-    }
-
-    pub fn is_invisible(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_INVISIBLE)
-    }
-
-    pub fn is_glowing(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_GLOWING)
-    }
-
-    pub fn is_fall_flying(&self) -> bool {
-        shared_flag_is_set(self.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 }
 
@@ -588,5 +485,153 @@ impl EntityView<'_> {
     /// `LivingEntity.isDeadOrDying`: its health, as the server told, is spent.
     pub fn is_dead_or_dying(&self) -> bool {
         self.health().is_some_and(|health| health <= 0.0)
+    }
+}
+
+/// What an entity is and how it is marked: the flag bytes of its data, its name tag, its pose,
+/// and whether it is a baby, alive, a spectator, climbing or flying.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct EntityStatus {
+    pub(crate) shared_flags: u8,
+    pub(crate) living_flags: u8,
+    pub(crate) mob_flags: u8,
+    pub(crate) custom_name_present: bool,
+    pub(crate) custom_name_visible: bool,
+    pub(crate) no_gravity: bool,
+    pub(crate) silent: bool,
+    pub(crate) pose: ClientEntityPose,
+    pub(crate) baby: bool,
+    pub(crate) alive: bool,
+    pub(crate) spectator: bool,
+    pub(crate) on_climbable: bool,
+    pub(crate) flying: bool,
+    pub(crate) happy_ghast_still_timeout: bool,
+    pub(crate) happy_ghast_is_vehicle: bool,
+}
+
+impl EntityStatus {
+    pub(crate) fn new() -> Self {
+        Self {
+            shared_flags: 0,
+            living_flags: 0,
+            mob_flags: 0,
+            custom_name_present: false,
+            custom_name_visible: false,
+            no_gravity: false,
+            silent: false,
+            pose: ClientEntityPose::Standing,
+            baby: false,
+            alive: true,
+            spectator: false,
+            on_climbable: false,
+            flying: false,
+            happy_ghast_still_timeout: false,
+            happy_ghast_is_vehicle: false,
+        }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn shared_flags(&self) -> u8 {
+        self.status.shared_flags
+    }
+
+    pub fn living_flags(&self) -> u8 {
+        self.status.living_flags
+    }
+
+    pub fn mob_flags(&self) -> u8 {
+        self.status.mob_flags
+    }
+
+    pub fn is_no_ai(&self) -> bool {
+        shared_flag_is_set(self.status.mob_flags, MOB_FLAG_NO_AI)
+    }
+
+    pub fn is_left_handed(&self) -> bool {
+        shared_flag_is_set(self.status.mob_flags, MOB_FLAG_LEFT_HANDED)
+    }
+
+    pub fn is_using_item(&self) -> bool {
+        shared_flag_is_set(self.status.living_flags, LIVING_FLAG_USING_ITEM)
+    }
+
+    /// `Entity.isCrouching`: the crouching pose.
+    pub fn is_crouching(&self) -> bool {
+        self.status.pose == ClientEntityPose::Crouching
+    }
+
+    pub fn used_item_is_off_hand(&self) -> bool {
+        shared_flag_is_set(self.status.living_flags, LIVING_FLAG_OFF_HAND)
+    }
+
+    pub fn is_auto_spin_attack(&self) -> bool {
+        shared_flag_is_set(self.status.living_flags, LIVING_FLAG_SPIN_ATTACK)
+    }
+
+    pub fn has_custom_name(&self) -> bool {
+        self.status.custom_name_present
+    }
+
+    pub fn is_custom_name_visible(&self) -> bool {
+        self.status.custom_name_visible
+    }
+
+    pub fn should_show_name(&self) -> bool {
+        self.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID || self.status.custom_name_visible
+    }
+
+    pub fn is_no_gravity(&self) -> bool {
+        self.status.no_gravity
+    }
+
+    pub fn is_silent(&self) -> bool {
+        self.status.silent
+    }
+
+    pub fn is_baby(&self) -> bool {
+        self.status.baby
+    }
+
+    pub fn is_on_fire(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_ON_FIRE)
+    }
+
+    pub fn is_shift_key_down(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_SHIFT_KEY_DOWN)
+    }
+
+    pub fn is_sprinting(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_SPRINTING)
+    }
+
+    /// `Entity.canSpawnSprintParticle` but for the fluids the world has to look up.
+    pub(crate) fn sprints_on_foot(&self) -> bool {
+        self.living_kind().is_some()
+            && self.status.alive
+            && self.is_sprinting()
+            && !self.is_spectator()
+            && !self.is_crouching()
+    }
+
+    pub fn is_swimming(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_SWIMMING)
+    }
+
+    /// Whether the player only watches (its game mode, as the server told).
+    pub fn is_spectator(&self) -> bool {
+        self.status.spectator
+    }
+
+    pub fn is_invisible(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_INVISIBLE)
+    }
+
+    pub fn is_glowing(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_GLOWING)
+    }
+
+    pub fn is_fall_flying(&self) -> bool {
+        shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_FALL_FLYING)
     }
 }

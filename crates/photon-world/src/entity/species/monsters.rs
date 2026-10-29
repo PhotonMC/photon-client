@@ -47,7 +47,7 @@ impl EntityView<'_> {
 
     /// `Goat.getRammingXHeadRot`: how far the head is lowered, in radians.
     pub fn goat_ramming_x_head_rot(&self) -> f32 {
-        let maximum = if self.baby { 52.5 } else { 30.0 };
+        let maximum = if self.status.baby { 52.5 } else { 30.0 };
         self.living.animal.goat_lower_head_tick as f32 / 20.0
             * maximum
             * (std::f64::consts::PI / 180.0) as f32

@@ -130,12 +130,12 @@ impl Entities {
     /// `handleAnimate`: an arm swings (actions 0 and 3), or a player wakes up (2: its sleeping
     /// position is emptied and it stands). The critical-hit particles are not carried out here.
     pub fn apply_animate(&mut self, entity_id: EntityId, action: u8) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if action == 2 && entity.living_kind().is_some() {
             entity.vitals.sleeping_pos = None;
-            entity.pose = ClientEntityPose::Standing;
+            entity.status.pose = ClientEntityPose::Standing;
             return true;
         }
         if entity.living_kind().is_none() || !matches!(action, 0 | 3) {
@@ -154,12 +154,12 @@ impl Entities {
             return true;
         }
         entity.vitals.health = Some(0.0_f32.to_bits());
-        entity.alive = false;
+        entity.status.alive = false;
         // `EnderDragon.handleKillingBlow`: unless it sits, it is not dead yet but at
         // one health, in the dying phase, till the server says otherwise.
         if entity.is_ender_dragon() && !entity.ender_dragon_mut().phase().is_sitting() {
             entity.vitals.health = Some(1.0_f32.to_bits());
-            entity.alive = true;
+            entity.status.alive = true;
             entity
                 .ender_dragon_mut()
                 .set_phase(mobs::ender_dragon::DragonPhase::Dying);

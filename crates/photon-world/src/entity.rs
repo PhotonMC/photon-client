@@ -37,21 +37,6 @@ pub struct ClientEntity {
     /// spin it started (`bobOffs`).
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
-    pub(crate) shared_flags: u8,
-    pub(crate) living_flags: u8,
-    pub(crate) mob_flags: u8,
-    pub(crate) custom_name_present: bool,
-    pub(crate) custom_name_visible: bool,
-    pub(crate) no_gravity: bool,
-    pub(crate) silent: bool,
-    pub(crate) pose: ClientEntityPose,
-    pub(crate) baby: bool,
-    pub(crate) alive: bool,
-    pub(crate) spectator: bool,
-    pub(crate) on_climbable: bool,
-    pub(crate) flying: bool,
-    pub(crate) happy_ghast_still_timeout: bool,
-    pub(crate) happy_ghast_is_vehicle: bool,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
     pub(crate) item_frame_rotation: i32,

@@ -38,7 +38,7 @@ impl ClientWorld {
         body.on_ground = entity.on_ground;
         body.supporting_block = entity.tracking.support.main_block;
         body.on_ground_no_blocks = entity.tracking.support.no_blocks;
-        body.no_gravity = entity.no_gravity;
+        body.no_gravity = entity.status.no_gravity;
         body.input = entity.ride.boat_input;
         body.has_passengers = !entity.links.passenger_ids.is_empty();
         body.player_aboard = entity.links.passenger_ids.first().is_some_and(|&id| {
@@ -57,7 +57,7 @@ impl ClientWorld {
         };
         // The paddles row, and a stroke at the start of its sweep asks which sound the water or
         // the land makes, which finds the status again (and what finding it leaves behind).
-        let silent = entity.silent;
+        let silent = entity.status.silent;
         let paddling = [paddles.0, paddles.1].map(|rows| rows && body.has_passengers);
         let positions = [0, 1].map(|side| {
             entity

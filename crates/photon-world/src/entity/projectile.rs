@@ -162,7 +162,7 @@ impl VanillaProjectileKind {
 impl EntityViewMut<'_> {
     fn tick_throwable_item(&mut self, default_gravity: f64) {
         let air_drag = f64::from(0.99_f32);
-        let gravity = if self.no_gravity {
+        let gravity = if self.status.no_gravity {
             0.0
         } else {
             default_gravity
@@ -227,7 +227,7 @@ impl EntityViewMut<'_> {
         self.vel.motion.x = JavaF64::new(motion.0);
         self.vel.motion.y = JavaF64::new(
             motion.1
-                - if self.no_gravity {
+                - if self.status.no_gravity {
                     0.0
                 } else {
                     VANILLA_ARROW_GRAVITY
@@ -250,7 +250,7 @@ impl EntityViewMut<'_> {
         let motion = (
             current_motion.0,
             current_motion.1
-                - if self.no_gravity {
+                - if self.status.no_gravity {
                     0.0
                 } else {
                     VANILLA_EXPERIENCE_ORB_GRAVITY
@@ -322,7 +322,7 @@ impl EntityViewMut<'_> {
         let motion = (
             current_motion.0,
             current_motion.1
-                - if self.no_gravity {
+                - if self.status.no_gravity {
                     0.0
                 } else {
                     VANILLA_PRIMED_TNT_GRAVITY
@@ -345,7 +345,7 @@ impl EntityViewMut<'_> {
         let motion = (
             current_motion.0,
             current_motion.1
-                - if self.no_gravity {
+                - if self.status.no_gravity {
                     0.0
                 } else {
                     VANILLA_FALLING_BLOCK_GRAVITY

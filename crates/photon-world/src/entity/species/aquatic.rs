@@ -68,7 +68,7 @@ impl EntityViewMut<'_> {
     /// `Guardian.aiStep`'s client half, while the guardian lives: the beam's
     /// target (which the world resolves from its id) is where the head turns.
     pub(crate) fn tick_guardian(&mut self, target: Option<crate::mobs::guardian::GuardianTarget>) {
-        if !self.is_guardian() || !self.alive {
+        if !self.is_guardian() || !self.status.alive {
             return;
         }
         let eye_height = self
@@ -145,7 +145,7 @@ impl EntityViewMut<'_> {
             return;
         }
         let input = crate::mobs::axolotl::AxolotlInput {
-            baby: self.is_baby(),
+            baby: self.as_view().is_baby(),
             playing_dead: self.living.axolotl_playing_dead,
             in_water: self.living.in_water,
             on_ground: self.on_ground,

@@ -64,7 +64,7 @@ impl ClientWorld {
         let passenger_is_baby = self
             .entities
             .get(&passenger_id)
-            .is_some_and(|passenger| passenger.baby);
+            .is_some_and(|passenger| passenger.status.baby);
         let passenger_vehicle_attachment_y =
             vanilla_passenger_vehicle_attachment_y(passenger_type_id, passenger_is_baby);
 
@@ -129,7 +129,8 @@ impl ClientWorld {
         }
         let (x, y, z) = vehicle.position();
         let passenger = self.entities.at(passenger_id)?;
-        let attachment = vanilla_passenger_vehicle_attachment_y(passenger.type_id, passenger.baby);
+        let attachment =
+            vanilla_passenger_vehicle_attachment_y(passenger.type_id, passenger.status.baby);
         // The stand's own size already is a marker's none and a small stand's half.
         let height = vehicle.bb_height();
         Some(photon_core::math::Vec3::new(

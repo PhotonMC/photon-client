@@ -64,7 +64,9 @@ impl ClientWorld {
             Some("minecraft:parrot") => true,
             Some("minecraft:llama" | "minecraft:trader_llama") if entity.is_vehicle() => false,
             _ if entity.is_horse() && entity.is_vehicle() => false,
-            _ => !entity.is_dead_or_dying() && !entity.is_spectator() && !entity.on_climbable,
+            _ => {
+                !entity.is_dead_or_dying() && !entity.is_spectator() && !entity.status.on_climbable
+            }
         }
     }
 }
