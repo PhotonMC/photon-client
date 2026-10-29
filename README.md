@@ -60,7 +60,7 @@ The table is computed by `cargo xtask progress` and checked in CI. Counts of thi
 | Entity types with a renderer, named by the client | 141 / 156 |
 | Block entity types with a renderer, named by the client | 24 / 26 |
 | Particle types named by the client | 120 / 125 |
-| Parity cases | 4,777 in 18 families |
+| Parity cases | 4,776 in 18 families |
 | Lint baseline entries | 969 (at introduction: 1,234) |
 <!-- progress:end -->
 
@@ -82,8 +82,8 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 | --- | --- |
 | [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 6 / 8 |
 | [Infra: parity v2](https://github.com/PhotonMC/photon-client/milestone/2) | 7 / 8 |
-| [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 4 / 8 |
-| [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 2 / 7 |
+| [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 5 / 8 |
+| [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 3 / 7 |
 | [Infra: rendering](https://github.com/PhotonMC/photon-client/milestone/5) | 0 / 5 |
 | [Infra: mod platform](https://github.com/PhotonMC/photon-client/milestone/6) | 0 / 2 |
 | [Infra: launcher and accounts](https://github.com/PhotonMC/photon-client/milestone/7) | 1 / 1 |
