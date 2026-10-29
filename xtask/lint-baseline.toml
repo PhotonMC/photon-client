@@ -989,7 +989,7 @@ photon-gui = 46
 photon-net = 35
 photon-protocol = 6
 photon-render = 243
-photon-world = 1188
+photon-world = 1161
 
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1
