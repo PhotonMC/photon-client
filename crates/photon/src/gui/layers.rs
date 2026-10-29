@@ -466,7 +466,11 @@ impl Gui {
     pub(super) fn draw_late_layers(
         frame: &mut photon_render::gui::GuiFrame,
         resources: (&GuiAtlas, &Font, &Lang),
-        (layers, item): (&mut Layers, &mut photon_render::gui::ItemDrawer<'_>),
+        (layers, item, loading): (
+            &mut Layers,
+            &mut photon_render::gui::ItemDrawer<'_>,
+            &mut super::loading::LoadingLayer,
+        ),
         (controls, size, session): (
             &Controls,
             &photon_render::window::scale::WindowScale,
@@ -477,6 +481,11 @@ impl Gui {
         // The debug options screen draws the overlay itself, under its widgets.
         let debug =
             Self::debug_columns(session, controls).filter(|_| controls.debug_options.is_none());
+        loading.draw(
+            frame,
+            resources.0,
+            (view.1.gui_scaled_width(), view.1.gui_scaled_height()),
+        );
         layers.draw_subtitles(frame, resources, view, SubtitlePass::OverScreen);
         layers.draw_pause_toast(frame, resources, view.0);
         layers.draw_toasts(frame, resources, view, item);

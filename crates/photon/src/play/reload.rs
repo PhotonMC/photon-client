@@ -5,7 +5,9 @@ use super::ticks::share_registries;
 use super::*;
 use crate::packs::{Attempt, answer_attempt};
 use photon_assets::ResourceStack;
+use photon_gui::loading_overlay::LoadingOverlay;
 use photon_render::model::DisplayContext;
+use std::sync::atomic::{AtomicU8, Ordering};
 
 /// The vanilla data pack the server runs, which sits next to the assets.
 pub(super) fn data_root(root: &str) -> std::path::PathBuf {
@@ -102,6 +104,7 @@ impl Lap {
 /// What the preparation of a reload needs from the game.
 pub(super) struct PrepareInputs {
     root: String,
+    steps: Arc<AtomicU8>,
     trim_patterns: Vec<String>,
     trim_materials: Vec<String>,
 }
@@ -166,6 +169,7 @@ pub(super) fn prepare(
 ) -> std::result::Result<Prepared, String> {
     let PrepareInputs {
         root,
+        steps,
         trim_patterns,
         trim_materials,
     } = inputs;
@@ -173,9 +177,12 @@ pub(super) fn prepare(
         let mut lap = Lap::start();
         let blocks = bake_renderer(&root).map_err(|e| e.to_string())?;
         lap.mark("block bake");
+        steps.fetch_add(1, Ordering::Relaxed);
         let gui = Gui::read_assets(std::path::Path::new(&root))?;
         lap.mark("interface read");
+        steps.fetch_add(1, Ordering::Relaxed);
         let images = Images::read(&root)?;
+        steps.fetch_add(1, Ordering::Relaxed);
         let mut particles = crate::particles::Particles::load(&root);
         let mut armor = Armor::load(&root);
         armor.set_trim_registries(trim_patterns, trim_materials);
@@ -183,6 +190,7 @@ pub(super) fn prepare(
         // The sprite lists of the particles are the stack's: the engine takes them as they are.
         let _ = &mut particles;
         lap.mark("entity read");
+        steps.fetch_add(1, Ordering::Relaxed);
         Ok(Prepared {
             stack: Arc::clone(&stack),
             root: root.clone(),
@@ -214,22 +222,46 @@ enum Stage {
 pub(super) struct Job {
     handle: std::thread::JoinHandle<std::result::Result<Prepared, String>>,
     stage: Stage,
+    /// How many of the reload's `STEPS` the worker has done.
+    steps: Arc<AtomicU8>,
+}
+
+/// What a reload does besides applying it: the four reads of the worker and the apply, the
+/// units its progress bar counts.
+const STEPS: f32 = 5.0;
+
+/// What a game keeps of its resource reloads.
+#[derive(Default)]
+pub(super) struct State {
+    /// The reload being prepared on a worker thread.
+    job: Option<Job>,
+    /// A reload applied, waiting for the loading overlay to answer for it.
+    applied: Option<Applied>,
+}
+
+/// A reload that is applied and waits for the overlay to answer for it (`LoadingOverlay.tick`).
+pub(super) struct Applied {
+    stage: Stage,
+    outcome: std::result::Result<(), String>,
 }
 
 impl Play {
-    /// Answer the reload the server's packs asked for: a finished one is applied and answered,
-    /// and the next one due starts preparing. A failed one reports the failure with the stack that
-    /// was in use kept.
+    /// Serve the reload the server's packs asked for, as `Minecraft.runTick` and
+    /// `LoadingOverlay.tick` do: a finished worker is applied; the overlay answers once the reload
+    /// is done and fades out; and a reload that came while an overlay was up starts after it.
     pub(super) fn serve_pack_reload(&mut self) {
         self.controls.pack_poll(&self.screen_assets);
         if self
-            .reload_job
+            .reload
+            .job
             .as_ref()
             .is_some_and(|job| job.handle.is_finished())
         {
             self.finish_reload();
         }
-        if self.reload_job.is_some() {
+        self.tick_loading_overlay();
+        // `pendingReload`: nothing starts while a loading overlay is up.
+        if self.gui.is_loading() {
             return;
         }
         if self.controls.take_pack_reload() {
@@ -250,8 +282,36 @@ impl Play {
         }
     }
 
+    /// `LoadingOverlay.tick` and the end of `extractRenderState`: the finished reload is answered
+    /// once the overlay is ready, which starts its fade-out, and the faded overlay goes.
+    fn tick_loading_overlay(&mut self) {
+        let now = self.gui.loading_clock();
+        let progress = match &self.reload.job {
+            Some(job) => f32::from(job.steps.load(Ordering::Relaxed)) / STEPS,
+            None => 1.0,
+        };
+        self.gui.set_reload_progress(progress);
+        let Some(overlay) = self.gui.loading_mut() else {
+            return;
+        };
+        if overlay.finished(now) {
+            self.gui.set_loading(None);
+            return;
+        }
+        if self.reload.applied.is_some() && overlay.ready(true, now) {
+            let Applied { stage, outcome } = self.reload.applied.take().expect("checked");
+            self.answer_reload(stage, outcome);
+            // A recovery put its own overlay in place of this one.
+            if self.reload.job.is_none()
+                && let Some(overlay) = self.gui.loading_mut()
+            {
+                overlay.start_fade_out(now);
+            }
+        }
+    }
+
     /// Open `packs` over the selected ones and prepare what they make of the assets on a worker
-    /// thread. A failure to start is the reload's failure.
+    /// thread, behind a loading overlay. A failure to start is the reload's failure.
     fn start_reload(&mut self, packs: &crate::packs::LoadedPacks, stage: Stage) {
         let started = std::time::Instant::now();
         let prepared = env::var("PHOTON_ASSETS")
@@ -260,27 +320,35 @@ impl Play {
                 let stack = crate::resources::with_packs(std::path::Path::new(&root), packs)?;
                 Ok((Arc::new(stack), self.prepare_inputs(&root)))
             });
-        match prepared {
-            Ok((stack, inputs)) => {
-                let handle = std::thread::Builder::new()
-                    .name("resource-reload".to_owned())
-                    .spawn(move || {
-                        let prepared = prepare(stack, inputs);
-                        log::info!("resources prepared in {:?}", started.elapsed());
-                        prepared
-                    });
-                match handle {
-                    Ok(handle) => self.reload_job = Some(Job { handle, stage }),
-                    Err(error) => self.answer_reload(stage, Err(error.to_string())),
-                }
+        let (stack, inputs) = match prepared {
+            Ok(prepared) => prepared,
+            Err(error) => return self.answer_reload(stage, Err(error)),
+        };
+        let steps = Arc::clone(&inputs.steps);
+        let handle = std::thread::Builder::new()
+            .name("resource-reload".to_owned())
+            .spawn(move || {
+                let prepared = prepare(stack, inputs);
+                log::info!("resources prepared in {:?}", started.elapsed());
+                prepared
+            });
+        match handle {
+            Ok(handle) => {
+                self.reload.job = Some(Job {
+                    handle,
+                    stage,
+                    steps,
+                });
+                self.gui
+                    .set_loading(Some(LoadingOverlay::new(false, false)));
             }
-            Err(error) => self.answer_reload(stage, Err(error)),
+            Err(error) => self.answer_reload(stage, Err(error.to_string())),
         }
     }
 
-    /// Apply what the worker prepared and answer the server.
+    /// Apply what the worker prepared; the overlay answers for it when it is ready.
     fn finish_reload(&mut self) {
-        let Some(Job { handle, stage }) = self.reload_job.take() else {
+        let Some(Job { handle, stage, .. }) = self.reload.job.take() else {
             return;
         };
         let started = std::time::Instant::now();
@@ -297,7 +365,7 @@ impl Play {
             Err(_) => Err("the reload thread panicked".to_owned()),
         };
         log::info!("resources applied in {:?}", started.elapsed());
-        self.answer_reload(stage, outcome);
+        self.reload.applied = Some(Applied { stage, outcome });
     }
 
     /// Put `previous`, the stack that was in use, through the renderers again after an apply that
@@ -333,6 +401,7 @@ impl Play {
     pub(super) fn prepare_inputs(&self, root: &str) -> PrepareInputs {
         PrepareInputs {
             root: root.to_owned(),
+            steps: Arc::new(AtomicU8::new(0)),
             trim_patterns: self
                 .session
                 .registry_names("minecraft:trim_pattern")

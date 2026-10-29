@@ -28,8 +28,11 @@ impl Play {
             .map_or(photon_game::game_mode::Aim::Miss, |player| {
                 crate::view::camera_aim(session, player, 1.0)
             });
+        // `handleKeybinds` does not run under an overlay: the clicks stay counted.
         let grabbed = self.controls.captured || self.script.is_some();
-        session.keys(self.controls.game_keys(grabbed), aim)?;
+        if !self.gui.is_loading() {
+            session.keys(self.controls.game_keys(grabbed), aim)?;
+        }
         for hand in session.take_items_used() {
             self.item_in_hand.item_used(hand);
         }

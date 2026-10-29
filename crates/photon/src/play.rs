@@ -265,8 +265,8 @@ struct FrameCamera {
 /// draw.
 struct Play {
     session: PlaySession,
-    /// The resource reload being prepared on a worker thread.
-    reload_job: Option<reload::Job>,
+    /// The resource reload being prepared, and the one waiting to be answered.
+    reload: reload::State,
     /// The level loading screen, while a respawn waits for its level.
     loading: Option<loading::LoadingView>,
     // Fields drop in order: the swapchain goes before the window it presents

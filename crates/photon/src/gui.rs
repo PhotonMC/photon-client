@@ -64,6 +64,8 @@ pub struct Gui {
     /// The resource packs the texts are read from.
     pub(super) resources: Arc<photon_assets::ResourceStack>,
     pub(super) last_frame_ms: u64,
+    /// The loading overlay of a resource reload.
+    pub(super) loading: loading::LoadingLayer,
     /// The subtitles, the toasts and what they keep between frames.
     pub(super) layers: layers::Layers,
 }
@@ -105,6 +107,7 @@ mod draw;
 mod hud;
 mod layers;
 mod light_screens;
+mod loading;
 mod menu_screens;
 mod preview;
 mod title;

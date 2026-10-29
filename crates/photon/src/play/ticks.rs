@@ -111,7 +111,7 @@ impl Play {
         Ok(Self {
             screen_assets: gui.screen_assets(),
             loading: None,
-            reload_job: None,
+            reload: Default::default(),
             session,
             surface,
             backend,

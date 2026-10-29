@@ -17,7 +17,23 @@ pub(crate) struct LoadingView {
 impl Play {
     /// A window event while the level loads: the screen takes it, the game below takes none.
     pub(super) fn loading_event(&self, event: &glfw::WindowEvent) -> bool {
-        self.loading.is_some() && is_input(event)
+        (self.loading.is_some() && is_input(event)) || self.overlay_event(event)
+    }
+
+    /// A window event while a reload's overlay is up: the mouse buttons, the wheel, the cursor
+    /// and the characters are ignored, and so are the keys an open screen would take
+    /// (`MouseHandler` and `KeyboardHandler` test `gui.overlay()`); the keys that are held still
+    /// reach the game.
+    fn overlay_event(&self, event: &glfw::WindowEvent) -> bool {
+        self.gui.is_loading()
+            && match event {
+                glfw::WindowEvent::MouseButton(..)
+                | glfw::WindowEvent::Scroll(..)
+                | glfw::WindowEvent::CursorPos(..)
+                | glfw::WindowEvent::Char(_) => true,
+                glfw::WindowEvent::Key(..) => self.controls.screen.is_some(),
+                _ => false,
+            }
     }
 
     /// A frame of the loading screen in the place of the level. The first frame closes what was

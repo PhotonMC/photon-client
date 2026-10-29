@@ -408,7 +408,7 @@ impl Gui {
         Self::draw_late_layers(
             &mut frame,
             (&self.atlas, &self.font, &self.lang),
-            (&mut self.layers, &mut draw_item),
+            (&mut self.layers, &mut draw_item, &mut self.loading),
             (controls, &size, session),
         );
         let atlas = (&mut self.atlas, &mut self.atlas_image);

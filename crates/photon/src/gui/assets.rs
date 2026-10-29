@@ -104,6 +104,7 @@ impl Gui {
             started_at,
             chat_queue: Default::default(),
             last_frame_ms: 0,
+            loading: super::loading::LoadingLayer::new(started_at),
             layers: super::layers::Layers::new(started_at),
         };
         gui.hud
