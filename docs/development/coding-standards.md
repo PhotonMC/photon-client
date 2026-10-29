@@ -17,6 +17,7 @@ Rules that a machine can check are enforced by `cargo xtask lint`, clippy and ru
 | `unsafe` | Only under `crates/photon-render/src/vulkan`, each block with a `// SAFETY:` comment | `xtask lint`, clippy |
 | Terminal output in libraries | No `print!`, `println!`, `eprintln!` or `dbg!`; use `log` | `xtask lint` |
 | Registry and protocol ids | Never compared with number literals; resolve them by name | `xtask lint` |
+| `"minecraft:` string literals in production code (tests, generated tables, oracle, dev and parity crates excluded) | Counted per crate and capped in the baseline; compare the typed constants in `entity_type::ids`, `block::ids` and `item::ids` instead of names; names without the prefix and `concat!("minecraft:", ..)` are not counted, so do not use them to dodge the cap | `xtask lint` |
 | Suppressing size or complexity lints | Not allowed | `xtask lint` |
 | Formatting | rustfmt defaults | `cargo fmt --check` |
 | Lints | Clippy with `-D warnings`, `unwrap_used` and `undocumented_unsafe_blocks` | clippy |
