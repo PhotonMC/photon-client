@@ -6,7 +6,7 @@ use std::time::Duration;
 use photon_core::json;
 use photon_protocol::play::{ConnectionError, LoginFailure};
 
-use crate::account::{Account, is_this_machine, undashed};
+use crate::account::{Account, is_this_machine, json_string, undashed};
 
 /// Post the join. Everything that goes wrong comes back as the failure vanilla words it.
 pub(super) fn join_server(
@@ -72,20 +72,6 @@ fn join_url(host: &str) -> Result<String, ConnectionError> {
         "{}/session/minecraft/join",
         host.trim_end_matches('/')
     ))
-}
-
-fn json_string(text: &str) -> String {
-    let mut out = String::from("\"");
-    for character in text.chars() {
-        match character {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if u32::from(c) < 0x20 => out.push_str(&format!("\\u{:04x}", u32::from(c))),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 #[cfg(test)]

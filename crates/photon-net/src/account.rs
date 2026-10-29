@@ -81,6 +81,21 @@ pub(crate) fn is_this_machine(host: &str) -> bool {
     matches!(name.as_deref(), Some("127.0.0.1" | "localhost" | "[::1]"))
 }
 
+/// A string as a JSON literal.
+pub(crate) fn json_string(text: &str) -> String {
+    let mut out = String::from("\"");
+    for character in text.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if u32::from(c) < 0x20 => out.push_str(&format!("\\u{:04x}", u32::from(c))),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

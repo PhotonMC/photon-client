@@ -44,10 +44,38 @@ pub(super) fn post_form(
         .header("Accept", "application/json")
         .send(body.as_bytes())
         .map_err(|_| SignInError::Unavailable)?;
-    Ok(Answer {
+    Ok(read(&mut response))
+}
+
+/// A JSON body posted to `host` + `path`.
+pub(super) fn post_json((host, path): (&str, &str), body: &str) -> Result<Answer, SignInError> {
+    let url = checked(host, path)?;
+    let mut response = agent()
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .send(body.as_bytes())
+        .map_err(|_| SignInError::Unavailable)?;
+    Ok(read(&mut response))
+}
+
+/// A GET that carries a bearer token.
+pub(super) fn get_bearer((host, path): (&str, &str), token: &str) -> Result<Answer, SignInError> {
+    let url = checked(host, path)?;
+    let mut response = agent()
+        .get(&url)
+        .header("Authorization", &format!("Bearer {token}"))
+        .header("Accept", "application/json")
+        .call()
+        .map_err(|_| SignInError::Unavailable)?;
+    Ok(read(&mut response))
+}
+
+fn read(response: &mut ureq::http::Response<ureq::Body>) -> Answer {
+    Answer {
         status: response.status().as_u16(),
         body: response.body_mut().read_to_string().unwrap_or_default(),
-    })
+    }
 }
 
 /// Everything but the unreserved characters, as percent-escaped bytes.

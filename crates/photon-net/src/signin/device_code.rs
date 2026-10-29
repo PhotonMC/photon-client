@@ -184,7 +184,10 @@ mod tests {
     }
 
     fn hosts(login: String) -> Hosts {
-        Hosts { login }
+        Hosts {
+            login,
+            ..Hosts::default()
+        }
     }
 
     const CODE_BODY: &str = r#"{"device_code":"DEV","user_code":"ABCD1234","verification_uri":"https://www.microsoft.com/link","expires_in":900,"interval":5}"#;
