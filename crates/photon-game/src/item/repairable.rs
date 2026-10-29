@@ -128,7 +128,7 @@ mod tests {
     fn matches_the_reference_dump() {
         const PATCHES: &str =
             include_str!("../../../../tests/behavior/fixtures/item-default-patches.txt");
-        for (index, line) in PATCHES.lines().enumerate() {
+        for line in PATCHES.lines() {
             let (name, wire) = line.split_once(' ').expect("a name and its bytes");
             let bytes: Vec<u8> = (0..wire.len())
                 .step_by(2)
@@ -141,7 +141,7 @@ mod tests {
                 .find(|(id, _)| *id == photon_data::item::component_types::REPAIRABLE)
                 .map(|(_, value)| value.clone());
             assert_eq!(
-                repairable_value(photon_core::ids::ItemId(index as i32)),
+                repairable_value(crate::item::id_of(name).expect(name)),
                 dumped,
                 "{name}"
             );

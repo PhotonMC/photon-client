@@ -77,6 +77,10 @@ mod tests {
     fn matches_the_reference_dump() {
         const PATCHES: &str =
             include_str!("../../../../tests/behavior/fixtures/item-default-patches.txt");
+        // The dump was captured from 26.2, so its ids are that version's wire ids.
+        let dump_registries = photon_data::version_registries::VersionRegistries::of(
+            photon_core::version::Version::V26_2,
+        );
         for line in PATCHES.lines() {
             let (name, wire) = line.split_once(' ').expect("a name and its bytes");
             let bytes: Vec<u8> = (0..wire.len())
@@ -111,7 +115,9 @@ mod tests {
                             (1..count)
                                 .map(|_| {
                                     photon_data::entity_type::name(photon_core::ids::EntityTypeId(
-                                        varint(&mut input),
+                                        dump_registries
+                                            .entity_types
+                                            .canonical_or_unknown(varint(&mut input)),
                                     ))
                                     .expect("an entity type")
                                     .to_owned()

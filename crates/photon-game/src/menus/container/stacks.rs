@@ -270,18 +270,21 @@ mod tests {
 
     #[test]
     fn menu_types_name_their_layouts() {
-        assert_eq!(MenuKind::from_menu_type(2), Some(MenuKind::Chest(3)));
+        let kind =
+            |name: &str| MenuKind::from_menu_type(photon_data::menu_type::id(name).expect(name));
+        assert_eq!(kind("minecraft:generic_9x3"), Some(MenuKind::Chest(3)));
         assert_eq!(
-            MenuKind::from_menu_type(2).map(MenuKind::slot_count),
+            kind("minecraft:generic_9x3").map(MenuKind::slot_count),
             Some(63)
         );
-        assert_eq!(MenuKind::from_menu_type(16), Some(MenuKind::Hopper));
-        assert_eq!(MenuKind::from_menu_type(9), Some(MenuKind::Beacon));
-        assert_eq!(MenuKind::from_menu_type(17), Some(MenuKind::Lectern));
+        assert_eq!(kind("minecraft:hopper"), Some(MenuKind::Hopper));
+        assert_eq!(kind("minecraft:beacon"), Some(MenuKind::Beacon));
+        assert_eq!(kind("minecraft:lectern"), Some(MenuKind::Lectern));
         assert_eq!(MenuKind::Lectern.slot_count(), 1);
-        assert_eq!(MenuKind::from_menu_type(19), Some(MenuKind::Merchant));
-        // The mounts' menus are not modelled yet (they are not in the registry of menus).
-        assert_eq!(MenuKind::from_menu_type(40), None);
+        assert_eq!(kind("minecraft:merchant"), Some(MenuKind::Merchant));
+        // An id past the registry of menus is not modelled.
+        let past_the_end = photon_data::menu_type::names().count() as i32;
+        assert_eq!(MenuKind::from_menu_type(past_the_end), None);
     }
 
     #[test]
