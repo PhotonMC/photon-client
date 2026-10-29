@@ -1,16 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    pub(crate) fn capture_old_transform(&mut self) {
-        self.old_position.x = self.position.x;
-        self.old_position.y = self.position.y;
-        self.old_position.z = self.position.z;
-        self.old_x_rot = self.x_rot;
-        self.old_y_rot = self.y_rot;
-        self.old_y_head_rot = self.y_head_rot;
-        self.old_y_body_rot = self.y_body_rot;
-    }
-
     pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
         if self.is_shulker() {
             self.shulker_set_pos(position, block_of(self.position()));
@@ -25,25 +15,6 @@ impl ClientEntity {
     pub(crate) fn packet_base(&self) -> (f64, f64, f64) {
         let [x, y, z] = self.tracking.packet_base_bits.map(f64::from_bits);
         (x, y, z)
-    }
-
-    /// A position and turn a packet gave to an entity that does not interpolate.
-    pub(crate) fn set_plain_position(
-        &mut self,
-        position: Option<(f64, f64, f64)>,
-        (y_rot, x_rot): (Option<f32>, Option<f32>),
-    ) {
-        if let Some((x, y, z)) = position {
-            self.position.x = JavaF64::new(x);
-            self.position.y = JavaF64::new(y);
-            self.position.z = JavaF64::new(z);
-        }
-        if let Some(y_rot) = y_rot {
-            self.y_rot = JavaF32::new(y_rot % 360.0);
-        }
-        if let Some(x_rot) = x_rot {
-            self.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
-        }
     }
 
     pub(crate) fn set_packet_base(&mut self, base: (f64, f64, f64)) {
@@ -122,51 +93,6 @@ impl ClientEntity {
         self.motion.y = JavaF64::new(y);
         self.motion.z = JavaF64::new(z);
     }
-
-    /// `Entity.baseTick`'s fluid pass, then `LivingEntity.aiStep`: a living entity
-    /// eases to the position and turn its last packet gave and its head to the head
-    /// turn, and a mob's motion fades; then what a species does of its own there.
-    pub(crate) fn tick_ai_step(
-        &mut self,
-        living: Option<LivingKind>,
-        in_water: Option<bool>,
-        targets: EntityTargets,
-    ) {
-        if self.is_ender_dragon() {
-            self.tick_ender_dragon(&targets);
-            return;
-        }
-        if self.is_minecart() {
-            self.tick_minecart();
-            return;
-        }
-        if let Some(display) = self.kind.display_mut() {
-            // `Display.tick`'s client half: the notes the data left, then the position's easing.
-            display.tick(self.tick_count);
-            self.tick_position_interpolation();
-            return;
-        }
-        self.tick_frog();
-        self.tick_breeze();
-        self.tick_wither_motion();
-        if let Some(in_water) = in_water {
-            self.living.in_water = in_water;
-        }
-        self.tick_axolotl();
-        self.tick_guardian(targets.guardian);
-        let was_interpolating = self.is_interpolating();
-        if living.is_some() {
-            self.tick_position_interpolation();
-        }
-        self.tick_head_rotation();
-        if living == Some(LivingKind::Mob) {
-            self.tick_mob_motion(was_interpolating);
-            self.tick_squid();
-            self.tick_cube_mob();
-            self.tick_shulker();
-        }
-        self.tick_wither_heads(targets.wither);
-    }
 }
 
 pub(crate) fn decode_entity_delta(base: f64, delta: i16) -> u64 {
@@ -232,4 +158,80 @@ pub(crate) fn rotate_entity_motion(
         x_rotated.1,
         x_rotated.2 * y_cos - x_rotated.0 * y_sin,
     )
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn capture_old_transform(&mut self) {
+        self.old_position.x = self.position.x;
+        self.old_position.y = self.position.y;
+        self.old_position.z = self.position.z;
+        self.rotation.old_x_rot = self.rotation.x_rot;
+        self.rotation.old_y_rot = self.rotation.y_rot;
+        self.rotation.old_y_head_rot = self.rotation.y_head_rot;
+        self.rotation.old_y_body_rot = self.rotation.y_body_rot;
+    }
+
+    /// A position and turn a packet gave to an entity that does not interpolate.
+    pub(crate) fn set_plain_position(
+        &mut self,
+        position: Option<(f64, f64, f64)>,
+        (y_rot, x_rot): (Option<f32>, Option<f32>),
+    ) {
+        if let Some((x, y, z)) = position {
+            self.position.x = JavaF64::new(x);
+            self.position.y = JavaF64::new(y);
+            self.position.z = JavaF64::new(z);
+        }
+        if let Some(y_rot) = y_rot {
+            self.rotation.y_rot = JavaF32::new(y_rot % 360.0);
+        }
+        if let Some(x_rot) = x_rot {
+            self.rotation.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
+        }
+    }
+
+    /// `Entity.baseTick`'s fluid pass, then `LivingEntity.aiStep`: a living entity
+    /// eases to the position and turn its last packet gave and its head to the head
+    /// turn, and a mob's motion fades; then what a species does of its own there.
+    pub(crate) fn tick_ai_step(
+        &mut self,
+        living: Option<LivingKind>,
+        in_water: Option<bool>,
+        targets: EntityTargets,
+    ) {
+        if self.is_ender_dragon() {
+            self.tick_ender_dragon(&targets);
+            return;
+        }
+        if self.is_minecart() {
+            self.tick_minecart();
+            return;
+        }
+        if let Some(display) = self.entity.kind.display_mut() {
+            // `Display.tick`'s client half: the notes the data left, then the position's easing.
+            display.tick(self.entity.tick_count);
+            self.tick_position_interpolation();
+            return;
+        }
+        self.tick_frog();
+        self.tick_breeze();
+        self.tick_wither_motion();
+        if let Some(in_water) = in_water {
+            self.living.in_water = in_water;
+        }
+        self.tick_axolotl();
+        self.tick_guardian(targets.guardian);
+        let was_interpolating = self.is_interpolating();
+        if living.is_some() {
+            self.tick_position_interpolation();
+        }
+        self.tick_head_rotation();
+        if living == Some(LivingKind::Mob) {
+            self.tick_mob_motion(was_interpolating);
+            self.tick_squid();
+            self.tick_cube_mob();
+            self.tick_shulker();
+        }
+        self.tick_wither_heads(targets.wither);
+    }
 }

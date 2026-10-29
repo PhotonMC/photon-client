@@ -27,7 +27,7 @@ impl ClientWorld {
             return true;
         }
         let game_time = self.level.game_time;
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         if event == 2 && entity.living_kind().is_some() {
@@ -113,7 +113,7 @@ impl ClientWorld {
 impl Entities {
     /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
     pub fn apply_damage_event(&mut self, entity_id: EntityId) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.walk.set_speed(1.5);
@@ -124,7 +124,7 @@ impl Entities {
     /// `handleHurtAnimation` (`LivingEntity.animateHurt`; `Player.animateHurt` also keeps the
     /// yaw).
     pub fn apply_hurt_animation(&mut self, entity_id: EntityId, yaw: f32) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.living.hurt_time = 10;
@@ -139,7 +139,7 @@ impl Entities {
     /// `handleAnimate`: an arm swings (actions 0 and 3), or a player wakes up (2: its sleeping
     /// position is emptied and it stands). The critical-hit particles are not carried out here.
     pub fn apply_animate(&mut self, entity_id: EntityId, action: u8) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         if action == 2 && entity.living_kind().is_some() {
@@ -156,7 +156,7 @@ impl Entities {
     }
 
     pub fn apply_death_event(&mut self, entity_id: EntityId) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.is_player() {
@@ -180,7 +180,7 @@ impl Entities {
 
     /// `AgeableMob.setAgeLockedData` as the client runs it: the lock flips and the wait starts.
     pub fn toggle_age_lock(&mut self, entity_id: EntityId) {
-        if let Some(entity) = self.at_mut(entity_id) {
+        if let Some(mut entity) = self.at_mut(entity_id) {
             entity.living.age_locked = !entity.living.age_locked;
             entity.living.age_lock_timer = 40;
         }
@@ -188,21 +188,21 @@ impl Entities {
 
     /// `Villager.setUnhappyCounter` as the client runs it for a shaken-off baby.
     pub fn set_unhappy_counter(&mut self, entity_id: EntityId, ticks: i32) {
-        if let Some(entity) = self.at_mut(entity_id) {
+        if let Some(mut entity) = self.at_mut(entity_id) {
             entity.living.unhappy_counter = ticks;
         }
     }
 
     /// `AbstractChestedHorse.setChest`.
     pub fn set_horse_chest(&mut self, entity_id: EntityId, chest: bool) {
-        if let Some(entity) = self.at_mut(entity_id) {
+        if let Some(mut entity) = self.at_mut(entity_id) {
             entity.living.horse_chest = chest;
         }
     }
 
     /// Sets or clears the stew effects a mooshroom holds (`MushroomCow.stewEffects`).
     pub fn set_mooshroom_stew(&mut self, entity_id: EntityId, held: bool) {
-        if let Some(entity) = self.at_mut(entity_id) {
+        if let Some(mut entity) = self.at_mut(entity_id) {
             entity.living.mooshroom_stew = held;
         }
     }
@@ -211,7 +211,7 @@ impl Entities {
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.
     pub fn set_leash_holder(&mut self, entity_id: EntityId, holder_id: EntityId) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         if photon_data::leash::leash_of(entity.type_id).is_none() {

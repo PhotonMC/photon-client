@@ -1,6 +1,7 @@
 //! The silhouettes of the glowing mobs the frame drew, which the renderer turns into their
 //! outlines (`RenderTypes.outline`, `Minecraft.shouldEntityAppearGlowing`).
 
+use photon_world::EntityView;
 use std::cell::RefCell;
 
 use photon_game::scoreboard::Scoreboard;
@@ -47,7 +48,7 @@ struct Holder {
 }
 
 /// Remember a glowing mob's body, as the vertices of its model.
-pub(crate) fn record(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
+pub(crate) fn record(entity: EntityView<'_>, body: Vec<Vertex>) {
     record_holder(entity.uuid.to_string_java(), body);
 }
 
@@ -61,7 +62,7 @@ pub(crate) fn record_holder(holder: String, body: Vec<Vertex>) {
 }
 
 /// Remember a glowing dropped item's model.
-pub(crate) fn record_item(entity: &photon_world::ClientEntity, body: Vec<Vertex>) {
+pub(crate) fn record_item(entity: EntityView<'_>, body: Vec<Vertex>) {
     record_item_holder(entity.uuid.to_string_java(), body);
 }
 
@@ -77,7 +78,7 @@ pub(crate) fn record_item_holder(holder: String, body: Vec<Vertex>) {
 /// Remember a glowing display's triangles (over the item atlas when `atlas`, else the entity
 /// textures): `Display.getTeamColor` is its glow colour override when it has one (not -1).
 pub(crate) fn record_display(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     glow_colour_override: i32,
     (atlas, body): (bool, Vec<Vertex>),
 ) {
@@ -99,7 +100,7 @@ pub(crate) fn record_display(
 
 /// Remember what a mob wears, when it glows: its armor and wings draw in the outline too
 /// (`AFFECTS_OUTLINE`).
-pub(crate) fn record_worn(entity: &photon_world::ClientEntity, worn: Vec<Vertex>) -> Vec<Vertex> {
+pub(crate) fn record_worn(entity: EntityView<'_>, worn: Vec<Vertex>) -> Vec<Vertex> {
     if entity.is_glowing() {
         record(entity, worn.clone());
     }
@@ -109,7 +110,7 @@ pub(crate) fn record_worn(entity: &photon_world::ClientEntity, worn: Vec<Vertex>
 /// The vertices of a mob's layer in a model and a colour (a saddle, a collar, wool, a fish's
 /// pattern), which join the outline when the mob glows.
 pub(crate) fn coloured(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     model: &photon_render::entity::mob_model::MobModel,
     placement: &photon_render::entity::mob_model::MobPlacement,
     (rect, colour): (photon_render::entity::textures::TextureRect, Option<u32>),

@@ -25,7 +25,7 @@ use photon_render::entity::textures::EntityTextures;
 use photon_render::render_types::{POWER_COLOUR, POWER_TEXTURE, swirl_offset};
 use photon_render::scene::Vertex;
 use photon_world::mobs::creaking::CreakingState;
-use photon_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
+use photon_world::{EntitySnapshot, EquipmentSlot};
 
 use crate::equipment::held_items::{HeldItem, Place};
 use crate::mobs::{MobModels, placement};

@@ -1,9 +1,7 @@
 use super::super::*;
+use photon_world::EntityView;
 
-pub(crate) fn swing_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn swing_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let swing = entity.swing_state();
     described["swinging"] = json!(swing.is_swinging());
     described["swing_time"] = json!(swing.swing_time());
@@ -14,10 +12,7 @@ pub(crate) fn swing_extra(
     Ok(())
 }
 
-pub(crate) fn sheep_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn sheep_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
         let (position, angle) = entity.sheep_head_eat_scales(partial, 0.0);
         described[format!("eat_position_{key}")] = json!(hex(position));
@@ -26,10 +21,7 @@ pub(crate) fn sheep_extra(
     Ok(())
 }
 
-pub(crate) fn camel_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn camel_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     if let Some(camel) = entity.horse().map(|horse| &horse.camel) {
         let tick = entity.tick_count() as f32;
         for (name, state) in [
@@ -51,10 +43,7 @@ pub(crate) fn camel_extra(
     Ok(())
 }
 
-pub(crate) fn horse_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn horse_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     if let Some(horse) = entity.horse() {
         for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5)] {
             described[format!("eat_{key}")] = json!(hex(horse.eat_animation(partial)));
@@ -67,7 +56,7 @@ pub(crate) fn horse_extra(
 }
 
 pub(crate) fn bee_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
     world: &ClientWorld,
 ) -> Result<(), String> {
@@ -80,7 +69,7 @@ pub(crate) fn bee_extra(
 }
 
 pub(crate) fn wolf_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
     world: &ClientWorld,
 ) -> Result<(), String> {
@@ -97,18 +86,12 @@ pub(crate) fn wolf_extra(
     Ok(())
 }
 
-pub(crate) fn strider_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn strider_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["suffocating"] = json!(entity.is_suffocating());
     Ok(())
 }
 
-pub(crate) fn ravager_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn ravager_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let ravager = entity.ravager();
     described["attack_tick"] = json!(ravager.attack_tick());
     described["stunned_tick"] = json!(ravager.stunned_tick());
@@ -117,7 +100,7 @@ pub(crate) fn ravager_extra(
 }
 
 pub(crate) fn panda_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
     world: &ClientWorld,
 ) -> Result<(), String> {
@@ -142,10 +125,7 @@ pub(crate) fn panda_extra(
     Ok(())
 }
 
-pub(crate) fn fox_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn fox_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let fox = entity.fox();
     described["variant"] = json!(fox.variant());
     described["sitting"] = json!(fox.is_sitting());
@@ -160,16 +140,13 @@ pub(crate) fn fox_extra(
     Ok(())
 }
 
-pub(crate) fn hoglin_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn hoglin_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["attack_ticks"] = json!(entity.hoglin_attack_ticks());
     Ok(())
 }
 
 pub(crate) fn polar_bear_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
 ) -> Result<(), String> {
     let bear = entity.polar_bear();
@@ -180,10 +157,7 @@ pub(crate) fn polar_bear_extra(
     Ok(())
 }
 
-pub(crate) fn cat_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn cat_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["sitting"] = json!(entity.is_sitting());
     described["tame"] = json!(entity.is_tame());
     described["crouching"] = json!(entity.is_crouching());
@@ -197,10 +171,7 @@ pub(crate) fn cat_extra(
     Ok(())
 }
 
-pub(crate) fn rabbit_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn rabbit_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     if let Some(rabbit) = entity.rabbit() {
         let tick = entity.tick_count() as f32;
         described["hop_started"] = json!(rabbit.hop.is_started());
@@ -213,7 +184,7 @@ pub(crate) fn rabbit_extra(
 }
 
 pub(crate) fn attributes_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
 ) -> Result<(), String> {
     described["max_health"] = json!(hex(entity.max_health().unwrap_or(0.0)));
@@ -221,16 +192,13 @@ pub(crate) fn attributes_extra(
     Ok(())
 }
 
-pub(crate) fn goat_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn goat_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["ramming"] = json!(hex(entity.goat_ramming_x_head_rot()));
     Ok(())
 }
 
 pub(crate) fn iron_golem_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
 ) -> Result<(), String> {
     let (attack, offer) = entity.iron_golem_ticks();
@@ -239,20 +207,14 @@ pub(crate) fn iron_golem_extra(
     Ok(())
 }
 
-pub(crate) fn creeper_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn creeper_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     for (key, partial) in [("0.0", 0.0_f32), ("0.5", 0.5), ("1.0", 1.0)] {
         described[format!("swelling_{key}")] = json!(hex(entity.creeper_swelling(partial)));
     }
     Ok(())
 }
 
-pub(crate) fn chicken_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn chicken_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let (flap, flap_speed) = entity.chicken_flap(1.0);
     let (old_flap, old_flap_speed) = entity.chicken_flap(0.0);
     described["flap"] = json!(hex(flap));

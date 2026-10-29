@@ -96,15 +96,6 @@ impl ClientEntity {
         self.living.shulker_face = 0;
     }
 
-    /// `Shulker.stopRiding` (client side): it slides from where it stands, and
-    /// its body faces south again.
-    pub(crate) fn shulker_stops_riding(&mut self) {
-        let block = block_of(self.position());
-        self.living.shulker.set_old_attach(block);
-        self.y_body_rot = JavaF32::new(0.0_f32);
-        self.old_y_body_rot = JavaF32::new(0.0_f32);
-    }
-
     /// Whether this is a slime or a magma cube (`AbstractCubeMob`).
     pub fn is_cube_mob(&self) -> bool {
         crate::metadata::is_cube_mob_type(self.type_id)
@@ -125,15 +116,6 @@ impl ClientEntity {
         &self.living.cube
     }
 
-    /// `AbstractCubeMob.onSyncedDataUpdated` for the size: each time the data
-    /// says it (the same size too), the body and the entity turn to where the
-    /// head looks.
-    pub(crate) fn set_cube_size(&mut self, size: i32) {
-        self.y_rot = self.y_head_rot;
-        self.y_body_rot = self.y_head_rot;
-        self.living.cube_size = Some(size);
-    }
-
     /// `AbstractCubeMob.tick`'s squish (`decreaseSquish`: a magma cube's target
     /// fades slower).
     pub(crate) fn tick_cube_mob(&mut self) {
@@ -152,5 +134,25 @@ impl ClientEntity {
     /// `GlowSquid.getDarkTicksRemaining`.
     pub fn glow_dark_ticks(&self) -> i32 {
         self.living.glow_dark_ticks
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Shulker.stopRiding` (client side): it slides from where it stands, and
+    /// its body faces south again.
+    pub(crate) fn shulker_stops_riding(&mut self) {
+        let block = block_of(self.position());
+        self.living.shulker.set_old_attach(block);
+        self.rotation.y_body_rot = JavaF32::new(0.0_f32);
+        self.rotation.old_y_body_rot = JavaF32::new(0.0_f32);
+    }
+
+    /// `AbstractCubeMob.onSyncedDataUpdated` for the size: each time the data
+    /// says it (the same size too), the body and the entity turn to where the
+    /// head looks.
+    pub(crate) fn set_cube_size(&mut self, size: i32) {
+        self.rotation.y_rot = self.rotation.y_head_rot;
+        self.rotation.y_body_rot = self.rotation.y_head_rot;
+        self.living.cube_size = Some(size);
     }
 }

@@ -6,7 +6,7 @@ impl Entities {
     /// Fixes the source a horse's tail chance is drawn from; false for an
     /// entity that is not there.
     pub fn fix_horse_seed(&mut self, entity_id: EntityId, seed: i64) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.fix_horse_seed(seed);
@@ -16,7 +16,7 @@ impl Entities {
     /// Fixes the source a panda's chance to eat is drawn from; false for an
     /// entity that is not there.
     pub fn fix_panda_seed(&mut self, entity_id: EntityId, seed: i64) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.fix_panda_seed(seed);
@@ -26,7 +26,7 @@ impl Entities {
     /// Fixes a rabbit's idle head tilt wait and random source (see
     /// [`rabbit::RabbitState::fix_idle`]); false for an entity that is not there.
     pub fn fix_rabbit_idle(&mut self, entity_id: EntityId, timeout: i32, seed: i64) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.fix_rabbit_idle(timeout, seed);
@@ -37,7 +37,7 @@ impl Entities {
     /// from out of water (see [`guardian::GuardianState::fix_random`]); false
     /// for an entity that is not there.
     pub fn fix_guardian_random(&mut self, entity_id: EntityId, tail: f32, seed: i64) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity
@@ -50,7 +50,7 @@ impl Entities {
     /// Fixes a squid's tentacle speed (see [`squid::SquidState::fix_tentacle_speed`]);
     /// false for an entity that is not there.
     pub fn fix_squid_tentacle_speed(&mut self, entity_id: EntityId, speed: f32) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity
@@ -63,7 +63,7 @@ impl Entities {
     /// Fixes the source a copper golem's idle wait is drawn from (see
     /// [`copper_golem::CopperGolemAnimations::fix_seed`]); false for an entity that is not there.
     pub fn fix_copper_golem_seed(&mut self, entity_id: EntityId, seed: i64) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity

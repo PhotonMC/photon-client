@@ -11,7 +11,7 @@ use photon_render::entity::textures::EntityTextures;
 use photon_render::entity::villager::{Pass, profession_passes, profession_textures};
 use photon_render::scene::Vertex;
 
-use photon_world::{ClientEntity, EquipmentSlot};
+use photon_world::{EntityView, EquipmentSlot};
 
 use crate::equipment::held_items::{HeldItem, Place};
 use crate::mobs::{MobModels, is_item, placement};
@@ -50,7 +50,7 @@ pub(crate) fn layer(folder: &str, hatless: bool, baby: bool) -> String {
 /// The passes of `VillagerProfessionLayer` for the entity, from the villager
 /// data the server sent; none while it cannot be seen or names a type or
 /// profession the registries lack.
-pub(crate) fn profession_layer(entity: &ClientEntity, folder: &str, baby: bool) -> Vec<Pass> {
+pub(crate) fn profession_layer(entity: EntityView<'_>, folder: &str, baby: bool) -> Vec<Pass> {
     if entity.is_invisible() {
         return Vec::new();
     }

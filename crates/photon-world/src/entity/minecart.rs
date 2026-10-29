@@ -50,7 +50,13 @@ impl ClientEntity {
             .unwrap_or_default()
             .display_offset(default)
     }
+}
 
+pub(crate) fn is_vanilla_minecart_entity_type(entity_type_id: EntityTypeId) -> bool {
+    VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id.0)
+}
+
+impl EntityViewMut<'_> {
     /// `AbstractMinecart.tick` on the client, with `OldMinecartBehavior.tick`'s client half: the
     /// hit runs down, then the position and turn ease to the last packet's while that lasts,
     /// else the turns are kept under a whole turn.
@@ -64,16 +70,16 @@ impl ClientEntity {
         } else if self.is_interpolating() {
             self.tick_position_interpolation();
         } else {
-            let (y_rot, x_rot) = (self.y_rot.get(), self.x_rot.get());
-            self.x_rot = JavaF32::new(x_rot % 360.0);
-            self.y_rot = JavaF32::new(y_rot % 360.0);
+            let (y_rot, x_rot) = (self.rotation.y_rot.get(), self.rotation.x_rot.get());
+            self.rotation.x_rot = JavaF32::new(x_rot % 360.0);
+            self.rotation.y_rot = JavaF32::new(y_rot % 360.0);
         }
     }
 
     /// `NewMinecartBehavior.lerpClientPositionAndRotation`: the steps the server sent are played
     /// back, putting the minecart where they lead.
     pub(super) fn tick_minecart_track(&mut self) {
-        let (y_rot, x_rot) = self.body_rotation();
+        let (y_rot, x_rot) = self.rotation.body_rotation();
         let now = crate::objects::minecart_track::MinecartStep {
             position: self.position(),
             movement: self.motion(),
@@ -95,14 +101,10 @@ impl ClientEntity {
         self.motion.z = JavaF64::new(place.movement.2);
         // `Entity.setXRot` and `setYRot` discard what is not finite.
         if place.x_rot.is_finite() {
-            self.x_rot = JavaF32::new((place.x_rot % 360.0).clamp(-90.0, 90.0));
+            self.rotation.x_rot = JavaF32::new((place.x_rot % 360.0).clamp(-90.0, 90.0));
         }
         if place.y_rot.is_finite() {
-            self.y_rot = JavaF32::new(place.y_rot);
+            self.rotation.y_rot = JavaF32::new(place.y_rot);
         }
     }
-}
-
-pub(crate) fn is_vanilla_minecart_entity_type(entity_type_id: EntityTypeId) -> bool {
-    VANILLA_MINECART_ENTITY_TYPE_IDS.contains(&entity_type_id.0)
 }

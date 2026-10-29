@@ -1,10 +1,10 @@
 //! `EntityRenderer.getShadowRadius` and `getShadowStrength`: the shadow an entity's renderer casts.
 
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 
 /// The share of the renderer's radius that the age takes: `LivingEntity.getAgeScale`, which a few
 /// species declare their own for.
-fn age_scale(entity: &ClientEntity, name: &str) -> f32 {
+fn age_scale(entity: EntityView<'_>, name: &str) -> f32 {
     if !entity.is_baby() {
         return 1.0;
     }
@@ -20,7 +20,7 @@ fn age_scale(entity: &ClientEntity, name: &str) -> f32 {
 
 /// The radius and strength of the shadow of a type the renderer table lists, `None` for one that
 /// casts none or is shaped by its own data (a display).
-pub(super) fn of(entity: &ClientEntity) -> Option<(f32, f32)> {
+pub(super) fn of(entity: EntityView<'_>) -> Option<(f32, f32)> {
     let name = photon_data::entity_type::name(entity.type_id)?;
     if entity.is_player() {
         return Some((0.5 * entity.scale(), 1.0));

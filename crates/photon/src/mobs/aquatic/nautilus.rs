@@ -7,7 +7,7 @@ use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{MobPlacement, NautilusState, QuadrupedState, mob_vertices};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
-use photon_world::{ClientEntity, EntitySnapshot, EquipmentSlot};
+use photon_world::{EntitySnapshot, EntityView, EquipmentSlot};
 
 use crate::equipment::armor::Armor;
 use crate::mobs::{MobModels, placement};
@@ -76,7 +76,7 @@ pub fn remote_nautiluses(
 /// The model layer and texture of a nautilus or zombie nautilus, or none for a zombie variant
 /// the registry lacks. `variant_name` names a zombie variant by its place in the registry.
 fn appearance<'a>(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     is_zombie: bool,
     variant_name: &dyn Fn(usize) -> Option<&'a str>,
 ) -> Option<(&'static str, &'static str)> {
@@ -103,7 +103,7 @@ fn appearance<'a>(
 
 /// What the model is posed from; `head_yaw` is the head's turn against the body.
 fn pose_state(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &EntitySnapshot,
     head_yaw: f32,
     partial: f32,
@@ -124,7 +124,7 @@ fn pose_state(
 /// model of its own, posed as the nautilus is.
 fn worn_layers(
     armor: &mut Armor,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     textures: &EntityTextures,
     state: &NautilusState,
     placed: &MobPlacement,
@@ -169,7 +169,7 @@ pub fn gui_preview(
     registry_names: &[String],
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     view: &photon_render::entity::player_renderer::GuiEntityView,
 ) -> Option<Vec<Vertex>> {
     let is_zombie =

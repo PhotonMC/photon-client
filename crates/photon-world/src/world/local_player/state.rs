@@ -10,11 +10,11 @@ impl ClientWorld {
     pub fn set_local_player_id(&mut self, player_id: EntityId) {
         let mut player = ClientPlayerState::new(player_id);
         if let Some(entity) = self.entities.at(player_id) {
-            player.y_head_rot = entity.y_head_rot;
-            player.old_y_head_rot = entity.old_y_head_rot;
-            player.head_rotation_target = entity.y_head_rot;
-            player.y_body_rot = entity.y_body_rot;
-            player.old_y_body_rot = entity.old_y_body_rot;
+            player.y_head_rot = entity.rotation.y_head_rot;
+            player.old_y_head_rot = entity.rotation.old_y_head_rot;
+            player.head_rotation_target = entity.rotation.y_head_rot;
+            player.y_body_rot = entity.rotation.y_body_rot;
+            player.old_y_body_rot = entity.rotation.old_y_body_rot;
         }
         self.local_player = Some(player);
     }
@@ -269,7 +269,7 @@ impl ClientWorld {
 
     /// Copy local player movement flags into a client-authoritative boat.
     pub fn set_boat_input(&mut self, vehicle_id: EntityId, input: BoatInput) -> bool {
-        let Some(boat) = self.entities.at_mut(vehicle_id) else {
+        let Some(mut boat) = self.entities.at_mut(vehicle_id) else {
             return false;
         };
         if vanilla_boat_max_passengers(boat.type_id).is_none() {
@@ -292,7 +292,7 @@ impl ClientWorld {
         let at = crate::bed_position(bed);
         if let Some(player) = self.local_player.as_mut().filter(|p| p.id == entity_id) {
             player.set_position(at);
-        } else if let Some(entity) = self.entities.at_mut(entity_id) {
+        } else if let Some(mut entity) = self.entities.at_mut(entity_id) {
             entity.set_position(at);
         }
     }

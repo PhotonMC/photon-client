@@ -10,6 +10,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::EquipmentSlot;
 
 use crate::equipment::held_items::{HeldItem, block_item_state};
@@ -103,7 +104,7 @@ pub fn remote_cube_mobs(
 /// `SlimeOuterLayer`: the outer body, translucent and drawn after the inner one; a glowing slime
 /// adds it to its outline, which is all an invisible one shows of it.
 fn slime_outer(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     models: &mut MobModels,
     (placed, rect): (&MobPlacement, TextureRect),
     view: FrameView,
@@ -198,7 +199,7 @@ fn sulfur_placement(
     world: &photon_world::ClientWorld,
     snapshot: &photon_world::EntitySnapshot,
     view: FrameView,
-    (entity, fuse, holds_block): (&photon_world::ClientEntity, f32, bool),
+    (entity, fuse, holds_block): (EntityView<'_>, f32, bool),
 ) -> photon_render::entity::mob_model::MobPlacement {
     let mut placed = placement(world, snapshot, view, entity.scale());
     placed.cube_mob = Some(CubeMobScale {

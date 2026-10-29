@@ -1,6 +1,7 @@
 use super::*;
 use crate::equipment::arm_poses;
 use crate::mobs::humanoids::villagers;
+use photon_world::EntityView;
 
 /// `LivingEntityRenderer` for the humanoid mobs the server added (zombies,
 /// skeletons, piglins), each posed by its model's `setupAnim` from where it is
@@ -106,7 +107,7 @@ pub(super) fn remote_humanoids(
 /// piglin's arm pose.
 pub(super) fn humanoid_state(
     session: &PlaySession,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     (kind, partial): (&HumanoidKind, f32),
 ) -> (PlayerRenderState, bool, PiglinArmPose) {
@@ -124,7 +125,7 @@ pub(super) fn humanoid_state(
 pub(super) fn worn_layers(
     armor: &mut Armor,
     (worn, textures): (Worn, &EntityTextures),
-    (entity, kind, baby): (&photon_world::ClientEntity, &HumanoidKind, bool),
+    (entity, kind, baby): (EntityView<'_>, &HumanoidKind, bool),
     (humanoid, aggressive, holding_bow, arm_pose): (PlayerRenderState, bool, bool, PiglinArmPose),
     (placement, partial): (&MobPlacement, f32),
 ) -> Vec<Vertex> {
@@ -166,7 +167,7 @@ pub(super) fn worn_layers(
 pub(super) fn profession_layers(
     (models, textures): (&mut MobModels, &EntityTextures),
     kind: &HumanoidKind,
-    (entity, baby): (&photon_world::ClientEntity, bool),
+    (entity, baby): (EntityView<'_>, bool),
     (humanoid, aggressive, holding_bow, arm_pose): (PlayerRenderState, bool, bool, PiglinArmPose),
     placement: &MobPlacement,
     vertices: &mut Vec<Vertex>,
@@ -195,7 +196,7 @@ pub(super) fn profession_layers(
 /// arms' poses its held items ask for (`AbstractSkeletonRenderer.getArmPose`:
 /// a bow drawn by the main arm of an aggressive skeleton).
 pub(super) fn humanoid_pose(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     kind: &HumanoidKind,
     partial: f32,
@@ -279,7 +280,7 @@ pub(super) fn model_layers(
 /// the piglin is doing.
 pub(super) fn piglin_arm_pose(
     session: &PlaySession,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     kind: &HumanoidKind,
 ) -> PiglinArmPose {
     let Family::Piglin { zombified: false } = kind.family else {
@@ -328,7 +329,7 @@ pub(super) fn pose_humanoid(
     model: &mut MobModel,
     kind: &HumanoidKind,
     (humanoid, aggressive, holding_bow): (PlayerRenderState, bool, bool),
-    (entity, arm_pose): (&photon_world::ClientEntity, PiglinArmPose),
+    (entity, arm_pose): (EntityView<'_>, PiglinArmPose),
 ) {
     match kind.family {
         Family::Zombie { drowned } => model.setup_zombie(&ZombieState {

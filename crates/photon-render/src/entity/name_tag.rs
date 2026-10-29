@@ -3,7 +3,7 @@
 //! the name.
 
 use photon_core::math::{Vec3, mth_cos_f64, mth_sin_f64};
-use photon_world::{ClientEntity, ClientEntityPose};
+use photon_world::{ClientEntityPose, EntityView};
 
 use crate::gui::font::Font;
 use crate::gui::frame::glyph_quads;
@@ -48,7 +48,7 @@ impl NameTag {
     /// the viewer.
     pub fn with_score(
         mut self,
-        entity: &ClientEntity,
+        entity: EntityView<'_>,
         viewer: Viewer,
         score: Option<Vec<TextRun<'static>>>,
     ) -> Self {
@@ -68,7 +68,7 @@ impl NameTag {
 }
 
 /// `Entity.getYRot(partialTicks)`.
-fn y_rot(entity: &ClientEntity, partial: f32) -> f32 {
+fn y_rot(entity: EntityView<'_>, partial: f32) -> f32 {
     let (current, _, _) = entity.rotation();
     if partial == 1.0 {
         return current;
@@ -116,7 +116,7 @@ pub struct Teams {
 }
 
 /// `Entity.isInvisibleTo(player)`.
-fn invisible_to_viewer(entity: &ClientEntity, viewer: Viewer, teams: Teams) -> bool {
+fn invisible_to_viewer(entity: EntityView<'_>, viewer: Viewer, teams: Teams) -> bool {
     if viewer.spectator {
         return false;
     }
@@ -130,7 +130,7 @@ fn invisible_to_viewer(entity: &ClientEntity, viewer: Viewer, teams: Teams) -> b
 /// `LivingEntityRenderer.shouldShowName` (a viewer that is not the entity itself): the team's
 /// visibility when the entity is on one, else the HUD, the invisibility and the riders.
 pub(super) fn living_shows(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     viewer: Viewer,
     teams: Teams,
     distance_sq: f64,
@@ -160,7 +160,7 @@ fn team_allows(rule: TeamRule, teams: Teams, visible: bool) -> bool {
 }
 
 /// The squared distance from the viewer's camera.
-pub(super) fn distance_sq(entity: &ClientEntity, viewer: Viewer) -> f64 {
+pub(super) fn distance_sq(entity: EntityView<'_>, viewer: Viewer) -> f64 {
     let (x, y, z) = entity.position();
     let (dx, dy, dz) = (
         viewer.camera_position.x - x,
@@ -173,7 +173,7 @@ pub(super) fn distance_sq(entity: &ClientEntity, viewer: Viewer) -> f64 {
 /// `EntityRenderer.extractNameTags` for an avatar, with the rules of
 /// `LivingEntityRenderer.shouldShowName`.
 pub fn name_tag(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     name: &str,
     (viewer, teams): (Viewer, Teams),
     partial: f32,

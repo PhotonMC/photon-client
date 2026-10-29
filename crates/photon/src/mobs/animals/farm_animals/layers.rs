@@ -3,11 +3,12 @@
 use super::*;
 use photon_render::entity::block::mooshroom_mushroom_poses;
 use photon_render::entity::mob_model::{overlay_code, placement_pose};
+use photon_world::EntityView;
 
 /// `MushroomCowMushroomLayer`: the mushrooms on a grown, visible mooshroom.
 pub(super) fn mushrooms(
     model: &MobModel,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     placed: &MobPlacement,
     held: &mut Vec<HeldItem>,
 ) {
@@ -39,7 +40,7 @@ pub(super) fn mushrooms(
 /// `HorseMarkingLayer`: the markings over the coat, not on an invisible horse.
 pub(super) fn horse_markings(
     model: &MobModel,
-    (animal, entity): (Animal, &ClientEntity),
+    (animal, entity): (Animal, EntityView<'_>),
     (placed, textures): (&MobPlacement, &EntityTextures),
 ) -> Vec<Vertex> {
     if animal != Animal::Horse || entity.is_invisible() {

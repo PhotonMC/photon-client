@@ -32,7 +32,7 @@ impl ClientWorld {
 
     /// `AbstractHorse.onPlayerJump`: the rider let go of the jump key after charging a jump.
     pub fn on_player_jump(&mut self, vehicle_id: EntityId, jump_amount: i32) {
-        let Some(horse) = self
+        let Some(mut horse) = self
             .entities
             .at_mut(vehicle_id)
             .filter(|entity| entity.is_controllable_horse())
@@ -85,20 +85,20 @@ impl ClientWorld {
         let dimensions = ClientEntityDimensions::scalable(width, height)
             .with_eye_height(eye_height)
             .scale(entity.scale(), entity.scale());
-        let Some(kind) = self.mount_kind_of(entity) else {
+        let Some(kind) = self.mount_kind_of(entity.entity) else {
             return;
         };
         if kind == MountKind::Strider {
             // `Strider.tick`: it takes the cold or the warmth before it moves.
-            let suffocating = strider_is_suffocating(self, entity);
-            if let Some(strider) = self.entities.at_mut(entity_id) {
+            let suffocating = strider_is_suffocating(self, entity.entity);
+            if let Some(mut strider) = self.entities.at_mut(entity_id) {
                 strider.set_strider_suffocating(suffocating);
             }
         }
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
-        let attributes = mount_attributes(entity, kind);
+        let attributes = mount_attributes(entity.entity, kind);
         let (x, y, z) = entity.position();
         let (ox, oy, oz) = entity.previous_position();
         let mut body = MountBody::new(
@@ -111,8 +111,8 @@ impl ClientWorld {
         );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
-        body.y_rot = entity.y_rot.get();
-        body.x_rot = entity.x_rot.get();
+        body.y_rot = entity.rotation.y_rot.get();
+        body.x_rot = entity.rotation.x_rot.get();
         body.on_ground = entity.on_ground;
         body.supporting_block = entity.tracking.support.main_block;
         body.on_ground_no_blocks = entity.tracking.support.no_blocks;
@@ -139,7 +139,7 @@ impl ClientWorld {
         }
         let game_time = self.level.game_time as i64;
         let in_water = body.is_in_water();
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the mount was read above");
@@ -148,11 +148,11 @@ impl ClientWorld {
         entity.motion.y = JavaF64::new(body.delta.y);
         entity.motion.z = JavaF64::new(body.delta.z);
         // `tickRidden`: it faces where the rider does, body and head too.
-        entity.old_y_rot = JavaF32::new(body.y_rot);
-        entity.y_rot = JavaF32::new(body.y_rot);
-        entity.x_rot = JavaF32::new(body.x_rot);
-        entity.y_body_rot = JavaF32::new(body.y_rot);
-        entity.y_head_rot = JavaF32::new(body.y_rot);
+        entity.rotation.old_y_rot = JavaF32::new(body.y_rot);
+        entity.rotation.y_rot = JavaF32::new(body.y_rot);
+        entity.rotation.x_rot = JavaF32::new(body.x_rot);
+        entity.rotation.y_body_rot = JavaF32::new(body.y_rot);
+        entity.rotation.y_head_rot = JavaF32::new(body.y_rot);
         entity.on_ground = body.on_ground;
         entity.tracking.support = Support {
             main_block: body.supporting_block,
@@ -160,7 +160,7 @@ impl ClientWorld {
         };
         entity.mount_ride = body.state;
         if kind == MountKind::Camel {
-            write_back_camel(entity, &body.camel, in_water, game_time);
+            write_back_camel(&mut *entity.entity, &body.camel, in_water, game_time);
         }
     }
 }

@@ -6,6 +6,7 @@ use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{AxolotlRenderState, QuadrupedState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -41,7 +42,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 
 /// The state the axolotl renders in: its walk, its animation blends and the poses it is in.
 fn render_state(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     partial: f32,
 ) -> AxolotlRenderState {

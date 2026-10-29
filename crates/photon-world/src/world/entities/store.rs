@@ -1,5 +1,5 @@
 use bevy_ecs::entity::Entity;
-use bevy_ecs::world::{Mut, World};
+use bevy_ecs::world::World;
 
 use crate::*;
 
@@ -34,19 +34,28 @@ impl Entities {
         self.ids.contains_key(entity_id)
     }
 
-    pub fn get(&self, entity_id: &EntityId) -> Option<&ClientEntity> {
-        let entity = *self.ids.get(entity_id)?;
-        self.ecs.get::<ClientEntity>(entity)
+    pub fn get(&self, entity_id: &EntityId) -> Option<EntityView<'_>> {
+        self.view(*self.ids.get(entity_id)?)
+    }
+
+    fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
+        let (entity, rotation) = self
+            .ecs
+            .get_entity(entity)
+            .ok()?
+            .get_components::<(&ClientEntity, &Rotation)>()
+            .ok()?;
+        Some(EntityView { entity, rotation })
     }
 
     /// Every entity with its id, in id order.
-    pub fn iter(&self) -> impl Iterator<Item = (&EntityId, &ClientEntity)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&EntityId, EntityView<'_>)> {
         self.ids
             .iter()
-            .filter_map(|(id, &entity)| Some((id, self.ecs.get::<ClientEntity>(entity)?)))
+            .filter_map(|(id, &entity)| Some((id, self.view(entity)?)))
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &ClientEntity> {
+    pub fn values(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.iter().map(|(_, entity)| entity)
     }
 
@@ -55,18 +64,28 @@ impl Entities {
     }
 
     /// The entity of an id, to change.
-    pub fn at_mut(&mut self, entity_id: EntityId) -> Option<&mut ClientEntity> {
+    pub fn at_mut(&mut self, entity_id: EntityId) -> Option<EntityViewMut<'_>> {
         let entity = *self.ids.get(&entity_id)?;
-        self.ecs
-            .get_mut::<ClientEntity>(entity)
-            .map(Mut::into_inner)
+        Self::view_mut(&mut self.ecs, entity)
+    }
+
+    fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
+        let (entity, rotation) = ecs
+            .get_entity_mut(entity)
+            .ok()?
+            .into_components_mut::<(&mut ClientEntity, &mut Rotation)>()
+            .ok()?;
+        Some(EntityViewMut {
+            entity: entity.into_inner(),
+            rotation: rotation.into_inner(),
+        })
     }
 
     /// Change every entity, in id order.
-    pub(crate) fn for_each_mut(&mut self, mut change: impl FnMut(&mut ClientEntity)) {
+    pub(crate) fn for_each_mut(&mut self, mut change: impl FnMut(EntityViewMut<'_>)) {
         for &entity in self.ids.values() {
-            if let Some(entity) = self.ecs.get_mut::<ClientEntity>(entity) {
-                change(entity.into_inner());
+            if let Some(view) = Self::view_mut(&mut self.ecs, entity) {
+                change(view);
             }
         }
     }
@@ -75,23 +94,27 @@ impl Entities {
     pub(crate) fn insert(
         &mut self,
         entity_id: EntityId,
-        entity: ClientEntity,
-    ) -> Option<ClientEntity> {
+        parts: EntityParts,
+    ) -> Option<EntityParts> {
         if let Some(&existing) = self.ids.get(&entity_id) {
-            let slot = self.ecs.get_mut::<ClientEntity>(existing)?;
-            return Some(std::mem::replace(slot.into_inner(), entity));
+            let view = Self::view_mut(&mut self.ecs, existing)?;
+            return Some(EntityParts {
+                entity: std::mem::replace(view.entity, parts.entity),
+                rotation: std::mem::replace(view.rotation, parts.rotation),
+            });
         }
-        let spawned = self.ecs.spawn(entity).id();
+        let spawned = self.ecs.spawn((parts.entity, parts.rotation)).id();
         self.ids.insert(entity_id, spawned);
         None
     }
 
     /// Take an entity away, with its state.
-    pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<ClientEntity> {
+    pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
-        let removed = self.ecs.entity_mut(entity).take::<ClientEntity>();
+        let mut taken = self.ecs.entity_mut(entity);
+        let parts = taken.take::<(ClientEntity, Rotation)>();
         self.ecs.despawn(entity);
-        removed
+        parts.map(|(entity, rotation)| EntityParts { entity, rotation })
     }
 
     pub(crate) fn clear(&mut self) {
@@ -100,7 +123,7 @@ impl Entities {
     }
 
     /// Every entity, in id order.
-    pub fn all(&self) -> impl Iterator<Item = &ClientEntity> {
+    pub fn all(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.values()
     }
 
@@ -109,14 +132,14 @@ impl Entities {
     /// see). The families that keep what an invisible mob wears, holds or glows with use
     /// [`Self::drawn_with_invisible`], which also gives a spectator the ghost of its body. Players decide
     /// for themselves, and an armor stand is not a mob here: its renderer hides only the body.
-    pub fn drawn(&self) -> impl Iterator<Item = &ClientEntity> {
+    pub fn drawn(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.drawn_with_invisible()
             .filter(|entity| !entity.is_invisible_mob())
     }
 
     /// [`Self::drawn`] with the invisible mobs, for the renderers that keep what such a mob wears
     /// and holds and leave only its body out.
-    pub fn drawn_with_invisible(&self) -> impl Iterator<Item = &ClientEntity> {
+    pub fn drawn_with_invisible(&self) -> impl Iterator<Item = EntityView<'_>> {
         // Both are in id order, so one pass over each finds the ids left out.
         let mut left_out = self.out_of_view.iter().copied().peekable();
         self.iter().filter_map(move |(&id, entity)| {

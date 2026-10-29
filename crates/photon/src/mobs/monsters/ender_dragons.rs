@@ -13,6 +13,7 @@ use photon_render::joml::{Pose, Quaternion};
 use photon_render::objects::crystal_beam::{crystal_beam, crystal_beam_triangles};
 use photon_render::objects::dragon_rays::dragon_rays;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::mobs::MobModels;
 use crate::objects::end_crystals;
@@ -32,7 +33,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 /// `EnderDragonRenderer.extractRenderState`, the part the model reads.
 fn render_state(
     world: &photon_world::ClientWorld,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     partial: f32,
 ) -> Option<EnderDragonRenderState> {
     let own = entity.ender_dragon()?;
@@ -154,7 +155,7 @@ pub fn remote_ender_dragons(
 /// (and its glass's height), the texture scrolling with the dragon's age.
 fn crystal_beam_vertices(
     world: &photon_world::ClientWorld,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     (feet, partial, light): ([f32; 3], f32, i32),
     textures: &EntityTextures,
 ) -> Option<Vec<Vertex>> {

@@ -5,7 +5,7 @@
 use photon_render::entity::mob_model::{EquineKind, EquineState, MobPlacement, QuadrupedState};
 use photon_render::entity::textures::{EntityTextures, TextureRect};
 use photon_render::scene::Vertex;
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 use photon_world::EquipmentSlot;
 
 use super::Animal;
@@ -23,7 +23,7 @@ const SADDLES: [(&str, &str); 5] = [
 
 /// What the entity, its look and the model kind pose an equine's model from.
 pub(super) fn equine_state(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     kind: EquineKind,
     (look, partial): (QuadrupedState, f32),
 ) -> EquineState {
@@ -45,7 +45,7 @@ pub(super) fn equine_state(
 
 /// What draws a layer of a mob in a colour, which joins the outline when the mob glows.
 fn outlined<'a>(
-    entity: &'a ClientEntity,
+    entity: EntityView<'a>,
     placed: &'a MobPlacement,
 ) -> impl Fn(&photon_render::entity::mob_model::MobModel, TextureRect, Option<u32>) -> Vec<Vertex> + 'a
 {
@@ -57,7 +57,7 @@ fn outlined<'a>(
 pub(super) fn layers(
     armor: &mut Armor,
     textures: &EntityTextures,
-    (animal, entity): (Animal, &ClientEntity),
+    (animal, entity): (Animal, EntityView<'_>),
     (look, partial): (QuadrupedState, f32),
     placed: &MobPlacement,
     vertices: &mut Vec<Vertex>,

@@ -9,6 +9,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::mobs::fish::{
     COD_TEXTURE, PUFFERFISH_TEXTURE, SALMON_TEXTURE, TROPICAL_LARGE_TEXTURE,
     TROPICAL_SMALL_TEXTURE, TropicalPattern, pufferfish_layer, tropical_base_dye,
@@ -115,7 +116,7 @@ fn remote_fish(
 /// `TropicalFishRenderer` and its `TropicalFishPatternLayer`: the fish tinted
 /// by its base dye, then the pattern over it tinted by the pattern's.
 fn tropical_fish(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     models: &mut MobModels,
     textures: &EntityTextures,
     (placed, age, in_water): (&MobPlacement, f32, bool),
@@ -160,7 +161,7 @@ fn tropical_fish(
 
 /// A pufferfish, in the model of its puff state.
 fn pufferfish(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     (models, textures): (&mut MobModels, &EntityTextures),
     (placed, age): (&MobPlacement, f32),
     vertices: &mut Vec<Vertex>,

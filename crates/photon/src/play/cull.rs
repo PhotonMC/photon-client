@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 
 use photon_core::aabb::Aabb;
 use photon_render::visibility::Frustum;
-use photon_world::{ClientEntity, ClientWorld};
+use photon_world::{ClientWorld, EntityView};
 
 use crate::world::sections::SectionMeshes;
 
@@ -39,7 +39,7 @@ pub fn out_of_view(
         .entities()
         .all()
         .filter(|entity| {
-            let shown = should_render(world, entity, view, scale)
+            let shown = should_render(world, *entity, view, scale)
                 || world.entity_carries_local_player(entity.id());
             if !shown {
                 return true;
@@ -57,7 +57,7 @@ pub fn out_of_view(
 /// `EntityRenderer.shouldRender` with the overrides that widen it: a guardian's beam, an end
 /// crystal's beam and a shulker sliding to its block. (The fishing hook's owner and the falling
 /// block's landing narrow it; their renderers test those.)
-fn should_render(world: &ClientWorld, entity: &ClientEntity, view: &CullView, scale: f64) -> bool {
+fn should_render(world: &ClientWorld, entity: EntityView<'_>, view: &CullView, scale: f64) -> bool {
     if !entity.should_render(view.camera, scale) {
         return false;
     }
@@ -105,7 +105,7 @@ fn visible(frustum: &Frustum, aabb: Aabb) -> bool {
 }
 
 /// `GuardianRenderer.shouldRender`: the line from its eyes to the middle of what it attacks.
-fn guardian_beam_visible(world: &ClientWorld, guardian: &ClientEntity, frustum: &Frustum) -> bool {
+fn guardian_beam_visible(world: &ClientWorld, guardian: EntityView<'_>, frustum: &Frustum) -> bool {
     let Some(target) = guardian.guardian_attack_target().and_then(|id| {
         world
             .entities()
@@ -123,7 +123,7 @@ fn guardian_beam_visible(world: &ClientWorld, guardian: &ClientEntity, frustum: 
 
 /// `ShulkerRenderer.shouldRender`: from where its slide starts to its block. The start is the
 /// slide's offset, taken as a place, as the reference does.
-fn shulker_slide_visible(shulker: &ClientEntity, frustum: &Frustum) -> bool {
+fn shulker_slide_visible(shulker: EntityView<'_>, frustum: &Frustum) -> bool {
     let Some([ox, oy, oz]) = shulker.shulker_render_offset(0.0) else {
         return false;
     };

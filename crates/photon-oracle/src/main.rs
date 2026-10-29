@@ -80,7 +80,7 @@ use photon_world::input::{
 };
 use photon_world::{
     BoatInput, ClientAttributeModifierState, ClientAttributeState, ClientChunkCacheSnapshot,
-    ClientEntity, ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
+    ClientEntityCollisionCandidate, ClientEntityDimensions, ClientEntityPose,
     ClientPlayerAbilities, ClientPlayerGameMode, ClientPlayerPoseInput, ClientWorld,
     ClientWorldBorder, ClientWorldBorderInitialization, ClientWorldBorderStatus,
     ClientWorldCollisionSource, DimensionBounds, EntityInput, EntityMotionInput, EntityMoveInput,

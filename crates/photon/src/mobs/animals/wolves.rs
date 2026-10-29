@@ -10,6 +10,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::equipment::armor::Armor;
 use crate::mobs::{MobModels, placement};
@@ -54,7 +55,7 @@ fn crack_texture(level: Crackiness) -> Option<&'static str> {
 /// The variant a wolf wears, from the registry the server sent.
 fn variant_of(
     session: &PlaySession,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
 ) -> Option<&'static photon_data::entity_type::WolfVariant> {
     let name = match entity.variant() {
         None => Some(DEFAULT_VARIANT),
@@ -76,7 +77,7 @@ struct Layers<'a> {
 
 impl Layers<'_> {
     /// `WolfArmorLayer`: the body armor of a grown wolf, on the armor model posed as it is.
-    fn armor(&mut self, entity: &photon_world::ClientEntity, baby: bool, out: &mut Vec<Vertex>) {
+    fn armor(&mut self, entity: EntityView<'_>, baby: bool, out: &mut Vec<Vertex>) {
         let (false, Some(stack)) = (baby, entity.equipment(EquipmentSlot::Body)) else {
             return;
         };
@@ -115,7 +116,7 @@ impl Layers<'_> {
     /// The collar of a tame wolf, over the model as it is posed.
     fn collar(
         &self,
-        entity: &photon_world::ClientEntity,
+        entity: EntityView<'_>,
         (baby, tame): (bool, bool),
         model: &photon_render::entity::mob_model::MobModel,
         out: &mut Vec<Vertex>,
@@ -139,7 +140,7 @@ impl Layers<'_> {
 
 /// The state the wolf renders in: its walk, its mood and its tail, head roll and shake.
 fn wolf_state(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     (partial, game_time): (f32, u64),
 ) -> WolfState {

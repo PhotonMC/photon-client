@@ -53,7 +53,7 @@ impl ClientWorld {
                     .collision_candidate(None, None, None, false)
                     .is_none()
                 && entity.bounding_box().intersects(query)
-                && Self::is_pushable_mob(entity)
+                && Self::is_pushable_mob(entity.entity)
         })
     }
 

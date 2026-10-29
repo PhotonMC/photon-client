@@ -75,7 +75,7 @@ impl ClientWorld {
         {
             return None;
         }
-        let metadata = entity.metadata().unwrap_or_default();
+        let metadata = entity.entity.metadata().unwrap_or_default();
         let command = match find_metadata_field(metadata, MINECART_COMMAND_DATA_ID) {
             Some((STRING_SERIALIZER, mut input)) => {
                 let length =

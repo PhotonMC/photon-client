@@ -11,6 +11,7 @@ use photon_render::joml::Pose;
 use photon_render::objects::item::item_layer_vertices;
 use photon_render::scene::Vertex;
 use photon_world::ClientItemStackState;
+use photon_world::EntityView;
 
 use crate::equipment::item_layers::ItemLayerCache;
 use crate::equipment::needle::Owner;
@@ -96,7 +97,7 @@ impl HeldItem {
 
     /// The stack or block joins `entity`'s outline when the entity glows (the outline colour the
     /// layers submit it with).
-    pub fn outlined(mut self, entity: &photon_world::ClientEntity) -> Self {
+    pub fn outlined(mut self, entity: EntityView<'_>) -> Self {
         self.outline = Self::glow_holder(entity);
         self
     }
@@ -111,7 +112,7 @@ impl HeldItem {
     }
 
     /// The outline holder of an entity that glows: its scoreboard name, the UUID.
-    pub fn glow_holder(entity: &photon_world::ClientEntity) -> Option<String> {
+    pub fn glow_holder(entity: EntityView<'_>) -> Option<String> {
         entity.is_glowing().then(|| entity.uuid.to_string_java())
     }
 
@@ -210,7 +211,7 @@ impl HandActions {
     pub fn of_entity(
         motions: [HandMotion; 2],
         session: &photon_net::connection::PlaySession,
-        entity: &photon_world::ClientEntity,
+        entity: EntityView<'_>,
     ) -> Self {
         let (x, y, z) = entity.position();
         let mut actions = Self::new(motions, super::arm_poses::entity_uses(entity))

@@ -23,14 +23,6 @@ pub struct ClientEntity {
     pub(crate) motion: DVec3,
     pub(crate) motion_lerp_target: DVec3,
     pub(crate) motion_lerp_steps: u8,
-    pub(crate) x_rot: JavaF32,
-    pub(crate) y_rot: JavaF32,
-    pub(crate) y_head_rot: JavaF32,
-    pub(crate) y_body_rot: JavaF32,
-    pub(crate) old_x_rot: JavaF32,
-    pub(crate) old_y_rot: JavaF32,
-    pub(crate) old_y_head_rot: JavaF32,
-    pub(crate) old_y_body_rot: JavaF32,
     pub(crate) delta_rotation: JavaF32,
     pub(crate) boat_input: BoatInput,
     /// What a boat the local player rides keeps between ticks (status, water level, fall).
@@ -137,7 +129,10 @@ pub use pose::*;
 mod projectile;
 pub(crate) use projectile::*;
 mod rotation;
+pub use rotation::Rotation;
+mod view;
 pub(crate) use rotation::*;
+pub use view::{EntityParts, EntityView, EntityViewMut};
 mod tracking;
 pub(crate) use tracking::*;
 mod types;

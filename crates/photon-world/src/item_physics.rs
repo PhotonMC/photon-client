@@ -205,7 +205,7 @@ impl ClientWorld {
         let Some(step) = item_step(&Level::new(self), &state) else {
             return;
         };
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the item was read above");
@@ -242,7 +242,7 @@ impl ClientWorld {
         if checked.is_err() {
             return;
         }
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the item was read above");

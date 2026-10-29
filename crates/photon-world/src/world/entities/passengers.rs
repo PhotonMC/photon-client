@@ -50,7 +50,7 @@ impl ClientWorld {
                 Some((
                     vehicle.type_id,
                     vehicle.position(),
-                    vehicle.y_rot.get(),
+                    vehicle.rotation.y_rot.get(),
                     passenger_index,
                     vehicle.passenger_ids.len(),
                 ))
@@ -151,8 +151,11 @@ impl ClientWorld {
             return;
         };
         let target_position = (target.x, target.y, target.z);
-        let previous_entity_position = self.entities.at(passenger_id).map(ClientEntity::position);
-        if let Some(passenger) = self.entities.at_mut(passenger_id) {
+        let previous_entity_position = self
+            .entities
+            .at(passenger_id)
+            .map(|entity| entity.position());
+        if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
             passenger.set_position(target_position);
         } else if let Some(player) = self
             .local_player
@@ -176,7 +179,7 @@ impl ClientWorld {
             self.entities.at(vehicle_id).map(|vehicle| {
                 (
                     vehicle.type_id,
-                    vehicle.y_rot.get(),
+                    vehicle.rotation.y_rot.get(),
                     vehicle.delta_rotation.get(),
                     vehicle.passenger_ids.len(),
                 )
@@ -212,7 +215,7 @@ impl ClientWorld {
                     270.0_f32
                 }
             });
-        if let Some(passenger) = self.entities.at_mut(passenger_id) {
+        if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
             passenger.add_vanilla_boat_passenger_rotation(delta_rotation);
             passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, animal_rotation_offset);
         } else if let Some(player) = self
@@ -239,7 +242,7 @@ impl ClientWorld {
             .entities
             .get(&entity_id)
             .filter(|entity| entity.is_boat())?;
-        Some(self.boat_is_under_water(entity))
+        Some(self.boat_is_under_water(entity.entity))
     }
 
     pub(crate) fn boat_is_under_water(&self, entity: &ClientEntity) -> bool {
@@ -310,7 +313,7 @@ impl ClientWorld {
             }
             self.detach_entity_from_vehicle(passenger_id);
             self.set_entity_vehicle_id(passenger_id, Some(vehicle_id));
-            if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
+            if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
                 vehicle.passenger_ids.push(passenger_id);
             } else if let Some(player) = self
                 .local_player
@@ -335,7 +338,7 @@ impl ClientWorld {
 
     pub fn entity_passengers(&self, entity_id: EntityId) -> Option<&[EntityId]> {
         if let Some(entity) = self.entities.at(entity_id) {
-            return Some(&entity.passenger_ids);
+            return Some(&entity.entity.passenger_ids);
         }
         self.local_player
             .as_ref()
@@ -347,7 +350,7 @@ impl ClientWorld {
         let Some(vehicle_id) = self.entity_vehicle_id(entity_id) else {
             return;
         };
-        if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
+        if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
             vehicle
                 .passenger_ids
                 .retain(|&passenger_id| passenger_id != entity_id);
@@ -364,7 +367,7 @@ impl ClientWorld {
     }
 
     pub(crate) fn eject_entity_passengers(&mut self, vehicle_id: EntityId) {
-        let passengers = if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
+        let passengers = if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
             Some(std::mem::take(&mut vehicle.passenger_ids))
         } else if let Some(player) = self
             .local_player
@@ -418,11 +421,11 @@ impl ClientWorld {
             VANILLA_BOAT_PASSENGER_GEOMETRY
                 .iter()
                 .any(|&(type_id, _, _)| type_id == vehicle.type_id.0)
-                .then(|| vehicle.y_rot.get())
+                .then(|| vehicle.rotation.y_rot.get())
         }) else {
             return;
         };
-        if let Some(passenger) = self.entities.at_mut(passenger_id) {
+        if let Some(mut passenger) = self.entities.at_mut(passenger_id) {
             passenger.clamp_vanilla_boat_passenger_rotation(vehicle_y_rot, None);
         } else if let Some(player) = self
             .local_player
@@ -467,7 +470,7 @@ impl ClientWorld {
         entity_id: EntityId,
         vehicle_id: Option<EntityId>,
     ) {
-        if let Some(entity) = self.entities.at_mut(entity_id) {
+        if let Some(mut entity) = self.entities.at_mut(entity_id) {
             if entity.is_shulker() && entity.vehicle_id != vehicle_id {
                 if vehicle_id.is_some() {
                     entity.shulker_starts_riding();

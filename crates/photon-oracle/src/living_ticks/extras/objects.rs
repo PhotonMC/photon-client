@@ -1,9 +1,7 @@
 use super::super::*;
+use photon_world::EntityView;
 
-pub(crate) fn boat_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn boat_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.boat().copied().unwrap_or_default();
     described["under_water"] = json!(state.is_under_water);
     described["hurt_time"] = json!(state.hurt_time);
@@ -22,10 +20,7 @@ pub(crate) fn boat_extra(
     Ok(())
 }
 
-pub(crate) fn arrow_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn arrow_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.arrow().copied().unwrap_or_default();
     described["shake_time"] = json!(state.shake_time());
     described["in_ground"] = json!(state.is_in_ground());
@@ -34,7 +29,7 @@ pub(crate) fn arrow_extra(
 }
 
 pub(crate) fn minecart_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
     world: &ClientWorld,
     row: &Value,
@@ -117,10 +112,7 @@ pub(crate) fn minecart_extra(
     Ok(())
 }
 
-pub(crate) fn display_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn display_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let (x, y, z) = entity.position();
     let (y_rot, x_rot, _) = entity.rotation();
     for (key, value) in [("x", x), ("y", y), ("z", z)] {
@@ -196,7 +188,7 @@ pub(crate) fn display_extra(
 }
 
 pub(crate) fn end_crystal_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
 ) -> Result<(), String> {
     let state = entity.end_crystal().copied();
@@ -209,7 +201,7 @@ pub(crate) fn end_crystal_extra(
 }
 
 pub(crate) fn ender_dragon_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
     row: &Value,
     tick: i32,
@@ -253,10 +245,7 @@ pub(crate) fn ender_dragon_extra(
     Ok(())
 }
 
-pub(crate) fn wither_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn wither_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.wither().copied().unwrap_or_default();
     described["invulnerable"] = json!(state.invulnerable_ticks());
     for i in 0..2 {
@@ -269,7 +258,7 @@ pub(crate) fn wither_extra(
 }
 
 /// The block a minecart shows, as the oracle's Java numbers it.
-fn display_block(entity: &ClientEntity) -> i32 {
+fn display_block(entity: EntityView<'_>) -> i32 {
     entity
         .minecart_display_block()
         .map_or(0, crate::case_ids::wire_state)

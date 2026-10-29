@@ -142,7 +142,7 @@ fn mob_flags_follow_java_byte_metadata_masks_and_preserve_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::mob_flags),
+            .map(|entity| entity.mob_flags()),
         Some(0b001)
     );
 }
@@ -165,7 +165,7 @@ fn entity_pose_follows_java_pose_metadata_and_maps_unknown_ids_to_standing() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::pose),
+            .map(|entity| entity.pose()),
         Some(crate::ClientEntityPose::Standing)
     );
 

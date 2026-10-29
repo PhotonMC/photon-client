@@ -38,14 +38,14 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::position),
+            .map(|entity| entity.position()),
         Some((1.0, 80.0, -35.5))
     );
     assert_eq!(
         world
             .entities()
             .at(EntityId(37))
-            .and_then(crate::ClientEntity::interpolation_target_position),
+            .and_then(|entity| entity.interpolation_target_position()),
         Some((4.0, 82.0, -34.5))
     );
     assert!(world.apply_entity_rotation(EntityRotationInput {
@@ -60,7 +60,7 @@ fn remote_player_position_interpolation_follows_java_three_step_handler() {
         world
             .entities()
             .at(EntityId(37))
-            .and_then(crate::ClientEntity::interpolation_target_rotation),
+            .and_then(|entity| entity.interpolation_target_rotation()),
         Some((10.0, 20.0))
     );
 

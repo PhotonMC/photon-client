@@ -14,6 +14,7 @@ use photon_render::objects::minecart::{
     tnt_swell_amount,
 };
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::equipment::held_items::HeldItem;
 use crate::mobs::MobModels;
@@ -181,11 +182,7 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
 /// minecart's flashes white while it is lit, `submitWhiteSolidBlock`).
 fn carry_block(
     (models, textures): (&mut MobModels, &EntityTextures),
-    (cart, block, (pose, light, white)): (
-        &photon_world::ClientEntity,
-        BlockStateId,
-        (&Pose, i32, bool),
-    ),
+    (cart, block, (pose, light, white)): (EntityView<'_>, BlockStateId, (&Pose, i32, bool)),
     (held, vertices): (&mut Vec<HeldItem>, &mut Vec<Vertex>),
 ) {
     let base = (block, pose, light);

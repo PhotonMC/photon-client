@@ -10,155 +10,6 @@ impl ClientEntity {
             )
     }
 
-    pub(crate) fn interpolation_rotation(&self) -> (f32, f32) {
-        self.interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map_or_else(
-                || self.body_rotation(),
-                EntityInterpolationState::target_rotation,
-            )
-    }
-
-    pub(crate) fn interpolate_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
-        let steps = self.interpolation_length();
-        if steps == 0 {
-            // `InterpolationHandler.interpolateTo` with no steps: put there at once.
-            self.snap_to(position, y_rot, x_rot);
-            self.interpolation = None;
-            return;
-        }
-        let target_matches = self.interpolation.is_some_and(|interpolation| {
-            interpolation.steps > 0
-                && interpolation.target.x == JavaF64::new(position.0)
-                && interpolation.target.y == JavaF64::new(position.1)
-                && interpolation.target.z == JavaF64::new(position.2)
-                && interpolation.target_y_rot == JavaF32::new(y_rot)
-                && interpolation.target_x_rot == JavaF32::new(x_rot)
-        });
-        if target_matches {
-            return;
-        }
-
-        let current_position = self.position();
-        let current_rotation = self.body_rotation();
-        self.interpolation = Some(EntityInterpolationState {
-            target: DVec3::new(position.0, position.1, position.2),
-            target_y_rot: JavaF32::new(y_rot),
-            target_x_rot: JavaF32::new(x_rot),
-            previous: DVec3::new(current_position.0, current_position.1, current_position.2),
-            previous_y_rot: JavaF32::new(current_rotation.0),
-            previous_x_rot: JavaF32::new(current_rotation.1),
-            steps: steps.clamp(0, 255) as u8,
-        });
-    }
-
-    pub(crate) fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
-        self.position.x = JavaF64::new(position.0);
-        self.position.y = JavaF64::new(position.1);
-        self.position.z = JavaF64::new(position.2);
-        self.y_rot = JavaF32::new(y_rot);
-        self.x_rot = JavaF32::new(x_rot);
-        self.old_position.x = JavaF64::new(position.0);
-        self.old_position.y = JavaF64::new(position.1);
-        self.old_position.z = JavaF64::new(position.2);
-        self.old_y_rot = JavaF32::new(y_rot);
-        self.old_x_rot = JavaF32::new(x_rot);
-        if self.is_shulker() {
-            // `Entity.snapTo` sets the old place from the raw one, then
-            // `reapplyPosition` runs `Shulker.setPos` from the raw block.
-            self.shulker_set_pos(position, block_of(position));
-        }
-    }
-
-    /// `Entity.moveOrInterpolateTo`: a shulker and a minecart of the new behaviour have no
-    /// interpolation (`getInterpolation` is null), so they are put at the place, and turned,
-    /// at once; the rest interpolate.
-    pub(crate) fn move_or_interpolate_to(
-        &mut self,
-        position: (f64, f64, f64),
-        y_rot: f32,
-        x_rot: f32,
-    ) {
-        if self.is_shulker() || self.minecart_track().is_some() {
-            self.set_position(position);
-            self.y_rot = JavaF32::new(y_rot % 360.0);
-            self.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
-        } else {
-            self.interpolate_to(position, y_rot, x_rot);
-        }
-    }
-
-    pub(crate) fn tick_position_interpolation(&mut self) {
-        let current_position = self.position();
-        let current_rotation = self.body_rotation();
-        let Some(interpolation) = self
-            .interpolation
-            .as_mut()
-            .filter(|interpolation| interpolation.steps > 0)
-        else {
-            return;
-        };
-
-        let alpha = 1.0 / f64::from(interpolation.steps);
-        let previous_position = (
-            interpolation.previous.x.get(),
-            interpolation.previous.y.get(),
-            interpolation.previous.z.get(),
-        );
-        let delta_position = (
-            current_position.0 - previous_position.0,
-            current_position.1 - previous_position.1,
-            current_position.2 - previous_position.2,
-        );
-        interpolation.target.x = JavaF64::new(interpolation.target.x.get() + delta_position.0);
-        interpolation.target.y = JavaF64::new(interpolation.target.y.get() + delta_position.1);
-        interpolation.target.z = JavaF64::new(interpolation.target.z.get() + delta_position.2);
-
-        let previous_rotation = (
-            interpolation.previous_y_rot.get(),
-            interpolation.previous_x_rot.get(),
-        );
-        let delta_rotation = (
-            current_rotation.0 - previous_rotation.0,
-            current_rotation.1 - previous_rotation.1,
-        );
-        interpolation.target_y_rot =
-            JavaF32::new(interpolation.target_y_rot.get() + delta_rotation.0);
-        interpolation.target_x_rot =
-            JavaF32::new(interpolation.target_x_rot.get() + delta_rotation.1);
-
-        let target_position = interpolation.target_position();
-        let target_rotation = interpolation.target_rotation();
-        let new_position = (
-            mth_lerp_f64(alpha, current_position.0, target_position.0),
-            mth_lerp_f64(alpha, current_position.1, target_position.1),
-            mth_lerp_f64(alpha, current_position.2, target_position.2),
-        );
-        let new_rotation = (
-            mth_rot_lerp_f64(
-                alpha,
-                f64::from(current_rotation.0),
-                f64::from(target_rotation.0),
-            ) as f32,
-            mth_lerp_f64(
-                alpha,
-                f64::from(current_rotation.1),
-                f64::from(target_rotation.1),
-            ) as f32,
-        );
-        interpolation.steps -= 1;
-        interpolation.previous.x = JavaF64::new(new_position.0);
-        interpolation.previous.y = JavaF64::new(new_position.1);
-        interpolation.previous.z = JavaF64::new(new_position.2);
-        interpolation.previous_y_rot = JavaF32::new(new_rotation.0);
-        interpolation.previous_x_rot = JavaF32::new(new_rotation.1);
-        self.position.x = JavaF64::new(new_position.0);
-        self.position.y = JavaF64::new(new_position.1);
-        self.position.z = JavaF64::new(new_position.2);
-        self.y_rot = JavaF32::new(new_rotation.0 % 360.0);
-        self.x_rot = JavaF32::new((new_rotation.1 % 360.0).clamp(-90.0, 90.0));
-    }
-
     pub(crate) fn tick_motion_interpolation(&mut self) {
         if self.motion_lerp_steps == 0 {
             return;
@@ -218,29 +69,6 @@ impl ClientEntity {
         self.interpolation
             .filter(|interpolation| interpolation.steps > 0)
             .map_or(0, |interpolation| interpolation.steps)
-    }
-
-    pub fn interpolated_rotation(&self, partial_tick: f32) -> (f32, f32, f32) {
-        let current = self.rotation();
-        if partial_tick == 1.0 {
-            return current;
-        }
-        let previous = self.previous_rotation();
-        (
-            mth_rot_lerp_f32(partial_tick, previous.0, current.0),
-            mth_lerp_f32(partial_tick, previous.1, current.1),
-            mth_rot_lerp_f32(partial_tick, previous.2, current.2),
-        )
-    }
-
-    /// The body's facing between two ticks (`Mth.rotLerp` of `yBodyRotO`
-    /// and `yBodyRot`).
-    pub fn interpolated_body_y_rotation(&self, partial_tick: f32) -> f32 {
-        mth_rot_lerp_f32(
-            partial_tick,
-            self.previous_body_y_rotation(),
-            self.body_y_rotation(),
-        )
     }
 
     /// Whether a position interpolation is still under way
@@ -303,5 +131,184 @@ impl EntityInterpolationState {
 
     pub(crate) fn target_rotation(self) -> (f32, f32) {
         (self.target_y_rot.get(), self.target_x_rot.get())
+    }
+}
+
+impl EntityView<'_> {
+    pub(crate) fn interpolation_rotation(&self) -> (f32, f32) {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or_else(
+                || self.rotation.body_rotation(),
+                EntityInterpolationState::target_rotation,
+            )
+    }
+
+    pub fn interpolated_rotation(&self, partial_tick: f32) -> (f32, f32, f32) {
+        let current = self.rotation.rotation();
+        if partial_tick == 1.0 {
+            return current;
+        }
+        let previous = self.rotation.previous_rotation();
+        (
+            mth_rot_lerp_f32(partial_tick, previous.0, current.0),
+            mth_lerp_f32(partial_tick, previous.1, current.1),
+            mth_rot_lerp_f32(partial_tick, previous.2, current.2),
+        )
+    }
+
+    /// The body's facing between two ticks (`Mth.rotLerp` of `yBodyRotO`
+    /// and `yBodyRot`).
+    pub fn interpolated_body_y_rotation(&self, partial_tick: f32) -> f32 {
+        mth_rot_lerp_f32(
+            partial_tick,
+            self.rotation.previous_body_y_rotation(),
+            self.rotation.body_y_rotation(),
+        )
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn interpolate_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        let steps = self.interpolation_length();
+        if steps == 0 {
+            // `InterpolationHandler.interpolateTo` with no steps: put there at once.
+            self.snap_to(position, y_rot, x_rot);
+            self.interpolation = None;
+            return;
+        }
+        let target_matches = self.interpolation.is_some_and(|interpolation| {
+            interpolation.steps > 0
+                && interpolation.target.x == JavaF64::new(position.0)
+                && interpolation.target.y == JavaF64::new(position.1)
+                && interpolation.target.z == JavaF64::new(position.2)
+                && interpolation.target_y_rot == JavaF32::new(y_rot)
+                && interpolation.target_x_rot == JavaF32::new(x_rot)
+        });
+        if target_matches {
+            return;
+        }
+
+        let current_position = self.position();
+        let current_rotation = self.rotation.body_rotation();
+        self.interpolation = Some(EntityInterpolationState {
+            target: DVec3::new(position.0, position.1, position.2),
+            target_y_rot: JavaF32::new(y_rot),
+            target_x_rot: JavaF32::new(x_rot),
+            previous: DVec3::new(current_position.0, current_position.1, current_position.2),
+            previous_y_rot: JavaF32::new(current_rotation.0),
+            previous_x_rot: JavaF32::new(current_rotation.1),
+            steps: steps.clamp(0, 255) as u8,
+        });
+    }
+
+    pub(crate) fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
+        self.position.x = JavaF64::new(position.0);
+        self.position.y = JavaF64::new(position.1);
+        self.position.z = JavaF64::new(position.2);
+        self.rotation.y_rot = JavaF32::new(y_rot);
+        self.rotation.x_rot = JavaF32::new(x_rot);
+        self.old_position.x = JavaF64::new(position.0);
+        self.old_position.y = JavaF64::new(position.1);
+        self.old_position.z = JavaF64::new(position.2);
+        self.rotation.old_y_rot = JavaF32::new(y_rot);
+        self.rotation.old_x_rot = JavaF32::new(x_rot);
+        if self.is_shulker() {
+            // `Entity.snapTo` sets the old place from the raw one, then
+            // `reapplyPosition` runs `Shulker.setPos` from the raw block.
+            self.shulker_set_pos(position, block_of(position));
+        }
+    }
+
+    /// `Entity.moveOrInterpolateTo`: a shulker and a minecart of the new behaviour have no
+    /// interpolation (`getInterpolation` is null), so they are put at the place, and turned,
+    /// at once; the rest interpolate.
+    pub(crate) fn move_or_interpolate_to(
+        &mut self,
+        position: (f64, f64, f64),
+        y_rot: f32,
+        x_rot: f32,
+    ) {
+        if self.is_shulker() || self.minecart_track().is_some() {
+            self.set_position(position);
+            self.rotation.y_rot = JavaF32::new(y_rot % 360.0);
+            self.rotation.x_rot = JavaF32::new((x_rot % 360.0).clamp(-90.0, 90.0));
+        } else {
+            self.interpolate_to(position, y_rot, x_rot);
+        }
+    }
+
+    pub(crate) fn tick_position_interpolation(&mut self) {
+        let current_position = self.position();
+        let current_rotation = self.rotation.body_rotation();
+        let Some(interpolation) = self
+            .interpolation
+            .as_mut()
+            .filter(|interpolation| interpolation.steps > 0)
+        else {
+            return;
+        };
+
+        let alpha = 1.0 / f64::from(interpolation.steps);
+        interpolation.follow_movement(current_position, current_rotation);
+
+        let target_position = interpolation.target_position();
+        let target_rotation = interpolation.target_rotation();
+        let new_position = (
+            mth_lerp_f64(alpha, current_position.0, target_position.0),
+            mth_lerp_f64(alpha, current_position.1, target_position.1),
+            mth_lerp_f64(alpha, current_position.2, target_position.2),
+        );
+        let new_rotation = (
+            mth_rot_lerp_f64(
+                alpha,
+                f64::from(current_rotation.0),
+                f64::from(target_rotation.0),
+            ) as f32,
+            mth_lerp_f64(
+                alpha,
+                f64::from(current_rotation.1),
+                f64::from(target_rotation.1),
+            ) as f32,
+        );
+        interpolation.steps -= 1;
+        interpolation.previous.x = JavaF64::new(new_position.0);
+        interpolation.previous.y = JavaF64::new(new_position.1);
+        interpolation.previous.z = JavaF64::new(new_position.2);
+        interpolation.previous_y_rot = JavaF32::new(new_rotation.0);
+        interpolation.previous_x_rot = JavaF32::new(new_rotation.1);
+        self.position.x = JavaF64::new(new_position.0);
+        self.position.y = JavaF64::new(new_position.1);
+        self.position.z = JavaF64::new(new_position.2);
+        self.rotation.y_rot = JavaF32::new(new_rotation.0 % 360.0);
+        self.rotation.x_rot = JavaF32::new((new_rotation.1 % 360.0).clamp(-90.0, 90.0));
+    }
+}
+
+impl EntityInterpolationState {
+    /// `InterpolationHandler.interpolate`: the target moves by what the entity moved on its own
+    /// since the last step.
+    fn follow_movement(&mut self, position: (f64, f64, f64), rotation: (f32, f32)) {
+        let previous_position = (
+            self.previous.x.get(),
+            self.previous.y.get(),
+            self.previous.z.get(),
+        );
+        let delta_position = (
+            position.0 - previous_position.0,
+            position.1 - previous_position.1,
+            position.2 - previous_position.2,
+        );
+        self.target.x = JavaF64::new(self.target.x.get() + delta_position.0);
+        self.target.y = JavaF64::new(self.target.y.get() + delta_position.1);
+        self.target.z = JavaF64::new(self.target.z.get() + delta_position.2);
+
+        let previous_rotation = (self.previous_y_rot.get(), self.previous_x_rot.get());
+        let delta_rotation = (
+            rotation.0 - previous_rotation.0,
+            rotation.1 - previous_rotation.1,
+        );
+        self.target_y_rot = JavaF32::new(self.target_y_rot.get() + delta_rotation.0);
+        self.target_x_rot = JavaF32::new(self.target_x_rot.get() + delta_rotation.1);
     }
 }

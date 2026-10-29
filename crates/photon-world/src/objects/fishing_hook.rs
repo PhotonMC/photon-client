@@ -233,7 +233,7 @@ impl ClientWorld {
     /// One client tick of a fishing bobber's movement, after its interpolation.
     pub(crate) fn tick_fishing_hook(&mut self, entity_id: EntityId) {
         let game_time = self.game_time() as i64;
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if !entity.is_fishing_bobber() {
@@ -264,7 +264,7 @@ impl ClientWorld {
             .flatten();
         match hooked {
             Some(at) => {
-                if let Some(entity) = self.entities.at_mut(entity_id) {
+                if let Some(mut entity) = self.entities.at_mut(entity_id) {
                     entity.set_position(at);
                 }
             }
@@ -293,7 +293,7 @@ impl ClientWorld {
     }
 
     fn store_hook(&mut self, entity_id: EntityId, state: HookState, step: Option<HookStep>) {
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if let Some(step) = step {
@@ -302,7 +302,7 @@ impl ClientWorld {
                 entity.motion.x = JavaF64::new(moved_with.x);
                 entity.motion.y = JavaF64::new(moved_with.y);
                 entity.motion.z = JavaF64::new(moved_with.z);
-                crate::objects::flight::update_rotation(entity);
+                crate::objects::flight::update_rotation(&mut entity);
             }
             entity.motion.x = JavaF64::new(step.delta.x);
             entity.motion.y = JavaF64::new(step.delta.y);
@@ -317,7 +317,7 @@ impl ClientWorld {
     /// `FishingHook.onSyncedDataUpdated`: the hooked entity, and a bite that pulls the bobber
     /// under.
     pub fn apply_fishing_hook_metadata(&mut self, entity_id: EntityId, metadata: &[u8]) {
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if !entity.is_fishing_bobber() {

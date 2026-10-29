@@ -10,6 +10,7 @@ use photon_render::entity::textures::EntityTextures;
 use photon_render::joml::Pose;
 use photon_render::objects::guardian_beam::{beam_triangles, guardian_beam};
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -88,7 +89,7 @@ fn target_position(session: &PlaySession, id: EntityId, partial: f32) -> Option<
 /// aims at: its colour and spin follow how far the attack has charged.
 fn beam(
     session: &PlaySession,
-    (entity, partial): (&photon_world::ClientEntity, f32),
+    (entity, partial): (EntityView<'_>, f32),
     (feet, eye_height, eye_position): ([f32; 3], f32, [f64; 3]),
     textures: &EntityTextures,
 ) -> Vec<Vertex> {

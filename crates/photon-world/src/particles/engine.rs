@@ -302,10 +302,7 @@ impl ParticleEngine {
     fn body_of(&self, world: &ClientWorld, id: EntityId) -> Option<super::EntityBody> {
         match self.local_body {
             Some((local, body)) if local == id => Some(body),
-            _ => world
-                .entities()
-                .at(id)
-                .map(crate::ClientEntity::tracking_body),
+            _ => world.entities().at(id).map(|entity| entity.tracking_body()),
         }
     }
 

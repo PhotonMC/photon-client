@@ -35,7 +35,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::tick_count),
+            .map(|entity| entity.tick_count()),
         Some(0)
     );
 
@@ -48,7 +48,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::tick_count),
+            .map(|entity| entity.tick_count()),
         Some(1)
     );
 
@@ -62,7 +62,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::tick_count),
+            .map(|entity| entity.tick_count()),
         Some(1)
     );
 
@@ -85,7 +85,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::tick_count),
+            .map(|entity| entity.tick_count()),
         Some(2)
     );
 
@@ -154,7 +154,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::previous_position),
+            .map(|entity| entity.previous_position()),
         Some((1.25, 80.0, -35.5))
     );
 
@@ -203,7 +203,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::previous_position),
+            .map(|entity| entity.previous_position()),
         Some((1.25, 80.0, -35.5))
     );
 
@@ -222,7 +222,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::previous_position),
+            .map(|entity| entity.previous_position()),
         Some((4.0, 82.0, -34.5))
     );
 }

@@ -10,7 +10,7 @@ impl ClientWorld {
         state_id: BlockStateId,
     ) -> bool {
         let on_climbable = self.block_state_registry.is_climbable_state(state_id);
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.on_climbable = on_climbable;
@@ -31,7 +31,7 @@ impl ClientWorld {
         } else {
             is_climbable
         };
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.on_climbable = on_climbable;
@@ -53,7 +53,7 @@ impl Entities {
         entity_id: EntityId,
         attributes: &[ClientAttributeState],
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         let Some(type_name) = photon_data::entity_type::name(entity.type_id) else {
@@ -86,7 +86,7 @@ impl Entities {
         entity_id: EntityId,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.item_stack = stack;
@@ -103,7 +103,7 @@ impl Entities {
         slot: EquipmentSlot,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.equipment[slot as usize] = stack;
@@ -119,7 +119,7 @@ impl Entities {
         below_is_ladder: bool,
         ladder_facing: &str,
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.on_climbable = trapdoor_open && below_is_ladder && trapdoor_facing == ladder_facing;
@@ -135,7 +135,7 @@ impl Entities {
         still_timeout: bool,
         is_vehicle: bool,
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID {
@@ -156,7 +156,7 @@ impl Entities {
         spectator: bool,
         on_climbable: bool,
     ) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.alive = alive;
@@ -167,7 +167,7 @@ impl Entities {
 
     /// Apply the Player ability state used by Java's `Player.onClimbable` gate.
     pub fn apply_player_flying_state(&mut self, entity_id: EntityId, flying: bool) -> bool {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
         if entity.type_id != VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -259,7 +259,7 @@ impl ClientWorld {
             }
             return true;
         }
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.metadata = Some(merge_metadata(entity.metadata.as_deref(), metadata));
@@ -293,7 +293,7 @@ impl ClientWorld {
         if let Some(carried) = carrying {
             entity.living.carried_state = carried;
         }
-        apply_age_lock_and_goat_data(entity, metadata);
+        apply_age_lock_and_goat_data(&mut *entity.entity, metadata);
         if let Some(powered) = creeper_powered_from_metadata(entity.type_id, metadata) {
             entity.living.powered = powered;
         }
@@ -330,15 +330,11 @@ impl ClientWorld {
         if let Some(end) = bee_anger {
             entity.living.anger_end = end;
         }
-        entity
-            .living
-            .apply_wolf(wolf_data_from_metadata(entity.type_id, metadata));
-        entity
-            .living
-            .apply_tamable(tamable_data_from_metadata(entity.type_id, metadata));
-        entity
-            .living
-            .apply_cat(cat_data_from_metadata(entity.type_id, metadata));
+        let type_id = entity.type_id;
+        let living = &mut entity.living;
+        living.apply_wolf(wolf_data_from_metadata(type_id, metadata));
+        living.apply_tamable(tamable_data_from_metadata(type_id, metadata));
+        living.apply_cat(cat_data_from_metadata(type_id, metadata));
         let panda_data = panda_data_from_metadata(entity.type_id, metadata);
         if panda_data != mobs::panda::PandaData::default() {
             entity
@@ -365,7 +361,7 @@ impl ClientWorld {
         if let Some(variant) = fish_variant_from_metadata(entity.type_id, metadata) {
             entity.living.fish_variant = Some(variant);
         }
-        apply_species_data(entity, metadata);
+        apply_species_data(&mut entity, metadata);
         let (has_egg, laying_egg) = turtle_eggs_from_metadata(entity.type_id, metadata);
         if let Some(has_egg) = has_egg {
             entity.living.turtle_has_egg = has_egg;

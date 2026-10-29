@@ -13,7 +13,7 @@ use photon_game::item::values::Values;
 use photon_net::connection::PlaySession;
 use photon_render::entity::held_item::{SpearInput, SpearView, spear_view};
 use photon_render::entity::player_model::{Arm, ArmPose, SwingAnimation};
-use photon_world::{ClientEntity, ClientItemStackState, EquipmentSlot};
+use photon_world::{ClientItemStackState, EntityView, EquipmentSlot};
 
 /// `ItemUseAnimation`, of the ones that pose an arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,7 +249,7 @@ pub struct SpearRest {
 
 /// What an entity's hands do besides holding: the spears' motions and the use of the stacks.
 pub fn entity_actions(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     attack: (f32, Arm),
     arm_poses: (ArmPose, ArmPose),
     time: (u64, f32),
@@ -260,7 +260,7 @@ pub fn entity_actions(
 
 /// For how many ticks an entity has used the stack in each arm, the right arm's first: the used
 /// hand is the main hand's arm, or the other one for the off hand.
-pub fn entity_uses(entity: &ClientEntity) -> [Option<i32>; 2] {
+pub fn entity_uses(entity: EntityView<'_>) -> [Option<i32>; 2] {
     if !entity.is_using_item() {
         return [None, None];
     }
@@ -274,7 +274,7 @@ pub fn entity_uses(entity: &ClientEntity) -> [Option<i32>; 2] {
 
 /// [`spear_view`] of an entity.
 pub fn entity_spear_view(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     attack: (f32, Arm),
     arm_poses: (ArmPose, ArmPose),
     (game_time, partial): (u64, f32),
@@ -304,7 +304,7 @@ pub fn entity_spear_view(
 
 /// `HumanoidMobRenderer.getArmPose`: a mob's arm holding a spear is posed as one, and so is any
 /// arm the other hand's stab swings (`AbstractZombieRenderer.getArmPose` for a zombie).
-pub(crate) fn mob_spear_pose(entity: &ClientEntity, left: bool, zombie: bool) -> ArmPose {
+pub(crate) fn mob_spear_pose(entity: EntityView<'_>, left: bool, zombie: bool) -> ArmPose {
     let holds = |left: bool| entity.item_held_by_arm(left).and_then(spear_of_stack);
     if (zombie && holds(!left).is_some()) || holds(left).is_some() {
         ArmPose::Spear
@@ -314,7 +314,7 @@ pub(crate) fn mob_spear_pose(entity: &ClientEntity, left: bool, zombie: bool) ->
 }
 
 /// The poses of a remote player's arms and the fields the model reads of what it is using.
-pub fn arm_state(session: &PlaySession, entity: &ClientEntity, partial: f32) -> ArmState {
+pub fn arm_state(session: &PlaySession, entity: EntityView<'_>, partial: f32) -> ArmState {
     arm_state_of(
         session,
         (
@@ -398,7 +398,7 @@ pub fn eye_arm(
 /// [`eye_arm`] of a remote player.
 pub fn eye_arm_of(
     session: &PlaySession,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     attack_time: f32,
     partial: f32,
 ) -> Option<Arm> {
@@ -426,7 +426,7 @@ pub(crate) fn glider_speed_value((mx, my, mz): (f64, f64, f64)) -> f32 {
 
 /// `AvatarRenderer.extractFlightData` of an entity.
 pub(crate) fn fall_flying(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     partial: f32,
 ) -> Option<photon_render::entity::player_renderer::FallFlying> {
@@ -474,7 +474,7 @@ pub(crate) fn flight(
 
 /// `CrossbowItem.getChargeDuration` of the stack the entity is using: the plain duration when it
 /// uses nothing.
-pub(crate) fn charge_duration_of_use(session: &PlaySession, entity: &ClientEntity) -> f32 {
+pub(crate) fn charge_duration_of_use(session: &PlaySession, entity: EntityView<'_>) -> f32 {
     let in_use = if entity.used_item_is_off_hand() {
         entity.equipment(EquipmentSlot::OffHand)
     } else {

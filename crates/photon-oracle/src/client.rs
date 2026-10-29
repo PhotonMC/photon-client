@@ -1,9 +1,10 @@
 use super::*;
+use photon_world::EntityView;
 
 pub(super) fn client_world_entity_mob_flags_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -62,7 +63,7 @@ pub(super) fn client_world_entity_mob_flags_result(request: &Value) -> Result<Va
 pub(super) fn client_world_entity_arrow_count_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -119,7 +120,7 @@ pub(super) fn client_world_entity_arrow_count_result(request: &Value) -> Result<
 pub(super) fn client_world_entity_effect_ambience_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -214,7 +215,7 @@ fn effect_particle_spawns(spawn: &Value) -> Value {
 pub(super) fn client_world_entity_effect_particles_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -284,7 +285,7 @@ pub(super) fn client_world_entity_effect_particles_result(
 pub(super) fn client_world_entity_sleeping_position_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     let mut state = json!({
         "label": label,
@@ -350,7 +351,7 @@ pub(super) fn client_world_entity_sleeping_position_result(
 pub(super) fn client_world_entity_stinger_count_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,

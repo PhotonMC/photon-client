@@ -1,4 +1,5 @@
 use super::*;
+use photon_world::EntityView;
 
 /// The paths (under `textures/`) of the textures the monsters wear.
 pub fn textures() -> impl Iterator<Item = &'static str> {
@@ -25,7 +26,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 
 /// The texture a monster wears now: a ghast's mouth open to charge, a vex charging,
 /// a parrot's variant, else its own.
-pub(super) fn texture_of(monster: &Monster, entity: &ClientEntity, partial: f32) -> &'static str {
+pub(super) fn texture_of(monster: &Monster, entity: EntityView<'_>, partial: f32) -> &'static str {
     match monster.pose {
         Pose::Ghast if entity.is_ghast_charging() => GHAST_SHOOTING_TEXTURE,
         Pose::Vex if entity.is_vex_charging() => VEX_CHARGING_TEXTURE,
@@ -42,7 +43,7 @@ pub(super) fn texture_of(monster: &Monster, entity: &ClientEntity, partial: f32)
 /// main hand is its left).
 pub(super) fn flier_hand_items(
     root: &Part,
-    (monster, entity): (&Monster, &ClientEntity),
+    (monster, entity): (&Monster, EntityView<'_>),
     placed: &MobPlacement,
     held: &mut Vec<HeldItem>,
 ) {
@@ -86,7 +87,7 @@ pub(super) fn flier_hand_items(
 }
 
 /// `BreezeRenderer.extractRenderState`: the animation states the breeze runs.
-pub(super) fn breeze_state(entity: &ClientEntity, partial: f32) -> BreezeRenderState {
+pub(super) fn breeze_state(entity: EntityView<'_>, partial: f32) -> BreezeRenderState {
     let own = entity.breeze().copied().unwrap_or_default();
     BreezeRenderState {
         age_in_ticks: entity.tick_count() as f32 + partial,
@@ -102,7 +103,7 @@ pub(super) fn breeze_state(entity: &ClientEntity, partial: f32) -> BreezeRenderS
 /// `WardenRenderer.extractRenderState`: the look, the walk, the pulses and the
 /// animation states the warden runs.
 pub(super) fn warden_state(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     look: QuadrupedState,
     partial: f32,
 ) -> WardenRenderState {
@@ -127,7 +128,7 @@ pub(super) fn warden_state(
 pub(super) fn warden_layers(
     models: &mut MobModels,
     textures: &EntityTextures,
-    (entity, state, partial): (&ClientEntity, &WardenRenderState, f32),
+    (entity, state, partial): (EntityView<'_>, &WardenRenderState, f32),
     placed: &MobPlacement,
     vertices: &mut Vec<Vertex>,
 ) {
@@ -163,7 +164,7 @@ pub(super) fn warden_layers(
 
 /// `WitherBossRenderer.extractRenderState`: what is left of the invulnerable
 /// time, less the partial tick, or zero.
-pub(super) fn wither_invulnerable_ticks(entity: &ClientEntity, partial: f32) -> f32 {
+pub(super) fn wither_invulnerable_ticks(entity: EntityView<'_>, partial: f32) -> f32 {
     let ticks = entity.wither().map_or(0, |own| own.invulnerable_ticks());
     if ticks > 0 {
         ticks as f32 - partial
@@ -174,13 +175,13 @@ pub(super) fn wither_invulnerable_ticks(entity: &ClientEntity, partial: f32) -> 
 
 /// `WitherBossRenderer.getTextureLocation`: the pale texture while it is
 /// invulnerable, flashing the other for a tick in five over the last 80.
-pub(super) fn wither_is_invulnerable_texture(entity: &ClientEntity, partial: f32) -> bool {
+pub(super) fn wither_is_invulnerable_texture(entity: EntityView<'_>, partial: f32) -> bool {
     let ticks = wither_invulnerable_ticks(entity, partial).floor() as i32;
     ticks > 0 && (ticks > 80 || ticks / 5 % 2 != 1)
 }
 
 /// `WitherBoss.isPowered`: half its health or less.
-pub(super) fn wither_is_powered(entity: &ClientEntity) -> bool {
+pub(super) fn wither_is_powered(entity: EntityView<'_>) -> bool {
     match (entity.health(), entity.max_health()) {
         (Some(health), Some(max)) => health <= max / 2.0,
         _ => false,
@@ -191,7 +192,7 @@ pub(super) fn wither_is_powered(entity: &ClientEntity) -> bool {
 /// states the creaking runs; what a torn-down one does to the renderer's own
 /// state is in [`creaking_tear_down`].
 pub(super) fn creaking_state(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     look: QuadrupedState,
     partial: f32,
 ) -> CreakingRenderState {
@@ -207,7 +208,7 @@ pub(super) fn creaking_state(
 }
 
 /// A torn-down creaking does not fall over or flash red.
-pub(super) fn creaking_tear_down(entity: &ClientEntity, placed: &mut MobPlacement) {
+pub(super) fn creaking_tear_down(entity: EntityView<'_>, placed: &mut MobPlacement) {
     if entity
         .creaking()
         .is_some_and(CreakingState::is_tearing_down)
@@ -219,7 +220,7 @@ pub(super) fn creaking_tear_down(entity: &ClientEntity, placed: &mut MobPlacemen
 
 /// Whether a creaking's eyes are lit: the blink of a torn-down one
 /// (`hasGlowingEyes`), else while it is active.
-pub(super) fn creaking_eyes_glow(entity: &ClientEntity) -> bool {
+pub(super) fn creaking_eyes_glow(entity: EntityView<'_>) -> bool {
     entity.creaking().is_some_and(|own| {
         if own.is_tearing_down() {
             own.has_glowing_eyes()
@@ -234,7 +235,7 @@ pub(super) fn creaking_eyes_glow(entity: &ClientEntity) -> bool {
 pub(super) fn glowing_layers(
     models: &mut MobModels,
     textures: &EntityTextures,
-    (pose, entity, look, partial): (Pose, &ClientEntity, QuadrupedState, f32),
+    (pose, entity, look, partial): (Pose, EntityView<'_>, QuadrupedState, f32),
     (placed, glow, swirl): (&MobPlacement, &mut Vec<Vertex>, &mut Vec<Vertex>),
     vertices: &mut Vec<Vertex>,
 ) {
@@ -298,7 +299,7 @@ pub(super) fn glowing_layers(
 pub(super) fn breeze_layers(
     models: &mut MobModels,
     textures: &EntityTextures,
-    (entity, partial): (&ClientEntity, f32),
+    (entity, partial): (EntityView<'_>, f32),
     placed: &MobPlacement,
     vertices: &mut Vec<Vertex>,
 ) {
@@ -321,7 +322,7 @@ pub(super) fn breeze_layers(
 /// `ParrotModel.setupAnim`, posed by what the parrot is doing.
 pub(super) fn pose_parrot(
     model: &mut MobModel,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     look: QuadrupedState,
     partial: f32,
 ) {
@@ -348,7 +349,7 @@ pub(super) fn pose_parrot(
 /// size (less while it is invulnerable), and a block light of fifteen.
 pub(super) fn pose_wither(
     model: &mut MobModel,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     (look, snapshot, partial): (QuadrupedState, &EntitySnapshot, f32),
     placed: &mut MobPlacement,
 ) {

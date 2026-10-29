@@ -12,6 +12,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::equipment::held_items::HeldItem;
 use crate::mobs::{MobModels, placement};
@@ -164,13 +165,13 @@ pub fn remote_golems(
 
 /// `SnowGolemHeadLayer`: the pumpkin shows on a visible golem, and as its outline alone on an
 /// invisible golem that glows.
-fn pumpkin_shows(entity: &photon_world::ClientEntity) -> bool {
+fn pumpkin_shows(entity: EntityView<'_>) -> bool {
     entity.has_pumpkin() && (!entity.is_invisible() || entity.is_glowing())
 }
 
 /// A golem's block, joining its outline when it glows; an invisible golem's only as the outline.
 fn golem_block(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     (state, pose, light, overlay): (BlockStateId, photon_render::joml::Pose, i32, f32),
 ) -> HeldItem {
     let block = HeldItem::block(state, pose, light, overlay).outlined(entity);

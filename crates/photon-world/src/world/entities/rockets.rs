@@ -60,7 +60,7 @@ impl ClientWorld {
         position: (f64, f64, f64),
         motion: (f64, f64, f64),
     ) {
-        let Some(entity) = self.entities.at_mut(rocket) else {
+        let Some(mut entity) = self.entities.at_mut(rocket) else {
             return;
         };
         entity.position.x = JavaF64::new(position.0);

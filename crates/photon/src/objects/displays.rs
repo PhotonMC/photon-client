@@ -14,6 +14,7 @@ use photon_render::objects::display::{
 };
 use photon_render::objects::item::{entity_block_vertices, item_layer_vertices};
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
 use crate::mobs::MobModels;
@@ -79,7 +80,7 @@ pub const VIEW_SCALE: f64 = 1.0;
 
 /// Where a display is drawn: its entity, the pose its transformation gives it, and its light.
 struct Shown<'a> {
-    entity: &'a photon_world::ClientEntity,
+    entity: photon_world::EntityView<'a>,
     display: &'a photon_world::objects::display::DisplayState,
     pose: Pose,
     light: i32,
@@ -91,7 +92,7 @@ fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     let partial = view.partial as f32;
     let mut out = Vec::new();
     for entity in world.entities().drawn() {
-        let Some(display) = entity.display() else {
+        let Some(display) = entity.client().display() else {
             continue;
         };
         let (Some(state), Some(snapshot)) = (
@@ -217,7 +218,7 @@ pub fn displays(
 /// What a display casts as a shadow (`DisplayRenderer.getShadowRadius` and `getShadowStrength`
 /// at its easing's progress): the radius and the strength, if it is drawn and has any.
 pub fn display_shadow(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     drawn: (f64, f64, f64),
     camera: (f64, f64, f64),
     partial: f32,

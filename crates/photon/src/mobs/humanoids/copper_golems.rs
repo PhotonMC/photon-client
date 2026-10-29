@@ -17,6 +17,7 @@ use photon_render::entity::mob_model::{
 use photon_render::entity::player_model::{Arm, Part};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::EquipmentSlot;
 
 use crate::equipment::held_items::{HeldItem, Place, block_item_state};
@@ -100,7 +101,7 @@ pub fn remote_copper_golems(
 
 /// What the golem's model is posed from.
 fn golem_state(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     (right, left): (
         Option<&photon_world::ClientItemStackState>,
@@ -127,7 +128,7 @@ fn golem_state(
 /// hands and on its head, and the block on its antenna.
 fn carried(
     root: &Part,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     (base, light): (&photon_render::joml::Pose, i32),
     held: &mut Vec<HeldItem>,
 ) {

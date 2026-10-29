@@ -15,7 +15,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 use photon_world::animation_state::AnimationState;
 
 use crate::equipment::armor::Armor;
@@ -251,7 +251,7 @@ enum Animal {
 
 /// Whether a bee is angry: its anger ends later than the game time now
 /// (`NeutralMob.isAngry`).
-fn bee_is_angry(entity: &ClientEntity, game_time: u64) -> bool {
+fn bee_is_angry(entity: EntityView<'_>, game_time: u64) -> bool {
     let end = entity.anger_end();
     end > 0 && end - game_time as i64 > 0
 }
@@ -259,7 +259,7 @@ fn bee_is_angry(entity: &ClientEntity, game_time: u64) -> bool {
 /// The texture and the model layer an animal is drawn in.
 fn appearance(
     animal: Animal,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     game_time: u64,
 ) -> (&'static str, &'static str) {
     let baby = entity.is_baby();
@@ -333,7 +333,7 @@ fn appearance(
     }
 }
 
-fn mooshroom_variant(entity: &ClientEntity) -> usize {
+fn mooshroom_variant(entity: EntityView<'_>) -> usize {
     usize::try_from(entity.mooshroom_variant()).unwrap_or(0)
 }
 
@@ -341,7 +341,7 @@ fn mooshroom_variant(entity: &ClientEntity) -> usize {
 fn pose(
     model: &mut MobModel,
     animal: Animal,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     (look, partial, game_time): (QuadrupedState, f32, u64),
 ) {
     let baby = entity.is_baby();
@@ -497,7 +497,7 @@ pub fn gui_preview(
     world: &photon_world::ClientWorld,
     (models, armor): (&mut MobModels, &mut Armor),
     textures: &EntityTextures,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     view: &photon_render::entity::player_renderer::GuiEntityView,
 ) -> Option<Vec<Vertex>> {
     let animal = animal_kinds()

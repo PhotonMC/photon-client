@@ -8,7 +8,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
-use photon_world::{ClientEntity, EquipmentSlot};
+use photon_world::{EntityView, EquipmentSlot};
 
 use crate::equipment::held_items::{HEAD_TRANSFORMS, Hands, HeldItem};
 use crate::mobs::{MobModels, is_item, placement};
@@ -66,7 +66,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 /// `getArmPose` of each illager. A pillager charging its crossbow is shown
 /// holding it: the charge needs how long the item has been in use, which is
 /// not tracked for mobs yet.
-fn arm_pose(kind: Kind, entity: &ClientEntity) -> IllagerArmPose {
+fn arm_pose(kind: Kind, entity: EntityView<'_>) -> IllagerArmPose {
     let celebrating = || {
         if entity.is_celebrating() {
             IllagerArmPose::Celebrating
@@ -102,7 +102,7 @@ fn arm_pose(kind: Kind, entity: &ClientEntity) -> IllagerArmPose {
 }
 
 /// When the layer that draws the hands' items shows them.
-fn shows_hand_items(kind: Kind, entity: &ClientEntity) -> bool {
+fn shows_hand_items(kind: Kind, entity: EntityView<'_>) -> bool {
     match kind {
         Kind::Pillager => true,
         Kind::Vindicator => entity.is_aggressive(),
@@ -171,7 +171,7 @@ pub fn remote_illagers(
 /// What the illager's model is posed from.
 fn illager_state(
     illager: &Illager,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     snapshot: &photon_world::EntitySnapshot,
     partial: f32,
 ) -> IllagerState {

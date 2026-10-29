@@ -33,7 +33,7 @@ impl ClientWorld {
         );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
-        body.y_rot = entity.y_rot.get();
+        body.y_rot = entity.rotation.y_rot.get();
         body.delta_rotation = entity.delta_rotation.get();
         body.on_ground = entity.on_ground;
         body.supporting_block = entity.tracking.support.main_block;
@@ -70,7 +70,7 @@ impl ClientWorld {
                 let _ = body.status(&level);
             }
         }
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the boat was read above");
@@ -78,7 +78,7 @@ impl ClientWorld {
         entity.motion.x = JavaF64::new(body.delta.x);
         entity.motion.y = JavaF64::new(body.delta.y);
         entity.motion.z = JavaF64::new(body.delta.z);
-        entity.y_rot = JavaF32::new(body.y_rot);
+        entity.rotation.y_rot = JavaF32::new(body.y_rot);
         entity.delta_rotation = JavaF32::new(body.delta_rotation);
         entity.on_ground = body.on_ground;
         entity.tracking.support = Support {

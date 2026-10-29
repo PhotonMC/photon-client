@@ -7,6 +7,7 @@ pub(crate) mod humanoids;
 pub(crate) mod monsters;
 
 use photon_core::ids::EntityTypeId;
+use photon_world::EntityView;
 use std::collections::HashMap;
 
 use photon_core::math::Vec3;
@@ -348,7 +349,7 @@ impl Default for MobModels {
 /// with it, are left out; a spectator sees it as a ghost instead (`forceTransparent`, the colour
 /// `0x26FFFFFF`).
 pub(crate) fn visible_body(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     model: &MobModel,
     (placement, rect): (&MobPlacement, photon_render::entity::textures::TextureRect),
 ) -> Vec<Vertex> {

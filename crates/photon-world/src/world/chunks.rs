@@ -105,7 +105,7 @@ impl ClientWorld {
         let removed = self.chunks.unload(chunk_x, chunk_z);
         if removed {
             self.unload_chunk_light(chunk_x, chunk_z);
-            self.entities.for_each_mut(|entity| {
+            self.entities.for_each_mut(|mut entity| {
                 if !entity.always_ticking
                     && entity_chunk_key(entity.position()) == (chunk_x, chunk_z)
                 {
@@ -213,7 +213,7 @@ impl ClientWorld {
             } => self.unload_chunk_light(old_x, old_z),
             Replaced::Stored { evicted: None } => {}
         }
-        self.entities.for_each_mut(|entity| {
+        self.entities.for_each_mut(|mut entity| {
             if entity_chunk_key(entity.position()) == (chunk_x, chunk_z) {
                 entity.ticking = true;
             }

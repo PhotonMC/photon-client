@@ -19,7 +19,7 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::air_supply),
+            .map(|entity| entity.air_supply()),
         Some(300)
     );
 
@@ -60,7 +60,7 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::air_supply),
+            .map(|entity| entity.air_supply()),
         Some(-1)
     );
 }
@@ -83,7 +83,7 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .and_then(crate::ClientEntity::health),
+            .and_then(|entity| entity.health()),
         None
     );
 
@@ -115,7 +115,7 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .and_then(crate::ClientEntity::health),
+            .and_then(|entity| entity.health()),
         Some(0.0)
     );
 
@@ -146,7 +146,7 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::arrow_count),
+            .map(|entity| entity.arrow_count()),
         Some(0)
     );
 
@@ -161,7 +161,7 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::arrow_count),
+            .map(|entity| entity.arrow_count()),
         Some(3)
     );
 
@@ -170,7 +170,7 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::arrow_count),
+            .map(|entity| entity.arrow_count()),
         Some(3)
     );
 
@@ -179,7 +179,7 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::arrow_count),
+            .map(|entity| entity.arrow_count()),
         Some(3)
     );
 }
@@ -202,7 +202,7 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::stinger_count),
+            .map(|entity| entity.stinger_count()),
         Some(0)
     );
 
@@ -217,7 +217,7 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::stinger_count),
+            .map(|entity| entity.stinger_count()),
         Some(2)
     );
 
@@ -226,7 +226,7 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::stinger_count),
+            .map(|entity| entity.stinger_count()),
         Some(2)
     );
 
@@ -235,7 +235,7 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::stinger_count),
+            .map(|entity| entity.stinger_count()),
         Some(2)
     );
 }

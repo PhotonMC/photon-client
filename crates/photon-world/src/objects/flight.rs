@@ -9,11 +9,11 @@ use photon_core::ids::EntityId;
 use photon_core::java_float::{JavaF32, JavaF64};
 use photon_core::math::{Vec3, mth_atan2, mth_lerp_f32};
 
-use crate::ClientWorld;
 use crate::constants::PROJECTILE_DEGREES_PER_RADIAN;
 use crate::entity::ClientEntity;
 use crate::fluid::{self, LAVA_FLOW_SCALE, Pushed, WATER_FLOW_SCALE};
 use crate::local_player::Level;
+use crate::{ClientWorld, EntityViewMut};
 
 /// What the client keeps of a flying projectile between ticks.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -70,7 +70,7 @@ pub(crate) fn flight_of(entity: &ClientEntity) -> Option<Flight> {
 
 /// `ProjectileUtil.rotateTowardsMovement`: the entity turns `speed` of the way to face its movement.
 /// (The reference's `* 180.0F / (float) Math.PI` is folded by the compiler into one constant.)
-fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
+fn rotate_towards_movement(entity: &mut EntityViewMut<'_>, speed: f32) {
     let movement = entity.motion();
     if movement.0 * movement.0 + movement.1 * movement.1 + movement.2 * movement.2 == 0.0 {
         return;
@@ -78,8 +78,8 @@ fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
     let horizontal = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
     let y_rot = (mth_atan2(movement.2, movement.0) * PROJECTILE_DEGREES_PER_RADIAN) as f32 + 90.0;
     let x_rot = (mth_atan2(horizontal, movement.1) * PROJECTILE_DEGREES_PER_RADIAN) as f32 - 90.0;
-    let mut x_rot_old = entity.old_x_rot.get();
-    let mut y_rot_old = entity.old_y_rot.get();
+    let mut x_rot_old = entity.rotation.old_x_rot.get();
+    let mut y_rot_old = entity.rotation.old_y_rot.get();
     while x_rot - x_rot_old < -180.0 {
         x_rot_old -= 360.0;
     }
@@ -92,20 +92,20 @@ fn rotate_towards_movement(entity: &mut ClientEntity, speed: f32) {
     while y_rot - y_rot_old >= 180.0 {
         y_rot_old += 360.0;
     }
-    entity.old_x_rot = JavaF32::new(x_rot_old);
-    entity.old_y_rot = JavaF32::new(y_rot_old);
-    entity.x_rot = JavaF32::new(mth_lerp_f32(speed, x_rot_old, x_rot));
-    entity.y_rot = JavaF32::new(mth_lerp_f32(speed, y_rot_old, y_rot));
+    entity.rotation.old_x_rot = JavaF32::new(x_rot_old);
+    entity.rotation.old_y_rot = JavaF32::new(y_rot_old);
+    entity.rotation.x_rot = JavaF32::new(mth_lerp_f32(speed, x_rot_old, x_rot));
+    entity.rotation.y_rot = JavaF32::new(mth_lerp_f32(speed, y_rot_old, y_rot));
 }
 
 /// `Projectile.updateRotation`, which turns a fifth of the way to the movement.
-pub(crate) fn update_rotation(entity: &mut ClientEntity) {
+pub(crate) fn update_rotation(entity: &mut EntityViewMut<'_>) {
     let movement = entity.motion();
     let horizontal = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
     let target_x = (mth_atan2(movement.1, horizontal) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
     let target_y = (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-    entity.x_rot = JavaF32::new(lerp_rotation(entity.old_x_rot.get(), target_x));
-    entity.y_rot = JavaF32::new(lerp_rotation(entity.old_y_rot.get(), target_y));
+    entity.rotation.x_rot = JavaF32::new(lerp_rotation(entity.rotation.old_x_rot.get(), target_x));
+    entity.rotation.y_rot = JavaF32::new(lerp_rotation(entity.rotation.old_y_rot.get(), target_y));
 }
 
 /// `Projectile.lerpRotation`.
@@ -184,14 +184,14 @@ impl ClientWorld {
             f64::from(margin(entity.tick_count)),
         );
         let new_position = hit.or(block).unwrap_or(target);
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");
         entity.motion.x = JavaF64::new(movement.x);
         entity.motion.y = JavaF64::new(movement.y);
         entity.motion.z = JavaF64::new(movement.z);
-        rotate_towards_movement(entity, 0.2);
+        rotate_towards_movement(&mut entity, 0.2);
         entity.set_position((new_position.x, new_position.y, new_position.z));
         // `Projectile.tick`: the owner check, then `Entity.baseTick`'s fluids.
         self.check_left_owner(entity_id, movement);
@@ -203,13 +203,13 @@ impl ClientWorld {
     fn tick_shulker_bullet(&mut self, entity_id: EntityId) {
         self.check_left_owner_of(entity_id);
         self.tick_projectile_fluids(entity_id);
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         let movement = vec3(entity.motion());
         let position = vec3(entity.position()).add_vec3(movement);
         entity.set_position((position.x, position.y, position.z));
-        rotate_towards_movement(entity, 0.5);
+        rotate_towards_movement(&mut entity, 0.5);
     }
 
     /// `LlamaSpit.tick`.
@@ -225,17 +225,17 @@ impl ClientWorld {
         let in_water = entity.living.in_water;
         let no_gravity = entity.no_gravity;
         let bounds = entity.bounding_box();
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");
-        update_rotation(entity);
+        update_rotation(&mut entity);
         // It dies in blocks (no air in its box) and in water.
         if self.box_has_no_air(bounds) || in_water {
             self.remove_entity(entity_id);
             return;
         }
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");
@@ -299,7 +299,7 @@ impl ClientWorld {
                 .filter(|member| member.is_pickable())
                 .any(|member| reach.intersects(member.bounding_box())),
         };
-        if let Some(entity) = self.entities.at_mut(entity_id) {
+        if let Some(mut entity) = self.entities.at_mut(entity_id) {
             entity.flight.left_owner = left;
         }
     }
@@ -346,7 +346,7 @@ impl ClientWorld {
         if found.lava.height > 0.0 {
             movement = fluid::apply_current(found.lava, movement, LAVA_FLOW_SCALE, Pushed::Other);
         }
-        let entity = self
+        let mut entity = self
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");

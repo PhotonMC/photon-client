@@ -1,9 +1,10 @@
 use super::*;
+use photon_world::EntityView;
 
 pub(super) fn client_world_entity_shared_flags_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -60,7 +61,7 @@ pub(super) fn client_world_entity_shared_flags_result(request: &Value) -> Result
 pub(super) fn client_world_entity_air_supply_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -117,7 +118,7 @@ pub(super) fn client_world_entity_air_supply_result(request: &Value) -> Result<V
 pub(super) fn client_world_entity_pose_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -174,7 +175,7 @@ pub(super) fn client_world_entity_pose_result(request: &Value) -> Result<Value, 
 pub(super) fn client_world_entity_ticks_frozen_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -234,7 +235,7 @@ pub(super) fn client_world_entity_ticks_frozen_result(request: &Value) -> Result
 pub(super) fn client_world_entity_custom_name_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -292,7 +293,7 @@ pub(super) fn client_world_entity_custom_name_result(request: &Value) -> Result<
 pub(super) fn client_world_entity_living_flags_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,
@@ -351,7 +352,7 @@ pub(super) fn client_world_entity_living_flags_result(request: &Value) -> Result
 pub(super) fn client_world_entity_health_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     json!({
         "label": label,

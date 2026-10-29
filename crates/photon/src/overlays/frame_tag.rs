@@ -1,12 +1,13 @@
 //! The name tag of an item frame, which says the custom name of the item in it.
 
 use photon_render::entity::tag_rules::NameRules;
+use photon_world::EntityView;
 
 use photon_net::connection::PlaySession;
 
 /// What an entity's tag is made from, or none where it has no name to show.
 pub(super) fn inputs_of(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     rules: NameRules,
     (lang, session): (&photon_game::text::Lang, &PlaySession),
 ) -> Option<photon_gui::entity_name::TagInputs> {
@@ -17,7 +18,7 @@ pub(super) fn inputs_of(
         return None;
     }
     let mut inputs = photon_gui::entity_name::tag_inputs(
-        entity,
+        &entity,
         None,
         (lang, session.scoreboard()),
         session.local_name(),
@@ -36,7 +37,7 @@ pub(super) fn inputs_of(
 /// The tag of an item frame: the custom name of the item in it (`shouldShowName` wants one), as
 /// `getHoverName` gives it. Nothing for a frame that holds none.
 fn frame_item_runs(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     lang: &photon_game::text::Lang,
 ) -> Vec<photon_render::gui::TextRun<'static>> {
     let Some(stack) = entity.item_stack() else {
@@ -55,7 +56,7 @@ fn frame_item_runs(
 }
 
 /// `ItemFrameRenderer.getRenderOffset`, which the dispatcher moves the tag by as well.
-pub(super) fn render_offset(entity: &photon_world::ClientEntity) -> photon_core::math::Vec3 {
+pub(super) fn render_offset(entity: EntityView<'_>) -> photon_core::math::Vec3 {
     let (step_x, _, step_z) =
         photon_core::direction::Direction::from_3d_data_value(entity.data).step();
     photon_core::math::Vec3::new(

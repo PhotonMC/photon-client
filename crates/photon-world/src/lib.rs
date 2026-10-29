@@ -282,7 +282,7 @@ fn apply_firework_data(entity: &mut ClientEntity, metadata: &[u8]) {
 
 /// What the data of a sniffer, an armadillo, an arrow, a minecart, an end crystal, a wither, a
 /// creaking and an ender dragon says of it (each when it holds that kind's fields).
-fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
+fn apply_special_data(entity: &mut EntityViewMut<'_>, metadata: &[u8]) {
     if photon_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket") {
         apply_firework_data(entity, metadata);
     }
@@ -382,7 +382,7 @@ fn apply_special_data(entity: &mut ClientEntity, metadata: &[u8]) {
 
 /// What the data of a boat, a parrot, a bat, a vex, an allay, a ghast, a phantom, a
 /// guardian or an axolotl says of it (each when it holds that species' fields).
-fn apply_species_data(entity: &mut ClientEntity, metadata: &[u8]) {
+fn apply_species_data(entity: &mut EntityViewMut<'_>, metadata: &[u8]) {
     entity.recentre_hanging();
     if entity.is_boat() {
         entity.set_boat_data(boat_data_from_metadata(metadata));
@@ -471,7 +471,11 @@ fn block_attached_position(type_id: EntityTypeId, (x, y, z): (f64, f64, f64)) ->
 
 /// What a projectile does of its own in a tick: the orb ticks either way and takes the blocked path
 /// as input; the others only advance while their path stays open.
-fn tick_projectile(entity: &mut ClientEntity, kind: VanillaProjectileKind, path_is_open: bool) {
+fn tick_projectile(
+    entity: &mut EntityViewMut<'_>,
+    kind: VanillaProjectileKind,
+    path_is_open: bool,
+) {
     match kind {
         VanillaProjectileKind::ExperienceOrb => entity.tick_experience_orb(path_is_open),
         _ if !path_is_open => {}

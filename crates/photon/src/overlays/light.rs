@@ -2,6 +2,7 @@ use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use photon_core::ids::ItemId;
+use photon_world::EntityView;
 use wear::body;
 
 /// `ItemInHandRenderer.tick`: the hands follow the stacks and rise back as
@@ -476,7 +477,7 @@ fn local_body(
 /// how it walks, swims and swings.
 pub(super) fn remote_render_state(
     session: &PlaySession,
-    (entity, snapshot): (&photon_world::ClientEntity, &photon_world::EntitySnapshot),
+    (entity, snapshot): (EntityView<'_>, &photon_world::EntitySnapshot),
     partial: f32,
 ) -> (
     PlayerRenderState,

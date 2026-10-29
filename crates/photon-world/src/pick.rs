@@ -13,7 +13,7 @@ use photon_core::direction::{Axis, Direction};
 use photon_core::ids::EntityId;
 use photon_core::math::Vec3;
 
-use crate::{ClientEntity, ClientEntityDimensions, ClientWorld};
+use crate::{ClientEntity, ClientEntityDimensions, ClientWorld, EntityView};
 
 impl ClientEntity {
     /// Where the entity is and how big (`getBbWidth`, `getBbHeight`), for what follows it.
@@ -187,16 +187,6 @@ impl ClientEntity {
         }
     }
 
-    /// `Entity.getPreciseBodyRotation`: a living entity's body, else the way it faces.
-    pub fn precise_body_rotation(&self, partial_tick: f32) -> f32 {
-        let (old, current) = if self.is_living_entity() {
-            (self.previous_body_y_rotation(), self.body_y_rotation())
-        } else {
-            (self.old_y_rot.get(), self.y_rot.get())
-        };
-        photon_core::math::mth_lerp_f32(partial_tick, old, current)
-    }
-
     /// What a camel's leash offset follows: whether it sits, and the game time since its pose
     /// last changed.
     pub fn camel_leash_pose(
@@ -368,10 +358,11 @@ impl ClientWorld {
             .filter(move |entity| entity.is_ender_dragon() && entity.id != except)
             .flat_map(|dragon| {
                 dragon
+                    .entity
                     .ender_dragon()
                     .into_iter()
                     .flat_map(|state| state.parts().iter().enumerate())
-                    .map(|(index, part)| {
+                    .map(move |(index, part)| {
                         let size = ClientEntityDimensions::from_values(
                             part.width,
                             part.height,
@@ -462,6 +453,18 @@ impl ClientWorld {
     }
 }
 
+impl EntityView<'_> {
+    /// `Entity.getPreciseBodyRotation`: a living entity's body, else the way it faces.
+    pub fn precise_body_rotation(&self, partial_tick: f32) -> f32 {
+        let (old, current) = if self.is_living_entity() {
+            (self.previous_body_y_rotation(), self.body_y_rotation())
+        } else {
+            (self.rotation.old_y_rot.get(), self.rotation.y_rot.get())
+        };
+        photon_core::math::mth_lerp_f32(partial_tick, old, current)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,7 +504,7 @@ mod tests {
         let head = world
             .entities()
             .at(EntityId(100))
-            .and_then(|dragon| dragon.ender_dragon())
+            .and_then(|dragon| dragon.entity.ender_dragon())
             .map(|state| state.parts()[0].position)
             .expect("a head");
         // From in front of the dragon (the head is the part farthest ahead), towards it.

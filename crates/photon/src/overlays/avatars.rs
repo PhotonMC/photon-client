@@ -2,9 +2,10 @@
 //! wears, and the name its outline is coloured by.
 
 use photon_net::connection::PlaySession;
+use photon_world::EntityView;
 
 /// `AvatarRenderer`'s entities: players, and mannequins.
-pub(super) fn is_avatar(entity: &photon_world::ClientEntity) -> bool {
+pub(super) fn is_avatar(entity: EntityView<'_>) -> bool {
     entity.is_avatar()
 }
 
@@ -16,7 +17,7 @@ pub(super) fn avatar_look(
         &mut crate::skins::Skins,
         &mut photon_render::entity::textures::EntityTextures,
     ),
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
 ) -> Option<crate::skins::Resolved> {
     if entity.is_player() {
         return skins.of_player(session, textures, entity.uuid);
@@ -82,7 +83,7 @@ thread_local! {
 fn mannequin_profile(
     session: &PlaySession,
     skins: &mut crate::skins::Skins,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
 ) -> Option<Remembered> {
     let id = (entity.uuid.most, entity.uuid.least);
     let last = || LAST_SKINS.with(|last| last.borrow().get(&id).cloned());
@@ -165,7 +166,7 @@ pub fn forget_gone_mannequins(world: &photon_world::ClientWorld) {
 }
 
 /// The scoreboard name of an avatar: a player's profile name, a mannequin's UUID.
-fn scoreboard_name(session: &PlaySession, entity: &photon_world::ClientEntity) -> Option<String> {
+fn scoreboard_name(session: &PlaySession, entity: EntityView<'_>) -> Option<String> {
     match session.player_name(entity.uuid) {
         Some(name) => Some(name.to_owned()),
         None => (!entity.is_player()).then(|| entity.uuid.to_string_java()),
@@ -173,10 +174,7 @@ fn scoreboard_name(session: &PlaySession, entity: &photon_world::ClientEntity) -
 }
 
 /// The name a glowing avatar's outline is coloured by.
-pub(super) fn outline_name(
-    session: &PlaySession,
-    entity: &photon_world::ClientEntity,
-) -> Option<String> {
+pub(super) fn outline_name(session: &PlaySession, entity: EntityView<'_>) -> Option<String> {
     let glows = crate::mobs::outline::player_glows(entity.is_glowing());
     scoreboard_name(session, entity).filter(|_| glows)
 }

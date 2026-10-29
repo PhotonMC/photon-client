@@ -3,7 +3,7 @@
 //! theirs, and where it hangs. Teams and the camera entity are not carried.
 
 use photon_core::math::Vec3;
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 
 use super::name_tag::{NameTag, Teams, Viewer, distance_sq, living_shows};
 use crate::gui::TextRun;
@@ -28,7 +28,7 @@ pub enum NameRules {
 /// `Entity.getAttachments().getNullable(NAME_TAG, 0, yRot)` before the entity's scale: the
 /// table's point of a grown or a baby entity of the type. No type has a sideways part, so the
 /// entity's turn does not move it.
-fn attachment(entity: &ClientEntity) -> Option<Vec3> {
+fn attachment(entity: EntityView<'_>) -> Option<Vec3> {
     if entity.is_living_entity() && entity.pose() == photon_world::ClientEntityPose::Sleeping {
         // `LivingEntity.SLEEPING_DIMENSIONS`: 0.2 high whatever the type, and not scaled.
         return Some(Vec3::new(0.0, 0.2_f32 as f64, 0.0));
@@ -53,7 +53,7 @@ fn attachment(entity: &ClientEntity) -> Option<Vec3> {
 
 /// `ArmorStand.getDimensions`: a marker has no size at all (its tag sits at its feet) and a small
 /// stand is the stand's dimensions halved.
-fn stand_size(entity: &ClientEntity) -> f64 {
+fn stand_size(entity: EntityView<'_>) -> f64 {
     if rules_of(entity) != Some(NameRules::ArmorStand) {
         return 1.0;
     }
@@ -73,7 +73,7 @@ fn stand_size(entity: &ClientEntity) -> f64 {
 /// lightning bolt or an ominous item spawner submits no name at all. Read from the renderer
 /// classes: the ender dragon's extends `EntityRenderer` itself, so it follows the plain rules
 /// though it is a mob.
-pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
+pub fn rules_of(entity: EntityView<'_>) -> Option<NameRules> {
     let name = photon_data::entity_type::name(entity.type_id)?;
     match name {
         "minecraft:player" | "minecraft:lightning_bolt" | "minecraft:ominous_item_spawner" => None,
@@ -92,7 +92,7 @@ pub fn rules_of(entity: &ClientEntity) -> Option<NameRules> {
 }
 
 /// The rules of the renderer class an entity's type falls under.
-fn class_rules(entity: &ClientEntity, name: &str) -> Option<NameRules> {
+fn class_rules(entity: EntityView<'_>, name: &str) -> Option<NameRules> {
     if name == "minecraft:ender_dragon" {
         Some(NameRules::Entity)
     } else if entity.is_mob() {
@@ -107,7 +107,7 @@ fn class_rules(entity: &ClientEntity, name: &str) -> Option<NameRules> {
 /// `EntityRenderer.extractNameTags` for an entity that is not a player, with the name it would
 /// show; `picked` is whether the crosshair is on it (`crosshairPickEntity`).
 pub fn entity_name_tag(
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     runs: Vec<TextRun<'static>>,
     (rules, picked): (NameRules, bool),
     (viewer, teams): (Viewer, Teams),

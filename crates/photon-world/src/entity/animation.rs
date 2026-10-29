@@ -1,138 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// What a living entity's drawn pose follows from its tick: the limbs'
-    /// swing with the distance moved, and the body turning (a player's after
-    /// where it walks, a mob's by its body control), and for a player the
-    /// swimming pose easing in or out.
-    pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
-        let moved = (
-            self.position.x.get() - self.old_position.x.get(),
-            self.position.z.get() - self.old_position.z.get(),
-        );
-        if kind == LivingKind::Player {
-            self.old_swim_amount = self.swim_amount;
-            self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
-                self.swim_amount.get(),
-                self.pose == ClientEntityPose::Swimming,
-            ));
-        }
-        let mut body = self.y_body_rot.get();
-        let mut body_old = self.old_y_body_rot.get();
-        let mut head = self.y_head_rot.get();
-        let mut head_old = self.old_y_head_rot.get();
-        if kind == LivingKind::Mob && self.is_shulker() {
-            // `Shulker.ShulkerBodyRotationControl`: the body does not follow.
-            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
-        } else if kind == LivingKind::Mob {
-            let mut control = crate::living::MobBodyControl {
-                head_stable_time: self.head_stable_time,
-                last_stable_y_head_rot: self.last_stable_y_head_rot.get(),
-            };
-            crate::living::tick_mob_body(
-                &mut control,
-                (&mut body, &mut head),
-                self.y_rot.get(),
-                moved,
-                !self.passenger_ids.is_empty(),
-            );
-            self.head_stable_time = control.head_stable_time;
-            self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
-            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
-            self.y_head_rot = JavaF32::new(head);
-        } else {
-            crate::living::turn_body(
-                (&mut body, &mut body_old),
-                (self.y_rot.get(), head, &mut head_old),
-                moved,
-            );
-        }
-        self.y_body_rot = JavaF32::new(body);
-        self.old_y_body_rot = JavaF32::new(body_old);
-        self.old_y_head_rot = JavaF32::new(head_old);
-        // `calculateEntityAnimation`: a rider or a dead entity stands still.
-        // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
-        if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
-            let camel = matches!(
-                photon_data::entity_type::name(self.type_id),
-                Some("minecraft:camel" | "minecraft:camel_husk")
-            );
-            if camel {
-                // `Camel.updateWalkAnimation`: only a standing camel that is
-                // not dashing walks, and its stride is quicker to settle.
-                let walking = self.pose == ClientEntityPose::Standing
-                    && !self
-                        .kind
-                        .horse()
-                        .is_some_and(|horse| horse.camel.is_dash_animation_started());
-                let target = if walking {
-                    ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
-                } else {
-                    0.0
-                };
-                self.walk
-                    .update(target, 0.2, if self.baby { 3.0 } else { 1.0 });
-            } else if self.is_creaking() {
-                // `Creaking.updateWalkAnimation`: a quicker stride, capped at three.
-                let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
-                self.walk.update(target, 0.4, 1.0);
-            } else if self.is_frog() {
-                let target = self.kind.frog().map_or_else(
-                    || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
-                    |frog| frog.walk_target(moved.0.hypot(moved.1)),
-                );
-                self.walk
-                    .update(target, 0.4, if self.baby { 3.0 } else { 1.0 });
-            } else {
-                self.walk.follow(moved.0.hypot(moved.1), self.baby);
-            }
-        } else {
-            self.walk.stop();
-        }
-    }
-
-    /// What a cat or a panda does of its own after `super.tick`, given what
-    /// the world around it holds (a sleeper near a cat, thunder).
-    pub(crate) fn tick_species(
-        &mut self,
-        (sleeper_near_cat, thundering, jukebox_near): (bool, bool, bool),
-    ) {
-        // `AgeableMob.makeAgeLockedParticle` counts the wait down on the client.
-        self.living.age_lock_timer = (self.living.age_lock_timer - 1).max(0);
-        self.tick_cat(sleeper_near_cat);
-        self.tick_panda(thundering);
-        self.tick_bat();
-        self.tick_parrot(jukebox_near);
-        self.tick_allay();
-        self.tick_warden();
-        self.tick_creaking();
-        self.tick_armadillo();
-        if self.is_end_crystal() {
-            self.end_crystal_mut().tick();
-        }
-        if self.is_abstract_arrow() {
-            self.arrow_mut().tick();
-        }
-        if self.is_evoker_fangs() {
-            self.evoker_fangs_mut().tick();
-        }
-        if self.is_primed_tnt() {
-            self.primed_tnt_mut().tick();
-        }
-        if self.is_fishing_bobber() {
-            self.tick_position_interpolation();
-        }
-        if self.is_lightning_bolt() {
-            let seed = i64::from(self.id.0);
-            self.lightning_done = self
-                .kind
-                .lightning_or_insert_with(|| {
-                    Box::new(crate::objects::lightning::LightningState::new(seed))
-                })
-                .tick();
-        }
-    }
-
     /// A chicken's `flap` and `flapSpeed` between two ticks.
     pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
         let animal = &self.living.animal;
@@ -166,32 +34,6 @@ impl ClientEntity {
                     spear.swing_ticks
                 })
         })
-    }
-
-    /// What a living entity does each tick besides moving: hurt and death,
-    /// its pose, its swing, and what its kind does of its own.
-    pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
-        self.living.using_item_ticks = if self.is_using_item() {
-            self.living.using_item_ticks.saturating_add(1)
-        } else {
-            0
-        };
-        let (mx, my, mz) = self.motion();
-        self.living.previous_motion = [mx.to_bits(), my.to_bits(), mz.to_bits()];
-        self.living.fall_fly_ticks = if self.is_fall_flying() {
-            self.living.fall_fly_ticks.saturating_add(1)
-        } else {
-            0
-        };
-        self.living.elytra.tick(crate::elytra::ElytraInput {
-            fall_flying: self.is_fall_flying(),
-            motion: self.motion(),
-            crouching: self.is_crouching(),
-        });
-        self.tick_hurt_and_death(tick_death);
-        self.tick_living_pose(kind);
-        self.tick_swing(kind);
-        self.tick_animal(game_time);
     }
 
     /// What a sheep or a chicken does of its own each tick (`aiStep`).
@@ -271,5 +113,181 @@ impl ClientEntity {
             }
             _ => {}
         }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// What a living entity's drawn pose follows from its tick: the limbs'
+    /// swing with the distance moved, and the body turning (a player's after
+    /// where it walks, a mob's by its body control), and for a player the
+    /// swimming pose easing in or out.
+    pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
+        let moved = (
+            self.position.x.get() - self.old_position.x.get(),
+            self.position.z.get() - self.old_position.z.get(),
+        );
+        if kind == LivingKind::Player {
+            self.old_swim_amount = self.swim_amount;
+            self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
+                self.swim_amount.get(),
+                self.pose == ClientEntityPose::Swimming,
+            ));
+        }
+        let mut body = self.rotation.y_body_rot.get();
+        let mut body_old = self.rotation.old_y_body_rot.get();
+        let mut head = self.rotation.y_head_rot.get();
+        let mut head_old = self.rotation.old_y_head_rot.get();
+        if kind == LivingKind::Mob && self.is_shulker() {
+            // `Shulker.ShulkerBodyRotationControl`: the body does not follow.
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+        } else if kind == LivingKind::Mob {
+            let mut control = crate::living::MobBodyControl {
+                head_stable_time: self.head_stable_time,
+                last_stable_y_head_rot: self.last_stable_y_head_rot.get(),
+            };
+            crate::living::tick_mob_body(
+                &mut control,
+                (&mut body, &mut head),
+                self.rotation.y_rot.get(),
+                moved,
+                !self.passenger_ids.is_empty(),
+            );
+            self.head_stable_time = control.head_stable_time;
+            self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
+            crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
+            self.rotation.y_head_rot = JavaF32::new(head);
+        } else {
+            crate::living::turn_body(
+                (&mut body, &mut body_old),
+                (self.rotation.y_rot.get(), head, &mut head_old),
+                moved,
+            );
+        }
+        self.rotation.y_body_rot = JavaF32::new(body);
+        self.rotation.old_y_body_rot = JavaF32::new(body_old);
+        self.rotation.old_y_head_rot = JavaF32::new(head_old);
+        self.tick_walk_animation(moved);
+    }
+
+    /// The limbs' swing with the distance moved (`calculateEntityAnimation`).
+    fn tick_walk_animation(&mut self, moved: (f64, f64)) {
+        // `calculateEntityAnimation`: a rider or a dead entity stands still.
+        // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
+        if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
+            let camel = matches!(
+                photon_data::entity_type::name(self.type_id),
+                Some("minecraft:camel" | "minecraft:camel_husk")
+            );
+            if camel {
+                self.tick_camel_walk(moved);
+            } else if self.is_creaking() {
+                // `Creaking.updateWalkAnimation`: a quicker stride, capped at three.
+                let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
+                self.walk.update(target, 0.4, 1.0);
+            } else if self.is_frog() {
+                let target = self.kind.frog().map_or_else(
+                    || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
+                    |frog| frog.walk_target(moved.0.hypot(moved.1)),
+                );
+                self.entity
+                    .walk
+                    .update(target, 0.4, if self.entity.baby { 3.0 } else { 1.0 });
+            } else {
+                self.entity
+                    .walk
+                    .follow(moved.0.hypot(moved.1), self.entity.baby);
+            }
+        } else {
+            self.walk.stop();
+        }
+    }
+
+    /// `Camel.updateWalkAnimation`: only a standing camel that is not dashing walks, and its
+    /// stride is quicker to settle.
+    fn tick_camel_walk(&mut self, moved: (f64, f64)) {
+        let walking = self.pose == ClientEntityPose::Standing
+            && !self
+                .kind
+                .horse()
+                .is_some_and(|horse| horse.camel.is_dash_animation_started());
+        let target = if walking {
+            ((moved.0.hypot(moved.1)) as f32 * 6.0).min(1.0)
+        } else {
+            0.0
+        };
+        self.entity
+            .walk
+            .update(target, 0.2, if self.entity.baby { 3.0 } else { 1.0 });
+    }
+
+    /// What a cat or a panda does of its own after `super.tick`, given what
+    /// the world around it holds (a sleeper near a cat, thunder).
+    pub(crate) fn tick_species(
+        &mut self,
+        (sleeper_near_cat, thundering, jukebox_near): (bool, bool, bool),
+    ) {
+        // `AgeableMob.makeAgeLockedParticle` counts the wait down on the client.
+        self.living.age_lock_timer = (self.living.age_lock_timer - 1).max(0);
+        self.tick_cat(sleeper_near_cat);
+        self.tick_panda(thundering);
+        self.tick_bat();
+        self.tick_parrot(jukebox_near);
+        self.tick_allay();
+        self.tick_warden();
+        self.tick_creaking();
+        self.tick_armadillo();
+        if self.is_end_crystal() {
+            self.end_crystal_mut().tick();
+        }
+        if self.is_abstract_arrow() {
+            self.arrow_mut().tick();
+        }
+        if self.is_evoker_fangs() {
+            self.evoker_fangs_mut().tick();
+        }
+        if self.is_primed_tnt() {
+            self.primed_tnt_mut().tick();
+        }
+        if self.is_fishing_bobber() {
+            self.tick_position_interpolation();
+        }
+        if self.is_lightning_bolt() {
+            let seed = i64::from(self.id.0);
+            self.lightning_done = self
+                .kind
+                .lightning_or_insert_with(|| {
+                    Box::new(crate::objects::lightning::LightningState::new(seed))
+                })
+                .tick();
+        }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// What a living entity does each tick besides moving: hurt and death,
+    /// its pose, its swing, and what its kind does of its own.
+    pub(crate) fn tick_living(&mut self, kind: LivingKind, tick_death: bool, game_time: u64) {
+        self.living.using_item_ticks = if self.is_using_item() {
+            self.living.using_item_ticks.saturating_add(1)
+        } else {
+            0
+        };
+        let (mx, my, mz) = self.motion();
+        self.living.previous_motion = [mx.to_bits(), my.to_bits(), mz.to_bits()];
+        self.living.fall_fly_ticks = if self.is_fall_flying() {
+            self.living.fall_fly_ticks.saturating_add(1)
+        } else {
+            0
+        };
+        let elytra_input = crate::elytra::ElytraInput {
+            fall_flying: self.is_fall_flying(),
+            motion: self.motion(),
+            crouching: self.is_crouching(),
+        };
+        self.living.elytra.tick(elytra_input);
+        self.tick_hurt_and_death(tick_death);
+        self.tick_living_pose(kind);
+        self.tick_swing(kind);
+        self.tick_animal(game_time);
     }
 }

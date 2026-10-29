@@ -20,7 +20,7 @@ impl ClientWorld {
         else {
             return;
         };
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if serializer != RESOLVABLE_PROFILE_SERIALIZER_ID

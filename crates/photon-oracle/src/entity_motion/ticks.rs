@@ -1,11 +1,12 @@
 //! The entity tick report: the head rotation state and the tick state.
 
 use super::*;
+use photon_world::EntityView;
 
 pub(crate) fn client_world_entity_player_head_rotation_state(
     label: &str,
     accepted: bool,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     let rotation = entity.rotation();
     let previous_rotation = entity.previous_rotation();

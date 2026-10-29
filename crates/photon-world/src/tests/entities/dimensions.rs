@@ -426,7 +426,7 @@ fn camera_bob_belongs_to_players() {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        let entity = world
+        let mut entity = world
             .entities_mut()
             .at_mut(EntityId(5))
             .expect("the entity");

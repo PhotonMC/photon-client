@@ -1,5 +1,6 @@
 use super::*;
 use photon_core::ids::EntityId;
+use photon_world::EntityView;
 
 /// The name of the local player of the reference scene.
 const LOCAL_NAME: &str = "Parity";
@@ -38,7 +39,7 @@ pub(super) fn name_tags_result(request: &Value) -> Result<Value, String> {
         } else {
             let name = string(row, "name")?;
             let inputs = photon_gui::entity_name::tag_inputs(
-                entity,
+                &entity,
                 Some(name),
                 (&lang, &board),
                 LOCAL_NAME,
@@ -259,7 +260,7 @@ fn changed_attributes(row: &Value) -> Result<Vec<photon_world::ClientAttributeSt
 
 /// The tag of an entity that is not a player, with the name the row's entity would show.
 fn entity_tag(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     row: &Value,
     (viewer, assets): (
         photon_render::entity::name_tag::Viewer,
@@ -282,7 +283,7 @@ fn entity_tag(
     }
     let rules = rules?;
     let picked = row["picked"].as_bool().unwrap_or(false);
-    let inputs = photon_gui::entity_name::tag_inputs(entity, None, assets, LOCAL_NAME);
+    let inputs = photon_gui::entity_name::tag_inputs(&entity, None, assets, LOCAL_NAME);
     let tag = entity_name_tag(entity, inputs.runs, (rules, picked), (viewer, inputs.teams))?;
     Some(tag.with_score(entity, viewer, inputs.score))
 }

@@ -6,7 +6,7 @@ use photon_net::connection::PlaySession;
 use photon_render::entity::mob_model::{FelineState, QuadrupedState};
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -38,7 +38,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 
 /// The texture of a cat's variant, as the server named it by its place in the
 /// registry (the default while it has said nothing); none for one the registry lacks.
-fn cat_texture(session: &PlaySession, entity: &ClientEntity) -> Option<&'static str> {
+fn cat_texture(session: &PlaySession, entity: EntityView<'_>) -> Option<&'static str> {
     let name = match entity.variant() {
         None => Some(DEFAULT_VARIANT),
         Some(id) => usize::try_from(id)

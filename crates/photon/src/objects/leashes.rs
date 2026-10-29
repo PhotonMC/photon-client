@@ -16,6 +16,7 @@ use photon_render::objects::leash::{
 };
 use photon_render::scene::Vertex;
 use photon_world::ClientEntityPose;
+use photon_world::EntityView;
 use photon_world::local_player::LocalPlayer;
 
 use crate::overlays::FrameView;
@@ -84,7 +85,7 @@ fn local_holder(player: &LocalPlayer, partial: f32) -> Holder {
 }
 
 /// An entity the world holds as a holder.
-fn world_holder(entity: &photon_world::ClientEntity, partial: f32, position: [f64; 3]) -> Holder {
+fn world_holder(entity: EntityView<'_>, partial: f32, position: [f64; 3]) -> Holder {
     let name = photon_data::entity_type::name(entity.type_id);
     let size = entity.leash_size();
     let eye = [

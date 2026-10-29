@@ -122,10 +122,10 @@ fn a_turn_through_the_half_circle_is_drawn_the_short_way_round() {
         data: 0,
     }));
     let entity = world.entities_mut().at_mut(EntityId(37)).expect("the boat");
-    entity.old_y_rot = photon_core::java_float::JavaF32::new(179.0);
-    entity.y_rot = photon_core::java_float::JavaF32::new(-179.0);
+    entity.rotation.old_y_rot = photon_core::java_float::JavaF32::new(179.0);
+    entity.rotation.y_rot = photon_core::java_float::JavaF32::new(-179.0);
     // Halfway between 179 and -179 is the far side (180), not the front (0).
-    assert!((entity.y_rot_at(0.5).abs() - 180.0).abs() < 1.0e-3);
+    assert!((entity.rotation.y_rot_at(0.5).abs() - 180.0).abs() < 1.0e-3);
 }
 
 /// A dropped item riding a marker stand (a hub's floating display item) stays at the stand: the
@@ -210,7 +210,7 @@ fn a_passenger_of_an_armor_stand_follows_it() {
             &[crate::constants::ARMOR_STAND_FLAGS_DATA_ID, 0, flags, 255]
         ));
         assert!(world.apply_entity_passengers(EntityId(37), &[EntityId(38)]));
-        let vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
+        let mut vehicle = world.entities_mut().at_mut(EntityId(37)).expect("vehicle");
         vehicle.set_position((0.0, 9.0, 0.0));
         world.tick();
         let rider = world.entities().at(EntityId(38)).expect("rider");

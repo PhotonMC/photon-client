@@ -84,7 +84,7 @@ impl ParticleEngine {
                     .is_some_and(|name| IMITATED.contains(&name))
                     && entity.bounding_box().intersects(reach)
             })
-            .map(crate::ClientEntity::is_silent)
+            .map(|entity| entity.is_silent())
             .collect();
         if mobs.is_empty() {
             return;

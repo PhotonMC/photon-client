@@ -3,10 +3,11 @@ use super::wear::burning_light;
 use super::*;
 use crate::equipment::arm_poses;
 use photon_render::entity::player_renderer::Sleep;
+use photon_world::EntityView;
 
 /// Whether an avatar is upside down: the cape shows and a player's profile, or a mannequin's custom
 /// name, is Dinnerbone or Grumm.
-pub(super) fn flipped(session: &PlaySession, entity: &photon_world::ClientEntity) -> bool {
+pub(super) fn flipped(session: &PlaySession, entity: EntityView<'_>) -> bool {
     if !entity.is_player() {
         // `AvatarRenderer.isEntityUpsideDown` for a mannequin: the cape shows, then the living rule
         // (a custom name of Dinnerbone or Grumm).
@@ -19,11 +20,7 @@ pub(super) fn flipped(session: &PlaySession, entity: &photon_world::ClientEntity
 
 /// Where another player's model stands in the frame, in the skin that is drawn.
 pub(super) fn remote_placement(
-    (session, entity, snapshot): (
-        &PlaySession,
-        &photon_world::ClientEntity,
-        &photon_world::EntitySnapshot,
-    ),
+    (session, entity, snapshot): (&PlaySession, EntityView<'_>, &photon_world::EntitySnapshot),
     (view, skin): (FrameView, photon_render::entity::textures::TextureRect),
 ) -> Placement {
     let crouching = snapshot.pose == photon_world::ClientEntityPose::Crouching;

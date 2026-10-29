@@ -109,7 +109,7 @@ impl ClientWorld {
         if vehicle.is_boat() {
             return self.boat_view(vehicle_id, vehicle, position);
         }
-        let driven = self.mount_kind_of(vehicle);
+        let driven = self.mount_kind_of(vehicle.entity);
         let kind = if vehicle.is_horse() {
             VehicleKind::Horse
         } else if driven == Some(crate::MountKind::Pig) || vehicle.is_pig() {
@@ -117,7 +117,7 @@ impl ClientWorld {
         } else {
             VehicleKind::Other
         };
-        let y_rot = vehicle.y_rot.get();
+        let y_rot = vehicle.rotation.y_rot.get();
         // `getDefaultPassengerAttachmentPoint`: the type's seat for this passenger's place, turned
         // with the vehicle; `AbstractHorse` adds, rearing, up and back.
         let seats = photon_data::entity_type::pick(vehicle.type_id)?.passengers;
@@ -133,7 +133,7 @@ impl ClientWorld {
         let mut attachment = rotate_y(seat, turn);
         let camel = vehicle.is_camel();
         if camel {
-            attachment = self.camel_seat(vehicle, index, turn);
+            attachment = self.camel_seat(vehicle.entity, index, turn);
         }
         if kind == VehicleKind::Horse && !camel {
             let stand_old = vehicle
@@ -171,7 +171,7 @@ impl ClientWorld {
             type_id: vehicle.type_id,
             position,
             y_rot,
-            x_rot: vehicle.x_rot.get(),
+            x_rot: vehicle.rotation.x_rot.get(),
             on_ground: vehicle.on_ground,
             horizontal_collision: vehicle.mount_ride.horizontal_collision,
             rider_position: rider,
@@ -226,7 +226,7 @@ impl ClientWorld {
     fn boat_view(
         &self,
         vehicle_id: EntityId,
-        vehicle: &crate::entity::ClientEntity,
+        vehicle: crate::entity::EntityView<'_>,
         position: Vec3,
     ) -> Option<VehicleView> {
         let player = self.local_player.as_ref()?;
@@ -241,7 +241,7 @@ impl ClientWorld {
             controlled: vehicle.passenger_ids.first() == Some(&player.id),
             type_id: vehicle.type_id,
             position,
-            y_rot: vehicle.y_rot.get(),
+            y_rot: vehicle.rotation.y_rot.get(),
             x_rot: 0.0,
             on_ground: vehicle.on_ground,
             horizontal_collision: vehicle.boat_ride.horizontal_collision,

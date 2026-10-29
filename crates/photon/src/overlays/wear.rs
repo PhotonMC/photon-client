@@ -5,6 +5,7 @@ use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
 use crate::objects::displays;
 use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
+use photon_world::EntityView;
 
 /// `LivingEntityRenderer` for the other players: each in its default skin
 /// (a profile's own would be downloaded), posed from where it is between
@@ -85,11 +86,7 @@ pub fn remote_players(
 
 /// The triangles of a player, which join the outline when the player glows: the colour is its
 /// team's, found by its profile name.
-fn glowing(
-    session: &PlaySession,
-    entity: &photon_world::ClientEntity,
-    triangles: Vec<Vertex>,
-) -> Vec<Vertex> {
+fn glowing(session: &PlaySession, entity: EntityView<'_>, triangles: Vec<Vertex>) -> Vec<Vertex> {
     if let Some(name) = outline_name(session, entity) {
         crate::mobs::outline::record_holder(name, triangles.clone());
     }
@@ -99,7 +96,7 @@ fn glowing(
 /// Whether the body of a player is hidden: none when it shows, else the camera a spectating
 /// viewer sees its ghost from (none when the viewer sees nothing).
 fn ghosted(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     view: FrameView,
     snapshot: &photon_world::EntitySnapshot,
 ) -> Option<Option<[f32; 3]>> {
@@ -112,7 +109,7 @@ fn ghosted(
 /// player is seen by its outline alone.
 fn shown_body(
     session: &PlaySession,
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     (model, placement): (&PlayerModel, &Placement),
     ghost: Option<Option<[f32; 3]>>,
 ) -> Vec<Vertex> {
@@ -296,7 +293,7 @@ fn player_tags(
             continue;
         };
         let inputs = photon_gui::entity_name::tag_inputs(
-            entity,
+            &entity,
             Some(name),
             (lang, session.scoreboard()),
             session.local_name(),
@@ -326,7 +323,7 @@ fn player_tags(
 
 /// The rules of the name over an entity; `LivingEntityRenderer.shouldShowName` never shows one over
 /// the camera entity.
-fn tag_rules(session: &PlaySession, entity: &photon_world::ClientEntity) -> Option<NameRules> {
+fn tag_rules(session: &PlaySession, entity: EntityView<'_>) -> Option<NameRules> {
     rules_of(entity)
         .filter(|rules| *rules != NameRules::Mob || session.camera_entity() != Some(entity.id()))
 }
@@ -445,7 +442,7 @@ pub fn experience_orbs(
 }
 
 /// Whether an entity casts no shadow: an invisible one, or a spectator.
-fn casts_no_shadow(entity: &photon_world::ClientEntity) -> bool {
+fn casts_no_shadow(entity: EntityView<'_>) -> bool {
     entity.is_invisible() || entity.is_player() && entity.is_spectator()
 }
 
@@ -553,6 +550,6 @@ pub(super) fn burning_light(light: i32, burning: bool) -> i32 {
 }
 
 /// Whether the entity is a glow item frame.
-fn is_glow_frame(entity: &photon_world::ClientEntity) -> bool {
+fn is_glow_frame(entity: EntityView<'_>) -> bool {
     photon_data::entity_type::name(entity.type_id) == Some("minecraft:glow_item_frame")
 }

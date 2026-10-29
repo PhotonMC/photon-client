@@ -86,26 +86,6 @@ impl ClientEntity {
         self.living.fish_variant.unwrap_or(0)
     }
 
-    /// `Squid.aiStep`, which turns the body (and with it the entity) in water.
-    pub(crate) fn tick_squid(&mut self) {
-        if !self.is_squid() {
-            return;
-        }
-        let (in_water, motion, body) = (self.living.in_water, self.motion(), self.y_body_rot.get());
-        let turned = self
-            .kind
-            .squid_or_insert_with(|| Box::new(crate::mobs::squid::SquidState::new()))
-            .ai_step(in_water, motion, body);
-        if let Some(body) = turned {
-            self.y_body_rot = JavaF32::new(body);
-            self.y_rot = JavaF32::new(body);
-        }
-        // `GlowSquid.aiStep`: the dark ticks a hurt glow squid was given run out.
-        if self.living.glow_dark_ticks > 0 {
-            self.living.glow_dark_ticks -= 1;
-        }
-    }
-
     /// A guardian's animations, if it has ticked.
     pub fn guardian(&self) -> Option<&crate::mobs::guardian::GuardianState> {
         self.kind.guardian()
@@ -142,42 +122,6 @@ impl ClientEntity {
         }
     }
 
-    /// `Guardian.aiStep`'s client half, while the guardian lives: the beam's
-    /// target (which the world resolves from its id) is where the head turns.
-    pub(crate) fn tick_guardian(&mut self, target: Option<crate::mobs::guardian::GuardianTarget>) {
-        if !self.is_guardian() || !self.alive {
-            return;
-        }
-        let eye_height = self
-            .dimensions()
-            .scale(self.scale(), self.scale())
-            .eye_height();
-        let place = crate::mobs::guardian::GuardianPlace {
-            in_water: self.living.in_water,
-            moving: self.living.guardian_moving,
-            position: self.position(),
-            eye_height,
-            target,
-        };
-        let mut pose = crate::mobs::guardian::GuardianPose {
-            y_rot: self.y_rot.get(),
-            x_rot: self.x_rot.get(),
-            y_head_rot: self.y_head_rot.get(),
-            motion: self.motion(),
-            on_ground: self.on_ground,
-        };
-        let has_target = self.living.guardian_target != 0;
-        let duration = self.guardian_attack_duration();
-        self.kind
-            .guardian_or_insert_with(|| Box::new(crate::mobs::guardian::GuardianState::new()))
-            .tick(&place, has_target, duration, &mut pose);
-        self.y_rot = JavaF32::new(pose.y_rot);
-        self.x_rot = JavaF32::new(pose.x_rot);
-        self.y_head_rot = JavaF32::new(pose.y_head_rot);
-        self.motion = DVec3::new(pose.motion.0, pose.motion.1, pose.motion.2);
-        self.on_ground = pose.on_ground;
-    }
-
     /// `Guardian.getAttackDuration`, shorter for the elder.
     pub fn guardian_attack_duration(&self) -> i32 {
         if photon_data::entity_type::name(self.type_id) == Some("minecraft:elder_guardian") {
@@ -207,5 +151,67 @@ impl ClientEntity {
             photon_data::entity_type::name(self.type_id),
             Some("minecraft:squid" | "minecraft:glow_squid")
         )
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Squid.aiStep`, which turns the body (and with it the entity) in water.
+    pub(crate) fn tick_squid(&mut self) {
+        if !self.is_squid() {
+            return;
+        }
+        let (in_water, motion, body) = (
+            self.living.in_water,
+            self.motion(),
+            self.rotation.y_body_rot.get(),
+        );
+        let turned = self
+            .kind
+            .squid_or_insert_with(|| Box::new(crate::mobs::squid::SquidState::new()))
+            .ai_step(in_water, motion, body);
+        if let Some(body) = turned {
+            self.rotation.y_body_rot = JavaF32::new(body);
+            self.rotation.y_rot = JavaF32::new(body);
+        }
+        // `GlowSquid.aiStep`: the dark ticks a hurt glow squid was given run out.
+        if self.living.glow_dark_ticks > 0 {
+            self.living.glow_dark_ticks -= 1;
+        }
+    }
+
+    /// `Guardian.aiStep`'s client half, while the guardian lives: the beam's
+    /// target (which the world resolves from its id) is where the head turns.
+    pub(crate) fn tick_guardian(&mut self, target: Option<crate::mobs::guardian::GuardianTarget>) {
+        if !self.is_guardian() || !self.alive {
+            return;
+        }
+        let eye_height = self
+            .dimensions()
+            .scale(self.scale(), self.scale())
+            .eye_height();
+        let place = crate::mobs::guardian::GuardianPlace {
+            in_water: self.living.in_water,
+            moving: self.living.guardian_moving,
+            position: self.position(),
+            eye_height,
+            target,
+        };
+        let mut pose = crate::mobs::guardian::GuardianPose {
+            y_rot: self.rotation.y_rot.get(),
+            x_rot: self.rotation.x_rot.get(),
+            y_head_rot: self.rotation.y_head_rot.get(),
+            motion: self.motion(),
+            on_ground: self.on_ground,
+        };
+        let has_target = self.living.guardian_target != 0;
+        let duration = self.guardian_attack_duration();
+        self.kind
+            .guardian_or_insert_with(|| Box::new(crate::mobs::guardian::GuardianState::new()))
+            .tick(&place, has_target, duration, &mut pose);
+        self.rotation.y_rot = JavaF32::new(pose.y_rot);
+        self.rotation.x_rot = JavaF32::new(pose.x_rot);
+        self.rotation.y_head_rot = JavaF32::new(pose.y_head_rot);
+        self.motion = DVec3::new(pose.motion.0, pose.motion.1, pose.motion.2);
+        self.on_ground = pose.on_ground;
     }
 }

@@ -43,7 +43,7 @@ fn entity_shared_flags_follow_java_byte_metadata_and_preserve_unspecified_values
         world
             .entities()
             .at(EntityId(37))
-            .map(crate::ClientEntity::shared_flags),
+            .map(|entity| entity.shared_flags()),
         Some(all_defined_flags)
     );
 

@@ -1,9 +1,7 @@
 use super::super::*;
+use photon_world::EntityView;
 
-pub(crate) fn turtle_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn turtle_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["in_water"] = json!(entity.is_in_water());
     described["on_ground"] = json!(entity.on_ground());
     described["has_egg"] = json!(entity.turtle_has_egg());
@@ -15,10 +13,7 @@ pub(crate) fn turtle_extra(
     Ok(())
 }
 
-pub(crate) fn guardian_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn guardian_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["in_water"] = json!(entity.is_in_water());
     let (y_rot, x_rot, head_y) = entity.rotation();
     described["y_rot"] = json!(hex(y_rot));
@@ -45,10 +40,7 @@ pub(crate) fn guardian_extra(
     Ok(())
 }
 
-pub(crate) fn frog_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn frog_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["in_water"] = json!(entity.is_in_water());
     if let Some(frog) = entity.frog() {
         let age = entity.tick_count() as f32;
@@ -69,10 +61,7 @@ pub(crate) fn frog_extra(
     Ok(())
 }
 
-pub(crate) fn axolotl_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn axolotl_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.axolotl().copied().unwrap_or_default();
     described["in_water"] = json!(entity.is_in_water());
     described["variant"] = json!(entity.axolotl_variant());
@@ -109,10 +98,7 @@ pub(crate) fn axolotl_extra(
     Ok(())
 }
 
-pub(crate) fn dolphin_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn dolphin_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["max_x"] = json!(format!("{:016x}", entity.bounding_box().max_x.to_bits()));
     let (x, _, z) = entity.motion();
     described["is_moving"] = json!(entity.is_moving_horizontally());
@@ -121,10 +107,7 @@ pub(crate) fn dolphin_extra(
     Ok(())
 }
 
-pub(crate) fn fish_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn fish_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["in_water"] = json!(entity.is_in_water());
     let area = entity.bounding_box();
     for (key, value) in [
@@ -140,10 +123,7 @@ pub(crate) fn fish_extra(
     Ok(())
 }
 
-pub(crate) fn squid_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn squid_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     if let Some(squid) = entity.squid() {
         let pose = squid.pose(0.5);
         described["in_water"] = json!(entity.is_in_water());

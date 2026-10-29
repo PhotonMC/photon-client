@@ -13,6 +13,7 @@ use photon_render::objects::projectile::{
     evoker_fangs_pose, leash_knot_pose, llama_spit_pose, shulker_bullet_poses,
 };
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 
 use crate::mobs::MobModels;
 use crate::overlays::{FrameView, full_block_light, packed_light};
@@ -38,7 +39,7 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
 }
 
 /// The model layer and the texture of the projectile an entity is, if it is one of these.
-fn look_of(entity: &photon_world::ClientEntity) -> Option<(&'static str, &'static str)> {
+fn look_of(entity: EntityView<'_>) -> Option<(&'static str, &'static str)> {
     Some(match photon_data::entity_type::name(entity.type_id)? {
         "minecraft:shulker_bullet" => (BULLET_LAYER, BULLET),
         "minecraft:llama_spit" => (SPIT_LAYER, SPIT),
@@ -94,7 +95,7 @@ pub fn remote_bullets(
 
 /// What a projectile is drawn from.
 struct Drawn<'a> {
-    entity: &'a photon_world::ClientEntity,
+    entity: photon_world::EntityView<'a>,
     base: Pose,
     light: i32,
     partial: f32,

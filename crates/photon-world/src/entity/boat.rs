@@ -5,35 +5,6 @@ impl ClientEntity {
         (self.paddle_left, self.paddle_right)
     }
 
-    pub(crate) fn clamp_vanilla_boat_passenger_rotation(
-        &mut self,
-        vehicle_y_rot: f32,
-        animal_rotation_offset: Option<f32>,
-    ) {
-        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
-            self.y_rot.get(),
-            self.old_y_rot.get(),
-            vehicle_y_rot,
-        );
-        self.old_y_rot = JavaF32::new(old_y_rot);
-        self.y_rot = JavaF32::new(y_rot);
-        if vanilla_passenger_is_living(self.type_id) {
-            self.y_head_rot = self.y_rot;
-            self.y_body_rot = JavaF32::new(vehicle_y_rot);
-        }
-        if let Some(rotation_offset) = animal_rotation_offset {
-            self.y_body_rot = JavaF32::new(self.y_body_rot.get() + rotation_offset);
-            self.y_head_rot = JavaF32::new(self.y_head_rot.get() + rotation_offset);
-        }
-    }
-
-    pub(crate) fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
-        self.y_rot = JavaF32::new(self.y_rot.get() + delta_rotation);
-        if vanilla_passenger_is_living(self.type_id) {
-            self.y_head_rot = JavaF32::new(self.y_head_rot.get() + delta_rotation);
-        }
-    }
-
     /// `Entity.isVehicle`: something rides it.
     pub fn is_vehicle(&self) -> bool {
         !self.passenger_ids.is_empty()
@@ -91,29 +62,6 @@ impl ClientEntity {
             self.paddle_right
         };
         flag && !self.passenger_ids.is_empty()
-    }
-
-    /// `AbstractBoat.tick` on the client, at the start of the tick (`under_water` is
-    /// none for an entity that is not a boat).
-    pub(crate) fn tick_boat(&mut self, under_water: Option<bool>) {
-        let Some(under_water) = under_water else {
-            return;
-        };
-        // `AbstractBoat.tick`: the easing runs after `super.tick`, before the boat moves.
-        self.tick_position_interpolation();
-        let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
-        let tick_count = self.tick_count;
-        self.kind
-            .boat_or_insert_with(Default::default)
-            .tick(under_water, paddling, tick_count);
-    }
-
-    /// The part of a ridden boat's tick before its own movement.
-    pub(crate) fn tick_boat_start(&mut self) {
-        self.tick_position_interpolation();
-        self.kind
-            .boat_or_insert_with(Default::default)
-            .tick_start(false);
     }
 
     /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
@@ -206,5 +154,62 @@ impl BoatInput {
             forward,
             backward,
         }
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn clamp_vanilla_boat_passenger_rotation(
+        &mut self,
+        vehicle_y_rot: f32,
+        animal_rotation_offset: Option<f32>,
+    ) {
+        let (old_y_rot, y_rot) = vanilla_boat_passenger_rotation_clamped_values(
+            self.rotation.y_rot.get(),
+            self.rotation.old_y_rot.get(),
+            vehicle_y_rot,
+        );
+        self.rotation.old_y_rot = JavaF32::new(old_y_rot);
+        self.rotation.y_rot = JavaF32::new(y_rot);
+        if vanilla_passenger_is_living(self.type_id) {
+            self.rotation.y_head_rot = self.rotation.y_rot;
+            self.rotation.y_body_rot = JavaF32::new(vehicle_y_rot);
+        }
+        if let Some(rotation_offset) = animal_rotation_offset {
+            self.rotation.y_body_rot =
+                JavaF32::new(self.rotation.y_body_rot.get() + rotation_offset);
+            self.rotation.y_head_rot =
+                JavaF32::new(self.rotation.y_head_rot.get() + rotation_offset);
+        }
+    }
+
+    pub(crate) fn add_vanilla_boat_passenger_rotation(&mut self, delta_rotation: f32) {
+        self.rotation.y_rot = JavaF32::new(self.rotation.y_rot.get() + delta_rotation);
+        if vanilla_passenger_is_living(self.type_id) {
+            self.rotation.y_head_rot =
+                JavaF32::new(self.rotation.y_head_rot.get() + delta_rotation);
+        }
+    }
+
+    /// `AbstractBoat.tick` on the client, at the start of the tick (`under_water` is
+    /// none for an entity that is not a boat).
+    pub(crate) fn tick_boat(&mut self, under_water: Option<bool>) {
+        let Some(under_water) = under_water else {
+            return;
+        };
+        // `AbstractBoat.tick`: the easing runs after `super.tick`, before the boat moves.
+        self.tick_position_interpolation();
+        let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
+        let tick_count = self.tick_count;
+        self.kind
+            .boat_or_insert_with(Default::default)
+            .tick(under_water, paddling, tick_count);
+    }
+
+    /// The part of a ridden boat's tick before its own movement.
+    pub(crate) fn tick_boat_start(&mut self) {
+        self.tick_position_interpolation();
+        self.kind
+            .boat_or_insert_with(Default::default)
+            .tick_start(false);
     }
 }

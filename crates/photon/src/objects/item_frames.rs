@@ -16,6 +16,7 @@ use photon_render::objects::item::{entity_block_vertices, item_layer_vertices};
 use photon_render::objects::item_frame::{item_frame_poses, item_frame_position, render_offset};
 use photon_render::objects::map::{DecorationDraw, Sheet, map_quads};
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::map::{MAP_SIDE, MapData};
 
 use crate::equipment::item_layers::ItemLayerCache;
@@ -172,7 +173,7 @@ fn framed_map_id(stack: &photon_world::ClientItemStackState) -> Option<i32> {
 
 /// The frame as the holder of its item (`ItemFrame.getVisualRotationYInDegrees`): where its
 /// entity is, and the heading its facing and the item's turn make.
-fn frame_owner(entity: &photon_world::ClientEntity, direction: Direction) -> Owner {
+fn frame_owner(entity: EntityView<'_>, direction: Direction) -> Owner {
     let vertical = direction.axis().is_vertical();
     let correction = if vertical {
         90 * direction.get_step_y()
@@ -263,7 +264,7 @@ pub fn item_frames(
 
 /// A glowing frame's model and item join its outline (a map does not: `MapRenderer.render` takes
 /// no outline colour).
-fn outlined(entity: &photon_world::ClientEntity, drawn: &[Vertex]) {
+fn outlined(entity: EntityView<'_>, drawn: &[Vertex]) {
     if entity.is_glowing() {
         crate::mobs::record_item_outline(entity, drawn.to_vec());
     }

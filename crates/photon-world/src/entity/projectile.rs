@@ -1,119 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// `ThrowableProjectile.tick`'s client-side step, shared by every type that does not
-    /// override `getDefaultGravity` (snowball, egg, ender pearl, splash and lingering potion)
-    /// and, with its own gravity, `ThrownExperienceBottle` (0.07 in place of the base 0.03).
-    pub(crate) fn tick_snowball(&mut self) {
-        self.tick_throwable_item(SNOWBALL_GRAVITY);
-    }
-
-    pub(crate) fn tick_experience_bottle(&mut self) {
-        self.tick_throwable_item(VANILLA_EXPERIENCE_BOTTLE_GRAVITY);
-    }
-
-    fn tick_throwable_item(&mut self, default_gravity: f64) {
-        let air_drag = f64::from(0.99_f32);
-        let gravity = if self.no_gravity {
-            0.0
-        } else {
-            default_gravity
-        };
-        let current_motion = self.motion();
-        let motion = (
-            current_motion.0 * air_drag,
-            (current_motion.1 - gravity) * air_drag,
-            current_motion.2 * air_drag,
-        );
-        self.motion.x = JavaF64::new(motion.0);
-        self.motion.y = JavaF64::new(motion.1);
-        self.motion.z = JavaF64::new(motion.2);
-
-        let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
-
-        let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
-        let target_x_rot =
-            (mth_atan2(motion.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        let target_y_rot = (mth_atan2(motion.0, motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
-            self.old_x_rot.get(),
-            target_x_rot,
-        ));
-        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
-            self.old_y_rot.get(),
-            target_y_rot,
-        ));
-    }
-
-    pub(crate) fn tick_arrow(&mut self) {
-        let current_position = self.position();
-        let current_motion = self.motion();
-        self.position.x = JavaF64::new(current_position.0 + current_motion.0);
-        self.position.y = JavaF64::new(current_position.1 + current_motion.1);
-        self.position.z = JavaF64::new(current_position.2 + current_motion.2);
-
-        let horizontal_distance =
-            (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
-        let target_x_rot = (mth_atan2(current_motion.1, horizontal_distance)
-            * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        let target_y_rot =
-            (mth_atan2(current_motion.0, current_motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(self.x_rot.get(), target_x_rot));
-        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(self.y_rot.get(), target_y_rot));
-
-        let air_friction = f64::from(VANILLA_ARROW_AIR_FRICTION);
-        let motion = (
-            current_motion.0 * air_friction,
-            current_motion.1 * air_friction,
-            current_motion.2 * air_friction,
-        );
-        self.motion.x = JavaF64::new(motion.0);
-        self.motion.y = JavaF64::new(
-            motion.1
-                - if self.no_gravity {
-                    0.0
-                } else {
-                    VANILLA_ARROW_GRAVITY
-                },
-        );
-        self.motion.z = JavaF64::new(motion.2);
-    }
-
-    pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
-        self.tick_position_interpolation();
-        if self.first_tick {
-            self.first_tick = false;
-            return;
-        }
-        if !path_is_open {
-            return;
-        }
-
-        let current_motion = self.motion();
-        let motion = (
-            current_motion.0,
-            current_motion.1
-                - if self.no_gravity {
-                    0.0
-                } else {
-                    VANILLA_EXPERIENCE_ORB_GRAVITY
-                },
-            current_motion.2,
-        );
-        let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
-
-        let air_friction = f64::from(VANILLA_EXPERIENCE_ORB_AIR_FRICTION);
-        self.motion.x = JavaF64::new(motion.0 * air_friction);
-        self.motion.y = JavaF64::new(motion.1 * air_friction);
-        self.motion.z = JavaF64::new(motion.2 * air_friction);
-    }
-
     pub(crate) fn tick_primed_tnt(&mut self) {
         let current_motion = self.motion();
         let motion = (
@@ -158,40 +45,6 @@ impl ClientEntity {
         self.motion.x = JavaF64::new(motion.0 * air_friction);
         self.motion.y = JavaF64::new(motion.1 * air_friction);
         self.motion.z = JavaF64::new(motion.2 * air_friction);
-    }
-
-    pub(crate) fn tick_firework(&mut self) {
-        // An attached rocket flies with its target and does not accelerate on its own.
-        if self.attached_target.is_some() {
-            return;
-        }
-        let current_motion = self.motion();
-        let movement = (
-            current_motion.0 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
-            current_motion.1 + VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION,
-            current_motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
-        );
-        let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + movement.0);
-        self.position.y = JavaF64::new(current_position.1 + movement.1);
-        self.position.z = JavaF64::new(current_position.2 + movement.2);
-
-        let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
-        let target_x_rot =
-            (mth_atan2(movement.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        let target_y_rot =
-            (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
-        self.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
-            self.old_x_rot.get(),
-            target_x_rot,
-        ));
-        self.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
-            self.old_y_rot.get(),
-            target_y_rot,
-        ));
-        self.motion.x = JavaF64::new(movement.0);
-        self.motion.y = JavaF64::new(movement.1);
-        self.motion.z = JavaF64::new(movement.2);
     }
 
     /// `FireworkRocketEntity.isShotAtAngle`.
@@ -390,5 +243,162 @@ impl VanillaProjectileKind {
                 )
             }
         }
+    }
+}
+
+impl EntityViewMut<'_> {
+    fn tick_throwable_item(&mut self, default_gravity: f64) {
+        let air_drag = f64::from(0.99_f32);
+        let gravity = if self.no_gravity {
+            0.0
+        } else {
+            default_gravity
+        };
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0 * air_drag,
+            (current_motion.1 - gravity) * air_drag,
+            current_motion.2 * air_drag,
+        );
+        self.motion.x = JavaF64::new(motion.0);
+        self.motion.y = JavaF64::new(motion.1);
+        self.motion.z = JavaF64::new(motion.2);
+
+        let current_position = self.position();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
+
+        let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
+        let target_x_rot =
+            (mth_atan2(motion.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        let target_y_rot = (mth_atan2(motion.0, motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        self.rotation.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.old_x_rot.get(),
+            target_x_rot,
+        ));
+        self.rotation.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.old_y_rot.get(),
+            target_y_rot,
+        ));
+    }
+
+    pub(crate) fn tick_arrow(&mut self) {
+        let current_position = self.position();
+        let current_motion = self.motion();
+        self.position.x = JavaF64::new(current_position.0 + current_motion.0);
+        self.position.y = JavaF64::new(current_position.1 + current_motion.1);
+        self.position.z = JavaF64::new(current_position.2 + current_motion.2);
+
+        let horizontal_distance =
+            (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
+        let target_x_rot = (mth_atan2(current_motion.1, horizontal_distance)
+            * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        let target_y_rot =
+            (mth_atan2(current_motion.0, current_motion.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        self.rotation.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.x_rot.get(),
+            target_x_rot,
+        ));
+        self.rotation.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.y_rot.get(),
+            target_y_rot,
+        ));
+
+        let air_friction = f64::from(VANILLA_ARROW_AIR_FRICTION);
+        let motion = (
+            current_motion.0 * air_friction,
+            current_motion.1 * air_friction,
+            current_motion.2 * air_friction,
+        );
+        self.motion.x = JavaF64::new(motion.0);
+        self.motion.y = JavaF64::new(
+            motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_ARROW_GRAVITY
+                },
+        );
+        self.motion.z = JavaF64::new(motion.2);
+    }
+
+    pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
+        self.tick_position_interpolation();
+        if self.first_tick {
+            self.first_tick = false;
+            return;
+        }
+        if !path_is_open {
+            return;
+        }
+
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0,
+            current_motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_EXPERIENCE_ORB_GRAVITY
+                },
+            current_motion.2,
+        );
+        let current_position = self.position();
+        self.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.position.z = JavaF64::new(current_position.2 + motion.2);
+
+        let air_friction = f64::from(VANILLA_EXPERIENCE_ORB_AIR_FRICTION);
+        self.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.motion.z = JavaF64::new(motion.2 * air_friction);
+    }
+
+    pub(crate) fn tick_firework(&mut self) {
+        // An attached rocket flies with its target and does not accelerate on its own.
+        if self.attached_target.is_some() {
+            return;
+        }
+        let current_motion = self.motion();
+        let movement = (
+            current_motion.0 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+            current_motion.1 + VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION,
+            current_motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
+        );
+        let current_position = self.position();
+        self.position.x = JavaF64::new(current_position.0 + movement.0);
+        self.position.y = JavaF64::new(current_position.1 + movement.1);
+        self.position.z = JavaF64::new(current_position.2 + movement.2);
+
+        let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
+        let target_x_rot =
+            (mth_atan2(movement.1, horizontal_distance) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        let target_y_rot =
+            (mth_atan2(movement.0, movement.2) * PROJECTILE_DEGREES_PER_RADIAN) as f32;
+        self.rotation.x_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.old_x_rot.get(),
+            target_x_rot,
+        ));
+        self.rotation.y_rot = JavaF32::new(projectile_lerp_rotation_f32(
+            self.rotation.old_y_rot.get(),
+            target_y_rot,
+        ));
+        self.motion.x = JavaF64::new(movement.0);
+        self.motion.y = JavaF64::new(movement.1);
+        self.motion.z = JavaF64::new(movement.2);
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `ThrowableProjectile.tick`'s client-side step, shared by every type that does not
+    /// override `getDefaultGravity` (snowball, egg, ender pearl, splash and lingering potion)
+    /// and, with its own gravity, `ThrownExperienceBottle` (0.07 in place of the base 0.03).
+    pub(crate) fn tick_snowball(&mut self) {
+        self.tick_throwable_item(SNOWBALL_GRAVITY);
+    }
+
+    pub(crate) fn tick_experience_bottle(&mut self) {
+        self.tick_throwable_item(VANILLA_EXPERIENCE_BOTTLE_GRAVITY);
     }
 }

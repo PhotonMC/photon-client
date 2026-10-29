@@ -26,7 +26,7 @@ impl ClientWorld {
 
     pub(crate) fn tick_entity_tree(&mut self, entity_id: EntityId, vehicle_id: Option<EntityId>) {
         if vehicle_id.is_some()
-            && let Some(entity) = self.entities.at_mut(entity_id)
+            && let Some(mut entity) = self.entities.at_mut(entity_id)
         {
             entity.motion.x = JavaF64::new(0.0_f64);
             entity.motion.y = JavaF64::new(0.0_f64);
@@ -67,7 +67,7 @@ impl ClientWorld {
     )> {
         self.entities.at(entity_id).map(|entity| {
             let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
-            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
+            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity.entity);
             let kind = vanilla_projectile_kind(entity.type_id);
             let path_open = kind.is_some_and(|kind| {
                 self.projectile_path_is_open(
@@ -76,13 +76,13 @@ impl ClientWorld {
                 )
             });
             // A saddled horse is driven by the player in its first seat.
-            let mount = self.mount_kind_of(entity).is_some();
+            let mount = self.mount_kind_of(entity.entity).is_some();
             (
                 is_boat && !authoritative,
                 kind,
                 path_open,
                 (authoritative, mount),
-                objects::flight::flight_of(entity),
+                objects::flight::flight_of(entity.entity),
             )
         })
     }
@@ -102,20 +102,20 @@ impl ClientWorld {
             return;
         };
 
-        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(|entity| entity.position())
         else {
             return;
         };
         let tick_death = self
             .entities
             .get(&entity_id)
-            .is_some_and(|entity| self.should_tick_death(entity));
+            .is_some_and(|entity| self.should_tick_death(entity.entity));
         let surroundings = self.species_surroundings(entity_id);
         let in_water = self.mob_in_water(entity_id);
         let targets = self.targets_of(entity_id);
         let boat_under_water = self.boat_under_water_of(entity_id);
         {
-            let entity = self
+            let mut entity = self
                 .entities
                 .at_mut(entity_id)
                 .expect("entity position was checked above");
@@ -138,7 +138,7 @@ impl ClientWorld {
             }
         }
         {
-            let entity = self
+            let mut entity = self
                 .entities
                 .at_mut(entity_id)
                 .expect("entity position was checked above");
@@ -165,7 +165,7 @@ impl ClientWorld {
                 entity.motion.z = JavaF64::new(0.0_f64);
             }
             if let Some(kind) = projectile_kind {
-                tick_projectile(entity, kind, projectile_path_is_open);
+                tick_projectile(&mut entity, kind, projectile_path_is_open);
             }
         }
         self.tick_after_species(entity_id, ridden);
@@ -188,7 +188,7 @@ impl ClientWorld {
         if self
             .entities
             .get(&entity_id)
-            .is_some_and(ClientEntity::is_parrot)
+            .is_some_and(|entity| entity.is_parrot())
         {
             self.level_events
                 .0
@@ -204,7 +204,7 @@ impl ClientWorld {
     pub(crate) fn update_ticking_flag(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let in_loaded_chunk = self.contains_chunk(chunk_x, chunk_z);
-        if let Some(entity) = self.entities.at_mut(entity_id)
+        if let Some(mut entity) = self.entities.at_mut(entity_id)
             && entity.living_kind().is_some()
             && !entity.always_ticking
         {
@@ -390,7 +390,7 @@ impl ClientWorld {
         let (in_water, in_lava) = (found.water.height > 0.0, found.lava.height > 0.0);
         let splashes = in_water && !entity.living.touching_water && entity.tick_count > 0;
         let (width, (m_x, m_y, m_z)) = (dimensions.width(), entity.motion());
-        if let Some(entity) = self.entities.at_mut(entity_id) {
+        if let Some(mut entity) = self.entities.at_mut(entity_id) {
             entity.living.touching_water = in_water;
             entity.living.touching_lava = in_lava;
         }

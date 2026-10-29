@@ -5,6 +5,7 @@ use super::*;
 use photon_core::math::{mth_cos_f64, mth_sin_f64};
 use photon_render::entity::cape::{CapeAngles, cape_vertices};
 use photon_render::entity::textures::{EntityTextures, TextureRect};
+use photon_world::EntityView;
 use photon_world::cloak::Cloak;
 use photon_world::local_player::CloakState;
 
@@ -101,11 +102,7 @@ pub(super) fn back(
 /// The cape and wings of a remote player, whose cape (if it has one) is at `rect`.
 pub(super) fn remote_back(
     armor: &mut Armor,
-    (entity, rect, elytra): (
-        &photon_world::ClientEntity,
-        Option<TextureRect>,
-        Option<TextureRect>,
-    ),
+    (entity, rect, elytra): (EntityView<'_>, Option<TextureRect>, Option<TextureRect>),
     (model, placement): (&PlayerModel, &Placement),
     (textures, partial): (&EntityTextures, f32),
 ) -> Vec<Vertex> {

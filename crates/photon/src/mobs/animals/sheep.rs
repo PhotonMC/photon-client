@@ -7,7 +7,7 @@ use photon_render::entity::mob_model::{MobPlacement, QuadrupedState, SheepState}
 use photon_render::entity::textures::EntityTextures;
 use photon_render::entity::wool::wool_colour;
 use photon_render::scene::Vertex;
-use photon_world::ClientEntity;
+use photon_world::EntityView;
 
 use crate::mobs::{MobModels, placement};
 use crate::overlays::FrameView;
@@ -115,7 +115,7 @@ pub fn remote_sheep(
 /// invisible) or a wool layer, which is not drawn on a sheep that cannot be seen.
 fn layer_vertices(
     (index, layer): (usize, &Layer),
-    (entity, state, placement): (&ClientEntity, &SheepState, &MobPlacement),
+    (entity, state, placement): (EntityView<'_>, &SheepState, &MobPlacement),
     (models, textures): (&mut MobModels, &EntityTextures),
 ) -> Vec<Vertex> {
     let dye = entity.sheep_dye_id();

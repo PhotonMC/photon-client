@@ -3,7 +3,7 @@ use crate::*;
 impl ClientWorld {
     /// `LightningBolt.tick`: on its first tick a bolt plays its thunder, heard from afar, and its impact.
     fn strike_sounds(&mut self, entity_id: EntityId) {
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         let Some((thunder, impact)) = entity.take_lightning_pitches() else {
@@ -80,11 +80,11 @@ impl ClientWorld {
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
             upside_down: None,
-            sleeping: self.sleeping_lie(entity),
+            sleeping: self.sleeping_lie(entity.entity),
             light_probe: (0.0, 0.0, 0.0),
         };
         snapshot.light_probe = self.light_probe(
-            entity,
+            entity.entity,
             snapshot.position,
             // A player's own size is scaled here (`LivingEntity.getDimensions`), a sleeping one's is not.
             f64::from(entity.leash_size().eye_height)
@@ -126,7 +126,7 @@ impl ClientWorld {
     }
 
     pub fn remove_entity(&mut self, entity_id: EntityId) -> bool {
-        let Some(position) = self.entities.at(entity_id).map(ClientEntity::position) else {
+        let Some(position) = self.entities.at(entity_id).map(|entity| entity.position()) else {
             return false;
         };
         self.detach_entity_from_vehicle(entity_id);
@@ -142,13 +142,13 @@ impl ClientWorld {
         entity_id: EntityId,
         position: (f64, f64, f64),
     ) -> bool {
-        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(|entity| entity.position())
         else {
             return false;
         };
         let (chunk_x, chunk_z) = entity_chunk_key(position);
         let ticking = self.contains_chunk(chunk_x, chunk_z);
-        if let Some(entity) = self.entities.at_mut(entity_id) {
+        if let Some(mut entity) = self.entities.at_mut(entity_id) {
             entity.set_position(position);
             entity.ticking = entity.always_ticking || ticking;
         }
@@ -156,7 +156,7 @@ impl ClientWorld {
         let position = self
             .entities
             .get(&entity_id)
-            .map_or(position, ClientEntity::position);
+            .map_or(position, |entity| entity.position());
         self.update_entity_section(entity_id, previous_position, position);
         true
     }
@@ -210,110 +210,109 @@ impl ClientWorld {
         };
         self.entities.insert(
             entity.entity_id,
-            ClientEntity {
-                id: entity.entity_id,
-                uuid: entity.uuid,
-                type_id: entity.type_id,
-                tick_count: 0,
-                first_tick: true,
-                start_block: (
-                    photon_core::math::floor_f64(entity.x),
-                    photon_core::math::floor_f64(entity.y),
-                    photon_core::math::floor_f64(entity.z),
+            EntityParts {
+                rotation: Rotation::spawned(
+                    entity.rotation.0,
+                    entity.rotation.1,
+                    entity.rotation.2,
                 ),
-                position: DVec3::new(entity.x, entity.y, entity.z),
-                old_position: DVec3::new(entity.x, entity.y, entity.z),
-                motion: DVec3::new(entity.movement.0, entity.movement.1, entity.movement.2),
-                motion_lerp_target: DVec3::new(
-                    entity.movement.0,
-                    entity.movement.1,
-                    entity.movement.2,
-                ),
-                motion_lerp_steps: 0,
-                x_rot: JavaF32::new(entity.rotation.1),
-                y_rot: JavaF32::new(entity.rotation.0),
-                y_head_rot: JavaF32::new(entity.rotation.2),
-                y_body_rot: JavaF32::new(entity.rotation.0),
-                old_x_rot: JavaF32::new(entity.rotation.1),
-                old_y_rot: JavaF32::new(entity.rotation.0),
-                old_y_head_rot: JavaF32::new(entity.rotation.2),
-                old_y_body_rot: JavaF32::new(entity.rotation.0),
-                delta_rotation: JavaF32::new(0.0_f32),
-                boat_input: BoatInput::EMPTY,
-                boat_ride: ride::boat::RideState::default(),
-                mount_ride: ride::mount::MountState::default(),
-                flight: objects::flight::FlightState {
-                    owner,
-                    left_owner: false,
+                entity: ClientEntity {
+                    id: entity.entity_id,
+                    uuid: entity.uuid,
+                    type_id: entity.type_id,
+                    tick_count: 0,
+                    first_tick: true,
+                    start_block: (
+                        photon_core::math::floor_f64(entity.x),
+                        photon_core::math::floor_f64(entity.y),
+                        photon_core::math::floor_f64(entity.z),
+                    ),
+                    position: DVec3::new(entity.x, entity.y, entity.z),
+                    old_position: DVec3::new(entity.x, entity.y, entity.z),
+                    motion: DVec3::new(entity.movement.0, entity.movement.1, entity.movement.2),
+                    motion_lerp_target: DVec3::new(
+                        entity.movement.0,
+                        entity.movement.1,
+                        entity.movement.2,
+                    ),
+                    motion_lerp_steps: 0,
+                    delta_rotation: JavaF32::new(0.0_f32),
+                    boat_input: BoatInput::EMPTY,
+                    boat_ride: ride::boat::RideState::default(),
+                    mount_ride: ride::mount::MountState::default(),
+                    flight: objects::flight::FlightState {
+                        owner,
+                        left_owner: false,
+                    },
+                    paddle_left: false,
+                    paddle_right: false,
+                    head_rotation_target: JavaF32::new(entity.rotation.2),
+                    head_lerp_steps: 0,
+                    interpolation: None,
+                    on_ground: false,
+                    tracking: Tracking::at(entity.x, entity.y, entity.z),
+                    always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
+                    ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
+                    walk: living::WalkAnimation::default(),
+                    swim_amount: JavaF32::new(0.0_f32),
+                    old_swim_amount: JavaF32::new(0.0_f32),
+                    head_stable_time: 0,
+                    last_stable_y_head_rot: JavaF32::new(entity.rotation.2),
+                    item_stack: None,
+                    equipment: Default::default(),
+                    bob_offset: bob_offset(entity.uuid),
+                    data: entity.data,
+                    metadata: None,
+                    shared_flags: 0,
+                    living_flags: 0,
+                    mob_flags: 0,
+                    air_supply: DEFAULT_AIR_SUPPLY,
+                    health: None,
+                    living: EntityState::default(),
+                    arrow_count: 0,
+                    stinger_count: 0,
+                    effect_ambience: false,
+                    effect_particles: Vec::new(),
+                    sleeping_pos: None,
+                    custom_name_present: false,
+                    custom_name_visible: false,
+                    no_gravity: false,
+                    silent: false,
+                    pose: ClientEntityPose::Standing,
+                    baby: false,
+                    alive: true,
+                    spectator: false,
+                    on_climbable: false,
+                    flying: false,
+                    happy_ghast_still_timeout: false,
+                    happy_ghast_is_vehicle: false,
+                    ticks_frozen: 0,
+                    vehicle_id: None,
+                    passenger_ids: Vec::new(),
+                    attributes: Vec::new(),
+                    kind: initial_kind,
+                    item_frame_rotation: 0,
+                    leash_holder_id: EntityId(0),
+                    lightning_done: false,
+                    shot_at_angle: false,
+                    attached_target: None,
                 },
-                paddle_left: false,
-                paddle_right: false,
-                head_rotation_target: JavaF32::new(entity.rotation.2),
-                head_lerp_steps: 0,
-                interpolation: None,
-                on_ground: false,
-                tracking: Tracking::at(entity.x, entity.y, entity.z),
-                always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
-                ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
-                walk: living::WalkAnimation::default(),
-                swim_amount: JavaF32::new(0.0_f32),
-                old_swim_amount: JavaF32::new(0.0_f32),
-                head_stable_time: 0,
-                last_stable_y_head_rot: JavaF32::new(entity.rotation.2),
-                item_stack: None,
-                equipment: Default::default(),
-                bob_offset: bob_offset(entity.uuid),
-                data: entity.data,
-                metadata: None,
-                shared_flags: 0,
-                living_flags: 0,
-                mob_flags: 0,
-                air_supply: DEFAULT_AIR_SUPPLY,
-                health: None,
-                living: EntityState::default(),
-                arrow_count: 0,
-                stinger_count: 0,
-                effect_ambience: false,
-                effect_particles: Vec::new(),
-                sleeping_pos: None,
-                custom_name_present: false,
-                custom_name_visible: false,
-                no_gravity: false,
-                silent: false,
-                pose: ClientEntityPose::Standing,
-                baby: false,
-                alive: true,
-                spectator: false,
-                on_climbable: false,
-                flying: false,
-                happy_ghast_still_timeout: false,
-                happy_ghast_is_vehicle: false,
-                ticks_frozen: 0,
-                vehicle_id: None,
-                passenger_ids: Vec::new(),
-                attributes: Vec::new(),
-                kind: initial_kind,
-                item_frame_rotation: 0,
-                leash_holder_id: EntityId(0),
-                lightning_done: false,
-                shot_at_angle: false,
-                attached_target: None,
             },
         );
         self.entities_mut().enter_world(entity.entity_id);
-        if let Some(shulker) = self
+        if let Some(mut shulker) = self
             .entities
             .at_mut(entity.entity_id)
             .filter(|entity| entity.is_shulker())
         {
             // `Shulker.recreateFromPacket`: the body faces south; `snapTo`
             // holds it to the middle of its block.
-            shulker.y_body_rot = JavaF32::new(0.0_f32);
-            shulker.old_y_body_rot = JavaF32::new(0.0_f32);
-            let (position, (y_rot, x_rot, _)) = (shulker.position(), shulker.rotation());
+            shulker.rotation.y_body_rot = JavaF32::new(0.0_f32);
+            shulker.rotation.old_y_body_rot = JavaF32::new(0.0_f32);
+            let (position, (y_rot, x_rot, _)) = (shulker.position(), shulker.as_view().rotation());
             shulker.snap_to(position, y_rot, x_rot);
         }
-        if let Some(warden) = self
+        if let Some(mut warden) = self
             .entities
             .at_mut(entity.entity_id)
             .filter(|entity| entity.is_warden())
@@ -401,18 +400,19 @@ impl Entities {
         self.sections.len()
     }
 
-    pub fn at(&self, entity_id: EntityId) -> Option<&ClientEntity> {
+    pub fn at(&self, entity_id: EntityId) -> Option<EntityView<'_>> {
         self.get(&entity_id)
     }
 
     pub fn metadata(&self, entity_id: EntityId) -> Option<&[u8]> {
-        self.get(&entity_id).and_then(|entity| entity.metadata())
+        self.get(&entity_id)
+            .and_then(|entity| entity.entity.metadata())
     }
 
     /// A new entity takes its place in its section; an item frame or a painting first moves to the
     /// centre of its box (`HangingEntity.recalculateBoundingBox`).
     pub(crate) fn enter_world(&mut self, entity_id: EntityId) {
-        let Some(entity) = self.at_mut(entity_id) else {
+        let Some(mut entity) = self.at_mut(entity_id) else {
             return;
         };
         entity.recentre_hanging();

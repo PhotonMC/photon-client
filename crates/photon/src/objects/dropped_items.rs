@@ -12,6 +12,7 @@ use photon_render::objects::item::{
     seed_for_stack,
 };
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::particles::{ItemPickup, PickedUp};
 
 use crate::equipment::item_layers::{GlintFrame, ItemLayerCache};
@@ -163,7 +164,7 @@ fn picked_up_items(
 
 /// A dropped item as the holder of its stack (`ItemEntity.getVisualRotationYInDegrees`): where
 /// its entity is and the heading its spin has, without the frame's partial tick.
-fn ground_owner(entity: &photon_world::ClientEntity) -> Owner {
+fn ground_owner(entity: EntityView<'_>) -> Owner {
     let spin = (entity.tick_count() as f32 + 0.5) / 20.0 + entity.bob_offset();
     let (x, y, z) = entity.position();
     Owner {

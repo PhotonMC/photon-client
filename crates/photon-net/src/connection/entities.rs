@@ -93,7 +93,7 @@ const ITEM_STACK_SERIALIZER_ID: i32 = photon_data::entity_type::serializer_named
 
 /// A dropped item, a thrown item, a firework rocket or an ominous item spawner keeps its stack in
 /// the same data.
-fn keeps_stack_in_item_data(entity: &photon_world::ClientEntity) -> bool {
+fn keeps_stack_in_item_data(entity: photon_world::EntityView<'_>) -> bool {
     let is = |name| photon_data::entity_type::id(name) == Some(entity.type_id);
     is("minecraft:item")
         || is("minecraft:ominous_item_spawner")

@@ -1,12 +1,13 @@
 use super::*;
 use photon_core::ids::EntityTypeId;
+use photon_world::EntityView;
 
 /// The model's `setupAnim` of the monster, and what its renderer adds to the
 /// pose (a swelling creeper's scale).
 pub(super) fn pose_monster(
     model: &mut MobModel,
     monster: &Monster,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     (look, snapshot, partial): (QuadrupedState, &EntitySnapshot, f32),
     placed: &mut MobPlacement,
 ) {
@@ -194,7 +195,7 @@ pub fn remote_monsters(
 /// missing body, or as the ghost a spectator sees.
 fn monster_drawn<'a>(
     ids: &[(EntityTypeId, &'a Monster)],
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
     spectating: bool,
 ) -> Option<&'a Monster> {
     ids.iter()
@@ -210,7 +211,7 @@ fn monster_drawn<'a>(
 fn creepy_shake(
     models: &mut MobModels,
     monster: &Monster,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Option<[f64; 2]> {
     (monster.pose == Pose::Enderman && entity.is_creepy()).then(|| {
         let spread = 0.02;
@@ -242,7 +243,7 @@ fn shows_when_invisible(pose: Pose) -> bool {
 /// `CreeperPowerLayer`: a charged creeper's swirl, the armor model posed as the creeper is.
 fn creeper_swirl(
     (models, textures): (&mut MobModels, &EntityTextures),
-    (pose, entity): (Pose, &ClientEntity),
+    (pose, entity): (Pose, EntityView<'_>),
     (look, placed, partial): (&QuadrupedState, &MobPlacement, f32),
 ) -> Vec<Vertex> {
     if pose != Pose::Creeper || !entity.is_powered() {
@@ -265,7 +266,7 @@ fn creeper_swirl(
 }
 
 /// `CarriedBlockLayer`: the block an enderman carries.
-fn carried_block(pose: Pose, entity: &ClientEntity, placed: &MobPlacement) -> Option<HeldItem> {
+fn carried_block(pose: Pose, entity: EntityView<'_>, placed: &MobPlacement) -> Option<HeldItem> {
     let state = entity
         .carried_block_state()
         .filter(|_| pose == Pose::Enderman)?;
@@ -275,6 +276,6 @@ fn carried_block(pose: Pose, entity: &ClientEntity, placed: &MobPlacement) -> Op
 
 /// Whether the local player sees an invisible entity as a ghost: a spectator does, and a
 /// teammate whose team sees its friendly invisibles.
-fn sees_ghost(world: &photon_world::ClientWorld, view: FrameView, entity: &ClientEntity) -> bool {
+fn sees_ghost(world: &photon_world::ClientWorld, view: FrameView, entity: EntityView<'_>) -> bool {
     view.spectating || world.entities().is_friendly_ghost(entity.id())
 }

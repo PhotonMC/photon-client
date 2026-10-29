@@ -17,7 +17,7 @@ use photon_render::objects::fishing::{
 use photon_render::objects::projectile::{fishing_hook_quad, sprite_quad_triangles};
 use photon_render::scene::Vertex;
 use photon_world::local_player::LocalPlayer;
-use photon_world::{ClientItemStackState, EquipmentSlot};
+use photon_world::{ClientItemStackState, EntityView, EquipmentSlot};
 
 use crate::overlays::{FrameView, packed_light};
 use crate::view::{CameraType, eye_position};
@@ -74,7 +74,7 @@ pub fn casting_arms(
 }
 
 /// [`casting_arms`] of an entity.
-pub fn entity_casts(session: &PlaySession, entity: &photon_world::ClientEntity) -> [bool; 2] {
+pub fn entity_casts(session: &PlaySession, entity: EntityView<'_>) -> [bool; 2] {
     let rod = is_rod(entity.equipment(EquipmentSlot::MainHand));
     casting_arms(session, entity.id(), (entity.main_arm_is_left(), rod))
 }

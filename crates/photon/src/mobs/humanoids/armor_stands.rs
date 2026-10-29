@@ -7,6 +7,7 @@ use photon_render::entity::mob_model::{
 };
 use photon_render::entity::textures::EntityTextures;
 use photon_render::scene::Vertex;
+use photon_world::EntityView;
 use photon_world::EquipmentSlot;
 
 use crate::equipment::armor::{Armor, Worn};
@@ -96,7 +97,7 @@ pub fn remote_armor_stands(
 fn stand_armor(
     armor: &mut Armor,
     (worn, prefix): (Worn, &str),
-    (textures, entity): (&EntityTextures, &photon_world::ClientEntity),
+    (textures, entity): (&EntityTextures, EntityView<'_>),
     (state, placed): (&ArmorStandState, &MobPlacement),
 ) -> Vec<Vertex> {
     let triangles = armor.vertices(

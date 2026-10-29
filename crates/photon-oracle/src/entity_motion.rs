@@ -1,11 +1,12 @@
 use super::*;
+use photon_world::EntityView;
 
 mod ticks;
 pub(super) use ticks::*;
 
 pub(super) fn client_world_entity_player_interpolation_state(
     label: &str,
-    entity: &ClientEntity,
+    entity: EntityView<'_>,
 ) -> Value {
     let position = entity.position();
     let previous_position = entity.previous_position();
@@ -220,7 +221,10 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
     Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
-pub(super) fn client_world_entity_player_motion_state(label: &str, entity: &ClientEntity) -> Value {
+pub(super) fn client_world_entity_player_motion_state(
+    label: &str,
+    entity: EntityView<'_>,
+) -> Value {
     let position = entity.position();
     let previous_position = entity.previous_position();
     let motion = entity.motion();
@@ -321,7 +325,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
     Ok(json!({"entity_id": entity_id.0, "states": states}))
 }
 
-pub(super) fn client_world_entity_teleport_state(label: &str, entity: &ClientEntity) -> Value {
+pub(super) fn client_world_entity_teleport_state(label: &str, entity: EntityView<'_>) -> Value {
     let mut state = client_world_entity_player_interpolation_state(label, entity);
     state["motion"] = client_world_entity_tick_vector(entity.motion());
     state

@@ -70,22 +70,6 @@ impl ClientEntity {
         self.kind.ravager().cloned().unwrap_or_default()
     }
 
-    /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.
-    pub(crate) fn tick_panda(&mut self, thundering: bool) {
-        if photon_data::entity_type::name(self.type_id) != Some("minecraft:panda") {
-            return;
-        }
-        let holds_item = self.equipment[EquipmentSlot::MainHand as usize].is_some();
-        let around = crate::mobs::panda::PandaSurroundings {
-            thundering,
-            holds_item,
-        };
-        let panda = self.kind.panda_or_insert_with(Default::default);
-        if panda.tick(around) {
-            self.x_rot = JavaF32::new(0.0_f32);
-        }
-    }
-
     /// A fox's flags, variant and own client state (its head roll and crouch).
     pub fn fox(&self) -> &crate::mobs::fox::FoxState {
         &self.living.fox
@@ -132,6 +116,24 @@ impl ClientEntity {
             (0.55 - damage_ratio * 0.4) * pi
         } else {
             (std::f64::consts::PI / 5.0) as f32
+        }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Panda.tick` after `super.tick`; a sitting panda levels its pitch.
+    pub(crate) fn tick_panda(&mut self, thundering: bool) {
+        if photon_data::entity_type::name(self.type_id) != Some("minecraft:panda") {
+            return;
+        }
+        let holds_item = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let around = crate::mobs::panda::PandaSurroundings {
+            thundering,
+            holds_item,
+        };
+        let panda = self.kind.panda_or_insert_with(Default::default);
+        if panda.tick(around) {
+            self.rotation.x_rot = JavaF32::new(0.0_f32);
         }
     }
 }

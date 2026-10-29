@@ -12,7 +12,7 @@ pub(crate) struct SpawnerDisplayEntry {
     traits: SpawnedMobTraits,
     /// A trial spawner makes its mob once and keeps it while the block entity lives.
     trial: bool,
-    entity: ClientEntity,
+    entity: EntityParts,
 }
 
 impl ClientWorld {
@@ -104,7 +104,7 @@ impl ClientWorld {
         pos: Pos,
         type_name: &str,
         traits: SpawnedMobTraits,
-    ) -> Option<ClientEntity> {
+    ) -> Option<EntityParts> {
         let type_id = photon_data::entity_type::id(type_name)?;
         let id = EntityId(
             self.spawner_displays
@@ -126,7 +126,7 @@ impl ClientWorld {
             data: 0,
         });
         // Never in the level: the entity is taken out again, as `displayEntity` is not added.
-        let position = self.entities.at(id).map(ClientEntity::position);
+        let position = self.entities.at(id).map(|entity| entity.position());
         if let Some(position) = position {
             self.entities_mut().remove_from_section(id, position);
         }
@@ -134,18 +134,18 @@ impl ClientWorld {
         // `loadEntityRecursive`: the tag sets the mob up before it is shown.
         entity.baby = traits.baby && reads_is_baby(type_name);
         if let Some(size) = traits.cube_size.filter(|_| entity.is_cube_mob()) {
-            entity.set_cube_size(size);
+            entity.view_mut().set_cube_size(size);
         }
         Some(entity)
     }
 
     /// The mobs to draw: the entities the server sent and the ones spawners show.
-    pub fn drawn_mobs(&self) -> impl Iterator<Item = &ClientEntity> {
+    pub fn drawn_mobs(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.entities.drawn_with_invisible().chain(
             self.spawner_displays
                 .iter()
                 .filter(|shown| self.spawner_display_shows(shown))
-                .map(|shown| &shown.entity),
+                .map(|shown| shown.entity.view()),
         )
     }
 
@@ -171,11 +171,11 @@ impl ClientWorld {
     }
 
     /// The mob a spawner shows, by the id it was made with.
-    pub(crate) fn spawner_display_entity(&self, entity_id: EntityId) -> Option<&ClientEntity> {
+    pub(crate) fn spawner_display_entity(&self, entity_id: EntityId) -> Option<EntityView<'_>> {
         self.spawner_displays
             .iter()
             .find(|shown| shown.entity.id() == entity_id)
-            .map(|shown| &shown.entity)
+            .map(|shown| shown.entity.view())
     }
 
     /// The width and height of the mob the spawner at a place shows.

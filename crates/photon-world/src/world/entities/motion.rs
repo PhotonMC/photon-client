@@ -4,7 +4,7 @@ impl ClientWorld {
     /// Apply Java's `Entity.turn` deltas and notify a boat passenger's vehicle.
     pub fn turn_entity(&mut self, entity_id: EntityId, mouse_x: f64, mouse_y: f64) -> bool {
         let vehicle_id = self.entity_vehicle_id(entity_id);
-        if let Some(entity) = self.entities.at_mut(entity_id) {
+        if let Some(mut entity) = self.entities.at_mut(entity_id) {
             entity.turn(mouse_x, mouse_y);
         } else if let Some(player) = self
             .local_player
@@ -111,7 +111,7 @@ impl ClientWorld {
             },
             EntityPositionUpdateMode::Teleport,
         );
-        if applied && let Some(entity) = self.entities.at_mut(input.entity_id) {
+        if applied && let Some(mut entity) = self.entities.at_mut(input.entity_id) {
             entity.set_motion_if_finite(target_motion);
         }
         applied
@@ -142,7 +142,7 @@ impl ClientWorld {
         });
         let position;
         {
-            let entity = self
+            let mut entity = self
                 .entities
                 .at_mut(input.entity_id)
                 .expect("entity checked above");
@@ -152,7 +152,7 @@ impl ClientWorld {
             if entity.has_interpolation_handler() {
                 let target_position =
                     new_position.unwrap_or_else(|| entity.interpolation_position());
-                let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+                let (current_y_rot, current_x_rot) = entity.as_view().interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
                 entity.move_or_interpolate_to(target_position, target_y_rot, target_x_rot);
@@ -208,14 +208,14 @@ impl ClientWorld {
         target_rotation: Option<(f32, f32)>,
         mode: EntityPositionUpdateMode,
     ) -> bool {
-        let Some(previous_position) = self.entities.at(entity_id).map(ClientEntity::position)
+        let Some(previous_position) = self.entities.at(entity_id).map(|entity| entity.position())
         else {
             return false;
         };
         let authoritative = self.is_locally_authoritative(entity_id);
         let position;
         {
-            let entity = self
+            let mut entity = self
                 .entities
                 .at_mut(entity_id)
                 .expect("entity position was checked above");
@@ -226,7 +226,8 @@ impl ClientWorld {
                 }
             }
             if entity.has_interpolation_handler() {
-                let rotation = target_rotation.unwrap_or_else(|| entity.interpolation_rotation());
+                let rotation =
+                    target_rotation.unwrap_or_else(|| entity.as_view().interpolation_rotation());
                 let distance_position = match mode {
                     EntityPositionUpdateMode::PositionSync => entity.position(),
                     EntityPositionUpdateMode::Teleport => current_position,
@@ -261,7 +262,7 @@ impl ClientWorld {
     /// `handleMoveEntity` for a vehicle this client drives: only the packet base follows.
     fn keep_packet_base_only(&mut self, entity_id: EntityId, position: Option<(f64, f64, f64)>) {
         if let Some(position) = position
-            && let Some(entity) = self.entities.at_mut(entity_id)
+            && let Some(mut entity) = self.entities.at_mut(entity_id)
         {
             entity.set_packet_base(position);
         }
@@ -270,14 +271,14 @@ impl ClientWorld {
     /// `Entity.isLocalInstanceAuthoritative` of a vehicle: the local player steers it.
     fn is_locally_authoritative(&self, entity_id: EntityId) -> bool {
         self.entities.at(entity_id).is_some_and(|entity| {
-            self.boat_is_local_instance_authoritative(entity)
+            self.boat_is_local_instance_authoritative(entity.entity)
                 && vanilla_boat_max_passengers(entity.type_id).is_some()
-                || self.mount_kind_of(entity).is_some()
+                || self.mount_kind_of(entity.entity).is_some()
         })
     }
 
     pub fn apply_entity_ground_state(&mut self, entity_id: EntityId, on_ground: bool) -> bool {
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         entity.on_ground = on_ground;
@@ -287,13 +288,13 @@ impl ClientWorld {
 
     pub fn apply_entity_rotation(&mut self, input: EntityRotationInput) -> bool {
         {
-            let Some(entity) = self.entities.at_mut(input.entity_id) else {
+            let Some(mut entity) = self.entities.at_mut(input.entity_id) else {
                 return false;
             };
             if (entity.has_interpolation_handler())
                 && (input.y_rot.is_some() || input.x_rot.is_some())
             {
-                let (current_y_rot, current_x_rot) = entity.interpolation_rotation();
+                let (current_y_rot, current_x_rot) = entity.as_view().interpolation_rotation();
                 let y_rot = input.y_rot.map_or(current_y_rot, |y_rot| {
                     if input.relative_y_rot {
                         current_y_rot + y_rot
@@ -311,22 +312,22 @@ impl ClientWorld {
                 entity.move_or_interpolate_to(entity.interpolation_position(), y_rot, x_rot);
             } else {
                 if let Some(y_rot) = input.y_rot {
-                    let current = entity.y_rot.get();
+                    let current = entity.rotation.y_rot.get();
                     let value = if input.relative_y_rot {
                         current + y_rot
                     } else {
                         y_rot
                     };
-                    entity.y_rot = JavaF32::new(value % 360.0);
+                    entity.rotation.y_rot = JavaF32::new(value % 360.0);
                 }
                 if let Some(x_rot) = input.x_rot {
-                    let current = entity.x_rot.get();
+                    let current = entity.rotation.x_rot.get();
                     let value = if input.relative_x_rot {
                         current + x_rot
                     } else {
                         x_rot
                     };
-                    entity.x_rot = JavaF32::new((value % 360.0).clamp(-90.0, 90.0));
+                    entity.rotation.x_rot = JavaF32::new((value % 360.0).clamp(-90.0, 90.0));
                 }
             }
         }
@@ -356,7 +357,7 @@ impl ClientWorld {
 
 impl Entities {
     pub fn apply_motion(&mut self, input: EntityMotionInput) -> bool {
-        let Some(entity) = self.at_mut(input.entity_id) else {
+        let Some(mut entity) = self.at_mut(input.entity_id) else {
             return false;
         };
         if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
@@ -377,14 +378,14 @@ impl ClientWorld {
     /// Apply the three-tick head rotation interpolation target from a
     /// clientbound RotateHead packet to an entity in the client world.
     pub fn apply_entity_head_rotation(&mut self, entity_id: EntityId, y_head_rot: f32) -> bool {
-        let Some(entity) = self.entities.at_mut(entity_id) else {
+        let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         if entity.living_kind().is_some() {
             entity.head_rotation_target = JavaF32::new(y_head_rot);
             entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         } else {
-            entity.y_head_rot = JavaF32::new(y_head_rot);
+            entity.rotation.y_head_rot = JavaF32::new(y_head_rot);
         }
         if let Some(player) = self
             .local_player

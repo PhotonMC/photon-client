@@ -1,9 +1,7 @@
 use super::super::*;
+use photon_world::EntityView;
 
-pub(crate) fn bat_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn bat_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     described["resting"] = json!(entity.is_bat_resting());
     let (_, y, _) = entity.position();
     described["y"] = json!(format!("{:016x}", y.to_bits()));
@@ -22,10 +20,7 @@ pub(crate) fn bat_extra(
     Ok(())
 }
 
-pub(crate) fn breeze_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn breeze_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.breeze().copied().unwrap_or_default();
     let age = entity.tick_count() as f32;
     for (name, animation) in [
@@ -46,10 +41,7 @@ pub(crate) fn breeze_extra(
     Ok(())
 }
 
-pub(crate) fn sniffer_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn sniffer_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.sniffer().copied().unwrap_or_default();
     let age = entity.tick_count() as f32;
     for (name, animation) in [
@@ -70,10 +62,7 @@ pub(crate) fn sniffer_extra(
     Ok(())
 }
 
-pub(crate) fn armadillo_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn armadillo_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.armadillo().copied().unwrap_or_default();
     let age = entity.tick_count() as f32;
     for (name, animation) in [
@@ -94,10 +83,7 @@ pub(crate) fn armadillo_extra(
     Ok(())
 }
 
-pub(crate) fn creaking_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn creaking_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity
         .creaking()
         .cloned()
@@ -122,10 +108,7 @@ pub(crate) fn creaking_extra(
     Ok(())
 }
 
-pub(crate) fn warden_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn warden_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.warden().copied().unwrap_or_default();
     let age = entity.tick_count() as f32;
     for (name, animation) in [
@@ -150,10 +133,7 @@ pub(crate) fn warden_extra(
     Ok(())
 }
 
-pub(crate) fn parrot_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn parrot_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.parrot().copied().unwrap_or_default();
     described["variant"] = json!(entity.parrot_variant());
     let (_, motion_y, _) = entity.motion();
@@ -164,10 +144,7 @@ pub(crate) fn parrot_extra(
     Ok(())
 }
 
-pub(crate) fn allay_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn allay_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let state = entity.allay().copied().unwrap_or_default();
     described["dancing"] = json!(entity.is_allay_dancing());
     described["spinning"] = json!(state.is_spinning());
@@ -178,10 +155,7 @@ pub(crate) fn allay_extra(
     Ok(())
 }
 
-pub(crate) fn shulker_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn shulker_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let shulker = entity.shulker();
     described["face"] = json!(entity.shulker_attach_face());
     described["color"] = json!(entity.shulker_color().map_or(16, i32::from));
@@ -231,10 +205,7 @@ pub(crate) fn shulker_extra(
     Ok(())
 }
 
-pub(crate) fn cube_extra(
-    entity: &photon_world::ClientEntity,
-    described: &mut Value,
-) -> Result<(), String> {
+pub(crate) fn cube_extra(entity: EntityView<'_>, described: &mut Value) -> Result<(), String> {
     let cube = entity.cube_mob();
     described["size"] = json!(entity.cube_size());
     described["squish"] = json!(hex(cube.current_squish()));
@@ -262,7 +233,7 @@ pub(crate) fn cube_extra(
 }
 
 pub(crate) fn copper_golem_extra(
-    entity: &photon_world::ClientEntity,
+    entity: EntityView<'_>,
     described: &mut Value,
 ) -> Result<(), String> {
     let tick = entity.tick_count() as f32;

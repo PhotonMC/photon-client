@@ -1,6 +1,7 @@
 //! Where a frame is seen from (`Camera`): the camera's place, its field of view and what it is in.
 
 use super::*;
+use photon_world::EntityView;
 
 /// How far the player may be from the meshes' origin before it moves, in blocks.
 const ORIGIN_RANGE: f64 = 4096.0;
@@ -276,7 +277,7 @@ fn player_motion(
 /// player never walks the avatar's distance here (its position is set, not moved), so only its
 /// bob sways the view.
 fn camera_entity_motion(
-    entity: Option<&photon_world::ClientEntity>,
+    entity: Option<EntityView<'_>>,
     partial: f32,
     (view_bobbing, tilt_strength): (bool, f64),
 ) -> [[f32; 4]; 4] {

@@ -22,10 +22,9 @@ impl ClientWorld {
     }
 
     pub(crate) fn species_surroundings(&self, entity_id: EntityId) -> (bool, bool, bool) {
-        let sleeper_near_cat = self
-            .entities
-            .get(&entity_id)
-            .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity));
+        let sleeper_near_cat = self.entities.get(&entity_id).is_some_and(|entity| {
+            entity.is_lying_cat() && self.sleeping_player_near(entity.entity)
+        });
         (
             sleeper_near_cat,
             self.is_thundering(),
@@ -67,10 +66,10 @@ impl ClientWorld {
             .entities
             .values()
             .filter(|entity| entity.is_parrot() && entity.bounding_box().intersects(reach))
-            .map(ClientEntity::id)
+            .map(|entity| entity.id())
             .collect();
         for id in near {
-            if let Some(entity) = self.entities.at_mut(id) {
+            if let Some(mut entity) = self.entities.at_mut(id) {
                 entity.set_record_playing(jukebox, playing);
             }
         }
@@ -103,7 +102,7 @@ impl ClientWorld {
         let ids = self
             .entities
             .get(&entity_id)
-            .map_or([0; 2], ClientEntity::wither_targets);
+            .map_or([0; 2], |entity| entity.wither_targets());
         ids.map(|id| (id > 0).then(|| self.living_target(EntityId(id))).flatten())
     }
 }
@@ -121,7 +120,7 @@ impl Entities {
         };
         let current = dragon.ender_dragon().and_then(|own| own.nearest_crystal());
         let current_exists =
-            current.is_some_and(|id| self.get(&id).is_some_and(ClientEntity::is_end_crystal));
+            current.is_some_and(|id| self.get(&id).is_some_and(|entity| entity.is_end_crystal()));
         let (x, y, z) = dragon.position();
         let size = dragon.dimensions();
         let half = f64::from(size.width()) / 2.0 + 32.0;
