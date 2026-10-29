@@ -339,8 +339,10 @@ impl Play {
                     stage,
                     steps,
                 });
+                // `reloadResourcePacks` fades the overlay in unless it is the recovery.
+                let fade_in = !matches!(stage, Stage::Recovery);
                 self.gui
-                    .set_loading(Some(LoadingOverlay::new(false, false)));
+                    .set_loading(Some(LoadingOverlay::new(fade_in, false)));
             }
             Err(error) => self.answer_reload(stage, Err(error.to_string())),
         }
