@@ -179,7 +179,7 @@ impl ClientWorld {
     /// `ClientLevel.unload`: the chunk's column stops lighting at once.
     pub(crate) fn unload_chunk_light(&mut self, chunk_x: i32, chunk_z: i32) {
         let view = LightView {
-            chunks: &self.chunks,
+            chunks: self.entities.resource::<Chunks>(),
         };
         self.light
             .set_light_enabled(&view, (chunk_x, chunk_z), false);
@@ -252,7 +252,7 @@ impl ClientWorld {
     /// `LevelLightEngine.runLightUpdates`: the sections whose light changed.
     pub fn run_light_updates(&mut self) -> Vec<light::SectionKey> {
         let view = LightView {
-            chunks: &self.chunks,
+            chunks: self.entities.resource::<Chunks>(),
         };
         self.light.run_light_updates(&view)
     }
@@ -262,10 +262,10 @@ impl ClientWorld {
     /// is switched on and the sources spread. Not what the client does with
     /// a server's light; it measures the engine on its own.
     pub fn light_from_sources(&mut self) {
-        let chunks: Vec<(i32, i32)> = self.chunks.positions();
+        let chunks: Vec<(i32, i32)> = self.chunks().positions();
         for &(chunk_x, chunk_z) in &chunks {
             let filled: Vec<i32> = self
-                .chunks
+                .chunks()
                 .get_stored(chunk_x, chunk_z)
                 .map(|chunk| {
                     chunk
@@ -282,7 +282,7 @@ impl ClientWorld {
             }
         }
         let view = LightView {
-            chunks: &self.chunks,
+            chunks: self.entities.resource::<Chunks>(),
         };
         for &chunk in &chunks {
             self.light.set_light_enabled(&view, chunk, true);
@@ -319,7 +319,7 @@ impl ClientWorld {
             self.queue_layer_data(layer, input, (chunk_x, chunk_z), schedule_rebuild);
         }
         let view = LightView {
-            chunks: &self.chunks,
+            chunks: self.entities.resource::<Chunks>(),
         };
         self.light
             .set_light_enabled(&view, (chunk_x, chunk_z), true);
@@ -374,7 +374,7 @@ impl ClientWorld {
     /// as empty again.
     fn remove_light_column(&mut self, chunk_x: i32, chunk_z: i32) {
         let view = LightView {
-            chunks: &self.chunks,
+            chunks: self.entities.resource::<Chunks>(),
         };
         self.light
             .set_light_enabled(&view, (chunk_x, chunk_z), false);

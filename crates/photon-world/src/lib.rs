@@ -114,7 +114,6 @@ pub struct ClientWorld {
     stonecutter: Arc<Vec<StonecutterEntry>>,
     /// The recipe book the server keeps the client in step with.
     recipe_book: RecipeBook,
-    chunks: Chunks,
     /// The client level's light engine and the light tasks waiting for a
     /// frame, as `ClientLevel.queueLightUpdate` keeps them.
     light: light::LevelLightEngine,

@@ -338,7 +338,7 @@ impl ClientWorld {
     /// `AbstractSkullBlock.getTicker`: the powered dragon and piglin heads count their ticks.
     pub(crate) fn tick_skulls(&mut self) {
         let mut animated = Vec::new();
-        for chunk in self.chunks.values() {
+        for chunk in self.chunks().values() {
             for &pos in &chunk.chests {
                 let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
                     continue;

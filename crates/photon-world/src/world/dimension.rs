@@ -15,6 +15,14 @@ impl ClientWorld {
         self.entities.resource_mut()
     }
 
+    pub(crate) fn chunks(&self) -> &Chunks {
+        self.entities.resource()
+    }
+
+    pub(crate) fn chunks_mut(&mut self) -> &mut Chunks {
+        self.entities.resource_mut()
+    }
+
     pub(crate) fn weather(&self) -> &Weather {
         self.entities.resource()
     }
@@ -33,11 +41,14 @@ impl ClientWorld {
             ),
             stonecutter: Arc::default(),
             recipe_book: RecipeBook::default(),
-            chunks: Chunks::default(),
             light: new_light_engine(dimension, true),
             light_tasks: VecDeque::new(),
             light_dirty: Vec::new(),
-            entities: Entities::with_resources(Level::new(dimension), Weather::default()),
+            entities: Entities::with_resources(
+                Level::new(dimension),
+                Weather::default(),
+                Chunks::default(),
+            ),
             maps: BTreeMap::new(),
             local_player: None,
             sounds: local_player::SoundQueue::default(),
@@ -133,8 +144,8 @@ impl ClientWorld {
         self.level_mut().sea_level = input.sea_level;
         self.level_mut().dimension_environment = environment;
         if changed {
-            let server_view_radius = self.chunks.cache().map(|cache| cache.server_view_radius);
-            self.chunks.reset(server_view_radius);
+            let server_view_radius = self.chunks().cache().map(|cache| cache.server_view_radius);
+            self.chunks_mut().reset(server_view_radius);
             self.entities.clear();
             self.maps.clear();
             if let Some(player) = self.local_player.as_mut() {

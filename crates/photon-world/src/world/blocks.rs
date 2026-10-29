@@ -3,7 +3,7 @@ use photon_core::ids::BlockStateId;
 
 impl ClientWorld {
     pub fn loaded_block_entity_count(&self) -> usize {
-        self.chunks
+        self.chunks()
             .values()
             .map(|chunk| chunk.block_entities.len())
             .sum()
@@ -61,7 +61,7 @@ impl ClientWorld {
     /// Apply a server-verified block-state update to an already loaded section.
     pub fn update_block_state(&mut self, x: i32, y: i32, z: i32, state_id: BlockStateId) -> bool {
         let chunk_key = (x.div_euclid(16), z.div_euclid(16));
-        let Some(chunk) = self.chunks.get_mut(chunk_key.0, chunk_key.1) else {
+        let Some(chunk) = self.entities.chunks_mut().get_mut(chunk_key.0, chunk_key.1) else {
             return false;
         };
         let section_y = y.div_euclid(16);
@@ -252,7 +252,7 @@ impl ClientWorld {
     /// How many bytes the loaded chunks' block states take, and how many
     /// they would take stored as a number for every block.
     pub fn block_state_bytes(&self) -> (usize, usize) {
-        self.chunks
+        self.chunks()
             .values()
             .flat_map(|chunk| chunk.sections.values())
             .fold((0, 0), |(stored, plain), section| {

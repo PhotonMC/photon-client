@@ -51,7 +51,7 @@ pub(crate) enum Replaced {
     Stored { evicted: Option<(i32, i32)> },
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, bevy_ecs::prelude::Resource)]
 pub(crate) struct Chunks {
     cache: Option<ChunkCache>,
     loose: BTreeMap<(i32, i32), ClientChunk>,

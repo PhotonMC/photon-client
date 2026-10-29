@@ -23,11 +23,17 @@ pub struct Entities {
 
 impl Entities {
     /// Entities with the level's resources already in their world.
-    pub(crate) fn with_resources(level: Level, weather: Weather) -> Self {
+    pub(crate) fn with_resources(level: Level, weather: Weather, chunks: Chunks) -> Self {
         let mut entities = Self::default();
         entities.ecs.insert_resource(level);
         entities.ecs.insert_resource(weather);
+        entities.ecs.insert_resource(chunks);
         entities
+    }
+
+    /// The chunks, borrowed alone so the rest of the world stays free to change beside them.
+    pub(crate) fn chunks_mut(&mut self) -> &mut Chunks {
+        self.resource_mut()
     }
 
     pub(crate) fn resource<R: bevy_ecs::prelude::Resource>(&self) -> &R {

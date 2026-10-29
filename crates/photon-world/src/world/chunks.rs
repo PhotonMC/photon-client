@@ -3,7 +3,7 @@ use crate::*;
 impl ClientWorld {
     /// Create the bounded chunk cache used by a Java client level.
     pub fn configure_chunk_cache(&mut self, server_view_radius: i32) {
-        self.chunks.reset(Some(server_view_radius));
+        self.chunks_mut().reset(Some(server_view_radius));
         self.light = new_light_engine(
             self.level().dimension,
             self.level().dimension_environment.has_skylight,
@@ -13,7 +13,7 @@ impl ClientWorld {
 
     /// Return the Java cache range and ring index for a chunk coordinate.
     pub fn chunk_cache_location(&self, chunk_x: i32, chunk_z: i32) -> Option<(bool, usize)> {
-        self.chunks.cache().map(|cache| {
+        self.chunks().cache().map(|cache| {
             (
                 cache.in_range(chunk_x, chunk_z),
                 cache.index(chunk_x, chunk_z),
@@ -23,7 +23,7 @@ impl ClientWorld {
 
     /// Move the Java client chunk-cache view center without evicting slots.
     pub fn update_chunk_cache_center(&mut self, chunk_x: i32, chunk_z: i32) {
-        if let Some(cache) = self.chunks.cache_mut() {
+        if let Some(cache) = self.chunks_mut().cache_mut() {
             cache.view_center_x = chunk_x;
             cache.view_center_z = chunk_z;
         }
@@ -31,7 +31,7 @@ impl ClientWorld {
 
     /// Resize the Java client chunk cache and retain chunks in the new range.
     pub fn update_chunk_cache_radius(&mut self, server_view_radius: i32) {
-        self.chunks.resize(server_view_radius);
+        self.chunks_mut().resize(server_view_radius);
     }
 
     /// Apply the cache's section-emptiness notification path.
@@ -42,28 +42,28 @@ impl ClientWorld {
         section_z: i32,
         empty: bool,
     ) {
-        if let Some(cache) = self.chunks.cache_mut() {
+        if let Some(cache) = self.chunks_mut().cache_mut() {
             cache.on_section_emptiness_changed(section_x, section_y, section_z, empty);
         }
     }
 
     /// Swap the Java cache's double-buffered update sets.
     pub fn flip_chunk_cache_update_sets(&mut self) {
-        if let Some(cache) = self.chunks.cache_mut() {
+        if let Some(cache) = self.chunks_mut().cache_mut() {
             cache.flip_update_tracking_sets();
         }
     }
 
     /// Snapshot the loaded chunks and cache update sets in deterministic order.
     pub fn client_chunk_cache_snapshot(&self) -> Option<ClientChunkCacheSnapshot> {
-        let cache = self.chunks.cache()?;
+        let cache = self.chunks().cache()?;
         let index = cache.updating_sets_index;
         Some(ClientChunkCacheSnapshot {
             storage_radius: cache.storage_radius,
             view_range: cache.view_range,
             view_center_x: cache.view_center_x,
             view_center_z: cache.view_center_z,
-            loaded_chunks: self.chunks.positions(),
+            loaded_chunks: self.chunks().positions(),
             added_empty_sections: cache.added_empty_sections[index].iter().copied().collect(),
             removed_empty_sections: cache.removed_empty_sections[index]
                 .iter()
@@ -75,15 +75,18 @@ impl ClientWorld {
     }
 
     pub fn loaded_chunk_count(&self) -> usize {
-        self.chunks.len()
+        self.chunks().len()
     }
 
     pub fn loaded_section_count(&self) -> usize {
-        self.chunks.values().map(|chunk| chunk.sections.len()).sum()
+        self.chunks()
+            .values()
+            .map(|chunk| chunk.sections.len())
+            .sum()
     }
 
     pub(crate) fn chunk_for_query(&self, chunk_x: i32, chunk_z: i32) -> Option<&ClientChunk> {
-        self.chunks.get(chunk_x, chunk_z)
+        self.chunks().get(chunk_x, chunk_z)
     }
 
     pub(crate) fn chunk_for_update(
@@ -91,7 +94,7 @@ impl ClientWorld {
         chunk_x: i32,
         chunk_z: i32,
     ) -> Option<&mut ClientChunk> {
-        self.chunks.get_mut(chunk_x, chunk_z)
+        self.chunks_mut().get_mut(chunk_x, chunk_z)
     }
 
     pub fn contains_chunk(&self, chunk_x: i32, chunk_z: i32) -> bool {
@@ -102,7 +105,7 @@ impl ClientWorld {
     /// and its light is queued for removal either way.
     pub fn unload_chunk(&mut self, chunk_x: i32, chunk_z: i32) -> bool {
         self.queue_light_removal(chunk_x, chunk_z);
-        let removed = self.chunks.unload(chunk_x, chunk_z);
+        let removed = self.chunks_mut().unload(chunk_x, chunk_z);
         if removed {
             self.unload_chunk_light(chunk_x, chunk_z);
             self.entities.for_each_mut(|mut entity| {
@@ -203,7 +206,7 @@ impl ClientWorld {
             .collect::<Vec<_>>();
 
         match self
-            .chunks
+            .chunks_mut()
             .replace((chunk_x, chunk_z), new_chunk, new_section_statuses)
         {
             Replaced::OutOfRange => return false,
