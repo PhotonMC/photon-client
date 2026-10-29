@@ -22,7 +22,7 @@ impl ParticleEngine {
         random: &mut RandomSource,
         (context, sounds): (&mut LevelEventContext<'_, F>, &mut Vec<LocalSound>),
     ) -> bool {
-        if block.name != "minecraft:potent_sulfur" {
+        if block.index() != photon_data::block::ids::POTENT_SULFUR {
             return false;
         }
         let above = (pos.0, pos.1 + 1, pos.2);

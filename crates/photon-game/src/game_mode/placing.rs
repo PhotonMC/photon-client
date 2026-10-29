@@ -81,10 +81,7 @@ fn consume_placed(
     }
     let slot = ctx.hand_slot(hand);
     ctx.world.shrink_local_player_slot(slot, 1);
-    if let Some(bucket) = solid_bucket
-        .then(|| crate::item::id_of("minecraft:bucket"))
-        .flatten()
-    {
+    if let Some(bucket) = solid_bucket.then_some(photon_data::item::ids::BUCKET) {
         ctx.world
             .put_local_player_slot(slot, ClientItemStackState::new(1, bucket));
     }
@@ -141,7 +138,9 @@ pub(super) fn redstone_wire_use(
     state: photon_core::ids::BlockStateId,
     pos: (i32, i32, i32),
 ) -> Option<rules::HandUse> {
-    if photon_world::block::state_or_air(state).block().name != "minecraft:redstone_wire" {
+    if photon_world::block::state_or_air(state).block().index()
+        != photon_data::block::ids::REDSTONE_WIRE
+    {
         return None;
     }
     let world: &ClientWorld = ctx.world;

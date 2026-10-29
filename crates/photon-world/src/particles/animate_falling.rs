@@ -109,7 +109,7 @@ impl ParticleEngine {
         }
         let above = crate::block::state_or_air(state_at(world, (x, y + 1, z)));
         if sand
-            && above.block().name == "minecraft:air"
+            && above.block().index() == photon_data::block::ids::AIR
             && random.next_int_bound(2100) == Ok(0)
             && plays_sand_sound(world, (x, y, z))
         {

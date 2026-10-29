@@ -182,6 +182,19 @@ impl Block {
     }
 }
 
+/// A block's place in the registry, resolved while compiling: a name the registry lacks stops
+/// the build.
+pub const fn index_named(name: &str) -> usize {
+    let mut index = 0;
+    while index < BLOCKS.len() {
+        if crate::name::same(BLOCKS[index].name, name) {
+            return index;
+        }
+        index += 1;
+    }
+    panic!("the block registry has no such name");
+}
+
 /// The default state of the block with this name, worked out while compiling by the same
 /// numbering the registry uses: a name the registry lacks stops the build.
 pub const fn default_state_named(name: &str) -> BlockStateId {

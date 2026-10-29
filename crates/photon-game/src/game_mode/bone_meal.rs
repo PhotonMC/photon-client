@@ -73,7 +73,7 @@ fn growing_plant_target(
     Some(if into_air {
         is_air(grow)
     } else {
-        block(grow).name == "minecraft:water"
+        block(grow).index() == photon_data::block::ids::WATER
     })
 }
 
@@ -137,7 +137,8 @@ fn netherrack_target(ctx: &Context<'_>, pos: (i32, i32, i32), above: BlockStateI
 /// `BambooStalkBlock.isValidBonemealTarget`: the stalk is under sixteen blocks tall, its top is
 /// not at the last stage, and the block above the top is empty.
 fn bamboo_target(ctx: &Context<'_>, pos: (i32, i32, i32)) -> bool {
-    let is_bamboo = |y: i32| block(ctx.state_at((pos.0, y, pos.2))).name == "minecraft:bamboo";
+    let is_bamboo =
+        |y: i32| block(ctx.state_at((pos.0, y, pos.2))).index() == photon_data::block::ids::BAMBOO;
     let above = (1..=16).take_while(|step| is_bamboo(pos.1 + step)).count() as i32;
     let below = (1..=16).take_while(|step| is_bamboo(pos.1 - step)).count() as i32;
     let top = ctx.state_at((pos.0, pos.1 + above, pos.2));
@@ -241,7 +242,7 @@ fn column_target(
         "big_dripleaf" => Some(room((pos.0, pos.1 + 1, pos.2))),
         "big_dripleaf_stem" => {
             let head = walk("big_dripleaf_stem", 1);
-            let leaf = block(ctx.state_at(head)).name == "minecraft:big_dripleaf";
+            let leaf = block(ctx.state_at(head)).index() == photon_data::block::ids::BIG_DRIPLEAF;
             Some(leaf && room((head.0, head.1 + 1, head.2)))
         }
         "pale_hanging_moss" => Some(is_air(ctx.state_at(walk("pale_hanging_moss", -1)))),
@@ -255,7 +256,8 @@ fn column_target(
 /// air or a pitcher crop above.
 fn pitcher_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) -> bool {
     let is_lower = |state: BlockStateId| {
-        block(state).name == "minecraft:pitcher_crop" && property(state, "half") == Some("lower")
+        block(state).index() == photon_data::block::ids::PITCHER_CROP
+            && property(state, "half") == Some("lower")
     };
     let lower = if is_lower(state) {
         pos
@@ -272,7 +274,9 @@ fn pitcher_target(ctx: &Context<'_>, state: BlockStateId, pos: (i32, i32, i32)) 
     age < 4
         && ctx.world.max_local_raw_brightness(lower, 0) >= 8
         && lower.1 + 1 < dimension.min_y + dimension.height
-        && (age + 1 < 3 || is_air(above) || block(above).name == "minecraft:pitcher_crop")
+        && (age + 1 < 3
+            || is_air(above)
+            || block(above).index() == photon_data::block::ids::PITCHER_CROP)
 }
 
 /// The targets decided by the blocks above and below, or by nothing at all.
@@ -284,15 +288,15 @@ fn surroundings_target(
     match name {
         "grass_block" | "bamboo_sapling" | "crimson_nylium" | "warped_nylium" | "moss_block"
         | "pale_moss_block" => Some(is_air(above)),
-        "seagrass" => Some(block(above).name == "minecraft:water"),
+        "seagrass" => Some(block(above).index() == photon_data::block::ids::WATER),
         "sea_pickle" => Some(
             property(state, "waterlogged") == Some("true")
                 && block(below).name.ends_with("_coral_block")
                 && !block(below).name.starts_with("minecraft:dead_"),
         ),
         "rooted_dirt" | "mangrove_leaves" => Some(is_air(below)),
-        "crimson_fungus" => Some(block(below).name == "minecraft:crimson_nylium"),
-        "warped_fungus" => Some(block(below).name == "minecraft:warped_nylium"),
+        "crimson_fungus" => Some(block(below).index() == photon_data::block::ids::CRIMSON_NYLIUM),
+        "warped_fungus" => Some(block(below).index() == photon_data::block::ids::WARPED_NYLIUM),
         n => fixed_target(n),
     }
 }
@@ -324,7 +328,7 @@ pub(super) fn use_on(ctx: &Context<'_>, aim: Aim) -> Option<UseResult> {
     let beside = ctx.state_at((x + dx, y + dy, z + dz));
     let sturdy = photon_world::block::state(clicked).is_some_and(|info| info.is_face_sturdy(face));
     // `FluidState.isFull`: a source, or the falling flow `LiquidBlock` gives levels from eight up.
-    let source = block(beside).name == "minecraft:water"
+    let source = block(beside).index() == photon_data::block::ids::WATER
         && property(beside, "level")
             .and_then(|level| level.parse::<u8>().ok())
             .is_some_and(|level| level == 0 || level >= 8);

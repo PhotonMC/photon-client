@@ -73,7 +73,8 @@ fn campfire(default: BlockStateId, ctx: &PlaceContext<'_>) -> Option<BlockStateI
     let pos = ctx.clicked_pos();
     let in_water = is_water_source(ctx.state(pos));
     let below = ctx.state((pos.0, pos.1 - 1, pos.2));
-    let on_hay = block(below).is_some_and(|block| block.name == "minecraft:hay_block");
+    let on_hay =
+        block(below).is_some_and(|block| block.index() == photon_data::block::ids::HAY_BLOCK);
     with_property(default, "waterlogged", flag(in_water))
         .and_then(|state| with_property(state, "signal_fire", flag(on_hay)))
         .and_then(|state| with_property(state, "lit", flag(!in_water)))

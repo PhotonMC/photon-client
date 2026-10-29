@@ -182,12 +182,12 @@ pub(super) fn carpet_survives(
     if property(state, "bottom") == Some("true") {
         return !is_air(under);
     }
-    block(under).is_some_and(|b| b.name == "minecraft:pale_moss_carpet")
+    block(under).is_some_and(|b| b.index() == photon_data::block::ids::PALE_MOSS_CARPET)
         && property(under, "bottom") == Some("true")
 }
 
 fn is_carpet(state: BlockStateId) -> bool {
-    block(state).is_some_and(|b| b.name == "minecraft:pale_moss_carpet")
+    block(state).is_some_and(|b| b.index() == photon_data::block::ids::PALE_MOSS_CARPET)
 }
 
 /// One side of `MossyCarpetBlock.getUpdatedState`.

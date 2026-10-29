@@ -411,7 +411,9 @@ fn eyeblossom<F: FnMut() -> RandomSource>(
     random: &mut RandomSource,
     context: &mut LevelEventContext<'_, F>,
 ) -> Option<LocalSound> {
-    if block.name != "minecraft:open_eyeblossom" || random.next_int_bound(700) != Ok(0) {
+    if block.index() != photon_data::block::ids::OPEN_EYEBLOSSOM
+        || random.next_int_bound(700) != Ok(0)
+    {
         return None;
     }
     let below = state_at(context.world, (px, py - 1, pz));

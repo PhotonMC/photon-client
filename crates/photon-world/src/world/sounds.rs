@@ -202,7 +202,7 @@ impl ClientWorld {
         let Some(state) = self.block_state_at(pos.0, pos.1, pos.2) else {
             return false;
         };
-        if block::state_or_air(state).block().name != "minecraft:note_block" {
+        if block::state_or_air(state).block().index() != photon_data::block::ids::NOTE_BLOCK {
             return false;
         }
         let Some(sound) = block::rules::property(state, "instrument").and_then(note_block_sound)
@@ -452,7 +452,7 @@ impl LevelEvent {
             return None;
         };
         let state = BlockStateId(data);
-        if block::state_or_air(state).block().name == "minecraft:air" {
+        if block::state_or_air(state).block().index() == photon_data::block::ids::AIR {
             return None;
         }
         block_sound_of(

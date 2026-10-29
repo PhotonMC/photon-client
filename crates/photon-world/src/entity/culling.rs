@@ -173,7 +173,6 @@ impl ClientEntity {
 
     fn wears_dragon_head(&self) -> bool {
         self.equipment(EquipmentSlot::Head)
-            .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
-            .is_some_and(|item| item.name == "minecraft:dragon_head")
+            .is_some_and(|stack| stack.item_registry_id() == photon_data::item::ids::DRAGON_HEAD)
     }
 }

@@ -270,7 +270,7 @@ impl ParticleEngine {
             } else {
                 self.particle_in_block(at, count, context);
             }
-        } else if block.name == "minecraft:water" {
+        } else if block.index() == photon_data::block::ids::WATER {
             self.happy_villagers(pos, count.wrapping_mul(3), cloud, context);
         }
         let center = (

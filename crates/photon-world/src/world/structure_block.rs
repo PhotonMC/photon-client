@@ -7,7 +7,9 @@ impl ClientWorld {
     /// its entity (`StructureBlockEntity`); the tag itself is `None` while the entity has no data.
     pub fn structure_block_view(&self, pos: (i32, i32, i32)) -> Option<Option<&[u8]>> {
         let state = self.block_state_at(pos.0, pos.1, pos.2)?;
-        if crate::block::state_or_air(state).block().name != "minecraft:structure_block" {
+        if crate::block::state_or_air(state).block().index()
+            != photon_data::block::ids::STRUCTURE_BLOCK
+        {
             return None;
         }
         let entity = self.block_entity_at(pos.0, pos.1, pos.2)?;

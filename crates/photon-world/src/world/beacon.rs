@@ -124,7 +124,8 @@ impl ClientWorld {
             return true;
         }
         let info = block::state_or_air(state);
-        let stops = info.light_dampening >= 15 && info.block().name != "minecraft:bedrock";
+        let stops =
+            info.light_dampening >= 15 && info.block().index() != photon_data::block::ids::BEDROCK;
         match beacon.checking.last_mut() {
             Some(last) if !stops => {
                 last.height += 1;
