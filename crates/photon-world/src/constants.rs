@@ -394,7 +394,8 @@ pub(crate) const ENTITY_DATA_SERIALIZER_PARTICLE_ID: i32 = 16;
 pub(crate) const ENTITY_DATA_SERIALIZER_PARTICLES_ID: i32 = 17;
 pub(crate) const ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID: i32 = 19;
 pub(crate) const ENTITY_DATA_SERIALIZER_POSE_ID: i32 = 20;
-pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 = 28;
+pub(crate) const ENTITY_EFFECT_PARTICLE_TYPE_ID: i32 =
+    photon_data::particle_type::named("entity_effect");
 /// Where an area effect cloud's radius (a float), waiting flag (a boolean) and particle sit among
 /// its data.
 pub(crate) const AREA_EFFECT_CLOUD_RADIUS_DATA_ID: u8 = 8;

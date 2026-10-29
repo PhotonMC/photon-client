@@ -117,7 +117,10 @@ fn spawner_state_decodes_java_update_tag_and_defaults() {
     assert_eq!(state.spawn_range(), 4);
 
     let non_spawner = world.block_entity_at(1, -63, 2).unwrap();
-    assert_eq!(non_spawner.type_id, 9);
+    assert_eq!(
+        non_spawner.type_id,
+        photon_data::block_entity_type::id("minecraft:mob_spawner").unwrap()
+    );
 }
 
 #[test]

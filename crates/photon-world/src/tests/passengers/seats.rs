@@ -347,7 +347,7 @@ fn passenger_tick_positions_generic_entity_vehicle_attachment() {
     for (passenger_id, passenger_type_id, expected_y) in [
         (38, ty("minecraft:item"), 2.1875_f64),
         (39, ty("minecraft:zombie"), 2.1875_f64),
-        (40, 124, 1.875_f64),
+        (40, ty("minecraft:spider"), 1.875_f64),
     ] {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);

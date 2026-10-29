@@ -199,6 +199,19 @@ pub fn id(name: &str) -> Option<i32> {
         .map(|index| index as i32)
 }
 
+/// The id of the type with this name, resolved while compiling: a name the registry lacks
+/// stops the build.
+pub const fn named(name: &str) -> i32 {
+    let mut index = 0;
+    while index < PARTICLE_TYPES.len() {
+        if crate::name::same(PARTICLE_TYPES[index].name, name) {
+            return index as i32;
+        }
+        index += 1;
+    }
+    panic!("the particle registry has no such name");
+}
+
 /// Whether the type ignores the particle limiter (`ParticleType.getOverrideLimiter`).
 pub fn overrides_limiter(id: i32) -> bool {
     usize::try_from(id)
