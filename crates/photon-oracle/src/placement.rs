@@ -7,7 +7,9 @@ use photon_world::block::tags::BlockTags;
 /// case never lists one.
 pub(super) fn placement_rules(request: &Value) -> Result<Value, String> {
     let packet = vanilla_block_tags()?;
-    let tags = BlockTags::from_registries(&packet.registries).ok_or("no block tags")?;
+    let tags =
+        BlockTags::from_registries(&packet.registries, &crate::case_ids::registries().blocks)
+            .ok_or("no block tags")?;
     let rows = request["rows"].as_array().ok_or("rows must be an array")?;
     let rows: Result<Vec<Value>, String> =
         rows.iter().map(|row| placement_row(row, &tags)).collect();

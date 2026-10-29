@@ -89,7 +89,7 @@ impl ClientWorld {
         packet: &photon_core::tags::ClientboundUpdateTagsPacket,
     ) {
         self.block_state_registry
-            .apply_update_tags(&packet.registries);
+            .apply_update_tags(&packet.registries, &self.versions);
     }
 
     pub fn replace_dimension_with_environment(

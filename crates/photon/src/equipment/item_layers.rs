@@ -453,10 +453,14 @@ mod special_foil_tests {
 
     fn tags_with_compasses(items: Vec<i32>) -> photon_world::block::tags::ItemTags {
         let id = |text: &str| Identifier::parse(text).expect("an identifier");
-        photon_world::block::tags::ItemTags::from_registries(&[RegistryTags::new(
-            id("minecraft:item"),
-            vec![TagEntry::new(id("minecraft:compasses"), items)],
-        )])
+        let gapless = photon_data::version_registries::VersionRegistries::without_gaps();
+        photon_world::block::tags::ItemTags::from_registries(
+            &[RegistryTags::new(
+                id("minecraft:item"),
+                vec![TagEntry::new(id("minecraft:compasses"), items)],
+            )],
+            &gapless.items,
+        )
         .expect("the item registry")
     }
 

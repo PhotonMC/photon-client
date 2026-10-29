@@ -121,8 +121,11 @@ pub(super) fn block_declarations(label: &str) -> Value {
 /// The vanilla data pack's block tags, which is what the oracle's registry
 /// holds.
 pub(super) fn vanilla_tags() -> Result<photon_world::block::tags::BlockTags, String> {
-    photon_world::block::tags::BlockTags::from_registries(&vanilla_block_tags()?.registries)
-        .ok_or_else(|| "the vanilla tags have no block registry".to_owned())
+    photon_world::block::tags::BlockTags::from_registries(
+        &vanilla_block_tags()?.registries,
+        &crate::case_ids::registries().blocks,
+    )
+    .ok_or_else(|| "the vanilla tags have no block registry".to_owned())
 }
 
 /// `face_occlusion`: the state cache's faces and skip rules, numbered and

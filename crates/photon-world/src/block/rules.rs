@@ -490,10 +490,14 @@ mod tests {
             .iter()
             .map(|name| registry::block_index(name).expect("a block") as i32)
             .collect();
-        BlockTags::from_registries(&[RegistryTags::new(
-            id("minecraft:block"),
-            vec![TagEntry::new(id("minecraft:snow"), members)],
-        )])
+        let gapless = photon_data::version_registries::VersionRegistries::without_gaps();
+        BlockTags::from_registries(
+            &[RegistryTags::new(
+                id("minecraft:block"),
+                vec![TagEntry::new(id("minecraft:snow"), members)],
+            )],
+            &gapless.blocks,
+        )
         .expect("the block registry")
     }
 

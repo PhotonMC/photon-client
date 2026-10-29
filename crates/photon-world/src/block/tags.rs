@@ -5,6 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use photon_core::tags::RegistryTags;
+use photon_data::version_registries::IdMap;
 
 /// Each block tag, by id without the leading `#`, as block registry indices.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -13,7 +14,10 @@ pub struct BlockTags(BTreeMap<String, BTreeSet<usize>>);
 impl BlockTags {
     /// The block registry's tags from a tag packet; `None` when the packet
     /// does not update the block registry.
-    pub fn from_registries(registries: &[RegistryTags]) -> Option<Self> {
+    ///
+    /// The members arrive as the connected version's block ids; `numbering` turns them into the
+    /// canonical indices the client uses.
+    pub fn from_registries(registries: &[RegistryTags], numbering: &IdMap) -> Option<Self> {
         let blocks = registries
             .iter()
             .find(|registry| registry.registry.as_string() == "minecraft:block")?;
@@ -26,6 +30,7 @@ impl BlockTags {
                         .values
                         .iter()
                         .filter_map(|value| usize::try_from(*value).ok())
+                        .map(|wire| numbering.canonical_or_unknown(wire as i32) as usize)
                         .collect();
                     (tag.id.as_string(), members)
                 })
@@ -62,13 +67,18 @@ pub struct ItemTags(BTreeMap<String, BTreeSet<i32>>);
 impl ItemTags {
     /// The item registry's tags from a tag packet; `None` when the packet
     /// does not update the item registry.
-    pub fn from_registries(registries: &[RegistryTags]) -> Option<Self> {
-        Self::of_registry(registries, "minecraft:item")
+    pub fn from_registries(registries: &[RegistryTags], items: &IdMap) -> Option<Self> {
+        Self::of_registry(registries, "minecraft:item", Some(items))
     }
 
-    /// The tags of another registry (`minecraft:banner_pattern`), as registry
-    /// ids, read the same way.
-    pub fn of_registry(registries: &[RegistryTags], name: &str) -> Option<Self> {
+    /// The tags of another registry (`minecraft:entity_type`), as registry ids, read the same
+    /// way. A registry the client numbers itself gives its map, which turns the connected
+    /// version's ids into canonical ones; one it does not (the fluids) keeps the ids as sent.
+    pub fn of_registry(
+        registries: &[RegistryTags],
+        name: &str,
+        numbering: Option<&IdMap>,
+    ) -> Option<Self> {
         let items = registries
             .iter()
             .find(|registry| registry.registry.as_string() == name)?;
@@ -76,7 +86,14 @@ impl ItemTags {
             items
                 .tags
                 .iter()
-                .map(|tag| (tag.id.as_string(), tag.values.iter().copied().collect()))
+                .map(|tag| {
+                    let members = tag
+                        .values
+                        .iter()
+                        .map(|wire| numbering.map_or(*wire, |map| map.canonical_or_unknown(*wire)))
+                        .collect();
+                    (tag.id.as_string(), members)
+                })
                 .collect(),
         ))
     }

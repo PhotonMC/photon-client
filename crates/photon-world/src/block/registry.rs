@@ -98,11 +98,15 @@ impl ClientBlockStateRegistry {
         &self.tags
     }
 
-    pub(crate) fn apply_update_tags(&mut self, registries: &[photon_core::tags::RegistryTags]) {
-        if let Some(tags) = BlockTags::from_registries(registries) {
+    pub(crate) fn apply_update_tags(
+        &mut self,
+        registries: &[photon_core::tags::RegistryTags],
+        versions: &photon_data::version_registries::VersionRegistries,
+    ) {
+        if let Some(tags) = BlockTags::from_registries(registries, &versions.blocks) {
             self.tags = Arc::new(tags);
         }
-        if let Some(tags) = ItemTags::from_registries(registries) {
+        if let Some(tags) = ItemTags::from_registries(registries, &versions.items) {
             self.item_tags = Arc::new(tags);
         }
         if let Some(tags) =
@@ -110,10 +114,14 @@ impl ClientBlockStateRegistry {
         {
             self.banner_pattern_tags = Arc::new(tags);
         }
-        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:entity_type") {
+        if let Some(tags) = ItemTags::of_registry(
+            registries,
+            "minecraft:entity_type",
+            Some(&versions.entity_types),
+        ) {
             self.entity_type_tags = Arc::new(tags);
         }
-        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:fluid") {
+        if let Some(tags) = ItemTags::of_registry(registries, "minecraft:fluid", None) {
             self.fluid_tags = Arc::new(tags);
         }
     }

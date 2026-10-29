@@ -453,11 +453,16 @@ pub(super) fn vanilla_fluid_tags() -> Result<ClientboundUpdateTagsPacket, String
 pub(super) fn vanilla_block_and_item_tags() -> Result<ClientboundUpdateTagsPacket, String> {
     let mut packet = vanilla_block_tags()?;
     let items = vanilla_tags_of("item", "minecraft:item", &|name| {
-        photon_game::item::id_of(name).map(|id| id.0)
+        photon_game::item::id_of(name)
+            .map(|id| crate::case_ids::registries().items.wire_or_unknown(id.0))
     })?;
     packet.registries.extend(items.registries);
     let entities = vanilla_tags_of("entity_type", "minecraft:entity_type", &|name| {
-        photon_data::entity_type::id(name).map(|id| id.0)
+        photon_data::entity_type::id(name).map(|id| {
+            crate::case_ids::registries()
+                .entity_types
+                .wire_or_unknown(id.0)
+        })
     })?;
     packet.registries.extend(entities.registries);
     Ok(packet)
@@ -466,19 +471,31 @@ pub(super) fn vanilla_block_and_item_tags() -> Result<ClientboundUpdateTagsPacke
 /// The item tags of the data pack, as a tag packet would carry them.
 pub(super) fn vanilla_item_tags() -> Result<photon_world::block::tags::ItemTags, String> {
     let packet = vanilla_tags_of("item", "minecraft:item", &|name| {
-        photon_game::item::id_of(name).map(|id| id.0)
+        photon_game::item::id_of(name)
+            .map(|id| crate::case_ids::registries().items.wire_or_unknown(id.0))
     })?;
-    photon_world::block::tags::ItemTags::from_registries(&packet.registries)
-        .ok_or_else(|| "no item tags".to_owned())
+    photon_world::block::tags::ItemTags::from_registries(
+        &packet.registries,
+        &crate::case_ids::registries().items,
+    )
+    .ok_or_else(|| "no item tags".to_owned())
 }
 
 /// The entity type tags of the data pack, as a tag packet would carry them.
 pub(super) fn vanilla_entity_type_tags() -> Result<photon_world::block::tags::ItemTags, String> {
     let packet = vanilla_tags_of("entity_type", "minecraft:entity_type", &|name| {
-        photon_data::entity_type::id(name).map(|id| id.0)
+        photon_data::entity_type::id(name).map(|id| {
+            crate::case_ids::registries()
+                .entity_types
+                .wire_or_unknown(id.0)
+        })
     })?;
-    photon_world::block::tags::ItemTags::of_registry(&packet.registries, "minecraft:entity_type")
-        .ok_or_else(|| "no entity type tags".to_owned())
+    photon_world::block::tags::ItemTags::of_registry(
+        &packet.registries,
+        "minecraft:entity_type",
+        Some(&crate::case_ids::registries().entity_types),
+    )
+    .ok_or_else(|| "no entity type tags".to_owned())
 }
 
 /// The creative search tab's tag search for what the box holds, over the

@@ -95,8 +95,12 @@ fn setting(row: &Value) -> Result<Setting, String> {
             .collect::<Result<_, _>>()?,
         survival: row["mode"] == "SURVIVAL",
         items: crate::vanilla::vanilla_item_tags()?,
-        blocks: ItemTags::of_registry(&blocks.registries, "minecraft:block")
-            .ok_or("no block tags")?,
+        blocks: ItemTags::of_registry(
+            &blocks.registries,
+            "minecraft:block",
+            Some(&crate::case_ids::registries().blocks),
+        )
+        .ok_or("no block tags")?,
     })
 }
 

@@ -102,6 +102,8 @@ impl IdMap {
 pub struct VersionRegistries {
     version: Version,
     pub items: IdMap,
+    /// The block registry, which tags name their blocks by.
+    pub blocks: IdMap,
     pub block_states: IdMap,
     pub entity_types: IdMap,
     pub sound_events: IdMap,
@@ -116,6 +118,7 @@ impl VersionRegistries {
         Self {
             version,
             items: IdMap::from_presence(ITEMS.iter().map(|item| item.exists_in(version))),
+            blocks: IdMap::from_presence(BLOCKS.iter().map(|block| block.exists_in(version))),
             block_states: IdMap::from_presence(BLOCKS.iter().flat_map(|block| {
                 std::iter::repeat_n(block.exists_in(version), block.state_count() as usize)
             })),
@@ -141,6 +144,7 @@ impl VersionRegistries {
         Self {
             version: real.version,
             items: dense(&real.items),
+            blocks: dense(&real.blocks),
             block_states: dense(&real.block_states),
             entity_types: dense(&real.entity_types),
             sound_events: dense(&real.sound_events),
@@ -172,9 +176,10 @@ impl VersionRegistries {
     }
 
     /// Every registry's name and map, for checks that cover them all.
-    pub fn all(&self) -> [(&'static str, &IdMap); 7] {
+    pub fn all(&self) -> [(&'static str, &IdMap); 8] {
         [
             ("items", &self.items),
+            ("blocks", &self.blocks),
             ("block_states", &self.block_states),
             ("entity_types", &self.entity_types),
             ("sound_events", &self.sound_events),
