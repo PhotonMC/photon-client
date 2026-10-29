@@ -92,7 +92,7 @@ fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     let partial = view.partial as f32;
     let mut out = Vec::new();
     for entity in world.entities().drawn() {
-        let Some(display) = entity.client().display() else {
+        let Some(display) = entity.display() else {
             continue;
         };
         let (Some(state), Some(snapshot)) = (

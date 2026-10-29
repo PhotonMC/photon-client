@@ -402,7 +402,7 @@
 "crates/photon-world/src/block/shape_rules/singles/outline/plants.rs::outline" = 65
 "crates/photon-world/src/block/shape_rules/singles/outline/redstone.rs::outline" = 25
 "crates/photon-world/src/block/shape_rules/singles/scaffolding.rs::collision" = 21
-"crates/photon-world/src/entity/animation.rs::ClientEntity::tick_animal" = 16
+"crates/photon-world/src/entity/animation.rs::EntityViewMut::tick_animal" = 15
 "crates/photon-world/src/entity/culling.rs::ClientEntity::reach" = 13
 "crates/photon-world/src/entity/culling.rs::EntityView::culling_box" = 15
 "crates/photon-world/src/entity/culling.rs::EntityView::should_render_at_sqr_distance" = 20
@@ -833,7 +833,6 @@
 "crates/photon-world/src/block/shape_rules/singles/outline/mounts.rs::outline" = 186
 "crates/photon-world/src/block/shape_rules/singles/outline/plants.rs::outline" = 147
 "crates/photon-world/src/block/shape_rules/singles/outline/redstone.rs::outline" = 129
-"crates/photon-world/src/entity/animation.rs::ClientEntity::tick_animal" = 69
 "crates/photon-world/src/entity/identity.rs::EntityView::collision_candidate" = 66
 "crates/photon-world/src/fluid.rs::scan_in" = 62
 "crates/photon-world/src/input/travel.rs::local_player_travel_dispatch" = 100

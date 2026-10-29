@@ -1,11 +1,6 @@
 use super::*;
 
-impl ClientEntity {
-    /// A display entity's data and render state.
-    pub fn display(&self) -> Option<&crate::objects::display::DisplayState> {
-        self.kind.display()
-    }
-}
+impl ClientEntity {}
 
 /// `Entity.blockPosition`: the block a position is in.
 pub(super) fn block_of(position: (f64, f64, f64)) -> [i32; 3] {
@@ -149,6 +144,13 @@ fn guardian_kind(_: EntityId) -> crate::entity_kind::EntityKind {
 
 fn arrow_kind(_: EntityId) -> crate::entity_kind::EntityKind {
     crate::entity_kind::EntityKind::Arrow(Box::default())
+}
+
+impl<'a> EntityView<'a> {
+    /// A display entity's data and render state, for as long as the entity is borrowed.
+    pub fn display(&self) -> Option<&'a crate::objects::display::DisplayState> {
+        self.kind.display()
+    }
 }
 
 #[cfg(test)]

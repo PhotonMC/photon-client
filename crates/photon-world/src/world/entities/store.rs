@@ -39,11 +39,18 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation, pos, vel, lerp) = self
+        let (entity, rotation, pos, vel, lerp, kind) = self
             .ecs
             .get_entity(entity)
             .ok()?
-            .get_components::<(&ClientEntity, &Rotation, &Position, &Motion, &Interpolation)>()
+            .get_components::<(
+                &ClientEntity,
+                &Rotation,
+                &Position,
+                &Motion,
+                &Interpolation,
+                &crate::entity_kind::EntityKind,
+            )>()
             .ok()?;
         Some(EntityView {
             entity,
@@ -51,6 +58,7 @@ impl Entities {
             pos,
             vel,
             lerp,
+            kind,
         })
     }
 
@@ -76,7 +84,7 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation, pos, vel, lerp) = ecs
+        let (entity, rotation, pos, vel, lerp, kind) = ecs
             .get_entity_mut(entity)
             .ok()?
             .into_components_mut::<(
@@ -85,6 +93,7 @@ impl Entities {
                 &mut Position,
                 &mut Motion,
                 &mut Interpolation,
+                &mut crate::entity_kind::EntityKind,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -93,6 +102,7 @@ impl Entities {
             pos: pos.into_inner(),
             vel: vel.into_inner(),
             lerp: lerp.into_inner(),
+            kind: kind.into_inner(),
         })
     }
 
@@ -119,6 +129,7 @@ impl Entities {
                 pos: std::mem::replace(view.pos, parts.pos),
                 vel: std::mem::replace(view.vel, parts.vel),
                 lerp: std::mem::replace(view.lerp, parts.lerp),
+                kind: std::mem::replace(view.kind, parts.kind),
             });
         }
         let spawned = self
@@ -129,6 +140,7 @@ impl Entities {
                 parts.pos,
                 parts.vel,
                 parts.lerp,
+                parts.kind,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -139,14 +151,22 @@ impl Entities {
     pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
         let mut taken = self.ecs.entity_mut(entity);
-        let parts = taken.take::<(ClientEntity, Rotation, Position, Motion, Interpolation)>();
+        let parts = taken.take::<(
+            ClientEntity,
+            Rotation,
+            Position,
+            Motion,
+            Interpolation,
+            crate::entity_kind::EntityKind,
+        )>();
         self.ecs.despawn(entity);
-        parts.map(|(entity, rotation, pos, vel, lerp)| EntityParts {
+        parts.map(|(entity, rotation, pos, vel, lerp, kind)| EntityParts {
             entity,
             rotation,
             pos,
             vel,
             lerp,
+            kind,
         })
     }
 

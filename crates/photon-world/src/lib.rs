@@ -250,10 +250,10 @@ pub const FIREWORK_SHOT_AT_ANGLE_DATA_ID: u8 = 10;
 const FIREWORK_ATTACHED_TO_TARGET_DATA_ID: u8 = 9;
 
 /// The data of a display (`Display`) and of an item frame's turn, which this entity may have.
-fn apply_display_and_frame_data(entity: &mut ClientEntity, metadata: &[u8]) {
+fn apply_display_and_frame_data(entity: &mut EntityViewMut<'_>, metadata: &[u8]) {
     if let Some(display) = entity.kind.display_mut() {
         display.apply_metadata(metadata);
-        match photon_data::entity_type::name(entity.type_id) {
+        match photon_data::entity_type::name(entity.entity.type_id) {
             Some("minecraft:block_display") => display.apply_block_state(metadata),
             Some("minecraft:item_display") => display.apply_item_context(metadata),
             Some("minecraft:text_display") => display.apply_text(metadata),

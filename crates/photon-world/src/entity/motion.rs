@@ -134,7 +134,7 @@ impl EntityViewMut<'_> {
             self.tick_minecart();
             return;
         }
-        if let Some(display) = self.entity.kind.display_mut() {
+        if let Some(display) = self.kind.display_mut() {
             // `Display.tick`'s client half: the notes the data left, then the position's easing.
             display.tick(self.entity.tick_count);
             self.tick_position_interpolation();

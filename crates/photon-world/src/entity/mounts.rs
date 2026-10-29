@@ -6,11 +6,6 @@ impl ClientEntity {
         self.living.strider_suffocating
     }
 
-    /// A horse's animations and tail.
-    pub fn horse(&self) -> Option<&crate::mobs::horse::HorseState> {
-        self.kind.horse()
-    }
-
     /// `Horse.getVariant` and `getMarkings`: ids, each wrapped into its enum
     /// (seven variants, five markings).
     pub fn horse_look(&self) -> (i32, i32) {
@@ -30,12 +25,6 @@ impl ClientEntity {
     /// `AbstractChestedHorse.hasChest`.
     pub fn horse_has_chest(&self) -> bool {
         self.living.horse_chest
-    }
-
-    /// Fixes the source a horse's tail chance is drawn from (see
-    /// [`crate::mobs::horse::HorseState::fix_seed`]).
-    pub fn fix_horse_seed(&mut self, seed: i64) {
-        self.kind.horse_state().fix_seed(seed);
     }
 
     /// Whether this is a camel or a camel husk.
@@ -136,5 +125,20 @@ impl ClientEntity {
     pub fn is_controllable_horse(&self) -> bool {
         crate::ride::mount::is_horse_type(self.type_id)
             && self.equipment(EquipmentSlot::Saddle).is_some()
+    }
+}
+
+impl EntityView<'_> {
+    /// A horse's animations and tail.
+    pub fn horse(&self) -> Option<&crate::mobs::horse::HorseState> {
+        self.kind.horse()
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// Fixes the source a horse's tail chance is drawn from (see
+    /// [`crate::mobs::horse::HorseState::fix_seed`]).
+    pub fn fix_horse_seed(&mut self, seed: i64) {
+        self.kind.horse_state().fix_seed(seed);
     }
 }

@@ -184,7 +184,7 @@ impl ClientWorld {
             .spawner_displays
             .iter()
             .find(|shown| shown.pos == pos)?;
-        let dimensions = shown.entity.dimensions();
+        let dimensions = shown.entity.view().dimensions();
         Some((dimensions.width(), dimensions.height()))
     }
 
@@ -202,7 +202,7 @@ impl ClientWorld {
             .block_entity_at(shown.pos.0, shown.pos.1, shown.pos.2)?
             .events
             .spawner;
-        let dimensions = shown.entity.dimensions();
+        let dimensions = shown.entity.view().dimensions();
         Some(SpawnerDisplayPose::of(
             shown.pos,
             (spin.previous(), spin.current()),

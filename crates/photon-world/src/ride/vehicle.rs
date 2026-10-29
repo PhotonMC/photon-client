@@ -133,7 +133,7 @@ impl ClientWorld {
         let mut attachment = rotate_y(seat, turn);
         let camel = vehicle.is_camel();
         if camel {
-            attachment = self.camel_seat(vehicle.entity, index, turn);
+            attachment = self.camel_seat(vehicle, index, turn);
         }
         if kind == VehicleKind::Horse && !camel {
             let stand_old = vehicle
@@ -193,7 +193,7 @@ impl ClientWorld {
 
     /// `Camel.getPassengerAttachmentPoint`: where the body is as it sits or rises, and the seat
     /// forward or back by the passenger's place.
-    fn camel_seat(&self, vehicle: &crate::entity::ClientEntity, index: usize, turn: f32) -> Vec3 {
+    fn camel_seat(&self, vehicle: crate::entity::EntityView<'_>, index: usize, turn: f32) -> Vec3 {
         let (sitting, pose_time) = vehicle.horse().map_or((false, i64::MAX / 2), |horse| {
             horse.camel.pose_for_anchor(self.level.game_time as i64)
         });

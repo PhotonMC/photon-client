@@ -37,7 +37,7 @@ impl Entities {
     /// from out of water (see [`guardian::GuardianState::fix_random`]); false
     /// for an entity that is not there.
     pub fn fix_guardian_random(&mut self, entity_id: EntityId, tail: f32, seed: i64) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.kind.guardian_state().fix_random(tail, seed);
@@ -47,7 +47,7 @@ impl Entities {
     /// Fixes a squid's tentacle speed (see [`squid::SquidState::fix_tentacle_speed`]);
     /// false for an entity that is not there.
     pub fn fix_squid_tentacle_speed(&mut self, entity_id: EntityId, speed: f32) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.kind.squid_state().fix_tentacle_speed(speed);
@@ -57,7 +57,7 @@ impl Entities {
     /// Fixes the source a copper golem's idle wait is drawn from (see
     /// [`copper_golem::CopperGolemAnimations::fix_seed`]); false for an entity that is not there.
     pub fn fix_copper_golem_seed(&mut self, entity_id: EntityId, seed: i64) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.kind.copper_golem_state().fix_seed(seed);

@@ -36,7 +36,7 @@ impl MountBody {
 
 /// What a ridden camel's tick leaves in its state: standing up, a dash begun, the water.
 pub(super) fn write_back_camel(
-    entity: &mut crate::entity::ClientEntity,
+    entity: &mut crate::entity::EntityViewMut<'_>,
     ride: &CamelRide,
     in_water: bool,
     game_time: i64,

@@ -100,12 +100,16 @@ impl ClientEntity {
     pub fn is_carrying_block(&self) -> bool {
         self.living.carried_state != 0
     }
+}
 
+impl EntityView<'_> {
     /// A rabbit's hop and animation states.
     pub fn rabbit(&self) -> Option<&crate::mobs::rabbit::RabbitState> {
         self.kind.rabbit()
     }
+}
 
+impl EntityViewMut<'_> {
     /// Fixes the idle head tilt's wait and random source of a rabbit (see
     /// [`crate::mobs::rabbit::RabbitState::fix_idle`]).
     pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {

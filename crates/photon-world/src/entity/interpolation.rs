@@ -1,28 +1,6 @@
 use super::*;
 
-impl ClientEntity {
-    /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
-    /// living, the minecarts, the displays, the boats and the experience orbs ease to the
-    /// positions the server sends.
-    pub(crate) fn has_interpolation_handler(&self) -> bool {
-        self.living_kind().is_some()
-            || self.is_minecart()
-            || self.kind.display().is_some()
-            || self.is_boat()
-            || self.is_fishing_bobber()
-            || vanilla_projectile_kind(self.type_id) == Some(VanillaProjectileKind::ExperienceOrb)
-    }
-
-    /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or
-    /// a display's own.
-    pub(super) fn interpolation_length(&self) -> i32 {
-        self.kind
-            .display()
-            .map_or(i32::from(LIVING_ENTITY_POSITION_LERP_STEPS), |display| {
-                display.pos_rot_duration()
-            })
-    }
-}
+impl ClientEntity {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityInterpolationState {
@@ -325,5 +303,29 @@ impl EntityView<'_> {
             .interpolation
             .as_ref()
             .is_some_and(|interpolation| interpolation.steps > 0)
+    }
+}
+
+impl EntityView<'_> {
+    /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
+    /// living, the minecarts, the displays, the boats and the experience orbs ease to the
+    /// positions the server sends.
+    pub(crate) fn has_interpolation_handler(&self) -> bool {
+        self.living_kind().is_some()
+            || self.is_minecart()
+            || self.kind.display().is_some()
+            || self.is_boat()
+            || self.is_fishing_bobber()
+            || vanilla_projectile_kind(self.type_id) == Some(VanillaProjectileKind::ExperienceOrb)
+    }
+
+    /// The length of the handler's easing (`InterpolationHandler.interpolationSteps`): three, or
+    /// a display's own.
+    pub(super) fn interpolation_length(&self) -> i32 {
+        self.kind
+            .display()
+            .map_or(i32::from(LIVING_ENTITY_POSITION_LERP_STEPS), |display| {
+                display.pos_rot_duration()
+            })
     }
 }

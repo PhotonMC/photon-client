@@ -26,38 +26,6 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:parrot")
     }
 
-    /// `Parrot.setRecordPlayingNearby`.
-    pub(crate) fn set_record_playing(&mut self, jukebox: (i32, i32, i32), playing: bool) {
-        self.kind
-            .parrot_state()
-            .set_record_playing(jukebox, playing);
-    }
-
-    /// A parrot's wing beats.
-    pub fn parrot(&self) -> Option<&crate::mobs::parrot::ParrotState> {
-        self.kind.parrot()
-    }
-
-    /// A bat's animation states.
-    pub fn bat(&self) -> Option<&crate::mobs::bat::BatState> {
-        self.kind.bat()
-    }
-
-    /// An allay's progress.
-    pub fn allay(&self) -> Option<&crate::mobs::allay::AllayState> {
-        self.kind.allay()
-    }
-
-    /// `Allay.tick`'s client half, after `super.tick`.
-    pub(crate) fn tick_allay(&mut self) {
-        if photon_data::entity_type::name(self.type_id) != Some("minecraft:allay") {
-            return;
-        }
-        let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
-        let dancing = self.living.allay_dancing;
-        self.kind.allay_state().tick(holds, dancing);
-    }
-
     /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
     pub fn is_ghast_charging(&self) -> bool {
         self.living.ghast_charging
@@ -120,5 +88,41 @@ impl EntityViewMut<'_> {
         }
         let tick_count = self.tick_count;
         self.kind.bat_state().tick(resting, tick_count);
+    }
+}
+
+impl EntityView<'_> {
+    /// A parrot's wing beats.
+    pub fn parrot(&self) -> Option<&crate::mobs::parrot::ParrotState> {
+        self.kind.parrot()
+    }
+
+    /// A bat's animation states.
+    pub fn bat(&self) -> Option<&crate::mobs::bat::BatState> {
+        self.kind.bat()
+    }
+
+    /// An allay's progress.
+    pub fn allay(&self) -> Option<&crate::mobs::allay::AllayState> {
+        self.kind.allay()
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Parrot.setRecordPlayingNearby`.
+    pub(crate) fn set_record_playing(&mut self, jukebox: (i32, i32, i32), playing: bool) {
+        self.kind
+            .parrot_state()
+            .set_record_playing(jukebox, playing);
+    }
+
+    /// `Allay.tick`'s client half, after `super.tick`.
+    pub(crate) fn tick_allay(&mut self) {
+        if photon_data::entity_type::name(self.type_id) != Some("minecraft:allay") {
+            return;
+        }
+        let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let dancing = self.living.allay_dancing;
+        self.kind.allay_state().tick(holds, dancing);
     }
 }

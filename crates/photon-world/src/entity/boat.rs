@@ -10,29 +10,6 @@ impl ClientEntity {
         !self.passenger_ids.is_empty()
     }
 
-    /// A boat's data: its hit, paddles and bubbles.
-    pub(crate) fn set_boat_data(&mut self, data: crate::metadata::BoatData) {
-        let boat = self.kind.boat_state();
-        if let Some(hurt) = data.hurt_time {
-            boat.hurt_time = hurt;
-        }
-        if let Some(dir) = data.hurt_dir {
-            boat.hurt_dir = dir;
-        }
-        if let Some(damage) = data.damage {
-            boat.damage = damage;
-        }
-        if let Some(bubbles) = data.bubble_time {
-            boat.bubble_time = bubbles;
-        }
-        if let Some(left) = data.paddle_left {
-            self.paddle_left = left;
-        }
-        if let Some(right) = data.paddle_right {
-            self.paddle_right = right;
-        }
-    }
-
     /// What a boat the local player rides keeps between ticks.
     pub fn boat_ride(&self) -> crate::ride::boat::RideState {
         self.boat_ride
@@ -48,11 +25,6 @@ impl ClientEntity {
         vanilla_boat_max_passengers(self.type_id).is_some()
     }
 
-    /// A boat's hit, bubbles and paddles.
-    pub fn boat(&self) -> Option<&crate::objects::boat::BoatState> {
-        self.kind.boat()
-    }
-
     /// Whether a boat's paddle on a side (zero left, one right) rows
     /// (`AbstractBoat.getPaddleState`): its data says so and someone rows it.
     pub fn boat_paddle_rows(&self, side: usize) -> bool {
@@ -62,12 +34,6 @@ impl ClientEntity {
             self.paddle_right
         };
         flag && !self.passenger_ids.is_empty()
-    }
-
-    /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
-    pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
-        let tick_count = self.tick_count;
-        self.kind.boat_state().tick_end(paddling, tick_count);
     }
 }
 
@@ -207,5 +173,43 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_boat_start(&mut self) {
         self.tick_position_interpolation();
         self.kind.boat_state().tick_start(false);
+    }
+}
+
+impl EntityView<'_> {
+    /// A boat's hit, bubbles and paddles.
+    pub fn boat(&self) -> Option<&crate::objects::boat::BoatState> {
+        self.kind.boat()
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// A boat's data: its hit, paddles and bubbles.
+    pub(crate) fn set_boat_data(&mut self, data: crate::metadata::BoatData) {
+        let boat = self.kind.boat_state();
+        if let Some(hurt) = data.hurt_time {
+            boat.hurt_time = hurt;
+        }
+        if let Some(dir) = data.hurt_dir {
+            boat.hurt_dir = dir;
+        }
+        if let Some(damage) = data.damage {
+            boat.damage = damage;
+        }
+        if let Some(bubbles) = data.bubble_time {
+            boat.bubble_time = bubbles;
+        }
+        if let Some(left) = data.paddle_left {
+            self.paddle_left = left;
+        }
+        if let Some(right) = data.paddle_right {
+            self.paddle_right = right;
+        }
+    }
+
+    /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
+    pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
+        let tick_count = self.tick_count;
+        self.kind.boat_state().tick_end(paddling, tick_count);
     }
 }

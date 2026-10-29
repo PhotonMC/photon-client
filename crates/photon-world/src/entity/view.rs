@@ -12,6 +12,7 @@ pub struct EntityView<'a> {
     pub(crate) pos: &'a Position,
     pub(crate) vel: &'a Motion,
     pub(crate) lerp: &'a Interpolation,
+    pub(crate) kind: &'a crate::entity_kind::EntityKind,
 }
 
 /// One entity, to change.
@@ -21,6 +22,7 @@ pub struct EntityViewMut<'a> {
     pub(crate) pos: &'a mut Position,
     pub(crate) vel: &'a mut Motion,
     pub(crate) lerp: &'a mut Interpolation,
+    pub(crate) kind: &'a mut crate::entity_kind::EntityKind,
 }
 
 impl<'a> EntityView<'a> {
@@ -58,6 +60,11 @@ impl<'a> EntityViewMut<'a> {
         self.entity
     }
 
+    /// The kind's state alone, for as long as the entity is borrowed.
+    pub(crate) fn into_kind(self) -> &'a mut crate::entity_kind::EntityKind {
+        self.kind
+    }
+
     /// The same entity, to read.
     pub fn as_view(&self) -> EntityView<'_> {
         EntityView {
@@ -66,6 +73,7 @@ impl<'a> EntityViewMut<'a> {
             pos: self.pos,
             vel: self.vel,
             lerp: self.lerp,
+            kind: self.kind,
         }
     }
 }
@@ -79,6 +87,7 @@ pub struct EntityParts {
     pub(crate) pos: Position,
     pub(crate) vel: Motion,
     pub(crate) lerp: Interpolation,
+    pub(crate) kind: crate::entity_kind::EntityKind,
 }
 
 impl EntityParts {
@@ -89,6 +98,7 @@ impl EntityParts {
             pos: &self.pos,
             vel: &self.vel,
             lerp: &self.lerp,
+            kind: &self.kind,
         }
     }
 
@@ -99,6 +109,7 @@ impl EntityParts {
             pos: &mut self.pos,
             vel: &mut self.vel,
             lerp: &mut self.lerp,
+            kind: &mut self.kind,
         }
     }
 }
@@ -137,3 +148,24 @@ macro_rules! shared_reads {
 }
 
 shared_reads!(EntityView, EntityViewMut);
+
+impl EntityViewMut<'_> {
+    /// What the read view says, for the callers that hold the mutable one.
+    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+        self.as_view().dimensions()
+    }
+
+    pub(crate) fn interpolation_length(&self) -> i32 {
+        self.as_view().interpolation_length()
+    }
+
+    pub(crate) fn has_interpolation_handler(&self) -> bool {
+        self.as_view().has_interpolation_handler()
+    }
+
+    pub(crate) fn minecart_track(&self) -> Option<&crate::objects::minecart_track::TrackLerp> {
+        self.kind
+            .minecart_slot()
+            .and_then(|slot| slot.track.as_ref())
+    }
+}

@@ -35,77 +35,6 @@ impl ClientEntity {
                 })
         })
     }
-
-    /// What a sheep or a chicken does of its own each tick (`aiStep`).
-    pub(crate) fn tick_animal(&mut self, game_time: u64) {
-        match photon_data::entity_type::name(self.type_id) {
-            Some("minecraft:sheep") => self.living.animal.tick_sheep(),
-            Some("minecraft:chicken") => self.living.animal.tick_chicken(self.on_ground),
-            Some("minecraft:creeper") => self.living.animal.tick_creeper(self.alive),
-            Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
-            Some("minecraft:goat") => self.living.animal.tick_goat(),
-            Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
-            Some("minecraft:ravager") => {
-                let alive = self.alive;
-                self.kind.ravager_state().tick(alive);
-            }
-            Some("minecraft:bee") => {
-                let rolling = self.living.bee_flags & 2 != 0;
-                self.living.animal.tick_bee(rolling);
-            }
-            Some(
-                "minecraft:horse"
-                | "minecraft:donkey"
-                | "minecraft:mule"
-                | "minecraft:skeleton_horse"
-                | "minecraft:zombie_horse"
-                | "minecraft:llama"
-                | "minecraft:trader_llama"
-                | "minecraft:camel"
-                | "minecraft:camel_husk",
-            ) => {
-                let (alive, camel) = (
-                    self.alive,
-                    matches!(
-                        photon_data::entity_type::name(self.type_id),
-                        Some("minecraft:camel" | "minecraft:camel_husk")
-                    ),
-                );
-                let (tick_count, on_ground, passenger) =
-                    (self.tick_count, self.on_ground, self.vehicle_id.is_some());
-                let horse = self.kind.horse_state();
-                horse.tick(alive);
-                if camel {
-                    let in_liquid = self.mount_ride.in_liquid;
-                    horse.tick_camel(
-                        (tick_count, game_time as i64),
-                        (on_ground, in_liquid, passenger),
-                    );
-                }
-            }
-            Some("minecraft:rabbit") => {
-                let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
-                self.kind.rabbit_state().tick(tick_count, no_ai);
-            }
-            Some("minecraft:copper_golem") => {
-                let (action, tick_count, flags) = (
-                    self.living.copper_golem_action,
-                    self.tick_count,
-                    (self.is_no_ai(), self.alive),
-                );
-                self.kind
-                    .copper_golem_state()
-                    .tick(action, tick_count, flags);
-            }
-            Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
-            Some("minecraft:fox") => self.living.fox.tick(),
-            Some("minecraft:wolf") => {
-                let (alive, interested) = (self.alive, self.living.wolf_interested);
-                self.living.wolf.tick(alive, interested);
-            }
-            _ => {}
-        }
-    }
 }
 
 impl EntityViewMut<'_> {
@@ -276,5 +205,87 @@ impl EntityViewMut<'_> {
         self.tick_living_pose(kind);
         self.tick_swing(kind);
         self.tick_animal(game_time);
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// What a sheep or a chicken does of its own each tick (`aiStep`).
+    pub(crate) fn tick_animal(&mut self, game_time: u64) {
+        match photon_data::entity_type::name(self.type_id) {
+            Some("minecraft:sheep") => self.living.animal.tick_sheep(),
+            Some("minecraft:chicken") => self
+                .entity
+                .living
+                .animal
+                .tick_chicken(self.entity.on_ground),
+            Some("minecraft:creeper") => self.entity.living.animal.tick_creeper(self.entity.alive),
+            Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
+            Some("minecraft:goat") => self.living.animal.tick_goat(),
+            Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
+            Some("minecraft:ravager") => {
+                let alive = self.alive;
+                self.kind.ravager_state().tick(alive);
+            }
+            Some("minecraft:bee") => {
+                let rolling = self.living.bee_flags & 2 != 0;
+                self.living.animal.tick_bee(rolling);
+            }
+            Some(
+                "minecraft:horse"
+                | "minecraft:donkey"
+                | "minecraft:mule"
+                | "minecraft:skeleton_horse"
+                | "minecraft:zombie_horse"
+                | "minecraft:llama"
+                | "minecraft:trader_llama"
+                | "minecraft:camel"
+                | "minecraft:camel_husk",
+            ) => self.tick_horse_like(game_time),
+            Some("minecraft:rabbit") => {
+                let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
+                self.kind.rabbit_state().tick(tick_count, no_ai);
+            }
+            Some("minecraft:copper_golem") => {
+                let (action, tick_count, flags) = (
+                    self.living.copper_golem_action,
+                    self.tick_count,
+                    (self.is_no_ai(), self.alive),
+                );
+                self.kind
+                    .copper_golem_state()
+                    .tick(action, tick_count, flags);
+            }
+            Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
+            Some("minecraft:fox") => self.living.fox.tick(),
+            Some("minecraft:wolf") => {
+                let (alive, interested) = (self.alive, self.living.wolf_interested);
+                self.living.wolf.tick(alive, interested);
+            }
+            _ => {}
+        }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// What a horse, a llama or a camel does of its own each tick (`aiStep`).
+    fn tick_horse_like(&mut self, game_time: u64) {
+        let (alive, camel) = (
+            self.alive,
+            matches!(
+                photon_data::entity_type::name(self.type_id),
+                Some("minecraft:camel" | "minecraft:camel_husk")
+            ),
+        );
+        let (tick_count, on_ground, passenger) =
+            (self.tick_count, self.on_ground, self.vehicle_id.is_some());
+        let horse = self.kind.horse_state();
+        horse.tick(alive);
+        if camel {
+            let in_liquid = self.entity.mount_ride.in_liquid;
+            horse.tick_camel(
+                (tick_count, game_time as i64),
+                (on_ground, in_liquid, passenger),
+            );
+        }
     }
 }

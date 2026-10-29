@@ -80,7 +80,7 @@ impl ClientWorld {
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),
             upside_down: None,
-            sleeping: self.sleeping_lie(entity.entity),
+            sleeping: self.sleeping_lie(entity),
             light_probe: (0.0, 0.0, 0.0),
         };
         snapshot.light_probe = self.light_probe(
@@ -101,7 +101,7 @@ impl ClientWorld {
     }
 
     /// How a living entity in the sleeping pose lies (`LivingEntity.getBedOrientation`).
-    fn sleeping_lie(&self, entity: &ClientEntity) -> Option<(Option<(i32, i32)>, f32)> {
+    fn sleeping_lie(&self, entity: EntityView<'_>) -> Option<(Option<(i32, i32)>, f32)> {
         if entity.pose() != ClientEntityPose::Sleeping {
             return None;
         }
@@ -208,6 +208,7 @@ impl ClientWorld {
                     entity.rotation.2,
                 ),
                 lerp: Interpolation::spawned(entity.rotation.2),
+                kind: initial_kind,
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
@@ -272,7 +273,6 @@ impl ClientWorld {
                     vehicle_id: None,
                     passenger_ids: Vec::new(),
                     attributes: Vec::new(),
-                    kind: initial_kind,
                     item_frame_rotation: 0,
                     leash_holder_id: EntityId(0),
                     lightning_done: false,

@@ -2,53 +2,11 @@ use super::*;
 use photon_core::ids::BlockStateId;
 
 impl ClientEntity {
-    /// A minecart of the new behaviour: the steps the server sent along the track.
-    pub fn minecart_track(&self) -> Option<&crate::objects::minecart_track::TrackLerp> {
-        self.kind
-            .minecart_slot()
-            .and_then(|slot| slot.track.as_ref())
-    }
-
     /// Whether this is one of the minecarts (`AbstractMinecart`).
     pub fn is_minecart(&self) -> bool {
         photon_data::entity_type::name(self.type_id)
             .and_then(crate::objects::minecart::default_display_offset)
             .is_some()
-    }
-
-    /// A minecart's hit, carried block and fuel.
-    pub fn minecart(&self) -> Option<&crate::objects::minecart::MinecartState> {
-        self.kind
-            .minecart_slot()
-            .and_then(|slot| slot.state.as_ref())
-    }
-
-    pub(crate) fn minecart_mut(&mut self) -> &mut crate::objects::minecart::MinecartState {
-        self.kind
-            .minecart_slot_state()
-            .state
-            .get_or_insert_with(Default::default)
-    }
-
-    /// `AbstractMinecart.getDisplayBlockState`: the block state the server named, else the
-    /// type's own (the plain minecart shows none).
-    pub fn minecart_display_block(&self) -> Option<BlockStateId> {
-        let state = self.minecart().copied().unwrap_or_default();
-        state.custom_display.or_else(|| {
-            photon_data::entity_type::name(self.type_id)
-                .and_then(|name| crate::objects::minecart::default_display_block(name, state.fuel))
-        })
-    }
-
-    /// `AbstractMinecart.getDisplayOffset`, in sixteenths of a block.
-    pub fn minecart_display_offset(&self) -> i32 {
-        let default = photon_data::entity_type::name(self.type_id)
-            .and_then(crate::objects::minecart::default_display_offset)
-            .unwrap_or(6);
-        self.minecart()
-            .copied()
-            .unwrap_or_default()
-            .display_offset(default)
     }
 }
 
@@ -106,5 +64,53 @@ impl EntityViewMut<'_> {
         if place.y_rot.is_finite() {
             self.rotation.y_rot = JavaF32::new(place.y_rot);
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// A minecart of the new behaviour: the steps the server sent along the track.
+    pub fn minecart_track(&self) -> Option<&crate::objects::minecart_track::TrackLerp> {
+        self.kind
+            .minecart_slot()
+            .and_then(|slot| slot.track.as_ref())
+    }
+
+    /// A minecart's hit, carried block and fuel.
+    pub fn minecart(&self) -> Option<&crate::objects::minecart::MinecartState> {
+        self.kind
+            .minecart_slot()
+            .and_then(|slot| slot.state.as_ref())
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn minecart_mut(&mut self) -> &mut crate::objects::minecart::MinecartState {
+        self.kind
+            .minecart_slot_state()
+            .state
+            .get_or_insert_with(Default::default)
+    }
+}
+
+impl EntityView<'_> {
+    /// `AbstractMinecart.getDisplayBlockState`: the block state the server named, else the
+    /// type's own (the plain minecart shows none).
+    pub fn minecart_display_block(&self) -> Option<BlockStateId> {
+        let state = self.minecart().copied().unwrap_or_default();
+        state.custom_display.or_else(|| {
+            photon_data::entity_type::name(self.type_id)
+                .and_then(|name| crate::objects::minecart::default_display_block(name, state.fuel))
+        })
+    }
+
+    /// `AbstractMinecart.getDisplayOffset`, in sixteenths of a block.
+    pub fn minecart_display_offset(&self) -> i32 {
+        let default = photon_data::entity_type::name(self.type_id)
+            .and_then(crate::objects::minecart::default_display_offset)
+            .unwrap_or(6);
+        self.minecart()
+            .copied()
+            .unwrap_or_default()
+            .display_offset(default)
     }
 }

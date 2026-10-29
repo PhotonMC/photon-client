@@ -26,19 +26,6 @@ impl ClientEntity {
         photon_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
     }
 
-    /// `Entity.getEyeHeight`, by the size the type starts with.
-    pub fn eye_height(&self) -> f32 {
-        self.dimensions().eye_height()
-    }
-
-    /// The size the type starts with (a baby's, for the types that have
-    /// babies, a player's by pose). Not carried: the scale attribute and the
-    /// poses of the mobs that change size with them, bar a fish's.
-    /// `Entity.getBbHeight`.
-    pub fn bb_height(&self) -> f32 {
-        self.dimensions().height()
-    }
-
     /// The sizes that are not the type's: a marker or small armor stand
     /// (`ArmorStand.getDefaultDimensions`: no size, or half with the eye at its top) and a
     /// sleeping mob (`LivingEntity.SLEEPING_DIMENSIONS`, 0.2 whatever it is and not scaled).
@@ -56,34 +43,6 @@ impl ClientEntity {
         }
         (!self.is_player() && self.has_sleeping_size())
             .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
-    }
-
-    /// The sizes the poses of a few species change: a sitting camel (`Camel.getDefaultDimensions`)
-    /// and a goat's long jump, seven tenths of its size.
-    fn pose_dimensions(&self) -> Option<ClientEntityDimensions> {
-        use crate::ClientEntityPose::{LongJumping, Sitting};
-        let pick = photon_data::entity_type::pick(self.type_id)?;
-        let (width, height, eye) = pick.baby.filter(|_| self.baby).unwrap_or(pick.size);
-        let name = photon_data::entity_type::name(self.type_id)?;
-        if name == "minecraft:sniffer" && self.sniffer().is_some_and(|state| state.is_digging()) {
-            // `Sniffer.DIGGING_DIMENSIONS`: 0.4 shorter with an eye at 0.81, scaled by the age.
-            let (width, height) = (pick.size.0, pick.size.1 - 0.4);
-            let age = if self.baby { 0.5 } else { 1.0 };
-            return Some(
-                ClientEntityDimensions::from_values(width, height, 0.81, false).scale(age, age),
-            );
-        }
-        match (name, self.pose()) {
-            ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.baby {
-                ClientEntityDimensions::from_values(0.95, 0.425, 0.41, false)
-            } else {
-                ClientEntityDimensions::from_values(width, height - 1.43, 0.845, false)
-            }),
-            ("minecraft:goat", LongJumping) => {
-                Some(ClientEntityDimensions::from_values(width, height, eye, false).scale(0.7, 0.7))
-            }
-            _ => None,
-        }
     }
 
     /// The renderers that light their entity at full block light whatever is around it
@@ -105,15 +64,6 @@ impl ClientEntity {
         })
     }
 
-    /// The height a sitting camel's or a digging sniffer's size gives (`pose_dimensions`), which
-    /// its tag hangs by.
-    pub fn pose_height(&self) -> Option<f32> {
-        let digging = self.sniffer().is_some_and(|state| state.is_digging());
-        (digging || self.pose() == crate::ClientEntityPose::Sitting)
-            .then(|| self.pose_dimensions().map(|dimensions| dimensions.height()))
-            .flatten()
-    }
-
     /// How a pose scales the size and the attachments of a goat (`Goat.getDefaultDimensions`).
     pub fn pose_scale(&self) -> f32 {
         let long_jumping = self.pose() == crate::ClientEntityPose::LongJumping;
@@ -124,74 +74,6 @@ impl ClientEntity {
     /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
     fn has_sleeping_size(&self) -> bool {
         self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
-    }
-
-    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
-        if let Some(fixed) = self.special_dimensions().or_else(|| self.pose_dimensions()) {
-            return fixed;
-        }
-        match photon_data::entity_type::pick(self.type_id) {
-            Some(pick) if !self.is_player() => {
-                let (width, height, eye_height) = match pick.baby {
-                    Some(baby) if self.baby => baby,
-                    _ => pick.size,
-                };
-                let scale = if self.is_cube_mob() {
-                    // `AbstractCubeMob.getDefaultDimensions`.
-                    self.cube_size() as f32
-                } else {
-                    self.fish_dimension_scale()
-                };
-                ClientEntityDimensions::from_values(width, height, eye_height, false)
-                    .scale(scale, scale)
-            }
-            _ => self.pose.player_dimensions(),
-        }
-    }
-
-    /// `LivingEntity.getDimensions(pose)` of the entity as it is: the pose's size grown by the
-    /// scale attribute, a player's too, and a sleeping one's fixed size as it is.
-    pub fn scaled_dimensions(&self) -> ClientEntityDimensions {
-        let scale = if self.has_sleeping_size() {
-            1.0
-        } else {
-            self.scale()
-        };
-        self.dimensions().scale(scale, scale)
-    }
-
-    /// The size a leash is tied by (`getBbWidth`, `getBbHeight`, `getEyeHeight`): the size the
-    /// type starts with, grown by the scale attribute.
-    pub fn leash_size(&self) -> photon_data::leash::Size {
-        // A player's own size is scaled by the callers, and a sleeping mob's is never.
-        let scale = if self.is_player() || self.has_sleeping_size() {
-            1.0
-        } else {
-            self.scale()
-        };
-        let dimensions = self.dimensions().scale(scale, scale);
-        photon_data::leash::Size {
-            width: dimensions.width(),
-            height: dimensions.height(),
-            eye_height: dimensions.eye_height(),
-        }
-    }
-
-    /// What a camel's leash offset follows: whether it sits, and the game time since its pose
-    /// last changed.
-    pub fn camel_leash_pose(
-        &self,
-        game_time: i64,
-        partial_tick: f32,
-    ) -> photon_data::leash::CamelPose {
-        self.horse().map_or_else(Default::default, |horse| {
-            let (sitting, pose_time) = horse.camel.leash_pose(game_time);
-            photon_data::leash::CamelPose {
-                sitting,
-                pose_time,
-                partial: partial_tick,
-            }
-        })
     }
 
     /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
@@ -308,7 +190,7 @@ impl ClientWorld {
             .filter(move |entity| entity.is_ender_dragon() && entity.id != except)
             .flat_map(|dragon| {
                 dragon
-                    .entity
+                    .kind
                     .ender_dragon()
                     .into_iter()
                     .flat_map(|state| state.parts().iter().enumerate())
@@ -469,6 +351,130 @@ impl EntityView<'_> {
     }
 }
 
+impl EntityView<'_> {
+    /// The sizes the poses of a few species change: a sitting camel (`Camel.getDefaultDimensions`)
+    /// and a goat's long jump, seven tenths of its size.
+    fn pose_dimensions(&self) -> Option<ClientEntityDimensions> {
+        use crate::ClientEntityPose::{LongJumping, Sitting};
+        let pick = photon_data::entity_type::pick(self.type_id)?;
+        let (width, height, eye) = pick.baby.filter(|_| self.baby).unwrap_or(pick.size);
+        let name = photon_data::entity_type::name(self.type_id)?;
+        if name == "minecraft:sniffer" && self.sniffer().is_some_and(|state| state.is_digging()) {
+            // `Sniffer.DIGGING_DIMENSIONS`: 0.4 shorter with an eye at 0.81, scaled by the age.
+            let (width, height) = (pick.size.0, pick.size.1 - 0.4);
+            let age = if self.baby { 0.5 } else { 1.0 };
+            return Some(
+                ClientEntityDimensions::from_values(width, height, 0.81, false).scale(age, age),
+            );
+        }
+        match (name, self.pose()) {
+            ("minecraft:camel" | "minecraft:camel_husk", Sitting) => Some(if self.baby {
+                ClientEntityDimensions::from_values(0.95, 0.425, 0.41, false)
+            } else {
+                ClientEntityDimensions::from_values(width, height - 1.43, 0.845, false)
+            }),
+            ("minecraft:goat", LongJumping) => {
+                Some(ClientEntityDimensions::from_values(width, height, eye, false).scale(0.7, 0.7))
+            }
+            _ => None,
+        }
+    }
+
+    /// The height a sitting camel's or a digging sniffer's size gives (`pose_dimensions`), which
+    /// its tag hangs by.
+    pub fn pose_height(&self) -> Option<f32> {
+        let digging = self.sniffer().is_some_and(|state| state.is_digging());
+        (digging || self.pose() == crate::ClientEntityPose::Sitting)
+            .then(|| self.pose_dimensions().map(|dimensions| dimensions.height()))
+            .flatten()
+    }
+
+    /// What a camel's leash offset follows: whether it sits, and the game time since its pose
+    /// last changed.
+    pub fn camel_leash_pose(
+        &self,
+        game_time: i64,
+        partial_tick: f32,
+    ) -> photon_data::leash::CamelPose {
+        self.horse().map_or_else(Default::default, |horse| {
+            let (sitting, pose_time) = horse.camel.leash_pose(game_time);
+            photon_data::leash::CamelPose {
+                sitting,
+                pose_time,
+                partial: partial_tick,
+            }
+        })
+    }
+}
+
+impl EntityView<'_> {
+    pub(crate) fn dimensions(&self) -> ClientEntityDimensions {
+        if let Some(fixed) = self.special_dimensions().or_else(|| self.pose_dimensions()) {
+            return fixed;
+        }
+        match photon_data::entity_type::pick(self.type_id) {
+            Some(pick) if !self.is_player() => {
+                let (width, height, eye_height) = match pick.baby {
+                    Some(baby) if self.baby => baby,
+                    _ => pick.size,
+                };
+                let scale = if self.is_cube_mob() {
+                    // `AbstractCubeMob.getDefaultDimensions`.
+                    self.cube_size() as f32
+                } else {
+                    self.fish_dimension_scale()
+                };
+                ClientEntityDimensions::from_values(width, height, eye_height, false)
+                    .scale(scale, scale)
+            }
+            _ => self.pose.player_dimensions(),
+        }
+    }
+}
+
+impl EntityView<'_> {
+    /// `Entity.getEyeHeight`, by the size the type starts with.
+    pub fn eye_height(&self) -> f32 {
+        self.dimensions().eye_height()
+    }
+
+    /// The size the type starts with (a baby's, for the types that have
+    /// babies, a player's by pose). Not carried: the scale attribute and the
+    /// poses of the mobs that change size with them, bar a fish's.
+    /// `Entity.getBbHeight`.
+    pub fn bb_height(&self) -> f32 {
+        self.dimensions().height()
+    }
+
+    /// `LivingEntity.getDimensions(pose)` of the entity as it is: the pose's size grown by the
+    /// scale attribute, a player's too, and a sleeping one's fixed size as it is.
+    pub fn scaled_dimensions(&self) -> ClientEntityDimensions {
+        let scale = if self.has_sleeping_size() {
+            1.0
+        } else {
+            self.scale()
+        };
+        self.dimensions().scale(scale, scale)
+    }
+
+    /// The size a leash is tied by (`getBbWidth`, `getBbHeight`, `getEyeHeight`): the size the
+    /// type starts with, grown by the scale attribute.
+    pub fn leash_size(&self) -> photon_data::leash::Size {
+        // A player's own size is scaled by the callers, and a sleeping mob's is never.
+        let scale = if self.is_player() || self.has_sleeping_size() {
+            1.0
+        } else {
+            self.scale()
+        };
+        let dimensions = self.dimensions().scale(scale, scale);
+        photon_data::leash::Size {
+            width: dimensions.width(),
+            height: dimensions.height(),
+            eye_height: dimensions.eye_height(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -508,7 +514,7 @@ mod tests {
         let head = world
             .entities()
             .at(EntityId(100))
-            .and_then(|dragon| dragon.entity.ender_dragon())
+            .and_then(|dragon| dragon.kind.ender_dragon())
             .map(|state| state.parts()[0].position)
             .expect("a head");
         // From in front of the dragon (the head is the part farthest ahead), towards it.

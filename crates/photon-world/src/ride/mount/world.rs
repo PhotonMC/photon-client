@@ -158,7 +158,7 @@ impl ClientWorld {
         };
         entity.mount_ride = body.state;
         if kind == MountKind::Camel {
-            write_back_camel(&mut *entity.entity, &body.camel, in_water, game_time);
+            write_back_camel(&mut entity, &body.camel, in_water, game_time);
         }
     }
 }

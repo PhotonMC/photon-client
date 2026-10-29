@@ -15,24 +15,6 @@ impl ClientEntity {
         }
     }
 
-    /// `Frog.onSyncedDataUpdated(DATA_POSE)`: the pose the data names starts
-    /// or stops the frog's animations.
-    pub(crate) fn set_pose(&mut self, pose: ClientEntityPose) {
-        self.pose = pose;
-        if self.is_frog() {
-            let tick_count = self.tick_count;
-            self.kind.frog_state().set_pose(pose, tick_count);
-        }
-        if self.is_breeze() {
-            let tick_count = self.tick_count;
-            self.kind.breeze_state().set_pose(pose, tick_count);
-        }
-        if self.is_warden() {
-            let tick_count = self.tick_count;
-            self.kind.warden_state().set_pose(pose, tick_count);
-        }
-    }
-
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
     }
@@ -304,5 +286,25 @@ impl ClientEntityDimensions {
             position.y + height,
             position.z + half_width,
         )
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Frog.onSyncedDataUpdated(DATA_POSE)`: the pose the data names starts
+    /// or stops the frog's animations.
+    pub(crate) fn set_pose(&mut self, pose: ClientEntityPose) {
+        self.pose = pose;
+        if self.is_frog() {
+            let tick_count = self.tick_count;
+            self.kind.frog_state().set_pose(pose, tick_count);
+        }
+        if self.is_breeze() {
+            let tick_count = self.tick_count;
+            self.kind.breeze_state().set_pose(pose, tick_count);
+        }
+        if self.is_warden() {
+            let tick_count = self.tick_count;
+            self.kind.warden_state().set_pose(pose, tick_count);
+        }
     }
 }

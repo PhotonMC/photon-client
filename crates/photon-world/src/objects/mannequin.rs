@@ -20,7 +20,7 @@ impl ClientWorld {
         else {
             return;
         };
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if serializer != RESOLVABLE_PROFILE_SERIALIZER_ID
@@ -33,7 +33,7 @@ impl ClientWorld {
     }
 }
 
-impl crate::ClientEntity {
+impl crate::entity::EntityView<'_> {
     /// The bytes of a mannequin's profile, once the server has sent one.
     pub fn mannequin_profile(&self) -> Option<&[u8]> {
         self.kind.mannequin().map(|state| state.profile.as_slice())

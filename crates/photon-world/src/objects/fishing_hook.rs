@@ -233,7 +233,7 @@ impl ClientWorld {
     /// One client tick of a fishing bobber's movement, after its interpolation.
     pub(crate) fn tick_fishing_hook(&mut self, entity_id: EntityId) {
         let game_time = self.game_time() as i64;
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if !entity.is_fishing_bobber() {
@@ -312,7 +312,7 @@ impl ClientWorld {
     /// `FishingHook.onSyncedDataUpdated`: the hooked entity, and a bite that pulls the bobber
     /// under.
     pub fn apply_fishing_hook_metadata(&mut self, entity_id: EntityId, metadata: &[u8]) {
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return;
         };
         if !entity.is_fishing_bobber() {

@@ -41,15 +41,6 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:lightning_bolt")
     }
 
-    /// A lightning bolt's shape and flashes.
-    pub fn lightning(&self) -> Option<&crate::objects::lightning::LightningState> {
-        self.kind.lightning()
-    }
-
-    pub(crate) fn take_lightning_pitches(&mut self) -> Option<(f32, f32)> {
-        self.kind.lightning_mut()?.take_pitches()
-    }
-
     pub(crate) fn lightning_finished(&self) -> bool {
         self.lightning_done
     }
@@ -59,36 +50,9 @@ impl ClientEntity {
         self.type_id == VANILLA_PRIMED_TNT_ENTITY_TYPE_ID
     }
 
-    /// A primed tnt's fuse and block.
-    pub fn primed_tnt(&self) -> Option<&crate::objects::primed_tnt::PrimedTntState> {
-        self.kind.primed_tnt()
-    }
-
-    pub(crate) fn primed_tnt_mut(&mut self) -> &mut crate::objects::primed_tnt::PrimedTntState {
-        self.kind.primed_tnt_state()
-    }
-
     /// Whether this is a pair of evoker fangs.
     pub fn is_evoker_fangs(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:evoker_fangs")
-    }
-
-    /// Evoker fangs' bite.
-    pub fn evoker_fangs(&self) -> Option<&crate::objects::evoker_fangs::FangsState> {
-        self.kind.evoker_fangs()
-    }
-
-    pub(crate) fn evoker_fangs_mut(&mut self) -> &mut crate::objects::evoker_fangs::FangsState {
-        self.kind.evoker_fangs_state()
-    }
-
-    /// An arrow's shake and data.
-    pub fn arrow(&self) -> Option<&crate::objects::arrow::ArrowState> {
-        self.kind.arrow()
-    }
-
-    pub(crate) fn arrow_mut(&mut self) -> &mut crate::objects::arrow::ArrowState {
-        self.kind.arrow_state()
     }
 
     /// An experience orb's value (`ExperienceOrb.getValue`), once told.
@@ -402,5 +366,45 @@ impl EntityViewMut<'_> {
         self.vel.motion.x = JavaF64::new(motion.0 * air_friction);
         self.vel.motion.y = JavaF64::new(motion.1 * air_friction);
         self.vel.motion.z = JavaF64::new(motion.2 * air_friction);
+    }
+}
+
+impl EntityView<'_> {
+    /// A lightning bolt's shape and flashes.
+    pub fn lightning(&self) -> Option<&crate::objects::lightning::LightningState> {
+        self.kind.lightning()
+    }
+
+    /// A primed tnt's fuse and block.
+    pub fn primed_tnt(&self) -> Option<&crate::objects::primed_tnt::PrimedTntState> {
+        self.kind.primed_tnt()
+    }
+
+    /// Evoker fangs' bite.
+    pub fn evoker_fangs(&self) -> Option<&crate::objects::evoker_fangs::FangsState> {
+        self.kind.evoker_fangs()
+    }
+
+    /// An arrow's shake and data.
+    pub fn arrow(&self) -> Option<&crate::objects::arrow::ArrowState> {
+        self.kind.arrow()
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn take_lightning_pitches(&mut self) -> Option<(f32, f32)> {
+        self.kind.lightning_mut()?.take_pitches()
+    }
+
+    pub(crate) fn primed_tnt_mut(&mut self) -> &mut crate::objects::primed_tnt::PrimedTntState {
+        self.kind.primed_tnt_state()
+    }
+
+    pub(crate) fn evoker_fangs_mut(&mut self) -> &mut crate::objects::evoker_fangs::FangsState {
+        self.kind.evoker_fangs_state()
+    }
+
+    pub(crate) fn arrow_mut(&mut self) -> &mut crate::objects::arrow::ArrowState {
+        self.kind.arrow_state()
     }
 }

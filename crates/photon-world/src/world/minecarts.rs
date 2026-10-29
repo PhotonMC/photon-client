@@ -24,7 +24,7 @@ impl ClientWorld {
         let Some(track) = self
             .entities
             .at_mut(entity_id)
-            .and_then(|entity| entity.into_entity().kind.minecart_slot_mut())
+            .and_then(|entity| entity.into_kind().minecart_slot_mut())
             .and_then(|slot| slot.track.as_mut())
         else {
             return false;

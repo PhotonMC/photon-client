@@ -51,23 +51,6 @@ impl ClientEntity {
         }
     }
 
-    /// A panda's data and own client state (its counters and how far it sits,
-    /// lies on its back and rolls); the starting state until data comes.
-    pub fn panda(&self) -> crate::mobs::panda::PandaState {
-        self.kind.panda().cloned().unwrap_or_default()
-    }
-
-    /// Fixes the source a panda's chance to eat is drawn from (see
-    /// [`crate::mobs::panda::PandaState::fix_seed`]).
-    pub fn fix_panda_seed(&mut self, seed: i64) {
-        self.kind.panda_state().fix_seed(seed);
-    }
-
-    /// A ravager's counters (the starting state until an event comes).
-    pub fn ravager(&self) -> crate::mobs::ravager::RavagerState {
-        self.kind.ravager().cloned().unwrap_or_default()
-    }
-
     /// A fox's flags, variant and own client state (its head roll and crouch).
     pub fn fox(&self) -> &crate::mobs::fox::FoxState {
         &self.living.fox
@@ -133,5 +116,26 @@ impl EntityViewMut<'_> {
         if panda.tick(around) {
             self.rotation.x_rot = JavaF32::new(0.0_f32);
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// A panda's data and own client state (its counters and how far it sits,
+    /// lies on its back and rolls); the starting state until data comes.
+    pub fn panda(&self) -> crate::mobs::panda::PandaState {
+        self.kind.panda().cloned().unwrap_or_default()
+    }
+
+    /// A ravager's counters (the starting state until an event comes).
+    pub fn ravager(&self) -> crate::mobs::ravager::RavagerState {
+        self.kind.ravager().cloned().unwrap_or_default()
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// Fixes the source a panda's chance to eat is drawn from (see
+    /// [`crate::mobs::panda::PandaState::fix_seed`]).
+    pub fn fix_panda_seed(&mut self, seed: i64) {
+        self.kind.panda_state().fix_seed(seed);
     }
 }

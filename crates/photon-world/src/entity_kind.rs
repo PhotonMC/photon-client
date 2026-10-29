@@ -15,7 +15,7 @@ pub(crate) struct MinecartSlot {
 macro_rules! entity_kinds {
     ($($variant:ident($boxed:ty => $inner:ty) $get:ident $get_mut:ident $state:ident;)*) => {
         /// What kind of entity this is, with the state that kind keeps.
-        #[derive(Debug, Clone, Default, PartialEq, Eq)]
+        #[derive(Debug, Clone, Default, PartialEq, Eq, bevy_ecs::component::Component)]
         pub(crate) enum EntityKind {
             /// An entity with no state of its own.
             #[default]
