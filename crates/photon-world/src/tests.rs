@@ -61,7 +61,7 @@ fn section(block_value: i32, biome_value: i32) -> (Vec<i32>, Vec<i32>) {
     (blocks, biomes)
 }
 
-/// The server's climbing tags for the ladder (221) and the vine (366), as a
+/// The server's climbing tags for the ladder and the vine, as a
 /// vanilla server sends them.
 fn climbing_tags() -> ClientboundUpdateTagsPacket {
     ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
@@ -69,11 +69,14 @@ fn climbing_tags() -> ClientboundUpdateTagsPacket {
         vec![
             TagEntry::new(
                 Identifier::parse("minecraft:climbable").unwrap(),
-                vec![221, 366],
+                vec![
+                    block_index("minecraft:ladder"),
+                    block_index("minecraft:vine"),
+                ],
             ),
             TagEntry::new(
                 Identifier::parse("minecraft:can_glide_through").unwrap(),
-                vec![366],
+                vec![block_index("minecraft:vine")],
             ),
         ],
     )])
@@ -120,4 +123,17 @@ pub(crate) fn state_of(name: &str, offset: u32) -> photon_core::ids::BlockStateI
     photon_data::block::registry::block(name)
         .expect(name)
         .state_at(offset)
+}
+
+/// The place of a block in the block registry, which is how a tag names it.
+pub(crate) fn block_index(name: &str) -> i32 {
+    photon_data::block::blocks::index_of(name) as i32
+}
+
+/// The id a new world's version puts on the wire for a particle type, as metadata carries it.
+pub(crate) fn wire_particle(name: &str) -> i32 {
+    let canonical = photon_data::particle_type::id(name).expect(name);
+    photon_data::version_registries::VersionRegistries::of(photon_core::version::Version::NEWEST)
+        .particle_types
+        .wire_or_unknown(canonical)
 }

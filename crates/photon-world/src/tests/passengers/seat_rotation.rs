@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::entity_type_groups::entity_type_id as ty;
 use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
@@ -17,7 +18,7 @@ fn passenger_tick_applies_animal_rotation_offset_by_entity_parity_at_capacity() 
             }],
         );
         for (entity_id, type_id, rotation) in [
-            (37, 89, (0.0, 0.0, 0.0)),
+            (37, ty("minecraft:oak_boat"), (0.0, 0.0, 0.0)),
             (animal_id, VANILLA_COW_ENTITY_TYPE_ID.0, (170.0, 0.0, 170.0)),
             (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (0.0, 0.0, 0.0)),
         ] {
@@ -63,7 +64,7 @@ fn passenger_tick_positions_animal_on_full_boat_seat_offset() {
         }],
     );
     for (entity_id, type_id, position) in [
-        (37, 89, (2.0, 2.0, 2.0)),
+        (37, ty("minecraft:oak_boat"), (2.0, 2.0, 2.0)),
         (38, VANILLA_COW_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
         (41, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
     ] {

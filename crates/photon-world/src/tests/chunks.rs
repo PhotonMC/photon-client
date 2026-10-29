@@ -304,11 +304,14 @@ fn client_world_applies_block_update_tags_to_state_registry() {
         vec![
             TagEntry::new(
                 Identifier::parse("minecraft:climbable").unwrap(),
-                vec![221, 366],
+                vec![
+                    crate::tests::block_index("minecraft:ladder"),
+                    crate::tests::block_index("minecraft:vine"),
+                ],
             ),
             TagEntry::new(
                 Identifier::parse("minecraft:can_glide_through").unwrap(),
-                vec![366],
+                vec![crate::tests::block_index("minecraft:vine")],
             ),
         ],
     )]);
@@ -339,7 +342,7 @@ fn client_world_applies_block_update_tags_to_state_registry() {
         Identifier::parse("minecraft:block").unwrap(),
         vec![TagEntry::new(
             Identifier::parse("minecraft:climbable").unwrap(),
-            vec![221],
+            vec![crate::tests::block_index("minecraft:ladder")],
         )],
     )]);
     world.apply_update_tags_packet(&replacement);
@@ -363,9 +366,9 @@ fn client_world_applies_block_update_tags_to_state_registry() {
 #[test]
 fn client_world_updates_stair_shape_from_loaded_neighbors() {
     let mut target_blocks = vec![0; 4_096];
-    target_blocks[0] = 3918;
+    target_blocks[0] = crate::tests::state_of("minecraft:oak_stairs", 11).0;
     let mut north_blocks = vec![0; 4_096];
-    north_blocks[15 * 16] = 3958;
+    north_blocks[15 * 16] = crate::tests::state_of("minecraft:oak_stairs", 51).0;
     let biomes = vec![0; 64];
     let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
     world.replace_chunk(

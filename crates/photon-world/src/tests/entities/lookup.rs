@@ -97,7 +97,7 @@ fn spawner_state_decodes_java_update_tag_and_defaults() {
                 x: 1,
                 y: -63,
                 z: 2,
-                type_id: 9,
+                type_id: photon_data::block_entity_type::id("minecraft:mob_spawner").unwrap(),
                 tag: Some(&tag),
             }],
         ),

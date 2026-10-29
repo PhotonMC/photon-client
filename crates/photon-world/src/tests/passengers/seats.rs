@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::entity_type_groups::entity_type_id as ty;
 use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
@@ -16,7 +17,7 @@ fn passenger_tick_uses_ride_tick_motion_reset_before_projectile_tick() {
         }],
     );
     for (entity_id, type_id, motion) in [
-        (37, 71, (0.0, 0.0, 0.0)),
+        (37, ty("minecraft:item"), (0.0, 0.0, 0.0)),
         (38, VANILLA_SNOWBALL_ENTITY_TYPE_ID.0, (0.125, 0.0, 0.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
@@ -71,7 +72,12 @@ fn passenger_tick_positions_snowball_on_regular_boat_seat() {
         }],
     );
     for (entity_id, type_id, position, motion) in [
-        (37, 89, (2.0, 2.0, 2.0), (0.0, 0.0, 0.0)),
+        (
+            37,
+            ty("minecraft:oak_boat"),
+            (2.0, 2.0, 2.0),
+            (0.0, 0.0, 0.0),
+        ),
         (
             38,
             VANILLA_SNOWBALL_ENTITY_TYPE_ID.0,
@@ -123,7 +129,12 @@ fn passenger_tick_positions_multiple_snowballs_by_boat_order() {
         }],
     );
     for (entity_id, type_id, position, rotation) in [
-        (37, 89, (2.0, 2.0, 2.0), (90.0, 0.0, 0.0)),
+        (
+            37,
+            ty("minecraft:oak_boat"),
+            (2.0, 2.0, 2.0),
+            (90.0, 0.0, 0.0),
+        ),
         (
             38,
             VANILLA_SNOWBALL_ENTITY_TYPE_ID.0,
@@ -174,26 +185,66 @@ fn passenger_tick_positions_all_vanilla_boat_geometry_rows() {
     let expected_chest_offset = f64::from(0.15_f32);
     let expected_raft_height = f64::from(0.5625_f32 * 0.8888889_f32);
     let expected_geometry = [
-        (0, 0.1875, 0.0),
-        (1, 0.1875, expected_chest_offset),
-        (8, expected_raft_height, expected_chest_offset),
-        (9, expected_raft_height, 0.0),
-        (12, 0.1875, 0.0),
-        (13, 0.1875, expected_chest_offset),
-        (23, 0.1875, 0.0),
-        (24, 0.1875, expected_chest_offset),
-        (33, 0.1875, 0.0),
-        (34, 0.1875, expected_chest_offset),
-        (74, 0.1875, 0.0),
-        (75, 0.1875, expected_chest_offset),
-        (81, 0.1875, 0.0),
-        (82, 0.1875, expected_chest_offset),
-        (89, 0.1875, 0.0),
-        (90, 0.1875, expected_chest_offset),
-        (94, 0.1875, 0.0),
-        (95, 0.1875, expected_chest_offset),
-        (125, 0.1875, 0.0),
-        (126, 0.1875, expected_chest_offset),
+        (ty("minecraft:acacia_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:acacia_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (
+            ty("minecraft:bamboo_chest_raft"),
+            expected_raft_height,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:bamboo_raft"), expected_raft_height, 0.0),
+        (ty("minecraft:birch_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:birch_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:cherry_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:cherry_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:dark_oak_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:dark_oak_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:jungle_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:jungle_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:mangrove_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:mangrove_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:oak_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:oak_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:pale_oak_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:pale_oak_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
+        (ty("minecraft:spruce_boat"), 0.1875, 0.0),
+        (
+            ty("minecraft:spruce_chest_boat"),
+            0.1875,
+            expected_chest_offset,
+        ),
     ];
     for (index, &(vehicle_type_id, ride_height, passenger_z_offset)) in
         expected_geometry.iter().enumerate()
@@ -264,7 +315,7 @@ fn passenger_tick_positions_remote_player_from_vehicle_attachment() {
         }],
     );
     for (entity_id, type_id, position) in [
-        (37, 89, (2.0, 2.0, 2.0)),
+        (37, ty("minecraft:oak_boat"), (2.0, 2.0, 2.0)),
         (38, VANILLA_PLAYER_ENTITY_TYPE_ID.0, (2.0, 12.0, 2.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
@@ -294,8 +345,8 @@ fn passenger_tick_positions_remote_player_from_vehicle_attachment() {
 #[test]
 fn passenger_tick_positions_generic_entity_vehicle_attachment() {
     for (passenger_id, passenger_type_id, expected_y) in [
-        (38, 71, 2.1875_f64),
-        (39, 151, 2.1875_f64),
+        (38, ty("minecraft:item"), 2.1875_f64),
+        (39, ty("minecraft:zombie"), 2.1875_f64),
         (40, 124, 1.875_f64),
     ] {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));

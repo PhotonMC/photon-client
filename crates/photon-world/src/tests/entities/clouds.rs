@@ -54,8 +54,9 @@ fn cloud(radius: f32, waiting: bool, particle: &[u8]) -> ClientWorld {
 /// its disc, standing still when they are the entity effect's swirl.
 #[test]
 fn a_lingering_potions_cloud_scatters_swirls_over_its_disc() {
-    // The entity effect (type 28) in an ARGB colour.
-    let mut swirl = vec![28];
+    // The entity effect in an ARGB colour.
+    let mut swirl = Vec::new();
+    photon_core::wire::write_varint(crate::tests::wire_particle("entity_effect"), &mut swirl);
     swirl.extend(0xFF33_66CC_u32.to_be_bytes());
     let mut world = cloud(2.0, false, &swirl);
     world.tick_entities();
@@ -63,7 +64,10 @@ fn a_lingering_potions_cloud_scatters_swirls_over_its_disc() {
     // ceil(pi * 2 * 2).
     assert_eq!(specks.len(), 13);
     for speck in &specks {
-        assert_eq!(speck.type_id, 28);
+        assert_eq!(
+            speck.type_id,
+            photon_data::particle_type::id("entity_effect").unwrap()
+        );
         assert_eq!(
             speck.data,
             crate::particles::ParticleData::Color(0xFF33_66CC)
@@ -98,7 +102,7 @@ fn another_particle_drifts_and_a_waiting_cloud_shows_little() {
 fn a_dragons_breath_cloud_keeps_its_particle_and_power() {
     let breath = photon_data::particle_type::id("dragon_breath").unwrap();
     let mut data = Vec::new();
-    photon_core::wire::write_varint(breath, &mut data);
+    photon_core::wire::write_varint(crate::tests::wire_particle("dragon_breath"), &mut data);
     data.extend(1.0_f32.to_be_bytes());
     let mut world = cloud(1.0, false, &data);
     world.tick_entities();

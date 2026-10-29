@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::entity_type_groups::entity_type_id as ty;
 use photon_core::ids::{EntityId, EntityTypeId};
 
 #[test]
@@ -66,7 +67,7 @@ fn passenger_tick_leaves_breeze_rotation_unclamped() {
         }],
     );
     for (entity_id, type_id, rotation) in [
-        (37, 89, (0.0, 0.0, 0.0)),
+        (37, ty("minecraft:oak_boat"), (0.0, 0.0, 0.0)),
         (38, VANILLA_BREEZE_ENTITY_TYPE_ID.0, (170.0, 0.0, 170.0)),
     ] {
         assert!(world.apply_entity(EntityInput {
@@ -104,8 +105,10 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
             biomes: &biomes,
         }],
     );
-    for (entity_id, type_id, rotation) in [(37, 89, (0.0, 0.0, 0.0)), (38, 71, (170.0, 0.0, 170.0))]
-    {
+    for (entity_id, type_id, rotation) in [
+        (37, ty("minecraft:oak_boat"), (0.0, 0.0, 0.0)),
+        (38, ty("minecraft:item"), (170.0, 0.0, 170.0)),
+    ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
@@ -133,9 +136,10 @@ fn passenger_tick_clamps_boat_rotation_for_generic_item_passenger() {
 
 #[test]
 fn passenger_tick_applies_animal_living_rotation_before_capacity_offset() {
-    for (vehicle_type_id, expected_rotation, expected_body) in
-        [(89, 105.0_f32, 0.0_f32), (90, 195.0_f32, 90.0_f32)]
-    {
+    for (vehicle_type_id, expected_rotation, expected_body) in [
+        (ty("minecraft:oak_boat"), 105.0_f32, 0.0_f32),
+        (ty("minecraft:oak_chest_boat"), 195.0_f32, 90.0_f32),
+    ] {
         let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
         let (blocks, biomes) = section(0, 0);
         world.replace_chunk(
@@ -191,7 +195,7 @@ fn passenger_turn_calls_boat_on_passenger_turned() {
         }],
     );
     for (entity_id, type_id, rotation) in [
-        (37, 89, (0.0, 0.0, 0.0)),
+        (37, ty("minecraft:oak_boat"), (0.0, 0.0, 0.0)),
         (38, VANILLA_PLAYER_ENTITY_TYPE_ID.0, (168.75, 0.0, 168.75)),
     ] {
         assert!(world.apply_entity(EntityInput {
@@ -233,7 +237,7 @@ fn passenger_turn_clamps_breeze_despite_boat_turn_exemption() {
         }],
     );
     for (entity_id, type_id, rotation) in [
-        (37, 89, (0.0, 0.0, 0.0)),
+        (37, ty("minecraft:oak_boat"), (0.0, 0.0, 0.0)),
         (38, VANILLA_BREEZE_ENTITY_TYPE_ID.0, (168.75, 0.0, 168.75)),
     ] {
         assert!(world.apply_entity(EntityInput {
@@ -274,7 +278,11 @@ fn boat_control_delta_rotation_reaches_passenger_tick() {
             biomes: &biomes,
         }],
     );
-    for (entity_id, type_id) in [(37, 89), (38, 151), (39, VANILLA_PLAYER_ENTITY_TYPE_ID.0)] {
+    for (entity_id, type_id) in [
+        (37, ty("minecraft:oak_boat")),
+        (38, ty("minecraft:zombie")),
+        (39, VANILLA_PLAYER_ENTITY_TYPE_ID.0),
+    ] {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(1, entity_id as u64),
