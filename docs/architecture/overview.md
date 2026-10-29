@@ -85,3 +85,12 @@ State is held in large structs today:
 Protocol 776 (Java Edition 26.2) is the only version today. The packet ids and generated tables are version-specific.
 
 More versions follow [ADR 0013](../adr/0013-multi-version-content-model.md): one binary that picks the version at connect time, content as the union of all supported versions, and version differences as Rust code in `versions/` modules. Game code uses canonical ids; per-version wire ids exist only at the protocol boundary and are translated by a per-session `Registries`. The earlier plan in [ADR 0004](../adr/0004-version-support.md) (data packs, extractor, translation layer) is replaced.
+
+### Adding a version
+
+1. Add one line to the `versions!` macro in `photon-core/src/version.rs` (name and protocol number). `Version::ALL`, `NEWEST` and the lookups follow from it.
+2. Give every entry the version adds or drops a `since` or `until` in the data tables. A span is only written from evidence, never guessed. `VersionRegistries::of(version)` then derives the dense wire ids.
+3. Put behaviour differences in a `versions/` module behind the `Rules` trait; game code keeps the newest behaviour as the default.
+4. Add the packet ids and layouts that differ for the new protocol.
+5. Capture the oracle: add a Java directory for the version next to `v26_2`, point the single runtime path in `xtask/src/parity.rs` at it, and set the version on the cases that apply.
+6. Run `cargo xtask parity` for every supported version. Runtime code takes the numbering from the session (`CONNECT_VERSION`), never from `Version::NEWEST`; the `newest-version` lint enforces this.
