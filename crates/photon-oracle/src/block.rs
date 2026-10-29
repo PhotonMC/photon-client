@@ -20,8 +20,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
         let label = string(row, "label")?;
         match operation {
             "state_definitions" => {
-                let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-                    .iter()
+                let blocks: Vec<Value> = crate::case_ids::blocks()
                     .enumerate()
                     .map(|(id, block)| {
                         let properties: Vec<Value> = block
@@ -54,8 +53,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     "label": label,
                     "outcome": "listed",
                     "block_count": registry::BLOCKS.len(),
-                    "state_count": registry::BLOCKS
-                        .iter()
+                    "state_count": crate::case_ids::blocks()
                         .map(registry::Block::state_count)
                         .sum::<u32>(),
                     "blocks": blocks,
@@ -63,8 +61,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "offset_properties" => {
                 use photon_data::block::definition::OffsetType;
-                let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-                    .iter()
+                let blocks: Vec<Value> = crate::case_ids::blocks()
                     .filter(|block| block.offset_type != OffsetType::None)
                     .map(|block| {
                         json!({
@@ -86,7 +83,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             "fluid_flow_properties" => {
                 // `FlowingFluid.isSolidFace`'s sturdy faces (never for ice)
                 // and `blocksMotion`, as runs of equal values.
-                let count = registry::state_count();
+                let count = crate::case_ids::state_count();
                 let value = |id: u32| {
                     let state = photon_world::block::state(crate::case_ids::block_state(id as i32))
                         .expect("a registry state");
@@ -114,7 +111,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "motion_blocking" => {
-                let count = registry::state_count();
+                let count = crate::case_ids::state_count();
                 let mut words = vec![0_u64; count.div_ceil(64) as usize];
                 for id in 0..count {
                     if photon_world::motion_blocking(crate::case_ids::block_state(id as i32)) {
@@ -130,8 +127,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "fluid_overlay_blocks" => {
-                let blocks: Vec<&str> = registry::BLOCKS
-                    .iter()
+                let blocks: Vec<&str> = crate::case_ids::blocks()
                     .filter(|block| photon_world::block::shows_fluid_overlay(block))
                     .map(|block| block.name)
                     .collect();
@@ -150,8 +146,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         .find(|class| class.declares().contains(&method))
                         .map_or_else(|| "BlockBehaviour".to_owned(), |class| format!("{class:?}"))
                 };
-                let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-                    .iter()
+                let blocks: Vec<Value> = crate::case_ids::blocks()
                     .map(|block| {
                         let replaceable = if block.replaceable { "1" } else { "0" };
                         json!({
@@ -171,8 +166,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                         })
                     })
                     .collect();
-                let items: Vec<Value> = photon_data::item::registry::ITEMS
-                    .iter()
+                let items: Vec<Value> = crate::case_ids::items()
                     .map(|item| {
                         use photon_data::item::classes::ItemMethod;
                         let owner =
@@ -195,8 +189,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 );
             }
             "destroy_properties" => {
-                let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-                    .iter()
+                let blocks: Vec<Value> = crate::case_ids::blocks()
                     .map(|block| {
                         let mut states: Vec<String> = (0..block.state_count())
                             .map(|offset| {
@@ -264,8 +257,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
             }
             "item_stacking" => {
                 use photon_data::item::classes::ItemMethod;
-                let items: Vec<Value> = photon_data::item::registry::ITEMS
-                    .iter()
+                let items: Vec<Value> = crate::case_ids::items()
                     .map(|item| {
                         let owner =
                             |method: ItemMethod| format!("{:?}", item.class.owner_of(method));
@@ -396,8 +388,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 }));
             }
             "light_properties" => {
-                let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-                    .iter()
+                let blocks: Vec<Value> = crate::case_ids::blocks()
                     .map(|block| {
                         let mut states: Vec<String> = (0..block.state_count())
                             .map(|offset| {
@@ -470,8 +461,7 @@ fn registry_names(request: &Value) -> Result<Value, String> {
 
 /// Which block states have a menu provider, as the bits of every state id.
 fn menu_providers(request: &Value) -> Result<Value, String> {
-    use photon_data::block::registry;
-    let count = registry::state_count();
+    let count = crate::case_ids::state_count();
     let mut words = vec![0_u64; count.div_ceil(64) as usize];
     for id in 0..count {
         if photon_world::block::menu_provider::has_menu_provider(crate::case_ids::block_state(

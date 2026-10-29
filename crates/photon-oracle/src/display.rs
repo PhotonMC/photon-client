@@ -306,10 +306,8 @@ fn item_foil_result(request: &Value) -> Result<Value, String> {
     let mut out = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
         if row.get("all").is_some() {
-            let foil: Vec<bool> = (0..photon_data::item::registry::ITEMS.len())
-                .map(|index| {
-                    Values::new(photon_core::ids::ItemId(index as i32), &[0, 0]).has_foil()
-                })
+            let foil: Vec<bool> = (0..crate::case_ids::items().count())
+                .map(|index| Values::new(crate::case_ids::item(index as i32), &[0, 0]).has_foil())
                 .collect();
             out.push(json!({"label": row["label"], "foil": foil}));
             continue;

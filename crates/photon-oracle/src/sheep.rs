@@ -175,8 +175,7 @@ pub(super) fn sheep_eat_result(request: &Value) -> Result<Value, String> {
 /// own display transform.
 /// The items that are kinetic weapons, with the numbers a spear is posed and timed by.
 pub(super) fn spear_table_result() -> Value {
-    let rows: Vec<Value> = photon_data::item::items::ITEMS
-        .iter()
+    let rows: Vec<Value> = crate::case_ids::items()
         .filter(|item| item.kinetic_weapon)
         .filter_map(|item| photon_data::spear::spear_of(item.name))
         .map(|spear| {

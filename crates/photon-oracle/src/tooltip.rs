@@ -14,8 +14,7 @@ pub(super) fn movement_properties(label: &str) -> Result<Value, String> {
         Fluid::Lava => "minecraft:lava",
         Fluid::FlowingLava => "minecraft:flowing_lava",
     };
-    let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-        .iter()
+    let blocks: Vec<Value> = crate::case_ids::blocks()
         .enumerate()
         .map(|(index, block)| {
             let first = block.first_state_id();
@@ -324,8 +323,7 @@ pub(super) fn item_declarations(label: &str) -> Value {
     let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../.data/minecraft/assets/jar/data");
     let registries = photon_game::registries::Registries::vanilla(&data_root);
-    let items: Vec<Value> = photon_data::item::registry::ITEMS
-        .iter()
+    let items: Vec<Value> = crate::case_ids::items()
         .map(|item| {
             let mut described = json!({
                 "name": item.name,

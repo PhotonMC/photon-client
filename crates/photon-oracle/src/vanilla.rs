@@ -12,8 +12,7 @@ pub(super) fn shape_table(label: &str, outline: bool) -> Value {
     let mut ids: std::collections::HashMap<Vec<u64>, usize> = std::collections::HashMap::new();
     let mut shapes: Vec<Value> = Vec::new();
     let states = photon_world::block::states();
-    let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-        .iter()
+    let blocks: Vec<Value> = crate::case_ids::blocks()
         .map(|block| {
             let mut per_state = Vec::new();
             let mut moves = false;
@@ -432,8 +431,7 @@ pub(super) fn named_state(block: &Value) -> Result<BlockStateId, String> {
 /// the server. The files stay local under `.data`.
 pub(super) fn vanilla_block_tags() -> Result<ClientboundUpdateTagsPacket, String> {
     vanilla_tags_of("block", "minecraft:block", &|name| {
-        photon_data::block::registry::BLOCKS
-            .iter()
+        crate::case_ids::blocks()
             .position(|block| block.name == name)
             .map(|index| index as i32)
     })

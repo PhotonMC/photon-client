@@ -66,8 +66,7 @@ pub(super) fn block_declarations(label: &str) -> Value {
             .map(|(field, _)| *field)
             .expect("every property is listed")
     };
-    let blocks: Vec<Value> = photon_data::block::registry::BLOCKS
-        .iter()
+    let blocks: Vec<Value> = crate::case_ids::blocks()
         .map(|block| {
             let count = block.state_count();
             let mut per_state = serde_json::Map::new();
@@ -140,8 +139,8 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
             .expect("a registry state")
     };
     let mut tuples: Vec<[u16; 6]> = Vec::new();
-    let mut blocks = Vec::with_capacity(registry::BLOCKS.len());
-    for block in &registry::BLOCKS {
+    let mut blocks = Vec::new();
+    for block in crate::case_ids::blocks() {
         let per_state: Vec<usize> = (0..block.state_count())
             .map(|offset| {
                 let faces = info(block, offset).faces;
@@ -174,9 +173,9 @@ pub(super) fn face_occlusion(label: &str) -> Result<Value, String> {
     let joins = matrix(&|shape, occluder| states.joins(shape, occluder));
     let covers = matrix(&|shape, occluder| states.covers(shape, occluder));
     let mut skips = Vec::new();
-    for block in &registry::BLOCKS {
+    for block in crate::case_ids::blocks() {
         let own = info(block, block.default_offset());
-        for other in &registry::BLOCKS {
+        for other in crate::case_ids::blocks() {
             let neighbour = info(other, other.default_offset());
             if !DIRECTIONS
                 .iter()

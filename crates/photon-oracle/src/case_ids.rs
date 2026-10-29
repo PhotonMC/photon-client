@@ -34,3 +34,23 @@ pub(crate) fn item(wire: i32) -> ItemId {
 pub(crate) fn block_state(wire: i32) -> BlockStateId {
     BlockStateId(registries().block_states.canonical_or_unknown(wire))
 }
+
+/// The blocks of [`ORACLE_VERSION`] in registry order: the position in this list is the
+/// block's place in the reference's registry.
+pub(crate) fn blocks() -> impl Iterator<Item = &'static photon_data::block::registry::Block> {
+    photon_data::block::registry::BLOCKS
+        .iter()
+        .filter(|block| block.exists_in(ORACLE_VERSION))
+}
+
+/// The items of [`ORACLE_VERSION`] in registry order.
+pub(crate) fn items() -> impl Iterator<Item = &'static photon_data::item::registry::Item> {
+    photon_data::item::registry::ITEMS
+        .iter()
+        .filter(|item| item.exists_in(ORACLE_VERSION))
+}
+
+/// How many block states [`ORACLE_VERSION`] has.
+pub(crate) fn state_count() -> u32 {
+    registries().block_states.wire_len() as u32
+}

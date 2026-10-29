@@ -434,8 +434,7 @@ fn vault_pose_result(request: &Value) -> Result<Value, String> {
                 .map_err(|error| error.to_string())
         };
         let name = string(row, "item")?;
-        let index = photon_data::item::items::ITEMS
-            .iter()
+        let index = crate::case_ids::items()
             .position(|item| item.name == name)
             .ok_or("no such item")?;
         // The extent's points as the bare layer's half block moves them.
@@ -454,7 +453,7 @@ fn vault_pose_result(request: &Value) -> Result<Value, String> {
             &Pose::default(),
             turned,
             (
-                photon_core::ids::ItemId(index as i32),
+                crate::case_ids::item(index as i32),
                 i32_field(row, "count")?,
             ),
             extent,

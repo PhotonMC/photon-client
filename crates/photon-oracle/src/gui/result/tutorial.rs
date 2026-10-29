@@ -54,8 +54,7 @@ impl Facts for Setting {
 }
 
 fn block_id(name: &str) -> Result<i32, String> {
-    photon_data::block::registry::BLOCKS
-        .iter()
+    crate::case_ids::blocks()
         .position(|block| block.name == name)
         .map(|index| index as i32)
         .ok_or_else(|| format!("unknown block {name}"))
