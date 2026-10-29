@@ -1,0 +1,23 @@
+[package]
+name = "photon-content"
+description = "The game's own content: pinned download from Mojang's servers into a user-level cache."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+photon-core.workspace = true
+photon-net.workspace = true
+flate2.workspace = true
+sha1.workspace = true
+ureq.workspace = true
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
+
+# `flate2` is named only to choose the backend `zip` inflates with.
+[package.metadata.cargo-machete]
+ignored = ["flate2"]
+
+[lints]
+workspace = true

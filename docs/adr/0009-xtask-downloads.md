@@ -13,7 +13,7 @@ Two capabilities were missing from the workspace: fetching files over HTTPS and 
 - **HTTPS: `ureq` 3 with its default features.** It is a blocking client with a small dependency tree, uses `rustls` with `ring` and the bundled `webpki-roots`, and needs no system TLS library or CMake step. The downloader is blocking and parallel with `rayon`; an async runtime is not warranted for a few hundred small files.
 - **Archives: `zip` with `deflate-flate2` only.** The jar is read with the `flate2` backend the workspace already uses. The other compression backends are off.
 - **Hashes.** SHA-1 and SHA-256 come from the `sha1` and `sha2` crates xtask already has. Every download is checked against the hash Mojang publishes before it replaces a file.
-- **Scope.** Both crates are dependencies of `xtask` only. The game client does not link them; its own downloader stays a separate decision (#30).
+- **Scope.** Both crates are dependencies of `xtask` only. `xtask` does not share code with the game client's downloader. That downloader is `photon-content`, which uses `ureq` (rustls, https only), `sha1` and `zip` (deflate only) as well, with a pinned version, host allow-list and the same hash-checked `.part` rename; it needs the sign-in's ownership proof ([ADR 0007](0007-assets-and-accounts.md), #30).
 - **License.** `webpki-roots` is CDLA-Permissive-2.0, which `deny.toml` now allows.
 - **Commands.** `cargo xtask setup|server|play|rcon|bench|shot` replace `tools/photon.py` with the same options and the same `.data/` layout. The Python tools are deleted.
 

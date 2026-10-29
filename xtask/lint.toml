@@ -51,6 +51,7 @@ photon-net = [
     "photon-game",
     "photon-protocol",
 ]
+photon-content = ["photon-core", "photon-net"]
 photon-render = ["photon-core", "photon-data", "photon-world", "photon-assets"]
 photon-gui = [
     "photon-core",

@@ -1634,6 +1634,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "photon-content"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "photon-core",
+ "photon-net",
+ "sha1",
+ "ureq",
+ "zip",
+]
+
+[[package]]
 name = "photon-core"
 version = "0.1.0"
 

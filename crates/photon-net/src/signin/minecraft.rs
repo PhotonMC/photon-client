@@ -26,14 +26,6 @@ pub struct MinecraftSession {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameOwnership(());
 
-impl GameOwnership {
-    /// A proof for tests of what is gated on it; the shipped build has no way to make one.
-    #[cfg(any(test, feature = "test-support"))]
-    pub fn for_tests() -> Self {
-        Self(())
-    }
-}
-
 /// The object a value holds.
 fn as_object(value: &JsonValue) -> Option<&JsonObject> {
     match value {
