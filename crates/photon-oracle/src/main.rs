@@ -45,9 +45,7 @@ use photon_net::configuration::{
     ServerboundAcceptCodeOfConductPacket, ServerboundClientInformationPacket,
     ServerboundFinishConfigurationPacket,
 };
-use photon_net::connection::{
-    decode_chunk_section_data, parse_game_event_packet, parse_player_abilities_packet,
-};
+use photon_net::connection::{parse_game_event_packet, parse_player_abilities_packet};
 use photon_net::frame::{self, FrameError, Varint21FrameDecoder};
 use photon_net::handshake::{self, ClientIntent, ClientIntentionPacket};
 use photon_net::login::{

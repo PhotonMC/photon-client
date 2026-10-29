@@ -57,7 +57,7 @@ impl CreativeMenu {
         self.items = places
             .iter()
             .map(|&place| &items[usize::from(place)])
-            .filter(|entry| offered(entry))
+            .filter(|entry| offered(entry, &self.versions))
             .map(|entry| {
                 Some(Shown {
                     stack: table_stack(entry, &self.registries),

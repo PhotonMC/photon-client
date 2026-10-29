@@ -12,6 +12,10 @@ pub(crate) const VANILLA_PLAYER_SNEAKING_SPEED_ATTRIBUTE_ID: i32 =
 pub(crate) const VANILLA_PLAYER_DEFAULT_SNEAKING_SPEED: f64 = 0.3;
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_ID: &str = "minecraft:sprinting";
 pub(crate) const VANILLA_PLAYER_SPRINTING_MODIFIER_AMOUNT: f32 = 0.3_f32;
+pub(crate) use crate::entity_type_groups::{
+    VANILLA_ANIMAL_ENTITY_TYPE_IDS, VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS,
+    VANILLA_LIVING_ENTITY_TYPE_IDS, VANILLA_MINECART_ENTITY_TYPE_IDS, entity_type_id,
+};
 pub(crate) const VANILLA_PLAYER_ENTITY_TYPE_ID: EntityTypeId =
     photon_data::entity_type::named("minecraft:player");
 pub(crate) const VANILLA_ITEM_ENTITY_TYPE_ID: EntityTypeId =
@@ -48,20 +52,6 @@ pub const VANILLA_SPECTRAL_ARROW_ENTITY_TYPE_ID: EntityTypeId =
     photon_data::entity_type::named("minecraft:spectral_arrow");
 pub const VANILLA_TRIDENT_ENTITY_TYPE_ID: EntityTypeId =
     photon_data::entity_type::named("minecraft:trident");
-pub(crate) const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
-    2, 4, 5, 7, 10, 11, 14, 16, 17, 19, 20, 21, 22, 26, 27, 28, 30, 31, 32, 35, 36, 38, 40, 41, 42,
-    43, 46, 54, 55, 57, 58, 59, 61, 62, 63, 64, 66, 67, 68, 70, 78, 80, 83, 86, 87, 88, 91, 96, 97,
-    98, 99, 100, 101, 102, 103, 104, 107, 108, 109, 110, 111, 112, 114, 115, 116, 117, 119, 121,
-    124, 127, 128, 129, 130, 131, 135, 137, 138, 139, 140, 141, 142, 143, 145, 146, 147, 149, 150,
-    151, 152, 153, 154, 155, 156,
-];
-pub(crate) const VANILLA_ANIMAL_ENTITY_TYPE_IDS: &[i32] = &[
-    4, 7, 11, 19, 20, 21, 26, 30, 36, 54, 55, 58, 62, 64, 66, 78, 86, 87, 88, 91, 96, 98, 100, 104,
-    108, 111, 116, 119, 129, 135, 138, 149, 152, 153,
-];
-pub(crate) const VANILLA_CHEST_BOAT_ENTITY_TYPE_IDS: &[i32] =
-    &[1, 8, 13, 24, 34, 75, 82, 90, 95, 126];
-pub(crate) const VANILLA_MINECART_ENTITY_TYPE_IDS: &[i32] = &[25, 29, 56, 65, 85, 122, 134];
 pub(crate) const VANILLA_BOAT_RIDE_HEIGHT: f32 = 0.5625_f32 / 3.0_f32;
 pub(crate) const VANILLA_RAFT_RIDE_HEIGHT: f32 = 0.5625_f32 * 0.8888889_f32;
 pub(crate) const VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET: f32 = 0.15_f32;
@@ -86,63 +76,103 @@ pub(crate) const VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION: f64 = 1.15;
 pub(crate) const VANILLA_FIREWORK_ROCKET_VERTICAL_ACCELERATION: f64 = 0.04;
 pub(crate) const VANILLA_SPIDER_VEHICLE_ATTACHMENT_Y: f64 = 0.3125;
 pub(crate) const VANILLA_BOAT_PASSENGER_GEOMETRY: &[(i32, f32, f32)] = &[
-    (0, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        1,
+        entity_type_id("minecraft:acacia_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:acacia_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
     (
-        8,
+        entity_type_id("minecraft:bamboo_chest_raft"),
         VANILLA_RAFT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (9, VANILLA_RAFT_RIDE_HEIGHT, 0.0),
-    (12, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        13,
+        entity_type_id("minecraft:bamboo_raft"),
+        VANILLA_RAFT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:birch_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:birch_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (23, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        24,
+        entity_type_id("minecraft:cherry_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:cherry_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (33, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        34,
+        entity_type_id("minecraft:dark_oak_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:dark_oak_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (74, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        75,
+        entity_type_id("minecraft:jungle_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:jungle_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (81, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        82,
+        entity_type_id("minecraft:mangrove_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:mangrove_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (89, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        90,
+        entity_type_id("minecraft:oak_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:oak_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (94, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        95,
+        entity_type_id("minecraft:pale_oak_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:pale_oak_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),
-    (125, VANILLA_BOAT_RIDE_HEIGHT, 0.0),
     (
-        126,
+        entity_type_id("minecraft:spruce_boat"),
+        VANILLA_BOAT_RIDE_HEIGHT,
+        0.0,
+    ),
+    (
+        entity_type_id("minecraft:spruce_chest_boat"),
         VANILLA_BOAT_RIDE_HEIGHT,
         VANILLA_CHEST_BOAT_PASSENGER_Z_OFFSET,
     ),

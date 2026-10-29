@@ -17,7 +17,7 @@ fn session() -> (PlaySession, TcpListener) {
     let incoming = spawn_reader(
         stream.try_clone().expect("clone"),
         None,
-        VersionRegistries::newest(),
+        VersionRegistries::of(crate::connection::CONNECT_VERSION),
     );
     let session = PlaySession::assemble(
         stream,

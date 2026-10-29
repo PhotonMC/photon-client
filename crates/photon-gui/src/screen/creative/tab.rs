@@ -12,7 +12,11 @@ impl CreativeScreen {
     ) -> Self {
         Self {
             layout: ContainerLayout::new(width, height, IMAGE),
-            menu: CreativeMenu::new(tab, assets.trees.registries().clone()),
+            menu: CreativeMenu::new(
+                tab,
+                assets.trees.registries().clone(),
+                assets.trees.versions().clone(),
+            ),
             hovered: None,
             mouse: ContainerMouse::default(),
             scrolling: false,

@@ -25,8 +25,11 @@ pub fn table_stack(entry: &CreativeStack, registries: &Registries) -> Stack {
 /// The search tab, which lists every stack the other tabs do.
 /// Whether the session's version has the entry's item, `registries.has(..)`: a tab lists the union
 /// of every version's items.
-pub(super) fn offered(entry: &CreativeStack) -> bool {
-    photon_data::version_registries::VersionRegistries::newest().has_item(entry.item)
+pub(super) fn offered(
+    entry: &CreativeStack,
+    versions: &photon_data::version_registries::VersionRegistries,
+) -> bool {
+    versions.has_item(entry.item)
 }
 
 pub(super) fn search_tab() -> &'static photon_data::item::creative::CreativeTab {
@@ -137,6 +140,7 @@ pub fn visible_tags(tags: &ItemTags, text: &str) -> Vec<String> {
 pub struct SearchTrees {
     pub(super) lang: std::sync::Arc<crate::text::Lang>,
     pub(super) registries: std::sync::Arc<Registries>,
+    pub(super) versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
     pub(super) index: std::sync::OnceLock<SearchIndex>,
 }
 
@@ -215,12 +219,19 @@ impl SearchTrees {
     pub fn new(
         lang: std::sync::Arc<crate::text::Lang>,
         registries: std::sync::Arc<Registries>,
+        versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
     ) -> Self {
         Self {
             lang,
             registries,
+            versions,
             index: std::sync::OnceLock::new(),
         }
+    }
+
+    /// The numbering of the version the trees list the items of.
+    pub fn versions(&self) -> &std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+        &self.versions
     }
 
     /// The registries the trees were built with.

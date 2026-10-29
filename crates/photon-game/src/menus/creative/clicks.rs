@@ -22,7 +22,7 @@ impl CreativeMenu {
                 for entry in CREATIVE_TABS[tab]
                     .items
                     .iter()
-                    .filter(|entry| offered(entry))
+                    .filter(|entry| offered(entry, &self.versions))
                 {
                     self.items.push(Some(Shown {
                         stack: table_stack(entry, &self.registries),

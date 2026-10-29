@@ -86,7 +86,7 @@ fn play_against(
     let incoming = spawn_reader(
         stream.try_clone().expect("clone"),
         None,
-        VersionRegistries::newest(),
+        VersionRegistries::of(crate::connection::CONNECT_VERSION),
     );
     let state = ConnectionState {
         packs: packs.clone(),

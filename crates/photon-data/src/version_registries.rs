@@ -131,12 +131,12 @@ impl VersionRegistries {
         }
     }
 
-    /// The numbering of the newest version, built on first use and shared by every session of it.
-    pub fn newest() -> std::sync::Arc<Self> {
-        static NEWEST: std::sync::OnceLock<std::sync::Arc<VersionRegistries>> =
-            std::sync::OnceLock::new();
-        NEWEST
-            .get_or_init(|| std::sync::Arc::new(Self::for_version(Version::NEWEST)))
+    /// The numbering of `version`, built on first use and shared by every session of it.
+    pub fn of(version: Version) -> std::sync::Arc<Self> {
+        static BUILT: [std::sync::OnceLock<std::sync::Arc<VersionRegistries>>; Version::ALL.len()] =
+            [const { std::sync::OnceLock::new() }; Version::ALL.len()];
+        BUILT[version.index()]
+            .get_or_init(|| std::sync::Arc::new(Self::for_version(version)))
             .clone()
     }
 

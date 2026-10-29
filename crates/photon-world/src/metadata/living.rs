@@ -164,6 +164,7 @@ pub(crate) fn custom_name_present_from_metadata(metadata: &[u8]) -> Option<bool>
 /// cloud draws itself from.
 pub(crate) fn area_effect_cloud_from_metadata(
     metadata: &[u8],
+    registries: &photon_data::version_registries::VersionRegistries,
 ) -> (f32, bool, (i32, crate::particles::ParticleData)) {
     let default = (
         ENTITY_EFFECT_PARTICLE_TYPE_ID,
@@ -172,11 +173,7 @@ pub(crate) fn area_effect_cloud_from_metadata(
     let particle = find_metadata_field(metadata, AREA_EFFECT_CLOUD_PARTICLE_DATA_ID)
         .filter(|(serializer, _)| *serializer == ENTITY_DATA_SERIALIZER_PARTICLE_ID)
         .and_then(|(_, mut value)| {
-            crate::particles::read_particle_options(
-                &mut value,
-                &photon_data::version_registries::VersionRegistries::newest(),
-            )
-            .ok()?
+            crate::particles::read_particle_options(&mut value, registries).ok()?
         })
         .unwrap_or(default);
     (

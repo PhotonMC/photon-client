@@ -32,7 +32,7 @@ fn apply_metadata(
 
 /// The numbering of the version the probe speaks.
 fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::newest()
+    photon_data::version_registries::VersionRegistries::of(photon_net::connection::CONNECT_VERSION)
 }
 
 use photon_net::connection::entities;

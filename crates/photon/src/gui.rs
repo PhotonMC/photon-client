@@ -41,6 +41,8 @@ pub struct Gui {
     pub(super) languages: Option<Arc<photon_game::language::LanguageSource>>,
     /// The data-driven registries tooltips read.
     pub(super) registries: Arc<Registries>,
+    /// The numbering of the version the game speaks.
+    pub(super) versions: Arc<photon_data::version_registries::VersionRegistries>,
     pub(super) hud: Hud,
     /// Where the skin the local player's model wears in the inventory is.
     pub(super) player_skin: photon_render::entity::textures::TextureRect,

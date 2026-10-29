@@ -20,7 +20,7 @@ pub(super) fn client_world_section_lookup_result(request: &Value) -> Result<Valu
                     section.as_str().ok_or("section payload must be a string")?,
                 )?);
             }
-            let observations = decode_chunk_section_data(&section_data)?;
+            let observations = crate::case_ids::sections(&section_data)?;
             if observations.len() != section_values.len() {
                 return Err("section decoder count does not match input".into());
             }
@@ -103,7 +103,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
             section.as_str().ok_or("section payload must be a string")?,
         )?);
     }
-    let observations = decode_chunk_section_data(&section_data)?;
+    let observations = crate::case_ids::sections(&section_data)?;
     if observations.len() != section_values.len() {
         return Err("section decoder count does not match input".into());
     }

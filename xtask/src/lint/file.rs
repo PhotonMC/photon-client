@@ -95,6 +95,17 @@ fn version_rules(
         );
     }
     wire_types(path, text, package, findings);
+    if !path.starts_with("xtask/") && !config::allowed(&config.newest_allowed, path) {
+        let lines: Vec<usize> = text
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| {
+                !line.trim_start().starts_with("//") && line.contains("Version::NEWEST")
+            })
+            .map(|(index, _)| index + 1)
+            .collect();
+        count(path, Rule::NewestVersion, &lines, findings);
+    }
 }
 
 fn version_allowed(config: &Config, path: &str) -> bool {

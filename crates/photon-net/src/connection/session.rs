@@ -70,6 +70,11 @@ pub fn send_handshake_intention(
     send_handshake_to(stream, (&address.ip().to_string(), address.port()), intent)
 }
 
+/// The version a connection speaks. The one place that picks it: the handshake announces its
+/// protocol number and the session numbers its content with its registries. A server picker
+/// that offers older versions replaces this constant.
+pub const CONNECT_VERSION: photon_core::version::Version = photon_core::version::Version::NEWEST;
+
 /// The handshake for a host name as given (`ClientIntentionPacket`'s host is what the player typed,
 /// which a proxy may route by) and a port.
 pub fn send_handshake_to(
@@ -78,7 +83,7 @@ pub fn send_handshake_to(
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
     let intention = ClientIntentionPacket::new(
-        photon_core::version::Version::NEWEST.protocol(),
+        CONNECT_VERSION.protocol(),
         host.encode_utf16().collect(),
         i32::from(port),
         intent,

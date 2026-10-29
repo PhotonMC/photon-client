@@ -460,6 +460,9 @@ mod tests {
             trees: Arc::new(SearchTrees::new(
                 Arc::new(photon_game::text::Lang::default()),
                 Arc::new(photon_game::registries::Registries::default()),
+                photon_data::version_registries::VersionRegistries::of(
+                    photon_core::version::Version::NEWEST,
+                ),
             )),
             font: Arc::new(Font::default()),
             titles: Arc::from(Vec::new()),

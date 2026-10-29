@@ -101,7 +101,7 @@ impl Play {
         );
         let mut gui = Gui::load(
             std::path::Path::new(&root),
-            registries,
+            (registries, session.versions().clone()),
             &mut backend,
             &controls.options.language_code,
         )?;

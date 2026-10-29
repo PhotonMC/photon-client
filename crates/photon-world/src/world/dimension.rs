@@ -13,6 +13,9 @@ impl ClientWorld {
             block_state_registry: ClientBlockStateRegistry::default(),
             recipe_property_sets: BTreeMap::new(),
             minecart_improvements: false,
+            versions: photon_data::version_registries::VersionRegistries::of(
+                photon_core::version::Version::NEWEST,
+            ),
             stonecutter: Arc::default(),
             recipe_book: RecipeBook::default(),
             chunks: Chunks::default(),

@@ -40,6 +40,7 @@ pub mod end_flash;
 mod entity;
 pub(crate) mod entity_kind;
 mod entity_random;
+mod entity_type_groups;
 mod fluid;
 mod heightmap;
 pub use photon_data::item_components;
@@ -109,6 +110,8 @@ pub struct ClientWorld {
     /// Whether the server enabled `minecart_improvements`: the minecarts made from now on use the
     /// new behaviour (`AbstractMinecart.useExperimentalMovement`, read as one is made).
     minecart_improvements: bool,
+    /// The numbering of the version the session speaks, for the ids that stay inside entity data.
+    versions: Arc<photon_data::version_registries::VersionRegistries>,
     /// The stonecutter's recipes, as the server sent them.
     stonecutter: Arc<Vec<StonecutterEntry>>,
     /// The recipe book the server keeps the client in step with.

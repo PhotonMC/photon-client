@@ -49,8 +49,11 @@ pub fn parse_section_data(
 }
 
 /// Decode the section payload with the same parser used by chunk packets.
-pub fn decode_chunk_section_data(input: &[u8]) -> Result<Vec<ChunkSectionObservation>, String> {
-    parse_section_data(input, &VersionRegistries::newest()).map_err(|error| error.to_string())
+pub fn decode_chunk_section_data(
+    input: &[u8],
+    registries: &VersionRegistries,
+) -> Result<Vec<ChunkSectionObservation>, String> {
+    parse_section_data(input, registries).map_err(|error| error.to_string())
 }
 
 /// Wire-level fields observed from one clientbound chunk-unload packet.

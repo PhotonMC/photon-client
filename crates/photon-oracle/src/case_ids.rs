@@ -54,3 +54,10 @@ pub(crate) fn items() -> impl Iterator<Item = &'static photon_data::item::regist
 pub(crate) fn state_count() -> u32 {
     registries().block_states.wire_len() as u32
 }
+
+/// The chunk sections a payload holds, read with the numbering of [`ORACLE_VERSION`].
+pub(crate) fn sections(
+    bytes: &[u8],
+) -> Result<Vec<photon_protocol::play::ChunkSectionObservation>, String> {
+    photon_protocol::play::decode_chunk_section_data(bytes, &registries())
+}

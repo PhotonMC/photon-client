@@ -20,6 +20,9 @@ pub struct Config {
     pub non_ascii_allowed: Vec<String>,
     /// Path prefixes and fragments where `Version` values may be compared (ADR 0013).
     pub version_allowed: Vec<String>,
+    /// Path prefixes and fragments that may name `Version::NEWEST`: where a version is selected,
+    /// and tests.
+    pub newest_allowed: Vec<String>,
 }
 
 pub fn load() -> Result<Config, String> {

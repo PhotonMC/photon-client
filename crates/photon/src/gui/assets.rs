@@ -5,7 +5,10 @@ impl Gui {
     /// from the asset folder.
     pub fn load(
         root: &Path,
-        registries: Registries,
+        (registries, versions): (
+            Registries,
+            Arc<photon_data::version_registries::VersionRegistries>,
+        ),
         backend: &mut VulkanBackend,
         language: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -22,7 +25,7 @@ impl Gui {
         Ok(Self::assembled(
             ((font, alt_font), (atlas, texture)),
             (resources, lang, languages),
-            Arc::new(registries),
+            (Arc::new(registries), versions),
             language,
         ))
     }
@@ -36,7 +39,11 @@ impl Gui {
     /// The assets of a finished game's `Gui` (and the sprites it left on the GPU) with the state
     /// of a new one, in `language`.
     #[must_use]
-    pub fn recycled(self, language: &str) -> Self {
+    pub fn recycled(
+        self,
+        versions: Arc<photon_data::version_registries::VersionRegistries>,
+        language: &str,
+    ) -> Self {
         let Self {
             font,
             alt_font,
@@ -51,7 +58,7 @@ impl Gui {
         Self::assembled(
             ((font, alt_font), (atlas, atlas_image)),
             (resources, lang, languages),
-            registries,
+            (registries, versions),
             language,
         )
     }
@@ -67,7 +74,10 @@ impl Gui {
             Arc<Lang>,
             Option<Arc<photon_game::language::LanguageSource>>,
         ),
-        registries: Arc<Registries>,
+        (registries, versions): (
+            Arc<Registries>,
+            Arc<photon_data::version_registries::VersionRegistries>,
+        ),
         language: &str,
     ) -> Self {
         let started_at = std::time::Instant::now();
@@ -80,6 +90,7 @@ impl Gui {
             resources,
             languages,
             registries,
+            versions,
             hud: Hud::default(),
             player_skin: [0.0, 0.0, 1.0, 1.0],
             titles: Titles::default(),
@@ -166,6 +177,7 @@ impl Gui {
                 trees: Arc::new(photon_game::menus::creative::SearchTrees::new(
                     lang.clone(),
                     self.registries.clone(),
+                    self.versions.clone(),
                 )),
                 font: self.font.clone(),
                 titles: photon_data::item::creative_tabs::CREATIVE_TABS

@@ -349,8 +349,10 @@ impl ClientWorld {
         }) else {
             return;
         };
-        let data =
-            metadata::area_effect_cloud_from_metadata(entity.metadata.as_deref().unwrap_or(&[255]));
+        let data = metadata::area_effect_cloud_from_metadata(
+            entity.metadata.as_deref().unwrap_or(&[255]),
+            &self.versions,
+        );
         let (queue, random) = &mut self.effect_particles;
         queue.extend(particles::area_effect_cloud_particles(
             random.source(),

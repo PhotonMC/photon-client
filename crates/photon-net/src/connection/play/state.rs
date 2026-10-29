@@ -188,6 +188,11 @@ impl PlaySession {
         self.local.instruments = std::sync::Arc::new(instruments);
     }
 
+    /// The numbering of the version the connection speaks.
+    pub fn versions(&self) -> &std::sync::Arc<VersionRegistries> {
+        &self.registries
+    }
+
     /// The entry names of one synchronised registry, in network order.
     pub fn registry_names(&self, registry: &str) -> &[String] {
         self.state

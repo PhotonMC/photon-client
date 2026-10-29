@@ -18,7 +18,11 @@ use photon_world::block::tags::ItemTags;
 
 impl CreativeMenu {
     /// A menu on a tab.
-    pub fn new(tab: usize, registries: std::sync::Arc<Registries>) -> Self {
+    pub fn new(
+        tab: usize,
+        registries: std::sync::Arc<Registries>,
+        versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
+    ) -> Self {
         let mut menu = Self {
             tab,
             items: Vec::new(),
@@ -26,6 +30,7 @@ impl CreativeMenu {
             picker: ContainerMenu::default(),
             scroll: 0.0,
             registries,
+            versions,
         };
         menu.select_tab(tab);
         menu
@@ -55,6 +60,8 @@ pub struct CreativeMenu {
     pub(super) scroll: f32,
     /// The registries the tabs' stacks are written with.
     pub(super) registries: std::sync::Arc<Registries>,
+    /// The numbering of the version the session speaks: a tab lists the items it has.
+    pub(super) versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
 }
 
 mod clicks;
@@ -73,12 +80,22 @@ mod tests {
         infinite_materials: true,
     };
 
+    fn test_versions() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+        photon_data::version_registries::VersionRegistries::of(
+            photon_core::version::Version::NEWEST,
+        )
+    }
+
     fn menu_on(kind: TabKind) -> CreativeMenu {
         let tab = CREATIVE_TABS
             .iter()
             .position(|tab| tab.kind == kind)
             .expect("a tab of the kind");
-        CreativeMenu::new(tab, std::sync::Arc::new(crate::registries::for_tests()))
+        CreativeMenu::new(
+            tab,
+            std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
+        )
     }
 
     fn click(
@@ -109,6 +126,7 @@ mod tests {
         let creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         assert_eq!(creative.kind(), TabKind::Category);
         assert!(creative.window_stack(0).is_some());
@@ -121,6 +139,7 @@ mod tests {
         let mut creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         let first = creative.window_stack(0).map(Stack::item_registry_id);
         creative.set_scroll(1.0);
@@ -135,6 +154,7 @@ mod tests {
         let mut creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         let mut menu = ContainerMenu::default();
         let item = creative.window_stack(0).cloned().expect("a stack");
@@ -181,6 +201,7 @@ mod tests {
         let mut creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         let mut menu = ContainerMenu::default();
         click(
@@ -207,6 +228,7 @@ mod tests {
         let mut creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         let mut menu = ContainerMenu::default();
         let effects = click(
@@ -226,6 +248,7 @@ mod tests {
         let mut creative = CreativeMenu::new(
             default_tab(),
             std::sync::Arc::new(crate::registries::for_tests()),
+            test_versions(),
         );
         let mut menu = ContainerMenu {
             carried: Some(Stack::new(5, photon_core::ids::ItemId(1))),

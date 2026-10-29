@@ -36,12 +36,13 @@ pub enum Rule {
     RawIdWrap,
     VersionCompare,
     WireType,
+    NewestVersion,
     Layer,
 }
 
 impl Rule {
     pub fn name(self) -> &'static str {
-        const NAMES: [&str; 15] = [
+        const NAMES: [&str; 16] = [
             "file-lines",
             "fn-complexity",
             "fn-length",
@@ -56,6 +57,7 @@ impl Rule {
             "raw-id-wrap",
             "version-compare",
             "wire-type",
+            "newest-version",
             "layer",
         ];
         NAMES[self as usize]
@@ -85,6 +87,9 @@ impl Rule {
             Self::VersionCompare => {
                 "Version compared outside the version modules listed in xtask/lint.toml"
             }
+            Self::NewestVersion => {
+                "Version::NEWEST outside the selection points listed in xtask/lint.toml; take the session's registries"
+            }
             _ => "wire id types outside photon-protocol and photon-net",
         }
     }
@@ -109,9 +114,11 @@ impl Rule {
             }
             Self::Unsafe => "unsafe outside the modules listed in xtask/lint.toml",
             Self::Print => "terminal printing in a library; use `log`",
-            Self::RegistryLiteral | Self::RawIdWrap | Self::VersionCompare | Self::WireType => {
-                self.id_hint()
-            }
+            Self::RegistryLiteral
+            | Self::RawIdWrap
+            | Self::VersionCompare
+            | Self::WireType
+            | Self::NewestVersion => self.id_hint(),
             Self::Layer => "crate dependency not allowed by the layer table in xtask/lint.toml",
         }
     }

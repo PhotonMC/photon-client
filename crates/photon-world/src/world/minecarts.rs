@@ -3,6 +3,14 @@ use crate::*;
 impl ClientWorld {
     /// `ClientboundUpdateEnabledFeaturesPacket`: whether `minecart_improvements` is on, which the
     /// minecarts made after this read to choose their behaviour.
+    /// The numbering of the version the session speaks. A world starts with the newest version's.
+    pub fn set_versions(
+        &mut self,
+        versions: std::sync::Arc<photon_data::version_registries::VersionRegistries>,
+    ) {
+        self.versions = versions;
+    }
+
     pub fn set_minecart_improvements(&mut self, enabled: bool) {
         self.minecart_improvements = enabled;
     }

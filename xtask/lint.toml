@@ -12,6 +12,20 @@ non_ascii_allowed = []
 # Where `Version` values may be compared: version modules and the dispatch points (ADR 0013).
 version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/version_registries.rs", "crates/photon-data/src/block/definition.rs", "crates/photon-data/src/item/definition.rs"]
 
+# Where `Version::NEWEST` may be named: the places that select a version, and tests. Everything
+# else takes the session's registries, so a connection to an older version is not numbered by
+# the newest one.
+newest_allowed = [
+    "crates/photon-core/src/version.rs",
+    "crates/photon-net/src/connection/session.rs",
+    "crates/photon-world/src/world/dimension.rs",
+    "crates/photon-game/src/menus/creative.rs",
+    "crates/photon-gui/src/screen/creative.rs",
+    "crates/photon-protocol/src/play/tests.rs",
+    "crates/photon-protocol/src/play/wire_ids.rs",
+    "crates/photon-oracle/src/case_ids.rs",
+]
+
 # Each package may depend only on the workspace packages listed for it.
 # Dependencies flow one way: core -> data -> world -> game -> net / render -> app.
 # render -> game and audio -> game are known debts (GUI and sound-engine types
