@@ -80,7 +80,7 @@ Closed and total issues per milestone on GitHub; these are issue counts, not com
 <!-- milestones:start -->
 | Milestone | Closed / issues |
 | --- | --- |
-| [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 6 / 8 |
+| [Infra: repository and quality](https://github.com/PhotonMC/photon-client/milestone/1) | 7 / 8 |
 | [Infra: parity v2](https://github.com/PhotonMC/photon-client/milestone/2) | 7 / 8 |
 | [Infra: versions](https://github.com/PhotonMC/photon-client/milestone/3) | 6 / 8 |
 | [Infra: ECS and threading](https://github.com/PhotonMC/photon-client/milestone/4) | 3 / 7 |
