@@ -2,6 +2,8 @@
 //! in it is good. Its description and its tooltip colours follow from
 //! those, as the reference derives them.
 
+use photon_core::version::{Version, VersionSpan};
+
 /// `Attribute.Sentiment`: how a tooltip colours a rise and a fall.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Sentiment {
@@ -15,6 +17,8 @@ pub enum Sentiment {
 pub struct Attribute {
     pub name: &'static str,
     pub sentiment: Sentiment,
+    /// The versions that have the attribute.
+    pub versions: VersionSpan,
 }
 
 impl Attribute {
@@ -23,7 +27,19 @@ impl Attribute {
         Self {
             name,
             sentiment: Sentiment::Positive,
+            versions: VersionSpan::ALL,
         }
+    }
+
+    /// The first version that has the attribute.
+    pub const fn since(mut self, version: Version) -> Self {
+        self.versions = self.versions.since(version);
+        self
+    }
+
+    /// Whether the attribute exists in `version`.
+    pub const fn exists_in(&self, version: Version) -> bool {
+        self.versions.contains(version)
     }
 
     pub const fn sentiment(mut self, sentiment: Sentiment) -> Self {

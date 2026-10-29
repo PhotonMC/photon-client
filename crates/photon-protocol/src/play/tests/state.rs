@@ -95,7 +95,8 @@ fn update_attributes_parser_matches_java_snapshot_and_modifier_order() {
     payload.extend_from_slice(&0.25_f64.to_be_bytes());
     payload.push(2);
 
-    let observation = parse_update_attributes_packet(&payload).expect("update attributes packet");
+    let observation =
+        parse_update_attributes_packet(&payload, &registries()).expect("update attributes packet");
     assert_eq!(observation.entity_id, photon_core::ids::EntityId(42));
     assert!(!observation.applied_to_world);
     assert_eq!(observation.attributes.len(), 1);
@@ -108,7 +109,7 @@ fn update_attributes_parser_matches_java_snapshot_and_modifier_order() {
     assert_eq!(attribute.modifiers()[0].operation(), 2);
 
     payload.push(0);
-    assert!(parse_update_attributes_packet(&payload).is_err());
+    assert!(parse_update_attributes_packet(&payload, &registries()).is_err());
 }
 
 #[test]

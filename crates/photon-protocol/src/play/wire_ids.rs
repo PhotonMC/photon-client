@@ -22,6 +22,22 @@ pub struct WireBlockStateId(pub i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WireEntityTypeId(pub i32);
 
+/// An attribute id as the wire carries it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WireAttributeId(pub i32);
+
+impl WireAttributeId {
+    /// A varint attribute id.
+    pub fn read(input: &mut &[u8], name: &'static str) -> Result<Self, ConnectionError> {
+        read_varint(input, name).map(Self)
+    }
+
+    /// The canonical id.
+    pub fn canonical(self, registries: &VersionRegistries) -> i32 {
+        registries.attributes.canonical_or_unknown(self.0)
+    }
+}
+
 impl WireItemId {
     /// A varint item id.
     pub fn read(input: &mut &[u8], name: &'static str) -> Result<Self, ConnectionError> {

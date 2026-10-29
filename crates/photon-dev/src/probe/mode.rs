@@ -865,7 +865,7 @@ pub(super) fn connect_and_probe_with_mode(
                 });
             }
             PLAY_CLIENTBOUND_UPDATE_ATTRIBUTES_PACKET_ID => {
-                let mut observation = parse_update_attributes_packet(payload)?;
+                let mut observation = parse_update_attributes_packet(payload, &registries())?;
                 observation.applied_to_world = trace
                     .world
                     .apply_local_player_attributes(observation.entity_id, &observation.attributes)

@@ -3,20 +3,22 @@
 //!
 //! This table is maintained by hand; the parity families compare it with the reference.
 
+use photon_core::version::Version;
+
 use crate::item::attribute::{Attribute, Sentiment};
 
 #[rustfmt::skip]
 pub static ATTRIBUTES: [Attribute; 40] = [
-    Attribute::of("minecraft:air_drag_modifier"),
+    Attribute::of("minecraft:air_drag_modifier").since(Version::V26_2),
     Attribute::of("minecraft:armor"),
     Attribute::of("minecraft:armor_toughness"),
     Attribute::of("minecraft:attack_damage"),
     Attribute::of("minecraft:attack_knockback"),
     Attribute::of("minecraft:attack_speed"),
-    Attribute::of("minecraft:below_name_distance"),
+    Attribute::of("minecraft:below_name_distance").since(Version::V26_2),
     Attribute::of("minecraft:block_break_speed"),
     Attribute::of("minecraft:block_interaction_range"),
-    Attribute::of("minecraft:bounciness"),
+    Attribute::of("minecraft:bounciness").since(Version::V26_2),
     Attribute::of("minecraft:burning_time").sentiment(Sentiment::Negative),
     Attribute::of("minecraft:camera_distance"),
     Attribute::of("minecraft:explosion_knockback_resistance"),
@@ -24,7 +26,7 @@ pub static ATTRIBUTES: [Attribute; 40] = [
     Attribute::of("minecraft:fall_damage_multiplier").sentiment(Sentiment::Negative),
     Attribute::of("minecraft:flying_speed"),
     Attribute::of("minecraft:follow_range"),
-    Attribute::of("minecraft:friction_modifier"),
+    Attribute::of("minecraft:friction_modifier").since(Version::V26_2),
     Attribute::of("minecraft:gravity").sentiment(Sentiment::Neutral),
     Attribute::of("minecraft:jump_strength"),
     Attribute::of("minecraft:knockback_resistance"),
@@ -34,7 +36,7 @@ pub static ATTRIBUTES: [Attribute; 40] = [
     Attribute::of("minecraft:mining_efficiency"),
     Attribute::of("minecraft:movement_efficiency"),
     Attribute::of("minecraft:movement_speed"),
-    Attribute::of("minecraft:name_tag_distance"),
+    Attribute::of("minecraft:name_tag_distance").since(Version::V26_2),
     Attribute::of("minecraft:oxygen_bonus"),
     Attribute::of("minecraft:safe_fall_distance"),
     Attribute::of("minecraft:scale").sentiment(Sentiment::Neutral),

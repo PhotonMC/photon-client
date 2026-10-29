@@ -13,6 +13,7 @@ use crate::item::registry::ITEMS;
 use crate::named::presence;
 use crate::particle_type::PARTICLE_TYPES;
 use crate::tables::entity_types::ENTITY_TYPES;
+use crate::tables::item::attributes::ATTRIBUTES;
 use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, MENU_TYPES};
 use crate::tables::sound_events::SOUND_EVENTS;
 use crate::versions;
@@ -181,6 +182,7 @@ pub struct VersionRegistries {
     pub particle_types: IdMap,
     pub menu_types: IdMap,
     pub block_entity_types: IdMap,
+    pub attributes: IdMap,
 }
 
 impl VersionRegistries {
@@ -213,6 +215,11 @@ impl VersionRegistries {
             ),
             menu_types: IdMap::from_presence(presence(&MENU_TYPES, version)),
             block_entity_types: IdMap::from_presence(presence(&BLOCK_ENTITY_TYPES, version)),
+            attributes: IdMap::from_presence(
+                ATTRIBUTES
+                    .iter()
+                    .map(|attribute| attribute.exists_in(version)),
+            ),
         }
     }
 
@@ -233,6 +240,7 @@ impl VersionRegistries {
             particle_types: dense(&real.particle_types),
             menu_types: dense(&real.menu_types),
             block_entity_types: dense(&real.block_entity_types),
+            attributes: dense(&real.attributes),
         }
     }
 
@@ -258,7 +266,7 @@ impl VersionRegistries {
     }
 
     /// Every registry's name and map, for checks that cover them all.
-    pub fn all(&self) -> [(&'static str, &IdMap); 8] {
+    pub fn all(&self) -> [(&'static str, &IdMap); 9] {
         [
             ("items", &self.items),
             ("blocks", &self.blocks),
@@ -268,6 +276,7 @@ impl VersionRegistries {
             ("particle_types", &self.particle_types),
             ("menu_types", &self.menu_types),
             ("block_entity_types", &self.block_entity_types),
+            ("attributes", &self.attributes),
         ]
     }
 }

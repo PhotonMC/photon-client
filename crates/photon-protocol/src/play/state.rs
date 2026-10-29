@@ -84,6 +84,7 @@ pub struct EntityEquipmentObservation {
 
 pub fn parse_update_attributes_packet(
     input: &[u8],
+    registries: &VersionRegistries,
 ) -> Result<AttributeUpdateObservation, ConnectionError> {
     let mut input = input;
     let entity_id = read_varint(&mut input, "update attributes entity id")?;
@@ -93,7 +94,8 @@ pub fn parse_update_attributes_packet(
     }
     let mut attributes = Vec::with_capacity(attribute_count);
     for _ in 0..attribute_count {
-        let attribute_id = read_varint(&mut input, "update attribute id")?;
+        let attribute_id =
+            WireAttributeId::read(&mut input, "update attribute id")?.canonical(registries);
         let base_value = read_f64(&mut input, "update attribute base value")?;
         let modifier_count = read_count(&mut input, "update attribute modifier count")?;
         let mut modifiers = Vec::with_capacity(modifier_count);
@@ -374,7 +376,7 @@ wrapped_wire_packet!(
     OnError::Ignore("entity_equipment")
 );
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundUpdateAttributesPacket`.
     UpdateAttributes(AttributeUpdateObservation) = parse_update_attributes_packet
 );

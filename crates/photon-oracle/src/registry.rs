@@ -75,6 +75,12 @@ fn entries(
             photon_data::block_entity_type::names().map(str::to_owned),
             &registries.block_entity_types,
         ),
+        "attribute" => listed(
+            photon_data::item::attributes::ATTRIBUTES
+                .iter()
+                .map(|attribute| attribute.name.to_owned()),
+            &registries.attributes,
+        ),
         _ => return Err("unknown registry".into()),
     })
 }

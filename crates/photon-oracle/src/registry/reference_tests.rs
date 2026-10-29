@@ -68,6 +68,7 @@ fn every_version_numbers_its_registries_like_its_own_server() {
             ("particle_type", "minecraft:particle_type"),
             ("menu", "minecraft:menu"),
             ("block_entity_type", "minecraft:block_entity_type"),
+            ("attribute", "minecraft:attribute"),
         ] {
             let want = reference_order(&reference, key);
             let got = ours(label, &registries, version);
