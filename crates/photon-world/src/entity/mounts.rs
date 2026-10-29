@@ -6,7 +6,7 @@ impl ClientEntity {
         self.living.strider_suffocating
     }
 
-    /// A horse's animations and tail, if it has ticked.
+    /// A horse's animations and tail.
     pub fn horse(&self) -> Option<&crate::mobs::horse::HorseState> {
         self.kind.horse()
     }
@@ -35,9 +35,7 @@ impl ClientEntity {
     /// Fixes the source a horse's tail chance is drawn from (see
     /// [`crate::mobs::horse::HorseState::fix_seed`]).
     pub fn fix_horse_seed(&mut self, seed: i64) {
-        self.kind
-            .horse_or_insert_with(|| Box::new(crate::mobs::horse::HorseState::new()))
-            .fix_seed(seed);
+        self.kind.horse_state().fix_seed(seed);
     }
 
     /// Whether this is a camel or a camel husk.

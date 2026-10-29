@@ -1,7 +1,6 @@
 //! The state only some kinds of entity have. An entity is one kind for as long as it lives, so
 //! what a rabbit keeps and what a warden keeps are variants of one value, not a field each that
-//! is empty on every other entity. The state is made when something first reaches it (its data,
-//! an event, its first tick), so an entity of a kind can still have none yet.
+//! is empty on every other entity. The state is made as the entity spawns, from its type.
 
 use std::borrow::{Borrow, BorrowMut};
 
@@ -14,11 +13,11 @@ pub(crate) struct MinecartSlot {
 }
 
 macro_rules! entity_kinds {
-    ($($variant:ident($boxed:ty => $inner:ty) $get:ident $get_mut:ident $or_insert:ident;)*) => {
+    ($($variant:ident($boxed:ty => $inner:ty) $get:ident $get_mut:ident $state:ident;)*) => {
         /// What kind of entity this is, with the state that kind keeps.
         #[derive(Debug, Clone, Default, PartialEq, Eq)]
         pub(crate) enum EntityKind {
-            /// An entity with no state of its own, or one whose state is not made yet.
+            /// An entity with no state of its own.
             #[default]
             Plain,
             $($variant($boxed),)*
@@ -44,12 +43,9 @@ macro_rules! entity_kinds {
                     }
                 }
 
-                /// The state, made with `make` if there is none yet. An entity keeps one kind: it
+                /// The state, which the entity makes as it spawns. An entity keeps one kind: it
                 /// is a bug to ask for the state of another.
-                pub(crate) fn $or_insert(&mut self, make: impl FnOnce() -> $boxed) -> &mut $inner {
-                    if matches!(self, Self::Plain) {
-                        *self = Self::$variant(make());
-                    }
+                pub(crate) fn $state(&mut self) -> &mut $inner {
                     match self {
                         Self::$variant(state) => <$boxed as BorrowMut<$inner>>::borrow_mut(state),
                         other => panic!("the state of {other:?} asked for as {}", stringify!($variant)),
@@ -61,33 +57,33 @@ macro_rules! entity_kinds {
 }
 
 entity_kinds! {
-    Rabbit(Box<crate::mobs::rabbit::RabbitState> => crate::mobs::rabbit::RabbitState) rabbit rabbit_mut rabbit_or_insert_with;
-    CopperGolem(Box<crate::mobs::copper_golem::CopperGolemAnimations> => crate::mobs::copper_golem::CopperGolemAnimations) copper_golem copper_golem_mut copper_golem_or_insert_with;
-    Squid(Box<crate::mobs::squid::SquidState> => crate::mobs::squid::SquidState) squid squid_mut squid_or_insert_with;
-    Axolotl(Box<crate::mobs::axolotl::AxolotlState> => crate::mobs::axolotl::AxolotlState) axolotl axolotl_mut axolotl_or_insert_with;
-    Boat(Box<crate::objects::boat::BoatState> => crate::objects::boat::BoatState) boat boat_mut boat_or_insert_with;
-    Bat(Box<crate::mobs::bat::BatState> => crate::mobs::bat::BatState) bat bat_mut bat_or_insert_with;
-    Parrot(Box<crate::mobs::parrot::ParrotState> => crate::mobs::parrot::ParrotState) parrot parrot_mut parrot_or_insert_with;
-    Allay(Box<crate::mobs::allay::AllayState> => crate::mobs::allay::AllayState) allay allay_mut allay_or_insert_with;
-    Guardian(Box<crate::mobs::guardian::GuardianState> => crate::mobs::guardian::GuardianState) guardian guardian_mut guardian_or_insert_with;
-    Breeze(Box<crate::mobs::breeze::BreezeState> => crate::mobs::breeze::BreezeState) breeze breeze_mut breeze_or_insert_with;
-    Warden(Box<crate::mobs::warden::WardenState> => crate::mobs::warden::WardenState) warden warden_mut warden_or_insert_with;
-    Creaking(Box<crate::mobs::creaking::CreakingState> => crate::mobs::creaking::CreakingState) creaking creaking_mut creaking_or_insert_with;
-    Armadillo(Box<crate::mobs::armadillo::ArmadilloState> => crate::mobs::armadillo::ArmadilloState) armadillo armadillo_mut armadillo_or_insert_with;
-    Sniffer(Box<crate::mobs::sniffer::SnifferState> => crate::mobs::sniffer::SnifferState) sniffer sniffer_mut sniffer_or_insert_with;
-    Wither(Box<crate::mobs::wither::WitherState> => crate::mobs::wither::WitherState) wither wither_mut wither_or_insert_with;
-    EnderDragon(Box<crate::mobs::ender_dragon::EnderDragonState> => crate::mobs::ender_dragon::EnderDragonState) ender_dragon ender_dragon_mut ender_dragon_or_insert_with;
-    EndCrystal(Box<crate::objects::end_crystal::EndCrystalState> => crate::objects::end_crystal::EndCrystalState) end_crystal end_crystal_mut end_crystal_or_insert_with;
-    Arrow(Box<crate::objects::arrow::ArrowState> => crate::objects::arrow::ArrowState) arrow arrow_mut arrow_or_insert_with;
-    EvokerFangs(Box<crate::objects::evoker_fangs::FangsState> => crate::objects::evoker_fangs::FangsState) evoker_fangs evoker_fangs_mut evoker_fangs_or_insert_with;
-    Display(Box<crate::objects::display::DisplayState> => crate::objects::display::DisplayState) display display_mut display_or_insert_with;
-    PrimedTnt(Box<crate::objects::primed_tnt::PrimedTntState> => crate::objects::primed_tnt::PrimedTntState) primed_tnt primed_tnt_mut primed_tnt_or_insert_with;
-    Lightning(Box<crate::objects::lightning::LightningState> => crate::objects::lightning::LightningState) lightning lightning_mut lightning_or_insert_with;
-    FishingHook(Box<crate::objects::fishing_hook::HookState> => crate::objects::fishing_hook::HookState) fishing_hook fishing_hook_mut fishing_hook_or_insert_with;
-    Mannequin(Box<crate::objects::mannequin::MannequinState> => crate::objects::mannequin::MannequinState) mannequin mannequin_mut mannequin_or_insert_with;
-    Frog(Box<crate::mobs::frog::FrogState> => crate::mobs::frog::FrogState) frog frog_mut frog_or_insert_with;
-    Panda(Box<crate::mobs::panda::PandaState> => crate::mobs::panda::PandaState) panda panda_mut panda_or_insert_with;
-    Ravager(Box<crate::mobs::ravager::RavagerState> => crate::mobs::ravager::RavagerState) ravager ravager_mut ravager_or_insert_with;
-    Horse(Box<crate::mobs::horse::HorseState> => crate::mobs::horse::HorseState) horse horse_mut horse_or_insert_with;
-    Minecart(Box<MinecartSlot> => MinecartSlot) minecart_slot minecart_slot_mut minecart_slot_or_insert_with;
+    Rabbit(Box<crate::mobs::rabbit::RabbitState> => crate::mobs::rabbit::RabbitState) rabbit rabbit_mut rabbit_state;
+    CopperGolem(Box<crate::mobs::copper_golem::CopperGolemAnimations> => crate::mobs::copper_golem::CopperGolemAnimations) copper_golem copper_golem_mut copper_golem_state;
+    Squid(Box<crate::mobs::squid::SquidState> => crate::mobs::squid::SquidState) squid squid_mut squid_state;
+    Axolotl(Box<crate::mobs::axolotl::AxolotlState> => crate::mobs::axolotl::AxolotlState) axolotl axolotl_mut axolotl_state;
+    Boat(Box<crate::objects::boat::BoatState> => crate::objects::boat::BoatState) boat boat_mut boat_state;
+    Bat(Box<crate::mobs::bat::BatState> => crate::mobs::bat::BatState) bat bat_mut bat_state;
+    Parrot(Box<crate::mobs::parrot::ParrotState> => crate::mobs::parrot::ParrotState) parrot parrot_mut parrot_state;
+    Allay(Box<crate::mobs::allay::AllayState> => crate::mobs::allay::AllayState) allay allay_mut allay_state;
+    Guardian(Box<crate::mobs::guardian::GuardianState> => crate::mobs::guardian::GuardianState) guardian guardian_mut guardian_state;
+    Breeze(Box<crate::mobs::breeze::BreezeState> => crate::mobs::breeze::BreezeState) breeze breeze_mut breeze_state;
+    Warden(Box<crate::mobs::warden::WardenState> => crate::mobs::warden::WardenState) warden warden_mut warden_state;
+    Creaking(Box<crate::mobs::creaking::CreakingState> => crate::mobs::creaking::CreakingState) creaking creaking_mut creaking_state;
+    Armadillo(Box<crate::mobs::armadillo::ArmadilloState> => crate::mobs::armadillo::ArmadilloState) armadillo armadillo_mut armadillo_state;
+    Sniffer(Box<crate::mobs::sniffer::SnifferState> => crate::mobs::sniffer::SnifferState) sniffer sniffer_mut sniffer_state;
+    Wither(Box<crate::mobs::wither::WitherState> => crate::mobs::wither::WitherState) wither wither_mut wither_state;
+    EnderDragon(Box<crate::mobs::ender_dragon::EnderDragonState> => crate::mobs::ender_dragon::EnderDragonState) ender_dragon ender_dragon_mut ender_dragon_state;
+    EndCrystal(Box<crate::objects::end_crystal::EndCrystalState> => crate::objects::end_crystal::EndCrystalState) end_crystal end_crystal_mut end_crystal_state;
+    Arrow(Box<crate::objects::arrow::ArrowState> => crate::objects::arrow::ArrowState) arrow arrow_mut arrow_state;
+    EvokerFangs(Box<crate::objects::evoker_fangs::FangsState> => crate::objects::evoker_fangs::FangsState) evoker_fangs evoker_fangs_mut evoker_fangs_state;
+    Display(Box<crate::objects::display::DisplayState> => crate::objects::display::DisplayState) display display_mut display_state;
+    PrimedTnt(Box<crate::objects::primed_tnt::PrimedTntState> => crate::objects::primed_tnt::PrimedTntState) primed_tnt primed_tnt_mut primed_tnt_state;
+    Lightning(Box<crate::objects::lightning::LightningState> => crate::objects::lightning::LightningState) lightning lightning_mut lightning_state;
+    FishingHook(Box<crate::objects::fishing_hook::HookState> => crate::objects::fishing_hook::HookState) fishing_hook fishing_hook_mut fishing_hook_state;
+    Mannequin(Box<crate::objects::mannequin::MannequinState> => crate::objects::mannequin::MannequinState) mannequin mannequin_mut mannequin_state;
+    Frog(Box<crate::mobs::frog::FrogState> => crate::mobs::frog::FrogState) frog frog_mut frog_state;
+    Panda(Box<crate::mobs::panda::PandaState> => crate::mobs::panda::PandaState) panda panda_mut panda_state;
+    Ravager(Box<crate::mobs::ravager::RavagerState> => crate::mobs::ravager::RavagerState) ravager ravager_mut ravager_state;
+    Horse(Box<crate::mobs::horse::HorseState> => crate::mobs::horse::HorseState) horse horse_mut horse_state;
+    Minecart(Box<MinecartSlot> => MinecartSlot) minecart_slot minecart_slot_mut minecart_slot_state;
 }

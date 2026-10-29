@@ -16,7 +16,7 @@ impl ClientEntity {
             .is_some()
     }
 
-    /// A minecart's hit, carried block and fuel, if it has any.
+    /// A minecart's hit, carried block and fuel.
     pub fn minecart(&self) -> Option<&crate::objects::minecart::MinecartState> {
         self.kind
             .minecart_slot()
@@ -25,7 +25,7 @@ impl ClientEntity {
 
     pub(crate) fn minecart_mut(&mut self) -> &mut crate::objects::minecart::MinecartState {
         self.kind
-            .minecart_slot_or_insert_with(Default::default)
+            .minecart_slot_state()
             .state
             .get_or_insert_with(Default::default)
     }

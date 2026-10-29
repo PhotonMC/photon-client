@@ -21,21 +21,15 @@ impl ClientEntity {
         self.pose = pose;
         if self.is_frog() {
             let tick_count = self.tick_count;
-            self.kind
-                .frog_or_insert_with(Default::default)
-                .set_pose(pose, tick_count);
+            self.kind.frog_state().set_pose(pose, tick_count);
         }
         if self.is_breeze() {
             let tick_count = self.tick_count;
-            self.kind
-                .breeze_or_insert_with(Default::default)
-                .set_pose(pose, tick_count);
+            self.kind.breeze_state().set_pose(pose, tick_count);
         }
         if self.is_warden() {
             let tick_count = self.tick_count;
-            self.kind
-                .warden_or_insert_with(Default::default)
-                .set_pose(pose, tick_count);
+            self.kind.warden_state().set_pose(pose, tick_count);
         }
     }
 

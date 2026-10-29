@@ -9,12 +9,10 @@ impl ClientEntity {
         }
         let (in_water, moving, tick_count) =
             (self.living.in_water, self.walk.is_moving(), self.tick_count);
-        self.kind
-            .frog_or_insert_with(Default::default)
-            .tick(in_water, moving, tick_count);
+        self.kind.frog_state().tick(in_water, moving, tick_count);
     }
 
-    /// An axolotl's animators and animation states, if it has ticked.
+    /// An axolotl's animators and animation states.
     pub fn axolotl(&self) -> Option<&crate::mobs::axolotl::AxolotlState> {
         self.kind.axolotl()
     }
@@ -43,9 +41,7 @@ impl ClientEntity {
             moving: self.walk.is_moving(),
             tick_count: self.tick_count,
         };
-        self.kind
-            .axolotl_or_insert_with(|| Box::new(crate::mobs::axolotl::AxolotlState::new()))
-            .tick(input);
+        self.kind.axolotl_state().tick(input);
     }
 
     /// `Turtle.hasEgg`.
@@ -86,7 +82,7 @@ impl ClientEntity {
         self.living.fish_variant.unwrap_or(0)
     }
 
-    /// A guardian's animations, if it has ticked.
+    /// A guardian's animations.
     pub fn guardian(&self) -> Option<&crate::mobs::guardian::GuardianState> {
         self.kind.guardian()
     }
@@ -116,9 +112,7 @@ impl ClientEntity {
         }
         if let Some(target) = target {
             self.living.guardian_target = target;
-            self.kind
-                .guardian_or_insert_with(|| Box::new(crate::mobs::guardian::GuardianState::new()))
-                .restart_attack();
+            self.kind.guardian_state().restart_attack();
         }
     }
 
@@ -136,12 +130,12 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:frog")
     }
 
-    /// A frog's animation states, if it has any.
+    /// A frog's animation states.
     pub fn frog(&self) -> Option<&crate::mobs::frog::FrogState> {
         self.kind.frog()
     }
 
-    /// A squid's tentacles and body turns, if it has ticked.
+    /// A squid's tentacles and body turns.
     pub fn squid(&self) -> Option<&crate::mobs::squid::SquidState> {
         self.kind.squid()
     }
@@ -165,10 +159,7 @@ impl EntityViewMut<'_> {
             self.motion(),
             self.rotation.y_body_rot.get(),
         );
-        let turned = self
-            .kind
-            .squid_or_insert_with(|| Box::new(crate::mobs::squid::SquidState::new()))
-            .ai_step(in_water, motion, body);
+        let turned = self.kind.squid_state().ai_step(in_water, motion, body);
         if let Some(body) = turned {
             self.rotation.y_body_rot = JavaF32::new(body);
             self.rotation.y_rot = JavaF32::new(body);
@@ -206,7 +197,7 @@ impl EntityViewMut<'_> {
         let has_target = self.living.guardian_target != 0;
         let duration = self.guardian_attack_duration();
         self.kind
-            .guardian_or_insert_with(|| Box::new(crate::mobs::guardian::GuardianState::new()))
+            .guardian_state()
             .tick(&place, has_target, duration, &mut pose);
         self.rotation.y_rot = JavaF32::new(pose.y_rot);
         self.rotation.x_rot = JavaF32::new(pose.x_rot);

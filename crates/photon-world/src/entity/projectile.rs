@@ -41,7 +41,7 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:lightning_bolt")
     }
 
-    /// A lightning bolt's shape and flashes, if it has begun to tick.
+    /// A lightning bolt's shape and flashes.
     pub fn lightning(&self) -> Option<&crate::objects::lightning::LightningState> {
         self.kind.lightning()
     }
@@ -59,13 +59,13 @@ impl ClientEntity {
         self.type_id == VANILLA_PRIMED_TNT_ENTITY_TYPE_ID
     }
 
-    /// A primed tnt's fuse and block, if it has any.
+    /// A primed tnt's fuse and block.
     pub fn primed_tnt(&self) -> Option<&crate::objects::primed_tnt::PrimedTntState> {
         self.kind.primed_tnt()
     }
 
     pub(crate) fn primed_tnt_mut(&mut self) -> &mut crate::objects::primed_tnt::PrimedTntState {
-        self.kind.primed_tnt_or_insert_with(Default::default)
+        self.kind.primed_tnt_state()
     }
 
     /// Whether this is a pair of evoker fangs.
@@ -73,22 +73,22 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:evoker_fangs")
     }
 
-    /// Evoker fangs' bite, if it has begun to be told of.
+    /// Evoker fangs' bite.
     pub fn evoker_fangs(&self) -> Option<&crate::objects::evoker_fangs::FangsState> {
         self.kind.evoker_fangs()
     }
 
     pub(crate) fn evoker_fangs_mut(&mut self) -> &mut crate::objects::evoker_fangs::FangsState {
-        self.kind.evoker_fangs_or_insert_with(Default::default)
+        self.kind.evoker_fangs_state()
     }
 
-    /// An arrow's shake and data, if it has any.
+    /// An arrow's shake and data.
     pub fn arrow(&self) -> Option<&crate::objects::arrow::ArrowState> {
         self.kind.arrow()
     }
 
     pub(crate) fn arrow_mut(&mut self) -> &mut crate::objects::arrow::ArrowState {
-        self.kind.arrow_or_insert_with(Default::default)
+        self.kind.arrow_state()
     }
 
     /// An experience orb's value (`ExperienceOrb.getValue`), once told.

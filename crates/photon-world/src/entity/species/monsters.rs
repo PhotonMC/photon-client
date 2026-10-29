@@ -16,7 +16,7 @@ impl ClientEntity {
         })
     }
 
-    /// A copper golem's animation states, if it has ticked.
+    /// A copper golem's animation states.
     pub fn copper_golem(&self) -> Option<&crate::mobs::copper_golem::CopperGolemAnimations> {
         self.kind.copper_golem()
     }

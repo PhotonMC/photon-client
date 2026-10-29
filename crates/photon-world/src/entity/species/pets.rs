@@ -60,9 +60,7 @@ impl ClientEntity {
     /// Fixes the source a panda's chance to eat is drawn from (see
     /// [`crate::mobs::panda::PandaState::fix_seed`]).
     pub fn fix_panda_seed(&mut self, seed: i64) {
-        self.kind
-            .panda_or_insert_with(Default::default)
-            .fix_seed(seed);
+        self.kind.panda_state().fix_seed(seed);
     }
 
     /// A ravager's counters (the starting state until an event comes).
@@ -131,7 +129,7 @@ impl EntityViewMut<'_> {
             thundering,
             holds_item,
         };
-        let panda = self.kind.panda_or_insert_with(Default::default);
+        let panda = self.kind.panda_state();
         if panda.tick(around) {
             self.rotation.x_rot = JavaF32::new(0.0_f32);
         }

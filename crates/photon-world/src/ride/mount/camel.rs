@@ -41,9 +41,7 @@ pub(super) fn write_back_camel(
     in_water: bool,
     game_time: i64,
 ) {
-    let horse = entity
-        .kind
-        .horse_or_insert_with(|| Box::new(crate::mobs::horse::HorseState::new()));
+    let horse = entity.kind.horse_state();
     if ride.stand_up {
         horse.camel.stand_up(game_time);
         entity.pose = crate::entity::ClientEntityPose::Standing;

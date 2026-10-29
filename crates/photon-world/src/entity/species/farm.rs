@@ -101,7 +101,7 @@ impl ClientEntity {
         self.living.carried_state != 0
     }
 
-    /// A rabbit's hop and animation states, if it has ticked.
+    /// A rabbit's hop and animation states.
     pub fn rabbit(&self) -> Option<&crate::mobs::rabbit::RabbitState> {
         self.kind.rabbit()
     }
@@ -109,8 +109,6 @@ impl ClientEntity {
     /// Fixes the idle head tilt's wait and random source of a rabbit (see
     /// [`crate::mobs::rabbit::RabbitState::fix_idle`]).
     pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {
-        self.kind
-            .rabbit_or_insert_with(|| Box::new(crate::mobs::rabbit::RabbitState::new()))
-            .fix_idle(timeout, seed);
+        self.kind.rabbit_state().fix_idle(timeout, seed);
     }
 }

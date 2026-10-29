@@ -5,45 +5,41 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:end_crystal")
     }
 
-    /// An end crystal's age and data, if it has any.
+    /// An end crystal's age and data.
     pub fn end_crystal(&self) -> Option<&crate::objects::end_crystal::EndCrystalState> {
         self.kind.end_crystal()
     }
 
     pub(crate) fn end_crystal_mut(&mut self) -> &mut crate::objects::end_crystal::EndCrystalState {
-        let seed = i64::from(self.id.0);
-        self.kind.end_crystal_or_insert_with(|| {
-            Box::new(crate::objects::end_crystal::EndCrystalState::new(seed))
-        })
+        let _seed = i64::from(self.id.0);
+        self.kind.end_crystal_state()
     }
 
     pub(crate) fn is_ender_dragon(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:ender_dragon")
     }
 
-    /// An ender dragon's flight history, wing beat and phase, if it has any.
+    /// An ender dragon's flight history, wing beat and phase.
     pub fn ender_dragon(&self) -> Option<&crate::mobs::ender_dragon::EnderDragonState> {
         self.kind.ender_dragon()
     }
 
     pub(crate) fn ender_dragon_mut(&mut self) -> &mut crate::mobs::ender_dragon::EnderDragonState {
-        let seed = i64::from(self.id.0);
-        self.kind.ender_dragon_or_insert_with(|| {
-            Box::new(crate::mobs::ender_dragon::EnderDragonState::new(seed))
-        })
+        let _seed = i64::from(self.id.0);
+        self.kind.ender_dragon_state()
     }
 
     pub(crate) fn is_wither(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:wither")
     }
 
-    /// A wither's head turns, targets and invulnerable ticks, if it has any.
+    /// A wither's head turns, targets and invulnerable ticks.
     pub fn wither(&self) -> Option<&crate::mobs::wither::WitherState> {
         self.kind.wither()
     }
 
     pub(crate) fn wither_mut(&mut self) -> &mut crate::mobs::wither::WitherState {
-        self.kind.wither_or_insert_with(Default::default)
+        self.kind.wither_state()
     }
 
     /// The ids of the entities a wither's side heads look at, zero for none.
@@ -55,29 +51,28 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:armadillo")
     }
 
-    /// An armadillo's state and animation states, if it has any.
+    /// An armadillo's state and animation states.
     pub fn armadillo(&self) -> Option<&crate::mobs::armadillo::ArmadilloState> {
         self.kind.armadillo()
     }
 
     pub(crate) fn armadillo_mut(&mut self) -> &mut crate::mobs::armadillo::ArmadilloState {
-        self.kind.armadillo_or_insert_with(Default::default)
+        self.kind.armadillo_state()
     }
 
     pub(crate) fn is_creaking(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:creaking")
     }
 
-    /// A creaking's animation states and flags, if it has any.
+    /// A creaking's animation states and flags.
     pub fn creaking(&self) -> Option<&crate::mobs::creaking::CreakingState> {
         self.kind.creaking()
     }
 
     /// The creaking's state, made if it has none yet.
     pub(crate) fn creaking_mut(&mut self) -> &mut crate::mobs::creaking::CreakingState {
-        let seed = i64::from(self.id.0);
-        self.kind
-            .creaking_or_insert_with(|| Box::new(crate::mobs::creaking::CreakingState::new(seed)))
+        let _seed = i64::from(self.id.0);
+        self.kind.creaking_state()
     }
 
     /// `Creaking.tick`'s client half, after the rest of the tick.
@@ -92,14 +87,14 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:warden")
     }
 
-    /// A warden's animation states and pulses, if it has any.
+    /// A warden's animation states and pulses.
     pub fn warden(&self) -> Option<&crate::mobs::warden::WardenState> {
         self.kind.warden()
     }
 
     /// The warden's state, made if it has none yet.
     pub(crate) fn warden_mut(&mut self) -> &mut crate::mobs::warden::WardenState {
-        self.kind.warden_or_insert_with(Default::default)
+        self.kind.warden_state()
     }
 
     /// `Warden.tick`'s client half, after the rest of the tick.
@@ -114,7 +109,7 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:breeze")
     }
 
-    /// A breeze's animation states, if it has any.
+    /// A breeze's animation states.
     pub fn breeze(&self) -> Option<&crate::mobs::breeze::BreezeState> {
         self.kind.breeze()
     }
@@ -125,12 +120,10 @@ impl ClientEntity {
             return;
         }
         let (pose, tick_count) = (self.pose, self.tick_count);
-        self.kind
-            .breeze_or_insert_with(Default::default)
-            .tick(pose, tick_count);
+        self.kind.breeze_state().tick(pose, tick_count);
     }
 
-    /// A sniffer's state and animation states, if it has any.
+    /// A sniffer's state and animation states.
     pub fn sniffer(&self) -> Option<&crate::mobs::sniffer::SnifferState> {
         self.kind.sniffer()
     }
@@ -138,9 +131,7 @@ impl ClientEntity {
     /// `Sniffer.onSyncedDataUpdated(DATA_STATE)`.
     pub(crate) fn set_sniffer_mode(&mut self, mode: crate::mobs::sniffer::SnifferMode) {
         let tick_count = self.tick_count;
-        self.kind
-            .sniffer_or_insert_with(Default::default)
-            .set_mode(mode, tick_count);
+        self.kind.sniffer_state().set_mode(mode, tick_count);
     }
 }
 

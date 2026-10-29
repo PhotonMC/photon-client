@@ -194,20 +194,11 @@ impl ClientWorld {
         let head_rotation = JavaF32::new(entity.rotation.2);
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
         let owner = Some(EntityId(entity.data)).filter(|&id| self.entity_exists(id));
-        // An entity is one kind for as long as it lives; a display or a minecart of the new
-        // behaviour is known from its type, the rest make their state when it first comes.
-        let initial_kind = if let Some(display_kind) = entity::display_kind_of(entity.type_id) {
-            entity_kind::EntityKind::Display(Box::new(objects::display::DisplayState::new(
-                display_kind,
-            )))
-        } else if new_minecart {
-            entity_kind::EntityKind::Minecart(Box::new(entity_kind::MinecartSlot {
-                state: None,
-                track: Some(Default::default()),
-            }))
-        } else {
-            entity_kind::EntityKind::Plain
-        };
+        // An entity is one kind for as long as it lives, and makes its state as it spawns.
+        let mut initial_kind = entity::initial_kind(entity.type_id, entity.entity_id);
+        if let (true, entity_kind::EntityKind::Minecart(slot)) = (new_minecart, &mut initial_kind) {
+            slot.track = Some(Default::default());
+        }
         self.entities.insert(
             entity.entity_id,
             EntityParts {

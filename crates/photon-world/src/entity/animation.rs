@@ -47,9 +47,7 @@ impl ClientEntity {
             Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
             Some("minecraft:ravager") => {
                 let alive = self.alive;
-                self.kind
-                    .ravager_or_insert_with(Default::default)
-                    .tick(alive);
+                self.kind.ravager_state().tick(alive);
             }
             Some("minecraft:bee") => {
                 let rolling = self.living.bee_flags & 2 != 0;
@@ -75,9 +73,7 @@ impl ClientEntity {
                 );
                 let (tick_count, on_ground, passenger) =
                     (self.tick_count, self.on_ground, self.vehicle_id.is_some());
-                let horse = self
-                    .kind
-                    .horse_or_insert_with(|| Box::new(crate::mobs::horse::HorseState::new()));
+                let horse = self.kind.horse_state();
                 horse.tick(alive);
                 if camel {
                     let in_liquid = self.mount_ride.in_liquid;
@@ -89,9 +85,7 @@ impl ClientEntity {
             }
             Some("minecraft:rabbit") => {
                 let (tick_count, no_ai) = (self.tick_count, self.is_no_ai());
-                self.kind
-                    .rabbit_or_insert_with(|| Box::new(crate::mobs::rabbit::RabbitState::new()))
-                    .tick(tick_count, no_ai);
+                self.kind.rabbit_state().tick(tick_count, no_ai);
             }
             Some("minecraft:copper_golem") => {
                 let (action, tick_count, flags) = (
@@ -100,9 +94,7 @@ impl ClientEntity {
                     (self.is_no_ai(), self.alive),
                 );
                 self.kind
-                    .copper_golem_or_insert_with(|| {
-                        Box::new(crate::mobs::copper_golem::CopperGolemAnimations::new())
-                    })
+                    .copper_golem_state()
                     .tick(action, tick_count, flags);
             }
             Some("minecraft:polar_bear") => self.living.polar_bear.tick(),
@@ -252,13 +244,8 @@ impl EntityViewMut<'_> {
             self.tick_position_interpolation();
         }
         if self.is_lightning_bolt() {
-            let seed = i64::from(self.id.0);
-            self.lightning_done = self
-                .kind
-                .lightning_or_insert_with(|| {
-                    Box::new(crate::objects::lightning::LightningState::new(seed))
-                })
-                .tick();
+            let _seed = i64::from(self.id.0);
+            self.lightning_done = self.kind.lightning_state().tick();
         }
     }
 }

@@ -41,9 +41,7 @@ impl ClientWorld {
         };
         let camel = horse.is_camel();
         let on_ground = horse.on_ground;
-        let state = horse
-            .kind
-            .horse_or_insert_with(|| Box::new(crate::mobs::horse::HorseState::new()));
+        let state = horse.kind.horse_state();
         // `Camel.onPlayerJump`: only when it has rested from its last dash and stands on the ground.
         if camel && !(state.camel.dash_cooldown() <= 0 && on_ground) {
             return;

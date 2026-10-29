@@ -299,9 +299,7 @@ impl ClientWorld {
         }
         let (camel_dash, camel_last_pose) = camel_data_from_metadata(entity.type_id, metadata);
         if camel_dash.is_some() || camel_last_pose.is_some() {
-            let horse = entity
-                .kind
-                .horse_or_insert_with(|| Box::new(mobs::horse::HorseState::new()));
+            let horse = entity.kind.horse_state();
             if let Some(dash) = camel_dash {
                 horse.camel.set_dashing(dash);
             }
@@ -312,10 +310,7 @@ impl ClientWorld {
         let (horse_flags, horse_variant, horse_chest) =
             horse_data_from_metadata(entity.type_id, metadata);
         if let Some(flags) = horse_flags {
-            entity
-                .kind
-                .horse_or_insert_with(|| Box::new(mobs::horse::HorseState::new()))
-                .set_flags(flags);
+            entity.kind.horse_state().set_flags(flags);
         }
         if let Some(variant) = horse_variant {
             entity.living.horse_variant = variant;
@@ -337,10 +332,7 @@ impl ClientWorld {
         living.apply_cat(cat_data_from_metadata(type_id, metadata));
         let panda_data = panda_data_from_metadata(entity.type_id, metadata);
         if panda_data != mobs::panda::PandaData::default() {
-            entity
-                .kind
-                .panda_or_insert_with(Default::default)
-                .apply(panda_data);
+            entity.kind.panda_state().apply(panda_data);
         }
         let (fox_flags, fox_variant) = fox_data_from_metadata(entity.type_id, metadata);
         entity.living.fox.set_data(fox_flags, fox_variant);

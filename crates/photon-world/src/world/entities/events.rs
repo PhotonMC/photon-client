@@ -35,10 +35,7 @@ impl ClientWorld {
             return true;
         }
         if event == 19 && entity.is_squid() {
-            entity
-                .kind
-                .squid_or_insert_with(|| Box::new(mobs::squid::SquidState::new()))
-                .restart_beat();
+            entity.kind.squid_state().restart_beat();
             return true;
         }
         if event == mobs::animal::SHEEP_EAT_EVENT
@@ -51,10 +48,7 @@ impl ClientWorld {
             Some("minecraft:iron_golem") => return entity.living.animal.golem_event(event),
             Some("minecraft:goat") => return entity.living.animal.goat_event(event),
             Some("minecraft:ravager") => {
-                return entity
-                    .kind
-                    .ravager_or_insert_with(Default::default)
-                    .event(event);
+                return entity.kind.ravager_state().event(event);
             }
             Some("minecraft:hoglin" | "minecraft:zoglin") => {
                 return entity.living.animal.hoglin_event(event);
@@ -98,10 +92,7 @@ impl ClientWorld {
                 return true;
             }
             Some("minecraft:rabbit") if event == 1 => {
-                entity
-                    .kind
-                    .rabbit_or_insert_with(|| Box::new(mobs::rabbit::RabbitState::new()))
-                    .start_hop();
+                entity.kind.rabbit_state().start_hop();
                 return true;
             }
             _ => {}

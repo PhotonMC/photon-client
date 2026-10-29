@@ -12,7 +12,7 @@ impl ClientEntity {
 
     /// A boat's data: its hit, paddles and bubbles.
     pub(crate) fn set_boat_data(&mut self, data: crate::metadata::BoatData) {
-        let boat = self.kind.boat_or_insert_with(Default::default);
+        let boat = self.kind.boat_state();
         if let Some(hurt) = data.hurt_time {
             boat.hurt_time = hurt;
         }
@@ -48,7 +48,7 @@ impl ClientEntity {
         vanilla_boat_max_passengers(self.type_id).is_some()
     }
 
-    /// A boat's hit, bubbles and paddles, if it has any.
+    /// A boat's hit, bubbles and paddles.
     pub fn boat(&self) -> Option<&crate::objects::boat::BoatState> {
         self.kind.boat()
     }
@@ -67,9 +67,7 @@ impl ClientEntity {
     /// The part of a ridden boat's tick after its movement: the paddles row and the bubbles shake.
     pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
         let tick_count = self.tick_count;
-        self.kind
-            .boat_or_insert_with(Default::default)
-            .tick_end(paddling, tick_count);
+        self.kind.boat_state().tick_end(paddling, tick_count);
     }
 }
 
@@ -201,15 +199,13 @@ impl EntityViewMut<'_> {
         let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
         let tick_count = self.tick_count;
         self.kind
-            .boat_or_insert_with(Default::default)
+            .boat_state()
             .tick(under_water, paddling, tick_count);
     }
 
     /// The part of a ridden boat's tick before its own movement.
     pub(crate) fn tick_boat_start(&mut self) {
         self.tick_position_interpolation();
-        self.kind
-            .boat_or_insert_with(Default::default)
-            .tick_start(false);
+        self.kind.boat_state().tick_start(false);
     }
 }

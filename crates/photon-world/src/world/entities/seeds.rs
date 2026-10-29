@@ -40,10 +40,7 @@ impl Entities {
         let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity
-            .kind
-            .guardian_or_insert_with(|| Box::new(mobs::guardian::GuardianState::new()))
-            .fix_random(tail, seed);
+        entity.kind.guardian_state().fix_random(tail, seed);
         true
     }
 
@@ -53,10 +50,7 @@ impl Entities {
         let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity
-            .kind
-            .squid_or_insert_with(|| Box::new(mobs::squid::SquidState::new()))
-            .fix_tentacle_speed(speed);
+        entity.kind.squid_state().fix_tentacle_speed(speed);
         true
     }
 
@@ -66,12 +60,7 @@ impl Entities {
         let Some(mut entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity
-            .kind
-            .copper_golem_or_insert_with(|| {
-                Box::new(mobs::copper_golem::CopperGolemAnimations::new())
-            })
-            .fix_seed(seed);
+        entity.kind.copper_golem_state().fix_seed(seed);
         true
     }
 }

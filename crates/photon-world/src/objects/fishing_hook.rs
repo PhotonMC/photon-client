@@ -53,7 +53,7 @@ impl PartialEq for HookState {
 impl Eq for HookState {}
 
 impl HookState {
-    fn new(entity_id: EntityId) -> Self {
+    pub(crate) fn new(entity_id: EntityId) -> Self {
         Self {
             phase: HookPhase::Flying,
             hooked: 0,
@@ -243,10 +243,7 @@ impl ClientWorld {
         let (x, y, z) = entity.position();
         let (dx, dy, dz) = entity.motion();
         let motion = (Vec3::new(x, y, z), Vec3::new(dx, dy, dz), entity.on_ground);
-        let mut state = entity
-            .kind
-            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id)))
-            .clone();
+        let mut state = entity.kind.fishing_hook_state().clone();
         state.synchronized.set_seed(seed);
         if state.phase == HookPhase::HookedInEntity {
             self.follow_hooked(entity_id, &mut state);
@@ -309,9 +306,7 @@ impl ClientWorld {
             entity.vel.motion.z = JavaF64::new(step.delta.z);
             entity.on_ground = step.on_ground;
         }
-        *entity
-            .kind
-            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id))) = state;
+        *entity.kind.fishing_hook_state() = state;
     }
 
     /// `FishingHook.onSyncedDataUpdated`: the hooked entity, and a bite that pulls the bobber
@@ -326,9 +321,7 @@ impl ClientWorld {
         let hooked = metadata_int_value(metadata, HOOKED_ENTITY_DATA_ID);
         let biting = metadata_boolean_value(metadata, BITING_DATA_ID);
         let (dx, _, dz) = entity.motion();
-        let state = entity
-            .kind
-            .fishing_hook_or_insert_with(|| Box::new(HookState::new(entity_id)));
+        let state = entity.kind.fishing_hook_state();
         if let Some(hooked) = hooked {
             state.hooked = hooked;
         }

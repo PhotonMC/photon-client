@@ -29,21 +29,21 @@ impl ClientEntity {
     /// `Parrot.setRecordPlayingNearby`.
     pub(crate) fn set_record_playing(&mut self, jukebox: (i32, i32, i32), playing: bool) {
         self.kind
-            .parrot_or_insert_with(Default::default)
+            .parrot_state()
             .set_record_playing(jukebox, playing);
     }
 
-    /// A parrot's wing beats, if it has ticked.
+    /// A parrot's wing beats.
     pub fn parrot(&self) -> Option<&crate::mobs::parrot::ParrotState> {
         self.kind.parrot()
     }
 
-    /// A bat's animation states, if it has ticked.
+    /// A bat's animation states.
     pub fn bat(&self) -> Option<&crate::mobs::bat::BatState> {
         self.kind.bat()
     }
 
-    /// An allay's progress, if it has ticked.
+    /// An allay's progress.
     pub fn allay(&self) -> Option<&crate::mobs::allay::AllayState> {
         self.kind.allay()
     }
@@ -55,9 +55,7 @@ impl ClientEntity {
         }
         let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
         let dancing = self.living.allay_dancing;
-        self.kind
-            .allay_or_insert_with(Default::default)
-            .tick(holds, dancing);
+        self.kind.allay_state().tick(holds, dancing);
     }
 
     /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
@@ -97,7 +95,7 @@ impl EntityViewMut<'_> {
         if !on_ground && self.vel.motion.y.get() < 0.0 {
             self.vel.motion.y = JavaF64::new(self.vel.motion.y.get() * 0.6);
         }
-        let parrot = self.kind.parrot_or_insert_with(Default::default);
+        let parrot = self.kind.parrot_state();
         parrot.end_party_unless(jukebox_near);
         parrot.tick(on_ground, passenger);
     }
@@ -121,8 +119,6 @@ impl EntityViewMut<'_> {
             self.vel.motion.y = JavaF64::new(self.vel.motion.y.get() * 0.6);
         }
         let tick_count = self.tick_count;
-        self.kind
-            .bat_or_insert_with(Default::default)
-            .tick(resting, tick_count);
+        self.kind.bat_state().tick(resting, tick_count);
     }
 }

@@ -28,9 +28,7 @@ impl ClientWorld {
         {
             return;
         }
-        let state = entity
-            .kind
-            .mannequin_or_insert_with(|| Box::new(MannequinState::default()));
+        let state = entity.kind.mannequin_state();
         state.profile = value.to_vec();
     }
 }
