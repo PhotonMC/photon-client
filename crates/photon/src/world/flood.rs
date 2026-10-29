@@ -8,7 +8,7 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 use std::thread::JoinHandle;
 
 use photon_render::section_workers::SectionKey;
-use photon_render::visibility::{GraphWorld, OcclusionGraph, SectionState};
+use photon_render::visibility::{GraphWorld, OcclusionGraph, SectionState, VisibilitySet};
 
 /// What a flood was started with, which later passes of it keep.
 #[derive(Clone, Copy)]
@@ -46,7 +46,7 @@ impl FloodInputs {
         view_distance: i32,
         smart_cull: bool,
         sections: Range<i32>,
-        column: impl Fn(i32, i32, &mut [SectionState]) -> bool,
+        mut column: impl FnMut(i32, i32, &mut [SectionState]) -> bool,
     ) -> Self {
         let reach = view_distance.max(0);
         let [x, z] = [camera[0], camera[2]].map(|value| (value.floor() as i32).div_euclid(16));
@@ -72,6 +72,22 @@ impl FloodInputs {
             width,
             loaded: column_loaded,
             states,
+        }
+    }
+
+    /// Mark the compiled sections: each of `compiled` inside the copied area that is not empty.
+    /// Walking the few compiled sections instead of asking for every section of the area is
+    /// what keeps the copy cheap on the frame that makes it.
+    pub fn mark_compiled(&mut self, compiled: impl Iterator<Item = (SectionKey, VisibilitySet)>) {
+        let height = self.sections.len();
+        for ((x, y, z), visibility) in compiled {
+            let Some(column) = self.column(x, z).filter(|_| self.sections.contains(&y)) else {
+                continue;
+            };
+            let state = &mut self.states[column * height + (y - self.sections.start) as usize];
+            if !matches!(state, SectionState::Empty) {
+                *state = SectionState::Compiled(visibility);
+            }
         }
     }
 
@@ -196,8 +212,6 @@ impl Drop for Flood {
 
 #[cfg(test)]
 mod tests {
-    use photon_render::visibility::VisibilitySet;
-
     use super::*;
 
     /// A world of mixed sections with some columns missing, flooded from
@@ -229,6 +243,44 @@ mod tests {
             "smart culling stops at the camera's walls"
         );
         assert!(flood(false) > 7 * 7 * 4, "the spectator sees through rock");
+    }
+
+    /// Marking the compiled sections after the copy gives the copy that asks for each section.
+    #[test]
+    fn marking_the_compiled_sections_equals_asking_for_each() {
+        let state = |(x, y, z): SectionKey| match (x * 7 + y * 3 + z * 5).rem_euclid(5) {
+            0 | 1 => SectionState::Empty,
+            2 => SectionState::Uncompiled,
+            3 => SectionState::Compiled(VisibilitySet::ALL),
+            _ => SectionState::Compiled(VisibilitySet::NONE),
+        };
+        let loaded = |x: i32, z: i32| (x + 2 * z).rem_euclid(9) != 0;
+        let camera = [8.5, 300.0, -40.2];
+        let asked = FloodInputs::capture(camera, 6, true, -4..20, |x, z, states| {
+            for (y, slot) in (-4..20).zip(states) {
+                *slot = state((x, y, z));
+            }
+            loaded(x, z)
+        });
+        let mut compiled = Vec::new();
+        let mut marked = FloodInputs::capture(camera, 6, true, -4..20, |x, z, states| {
+            for (y, slot) in (-4..20).zip(states) {
+                *slot = match state((x, y, z)) {
+                    SectionState::Empty => SectionState::Empty,
+                    SectionState::Compiled(visibility) => {
+                        compiled.push(((x, y, z), visibility));
+                        SectionState::Uncompiled
+                    }
+                    other => other,
+                };
+            }
+            loaded(x, z)
+        });
+        // Sections outside the area are in the list too and are ignored.
+        compiled.push(((500, 0, 0), VisibilitySet::ALL));
+        marked.mark_compiled(compiled.into_iter());
+        assert_eq!(asked.states, marked.states);
+        assert_eq!(asked.loaded, marked.loaded);
     }
 
     fn copy_floods_as_the_world_does(smart_cull: bool) {

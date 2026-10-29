@@ -142,25 +142,23 @@ impl SectionMeshes {
             let Some(empty) = world.column_is_empty(x, z, sections.clone()) else {
                 return false;
             };
-            for ((y, empty), state) in sections.clone().zip(empty).zip(states) {
+            for (empty, state) in empty.zip(states) {
                 *state = if empty {
                     SectionState::Empty
                 } else {
-                    compiled
-                        .get(&(x, y, z))
-                        .map_or(SectionState::Uncompiled, |visibility| {
-                            SectionState::Compiled(*visibility)
-                        })
+                    SectionState::Uncompiled
                 };
             }
             true
         };
-        FloodInputs::capture(
+        let mut inputs = FloodInputs::capture(
             view.camera,
             view.view_distance,
             smart_cull,
             self.sections.clone(),
             column,
-        )
+        );
+        inputs.mark_compiled(compiled.iter().map(|(key, visibility)| (*key, *visibility)));
+        inputs
     }
 }
