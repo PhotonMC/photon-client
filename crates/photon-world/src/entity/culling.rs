@@ -64,14 +64,14 @@ impl ClientEntity {
             _ => Reach::Box,
         }
     }
+}
 
+impl EntityView<'_> {
     fn wears_dragon_head(&self) -> bool {
         self.equipment(EquipmentSlot::Head)
             .is_some_and(|stack| stack.item_registry_id() == photon_data::item::ids::DRAGON_HEAD)
     }
-}
 
-impl EntityView<'_> {
     /// `Entity.shouldRender`: whether it is near enough to `camera` to be drawn.
     pub fn should_render(&self, camera: (f64, f64, f64), view_scale: f64) -> bool {
         let (x, y, z) = self.position();

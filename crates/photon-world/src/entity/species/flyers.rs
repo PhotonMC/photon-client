@@ -121,7 +121,7 @@ impl EntityViewMut<'_> {
         if photon_data::entity_type::name(self.type_id) != Some("minecraft:allay") {
             return;
         }
-        let holds = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let holds = self.equipment(EquipmentSlot::MainHand).is_some();
         let dancing = self.living.allay_dancing;
         self.kind.allay_state().tick(holds, dancing);
     }

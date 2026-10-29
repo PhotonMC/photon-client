@@ -103,10 +103,10 @@ impl Entities {
         slot: EquipmentSlot,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.equipment[slot as usize] = stack;
+        entity.worn.set(slot as usize, stack);
         true
     }
 

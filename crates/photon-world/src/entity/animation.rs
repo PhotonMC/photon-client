@@ -11,6 +11,20 @@ impl ClientEntity {
     pub fn swing_state(&self) -> &crate::living::SwingState {
         &self.living.swing
     }
+}
+
+impl EntityViewMut<'_> {
+    /// `ItemStack.getSwingAnimation().duration()` of what each hand holds, the main hand's first.
+    pub(crate) fn swing_durations(&self) -> [i32; 2] {
+        [EquipmentSlot::MainHand, EquipmentSlot::OffHand].map(|slot| {
+            self.equipment(slot)
+                .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
+                .and_then(|item| photon_data::spear::spear_of(item.name))
+                .map_or(crate::living::DEFAULT_SWING_DURATION, |spear| {
+                    spear.swing_ticks
+                })
+        })
+    }
 
     /// What a living entity's swing does each tick: the last tick's attack
     /// animation is kept, and the swing runs on for a player and a monster
@@ -24,20 +38,6 @@ impl ClientEntity {
         }
     }
 
-    /// `ItemStack.getSwingAnimation().duration()` of what each hand holds, the main hand's first.
-    pub(crate) fn swing_durations(&self) -> [i32; 2] {
-        [EquipmentSlot::MainHand, EquipmentSlot::OffHand].map(|slot| {
-            self.equipment(slot)
-                .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
-                .and_then(|item| photon_data::spear::spear_of(item.name))
-                .map_or(crate::living::DEFAULT_SWING_DURATION, |spear| {
-                    spear.swing_ticks
-                })
-        })
-    }
-}
-
-impl EntityViewMut<'_> {
     /// What a living entity's drawn pose follows from its tick: the limbs'
     /// swing with the distance moved, and the body turning (a player's after
     /// where it walks, a mob's by its body control), and for a player the

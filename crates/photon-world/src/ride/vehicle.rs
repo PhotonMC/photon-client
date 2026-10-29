@@ -109,7 +109,7 @@ impl ClientWorld {
         if vehicle.is_boat() {
             return self.boat_view(vehicle_id, vehicle, position);
         }
-        let driven = self.mount_kind_of(vehicle.entity);
+        let driven = self.mount_kind_of(vehicle);
         let kind = if vehicle.is_horse() {
             VehicleKind::Horse
         } else if driven == Some(crate::MountKind::Pig) || vehicle.is_pig() {

@@ -107,7 +107,7 @@ impl EntityViewMut<'_> {
         if photon_data::entity_type::name(self.type_id) != Some("minecraft:panda") {
             return;
         }
-        let holds_item = self.equipment[EquipmentSlot::MainHand as usize].is_some();
+        let holds_item = self.equipment(EquipmentSlot::MainHand).is_some();
         let around = crate::mobs::panda::PandaSurroundings {
             thundering,
             holds_item,

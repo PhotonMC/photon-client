@@ -209,6 +209,7 @@ impl ClientWorld {
                 ),
                 lerp: Interpolation::spawned(entity.rotation.2),
                 kind: initial_kind,
+                worn: Equipment::default(),
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
@@ -242,7 +243,6 @@ impl ClientWorld {
                     head_stable_time: 0,
                     last_stable_y_head_rot: JavaF32::new(entity.rotation.2),
                     item_stack: None,
-                    equipment: Default::default(),
                     bob_offset: bob_offset(entity.uuid),
                     data: entity.data,
                     metadata: None,

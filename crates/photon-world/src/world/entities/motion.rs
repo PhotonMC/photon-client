@@ -273,7 +273,7 @@ impl ClientWorld {
         self.entities.at(entity_id).is_some_and(|entity| {
             self.boat_is_local_instance_authoritative(entity)
                 && vanilla_boat_max_passengers(entity.type_id).is_some()
-                || self.mount_kind_of(entity.entity).is_some()
+                || self.mount_kind_of(entity).is_some()
         })
     }
 

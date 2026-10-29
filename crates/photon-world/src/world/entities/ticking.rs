@@ -76,7 +76,7 @@ impl ClientWorld {
                 )
             });
             // A saddled horse is driven by the player in its first seat.
-            let mount = self.mount_kind_of(entity.entity).is_some();
+            let mount = self.mount_kind_of(entity).is_some();
             (
                 is_boat && !authoritative,
                 kind,

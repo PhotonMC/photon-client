@@ -4,7 +4,7 @@ use photon_core::ids::EntityId;
 impl ClientWorld {
     /// Which mount the local player drives this entity as, if it does: a saddled horse it sits
     /// in the first seat of, or a saddled pig it steers with a carrot on a stick.
-    pub(crate) fn mount_kind_of(&self, entity: &crate::entity::ClientEntity) -> Option<MountKind> {
+    pub(crate) fn mount_kind_of(&self, entity: crate::entity::EntityView<'_>) -> Option<MountKind> {
         let player = self.local_player.as_ref()?;
         if entity.passenger_ids.first() != Some(&player.id) {
             return None;
@@ -83,7 +83,7 @@ impl ClientWorld {
         let dimensions = ClientEntityDimensions::scalable(width, height)
             .with_eye_height(eye_height)
             .scale(entity.scale(), entity.scale());
-        let Some(kind) = self.mount_kind_of(entity.entity) else {
+        let Some(kind) = self.mount_kind_of(entity) else {
             return;
         };
         if kind == MountKind::Strider {

@@ -107,33 +107,9 @@ impl ClientEntity {
                 .retain(|existing| existing.id != modifier_id);
         }
     }
-
-    /// Whether this is a strider in a saddle (which a warped fungus on a stick steers).
-    pub fn is_saddled_strider(&self) -> bool {
-        photon_data::entity_type::name(self.type_id) == Some("minecraft:strider")
-            && self.equipment(EquipmentSlot::Saddle).is_some()
-    }
-
-    /// Whether this is a pig in a saddle (which a carrot on a stick steers).
-    pub fn is_saddled_pig(&self) -> bool {
-        photon_data::entity_type::name(self.type_id) == Some("minecraft:pig")
-            && self.equipment(EquipmentSlot::Saddle).is_some()
-    }
-
-    /// Whether this is a horse, donkey, mule or undead horse in a saddle, which the player on it
-    /// steers (`AbstractHorse.getControllingPassenger`).
-    pub fn is_controllable_horse(&self) -> bool {
-        crate::ride::mount::is_horse_type(self.type_id)
-            && self.equipment(EquipmentSlot::Saddle).is_some()
-    }
 }
 
-impl EntityView<'_> {
-    /// A horse's animations and tail.
-    pub fn horse(&self) -> Option<&crate::mobs::horse::HorseState> {
-        self.kind.horse()
-    }
-}
+impl EntityView<'_> {}
 
 impl EntityViewMut<'_> {
     /// Fixes the source a horse's tail chance is drawn from (see

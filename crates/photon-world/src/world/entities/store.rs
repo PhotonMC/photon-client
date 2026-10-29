@@ -39,7 +39,7 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind) = self
+        let (entity, rotation, pos, vel, lerp, kind, worn) = self
             .ecs
             .get_entity(entity)
             .ok()?
@@ -50,6 +50,7 @@ impl Entities {
                 &Motion,
                 &Interpolation,
                 &crate::entity_kind::EntityKind,
+                &Equipment,
             )>()
             .ok()?;
         Some(EntityView {
@@ -59,6 +60,7 @@ impl Entities {
             vel,
             lerp,
             kind,
+            worn,
         })
     }
 
@@ -84,7 +86,7 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind) = ecs
+        let (entity, rotation, pos, vel, lerp, kind, worn) = ecs
             .get_entity_mut(entity)
             .ok()?
             .into_components_mut::<(
@@ -94,6 +96,7 @@ impl Entities {
                 &mut Motion,
                 &mut Interpolation,
                 &mut crate::entity_kind::EntityKind,
+                &mut Equipment,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -103,6 +106,7 @@ impl Entities {
             vel: vel.into_inner(),
             lerp: lerp.into_inner(),
             kind: kind.into_inner(),
+            worn: worn.into_inner(),
         })
     }
 
@@ -130,6 +134,7 @@ impl Entities {
                 vel: std::mem::replace(view.vel, parts.vel),
                 lerp: std::mem::replace(view.lerp, parts.lerp),
                 kind: std::mem::replace(view.kind, parts.kind),
+                worn: std::mem::replace(view.worn, parts.worn),
             });
         }
         let spawned = self
@@ -141,6 +146,7 @@ impl Entities {
                 parts.vel,
                 parts.lerp,
                 parts.kind,
+                parts.worn,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -158,16 +164,20 @@ impl Entities {
             Motion,
             Interpolation,
             crate::entity_kind::EntityKind,
+            Equipment,
         )>();
         self.ecs.despawn(entity);
-        parts.map(|(entity, rotation, pos, vel, lerp, kind)| EntityParts {
-            entity,
-            rotation,
-            pos,
-            vel,
-            lerp,
-            kind,
-        })
+        parts.map(
+            |(entity, rotation, pos, vel, lerp, kind, worn)| EntityParts {
+                entity,
+                rotation,
+                pos,
+                vel,
+                lerp,
+                kind,
+                worn,
+            },
+        )
     }
 
     pub(crate) fn clear(&mut self) {

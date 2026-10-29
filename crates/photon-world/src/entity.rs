@@ -44,8 +44,6 @@ pub struct ClientEntity {
     /// spin it started (`bobOffs`).
     pub(crate) item_stack: Option<ClientItemStackState>,
     pub(crate) bob_offset: JavaF32,
-    /// What it holds and wears, by `EquipmentSlot`.
-    pub(crate) equipment: [Option<ClientItemStackState>; EquipmentSlot::COUNT],
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,

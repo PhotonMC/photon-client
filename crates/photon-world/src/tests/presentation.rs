@@ -112,7 +112,7 @@ fn a_walking_mob_eases_to_each_step_and_faces_where_it_goes() {
 
 #[test]
 fn held_items_follow_the_equipment_slots_and_the_main_arm() {
-    use crate::entity::{ClientEntity, EquipmentSlot};
+    use crate::entity::EquipmentSlot;
     let mut world = ClientWorld::default();
     let player = photon_data::entity_type::id("minecraft:player").expect("the player type");
     let mob = photon_data::entity_type::id("minecraft:zombie").expect("the zombie type");
@@ -141,7 +141,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             Some(off)
         ));
     }
-    let id_of = |entity: &ClientEntity, left: bool| {
+    let id_of = |entity: crate::entity::EntityView<'_>, left: bool| {
         entity
             .item_held_by_arm(left)
             .map(|stack| stack.item_registry_id())
@@ -149,7 +149,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     // Right-handed: the main hand is the right arm's.
     let entity = world.entities().at(EntityId(5)).expect("the player");
     assert_eq!(
-        (id_of(entity.entity, false), id_of(entity.entity, true)),
+        (id_of(entity, false), id_of(entity, true)),
         (Some(ItemId(10)), Some(ItemId(11)))
     );
     // The avatar's data names the left arm (`HumanoidArm` id zero).
@@ -165,7 +165,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     let entity = world.entities().at(EntityId(5)).expect("the player");
     assert!(entity.main_arm_is_left());
     assert_eq!(
-        (id_of(entity.entity, false), id_of(entity.entity, true)),
+        (id_of(entity, false), id_of(entity, true)),
         (Some(ItemId(11)), Some(ItemId(10)))
     );
     // A mob is left-handed by its flag.
@@ -180,7 +180,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
     ));
     let entity = world.entities().at(EntityId(6)).expect("the mob");
     assert_eq!(
-        (id_of(entity.entity, false), id_of(entity.entity, true)),
+        (id_of(entity, false), id_of(entity, true)),
         (Some(ItemId(11)), Some(ItemId(10)))
     );
     // An empty slot clears it.
@@ -190,7 +190,7 @@ fn held_items_follow_the_equipment_slots_and_the_main_arm() {
             .apply_equipment(EntityId(6), EquipmentSlot::OffHand, None)
     );
     assert_eq!(
-        id_of(&world.entities().at(EntityId(6)).expect("the mob"), false),
+        id_of(world.entities().at(EntityId(6)).expect("the mob"), false),
         None
     );
     assert!(
