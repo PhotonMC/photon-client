@@ -21,6 +21,18 @@ pub struct ParticleType {
 }
 
 impl ParticleType {
+    /// The first version that has the type.
+    pub const fn since(mut self, version: Version) -> Self {
+        self.versions = self.versions.since(version);
+        self
+    }
+
+    /// The last version that has the type.
+    pub const fn until(mut self, version: Version) -> Self {
+        self.versions = self.versions.until(version);
+        self
+    }
+
     /// Whether the type exists in `version`.
     pub const fn exists_in(&self, version: Version) -> bool {
         self.versions.contains(version)

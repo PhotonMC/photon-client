@@ -54,9 +54,6 @@ public final class BlockOracle extends BlockDeclarationOracle {
         Game26_2.vanillaRegistries();
         var entry = new JsonObject();
         entry.addProperty("label", row.get("label").getAsString());
-        entry.add("block_entity_types",
-            names(net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE));
-        entry.add("menu_types", names(net.minecraft.core.registries.BuiltInRegistries.MENU));
         entry.add("stat_types", names(net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE));
         entry.add("custom_stats", names(net.minecraft.core.registries.BuiltInRegistries.CUSTOM_STAT));
         entry.add("custom_stat_formatters", customStatFormatters());

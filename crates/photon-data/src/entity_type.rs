@@ -2,6 +2,7 @@
 //! list, which is what the wire carries).
 
 use photon_core::ids::EntityTypeId;
+use photon_core::version::Version;
 
 use crate::tables::entity_picks::ENTITY_PICKS;
 use crate::tables::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
@@ -9,6 +10,16 @@ use crate::tables::entity_types::{ENTITY_TYPES, NOT_IN_PEACEFUL};
 /// Every type's name, in id order.
 pub fn names() -> impl Iterator<Item = &'static str> {
     crate::named::names(&ENTITY_TYPES)
+}
+
+/// The types `version` has, each with its wire id in that version, its id here and its name.
+pub fn listed_in(version: Version) -> impl Iterator<Item = (i32, EntityTypeId, &'static str)> {
+    ENTITY_TYPES
+        .iter()
+        .enumerate()
+        .filter(move |(_, entry)| entry.exists_in(version))
+        .enumerate()
+        .map(|(wire, (canonical, entry))| (wire as i32, EntityTypeId(canonical as i32), entry.name))
 }
 
 /// The name of the type with this id (`minecraft:pig`).

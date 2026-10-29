@@ -51,54 +51,49 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
         .into_iter()
         .flatten()
         .map(|row| {
-            let types: Vec<Value> = (0..)
-                .map_while(|id| {
-                    photon_data::entity_type::name(photon_core::ids::EntityTypeId(id))
-                        .map(|name| (id, name))
-                })
-                .map(|(id, name)| {
-                    let mut out = json!({"label": name, "id": id});
-                    let Some(pick) =
-                        photon_data::entity_type::pick(photon_core::ids::EntityTypeId(id))
-                    else {
-                        out["created"] = json!(false);
-                        return out;
-                    };
-                    out["created"] = json!(true);
-                    out["pickable"] = json!(pick.pickable);
-                    out["pick_radius"] = json!(hex(pick.pick_radius));
-                    out["from_inside"] = json!(pick.from_inside);
-                    out["monster"] = json!(pick.monster);
-                    let (width, height, eye_height) = pick.size;
-                    out["width"] = json!(hex(width));
-                    out["height"] = json!(hex(height));
-                    out["eye_height"] = json!(hex(eye_height));
-                    out["passengers"] = json!(
-                        pick.passengers
-                            .iter()
-                            .map(|&(x, y, z)| [x, y, z]
-                                .map(|value| format!("{:016x}", value.to_bits())))
-                            .collect::<Vec<_>>()
-                    );
-                    name_tag_field(&mut out, pick.name_tag, "");
-                    leash_fields(&mut out, name, pick, pick.size, false, "");
-                    if let Some((width, height, eye_height)) = pick.baby {
-                        out["baby_width"] = json!(hex(width));
-                        out["baby_height"] = json!(hex(height));
-                        out["baby_eye_height"] = json!(hex(eye_height));
-                        name_tag_field(&mut out, pick.baby_name_tag, "baby_");
-                        leash_fields(
-                            &mut out,
-                            name,
-                            pick,
-                            (width, height, eye_height),
-                            true,
-                            "baby_",
+            let types: Vec<Value> =
+                photon_data::entity_type::listed_in(photon_core::version::Version::NEWEST)
+                    .map(|(id, canonical, name)| {
+                        let mut out = json!({"label": name, "id": id});
+                        let Some(pick) = photon_data::entity_type::pick(canonical) else {
+                            out["created"] = json!(false);
+                            return out;
+                        };
+                        out["created"] = json!(true);
+                        out["pickable"] = json!(pick.pickable);
+                        out["pick_radius"] = json!(hex(pick.pick_radius));
+                        out["from_inside"] = json!(pick.from_inside);
+                        out["monster"] = json!(pick.monster);
+                        let (width, height, eye_height) = pick.size;
+                        out["width"] = json!(hex(width));
+                        out["height"] = json!(hex(height));
+                        out["eye_height"] = json!(hex(eye_height));
+                        out["passengers"] = json!(
+                            pick.passengers
+                                .iter()
+                                .map(|&(x, y, z)| [x, y, z]
+                                    .map(|value| format!("{:016x}", value.to_bits())))
+                                .collect::<Vec<_>>()
                         );
-                    }
-                    out
-                })
-                .collect();
+                        name_tag_field(&mut out, pick.name_tag, "");
+                        leash_fields(&mut out, name, pick, pick.size, false, "");
+                        if let Some((width, height, eye_height)) = pick.baby {
+                            out["baby_width"] = json!(hex(width));
+                            out["baby_height"] = json!(hex(height));
+                            out["baby_eye_height"] = json!(hex(eye_height));
+                            name_tag_field(&mut out, pick.baby_name_tag, "baby_");
+                            leash_fields(
+                                &mut out,
+                                name,
+                                pick,
+                                (width, height, eye_height),
+                                true,
+                                "baby_",
+                            );
+                        }
+                        out
+                    })
+                    .collect();
             json!({"label": row["label"], "types": types})
         })
         .collect();

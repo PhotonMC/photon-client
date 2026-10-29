@@ -9,6 +9,7 @@ pub(crate) fn particle_types_result(request: &Value) -> Result<Value, String> {
     for row in rows {
         let types: Vec<Value> = photon_data::particle_type::PARTICLE_TYPES
             .iter()
+            .filter(|particle| particle.exists_in(photon_core::version::Version::NEWEST))
             .map(|particle| {
                 json!({
                     "name": format!("minecraft:{}", particle.name),
