@@ -102,8 +102,6 @@ pub use world::{
 /// The client-side copy of the currently loaded world.
 #[derive(Debug)]
 pub struct ClientWorld {
-    level: Level,
-    weather: Weather,
     block_state_registry: ClientBlockStateRegistry,
     /// The items each recipe property set accepts, as the server sent them.
     recipe_property_sets: BTreeMap<String, Arc<BTreeSet<i32>>>,

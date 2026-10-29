@@ -77,7 +77,7 @@ impl ClientWorld {
             // while the off hand swings.
             attack_arm_left: entity.main_arm_is_left() != entity.living.swing.is_off_hand(),
             age_in_ticks: entity.tick_count as f32 + partial_tick,
-            shaking: entity.is_shaking(self.level.dimension_environment.piglins_zombify),
+            shaking: entity.is_shaking(self.level().dimension_environment.piglins_zombify),
             full_block_light: entity.is_burning() || entity.renderer_full_block_light(),
             friendly_ghost: self.entities.friendly_ghosts.contains(&entity_id),
             spawner_display: self.spawner_display_pose(entity_id, partial_tick),

@@ -5,8 +5,8 @@ impl ClientWorld {
     pub fn configure_chunk_cache(&mut self, server_view_radius: i32) {
         self.chunks.reset(Some(server_view_radius));
         self.light = new_light_engine(
-            self.level.dimension,
-            self.level.dimension_environment.has_skylight,
+            self.level().dimension,
+            self.level().dimension_environment.has_skylight,
         );
         self.light_tasks.clear();
     }
@@ -124,7 +124,7 @@ impl ClientWorld {
 
     /// `ClientLevel.setServerSimulationDistance`.
     pub fn set_server_simulation_distance(&mut self, chunks: i32) {
-        self.level.server_simulation_distance = chunks;
+        self.level_mut().server_simulation_distance = chunks;
     }
 
     /// Where the client's own player stands, for the checks that measure from
@@ -148,7 +148,7 @@ impl ClientWorld {
     /// `getNoiseBiome`: the biome at a quart position, its row clamped into
     /// the dimension.
     pub fn noise_biome(&self, x: i32, y: i32, z: i32) -> Option<i32> {
-        self.biome_at(x * 4, self.level.dimension.clamp_quart_y(y) * 4, z * 4)
+        self.biome_at(x * 4, self.level().dimension.clamp_quart_y(y) * 4, z * 4)
     }
 
     /// Return the resolved biome registry ID at a world coordinate.
@@ -169,7 +169,7 @@ impl ClientWorld {
     where
         I: IntoIterator<Item = SectionInput<'a>>,
     {
-        let section_base_y = self.level.dimension.min_section_y();
+        let section_base_y = self.level().dimension.min_section_y();
         let sections = Sections::new(
             section_base_y,
             sections.into_iter().map(|input| ClientSection {
@@ -180,9 +180,9 @@ impl ClientWorld {
             }),
         );
         // `initializeLightSources`.
-        let mut sky_sources = light::ChunkSkyLightSources::new(self.level.dimension.min_y);
-        let min_section = self.level.dimension.min_section_y();
-        sky_sources.fill_from(self.level.dimension.section_count(), |index| {
+        let mut sky_sources = light::ChunkSkyLightSources::new(self.level().dimension.min_y);
+        let min_section = self.level().dimension.min_section_y();
+        sky_sources.fill_from(self.level().dimension.section_count(), |index| {
             sections
                 .get(&(min_section + index as i32))
                 .filter(|section| !section.has_only_air())
@@ -193,7 +193,7 @@ impl ClientWorld {
             sky_sources: Some(sky_sources),
             block_entities: BTreeMap::new(),
             chests: std::collections::BTreeSet::new(),
-            heightmaps: crate::heightmap::ChunkHeightmaps::new(self.level.dimension.min_y),
+            heightmaps: crate::heightmap::ChunkHeightmaps::new(self.level().dimension.min_y),
         };
         new_chunk.chests = block::chest::chests_of(chunk_x, chunk_z, &new_chunk.sections);
         let new_section_statuses = new_chunk

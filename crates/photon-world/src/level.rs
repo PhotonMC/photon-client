@@ -3,7 +3,7 @@
 use crate::*;
 
 /// The level's own data: which dimension it is and how it is shaped (`ClientLevel`, `Level`).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bevy_ecs::prelude::Resource)]
 pub(crate) struct Level {
     pub(crate) dimension: DimensionBounds,
     pub(crate) dimension_key: String,
@@ -39,7 +39,7 @@ impl Level {
 }
 
 /// The weather over the level.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, bevy_ecs::prelude::Resource)]
 pub(crate) struct Weather {
     /// `Level.rainLevel` and `thunderLevel`, as the bits of the floats.
     pub(crate) rain_level: JavaF32,

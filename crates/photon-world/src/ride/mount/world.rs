@@ -121,7 +121,7 @@ impl ClientWorld {
         body.floats_when_ridden = matches!(kind, MountKind::Horse | MountKind::Camel);
         body.controller = self.rider_controls;
         if kind == MountKind::Camel {
-            let game_time = self.level.game_time as i64;
+            let game_time = self.level().game_time as i64;
             if let Some(horse) = entity.horse() {
                 body.camel = CamelRide {
                     sitting: horse.camel.sitting(),
@@ -135,7 +135,7 @@ impl ClientWorld {
         if body.tick(&Level::new(self)).is_err() {
             return;
         }
-        let game_time = self.level.game_time as i64;
+        let game_time = self.level().game_time as i64;
         let in_water = body.is_in_water();
         let mut entity = self
             .entities

@@ -139,7 +139,7 @@ impl ClientWorld {
         schedule_rebuild: bool,
         enable_chunk: bool,
     ) -> LightApplication {
-        let light_section_count = self.level.dimension.section_count().saturating_add(2);
+        let light_section_count = self.level().dimension.section_count().saturating_add(2);
         let invalid_sky_updates =
             count_invalid_light_updates(light_section_count, updates.sky.mask, updates.sky.updates);
         let invalid_block_updates = count_invalid_light_updates(
@@ -207,8 +207,8 @@ impl ClientWorld {
             self.light
                 .update_section_status((chunk_x, section_y, chunk_z), empty);
         }
-        let min_section = self.level.dimension.min_section_y();
-        let max_section = min_section + self.level.dimension.section_count() as i32 - 1;
+        let min_section = self.level().dimension.min_section_y();
+        let max_section = min_section + self.level().dimension.section_count() as i32 - 1;
         for x in chunk_x - 1..=chunk_x + 1 {
             for z in chunk_z - 1..=chunk_z + 1 {
                 for y in min_section..=max_section {
@@ -385,8 +385,8 @@ impl ClientWorld {
                     .queue_section_data(layer, (chunk_x, section_y, chunk_z), None);
             }
         }
-        let min_section = self.level.dimension.min_section_y();
-        for section_y in min_section..min_section + self.level.dimension.section_count() as i32 {
+        let min_section = self.level().dimension.min_section_y();
+        for section_y in min_section..min_section + self.level().dimension.section_count() as i32 {
             self.light
                 .update_section_status((chunk_x, section_y, chunk_z), true);
         }

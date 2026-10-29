@@ -22,6 +22,26 @@ pub struct Entities {
 }
 
 impl Entities {
+    /// Entities with the level's resources already in their world.
+    pub(crate) fn with_resources(level: Level, weather: Weather) -> Self {
+        let mut entities = Self::default();
+        entities.ecs.insert_resource(level);
+        entities.ecs.insert_resource(weather);
+        entities
+    }
+
+    pub(crate) fn resource<R: bevy_ecs::prelude::Resource>(&self) -> &R {
+        self.ecs.resource::<R>()
+    }
+
+    pub(crate) fn resource_mut<
+        R: bevy_ecs::prelude::Resource<Mutability = bevy_ecs::component::Mutable>,
+    >(
+        &mut self,
+    ) -> &mut R {
+        self.ecs.resource_mut::<R>().into_inner()
+    }
+
     pub fn len(&self) -> usize {
         self.ids.len()
     }
@@ -112,8 +132,10 @@ impl Entities {
     }
 
     pub(crate) fn clear(&mut self) {
-        self.ids.clear();
-        self.ecs.clear_entities();
+        // The world's resources are entities too: only the client's entities go.
+        for (_, entity) in std::mem::take(&mut self.ids) {
+            self.ecs.despawn(entity);
+        }
     }
 
     /// Every entity, in id order.

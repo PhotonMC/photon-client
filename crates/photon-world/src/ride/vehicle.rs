@@ -183,7 +183,7 @@ impl ClientWorld {
             can_jump: match driven {
                 Some(crate::MountKind::Horse) => true,
                 Some(crate::MountKind::Camel) => vehicle.horse().is_none_or(|horse| {
-                    !horse.camel.refuses_to_move(self.level.game_time as i64)
+                    !horse.camel.refuses_to_move(self.level().game_time as i64)
                         && horse.camel.dash_cooldown() == 0
                 }),
                 _ => false,
@@ -195,7 +195,7 @@ impl ClientWorld {
     /// forward or back by the passenger's place.
     fn camel_seat(&self, vehicle: crate::entity::EntityView<'_>, index: usize, turn: f32) -> Vec3 {
         let (sitting, pose_time) = vehicle.horse().map_or((false, i64::MAX / 2), |horse| {
-            horse.camel.pose_for_anchor(self.level.game_time as i64)
+            horse.camel.pose_for_anchor(self.level().game_time as i64)
         });
         let height =
             photon_data::entity_type::pick(vehicle.type_id).map_or(0.0, |pick| pick.size.1);

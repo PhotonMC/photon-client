@@ -13,7 +13,7 @@ impl ClientWorld {
         let (x, _, z) = entity.position();
         let chunk = |value: f64| (value.floor() as i32) >> 4;
         photon_core::math::chessboard_distance(chunk(x), chunk(z), player_x, player_z)
-            <= self.level.server_simulation_distance
+            <= self.level().server_simulation_distance
     }
 
     /// `handleEntityEvent` for the events that are not a death: a sheep is
@@ -26,7 +26,7 @@ impl ClientWorld {
             self.level_events.0.push(LevelEvent::EntityBurst(burst));
             return true;
         }
-        let game_time = self.level.game_time;
+        let game_time = self.level().game_time;
         let Some(mut entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
