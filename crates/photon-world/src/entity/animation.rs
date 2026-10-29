@@ -266,7 +266,7 @@ impl EntityViewMut<'_> {
         let horse = self.kind.horse_state();
         horse.tick(alive);
         if camel {
-            let in_liquid = self.entity.mount_ride.in_liquid;
+            let in_liquid = self.ride.mount_ride.in_liquid;
             horse.tick_camel(
                 (tick_count, game_time as i64),
                 (on_ground, in_liquid, passenger),

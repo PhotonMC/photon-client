@@ -1,39 +1,14 @@
 use super::*;
 
 impl ClientEntity {
-    pub fn paddle_state(&self) -> (bool, bool) {
-        (self.paddle_left, self.paddle_right)
-    }
-
     /// `Entity.isVehicle`: something rides it.
     pub fn is_vehicle(&self) -> bool {
         !self.passenger_ids.is_empty()
     }
 
-    /// What a boat the local player rides keeps between ticks.
-    pub fn boat_ride(&self) -> crate::ride::boat::RideState {
-        self.boat_ride
-    }
-
-    /// What a saddled horse the local player rides keeps between ticks.
-    pub fn mount_ride(&self) -> crate::ride::mount::MountState {
-        self.mount_ride
-    }
-
     /// Whether this is a boat, a chest boat or a raft.
     pub fn is_boat(&self) -> bool {
         vanilla_boat_max_passengers(self.type_id).is_some()
-    }
-
-    /// Whether a boat's paddle on a side (zero left, one right) rows
-    /// (`AbstractBoat.getPaddleState`): its data says so and someone rows it.
-    pub fn boat_paddle_rows(&self, side: usize) -> bool {
-        let flag = if side == 0 {
-            self.paddle_left
-        } else {
-            self.paddle_right
-        };
-        flag && !self.passenger_ids.is_empty()
     }
 }
 
@@ -162,7 +137,10 @@ impl EntityViewMut<'_> {
         };
         // `AbstractBoat.tick`: the easing runs after `super.tick`, before the boat moves.
         self.tick_position_interpolation();
-        let paddling = [self.boat_paddle_rows(0), self.boat_paddle_rows(1)];
+        let paddling = [
+            self.as_view().boat_paddle_rows(0),
+            self.as_view().boat_paddle_rows(1),
+        ];
         let tick_count = self.tick_count;
         self.kind
             .boat_state()
@@ -200,10 +178,10 @@ impl EntityViewMut<'_> {
             boat.bubble_time = bubbles;
         }
         if let Some(left) = data.paddle_left {
-            self.paddle_left = left;
+            self.ride.paddle_left = left;
         }
         if let Some(right) = data.paddle_right {
-            self.paddle_right = right;
+            self.ride.paddle_right = right;
         }
     }
 
@@ -211,5 +189,57 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_boat_end(&mut self, paddling: [bool; 2]) {
         let tick_count = self.tick_count;
         self.kind.boat_state().tick_end(paddling, tick_count);
+    }
+}
+
+/// What the local player's ride keeps on the vehicle: its steering input, what a boat or a
+/// saddled mount it rides keeps between ticks, and the paddles of a boat.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct Riding {
+    pub(crate) boat_input: BoatInput,
+    /// What a boat the local player rides keeps between ticks (status, water level, fall).
+    pub(crate) boat_ride: crate::ride::boat::RideState,
+    /// The same of a saddled horse the local player rides.
+    pub(crate) mount_ride: crate::ride::mount::MountState,
+    pub(crate) paddle_left: bool,
+    pub(crate) paddle_right: bool,
+}
+
+impl Default for Riding {
+    fn default() -> Self {
+        Self {
+            boat_input: BoatInput::EMPTY,
+            boat_ride: crate::ride::boat::RideState::default(),
+            mount_ride: crate::ride::mount::MountState::default(),
+            paddle_left: false,
+            paddle_right: false,
+        }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn paddle_state(&self) -> (bool, bool) {
+        (self.ride.paddle_left, self.ride.paddle_right)
+    }
+
+    /// What a boat the local player rides keeps between ticks.
+    pub fn boat_ride(&self) -> crate::ride::boat::RideState {
+        self.ride.boat_ride
+    }
+
+    /// What a saddled horse the local player rides keeps between ticks.
+    pub fn mount_ride(&self) -> crate::ride::mount::MountState {
+        self.ride.mount_ride
+    }
+
+    /// Whether a boat's paddle on a side (zero left, one right) rows
+    /// (`AbstractBoat.getPaddleState`): its data says so and someone rows it.
+    pub fn boat_paddle_rows(&self, side: usize) -> bool {
+        let flag = if side == 0 {
+            self.ride.paddle_left
+        } else {
+            self.ride.paddle_right
+        };
+        flag && !self.passenger_ids.is_empty()
     }
 }

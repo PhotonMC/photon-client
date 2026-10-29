@@ -173,7 +173,7 @@ impl ClientWorld {
             y_rot,
             x_rot: vehicle.rotation.x_rot.get(),
             on_ground: vehicle.on_ground,
-            horizontal_collision: vehicle.mount_ride.horizontal_collision,
+            horizontal_collision: vehicle.ride.mount_ride.horizontal_collision,
             rider_position: rider,
             delta_rotation: 0.0,
             max_y: 0.0,
@@ -244,11 +244,15 @@ impl ClientWorld {
             y_rot: vehicle.rotation.y_rot.get(),
             x_rot: 0.0,
             on_ground: vehicle.on_ground,
-            horizontal_collision: vehicle.boat_ride.horizontal_collision,
+            horizontal_collision: vehicle.ride.boat_ride.horizontal_collision,
             rider_position: self.boat_rider_position(vehicle_id, player.id)?,
             delta_rotation: vehicle.delta_rotation.get(),
             max_y: bb.max_y,
-            under_water: vehicle.boat_ride.status.is_some_and(Status::is_under_water),
+            under_water: vehicle
+                .ride
+                .boat_ride
+                .status
+                .is_some_and(Status::is_under_water),
             can_sprint: false,
             can_jump: false,
         })

@@ -108,5 +108,5 @@ pub(super) fn strider_is_suffocating(
             .tags()
             .contains(usize::from(state.block), "minecraft:strider_warm_blocks")
     };
-    !(warm(inside) || warm(on) || strider.mount_ride.lava_height > 0.0)
+    !(warm(inside) || warm(on) || strider.ride.mount_ride.lava_height > 0.0)
 }

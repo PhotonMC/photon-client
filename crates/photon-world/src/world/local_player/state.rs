@@ -269,13 +269,13 @@ impl ClientWorld {
 
     /// Copy local player movement flags into a client-authoritative boat.
     pub fn set_boat_input(&mut self, vehicle_id: EntityId, input: BoatInput) -> bool {
-        let Some(mut boat) = self.entities.at_mut(vehicle_id) else {
+        let Some(boat) = self.entities.at_mut(vehicle_id) else {
             return false;
         };
         if vanilla_boat_max_passengers(boat.type_id).is_none() {
             return false;
         }
-        boat.boat_input = input;
+        boat.ride.boat_input = input;
         true
     }
 

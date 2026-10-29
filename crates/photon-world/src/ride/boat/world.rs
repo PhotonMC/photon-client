@@ -29,7 +29,7 @@ impl ClientWorld {
             Vec3::new(x, y, z),
             Vec3::new(ox, oy, oz),
             dimensions,
-            entity.boat_ride,
+            entity.ride.boat_ride,
         );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
@@ -39,7 +39,7 @@ impl ClientWorld {
         body.supporting_block = entity.tracking.support.main_block;
         body.on_ground_no_blocks = entity.tracking.support.no_blocks;
         body.no_gravity = entity.no_gravity;
-        body.input = entity.boat_input;
+        body.input = entity.ride.boat_input;
         body.has_passengers = !entity.passenger_ids.is_empty();
         body.player_aboard = entity.passenger_ids.first().is_some_and(|&id| {
             self.local_player
@@ -50,7 +50,7 @@ impl ClientWorld {
                     .get(&id)
                     .is_some_and(|passenger| passenger.is_player())
         });
-        body.paddles = (entity.paddle_left, entity.paddle_right);
+        body.paddles = (entity.ride.paddle_left, entity.ride.paddle_right);
         let level = Level::new(self);
         let Ok(paddles) = body.tick(&level) else {
             return;
@@ -85,9 +85,9 @@ impl ClientWorld {
             main_block: body.supporting_block,
             no_blocks: body.on_ground_no_blocks,
         };
-        entity.paddle_left = body.paddles.0;
-        entity.paddle_right = body.paddles.1;
-        entity.boat_ride = body.ride;
+        entity.ride.paddle_left = body.paddles.0;
+        entity.ride.paddle_right = body.paddles.1;
+        entity.ride.boat_ride = body.ride;
         entity.tick_boat_end(paddling);
         if let Some(state) = entity.kind.boat_mut() {
             state.is_under_water = body.ride.status.is_some_and(Status::is_under_water);

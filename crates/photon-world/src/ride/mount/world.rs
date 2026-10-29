@@ -32,7 +32,7 @@ impl ClientWorld {
 
     /// `AbstractHorse.onPlayerJump`: the rider let go of the jump key after charging a jump.
     pub fn on_player_jump(&mut self, vehicle_id: EntityId, jump_amount: i32) {
-        let Some(mut horse) = self
+        let Some(horse) = self
             .entities
             .at_mut(vehicle_id)
             .filter(|entity| entity.is_controllable_horse())
@@ -57,7 +57,7 @@ impl ClientWorld {
             jump_amount
         };
         // `PlayerRideableJumping.getPlayerJumpPendingScale`.
-        horse.mount_ride.jump_pending_scale = if amount >= 90 {
+        horse.ride.mount_ride.jump_pending_scale = if amount >= 90 {
             1.0
         } else {
             0.4 + 0.4 * amount as f32 / 90.0
@@ -105,7 +105,7 @@ impl ClientWorld {
             Vec3::new(ox, oy, oz),
             dimensions,
             attributes,
-            entity.mount_ride,
+            entity.ride.mount_ride,
         );
         let (mx, my, mz) = entity.motion();
         body.delta = Vec3::new(mx, my, mz);
@@ -156,7 +156,7 @@ impl ClientWorld {
             main_block: body.supporting_block,
             no_blocks: body.on_ground_no_blocks,
         };
-        entity.mount_ride = body.state;
+        entity.ride.mount_ride = body.state;
         if kind == MountKind::Camel {
             write_back_camel(&mut entity, &body.camel, in_water, game_time);
         }

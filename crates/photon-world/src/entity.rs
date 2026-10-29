@@ -19,15 +19,8 @@ pub struct ClientEntity {
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
     pub(crate) delta_rotation: JavaF32,
-    pub(crate) boat_input: BoatInput,
-    /// What a boat the local player rides keeps between ticks (status, water level, fall).
-    pub(crate) boat_ride: crate::ride::boat::RideState,
-    /// The same of a saddled horse the local player rides.
-    pub(crate) mount_ride: crate::ride::mount::MountState,
     /// A flying projectile's owner and whether it has left it.
     pub(crate) flight: crate::objects::flight::FlightState,
-    pub(crate) paddle_left: bool,
-    pub(crate) paddle_right: bool,
     pub(crate) on_ground: bool,
     pub(crate) tracking: Tracking,
     pub(crate) always_ticking: bool,
