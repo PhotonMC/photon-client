@@ -125,9 +125,12 @@ pub(crate) fn state_of(name: &str, offset: u32) -> photon_core::ids::BlockStateI
         .state_at(offset)
 }
 
-/// The place of a block in the block registry, which is how a tag names it.
+/// The id a new world's version puts on the wire for a block, which is how a tag packet names it.
 pub(crate) fn block_index(name: &str) -> i32 {
-    photon_data::block::blocks::index_of(name) as i32
+    let canonical = photon_data::block::blocks::index_of(name) as i32;
+    photon_data::version_registries::VersionRegistries::of(photon_core::version::Version::NEWEST)
+        .blocks
+        .wire_or_unknown(canonical)
 }
 
 /// The id a new world's version puts on the wire for a particle type, as metadata carries it.
