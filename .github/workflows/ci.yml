@@ -57,6 +57,11 @@ jobs:
       # none and the parity runs stay local until the runner can fetch the
       # reference itself.
       - run: cargo test --workspace --lib --bins --tests
+      - name: CPU bench report
+        # Chunk apply and light over a made-up world: no assets, no GPU. It reports; the
+        # baseline is machine-specific, so CI compares nothing.
+        if: runner.os == 'Linux'
+        run: cargo xtask bench --cpu
 
   # Java vs Rust parity. The pinned game is downloaded from Mojang's official
   # servers into the runner's .data/ on every run and checked against its

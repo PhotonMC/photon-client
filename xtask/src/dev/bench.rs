@@ -51,11 +51,13 @@ struct Options {
     /// Keep the run as the baseline, or check it against the baseline.
     save: bool,
     compare: bool,
+    /// The GPU-free run: chunks applied and lit in a made-up world, no server and no window.
+    cpu: bool,
     threshold: f64,
 }
 
 const SPEC: Spec = Spec {
-    flags: &["--no-build", "--validation", "--save", "--compare"],
+    flags: &["--no-build", "--validation", "--save", "--compare", "--cpu"],
     options: &[
         ("--name", 1),
         ("--repeat", 1),
@@ -73,8 +75,12 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
     if parsed.flag("--save") && parsed.flag("--compare") {
         return Err("--save and --compare are one or the other".to_owned());
     }
-    let route = parsed.value("--route").unwrap_or("still").to_owned();
-    if !["still", "run", "dive", "void"].contains(&route.as_str()) {
+    let route = if parsed.flag("--cpu") {
+        "cpu".to_owned()
+    } else {
+        parsed.value("--route").unwrap_or("still").to_owned()
+    };
+    if !["cpu", "still", "run", "dive", "void"].contains(&route.as_str()) {
         return Err("--route is still, run, dive or void".to_owned());
     }
     let vsync = parsed.value("--vsync").unwrap_or("on");
@@ -104,6 +110,7 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
         validation: parsed.flag("--validation"),
         save: parsed.flag("--save"),
         compare: parsed.flag("--compare"),
+        cpu: parsed.flag("--cpu"),
         threshold: parsed.number("--threshold", baseline::DEFAULT_THRESHOLD_PERCENT)?,
     })
 }
@@ -391,9 +398,43 @@ fn keep_or_check(options: &Options, reports: &[Value]) -> Result<(), String> {
     }
 }
 
+/// The run that needs neither server nor GPU: the example of `photon-world`, in release.
+fn cpu_bench(options: &Options) -> Result<(), String> {
+    if options.repeat == 0 {
+        return Err("--repeat is at least 1".to_owned());
+    }
+    let args = [
+        "run",
+        "--quiet",
+        "--release",
+        "-p",
+        "photon-world",
+        "--example",
+        "cpu_bench",
+    ];
+    let mut reports = Vec::new();
+    for number in 1..=options.repeat {
+        let text = process::output("cargo", &args)?;
+        let report: Value =
+            serde_json::from_str(&text).map_err(|error| format!("cpu_bench report: {error}"))?;
+        println!(
+            "run {number}: chunks={} work_ms={} max={:.2} parts={}",
+            report["chunks"],
+            triple(&report, "work_ms"),
+            stat(&report, "work_ms", "max"),
+            report["parts_ms"]
+        );
+        reports.push(report);
+    }
+    keep_or_check(options, &reports)
+}
+
 pub fn bench(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
     let options = options(&parsed)?;
+    if options.cpu {
+        return cpu_bench(&options);
+    }
     if !server_listening(&options.address) {
         return Err(format!(
             "no server on {}: run `cargo xtask server --accept-eula --background`",
