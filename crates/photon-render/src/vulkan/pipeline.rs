@@ -5,6 +5,53 @@ use super::shaders::*;
 use super::vertex_attributes::*;
 use super::*;
 
+/// The blend of the GUI pipelines that are not plain translucency.
+fn gui_blend(kind: PipelineKind) -> Option<vk::PipelineColorBlendAttachmentState> {
+    Some(match kind {
+        // The crosshair: what is behind it inverted.
+        PipelineKind::GuiInvert => vk::PipelineColorBlendAttachmentState::default()
+            .blend_enable(true)
+            .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
+            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::ONE)
+            .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .color_write_mask(vk::ColorComponentFlags::RGBA),
+        // The credits' `VIGNETTE`: the destination darkened by the source colour.
+        PipelineKind::GuiVignette => vk::PipelineColorBlendAttachmentState::default()
+            .blend_enable(true)
+            .src_color_blend_factor(vk::BlendFactor::ZERO)
+            .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::ZERO)
+            .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .color_write_mask(vk::ColorComponentFlags::RGBA),
+        // `MOJANG_LOGO`: source alpha over one.
+        PipelineKind::GuiLogo => vk::PipelineColorBlendAttachmentState::default()
+            .blend_enable(true)
+            .src_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
+            .dst_color_blend_factor(vk::BlendFactor::ONE)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::SRC_ALPHA)
+            .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .color_write_mask(vk::ColorComponentFlags::RGBA),
+        // `BlendFunction.ADDITIVE`.
+        PipelineKind::GuiHighlight => vk::PipelineColorBlendAttachmentState::default()
+            .blend_enable(true)
+            .src_color_blend_factor(vk::BlendFactor::ONE)
+            .dst_color_blend_factor(vk::BlendFactor::ONE)
+            .color_blend_op(vk::BlendOp::ADD)
+            .src_alpha_blend_factor(vk::BlendFactor::ONE)
+            .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+            .alpha_blend_op(vk::BlendOp::ADD)
+            .color_write_mask(vk::ColorComponentFlags::RGBA),
+        _ => return None,
+    })
+}
+
 impl VulkanBackend {
     /// Build the graphics pipeline from its compiled shaders.
     ///
@@ -43,6 +90,7 @@ impl VulkanBackend {
                 | PipelineKind::GuiInvert
                 | PipelineKind::GuiHighlight
                 | PipelineKind::GuiVignette
+                | PipelineKind::GuiLogo
         );
         let gui_item = kind == PipelineKind::GuiItem || gui_glint;
         let lines = matches!(kind, PipelineKind::Lines | PipelineKind::LinesBacking);
@@ -170,38 +218,8 @@ impl VulkanBackend {
             let blends = [
                 if let Some(blend) = crumbling_or_mask_blend(kind, crumbling) {
                     blend
-                } else if kind == PipelineKind::GuiInvert {
-                    vk::PipelineColorBlendAttachmentState::default()
-                        .blend_enable(true)
-                        .src_color_blend_factor(vk::BlendFactor::ONE_MINUS_DST_COLOR)
-                        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
-                        .color_blend_op(vk::BlendOp::ADD)
-                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                        .dst_alpha_blend_factor(vk::BlendFactor::ZERO)
-                        .alpha_blend_op(vk::BlendOp::ADD)
-                        .color_write_mask(vk::ColorComponentFlags::RGBA)
-                } else if kind == PipelineKind::GuiVignette {
-                    // The credits' `VIGNETTE`: the destination darkened by the source colour.
-                    vk::PipelineColorBlendAttachmentState::default()
-                        .blend_enable(true)
-                        .src_color_blend_factor(vk::BlendFactor::ZERO)
-                        .dst_color_blend_factor(vk::BlendFactor::ONE_MINUS_SRC_COLOR)
-                        .color_blend_op(vk::BlendOp::ADD)
-                        .src_alpha_blend_factor(vk::BlendFactor::ZERO)
-                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                        .alpha_blend_op(vk::BlendOp::ADD)
-                        .color_write_mask(vk::ColorComponentFlags::RGBA)
-                } else if kind == PipelineKind::GuiHighlight {
-                    // `BlendFunction.ADDITIVE`.
-                    vk::PipelineColorBlendAttachmentState::default()
-                        .blend_enable(true)
-                        .src_color_blend_factor(vk::BlendFactor::ONE)
-                        .dst_color_blend_factor(vk::BlendFactor::ONE)
-                        .color_blend_op(vk::BlendOp::ADD)
-                        .src_alpha_blend_factor(vk::BlendFactor::ONE)
-                        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-                        .alpha_blend_op(vk::BlendOp::ADD)
-                        .color_write_mask(vk::ColorComponentFlags::RGBA)
+                } else if let Some(blend) = gui_blend(kind) {
+                    blend
                 } else if kind == PipelineKind::SkyOverlay || rays || world_border {
                     // Added by its alpha (`BlendFunction.LIGHTNING`/`BlendFunction.OVERLAY`:
                     // the same factors).
@@ -486,6 +504,11 @@ const SHADERS: &[(PipelineKind, &Shader, &Shader)] = &[
     ),
     (
         PipelineKind::GuiVignette,
+        &GUI_VERTEX_SHADER,
+        &GUI_FRAGMENT_SHADER,
+    ),
+    (
+        PipelineKind::GuiLogo,
         &GUI_VERTEX_SHADER,
         &GUI_FRAGMENT_SHADER,
     ),

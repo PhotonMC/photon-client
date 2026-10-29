@@ -13,7 +13,10 @@ mod unifont;
 
 /// Whole textures under `textures/gui` that screens blit parts of, packed as
 /// `texture/<name>`.
-const WHOLE_TEXTURES: [&str; 54] = [
+/// The loading overlay's logo under `textures/gui`.
+pub const LOGO_TEXTURE: &str = "title/mojangstudios";
+
+const WHOLE_TEXTURES: [&str; 55] = [
     "tab_header_background",
     "advancements/window",
     "advancements/backgrounds/adventure",
@@ -58,6 +61,7 @@ const WHOLE_TEXTURES: [&str; 54] = [
     "container/creative_inventory/tab_inventory",
     "recipe_book",
     "title/minecraft",
+    "title/mojangstudios",
     "title/edition",
     "title/background/panorama_overlay",
     "textures/misc/unknown_server",
@@ -137,7 +141,8 @@ fn register_whole_textures(
         let key = format!("minecraft:texture/{name}");
         // A blurred texture is sampled linearly and clamped at its edge: a border of its own
         // edge texels around it keeps the filter off its neighbours.
-        if has_blur(resources, &path) {
+        // The loading overlay's logo is read with smooth sampling whatever its file says.
+        if name == LOGO_TEXTURE || has_blur(resources, &path) {
             image = with_edge_border(&image);
             blurred.insert(key.clone());
         }

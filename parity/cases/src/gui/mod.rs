@@ -24,6 +24,7 @@ mod item_custom;
 mod jigsaw;
 mod keybinds;
 mod language;
+mod loading;
 mod locator;
 mod mob_tags;
 mod options;
@@ -128,6 +129,7 @@ const ORDER: &[Generator] = &[
     || vec![draft::chat_draft()],
     || vec![locator::name_tags()],
     || vec![title::title_screen()],
+    || vec![loading::loading_overlay()],
     || vec![title::join_multiplayer_screen()],
     || vec![title::server_form()],
     || vec![title::connect_screen()],

@@ -16,6 +16,7 @@ impl VulkanBackend {
                 invert: self.create_pipeline(layout, PipelineKind::GuiInvert)?,
                 highlight: self.create_pipeline(layout, PipelineKind::GuiHighlight)?,
                 vignette: self.create_pipeline(layout, PipelineKind::GuiVignette)?,
+                logo: self.create_pipeline(layout, PipelineKind::GuiLogo)?,
                 item: self.create_pipeline(layout, PipelineKind::GuiItem)?,
                 glint: self.create_pipeline(layout, PipelineKind::GuiGlint)?,
             })

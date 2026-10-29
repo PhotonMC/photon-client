@@ -1,5 +1,17 @@
 use super::*;
 
+/// The title screen and the loading overlay, which share the screens' size and clock.
+pub(super) fn title_case(
+    ctx: &mut GuiContext,
+    row: &Value,
+    operation: &str,
+) -> Result<Value, String> {
+    match operation {
+        "loading_overlay" => super::loading::loading_overlay_case(ctx, row),
+        _ => title_screen_case(ctx, row),
+    }
+}
+
 /// `title_screen`: the title screen with a splash, after some keys and frames, under a mouse.
 pub(super) fn title_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     use photon_gui::widgets::navigation::Direction;

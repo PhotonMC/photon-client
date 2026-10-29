@@ -65,6 +65,48 @@ impl GuiFrame {
         self.blit_stretched_with(atlas, GuiBlend::Vignette, name, texture_size, region, rect);
     }
 
+    /// One of the two blits of the loading overlay's logo (`LoadingOverlay`): a `120 x 60` piece
+    /// of the `120 x 120` texture from `(u, v)` (the halves overlap by a sixteenth of a texel),
+    /// stretched over `(x, y, width, height)` and tinted by `colour` (ARGB), added to what is
+    /// behind it.
+    pub fn logo_half(
+        &mut self,
+        atlas: &GuiAtlas,
+        (u, v): (f32, f32),
+        rect: (i32, i32, i32, i32),
+        colour: u32,
+    ) {
+        if let Some(log) = &mut self.log {
+            log.push(DrawOp::Texture {
+                name: crate::gui::atlas::LOGO_TEXTURE.to_owned(),
+                rect: (
+                    rect.0 as f32,
+                    rect.1 as f32,
+                    (rect.0 + rect.2) as f32,
+                    (rect.1 + rect.3) as f32,
+                ),
+                uv: (
+                    u / 120.0,
+                    (u + 120.0) / 120.0,
+                    v / 120.0,
+                    (v + 60.0) / 120.0,
+                ),
+                colour,
+            });
+        }
+        let channel = |shift: u32| ((colour >> shift) & 0xFF) as f32 / 255.0;
+        let tint = [channel(16), channel(8), channel(0), channel(24)];
+        let name = format!("texture/{}", crate::gui::atlas::LOGO_TEXTURE);
+        self.blit_region_tinted(
+            atlas,
+            (GuiBlend::LogoAdd, tint),
+            &name,
+            (120, 120),
+            (u, v, 120.0, 60.0),
+            rect,
+        );
+    }
+
     /// The draw log's record of part of a whole texture: where in it, as fractions.
     pub fn log_texture(
         &mut self,

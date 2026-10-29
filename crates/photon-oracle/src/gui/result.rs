@@ -39,6 +39,7 @@ mod container;
 mod loom;
 mod packs;
 use container::*;
+mod loading;
 mod title;
 use title::*;
 mod signs;
@@ -245,7 +246,7 @@ pub(crate) fn gui_result(request: &Value) -> Result<Value, String> {
                 "titles" => titles_case(&mut ctx, row)?,
                 "sidebar" => sidebar_case(&mut ctx, row)?,
                 "pause_screen" => pause_screen_case(&mut ctx, row)?,
-                "title_screen" => title_screen_case(&mut ctx, row)?,
+                "title_screen" | "loading_overlay" => title_case(&mut ctx, row, operation)?,
                 "join_multiplayer_screen" => join_multiplayer_screen_case(&mut ctx, row)?,
                 "server_form" => server_form_case(&mut ctx, row)?,
                 "connect_screen" => connect_screen_case(&mut ctx, row)?,

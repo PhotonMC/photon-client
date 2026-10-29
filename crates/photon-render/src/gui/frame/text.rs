@@ -354,6 +354,19 @@ impl GuiFrame {
         blend: GuiBlend,
         name: &str,
         size: (i32, i32),
+        region: (f32, f32, f32, f32),
+        rect: (i32, i32, i32, i32),
+    ) {
+        self.blit_region_tinted(atlas, (blend, [1.0; 4]), name, size, region, rect);
+    }
+
+    /// `blit_region_f32` with a tint on every corner.
+    pub fn blit_region_tinted(
+        &mut self,
+        atlas: &GuiAtlas,
+        (blend, tint): (GuiBlend, [f32; 4]),
+        name: &str,
+        size: (i32, i32),
         (u, v, uw, vh): (f32, f32, f32, f32),
         (x, y, w, h): (i32, i32, i32, i32),
     ) {
@@ -369,7 +382,7 @@ impl GuiFrame {
         let corner = |px: i32, py: i32, uv: [f32; 2]| GuiVertex {
             position: [px as f32, py as f32],
             uv,
-            colour: [1.0; 4],
+            colour: tint,
         };
         let corners = [
             corner(x, y, [left, top]),

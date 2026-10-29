@@ -51,6 +51,7 @@ public final class GuiOracle extends GuiTutorialOracle {
                 case "item_needle" -> itemNeedle(request);
                 case "pause_screen" -> pauseScreen(request);
                 case "title_screen" -> titleScreen(request);
+                case "loading_overlay" -> loadingOverlay(request);
                 case "join_multiplayer_screen" -> joinMultiplayerScreen(request);
                 case "server_form" -> serverForm(request);
                 case "connect_screen" -> connectScreen(request);

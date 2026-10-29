@@ -6,6 +6,7 @@ pub mod entity_name;
 pub mod favicon;
 pub mod hud;
 pub mod layout;
+pub mod loading_overlay;
 pub mod options;
 pub mod runs;
 pub mod screen;

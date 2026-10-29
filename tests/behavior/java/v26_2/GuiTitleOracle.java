@@ -420,4 +420,63 @@ class GuiTitleOracle extends GuiSettingsOracle {
         result.add("rows", rows);
         return result;
     }
+
+    /** The loading overlay at a pinned time, with a pinned progress and fade starts. */
+    static JsonObject loadingOverlay(JsonObject request) throws Exception {
+        var rows = new JsonArray();
+        for (var element : request.getAsJsonArray("rows")) {
+            var row = element.getAsJsonObject();
+            int width = row.get("width").getAsInt();
+            int height = row.get("height").getAsInt();
+            var screen = screen(width, height, 0, 0);
+            var minecraft = screen.minecraft();
+            minecraft.options.darkMojangStudiosBackground().set(row.get("dark").getAsBoolean());
+            var clockField = Reflect.field(net.minecraft.util.Util.class, "timeSource");
+            var clockBefore = clockField.get(null);
+            long now = row.get("ms").getAsLong();
+            clockField.set(null, (net.minecraft.util.TimeSource.NanoTimeSource) () -> now * 1_000_000L);
+            float actual = row.get("actual").getAsFloat();
+            var reload = new net.minecraft.server.packs.resources.ReloadInstance() {
+                @Override
+                public java.util.concurrent.CompletableFuture<?> done() {
+                    return java.util.concurrent.CompletableFuture.completedFuture(null);
+                }
+
+                @Override
+                public float getActualProgress() {
+                    return actual;
+                }
+            };
+            var overlay = new net.minecraft.client.gui.screens.LoadingOverlay(
+                minecraft, reload, result -> {}, row.get("fade_in").getAsBoolean());
+            set(overlay, "currentProgress", row.get("progress").getAsFloat());
+            if (row.has("fade_in_start")) {
+                set(overlay, "fadeInStart", row.get("fade_in_start").getAsLong());
+            }
+            if (row.has("fade_out_start")) {
+                set(overlay, "fadeOutStart", row.get("fade_out_start").getAsLong());
+            }
+            var gameRenderer = unsafe.allocateInstance(net.minecraft.client.renderer.GameRenderer.class);
+            var gameState = new net.minecraft.client.renderer.state.GameRenderState();
+            set(gameRenderer, "gameRenderState", gameState);
+            set(minecraft, "gameRenderer", gameRenderer);
+            overlay.extractRenderState(screen.graphics(), 0, 0, 0.0F);
+            screen.graphics().extractDeferredElements(0, 0, 0.0F);
+            clockField.set(null, clockBefore);
+            var out = new JsonObject();
+            out.addProperty("label", row.get("label").getAsString());
+            var clear = gameState.guiRenderState.clearColorOverride;
+            var clearBits = new JsonArray();
+            for (float channel : new float[] {clear.x, clear.y, clear.z, clear.w}) {
+                clearBits.add(Oracle.bits(channel));
+            }
+            out.add("clear", clearBits);
+            out.add("ops", record(screen.state()));
+            out.addProperty("progress", Oracle.bits((float) get(overlay, "currentProgress")));
+            rows.add(out);
+        }
+        var result = new JsonObject();
+        result.add("rows", rows);
+        return result;
+    }
 }

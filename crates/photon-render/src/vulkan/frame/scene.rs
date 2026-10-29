@@ -543,20 +543,6 @@ impl VulkanBackend {
         let push = [(BOTH_STAGES, 0, &as_bytes(&push)[..16])];
         for &(blend, first, count) in batches {
             let (pipeline, set, vertices) = match blend {
-                crate::gui::GuiBlend::Translucent
-                | crate::gui::GuiBlend::TranslucentBlur
-                | crate::gui::GuiBlend::BlockSprite => (
-                    &scene.gui_pipeline,
-                    translucent_set(blend, set, scene),
-                    buffer,
-                ),
-                crate::gui::GuiBlend::Invert => (&scene.gui_pipelines.invert, set, buffer),
-                crate::gui::GuiBlend::Highlight => (&scene.gui_pipelines.highlight, set, buffer),
-                crate::gui::GuiBlend::Vignette | crate::gui::GuiBlend::VignetteBlur => (
-                    &scene.gui_pipelines.vignette,
-                    translucent_set(blend, set, scene),
-                    buffer,
-                ),
                 crate::gui::GuiBlend::ItemGlint
                 | crate::gui::GuiBlend::Items
                 | crate::gui::GuiBlend::Entity => {
@@ -566,6 +552,11 @@ impl VulkanBackend {
                     };
                     run
                 }
+                plain => (
+                    plain_gui_pipeline(plain, scene),
+                    translucent_set(plain, set, scene),
+                    buffer,
+                ),
             };
             let pieces = match blend {
                 crate::gui::GuiBlend::ItemGlint
@@ -623,6 +614,20 @@ impl VulkanBackend {
     }
 }
 
+/// The pipeline of a GUI batch that is not translucent items: the plain one, or the one with the
+/// blend its run asks for.
+fn plain_gui_pipeline(blend: crate::gui::GuiBlend, scene: &SceneResources) -> &Pipeline {
+    match blend {
+        crate::gui::GuiBlend::Invert => &scene.gui_pipelines.invert,
+        crate::gui::GuiBlend::Highlight => &scene.gui_pipelines.highlight,
+        crate::gui::GuiBlend::Vignette | crate::gui::GuiBlend::VignetteBlur => {
+            &scene.gui_pipelines.vignette
+        }
+        crate::gui::GuiBlend::LogoAdd => &scene.gui_pipelines.logo,
+        _ => &scene.gui_pipeline,
+    }
+}
+
 /// The descriptor set a translucent GUI batch samples: the GUI atlas, or for a sprite of the block
 /// atlas that atlas (the pipeline's layout is the same for both).
 fn translucent_set(
@@ -632,9 +637,9 @@ fn translucent_set(
 ) -> vk::DescriptorSet {
     match blend {
         crate::gui::GuiBlend::BlockSprite => scene.descriptor_set,
-        crate::gui::GuiBlend::TranslucentBlur | crate::gui::GuiBlend::VignetteBlur => {
-            scene.gui_blur.as_ref().map_or(gui, |(set, _)| *set)
-        }
+        crate::gui::GuiBlend::TranslucentBlur
+        | crate::gui::GuiBlend::VignetteBlur
+        | crate::gui::GuiBlend::LogoAdd => scene.gui_blur.as_ref().map_or(gui, |(set, _)| *set),
         _ => gui,
     }
 }

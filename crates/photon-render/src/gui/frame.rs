@@ -37,6 +37,9 @@ pub enum GuiBlend {
     TranslucentBlur,
     /// `Vignette` for a texture whose metadata asks for smooth sampling.
     VignetteBlur,
+    /// The loading overlay's logo (`MOJANG_LOGO`): source alpha added to what is behind it,
+    /// sampled smoothly.
+    LogoAdd,
     /// A sprite of the block atlas, which the portal overlay is.
     BlockSprite,
     /// Items in slots, whose run counts in `GuiFrame::items`.

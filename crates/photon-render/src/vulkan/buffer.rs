@@ -44,6 +44,7 @@ pub(super) enum PipelineKind {
     /// A text selection, added to what is behind it (`GUI_TEXT_HIGHLIGHT`).
     GuiHighlight,
     GuiVignette,
+    GuiLogo,
     /// Items in GUI slots, over a cleared depth.
     GuiItem,
     /// The glint over an item in a GUI slot, over the depth the item wrote.
@@ -207,6 +208,7 @@ pub(super) struct GuiPipelines {
     pub(super) invert: Pipeline,
     pub(super) highlight: Pipeline,
     pub(super) vignette: Pipeline,
+    pub(super) logo: Pipeline,
     pub(super) item: Pipeline,
     pub(super) glint: Pipeline,
 }
