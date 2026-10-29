@@ -140,11 +140,32 @@ mod tests {
                 .iter()
                 .find(|(id, _)| *id == photon_data::item::component_types::REPAIRABLE)
                 .map(|(_, value)| value.clone());
+            // The table writes canonical item ids where the dump has the dump version's wire ids.
+            let dumped = dumped.map(|bytes| canonical_items(&bytes));
             assert_eq!(
                 repairable_value(crate::item::id_of(name).expect(name)),
                 dumped,
                 "{name}"
             );
         }
+    }
+
+    /// A listed `repairable` with its item ids read as the dump version's wire ids.
+    fn canonical_items(bytes: &[u8]) -> Vec<u8> {
+        let registries = photon_data::version_registries::VersionRegistries::of(
+            photon_core::version::Version::V26_2,
+        );
+        let mut input = bytes;
+        let count = photon_core::wire::read_varint(&mut input).expect("a count");
+        if count == 0 {
+            return bytes.to_vec();
+        }
+        let mut out = Vec::new();
+        write_varint(count, &mut out);
+        for _ in 1..count {
+            let wire = photon_core::wire::read_varint(&mut input).expect("an item");
+            write_varint(registries.items.canonical_or_unknown(wire), &mut out);
+        }
+        out
     }
 }

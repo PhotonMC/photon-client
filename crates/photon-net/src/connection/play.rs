@@ -196,11 +196,15 @@ mod tests {
 
     /// An entity that has no interpolation handler, so a step puts it at the place at once.
     fn add_entity(id: u32, x: f64) -> Vec<u8> {
-        add_entity_of_type(
-            id,
-            photon_data::entity_type::named("minecraft:arrow").0 as u32,
-            x,
-        )
+        add_entity_of_type(id, wire_entity_type("minecraft:arrow"), x)
+    }
+
+    /// The id the connect version's wire gives the type.
+    fn wire_entity_type(name: &str) -> u32 {
+        let canonical = photon_data::entity_type::named(name).0;
+        photon_data::version_registries::VersionRegistries::of(crate::connection::CONNECT_VERSION)
+            .entity_types
+            .wire_or_unknown(canonical) as u32
     }
 
     fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {
@@ -297,7 +301,11 @@ mod tests {
         let (mut session, _far_end) = detached();
         // A player entity ticks wherever it is; others wait for their chunk.
         session
-            .handle_bytes(&add_entity_of_type(7, 156, 8.0))
+            .handle_bytes(&add_entity_of_type(
+                7,
+                wire_entity_type("minecraft:player"),
+                8.0,
+            ))
             .unwrap();
         let mut step = varint(PLAY_CLIENTBOUND_MOVE_ENTITY_POS_PACKET_ID as u32);
         step.extend(varint(7));
@@ -357,11 +365,13 @@ mod tests {
             session.local.game_mode,
             session.link.auto_jump,
         ));
-        let minecart = photon_data::entity_type::id("minecraft:minecart")
-            .unwrap()
-            .0 as u32;
+        let minecart = wire_entity_type("minecraft:minecart");
         session
-            .handle_bytes(&add_entity_of_type(1, 156, 8.0))
+            .handle_bytes(&add_entity_of_type(
+                1,
+                wire_entity_type("minecraft:player"),
+                8.0,
+            ))
             .unwrap();
         session
             .handle_bytes(&add_entity_of_type(7, minecart, 8.0))
@@ -424,10 +434,18 @@ mod tests {
             session.link.auto_jump,
         ));
         session
-            .handle_bytes(&add_entity_of_type(1, 156, 8.0))
+            .handle_bytes(&add_entity_of_type(
+                1,
+                wire_entity_type("minecraft:player"),
+                8.0,
+            ))
             .unwrap();
         session
-            .handle_bytes(&add_entity_of_type(7, 94, 8.0))
+            .handle_bytes(&add_entity_of_type(
+                7,
+                wire_entity_type("minecraft:pale_oak_boat"),
+                8.0,
+            ))
             .unwrap();
         let camera = |id: u32| {
             let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
@@ -511,7 +529,11 @@ mod tests {
             session.link.auto_jump,
         ));
         session
-            .handle_bytes(&add_entity_of_type(7, 94, 8.0))
+            .handle_bytes(&add_entity_of_type(
+                7,
+                wire_entity_type("minecraft:pale_oak_boat"),
+                8.0,
+            ))
             .unwrap();
         let camera = |id: u32| {
             let mut body = varint(PLAY_CLIENTBOUND_SET_CAMERA_PACKET_ID as u32);
