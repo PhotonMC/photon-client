@@ -1,58 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
-        self.interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map_or_else(
-                || self.position(),
-                EntityInterpolationState::target_position,
-            )
-    }
-
-    pub(crate) fn tick_motion_interpolation(&mut self) {
-        if self.motion_lerp_steps == 0 {
-            return;
-        }
-
-        let steps = f64::from(self.motion_lerp_steps);
-        let current = self.motion();
-        let target = (
-            self.motion_lerp_target.x.get(),
-            self.motion_lerp_target.y.get(),
-            self.motion_lerp_target.z.get(),
-        );
-        self.motion.x = JavaF64::new(current.0 + (target.0 - current.0) / steps);
-        self.motion.y = JavaF64::new(current.1 + (target.1 - current.1) / steps);
-        self.motion.z = JavaF64::new(current.2 + (target.2 - current.2) / steps);
-        self.motion_lerp_steps -= 1;
-    }
-
-    pub fn interpolated_position(&self, partial_tick: f32) -> (f64, f64, f64) {
-        let partial_tick = f64::from(partial_tick);
-        let current = self.position();
-        let previous = self.previous_position();
-        (
-            mth_lerp_f64(partial_tick, previous.0, current.0),
-            mth_lerp_f64(partial_tick, previous.1, current.1),
-            mth_lerp_f64(partial_tick, previous.2, current.2),
-        )
-    }
-
-    pub fn motion_interpolation_target(&self) -> Option<(f64, f64, f64)> {
-        (self.motion_lerp_steps > 0).then(|| {
-            (
-                self.motion_lerp_target.x.get(),
-                self.motion_lerp_target.y.get(),
-                self.motion_lerp_target.z.get(),
-            )
-        })
-    }
-
-    pub fn motion_interpolation_steps(&self) -> u8 {
-        self.motion_lerp_steps
-    }
-
     pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
         self.interpolation
             .filter(|interpolation| interpolation.steps > 0)
@@ -203,14 +151,14 @@ impl EntityViewMut<'_> {
     }
 
     pub(crate) fn snap_to(&mut self, position: (f64, f64, f64), y_rot: f32, x_rot: f32) {
-        self.position.x = JavaF64::new(position.0);
-        self.position.y = JavaF64::new(position.1);
-        self.position.z = JavaF64::new(position.2);
+        self.pos.position.x = JavaF64::new(position.0);
+        self.pos.position.y = JavaF64::new(position.1);
+        self.pos.position.z = JavaF64::new(position.2);
         self.rotation.y_rot = JavaF32::new(y_rot);
         self.rotation.x_rot = JavaF32::new(x_rot);
-        self.old_position.x = JavaF64::new(position.0);
-        self.old_position.y = JavaF64::new(position.1);
-        self.old_position.z = JavaF64::new(position.2);
+        self.pos.old_position.x = JavaF64::new(position.0);
+        self.pos.old_position.y = JavaF64::new(position.1);
+        self.pos.old_position.z = JavaF64::new(position.2);
         self.rotation.old_y_rot = JavaF32::new(y_rot);
         self.rotation.old_x_rot = JavaF32::new(x_rot);
         if self.is_shulker() {
@@ -277,9 +225,9 @@ impl EntityViewMut<'_> {
         interpolation.previous.z = JavaF64::new(new_position.2);
         interpolation.previous_y_rot = JavaF32::new(new_rotation.0);
         interpolation.previous_x_rot = JavaF32::new(new_rotation.1);
-        self.position.x = JavaF64::new(new_position.0);
-        self.position.y = JavaF64::new(new_position.1);
-        self.position.z = JavaF64::new(new_position.2);
+        self.pos.position.x = JavaF64::new(new_position.0);
+        self.pos.position.y = JavaF64::new(new_position.1);
+        self.pos.position.z = JavaF64::new(new_position.2);
         self.rotation.y_rot = JavaF32::new(new_rotation.0 % 360.0);
         self.rotation.x_rot = JavaF32::new((new_rotation.1 % 360.0).clamp(-90.0, 90.0));
     }
@@ -310,5 +258,63 @@ impl EntityInterpolationState {
         );
         self.target_y_rot = JavaF32::new(self.target_y_rot.get() + delta_rotation.0);
         self.target_x_rot = JavaF32::new(self.target_x_rot.get() + delta_rotation.1);
+    }
+}
+
+impl EntityView<'_> {
+    pub fn motion_interpolation_target(&self) -> Option<(f64, f64, f64)> {
+        (self.vel.motion_lerp_steps > 0).then(|| {
+            (
+                self.vel.motion_lerp_target.x.get(),
+                self.vel.motion_lerp_target.y.get(),
+                self.vel.motion_lerp_target.z.get(),
+            )
+        })
+    }
+
+    pub fn motion_interpolation_steps(&self) -> u8 {
+        self.vel.motion_lerp_steps
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn tick_motion_interpolation(&mut self) {
+        if self.vel.motion_lerp_steps == 0 {
+            return;
+        }
+
+        let steps = f64::from(self.vel.motion_lerp_steps);
+        let current = self.motion();
+        let target = (
+            self.vel.motion_lerp_target.x.get(),
+            self.vel.motion_lerp_target.y.get(),
+            self.vel.motion_lerp_target.z.get(),
+        );
+        self.vel.motion.x = JavaF64::new(current.0 + (target.0 - current.0) / steps);
+        self.vel.motion.y = JavaF64::new(current.1 + (target.1 - current.1) / steps);
+        self.vel.motion.z = JavaF64::new(current.2 + (target.2 - current.2) / steps);
+        self.vel.motion_lerp_steps -= 1;
+    }
+}
+
+impl EntityView<'_> {
+    pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
+        self.interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or_else(
+                || self.position(),
+                EntityInterpolationState::target_position,
+            )
+    }
+
+    pub fn interpolated_position(&self, partial_tick: f32) -> (f64, f64, f64) {
+        let partial_tick = f64::from(partial_tick);
+        let current = self.position();
+        let previous = self.previous_position();
+        (
+            mth_lerp_f64(partial_tick, previous.0, current.0),
+            mth_lerp_f64(partial_tick, previous.1, current.1),
+            mth_lerp_f64(partial_tick, previous.2, current.2),
+        )
     }
 }

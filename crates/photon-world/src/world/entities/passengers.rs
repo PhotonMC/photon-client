@@ -242,10 +242,10 @@ impl ClientWorld {
             .entities
             .get(&entity_id)
             .filter(|entity| entity.is_boat())?;
-        Some(self.boat_is_under_water(entity.entity))
+        Some(self.boat_is_under_water(entity))
     }
 
-    pub(crate) fn boat_is_under_water(&self, entity: &ClientEntity) -> bool {
+    pub(crate) fn boat_is_under_water(&self, entity: EntityView<'_>) -> bool {
         let Some(pick) = photon_data::entity_type::pick(entity.type_id) else {
             return false;
         };
@@ -275,7 +275,7 @@ impl ClientWorld {
         false
     }
 
-    pub(crate) fn boat_is_local_instance_authoritative(&self, entity: &ClientEntity) -> bool {
+    pub(crate) fn boat_is_local_instance_authoritative(&self, entity: EntityView<'_>) -> bool {
         self.local_player
             .as_ref()
             .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id))

@@ -60,15 +60,15 @@ impl ClientWorld {
         position: (f64, f64, f64),
         motion: (f64, f64, f64),
     ) {
-        let Some(mut entity) = self.entities.at_mut(rocket) else {
+        let Some(entity) = self.entities.at_mut(rocket) else {
             return;
         };
-        entity.position.x = JavaF64::new(position.0);
-        entity.position.y = JavaF64::new(position.1);
-        entity.position.z = JavaF64::new(position.2);
-        entity.motion.x = JavaF64::new(motion.0);
-        entity.motion.y = JavaF64::new(motion.1);
-        entity.motion.z = JavaF64::new(motion.2);
+        entity.pos.position.x = JavaF64::new(position.0);
+        entity.pos.position.y = JavaF64::new(position.1);
+        entity.pos.position.z = JavaF64::new(position.2);
+        entity.vel.motion.x = JavaF64::new(motion.0);
+        entity.vel.motion.y = JavaF64::new(motion.1);
+        entity.vel.motion.z = JavaF64::new(motion.2);
         self.throw_rocket_trail(rocket);
     }
 }

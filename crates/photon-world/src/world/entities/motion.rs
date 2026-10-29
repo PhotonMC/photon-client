@@ -151,7 +151,7 @@ impl ClientWorld {
             }
             if entity.has_interpolation_handler() {
                 let target_position =
-                    new_position.unwrap_or_else(|| entity.interpolation_position());
+                    new_position.unwrap_or_else(|| entity.as_view().interpolation_position());
                 let (current_y_rot, current_x_rot) = entity.as_view().interpolation_rotation();
                 let target_y_rot = input.y_rot.unwrap_or(current_y_rot);
                 let target_x_rot = input.x_rot.unwrap_or(current_x_rot);
@@ -271,7 +271,7 @@ impl ClientWorld {
     /// `Entity.isLocalInstanceAuthoritative` of a vehicle: the local player steers it.
     fn is_locally_authoritative(&self, entity_id: EntityId) -> bool {
         self.entities.at(entity_id).is_some_and(|entity| {
-            self.boat_is_local_instance_authoritative(entity.entity)
+            self.boat_is_local_instance_authoritative(entity)
                 && vanilla_boat_max_passengers(entity.type_id).is_some()
                 || self.mount_kind_of(entity.entity).is_some()
         })
@@ -309,7 +309,11 @@ impl ClientWorld {
                         x_rot
                     }
                 });
-                entity.move_or_interpolate_to(entity.interpolation_position(), y_rot, x_rot);
+                entity.move_or_interpolate_to(
+                    entity.as_view().interpolation_position(),
+                    y_rot,
+                    x_rot,
+                );
             } else {
                 if let Some(y_rot) = input.y_rot {
                     let current = entity.rotation.y_rot.get();
@@ -357,18 +361,18 @@ impl ClientWorld {
 
 impl Entities {
     pub fn apply_motion(&mut self, input: EntityMotionInput) -> bool {
-        let Some(mut entity) = self.at_mut(input.entity_id) else {
+        let Some(entity) = self.at_mut(input.entity_id) else {
             return false;
         };
         if entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID {
-            entity.motion_lerp_target.x = JavaF64::new(input.x);
-            entity.motion_lerp_target.y = JavaF64::new(input.y);
-            entity.motion_lerp_target.z = JavaF64::new(input.z);
-            entity.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
+            entity.vel.motion_lerp_target.x = JavaF64::new(input.x);
+            entity.vel.motion_lerp_target.y = JavaF64::new(input.y);
+            entity.vel.motion_lerp_target.z = JavaF64::new(input.z);
+            entity.vel.motion_lerp_steps = REMOTE_PLAYER_MOTION_LERP_STEPS;
         } else {
-            entity.motion.x = JavaF64::new(input.x);
-            entity.motion.y = JavaF64::new(input.y);
-            entity.motion.z = JavaF64::new(input.z);
+            entity.vel.motion.x = JavaF64::new(input.x);
+            entity.vel.motion.y = JavaF64::new(input.y);
+            entity.vel.motion.z = JavaF64::new(input.z);
         }
         true
     }

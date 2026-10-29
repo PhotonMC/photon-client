@@ -65,53 +65,14 @@ impl ClientEntity {
         }
     }
 
-    /// `Entity.shouldRenderAtSqrDistance` with the overrides of its type (`view_scale` is
-    /// `Entity.viewScale`). An attached firework is never drawn this way, and an end crystal with a
-    /// beam always is.
-    pub fn should_render_at_sqr_distance(&self, distance: f64, view_scale: f64) -> bool {
-        let size = self.bounding_box().size();
-        let within = |size: f64| distance < size * size;
-        let near = match self.reach() {
-            Reach::Box => within(if size.is_nan() { 1.0 } else { size } * (64.0 * view_scale)),
-            Reach::TenBoxes => {
-                let size = size * 10.0;
-                within(if size.is_nan() { 1.0 } else { size } * (64.0 * view_scale))
-            }
-            Reach::FourBoxesAfterStart if self.tick_count() < 2 && distance < NEAR_START_SQR => {
-                false
-            }
-            Reach::FourBoxesAfterStart | Reach::FourBoxes => {
-                let size = size * 4.0;
-                within(if size.is_nan() { 4.0 } else { size } * 64.0)
-            }
-            Reach::FourBoxesNotEmpty => {
-                let size = size * 4.0;
-                within(
-                    if size.is_nan() || size == 0.0 {
-                        4.0
-                    } else {
-                        size
-                    } * 64.0,
-                )
-            }
-            Reach::Within(limit) => distance < limit,
-            Reach::Scaled(length) => within(length * (64.0 * view_scale)),
-            Reach::ViewRange => self
-                .display()
-                .is_some_and(|display| display.should_render_at_sqr_distance(distance, view_scale)),
-            Reach::Anywhere => true,
-        };
-        match photon_data::entity_type::name(self.type_id) {
-            Some("minecraft:firework_rocket") => near && self.attached_target.is_none(),
-            Some("minecraft:end_crystal") => {
-                near || self
-                    .end_crystal()
-                    .is_some_and(|crystal| crystal.beam_target().is_some())
-            }
-            _ => near,
-        }
+    fn wears_dragon_head(&self) -> bool {
+        self.equipment(EquipmentSlot::Head)
+            .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
+            .is_some_and(|item| item.name == "minecraft:dragon_head")
     }
+}
 
+impl EntityView<'_> {
     /// `Entity.shouldRender`: whether it is near enough to `camera` to be drawn.
     pub fn should_render(&self, camera: (f64, f64, f64), view_scale: f64) -> bool {
         let (x, y, z) = self.position();
@@ -170,10 +131,53 @@ impl ClientEntity {
             _ => bounds,
         })
     }
+}
 
-    fn wears_dragon_head(&self) -> bool {
-        self.equipment(EquipmentSlot::Head)
-            .and_then(|stack| crate::block::rules::item(stack.item_registry_id()))
-            .is_some_and(|item| item.name == "minecraft:dragon_head")
+impl EntityView<'_> {
+    /// `Entity.shouldRenderAtSqrDistance` with the overrides of its type (`view_scale` is
+    /// `Entity.viewScale`). An attached firework is never drawn this way, and an end crystal with a
+    /// beam always is.
+    pub fn should_render_at_sqr_distance(&self, distance: f64, view_scale: f64) -> bool {
+        let size = self.bounding_box().size();
+        let within = |size: f64| distance < size * size;
+        let near = match self.reach() {
+            Reach::Box => within(if size.is_nan() { 1.0 } else { size } * (64.0 * view_scale)),
+            Reach::TenBoxes => {
+                let size = size * 10.0;
+                within(if size.is_nan() { 1.0 } else { size } * (64.0 * view_scale))
+            }
+            Reach::FourBoxesAfterStart if self.tick_count() < 2 && distance < NEAR_START_SQR => {
+                false
+            }
+            Reach::FourBoxesAfterStart | Reach::FourBoxes => {
+                let size = size * 4.0;
+                within(if size.is_nan() { 4.0 } else { size } * 64.0)
+            }
+            Reach::FourBoxesNotEmpty => {
+                let size = size * 4.0;
+                within(
+                    if size.is_nan() || size == 0.0 {
+                        4.0
+                    } else {
+                        size
+                    } * 64.0,
+                )
+            }
+            Reach::Within(limit) => distance < limit,
+            Reach::Scaled(length) => within(length * (64.0 * view_scale)),
+            Reach::ViewRange => self
+                .display()
+                .is_some_and(|display| display.should_render_at_sqr_distance(distance, view_scale)),
+            Reach::Anywhere => true,
+        };
+        match photon_data::entity_type::name(self.type_id) {
+            Some("minecraft:firework_rocket") => near && self.attached_target.is_none(),
+            Some("minecraft:end_crystal") => {
+                near || self
+                    .end_crystal()
+                    .is_some_and(|crystal| crystal.beam_target().is_some())
+            }
+            _ => near,
+        }
     }
 }

@@ -90,7 +90,7 @@ impl ClientWorld {
         };
         if kind == MountKind::Strider {
             // `Strider.tick`: it takes the cold or the warmth before it moves.
-            let suffocating = strider_is_suffocating(self, entity.entity);
+            let suffocating = strider_is_suffocating(self, entity);
             if let Some(mut strider) = self.entities.at_mut(entity_id) {
                 strider.set_strider_suffocating(suffocating);
             }
@@ -144,9 +144,9 @@ impl ClientWorld {
             .at_mut(entity_id)
             .expect("the mount was read above");
         entity.set_position((body.position.x, body.position.y, body.position.z));
-        entity.motion.x = JavaF64::new(body.delta.x);
-        entity.motion.y = JavaF64::new(body.delta.y);
-        entity.motion.z = JavaF64::new(body.delta.z);
+        entity.vel.motion.x = JavaF64::new(body.delta.x);
+        entity.vel.motion.y = JavaF64::new(body.delta.y);
+        entity.vel.motion.z = JavaF64::new(body.delta.z);
         // `tickRidden`: it faces where the rider does, body and head too.
         entity.rotation.old_y_rot = JavaF32::new(body.y_rot);
         entity.rotation.y_rot = JavaF32::new(body.y_rot);

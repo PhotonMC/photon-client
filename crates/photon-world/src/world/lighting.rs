@@ -46,7 +46,7 @@ impl ClientWorld {
     /// brightest block of the box its full size would fill (`ArmorStand.getLightProbePosition`).
     pub fn light_probe(
         &self,
-        entity: &crate::ClientEntity,
+        entity: crate::EntityView<'_>,
         position: (f64, f64, f64),
         eye_height: f64,
     ) -> (f64, f64, f64) {

@@ -123,8 +123,8 @@ impl EntityViewMut<'_> {
     /// swimming pose easing in or out.
     pub(crate) fn tick_living_pose(&mut self, kind: LivingKind) {
         let moved = (
-            self.position.x.get() - self.old_position.x.get(),
-            self.position.z.get() - self.old_position.z.get(),
+            self.pos.position.x.get() - self.pos.old_position.x.get(),
+            self.pos.position.z.get() - self.pos.old_position.z.get(),
         );
         if kind == LivingKind::Player {
             self.old_swim_amount = self.swim_amount;

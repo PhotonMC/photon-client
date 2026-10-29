@@ -1,6 +1,23 @@
 use super::*;
 
 impl ClientEntity {
+    /// `ClientAvatarState.getInterpolatedBob` as `Camera.extractRenderState` reads it for
+    /// `bobView`: a player's, no other entity has one.
+    pub fn camera_bob(&self, partial: f32) -> f32 {
+        if self.is_player() {
+            self.living.cloak.interpolated_bob(partial)
+        } else {
+            0.0
+        }
+    }
+
+    /// The cloak and the bob of the avatar's cape.
+    pub fn cloak(&self) -> &crate::cloak::Cloak {
+        &self.living.cloak
+    }
+}
+
+impl EntityViewMut<'_> {
     /// `ClientAvatarState.tick` of a remote player: the cloak follows the position it has at the
     /// start of the tick.
     pub(crate) fn tick_cloak(&mut self) {
@@ -19,20 +36,5 @@ impl ClientEntity {
             0.0
         };
         self.living.cloak.update_bob(target);
-    }
-
-    /// `ClientAvatarState.getInterpolatedBob` as `Camera.extractRenderState` reads it for
-    /// `bobView`: a player's, no other entity has one.
-    pub fn camera_bob(&self, partial: f32) -> f32 {
-        if self.is_player() {
-            self.living.cloak.interpolated_bob(partial)
-        } else {
-            0.0
-        }
-    }
-
-    /// The cloak and the bob of the avatar's cape.
-    pub fn cloak(&self) -> &crate::cloak::Cloak {
-        &self.living.cloak
     }
 }

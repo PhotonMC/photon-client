@@ -1,16 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
-        if self.is_shulker() {
-            self.shulker_set_pos(position, block_of(self.position()));
-            return;
-        }
-        self.position.x = JavaF64::new(position.0);
-        self.position.y = JavaF64::new(position.1);
-        self.position.z = JavaF64::new(position.2);
-    }
-
     /// `Entity.getPositionCodec().getBase()`.
     pub(crate) fn packet_base(&self) -> (f64, f64, f64) {
         let [x, y, z] = self.tracking.packet_base_bits.map(f64::from_bits);
@@ -21,38 +11,6 @@ impl ClientEntity {
         self.tracking.packet_base_bits = [base.0.to_bits(), base.1.to_bits(), base.2.to_bits()];
     }
 
-    pub fn position(&self) -> (f64, f64, f64) {
-        (
-            self.position.x.get(),
-            self.position.y.get(),
-            self.position.z.get(),
-        )
-    }
-
-    pub fn previous_position(&self) -> (f64, f64, f64) {
-        (
-            self.old_position.x.get(),
-            self.old_position.y.get(),
-            self.old_position.z.get(),
-        )
-    }
-
-    pub fn motion(&self) -> (f64, f64, f64) {
-        (
-            self.motion.x.get(),
-            self.motion.y.get(),
-            self.motion.z.get(),
-        )
-    }
-
-    pub(crate) fn set_motion_if_finite(&mut self, motion: (f64, f64, f64)) {
-        if motion.0.is_finite() && motion.1.is_finite() && motion.2.is_finite() {
-            self.motion.x = JavaF64::new(motion.0);
-            self.motion.y = JavaF64::new(motion.1);
-            self.motion.z = JavaF64::new(motion.2);
-        }
-    }
-
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
@@ -61,37 +19,6 @@ impl ClientEntity {
     pub fn previous_motion(&self) -> (f64, f64, f64) {
         let [x, y, z] = self.living.previous_motion.map(f64::from_bits);
         (x, y, z)
-    }
-
-    /// What `DolphinRenderer.extractRenderState` calls moving: the motion the
-    /// server gave it covers more than a ten-millionth of a block squared in a tick.
-    pub fn is_moving_horizontally(&self) -> bool {
-        let (x, _, z) = self.motion();
-        x * x + z * z > 1.0E-7
-    }
-
-    /// What `LivingEntity.aiStep` does to the motion of a mob the client does not move:
-    /// it decays by a fiftieth less while no position interpolation runs, and motion
-    /// under three thousandths a tick is dropped.
-    pub(crate) fn tick_mob_motion(&mut self, was_interpolating: bool) {
-        let (mut x, mut y, mut z) = self.motion();
-        if !was_interpolating {
-            x *= 0.98;
-            y *= 0.98;
-            z *= 0.98;
-        }
-        if x.abs() < 0.003 {
-            x = 0.0;
-        }
-        if z.abs() < 0.003 {
-            z = 0.0;
-        }
-        if y.abs() < 0.003 {
-            y = 0.0;
-        }
-        self.motion.x = JavaF64::new(x);
-        self.motion.y = JavaF64::new(y);
-        self.motion.z = JavaF64::new(z);
     }
 }
 
@@ -162,9 +89,9 @@ pub(crate) fn rotate_entity_motion(
 
 impl EntityViewMut<'_> {
     pub(crate) fn capture_old_transform(&mut self) {
-        self.old_position.x = self.position.x;
-        self.old_position.y = self.position.y;
-        self.old_position.z = self.position.z;
+        self.pos.old_position.x = self.pos.position.x;
+        self.pos.old_position.y = self.pos.position.y;
+        self.pos.old_position.z = self.pos.position.z;
         self.rotation.old_x_rot = self.rotation.x_rot;
         self.rotation.old_y_rot = self.rotation.y_rot;
         self.rotation.old_y_head_rot = self.rotation.y_head_rot;
@@ -178,9 +105,9 @@ impl EntityViewMut<'_> {
         (y_rot, x_rot): (Option<f32>, Option<f32>),
     ) {
         if let Some((x, y, z)) = position {
-            self.position.x = JavaF64::new(x);
-            self.position.y = JavaF64::new(y);
-            self.position.z = JavaF64::new(z);
+            self.pos.position.x = JavaF64::new(x);
+            self.pos.position.y = JavaF64::new(y);
+            self.pos.position.z = JavaF64::new(z);
         }
         if let Some(y_rot) = y_rot {
             self.rotation.y_rot = JavaF32::new(y_rot % 360.0);
@@ -233,5 +160,59 @@ impl EntityViewMut<'_> {
             self.tick_shulker();
         }
         self.tick_wither_heads(targets.wither);
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn set_position(&mut self, position: (f64, f64, f64)) {
+        if self.is_shulker() {
+            let block = block_of(self.position());
+            self.shulker_set_pos(position, block);
+            return;
+        }
+        self.pos.position.x = JavaF64::new(position.0);
+        self.pos.position.y = JavaF64::new(position.1);
+        self.pos.position.z = JavaF64::new(position.2);
+    }
+
+    pub(crate) fn set_motion_if_finite(&mut self, motion: (f64, f64, f64)) {
+        if motion.0.is_finite() && motion.1.is_finite() && motion.2.is_finite() {
+            self.vel.motion.x = JavaF64::new(motion.0);
+            self.vel.motion.y = JavaF64::new(motion.1);
+            self.vel.motion.z = JavaF64::new(motion.2);
+        }
+    }
+
+    /// What `LivingEntity.aiStep` does to the motion of a mob the client does not move:
+    /// it decays by a fiftieth less while no position interpolation runs, and motion
+    /// under three thousandths a tick is dropped.
+    pub(crate) fn tick_mob_motion(&mut self, was_interpolating: bool) {
+        let (mut x, mut y, mut z) = self.motion();
+        if !was_interpolating {
+            x *= 0.98;
+            y *= 0.98;
+            z *= 0.98;
+        }
+        if x.abs() < 0.003 {
+            x = 0.0;
+        }
+        if z.abs() < 0.003 {
+            z = 0.0;
+        }
+        if y.abs() < 0.003 {
+            y = 0.0;
+        }
+        self.vel.motion.x = JavaF64::new(x);
+        self.vel.motion.y = JavaF64::new(y);
+        self.vel.motion.z = JavaF64::new(z);
+    }
+}
+
+impl EntityView<'_> {
+    /// What `DolphinRenderer.extractRenderState` calls moving: the motion the
+    /// server gave it covers more than a ten-millionth of a block squared in a tick.
+    pub fn is_moving_horizontally(&self) -> bool {
+        let (x, _, z) = self.motion();
+        x * x + z * z > 1.0E-7
     }
 }

@@ -6,73 +6,6 @@ impl ClientEntity {
         self.id
     }
 
-    pub(crate) fn collision_candidate(
-        &self,
-        source_entity_id: Option<EntityId>,
-        source_type_id: Option<EntityTypeId>,
-        source_position: Option<Vec3>,
-        same_vehicle: bool,
-    ) -> Option<ClientEntityCollisionCandidate> {
-        let (width, height) = if is_vanilla_boat_entity_type(self.type_id) {
-            (
-                (VANILLA_BOAT_HALF_WIDTH * 2.0) as f32,
-                VANILLA_BOAT_HEIGHT as f32,
-            )
-        } else if is_vanilla_shulker_entity_type(self.type_id) {
-            (1.0, 1.0)
-        } else if is_vanilla_minecart_entity_type(self.type_id) {
-            (0.98, 0.7)
-        } else if is_vanilla_player_entity_type(self.type_id) {
-            (0.6, 1.8)
-        } else if is_vanilla_happy_ghast_entity_type(self.type_id) {
-            (4.0, 4.0)
-        } else {
-            return None;
-        };
-        let (x, y, z) = self.position();
-        let dimensions = if is_vanilla_happy_ghast_entity_type(self.type_id) && self.baby {
-            ClientEntityDimensions::scalable(width, height).scale(0.2375, 0.2375)
-        } else {
-            ClientEntityDimensions::scalable(width, height)
-        };
-        let bounding_box = if is_vanilla_shulker_entity_type(self.type_id) {
-            self.shulker_bounding_box()
-        } else {
-            dimensions.make_bounding_box(Vec3::new(x, y, z))
-        };
-        let can_be_collided_with = if is_vanilla_happy_ghast_entity_type(self.type_id) {
-            !self.baby
-                && self.alive
-                && ((source_type_id == Some(VANILLA_PLAYER_ENTITY_TYPE_ID)
-                    && source_position.is_some_and(|position| position.y >= bounding_box.max_y))
-                    || (source_type_id == Some(VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID)
-                        && self.happy_ghast_is_vehicle)
-                    || self.happy_ghast_still_timeout)
-        } else {
-            is_vanilla_boat_entity_type(self.type_id)
-                || is_vanilla_shulker_entity_type(self.type_id)
-        };
-        let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
-            self.alive
-                && !self.spectator
-                && (self.flying || !self.on_climbable)
-                && self
-                    .health
-                    .is_none_or(|health| f32::from_bits(health) > 0.0)
-        } else {
-            is_vanilla_pushable_entity_type(self.type_id)
-                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive)
-        };
-        Some(ClientEntityCollisionCandidate {
-            bounding_box,
-            is_source: source_entity_id == Some(self.id),
-            spectator: self.spectator,
-            can_be_collided_with,
-            is_pushable,
-            same_vehicle,
-        })
-    }
-
     pub fn vehicle_id(&self) -> Option<EntityId> {
         self.vehicle_id
     }
@@ -179,4 +112,73 @@ pub(crate) fn is_vanilla_pushable_entity_type(entity_type_id: EntityTypeId) -> b
 
 pub(crate) fn source_accepts_pushable_entities(entity_type_id: EntityTypeId) -> bool {
     is_vanilla_boat_entity_type(entity_type_id) || is_vanilla_minecart_entity_type(entity_type_id)
+}
+
+impl EntityView<'_> {
+    pub(crate) fn collision_candidate(
+        &self,
+        source_entity_id: Option<EntityId>,
+        source_type_id: Option<EntityTypeId>,
+        source_position: Option<Vec3>,
+        same_vehicle: bool,
+    ) -> Option<ClientEntityCollisionCandidate> {
+        let (width, height) = if is_vanilla_boat_entity_type(self.type_id) {
+            (
+                (VANILLA_BOAT_HALF_WIDTH * 2.0) as f32,
+                VANILLA_BOAT_HEIGHT as f32,
+            )
+        } else if is_vanilla_shulker_entity_type(self.type_id) {
+            (1.0, 1.0)
+        } else if is_vanilla_minecart_entity_type(self.type_id) {
+            (0.98, 0.7)
+        } else if is_vanilla_player_entity_type(self.type_id) {
+            (0.6, 1.8)
+        } else if is_vanilla_happy_ghast_entity_type(self.type_id) {
+            (4.0, 4.0)
+        } else {
+            return None;
+        };
+        let (x, y, z) = self.position();
+        let dimensions = if is_vanilla_happy_ghast_entity_type(self.type_id) && self.baby {
+            ClientEntityDimensions::scalable(width, height).scale(0.2375, 0.2375)
+        } else {
+            ClientEntityDimensions::scalable(width, height)
+        };
+        let bounding_box = if is_vanilla_shulker_entity_type(self.type_id) {
+            self.shulker_bounding_box()
+        } else {
+            dimensions.make_bounding_box(Vec3::new(x, y, z))
+        };
+        let can_be_collided_with = if is_vanilla_happy_ghast_entity_type(self.type_id) {
+            !self.baby
+                && self.alive
+                && ((source_type_id == Some(VANILLA_PLAYER_ENTITY_TYPE_ID)
+                    && source_position.is_some_and(|position| position.y >= bounding_box.max_y))
+                    || (source_type_id == Some(VANILLA_HAPPY_GHAST_ENTITY_TYPE_ID)
+                        && self.happy_ghast_is_vehicle)
+                    || self.happy_ghast_still_timeout)
+        } else {
+            is_vanilla_boat_entity_type(self.type_id)
+                || is_vanilla_shulker_entity_type(self.type_id)
+        };
+        let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
+            self.alive
+                && !self.spectator
+                && (self.flying || !self.on_climbable)
+                && self
+                    .health
+                    .is_none_or(|health| f32::from_bits(health) > 0.0)
+        } else {
+            is_vanilla_pushable_entity_type(self.type_id)
+                || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive)
+        };
+        Some(ClientEntityCollisionCandidate {
+            bounding_box,
+            is_source: source_entity_id == Some(self.id),
+            spectator: self.spectator,
+            can_be_collided_with,
+            is_pushable,
+            same_vehicle,
+        })
+    }
 }

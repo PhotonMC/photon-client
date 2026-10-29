@@ -210,9 +210,9 @@ impl ClientWorld {
             .at_mut(entity_id)
             .expect("the item was read above");
         entity.set_position((step.position.x, step.position.y, step.position.z));
-        entity.motion.x = JavaF64::new(step.delta.x);
-        entity.motion.y = JavaF64::new(step.delta.y);
-        entity.motion.z = JavaF64::new(step.delta.z);
+        entity.vel.motion.x = JavaF64::new(step.delta.x);
+        entity.vel.motion.y = JavaF64::new(step.delta.y);
+        entity.vel.motion.z = JavaF64::new(step.delta.z);
         entity.on_ground = step.on_ground;
         entity.tracking.support = Support {
             main_block: step.main_supporting_block,

@@ -299,14 +299,14 @@ impl ClientWorld {
         if let Some(step) = step {
             entity.set_position((step.position.x, step.position.y, step.position.z));
             if let Some(moved_with) = step.moved_with {
-                entity.motion.x = JavaF64::new(moved_with.x);
-                entity.motion.y = JavaF64::new(moved_with.y);
-                entity.motion.z = JavaF64::new(moved_with.z);
+                entity.vel.motion.x = JavaF64::new(moved_with.x);
+                entity.vel.motion.y = JavaF64::new(moved_with.y);
+                entity.vel.motion.z = JavaF64::new(moved_with.z);
                 crate::objects::flight::update_rotation(&mut entity);
             }
-            entity.motion.x = JavaF64::new(step.delta.x);
-            entity.motion.y = JavaF64::new(step.delta.y);
-            entity.motion.z = JavaF64::new(step.delta.z);
+            entity.vel.motion.x = JavaF64::new(step.delta.x);
+            entity.vel.motion.y = JavaF64::new(step.delta.y);
+            entity.vel.motion.z = JavaF64::new(step.delta.z);
             entity.on_ground = step.on_ground;
         }
         *entity
@@ -338,9 +338,9 @@ impl ClientWorld {
         state.biting = biting;
         if biting {
             let sink = -0.4 * (state.synchronized.next_float() * (1.0_f32 - 0.6) + 0.6);
-            entity.motion.x = JavaF64::new(dx);
-            entity.motion.y = JavaF64::new(f64::from(sink));
-            entity.motion.z = JavaF64::new(dz);
+            entity.vel.motion.x = JavaF64::new(dx);
+            entity.vel.motion.y = JavaF64::new(f64::from(sink));
+            entity.vel.motion.z = JavaF64::new(dz);
         }
     }
 }

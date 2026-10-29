@@ -93,7 +93,7 @@ pub(crate) struct CamelRide {
 /// lava (the depth it last looked at; a strider that rides a warm one is not a case here).
 pub(super) fn strider_is_suffocating(
     world: &ClientWorld,
-    strider: &crate::entity::ClientEntity,
+    strider: crate::entity::EntityView<'_>,
 ) -> bool {
     let level = Level::new(world);
     let (x, y, z) = strider.position();

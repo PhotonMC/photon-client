@@ -29,64 +29,9 @@ impl ClientEntity {
         }
     }
 
-    /// `Shulker.makeBoundingBox`: the body and the lid as far open as it is,
-    /// on the side opposite the one it clings to.
-    pub fn shulker_bounding_box(&self) -> Aabb {
-        let physical = crate::mobs::shulker::physical_peek(self.living.shulker.current_peek());
-        crate::mobs::shulker::progress_delta_aabb(
-            self.shulker_scale(),
-            self.living.shulker_face ^ 1,
-            (-1.0, physical),
-            self.position(),
-        )
-    }
-
     /// `Shulker.sanitizeScale` of `getScale`.
     pub(in super::super) fn shulker_scale(&self) -> f32 {
         self.scale().min(3.0)
-    }
-
-    /// `Shulker.getRenderPosition`: where the slide to its block draws it,
-    /// relative to the block.
-    pub fn shulker_render_offset(&self, partial_tick: f32) -> Option<[f64; 3]> {
-        self.living.shulker.render_offset(
-            block_of(self.position()),
-            self.shulker_scale(),
-            partial_tick,
-        )
-    }
-
-    /// `Shulker.setPos`: unless it rides, it is held to the middle of its
-    /// block (`floor(y + 0.5)` vertically); having come to another block after
-    /// its first tick it closes its lid, and a shulker that is not riding
-    /// slides there from the old one.
-    pub(in super::super) fn shulker_set_pos(
-        &mut self,
-        position: (f64, f64, f64),
-        old_block: [i32; 3],
-    ) {
-        let riding = self.vehicle_id.is_some();
-        let (x, y, z) = if riding {
-            position
-        } else {
-            (
-                position.0.floor() + 0.5,
-                (position.1 + 0.5).floor(),
-                position.2.floor() + 0.5,
-            )
-        };
-        self.position.x = JavaF64::new(x);
-        self.position.y = JavaF64::new(y);
-        self.position.z = JavaF64::new(z);
-        let block = block_of((x, y, z));
-        if self.tick_count != 0 && block != old_block {
-            self.living.shulker_raw_peek = 0;
-            if !riding && self.living.shulker.start_teleport(old_block, block) {
-                self.old_position.x = JavaF64::new(x);
-                self.old_position.y = JavaF64::new(y);
-                self.old_position.z = JavaF64::new(z);
-            }
-        }
     }
 
     /// `Shulker.startRiding` (client side): it stops sliding and clings to
@@ -154,5 +99,64 @@ impl EntityViewMut<'_> {
         self.rotation.y_rot = self.rotation.y_head_rot;
         self.rotation.y_body_rot = self.rotation.y_head_rot;
         self.living.cube_size = Some(size);
+    }
+}
+
+impl EntityView<'_> {
+    /// `Shulker.makeBoundingBox`: the body and the lid as far open as it is,
+    /// on the side opposite the one it clings to.
+    pub fn shulker_bounding_box(&self) -> Aabb {
+        let physical = crate::mobs::shulker::physical_peek(self.living.shulker.current_peek());
+        crate::mobs::shulker::progress_delta_aabb(
+            self.shulker_scale(),
+            self.living.shulker_face ^ 1,
+            (-1.0, physical),
+            self.position(),
+        )
+    }
+
+    /// `Shulker.getRenderPosition`: where the slide to its block draws it,
+    /// relative to the block.
+    pub fn shulker_render_offset(&self, partial_tick: f32) -> Option<[f64; 3]> {
+        self.living.shulker.render_offset(
+            block_of(self.position()),
+            self.shulker_scale(),
+            partial_tick,
+        )
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Shulker.setPos`: unless it rides, it is held to the middle of its
+    /// block (`floor(y + 0.5)` vertically); having come to another block after
+    /// its first tick it closes its lid, and a shulker that is not riding
+    /// slides there from the old one.
+    pub(in super::super) fn shulker_set_pos(
+        &mut self,
+        position: (f64, f64, f64),
+        old_block: [i32; 3],
+    ) {
+        let riding = self.vehicle_id.is_some();
+        let (x, y, z) = if riding {
+            position
+        } else {
+            (
+                position.0.floor() + 0.5,
+                (position.1 + 0.5).floor(),
+                position.2.floor() + 0.5,
+            )
+        };
+        self.pos.position.x = JavaF64::new(x);
+        self.pos.position.y = JavaF64::new(y);
+        self.pos.position.z = JavaF64::new(z);
+        let block = block_of((x, y, z));
+        if self.tick_count != 0 && block != old_block {
+            self.living.shulker_raw_peek = 0;
+            if !riding && self.living.shulker.start_teleport(old_block, block) {
+                self.pos.old_position.x = JavaF64::new(x);
+                self.pos.old_position.y = JavaF64::new(y);
+                self.pos.old_position.z = JavaF64::new(z);
+            }
+        }
     }
 }

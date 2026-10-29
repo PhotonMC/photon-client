@@ -182,7 +182,7 @@ impl EntityViewMut<'_> {
             return;
         }
         let (x, y, z) = self.motion();
-        self.motion.y = JavaF64::new(y * 0.6);
+        self.vel.motion.y = JavaF64::new(y * 0.6);
         if x * x + z * z > 0.05 {
             let turn = photon_core::math::mth_atan2(z, x) as f32
                 * (180.0_f32 / std::f64::consts::PI as f32)

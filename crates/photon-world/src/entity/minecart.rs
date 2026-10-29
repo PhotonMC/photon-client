@@ -96,9 +96,9 @@ impl EntityViewMut<'_> {
             return;
         };
         self.set_position(place.position);
-        self.motion.x = JavaF64::new(place.movement.0);
-        self.motion.y = JavaF64::new(place.movement.1);
-        self.motion.z = JavaF64::new(place.movement.2);
+        self.vel.motion.x = JavaF64::new(place.movement.0);
+        self.vel.motion.y = JavaF64::new(place.movement.1);
+        self.vel.motion.z = JavaF64::new(place.movement.2);
         // `Entity.setXRot` and `setYRot` discard what is not finite.
         if place.x_rot.is_finite() {
             self.rotation.x_rot = JavaF32::new((place.x_rot % 360.0).clamp(-90.0, 90.0));

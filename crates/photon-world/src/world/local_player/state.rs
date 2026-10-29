@@ -332,7 +332,7 @@ impl ClientWorld {
 
     /// `Cat.handleLieDown`'s search: a player who sleeps within two blocks of
     /// the cat's block (the local player, or one the server added).
-    pub(crate) fn sleeping_player_near(&self, cat: &ClientEntity) -> bool {
+    pub(crate) fn sleeping_player_near(&self, cat: EntityView<'_>) -> bool {
         let (x, y, z) = cat.position();
         let (x, y, z) = (x.floor(), y.floor(), z.floor());
         let area =

@@ -75,9 +75,9 @@ impl ClientWorld {
             .at_mut(entity_id)
             .expect("the boat was read above");
         entity.set_position((body.position.x, body.position.y, body.position.z));
-        entity.motion.x = JavaF64::new(body.delta.x);
-        entity.motion.y = JavaF64::new(body.delta.y);
-        entity.motion.z = JavaF64::new(body.delta.z);
+        entity.vel.motion.x = JavaF64::new(body.delta.x);
+        entity.vel.motion.y = JavaF64::new(body.delta.y);
+        entity.vel.motion.z = JavaF64::new(body.delta.z);
         entity.rotation.y_rot = JavaF32::new(body.y_rot);
         entity.delta_rotation = JavaF32::new(body.delta_rotation);
         entity.on_ground = body.on_ground;

@@ -188,9 +188,9 @@ impl ClientWorld {
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");
-        entity.motion.x = JavaF64::new(movement.x);
-        entity.motion.y = JavaF64::new(movement.y);
-        entity.motion.z = JavaF64::new(movement.z);
+        entity.vel.motion.x = JavaF64::new(movement.x);
+        entity.vel.motion.y = JavaF64::new(movement.y);
+        entity.vel.motion.z = JavaF64::new(movement.z);
         rotate_towards_movement(&mut entity, 0.2);
         entity.set_position((new_position.x, new_position.y, new_position.z));
         // `Projectile.tick`: the owner check, then `Entity.baseTick`'s fluids.
@@ -242,9 +242,9 @@ impl ClientWorld {
         // `getAirDrag` and `getDefaultGravity` of the spit.
         let drag = f64::from(0.99_f32);
         let gravity = if no_gravity { 0.0 } else { 0.06 };
-        entity.motion.x = JavaF64::new(movement.x * drag);
-        entity.motion.y = JavaF64::new(movement.y * drag - gravity);
-        entity.motion.z = JavaF64::new(movement.z * drag);
+        entity.vel.motion.x = JavaF64::new(movement.x * drag);
+        entity.vel.motion.y = JavaF64::new(movement.y * drag - gravity);
+        entity.vel.motion.z = JavaF64::new(movement.z * drag);
         entity.set_position((target.x, target.y, target.z));
     }
 
@@ -351,9 +351,9 @@ impl ClientWorld {
             .at_mut(entity_id)
             .expect("the projectile was read above");
         entity.living.in_water = found.water.height > 0.0;
-        entity.motion.x = JavaF64::new(movement.x);
-        entity.motion.y = JavaF64::new(movement.y);
-        entity.motion.z = JavaF64::new(movement.z);
+        entity.vel.motion.x = JavaF64::new(movement.x);
+        entity.vel.motion.y = JavaF64::new(movement.y);
+        entity.vel.motion.z = JavaF64::new(movement.z);
     }
 
     /// `ProjectileUtil.getEntityHitResult` with `Projectile.canHitEntity`: where the nearest

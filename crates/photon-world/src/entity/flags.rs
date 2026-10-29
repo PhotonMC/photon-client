@@ -110,26 +110,6 @@ impl ClientEntity {
         f32::from_bits(self.living.hurt_dir)
     }
 
-    /// `LivingEntity.baseTick`'s share: `hurtTime` counts down, and a dying
-    /// entity's `deathTime` up (`tickDeath`; the server removes it later) while
-    /// the level says deaths tick here (`shouldTickDeath`).
-    pub(crate) fn tick_hurt_and_death(&mut self, tick_death: bool) {
-        if self.living.hurt_time > 0 {
-            self.living.hurt_time -= 1;
-        }
-        if self.is_dead_or_dying() && tick_death {
-            if self.is_ender_dragon() {
-                // `EnderDragon.tickDeath` keeps its own count, not `deathTime`, and
-                // lifts the dragon and its parts a tenth of a block.
-                let lift = f64::from(0.1_f32);
-                self.ender_dragon_mut().tick_death(lift);
-                self.position.y = JavaF64::new(self.position.y.get() + lift);
-            } else {
-                self.living.death_time += 1;
-            }
-        }
-    }
-
     pub fn health(&self) -> Option<f32> {
         self.health.map(f32::from_bits)
     }
@@ -537,5 +517,27 @@ fn literal_text(component: &photon_core::nbt::FieldValue) -> String {
             .map(|field| literal_text(&field.value))
             .collect(),
         _ => String::new(),
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `LivingEntity.baseTick`'s share: `hurtTime` counts down, and a dying
+    /// entity's `deathTime` up (`tickDeath`; the server removes it later) while
+    /// the level says deaths tick here (`shouldTickDeath`).
+    pub(crate) fn tick_hurt_and_death(&mut self, tick_death: bool) {
+        if self.living.hurt_time > 0 {
+            self.living.hurt_time -= 1;
+        }
+        if self.is_dead_or_dying() && tick_death {
+            if self.is_ender_dragon() {
+                // `EnderDragon.tickDeath` keeps its own count, not `deathTime`, and
+                // lifts the dragon and its parts a tenth of a block.
+                let lift = f64::from(0.1_f32);
+                self.ender_dragon_mut().tick_death(lift);
+                self.pos.position.y = JavaF64::new(self.pos.position.y.get() + lift);
+            } else {
+                self.living.death_time += 1;
+            }
+        }
     }
 }

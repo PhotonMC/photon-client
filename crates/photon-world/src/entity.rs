@@ -18,11 +18,6 @@ pub struct ClientEntity {
     pub(crate) first_tick: bool,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
-    pub(crate) position: DVec3,
-    pub(crate) old_position: DVec3,
-    pub(crate) motion: DVec3,
-    pub(crate) motion_lerp_target: DVec3,
-    pub(crate) motion_lerp_steps: u8,
     pub(crate) delta_rotation: JavaF32,
     pub(crate) boat_input: BoatInput,
     /// What a boat the local player rides keeps between ticks (status, water level, fall).
@@ -129,7 +124,9 @@ pub use pose::*;
 mod projectile;
 pub(crate) use projectile::*;
 mod rotation;
+pub use position::{Motion, Position};
 pub use rotation::Rotation;
+mod position;
 mod view;
 pub(crate) use rotation::*;
 pub use view::{EntityParts, EntityView, EntityViewMut};

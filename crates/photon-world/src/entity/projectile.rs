@@ -1,52 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    pub(crate) fn tick_primed_tnt(&mut self) {
-        let current_motion = self.motion();
-        let motion = (
-            current_motion.0,
-            current_motion.1
-                - if self.no_gravity {
-                    0.0
-                } else {
-                    VANILLA_PRIMED_TNT_GRAVITY
-                },
-            current_motion.2,
-        );
-        let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
-
-        let air_friction = f64::from(VANILLA_PRIMED_TNT_AIR_FRICTION);
-        self.motion.x = JavaF64::new(motion.0 * air_friction);
-        self.motion.y = JavaF64::new(motion.1 * air_friction);
-        self.motion.z = JavaF64::new(motion.2 * air_friction);
-    }
-
-    pub(crate) fn tick_falling_block(&mut self) {
-        let current_motion = self.motion();
-        let motion = (
-            current_motion.0,
-            current_motion.1
-                - if self.no_gravity {
-                    0.0
-                } else {
-                    VANILLA_FALLING_BLOCK_GRAVITY
-                },
-            current_motion.2,
-        );
-        let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
-
-        let air_friction = f64::from(VANILLA_FALLING_BLOCK_AIR_FRICTION);
-        self.motion.x = JavaF64::new(motion.0 * air_friction);
-        self.motion.y = JavaF64::new(motion.1 * air_friction);
-        self.motion.z = JavaF64::new(motion.2 * air_friction);
-    }
-
     /// `FireworkRocketEntity.isShotAtAngle`.
     pub fn is_shot_at_angle(&self) -> bool {
         self.shot_at_angle
@@ -260,14 +214,14 @@ impl EntityViewMut<'_> {
             (current_motion.1 - gravity) * air_drag,
             current_motion.2 * air_drag,
         );
-        self.motion.x = JavaF64::new(motion.0);
-        self.motion.y = JavaF64::new(motion.1);
-        self.motion.z = JavaF64::new(motion.2);
+        self.vel.motion.x = JavaF64::new(motion.0);
+        self.vel.motion.y = JavaF64::new(motion.1);
+        self.vel.motion.z = JavaF64::new(motion.2);
 
         let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
+        self.pos.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let horizontal_distance = (motion.0 * motion.0 + motion.2 * motion.2).sqrt();
         let target_x_rot =
@@ -286,9 +240,9 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_arrow(&mut self) {
         let current_position = self.position();
         let current_motion = self.motion();
-        self.position.x = JavaF64::new(current_position.0 + current_motion.0);
-        self.position.y = JavaF64::new(current_position.1 + current_motion.1);
-        self.position.z = JavaF64::new(current_position.2 + current_motion.2);
+        self.pos.position.x = JavaF64::new(current_position.0 + current_motion.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + current_motion.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + current_motion.2);
 
         let horizontal_distance =
             (current_motion.0 * current_motion.0 + current_motion.2 * current_motion.2).sqrt();
@@ -311,8 +265,8 @@ impl EntityViewMut<'_> {
             current_motion.1 * air_friction,
             current_motion.2 * air_friction,
         );
-        self.motion.x = JavaF64::new(motion.0);
-        self.motion.y = JavaF64::new(
+        self.vel.motion.x = JavaF64::new(motion.0);
+        self.vel.motion.y = JavaF64::new(
             motion.1
                 - if self.no_gravity {
                     0.0
@@ -320,7 +274,7 @@ impl EntityViewMut<'_> {
                     VANILLA_ARROW_GRAVITY
                 },
         );
-        self.motion.z = JavaF64::new(motion.2);
+        self.vel.motion.z = JavaF64::new(motion.2);
     }
 
     pub(crate) fn tick_experience_orb(&mut self, path_is_open: bool) {
@@ -345,14 +299,14 @@ impl EntityViewMut<'_> {
             current_motion.2,
         );
         let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + motion.0);
-        self.position.y = JavaF64::new(current_position.1 + motion.1);
-        self.position.z = JavaF64::new(current_position.2 + motion.2);
+        self.pos.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + motion.2);
 
         let air_friction = f64::from(VANILLA_EXPERIENCE_ORB_AIR_FRICTION);
-        self.motion.x = JavaF64::new(motion.0 * air_friction);
-        self.motion.y = JavaF64::new(motion.1 * air_friction);
-        self.motion.z = JavaF64::new(motion.2 * air_friction);
+        self.vel.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.vel.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.vel.motion.z = JavaF64::new(motion.2 * air_friction);
     }
 
     pub(crate) fn tick_firework(&mut self) {
@@ -367,9 +321,9 @@ impl EntityViewMut<'_> {
             current_motion.2 * VANILLA_FIREWORK_ROCKET_HORIZONTAL_ACCELERATION,
         );
         let current_position = self.position();
-        self.position.x = JavaF64::new(current_position.0 + movement.0);
-        self.position.y = JavaF64::new(current_position.1 + movement.1);
-        self.position.z = JavaF64::new(current_position.2 + movement.2);
+        self.pos.position.x = JavaF64::new(current_position.0 + movement.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + movement.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + movement.2);
 
         let horizontal_distance = (movement.0 * movement.0 + movement.2 * movement.2).sqrt();
         let target_x_rot =
@@ -384,9 +338,9 @@ impl EntityViewMut<'_> {
             self.rotation.old_y_rot.get(),
             target_y_rot,
         ));
-        self.motion.x = JavaF64::new(movement.0);
-        self.motion.y = JavaF64::new(movement.1);
-        self.motion.z = JavaF64::new(movement.2);
+        self.vel.motion.x = JavaF64::new(movement.0);
+        self.vel.motion.y = JavaF64::new(movement.1);
+        self.vel.motion.z = JavaF64::new(movement.2);
     }
 }
 
@@ -400,5 +354,53 @@ impl EntityViewMut<'_> {
 
     pub(crate) fn tick_experience_bottle(&mut self) {
         self.tick_throwable_item(VANILLA_EXPERIENCE_BOTTLE_GRAVITY);
+    }
+}
+
+impl EntityViewMut<'_> {
+    pub(crate) fn tick_primed_tnt(&mut self) {
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0,
+            current_motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_PRIMED_TNT_GRAVITY
+                },
+            current_motion.2,
+        );
+        let current_position = self.position();
+        self.pos.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + motion.2);
+
+        let air_friction = f64::from(VANILLA_PRIMED_TNT_AIR_FRICTION);
+        self.vel.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.vel.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.vel.motion.z = JavaF64::new(motion.2 * air_friction);
+    }
+
+    pub(crate) fn tick_falling_block(&mut self) {
+        let current_motion = self.motion();
+        let motion = (
+            current_motion.0,
+            current_motion.1
+                - if self.no_gravity {
+                    0.0
+                } else {
+                    VANILLA_FALLING_BLOCK_GRAVITY
+                },
+            current_motion.2,
+        );
+        let current_position = self.position();
+        self.pos.position.x = JavaF64::new(current_position.0 + motion.0);
+        self.pos.position.y = JavaF64::new(current_position.1 + motion.1);
+        self.pos.position.z = JavaF64::new(current_position.2 + motion.2);
+
+        let air_friction = f64::from(VANILLA_FALLING_BLOCK_AIR_FRICTION);
+        self.vel.motion.x = JavaF64::new(motion.0 * air_friction);
+        self.vel.motion.y = JavaF64::new(motion.1 * air_friction);
+        self.vel.motion.z = JavaF64::new(motion.2 * air_friction);
     }
 }

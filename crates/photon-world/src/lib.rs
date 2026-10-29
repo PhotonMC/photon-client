@@ -13,7 +13,7 @@ use crate::input::{
     LocalPlayerUpdateFallFlyingMovementParameters, advance_local_player_sprint_trigger,
 };
 use photon_core::ids::{EntityId, EntityTypeId, ItemId};
-use photon_core::java_float::{DVec3, JavaF32, JavaF64};
+use photon_core::java_float::{JavaF32, JavaF64};
 use photon_core::math::{Vec2, Vec3, abs_max_f64, mth_cos_f64, mth_sin_f64};
 use photon_core::{
     aabb::Aabb,

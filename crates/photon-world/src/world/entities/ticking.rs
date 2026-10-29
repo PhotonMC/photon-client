@@ -26,11 +26,11 @@ impl ClientWorld {
 
     pub(crate) fn tick_entity_tree(&mut self, entity_id: EntityId, vehicle_id: Option<EntityId>) {
         if vehicle_id.is_some()
-            && let Some(mut entity) = self.entities.at_mut(entity_id)
+            && let Some(entity) = self.entities.at_mut(entity_id)
         {
-            entity.motion.x = JavaF64::new(0.0_f64);
-            entity.motion.y = JavaF64::new(0.0_f64);
-            entity.motion.z = JavaF64::new(0.0_f64);
+            entity.vel.motion.x = JavaF64::new(0.0_f64);
+            entity.vel.motion.y = JavaF64::new(0.0_f64);
+            entity.vel.motion.z = JavaF64::new(0.0_f64);
         }
         self.throw_sprint_particle(entity_id);
         self.throw_water_splash(entity_id);
@@ -67,7 +67,7 @@ impl ClientWorld {
     )> {
         self.entities.at(entity_id).map(|entity| {
             let is_boat = vanilla_boat_max_passengers(entity.type_id).is_some();
-            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity.entity);
+            let authoritative = is_boat && self.boat_is_local_instance_authoritative(entity);
             let kind = vanilla_projectile_kind(entity.type_id);
             let path_open = kind.is_some_and(|kind| {
                 self.projectile_path_is_open(
@@ -109,7 +109,7 @@ impl ClientWorld {
         let tick_death = self
             .entities
             .get(&entity_id)
-            .is_some_and(|entity| self.should_tick_death(entity.entity));
+            .is_some_and(|entity| self.should_tick_death(entity));
         let surroundings = self.species_surroundings(entity_id);
         let in_water = self.mob_in_water(entity_id);
         let targets = self.targets_of(entity_id);
@@ -160,9 +160,9 @@ impl ClientWorld {
             }
             entity.tick_species(surroundings);
             if boat_is_non_authoritative {
-                entity.motion.x = JavaF64::new(0.0_f64);
-                entity.motion.y = JavaF64::new(0.0_f64);
-                entity.motion.z = JavaF64::new(0.0_f64);
+                entity.vel.motion.x = JavaF64::new(0.0_f64);
+                entity.vel.motion.y = JavaF64::new(0.0_f64);
+                entity.vel.motion.z = JavaF64::new(0.0_f64);
             }
             if let Some(kind) = projectile_kind {
                 tick_projectile(&mut entity, kind, projectile_path_is_open);
@@ -289,7 +289,7 @@ impl ClientWorld {
         else {
             return;
         };
-        let (from, to) = (entity.old_position, entity.position());
+        let (from, to) = (entity.pos.old_position, entity.position());
         let size = (entity.dimensions().width(), entity.dimensions().height());
         let from = Vec3::new(from.x.get(), from.y.get(), from.z.get());
         let (queue, random) = &mut self.effect_particles;

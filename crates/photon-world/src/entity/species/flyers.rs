@@ -38,21 +38,6 @@ impl ClientEntity {
         self.kind.parrot()
     }
 
-    /// `Parrot.calculateFlapping` after `super.aiStep`: the wings beat by
-    /// whether the parrot is in the air, and one falling there sinks slowly.
-    pub(crate) fn tick_parrot(&mut self, jukebox_near: bool) {
-        if photon_data::entity_type::name(self.type_id) != Some("minecraft:parrot") {
-            return;
-        }
-        let (on_ground, passenger) = (self.on_ground, self.vehicle_id.is_some());
-        if !on_ground && self.motion.y.get() < 0.0 {
-            self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
-        }
-        let parrot = self.kind.parrot_or_insert_with(Default::default);
-        parrot.end_party_unless(jukebox_near);
-        parrot.tick(on_ground, passenger);
-    }
-
     /// A bat's animation states, if it has ticked.
     pub fn bat(&self) -> Option<&crate::mobs::bat::BatState> {
         self.kind.bat()
@@ -61,30 +46,6 @@ impl ClientEntity {
     /// An allay's progress, if it has ticked.
     pub fn allay(&self) -> Option<&crate::mobs::allay::AllayState> {
         self.kind.allay()
-    }
-
-    /// `Bat.tick` after `super.tick`: a hanging bat does not move and hangs
-    /// from the block above it; one flying slows its fall and climb.
-    pub(crate) fn tick_bat(&mut self) {
-        if photon_data::entity_type::name(self.type_id) != Some("minecraft:bat") {
-            return;
-        }
-        let resting = self.living.bat_resting;
-        if resting {
-            self.motion.x = JavaF64::new(0.0_f64);
-            self.motion.y = JavaF64::new(0.0_f64);
-            self.motion.z = JavaF64::new(0.0_f64);
-            let height = photon_data::entity_type::pick(self.type_id)
-                .map_or(0.0, |pick| pick.size.1 * self.scale());
-            let y = self.position.y.get();
-            self.position.y = JavaF64::new(y.floor() + 1.0 - f64::from(height));
-        } else {
-            self.motion.y = JavaF64::new(self.motion.y.get() * 0.6);
-        }
-        let tick_count = self.tick_count;
-        self.kind
-            .bat_or_insert_with(Default::default)
-            .tick(resting, tick_count);
     }
 
     /// `Allay.tick`'s client half, after `super.tick`.
@@ -122,5 +83,46 @@ impl ClientEntity {
     /// `Allay.isDancing`.
     pub fn is_allay_dancing(&self) -> bool {
         self.living.allay_dancing
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Parrot.calculateFlapping` after `super.aiStep`: the wings beat by
+    /// whether the parrot is in the air, and one falling there sinks slowly.
+    pub(crate) fn tick_parrot(&mut self, jukebox_near: bool) {
+        if photon_data::entity_type::name(self.type_id) != Some("minecraft:parrot") {
+            return;
+        }
+        let (on_ground, passenger) = (self.on_ground, self.vehicle_id.is_some());
+        if !on_ground && self.vel.motion.y.get() < 0.0 {
+            self.vel.motion.y = JavaF64::new(self.vel.motion.y.get() * 0.6);
+        }
+        let parrot = self.kind.parrot_or_insert_with(Default::default);
+        parrot.end_party_unless(jukebox_near);
+        parrot.tick(on_ground, passenger);
+    }
+
+    /// `Bat.tick` after `super.tick`: a hanging bat does not move and hangs
+    /// from the block above it; one flying slows its fall and climb.
+    pub(crate) fn tick_bat(&mut self) {
+        if photon_data::entity_type::name(self.type_id) != Some("minecraft:bat") {
+            return;
+        }
+        let resting = self.living.bat_resting;
+        if resting {
+            self.vel.motion.x = JavaF64::new(0.0_f64);
+            self.vel.motion.y = JavaF64::new(0.0_f64);
+            self.vel.motion.z = JavaF64::new(0.0_f64);
+            let height = photon_data::entity_type::pick(self.type_id)
+                .map_or(0.0, |pick| pick.size.1 * self.scale());
+            let y = self.pos.position.y.get();
+            self.pos.position.y = JavaF64::new(y.floor() + 1.0 - f64::from(height));
+        } else {
+            self.vel.motion.y = JavaF64::new(self.vel.motion.y.get() * 0.6);
+        }
+        let tick_count = self.tick_count;
+        self.kind
+            .bat_or_insert_with(Default::default)
+            .tick(resting, tick_count);
     }
 }

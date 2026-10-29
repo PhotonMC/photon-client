@@ -84,7 +84,7 @@ impl ClientWorld {
             light_probe: (0.0, 0.0, 0.0),
         };
         snapshot.light_probe = self.light_probe(
-            entity.entity,
+            entity,
             snapshot.position,
             // A player's own size is scaled here (`LivingEntity.getDimensions`), a sleeping one's is not.
             f64::from(entity.leash_size().eye_height)
@@ -216,6 +216,8 @@ impl ClientWorld {
                     entity.rotation.1,
                     entity.rotation.2,
                 ),
+                pos: Position::spawned(entity.x, entity.y, entity.z),
+                vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
                     id: entity.entity_id,
                     uuid: entity.uuid,
@@ -227,15 +229,6 @@ impl ClientWorld {
                         photon_core::math::floor_f64(entity.y),
                         photon_core::math::floor_f64(entity.z),
                     ),
-                    position: DVec3::new(entity.x, entity.y, entity.z),
-                    old_position: DVec3::new(entity.x, entity.y, entity.z),
-                    motion: DVec3::new(entity.movement.0, entity.movement.1, entity.movement.2),
-                    motion_lerp_target: DVec3::new(
-                        entity.movement.0,
-                        entity.movement.1,
-                        entity.movement.2,
-                    ),
-                    motion_lerp_steps: 0,
                     delta_rotation: JavaF32::new(0.0_f32),
                     boat_input: BoatInput::EMPTY,
                     boat_ride: ride::boat::RideState::default(),

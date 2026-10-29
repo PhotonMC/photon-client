@@ -39,13 +39,18 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation) = self
+        let (entity, rotation, pos, vel) = self
             .ecs
             .get_entity(entity)
             .ok()?
-            .get_components::<(&ClientEntity, &Rotation)>()
+            .get_components::<(&ClientEntity, &Rotation, &Position, &Motion)>()
             .ok()?;
-        Some(EntityView { entity, rotation })
+        Some(EntityView {
+            entity,
+            rotation,
+            pos,
+            vel,
+        })
     }
 
     /// Every entity with its id, in id order.
@@ -70,14 +75,16 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation) = ecs
+        let (entity, rotation, pos, vel) = ecs
             .get_entity_mut(entity)
             .ok()?
-            .into_components_mut::<(&mut ClientEntity, &mut Rotation)>()
+            .into_components_mut::<(&mut ClientEntity, &mut Rotation, &mut Position, &mut Motion)>()
             .ok()?;
         Some(EntityViewMut {
             entity: entity.into_inner(),
             rotation: rotation.into_inner(),
+            pos: pos.into_inner(),
+            vel: vel.into_inner(),
         })
     }
 
@@ -101,9 +108,14 @@ impl Entities {
             return Some(EntityParts {
                 entity: std::mem::replace(view.entity, parts.entity),
                 rotation: std::mem::replace(view.rotation, parts.rotation),
+                pos: std::mem::replace(view.pos, parts.pos),
+                vel: std::mem::replace(view.vel, parts.vel),
             });
         }
-        let spawned = self.ecs.spawn((parts.entity, parts.rotation)).id();
+        let spawned = self
+            .ecs
+            .spawn((parts.entity, parts.rotation, parts.pos, parts.vel))
+            .id();
         self.ids.insert(entity_id, spawned);
         None
     }
@@ -112,9 +124,14 @@ impl Entities {
     pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
         let mut taken = self.ecs.entity_mut(entity);
-        let parts = taken.take::<(ClientEntity, Rotation)>();
+        let parts = taken.take::<(ClientEntity, Rotation, Position, Motion)>();
         self.ecs.despawn(entity);
-        parts.map(|(entity, rotation)| EntityParts { entity, rotation })
+        parts.map(|(entity, rotation, pos, vel)| EntityParts {
+            entity,
+            rotation,
+            pos,
+            vel,
+        })
     }
 
     pub(crate) fn clear(&mut self) {

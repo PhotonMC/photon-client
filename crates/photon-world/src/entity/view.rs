@@ -9,12 +9,16 @@ use super::*;
 pub struct EntityView<'a> {
     pub(crate) entity: &'a ClientEntity,
     pub(crate) rotation: &'a Rotation,
+    pub(crate) pos: &'a Position,
+    pub(crate) vel: &'a Motion,
 }
 
 /// One entity, to change.
 pub struct EntityViewMut<'a> {
     pub(crate) entity: &'a mut ClientEntity,
     pub(crate) rotation: &'a mut Rotation,
+    pub(crate) pos: &'a mut Position,
+    pub(crate) vel: &'a mut Motion,
 }
 
 impl<'a> EntityView<'a> {
@@ -57,6 +61,8 @@ impl<'a> EntityViewMut<'a> {
         EntityView {
             entity: self.entity,
             rotation: self.rotation,
+            pos: self.pos,
+            vel: self.vel,
         }
     }
 }
@@ -67,6 +73,8 @@ impl<'a> EntityViewMut<'a> {
 pub struct EntityParts {
     pub(crate) entity: ClientEntity,
     pub(crate) rotation: Rotation,
+    pub(crate) pos: Position,
+    pub(crate) vel: Motion,
 }
 
 impl EntityParts {
@@ -74,6 +82,8 @@ impl EntityParts {
         EntityView {
             entity: &self.entity,
             rotation: &self.rotation,
+            pos: &self.pos,
+            vel: &self.vel,
         }
     }
 
@@ -81,6 +91,8 @@ impl EntityParts {
         EntityViewMut {
             entity: &mut self.entity,
             rotation: &mut self.rotation,
+            pos: &mut self.pos,
+            vel: &mut self.vel,
         }
     }
 }
@@ -98,3 +110,24 @@ impl std::ops::DerefMut for EntityParts {
         &mut self.entity
     }
 }
+
+/// What both views read the same way, whichever of them holds the entity.
+macro_rules! shared_reads {
+    ($($view:ident),*) => {$(
+        impl $view<'_> {
+            pub fn position(&self) -> (f64, f64, f64) {
+                self.pos.xyz()
+            }
+
+            pub fn previous_position(&self) -> (f64, f64, f64) {
+                self.pos.previous_xyz()
+            }
+
+            pub fn motion(&self) -> (f64, f64, f64) {
+                self.vel.xyz()
+            }
+        }
+    )*};
+}
+
+shared_reads!(EntityView, EntityViewMut);

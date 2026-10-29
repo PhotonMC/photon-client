@@ -211,7 +211,7 @@ impl EntityViewMut<'_> {
         self.rotation.y_rot = JavaF32::new(pose.y_rot);
         self.rotation.x_rot = JavaF32::new(pose.x_rot);
         self.rotation.y_head_rot = JavaF32::new(pose.y_head_rot);
-        self.motion = DVec3::new(pose.motion.0, pose.motion.1, pose.motion.2);
+        self.vel.motion = DVec3::new(pose.motion.0, pose.motion.1, pose.motion.2);
         self.on_ground = pose.on_ground;
     }
 }

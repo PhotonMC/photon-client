@@ -22,9 +22,10 @@ impl ClientWorld {
     }
 
     pub(crate) fn species_surroundings(&self, entity_id: EntityId) -> (bool, bool, bool) {
-        let sleeper_near_cat = self.entities.get(&entity_id).is_some_and(|entity| {
-            entity.is_lying_cat() && self.sleeping_player_near(entity.entity)
-        });
+        let sleeper_near_cat = self
+            .entities
+            .get(&entity_id)
+            .is_some_and(|entity| entity.is_lying_cat() && self.sleeping_player_near(entity));
         (
             sleeper_near_cat,
             self.is_thundering(),

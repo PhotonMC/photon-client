@@ -6,7 +6,7 @@ const FIREWORK_ROCKET_EXPLODE_EVENT: i8 = 17;
 impl ClientWorld {
     /// `ClientLevel.shouldTickDeath`: a dying entity falls over only within the
     /// server's simulation distance of the local player's chunk.
-    pub(crate) fn should_tick_death(&self, entity: &ClientEntity) -> bool {
+    pub(crate) fn should_tick_death(&self, entity: EntityView<'_>) -> bool {
         let Some((player_x, player_z)) = self.local_chunk else {
             return true;
         };

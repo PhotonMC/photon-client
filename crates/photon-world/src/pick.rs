@@ -13,19 +13,9 @@ use photon_core::direction::{Axis, Direction};
 use photon_core::ids::EntityId;
 use photon_core::math::Vec3;
 
-use crate::{ClientEntity, ClientEntityDimensions, ClientWorld, EntityView};
+use crate::{ClientEntity, ClientEntityDimensions, ClientWorld, EntityView, EntityViewMut};
 
 impl ClientEntity {
-    /// Where the entity is and how big (`getBbWidth`, `getBbHeight`), for what follows it.
-    pub fn tracking_body(&self) -> crate::particles::EntityBody {
-        let dimensions = self.dimensions();
-        crate::particles::EntityBody {
-            position: self.position(),
-            width: dimensions.width(),
-            height: dimensions.height(),
-        }
-    }
-
     /// `Entity.isPickable` of the entity as it stands: the type's answer,
     /// and a player who only watches is not aimed at.
     pub fn is_pickable(&self) -> bool {
@@ -202,46 +192,6 @@ impl ClientEntity {
                 partial: partial_tick,
             }
         })
-    }
-
-    /// `Entity.getBoundingBox`: the box of those dimensions around where the
-    /// entity is.
-    pub fn bounding_box(&self) -> Aabb {
-        if self.is_shulker() {
-            return self.shulker_bounding_box();
-        }
-        if let Some(hanging) = self.hanging_bounding_box() {
-            return hanging;
-        }
-        let (x, y, z) = self.position();
-        if matches!(
-            photon_data::entity_type::name(self.type_id),
-            Some("minecraft:wind_charge" | "minecraft:breeze_wind_charge")
-        ) {
-            // `AbstractWindCharge.makeBoundingBox`: the box hangs a little below the position.
-            let dimensions = self.dimensions();
-            let half = f64::from(dimensions.width() / 2.0);
-            let low = y - f64::from(0.15_f32);
-            return Aabb::new(
-                x - half,
-                low,
-                z - half,
-                x + half,
-                low + f64::from(dimensions.height()),
-                z + half,
-            );
-        }
-        self.dimensions().make_bounding_box(Vec3::new(x, y, z))
-    }
-
-    /// `HangingEntity.recalculateBoundingBox`: the position of an item frame or a painting is the
-    /// centre of its box (`setPosRaw`), so the box is built from the block kept apart. A painting
-    /// whose variant has not come yet keeps the packet's position.
-    pub(crate) fn recentre_hanging(&mut self) {
-        if let Some(centre) = self.hanging_bounding_box().map(|aabb| aabb.center()) {
-            self.position = photon_core::java_float::DVec3::new(centre.x, centre.y, centre.z);
-            self.old_position = self.position;
-        }
     }
 
     /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
@@ -462,6 +412,60 @@ impl EntityView<'_> {
             (self.rotation.old_y_rot.get(), self.rotation.y_rot.get())
         };
         photon_core::math::mth_lerp_f32(partial_tick, old, current)
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `HangingEntity.recalculateBoundingBox`: the position of an item frame or a painting is the
+    /// centre of its box (`setPosRaw`), so the box is built from the block kept apart. A painting
+    /// whose variant has not come yet keeps the packet's position.
+    pub(crate) fn recentre_hanging(&mut self) {
+        if let Some(centre) = self.hanging_bounding_box().map(|aabb| aabb.center()) {
+            self.pos.position = photon_core::java_float::DVec3::new(centre.x, centre.y, centre.z);
+            self.pos.old_position = self.pos.position;
+        }
+    }
+}
+
+impl EntityView<'_> {
+    /// Where the entity is and how big (`getBbWidth`, `getBbHeight`), for what follows it.
+    pub fn tracking_body(&self) -> crate::particles::EntityBody {
+        let dimensions = self.dimensions();
+        crate::particles::EntityBody {
+            position: self.position(),
+            width: dimensions.width(),
+            height: dimensions.height(),
+        }
+    }
+
+    /// `Entity.getBoundingBox`: the box of those dimensions around where the
+    /// entity is.
+    pub fn bounding_box(&self) -> Aabb {
+        if self.is_shulker() {
+            return self.shulker_bounding_box();
+        }
+        if let Some(hanging) = self.hanging_bounding_box() {
+            return hanging;
+        }
+        let (x, y, z) = self.position();
+        if matches!(
+            photon_data::entity_type::name(self.type_id),
+            Some("minecraft:wind_charge" | "minecraft:breeze_wind_charge")
+        ) {
+            // `AbstractWindCharge.makeBoundingBox`: the box hangs a little below the position.
+            let dimensions = self.dimensions();
+            let half = f64::from(dimensions.width() / 2.0);
+            let low = y - f64::from(0.15_f32);
+            return Aabb::new(
+                x - half,
+                low,
+                z - half,
+                x + half,
+                low + f64::from(dimensions.height()),
+                z + half,
+            );
+        }
+        self.dimensions().make_bounding_box(Vec3::new(x, y, z))
     }
 }
 
