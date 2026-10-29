@@ -15,7 +15,7 @@ use super::sprites::SpriteSet;
 
 /// What the pictures and the colours of a block's flakes come from: the block models and tint
 /// sources the renderer owns.
-pub trait TerrainMaterials: std::fmt::Debug {
+pub trait TerrainMaterials: std::fmt::Debug + Send + Sync {
     /// `BlockStateModelSet.getParticleMaterial(state).sprite()`: the texture (under `textures/`) of
     /// the block atlas the model names as its particle.
     fn particle_texture(&self, state: BlockStateId) -> String;

@@ -1,8 +1,9 @@
 //! `Minecraft.reloadResourcePacks` during a game: the packs the server pushed go in use and
 //! everything the frames draw from assets is made again.
 
-use super::ticks::{load_overlay_textures, share_registries};
+use super::ticks::share_registries;
 use super::*;
+use photon_assets::ResourceStack;
 use photon_render::model::DisplayContext;
 
 /// The vanilla data pack the server runs, which sits next to the assets.
@@ -97,124 +98,318 @@ impl Lap {
     }
 }
 
+/// What the preparation of a reload needs from the game.
+pub(super) struct PrepareInputs {
+    root: String,
+    trim_patterns: Vec<String>,
+    trim_materials: Vec<String>,
+}
+
+/// The pictures the renderer takes besides the atlases.
+pub(super) struct Images {
+    rain: photon_render::DecodedImage,
+    snow: photon_render::DecodedImage,
+    cracks: photon_render::DecodedImage,
+    forcefield: photon_render::DecodedImage,
+    underwater: photon_render::DecodedImage,
+    end_sky: photon_render::DecodedImage,
+    end_portal: photon_render::DecodedImage,
+}
+
+impl Images {
+    pub(super) fn read(root: &str) -> std::result::Result<Self, String> {
+        let read = |name: &str, label: &str| texture(root, name, label).map_err(|e| e.to_string());
+        Ok(Self {
+            rain: read("environment/rain", "rain")?,
+            snow: read("environment/snow", "snow")?,
+            cracks: destroy_stages(root).map_err(|e| e.to_string())?,
+            forcefield: read("misc/forcefield", "forcefield")?,
+            underwater: read("misc/underwater", "underwater")?,
+            end_sky: read("environment/end_sky", "end_sky")?,
+            end_portal: read("entity/end_portal/end_portal", "end_portal")?,
+        })
+    }
+
+    pub(super) fn upload(&self, backend: &mut photon_render::VulkanBackend) -> Result<()> {
+        backend.load_weather_textures(&self.rain, &self.snow)?;
+        backend.load_crack_texture(&self.cracks)?;
+        backend.load_world_border_texture(&self.forcefield)?;
+        backend.load_underwater_texture(&self.underwater)?;
+        backend.load_end_portal_textures((&self.end_sky, &self.end_portal))?;
+        Ok(())
+    }
+}
+
+/// The entity pictures, the particle sprite lists and the armor, read from a stack.
+pub(super) struct PreparedEntities {
+    particles: crate::particles::Particles,
+    armor: Armor,
+    textures: photon_render::entity::textures::EntityTextures,
+}
+
+/// What a reload makes of a stack without touching the GPU or the game: everything the frames
+/// draw from assets, as CPU data, ready to be applied.
+pub(super) struct Prepared {
+    stack: Arc<ResourceStack>,
+    root: String,
+    blocks: BlockRenderer,
+    gui: crate::gui::ReadAssets,
+    images: Images,
+    entities: PreparedEntities,
+}
+
+/// Read and bake everything from `stack`, which only this thread sees until it is applied.
+pub(super) fn prepare(
+    stack: Arc<ResourceStack>,
+    inputs: PrepareInputs,
+) -> std::result::Result<Prepared, String> {
+    let PrepareInputs {
+        root,
+        trim_patterns,
+        trim_materials,
+    } = inputs;
+    crate::resources::preparing(Arc::clone(&stack), || {
+        let mut lap = Lap::start();
+        let blocks = bake_renderer(&root).map_err(|e| e.to_string())?;
+        lap.mark("block bake");
+        let gui = Gui::read_assets(std::path::Path::new(&root))?;
+        lap.mark("interface read");
+        let images = Images::read(&root)?;
+        let mut particles = crate::particles::Particles::load(&root);
+        let mut armor = Armor::load(&root);
+        armor.set_trim_registries(trim_patterns, trim_materials);
+        let textures = entity_textures(&root, &armor, &particles).map_err(|e| e.to_string())?;
+        // The sprite lists of the particles are the stack's: the engine takes them as they are.
+        let _ = &mut particles;
+        lap.mark("entity read");
+        Ok(Prepared {
+            stack: Arc::clone(&stack),
+            root: root.clone(),
+            blocks,
+            gui,
+            images,
+            entities: PreparedEntities {
+                particles,
+                armor,
+                textures,
+            },
+        })
+    })
+}
+
+/// Which answer a running reload owes.
+#[derive(Clone, Copy, PartialEq)]
+enum Stage {
+    /// The player chose other packs: nobody is told.
+    Forced,
+    /// The server's packs: loaded or failed is sent when it is applied.
+    Server,
+    /// The packs that were in use, after a failure.
+    Recovery,
+}
+
+/// A reload being prepared on a worker thread. The game keeps drawing the old resources and
+/// ticking the session meanwhile; the result is applied on the main thread once it is done.
+pub(super) struct Job {
+    handle: std::thread::JoinHandle<std::result::Result<Prepared, String>>,
+    stage: Stage,
+}
+
 impl Play {
-    /// Answer the reload the server's packs asked for: the packs go in use, or are reported as
-    /// failed with the stack that was in use put back.
+    /// Answer the reload the server's packs asked for: a finished one is applied and answered,
+    /// and the next one due starts preparing. A failed one reports the failure with the stack that
+    /// was in use kept.
     pub(super) fn serve_pack_reload(&mut self) {
         self.controls.pack_poll(&self.screen_assets);
+        if self
+            .reload_job
+            .as_ref()
+            .is_some_and(|job| job.handle.is_finished())
+        {
+            self.finish_reload();
+        }
+        if self.reload_job.is_some() {
+            return;
+        }
         if self.controls.take_pack_reload() {
             // The player chose other packs: the server's go over them again.
             let packs = crate::resources::server_packs();
-            self.reload_packs_forced(&packs);
+            self.start_reload(&packs, Stage::Forced);
+            return;
         }
         let source = self.session.packs().clone();
-        crate::packs::serve_reload(&source, &mut |packs| self.reload_packs(packs));
-    }
-
-    fn reload_packs(&mut self, packs: &crate::packs::LoadedPacks) -> bool {
+        let Some(packs) = source.take_reload() else {
+            return;
+        };
         // Loading the packs already in use changes nothing.
-        if crate::resources::holds(packs) {
-            return true;
+        if crate::resources::holds(&packs) {
+            source.reload_succeeded();
+        } else {
+            self.start_reload(&packs, Stage::Server);
         }
-        self.reload_packs_forced(packs)
     }
 
-    /// The packs go in use whether or not the stack already holds the server's.
-    fn reload_packs_forced(&mut self, packs: &crate::packs::LoadedPacks) -> bool {
+    /// Open `packs` over the selected ones and prepare what they make of the assets on a worker
+    /// thread. A failure to start is the reload's failure.
+    fn start_reload(&mut self, packs: &crate::packs::LoadedPacks, stage: Stage) {
+        let started = std::time::Instant::now();
+        let prepared = env::var("PHOTON_ASSETS")
+            .map_err(|_| "PHOTON_ASSETS must name the asset folder".to_owned())
+            .and_then(|root| {
+                let stack = crate::resources::with_packs(std::path::Path::new(&root), packs)?;
+                Ok((Arc::new(stack), self.prepare_inputs(&root)))
+            });
+        match prepared {
+            Ok((stack, inputs)) => {
+                let handle = std::thread::Builder::new()
+                    .name("resource-reload".to_owned())
+                    .spawn(move || {
+                        let prepared = prepare(stack, inputs);
+                        log::info!("resources prepared in {:?}", started.elapsed());
+                        prepared
+                    });
+                match handle {
+                    Ok(handle) => self.reload_job = Some(Job { handle, stage }),
+                    Err(error) => self.answer_reload(stage, Err(error.to_string())),
+                }
+            }
+            Err(error) => self.answer_reload(stage, Err(error)),
+        }
+    }
+
+    /// Apply what the worker prepared and answer the server.
+    fn finish_reload(&mut self) {
+        let Some(Job { handle, stage }) = self.reload_job.take() else {
+            return;
+        };
+        let started = std::time::Instant::now();
+        let outcome = match handle.join() {
+            Ok(Ok(prepared)) => self.apply_prepared(prepared).map_err(|error| {
+                // The renderers may be half replaced: make them again from what was in use.
+                let restored = self.restore_resources();
+                format!("{error}{}", if restored { "" } else { " (not restored)" })
+            }),
+            Ok(Err(error)) => Err(error),
+            Err(_) => Err("the reload thread panicked".to_owned()),
+        };
+        log::info!("resources applied in {:?}", started.elapsed());
+        self.answer_reload(stage, outcome);
+    }
+
+    /// Put the stack in use through the renderers again, after an apply that failed midway.
+    fn restore_resources(&mut self) -> bool {
         let Ok(root) = env::var("PHOTON_ASSETS") else {
             return false;
         };
-        let root = std::path::Path::new(&root);
-        let previous = crate::resources::shared(root);
-        let stack = match crate::resources::with_packs(root, packs) {
-            Ok(stack) => stack,
-            Err(error) => {
-                log::warn!("resource packs: {error}");
-                return false;
+        let stack = crate::resources::shared(std::path::Path::new(&root));
+        let inputs = self.prepare_inputs(&root);
+        matches!(
+            prepare(stack, inputs).map(|prepared| self.apply_prepared(prepared)),
+            Ok(Ok(()))
+        )
+    }
+
+    /// Tell the pack source how the reload went; a failure starts the recovery it asks for.
+    fn answer_reload(&mut self, stage: Stage, outcome: std::result::Result<(), String>) {
+        if let Err(error) = &outcome {
+            log::warn!("resource reload failed: {error}");
+        }
+        let source = self.session.packs().clone();
+        match (stage, outcome) {
+            (Stage::Forced, _) => {}
+            (_, Ok(())) => source.reload_succeeded(),
+            (Stage::Server, Err(_)) => {
+                let recovery = source.reload_failed(false);
+                self.start_reload(&recovery, Stage::Recovery);
             }
-        };
-        crate::resources::replace(Arc::new(stack));
-        let started = std::time::Instant::now();
-        let rebuilt = self.rebuild_assets(&root.to_string_lossy());
-        log::info!("resources rebuilt in {:?}", started.elapsed());
-        match rebuilt {
-            Ok(()) => true,
-            Err(error) => {
-                log::warn!("resource reload failed: {error}");
-                crate::resources::replace(previous);
-                if let Err(error) = self.rebuild_assets(&root.to_string_lossy()) {
-                    log::warn!("the previous resources could not be restored: {error}");
-                }
-                false
+            (Stage::Recovery, Err(_)) => {
+                source.reload_failed(true);
             }
         }
     }
 
-    /// What is made of the assets, made again. Making the block atlas anew makes the GPU scene
-    /// anew, so every texture is sent again after it.
-    fn rebuild_assets(&mut self, root: &str) -> Result<()> {
+    /// What the preparation needs from the game, owned.
+    pub(super) fn prepare_inputs(&self, root: &str) -> PrepareInputs {
+        PrepareInputs {
+            root: root.to_owned(),
+            trim_patterns: self
+                .session
+                .registry_names("minecraft:trim_pattern")
+                .to_vec(),
+            trim_materials: self
+                .session
+                .registry_names("minecraft:trim_material")
+                .to_vec(),
+        }
+    }
+
+    /// What is made of the assets, made again from what was prepared. Making the block atlas
+    /// anew makes the GPU scene anew, so every texture is sent again after it.
+    pub(super) fn apply_prepared(&mut self, prepared: Prepared) -> Result<()> {
         let mut lap = Lap::start();
-        let data_root = data_root(root);
+        let Prepared {
+            stack,
+            root,
+            blocks,
+            gui,
+            images,
+            entities,
+        } = prepared;
+        // Every reader sees the new stack from here on, with the renderers made from it.
+        crate::resources::replace(stack);
+        let data_root = data_root(&root);
         // The colour maps are read through the packs too.
         self.biome_tints = Arc::new(
             BiomeTints::load(
                 &data_root,
-                &*crate::resources::shared(std::path::Path::new(root)),
+                &*crate::resources::shared(std::path::Path::new(&root)),
                 self.session.registry_names("minecraft:worldgen/biome"),
                 self.session.hashed_seed(),
             )
             .ok_or("the biome colours could not be read")?,
         );
         lap.mark("biome colours");
-        let (renderer, animated) = bake_blocks(root, &mut self.backend)?;
+        let (renderer, animated) = upload_blocks(blocks, &mut self.backend)?;
         self.block_renderer = renderer;
         self.animated_atlas = animated;
-        lap.mark("block atlas");
+        lap.mark("block atlas upload");
         self.sections.set_renderer(
             Arc::clone(&self.block_renderer),
             Arc::clone(&self.biome_tints),
             &mut self.backend,
         )?;
-        lap.mark("sections");
         self.sky = Sky::load(
             &data_root,
-            root,
+            &root,
             &self.session,
             sky_sprites(&self.block_renderer),
         )?;
-        lap.mark("sky");
-        self.backend.load_weather_textures(
-            &texture(root, "environment/rain", "rain")?,
-            &texture(root, "environment/snow", "snow")?,
-        )?;
-        self.backend.load_crack_texture(&destroy_stages(root)?)?;
-        load_overlay_textures(&mut self.backend, root)?;
+        lap.mark("sections and sky");
+        images.upload(&mut self.backend)?;
         lap.mark("weather, cracks, overlays");
-        self.rebuild_entities(root, &data_root)?;
+        self.apply_entities(entities, &data_root)?;
         lap.mark("entities");
-        let rebuilt = self.rebuild_interface(root);
+        let applied = self.rebuild_interface(gui, &root);
         lap.mark("interface");
-        rebuilt
+        applied
     }
 
     /// The entity pictures and the particles, which share the entity texture atlas.
-    fn rebuild_entities(&mut self, root: &str, data_root: &std::path::Path) -> Result<()> {
-        let mut particles = crate::particles::Particles::load(root);
+    fn apply_entities(
+        &mut self,
+        entities: PreparedEntities,
+        data_root: &std::path::Path,
+    ) -> Result<()> {
+        let PreparedEntities {
+            mut particles,
+            armor,
+            textures,
+        } = entities;
         particles.carry_over(&mut self.particles);
         particles.set_terrain(
             Arc::clone(&self.block_renderer),
             Arc::clone(&self.biome_tints),
         );
-        let mut armor = Armor::load(root);
-        armor.set_trim_registries(
-            self.session
-                .registry_names("minecraft:trim_pattern")
-                .to_vec(),
-            self.session
-                .registry_names("minecraft:trim_material")
-                .to_vec(),
-        );
-        let textures = entity_textures(root, &armor, &particles)?;
         self.backend.load_entity_texture(&textures.image)?;
         particles.bind_textures(&textures);
         self.skins.lay_out(&textures);
@@ -233,11 +428,10 @@ impl Play {
     }
 
     /// The interface, the models' caches and the sounds.
-    fn rebuild_interface(&mut self, root: &str) -> Result<()> {
-        self.gui.reload_assets(
-            std::path::Path::new(root),
-            &mut self.backend,
-            &self.controls.options.language_code,
+    fn rebuild_interface(&mut self, read: crate::gui::ReadAssets, _root: &str) -> Result<()> {
+        self.gui.apply_assets(
+            read,
+            (&mut self.backend, &self.controls.options.language_code),
         )?;
         self.gui.set_player_skin(self.skin_rect);
         self.session.set_lang(self.gui.lang_shared());

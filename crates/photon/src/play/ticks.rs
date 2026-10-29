@@ -41,7 +41,6 @@ impl Play {
             .ok_or("the biome colours could not be read")?,
         );
         particles.set_terrain(Arc::clone(&block_renderer), Arc::clone(&biome_tints));
-        let sky_sprites = super::reload::sky_sprites(&block_renderer);
         let origin = [
             position.x.floor() as i32,
             position.y.floor() as i32,
@@ -54,13 +53,9 @@ impl Play {
             Arc::clone(&biome_tints),
             chunk_fade,
         );
+        let sky_sprites = super::reload::sky_sprites(&block_renderer);
         let sky = Sky::load(&data_root, &root, &session, sky_sprites)?;
-        backend.load_weather_textures(
-            &texture(&root, "environment/rain", "rain")?,
-            &texture(&root, "environment/snow", "snow")?,
-        )?;
-        backend.load_crack_texture(&destroy_stages(&root)?)?;
-        load_overlay_textures(&mut backend, &root)?;
+        super::reload::Images::read(&root)?.upload(&mut backend)?;
         // The player's default skin, picked by its profile id as the
         // reference picks one when the profile has no skin of its own; the
         // others the server adds draw in theirs, and the mobs in their own
@@ -116,6 +111,7 @@ impl Play {
         Ok(Self {
             screen_assets: gui.screen_assets(),
             loading: None,
+            reload_job: None,
             session,
             surface,
             backend,
@@ -442,21 +438,6 @@ impl Play {
             self.ambient.tick(session, sound);
         }
     }
-}
-
-/// The textures drawn over the world rather than in it: the world border's forcefield, the water
-/// over the view, and the end portal's sky and picture.
-pub(super) fn load_overlay_textures(
-    backend: &mut photon_render::VulkanBackend,
-    root: &str,
-) -> Result<()> {
-    backend.load_world_border_texture(&texture(root, "misc/forcefield", "forcefield")?)?;
-    backend.load_underwater_texture(&texture(root, "misc/underwater", "underwater")?)?;
-    backend.load_end_portal_textures((
-        &texture(root, "environment/end_sky", "end_sky")?,
-        &texture(root, "entity/end_portal/end_portal", "end_portal")?,
-    ))?;
-    Ok(())
 }
 
 /// A measuring run is not held to the player's limit, and a test can set either option without

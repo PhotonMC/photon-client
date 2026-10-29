@@ -20,8 +20,27 @@ pub(crate) fn server_packs() -> Vec<(photon_core::binary::Uuid, std::path::PathB
         .unwrap_or_default()
 }
 
+thread_local! {
+    /// The stack a reload is preparing on this thread: what its loaders read until it is applied.
+    static PREPARING: std::cell::RefCell<Option<Arc<ResourceStack>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Run `work` with `stack` as the stack the loaders on this thread read, while every other
+/// thread still sees the one in use. A reload reads its new packs this way and puts them in use
+/// only when what it made of them is applied.
+pub(crate) fn preparing<T>(stack: Arc<ResourceStack>, work: impl FnOnce() -> T) -> T {
+    PREPARING.with(|slot| *slot.borrow_mut() = Some(stack));
+    let done = work();
+    PREPARING.with(|slot| *slot.borrow_mut() = None);
+    done
+}
+
 /// The stack in use, which holds the game's own assets alone until packs are chosen.
 pub(crate) fn shared(jar_assets: &Path) -> Arc<ResourceStack> {
+    if let Some(stack) = PREPARING.with(|slot| slot.borrow().clone()) {
+        return stack;
+    }
     if let Some(stack) = IN_USE.read().ok().and_then(|stack| stack.clone()) {
         return stack;
     }

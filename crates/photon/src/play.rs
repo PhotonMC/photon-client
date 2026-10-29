@@ -265,6 +265,8 @@ struct FrameCamera {
 /// draw.
 struct Play {
     session: PlaySession,
+    /// The resource reload being prepared on a worker thread.
+    reload_job: Option<reload::Job>,
     /// The level loading screen, while a respawn waits for its level.
     loading: Option<loading::LoadingView>,
     // Fields drop in order: the swapchain goes before the window it presents
@@ -393,6 +395,12 @@ pub(crate) fn bake_blocks(
     root: &str,
     backend: &mut VulkanBackend,
 ) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {
+    upload_blocks(bake_renderer(root)?, backend)
+}
+
+/// The block models baked and the atlas stitched from the stack the loaders read: all CPU work,
+/// so a reload can do it away from the frame loop.
+pub(crate) fn bake_renderer(root: &str) -> Result<BlockRenderer> {
     let source = StackAssets::new(crate::resources::shared(std::path::Path::new(root)));
     // The stitcher reads the saved options when the atlas is built, as the
     // reference's sprite loader does; a change reloads the textures there, here
@@ -408,7 +416,7 @@ pub(crate) fn bake_blocks(
         _ => 0,
     };
     let baking = Instant::now();
-    let mut block_renderer = BlockRenderer::new(&source, (requested_mips, anisotropy_bit))
+    let block_renderer = BlockRenderer::new(&source, (requested_mips, anisotropy_bit))
         .map_err(|error| format!("block models: {error:?}"))?;
     println!(
         "play_atlas={}x{} models={} skipped={} in {:?}",
@@ -418,6 +426,14 @@ pub(crate) fn bake_blocks(
         block_renderer.skipped.len(),
         baking.elapsed()
     );
+    Ok(block_renderer)
+}
+
+/// The baked atlas sent to the GPU, and the renderer kept for where its sprites are.
+pub(crate) fn upload_blocks(
+    mut block_renderer: BlockRenderer,
+    backend: &mut VulkanBackend,
+) -> Result<(Arc<BlockRenderer>, AnimatedAtlas)> {
     // The pipelines' compiled shaders are kept beside the options between runs.
     let cache_path = crate::controls::game_directory().join("pipeline.cache");
     let cached = backend.use_pipeline_cache(cache_path)?;

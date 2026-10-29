@@ -98,6 +98,7 @@ pub(super) fn filtered_content(
 
 mod assets;
 mod chat;
+pub use assets::ReadAssets;
 pub use chat::ChatView;
 mod debug;
 mod draw;

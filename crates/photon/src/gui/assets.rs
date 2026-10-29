@@ -123,6 +123,13 @@ impl Gui {
         backend: &mut VulkanBackend,
         language: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let read = Self::read_assets(root)?;
+        self.apply_assets(read, (backend, language))
+    }
+
+    /// The fonts, sprites and texts of the stack the loaders read: CPU work, which a reload can
+    /// do away from the frame loop.
+    pub fn read_assets(root: &Path) -> Result<ReadAssets, String> {
         let resources = crate::resources::shared(root);
         let font =
             Arc::new(Font::load_from(&*resources).ok_or("the default font could not be read")?);
@@ -130,20 +137,37 @@ impl Gui {
             Arc::new(Font::load_alt_from(&*resources).ok_or("the alt font could not be read")?);
         let (atlas, texture) = GuiAtlas::load_from(&*resources, &[&font, &alt_font])
             .ok_or("the HUD sprites could not be read")?;
+        let lang = Arc::new(Lang::load_from(&*resources, root));
+        Ok(ReadAssets {
+            resources,
+            font,
+            alt_font,
+            atlas,
+            texture,
+            lang,
+        })
+    }
+
+    /// What `read_assets` read, put in use: the GPU's atlas pointed at the new image.
+    pub fn apply_assets(
+        &mut self,
+        read: ReadAssets,
+        (backend, language): (&mut VulkanBackend, &str),
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // The first load makes the GPU's atlas; a reload points it at the new image.
-        backend.replace_gui_texture(&texture)?;
-        backend.load_gui_texture(&texture)?;
-        self.font = font;
-        self.alt_font = alt_font;
-        self.atlas = atlas;
-        self.atlas_image = texture;
+        backend.replace_gui_texture(&read.texture)?;
+        backend.load_gui_texture(&read.texture)?;
+        self.font = read.font;
+        self.alt_font = read.alt_font;
+        self.atlas = read.atlas;
+        self.atlas_image = read.texture;
         self.items = ItemLayerCache::new(photon_render::model::DisplayContext::Gui);
-        self.resources = resources;
+        self.resources = read.resources;
         self.hud
             .set_waypoint_styles(photon_gui::hud::locator::WaypointStyles::load_from(
                 &*self.resources,
             ));
-        self.lang = Arc::new(Lang::load_from(&*self.resources, root));
+        self.lang = read.lang;
         self.set_language(language);
         Ok(())
     }
@@ -200,4 +224,14 @@ impl Gui {
             self.lang = Arc::new(source.lang_from(code, &*self.resources));
         }
     }
+}
+
+/// The assets of the GUI as read from a stack, before they are put in use.
+pub struct ReadAssets {
+    resources: Arc<photon_assets::ResourceStack>,
+    font: Arc<Font>,
+    alt_font: Arc<Font>,
+    atlas: GuiAtlas,
+    texture: photon_render::DecodedImage,
+    lang: Arc<Lang>,
 }

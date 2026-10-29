@@ -909,7 +909,7 @@
 "crates/photon/src/overlays/wear.rs::remote_players" = 71
 "crates/photon/src/particles.rs::Particles::vertices" = 78
 "crates/photon/src/play/draw.rs::Play::draw" = 75
-"crates/photon/src/play/ticks.rs::Play::start" = 148
+"crates/photon/src/play/ticks.rs::Play::start" = 144
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
 "crates/photon/src/window_probe/world.rs::load_world" = 90
