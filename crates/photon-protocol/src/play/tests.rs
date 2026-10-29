@@ -132,7 +132,6 @@ mod spawn;
 mod state;
 
 fn registries() -> photon_data::version_registries::VersionRegistries {
-    photon_data::version_registries::VersionRegistries::for_version(
-        photon_core::version::Version::NEWEST,
-    )
+    // The parsers are under test, not the numbering: a wire id reads as the same canonical id.
+    photon_data::version_registries::VersionRegistries::without_gaps()
 }

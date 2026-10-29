@@ -131,6 +131,25 @@ impl VersionRegistries {
         }
     }
 
+    /// A numbering where every canonical id is its own wire id. For tests of code that only
+    /// passes ids through, so they do not change when a version adds or drops an entry; the
+    /// translation itself is tested on [`IdMap`] and by the registry parity family.
+    pub fn without_gaps() -> Self {
+        let real = Self::for_version(Version::NEWEST);
+        let dense =
+            |map: &IdMap| IdMap::from_presence(std::iter::repeat_n(true, map.canonical_len()));
+        Self {
+            version: real.version,
+            items: dense(&real.items),
+            block_states: dense(&real.block_states),
+            entity_types: dense(&real.entity_types),
+            sound_events: dense(&real.sound_events),
+            particle_types: dense(&real.particle_types),
+            menu_types: dense(&real.menu_types),
+            block_entity_types: dense(&real.block_entity_types),
+        }
+    }
+
     /// The numbering of `version`, built on first use and shared by every session of it.
     pub fn of(version: Version) -> std::sync::Arc<Self> {
         static BUILT: [std::sync::OnceLock<std::sync::Arc<VersionRegistries>>; Version::ALL.len()] =

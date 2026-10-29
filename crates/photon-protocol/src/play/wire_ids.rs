@@ -79,22 +79,36 @@ mod tests {
     use photon_core::version::Version;
 
     #[test]
-    fn the_newest_version_reads_ids_as_they_are() {
-        let registries = VersionRegistries::for_version(Version::NEWEST);
-        let mut input: &[u8] = &[5, 200, 1];
-        let first = WireItemId::read(&mut input, "item").unwrap();
-        let second = WireBlockStateId::read(&mut input, "state").unwrap();
-        assert_eq!(first.canonical(&registries), ItemId(5));
-        assert_eq!(second.canonical(&registries), BlockStateId(200));
-        assert_eq!(WireItemId::from_canonical(ItemId(5), &registries), first);
-        assert_eq!(WireEntityTypeId(7).canonical(&registries), EntityTypeId(7));
+    fn a_wire_id_reads_as_the_canonical_id_of_its_version() {
+        for version in Version::ALL.iter().copied() {
+            let registries = VersionRegistries::for_version(version);
+            for wire in [0, 5, 100] {
+                let item = WireItemId(wire).canonical(&registries);
+                assert_eq!(
+                    registries.items.to_canonical(wire as u32),
+                    Some(item.0 as u32)
+                );
+                assert_eq!(WireItemId::from_canonical(item, &registries).0, wire);
+                let state = WireBlockStateId(wire).canonical(&registries);
+                assert_eq!(
+                    registries.block_states.to_wire(state.0 as u32),
+                    Some(wire as u32)
+                );
+                let entity = WireEntityTypeId(wire).canonical(&registries);
+                assert_eq!(
+                    registries.entity_types.to_canonical(wire as u32),
+                    Some(entity.0 as u32)
+                );
+            }
+        }
     }
 
     #[test]
     fn an_id_past_the_registry_stays_past_it() {
-        let registries = VersionRegistries::for_version(Version::NEWEST);
+        let registries = VersionRegistries::of(Version::NEWEST);
         let far = i32::MAX / 2;
-        assert_eq!(WireItemId(far).canonical(&registries), ItemId(far));
+        let gap = (registries.items.canonical_len() - registries.items.wire_len()) as i32;
+        assert_eq!(WireItemId(far).canonical(&registries), ItemId(far + gap));
         assert_eq!(WireItemId(-1).canonical(&registries), ItemId(-1));
     }
 }
