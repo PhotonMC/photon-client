@@ -49,7 +49,7 @@ pub(super) unsafe fn create_instance(
             instance_flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
         }
 
-        let mut layers: Vec<*const i8> = Vec::new();
+        let mut layers: Vec<*const std::ffi::c_char> = Vec::new();
         let validation_names = validation::requested()
             .then(|| validation::names(&entry))
             .flatten();

@@ -35,7 +35,7 @@ pub(super) unsafe fn create_logical_device(
         let queue_info = [vk::DeviceQueueCreateInfo::default()
             .queue_family_index(queue_family)
             .queue_priorities(&queue_priorities)];
-        let mut extension_names: Vec<*const i8> = REQUIRED_DEVICE_EXTENSIONS
+        let mut extension_names: Vec<*const std::ffi::c_char> = REQUIRED_DEVICE_EXTENSIONS
             .iter()
             .map(|name| name.as_ptr())
             .collect();

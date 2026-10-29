@@ -26,7 +26,9 @@ pub(super) fn requested() -> bool {
 }
 
 /// The layer and extension names to enable, if both exist; otherwise a note that they do not.
-pub(super) fn names(entry: &ash::Entry) -> Option<(*const i8, *const i8)> {
+pub(super) fn names(
+    entry: &ash::Entry,
+) -> Option<(*const std::ffi::c_char, *const std::ffi::c_char)> {
     // SAFETY: the loader is live; the properties are read, and each name is a NUL-terminated array
     // the loader fills in.
     let (layers, extensions) = unsafe {
