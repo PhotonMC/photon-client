@@ -131,7 +131,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
         let x = i32_field(update, "x")?;
         let y = i32_field(update, "y")?;
         let z = i32_field(update, "z")?;
-        let previous_state_id = world.block_state_at(x, y, z).map(|state| state.0);
+        let previous_state_id = world.block_state_at(x, y, z).map(wire_state);
         let accepted = world.update_block_state(x, y, z, state_field(update, "state_id")?);
         let mut state = json!({
             "label": string(update, "label")?,
