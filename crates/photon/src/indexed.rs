@@ -14,6 +14,11 @@ pub(crate) struct IndexedAssets {
     hashes: HashMap<String, String>,
 }
 
+/// Whether `text` is a SHA-1 digest as the index writes it. Only one is safe in a file path.
+fn is_digest(text: &str) -> bool {
+    text.len() == 40 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
 impl IndexedAssets {
     /// The index of the assets that sit above the jar's folder (`<assets>/jar/assets`).
     pub(crate) fn open(jar_assets: &Path) -> Option<Self> {
@@ -26,7 +31,8 @@ impl IndexedAssets {
                 let JsonValue::Object(entry) = entry else {
                     return None;
                 };
-                Some((String::from_utf16(key).ok()?, entry.text("hash")?))
+                let hash = entry.text("hash").filter(|hash| is_digest(hash))?;
+                Some((String::from_utf16(key).ok()?, hash))
             })
             .collect();
         Some(Self { root, hashes })
@@ -50,5 +56,21 @@ impl IndexedAssets {
 
     pub(crate) fn object(&self, index_path: &str) -> Option<Vec<u8>> {
         std::fs::read(self.object_path(index_path)?).ok()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn only_a_digest_names_an_object_file() {
+        assert!(super::is_digest("da39a3ee5e6b4b0d3255bfef95601890afd80709"));
+        for bad in [
+            "",
+            "ab",
+            "../../etc/passwd",
+            "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709",
+        ] {
+            assert!(!super::is_digest(bad), "{bad}");
+        }
     }
 }
