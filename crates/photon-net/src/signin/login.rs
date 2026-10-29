@@ -95,6 +95,7 @@ mod tests {
     fn hosts(host: &str) -> Hosts {
         Hosts {
             login: host.to_owned(),
+            live: host.to_owned(),
             xbox_user: host.to_owned(),
             xsts: host.to_owned(),
             services: host.to_owned(),
@@ -165,6 +166,7 @@ mod tests {
         let store = Memory::default();
         let microsoft = MicrosoftTokens {
             access: AccessToken::new("ACC".to_owned()),
+            ticket_prefix: "d=",
             refresh: AccessToken::new("REF".to_owned()),
             expires_in: std::time::Duration::from_secs(1),
         };

@@ -6,8 +6,7 @@ use photon_net::signin::{self, ClientId, Hosts};
 /// Sign in with a device code shown in the terminal, and keep the refresh token in the
 /// operating system's credential store.
 pub(crate) fn run_sign_in() -> Result<(), Box<dyn std::error::Error>> {
-    let client = ClientId::from_environment()
-        .ok_or("PHOTON_MS_CLIENT_ID names the Azure application to sign in with")?;
+    let client = ClientId::from_environment();
     let hosts = Hosts::default();
     let code = signin::request_device_code(&hosts, &client)?;
     println!(

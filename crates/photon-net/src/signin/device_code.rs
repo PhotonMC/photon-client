@@ -6,13 +6,12 @@ use std::time::Duration;
 use photon_core::json;
 
 use super::http::{Answer, post_form};
-use super::{ClientId, Hosts, SignInError};
+use super::{ClientId, Flow, Hosts, SignInError};
 use crate::account::AccessToken;
 
 /// What the sign-in is allowed to do: Xbox Live sign-in, and a refresh token to stay signed in.
 const SCOPE: &str = "XboxLive.signin offline_access";
-const DEVICE_CODE_PATH: &str = "/consumers/oauth2/v2.0/devicecode";
-const TOKEN_PATH: &str = "/consumers/oauth2/v2.0/token";
+const LIVE_SCOPE: &str = "service::user.auth.xboxlive.com::MBI_SSL";
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 
 /// A code the player types at the page, and what the client needs to collect the result.
@@ -33,6 +32,8 @@ pub struct DeviceCode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MicrosoftTokens {
     pub(crate) access: AccessToken,
+    /// What goes before the access token in the ticket Xbox Live is given.
+    pub(crate) ticket_prefix: &'static str,
     pub(crate) refresh: AccessToken,
     pub expires_in: Duration,
 }
@@ -41,6 +42,34 @@ impl MicrosoftTokens {
     /// The refresh token, for the one place that stores it.
     pub fn refresh_token(&self) -> &AccessToken {
         &self.refresh
+    }
+}
+
+/// Where a flow is reached, what it may do and how its tokens go to Xbox Live.
+struct Endpoints<'a> {
+    host: &'a str,
+    code_path: &'static str,
+    token_path: &'static str,
+    scope: &'static str,
+    ticket_prefix: &'static str,
+}
+
+fn endpoints<'a>(hosts: &'a Hosts, client: &ClientId) -> Endpoints<'a> {
+    match client.flow() {
+        Flow::Azure => Endpoints {
+            host: &hosts.login,
+            code_path: "/consumers/oauth2/v2.0/devicecode",
+            token_path: "/consumers/oauth2/v2.0/token",
+            scope: SCOPE,
+            ticket_prefix: "d=",
+        },
+        Flow::Live => Endpoints {
+            host: &hosts.live,
+            code_path: "/oauth20_connect.srf",
+            token_path: "/oauth20_token.srf",
+            scope: LIVE_SCOPE,
+            ticket_prefix: "",
+        },
     }
 }
 
@@ -78,10 +107,12 @@ fn seconds(object: &json::JsonObject, key: &str, default: u64) -> Duration {
 
 /// Ask for a code to show the player.
 pub fn request_device_code(hosts: &Hosts, client: &ClientId) -> Result<DeviceCode, SignInError> {
-    let answer = post_form(
-        (&hosts.login, DEVICE_CODE_PATH),
-        &[("client_id", client.as_str()), ("scope", SCOPE)],
-    )?;
+    let at = endpoints(hosts, client);
+    let mut form = vec![("client_id", client.as_str()), ("scope", at.scope)];
+    if client.flow() == Flow::Live {
+        form.push(("response_type", "device_code"));
+    }
+    let answer = post_form((at.host, at.code_path), &form)?;
     if answer.status != 200 {
         return Err(failure(&answer));
     }
@@ -105,7 +136,7 @@ pub fn request_device_code(hosts: &Hosts, client: &ClientId) -> Result<DeviceCod
 }
 
 /// The tokens of an answer that carries them.
-fn tokens(answer: &Answer) -> Result<MicrosoftTokens, SignInError> {
+fn tokens(answer: &Answer, ticket_prefix: &'static str) -> Result<MicrosoftTokens, SignInError> {
     let object = json::parse_object(&answer.body).ok_or(SignInError::Unavailable)?;
     let (Some(access), Some(refresh)) = (object.text("access_token"), object.text("refresh_token"))
     else {
@@ -113,6 +144,7 @@ fn tokens(answer: &Answer) -> Result<MicrosoftTokens, SignInError> {
     };
     Ok(MicrosoftTokens {
         access: AccessToken::new(access),
+        ticket_prefix,
         refresh: AccessToken::new(refresh),
         expires_in: seconds(&object, "expires_in", 3600),
     })
@@ -126,13 +158,14 @@ pub fn poll_for_token(
     code: &DeviceCode,
     wait: &mut dyn FnMut(Duration),
 ) -> Result<MicrosoftTokens, SignInError> {
+    let at = endpoints(hosts, client);
     let mut interval = code.interval.max(Duration::from_secs(1));
     let mut waited = Duration::ZERO;
     while waited < code.expires_in {
         wait(interval);
         waited += interval;
         let answer = post_form(
-            (&hosts.login, TOKEN_PATH),
+            (at.host, at.token_path),
             &[
                 ("grant_type", DEVICE_GRANT),
                 ("client_id", client.as_str()),
@@ -140,7 +173,7 @@ pub fn poll_for_token(
             ],
         )?;
         if answer.status == 200 {
-            return tokens(&answer);
+            return tokens(&answer, at.ticket_prefix);
         }
         let error = json::parse_object(&answer.body).and_then(|object| object.text("error"));
         match error.as_deref() {
@@ -159,19 +192,20 @@ pub fn refresh(
     client: &ClientId,
     refresh_token: &AccessToken,
 ) -> Result<MicrosoftTokens, SignInError> {
+    let at = endpoints(hosts, client);
     let answer = post_form(
-        (&hosts.login, TOKEN_PATH),
+        (at.host, at.token_path),
         &[
             ("grant_type", "refresh_token"),
             ("client_id", client.as_str()),
             ("refresh_token", refresh_token.reveal()),
-            ("scope", SCOPE),
+            ("scope", at.scope),
         ],
     )?;
     if answer.status != 200 {
         return Err(failure(&answer));
     }
-    tokens(&answer)
+    tokens(&answer, at.ticket_prefix)
 }
 
 #[cfg(test)]
@@ -307,10 +341,36 @@ mod tests {
         );
         let tokens = MicrosoftTokens {
             access: AccessToken::new("ACC".to_owned()),
+            ticket_prefix: "d=",
             refresh: AccessToken::new("REF".to_owned()),
             expires_in: Duration::ZERO,
         };
         let shown = format!("{tokens:?}");
         assert!(!shown.contains("ACC") && !shown.contains("REF"));
+    }
+
+    #[test]
+    fn the_launchers_application_signs_in_through_the_consumer_service() {
+        let (host, seen) = stub_host(vec![
+            json_answer("200 OK", CODE_BODY),
+            json_answer("200 OK", TOKEN_BODY),
+            json_answer("200 OK", TOKEN_BODY),
+        ]);
+        let client = ClientId::launcher();
+        let live = Hosts {
+            live: host,
+            ..Hosts::default()
+        };
+        let code = request_device_code(&live, &client).expect("code");
+        let tokens = poll_for_token(&live, &client, &code, &mut |_| {}).expect("tokens");
+        assert_eq!(tokens.ticket_prefix, "");
+        let refreshed = refresh(&live, &client, tokens.refresh_token()).expect("refreshed");
+        assert_eq!(refreshed.ticket_prefix, "");
+        let requests = seen.join().unwrap();
+        assert!(requests[0].starts_with("POST /oauth20_connect.srf"));
+        assert!(requests[0].contains("response_type=device_code"));
+        assert!(requests[0].contains("MBI_SSL"));
+        assert!(requests[1].starts_with("POST /oauth20_token.srf"));
+        assert!(requests[2].contains("grant_type=refresh_token"));
     }
 }

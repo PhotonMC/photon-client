@@ -78,7 +78,11 @@ fn token_and_hash(answer: &Answer) -> Result<(String, String), SignInError> {
 fn xbox_user_token(hosts: &Hosts, microsoft: &MicrosoftTokens) -> Result<String, SignInError> {
     let body = format!(
         "{{\"Properties\":{{\"AuthMethod\":\"RPS\",\"SiteName\":\"user.auth.xboxlive.com\",\"RpsTicket\":{}}},\"RelyingParty\":\"http://auth.xboxlive.com\",\"TokenType\":\"JWT\"}}",
-        json_string(&format!("d={}", microsoft.access.reveal())),
+        json_string(&format!(
+            "{}{}",
+            microsoft.ticket_prefix,
+            microsoft.access.reveal()
+        )),
     );
     let answer = post_json((&hosts.xbox_user, "/user/authenticate"), &body)?;
     if answer.status != 200 {
@@ -212,6 +216,7 @@ mod tests {
     fn microsoft() -> MicrosoftTokens {
         MicrosoftTokens {
             access: AccessToken::new("MSACCESS".to_owned()),
+            ticket_prefix: "d=",
             refresh: AccessToken::new("MSREFRESH".to_owned()),
             expires_in: Duration::from_secs(3600),
         }
@@ -221,6 +226,7 @@ mod tests {
     fn hosts(host: &str) -> Hosts {
         Hosts {
             login: host.to_owned(),
+            live: host.to_owned(),
             xbox_user: host.to_owned(),
             xsts: host.to_owned(),
             services: host.to_owned(),

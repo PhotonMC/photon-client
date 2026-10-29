@@ -59,12 +59,9 @@ fn choose(
     }))
 }
 
-/// The signed-in player, from the refresh token in the credential store. Without a client ID
-/// nobody can be signed in, so there is nothing to ask.
+/// The signed-in player, from the refresh token in the credential store.
 fn stored() -> Result<Option<Account>, String> {
-    let Some(client) = signin::ClientId::from_environment() else {
-        return Ok(None);
-    };
+    let client = signin::ClientId::from_environment();
     let host = session_host();
     let store = crate::keyring_store::os_store();
     let resumed = signin::resume(&signin::Hosts::default(), &client, (&host, store.as_ref()));

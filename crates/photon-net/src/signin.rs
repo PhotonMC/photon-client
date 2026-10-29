@@ -13,25 +13,57 @@ pub use minecraft::{MinecraftSession, minecraft_session};
 use std::fmt;
 use std::time::Duration;
 
-/// The Azure application the sign-in is made for.
+/// Which Microsoft endpoints an application signs in through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Flow {
+    /// The identity platform (`login.microsoftonline.com`), for an application registered in Azure.
+    Azure,
+    /// The consumer service (`login.live.com`) that the official launcher's application uses.
+    Live,
+}
+
+/// The application the sign-in is made for.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClientId(String);
+pub struct ClientId {
+    id: String,
+    flow: Flow,
+}
+
+/// The application of the official launcher, which the project owner chose to sign in with until
+/// Photon has a registration of its own. It signs in through the consumer service.
+const LAUNCHER_CLIENT_ID: &str = "00000000402b5328";
 
 impl ClientId {
+    /// An application registered in Azure.
     pub fn new(id: String) -> Self {
-        Self(id)
+        Self {
+            id,
+            flow: Flow::Azure,
+        }
     }
 
-    /// The development variable that names one, until the project has registered its own.
-    pub fn from_environment() -> Option<Self> {
+    /// The application used when none is named.
+    pub fn launcher() -> Self {
+        Self {
+            id: LAUNCHER_CLIENT_ID.to_owned(),
+            flow: Flow::Live,
+        }
+    }
+
+    /// The development variable names an Azure application; without it, the launcher's.
+    pub fn from_environment() -> Self {
         std::env::var("PHOTON_MS_CLIENT_ID")
             .ok()
             .filter(|id| !id.trim().is_empty())
-            .map(|id| Self(id.trim().to_owned()))
+            .map_or_else(Self::launcher, |id| Self::new(id.trim().to_owned()))
+    }
+
+    pub(crate) fn flow(&self) -> Flow {
+        self.flow
     }
 
     fn as_str(&self) -> &str {
-        &self.0
+        &self.id
     }
 }
 
@@ -40,6 +72,8 @@ impl ClientId {
 pub struct Hosts {
     /// The Microsoft identity platform (device code and token endpoints).
     pub login: String,
+    /// The consumer service of the launcher's application (device code and token endpoints).
+    pub live: String,
     /// Xbox Live user authentication.
     pub xbox_user: String,
     /// Xbox Secure Token Service.
@@ -52,6 +86,7 @@ impl Default for Hosts {
     fn default() -> Self {
         Self {
             login: "https://login.microsoftonline.com".to_owned(),
+            live: "https://login.live.com".to_owned(),
             xbox_user: "https://user.auth.xboxlive.com".to_owned(),
             xsts: "https://xsts.auth.xboxlive.com".to_owned(),
             services: "https://api.minecraftservices.com".to_owned(),
