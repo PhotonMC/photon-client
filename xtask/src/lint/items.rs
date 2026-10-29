@@ -1,11 +1,12 @@
 //! Syntax-level facts about a file: suppressed limits, printing, `unsafe`,
 //! registry ids compared with literals, and inline test modules.
 
+use proc_macro2::{TokenStream, TokenTree};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{
     Attribute, Expr, ExprBinary, ExprUnsafe, ImplItemFn, ItemFn, ItemForeignMod, ItemImpl, ItemMod,
-    Lit, Macro,
+    Lit, LitStr, Macro,
 };
 
 use super::functions::is_test;
@@ -23,6 +24,8 @@ pub struct Facts {
     pub unsafes: Vec<usize>,
     /// Lines comparing an id-like value with a numeric literal.
     pub registry_literals: Vec<usize>,
+    /// Lines holding a `"minecraft:..."` string literal.
+    pub registry_names: Vec<usize>,
     /// Lines wrapping a direct varint read in a canonical id type.
     pub raw_id_wraps: Vec<usize>,
     /// Lines comparing a `Version` value.
@@ -106,6 +109,14 @@ impl<'ast> Visit<'ast> for Facts {
         if printing {
             self.prints.push(mac.path.span().start().line);
         }
+        // syn leaves macro arguments as tokens; `matches!` and `format!` hold names too.
+        registry_names_in(mac.tokens.clone(), &mut self.registry_names);
+    }
+
+    fn visit_lit_str(&mut self, lit: &'ast LitStr) {
+        if is_registry_name(&lit.value()) {
+            self.registry_names.push(lit.span().start().line);
+        }
     }
 
     fn visit_expr_call(&mut self, expr: &'ast syn::ExprCall) {
@@ -126,6 +137,29 @@ impl<'ast> Visit<'ast> for Facts {
             self.registry_literals.push(expr.span().start().line);
         }
         visit::visit_expr_binary(self, expr);
+    }
+}
+
+/// A full registry name; the bare `"minecraft:"` prefix is not one.
+fn is_registry_name(text: &str) -> bool {
+    text.strip_prefix("minecraft:")
+        .is_some_and(|rest| !rest.is_empty())
+}
+
+/// Lines of the string literals in a macro's tokens that are registry names.
+fn registry_names_in(tokens: TokenStream, lines: &mut Vec<usize>) {
+    for token in tokens {
+        match token {
+            TokenTree::Group(group) => registry_names_in(group.stream(), lines),
+            TokenTree::Literal(literal) => {
+                if let Ok(lit) = syn::parse_str::<LitStr>(&literal.to_string())
+                    && is_registry_name(&lit.value())
+                {
+                    lines.push(literal.span().start().line);
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -230,6 +264,23 @@ mod tests {
         assert_eq!(facts.unsafes, [2]);
         assert_eq!(facts.registry_literals, [2]);
         assert_eq!(facts.test_modules, [(3, 6)]);
+    }
+
+    #[test]
+    fn finds_registry_names_outside_tests() {
+        let source = "fn f(n: &str) -> bool { n == \"minecraft:lava\" || n == \"other\" }\n\
+            fn g(n: &str) { match n { \"minecraft:fire\" | \"minecraft:soul_fire\" => {} _ => {} } }\n\
+            #[cfg(test)] mod tests { fn t() { let _ = \"minecraft:stone\"; } }\n";
+        let facts = collect(&syn::parse_file(source).expect("valid Rust"));
+        assert_eq!(facts.registry_names, [1, 2, 2]);
+    }
+
+    #[test]
+    fn finds_registry_names_in_macros_but_not_the_bare_prefix() {
+        let source = "fn f(n: &str) -> bool { matches!(n, \"minecraft:lava\" | \"minecraft:water\") }\n\
+            fn g() -> String { format!(\"{}\", \"minecraft:\") }\n";
+        let facts = collect(&syn::parse_file(source).expect("valid Rust"));
+        assert_eq!(facts.registry_names, [1, 1]);
     }
 
     #[test]

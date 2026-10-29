@@ -18,6 +18,10 @@ const NON_LIBRARY: &[&str] = &[
     "/build.rs",
 ];
 
+/// Packages whose registry names are test data or tooling: the oracle, dev probes, parity cases
+/// and the xtask.
+const NOT_PRODUCTION: &[&str] = &["photon-oracle", "photon-dev", "parity-cases", "xtask"];
+
 pub fn check(path: &str, config: &Config, packages: &[Package]) -> Result<Vec<Finding>, String> {
     let text = fs::read_to_string(process::root().join(path))
         .map_err(|error| format!("{path}: {error}"))?;
@@ -73,8 +77,42 @@ pub fn check(path: &str, config: &Config, packages: &[Package]) -> Result<Vec<Fi
         &facts.registry_literals,
         &mut findings,
     );
+    registry_names(path, &facts, package, &mut findings);
     version_rules(path, (&text, &facts), (config, package), &mut findings);
     Ok(findings)
+}
+
+/// The `"minecraft:` literals of a production file, counted for its crate.
+fn registry_names(
+    path: &str,
+    facts: &items::Facts,
+    package: Option<&Package>,
+    findings: &mut Vec<Finding>,
+) {
+    let Some(package) = package else {
+        return;
+    };
+    // Unlike `NON_LIBRARY`, programs count: `src/main.rs` and `src/bin` are production code.
+    let tests = path.contains("/tests/")
+        || path.contains("/examples/")
+        || path.contains("/benches/")
+        || path.ends_with("/build.rs")
+        || path.ends_with("/tests.rs")
+        || path.ends_with("_tests.rs");
+    if NOT_PRODUCTION.contains(&package.name.as_str()) || tests {
+        return;
+    }
+    if let Some(first) = facts.registry_names.first() {
+        findings.push(Finding {
+            value: facts.registry_names.len() as u64,
+            ..Finding::new(
+                Rule::RegistryName,
+                package.name.clone(),
+                path.to_owned(),
+                *first,
+            )
+        });
+    }
 }
 
 /// The rules of the multi-version content model (ADR 0013).

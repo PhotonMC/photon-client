@@ -14,6 +14,7 @@ mod layers;
 mod names;
 pub mod source;
 
+use std::collections::BTreeMap;
 use std::time::Instant;
 
 use rayon::prelude::*;
@@ -37,12 +38,13 @@ pub enum Rule {
     VersionCompare,
     WireType,
     NewestVersion,
+    RegistryName,
     Layer,
 }
 
 impl Rule {
     pub fn name(self) -> &'static str {
-        const NAMES: [&str; 16] = [
+        const NAMES: [&str; 17] = [
             "file-lines",
             "fn-complexity",
             "fn-length",
@@ -58,6 +60,7 @@ impl Rule {
             "version-compare",
             "wire-type",
             "newest-version",
+            "registry-name",
             "layer",
         ];
         NAMES[self as usize]
@@ -80,6 +83,9 @@ impl Rule {
         match self {
             Self::RegistryLiteral => {
                 "ids compared with number literals; ids differ per game version, resolve them by name"
+            }
+            Self::RegistryName => {
+                "\"minecraft:\" literals in production code, per crate; compare typed registry constants instead of names"
             }
             Self::RawIdWrap => {
                 "a canonical id wrapped around a raw read; read a wire id type and translate it"
@@ -115,6 +121,7 @@ impl Rule {
             Self::Unsafe => "unsafe outside the modules listed in xtask/lint.toml",
             Self::Print => "terminal printing in a library; use `log`",
             Self::RegistryLiteral
+            | Self::RegistryName
             | Self::RawIdWrap
             | Self::VersionCompare
             | Self::WireType
@@ -163,6 +170,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         .into_iter()
         .flatten()
         .collect();
+    findings = per_crate(findings, &packages);
     findings.extend(layers::check(&packages, &config));
     findings.sort_by(|a, b| (a.rule, &a.path, a.line).cmp(&(b.rule, &b.path, b.line)));
 
@@ -192,6 +200,36 @@ pub fn run(args: &[String]) -> Result<(), String> {
     } else {
         Err("lint failed".to_owned())
     }
+}
+
+/// Folds the per-file `registry-name` findings into one finding per crate: the cap is on the
+/// crate, so a name moving between its files does not count as growth.
+fn per_crate(findings: Vec<Finding>, packages: &[workspace::Package]) -> Vec<Finding> {
+    let mut crates: BTreeMap<String, Finding> = BTreeMap::new();
+    let mut rest = Vec::new();
+    for finding in findings {
+        if finding.rule != Rule::RegistryName {
+            rest.push(finding);
+        } else if let Some(total) = crates.get_mut(&finding.key) {
+            total.value += finding.value;
+        } else {
+            // The cap is on the crate, so the finding points at its directory, not at one file.
+            let dir = packages
+                .iter()
+                .find(|package| package.name == finding.key)
+                .map_or(finding.path.clone(), |package| package.dir.clone());
+            crates.insert(
+                finding.key.clone(),
+                Finding {
+                    path: dir,
+                    line: 1,
+                    ..finding
+                },
+            );
+        }
+    }
+    rest.extend(crates.into_values());
+    rest
 }
 
 /// Splits findings into errors (new or worse than the baseline) and returns

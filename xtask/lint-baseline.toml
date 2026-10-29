@@ -975,6 +975,17 @@
 [fn-params]
 "crates/photon-protocol/src/configuration.rs::ClientInformation::new" = 9
 
+[registry-name]
+photon = 429
+photon-core = 10
+photon-data = 65
+photon-game = 595
+photon-gui = 46
+photon-net = 35
+photon-protocol = 6
+photon-render = 243
+photon-world = 1219
+
 [unsafe]
 "crates/photon/src/controls/keybinds.rs" = 1
 "crates/photon/src/play.rs" = 1
