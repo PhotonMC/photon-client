@@ -3,9 +3,11 @@
 
 mod device_code;
 mod http;
+mod login;
 mod minecraft;
 
 pub use device_code::{DeviceCode, MicrosoftTokens, poll_for_token, refresh, request_device_code};
+pub use login::{SecretStore, finish_sign_in, resume, sign_out};
 pub use minecraft::{MinecraftSession, minecraft_session};
 
 use std::fmt;
@@ -74,6 +76,8 @@ pub enum SignInError {
     NotOwned,
     /// The account owns the game but has not made a profile (a player name) yet.
     NoProfile,
+    /// The place the refresh token is kept failed; the words never carry the token.
+    Store(String),
     /// The host is neither `https` nor this machine, so no secret goes to it.
     InsecureHost,
 }
@@ -90,6 +94,7 @@ impl fmt::Display for SignInError {
                 formatter.write_str("this account does not own Minecraft: Java Edition")
             }
             Self::NoProfile => formatter.write_str("this account has no Minecraft profile yet"),
+            Self::Store(reason) => write!(formatter, "the credential store failed: {reason}"),
             Self::InsecureHost => formatter.write_str("the sign-in host needs https"),
         }
     }
