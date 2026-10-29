@@ -15,13 +15,13 @@ pub(super) fn connect_and_probe_with_mode(
 
     let mut trace = PlayConnectionTrace::default();
     if matches!(probe.action, ProbeAction::CreativePlace) {
-        trace.stone_item_registry_id = Some(VANILLA_STONE_ITEM_REGISTRY_ID);
+        trace.stone_item_registry_id = Some(wire_item(VANILLA_STONE_ITEM_REGISTRY_ID));
     }
     if matches!(
         probe.action,
         ProbeAction::CreativeSnowballUse | ProbeAction::WorldSnowballTick
     ) {
-        trace.snowball_item_registry_id = Some(VANILLA_SNOWBALL_ITEM_REGISTRY_ID);
+        trace.snowball_item_registry_id = Some(wire_item(VANILLA_SNOWBALL_ITEM_REGISTRY_ID));
     }
     let (mut stream, compression_threshold) = open_for_probe(
         (address, username),
@@ -1823,7 +1823,7 @@ pub(super) fn connect_and_probe_with_mode(
                             output,
                             2,
                             1,
-                            VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID,
+                            wire_item(VANILLA_MILK_BUCKET_ITEM_REGISTRY_ID),
                         )
                     },
                     compression_threshold,
@@ -1846,7 +1846,7 @@ pub(super) fn connect_and_probe_with_mode(
                             output,
                             2,
                             8,
-                            VANILLA_STONE_ITEM_REGISTRY_ID,
+                            wire_item(VANILLA_STONE_ITEM_REGISTRY_ID),
                         )
                     },
                     compression_threshold,

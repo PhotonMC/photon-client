@@ -35,6 +35,11 @@ fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegist
     photon_data::version_registries::VersionRegistries::of(photon_net::connection::CONNECT_VERSION)
 }
 
+/// The id the probe's version puts on the wire for a canonical item.
+fn wire_item(item: photon_core::ids::ItemId) -> photon_core::ids::ItemId {
+    photon_core::ids::ItemId(registries().items.wire_or_unknown(item.0))
+}
+
 use photon_net::connection::entities;
 use photon_net::connection::{read_packet, send_packet};
 use photon_protocol::play::*;
