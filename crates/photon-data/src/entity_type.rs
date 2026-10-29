@@ -332,6 +332,9 @@ pub struct Leash {
     pub quad: bool,
 }
 
+// The pick table is indexed by canonical id; a new type must grow both.
+const _: () = assert!(ENTITY_PICKS.len() == ENTITY_TYPES.len());
+
 /// The crosshair's answers for the type with this id; the player has none.
 pub fn pick(id: EntityTypeId) -> Option<&'static EntityPick> {
     usize::try_from(id.0)
