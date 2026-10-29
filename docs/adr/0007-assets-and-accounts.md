@@ -18,4 +18,4 @@ The client needs Mojang's assets (textures, sounds, languages) and the version m
 
 - Development keeps using `.data/` as the local reference copy. The production asset cache is a separate, user-level directory.
 - Tokens are kept in the operating system keyring, never in plain files.
-- Login encryption uses the RustCrypto crates `aes`, `cfb8`, `rsa` and `sha1` plus `getrandom`, in `photon-protocol`. The session join is posted with `ureq` (rustls) from `photon-net`; the keyring joins them when the Microsoft sign-in lands.
+- Login encryption uses the RustCrypto crates `aes`, `cfb8`, `rsa` and `sha1` plus `getrandom`, in `photon-protocol`. The session join is posted with `ureq` (rustls) from `photon-net`; the Microsoft sign-in is in `photon-net`, and the refresh token is kept through `keyring-core` with the Secret Service store on Linux (system libdbus; the `keyring` crate's default zbus backend fails the advisory check). The macOS and Windows stores follow with the platform matrix.

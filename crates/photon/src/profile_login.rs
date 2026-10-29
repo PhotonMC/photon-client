@@ -48,10 +48,15 @@ fn choose(
     from_environment: Option<Account>,
     stored: impl FnOnce() -> Result<Option<Account>, String>,
 ) -> Result<Option<Account>, String> {
-    match from_environment {
-        Some(account) => Ok(Some(account)),
-        None => stored(),
+    if let Some(account) = from_environment {
+        return Ok(Some(account));
     }
+    // A sign-in that cannot be resumed (an outage, no credential store) leaves the player
+    // joining as a name only; an online server answers that with its own message.
+    Ok(stored().unwrap_or_else(|error| {
+        eprintln!("the stored sign-in was not used: {error}");
+        None
+    }))
 }
 
 /// The signed-in player, from the refresh token in the credential store. Without a client ID
@@ -97,6 +102,6 @@ mod tests {
         let chosen = choose(None, || Ok(Some(account("Kept"))));
         assert_eq!(chosen.unwrap().unwrap().name, "Kept");
         assert_eq!(choose(None, || Ok(None)).unwrap(), None);
-        assert!(choose(None, || Err("no keyring".to_owned())).is_err());
+        assert_eq!(choose(None, || Err("no keyring".to_owned())).unwrap(), None);
     }
 }
