@@ -62,7 +62,11 @@ impl BlockTags {
 /// Each item tag, by id without the leading `#`, as item registry ids:
 /// what `ItemStack.is(tag)` reads.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ItemTags(BTreeMap<String, BTreeSet<i32>>);
+pub struct ItemTags {
+    tags: BTreeMap<String, BTreeSet<i32>>,
+    /// The connected version's item numbering; `None` serves every item (a test's tags).
+    numbering: Option<IdMap>,
+}
 
 impl ItemTags {
     /// The item registry's tags from a tag packet; `None` when the packet
@@ -82,35 +86,46 @@ impl ItemTags {
         let items = registries
             .iter()
             .find(|registry| registry.registry.as_string() == name)?;
-        Some(Self(
-            items
-                .tags
-                .iter()
-                .map(|tag| {
-                    let members = tag
-                        .values
-                        .iter()
-                        .map(|wire| numbering.map_or(*wire, |map| map.canonical_or_unknown(*wire)))
-                        .collect();
-                    (tag.id.as_string(), members)
-                })
-                .collect(),
-        ))
+        let tags = items
+            .tags
+            .iter()
+            .map(|tag| {
+                let members = tag
+                    .values
+                    .iter()
+                    .map(|wire| numbering.map_or(*wire, |map| map.canonical_or_unknown(*wire)))
+                    .collect();
+                (tag.id.as_string(), members)
+            })
+            .collect();
+        Some(Self {
+            tags,
+            numbering: numbering.cloned(),
+        })
+    }
+
+    /// Whether the connected version has the item (every item when no numbering is known).
+    pub fn serves(&self, item: i32) -> bool {
+        self.numbering
+            .as_ref()
+            .is_none_or(|map| u32::try_from(item).is_ok_and(|id| map.to_wire(id).is_some()))
     }
 
     /// The items of a tag, by registry id.
     pub fn members(&self, tag: &str) -> impl Iterator<Item = i32> + '_ {
-        self.0.get(tag).into_iter().flatten().copied()
+        self.tags.get(tag).into_iter().flatten().copied()
     }
 
     /// `ItemStack.is(tag)` for an item, by registry id.
     pub fn contains(&self, item: i32, tag: &str) -> bool {
-        self.0.get(tag).is_some_and(|items| items.contains(&item))
+        self.tags
+            .get(tag)
+            .is_some_and(|items| items.contains(&item))
     }
 
     /// Each tag and its items, by tag id.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &BTreeSet<i32>)> {
-        self.0.iter().map(|(tag, items)| (tag.as_str(), items))
+        self.tags.iter().map(|(tag, items)| (tag.as_str(), items))
     }
 }
 

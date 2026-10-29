@@ -362,6 +362,27 @@ mod tests {
     }
 
     #[test]
+    fn any_fuel_skips_items_the_version_lacks() {
+        use photon_data::version_registries::IdMap;
+        let coal = photon_data::item::registry::ITEMS
+            .iter()
+            .position(|item| item.burn_time > 0)
+            .unwrap();
+        let count = photon_data::item::registry::ITEMS.len();
+        let tags = photon_world::block::tags::ItemTags::from_registries(
+            &[photon_core::tags::RegistryTags::new(
+                photon_core::identifier::Identifier::parse("minecraft:item").unwrap(),
+                Vec::new(),
+            )],
+            &IdMap::from_presence((0..count).map(|id| id != coal)),
+        )
+        .unwrap();
+        let fuels = display::display_stacks(&SlotDisplay::AnyFuel, &tags);
+        assert!(!fuels.is_empty());
+        assert!(fuels.iter().all(|(item, _)| item.0 != coal as i32));
+    }
+
+    #[test]
     fn picker_reassigns_a_shared_item() {
         let tags = ItemTags::default();
         // Ingredient A takes item 1 or 2, B only item 1; one of each held.

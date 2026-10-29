@@ -243,7 +243,7 @@ pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(ItemId, i3
         SlotDisplay::AnyFuel => photon_data::item::registry::ITEMS
             .iter()
             .enumerate()
-            .filter(|(_, item)| item.burn_time > 0)
+            .filter(|(id, item)| item.burn_time > 0 && tags.serves(*id as i32))
             .map(|(id, _)| (ItemId(id as i32), 1))
             .collect(),
         SlotDisplay::Empty => Vec::new(),
