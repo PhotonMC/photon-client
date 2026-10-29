@@ -172,19 +172,32 @@ mod tests {
 
     #[test]
     fn has_item_tells_a_listed_item_from_an_unknown_name() {
-        let registries = VersionRegistries::for_version(Version::V26_2);
+        let registries = VersionRegistries::of(Version::NEWEST);
         assert!(registries.has_item("minecraft:stone"));
         assert!(!registries.has_item("minecraft:not_an_item"));
     }
 
     #[test]
-    fn the_newest_version_numbers_every_registry_as_the_identity() {
-        let registries = VersionRegistries::for_version(Version::V26_2);
-        for (name, map) in registries.all() {
-            assert!(map.is_identity(), "{name}");
-            assert!(map.canonical_len() > 0, "{name}");
+    fn every_version_numbers_every_registry_densely() {
+        for version in Version::ALL.iter().copied() {
+            let registries = VersionRegistries::for_version(version);
+            for (name, map) in registries.all() {
+                assert!(map.wire_len() > 0, "{version:?} {name}");
+                assert!(map.wire_len() <= map.canonical_len(), "{version:?} {name}");
+                let present = (0..map.canonical_len() as u32)
+                    .filter(|id| map.to_wire(*id).is_some())
+                    .count();
+                assert_eq!(present, map.wire_len(), "{version:?} {name}");
+            }
+            let items = ITEMS.iter().filter(|item| item.exists_in(version)).count();
+            assert_eq!(registries.items.wire_len(), items, "{version:?}");
+            assert_eq!(registries.items.canonical_len(), ITEMS.len());
         }
-        assert_eq!(registries.items.canonical_len(), ITEMS.len());
+    }
+
+    #[test]
+    fn the_union_has_as_many_canonical_ids_as_the_tables_list() {
+        let registries = VersionRegistries::of(Version::NEWEST);
         assert_eq!(
             registries.block_states.canonical_len(),
             crate::block::registry::state_count() as usize
@@ -193,23 +206,32 @@ mod tests {
 
     #[test]
     fn ids_round_trip_through_the_wire() {
-        let map = VersionRegistries::for_version(Version::V26_2).items;
-        for canonical in 0..map.canonical_len() as u32 {
-            let wire = map.to_wire(canonical).expect("the newest version has it");
-            assert_eq!(map.to_canonical(wire), Some(canonical));
+        for version in Version::ALL.iter().copied() {
+            let map = VersionRegistries::for_version(version).items;
+            for canonical in 0..map.canonical_len() as u32 {
+                let Some(wire) = map.to_wire(canonical) else {
+                    continue;
+                };
+                assert!((wire as usize) < map.wire_len(), "{version:?}");
+                assert_eq!(map.to_canonical(wire), Some(canonical), "{version:?}");
+            }
+            assert_eq!(map.to_wire(map.canonical_len() as u32), None);
+            assert_eq!(map.to_canonical(map.wire_len() as u32), None);
         }
-        assert_eq!(map.to_wire(map.canonical_len() as u32), None);
-        assert_eq!(map.to_canonical(map.wire_len() as u32), None);
     }
 
     #[test]
-    fn an_unknown_id_stays_unknown_and_a_negative_one_is_left_alone() {
-        let map = VersionRegistries::for_version(Version::V26_2).items;
-        let past_the_end = map.canonical_len() as i32 + 5;
-        assert_eq!(map.canonical_or_unknown(past_the_end), past_the_end);
-        assert_eq!(map.wire_or_unknown(past_the_end), past_the_end);
-        assert_eq!(map.canonical_or_unknown(-3), -3);
-        assert_eq!(map.canonical_or_unknown(7), 7);
+    fn an_unknown_id_keeps_its_distance_and_a_negative_one_is_left_alone() {
+        for version in Version::ALL.iter().copied() {
+            let map = VersionRegistries::for_version(version).items;
+            let gap = (map.canonical_len() - map.wire_len()) as i32;
+            let past_the_end = map.canonical_len() as i32 + 5;
+            assert_eq!(map.wire_or_unknown(past_the_end), past_the_end - gap);
+            let wire_past_the_end = map.wire_len() as i32 + 5;
+            assert_eq!(map.canonical_or_unknown(wire_past_the_end), past_the_end);
+            assert_eq!(map.canonical_or_unknown(-3), -3);
+            assert_eq!(map.wire_or_unknown(-3), -3);
+        }
     }
 
     #[test]

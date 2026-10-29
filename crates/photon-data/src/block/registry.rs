@@ -236,9 +236,15 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn every_block_exists_in_every_version_until_a_definition_says_otherwise() {
-        for version in photon_core::version::Version::ALL.iter().copied() {
-            assert!(BLOCKS.iter().all(|block| block.exists_in(version)));
+    fn every_block_exists_in_some_version() {
+        for block in &BLOCKS {
+            assert!(
+                photon_core::version::Version::ALL
+                    .iter()
+                    .any(|version| block.exists_in(*version)),
+                "{}",
+                block.name
+            );
         }
     }
 
@@ -255,13 +261,16 @@ mod tests {
 
     #[test]
     fn the_registry_numbers_every_state() {
-        assert_eq!(state_count(), 32366);
-        assert_eq!(
-            block("minecraft:stone").map(Block::default_state_id),
-            Some(BlockStateId(1))
-        );
-        let stairs = block("minecraft:oak_stairs").expect("stairs are in the registry");
-        assert_eq!(stairs.default_state_id(), BlockStateId(3918));
+        let total: u32 = BLOCKS.iter().map(Block::state_count).sum();
+        assert_eq!(state_count(), total);
+        let mut next = 0_i32;
+        for block in &BLOCKS {
+            let first = block.state_at(0);
+            assert_eq!(first, BlockStateId(next), "{}", block.name);
+            let default = block.default_state_id().0;
+            assert!(default >= first.0 && default < first.0 + block.state_count() as i32);
+            next += block.state_count() as i32;
+        }
     }
 
     #[test]
@@ -305,7 +314,7 @@ mod tests {
                 assert_eq!(found_offset, offset);
             }
         }
-        assert!(block_for_state(BlockStateId(32366)).is_none());
+        assert!(block_for_state(BlockStateId(state_count() as i32)).is_none());
     }
 
     #[test]

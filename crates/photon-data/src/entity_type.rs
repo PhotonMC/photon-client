@@ -349,9 +349,11 @@ mod tests {
 
     #[test]
     fn names_and_ids_go_both_ways() {
-        assert_eq!(name(EntityTypeId(156)), Some("minecraft:player"));
-        assert_eq!(id("minecraft:player"), Some(EntityTypeId(156)));
-        assert_eq!(id("minecraft:cow"), Some(EntityTypeId(30)));
+        for canonical in 0..ENTITY_TYPES.len() as i32 {
+            let entry = name(EntityTypeId(canonical)).expect("every id has a name");
+            assert_eq!(id(entry), Some(EntityTypeId(canonical)), "{entry}");
+        }
+        assert!(id("minecraft:player").is_some() && id("minecraft:cow").is_some());
         assert_eq!(name(EntityTypeId(-1)), None);
         assert_eq!(name(EntityTypeId(100_000)), None);
         assert_eq!(id("minecraft:nope"), None);

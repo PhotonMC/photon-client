@@ -48,9 +48,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_item_exists_in_every_version_until_a_definition_says_otherwise() {
-        for version in photon_core::version::Version::ALL.iter().copied() {
-            assert!(ITEMS.iter().all(|item| item.exists_in(version)));
+    fn every_item_exists_in_some_version() {
+        for item in &ITEMS {
+            assert!(
+                photon_core::version::Version::ALL
+                    .iter()
+                    .any(|version| item.exists_in(*version)),
+                "{}",
+                item.name
+            );
         }
     }
 

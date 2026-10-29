@@ -17,6 +17,7 @@ version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/
 # the newest one.
 newest_allowed = [
     "crates/photon-core/src/version.rs",
+    "crates/photon-data/src/version_registries.rs",
     "crates/photon-net/src/connection/session.rs",
     "crates/photon-world/src/world/dimension.rs",
     "crates/photon-game/src/menus/creative.rs",
