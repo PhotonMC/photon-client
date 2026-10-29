@@ -41,7 +41,7 @@ The test server is offline, peaceful, seed 776, view distance 32, with RCON on 2
 - `PHOTON_VALIDATION` enables the Vulkan validation layer.
 - `PHOTON_CULLING=0` disables culling for comparison.
 
-`cargo xtask bench` runs a fixed scripted session against the running server and writes a frame-timing report to `.data/runs/bench/`. `cargo xtask shot` runs a scripted session and saves its first frame as a PNG in `.data/runs/shots/`.
+`cargo xtask bench` runs a fixed scripted session against the running server and writes a frame-timing report to `.data/runs/bench/`. `--save` keeps the run (the middle one by p99 when `--repeat` is used) as that route's baseline, `baseline-<route>.json` in the same folder; `--compare` runs again and fails when the p99 work time is more than `--threshold` percent (default 10) above it. The baseline is machine-specific and stays under `.data/`. `cargo xtask shot` runs a scripted session and saves its first frame as a PNG in `.data/runs/shots/`.
 
 ## Switching servers through a proxy
 

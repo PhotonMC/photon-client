@@ -43,7 +43,9 @@ usage: cargo xtask <command>
   bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
         [--route still|run|dive|void] [--vsync on|off] [--fps-limit <n>]
         [--render-distance <n>] [--validation] [--no-build]
-                            fixed scripted run, frame timing report in .data/runs/bench
+        [--save | --compare [--threshold <percent>]]
+                            fixed scripted run, frame timing report in .data/runs/bench;
+                            --save keeps it as the route's baseline, --compare fails on a p99 rise
   progress [--check]        rewrite (or verify) the README's computed progress block
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]

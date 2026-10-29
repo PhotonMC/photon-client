@@ -4,6 +4,7 @@
 //! the test server and drive the client. Nothing here enters Git.
 
 mod args;
+mod baseline;
 mod bench;
 mod decompile;
 mod download;

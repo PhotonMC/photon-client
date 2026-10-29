@@ -9,6 +9,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use super::args::{Parsed, Spec, parse};
+use super::baseline;
 use super::layout::{
     build_client, client_binary, client_environment, data, default_address, jar_assets, run_merged,
 };
@@ -47,10 +48,14 @@ struct Options {
     fps_limit: Option<u32>,
     render_distance: Option<u32>,
     validation: bool,
+    /// Keep the run as the baseline, or check it against the baseline.
+    save: bool,
+    compare: bool,
+    threshold: f64,
 }
 
 const SPEC: Spec = Spec {
-    flags: &["--no-build", "--validation"],
+    flags: &["--no-build", "--validation", "--save", "--compare"],
     options: &[
         ("--name", 1),
         ("--repeat", 1),
@@ -60,10 +65,14 @@ const SPEC: Spec = Spec {
         ("--vsync", 1),
         ("--fps-limit", 1),
         ("--render-distance", 1),
+        ("--threshold", 1),
     ],
 };
 
 fn options(parsed: &Parsed) -> Result<Options, String> {
+    if parsed.flag("--save") && parsed.flag("--compare") {
+        return Err("--save and --compare are one or the other".to_owned());
+    }
     let route = parsed.value("--route").unwrap_or("still").to_owned();
     if !["still", "run", "dive", "void"].contains(&route.as_str()) {
         return Err("--route is still, run, dive or void".to_owned());
@@ -93,6 +102,9 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
             .map(|_| parsed.number("--render-distance", 0))
             .transpose()?,
         validation: parsed.flag("--validation"),
+        save: parsed.flag("--save"),
+        compare: parsed.flag("--compare"),
+        threshold: parsed.number("--threshold", baseline::DEFAULT_THRESHOLD_PERCENT)?,
     })
 }
 
@@ -346,6 +358,39 @@ fn runs_agree(reports: &[Value]) -> bool {
     agree
 }
 
+/// Where the baseline of a route is kept.
+fn baseline_path(route: &str) -> std::path::PathBuf {
+    data()
+        .join("runs")
+        .join("bench")
+        .join(format!("baseline-{route}.json"))
+}
+
+/// `--save` keeps the middle run as the baseline; `--compare` fails when its p99 is past the threshold.
+fn keep_or_check(options: &Options, reports: &[Value]) -> Result<(), String> {
+    let Some(report) =
+        baseline::representative(reports).filter(|_| options.save || options.compare)
+    else {
+        return Ok(());
+    };
+    let path = baseline_path(&options.route);
+    if options.save {
+        baseline::save(&path, &options.route, report)?;
+        println!("baseline saved to {}", path.display());
+        return Ok(());
+    }
+    let (lines, within) = baseline::compare(&baseline::load(&path)?, report, options.threshold);
+    println!("{}", lines.join("\n"));
+    if within {
+        Ok(())
+    } else {
+        Err(format!(
+            "the p99 work time is more than {}% above the baseline",
+            options.threshold
+        ))
+    }
+}
+
 pub fn bench(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
     let options = options(&parsed)?;
@@ -378,7 +423,7 @@ pub fn bench(args: &[String]) -> Result<(), String> {
         first["entities"]
     );
     if runs_agree(&reports) {
-        Ok(())
+        keep_or_check(&options, &reports)
     } else {
         Err(
             "a p50 moved 5% or more between runs: the machine was not quiet enough to compare"
