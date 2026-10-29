@@ -134,8 +134,9 @@ mod tests {
 
     #[test]
     fn anything_else_is_named() {
+        let binary = format!("p-1/{}", binary_name());
         let entries = listing(&[
-            "p-1/photon",
+            &binary,
             "p-1/.data/minecraft/client.jar",
             "p-1/assets/sound.ogg",
             "p-1/../escape",
