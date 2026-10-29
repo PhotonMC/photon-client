@@ -49,43 +49,6 @@ impl ClientEntity {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_SPIN_ATTACK)
     }
 
-    pub fn air_supply(&self) -> i32 {
-        self.air_supply
-    }
-
-    /// `LivingEntity.isDeadOrDying`: its health, as the server told, is spent.
-    pub fn is_dead_or_dying(&self) -> bool {
-        self.health().is_some_and(|health| health <= 0.0)
-    }
-
-    pub fn health(&self) -> Option<f32> {
-        self.health.map(f32::from_bits)
-    }
-
-    pub fn arrow_count(&self) -> i32 {
-        self.arrow_count
-    }
-
-    pub fn stinger_count(&self) -> i32 {
-        self.stinger_count
-    }
-
-    pub fn is_effect_ambient(&self) -> bool {
-        self.effect_ambience
-    }
-
-    pub fn effect_particles(&self) -> &[EffectParticle] {
-        &self.effect_particles
-    }
-
-    pub fn sleeping_pos(&self) -> Option<photon_core::binary::BlockPos> {
-        self.sleeping_pos
-    }
-
-    pub fn is_sleeping(&self) -> bool {
-        self.sleeping_pos.is_some()
-    }
-
     pub fn has_custom_name(&self) -> bool {
         self.custom_name_present
     }
@@ -147,23 +110,6 @@ impl ClientEntity {
 
     pub fn is_baby(&self) -> bool {
         self.baby
-    }
-
-    pub fn ticks_frozen(&self) -> i32 {
-        self.ticks_frozen
-    }
-
-    pub fn percent_frozen(&self) -> f32 {
-        (self.ticks_frozen.min(DEFAULT_TICKS_REQUIRED_TO_FREEZE) as f32)
-            / DEFAULT_TICKS_REQUIRED_TO_FREEZE as f32
-    }
-
-    pub fn is_fully_frozen(&self) -> bool {
-        self.ticks_frozen >= DEFAULT_TICKS_REQUIRED_TO_FREEZE
-    }
-
-    pub fn is_freezing(&self) -> bool {
-        self.ticks_frozen > 0
     }
 
     pub fn is_on_fire(&self) -> bool {
@@ -447,7 +393,7 @@ impl EntityViewMut<'_> {
         if self.living.hurt_time > 0 {
             self.living.hurt_time -= 1;
         }
-        if self.is_dead_or_dying() && tick_death {
+        if self.as_view().is_dead_or_dying() && tick_death {
             if self.is_ender_dragon() {
                 // `EnderDragon.tickDeath` keeps its own count, not `deathTime`, and
                 // lifts the dragon and its parts a tenth of a block.
@@ -549,5 +495,98 @@ impl EntityView<'_> {
     /// `ItemEntity.bobOffs`.
     pub fn bob_offset(&self) -> f32 {
         self.item.bob_offset.get()
+    }
+}
+
+/// What keeps an entity alive and marks its health: its health and air, what sticks in it, the
+/// effects it shows, where it sleeps, its frost and the attributes the server changed.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct Vitals {
+    pub(crate) air_supply: i32,
+    pub(crate) health: Option<u32>,
+    pub(crate) arrow_count: i32,
+    pub(crate) stinger_count: i32,
+    pub(crate) effect_ambience: bool,
+    pub(crate) effect_particles: Vec<EffectParticle>,
+    pub(crate) sleeping_pos: Option<photon_core::binary::BlockPos>,
+    pub(crate) ticks_frozen: i32,
+    /// What the server changed of the attributes the type starts with.
+    pub(crate) attributes: Vec<ClientAttributeState>,
+}
+
+impl Vitals {
+    pub(crate) fn new() -> Self {
+        Self {
+            air_supply: DEFAULT_AIR_SUPPLY,
+            health: None,
+            arrow_count: 0,
+            stinger_count: 0,
+            effect_ambience: false,
+            effect_particles: Vec::new(),
+            sleeping_pos: None,
+            ticks_frozen: 0,
+            attributes: Vec::new(),
+        }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn air_supply(&self) -> i32 {
+        self.vitals.air_supply
+    }
+
+    pub fn health(&self) -> Option<f32> {
+        self.vitals.health.map(f32::from_bits)
+    }
+
+    pub fn arrow_count(&self) -> i32 {
+        self.vitals.arrow_count
+    }
+
+    pub fn stinger_count(&self) -> i32 {
+        self.vitals.stinger_count
+    }
+
+    pub fn is_effect_ambient(&self) -> bool {
+        self.vitals.effect_ambience
+    }
+
+    pub fn effect_particles(&self) -> &[EffectParticle] {
+        &self.vitals.effect_particles
+    }
+
+    pub fn sleeping_pos(&self) -> Option<photon_core::binary::BlockPos> {
+        self.vitals.sleeping_pos
+    }
+
+    pub fn is_sleeping(&self) -> bool {
+        self.vitals.sleeping_pos.is_some()
+    }
+
+    pub fn ticks_frozen(&self) -> i32 {
+        self.vitals.ticks_frozen
+    }
+
+    pub fn percent_frozen(&self) -> f32 {
+        (self
+            .vitals
+            .ticks_frozen
+            .min(DEFAULT_TICKS_REQUIRED_TO_FREEZE) as f32)
+            / DEFAULT_TICKS_REQUIRED_TO_FREEZE as f32
+    }
+
+    pub fn is_fully_frozen(&self) -> bool {
+        self.vitals.ticks_frozen >= DEFAULT_TICKS_REQUIRED_TO_FREEZE
+    }
+
+    pub fn is_freezing(&self) -> bool {
+        self.vitals.ticks_frozen > 0
+    }
+}
+
+impl EntityView<'_> {
+    /// `LivingEntity.isDeadOrDying`: its health, as the server told, is spent.
+    pub fn is_dead_or_dying(&self) -> bool {
+        self.health().is_some_and(|health| health <= 0.0)
     }
 }

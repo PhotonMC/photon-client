@@ -468,6 +468,7 @@ fn a_wake_up_animation_empties_a_remote_players_sleeping_position() {
         .entities_mut()
         .at_mut(EntityId(9))
         .unwrap()
+        .vitals
         .sleeping_pos = Some(bed);
     assert!(world.entities_mut().apply_animate(EntityId(9), 2));
     let player = world.entities().at(EntityId(9)).unwrap();

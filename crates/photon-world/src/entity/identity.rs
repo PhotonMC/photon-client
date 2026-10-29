@@ -133,13 +133,12 @@ impl EntityView<'_> {
             is_vanilla_boat_entity_type(self.type_id)
                 || is_vanilla_shulker_entity_type(self.type_id)
         };
+        let health_bits = self.vitals.health;
         let is_pushable = if is_vanilla_player_entity_type(self.type_id) {
             self.alive
                 && !self.spectator
                 && (self.flying || !self.on_climbable)
-                && self
-                    .health
-                    .is_none_or(|health| f32::from_bits(health) > 0.0)
+                && health_bits.is_none_or(|bits| f32::from_bits(bits) > 0.0)
         } else {
             is_vanilla_pushable_entity_type(self.type_id)
                 || (is_vanilla_happy_ghast_entity_type(self.type_id) && self.alive)

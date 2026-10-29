@@ -89,6 +89,7 @@ impl EntityViewMut<'_> {
             return;
         };
         let position = self
+            .vitals
             .attributes
             .iter()
             .position(|state| state.attribute_id == attribute_id);
@@ -97,7 +98,7 @@ impl EntityViewMut<'_> {
             let modifier =
                 ClientAttributeModifierState::new(modifier_id.to_string(), f64::from(-0.34_f32), 1);
             if let Some(index) = position {
-                let modifiers = &mut self.attributes[index].modifiers;
+                let modifiers = &mut self.vitals.attributes[index].modifiers;
                 modifiers.retain(|existing| existing.id != modifier_id);
                 modifiers.push(modifier);
             } else {
@@ -109,14 +110,14 @@ impl EntityViewMut<'_> {
                         )
                     })
                     .unwrap_or(0.0);
-                self.attributes.push(ClientAttributeState::new(
+                self.vitals.attributes.push(ClientAttributeState::new(
                     attribute_id,
                     base,
                     vec![modifier],
                 ));
             }
         } else if let Some(index) = position {
-            self.attributes[index]
+            self.vitals.attributes[index]
                 .modifiers
                 .retain(|existing| existing.id != modifier_id);
         }

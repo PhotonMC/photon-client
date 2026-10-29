@@ -5,11 +5,6 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:shulker")
     }
 
-    /// `Shulker.sanitizeScale` of `getScale`.
-    pub(in super::super) fn shulker_scale(&self) -> f32 {
-        self.scale().min(3.0)
-    }
-
     /// Whether this is a slime or a magma cube (`AbstractCubeMob`).
     pub fn is_cube_mob(&self) -> bool {
         crate::metadata::is_cube_mob_type(self.type_id)
@@ -162,5 +157,12 @@ impl EntityViewMut<'_> {
         self.living
             .cube
             .tick(on_ground, if magma { 0.9 } else { 0.6 });
+    }
+}
+
+impl EntityView<'_> {
+    /// `Shulker.sanitizeScale` of `getScale`.
+    pub(in super::super) fn shulker_scale(&self) -> f32 {
+        self.scale().min(3.0)
     }
 }

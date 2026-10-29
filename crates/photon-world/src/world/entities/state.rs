@@ -53,7 +53,7 @@ impl Entities {
         entity_id: EntityId,
         attributes: &[ClientAttributeState],
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         let Some(type_name) = photon_data::entity_type::name(entity.type_id) else {
@@ -68,13 +68,14 @@ impl Entities {
                 continue;
             }
             if let Some(existing) = entity
+                .vitals
                 .attributes
                 .iter_mut()
                 .find(|existing| existing.attribute_id == attribute.attribute_id)
             {
                 *existing = attribute.clone();
             } else {
-                entity.attributes.push(attribute.clone());
+                entity.vitals.attributes.push(attribute.clone());
             }
         }
         true
@@ -409,27 +410,27 @@ impl ClientWorld {
             entity.mob_flags = mob_flags;
         }
         if let Some(air_supply) = air_supply {
-            entity.air_supply = air_supply;
+            entity.vitals.air_supply = air_supply;
         }
         if let Some(health) = health {
-            entity.health = Some(health.to_bits());
+            entity.vitals.health = Some(health.to_bits());
             // `isAlive` of a living entity: not removed, health left.
             entity.alive = health > 0.0;
         }
         if let Some(arrow_count) = arrow_count {
-            entity.arrow_count = arrow_count;
+            entity.vitals.arrow_count = arrow_count;
         }
         if let Some(stinger_count) = stinger_count {
-            entity.stinger_count = stinger_count;
+            entity.vitals.stinger_count = stinger_count;
         }
         if let Some(effect_ambience) = effect_ambience {
-            entity.effect_ambience = effect_ambience;
+            entity.vitals.effect_ambience = effect_ambience;
         }
         if let Some(effect_particles) = effect_particles {
-            entity.effect_particles = effect_particles;
+            entity.vitals.effect_particles = effect_particles;
         }
         if let Some(sleeping_pos) = sleeping_pos {
-            entity.sleeping_pos = sleeping_pos;
+            entity.vitals.sleeping_pos = sleeping_pos;
         }
         if let Some(custom_name_present) = custom_name_present {
             entity.custom_name_present = custom_name_present;
@@ -454,7 +455,7 @@ impl ClientWorld {
             entity.baby = zombie_baby;
         }
         if let Some(ticks_frozen) = ticks_frozen {
-            entity.ticks_frozen = ticks_frozen;
+            entity.vitals.ticks_frozen = ticks_frozen;
         }
         true
     }

@@ -39,24 +39,25 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links) = self
-            .ecs
-            .get_entity(entity)
-            .ok()?
-            .get_components::<(
-                &ClientEntity,
-                &Rotation,
-                &Position,
-                &Motion,
-                &Interpolation,
-                &crate::entity_kind::EntityKind,
-                &Equipment,
-                &EntityState,
-                &DroppedItem,
-                &Riding,
-                &Links,
-            )>()
-            .ok()?;
+        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals) =
+            self.ecs
+                .get_entity(entity)
+                .ok()?
+                .get_components::<(
+                    &ClientEntity,
+                    &Rotation,
+                    &Position,
+                    &Motion,
+                    &Interpolation,
+                    &crate::entity_kind::EntityKind,
+                    &Equipment,
+                    &EntityState,
+                    &DroppedItem,
+                    &Riding,
+                    &Links,
+                    &Vitals,
+                )>()
+                .ok()?;
         Some(EntityView {
             entity,
             rotation,
@@ -69,6 +70,7 @@ impl Entities {
             item,
             ride,
             links,
+            vitals,
         })
     }
 
@@ -94,7 +96,7 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links) = ecs
+        let (entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals) = ecs
             .get_entity_mut(entity)
             .ok()?
             .into_components_mut::<(
@@ -109,6 +111,7 @@ impl Entities {
                 &mut DroppedItem,
                 &mut Riding,
                 &mut Links,
+                &mut Vitals,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -123,6 +126,7 @@ impl Entities {
             item: item.into_inner(),
             ride: ride.into_inner(),
             links: links.into_inner(),
+            vitals: vitals.into_inner(),
         })
     }
 
@@ -155,6 +159,7 @@ impl Entities {
                 item: std::mem::replace(view.item, parts.item),
                 ride: std::mem::replace(view.ride, parts.ride),
                 links: std::mem::replace(view.links, parts.links),
+                vitals: std::mem::replace(view.vitals, parts.vitals),
             });
         }
         let spawned = self
@@ -171,6 +176,7 @@ impl Entities {
                 parts.item,
                 parts.ride,
                 parts.links,
+                parts.vitals,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -193,10 +199,11 @@ impl Entities {
             DroppedItem,
             Riding,
             Links,
+            Vitals,
         )>();
         self.ecs.despawn(entity);
         parts.map(
-            |(entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links)| {
+            |(entity, rotation, pos, vel, lerp, kind, worn, living, item, ride, links, vitals)| {
                 EntityParts {
                     entity,
                     rotation,
@@ -209,6 +216,7 @@ impl Entities {
                     item,
                     ride,
                     links,
+                    vitals,
                 }
             },
         )

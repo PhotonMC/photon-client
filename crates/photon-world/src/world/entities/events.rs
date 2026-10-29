@@ -134,7 +134,7 @@ impl Entities {
             return false;
         };
         if action == 2 && entity.living_kind().is_some() {
-            entity.sleeping_pos = None;
+            entity.vitals.sleeping_pos = None;
             entity.pose = ClientEntityPose::Standing;
             return true;
         }
@@ -153,12 +153,12 @@ impl Entities {
         if entity.is_player() {
             return true;
         }
-        entity.health = Some(0.0_f32.to_bits());
+        entity.vitals.health = Some(0.0_f32.to_bits());
         entity.alive = false;
         // `EnderDragon.handleKillingBlow`: unless it sits, it is not dead yet but at
         // one health, in the dying phase, till the server says otherwise.
         if entity.is_ender_dragon() && !entity.ender_dragon_mut().phase().is_sitting() {
-            entity.health = Some(1.0_f32.to_bits());
+            entity.vitals.health = Some(1.0_f32.to_bits());
             entity.alive = true;
             entity
                 .ender_dragon_mut()

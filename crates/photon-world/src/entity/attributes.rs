@@ -1,31 +1,7 @@
 use super::*;
 use photon_core::java_float::JavaF32;
 
-impl ClientEntity {
-    /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
-    /// type starts with and what the server has changed (`AttributeInstance.getValue`:
-    /// the base, the modifiers in their order, kept in the attribute's range).
-    /// Nothing for an attribute the type does not have.
-    pub fn attribute_value(&self, attribute: &str) -> Option<f64> {
-        effective_attribute(
-            &self.attributes,
-            photon_data::entity_type::name(self.type_id)?,
-            attribute,
-        )
-    }
-
-    /// `LivingEntity.getMaxHealth`.
-    pub fn max_health(&self) -> Option<f32> {
-        self.attribute_value("minecraft:max_health")
-            .map(|value| value as f32)
-    }
-
-    /// `LivingEntity.getScale`: one for an entity that has no scale attribute.
-    pub fn scale(&self) -> f32 {
-        self.attribute_value("minecraft:scale")
-            .map_or(1.0, |value| value as f32)
-    }
-}
+impl ClientEntity {}
 
 /// `AttributeMap.getValue` of an entity of type `type_name` that the server has changed
 /// `changed` of: the type's base value or the changed one with its modifiers, kept in range.
@@ -211,5 +187,33 @@ impl ClientMobEffectState {
     /// `MobEffectInstance.getBlendFactor`: between the last tick's and this one's.
     pub fn blend_factor(&self, partial: f32) -> f32 {
         photon_core::math::mth_lerp_f32(partial, self.blend.1.get(), self.blend.0.get())
+    }
+}
+
+impl EntityView<'_> {
+    /// `LivingEntity.getAttributeValue`: the attribute's value, from what the
+    /// type starts with and what the server has changed (`AttributeInstance.getValue`:
+    /// the base, the modifiers in their order, kept in the attribute's range).
+    /// Nothing for an attribute the type does not have.
+    pub fn attribute_value(&self, attribute: &str) -> Option<f64> {
+        effective_attribute(
+            &self.vitals.attributes,
+            photon_data::entity_type::name(self.type_id)?,
+            attribute,
+        )
+    }
+}
+
+impl EntityView<'_> {
+    /// `LivingEntity.getMaxHealth`.
+    pub fn max_health(&self) -> Option<f32> {
+        self.attribute_value("minecraft:max_health")
+            .map(|value| value as f32)
+    }
+
+    /// `LivingEntity.getScale`: one for an entity that has no scale attribute.
+    pub fn scale(&self) -> f32 {
+        self.attribute_value("minecraft:scale")
+            .map_or(1.0, |value| value as f32)
     }
 }

@@ -14,7 +14,7 @@ impl EntityViewMut<'_> {
     /// block a tick) while the player is on the ground and neither dying nor swimming.
     pub(crate) fn tick_bob(&mut self) {
         let (x, _, z) = self.motion();
-        let walking = self.on_ground() && !self.is_dead_or_dying() && !self.is_swimming();
+        let walking = self.on_ground() && !self.as_view().is_dead_or_dying() && !self.is_swimming();
         let target = if walking {
             0.1_f32.min(photon_core::math::mth_length_f64_2(x, z) as f32)
         } else {

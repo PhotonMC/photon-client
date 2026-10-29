@@ -40,13 +40,6 @@ pub struct ClientEntity {
     pub(crate) shared_flags: u8,
     pub(crate) living_flags: u8,
     pub(crate) mob_flags: u8,
-    pub(crate) air_supply: i32,
-    pub(crate) health: Option<u32>,
-    pub(crate) arrow_count: i32,
-    pub(crate) stinger_count: i32,
-    pub(crate) effect_ambience: bool,
-    pub(crate) effect_particles: Vec<EffectParticle>,
-    pub(crate) sleeping_pos: Option<photon_core::binary::BlockPos>,
     pub(crate) custom_name_present: bool,
     pub(crate) custom_name_visible: bool,
     pub(crate) no_gravity: bool,
@@ -59,9 +52,6 @@ pub struct ClientEntity {
     pub(crate) flying: bool,
     pub(crate) happy_ghast_still_timeout: bool,
     pub(crate) happy_ghast_is_vehicle: bool,
-    pub(crate) ticks_frozen: i32,
-    /// What the server changed of the attributes the type starts with.
-    pub(crate) attributes: Vec<ClientAttributeState>,
     /// A primed tnt's fuse and block, made when its data or ticks first reach it.
     /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
     pub(crate) item_frame_rotation: i32,

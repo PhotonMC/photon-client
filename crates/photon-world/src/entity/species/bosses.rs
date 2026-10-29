@@ -36,7 +36,7 @@ impl EntityViewMut<'_> {
     /// fades its motion and its head does not turn after anything; while it dies, none of it.
     pub(crate) fn tick_ender_dragon(&mut self, targets: &EntityTargets) {
         self.ender_dragon_mut().begin_ai_step();
-        if self.is_dead_or_dying() {
+        if self.as_view().is_dead_or_dying() {
             return;
         }
         let tick_count = self.tick_count;
@@ -44,10 +44,11 @@ impl EntityViewMut<'_> {
             .ender_dragon_mut()
             .check_crystals(targets.dragon, tick_count);
         if heals
-            && let (Some(health), Some(max)) = (self.health(), self.max_health())
+            && let (Some(health), Some(max)) =
+                (self.as_view().health(), self.as_view().max_health())
             && health < max
         {
-            self.health = Some((health + 1.0).to_bits());
+            self.vitals.health = Some((health + 1.0).to_bits());
         }
         let y_rot = photon_core::math::wrap_degrees_f32(self.rotation.y_rot.get());
         self.rotation.y_rot = JavaF32::new(y_rot);
@@ -88,7 +89,7 @@ impl EntityViewMut<'_> {
         let place = crate::mobs::wither::WitherPlace {
             position: self.position(),
             body_rot: self.rotation.y_body_rot.get(),
-            scale: self.scale(),
+            scale: self.as_view().scale(),
         };
         self.wither_mut().tick_heads(place, targets);
     }

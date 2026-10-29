@@ -35,7 +35,7 @@ impl EntityViewMut<'_> {
             self.vel.motion.y = JavaF64::new(0.0_f64);
             self.vel.motion.z = JavaF64::new(0.0_f64);
             let height = photon_data::entity_type::pick(self.type_id)
-                .map_or(0.0, |pick| pick.size.1 * self.scale());
+                .map_or(0.0, |pick| pick.size.1 * self.as_view().scale());
             let y = self.pos.position.y.get();
             self.pos.position.y = JavaF64::new(y.floor() + 1.0 - f64::from(height));
         } else {

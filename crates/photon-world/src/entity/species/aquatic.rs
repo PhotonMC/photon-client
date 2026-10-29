@@ -73,7 +73,7 @@ impl EntityViewMut<'_> {
         }
         let eye_height = self
             .dimensions()
-            .scale(self.scale(), self.scale())
+            .scale(self.as_view().scale(), self.as_view().scale())
             .eye_height();
         let place = crate::mobs::guardian::GuardianPlace {
             in_water: self.living.in_water,
