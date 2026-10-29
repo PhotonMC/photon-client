@@ -1,6 +1,7 @@
 //! The serverbound login hello packet sent after a handshake intention.
 
 use photon_core::binary::{self, Uuid};
+use photon_core::version::Version;
 use photon_core::{utf8, wire};
 
 pub const MAX_NAME_LENGTH: usize = 16;
@@ -191,14 +192,25 @@ impl ClientboundLoginFinishedPacket {
 
     /// Decode GameProfile fields followed by the session UUID.
     pub fn decode(input: &mut &[u8]) -> Result<Self, ReadError> {
+        let profile = Self::decode_profile(input)?;
+        let session_id = binary::read_uuid(input)?;
+        Ok(Self::new(profile, session_id))
+    }
+
+    /// The packet as the given version sends it: the newest version's, or an older one's.
+    pub fn decode_for(input: &mut &[u8], version: Version) -> Result<Self, ReadError> {
+        match version {
+            Version::V26_1 => crate::versions::v26_1::login_finished(input),
+            _ => Self::decode(input),
+        }
+    }
+
+    /// The GameProfile fields, which every version starts the packet with.
+    pub(crate) fn decode_profile(input: &mut &[u8]) -> Result<GameProfile, ReadError> {
         let id = binary::read_uuid(input)?;
         let name = utf8::read_utf8(input, MAX_NAME_LENGTH).map_err(ReadError::from)?;
         let properties = read_properties(input)?;
-        let session_id = binary::read_uuid(input)?;
-        Ok(Self::new(
-            GameProfile::new(id, name, properties),
-            session_id,
-        ))
+        Ok(GameProfile::new(id, name, properties))
     }
 }
 
@@ -297,4 +309,31 @@ fn read_byte_array(input: &mut &[u8]) -> Result<Vec<u8>, ReadError> {
     let (value, rest) = input.split_at(length);
     *input = rest;
     Ok(value.to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// What a 26.1 server sent for the name `Probe261` (a profile with no properties), captured
+    /// off the wire: the profile alone, with no session id after it.
+    const LOGIN_FINISHED_26_1: [u8; 26] = [
+        0x51, 0xd4, 0xe3, 0x8a, 0xc6, 0x2a, 0x33, 0x0f, 0xb8, 0xa1, 0x75, 0x46, 0x17, 0xf2, 0x1a,
+        0xb8, 0x08, 0x50, 0x72, 0x6f, 0x62, 0x65, 0x32, 0x36, 0x31, 0x00,
+    ];
+
+    #[test]
+    fn a_26_1_login_finished_is_the_profile_without_a_session_id() {
+        let mut input = &LOGIN_FINISHED_26_1[..];
+        let packet = ClientboundLoginFinishedPacket::decode_for(&mut input, Version::V26_1)
+            .expect("26.1 login finished");
+        assert_eq!(
+            packet.game_profile.name,
+            "Probe261".encode_utf16().collect::<Vec<_>>()
+        );
+        assert!(packet.game_profile.properties.is_empty());
+        assert!(input.is_empty());
+        let mut input = &LOGIN_FINISHED_26_1[..];
+        assert!(ClientboundLoginFinishedPacket::decode(&mut input).is_err());
+    }
 }

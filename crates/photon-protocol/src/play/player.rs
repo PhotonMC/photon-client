@@ -64,6 +64,26 @@ pub fn parse_player_combat_kill_packet(
 }
 
 pub fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionError> {
+    parse_login_fields(input, true)
+}
+
+/// The login packet as the session's version sends it.
+pub fn parse_login_packet_for(
+    input: &[u8],
+    registries: &photon_data::version_registries::VersionRegistries,
+) -> Result<LoginObservation, ConnectionError> {
+    match registries.version() {
+        photon_core::version::Version::V26_1 => crate::versions::v26_1::login_packet(input),
+        _ => parse_login_packet(input),
+    }
+}
+
+/// The login packet's fields; `has_online_mode` is whether the version sends the online-mode flag
+/// (absent, it reads as off).
+pub(crate) fn parse_login_fields(
+    input: &[u8],
+    has_online_mode: bool,
+) -> Result<LoginObservation, ConnectionError> {
     let mut input = input;
     let packet = LoginObservation {
         player_id: EntityId(read_i32(&mut input, "login player id")?),
@@ -82,7 +102,7 @@ pub fn parse_login_packet(input: &[u8]) -> Result<LoginObservation, ConnectionEr
         show_death_screen: read_bool(&mut input, "login show death screen")?,
         do_limited_crafting: read_bool(&mut input, "login limited crafting")?,
         spawn_info: parse_spawn_info(&mut input)?,
-        online_mode: read_bool(&mut input, "login online mode")?,
+        online_mode: has_online_mode && read_bool(&mut input, "login online mode")?,
         enforces_secure_chat: read_bool(&mut input, "login secure chat")?,
     };
     if !input.is_empty() {
@@ -302,9 +322,9 @@ pub(super) fn parse_spawn_info(input: &mut &[u8]) -> Result<SpawnInfoObservation
     })
 }
 
-wrapped_packet!(
+wrapped_wire_packet!(
     /// `ClientboundLoginPacket`.
-    Login(LoginObservation) = parse_login_packet
+    Login(LoginObservation) = parse_login_packet_for
 );
 wrapped_packet!(
     /// `ClientboundRespawnPacket`: where the player respawns, and what it keeps.

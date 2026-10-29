@@ -90,6 +90,18 @@ fn login_and_respawn_parsers_match_java_common_spawn_info_order() {
         })
     );
 
+    // 26.1 sends no online-mode flag: its packet is the same bytes without that one.
+    let mut older_payload = login_payload.clone();
+    older_payload.remove(older_payload.len() - 2);
+    let older = photon_data::version_registries::VersionRegistries::of(
+        photon_core::version::Version::V26_1,
+    );
+    let older_login = parse_login_packet_for(&older_payload, &older).expect("26.1 login packet");
+    assert!(older_login.enforces_secure_chat);
+    assert!(!older_login.online_mode);
+    assert_eq!(older_login.spawn_info, login.spawn_info);
+    assert!(parse_login_packet(&older_payload).is_err());
+
     let mut respawn_payload = Vec::new();
     append_spawn_info(&mut respawn_payload);
     respawn_payload.push(3);

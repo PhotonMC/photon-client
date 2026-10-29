@@ -14,3 +14,4 @@ pub mod registry_data;
 pub mod resources;
 pub mod server_links;
 pub mod status;
+pub mod versions;

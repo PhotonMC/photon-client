@@ -722,7 +722,7 @@ pub(super) fn connect_and_probe_with_mode(
                 )?;
             }
             PLAY_CLIENTBOUND_LOGIN_PACKET_ID => {
-                let observation = parse_login_packet(payload)?;
+                let observation = parse_login_packet_for(payload, &registries())?;
                 trace.world.replace_dimension_with_environment(
                     DimensionInput {
                         key: &observation.spawn_info.dimension,

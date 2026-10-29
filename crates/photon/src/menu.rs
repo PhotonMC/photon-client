@@ -442,7 +442,7 @@ const IDENTITY: [[f32; 4]; 4] = [
 
 /// The numbering of the version a connection from the menu speaks.
 fn connect_versions() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::of(photon_net::connection::CONNECT_VERSION)
+    photon_data::version_registries::VersionRegistries::of(photon_net::connection::connect_version())
 }
 
 /// What the menus' assets are read with: the data pack's registries before any server named

@@ -32,7 +32,7 @@ fn apply_metadata(
 
 /// The numbering of the version the probe speaks.
 fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::of(photon_net::connection::CONNECT_VERSION)
+    photon_data::version_registries::VersionRegistries::of(photon_net::connection::connect_version())
 }
 
 /// The id the probe's version puts on the wire for a canonical item.

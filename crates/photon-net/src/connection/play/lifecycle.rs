@@ -334,7 +334,7 @@ impl PlaySession {
                 opened => {
                     let (stream, compression_threshold) = opened?;
                     stream.set_read_timeout(None)?;
-                    let registries = VersionRegistries::of(crate::connection::CONNECT_VERSION);
+                    let registries = VersionRegistries::of(crate::connection::connect_version());
                     let incoming =
                         spawn_reader(stream.try_clone()?, compression_threshold, registries);
                     let mut session = Self::assemble(
@@ -386,7 +386,7 @@ impl PlaySession {
             seen_unsecure_warning: state.seen_insecure_warning,
             ..Effects::default()
         };
-        let registries = VersionRegistries::of(crate::connection::CONNECT_VERSION);
+        let registries = VersionRegistries::of(crate::connection::connect_version());
         let mut world = state.new_world();
         world.set_versions(registries.clone());
         Self {

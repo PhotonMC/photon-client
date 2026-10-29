@@ -22,7 +22,7 @@ pub use play::{
 };
 pub use record::{NoRecorder, Recorder};
 pub use session::{
-    CONNECT_VERSION, connect_stream, frame_packet, read_packet, send_configuration_start,
+    connect_stream, connect_version, frame_packet, read_packet, send_configuration_start,
     send_handshake_intention, send_handshake_to, send_packet,
 };
 pub use state::{ConnectionState, LoginStage, stage};

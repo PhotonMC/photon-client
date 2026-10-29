@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use photon_core::binary::Uuid;
 use photon_protocol::handshake::ClientIntent;
-use photon_protocol::login::{ClientboundLoginFinishedPacket, ServerboundHelloPacket};
+use photon_protocol::login::ServerboundHelloPacket;
 use photon_protocol::phase::ConnectionProtocol;
 use photon_protocol::play::*;
 use photon_protocol::resources::KnownPack;
@@ -112,9 +112,7 @@ fn log_in(
                 };
             }
             LOGIN_FINISHED_PACKET_ID => {
-                let mut input = payload;
-                let finished = ClientboundLoginFinishedPacket::decode(&mut input)
-                    .map_err(|_| ConnectionError::Codec("login finished"))?;
+                let finished = decode_login_finished(payload)?;
                 recorder.login_finished();
                 state.reach(super::state::stage::JOINING);
                 remember_profile(state, &finished.game_profile);

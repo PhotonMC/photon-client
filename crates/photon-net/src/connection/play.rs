@@ -204,7 +204,7 @@ mod tests {
     /// The id the connect version's wire gives the type.
     fn wire_entity_type(name: &str) -> u32 {
         let canonical = photon_data::entity_type::named(name).0;
-        photon_data::version_registries::VersionRegistries::of(crate::connection::CONNECT_VERSION)
+        photon_data::version_registries::VersionRegistries::of(crate::connection::connect_version())
             .entity_types
             .wire_or_unknown(canonical) as u32
     }

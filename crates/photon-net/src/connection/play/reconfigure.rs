@@ -261,7 +261,7 @@ fn configure_again(
             let incoming = spawn_reader(
                 stream,
                 compression_threshold,
-                VersionRegistries::of(crate::connection::CONNECT_VERSION),
+                VersionRegistries::of(crate::connection::connect_version()),
             );
             let mut fresh = PlaySession::assemble(
                 writer,
@@ -333,7 +333,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::CONNECT_VERSION),
+            VersionRegistries::of(crate::connection::connect_version()),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -372,7 +372,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::CONNECT_VERSION),
+            VersionRegistries::of(crate::connection::connect_version()),
         );
         let mut session = PlaySession::assemble(stream, None, incoming, state, ("Tester", false));
         session.wait(Duration::from_secs(5)).expect("started");
@@ -611,7 +611,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::CONNECT_VERSION),
+            VersionRegistries::of(crate::connection::connect_version()),
         );
         let first = ConnectionState {
             dimension_type_registry_bounds: vec![
@@ -683,7 +683,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::CONNECT_VERSION),
+            VersionRegistries::of(crate::connection::connect_version()),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -745,7 +745,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::CONNECT_VERSION),
+            VersionRegistries::of(crate::connection::connect_version()),
         );
         let mut session = PlaySession::assemble(
             stream,
