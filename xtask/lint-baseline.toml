@@ -329,7 +329,7 @@
 "crates/photon-oracle/src/travel.rs::aabb_result" = 49
 "crates/photon-oracle/src/vanilla.rs::image_result" = 17
 "crates/photon-protocol/src/play/commands.rs::read_argument_kind" = 41
-"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 14
+"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 12
 "crates/photon-protocol/src/play/recipe.rs::read_slot_display" = 15
 "crates/photon-protocol/src/play/scoreboard.rs::parse_scoreboard_packet" = 14
 "crates/photon-protocol/src/play/tests.rs::write_component_fixture" = 13
@@ -946,7 +946,6 @@
 "crates/photon-oracle/src/ticks.rs::light_changes_result" = 5
 "crates/photon-oracle/src/ticks.rs::movement_world" = 8
 "crates/photon-oracle/src/vanilla.rs::shape_table" = 5
-"crates/photon-protocol/src/play/player_info.rs::parse_player_info_update" = 5
 "crates/photon-render/src/block/uv_lock.rs::all" = 5
 "crates/photon-render/src/block/world_mesh/fluid.rs::FluidMesher::flow" = 5
 "crates/photon-render/src/block/world_mesh/item_frame.rs::item_models" = 5

@@ -64,9 +64,12 @@ pub enum FilterMask {
 pub struct PlayerChatPacket {
     pub global_index: i32,
     pub sender: (u64, u64),
+    /// The message's place in the sender's chain (`index`).
+    pub index: i32,
     pub signature: Option<ChatSignature>,
     pub signed_text: String,
     pub timestamp_millis: i64,
+    pub salt: i64,
     pub last_seen: Vec<PackedSignature>,
     pub unsigned: Option<photon_core::text::Component>,
     pub filter: FilterMask,
@@ -86,11 +89,12 @@ pub enum ChatEvent {
         content: photon_core::text::Component,
         bound: ChatBound,
     },
-    /// `ClientboundPlayerChatPacket`, its signatures looked up; whether the
-    /// sender is a player the client knows and is the local player.
+    /// `ClientboundPlayerChatPacket`, its signatures looked up; whether the message can be shown
+    /// (the sender is a player the client knows and the message passed the check of its
+    /// signature) and whether the sender is the local player.
     Player {
         packet: PlayerChatPacket,
-        sender_known: bool,
+        verified: bool,
         sender_is_local: bool,
     },
     /// `ClientboundDeleteChatPacket`: the signature of the message to delete.
@@ -214,7 +218,7 @@ pub fn parse_player_chat_packet(input: &[u8]) -> Result<PlayerChatPacket, Connec
     let global_index = read_varint(&mut input, "chat global index")?;
     let sender = photon_core::binary::read_uuid(&mut input)
         .map_err(|_| ConnectionError::Codec("chat sender"))?;
-    read_varint(&mut input, "chat index")?;
+    let index = read_varint(&mut input, "chat index")?;
     let signature = if read_bool(&mut input, "chat signature flag")? {
         Some(read_signature(&mut input)?)
     } else {
@@ -222,7 +226,7 @@ pub fn parse_player_chat_packet(input: &[u8]) -> Result<PlayerChatPacket, Connec
     };
     let signed_text = read_chat_string(&mut input, 256, "chat content")?;
     let timestamp_millis = read_i64(&mut input, "chat timestamp")?;
-    skip_bytes(&mut input, 8, "chat salt")?;
+    let salt = read_i64(&mut input, "chat salt")?;
     let count = read_varint(&mut input, "chat last seen")?;
     let mut last_seen = Vec::new();
     for _ in 0..count {
@@ -250,9 +254,11 @@ pub fn parse_player_chat_packet(input: &[u8]) -> Result<PlayerChatPacket, Connec
     Ok(PlayerChatPacket {
         global_index,
         sender: (sender.most, sender.least),
+        index,
         signature,
         signed_text,
         timestamp_millis,
+        salt,
         last_seen,
         unsigned,
         filter,

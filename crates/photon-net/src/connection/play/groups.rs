@@ -148,6 +148,8 @@ pub(super) struct Social {
     pub(super) next_chat_index: i32,
     /// The profile key pair and the chat session made from it.
     pub(super) chat_session: super::chat_session::ChatSession,
+    /// What the other players' chat sessions say of their messages.
+    pub(super) senders: super::chat_validation::Senders,
     /// `ClientPacketListener.lastSeenMessages`.
     pub(super) last_seen: super::last_seen::LastSeenTracker,
     /// Title, action bar and tab list packets not yet shown, and the players

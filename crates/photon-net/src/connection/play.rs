@@ -36,6 +36,7 @@ use photon_protocol::play::*;
 mod books;
 mod chat;
 mod chat_session;
+mod chat_validation;
 mod chunks;
 mod command_blocks;
 mod containers;

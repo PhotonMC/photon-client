@@ -276,7 +276,7 @@ impl Gui {
     fn show_player(
         &self,
         packet: photon_net::connection::PlayerChatPacket,
-        (sender_known, sender_is_local): (bool, bool),
+        (verified, sender_is_local): (bool, bool),
         (log, view): (&mut ChatLog, ChatView<'_>),
         processed: &mut Vec<(Vec<u8>, bool)>,
     ) -> bool {
@@ -291,7 +291,7 @@ impl Gui {
         let allowed = log.abilities().can_receive_player_messages();
         let shown = if hidden || !allowed {
             false
-        } else if sender_known {
+        } else if verified {
             self.show_player_chat(packet, sender_is_local, log, view.focused)
         } else {
             // `handleChatMessageError`: shown as an error, and not as a message.
@@ -300,7 +300,7 @@ impl Gui {
         };
         processed.extend(signature.map(|signature| (signature, shown)));
         // The error line sets the clock as a shown message does.
-        shown || (!hidden && allowed && !sender_known)
+        shown || (!hidden && allowed && !verified)
     }
 
     /// A player's or a disguised message shown, or left out for a hidden player: whether it was
@@ -328,14 +328,9 @@ impl Gui {
             }
             ChatEvent::Player {
                 packet,
-                sender_known,
+                verified,
                 sender_is_local,
-            } => self.show_player(
-                packet,
-                (sender_known, sender_is_local),
-                (log, view),
-                processed,
-            ),
+            } => self.show_player(packet, (verified, sender_is_local), (log, view), processed),
             ChatEvent::System { .. } | ChatEvent::Delete(_) => false,
         }
     }

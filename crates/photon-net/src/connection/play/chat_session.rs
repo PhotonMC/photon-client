@@ -152,6 +152,9 @@ impl PlaySession {
     /// `handleLogin`: the chat session is reset, and an online server gets a key pair fetched.
     pub(super) fn reset_chat_session(&mut self, online: bool) {
         let fetch = if online { self.key_fetch() } else { None };
+        if fetch.is_some() {
+            self.social.senders.keys.request();
+        }
         self.social.chat_session.reset(fetch);
     }
 

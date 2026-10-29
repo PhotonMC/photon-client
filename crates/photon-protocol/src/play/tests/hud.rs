@@ -230,6 +230,39 @@ fn player_info_update_reads_its_actions_in_order() {
 }
 
 #[test]
+fn player_info_update_reads_the_chat_session_of_a_player() {
+    let mut payload = vec![2, 2];
+    // First player: a session; second: the flag unset.
+    payload.extend([0; 15]);
+    payload.push(9);
+    payload.push(1);
+    payload.extend([0; 15]);
+    payload.push(4); // session id
+    payload.extend([0, 0, 0, 0, 0, 0, 1, 2]); // expiry
+    payload.extend([3, 7, 8, 9]); // public key
+    payload.extend([1, 5]); // key signature
+    payload.extend([0; 15]);
+    payload.push(10);
+    payload.push(0);
+    let entries = super::super::parse_player_info_update(&payload).unwrap();
+    assert_eq!(
+        entries[0].1,
+        vec![super::super::InfoAction::ChatSession(Some(
+            super::super::RemoteChatSession {
+                session_id: photon_core::binary::Uuid::new(0, 4),
+                expires_at_ms: 0x0102,
+                public_key: vec![7, 8, 9],
+                key_signature: vec![5],
+            }
+        ))]
+    );
+    assert_eq!(
+        entries[1].1,
+        vec![super::super::InfoAction::ChatSession(None)]
+    );
+}
+
+#[test]
 fn player_info_add_keeps_the_profile_properties() {
     let mut payload = vec![1, 1];
     payload.extend([0; 15]);

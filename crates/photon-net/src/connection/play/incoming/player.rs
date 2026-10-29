@@ -185,6 +185,7 @@ impl ClientboundPacket for PlayerInfoRemove {
     fn handle(self: Box<Self>, session: &mut PlaySession) -> Result<(), ConnectionError> {
         for id in self.0 {
             session.social.player_infos.remove(&id);
+            session.social.senders.remove(&id);
         }
         Ok(())
     }
@@ -229,6 +230,7 @@ impl PlaySession {
             self.effects.seen_unsecure_warning = true;
         }
         self.reset_chat_session(login.online_mode);
+        self.social.senders.enforces_secure_chat = login.enforces_secure_chat;
         self.local.hardcore = login.hardcore;
         (self.local.difficulty, self.local.difficulty_locked) = (2, false);
         self.local.reduced_debug_info = login.reduced_debug_info;

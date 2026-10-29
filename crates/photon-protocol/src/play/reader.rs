@@ -31,18 +31,6 @@ pub(super) fn read_identifier_string(
         .map_err(|_| ConnectionError::Codec(name))
 }
 
-pub(super) fn skip_bytes(
-    input: &mut &[u8],
-    count: usize,
-    name: &'static str,
-) -> Result<(), ConnectionError> {
-    if input.len() < count {
-        return Err(ConnectionError::Codec(name));
-    }
-    *input = &input[count..];
-    Ok(())
-}
-
 pub(super) fn read_lp_vec3(
     input: &mut &[u8],
     name: &'static str,

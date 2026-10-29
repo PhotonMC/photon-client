@@ -1,8 +1,7 @@
 use super::*;
 
 /// `ClientboundPlayerInfoUpdatePacket`: for each player (by its id), the
-/// actions the packet's set names, in order. Chat sessions and hat flags are
-/// read and dropped.
+/// actions the packet's set names, in order. Hat flags are read and dropped.
 pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, ConnectionError> {
     let mut input = input;
     let actions = read_byte(&mut input, "player info actions")?;
@@ -22,15 +21,7 @@ pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, Conn
                     let properties = read_properties(&mut input)?;
                     list.push(InfoAction::Add { name, properties });
                 }
-                1 => {
-                    if read_bool(&mut input, "player info chat flag")? {
-                        skip_bytes(&mut input, 16 + 8, "chat session")?;
-                        for _ in 0..2 {
-                            let length = read_varint(&mut input, "chat key length")?;
-                            skip_bytes(&mut input, length.max(0) as usize, "chat key")?;
-                        }
-                    }
-                }
+                1 => list.push(InfoAction::ChatSession(read_chat_session(&mut input)?)),
                 2 => list.push(InfoAction::GameMode(read_varint(&mut input, "game mode")?)),
                 3 => list.push(InfoAction::Listed(read_bool(&mut input, "listed")?)),
                 4 => list.push(InfoAction::Latency(read_varint(&mut input, "latency")?)),
@@ -54,6 +45,34 @@ pub fn parse_player_info_update(input: &[u8]) -> Result<Vec<PlayerActions>, Conn
         entries.push(((uuid.most, uuid.least), list));
     }
     Ok(entries)
+}
+
+/// `RemoteChatSession.Data` after its presence flag.
+fn read_chat_session(input: &mut &[u8]) -> Result<Option<RemoteChatSession>, ConnectionError> {
+    if !read_bool(input, "player info chat flag")? {
+        return Ok(None);
+    }
+    let session_id = photon_core::binary::read_uuid(input)
+        .map_err(|_| ConnectionError::Codec("chat session id"))?;
+    let expires_at_ms = read_i64(input, "chat key expiry")?;
+    let mut arrays = Vec::with_capacity(2);
+    for limit in [usize::MAX, 4096] {
+        let length = read_varint(input, "chat key length")?.max(0) as usize;
+        if length > limit || input.len() < length {
+            return Err(ConnectionError::Codec("chat key"));
+        }
+        let (bytes, rest) = input.split_at(length);
+        *input = rest;
+        arrays.push(bytes.to_vec());
+    }
+    let key_signature = arrays.pop().unwrap_or_default();
+    let public_key = arrays.pop().unwrap_or_default();
+    Ok(Some(RemoteChatSession {
+        session_id,
+        expires_at_ms,
+        public_key,
+        key_signature,
+    }))
 }
 
 /// A profile's properties, each with an optional signature.
@@ -125,6 +144,19 @@ pub enum InfoAction {
     Latency(i32),
     DisplayName(Option<photon_core::text::Component>),
     ListOrder(i32),
+    /// The player's chat session, or none where the player has no profile key.
+    ChatSession(Option<RemoteChatSession>),
+}
+
+/// `RemoteChatSession.Data`: the session a player signs its chat in and the public half of the
+/// key pair (`ProfilePublicKey.Data`) with the services' signature over it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteChatSession {
+    pub session_id: photon_core::binary::Uuid,
+    pub expires_at_ms: i64,
+    /// X.509 DER.
+    pub public_key: Vec<u8>,
+    pub key_signature: Vec<u8>,
 }
 
 /// A player's id and what a player info packet does to it.

@@ -91,6 +91,20 @@ pub fn verify_sha1_rsa(public_key_der: &[u8], message: &[u8], signature: &[u8]) 
         .is_ok()
 }
 
+/// `Signature.getInstance("SHA256withRSA")` verifying `signature` over `message` under the key
+/// in `public_key_der`. Any malformed key or signature is a failed check.
+pub fn verify_sha256_rsa(public_key_der: &[u8], message: &[u8], signature: &[u8]) -> bool {
+    let Ok(key) = RsaPublicKey::from_public_key_der(public_key_der) else {
+        return false;
+    };
+    key.verify(
+        Pkcs1v15Sign::new::<Sha256>(),
+        &Sha256::digest(message),
+        signature,
+    )
+    .is_ok()
+}
+
 /// Whether `private_key_der` (PKCS#8) and `public_key_der` (X.509) are the two halves of one RSA
 /// key, which is what a profile key pair has to be before anything is signed with it.
 pub fn key_pair_matches(private_key_der: &[u8], public_key_der: &[u8]) -> bool {
@@ -260,6 +274,18 @@ mod tests {
                 .is_ok()
         );
         assert_eq!(signature.len(), 128);
+        let public_der = private.to_public_key().to_public_key_der().expect("der");
+        assert!(verify_sha256_rsa(
+            public_der.as_bytes(),
+            b"one two",
+            &signature
+        ));
+        assert!(!verify_sha256_rsa(
+            public_der.as_bytes(),
+            b"one",
+            &signature
+        ));
+        assert!(!verify_sha256_rsa(b"nope", b"one two", &signature));
         assert_eq!(
             sign_sha256_rsa(b"nope", &[b"x"]),
             Err(CryptError::BadPrivateKey)

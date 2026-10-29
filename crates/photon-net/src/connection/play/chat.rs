@@ -1,3 +1,4 @@
+use super::chat_validation::Verdict;
 use super::*;
 
 impl PlaySession {
@@ -27,6 +28,7 @@ impl PlaySession {
                 InfoAction::Latency(latency) => info.latency = latency,
                 InfoAction::DisplayName(name) => info.display_name = name,
                 InfoAction::ListOrder(order) => info.list_order = order,
+                InfoAction::ChatSession(session) => self.social.senders.set_session(id, session),
                 InfoAction::Add { .. } => {}
             }
         }
@@ -268,20 +270,44 @@ impl PlaySession {
                 return;
             }
         }
+        let last_seen: Vec<Vec<u8>> = queue.iter().cloned().collect();
         if let Some(signature) = &packet.signature {
             queue.push_back(signature.clone());
         }
         self.social.signature_cache.push(queue);
-        let sender_known = self.social.player_infos.contains_key(&packet.sender);
         let sender_is_local = self
             .state
             .profile_id
             .is_some_and(|id| (id.most, id.least) == packet.sender);
+        let mut packet = packet;
+        let verified = self.social.player_infos.contains_key(&packet.sender)
+            && match self.validate_player_chat(&packet, &last_seen) {
+                Verdict::Accepted { signed } => {
+                    // An unsigned message is shown without the signature it came with.
+                    if !signed {
+                        packet.signature = None;
+                    }
+                    true
+                }
+                Verdict::Rejected => false,
+            };
         self.social.chat_events.push(ChatEvent::Player {
             packet,
-            sender_known,
+            verified,
             sender_is_local,
         });
+    }
+
+    /// `PlayerInfo.getMessageValidator().updateAndValidate`.
+    fn validate_player_chat(
+        &mut self,
+        packet: &PlayerChatPacket,
+        last_seen: &[Vec<u8>],
+    ) -> Verdict {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |time| time.as_millis() as i64);
+        self.social.senders.validate(packet, last_seen, now_ms)
     }
 
     /// The chat the server sent since the last call.
