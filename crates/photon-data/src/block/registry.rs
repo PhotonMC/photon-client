@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn every_block_exists_in_every_version_until_a_definition_says_otherwise() {
-        for version in photon_core::version::Version::ALL {
+        for version in photon_core::version::Version::ALL.iter().copied() {
             assert!(BLOCKS.iter().all(|block| block.exists_in(version)));
         }
     }

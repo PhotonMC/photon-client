@@ -11,10 +11,10 @@ pub(crate) fn registry_result(request: &Value) -> Result<Value, String> {
     if request["operation"].as_str() != Some("entries") {
         return Err("unknown registry operation".into());
     }
-    let version = match request["version"].as_str() {
-        Some("26.2") => Version::V26_2,
-        _ => return Err("unsupported registry version".into()),
-    };
+    let version = request["version"]
+        .as_str()
+        .and_then(Version::from_name)
+        .ok_or("unsupported registry version")?;
     let registries = VersionRegistries::for_version(version);
     let mut rows = Vec::new();
     for row in request["rows"].as_array().ok_or("rows")? {
