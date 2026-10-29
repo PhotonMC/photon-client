@@ -48,10 +48,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("menu") => return menu::run_menu(env::args().skip(2)),
         Some("sign-in") => return sign_in::run_sign_in(),
         Some("sign-out") => return sign_in::run_sign_out(),
+        Some("--version") => {
+            println!("photon {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
         _ => {}
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out` or `window`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())

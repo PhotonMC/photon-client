@@ -34,7 +34,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # x64 and arm64 on each system: macos-latest is arm64, macos-15-intel is x64.
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-latest
+          - macos-15-intel
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -57,10 +64,17 @@ jobs:
       # none and the parity runs stay local until the runner can fetch the
       # reference itself.
       - run: cargo test --workspace --lib --bins --tests
+      - name: Smoke test of the release binary
+        # Builds the shipped binary and starts it far enough to print its version: it links,
+        # loads and runs on this system without a window or a GPU.
+        shell: bash
+        run: |
+          cargo build --release -p photon
+          ./target/release/photon --version
       - name: CPU bench report
         # Chunk apply and light over a made-up world: no assets, no GPU. It reports; the
         # baseline is machine-specific, so CI compares nothing.
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         run: cargo xtask bench --cpu
 
   # Java vs Rust parity. The pinned game is downloaded from Mojang's official
