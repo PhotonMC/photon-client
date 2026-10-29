@@ -99,9 +99,7 @@ fn spawned_mob_size(row: &Value) -> Result<(f32, f32), String> {
         .default_state_id();
     let mut blocks = vec![0; 4_096];
     // The spawner stands at 1, 1, 1: the section's index runs y, z, x.
-    blocks[256 + 16 + 1] = crate::case_ids::registries()
-        .block_states
-        .wire_or_unknown(spawner.0);
+    blocks[256 + 16 + 1] = spawner.0;
     let biomes = vec![0; 64];
     let section = SectionInput {
         non_empty_block_count: 1,
