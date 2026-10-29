@@ -1668,6 +1668,7 @@ dependencies = [
  "photon-world",
  "rsa",
  "sha1",
+ "sha2",
  "ureq",
 ]
 
@@ -1701,6 +1702,7 @@ dependencies = [
  "photon-data",
  "rsa",
  "sha1",
+ "sha2",
 ]
 
 [[package]]

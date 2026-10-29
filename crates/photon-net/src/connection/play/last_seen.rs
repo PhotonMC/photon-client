@@ -18,6 +18,8 @@ pub struct LastSeenUpdate {
     pub offset: i32,
     pub acknowledged: u32,
     pub checksum: u8,
+    /// The signatures of the acknowledged messages, oldest first (`LastSeenMessages.entries`).
+    pub seen: Vec<Vec<u8>>,
 }
 
 pub(super) struct LastSeenTracker {
@@ -87,6 +89,7 @@ impl LastSeenTracker {
         let offset = self.take_offset();
         let mut acknowledged = 0_u32;
         let mut checksum = 1_i32;
+        let mut seen = Vec::new();
         for i in 0..COUNT {
             let index = (self.tail + i) % COUNT;
             if let Some(entry) = self.tracked[index].as_mut() {
@@ -94,6 +97,7 @@ impl LastSeenTracker {
                 checksum = checksum
                     .wrapping_mul(31)
                     .wrapping_add(signature_checksum(&entry.signature));
+                seen.push(entry.signature.clone());
                 entry.pending = false;
             }
         }
@@ -102,6 +106,7 @@ impl LastSeenTracker {
             offset,
             acknowledged,
             checksum: if byte == 0 { 1 } else { byte },
+            seen,
         }
     }
 }
@@ -118,7 +123,8 @@ mod tests {
             LastSeenUpdate {
                 offset: 0,
                 acknowledged: 0,
-                checksum: 1
+                checksum: 1,
+                seen: Vec::new()
             }
         );
     }

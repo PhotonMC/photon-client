@@ -28,6 +28,7 @@ cfb8 = "0.8"
 getrandom = "0.2"
 rsa = "0.9"
 sha1 = "0.10"
+sha2 = { version = "0.10", features = ["oid"] }
 keyring-core = "1"
 dbus-secret-service-keyring-store = { version = "1", default-features = false, features = ["crypto-rust"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }

@@ -331,7 +331,7 @@ impl PlaySession {
 
     /// `ClientPacketListener.sendChat` and `sendCommand`: a line typed into
     /// the chat, sent as a command when `command` (without its slash).
-    /// Without a chat key the message goes unsigned.
+    /// Without a chat session the message goes unsigned.
     pub fn send_chat(&mut self, text: &str, command: bool) -> Result<(), ConnectionError> {
         if command {
             return self.send(PLAY_SERVERBOUND_CHAT_COMMAND_PACKET_ID, |output| {
@@ -345,9 +345,20 @@ impl PlaySession {
             .map_or(0, |time| time.as_millis() as i64);
         let salt = i64::from(rand_salt());
         let update = self.social.last_seen.generate_update();
+        let sender = self
+            .state
+            .account
+            .as_ref()
+            .map(|account| account.profile_id);
+        let signature = sender.and_then(|sender| {
+            let timing = (millis, salt);
+            self.social
+                .chat_session
+                .sign(sender, text, timing, &update.seen)
+        });
         self.send(PLAY_SERVERBOUND_CHAT_PACKET_ID, |output| {
             let seen = (update.offset, update.acknowledged, update.checksum);
-            encode_chat(text, (millis, salt), seen, output);
+            encode_chat(text, (millis, salt), signature.as_deref(), seen, output);
             Ok(())
         })
     }

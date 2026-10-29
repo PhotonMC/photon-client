@@ -36,6 +36,18 @@ impl fmt::Debug for ProfileKeys {
 }
 
 impl ProfileKeys {
+    /// A pair made in a test.
+    #[cfg(test)]
+    pub(crate) fn for_test(private_key: Vec<u8>, public_key: Vec<u8>) -> Self {
+        Self {
+            private_key,
+            public_key,
+            key_signature: vec![1],
+            expires_at_ms: i64::MAX,
+            refreshed_after_ms: i64::MAX,
+        }
+    }
+
     /// The private key, for the one place that signs with it.
     pub fn private_key_der(&self) -> &[u8] {
         &self.private_key

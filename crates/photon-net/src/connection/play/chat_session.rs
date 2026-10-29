@@ -8,6 +8,7 @@ use photon_core::binary::Uuid;
 use super::*;
 use crate::account::{AccessToken, Account};
 use crate::signin::{Hosts, ProfileKeys, SignInError, fetch_profile_keys};
+use photon_protocol::play::{MessageBody, MessageLink, signed_message_payload};
 
 /// What the connection knows of its chat session.
 #[derive(Default)]
@@ -16,6 +17,9 @@ pub(super) struct ChatSession {
     pending: Option<Receiver<Result<ProfileKeys, SignInError>>>,
     /// The pair of the session the server was told of, and the session's id.
     current: Option<(ProfileKeys, Uuid)>,
+    /// The index of the next signed message (`SignedMessageChain.nextLink`); none once the chain
+    /// ran out.
+    next_index: Option<i32>,
 }
 
 fn now_ms() -> i64 {
@@ -87,7 +91,39 @@ impl ChatSession {
             key_signature: keys.key_signature.clone(),
         };
         self.current = Some((keys, id));
+        self.next_index = Some(0);
         Some(update)
+    }
+}
+
+impl ChatSession {
+    /// `SignedMessageChain.Encoder.pack`: the signature of a message, or none while there is no
+    /// session (the message goes unsigned) or the chain has run out.
+    pub(super) fn sign(
+        &mut self,
+        sender: Uuid,
+        content: &str,
+        (millis, salt): (i64, i64),
+        seen: &[Vec<u8>],
+    ) -> Option<Vec<u8>> {
+        let (keys, session) = self.current.as_ref()?;
+        let index = self.next_index?;
+        let link = MessageLink {
+            sender,
+            session: *session,
+            index,
+        };
+        let body = MessageBody {
+            content,
+            epoch_second: millis.div_euclid(1000),
+            salt,
+            last_seen: seen,
+        };
+        let payload = signed_message_payload(link, body);
+        let signature =
+            photon_protocol::crypto::sign_sha256_rsa(keys.private_key_der(), &[&payload]);
+        self.next_index = index.checked_add(1);
+        signature.ok()
     }
 }
 
@@ -143,5 +179,43 @@ mod tests {
         let id = random_uuid().expect("randomness");
         assert_eq!((id.most >> 12) & 0xF, 4);
         assert_eq!(id.least >> 62, 2);
+    }
+
+    #[test]
+    fn signed_messages_follow_the_chain_and_verify_under_the_public_key() {
+        use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
+        use sha2::Digest as _;
+        let private =
+            rsa::RsaPrivateKey::new(&mut photon_protocol::crypto::SystemRandom, 1024).expect("key");
+        let public = private.to_public_key();
+        let keys = ProfileKeys::for_test(
+            private.to_pkcs8_der().expect("der").as_bytes().to_vec(),
+            public.to_public_key_der().expect("der").as_bytes().to_vec(),
+        );
+        let mut session = ChatSession::default();
+        let (sender, id) = (Uuid::new(1, 2), Uuid::new(3, 4));
+        assert_eq!(session.sign(sender, "hi", (5000, 9), &[]), None);
+        session.current = Some((keys, id));
+        session.next_index = Some(0);
+        for index in 0..2 {
+            let signature = session.sign(sender, "hi", (5999, 9), &[]).expect("signed");
+            let link = MessageLink {
+                sender,
+                session: id,
+                index,
+            };
+            let body = MessageBody {
+                content: "hi",
+                epoch_second: 5,
+                salt: 9,
+                last_seen: &[],
+            };
+            let digest = sha2::Sha256::digest(signed_message_payload(link, body));
+            let scheme = rsa::Pkcs1v15Sign::new::<sha2::Sha256>();
+            assert!(public.verify(scheme, &digest, &signature).is_ok());
+        }
+        session.next_index = Some(i32::MAX);
+        assert!(session.sign(sender, "hi", (0, 0), &[]).is_some());
+        assert_eq!(session.sign(sender, "hi", (0, 0), &[]), None);
     }
 }

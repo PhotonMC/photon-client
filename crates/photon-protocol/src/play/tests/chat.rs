@@ -72,7 +72,7 @@ fn a_partial_filter_mask_hides_its_set_bits() {
 #[test]
 fn an_unsigned_chat_packet_ends_in_an_empty_acknowledgement() {
     let mut output = Vec::new();
-    super::super::encode_chat("hi", (5, 7), (0, 0, 1), &mut output);
+    super::super::encode_chat("hi", (5, 7), None, (0, 0, 1), &mut output);
     assert_eq!(output[..3], [2, b'h', b'i']);
     // offset 0, three bytes of bits, checksum 1, after the signature flag.
     assert_eq!(output[3 + 16..], [0, 0, 0, 0, 0, 1]);
@@ -81,7 +81,7 @@ fn an_unsigned_chat_packet_ends_in_an_empty_acknowledgement() {
 #[test]
 fn a_chat_packet_carries_the_offset_the_bits_and_the_checksum() {
     let mut output = Vec::new();
-    super::super::encode_chat("hi", (5, 7), (70, 0x0A_0003, 0xE5), &mut output);
+    super::super::encode_chat("hi", (5, 7), None, (70, 0x0A_0003, 0xE5), &mut output);
     // The signature flag, the offset as a varint, the 20 bits little endian, the checksum.
     assert_eq!(output[3 + 16..], [0, 70, 0x03, 0x00, 0x0A, 0xE5]);
 }
@@ -95,6 +95,43 @@ fn a_chat_session_update_is_the_id_the_expiry_and_two_byte_arrays() {
     expected.extend([0, 0, 0, 0, 0, 0, 1, 2]);
     expected.extend([3, 7, 8, 9, 1, 5]);
     assert_eq!(output, expected);
+}
+
+#[test]
+fn a_signed_chat_packet_carries_the_signature_after_its_flag() {
+    let mut output = Vec::new();
+    let signature = [9_u8; 256];
+    super::super::encode_chat("hi", (5, 7), Some(&signature), (0, 0, 1), &mut output);
+    assert_eq!(output[3 + 16], 1);
+    assert_eq!(output[3 + 17..3 + 17 + 256], signature);
+    assert_eq!(output[3 + 17 + 256..], [0, 0, 0, 0, 1]);
+}
+
+#[test]
+fn a_signed_message_covers_the_link_and_the_body_in_vanillas_order() {
+    use photon_core::binary::Uuid;
+    let link = super::super::MessageLink {
+        sender: Uuid::new(1, 2),
+        session: Uuid::new(3, 4),
+        index: 5,
+    };
+    let seen = [vec![0xAA, 0xBB]];
+    let body = super::super::MessageBody {
+        content: "hi",
+        epoch_second: 6,
+        salt: 7,
+        last_seen: &seen,
+    };
+    let payload = super::super::signed_message_payload(link, body);
+    let mut expected = vec![0, 0, 0, 1];
+    expected.extend([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2]);
+    expected.extend([0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4]);
+    expected.extend([0, 0, 0, 5]);
+    expected.extend([0, 0, 0, 0, 0, 0, 0, 7]);
+    expected.extend([0, 0, 0, 0, 0, 0, 0, 6]);
+    expected.extend([0, 0, 0, 2, b'h', b'i']);
+    expected.extend([0, 0, 0, 1, 0xAA, 0xBB]);
+    assert_eq!(payload, expected);
 }
 
 #[test]

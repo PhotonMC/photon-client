@@ -5,8 +5,9 @@ use aes::Aes128;
 use cfb8::cipher::generic_array::GenericArray;
 use cfb8::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
+use rsa::{Pkcs1v15Encrypt, Pkcs1v15Sign, RsaPrivateKey, RsaPublicKey};
 use sha1::{Digest, Sha1};
+use sha2::Sha256;
 
 /// The bytes of the shared secret.
 pub const SECRET_LENGTH: usize = 16;
@@ -15,6 +16,8 @@ pub const SECRET_LENGTH: usize = 16;
 pub enum CryptError {
     /// The server's public key is not an X.509 RSA key.
     BadPublicKey,
+    /// The private key is not a PKCS#8 RSA key.
+    BadPrivateKey,
     /// The RSA step failed (the data does not fit the key).
     Rsa,
     /// The system has no random bytes to give.
@@ -98,6 +101,19 @@ pub fn key_pair_matches(private_key_der: &[u8], public_key_der: &[u8]) -> bool {
         return false;
     };
     private.to_public_key() == public
+}
+
+/// `Signer.from(privateKey, "SHA256withRSA")`: the signature of the parts joined, PKCS#1 v1.5.
+/// The private key stays with the caller; nothing here keeps it.
+pub fn sign_sha256_rsa(private_key_der: &[u8], parts: &[&[u8]]) -> Result<Vec<u8>, CryptError> {
+    let key =
+        RsaPrivateKey::from_pkcs8_der(private_key_der).map_err(|_| CryptError::BadPrivateKey)?;
+    let mut digest = Sha256::new();
+    for part in parts {
+        digest.update(part);
+    }
+    key.sign(Pkcs1v15Sign::new::<Sha256>(), &digest.finalize())
+        .map_err(|_| CryptError::Rsa)
 }
 
 /// `Crypt.encryptUsingKey`: RSA with PKCS#1 v1.5 padding under the server's public key.
@@ -229,6 +245,25 @@ mod tests {
         assert!(!verify_sha1_rsa(&der, b"another", &signature));
         assert!(!verify_sha1_rsa(&der, message, &signature[1..]));
         assert!(!verify_sha1_rsa(&[1, 2], message, &signature));
+    }
+
+    #[test]
+    fn a_chat_signature_verifies_over_the_parts_joined() {
+        let private = RsaPrivateKey::new(&mut SystemRandom, 1024).expect("key");
+        let der = private.to_pkcs8_der().expect("der");
+        let signature = sign_sha256_rsa(der.as_bytes(), &[b"one ", b"two"]).expect("signed");
+        let digest = Sha256::digest(b"one two");
+        let public = private.to_public_key();
+        assert!(
+            public
+                .verify(Pkcs1v15Sign::new::<Sha256>(), &digest, &signature)
+                .is_ok()
+        );
+        assert_eq!(signature.len(), 128);
+        assert_eq!(
+            sign_sha256_rsa(b"nope", &[b"x"]),
+            Err(CryptError::BadPrivateKey)
+        );
     }
 
     #[test]

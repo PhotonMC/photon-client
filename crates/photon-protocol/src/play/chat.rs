@@ -272,6 +272,7 @@ pub fn parse_delete_chat_packet(input: &[u8]) -> Result<PackedSignature, Connect
 pub fn encode_chat(
     message: &str,
     (millis, salt): (i64, i64),
+    signature: Option<&[u8]>,
     (offset, acknowledged, checksum): (i32, u32, u8),
     output: &mut Vec<u8>,
 ) {
@@ -279,10 +280,52 @@ pub fn encode_chat(
     let _ = photon_core::utf8::write_utf8(output, &units, 256);
     output.extend_from_slice(&millis.to_be_bytes());
     output.extend_from_slice(&salt.to_be_bytes());
-    output.push(0);
+    match signature {
+        Some(bytes) => {
+            output.push(1);
+            output.extend_from_slice(bytes);
+        }
+        None => output.push(0),
+    }
     photon_core::wire::write_varint(offset, output);
     output.extend_from_slice(&acknowledged.to_le_bytes()[..3]);
     output.push(checksum);
+}
+
+/// Where a signed message sits in its sender's chain (`SignedMessageLink`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MessageLink {
+    pub sender: photon_core::binary::Uuid,
+    pub session: photon_core::binary::Uuid,
+    pub index: i32,
+}
+
+/// What a signed message holds (`SignedMessageBody`): its text, the second it was sent in, the
+/// salt and the signatures of the messages the sender had seen.
+#[derive(Debug, Clone, Copy)]
+pub struct MessageBody<'a> {
+    pub content: &'a str,
+    pub epoch_second: i64,
+    pub salt: i64,
+    pub last_seen: &'a [Vec<u8>],
+}
+
+/// The bytes a message signature covers (`PlayerChatMessage.updateSignature`).
+pub fn signed_message_payload(link: MessageLink, body: MessageBody<'_>) -> Vec<u8> {
+    let mut payload = 1_i32.to_be_bytes().to_vec();
+    for uuid in [link.sender, link.session] {
+        photon_core::binary::write_uuid(uuid, &mut payload);
+    }
+    payload.extend_from_slice(&link.index.to_be_bytes());
+    payload.extend_from_slice(&body.salt.to_be_bytes());
+    payload.extend_from_slice(&body.epoch_second.to_be_bytes());
+    payload.extend_from_slice(&(body.content.len() as i32).to_be_bytes());
+    payload.extend_from_slice(body.content.as_bytes());
+    payload.extend_from_slice(&(body.last_seen.len() as i32).to_be_bytes());
+    for signature in body.last_seen {
+        payload.extend_from_slice(signature);
+    }
+    payload
 }
 
 /// `ServerboundChatSessionUpdatePacket`: the session id and the public half of the profile key
