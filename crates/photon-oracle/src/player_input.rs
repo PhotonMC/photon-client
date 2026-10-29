@@ -17,7 +17,7 @@ pub(super) fn client_world_player_sprint_trigger_result(request: &Value) -> Resu
     let mut sequence_states = Vec::with_capacity(sequences.len());
 
     for sequence in sequences {
-        let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+        let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
         world.set_local_player_id(player_id);
         let operations = sequence["operations"]
             .as_array()
@@ -93,7 +93,7 @@ pub(super) fn client_world_player_keyboard_input_state(
 
 pub(super) fn client_world_player_keyboard_input_result(request: &Value) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()
@@ -213,7 +213,7 @@ pub(super) fn client_world_player_tick_result(request: &Value) -> Result<Value, 
     let initial_x_rotation = f32_field(initial_rotation, "x")?;
     let initial_head = f32_field(request, "initial_head")?;
 
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     if !world.apply_entity(EntityInput {
         entity_id: player_id,

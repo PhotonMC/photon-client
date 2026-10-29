@@ -4,7 +4,7 @@ mod states;
 pub(super) use states::*;
 
 pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(
@@ -163,7 +163,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
 pub(super) fn client_world_entity_passenger_rotation_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(
@@ -314,7 +314,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
 pub(super) fn client_world_entity_passenger_boat_turn_exemption_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(

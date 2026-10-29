@@ -89,7 +89,7 @@ pub(crate) fn client_world_player_sprint_attribute_result(
     request: &Value,
 ) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()
@@ -152,7 +152,7 @@ pub(crate) fn client_world_player_sneaking_input_state(
 
 pub(crate) fn client_world_player_sneaking_input_result(request: &Value) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()

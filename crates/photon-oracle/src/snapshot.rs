@@ -178,7 +178,7 @@ pub(super) fn block_collision_world_fixture(request: &Value) -> Result<ClientWor
     }
 
     let biomes = vec![0; 64];
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     for ((chunk_x, chunk_z), blocks) in chunk_blocks {
         world.replace_chunk(
             chunk_x,

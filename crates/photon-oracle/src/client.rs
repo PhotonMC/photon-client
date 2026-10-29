@@ -17,7 +17,7 @@ pub(super) fn client_world_entity_mob_flags_state(
 
 pub(super) fn client_world_entity_mob_flags_result(request: &Value) -> Result<Value, String> {
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -74,7 +74,7 @@ pub(super) fn client_world_entity_arrow_count_state(
 
 pub(super) fn client_world_entity_arrow_count_result(request: &Value) -> Result<Value, String> {
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -131,7 +131,7 @@ pub(super) fn client_world_entity_effect_ambience_state(
 
 pub(super) fn client_world_entity_effect_ambience_result(request: &Value) -> Result<Value, String> {
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -239,7 +239,7 @@ pub(super) fn client_world_entity_effect_particles_result(
         return Ok(effect_particle_spawns(spawn));
     }
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -305,7 +305,7 @@ pub(super) fn client_world_entity_sleeping_position_result(
     request: &Value,
 ) -> Result<Value, String> {
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -362,7 +362,7 @@ pub(super) fn client_world_entity_stinger_count_state(
 
 pub(super) fn client_world_entity_stinger_count_result(request: &Value) -> Result<Value, String> {
     let entity_id = entity_id_field(request, "entity_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),

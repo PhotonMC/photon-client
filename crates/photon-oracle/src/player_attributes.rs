@@ -65,7 +65,7 @@ pub(super) fn client_world_player_attribute_queries(
 
 pub(super) fn client_world_player_attributes_result(request: &Value) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()
@@ -99,7 +99,7 @@ pub(super) fn client_world_player_attributes_result(request: &Value) -> Result<V
 
 pub(super) fn client_world_player_movement_speed_result(request: &Value) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()
@@ -141,7 +141,7 @@ pub(super) fn client_world_player_movement_speed_result(request: &Value) -> Resu
 
 pub(super) fn client_world_player_attribute_water_result(request: &Value) -> Result<Value, String> {
     let player_id = entity_id_field(request, "player_id")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 256));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 256));
     world.set_local_player_id(player_id);
     let operations = request["operations"]
         .as_array()

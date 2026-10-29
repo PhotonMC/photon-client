@@ -4,7 +4,7 @@ pub(super) fn client_world_entity_tick_result(
     request: &Value,
     entity_type_id: i32,
 ) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(
@@ -132,7 +132,7 @@ pub(super) fn client_world_entity_ticking_eligibility_result(
     )?;
     let remote_type_id = i32_field(remote, "type_id")?;
 
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(

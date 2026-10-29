@@ -92,14 +92,16 @@ fn builtin_block_models_result() -> Value {
 /// The width and height of the mob a spawner shows, made as the real world makes it from the
 /// spawner's update tag (the entity's `id`, `IsBaby` and `Size`).
 fn spawned_mob_size(row: &Value) -> Result<(f32, f32), String> {
-    use photon_world::{BlockEntityInput, ClientWorld, DimensionBounds, SectionInput};
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    use photon_world::{BlockEntityInput, DimensionBounds, SectionInput};
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let spawner = photon_data::block::registry::block("minecraft:spawner")
         .ok_or("no spawner block")?
         .default_state_id();
     let mut blocks = vec![0; 4_096];
     // The spawner stands at 1, 1, 1: the section's index runs y, z, x.
-    blocks[256 + 16 + 1] = spawner.0;
+    blocks[256 + 16 + 1] = crate::case_ids::registries()
+        .block_states
+        .wire_or_unknown(spawner.0);
     let biomes = vec![0; 64];
     let section = SectionInput {
         non_empty_block_count: 1,

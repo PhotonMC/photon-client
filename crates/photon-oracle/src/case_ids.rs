@@ -61,3 +61,11 @@ pub(crate) fn sections(
 ) -> Result<Vec<photon_protocol::play::ChunkSectionObservation>, String> {
     photon_protocol::play::decode_chunk_section_data(bytes, &registries())
 }
+
+/// A world that speaks the oracle's version, so the wire ids a case names reach it as they would
+/// from a server of that version.
+pub(crate) fn world(dimension: photon_world::DimensionBounds) -> photon_world::ClientWorld {
+    let mut world = photon_world::ClientWorld::new(dimension);
+    world.set_versions(registries());
+    world
+}

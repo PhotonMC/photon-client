@@ -48,7 +48,7 @@ pub(super) fn movement_world(row: &Value) -> Result<ClientWorld, String> {
     // The overworld's bounds, as the reference level is built with.
     let dimension = DimensionBounds::new(-64, 384);
     let placed = placed_blocks(row)?;
-    let mut world = ClientWorld::new(dimension);
+    let mut world = crate::case_ids::world(dimension);
     // The reference's level random starts from the clock; both sides start it from one seed.
     world.fix_level_seed(LEVEL_SEED);
     let radius = i32_field(row, "chunk_radius")?;

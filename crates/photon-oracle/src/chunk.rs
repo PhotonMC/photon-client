@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn client_world_chunk_cache_result(request: &Value) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     world.configure_chunk_cache(i32_field(request, "server_view_radius")?);
     let operations = request["operations"]
         .as_array()

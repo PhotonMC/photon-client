@@ -49,7 +49,7 @@ pub(super) fn client_world_entity_player_interpolation_result(
     let initial_rotation = request
         .get("initial_rotation")
         .ok_or("initial_rotation must be an object")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -137,7 +137,7 @@ pub(super) fn client_world_entity_player_snap_result(request: &Value) -> Result<
         .ok_or("initial_rotation must be an object")?;
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     for chunk_x in [0, 4, 5, 9, 13] {
         if !world.replace_chunk(
             chunk_x,
@@ -254,7 +254,7 @@ pub(super) fn client_world_entity_player_motion_result(request: &Value) -> Resul
             .get("initial_motion")
             .ok_or("initial_motion must be a vector")?,
     )?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -342,7 +342,7 @@ pub(super) fn client_world_entity_teleport_result(request: &Value) -> Result<Val
             .get("initial_motion")
             .ok_or("initial_motion must be a vector")?,
     )?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
@@ -436,7 +436,7 @@ pub(super) fn client_world_entity_player_head_rotation_result(
         .get("initial_rotation")
         .ok_or("initial_rotation must be an object")?;
     let initial_head = f32_field(request, "initial_head")?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),

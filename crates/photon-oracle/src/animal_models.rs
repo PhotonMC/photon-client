@@ -162,7 +162,7 @@ pub(super) fn shaking_rotations_result(request: &Value) -> Result<Value, String>
         };
         let flag = |key: &str| row[key].as_bool().ok_or(format!("{key} must be a bool"));
         let dimension = string(row, "dimension")?;
-        let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+        let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
         world.replace_dimension_with_environment(
             DimensionInput {
                 key: dimension,

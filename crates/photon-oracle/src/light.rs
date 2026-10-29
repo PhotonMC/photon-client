@@ -25,7 +25,7 @@ pub(super) fn client_world_section_lookup_result(request: &Value) -> Result<Valu
                 return Err("section decoder count does not match input".into());
             }
 
-            let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+            let mut world = crate::case_ids::world(DimensionBounds::new(min_y, height));
             world.replace_chunk(
                 chunk_x,
                 chunk_z,
@@ -108,7 +108,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
         return Err("section decoder count does not match input".into());
     }
 
-    let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+    let mut world = crate::case_ids::world(DimensionBounds::new(min_y, height));
     if !world.replace_chunk(
         chunk_x,
         chunk_z,
@@ -241,7 +241,7 @@ pub(super) fn client_world_light_queries(
 pub(super) fn client_world_light_result(request: &Value) -> Result<Value, String> {
     let min_y = i32_field(request, "dimension_min_y")?;
     let height = i32_field(request, "dimension_height")?;
-    let mut world = ClientWorld::new(DimensionBounds::new(min_y, height));
+    let mut world = crate::case_ids::world(DimensionBounds::new(min_y, height));
     let operations = request["operations"]
         .as_array()
         .ok_or("operations must be an array")?;

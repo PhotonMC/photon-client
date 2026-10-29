@@ -148,7 +148,7 @@ pub(super) fn client_world_border_state_case(request: &Value) -> Result<Value, S
                 .ok_or("events must be an array")?
                 .as_array()
                 .ok_or("events must be an array")?;
-            let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+            let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
             let mut states = Vec::new();
             for event in events {
                 let operation = string(event, "op")?;

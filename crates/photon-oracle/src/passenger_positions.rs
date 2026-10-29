@@ -37,7 +37,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
         .iter()
         .map(|entity| entity_id_field(entity, "entity_id"))
         .collect::<Result<_, _>>()?;
-    let mut world = ClientWorld::new(DimensionBounds::default());
+    let mut world = crate::case_ids::world(DimensionBounds::default());
     for entity in entity_entries {
         let entity_id = entity_id_field(entity, "entity_id")?;
         let type_id = i32_field(entity, "type_id")?;
@@ -113,7 +113,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
 pub(super) fn client_world_entity_passenger_position_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(
@@ -268,7 +268,7 @@ pub(super) fn client_world_entity_passenger_position_result(
 pub(super) fn client_world_entity_passenger_player_position_result(
     request: &Value,
 ) -> Result<Value, String> {
-    let mut world = ClientWorld::new(DimensionBounds::new(0, 16));
+    let mut world = crate::case_ids::world(DimensionBounds::new(0, 16));
     let blocks = vec![0; 4_096];
     let biomes = vec![0; 64];
     if !world.replace_chunk(
