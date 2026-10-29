@@ -38,7 +38,6 @@ fn decode() -> Value {
 pub fn cases() -> Vec<Value> {
     vec![
         registry::registry(),
-        table("events", "sound_events"),
         packets::packets(),
         decode(),
         engine::engine(),

@@ -207,13 +207,6 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
     }
     let result = match family {
         "sound" => match string(&request, "operation")? {
-            "sound_events" => {
-                let rows: Vec<Value> = (0..)
-                    .map_while(|id| photon_data::sound_event::name(id).map(|name| (id, name)))
-                    .map(|(id, name)| json!({"label": name, "id": id}))
-                    .collect();
-                json!({"rows": rows})
-            }
             "packets" => sound_packets_result(&request)?,
             "decode" => sound_decode_result(&request)?,
             "engine" => sound_engine_result(&request)?,

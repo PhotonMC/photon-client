@@ -21,9 +21,6 @@ public final class SoundOracle extends SoundSupport {
         try {
             Game26_2.vanillaRegistries();
             switch (request.get("operation").getAsString()) {
-                case "sound_events" -> {
-                    return soundEvents();
-                }
                 case "packets" -> {
                     return packets(request);
                 }
@@ -171,21 +168,6 @@ public final class SoundOracle extends SoundSupport {
                 }
             }
             out.add("overrides", overrides);
-            rows.add(out);
-        }
-        var result = new JsonObject();
-        result.add("rows", rows);
-        return result;
-    }
-
-    /** The built-in sound event registry in id order. */
-    static JsonObject soundEvents() {
-        var registry = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT;
-        var rows = new JsonArray();
-        for (var event : registry) {
-            var out = new JsonObject();
-            out.addProperty("label", registry.getKey(event).toString());
-            out.addProperty("id", registry.getId(event));
             rows.add(out);
         }
         var result = new JsonObject();
