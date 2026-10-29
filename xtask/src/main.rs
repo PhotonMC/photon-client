@@ -36,7 +36,9 @@ usage: cargo xtask <command>
   setup [--skip-objects] [--named] [--decompile] [--java <path>]
                             the pinned game from Mojang's servers into .data/minecraft
   server [--accept-eula] [--background] [--stop] [--dir <path>] [--memory <size>] [--java <path>]
-                            set up and start the test server (port 25600, RCON 25601)
+         [--version <id>]
+                            set up and start the test server (port 25600, RCON 25601);
+                            --version runs another release's server in its own directory
   play [address] [--user <name>] [--size <w> <h>] [--fullscreen] [--camera back|front]
        [--profile] [--no-build]
                             build and start the client

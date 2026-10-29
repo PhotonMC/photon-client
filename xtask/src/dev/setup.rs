@@ -85,6 +85,29 @@ fn pool(threads: usize) -> Result<rayon::ThreadPool, String> {
         .map_err(|error| error.to_string())
 }
 
+/// The server jar of another release than the pin, for running a vanilla server of that version
+/// beside it (the multi-version work, ADR 0013). Only the server is fetched, and it is kept
+/// where `server --version` finds it.
+pub fn fetch_server_of(id: &str) -> Result<std::path::PathBuf, String> {
+    say(&format!("Minecraft {id}: server jar"));
+    let manifest: Manifest = fetch_json(VERSION_MANIFEST)?;
+    let entry = manifest
+        .versions
+        .into_iter()
+        .find(|entry| entry.id == id)
+        .ok_or(format!("version {id} is not in Mojang's manifest"))?;
+    fs::create_dir_all(runtime()).map_err(|error| error.to_string())?;
+    let path = runtime().join(format!("{id}.json"));
+    fetch(&entry.url, &path, entry.sha1.as_deref())?;
+    let text = fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+    let version: Version =
+        serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))?;
+    let jar = runtime().join(format!("server-{id}.jar"));
+    let server = &version.downloads.server;
+    fetch(&server.url, &jar, Some(&server.sha1))?;
+    Ok(jar)
+}
+
 fn say(message: &str) {
     println!("{message}");
 }

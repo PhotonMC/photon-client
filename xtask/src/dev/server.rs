@@ -172,7 +172,12 @@ fn start(
 
 const SPEC: Spec = Spec {
     flags: &["--accept-eula", "--background", "--stop"],
-    options: &[("--dir", 1), ("--memory", 1), ("--java", 1)],
+    options: &[
+        ("--dir", 1),
+        ("--memory", 1),
+        ("--java", 1),
+        ("--version", 1),
+    ],
 };
 
 pub fn server(args: &[String]) -> Result<(), String> {
@@ -182,14 +187,23 @@ pub fn server(args: &[String]) -> Result<(), String> {
         return Ok(());
     }
     let pins = Pins::load()?;
-    let jar = runtime().join(format!("server-{}.jar", pins.version));
+    // Another release runs from its own jar and directory, so the pinned server's world stays.
+    let other = parsed.value("--version").filter(|id| *id != pins.version);
+    let jar = match other {
+        Some(id) => super::setup::fetch_server_of(id)?,
+        None => runtime().join(format!("server-{}.jar", pins.version)),
+    };
     if !jar.is_file() {
         return Err(format!(
             "{} is missing: run `cargo xtask setup` first",
             jar.display()
         ));
     }
-    let directory = parsed.value("--dir").map_or_else(server_dir, PathBuf::from);
+    let default_dir = match other {
+        Some(id) => server_dir().with_file_name(format!("walk-{id}")),
+        None => server_dir(),
+    };
+    let directory = parsed.value("--dir").map_or(default_dir, PathBuf::from);
     fs::create_dir_all(&directory).map_err(|error| format!("{}: {error}", directory.display()))?;
     check_eula(&directory, parsed.flag("--accept-eula"))?;
     write_properties(&directory)?;
