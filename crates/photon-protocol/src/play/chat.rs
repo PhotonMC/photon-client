@@ -292,6 +292,31 @@ pub fn encode_chat(
     output.push(checksum);
 }
 
+/// `ServerboundChatCommandSignedPacket`: the command (without its slash), when and with what
+/// salt it was sent, a signature for each of its message arguments (name up to 16 characters),
+/// and what the sender has seen.
+pub fn encode_chat_command_signed(
+    command: &str,
+    (millis, salt): (i64, i64),
+    signatures: &[(String, Vec<u8>)],
+    (offset, acknowledged, checksum): (i32, u32, u8),
+    output: &mut Vec<u8>,
+) {
+    let units: Vec<u16> = command.encode_utf16().collect();
+    let _ = photon_core::utf8::write_utf8(output, &units, 32767);
+    output.extend_from_slice(&millis.to_be_bytes());
+    output.extend_from_slice(&salt.to_be_bytes());
+    photon_core::wire::write_varint(signatures.len() as i32, output);
+    for (name, signature) in signatures {
+        let units: Vec<u16> = name.encode_utf16().collect();
+        let _ = photon_core::utf8::write_utf8(output, &units, 16);
+        output.extend_from_slice(signature);
+    }
+    photon_core::wire::write_varint(offset, output);
+    output.extend_from_slice(&acknowledged.to_le_bytes()[..3]);
+    output.push(checksum);
+}
+
 /// Where a signed message sits in its sender's chain (`SignedMessageLink`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MessageLink {

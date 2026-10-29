@@ -135,6 +135,19 @@ fn a_signed_message_covers_the_link_and_the_body_in_vanillas_order() {
 }
 
 #[test]
+fn a_signed_command_lists_its_argument_signatures_before_what_was_seen() {
+    let mut output = Vec::new();
+    let signatures = [("msg".to_owned(), vec![3_u8; 256])];
+    super::super::encode_chat_command_signed("a", (5, 7), &signatures, (1, 2, 3), &mut output);
+    let mut expected = vec![1, b'a'];
+    expected.extend([0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 7]);
+    expected.extend([1, 3, b'm', b's', b'g']);
+    expected.extend([3_u8; 256]);
+    expected.extend([1, 2, 0, 0, 3]);
+    assert_eq!(output, expected);
+}
+
+#[test]
 fn player_chat_reads_the_text_the_type_and_the_sender() {
     let mut payload = vec![0]; // global index
     payload.extend([0; 16]); // sender

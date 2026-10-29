@@ -531,5 +531,6 @@ mod usage;
 pub use check::CommandCheck;
 pub use suggest::{LocalSuggestions, SuggestContext, sort_suggestions};
 pub use usage::{
-    CommandSuggestionsView, format_text, has_message_arguments, has_signable_arguments, usage_lines,
+    CommandSuggestionsView, format_text, has_message_arguments, has_signable_arguments,
+    signable_arguments, usage_lines,
 };

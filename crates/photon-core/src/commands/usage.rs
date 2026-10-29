@@ -127,32 +127,62 @@ pub fn has_signable_arguments(tree: &CommandTree, parse: &ParseResults) -> bool 
     message_in_contexts(tree, parse, true)
 }
 
+/// `SignableCommand.of`: the message arguments of the command read, by name and text, in the
+/// order they were read. What comes after a redirect to the root is left out, as in
+/// [`has_signable_arguments`].
+pub fn signable_arguments(
+    tree: &CommandTree,
+    parse: &ParseResults,
+    command: &str,
+) -> Vec<(String, String)> {
+    let chars: Vec<char> = command.chars().collect();
+    message_ranges(tree, parse, true)
+        .into_iter()
+        .map(|(name, range)| {
+            let (start, end) = (range.start.max(0) as usize, range.end.max(0) as usize);
+            let end = end.min(chars.len());
+            (name, chars[start.min(end)..end].iter().collect())
+        })
+        .collect()
+}
+
 /// `ArgumentVisitor.visitArguments` looking for a message argument.
 fn message_in_contexts(
     tree: &CommandTree,
     parse: &ParseResults,
     reject_root_redirects: bool,
 ) -> bool {
+    !message_ranges(tree, parse, reject_root_redirects).is_empty()
+}
+
+fn message_ranges(
+    tree: &CommandTree,
+    parse: &ParseResults,
+    reject_root_redirects: bool,
+) -> Vec<(String, super::StringRange)> {
     let root = parse.context.root_node();
+    let mut found = Vec::new();
     let mut context = Some(&parse.context);
     while let Some(each) = context {
         if reject_root_redirects && !std::ptr::eq(each, &parse.context) && each.root_node() == root
         {
             break;
         }
-        let found = each.nodes.iter().any(|(node, _)| {
-            matches!(
-                &tree.node(*node).kind,
-                NodeKind::Argument { name, kind: super::ArgumentKind::Greedy }
-                    if each.arguments.iter().any(|(read, _)| read == name)
-            )
-        });
-        if found {
-            return true;
+        for (node, _) in &each.nodes {
+            let NodeKind::Argument {
+                name,
+                kind: super::ArgumentKind::Greedy,
+            } = &tree.node(*node).kind
+            else {
+                continue;
+            };
+            if let Some((_, range)) = each.arguments.iter().find(|(read, _)| read == name) {
+                found.push((name.clone(), *range));
+            }
         }
         context = each.child.as_deref();
     }
-    false
+    found
 }
 
 /// `getExceptionMessage`.
@@ -348,5 +378,41 @@ mod tests {
                 .matches,
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn a_message_argument_is_signable_by_name_and_text() {
+        let stub = |kind, children: Vec<usize>, executable| NodeStub {
+            kind,
+            children,
+            redirect: None,
+            executable,
+            custom_suggestions: false,
+            restricted: false,
+            type_id: 0,
+        };
+        let tree = CommandTree::build(
+            vec![
+                stub(NodeKind::Root, vec![1], false),
+                stub(NodeKind::Literal("msg".into()), vec![2], false),
+                stub(
+                    NodeKind::Argument {
+                        name: "text".into(),
+                        kind: ArgumentKind::Greedy,
+                    },
+                    vec![],
+                    true,
+                ),
+            ],
+            0,
+        )
+        .unwrap();
+        let parse = tree.parse("msg hello  there", 0, true);
+        assert_eq!(
+            signable_arguments(&tree, &parse, "msg hello  there"),
+            vec![("text".to_owned(), "hello  there".to_owned())]
+        );
+        let parse = tree.parse("msg", 0, true);
+        assert!(signable_arguments(&tree, &parse, "msg").is_empty());
     }
 }

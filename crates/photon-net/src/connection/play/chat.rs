@@ -334,11 +334,7 @@ impl PlaySession {
     /// Without a chat session the message goes unsigned.
     pub fn send_chat(&mut self, text: &str, command: bool) -> Result<(), ConnectionError> {
         if command {
-            return self.send(PLAY_SERVERBOUND_CHAT_COMMAND_PACKET_ID, |output| {
-                let units: Vec<u16> = text.encode_utf16().collect();
-                photon_core::utf8::write_utf8(output, &units, 32767)
-                    .map_err(|_| ConnectionError::Codec("chat command"))
-            });
+            return self.send_command(text);
         }
         let millis = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -359,6 +355,48 @@ impl PlaySession {
         self.send(PLAY_SERVERBOUND_CHAT_PACKET_ID, |output| {
             let seen = (update.offset, update.acknowledged, update.checksum);
             encode_chat(text, (millis, salt), signature.as_deref(), seen, output);
+            Ok(())
+        })
+    }
+
+    /// `ClientPacketListener.sendCommand`: a command with a message in it is signed (each
+    /// message by the chat session, if there is one); any other goes as plain text.
+    fn send_command(&mut self, command: &str) -> Result<(), ConnectionError> {
+        let selectors = self.can_use_selectors();
+        let signable = self.social.commands.as_ref().map(|tree| {
+            let parse = tree.parse_as(command, 0, (selectors, true));
+            photon_game::commands::signable_arguments(tree, &parse, command)
+        });
+        let Some(arguments) = signable.filter(|arguments| !arguments.is_empty()) else {
+            return self.send(PLAY_SERVERBOUND_CHAT_COMMAND_PACKET_ID, |output| {
+                let units: Vec<u16> = command.encode_utf16().collect();
+                photon_core::utf8::write_utf8(output, &units, 32767)
+                    .map_err(|_| ConnectionError::Codec("chat command"))
+            });
+        };
+        let millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |time| time.as_millis() as i64);
+        let salt = i64::from(rand_salt());
+        let update = self.social.last_seen.generate_update();
+        let sender = self
+            .state
+            .account
+            .as_ref()
+            .map(|account| account.profile_id);
+        let signatures: Vec<(String, Vec<u8>)> = arguments
+            .into_iter()
+            .filter_map(|(name, value)| {
+                let signature =
+                    self.social
+                        .chat_session
+                        .sign(sender?, &value, (millis, salt), &update.seen)?;
+                Some((name, signature))
+            })
+            .collect();
+        self.send(PLAY_SERVERBOUND_CHAT_COMMAND_SIGNED_PACKET_ID, |output| {
+            let seen = (update.offset, update.acknowledged, update.checksum);
+            encode_chat_command_signed(command, (millis, salt), &signatures, seen, output);
             Ok(())
         })
     }
