@@ -83,6 +83,20 @@ pub(super) fn sky_sprites(block_renderer: &BlockRenderer) -> photon_render::sky:
     }
 }
 
+/// The time each step of a rebuild takes, logged as it goes (`RUST_LOG=info`).
+struct Lap(std::time::Instant);
+
+impl Lap {
+    fn start() -> Self {
+        Self(std::time::Instant::now())
+    }
+
+    fn mark(&mut self, step: &str) {
+        log::info!("resource rebuild: {step} {:?}", self.0.elapsed());
+        self.0 = std::time::Instant::now();
+    }
+}
+
 impl Play {
     /// Answer the reload the server's packs asked for: the packs go in use, or are reported as
     /// failed with the stack that was in use put back.
@@ -139,6 +153,7 @@ impl Play {
     /// What is made of the assets, made again. Making the block atlas anew makes the GPU scene
     /// anew, so every texture is sent again after it.
     fn rebuild_assets(&mut self, root: &str) -> Result<()> {
+        let mut lap = Lap::start();
         let data_root = data_root(root);
         // The colour maps are read through the packs too.
         self.biome_tints = Arc::new(
@@ -150,28 +165,36 @@ impl Play {
             )
             .ok_or("the biome colours could not be read")?,
         );
+        lap.mark("biome colours");
         let (renderer, animated) = bake_blocks(root, &mut self.backend)?;
         self.block_renderer = renderer;
         self.animated_atlas = animated;
+        lap.mark("block atlas");
         self.sections.set_renderer(
             Arc::clone(&self.block_renderer),
             Arc::clone(&self.biome_tints),
             &mut self.backend,
         )?;
+        lap.mark("sections");
         self.sky = Sky::load(
             &data_root,
             root,
             &self.session,
             sky_sprites(&self.block_renderer),
         )?;
+        lap.mark("sky");
         self.backend.load_weather_textures(
             &texture(root, "environment/rain", "rain")?,
             &texture(root, "environment/snow", "snow")?,
         )?;
         self.backend.load_crack_texture(&destroy_stages(root)?)?;
         load_overlay_textures(&mut self.backend, root)?;
+        lap.mark("weather, cracks, overlays");
         self.rebuild_entities(root, &data_root)?;
-        self.rebuild_interface(root)
+        lap.mark("entities");
+        let rebuilt = self.rebuild_interface(root);
+        lap.mark("interface");
+        rebuilt
     }
 
     /// The entity pictures and the particles, which share the entity texture atlas.

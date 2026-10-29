@@ -57,6 +57,8 @@ pub struct HeldKeys {
     pub press: Option<(i32, bool)>,
     /// The files named in `PHOTON_DROP` (separated by `:`) dropped on the window.
     pub file_drop: bool,
+    /// The packs in use loaded again, as the Resource Packs screen's Done does.
+    pub pack_reload: bool,
     /// Text typed into the open screen.
     pub typed: Option<&'static str>,
 }
@@ -250,7 +252,7 @@ fn click_type(id: i32) -> ClickType {
 }
 
 impl HeldKeys {
-    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen), `filedrop` (the files of `PHOTON_DROP`) and
+    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen), `filedrop` (the files of `PHOTON_DROP`), `packreload` and
     /// `debug/K`. Whether `parts` was one of them.
     fn parse_pointer_step(&mut self, parts: &[&str], other: &str) -> Result<bool, String> {
         let keys = self;
@@ -281,6 +283,7 @@ impl HeldKeys {
                 );
             }
             ["filedrop"] => keys.file_drop = true,
+            ["packreload"] => keys.pack_reload = true,
             ["wheel", notches] => {
                 keys.wheel = Some(
                     notches

@@ -352,6 +352,7 @@ impl Controls {
         assets: &ScreenAssets,
     ) -> Result {
         self.scripted_file_drop(held.file_drop, surface, assets);
+        self.pack_reload |= held.pack_reload;
         if held.inventory {
             if self.screen.is_some() {
                 close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;
