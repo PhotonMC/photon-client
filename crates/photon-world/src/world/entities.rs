@@ -216,6 +216,7 @@ impl ClientWorld {
                     entity.rotation.1,
                     entity.rotation.2,
                 ),
+                lerp: Interpolation::spawned(entity.rotation.2),
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
@@ -239,9 +240,6 @@ impl ClientWorld {
                     },
                     paddle_left: false,
                     paddle_right: false,
-                    head_rotation_target: JavaF32::new(entity.rotation.2),
-                    head_lerp_steps: 0,
-                    interpolation: None,
                     on_ground: false,
                     tracking: Tracking::at(entity.x, entity.y, entity.z),
                     always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,

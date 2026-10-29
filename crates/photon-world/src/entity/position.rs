@@ -61,3 +61,23 @@ impl Motion {
         }
     }
 }
+
+/// How an entity eases toward what the server last sent: its position and turn (`interpolation`)
+/// and its head.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct Interpolation {
+    pub(crate) head_rotation_target: JavaF32,
+    pub(crate) head_lerp_steps: u8,
+    pub(crate) interpolation: Option<EntityInterpolationState>,
+}
+
+impl Interpolation {
+    /// An entity that was just added, its head already where it faces.
+    pub(crate) fn spawned(head: f32) -> Self {
+        Self {
+            head_rotation_target: JavaF32::new(head),
+            head_lerp_steps: 0,
+            interpolation: None,
+        }
+    }
+}

@@ -382,12 +382,12 @@ impl ClientWorld {
     /// Apply the three-tick head rotation interpolation target from a
     /// clientbound RotateHead packet to an entity in the client world.
     pub fn apply_entity_head_rotation(&mut self, entity_id: EntityId, y_head_rot: f32) -> bool {
-        let Some(mut entity) = self.entities.at_mut(entity_id) else {
+        let Some(entity) = self.entities.at_mut(entity_id) else {
             return false;
         };
         if entity.living_kind().is_some() {
-            entity.head_rotation_target = JavaF32::new(y_head_rot);
-            entity.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
+            entity.lerp.head_rotation_target = JavaF32::new(y_head_rot);
+            entity.lerp.head_lerp_steps = LIVING_ENTITY_HEAD_LERP_STEPS;
         } else {
             entity.rotation.y_head_rot = JavaF32::new(y_head_rot);
         }

@@ -46,8 +46,8 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_head_rotation(&mut self) {
         advance_head_rotation(
             &mut self.rotation.y_head_rot,
-            self.entity.head_rotation_target,
-            &mut self.entity.head_lerp_steps,
+            self.lerp.head_rotation_target,
+            &mut self.lerp.head_lerp_steps,
         );
     }
 }
@@ -60,14 +60,6 @@ impl ClientEntity {
 
     pub fn boat_delta_rotation(&self) -> f32 {
         self.delta_rotation.get()
-    }
-
-    pub fn head_rotation_target(&self) -> f32 {
-        self.head_rotation_target.get()
-    }
-
-    pub fn head_rotation_lerp_steps(&self) -> u8 {
-        self.head_lerp_steps
     }
 }
 
@@ -179,4 +171,14 @@ pub(crate) fn advance_head_rotation(current: &mut JavaF32, target: JavaF32, step
     let to = f64::from(target.get());
     *current = JavaF32::new(mth_rot_lerp_f64(1.0 / step_count, from, to) as f32);
     *steps -= 1;
+}
+
+impl EntityView<'_> {
+    pub fn head_rotation_target(&self) -> f32 {
+        self.lerp.head_rotation_target.get()
+    }
+
+    pub fn head_rotation_lerp_steps(&self) -> u8 {
+        self.lerp.head_lerp_steps
+    }
 }

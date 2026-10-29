@@ -1,32 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
-        self.interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map(EntityInterpolationState::target_position)
-    }
-
-    pub fn interpolation_target_rotation(&self) -> Option<(f32, f32)> {
-        self.interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map(EntityInterpolationState::target_rotation)
-    }
-
-    pub fn interpolation_steps(&self) -> u8 {
-        self.interpolation
-            .filter(|interpolation| interpolation.steps > 0)
-            .map_or(0, |interpolation| interpolation.steps)
-    }
-
-    /// Whether a position interpolation is still under way
-    /// (`LivingEntity.isInterpolating`).
-    pub(crate) fn is_interpolating(&self) -> bool {
-        self.interpolation
-            .as_ref()
-            .is_some_and(|interpolation| interpolation.steps > 0)
-    }
-
     /// Whether the entity has an `InterpolationHandler` (`getInterpolation` is not null): the
     /// living, the minecarts, the displays, the boats and the experience orbs ease to the
     /// positions the server sends.
@@ -84,7 +58,8 @@ impl EntityInterpolationState {
 
 impl EntityView<'_> {
     pub(crate) fn interpolation_rotation(&self) -> (f32, f32) {
-        self.interpolation
+        self.lerp
+            .interpolation
             .filter(|interpolation| interpolation.steps > 0)
             .map_or_else(
                 || self.rotation.body_rotation(),
@@ -122,10 +97,10 @@ impl EntityViewMut<'_> {
         if steps == 0 {
             // `InterpolationHandler.interpolateTo` with no steps: put there at once.
             self.snap_to(position, y_rot, x_rot);
-            self.interpolation = None;
+            self.lerp.interpolation = None;
             return;
         }
-        let target_matches = self.interpolation.is_some_and(|interpolation| {
+        let target_matches = self.lerp.interpolation.is_some_and(|interpolation| {
             interpolation.steps > 0
                 && interpolation.target.x == JavaF64::new(position.0)
                 && interpolation.target.y == JavaF64::new(position.1)
@@ -139,7 +114,7 @@ impl EntityViewMut<'_> {
 
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
-        self.interpolation = Some(EntityInterpolationState {
+        self.lerp.interpolation = Some(EntityInterpolationState {
             target: DVec3::new(position.0, position.1, position.2),
             target_y_rot: JavaF32::new(y_rot),
             target_x_rot: JavaF32::new(x_rot),
@@ -190,6 +165,7 @@ impl EntityViewMut<'_> {
         let current_position = self.position();
         let current_rotation = self.rotation.body_rotation();
         let Some(interpolation) = self
+            .lerp
             .interpolation
             .as_mut()
             .filter(|interpolation| interpolation.steps > 0)
@@ -299,7 +275,8 @@ impl EntityViewMut<'_> {
 
 impl EntityView<'_> {
     pub(crate) fn interpolation_position(&self) -> (f64, f64, f64) {
-        self.interpolation
+        self.lerp
+            .interpolation
             .filter(|interpolation| interpolation.steps > 0)
             .map_or_else(
                 || self.position(),
@@ -316,5 +293,37 @@ impl EntityView<'_> {
             mth_lerp_f64(partial_tick, previous.1, current.1),
             mth_lerp_f64(partial_tick, previous.2, current.2),
         )
+    }
+}
+
+impl EntityView<'_> {
+    pub fn interpolation_target_position(&self) -> Option<(f64, f64, f64)> {
+        self.lerp
+            .interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map(EntityInterpolationState::target_position)
+    }
+
+    pub fn interpolation_target_rotation(&self) -> Option<(f32, f32)> {
+        self.lerp
+            .interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map(EntityInterpolationState::target_rotation)
+    }
+
+    pub fn interpolation_steps(&self) -> u8 {
+        self.lerp
+            .interpolation
+            .filter(|interpolation| interpolation.steps > 0)
+            .map_or(0, |interpolation| interpolation.steps)
+    }
+
+    /// Whether a position interpolation is still under way
+    /// (`LivingEntity.isInterpolating`).
+    pub(crate) fn is_interpolating(&self) -> bool {
+        self.lerp
+            .interpolation
+            .as_ref()
+            .is_some_and(|interpolation| interpolation.steps > 0)
     }
 }

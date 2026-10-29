@@ -148,7 +148,7 @@ impl EntityViewMut<'_> {
         }
         self.tick_axolotl();
         self.tick_guardian(targets.guardian);
-        let was_interpolating = self.is_interpolating();
+        let was_interpolating = self.as_view().is_interpolating();
         if living.is_some() {
             self.tick_position_interpolation();
         }

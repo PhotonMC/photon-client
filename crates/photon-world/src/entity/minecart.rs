@@ -67,7 +67,7 @@ impl EntityViewMut<'_> {
         }
         if self.minecart_track().is_some() {
             self.tick_minecart_track();
-        } else if self.is_interpolating() {
+        } else if self.as_view().is_interpolating() {
             self.tick_position_interpolation();
         } else {
             let (y_rot, x_rot) = (self.rotation.y_rot.get(), self.rotation.x_rot.get());

@@ -11,6 +11,7 @@ pub struct EntityView<'a> {
     pub(crate) rotation: &'a Rotation,
     pub(crate) pos: &'a Position,
     pub(crate) vel: &'a Motion,
+    pub(crate) lerp: &'a Interpolation,
 }
 
 /// One entity, to change.
@@ -19,6 +20,7 @@ pub struct EntityViewMut<'a> {
     pub(crate) rotation: &'a mut Rotation,
     pub(crate) pos: &'a mut Position,
     pub(crate) vel: &'a mut Motion,
+    pub(crate) lerp: &'a mut Interpolation,
 }
 
 impl<'a> EntityView<'a> {
@@ -63,6 +65,7 @@ impl<'a> EntityViewMut<'a> {
             rotation: self.rotation,
             pos: self.pos,
             vel: self.vel,
+            lerp: self.lerp,
         }
     }
 }
@@ -75,6 +78,7 @@ pub struct EntityParts {
     pub(crate) rotation: Rotation,
     pub(crate) pos: Position,
     pub(crate) vel: Motion,
+    pub(crate) lerp: Interpolation,
 }
 
 impl EntityParts {
@@ -84,6 +88,7 @@ impl EntityParts {
             rotation: &self.rotation,
             pos: &self.pos,
             vel: &self.vel,
+            lerp: &self.lerp,
         }
     }
 
@@ -93,6 +98,7 @@ impl EntityParts {
             rotation: &mut self.rotation,
             pos: &mut self.pos,
             vel: &mut self.vel,
+            lerp: &mut self.lerp,
         }
     }
 }

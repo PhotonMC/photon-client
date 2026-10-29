@@ -28,9 +28,6 @@ pub struct ClientEntity {
     pub(crate) flight: crate::objects::flight::FlightState,
     pub(crate) paddle_left: bool,
     pub(crate) paddle_right: bool,
-    pub(crate) head_rotation_target: JavaF32,
-    pub(crate) head_lerp_steps: u8,
-    pub(crate) interpolation: Option<EntityInterpolationState>,
     pub(crate) on_ground: bool,
     pub(crate) tracking: Tracking,
     pub(crate) always_ticking: bool,
@@ -124,7 +121,7 @@ pub use pose::*;
 mod projectile;
 pub(crate) use projectile::*;
 mod rotation;
-pub use position::{Motion, Position};
+pub use position::{Interpolation, Motion, Position};
 pub use rotation::Rotation;
 mod position;
 mod view;
