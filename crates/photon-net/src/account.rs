@@ -64,6 +64,23 @@ pub(crate) fn undashed(id: Uuid) -> String {
     format!("{:016x}{:016x}", id.most, id.least)
 }
 
+/// Whether a plain `http://` host names this machine, by its exact host name.
+pub(crate) fn is_this_machine(host: &str) -> bool {
+    let Some(rest) = host.strip_prefix("http://") else {
+        return false;
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    // Before an `@` comes a user name, and the host is what follows it.
+    if authority.contains('@') {
+        return false;
+    }
+    let name = match authority.strip_prefix('[') {
+        Some(inner) => inner.split(']').next().map(|ip| format!("[{ip}]")),
+        None => authority.split(':').next().map(str::to_owned),
+    };
+    matches!(name.as_deref(), Some("127.0.0.1" | "localhost" | "[::1]"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

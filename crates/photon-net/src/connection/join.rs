@@ -6,7 +6,7 @@ use std::time::Duration;
 use photon_core::json;
 use photon_protocol::play::{ConnectionError, LoginFailure};
 
-use crate::account::{Account, undashed};
+use crate::account::{Account, is_this_machine, undashed};
 
 /// Post the join. Everything that goes wrong comes back as the failure vanilla words it.
 pub(super) fn join_server(
@@ -72,23 +72,6 @@ fn join_url(host: &str) -> Result<String, ConnectionError> {
         "{}/session/minecraft/join",
         host.trim_end_matches('/')
     ))
-}
-
-/// Whether a plain `http://` host names this machine, by its exact host name.
-fn is_this_machine(host: &str) -> bool {
-    let Some(rest) = host.strip_prefix("http://") else {
-        return false;
-    };
-    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
-    // Before an `@` comes a user name, and the host is what follows it.
-    if authority.contains('@') {
-        return false;
-    }
-    let name = match authority.strip_prefix('[') {
-        Some(inner) => inner.split(']').next().map(|ip| format!("[{ip}]")),
-        None => authority.split(':').next().map(str::to_owned),
-    };
-    matches!(name.as_deref(), Some("127.0.0.1" | "localhost" | "[::1]"))
 }
 
 fn json_string(text: &str) -> String {
