@@ -52,7 +52,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 out.push(json!({
                     "label": label,
                     "outcome": "listed",
-                    "block_count": registry::BLOCKS.len(),
+                    "block_count": crate::case_ids::blocks().count(),
                     "state_count": crate::case_ids::blocks()
                         .map(registry::Block::state_count)
                         .sum::<u32>(),
@@ -188,40 +188,10 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     json!({"label": label, "outcome": "listed", "blocks": blocks, "items": items}),
                 );
             }
-            "destroy_properties" => {
-                let blocks: Vec<Value> = crate::case_ids::blocks()
-                    .map(|block| {
-                        let mut states: Vec<String> = (0..block.state_count())
-                            .map(|offset| {
-                                let state = photon_world::block::state(block.state_at(offset))
-                                    .expect("a registry state");
-                                format!(
-                                    "{:08x}|{}|{}|{}",
-                                    block.destroy_time.to_bits(),
-                                    block.requires_correct_tool_for_drops,
-                                    block.air,
-                                    state.fluid.legacy_block()
-                                )
-                            })
-                            .collect();
-                        if states.iter().all(|state| *state == states[0]) {
-                            states.truncate(1);
-                        }
-                        json!({
-                            "name": block.name,
-                            "game_master": block.class.implements(
-                                photon_data::block::classes::BlockInterface::GameMasterBlock,
-                            ),
-                            "states": states,
-                        })
-                    })
-                    .collect();
-                out.push(json!({"label": label, "outcome": "listed", "blocks": blocks}));
-            }
+            "destroy_properties" => out.push(destroy_properties(label)),
             "item_tools" => {
-                use photon_data::item::registry::{ITEMS, RuleBlocks};
-                let items: Vec<Value> = ITEMS
-                    .iter()
+                use photon_data::item::registry::RuleBlocks;
+                let items: Vec<Value> = crate::case_ids::items()
                     .map(|item| {
                         let mut described = json!({"name": item.name});
                         if let Some(tool) = item.tool {
@@ -296,11 +266,11 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 use photon_data::item::component_sets::DEFAULT_COMPONENT_SETS;
                 let items: Vec<Value> = PATCHES
                     .lines()
-                    .enumerate()
-                    .map(|(index, line)| {
+                    .map(|line| {
+                        let (name, wire) = line.split_once(' ').expect("a name and its bytes");
+                        let index = photon_data::item::registry::index(name).expect("a listed item");
                         let set = DEFAULT_COMPONENT_SETS.get(index).copied().unwrap_or(0);
                         let types: Vec<u32> = (0..128).filter(|id| set >> id & 1 == 1).collect();
-                        let (name, wire) = line.split_once(' ').expect("a name and its bytes");
                         let bytes: Vec<u8> = (0..wire.len())
                             .step_by(2)
                             .map(|at| u8::from_str_radix(&wire[at..at + 2], 16).expect("hex"))
@@ -332,7 +302,10 @@ fn block_result(request: &Value) -> Result<Value, String> {
                     let made = photon_game::menus::creative::table_stack(entry, &registries);
                     let mut wire = Vec::new();
                     photon_core::wire::write_varint(made.item_count(), &mut wire);
-                    photon_core::wire::write_varint(made.item_registry_id().0, &mut wire);
+                    photon_core::wire::write_varint(
+                        crate::case_ids::wire_item(made.item_registry_id()),
+                        &mut wire,
+                    );
                     wire.extend(made.patch().trusted());
                     let mut components = serde_json::Map::new();
                     for component in entry.components {
@@ -486,4 +459,36 @@ fn menu_providers(request: &Value) -> Result<Value, String> {
         })
         .collect();
     Ok(json!({"rows": rows}))
+}
+
+/// `destroy_properties`: each block's destroy time, tool rule, air flag and fluid per state.
+fn destroy_properties(label: &str) -> Value {
+    let blocks: Vec<Value> = crate::case_ids::blocks()
+        .map(|block| {
+            let mut states: Vec<String> = (0..block.state_count())
+                .map(|offset| {
+                    let state = photon_world::block::state(block.state_at(offset))
+                        .expect("a registry state");
+                    format!(
+                        "{:08x}|{}|{}|{}",
+                        block.destroy_time.to_bits(),
+                        block.requires_correct_tool_for_drops,
+                        block.air,
+                        crate::case_ids::wire_state(state.fluid.legacy_block())
+                    )
+                })
+                .collect();
+            if states.iter().all(|state| *state == states[0]) {
+                states.truncate(1);
+            }
+            json!({
+                "name": block.name,
+                "game_master": block.class.implements(
+                    photon_data::block::classes::BlockInterface::GameMasterBlock,
+                ),
+                "states": states,
+            })
+        })
+        .collect();
+    json!({"label": label, "outcome": "listed", "blocks": blocks})
 }

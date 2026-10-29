@@ -269,7 +269,7 @@
 "crates/photon-net/src/connection/play/lifecycle.rs::PlaySession::tick" = 15
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_position_result" = 14
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 19
-"crates/photon-oracle/src/block.rs::block_result" = 43
+"crates/photon-oracle/src/block.rs::block_result" = 42
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 12
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 12
 "crates/photon-oracle/src/boat_ticks.rs::client_world_entity_boat_tick_result" = 16
@@ -644,7 +644,7 @@
 "crates/photon-oracle/src/animal.rs::client_world_entity_passenger_animal_rotation_result" = 182
 "crates/photon-oracle/src/animal_models.rs::shaking_rotations_result" = 95
 "crates/photon-oracle/src/animation.rs::copper_golem_layers_result" = 70
-"crates/photon-oracle/src/block.rs::block_result" = 425
+"crates/photon-oracle/src/block.rs::block_result" = 398
 "crates/photon-oracle/src/blockpos.rs::key_mapping_result" = 121
 "crates/photon-oracle/src/blockpos.rs::toggle_key_mapping_result" = 138
 "crates/photon-oracle/src/blockstate.rs::model_state_result" = 62

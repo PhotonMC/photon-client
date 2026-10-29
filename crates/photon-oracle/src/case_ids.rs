@@ -69,3 +69,13 @@ pub(crate) fn world(dimension: photon_world::DimensionBounds) -> photon_world::C
     world.set_versions(registries());
     world
 }
+
+/// The wire id of an item, as the oracle's Java numbers it.
+pub(crate) fn wire_item(item: ItemId) -> i32 {
+    registries().items.wire_or_unknown(item.0)
+}
+
+/// The wire id of a block state, as the oracle's Java numbers it.
+pub(crate) fn wire_state(state: BlockStateId) -> i32 {
+    registries().block_states.wire_or_unknown(state.0)
+}
