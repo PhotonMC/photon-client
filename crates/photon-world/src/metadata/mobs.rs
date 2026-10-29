@@ -6,7 +6,7 @@ pub(crate) fn copper_golem_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<(Option<i32>, Option<i32>)> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:copper_golem" {
+    if type_id != photon_data::entity_type::ids::COPPER_GOLEM {
         return None;
     }
     let varint = |data_id: u8, serializer: i32| {
@@ -32,7 +32,7 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:glow_squid" {
+    if type_id != photon_data::entity_type::ids::GLOW_SQUID {
         return None;
     }
     metadata_int_value(metadata, GLOW_SQUID_DARK_TICKS_DATA_ID)
@@ -41,7 +41,7 @@ pub(crate) fn glow_squid_dark_ticks_from_metadata(
 /// Whether a ghast is charging a fireball (`Ghast.DATA_IS_CHARGING`), when the
 /// data holds it.
 pub(crate) fn ghast_charging_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:ghast" {
+    if type_id != photon_data::entity_type::ids::GHAST {
         return None;
     }
     metadata_boolean_value(metadata, GHAST_CHARGING_DATA_ID)
@@ -52,7 +52,7 @@ pub(crate) fn wither_skull_dangerous_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:wither_skull" {
+    if type_id != photon_data::entity_type::ids::WITHER_SKULL {
         return None;
     }
     metadata_boolean_value(metadata, WITHER_SKULL_DANGEROUS_DATA_ID)
@@ -79,7 +79,7 @@ pub(crate) fn flier_data_from_metadata(
 
 /// A parrot's variant id (`Parrot.DATA_VARIANT_ID`), when the data holds it.
 pub(crate) fn parrot_variant_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:parrot" {
+    if type_id != photon_data::entity_type::ids::PARROT {
         return None;
     }
     metadata_int_value(metadata, PARROT_VARIANT_DATA_ID)
@@ -106,7 +106,7 @@ pub(crate) fn sulfur_cube_fuse_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:sulfur_cube" {
+    if type_id != photon_data::entity_type::ids::SULFUR_CUBE {
         return None;
     }
     metadata_int_value(metadata, SULFUR_CUBE_FUSE_DATA_ID)
@@ -118,7 +118,7 @@ pub(crate) fn shulker_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<u8>, Option<u8>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:shulker") {
+    if type_id != photon_data::entity_type::ids::SHULKER {
         return (None, None, None);
     }
     let face = find_metadata_field(metadata, SHULKER_ATTACH_FACE_DATA_ID)
@@ -133,7 +133,7 @@ pub(crate) fn shulker_data_from_metadata(
 
 /// A phantom's size (`Phantom.ID_SIZE`), when the data holds it.
 pub(crate) fn phantom_size_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:phantom" {
+    if type_id != photon_data::entity_type::ids::PHANTOM {
         return None;
     }
     metadata_int_value(metadata, PHANTOM_SIZE_DATA_ID)
@@ -141,7 +141,7 @@ pub(crate) fn phantom_size_from_metadata(type_id: EntityTypeId, metadata: &[u8])
 
 /// A warden's client anger level (`Warden.CLIENT_ANGER_LEVEL`), when the data holds it.
 pub(crate) fn warden_anger_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:warden" {
+    if type_id != photon_data::entity_type::ids::WARDEN {
         return None;
     }
     metadata_int_value(metadata, crate::mobs::warden::CLIENT_ANGER_DATA_ID)
@@ -166,7 +166,7 @@ pub(crate) fn sniffer_state_from_metadata(
 ) -> Option<crate::mobs::sniffer::SnifferMode> {
     /// `EntityDataSerializers.SNIFFER_STATE`'s place in the registry of serializers.
     const SNIFFER_STATE_SERIALIZER_ID: i32 = 35;
-    if photon_data::entity_type::name(type_id)? != "minecraft:sniffer" {
+    if type_id != photon_data::entity_type::ids::SNIFFER {
         return None;
     }
     let (serializer_id, mut value_input) =
@@ -188,7 +188,7 @@ pub(crate) fn armadillo_state_from_metadata(
 ) -> Option<crate::mobs::armadillo::ArmadilloMode> {
     /// `EntityDataSerializers.ARMADILLO_STATE`'s place in the registry of serializers.
     const ARMADILLO_STATE_SERIALIZER_ID: i32 = 36;
-    if photon_data::entity_type::name(type_id)? != "minecraft:armadillo" {
+    if type_id != photon_data::entity_type::ids::ARMADILLO {
         return None;
     }
     let (serializer_id, mut value_input) =
@@ -259,7 +259,7 @@ pub(crate) fn axolotl_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:axolotl") {
+    if type_id != photon_data::entity_type::ids::AXOLOTL {
         return (None, None);
     }
     (
@@ -274,7 +274,7 @@ pub(crate) fn turtle_eggs_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:turtle") {
+    if type_id != photon_data::entity_type::ids::TURTLE {
         return (None, None);
     }
     (
@@ -286,7 +286,7 @@ pub(crate) fn turtle_eggs_from_metadata(
 /// A hoglin's immunity to zombification (`Hoglin.DATA_IMMUNE_TO_ZOMBIFICATION`),
 /// when the data holds it.
 pub(crate) fn hoglin_immune_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:hoglin" {
+    if type_id != photon_data::entity_type::ids::HOGLIN {
         return None;
     }
     metadata_boolean_value(metadata, HOGLIN_IMMUNE_DATA_ID)
@@ -297,7 +297,7 @@ pub(crate) fn panda_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> crate::mobs::panda::PandaData {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:panda") {
+    if type_id != photon_data::entity_type::ids::PANDA {
         return crate::mobs::panda::PandaData::default();
     }
     crate::mobs::panda::PandaData {
@@ -315,7 +315,7 @@ pub(crate) fn polar_bear_standing_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:polar_bear" {
+    if type_id != photon_data::entity_type::ids::POLAR_BEAR {
         return None;
     }
     metadata_boolean_value(metadata, POLAR_BEAR_STANDING_DATA_ID)
@@ -323,7 +323,7 @@ pub(crate) fn polar_bear_standing_from_metadata(
 
 /// A rabbit's variant (`Rabbit.DATA_TYPE_ID`), when the data holds it.
 pub(crate) fn rabbit_type_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:rabbit" {
+    if type_id != photon_data::entity_type::ids::RABBIT {
         return None;
     }
     metadata_int_value(metadata, RABBIT_TYPE_DATA_ID)
@@ -331,7 +331,7 @@ pub(crate) fn rabbit_type_from_metadata(type_id: EntityTypeId, metadata: &[u8]) 
 
 /// A mooshroom's variant (`MushroomCow.DATA_TYPE`), when the data holds it.
 pub(crate) fn mooshroom_type_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> Option<i32> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:mooshroom" {
+    if type_id != photon_data::entity_type::ids::MOOSHROOM {
         return None;
     }
     metadata_int_value(metadata, MOOSHROOM_TYPE_DATA_ID)
@@ -343,7 +343,7 @@ pub(crate) fn snow_golem_pumpkin_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:snow_golem" {
+    if type_id != photon_data::entity_type::ids::SNOW_GOLEM {
         return None;
     }
     metadata_byte_value(metadata, SNOW_GOLEM_PUMPKIN_DATA_ID).map(|flags| flags & 16 != 0)
@@ -355,7 +355,7 @@ pub(crate) fn piglin_flags_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<bool>, Option<bool>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:piglin") {
+    if type_id != photon_data::entity_type::ids::PIGLIN {
         return (None, None, None);
     }
     (
@@ -382,7 +382,7 @@ pub(crate) fn creeper_fuse_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:creeper") {
+    if type_id != photon_data::entity_type::ids::CREEPER {
         return (None, None);
     }
     (
@@ -397,7 +397,7 @@ pub(crate) fn creeper_powered_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> Option<bool> {
-    if photon_data::entity_type::name(type_id)? != "minecraft:creeper" {
+    if type_id != photon_data::entity_type::ids::CREEPER {
         return None;
     }
     metadata_boolean_value(metadata, CREEPER_POWERED_DATA_ID)
@@ -462,7 +462,7 @@ pub(crate) fn enderman_flags_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<i32>, Option<bool>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:enderman") {
+    if type_id != photon_data::entity_type::ids::ENDERMAN {
         return (None, None);
     }
     let carrying = find_metadata_field(metadata, ENDERMAN_CARRY_DATA_ID)
@@ -480,7 +480,7 @@ pub(crate) fn bee_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<u8>, Option<i64>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:bee") {
+    if type_id != photon_data::entity_type::ids::BEE {
         return (None, None);
     }
     let anger = find_metadata_field(metadata, BEE_ANGER_END_DATA_ID)
@@ -493,7 +493,7 @@ pub(crate) fn bee_data_from_metadata(
 }
 
 pub(crate) fn wolf_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> WolfData {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:wolf") {
+    if type_id != photon_data::entity_type::ids::WOLF {
         return WolfData::default();
     }
     let anger_end = find_metadata_field(metadata, WOLF_ANGER_END_DATA_ID)
@@ -533,7 +533,7 @@ pub(crate) struct TamableData {
 }
 
 pub(crate) fn cat_data_from_metadata(type_id: EntityTypeId, metadata: &[u8]) -> CatData {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:cat") {
+    if type_id != photon_data::entity_type::ids::CAT {
         return CatData::default();
     }
     CatData {
@@ -551,7 +551,7 @@ pub(crate) fn fox_data_from_metadata(
     type_id: EntityTypeId,
     metadata: &[u8],
 ) -> (Option<u8>, Option<i32>) {
-    if photon_data::entity_type::name(type_id) != Some("minecraft:fox") {
+    if type_id != photon_data::entity_type::ids::FOX {
         return (None, None);
     }
     (

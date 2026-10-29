@@ -1,6 +1,8 @@
 //! The entity type registry: each type's name, and its id (its place in the
 //! list, which is what the wire carries).
 
+pub mod ids;
+
 use photon_core::ids::EntityTypeId;
 use photon_core::version::Version;
 
