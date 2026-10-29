@@ -11,6 +11,7 @@ use photon_world::{ClientWorld, DimensionBounds, DimensionEnvironment};
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ConnectionState {
     /// The version the connection speaks, chosen before it opens ([`super::select_version`]).
+    /// The newest until then: a path that builds a state and skips the choice speaks the newest.
     pub version: photon_core::version::Version,
     /// The protocol number the server list saw the server answer with, when it did: the
     /// connection takes its version from it instead of asking the server.

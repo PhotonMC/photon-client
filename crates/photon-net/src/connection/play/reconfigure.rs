@@ -336,7 +336,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(photon_core::version::Version::NEWEST),
+            crate::connection::play::version_tests::registries(),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -375,7 +375,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(photon_core::version::Version::NEWEST),
+            crate::connection::play::version_tests::registries(),
         );
         let mut session = PlaySession::assemble(stream, None, incoming, state, ("Tester", false));
         session.wait(Duration::from_secs(5)).expect("started");
@@ -487,7 +487,7 @@ mod tests {
                 .expect("disconnect");
         });
         let first = ConnectionState {
-            protocol_hint: Some(photon_core::version::Version::NEWEST.protocol()),
+            protocol_hint: Some(crate::connection::play::version_tests::protocol()),
             ..ConnectionState::default()
         };
         let error = match PlaySession::connect_with(
@@ -618,7 +618,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(photon_core::version::Version::NEWEST),
+            crate::connection::play::version_tests::registries(),
         );
         let first = ConnectionState {
             dimension_type_registry_bounds: vec![
@@ -690,7 +690,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(photon_core::version::Version::NEWEST),
+            crate::connection::play::version_tests::registries(),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -752,7 +752,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(photon_core::version::Version::NEWEST),
+            crate::connection::play::version_tests::registries(),
         );
         let mut session = PlaySession::assemble(
             stream,

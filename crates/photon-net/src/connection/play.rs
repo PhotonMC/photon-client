@@ -55,6 +55,8 @@ mod pack_tests;
 mod profile_tests;
 mod recipes;
 mod reconfigure;
+#[cfg(test)]
+mod version_tests;
 pub use command_blocks::{CommandBlockSettings, CommandBlockState};
 pub use groups::GlobalBlock;
 pub use reconfigure::SwitchKind;
@@ -204,11 +206,9 @@ mod tests {
     /// The id the newest version's wire gives the type.
     fn wire_entity_type(name: &str) -> u32 {
         let canonical = photon_data::entity_type::named(name).0;
-        photon_data::version_registries::VersionRegistries::of(
-            photon_core::version::Version::NEWEST,
-        )
-        .entity_types
-        .wire_or_unknown(canonical) as u32
+        crate::connection::play::version_tests::registries()
+            .entity_types
+            .wire_or_unknown(canonical) as u32
     }
 
     fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {

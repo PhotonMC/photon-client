@@ -12,18 +12,17 @@ non_ascii_allowed = []
 # Where `Version` values may be compared: version modules and the dispatch points (ADR 0013).
 version_allowed = ["crates/photon-core/src/version.rs", "crates/photon-data/src/version_registries.rs", "crates/photon-data/src/block/definition.rs", "crates/photon-data/src/item/definition.rs"]
 
-# Where `Version::NEWEST` may be named: the places that select a version, and tests. Everything
+# Where `Version::NEWEST` or the `PHOTON_CONNECT_VERSION` override may be named: the places that select a version, and tests. Everything
 # else takes the session's registries, so a connection to an older version is not numbered by
 # the newest one.
 newest_allowed = [
     "crates/photon-core/src/version.rs",
     "crates/photon-data/src/version_registries.rs",
+    "crates/photon-net/src/connection.rs",
     "crates/photon-net/src/connection/session.rs",
     "crates/photon-net/src/connection/version.rs",
-    "crates/photon-net/src/connection/play.rs",
-    "crates/photon-net/src/connection/play/pack_tests.rs",
-    "crates/photon-net/src/connection/play/profile_tests.rs",
-    "crates/photon-net/src/connection/play/reconfigure.rs",
+    "crates/photon-net/src/connection/play/version_tests.rs",
+    "crates/photon-dev/src/",
     "crates/photon/src/menu.rs",
     "crates/photon-world/src/world/dimension.rs",
     "crates/photon-world/src/tests.rs",

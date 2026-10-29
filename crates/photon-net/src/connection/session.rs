@@ -68,10 +68,19 @@ pub fn send_handshake_intention(
     address: SocketAddr,
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
-    // A status request announces the client's own protocol, as the reference does.
+    send_status_handshake(stream, (&address.ip().to_string(), address.port()), intent)
+}
+
+/// The handshake of a status request, which announces the client's own protocol, as the reference
+/// does.
+pub fn send_status_handshake(
+    stream: &mut Transport,
+    (host, port): (&str, u16),
+    intent: ClientIntent,
+) -> Result<(), ConnectionError> {
     send_handshake_to(
         stream,
-        (&address.ip().to_string(), address.port()),
+        (host, port),
         (intent, photon_core::version::Version::NEWEST),
     )
 }

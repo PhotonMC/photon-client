@@ -138,13 +138,22 @@ fn version_rules(
             .lines()
             .enumerate()
             .filter(|(_, line)| {
-                !line.trim_start().starts_with("//") && line.contains("Version::NEWEST")
+                !line.trim_start().starts_with("//")
+                    && NEWEST_NAMES.iter().any(|name| line.contains(name))
             })
             .map(|(index, _)| index + 1)
             .collect();
         count(path, Rule::NewestVersion, &lines, findings);
     }
 }
+
+/// What picks a version without going through a session's registries: the newest version by
+/// name, and the development override.
+const NEWEST_NAMES: [&str; 3] = [
+    "Version::NEWEST",
+    "development_version",
+    "PHOTON_CONNECT_VERSION",
+];
 
 fn version_allowed(config: &Config, path: &str) -> bool {
     path.contains("/versions/") || config::allowed(&config.version_allowed, path)

@@ -3,8 +3,9 @@
 //!
 //! A canonical id is a definition's place in the union list. A version's wire id is its place in
 //! that list with the definitions the version does not have left out, the way the block registry
-//! numbers states already. Both are computed from the definitions, not stored. For the newest
-//! version nothing is left out and the maps are the identity.
+//! numbers states already, and a version that orders some entries differently puts them in its own
+//! order (`versions/`). Both are computed from the definitions, not stored. For the newest version
+//! only what a newer version removed (`until`) is left out.
 
 use photon_core::version::Version;
 

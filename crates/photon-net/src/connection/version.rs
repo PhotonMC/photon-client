@@ -7,7 +7,7 @@ use std::time::Duration;
 use photon_core::version::Version;
 use photon_game::server_status::ServerStatus;
 
-use super::status::query_status_and_ping;
+use super::status::query_status_text;
 
 /// Development only: `PHOTON_CONNECT_VERSION` names a supported release (`26.1`) to speak
 /// whatever the server says. Read at every connection.
@@ -17,23 +17,32 @@ pub fn development_version() -> Option<Version> {
         .and_then(|name| Version::from_name(&name))
 }
 
-/// The version to speak to the server at `address`: from the protocol the server list last saw
-/// (`hint`), else from a status request. A protocol that is not a supported version, or a server
-/// that does not answer, gives the newest version and leaves it to the server to refuse it, as
-/// the reference client does with its own.
-pub fn select_version(address: SocketAddr, timeout: Duration, hint: Option<i32>) -> Version {
+/// How long the choice may wait for the server's status: a server that does not answer in time
+/// is taken as the newest version, so it never holds a login back for long.
+const STATUS_WAIT: Duration = Duration::from_secs(3);
+
+/// The version to speak to the server at `address` (reached under `host` where that is not the
+/// address's own): from the protocol the server list last saw (`hint`), else from a status
+/// request. A protocol that is not a supported version, or a server that does not answer, gives
+/// the newest version and leaves it to the server to refuse it, as the reference client does
+/// with its own.
+pub fn select_version(
+    (address, host): (SocketAddr, Option<&str>),
+    timeout: Duration,
+    hint: Option<i32>,
+) -> Version {
     if let Some(version) = development_version() {
         return version;
     }
-    hint.or_else(|| answered_protocol(address, timeout))
+    hint.or_else(|| answered_protocol(address, host, timeout.min(STATUS_WAIT)))
         .and_then(Version::from_protocol)
         .unwrap_or(Version::NEWEST)
 }
 
 /// The protocol number the server's status answer reports.
-fn answered_protocol(address: SocketAddr, timeout: Duration) -> Option<i32> {
-    let status = query_status_and_ping(address, timeout).ok()?;
-    ServerStatus::parse(&status.status_response)?
+fn answered_protocol(address: SocketAddr, host: Option<&str>, timeout: Duration) -> Option<i32> {
+    let text = query_status_text(address, host, timeout).ok()?;
+    ServerStatus::parse(&text)?
         .version
         .map(|(_, protocol)| protocol)
 }
@@ -53,8 +62,14 @@ mod tests {
             return;
         }
         let wait = Duration::from_millis(50);
-        assert_eq!(select_version(nowhere(), wait, Some(775)), Version::V26_1);
-        assert_eq!(select_version(nowhere(), wait, Some(776)), Version::V26_2);
+        assert_eq!(
+            select_version((nowhere(), None), wait, Some(775)),
+            Version::V26_1
+        );
+        assert_eq!(
+            select_version((nowhere(), None), wait, Some(776)),
+            Version::V26_2
+        );
     }
 
     #[test]
@@ -63,8 +78,17 @@ mod tests {
             return;
         }
         let wait = Duration::from_millis(50);
-        assert_eq!(select_version(nowhere(), wait, Some(-1)), Version::NEWEST);
-        assert_eq!(select_version(nowhere(), wait, Some(9999)), Version::NEWEST);
-        assert_eq!(select_version(nowhere(), wait, None), Version::NEWEST);
+        assert_eq!(
+            select_version((nowhere(), None), wait, Some(-1)),
+            Version::NEWEST
+        );
+        assert_eq!(
+            select_version((nowhere(), None), wait, Some(9999)),
+            Version::NEWEST
+        );
+        assert_eq!(
+            select_version((nowhere(), None), wait, None),
+            Version::NEWEST
+        );
     }
 }

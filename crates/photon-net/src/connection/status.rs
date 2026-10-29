@@ -8,7 +8,9 @@ use photon_protocol::phase::ConnectionProtocol;
 use photon_protocol::play::*;
 
 use super::record::{NoRecorder, Recorder};
-use super::session::{connect_stream, read_packet, send_handshake_intention, send_packet};
+use super::session::{
+    connect_stream, read_packet, send_handshake_intention, send_packet, send_status_handshake,
+};
 use super::transport::Transport;
 
 /// What a server answered to a status request and a ping.
@@ -47,6 +49,19 @@ pub fn query_status_and_ping_recorded(
         pong_time,
         round_trip_ms,
     })
+}
+
+/// Only the status text of the server at `address`, asked with the host name a login handshake
+/// would give (`host`, where it is not the address's own): what the version choice needs.
+pub fn query_status_text(
+    address: SocketAddr,
+    host: Option<&str>,
+    timeout: Duration,
+) -> Result<String, ConnectionError> {
+    let mut stream = connect_stream(address, timeout)?;
+    let host = host.map_or_else(|| address.ip().to_string(), str::to_owned);
+    send_status_handshake(&mut stream, (&host, address.port()), ClientIntent::Status)?;
+    request_status(&mut stream, &mut NoRecorder)
 }
 
 /// Read the next packet of the status phase, which must have the id wanted.

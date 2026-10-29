@@ -34,7 +34,8 @@ fn apply_metadata(
 /// `PHOTON_CONNECT_VERSION` names.
 fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
     photon_data::version_registries::VersionRegistries::of(
-        photon_net::connection::development_version().unwrap_or_default(),
+        photon_net::connection::development_version()
+            .unwrap_or(photon_core::version::Version::NEWEST),
     )
 }
 

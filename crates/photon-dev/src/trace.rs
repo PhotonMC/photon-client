@@ -192,7 +192,8 @@ pub(crate) fn open_for_probe(
     trace: &mut PlayConnectionTrace,
 ) -> Result<(photon_net::connection::Transport, Option<usize>), ConnectionError> {
     let mut state = ConnectionState {
-        version: photon_net::connection::development_version().unwrap_or_default(),
+        version: photon_net::connection::development_version()
+            .unwrap_or(photon_core::version::Version::NEWEST),
         ..ConnectionState::default()
     };
     let mut login = LoginTrace::default();

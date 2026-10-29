@@ -25,6 +25,20 @@ fn transfer_state(state: ConnectionState) -> ConnectionState {
     }
 }
 
+/// The version the next connection speaks. A server that sends the client on is one of the same
+/// network, so the version stays; any other is asked.
+fn connection_version(
+    carried: &ConnectionState,
+    (address, host): (SocketAddr, Option<&str>),
+    timeout: Duration,
+) -> photon_core::version::Version {
+    if carried.transferring {
+        carried.version
+    } else {
+        crate::connection::select_version((address, host), timeout, carried.protocol_hint)
+    }
+}
+
 /// Read play packets off `reader` in the background, one at a time into the channel, until the
 /// connection ends or the server starts the configuration phase (`Packet.isTerminal`): nothing
 /// after that packet is a play packet.
@@ -315,13 +329,8 @@ impl PlaySession {
                 login_stage: carried.login_stage.clone(),
                 ..ConnectionState::default()
             };
-            // A server that sends the client on is one of the same network: the version stays.
-            state.version = if carried.transferring {
-                carried.version
-            } else {
-                crate::connection::select_version(address, timeout, carried.protocol_hint)
-            };
             state.reach(crate::connection::state::stage::CONNECTING);
+            state.version = connection_version(&carried, (address, host.as_deref()), timeout);
             let opened = open_play_connection(
                 (address, username),
                 timeout,
