@@ -246,7 +246,7 @@ impl ClientWorld {
             on_ground: vehicle.on_ground,
             horizontal_collision: vehicle.ride.boat_ride.horizontal_collision,
             rider_position: self.boat_rider_position(vehicle_id, player.id)?,
-            delta_rotation: vehicle.delta_rotation.get(),
+            delta_rotation: vehicle.anim.delta_rotation.get(),
             max_y: bb.max_y,
             under_water: vehicle
                 .ride

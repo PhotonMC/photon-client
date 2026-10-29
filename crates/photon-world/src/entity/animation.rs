@@ -162,9 +162,9 @@ impl EntityViewMut<'_> {
             self.pos.position.z.get() - self.pos.old_position.z.get(),
         );
         if kind == LivingKind::Player {
-            self.old_swim_amount = self.swim_amount;
-            self.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
-                self.swim_amount.get(),
+            self.anim.old_swim_amount = self.anim.swim_amount;
+            self.anim.swim_amount = JavaF32::new(crate::living::ease_swim_amount(
+                self.anim.swim_amount.get(),
                 self.status.pose == ClientEntityPose::Swimming,
             ));
         }
@@ -177,8 +177,8 @@ impl EntityViewMut<'_> {
             crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
         } else if kind == LivingKind::Mob {
             let mut control = crate::living::MobBodyControl {
-                head_stable_time: self.head_stable_time,
-                last_stable_y_head_rot: self.last_stable_y_head_rot.get(),
+                head_stable_time: self.anim.head_stable_time,
+                last_stable_y_head_rot: self.anim.last_stable_y_head_rot.get(),
             };
             crate::living::tick_mob_body(
                 &mut control,
@@ -187,8 +187,8 @@ impl EntityViewMut<'_> {
                 moved,
                 !self.links.passenger_ids.is_empty(),
             );
-            self.head_stable_time = control.head_stable_time;
-            self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
+            self.anim.head_stable_time = control.head_stable_time;
+            self.anim.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
             crate::living::keep_old_angles_near((body, &mut body_old), (head, &mut head_old));
             self.rotation.y_head_rot = JavaF32::new(head);
         } else {
@@ -218,22 +218,22 @@ impl EntityViewMut<'_> {
             } else if self.is_creaking() {
                 // `Creaking.updateWalkAnimation`: a quicker stride, capped at three.
                 let target = (moved.0.hypot(moved.1) as f32 * 25.0).min(3.0);
-                self.walk.update(target, 0.4, 1.0);
+                self.anim.walk.update(target, 0.4, 1.0);
             } else if self.is_frog() {
                 let target = self.kind.frog().map_or_else(
                     || ((moved.0.hypot(moved.1)) as f32 * 25.0).min(1.0),
                     |frog| frog.walk_target(moved.0.hypot(moved.1)),
                 );
-                self.entity
+                self.anim
                     .walk
                     .update(target, 0.4, if self.status.baby { 3.0 } else { 1.0 });
             } else {
-                self.entity
+                self.anim
                     .walk
                     .follow(moved.0.hypot(moved.1), self.status.baby);
             }
         } else {
-            self.walk.stop();
+            self.anim.walk.stop();
         }
     }
 
@@ -289,7 +289,7 @@ impl EntityViewMut<'_> {
         } else {
             0.0
         };
-        self.entity
+        self.anim
             .walk
             .update(target, 0.2, if self.status.baby { 3.0 } else { 1.0 });
     }

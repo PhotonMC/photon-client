@@ -131,8 +131,11 @@ impl EntityViewMut<'_> {
         if !self.is_frog() {
             return;
         }
-        let (in_water, moving, tick_count) =
-            (self.living.in_water, self.walk.is_moving(), self.tick_count);
+        let (in_water, moving, tick_count) = (
+            self.living.in_water,
+            self.anim.walk.is_moving(),
+            self.tick_count,
+        );
         self.kind.frog_state().tick(in_water, moving, tick_count);
     }
 
@@ -149,7 +152,7 @@ impl EntityViewMut<'_> {
             playing_dead: self.living.axolotl_playing_dead,
             in_water: self.living.in_water,
             on_ground: self.on_ground,
-            moving: self.walk.is_moving(),
+            moving: self.anim.walk.is_moving(),
             tick_count: self.tick_count,
         };
         self.kind.axolotl_state().tick(input);

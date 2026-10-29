@@ -53,6 +53,7 @@ impl Entities {
             links,
             vitals,
             status,
+            anim,
         ) = self
             .ecs
             .get_entity(entity)
@@ -71,6 +72,7 @@ impl Entities {
                 &Links,
                 &Vitals,
                 &EntityStatus,
+                &BodyAnimation,
             )>()
             .ok()?;
         Some(EntityView {
@@ -87,6 +89,7 @@ impl Entities {
             links,
             vitals,
             status,
+            anim,
         })
     }
 
@@ -126,6 +129,7 @@ impl Entities {
             links,
             vitals,
             status,
+            anim,
         ) = ecs
             .get_entity_mut(entity)
             .ok()?
@@ -143,6 +147,7 @@ impl Entities {
                 &mut Links,
                 &mut Vitals,
                 &mut EntityStatus,
+                &mut BodyAnimation,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -159,6 +164,7 @@ impl Entities {
             links: links.into_inner(),
             vitals: vitals.into_inner(),
             status: status.into_inner(),
+            anim: anim.into_inner(),
         })
     }
 
@@ -193,6 +199,7 @@ impl Entities {
                 links: std::mem::replace(view.links, parts.links),
                 vitals: std::mem::replace(view.vitals, parts.vitals),
                 status: std::mem::replace(view.status, parts.status),
+                anim: std::mem::replace(view.anim, parts.anim),
             });
         }
         let spawned = self
@@ -211,6 +218,7 @@ impl Entities {
                 parts.links,
                 parts.vitals,
                 parts.status,
+                parts.anim,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -235,6 +243,7 @@ impl Entities {
             Links,
             Vitals,
             EntityStatus,
+            BodyAnimation,
         )>();
         self.ecs.despawn(entity);
         parts.map(
@@ -252,6 +261,7 @@ impl Entities {
                 links,
                 vitals,
                 status,
+                anim,
             )| {
                 EntityParts {
                     entity,
@@ -267,6 +277,7 @@ impl Entities {
                     links,
                     vitals,
                     status,
+                    anim,
                 }
             },
         )

@@ -52,11 +52,7 @@ impl EntityViewMut<'_> {
     }
 }
 
-impl ClientEntity {
-    pub fn boat_delta_rotation(&self) -> f32 {
-        self.delta_rotation.get()
-    }
-}
+impl ClientEntity {}
 
 impl Rotation {
     pub fn rotation(&self) -> (f32, f32, f32) {
@@ -182,5 +178,11 @@ impl EntityView<'_> {
     /// `ElytraAnimationState.getRotX/Y/Z`: how far the wings are spread.
     pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
         self.living.elytra.rotations(partial_tick)
+    }
+}
+
+impl EntityView<'_> {
+    pub fn boat_delta_rotation(&self) -> f32 {
+        self.anim.delta_rotation.get()
     }
 }

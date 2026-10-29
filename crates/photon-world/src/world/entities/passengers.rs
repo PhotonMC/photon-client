@@ -181,7 +181,7 @@ impl ClientWorld {
                 (
                     vehicle.type_id,
                     vehicle.rotation.y_rot.get(),
-                    vehicle.delta_rotation.get(),
+                    vehicle.anim.delta_rotation.get(),
                     vehicle.passenger_ids().len(),
                 )
             })

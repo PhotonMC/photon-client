@@ -1,17 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// The limbs' walk animation.
-    pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
-        &self.walk
-    }
-
-    /// `getSwimAmount(partialTick)`.
-    pub fn swim_amount(&self, partial_tick: f32) -> f32 {
-        let old = self.old_swim_amount.get();
-        old + partial_tick * (self.swim_amount.get() - old)
-    }
-
     /// `Entity.getCustomName`: the component the server sent, as its NBT tag.
     pub fn custom_name(&self) -> Option<photon_core::nbt::FieldValue> {
         crate::metadata::custom_name_from_metadata(self.metadata.as_deref()?)?
@@ -633,5 +622,45 @@ impl EntityView<'_> {
 
     pub fn is_fall_flying(&self) -> bool {
         shared_flag_is_set(self.status.shared_flags, SHARED_FLAG_FALL_FLYING)
+    }
+}
+
+/// The limbs' walk animation, the swimming pose's ease, and a mob's body control: the turn the body keeps and how long the head has been still.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct BodyAnimation {
+    /// The limbs' walk animation and the swimming pose's ease (a player's).
+    pub(crate) walk: crate::living::WalkAnimation,
+    pub(crate) swim_amount: JavaF32,
+    pub(crate) old_swim_amount: JavaF32,
+    /// A mob's `BodyRotationControl` state: how long its head has been still,
+    /// and where it was when it last moved far.
+    pub(crate) head_stable_time: i32,
+    pub(crate) last_stable_y_head_rot: JavaF32,
+    pub(crate) delta_rotation: JavaF32,
+}
+
+impl BodyAnimation {
+    pub(crate) fn new(yaw: f32) -> Self {
+        Self {
+            walk: living::WalkAnimation::default(),
+            swim_amount: JavaF32::new(0.0_f32),
+            old_swim_amount: JavaF32::new(0.0_f32),
+            head_stable_time: 0,
+            last_stable_y_head_rot: JavaF32::new(yaw),
+            delta_rotation: JavaF32::new(0.0_f32),
+        }
+    }
+}
+
+impl EntityView<'_> {
+    /// The limbs' walk animation.
+    pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
+        &self.anim.walk
+    }
+
+    /// `getSwimAmount(partialTick)`.
+    pub fn swim_amount(&self, partial_tick: f32) -> f32 {
+        let old = self.anim.old_swim_amount.get();
+        old + partial_tick * (self.anim.swim_amount.get() - old)
     }
 }

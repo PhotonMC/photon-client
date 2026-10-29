@@ -20,6 +20,7 @@ pub struct EntityView<'a> {
     pub(crate) links: &'a Links,
     pub(crate) vitals: &'a Vitals,
     pub(crate) status: &'a EntityStatus,
+    pub(crate) anim: &'a BodyAnimation,
 }
 
 /// One entity, to change.
@@ -37,6 +38,7 @@ pub struct EntityViewMut<'a> {
     pub(crate) links: &'a mut Links,
     pub(crate) vitals: &'a mut Vitals,
     pub(crate) status: &'a mut EntityStatus,
+    pub(crate) anim: &'a mut BodyAnimation,
 }
 
 impl<'a> EntityView<'a> {
@@ -95,6 +97,7 @@ impl<'a> EntityViewMut<'a> {
             links: self.links,
             vitals: self.vitals,
             status: self.status,
+            anim: self.anim,
         }
     }
 }
@@ -116,6 +119,7 @@ pub struct EntityParts {
     pub(crate) links: Links,
     pub(crate) vitals: Vitals,
     pub(crate) status: EntityStatus,
+    pub(crate) anim: BodyAnimation,
 }
 
 impl EntityParts {
@@ -134,6 +138,7 @@ impl EntityParts {
             links: &self.links,
             vitals: &self.vitals,
             status: &self.status,
+            anim: &self.anim,
         }
     }
 
@@ -152,6 +157,7 @@ impl EntityParts {
             links: &mut self.links,
             vitals: &mut self.vitals,
             status: &mut self.status,
+            anim: &mut self.anim,
         }
     }
 }

@@ -18,21 +18,12 @@ pub struct ClientEntity {
     pub(crate) first_tick: bool,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
-    pub(crate) delta_rotation: JavaF32,
     /// A flying projectile's owner and whether it has left it.
     pub(crate) flight: crate::objects::flight::FlightState,
     pub(crate) on_ground: bool,
     pub(crate) tracking: Tracking,
     pub(crate) always_ticking: bool,
     pub(crate) ticking: bool,
-    /// The limbs' walk animation and the swimming pose's ease (a player's).
-    pub(crate) walk: crate::living::WalkAnimation,
-    pub(crate) swim_amount: JavaF32,
-    pub(crate) old_swim_amount: JavaF32,
-    /// A mob's `BodyRotationControl` state: how long its head has been still,
-    /// and where it was when it last moved far.
-    pub(crate) head_stable_time: i32,
-    pub(crate) last_stable_y_head_rot: JavaF32,
     /// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its
     /// spin it started (`bobOffs`).
     pub data: i32,

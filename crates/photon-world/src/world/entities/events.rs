@@ -104,10 +104,10 @@ impl ClientWorld {
 impl Entities {
     /// `handleDamageEvent`: the entity flinches, and its limbs swing at once.
     pub fn apply_damage_event(&mut self, entity_id: EntityId) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.walk.set_speed(1.5);
+        entity.anim.walk.set_speed(1.5);
         entity.living.hurt_time = 10;
         true
     }
