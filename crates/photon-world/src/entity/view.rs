@@ -1,44 +1,95 @@
 //! An entity as the world hands it out: its `ClientEntity` and the components split out of it.
 //! A view dereferences to the `ClientEntity`, so what has not moved into a component is read the
 //! way it always was; a method that needs a split-out component lives on the view.
+//!
+//! The components are listed once, in `entity_components!` below; it makes the two views, the
+//! bundle an entity is added and taken as, and the queries that read the views from the world.
 
 use super::*;
+use bevy_ecs::query::QueryData;
 
-/// One entity, to read.
-#[derive(Clone, Copy)]
-pub struct EntityView<'a> {
-    pub(crate) entity: &'a ClientEntity,
-    pub(crate) rotation: &'a Rotation,
-    pub(crate) pos: &'a Position,
-    pub(crate) vel: &'a Motion,
-    pub(crate) lerp: &'a Interpolation,
-    pub(crate) kind: &'a crate::entity_kind::EntityKind,
-    pub(crate) worn: &'a Equipment,
-    pub(crate) living: &'a EntityState,
-    pub(crate) item: &'a DroppedItem,
-    pub(crate) ride: &'a Riding,
-    pub(crate) links: &'a Links,
-    pub(crate) vitals: &'a Vitals,
-    pub(crate) status: &'a EntityStatus,
-    pub(crate) anim: &'a BodyAnimation,
+macro_rules! entity_components {
+    ($($field:ident: $ty:ty),* $(,)?) => {
+        /// One entity, to read.
+        #[derive(Clone, Copy)]
+        pub struct EntityView<'a> {
+            $(pub(crate) $field: &'a $ty,)*
+        }
+
+        /// One entity, to change.
+        pub struct EntityViewMut<'a> {
+            $(pub(crate) $field: &'a mut $ty,)*
+        }
+
+        /// An entity taken apart: its `ClientEntity` and the components split out of it. What is
+        /// built when an entity is added and what is left when one is taken away.
+        #[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::bundle::Bundle)]
+        pub struct EntityParts {
+            $(pub(crate) $field: $ty,)*
+        }
+
+        /// What the world reads to make an [`EntityView`].
+        #[derive(QueryData)]
+        pub(crate) struct ReadView {
+            $($field: &'static $ty,)*
+        }
+
+        /// What the world reads to make an [`EntityViewMut`].
+        #[derive(QueryData)]
+        #[query_data(mutable)]
+        pub(crate) struct WriteView {
+            $($field: &'static mut $ty,)*
+        }
+
+        impl<'a> EntityView<'a> {
+            pub(crate) fn from_query(item: ReadViewItem<'a, 'static>) -> Self {
+                Self { $($field: item.$field,)* }
+            }
+        }
+
+        impl<'a> EntityViewMut<'a> {
+            pub(crate) fn from_query(item: WriteViewItem<'a, 'static>) -> Self {
+                Self { $($field: item.$field.into_inner(),)* }
+            }
+
+            /// The same entity, to read.
+            pub fn as_view(&self) -> EntityView<'_> {
+                EntityView { $($field: &*self.$field,)* }
+            }
+
+            /// Puts the parts in place of what the entity has, and gives back what was there.
+            pub(crate) fn replace_parts(self, parts: EntityParts) -> EntityParts {
+                EntityParts { $($field: std::mem::replace(self.$field, parts.$field),)* }
+            }
+        }
+
+        impl EntityParts {
+            pub fn view(&self) -> EntityView<'_> {
+                EntityView { $($field: &self.$field,)* }
+            }
+
+            pub fn view_mut(&mut self) -> EntityViewMut<'_> {
+                EntityViewMut { $($field: &mut self.$field,)* }
+            }
+        }
+    };
 }
 
-/// One entity, to change.
-pub struct EntityViewMut<'a> {
-    pub(crate) entity: &'a mut ClientEntity,
-    pub(crate) rotation: &'a mut Rotation,
-    pub(crate) pos: &'a mut Position,
-    pub(crate) vel: &'a mut Motion,
-    pub(crate) lerp: &'a mut Interpolation,
-    pub(crate) kind: &'a mut crate::entity_kind::EntityKind,
-    pub(crate) worn: &'a mut Equipment,
-    pub(crate) living: &'a mut EntityState,
-    pub(crate) item: &'a mut DroppedItem,
-    pub(crate) ride: &'a mut Riding,
-    pub(crate) links: &'a mut Links,
-    pub(crate) vitals: &'a mut Vitals,
-    pub(crate) status: &'a mut EntityStatus,
-    pub(crate) anim: &'a mut BodyAnimation,
+entity_components! {
+    entity: ClientEntity,
+    rotation: Rotation,
+    pos: Position,
+    vel: Motion,
+    lerp: Interpolation,
+    kind: crate::entity_kind::EntityKind,
+    worn: Equipment,
+    living: EntityState,
+    item: DroppedItem,
+    ride: Riding,
+    links: Links,
+    vitals: Vitals,
+    status: EntityStatus,
+    anim: BodyAnimation,
 }
 
 impl<'a> EntityView<'a> {
@@ -79,86 +130,6 @@ impl<'a> EntityViewMut<'a> {
     /// The kind's state alone, for as long as the entity is borrowed.
     pub(crate) fn into_kind(self) -> &'a mut crate::entity_kind::EntityKind {
         self.kind
-    }
-
-    /// The same entity, to read.
-    pub fn as_view(&self) -> EntityView<'_> {
-        EntityView {
-            entity: self.entity,
-            rotation: self.rotation,
-            pos: self.pos,
-            vel: self.vel,
-            lerp: self.lerp,
-            kind: self.kind,
-            worn: self.worn,
-            living: self.living,
-            item: self.item,
-            ride: self.ride,
-            links: self.links,
-            vitals: self.vitals,
-            status: self.status,
-            anim: self.anim,
-        }
-    }
-}
-
-/// An entity taken apart: its `ClientEntity` and the components split out of it. What is built
-/// when an entity is added and what is left when one is taken away.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EntityParts {
-    pub(crate) entity: ClientEntity,
-    pub(crate) rotation: Rotation,
-    pub(crate) pos: Position,
-    pub(crate) vel: Motion,
-    pub(crate) lerp: Interpolation,
-    pub(crate) kind: crate::entity_kind::EntityKind,
-    pub(crate) worn: Equipment,
-    pub(crate) living: EntityState,
-    pub(crate) item: DroppedItem,
-    pub(crate) ride: Riding,
-    pub(crate) links: Links,
-    pub(crate) vitals: Vitals,
-    pub(crate) status: EntityStatus,
-    pub(crate) anim: BodyAnimation,
-}
-
-impl EntityParts {
-    pub fn view(&self) -> EntityView<'_> {
-        EntityView {
-            entity: &self.entity,
-            rotation: &self.rotation,
-            pos: &self.pos,
-            vel: &self.vel,
-            lerp: &self.lerp,
-            kind: &self.kind,
-            worn: &self.worn,
-            living: &self.living,
-            item: &self.item,
-            ride: &self.ride,
-            links: &self.links,
-            vitals: &self.vitals,
-            status: &self.status,
-            anim: &self.anim,
-        }
-    }
-
-    pub fn view_mut(&mut self) -> EntityViewMut<'_> {
-        EntityViewMut {
-            entity: &mut self.entity,
-            rotation: &mut self.rotation,
-            pos: &mut self.pos,
-            vel: &mut self.vel,
-            lerp: &mut self.lerp,
-            kind: &mut self.kind,
-            worn: &mut self.worn,
-            living: &mut self.living,
-            item: &mut self.item,
-            ride: &mut self.ride,
-            links: &mut self.links,
-            vitals: &mut self.vitals,
-            status: &mut self.status,
-            anim: &mut self.anim,
-        }
     }
 }
 

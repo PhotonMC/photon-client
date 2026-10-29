@@ -39,58 +39,13 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (
-            entity,
-            rotation,
-            pos,
-            vel,
-            lerp,
-            kind,
-            worn,
-            living,
-            item,
-            ride,
-            links,
-            vitals,
-            status,
-            anim,
-        ) = self
+        let item = self
             .ecs
             .get_entity(entity)
             .ok()?
-            .get_components::<(
-                &ClientEntity,
-                &Rotation,
-                &Position,
-                &Motion,
-                &Interpolation,
-                &crate::entity_kind::EntityKind,
-                &Equipment,
-                &EntityState,
-                &DroppedItem,
-                &Riding,
-                &Links,
-                &Vitals,
-                &EntityStatus,
-                &BodyAnimation,
-            )>()
+            .get_components::<ReadView>()
             .ok()?;
-        Some(EntityView {
-            entity,
-            rotation,
-            pos,
-            vel,
-            lerp,
-            kind,
-            worn,
-            living,
-            item,
-            ride,
-            links,
-            vitals,
-            status,
-            anim,
-        })
+        Some(EntityView::from_query(item))
     }
 
     /// Every entity with its id, in id order.
@@ -115,57 +70,12 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (
-            entity,
-            rotation,
-            pos,
-            vel,
-            lerp,
-            kind,
-            worn,
-            living,
-            item,
-            ride,
-            links,
-            vitals,
-            status,
-            anim,
-        ) = ecs
+        let item = ecs
             .get_entity_mut(entity)
             .ok()?
-            .into_components_mut::<(
-                &mut ClientEntity,
-                &mut Rotation,
-                &mut Position,
-                &mut Motion,
-                &mut Interpolation,
-                &mut crate::entity_kind::EntityKind,
-                &mut Equipment,
-                &mut EntityState,
-                &mut DroppedItem,
-                &mut Riding,
-                &mut Links,
-                &mut Vitals,
-                &mut EntityStatus,
-                &mut BodyAnimation,
-            )>()
+            .into_components_mut::<WriteView>()
             .ok()?;
-        Some(EntityViewMut {
-            entity: entity.into_inner(),
-            rotation: rotation.into_inner(),
-            pos: pos.into_inner(),
-            vel: vel.into_inner(),
-            lerp: lerp.into_inner(),
-            kind: kind.into_inner(),
-            worn: worn.into_inner(),
-            living: living.into_inner(),
-            item: item.into_inner(),
-            ride: ride.into_inner(),
-            links: links.into_inner(),
-            vitals: vitals.into_inner(),
-            status: status.into_inner(),
-            anim: anim.into_inner(),
-        })
+        Some(EntityViewMut::from_query(item))
     }
 
     /// Change every entity, in id order.
@@ -185,42 +95,9 @@ impl Entities {
     ) -> Option<EntityParts> {
         if let Some(&existing) = self.ids.get(&entity_id) {
             let view = Self::view_mut(&mut self.ecs, existing)?;
-            return Some(EntityParts {
-                entity: std::mem::replace(view.entity, parts.entity),
-                rotation: std::mem::replace(view.rotation, parts.rotation),
-                pos: std::mem::replace(view.pos, parts.pos),
-                vel: std::mem::replace(view.vel, parts.vel),
-                lerp: std::mem::replace(view.lerp, parts.lerp),
-                kind: std::mem::replace(view.kind, parts.kind),
-                worn: std::mem::replace(view.worn, parts.worn),
-                living: std::mem::replace(view.living, parts.living),
-                item: std::mem::replace(view.item, parts.item),
-                ride: std::mem::replace(view.ride, parts.ride),
-                links: std::mem::replace(view.links, parts.links),
-                vitals: std::mem::replace(view.vitals, parts.vitals),
-                status: std::mem::replace(view.status, parts.status),
-                anim: std::mem::replace(view.anim, parts.anim),
-            });
+            return Some(view.replace_parts(parts));
         }
-        let spawned = self
-            .ecs
-            .spawn((
-                parts.entity,
-                parts.rotation,
-                parts.pos,
-                parts.vel,
-                parts.lerp,
-                parts.kind,
-                parts.worn,
-                parts.living,
-                parts.item,
-                parts.ride,
-                parts.links,
-                parts.vitals,
-                parts.status,
-                parts.anim,
-            ))
-            .id();
+        let spawned = self.ecs.spawn(parts).id();
         self.ids.insert(entity_id, spawned);
         None
     }
@@ -229,58 +106,9 @@ impl Entities {
     pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
         let mut taken = self.ecs.entity_mut(entity);
-        let parts = taken.take::<(
-            ClientEntity,
-            Rotation,
-            Position,
-            Motion,
-            Interpolation,
-            crate::entity_kind::EntityKind,
-            Equipment,
-            EntityState,
-            DroppedItem,
-            Riding,
-            Links,
-            Vitals,
-            EntityStatus,
-            BodyAnimation,
-        )>();
+        let parts = taken.take::<EntityParts>();
         self.ecs.despawn(entity);
-        parts.map(
-            |(
-                entity,
-                rotation,
-                pos,
-                vel,
-                lerp,
-                kind,
-                worn,
-                living,
-                item,
-                ride,
-                links,
-                vitals,
-                status,
-                anim,
-            )| {
-                EntityParts {
-                    entity,
-                    rotation,
-                    pos,
-                    vel,
-                    lerp,
-                    kind,
-                    worn,
-                    living,
-                    item,
-                    ride,
-                    links,
-                    vitals,
-                    status,
-                    anim,
-                }
-            },
-        )
+        parts
     }
 
     pub(crate) fn clear(&mut self) {

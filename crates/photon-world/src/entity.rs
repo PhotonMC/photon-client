@@ -74,6 +74,7 @@ mod position;
 mod view;
 pub(crate) use rotation::*;
 pub use view::{EntityParts, EntityView, EntityViewMut};
+pub(crate) use view::{ReadView, WriteView};
 mod tracking;
 pub(crate) use tracking::*;
 mod types;
