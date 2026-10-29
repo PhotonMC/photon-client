@@ -8,7 +8,7 @@ impl ClientWorld {
         let ticking_entity_ids: Vec<EntityId> = self
             .entities
             .iter()
-            .filter(|(_, entity)| entity.ticking && entity.vehicle_id.is_none())
+            .filter(|(_, entity)| entity.ticking && entity.links.vehicle_id.is_none())
             .map(|(&entity_id, _)| entity_id)
             .collect();
         for entity_id in ticking_entity_ids {

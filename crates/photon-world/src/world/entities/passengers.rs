@@ -44,7 +44,7 @@ impl ClientWorld {
         let (vehicle_type_id, vehicle_position, vehicle_y_rot, passenger_index, passenger_count) =
             self.entities.at(vehicle_id).and_then(|vehicle| {
                 let passenger_index = vehicle
-                    .passenger_ids
+                    .passenger_ids()
                     .iter()
                     .position(|&entity_id| entity_id == passenger_id)?;
                 Some((
@@ -52,7 +52,7 @@ impl ClientWorld {
                     vehicle.position(),
                     vehicle.rotation.y_rot.get(),
                     passenger_index,
-                    vehicle.passenger_ids.len(),
+                    vehicle.passenger_ids().len(),
                 ))
             })?;
         let (ride_height, single_passenger_z_offset) = VANILLA_BOAT_PASSENGER_GEOMETRY
@@ -181,7 +181,7 @@ impl ClientWorld {
                     vehicle.type_id,
                     vehicle.rotation.y_rot.get(),
                     vehicle.delta_rotation.get(),
-                    vehicle.passenger_ids.len(),
+                    vehicle.passenger_ids().len(),
                 )
             })
         else {
@@ -278,7 +278,7 @@ impl ClientWorld {
     pub(crate) fn boat_is_local_instance_authoritative(&self, entity: EntityView<'_>) -> bool {
         self.local_player
             .as_ref()
-            .is_some_and(|player| entity.passenger_ids.first() == Some(&player.id))
+            .is_some_and(|player| entity.links.passenger_ids.first() == Some(&player.id))
     }
 
     pub(crate) fn root_vehicle_id(&self, entity_id: EntityId) -> EntityId {
@@ -313,8 +313,8 @@ impl ClientWorld {
             }
             self.detach_entity_from_vehicle(passenger_id);
             self.set_entity_vehicle_id(passenger_id, Some(vehicle_id));
-            if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
-                vehicle.passenger_ids.push(passenger_id);
+            if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
+                vehicle.links.passenger_ids.push(passenger_id);
             } else if let Some(player) = self
                 .local_player
                 .as_mut()
@@ -328,7 +328,7 @@ impl ClientWorld {
 
     pub fn entity_vehicle_id(&self, entity_id: EntityId) -> Option<EntityId> {
         if let Some(entity) = self.entities.at(entity_id) {
-            return entity.vehicle_id;
+            return entity.links.vehicle_id;
         }
         self.local_player
             .as_ref()
@@ -338,7 +338,7 @@ impl ClientWorld {
 
     pub fn entity_passengers(&self, entity_id: EntityId) -> Option<&[EntityId]> {
         if let Some(entity) = self.entities.at(entity_id) {
-            return Some(&entity.entity.passenger_ids);
+            return Some(&entity.links.passenger_ids);
         }
         self.local_player
             .as_ref()
@@ -350,8 +350,9 @@ impl ClientWorld {
         let Some(vehicle_id) = self.entity_vehicle_id(entity_id) else {
             return;
         };
-        if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
+        if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
             vehicle
+                .links
                 .passenger_ids
                 .retain(|&passenger_id| passenger_id != entity_id);
         } else if let Some(player) = self
@@ -367,8 +368,8 @@ impl ClientWorld {
     }
 
     pub(crate) fn eject_entity_passengers(&mut self, vehicle_id: EntityId) {
-        let passengers = if let Some(mut vehicle) = self.entities.at_mut(vehicle_id) {
-            Some(std::mem::take(&mut vehicle.passenger_ids))
+        let passengers = if let Some(vehicle) = self.entities.at_mut(vehicle_id) {
+            Some(std::mem::take(&mut vehicle.links.passenger_ids))
         } else if let Some(player) = self
             .local_player
             .as_mut()
@@ -471,14 +472,14 @@ impl ClientWorld {
         vehicle_id: Option<EntityId>,
     ) {
         if let Some(mut entity) = self.entities.at_mut(entity_id) {
-            if entity.is_shulker() && entity.vehicle_id != vehicle_id {
+            if entity.is_shulker() && entity.links.vehicle_id != vehicle_id {
                 if vehicle_id.is_some() {
                     entity.shulker_starts_riding();
                 } else {
                     entity.shulker_stops_riding();
                 }
             }
-            entity.vehicle_id = vehicle_id;
+            entity.links.vehicle_id = vehicle_id;
         } else if let Some(player) = self
             .local_player
             .as_mut()

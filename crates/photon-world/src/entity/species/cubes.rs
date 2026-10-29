@@ -70,7 +70,7 @@ impl EntityViewMut<'_> {
         position: (f64, f64, f64),
         old_block: [i32; 3],
     ) {
-        let riding = self.vehicle_id.is_some();
+        let riding = self.links.vehicle_id.is_some();
         let (x, y, z) = if riding {
             position
         } else {

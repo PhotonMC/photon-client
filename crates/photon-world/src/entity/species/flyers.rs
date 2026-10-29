@@ -14,7 +14,7 @@ impl EntityViewMut<'_> {
         if photon_data::entity_type::name(self.type_id) != Some("minecraft:parrot") {
             return;
         }
-        let (on_ground, passenger) = (self.on_ground, self.vehicle_id.is_some());
+        let (on_ground, passenger) = (self.on_ground, self.links.vehicle_id.is_some());
         if !on_ground && self.vel.motion.y.get() < 0.0 {
             self.vel.motion.y = JavaF64::new(self.vel.motion.y.get() * 0.6);
         }

@@ -65,7 +65,7 @@ impl ClientWorld {
         let vehicle_id = self.entity_vehicle_id(player_id)?;
         let vehicle = self.entities.at(vehicle_id)?;
         vehicle
-            .passenger_ids
+            .passenger_ids()
             .contains(&player_id)
             .then_some(vehicle_id)
     }
@@ -122,7 +122,7 @@ impl ClientWorld {
         // with the vehicle; `AbstractHorse` adds, rearing, up and back.
         let seats = photon_data::entity_type::pick(vehicle.type_id)?.passengers;
         let index = vehicle
-            .passenger_ids
+            .passenger_ids()
             .iter()
             .position(|&id| id == player.id)
             .unwrap_or(0);
@@ -214,7 +214,7 @@ impl ClientWorld {
             },
             index == 0,
         );
-        let forward = if vehicle.passenger_ids.len() > 1 && index != 0 {
+        let forward = if vehicle.passenger_ids().len() > 1 && index != 0 {
             -0.7_f32
         } else {
             0.5_f32
@@ -238,7 +238,7 @@ impl ClientWorld {
         Some(VehicleView {
             vehicle_id,
             kind: VehicleKind::Boat,
-            controlled: vehicle.passenger_ids.first() == Some(&player.id),
+            controlled: vehicle.passenger_ids().first() == Some(&player.id),
             type_id: vehicle.type_id,
             position,
             y_rot: vehicle.rotation.y_rot.get(),

@@ -6,7 +6,7 @@ impl ClientWorld {
     /// in the first seat of, or a saddled pig it steers with a carrot on a stick.
     pub(crate) fn mount_kind_of(&self, entity: crate::entity::EntityView<'_>) -> Option<MountKind> {
         let player = self.local_player.as_ref()?;
-        if entity.passenger_ids.first() != Some(&player.id) {
+        if entity.links.passenger_ids.first() != Some(&player.id) {
             return None;
         }
         if entity.is_controllable_horse() {

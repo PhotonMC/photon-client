@@ -1,11 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// `Entity.isVehicle`: something rides it.
-    pub fn is_vehicle(&self) -> bool {
-        !self.passenger_ids.is_empty()
-    }
-
     /// Whether this is a boat, a chest boat or a raft.
     pub fn is_boat(&self) -> bool {
         vanilla_boat_max_passengers(self.type_id).is_some()
@@ -240,6 +235,13 @@ impl EntityView<'_> {
         } else {
             self.ride.paddle_right
         };
-        flag && !self.passenger_ids.is_empty()
+        flag && !self.links.passenger_ids.is_empty()
+    }
+}
+
+impl EntityView<'_> {
+    /// `Entity.isVehicle`: something rides it.
+    pub fn is_vehicle(&self) -> bool {
+        !self.links.passenger_ids.is_empty()
     }
 }

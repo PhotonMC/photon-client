@@ -40,8 +40,8 @@ impl ClientWorld {
         body.on_ground_no_blocks = entity.tracking.support.no_blocks;
         body.no_gravity = entity.no_gravity;
         body.input = entity.ride.boat_input;
-        body.has_passengers = !entity.passenger_ids.is_empty();
-        body.player_aboard = entity.passenger_ids.first().is_some_and(|&id| {
+        body.has_passengers = !entity.links.passenger_ids.is_empty();
+        body.player_aboard = entity.links.passenger_ids.first().is_some_and(|&id| {
             self.local_player
                 .as_ref()
                 .is_some_and(|player| player.id == id)

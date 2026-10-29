@@ -60,7 +60,7 @@ impl EntityViewMut<'_> {
                 (&mut body, &mut head),
                 self.rotation.y_rot.get(),
                 moved,
-                !self.passenger_ids.is_empty(),
+                !self.links.passenger_ids.is_empty(),
             );
             self.head_stable_time = control.head_stable_time;
             self.last_stable_y_head_rot = JavaF32::new(control.last_stable_y_head_rot);
@@ -83,7 +83,7 @@ impl EntityViewMut<'_> {
     fn tick_walk_animation(&mut self, moved: (f64, f64)) {
         // `calculateEntityAnimation`: a rider or a dead entity stands still.
         // The dragon's own `aiStep` does not reach `calculateEntityAnimation`.
-        if self.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
+        if self.links.vehicle_id.is_none() && self.alive && !self.is_ender_dragon() {
             let camel = matches!(
                 photon_data::entity_type::name(self.type_id),
                 Some("minecraft:camel" | "minecraft:camel_husk")
@@ -261,8 +261,11 @@ impl EntityViewMut<'_> {
                 Some("minecraft:camel" | "minecraft:camel_husk")
             ),
         );
-        let (tick_count, on_ground, passenger) =
-            (self.tick_count, self.on_ground, self.vehicle_id.is_some());
+        let (tick_count, on_ground, passenger) = (
+            self.tick_count,
+            self.on_ground,
+            self.links.vehicle_id.is_some(),
+        );
         let horse = self.kind.horse_state();
         horse.tick(alive);
         if camel {

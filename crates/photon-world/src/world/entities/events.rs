@@ -202,13 +202,13 @@ impl Entities {
     /// it is zero. Only what can be leashed takes it; the holder is looked up when the leash is
     /// drawn, as it may arrive later than the lead.
     pub fn set_leash_holder(&mut self, entity_id: EntityId, holder_id: EntityId) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         if photon_data::leash::leash_of(entity.type_id).is_none() {
             return false;
         }
-        entity.leash_holder_id = holder_id;
+        entity.links.leash_holder_id = holder_id;
         true
     }
 }

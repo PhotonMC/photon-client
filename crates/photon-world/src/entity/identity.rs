@@ -6,14 +6,6 @@ impl ClientEntity {
         self.id
     }
 
-    pub fn vehicle_id(&self) -> Option<EntityId> {
-        self.vehicle_id
-    }
-
-    pub fn passenger_ids(&self) -> &[EntityId] {
-        &self.passenger_ids
-    }
-
     /// Whether the type is a `LivingEntity`.
     pub fn is_living_entity(&self) -> bool {
         self.living_kind().is_some()
@@ -65,11 +57,6 @@ impl ClientEntity {
     /// a painting, the block it is attached to (`BlockAttachedEntity.getPos`).
     pub fn start_block(&self) -> (i32, i32, i32) {
         self.start_block
-    }
-
-    /// The id of the entity this one is leashed to, if it is.
-    pub fn leash_holder_id(&self) -> Option<EntityId> {
-        (self.leash_holder_id != EntityId(0)).then_some(self.leash_holder_id)
     }
 
     /// Whether the entity is a player.
@@ -182,5 +169,39 @@ impl EntityView<'_> {
             || self.is_primed_tnt()
             || self.is_boat()
             || self.is_minecart()
+    }
+}
+
+/// The entities one is tied to: the vehicle it rides, its passengers, and what holds its lead.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct Links {
+    pub(crate) vehicle_id: Option<EntityId>,
+    pub(crate) passenger_ids: Vec<EntityId>,
+    /// `Leashable.LeashData.delayedLeashHolderId`: the entity holding the lead, zero for none.
+    pub(crate) leash_holder_id: EntityId,
+}
+
+impl Default for Links {
+    fn default() -> Self {
+        Self {
+            vehicle_id: None,
+            passenger_ids: Vec::new(),
+            leash_holder_id: EntityId(0),
+        }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn vehicle_id(&self) -> Option<EntityId> {
+        self.links.vehicle_id
+    }
+
+    pub fn passenger_ids(&self) -> &[EntityId] {
+        &self.links.passenger_ids
+    }
+
+    /// The id of the entity this one is leashed to, if it is.
+    pub fn leash_holder_id(&self) -> Option<EntityId> {
+        (self.links.leash_holder_id != EntityId(0)).then_some(self.links.leash_holder_id)
     }
 }

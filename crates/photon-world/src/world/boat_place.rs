@@ -53,11 +53,11 @@ impl ClientWorld {
                     .collision_candidate(None, None, None, false)
                     .is_none()
                 && entity.bounding_box().intersects(query)
-                && Self::is_pushable_mob(entity.entity)
+                && Self::is_pushable_mob(entity)
         })
     }
 
-    fn is_pushable_mob(entity: &crate::ClientEntity) -> bool {
+    fn is_pushable_mob(entity: crate::EntityView<'_>) -> bool {
         let name = photon_data::entity_type::name(entity.type_id);
         match name {
             Some("minecraft:bat" | "minecraft:armor_stand") => false,
