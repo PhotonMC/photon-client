@@ -314,7 +314,7 @@ fn state_id(context: &Context, what: &str) -> Result<BlockStateId, String> {
         .and_then(Value::as_i64)
         .ok_or_else(|| format!("{what} state_id must be an integer"))?
         .try_into()
-        .map(BlockStateId)
+        .map(crate::case_ids::block_state)
         .map_err(|_| format!("{what} state_id must fit in i32"))
 }
 

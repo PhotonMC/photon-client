@@ -12,5 +12,5 @@ pub(super) fn entity_id_field(value: &Value, name: &str) -> Result<EntityId, Str
 
 /// A case's field that names an entity type.
 pub(super) fn entity_type_id_field(value: &Value, name: &str) -> Result<EntityTypeId, String> {
-    i32_field(value, name).map(EntityTypeId)
+    i32_field(value, name).map(crate::case_ids::entity_type)
 }

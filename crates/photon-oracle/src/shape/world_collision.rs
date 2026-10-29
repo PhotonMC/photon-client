@@ -302,7 +302,7 @@ pub(super) fn client_world_registry_collision_case(request: &Value) -> Result<Va
                 .as_i64()
                 .ok_or("state ID must be an integer")?
                 .try_into()
-                .map(BlockStateId)
+                .map(crate::case_ids::block_state)
                 .map_err(|_| "state ID must fit in i32".to_owned())?;
             let registry = world.block_state_registry();
             let resolved_state_id = registry.resolve_state_id(requested_state_id);

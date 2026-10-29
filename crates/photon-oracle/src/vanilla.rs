@@ -402,7 +402,7 @@ pub(super) fn window_result(request: &Value) -> Result<Value, String> {
 /// A block state named as the scenes name it: a block and its properties.
 /// A block state number a case names directly.
 pub(super) fn state_field(value: &Value, key: &str) -> Result<BlockStateId, String> {
-    i32_field(value, key).map(BlockStateId)
+    i32_field(value, key).map(crate::case_ids::block_state)
 }
 
 pub(super) fn named_state(block: &Value) -> Result<BlockStateId, String> {
