@@ -386,7 +386,8 @@ pub(super) fn entity_attributes_result() -> Value {
         rows.push(json!({
             "label": name,
             "kind": "type",
-            "id": photon_data::entity_type::id(name).map(|id| id.0),
+            "id": photon_data::entity_type::id(name)
+                .map(|id| crate::case_ids::registries().entity_types.wire_or_unknown(id.0)),
             "attributes": list,
         }));
     }

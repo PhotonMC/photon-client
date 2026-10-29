@@ -37,7 +37,8 @@ pub(super) fn movement_properties(label: &str) -> Result<Value, String> {
             if fluids.iter().all(|fluid| *fluid == fluids[0]) {
                 fluids.truncate(1);
             }
-            let tagged = |tag: &str| tags.contains(index, tag);
+            let canonical = photon_data::block::registry::block_index(block.name).unwrap_or(index);
+            let tagged = |tag: &str| tags.contains(canonical, tag);
             json!({
                 "name": block.name,
                 "friction": bits(block.friction),
