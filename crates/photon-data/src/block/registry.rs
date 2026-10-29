@@ -259,6 +259,24 @@ mod tests {
         assert!(stone.has_property_in("axis", Version::V26_2));
     }
 
+    /// The state numbering counts a block's states from the properties the table lists, without
+    /// regard to `property_since`. A property a version lacks would change the count for that
+    /// version, so the first one that does must make the numbering honour it before this passes.
+    #[test]
+    fn no_property_is_missing_from_a_version_the_numbering_serves() {
+        for block in &BLOCKS {
+            for (property, _) in block.property_since {
+                for version in photon_core::version::Version::ALL.iter().copied() {
+                    assert!(
+                        !block.exists_in(version) || block.has_property_in(property, version),
+                        "{} lacks {property} in {version:?}: wire the numbering to property_since",
+                        block.name
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn the_registry_numbers_every_state() {
         let total: u32 = BLOCKS.iter().map(Block::state_count).sum();
