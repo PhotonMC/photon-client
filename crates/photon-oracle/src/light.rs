@@ -146,7 +146,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
                 .ok_or("accepted block update has no section counts")?;
             state["previous_state_id"] =
                 json!(previous_state_id.ok_or("accepted block update has no previous state")?);
-            state["updated_state_id"] = json!(updated_state_id.0);
+            state["updated_state_id"] = json!(wire_state(updated_state_id));
             state["section_counts"] = json!([section_counts.0, section_counts.1]);
             state["has_only_air"] = json!(section_counts.0 == 0);
             state["has_fluid"] = json!(section_counts.1 > 0);

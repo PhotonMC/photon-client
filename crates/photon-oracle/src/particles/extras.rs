@@ -495,7 +495,10 @@ fn block_lines(world: &ClientWorld, (x, y, z): (i32, i32, i32)) -> Vec<String> {
     if photon_world::block::state_or_air(state).block().air {
         return Vec::new();
     }
-    let mut lines = vec![format!("blk,{x},{y},{z},{}", state.0)];
+    let mut lines = vec![format!(
+        "blk,{x},{y},{z},{}",
+        crate::case_ids::wire_state(state)
+    )];
     let Some(moving) = world.moving_piston_at((x, y, z)) else {
         return lines;
     };

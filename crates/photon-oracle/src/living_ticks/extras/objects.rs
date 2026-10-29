@@ -44,7 +44,7 @@ pub(crate) fn minecart_extra(
     described["hurt_time"] = json!(state.hurt_time);
     described["hurt_dir"] = json!(state.hurt_dir);
     described["damage"] = json!(hex(state.damage));
-    described["display_block"] = json!(entity.minecart_display_block().map_or(0, |state| state.0));
+    described["display_block"] = json!(display_block(entity));
     described["display_offset"] = json!(entity.minecart_display_offset());
     described["fuse"] = json!(state.fuse());
     let position = entity.position();
@@ -266,4 +266,11 @@ pub(crate) fn wither_extra(
     described["y_rot"] = json!(hex(entity.rotation().0));
     described["y_body_rot"] = json!(hex(entity.y_body_rot()));
     Ok(())
+}
+
+/// The block a minecart shows, as the oracle's Java numbers it.
+fn display_block(entity: &ClientEntity) -> i32 {
+    entity
+        .minecart_display_block()
+        .map_or(0, crate::case_ids::wire_state)
 }
