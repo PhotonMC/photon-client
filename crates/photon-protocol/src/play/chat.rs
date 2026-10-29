@@ -285,6 +285,21 @@ pub fn encode_chat(
     output.push(checksum);
 }
 
+/// `ServerboundChatSessionUpdatePacket`: the session id and the public half of the profile key
+/// pair (expiry in milliseconds, X.509 DER key, the service's signature over both).
+pub fn encode_chat_session_update(
+    session_id: photon_core::binary::Uuid,
+    (expires_at_ms, public_key, key_signature): (i64, &[u8], &[u8]),
+    output: &mut Vec<u8>,
+) {
+    photon_core::binary::write_uuid(session_id, output);
+    output.extend_from_slice(&expires_at_ms.to_be_bytes());
+    for bytes in [public_key, key_signature] {
+        photon_core::wire::write_varint(bytes.len() as i32, output);
+        output.extend_from_slice(bytes);
+    }
+}
+
 pub fn parse_system_chat_packet(input: &[u8]) -> Result<SystemChatObservation, ConnectionError> {
     let mut input = input;
     let component = photon_core::nbt::read_nbt(&mut input)

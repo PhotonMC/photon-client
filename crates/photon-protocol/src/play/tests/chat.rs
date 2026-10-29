@@ -87,6 +87,17 @@ fn a_chat_packet_carries_the_offset_the_bits_and_the_checksum() {
 }
 
 #[test]
+fn a_chat_session_update_is_the_id_the_expiry_and_two_byte_arrays() {
+    let mut output = Vec::new();
+    let id = photon_core::binary::Uuid::new(1, 2);
+    super::super::encode_chat_session_update(id, (0x0102, &[7, 8, 9], &[5]), &mut output);
+    let mut expected = vec![0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2];
+    expected.extend([0, 0, 0, 0, 0, 0, 1, 2]);
+    expected.extend([3, 7, 8, 9, 1, 5]);
+    assert_eq!(output, expected);
+}
+
+#[test]
 fn player_chat_reads_the_text_the_type_and_the_sender() {
     let mut payload = vec![0]; // global index
     payload.extend([0; 16]); // sender

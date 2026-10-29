@@ -96,6 +96,22 @@ impl Default for Hosts {
     }
 }
 
+impl Hosts {
+    /// The services, or the host the development variable `PHOTON_SERVICES_HOST` names for them
+    /// (a stub server; a host that is not `https` still only gets requests when it is this
+    /// machine).
+    pub fn from_environment() -> Self {
+        let mut hosts = Self::default();
+        if let Some(host) = std::env::var("PHOTON_SERVICES_HOST")
+            .ok()
+            .filter(|host| !host.trim().is_empty())
+        {
+            hosts.services = host.trim().to_owned();
+        }
+        hosts
+    }
+}
+
 /// Why a sign-in step did not give what it was asked for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SignInError {

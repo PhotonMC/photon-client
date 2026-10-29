@@ -81,6 +81,7 @@ impl PlaySession {
         // The game mode's tick runs before the player moves.
         self.tick_game_mode()?;
         self.tick_level_load()?;
+        self.tick_chat_session()?;
         if self.local.loaded {
             self.local.drop_spam = (self.local.drop_spam - 1).max(0);
         }
