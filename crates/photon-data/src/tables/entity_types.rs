@@ -3,6 +3,7 @@
 //! This table is maintained by hand; the parity families compare it with the reference.
 
 use crate::named::Named;
+use photon_core::version::Version;
 
 #[rustfmt::skip]
 pub static ENTITY_TYPES: [Named; 158] = [
@@ -136,7 +137,7 @@ pub static ENTITY_TYPES: [Named; 158] = [
     Named::new("minecraft:squid"),
     Named::new("minecraft:stray"),
     Named::new("minecraft:strider"),
-    Named::new("minecraft:sulfur_cube"),
+    Named::new("minecraft:sulfur_cube").since(Version::V26_2),
     Named::new("minecraft:tadpole"),
     Named::new("minecraft:text_display"),
     Named::new("minecraft:tnt"),

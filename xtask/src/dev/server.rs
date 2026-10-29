@@ -170,8 +170,31 @@ fn start(
     wait_ready(&mut child, directory)
 }
 
+/// Has the server jar write its data reports (registries, blocks) to
+/// `.data/minecraft/reports/<id>/`, the reference the registry order checks read for versions the
+/// oracle does not run.
+fn write_reports(java: &Path, jar: &Path, id: &str) -> Result<(), String> {
+    let output = runtime().with_file_name("reports").join(id);
+    fs::create_dir_all(&output).map_err(|error| format!("{}: {error}", output.display()))?;
+    let status = Command::new(java)
+        .arg("-DbundlerMainClass=net.minecraft.data.Main")
+        .arg("-jar")
+        .arg(jar)
+        .args(["--reports", "--output"])
+        .arg(&output)
+        .current_dir(&output)
+        .stdin(Stdio::null())
+        .status()
+        .map_err(|error| format!("cannot start {}: {error}", java.display()))?;
+    if !status.success() {
+        return Err(format!("the data generator failed for {id}"));
+    }
+    println!("reports for {id} in {}", output.display());
+    Ok(())
+}
+
 const SPEC: Spec = Spec {
-    flags: &["--accept-eula", "--background", "--stop"],
+    flags: &["--accept-eula", "--background", "--reports", "--stop"],
     options: &[
         ("--dir", 1),
         ("--memory", 1),
@@ -208,6 +231,9 @@ pub fn server(args: &[String]) -> Result<(), String> {
     check_eula(&directory, parsed.flag("--accept-eula"))?;
     write_properties(&directory)?;
     let java = java::find(parsed.value("--java"), pins.java_major)?;
+    if parsed.flag("--reports") {
+        return write_reports(&java, &jar, other.unwrap_or(&pins.version));
+    }
     let memory = parsed.value("--memory").unwrap_or("2G");
     start(&java, &jar, &directory, memory, parsed.flag("--background"))
 }

@@ -15,6 +15,7 @@ use crate::particle_type::PARTICLE_TYPES;
 use crate::tables::entity_types::ENTITY_TYPES;
 use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, MENU_TYPES};
 use crate::tables::sound_events::SOUND_EVENTS;
+use crate::versions;
 
 /// The numbering of one registry in one version: wire id <-> canonical id.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +42,19 @@ impl IdMap {
         Self {
             to_wire,
             to_canonical,
+        }
+    }
+
+    /// The map of a registry numbered in `wire_order`: the canonical ids the version has, by wire
+    /// id. Canonical ids left out are the ones the version lacks.
+    pub fn from_wire_order(canonical_len: usize, wire_order: Vec<u32>) -> Self {
+        let mut to_wire = vec![None; canonical_len];
+        for (wire, canonical) in wire_order.iter().enumerate() {
+            to_wire[*canonical as usize] = Some(wire as u32);
+        }
+        Self {
+            to_wire,
+            to_canonical: wire_order,
         }
     }
 
@@ -96,6 +110,63 @@ impl IdMap {
     }
 }
 
+/// The canonical ids of the entries a version has, in the order it numbers them: the union
+/// list without what the version lacks, with the window `patch` names put in the version's order
+/// (empty when the version orders them like the union list). A patch that does not describe a
+/// window of exactly its names is left unapplied; a test of every version catches that.
+fn wire_order<'a>(entries: impl Iterator<Item = (&'a str, bool)>, patch: &[&str]) -> Vec<u32> {
+    let entries: Vec<_> = entries
+        .enumerate()
+        .filter(|(_, (_, present))| *present)
+        .collect();
+    let mut order: Vec<u32> = entries
+        .iter()
+        .map(|(canonical, _)| *canonical as u32)
+        .collect();
+    let bare = |name: &str| {
+        name.split_once(':')
+            .map_or(name, |(_, bare)| bare)
+            .to_owned()
+    };
+    let in_patch = |name: &str| patch.contains(&bare(name).as_str());
+    let Some(start) = entries.iter().position(|(_, (name, _))| in_patch(name)) else {
+        return order;
+    };
+    let Some(window) = entries.get(start..start + patch.len()) else {
+        return order;
+    };
+    if !window.iter().all(|(_, (name, _))| in_patch(name)) {
+        return order;
+    }
+    for (place, name) in patch.iter().enumerate() {
+        let found = window.iter().find(|(_, (n, _))| bare(n) == *name);
+        let Some((canonical, _)) = found else {
+            return order;
+        };
+        order[start + place] = *canonical as u32;
+    }
+    order
+}
+
+/// The block states in the order a version numbers its blocks: each block's states stay
+/// together. Also the canonical count, which is the union list's.
+fn state_order(block_order: &[u32]) -> (usize, Vec<u32>) {
+    let mut starts = Vec::with_capacity(BLOCKS.len());
+    let mut total = 0u32;
+    for block in &BLOCKS {
+        starts.push(total);
+        total += block.state_count();
+    }
+    let order = block_order
+        .iter()
+        .flat_map(|block| {
+            let start = starts[*block as usize];
+            start..start + BLOCKS[*block as usize].state_count()
+        })
+        .collect();
+    (total as usize, order)
+}
+
 /// The numbering of every registry whose ids come over the wire as numbers, for one version.
 /// Built once per session.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,13 +186,24 @@ pub struct VersionRegistries {
 impl VersionRegistries {
     /// The numbering of `version`, computed by walking the union list filtered to it.
     pub fn for_version(version: Version) -> Self {
+        let item_order = wire_order(
+            ITEMS
+                .iter()
+                .map(|item| (item.name, item.exists_in(version))),
+            versions::item_patch(version),
+        );
+        let block_order = wire_order(
+            BLOCKS
+                .iter()
+                .map(|block| (block.name, block.exists_in(version))),
+            versions::block_patch(version),
+        );
+        let (state_count, state_order) = state_order(&block_order);
         Self {
             version,
-            items: IdMap::from_presence(ITEMS.iter().map(|item| item.exists_in(version))),
-            blocks: IdMap::from_presence(BLOCKS.iter().map(|block| block.exists_in(version))),
-            block_states: IdMap::from_presence(BLOCKS.iter().flat_map(|block| {
-                std::iter::repeat_n(block.exists_in(version), block.state_count() as usize)
-            })),
+            items: IdMap::from_wire_order(ITEMS.len(), item_order),
+            blocks: IdMap::from_wire_order(BLOCKS.len(), block_order),
+            block_states: IdMap::from_wire_order(state_count, state_order),
             entity_types: IdMap::from_presence(presence(&ENTITY_TYPES, version)),
             sound_events: IdMap::from_presence(presence(&SOUND_EVENTS, version)),
             particle_types: IdMap::from_presence(

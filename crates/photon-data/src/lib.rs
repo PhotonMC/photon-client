@@ -39,4 +39,5 @@ pub mod spear;
 pub mod stat;
 mod tables;
 pub mod version_registries;
+mod versions;
 pub mod villager;

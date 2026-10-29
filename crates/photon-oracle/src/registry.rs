@@ -35,6 +35,9 @@ fn listed(names: impl Iterator<Item = String>, map: &IdMap) -> Vec<Value> {
         .collect()
 }
 
+#[cfg(test)]
+mod reference_tests;
+
 fn entries(
     label: &str,
     registries: &VersionRegistries,
@@ -45,7 +48,10 @@ fn entries(
             ITEMS.iter().map(|item| item.name.to_owned()),
             &registries.items,
         ),
-        "block" => blocks(version),
+        "block" => listed(
+            BLOCKS.iter().map(|block| block.name.to_owned()),
+            &registries.blocks,
+        ),
         "block_state" => block_states(registries, version),
         "entity_type" => listed(
             photon_data::entity_type::names().map(str::to_owned),
@@ -71,16 +77,6 @@ fn entries(
         ),
         _ => return Err("unknown registry".into()),
     })
-}
-
-/// The blocks the version has, numbered in order.
-fn blocks(version: Version) -> Vec<Value> {
-    BLOCKS
-        .iter()
-        .filter(|block| block.exists_in(version))
-        .enumerate()
-        .map(|(id, block)| json!({"name": block.name, "id": id}))
-        .collect()
 }
 
 /// Every state of the blocks the version has, with the property values that name it.

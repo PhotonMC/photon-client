@@ -3,9 +3,10 @@
 //! This table is maintained by hand; the parity families compare it with the reference.
 
 use crate::named::Named;
+use photon_core::version::Version;
 
 #[rustfmt::skip]
-pub static BLOCK_ENTITY_TYPES: [Named; 49] = [
+pub static BLOCK_ENTITY_TYPES: [Named; 50] = [
     Named::new("minecraft:furnace"),
     Named::new("minecraft:chest"),
     Named::new("minecraft:trapped_chest"),
@@ -31,6 +32,7 @@ pub static BLOCK_ENTITY_TYPES: [Named; 49] = [
     Named::new("minecraft:end_gateway"),
     Named::new("minecraft:command_block"),
     Named::new("minecraft:shulker_box"),
+    Named::new("minecraft:bed").until(Version::V26_1),
     Named::new("minecraft:conduit"),
     Named::new("minecraft:barrel"),
     Named::new("minecraft:smoker"),
@@ -54,7 +56,7 @@ pub static BLOCK_ENTITY_TYPES: [Named; 49] = [
     Named::new("minecraft:test_block"),
     Named::new("minecraft:test_instance_block"),
     Named::new("minecraft:copper_golem_statue"),
-    Named::new("minecraft:potent_sulfur"),
+    Named::new("minecraft:potent_sulfur").since(Version::V26_2),
 ];
 
 #[rustfmt::skip]
