@@ -170,7 +170,7 @@ impl EntityView<'_> {
             Reach::Anywhere => true,
         };
         match photon_data::entity_type::name(self.type_id) {
-            Some("minecraft:firework_rocket") => near && self.attached_target.is_none(),
+            Some("minecraft:firework_rocket") => near && self.attached_target().is_none(),
             Some("minecraft:end_crystal") => {
                 near || self
                     .end_crystal()

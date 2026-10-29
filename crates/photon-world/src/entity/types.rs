@@ -34,6 +34,7 @@ pub(crate) fn is_vanilla_happy_ghast_entity_type(entity_type_id: EntityTypeId) -
 pub(crate) fn initial_kind(
     entity_type_id: EntityTypeId,
     entity_id: EntityId,
+    owner: Option<EntityId>,
 ) -> crate::entity_kind::EntityKind {
     use crate::entity_kind::{EntityKind, MinecartSlot};
     if let Some(display_kind) = display_kind_of(entity_type_id) {
@@ -52,10 +53,35 @@ pub(crate) fn initial_kind(
     let Some(name) = photon_data::entity_type::name(entity_type_id) else {
         return EntityKind::Plain;
     };
+    if let Some(kind) = projectile_kind(entity_type_id, name, owner) {
+        return kind;
+    }
     NAMED_KINDS
         .iter()
         .find(|(named, _)| *named == name)
         .map_or(EntityKind::Plain, |(_, make)| make(entity_id))
+}
+
+/// The kinds of the item frames, the firework rocket and the projectiles the client flies
+/// between the server's packets (which also name their owner).
+fn projectile_kind(
+    entity_type_id: EntityTypeId,
+    name: &str,
+    owner: Option<EntityId>,
+) -> Option<crate::entity_kind::EntityKind> {
+    use crate::entity_kind::EntityKind;
+    if super::item_frame::is_item_frame_type(entity_type_id) {
+        return Some(EntityKind::ItemFrame(Box::default()));
+    }
+    if entity_type_id == crate::constants::VANILLA_FIREWORK_ROCKET_ENTITY_TYPE_ID {
+        return Some(EntityKind::FireworkRocket(Box::default()));
+    }
+    crate::objects::flight::flight_named(name, false)?;
+    let flight = crate::objects::flight::FlightState {
+        owner,
+        left_owner: false,
+    };
+    Some(EntityKind::Projectile(Box::new(flight)))
 }
 
 type MakeKind = fn(EntityId) -> crate::entity_kind::EntityKind;
@@ -166,7 +192,7 @@ mod initial_kind_tests {
         photon_data::entity_type::names()
             .map(|name| {
                 let id = photon_data::entity_type::named(name);
-                (name, variant(&initial_kind(id, EntityId(7))))
+                (name, variant(&initial_kind(id, EntityId(7), None)))
             })
             .collect()
     }
@@ -218,7 +244,7 @@ mod initial_kind_tests {
     fn the_shared_kinds_cover_all_their_types() {
         for name in photon_data::entity_type::names() {
             let id = photon_data::entity_type::named(name);
-            let made = variant(&initial_kind(id, EntityId(7)));
+            let made = variant(&initial_kind(id, EntityId(7), None));
             assert_eq!(
                 super::super::boat::is_vanilla_boat_entity_type(id),
                 made == "Boat",
@@ -239,7 +265,7 @@ mod initial_kind_tests {
     fn what_the_guards_admit_has_its_state() {
         for name in photon_data::entity_type::names() {
             let id = photon_data::entity_type::named(name);
-            let made = variant(&initial_kind(id, EntityId(7)));
+            let made = variant(&initial_kind(id, EntityId(7), None));
             // The minecart and boat guards are written over names and over id lists.
             let minecart = crate::objects::minecart::default_display_offset(name).is_some();
             assert_eq!(minecart, made == "Minecart", "{name}");

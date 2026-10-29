@@ -17,6 +17,8 @@ pub struct LightningState {
     draws: i64,
     /// The pitches (as bits) of the thunder and the impact the first tick found to play.
     pitches: Option<[u32; 2]>,
+    /// Whether the last tick left no flashes: the bolt is discarded (`LightningBolt.discard`).
+    done: bool,
 }
 
 impl LightningState {
@@ -32,6 +34,7 @@ impl LightningState {
             entity_seed,
             draws: 0,
             pitches: None,
+            done: false,
         }
     }
 
@@ -61,6 +64,16 @@ impl LightningState {
     /// `LightningBolt.tick` on the client: the life runs down; once it is spent, the bolt flashes
     /// again after a random wait with a new shape, or, with no flashes left, is discarded (true).
     pub(crate) fn tick(&mut self) -> bool {
+        self.done = self.step();
+        self.done
+    }
+
+    /// Whether the last tick discarded the bolt.
+    pub(crate) fn finished(&self) -> bool {
+        self.done
+    }
+
+    fn step(&mut self) -> bool {
         if self.life == START_LIFE {
             let mut random = self.random();
             let thunder = 0.8 + random.next_float() * 0.2;

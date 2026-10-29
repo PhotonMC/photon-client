@@ -32,7 +32,9 @@ impl ClientWorld {
             entity
                 .primed_tnt()
                 .is_some_and(objects::primed_tnt::PrimedTntState::is_spent)
-                || entity.lightning_finished()
+                || entity
+                    .lightning()
+                    .is_some_and(objects::lightning::LightningState::finished)
         });
         if spent {
             self.remove_entity(entity_id);
@@ -195,7 +197,7 @@ impl ClientWorld {
         // `Projectile.recreateFromPacket`: the packet's data names the owner, if it is here.
         let owner = Some(EntityId(entity.data)).filter(|&id| self.entity_exists(id));
         // An entity is one kind for as long as it lives, and makes its state as it spawns.
-        let mut initial_kind = entity::initial_kind(entity.type_id, entity.entity_id);
+        let mut initial_kind = entity::initial_kind(entity.type_id, entity.entity_id, owner);
         if let (true, entity_kind::EntityKind::Minecart(slot)) = (new_minecart, &mut initial_kind) {
             slot.track = Some(Default::default());
         }
@@ -230,20 +232,12 @@ impl ClientWorld {
                         photon_core::math::floor_f64(entity.y),
                         photon_core::math::floor_f64(entity.z),
                     ),
-                    flight: objects::flight::FlightState {
-                        owner,
-                        left_owner: false,
-                    },
                     on_ground: false,
                     tracking: Tracking::at(entity.x, entity.y, entity.z),
                     always_ticking: entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                     ticking: ticking || entity.type_id == VANILLA_PLAYER_ENTITY_TYPE_ID,
                     data: entity.data,
                     metadata: None,
-                    item_frame_rotation: 0,
-                    lightning_done: false,
-                    shot_at_angle: false,
-                    attached_target: None,
                 },
             },
         );

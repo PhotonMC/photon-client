@@ -872,7 +872,7 @@
 "crates/photon-world/src/ride/vehicle.rs::ClientWorld::vehicle_view" = 83
 "crates/photon-world/src/shadow.rs::ClientWorld::entity_shadow_pieces" = 67
 "crates/photon-world/src/world/collision.rs::ClientWorld::collect_block_collisions_with" = 61
-"crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 85
+"crates/photon-world/src/world/entities.rs::ClientWorld::apply_entity" = 77
 "crates/photon-world/src/world/entities/events.rs::ClientWorld::apply_entity_event" = 81
 "crates/photon-world/src/world/entities/passengers.rs::ClientWorld::boat_rider_position" = 70
 "crates/photon-world/src/world/entities/state.rs::ClientWorld::apply_entity_metadata" = 276

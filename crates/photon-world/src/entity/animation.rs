@@ -270,7 +270,7 @@ impl EntityViewMut<'_> {
         }
         if self.is_lightning_bolt() {
             let _seed = i64::from(self.net.id.0);
-            self.lightning_done = self.kind.lightning_state().tick();
+            self.kind.lightning_state().tick();
         }
     }
 }

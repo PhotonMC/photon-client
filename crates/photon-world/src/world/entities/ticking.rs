@@ -413,7 +413,7 @@ impl ClientWorld {
     fn throw_free_rocket_trail(&mut self, entity_id: EntityId) {
         let free_rocket = self.entities.at(entity_id).is_some_and(|entity| {
             photon_data::entity_type::name(entity.type_id) == Some("minecraft:firework_rocket")
-                && entity.attached_target.is_none()
+                && entity.attached_target().is_none()
         });
         if free_rocket {
             self.throw_rocket_trail(entity_id);

@@ -17,8 +17,6 @@ pub struct ClientEntity {
     pub(crate) first_tick: bool,
     /// `FallingBlockEntity.getStartPos`: the block the entity was added in.
     pub(crate) start_block: (i32, i32, i32),
-    /// A flying projectile's owner and whether it has left it.
-    pub(crate) flight: crate::objects::flight::FlightState,
     pub(crate) on_ground: bool,
     pub(crate) tracking: Tracking,
     pub(crate) always_ticking: bool,
@@ -27,15 +25,6 @@ pub struct ClientEntity {
     /// spin it started (`bobOffs`).
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
-    /// A primed tnt's fuse and block, made when its data or ticks first reach it.
-    /// `ItemFrame.getRotation`: the eighths of a turn the item in it is turned.
-    pub(crate) item_frame_rotation: i32,
-    /// Whether the bolt ran out of flashes at its last tick (`LightningBolt.discard`).
-    pub(crate) lightning_done: bool,
-    /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
-    pub(crate) shot_at_angle: bool,
-    /// `FireworkRocketEntity.isAttachedToEntity`: its data names an entity it flies with.
-    pub(crate) attached_target: Option<EntityId>,
 }
 
 mod animation;
@@ -57,6 +46,7 @@ mod interpolation;
 pub(crate) use interpolation::*;
 mod culling;
 mod item_frame;
+pub(crate) use item_frame::ItemFrameState;
 mod minecart;
 pub(crate) use minecart::*;
 mod motion;

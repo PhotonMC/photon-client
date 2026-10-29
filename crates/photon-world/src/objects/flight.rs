@@ -40,25 +40,25 @@ pub(crate) enum Flight {
 
 /// The flight of an entity, if it is one of these.
 pub(crate) fn flight_of(entity: crate::entity::EntityView<'_>) -> Option<Flight> {
+    let name = photon_data::entity_type::name(entity.type_id)?;
+    flight_named(name, entity.living.wither_skull_dangerous)
+}
+
+/// The flight of an entity type by name; a wither skull flies slower unless it is dangerous.
+pub(crate) fn flight_named(name: &str, wither_skull_dangerous: bool) -> Option<Flight> {
     let hurting = |acceleration, inertia, liquid_inertia| Flight::Hurting {
         acceleration,
         inertia,
         liquid_inertia,
     };
-    Some(match photon_data::entity_type::name(entity.type_id)? {
+    Some(match name {
         "minecraft:fireball" | "minecraft:small_fireball" | "minecraft:dragon_fireball" => {
             hurting(0.1, 0.95, 0.8)
         }
         // `WitherSkull.getInertia`.
-        "minecraft:wither_skull" => hurting(
-            0.1,
-            if entity.living.wither_skull_dangerous {
-                0.73
-            } else {
-                0.95
-            },
-            0.8,
-        ),
+        "minecraft:wither_skull" => {
+            hurting(0.1, if wither_skull_dangerous { 0.73 } else { 0.95 }, 0.8)
+        }
         // `AbstractWindCharge`: no acceleration of its own, and the same inertia in a fluid.
         "minecraft:wind_charge" | "minecraft:breeze_wind_charge" => hurting(0.0, 1.0, 1.0),
         "minecraft:shulker_bullet" => Flight::ShulkerBullet,
@@ -281,7 +281,8 @@ impl ClientWorld {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
-        if entity.flight.left_owner {
+        let flight = entity.kind.projectile().copied().unwrap_or_default();
+        if flight.left_owner {
             return;
         }
         // The owner's boxes: its root vehicle and everything on it that can be picked.
@@ -289,7 +290,7 @@ impl ClientWorld {
             .bounding_box()
             .expand_towards_vec3(movement)
             .inflate_all(1.0);
-        let left = match entity.flight.owner {
+        let left = match flight.owner {
             None => true,
             Some(owner) => !self
                 .family_of(self.root_vehicle_id(owner))
@@ -298,8 +299,12 @@ impl ClientWorld {
                 .filter(|member| member.is_pickable())
                 .any(|member| reach.intersects(member.bounding_box())),
         };
-        if let Some(mut entity) = self.entities.at_mut(entity_id) {
-            entity.flight.left_owner = left;
+        if let Some(flight) = self
+            .entities
+            .at_mut(entity_id)
+            .and_then(|entity| entity.kind.projectile_mut())
+        {
+            flight.left_owner = left;
         }
     }
 
@@ -365,7 +370,7 @@ impl ClientWorld {
         search: Aabb,
         margin: f64,
     ) -> Option<Vec3> {
-        let flight = self.entities.at(source)?.flight;
+        let flight = self.entities.at(source)?.kind.projectile().copied()?;
         let owner_root = flight.owner.map(|owner| self.root_vehicle_id(owner));
         let mut nearest = f64::MAX;
         let mut location = None;

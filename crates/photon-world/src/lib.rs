@@ -264,19 +264,24 @@ fn apply_display_and_frame_data(entity: &mut EntityViewMut<'_>, metadata: &[u8])
         && let Some(rotation) = metadata_int_value(metadata, constants::ITEM_FRAME_ROTATION_DATA_ID)
     {
         // `ItemFrame.setRotation`'s data holds the turn below eight.
-        entity.item_frame_rotation = rotation;
+        if let Some(frame) = entity.kind.item_frame_mut() {
+            frame.rotation = rotation;
+        }
     }
 }
 
 /// A firework's data: whether a crossbow shot it, and the entity it flies with.
-fn apply_firework_data(entity: &mut ClientEntity, metadata: &[u8]) {
+fn apply_firework_data(entity: &mut EntityViewMut<'_>, metadata: &[u8]) {
+    let Some(rocket) = entity.kind.firework_rocket_mut() else {
+        return;
+    };
     if let Some(angled) = metadata_boolean_value(metadata, FIREWORK_SHOT_AT_ANGLE_DATA_ID) {
-        entity.shot_at_angle = angled;
+        rocket.shot_at_angle = angled;
     }
     if let Some(target) =
         metadata_optional_unsigned_int_value(metadata, FIREWORK_ATTACHED_TO_TARGET_DATA_ID)
     {
-        entity.attached_target = target.map(EntityId);
+        rocket.attached_target = target.map(EntityId);
     }
 }
 

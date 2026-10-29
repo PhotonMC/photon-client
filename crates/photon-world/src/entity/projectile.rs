@@ -1,11 +1,29 @@
 use super::*;
 
-impl ClientEntity {
+/// What a firework rocket keeps of its data.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RocketState {
+    /// `FireworkRocketEntity.isShotAtAngle`: fired from a crossbow, which turns how it is drawn.
+    pub(crate) shot_at_angle: bool,
+    /// `FireworkRocketEntity.isAttachedToEntity`: its data names an entity it flies with.
+    pub(crate) attached_target: Option<EntityId>,
+}
+
+impl EntityView<'_> {
     /// `FireworkRocketEntity.isShotAtAngle`.
     pub fn is_shot_at_angle(&self) -> bool {
-        self.shot_at_angle
+        self.kind
+            .firework_rocket()
+            .is_some_and(|rocket| rocket.shot_at_angle)
     }
 
+    /// The entity a rocket flies with, if its data names one.
+    pub(crate) fn attached_target(&self) -> Option<EntityId> {
+        self.kind.firework_rocket()?.attached_target
+    }
+}
+
+impl ClientEntity {
     /// Whether the type draws as an item facing the camera (`ThrownItemRenderer`, with its
     /// scale and whether it is fully lit), and so has its item among its data.
     pub fn thrown_item_look(&self) -> Option<(f32, bool)> {
@@ -39,10 +57,6 @@ impl ClientEntity {
     /// Whether this is a lightning bolt (`LightningBolt`).
     pub fn is_lightning_bolt(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:lightning_bolt")
-    }
-
-    pub(crate) fn lightning_finished(&self) -> bool {
-        self.lightning_done
     }
 
     /// Whether this is a block of primed tnt (`PrimedTnt`).
@@ -270,7 +284,7 @@ impl EntityViewMut<'_> {
 
     pub(crate) fn tick_firework(&mut self) {
         // An attached rocket flies with its target and does not accelerate on its own.
-        if self.attached_target.is_some() {
+        if self.as_view().attached_target().is_some() {
             return;
         }
         let current_motion = self.motion();

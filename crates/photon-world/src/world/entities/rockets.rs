@@ -14,7 +14,7 @@ impl ClientWorld {
         let mut rockets: Vec<(EntityId, EntityId)> = self
             .entities
             .iter()
-            .filter_map(|(&id, entity)| Some((id, entity.attached_target?)))
+            .filter_map(|(&id, entity)| Some((id, entity.attached_target()?)))
             .collect();
         rockets.sort_by_key(|(id, _)| id.0);
         rockets

@@ -85,5 +85,8 @@ entity_kinds! {
     Panda(Box<crate::mobs::panda::PandaState> => crate::mobs::panda::PandaState) panda panda_mut panda_state;
     Ravager(Box<crate::mobs::ravager::RavagerState> => crate::mobs::ravager::RavagerState) ravager ravager_mut ravager_state;
     Horse(Box<crate::mobs::horse::HorseState> => crate::mobs::horse::HorseState) horse horse_mut horse_state;
+    Projectile(Box<crate::objects::flight::FlightState> => crate::objects::flight::FlightState) projectile projectile_mut projectile_state;
+    ItemFrame(Box<crate::entity::ItemFrameState> => crate::entity::ItemFrameState) item_frame item_frame_mut item_frame_state;
+    FireworkRocket(Box<crate::entity::RocketState> => crate::entity::RocketState) firework_rocket firework_rocket_mut firework_rocket_state;
     Minecart(Box<MinecartSlot> => MinecartSlot) minecart_slot minecart_slot_mut minecart_slot_state;
 }
