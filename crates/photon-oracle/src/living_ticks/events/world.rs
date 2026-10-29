@@ -79,7 +79,7 @@ pub(crate) fn equipment_event(
 ) -> Result<(), String> {
     let stack = event["item"].as_str().map(|name| {
         let id = photon_data::item::registry::index(name).unwrap_or(0);
-        photon_world::ClientItemStackState::new(1, crate::case_ids::item(id as i32))
+        photon_world::ClientItemStackState::new(1, photon_core::ids::ItemId(id as i32))
     });
     let slot = match event["slot"].as_str() {
         Some("head") => photon_world::EquipmentSlot::Head,

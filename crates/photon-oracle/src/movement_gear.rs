@@ -171,7 +171,7 @@ pub(super) fn breaking_report(
                     i32_field(place, "y")?,
                     i32_field(place, "z")?,
                 )
-                .map_or(0, |state| state.0),
+                .map_or(0, crate::case_ids::wire_state),
         );
     }
     let mut report = json!({

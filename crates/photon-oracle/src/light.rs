@@ -1,4 +1,5 @@
 use super::*;
+use crate::case_ids::wire_state;
 
 pub(super) fn client_world_section_lookup_result(request: &Value) -> Result<Value, String> {
     let min_y = i32_field(request, "dimension_min_y")?;
@@ -65,7 +66,7 @@ pub(super) fn client_world_section_lookup_result(request: &Value) -> Result<Valu
                         "section_y": query_section_y,
                     });
                     if let Some(block_state_id) = world.block_state_at(x, y, z) {
-                        state["block_state_id"] = json!(block_state_id.0);
+                        state["block_state_id"] = json!(wire_state(block_state_id));
                     }
                     if let Some(biome_id) = world.biome_at(x, y, z) {
                         state["biome_id"] = json!(biome_id);
@@ -164,7 +165,7 @@ pub(super) fn client_world_block_update_result(request: &Value) -> Result<Value,
                     "section_y": query_y.div_euclid(16),
                 });
                 if let Some(block_state_id) = world.block_state_at(query_x, query_y, query_z) {
-                    query_state["block_state_id"] = json!(block_state_id.0);
+                    query_state["block_state_id"] = json!(wire_state(block_state_id));
                 }
                 if let Some((non_empty, fluid)) = world.section_counts_at(
                     query_x.div_euclid(16),

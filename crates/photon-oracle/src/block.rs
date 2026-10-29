@@ -44,8 +44,8 @@ fn block_result(request: &Value) -> Result<Value, String> {
                             "properties": properties,
                             "default": block.default,
                             "state_count": block.state_count(),
-                            "first_state_id": block.first_state_id().0,
-                            "default_state_id": block.default_state_id().0,
+                            "first_state_id": crate::case_ids::wire_state(block.first_state_id()),
+                            "default_state_id": crate::case_ids::wire_state(block.default_state_id()),
                         })
                     })
                     .collect();

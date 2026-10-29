@@ -35,7 +35,7 @@ fn with_watched(
         );
         Ok(world
             .block_state_at(at.0, at.1, at.2)
-            .map_or(0, |state| state.0))
+            .map_or(0, crate::case_ids::wire_state))
     };
     let states = places.as_array().ok_or("watch must be an array")?;
     let states: Result<Vec<i32>, String> = states.iter().map(state_at).collect();

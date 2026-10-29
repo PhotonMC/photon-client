@@ -231,8 +231,8 @@ pub(super) fn client_world_stair_neighbor_collision_case(request: &Value) -> Res
                     .get("label")
                     .and_then(Value::as_str)
                     .ok_or("label must be a string")?,
-                "before_state_id": before_state_id.0,
-                "updated_state_id": updated_state_id.0,
+                "before_state_id": crate::case_ids::wire_state(before_state_id),
+                "updated_state_id": crate::case_ids::wire_state(updated_state_id),
                 "updated_shape": updated_shape,
                 "updated_collision_shape": shape_snapshot(&collision_shape),
                 "collisions": collisions
@@ -308,8 +308,8 @@ pub(super) fn client_world_registry_collision_case(request: &Value) -> Result<Va
             let resolved_state_id = registry.resolve_state_id(requested_state_id);
             let collision_shape = registry.collision_shape(requested_state_id);
             Ok(json!({
-                "requested_state_id": requested_state_id.0,
-                "resolved_state_id": resolved_state_id.0,
+                "requested_state_id": crate::case_ids::wire_state(requested_state_id),
+                "resolved_state_id": crate::case_ids::wire_state(resolved_state_id),
                 "collision_shape": shape_snapshot(&collision_shape),
             }))
         })

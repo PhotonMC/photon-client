@@ -79,3 +79,8 @@ pub(crate) fn wire_item(item: ItemId) -> i32 {
 pub(crate) fn wire_state(state: BlockStateId) -> i32 {
     registries().block_states.wire_or_unknown(state.0)
 }
+
+/// The wire id of a sound event, as the oracle's Java numbers it.
+pub(crate) fn wire_sound(sound: i32) -> i32 {
+    registries().sound_events.wire_or_unknown(sound)
+}

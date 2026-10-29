@@ -321,7 +321,7 @@ fn item_foil_result(request: &Value) -> Result<Value, String> {
         let patch = hex_bytes(string(row, "patch")?)?;
         out.push(json!({
             "label": row["label"],
-            "foil": Values::new(crate::case_ids::item(item as i32), &patch).has_foil(),
+            "foil": Values::new(photon_core::ids::ItemId(item as i32), &patch).has_foil(),
         }));
     }
     Ok(json!({"rows": out}))
@@ -335,7 +335,7 @@ pub(super) fn item_equippable_result(request: &Value) -> Result<Value, String> {
             photon_data::item::registry::index(string(row, "item")?).ok_or("unknown item")?;
         let patch = hex_bytes(string(row, "patch")?)?;
         let found =
-            photon_game::item::values::equippable_of(crate::case_ids::item(item as i32), &patch);
+            photon_game::item::values::equippable_of(photon_core::ids::ItemId(item as i32), &patch);
         out.push(json!({
             "label": row["label"],
             "slot": found.as_ref().map_or("none", |found| found.slot),
@@ -500,7 +500,7 @@ fn tag_stack_result(row: &Value, tag: &Value, item: usize) -> Result<Value, Stri
     } else {
         patch.trusted()
     };
-    let values = Values::new(crate::case_ids::item(item as i32), &bytes);
+    let values = Values::new(photon_core::ids::ItemId(item as i32), &bytes);
     // `ItemTintSource.Potion` with its default colour, made opaque.
     let tint =
         (0xFF00_0000_u32 | (values.potion_color_or(-13_083_194) as u32 & 0x00FF_FFFF)) as i32;

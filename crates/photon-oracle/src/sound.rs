@@ -388,7 +388,7 @@ pub(super) fn sound_packets_result(request: &Value) -> Result<Value, String> {
     let bits = |value: f32| format!("{:08x}", value.to_bits());
     let wide = |value: f64| format!("{:016x}", value.to_bits());
     let holder = |out: &mut Value, sound: &SoundHolder| match sound {
-        SoundHolder::Registered(id) => out["registered"] = json!(id),
+        SoundHolder::Registered(id) => out["registered"] = json!(crate::case_ids::wire_sound(*id)),
         SoundHolder::Direct {
             location,
             fixed_range,
