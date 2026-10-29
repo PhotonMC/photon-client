@@ -30,6 +30,8 @@ rsa = "0.9"
 sha1 = "0.10"
 sha2 = { version = "0.10", features = ["oid"] }
 keyring-core = "1"
+apple-native-keyring-store = { version = "1.0.2", default-features = false, features = ["keychain"] }
+windows-native-keyring-store = "1.1.0"
 dbus-secret-service-keyring-store = { version = "1", default-features = false, features = ["crypto-rust"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }

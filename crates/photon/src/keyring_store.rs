@@ -1,6 +1,6 @@
 //! The operating system's credential store as the place a signed-in player's refresh token is
-//! kept (ADR 0007): never a file this client writes. Linux uses the Secret Service; the macOS
-//! and Windows stores come with the platform matrix.
+//! kept (ADR 0007): never a file this client writes. Linux uses the Secret Service, macOS the
+//! Keychain and Windows the Credential Manager.
 
 use photon_net::account::AccessToken;
 use photon_net::signin::{SecretStore, SignInError};
@@ -12,20 +12,20 @@ const ENTRY: &str = "microsoft-refresh-token";
 
 /// The credential store of this machine, ready to use.
 pub(crate) fn os_store() -> Box<dyn SecretStore> {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
     {
-        Box::new(linux::SecretService::connect())
+        Box::new(native::NativeStore::connect())
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         Box::new(Unsupported)
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 struct Unsupported;
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 impl SecretStore for Unsupported {
     fn load(&self) -> Result<Option<AccessToken>, SignInError> {
         Ok(None)
@@ -42,24 +42,33 @@ impl SecretStore for Unsupported {
     }
 }
 
-#[cfg(target_os = "linux")]
-mod linux {
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+mod native {
     use super::*;
     use keyring_core::{Entry, Error};
 
-    /// The freedesktop Secret Service (GNOME Keyring, KWallet, ...), or the reason it is not there.
-    pub(super) struct SecretService {
+    /// Makes this platform's store the default one: the freedesktop Secret Service (GNOME
+    /// Keyring, KWallet, ...), the macOS Keychain or the Windows Credential Manager.
+    fn open_store() -> Result<(), String> {
+        #[cfg(target_os = "linux")]
+        let store = dbus_secret_service_keyring_store::Store::new();
+        #[cfg(target_os = "macos")]
+        let store = apple_native_keyring_store::keychain::Store::new();
+        #[cfg(target_os = "windows")]
+        let store = windows_native_keyring_store::Store::new();
+        keyring_core::set_default_store(store.map_err(|error| error.to_string())?);
+        Ok(())
+    }
+
+    /// The operating system's credential store, or the reason it is not there.
+    pub(super) struct NativeStore {
         entry: Result<Entry, String>,
     }
 
-    impl SecretService {
+    impl NativeStore {
         pub(super) fn connect() -> Self {
-            let entry = dbus_secret_service_keyring_store::Store::new()
-                .map_err(|error| error.to_string())
-                .and_then(|store| {
-                    keyring_core::set_default_store(store);
-                    Entry::new(SERVICE, ENTRY).map_err(|error| error.to_string())
-                });
+            let entry = open_store()
+                .and_then(|()| Entry::new(SERVICE, ENTRY).map_err(|error| error.to_string()));
             Self { entry }
         }
 
@@ -74,7 +83,7 @@ mod linux {
         SignInError::Store(error.to_string())
     }
 
-    impl SecretStore for SecretService {
+    impl SecretStore for NativeStore {
         fn load(&self) -> Result<Option<AccessToken>, SignInError> {
             match self.entry()?.get_password() {
                 Ok(token) => Ok(Some(AccessToken::new(token))),
