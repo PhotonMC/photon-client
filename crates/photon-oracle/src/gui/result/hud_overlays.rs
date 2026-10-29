@@ -194,7 +194,7 @@ fn add_recipe_toast(
     event: &Value,
     env: &photon_gui::toasts::ToastEnv<'_>,
 ) {
-    let item = |key: &str| (!event[key].is_null()).then_some(photon_core::ids::ItemId(1));
+    let item = |key: &str| (!event[key].is_null()).then_some(crate::case_ids::item(1));
     manager.add_or_update_recipe(env, (item("station"), item("result")));
 }
 

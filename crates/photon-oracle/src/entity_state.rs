@@ -26,7 +26,7 @@ pub(super) fn client_world_entity_shared_flags_result(request: &Value) -> Result
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -76,7 +76,7 @@ pub(super) fn client_world_entity_air_supply_result(request: &Value) -> Result<V
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -133,7 +133,7 @@ pub(super) fn client_world_entity_pose_result(request: &Value) -> Result<Value, 
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -193,7 +193,7 @@ pub(super) fn client_world_entity_ticks_frozen_result(request: &Value) -> Result
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -251,7 +251,7 @@ pub(super) fn client_world_entity_custom_name_result(request: &Value) -> Result<
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -310,7 +310,7 @@ pub(super) fn client_world_entity_living_flags_result(request: &Value) -> Result
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -369,7 +369,7 @@ pub(super) fn client_world_entity_health_result(request: &Value) -> Result<Value
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,

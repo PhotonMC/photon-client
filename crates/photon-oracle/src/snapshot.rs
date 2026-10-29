@@ -145,7 +145,7 @@ pub(super) fn block_collision_fixture(
         .as_array()
         .ok_or("shape_states must be an array")?
     {
-        let state_id = BlockStateId(i32_field(entry, "state_id")?);
+        let state_id = crate::case_ids::block_state(i32_field(entry, "state_id")?);
         let shape = shape_box(entry.get("shape").ok_or("shape must be an object")?)?;
         shapes_by_state.insert(state_id, shape);
     }
@@ -167,7 +167,7 @@ pub(super) fn block_collision_world_fixture(request: &Value) -> Result<ClientWor
         if !(0..16).contains(&y) {
             return Err("block collision fixture Y must be in 0..16".into());
         }
-        let state_id = BlockStateId(i32_field(entry, "state_id")?);
+        let state_id = crate::case_ids::block_state(i32_field(entry, "state_id")?);
         let blocks = chunk_blocks
             .entry((x.div_euclid(16), z.div_euclid(16)))
             .or_insert_with(|| vec![0; 4_096]);

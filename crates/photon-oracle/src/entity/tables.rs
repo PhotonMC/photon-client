@@ -478,7 +478,7 @@ pub(super) fn entity_data_serializers_case() -> Result<Value, String> {
 }
 
 pub(super) fn entity_types_case() -> Result<Value, String> {
-    let rows: Vec<Value> = photon_data::entity_type::listed_in(photon_core::version::Version::NEWEST)
+    let rows: Vec<Value> = photon_data::entity_type::listed_in(crate::case_ids::ORACLE_VERSION)
         .map(|(id, _, name)| {
             json!({"label": name, "id": id,
                 "allowed_in_peaceful": photon_data::entity_type::allowed_in_peaceful(name),

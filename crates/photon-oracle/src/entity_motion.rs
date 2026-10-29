@@ -440,7 +440,7 @@ pub(super) fn client_world_entity_player_head_rotation_result(
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: initial_position.x,
         y: initial_position.y,
         z: initial_position.z,

@@ -44,7 +44,7 @@ pub(super) fn client_world_entity_passengers_result(request: &Value) -> Result<V
         if !world.apply_entity(EntityInput {
             entity_id,
             uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-            type_id: photon_core::ids::EntityTypeId(type_id),
+            type_id: crate::case_ids::entity_type(type_id),
             x: 0.0,
             y: 0.0,
             z: 0.0,

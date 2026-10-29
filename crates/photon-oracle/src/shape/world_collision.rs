@@ -76,7 +76,7 @@ pub(super) fn client_world_collision_case(request: &Value) -> Result<Value, Stri
 
 fn is_happy_ghast(type_id: i32) -> bool {
     photon_data::entity_type::id("minecraft:happy_ghast")
-        == Some(photon_core::ids::EntityTypeId(type_id))
+        == Some(crate::case_ids::entity_type(type_id))
 }
 
 pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result<Value, String> {
@@ -113,7 +113,7 @@ pub(super) fn client_world_happy_ghast_collision_case(request: &Value) -> Result
                 world.apply_entity(EntityInput {
                     entity_id,
                     uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-                    type_id: photon_core::ids::EntityTypeId(type_id),
+                    type_id: crate::case_ids::entity_type(type_id),
                     x: position.x,
                     y: position.y,
                     z: position.z,

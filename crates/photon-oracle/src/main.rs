@@ -98,6 +98,7 @@ use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
 use std::rc::Rc;
 
+mod case_ids;
 mod data_tables;
 mod hex;
 mod music;

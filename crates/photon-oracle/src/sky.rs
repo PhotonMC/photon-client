@@ -52,7 +52,7 @@ pub(super) fn entity_pick_table_result(request: &Value) -> Value {
         .flatten()
         .map(|row| {
             let types: Vec<Value> =
-                photon_data::entity_type::listed_in(photon_core::version::Version::NEWEST)
+                photon_data::entity_type::listed_in(crate::case_ids::ORACLE_VERSION)
                     .map(|(id, canonical, name)| {
                         let mut out = json!({"label": name, "id": id});
                         let Some(pick) = photon_data::entity_type::pick(canonical) else {

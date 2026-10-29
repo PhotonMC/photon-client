@@ -1,4 +1,5 @@
 use super::*;
+use crate::case_ids::block_state;
 
 /// The uuid the oracle gives the local player in rows that name an owner (the Java side sets the same).
 pub(crate) const ORACLE_PLAYER_UUID: u64 = 0x7001;
@@ -78,7 +79,7 @@ pub(super) fn movement_result(request: &Value) -> Result<Value, String> {
                 let others: Vec<Value> = states
                     .iter()
                     .filter(|(state, _)| {
-                        photon_data::block::registry::block_for_state(BlockStateId(*state as i32))
+                        photon_data::block::registry::block_for_state(block_state(*state as i32))
                             .is_some_and(|(block, _)| block.name == *name)
                     })
                     .map(|(state, color)| json!([state, color]))

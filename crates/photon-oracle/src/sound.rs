@@ -376,7 +376,7 @@ pub(super) fn sound_decode_result(request: &Value) -> Result<Value, String> {
 }
 
 fn reg() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::newest()
+    crate::case_ids::registries()
 }
 
 /// `packets` (the sound family): the three sound packets read from the bytes a scenario gives.

@@ -88,7 +88,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 // and `blocksMotion`, as runs of equal values.
                 let count = registry::state_count();
                 let value = |id: u32| {
-                    let state = photon_world::block::state(BlockStateId(id as i32))
+                    let state = photon_world::block::state(crate::case_ids::block_state(id as i32))
                         .expect("a registry state");
                     let ice = state
                         .block()
@@ -117,7 +117,7 @@ fn block_result(request: &Value) -> Result<Value, String> {
                 let count = registry::state_count();
                 let mut words = vec![0_u64; count.div_ceil(64) as usize];
                 for id in 0..count {
-                    if photon_world::motion_blocking(BlockStateId(id as i32)) {
+                    if photon_world::motion_blocking(crate::case_ids::block_state(id as i32)) {
                         words[id as usize / 64] |= 1 << (id % 64);
                     }
                 }
@@ -474,7 +474,9 @@ fn menu_providers(request: &Value) -> Result<Value, String> {
     let count = registry::state_count();
     let mut words = vec![0_u64; count.div_ceil(64) as usize];
     for id in 0..count {
-        if photon_world::block::menu_provider::has_menu_provider(BlockStateId(id as i32)) {
+        if photon_world::block::menu_provider::has_menu_provider(crate::case_ids::block_state(
+            id as i32,
+        )) {
             words[id as usize / 64] |= 1 << (id % 64);
         }
     }

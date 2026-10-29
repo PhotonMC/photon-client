@@ -21,7 +21,7 @@ pub(super) fn client_world_entity_mob_flags_result(request: &Value) -> Result<Va
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -78,7 +78,7 @@ pub(super) fn client_world_entity_arrow_count_result(request: &Value) -> Result<
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -135,7 +135,7 @@ pub(super) fn client_world_entity_effect_ambience_result(request: &Value) -> Res
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -243,7 +243,7 @@ pub(super) fn client_world_entity_effect_particles_result(
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -309,7 +309,7 @@ pub(super) fn client_world_entity_sleeping_position_result(
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -366,7 +366,7 @@ pub(super) fn client_world_entity_stinger_count_result(request: &Value) -> Resul
     if !world.apply_entity(EntityInput {
         entity_id,
         uuid: Uuid::new(0, u64::from(entity_id.0 as u32)),
-        type_id: photon_core::ids::EntityTypeId(i32_field(request, "entity_type_id")?),
+        type_id: crate::case_ids::entity_type(i32_field(request, "entity_type_id")?),
         x: 1.25,
         y: 80.0,
         z: -35.5,

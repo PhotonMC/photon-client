@@ -1,4 +1,5 @@
 use super::*;
+use crate::case_ids::block_state;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -227,7 +228,7 @@ pub(super) fn respond(request: Value) -> Result<Value, String> {
                     let own: Vec<Value> = overrides
                         .iter()
                         .filter(|(state, _)| {
-                            photon_world::block::state_or_air(BlockStateId(*state as i32))
+                            photon_world::block::state_or_air(block_state(*state as i32))
                                 .block()
                                 .name
                                 == name

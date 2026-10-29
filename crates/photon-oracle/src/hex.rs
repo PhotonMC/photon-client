@@ -405,10 +405,7 @@ fn award_stats_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{AwardStats, Decode};
     let bytes = decode_hex(string(request, "hex")?)?;
     Ok(
-        match AwardStats::decode(
-            &bytes,
-            &photon_data::version_registries::VersionRegistries::newest(),
-        ) {
+        match AwardStats::decode(&bytes, &crate::case_ids::registries()) {
             Ok(AwardStats(stats)) => {
                 let mut last = std::collections::HashMap::new();
                 for (key, amount) in stats {
@@ -433,10 +430,7 @@ fn update_advancements_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{Decode, UpdateAdvancements};
     let bytes = decode_hex(string(request, "hex")?)?;
     let lang = photon_game::text::Lang::new(std::iter::empty());
-    let Ok(packet) = UpdateAdvancements::decode(
-        &bytes,
-        &photon_data::version_registries::VersionRegistries::newest(),
-    ) else {
+    let Ok(packet) = UpdateAdvancements::decode(&bytes, &crate::case_ids::registries()) else {
         return Ok(json!({"outcome": "error"}));
     };
     let added: Vec<Value> = packet
@@ -495,10 +489,7 @@ fn select_advancements_tab_result(request: &Value) -> Result<Value, String> {
     use photon_protocol::play::{Decode, SelectAdvancementsTab};
     let bytes = decode_hex(string(request, "hex")?)?;
     Ok(
-        match SelectAdvancementsTab::decode(
-            &bytes,
-            &photon_data::version_registries::VersionRegistries::newest(),
-        ) {
+        match SelectAdvancementsTab::decode(&bytes, &crate::case_ids::registries()) {
             Ok(SelectAdvancementsTab(tab)) => {
                 without_nulls(json!({"outcome": "value", "tab": tab}))
             }

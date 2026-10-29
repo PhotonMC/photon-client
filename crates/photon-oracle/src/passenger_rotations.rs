@@ -90,7 +90,7 @@ pub(super) fn client_world_entity_passenger_turn_result(request: &Value) -> Resu
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
             uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-            type_id: photon_core::ids::EntityTypeId(passenger_type_id),
+            type_id: crate::case_ids::entity_type(passenger_type_id),
             x: passenger_position.x,
             y: passenger_position.y,
             z: passenger_position.z,
@@ -253,7 +253,7 @@ pub(super) fn client_world_entity_passenger_rotation_result(
         if !world.apply_entity(EntityInput {
             entity_id: passenger_id,
             uuid: Uuid::new(0, u64::from(passenger_id.0 as u32)),
-            type_id: photon_core::ids::EntityTypeId(passenger_type_id),
+            type_id: crate::case_ids::entity_type(passenger_type_id),
             x: passenger_position.x,
             y: passenger_position.y,
             z: passenger_position.z,

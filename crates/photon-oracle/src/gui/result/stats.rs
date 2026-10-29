@@ -175,7 +175,7 @@ pub(super) fn advancement_from(
             title: Component::literal(shown["title"].as_str().ok_or("title")?),
             description: Component::literal(shown["description"].as_str().ok_or("description")?),
             icon: (
-                photon_core::ids::ItemId(1),
+                crate::case_ids::item(1),
                 1,
                 photon_game::item_components::Patch {
                     added: Vec::new(),
