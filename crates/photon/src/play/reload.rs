@@ -3,6 +3,7 @@
 
 use super::ticks::share_registries;
 use super::*;
+use crate::packs::{Attempt, answer_attempt};
 use photon_assets::ResourceStack;
 use photon_render::model::DisplayContext;
 
@@ -283,10 +284,13 @@ impl Play {
             return;
         };
         let started = std::time::Instant::now();
+        let previous = env::var("PHOTON_ASSETS")
+            .ok()
+            .map(|root| crate::resources::shared(std::path::Path::new(&root)));
         let outcome = match handle.join() {
             Ok(Ok(prepared)) => self.apply_prepared(prepared).map_err(|error| {
                 // The renderers may be half replaced: make them again from what was in use.
-                let restored = self.restore_resources();
+                let restored = previous.is_some_and(|stack| self.restore_resources(stack));
                 format!("{error}{}", if restored { "" } else { " (not restored)" })
             }),
             Ok(Err(error)) => Err(error),
@@ -296,15 +300,15 @@ impl Play {
         self.answer_reload(stage, outcome);
     }
 
-    /// Put the stack in use through the renderers again, after an apply that failed midway.
-    fn restore_resources(&mut self) -> bool {
+    /// Put `previous`, the stack that was in use, through the renderers again after an apply that
+    /// failed midway.
+    fn restore_resources(&mut self, previous: Arc<ResourceStack>) -> bool {
         let Ok(root) = env::var("PHOTON_ASSETS") else {
             return false;
         };
-        let stack = crate::resources::shared(std::path::Path::new(&root));
         let inputs = self.prepare_inputs(&root);
         matches!(
-            prepare(stack, inputs).map(|prepared| self.apply_prepared(prepared)),
+            prepare(previous, inputs).map(|prepared| self.apply_prepared(prepared)),
             Ok(Ok(()))
         )
     }
@@ -314,17 +318,14 @@ impl Play {
         if let Err(error) = &outcome {
             log::warn!("resource reload failed: {error}");
         }
+        let attempt = match stage {
+            Stage::Forced => return,
+            Stage::Server => Attempt::First,
+            Stage::Recovery => Attempt::Recovery,
+        };
         let source = self.session.packs().clone();
-        match (stage, outcome) {
-            (Stage::Forced, _) => {}
-            (_, Ok(())) => source.reload_succeeded(),
-            (Stage::Server, Err(_)) => {
-                let recovery = source.reload_failed(false);
-                self.start_reload(&recovery, Stage::Recovery);
-            }
-            (Stage::Recovery, Err(_)) => {
-                source.reload_failed(true);
-            }
+        if let Some(recovery) = answer_attempt(&source, attempt, outcome.is_ok()) {
+            self.start_reload(&recovery, Stage::Recovery);
         }
     }
 

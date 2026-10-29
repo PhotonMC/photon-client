@@ -77,22 +77,41 @@ pub(crate) fn prepare(source: &PackSource, ip: Option<&str>) {
 /// The packs a reload loads: their ids and where they are kept.
 pub(crate) type LoadedPacks = [(photon_core::binary::Uuid, std::path::PathBuf)];
 
-/// Answer the reload the packs asked for, if one is due. `reload` puts the packs it is given (the
-/// top of the stack first) in use and says whether that went through. A failure is answered with
-/// the recovery the packs ask for, the ones that were in use before.
+/// Which try of a reload an answer is for.
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Attempt {
+    /// The packs the reload asked for.
+    First,
+    /// The packs that were in use, after the first failed.
+    Recovery,
+}
+
+/// Tell the packs how an attempt went. A failed first attempt is answered with the recovery the
+/// packs ask for, the ones that were in use before, which the caller then loads as the second
+/// attempt.
+pub(crate) fn answer_attempt(
+    source: &PackSource,
+    attempt: Attempt,
+    loaded: bool,
+) -> Option<Vec<(photon_core::binary::Uuid, std::path::PathBuf)>> {
+    match (attempt, loaded) {
+        (_, true) => source.reload_succeeded(),
+        (Attempt::First, false) => return Some(source.reload_failed(false)),
+        (Attempt::Recovery, false) => {
+            source.reload_failed(true);
+        }
+    }
+    None
+}
+
+/// Answer the reload the packs asked for, if one is due, with `reload` loading the packs it is
+/// given (the top of the stack first) and saying whether that went through.
 pub(crate) fn serve_reload(source: &PackSource, reload: &mut dyn FnMut(&LoadedPacks) -> bool) {
     let Some(packs) = source.take_reload() else {
         return;
     };
-    if reload(&packs) {
-        source.reload_succeeded();
-        return;
-    }
-    let recovery = source.reload_failed(false);
-    if reload(&recovery) {
-        source.reload_succeeded();
-    } else {
-        source.reload_failed(true);
+    if let Some(recovery) = answer_attempt(source, Attempt::First, reload(&packs)) {
+        answer_attempt(source, Attempt::Recovery, reload(&recovery));
     }
 }
 
