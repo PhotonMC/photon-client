@@ -113,3 +113,11 @@ mod ore_steps;
 mod passengers;
 mod presentation;
 mod spawners;
+
+/// The state of a block at an offset in its own states, found by name so a test does not
+/// depend on where the registry puts the block.
+pub(crate) fn state_of(name: &str, offset: u32) -> photon_core::ids::BlockStateId {
+    photon_data::block::registry::block(name)
+        .expect(name)
+        .state_at(offset)
+}

@@ -7,7 +7,7 @@ fn entity_air_supply_follows_java_int_metadata_and_preserves_shared_flags() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(120),
+        type_id: photon_data::entity_type::named("minecraft:snowball"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -71,7 +71,7 @@ fn entity_health_follows_java_float_metadata_and_preserves_partial_state() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -134,7 +134,7 @@ fn entity_arrow_count_follows_java_int_metadata_and_preserves_partial_state() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -190,7 +190,7 @@ fn entity_stinger_count_follows_java_int_metadata_and_preserves_partial_state() 
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -246,7 +246,7 @@ fn entity_effect_ambience_follows_java_boolean_metadata_with_empty_particles() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -307,7 +307,7 @@ fn entity_effect_particle_types_follow_java_particle_list_and_preserve_partial_s
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -395,7 +395,7 @@ fn entity_sleeping_position_follows_java_optional_block_pos_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,

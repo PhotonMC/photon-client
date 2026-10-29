@@ -317,22 +317,22 @@ fn client_world_applies_block_update_tags_to_state_registry() {
     assert!(
         world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(5720))
+            .is_climbable_state(crate::tests::state_of("minecraft:ladder", 1))
     );
     assert!(
         world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(8389))
+            .is_climbable_state(crate::tests::state_of("minecraft:vine", 31))
     );
     assert!(
         world
             .block_state_registry()
-            .is_glide_through_state(BlockStateId(8389))
+            .is_glide_through_state(crate::tests::state_of("minecraft:vine", 31))
     );
     assert!(
         !world
             .block_state_registry()
-            .is_glide_through_state(BlockStateId(5720))
+            .is_glide_through_state(crate::tests::state_of("minecraft:ladder", 1))
     );
 
     let replacement = ClientboundUpdateTagsPacket::new(vec![RegistryTags::new(
@@ -346,17 +346,17 @@ fn client_world_applies_block_update_tags_to_state_registry() {
     assert!(
         world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(5720))
+            .is_climbable_state(crate::tests::state_of("minecraft:ladder", 1))
     );
     assert!(
         !world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(8389))
+            .is_climbable_state(crate::tests::state_of("minecraft:vine", 31))
     );
     assert!(
         !world
             .block_state_registry()
-            .is_glide_through_state(BlockStateId(8389))
+            .is_glide_through_state(crate::tests::state_of("minecraft:vine", 31))
     );
 }
 
@@ -390,17 +390,20 @@ fn client_world_updates_stair_shape_from_loaded_neighbors() {
     );
 
     assert!(world.apply_stair_neighbor_shape_update(0, 0, 0));
-    assert_eq!(world.block_state_at(0, 0, 0), Some(BlockStateId(3924)));
+    assert_eq!(
+        world.block_state_at(0, 0, 0),
+        Some(crate::tests::state_of("minecraft:oak_stairs", 17))
+    );
     assert_eq!(
         world
             .block_state_registry()
-            .stair_shape_name(BlockStateId(3924)),
+            .stair_shape_name(crate::tests::state_of("minecraft:oak_stairs", 17)),
         Some("outer_left")
     );
     assert_eq!(
         world
             .block_state_registry()
-            .collision_shape(BlockStateId(3924))
+            .collision_shape(crate::tests::state_of("minecraft:oak_stairs", 17))
             .to_aabbs(),
         vec![
             Aabb::new(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),

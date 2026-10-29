@@ -306,12 +306,12 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
     assert!(
         world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(5719))
+            .is_climbable_state(crate::tests::state_of("minecraft:ladder", 0))
     );
     assert!(
         world
             .block_state_registry()
-            .is_climbable_state(BlockStateId(5726))
+            .is_climbable_state(crate::tests::state_of("minecraft:ladder", 7))
     );
     assert!(
         !world
@@ -328,7 +328,10 @@ fn indexed_player_collision_respects_climbable_block_state_tag() {
             .entities_mut()
             .apply_living_collision_state(EntityId(8), true, false, false)
     );
-    assert!(world.apply_entity_living_climbable_block_state(EntityId(8), BlockStateId(5720)));
+    assert!(world.apply_entity_living_climbable_block_state(
+        EntityId(8),
+        crate::tests::state_of("minecraft:ladder", 1)
+    ));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
     assert!(world.apply_entity_living_climbable_block_state(EntityId(8), BlockStateId(1)));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
@@ -358,7 +361,7 @@ fn indexed_player_collision_respects_glide_through_tag() {
     assert!(
         world
             .block_state_registry()
-            .is_glide_through_state(BlockStateId(8389))
+            .is_glide_through_state(crate::tests::state_of("minecraft:vine", 31))
     );
     assert!(
         !world
@@ -377,7 +380,7 @@ fn indexed_player_collision_respects_glide_through_tag() {
     );
     assert!(world.apply_entity_living_climbable_glide_through_state(
         EntityId(8),
-        BlockStateId(8389),
+        crate::tests::state_of("minecraft:vine", 31),
         false
     ));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
@@ -391,7 +394,7 @@ fn indexed_player_collision_respects_glide_through_tag() {
 
     assert!(world.apply_entity_living_climbable_glide_through_state(
         EntityId(8),
-        BlockStateId(8389),
+        crate::tests::state_of("minecraft:vine", 31),
         true
     ));
     assert!(!world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));
@@ -419,7 +422,7 @@ fn indexed_player_collision_respects_glide_through_tag() {
 
     assert!(world.apply_entity_living_climbable_glide_through_state(
         EntityId(8),
-        BlockStateId(8389),
+        crate::tests::state_of("minecraft:vine", 31),
         false
     ));
     assert!(world.no_entity_collision_for_entity(Some(EntityId(7)), test_area));

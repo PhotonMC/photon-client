@@ -313,7 +313,7 @@ fn passenger_tick_positions_generic_entity_vehicle_attachment() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(37),
             uuid: Uuid::new(37, 0),
-            type_id: EntityTypeId(89),
+            type_id: photon_data::entity_type::named("minecraft:oak_boat"),
             x: 2.0,
             y: 2.0,
             z: 2.0,
@@ -362,7 +362,7 @@ fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 2.0,
         z: 2.0,
@@ -373,7 +373,7 @@ fn passenger_tick_uses_zombie_baby_vehicle_attachment_metadata() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(38, 0),
-        type_id: EntityTypeId(151),
+        type_id: photon_data::entity_type::named("minecraft:zombie"),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -426,7 +426,7 @@ fn passenger_tick_positions_local_player_from_vehicle_attachment() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 2.0,
         z: 2.0,

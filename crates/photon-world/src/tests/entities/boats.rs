@@ -22,7 +22,7 @@ fn air_boat_float_applies_java_drag_gravity_and_position_step() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(37),
             uuid: Uuid::new(1, 37),
-            type_id: photon_core::ids::EntityTypeId(89),
+            type_id: photon_data::entity_type::named("minecraft:oak_boat"),
             x: 12.5,
             y: 8.0,
             z: -4.25,
@@ -75,7 +75,7 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: photon_core::ids::EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -86,7 +86,7 @@ fn remote_boat_tick_does_not_apply_client_control_or_motion() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(1, 38),
-        type_id: photon_core::ids::EntityTypeId(151),
+        type_id: photon_data::entity_type::named("minecraft:zombie"),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -113,7 +113,7 @@ fn a_turn_through_the_half_circle_is_drawn_the_short_way_round() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: photon_core::ids::EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 0.0,
         y: 0.0,
         z: 0.0,
@@ -224,7 +224,7 @@ fn a_boat_the_local_player_steers_ignores_the_servers_moves() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: photon_core::ids::EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 12.5,
         y: 8.0,
         z: -4.25,

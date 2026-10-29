@@ -7,7 +7,7 @@ fn entity_living_flags_follow_java_byte_metadata_masks() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(54),
+        type_id: photon_data::entity_type::named("minecraft:fox"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -75,7 +75,7 @@ fn mob_flags_follow_java_byte_metadata_masks_and_preserve_partial_state() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(70),
+        type_id: photon_data::entity_type::named("minecraft:iron_golem"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -236,7 +236,7 @@ fn entity_ticks_frozen_follows_java_int_metadata_and_derived_state() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(1),
+        type_id: photon_data::entity_type::named("minecraft:acacia_chest_boat"),
         x: 1.25,
         y: 80.0,
         z: -35.5,

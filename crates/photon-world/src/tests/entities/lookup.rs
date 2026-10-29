@@ -1,5 +1,5 @@
 use super::super::*;
-use photon_core::ids::{EntityId, EntityTypeId};
+use photon_core::ids::EntityId;
 
 #[test]
 fn player_entities_keep_ticking_after_their_chunk_unloads() {
@@ -137,7 +137,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: EntityTypeId(120),
+        type_id: photon_data::entity_type::named("minecraft:snowball"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -158,7 +158,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
             .entities()
             .at(EntityId(37))
             .map(|entity| entity.type_id),
-        Some(EntityTypeId(120))
+        Some(photon_data::entity_type::named("minecraft:snowball"))
     );
     assert_eq!(
         world.entities().at(EntityId(37)).map(|entity| entity.data),
@@ -407,7 +407,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(3, 4),
-        type_id: EntityTypeId(71),
+        type_id: photon_data::entity_type::named("minecraft:item"),
         x: -4.0,
         y: 65.0,
         z: 2.0,
@@ -421,7 +421,7 @@ fn entities_are_queryable_and_replaced_by_entity_id() {
             .entities()
             .at(EntityId(37))
             .map(|entity| entity.type_id),
-        Some(EntityTypeId(71))
+        Some(photon_data::entity_type::named("minecraft:item"))
     );
     assert_eq!(
         world.entities().at(EntityId(37)).map(|entity| entity.uuid),
@@ -447,7 +447,7 @@ fn entity_passenger_state_replaces_previous_vehicle_and_cleans_relationships() {
         assert!(world.apply_entity(EntityInput {
             entity_id: EntityId(entity_id),
             uuid: Uuid::new(entity_id as u64, 0),
-            type_id: EntityTypeId(71),
+            type_id: photon_data::entity_type::named("minecraft:item"),
             x: 0.0,
             y: 64.0,
             z: 0.0,

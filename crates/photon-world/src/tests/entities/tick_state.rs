@@ -19,7 +19,7 @@ fn tick_counters_follow_local_player_and_entity_ticking_eligibility() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(120),
+        type_id: photon_data::entity_type::named("minecraft:snowball"),
         x: 1.25,
         y: 80.0,
         z: -35.5,
@@ -134,7 +134,7 @@ fn tick_captures_previous_transform_for_position_and_rotation_interpolation() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 2),
-        type_id: photon_core::ids::EntityTypeId(120),
+        type_id: photon_data::entity_type::named("minecraft:snowball"),
         x: 1.25,
         y: 80.0,
         z: -35.5,

@@ -18,7 +18,7 @@ fn passenger_tick_clamps_remote_player_rotation_to_boat_heading() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 2.0,
         z: 2.0,
@@ -330,7 +330,7 @@ fn boat_authority_uses_first_passenger_only() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(1, 37),
-        type_id: EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -341,7 +341,7 @@ fn boat_authority_uses_first_passenger_only() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(38),
         uuid: Uuid::new(1, 38),
-        type_id: EntityTypeId(151),
+        type_id: photon_data::entity_type::named("minecraft:zombie"),
         x: 2.0,
         y: 12.0,
         z: 2.0,
@@ -391,7 +391,7 @@ fn passenger_turn_clamps_every_vanilla_living_entity_body_and_head() {
     assert!(world.apply_entity(EntityInput {
         entity_id: EntityId(37),
         uuid: Uuid::new(37, 0),
-        type_id: EntityTypeId(89),
+        type_id: photon_data::entity_type::named("minecraft:oak_boat"),
         x: 2.0,
         y: 2.0,
         z: 2.0,
