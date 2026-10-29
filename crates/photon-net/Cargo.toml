@@ -17,6 +17,10 @@ photon-protocol.workspace = true
 sha1.workspace = true
 ureq.workspace = true
 
+[features]
+# Lets another crate's tests make a `GameOwnership`; no shipped crate enables it.
+test-support = []
+
 [lints]
 workspace = true
 

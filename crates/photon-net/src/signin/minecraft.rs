@@ -17,6 +17,21 @@ const MINECRAFT_PARTY: &str = "rp://api.minecraftservices.com/";
 pub struct MinecraftSession {
     pub account: Account,
     pub expires_in: Duration,
+    /// That the account owns the game: what the game's content may be fetched on.
+    pub ownership: GameOwnership,
+}
+
+/// Proof that the entitlements of a signed-in account name the game. Only the ownership check
+/// builds it, so whatever takes one has been given a verified account; it holds no secret.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameOwnership(());
+
+impl GameOwnership {
+    /// A proof for tests of what is gated on it; the shipped build has no way to make one.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn for_tests() -> Self {
+        Self(())
+    }
 }
 
 /// The object a value holds.
@@ -145,14 +160,14 @@ fn owns_game(object: &JsonObject) -> bool {
     })
 }
 
-fn check_ownership(hosts: &Hosts, token: &AccessToken) -> Result<(), SignInError> {
+fn check_ownership(hosts: &Hosts, token: &AccessToken) -> Result<GameOwnership, SignInError> {
     let answer = get_bearer((&hosts.services, "/entitlements/mcstore"), token.reveal())?;
     if answer.status >= 500 {
         return Err(SignInError::Unavailable);
     }
     let owned = json::parse_object(&answer.body).is_some_and(|object| owns_game(&object));
     if answer.status == 200 && owned {
-        Ok(())
+        Ok(GameOwnership(()))
     } else {
         Err(SignInError::NotOwned)
     }
@@ -192,11 +207,12 @@ pub fn minecraft_session(
     let user = xbox_user_token(hosts, microsoft)?;
     let (xsts, hash) = xsts_token(hosts, &user)?;
     let (token, expires_in) = services_token(hosts, (&xsts, &hash))?;
-    check_ownership(hosts, &token)?;
+    let ownership = check_ownership(hosts, &token)?;
     let (name, profile_id) = fetch_profile(hosts, &token)?;
     Ok(MinecraftSession {
         account: Account::new(name, profile_id, token, session_host.to_owned()),
         expires_in,
+        ownership,
     })
 }
 

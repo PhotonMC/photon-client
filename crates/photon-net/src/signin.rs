@@ -10,7 +10,7 @@ mod minecraft;
 pub use chat_keys::{ProfileKeys, fetch_profile_keys};
 pub use device_code::{DeviceCode, MicrosoftTokens, poll_for_token, refresh, request_device_code};
 pub use login::{SecretStore, finish_sign_in, resume, sign_out};
-pub use minecraft::{MinecraftSession, minecraft_session};
+pub use minecraft::{GameOwnership, MinecraftSession, minecraft_session};
 
 use std::fmt;
 use std::time::Duration;
