@@ -201,12 +201,14 @@ mod tests {
         add_entity_of_type(id, wire_entity_type("minecraft:arrow"), x)
     }
 
-    /// The id the connect version's wire gives the type.
+    /// The id the newest version's wire gives the type.
     fn wire_entity_type(name: &str) -> u32 {
         let canonical = photon_data::entity_type::named(name).0;
-        photon_data::version_registries::VersionRegistries::of(crate::connection::connect_version())
-            .entity_types
-            .wire_or_unknown(canonical) as u32
+        photon_data::version_registries::VersionRegistries::of(
+            photon_core::version::Version::NEWEST,
+        )
+        .entity_types
+        .wire_or_unknown(canonical) as u32
     }
 
     fn add_entity_of_type(id: u32, type_id: u32, x: f64) -> Vec<u8> {

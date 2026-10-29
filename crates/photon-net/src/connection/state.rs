@@ -10,6 +10,11 @@ use photon_world::{ClientWorld, DimensionBounds, DimensionEnvironment};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ConnectionState {
+    /// The version the connection speaks, chosen before it opens ([`super::select_version`]).
+    pub version: photon_core::version::Version,
+    /// The protocol number the server list saw the server answer with, when it did: the
+    /// connection takes its version from it instead of asking the server.
+    pub protocol_hint: Option<i32>,
     /// The account the connection logs in with, where the server checks accounts.
     pub account: Option<crate::account::Account>,
     /// The profile id the server logged the player in with.

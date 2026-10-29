@@ -30,9 +30,12 @@ fn apply_metadata(
     entities::metadata(world, observation, &registries())
 }
 
-/// The numbering of the version the probe speaks.
+/// The numbering of the version the probe speaks: the newest, or the one
+/// `PHOTON_CONNECT_VERSION` names.
 fn registries() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::of(photon_net::connection::connect_version())
+    photon_data::version_registries::VersionRegistries::of(
+        photon_net::connection::development_version().unwrap_or_default(),
+    )
 }
 
 /// The id the probe's version puts on the wire for a canonical item.

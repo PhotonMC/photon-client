@@ -168,7 +168,7 @@ impl Menu {
         // over unless the packs in use changed since.
         let shared = crate::resources::shared(root);
         let gui = match client.gui.take().filter(|gui| gui.reads_from(&shared)) {
-            Some(gui) => gui.recycled(connect_versions(), &options.language_code),
+            Some(gui) => gui.recycled(menu_versions(), &options.language_code),
             None => Gui::load(
                 root,
                 menu_registries(&data_root),
@@ -440,13 +440,14 @@ const IDENTITY: [[f32; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// The numbering of the version a connection from the menu speaks.
-fn connect_versions() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
-    photon_data::version_registries::VersionRegistries::of(photon_net::connection::connect_version())
+/// The numbering the menus use: the newest version's. A game loads its own with the version
+/// its connection chose.
+fn menu_versions() -> std::sync::Arc<photon_data::version_registries::VersionRegistries> {
+    photon_data::version_registries::VersionRegistries::of(photon_core::version::Version::NEWEST)
 }
 
 /// What the menus' assets are read with: the data pack's registries before any server named
-/// them, and the numbering of the connect version.
+/// them, and the numbering of the newest version.
 fn menu_registries(
     data_root: &Path,
 ) -> (
@@ -455,6 +456,6 @@ fn menu_registries(
 ) {
     (
         photon_game::registries::Registries::load(data_root, |_| Vec::new()),
-        connect_versions(),
+        menu_versions(),
     )
 }

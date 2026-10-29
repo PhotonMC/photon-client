@@ -36,6 +36,7 @@ impl PlaySession {
     ) -> Result<(), ConnectionError> {
         let stage = crate::connection::LoginStage::default();
         let carried = ConnectionState {
+            version: self.registries.version(),
             account: self.state.account.clone(),
             cookies: self.state.cookies.clone(),
             packs: self.state.packs.clone(),
@@ -87,6 +88,7 @@ impl PlaySession {
         // What the connection learned at login stays; the registries, tags and features are the
         // new configuration's.
         let state = ConnectionState {
+            version: self.registries.version(),
             account: self.state.account.clone(),
             profile_id: self.state.profile_id,
             profile_name: self.state.profile_name.clone(),
@@ -244,6 +246,7 @@ fn configure_again(
         // A transfer in the configuration phase is followed like one in the play phase.
         Err(ConnectionError::Transfer { host, port }) => {
             let carried = ConnectionState {
+                version: state.version,
                 account: state.account,
                 cookies: state.cookies,
                 packs: state.packs,
@@ -261,7 +264,7 @@ fn configure_again(
             let incoming = spawn_reader(
                 stream,
                 compression_threshold,
-                VersionRegistries::of(crate::connection::connect_version()),
+                VersionRegistries::of(state.version),
             );
             let mut fresh = PlaySession::assemble(
                 writer,
@@ -333,7 +336,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::connect_version()),
+            VersionRegistries::of(photon_core::version::Version::NEWEST),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -372,7 +375,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::connect_version()),
+            VersionRegistries::of(photon_core::version::Version::NEWEST),
         );
         let mut session = PlaySession::assemble(stream, None, incoming, state, ("Tester", false));
         session.wait(Duration::from_secs(5)).expect("started");
@@ -483,12 +486,16 @@ mod tests {
                 .write_all(&framed(LOGIN_CLIENTBOUND_DISCONNECT_PACKET_ID, &body))
                 .expect("disconnect");
         });
-        let error = match PlaySession::connect(
+        let first = ConnectionState {
+            protocol_hint: Some(photon_core::version::Version::NEWEST.protocol()),
+            ..ConnectionState::default()
+        };
+        let error = match PlaySession::connect_with(
             address,
-            "Tester",
+            ("Tester", false),
             Duration::from_secs(5),
-            false,
             photon_protocol::configuration::ClientInformation::default(),
+            first,
         ) {
             Err(error) => error,
             Ok(_) => panic!("the login should have ended"),
@@ -611,7 +618,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::connect_version()),
+            VersionRegistries::of(photon_core::version::Version::NEWEST),
         );
         let first = ConnectionState {
             dimension_type_registry_bounds: vec![
@@ -683,7 +690,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::connect_version()),
+            VersionRegistries::of(photon_core::version::Version::NEWEST),
         );
         let mut session = PlaySession::assemble(
             stream,
@@ -745,7 +752,7 @@ mod tests {
         let incoming = spawn_reader(
             stream.try_clone().expect("clone"),
             None,
-            VersionRegistries::of(crate::connection::connect_version()),
+            VersionRegistries::of(photon_core::version::Version::NEWEST),
         );
         let mut session = PlaySession::assemble(
             stream,

@@ -49,7 +49,11 @@ pub fn open_play_connection(
     } else {
         ClientIntent::Login
     };
-    send_handshake_to(&mut stream, (&host, address.port()), intent)?;
+    send_handshake_to(
+        &mut stream,
+        (&host, address.port()),
+        (intent, state.version),
+    )?;
 
     let compression_threshold = log_in(
         &mut stream,
@@ -112,7 +116,7 @@ fn log_in(
                 };
             }
             LOGIN_FINISHED_PACKET_ID => {
-                let finished = decode_login_finished(payload)?;
+                let finished = decode_login_finished(payload, state.version)?;
                 recorder.login_finished();
                 state.reach(super::state::stage::JOINING);
                 remember_profile(state, &finished.game_profile);

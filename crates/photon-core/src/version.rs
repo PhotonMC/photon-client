@@ -41,6 +41,12 @@ versions! {
     V26_2 = ("26.2", 776);
 }
 
+impl Default for Version {
+    fn default() -> Self {
+        Self::NEWEST
+    }
+}
+
 impl Version {
     /// The newest supported version: the one the client is held to full parity with.
     pub const NEWEST: Version = Self::ALL[Self::ALL.len() - 1];

@@ -68,21 +68,12 @@ pub fn send_handshake_intention(
     address: SocketAddr,
     intent: ClientIntent,
 ) -> Result<(), ConnectionError> {
-    send_handshake_to(stream, (&address.ip().to_string(), address.port()), intent)
-}
-
-/// The version a connection speaks. The one place that picks it: the handshake announces its
-/// protocol number and the session numbers its content with its registries. Development only,
-/// `PHOTON_CONNECT_VERSION` names an older supported release (`26.1`) to join a server of that
-/// version; the pick from the status ping replaces it.
-pub fn connect_version() -> photon_core::version::Version {
-    static VERSION: std::sync::OnceLock<photon_core::version::Version> = std::sync::OnceLock::new();
-    *VERSION.get_or_init(|| {
-        std::env::var("PHOTON_CONNECT_VERSION")
-            .ok()
-            .and_then(|name| photon_core::version::Version::from_name(&name))
-            .unwrap_or(photon_core::version::Version::NEWEST)
-    })
+    // A status request announces the client's own protocol, as the reference does.
+    send_handshake_to(
+        stream,
+        (&address.ip().to_string(), address.port()),
+        (intent, photon_core::version::Version::NEWEST),
+    )
 }
 
 /// The handshake for a host name as given (`ClientIntentionPacket`'s host is what the player typed,
@@ -90,10 +81,10 @@ pub fn connect_version() -> photon_core::version::Version {
 pub fn send_handshake_to(
     stream: &mut Transport,
     (host, port): (&str, u16),
-    intent: ClientIntent,
+    (intent, version): (ClientIntent, photon_core::version::Version),
 ) -> Result<(), ConnectionError> {
     let intention = ClientIntentionPacket::new(
-        connect_version().protocol(),
+        version.protocol(),
         host.encode_utf16().collect(),
         i32::from(port),
         intent,
@@ -180,11 +171,12 @@ fn read_frame(stream: &mut Transport) -> Result<Vec<u8>, ConnectionError> {
     Err(ConnectionError::Frame(FrameError::LengthTooWide))
 }
 
-/// The login-finished packet as the connect version sends it.
+/// The login-finished packet as `version` sends it.
 pub(super) fn decode_login_finished(
     payload: &[u8],
+    version: photon_core::version::Version,
 ) -> Result<ClientboundLoginFinishedPacket, ConnectionError> {
     let mut input = payload;
-    ClientboundLoginFinishedPacket::decode_for(&mut input, connect_version())
+    ClientboundLoginFinishedPacket::decode_for(&mut input, version)
         .map_err(|_| ConnectionError::Codec("login finished"))
 }
