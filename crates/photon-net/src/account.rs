@@ -20,6 +20,11 @@ impl AccessToken {
     pub(crate) fn reveal(&self) -> &str {
         &self.0
     }
+
+    /// The token itself, for the credential store that keeps it and nothing else.
+    pub fn reveal_for_storage(&self) -> &str {
+        &self.0
+    }
 }
 
 impl fmt::Debug for AccessToken {

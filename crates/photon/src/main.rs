@@ -8,6 +8,7 @@ mod gpu_meter;
 mod gui;
 mod hud_input;
 mod indexed;
+mod keyring_store;
 mod logger;
 mod menu;
 mod mobs;
@@ -24,6 +25,7 @@ mod resources;
 mod screens;
 mod screenshot;
 mod script;
+mod sign_in;
 mod skins;
 mod sound;
 mod system_info;
@@ -44,10 +46,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match env::args().nth(1).as_deref() {
         None => return menu::run_menu(std::iter::empty()),
         Some("menu") => return menu::run_menu(env::args().skip(2)),
+        Some("sign-in") => return sign_in::run_sign_in(),
+        Some("sign-out") => return sign_in::run_sign_out(),
         _ => {}
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play` or `window`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out` or `window`",
         env::args().nth(1)
     )
     .into())

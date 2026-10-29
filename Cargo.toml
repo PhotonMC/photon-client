@@ -28,6 +28,8 @@ cfb8 = "0.8"
 getrandom = "0.2"
 rsa = "0.9"
 sha1 = "0.10"
+keyring-core = "1"
+dbus-secret-service-keyring-store = { version = "1", default-features = false, features = ["crypto-rust"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
 log = { version = "0.4.34", features = ["std"] }

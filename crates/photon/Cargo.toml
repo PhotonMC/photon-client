@@ -27,3 +27,7 @@ photon-protocol.workspace = true
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring-core.workspace = true
+dbus-secret-service-keyring-store.workspace = true

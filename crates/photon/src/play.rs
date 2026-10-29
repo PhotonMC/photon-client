@@ -464,7 +464,7 @@ pub(crate) fn join(
     wait: JoinWait,
     packs: &PackSource,
 ) -> Result<PlaySession> {
-    let username = env::var("PHOTON_USER").unwrap_or_else(|_| "Photon".to_owned());
+    let (username, account) = crate::profile_login::identity()?;
     let auto_jump = env::var("PHOTON_AUTO_JUMP").is_ok_and(|value| value == "1");
     println!("play_connecting={server} user={username}");
     let mut options = crate::controls::load_options();
@@ -472,7 +472,7 @@ pub(crate) fn join(
     let information = crate::controls::client_information(&options);
     let timeout = Duration::from_secs(30);
     let first = ConnectionState {
-        account: crate::profile_login::from_environment(&username)?,
+        account,
         packs: packs.clone(),
         login_stage: Some(status.stage.clone()),
         ..ConnectionState::default()
