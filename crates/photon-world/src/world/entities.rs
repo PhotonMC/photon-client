@@ -211,6 +211,7 @@ impl ClientWorld {
                 kind: initial_kind,
                 worn: Equipment::default(),
                 living: EntityState::default(),
+                item: DroppedItem::new(bob_offset(entity.uuid)),
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
@@ -243,8 +244,6 @@ impl ClientWorld {
                     old_swim_amount: JavaF32::new(0.0_f32),
                     head_stable_time: 0,
                     last_stable_y_head_rot: JavaF32::new(entity.rotation.2),
-                    item_stack: None,
-                    bob_offset: bob_offset(entity.uuid),
                     data: entity.data,
                     metadata: None,
                     shared_flags: 0,

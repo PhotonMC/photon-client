@@ -86,10 +86,10 @@ impl Entities {
         entity_id: EntityId,
         stack: Option<ClientItemStackState>,
     ) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
-        entity.item_stack = stack;
+        entity.item.stack = stack;
         if let Some(display) = entity.kind.display_mut() {
             display.item_changed();
         }

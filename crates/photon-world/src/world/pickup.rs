@@ -50,8 +50,8 @@ impl ClientWorld {
             position,
         });
         let gone = if is_item {
-            let mut entity = self.entities.at_mut(item_id)?;
-            entity.item_stack.as_mut().is_none_or(|stack| {
+            let entity = self.entities.at_mut(item_id)?;
+            entity.item.stack.as_mut().is_none_or(|stack| {
                 if stack.item_count() > 0 {
                     stack.shrink(amount);
                 }

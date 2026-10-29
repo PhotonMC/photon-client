@@ -42,8 +42,6 @@ pub struct ClientEntity {
     pub(crate) last_stable_y_head_rot: JavaF32,
     /// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its
     /// spin it started (`bobOffs`).
-    pub(crate) item_stack: Option<ClientItemStackState>,
-    pub(crate) bob_offset: JavaF32,
     pub data: i32,
     pub(crate) metadata: Option<Vec<u8>>,
     pub(crate) shared_flags: u8,

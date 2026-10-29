@@ -39,7 +39,7 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living) = self
+        let (entity, rotation, pos, vel, lerp, kind, worn, living, item) = self
             .ecs
             .get_entity(entity)
             .ok()?
@@ -52,6 +52,7 @@ impl Entities {
                 &crate::entity_kind::EntityKind,
                 &Equipment,
                 &EntityState,
+                &DroppedItem,
             )>()
             .ok()?;
         Some(EntityView {
@@ -63,6 +64,7 @@ impl Entities {
             kind,
             worn,
             living,
+            item,
         })
     }
 
@@ -88,7 +90,7 @@ impl Entities {
     }
 
     fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let (entity, rotation, pos, vel, lerp, kind, worn, living) = ecs
+        let (entity, rotation, pos, vel, lerp, kind, worn, living, item) = ecs
             .get_entity_mut(entity)
             .ok()?
             .into_components_mut::<(
@@ -100,6 +102,7 @@ impl Entities {
                 &mut crate::entity_kind::EntityKind,
                 &mut Equipment,
                 &mut EntityState,
+                &mut DroppedItem,
             )>()
             .ok()?;
         Some(EntityViewMut {
@@ -111,6 +114,7 @@ impl Entities {
             kind: kind.into_inner(),
             worn: worn.into_inner(),
             living: living.into_inner(),
+            item: item.into_inner(),
         })
     }
 
@@ -140,6 +144,7 @@ impl Entities {
                 kind: std::mem::replace(view.kind, parts.kind),
                 worn: std::mem::replace(view.worn, parts.worn),
                 living: std::mem::replace(view.living, parts.living),
+                item: std::mem::replace(view.item, parts.item),
             });
         }
         let spawned = self
@@ -153,6 +158,7 @@ impl Entities {
                 parts.kind,
                 parts.worn,
                 parts.living,
+                parts.item,
             ))
             .id();
         self.ids.insert(entity_id, spawned);
@@ -172,10 +178,11 @@ impl Entities {
             crate::entity_kind::EntityKind,
             Equipment,
             EntityState,
+            DroppedItem,
         )>();
         self.ecs.despawn(entity);
         parts.map(
-            |(entity, rotation, pos, vel, lerp, kind, worn, living)| EntityParts {
+            |(entity, rotation, pos, vel, lerp, kind, worn, living, item)| EntityParts {
                 entity,
                 rotation,
                 pos,
@@ -184,6 +191,7 @@ impl Entities {
                 kind,
                 worn,
                 living,
+                item,
             },
         )
     }

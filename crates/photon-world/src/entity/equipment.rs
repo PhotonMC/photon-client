@@ -2,30 +2,7 @@ use super::*;
 use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityTypeId;
 
-impl ClientEntity {
-    pub fn item_stack(&self) -> Option<&ClientItemStackState> {
-        self.item_stack.as_ref()
-    }
-
-    /// `FireworkRocketEntity.getExplosions`: the explosions of the rocket's `fireworks` component;
-    /// none for a stack without it (the rocket's default holds none).
-    pub fn firework_explosions(&self) -> Vec<crate::particles::FireworkExplosion> {
-        let Some(stack) = self.item_stack.as_ref() else {
-            return Vec::new();
-        };
-        let mut input = stack.patch_bytes();
-        crate::item_components::read_patch(&mut input)
-            .ok()
-            .and_then(|patch| {
-                let (_, value) = patch
-                    .added
-                    .iter()
-                    .find(|(id, _)| *id == photon_data::item::component_types::FIREWORKS)?;
-                crate::item_components::fireworks(value)
-            })
-            .unwrap_or_default()
-    }
-}
+impl ClientEntity {}
 
 /// What an entity holds and wears, by `EquipmentSlot`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, bevy_ecs::component::Component)]
@@ -147,5 +124,47 @@ impl EntityView<'_> {
         } else {
             EquipmentSlot::OffHand
         })
+    }
+}
+
+/// What a dropped item holds (`ItemEntity.DATA_ITEM`), and where in its spin it started
+/// (`bobOffs`); the stack of an item frame, a firework rocket or a thrown item is kept here too.
+#[derive(Debug, Clone, PartialEq, Eq, bevy_ecs::component::Component)]
+pub struct DroppedItem {
+    pub(crate) stack: Option<ClientItemStackState>,
+    pub(crate) bob_offset: JavaF32,
+}
+
+impl DroppedItem {
+    pub(crate) fn new(bob_offset: JavaF32) -> Self {
+        Self {
+            stack: None,
+            bob_offset,
+        }
+    }
+}
+
+impl EntityView<'_> {
+    pub fn item_stack(&self) -> Option<&ClientItemStackState> {
+        self.item.stack.as_ref()
+    }
+
+    /// `FireworkRocketEntity.getExplosions`: the explosions of the rocket's `fireworks` component;
+    /// none for a stack without it (the rocket's default holds none).
+    pub fn firework_explosions(&self) -> Vec<crate::particles::FireworkExplosion> {
+        let Some(stack) = self.item.stack.as_ref() else {
+            return Vec::new();
+        };
+        let mut input = stack.patch_bytes();
+        crate::item_components::read_patch(&mut input)
+            .ok()
+            .and_then(|patch| {
+                let (_, value) = patch
+                    .added
+                    .iter()
+                    .find(|(id, _)| *id == photon_data::item::component_types::FIREWORKS)?;
+                crate::item_components::fireworks(value)
+            })
+            .unwrap_or_default()
     }
 }

@@ -209,11 +209,6 @@ impl ClientEntity {
             )
     }
 
-    /// `ItemEntity.bobOffs`.
-    pub fn bob_offset(&self) -> f32 {
-        self.bob_offset.get()
-    }
-
     /// Whether the player only watches (its game mode, as the server told).
     pub fn is_spectator(&self) -> bool {
         self.spectator
@@ -547,5 +542,12 @@ impl EntityViewMut<'_> {
         {
             self.living.kinetic_hit_time = Some(game_time);
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// `ItemEntity.bobOffs`.
+    pub fn bob_offset(&self) -> f32 {
+        self.item.bob_offset.get()
     }
 }

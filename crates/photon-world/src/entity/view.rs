@@ -15,6 +15,7 @@ pub struct EntityView<'a> {
     pub(crate) kind: &'a crate::entity_kind::EntityKind,
     pub(crate) worn: &'a Equipment,
     pub(crate) living: &'a EntityState,
+    pub(crate) item: &'a DroppedItem,
 }
 
 /// One entity, to change.
@@ -27,6 +28,7 @@ pub struct EntityViewMut<'a> {
     pub(crate) kind: &'a mut crate::entity_kind::EntityKind,
     pub(crate) worn: &'a mut Equipment,
     pub(crate) living: &'a mut EntityState,
+    pub(crate) item: &'a mut DroppedItem,
 }
 
 impl<'a> EntityView<'a> {
@@ -80,6 +82,7 @@ impl<'a> EntityViewMut<'a> {
             kind: self.kind,
             worn: self.worn,
             living: self.living,
+            item: self.item,
         }
     }
 }
@@ -96,6 +99,7 @@ pub struct EntityParts {
     pub(crate) kind: crate::entity_kind::EntityKind,
     pub(crate) worn: Equipment,
     pub(crate) living: EntityState,
+    pub(crate) item: DroppedItem,
 }
 
 impl EntityParts {
@@ -109,6 +113,7 @@ impl EntityParts {
             kind: &self.kind,
             worn: &self.worn,
             living: &self.living,
+            item: &self.item,
         }
     }
 
@@ -122,6 +127,7 @@ impl EntityParts {
             kind: &mut self.kind,
             worn: &mut self.worn,
             living: &mut self.living,
+            item: &mut self.item,
         }
     }
 }
