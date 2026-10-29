@@ -355,3 +355,23 @@ fn the_real_jar_extracts_to_the_development_tree() {
     assert!(extracted.len() > 1000, "{} files", extracted.len());
     assert_eq!(extracted, files_under(&dev_tree));
 }
+
+#[test]
+fn a_republished_index_of_the_same_size_replaces_the_cached_one() {
+    let (stand, fixture) = (Stand::start(), Fixture::new());
+    fixture.serve(&stand, None);
+    let cache = Cache::at(scratch("republish"));
+    let index = fixture.index_json();
+    let stale = index.replace("minecraft/sounds/a.ogg", "minecraft/sounds/z.ogg");
+    assert_eq!(stale.len(), index.len());
+    let path = cache.index(&crate::cache::Id::parse("32").unwrap());
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, &stale).unwrap();
+    let done = run(&stand, &fixture, &cache).unwrap();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), index);
+    assert_eq!(
+        done.downloaded,
+        1 + 1 + 1 + 2,
+        "the index is fetched again with the rest"
+    );
+}

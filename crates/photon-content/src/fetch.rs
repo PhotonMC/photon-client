@@ -30,15 +30,19 @@ pub(crate) fn agent(endpoints: &Endpoints) -> ureq::Agent {
         .into()
 }
 
-/// Whether `dest` already holds the wanted file. A size is trusted (the file was renamed into
-/// place after its hash was checked); without one the content is hashed.
+/// Whether `dest` already holds the wanted file. A file named by its own digest was renamed into
+/// place after its hash was checked, so its size is enough; any other name (an index kept under
+/// its id) can hold an older file of the same size, and is hashed.
 fn present(dest: &Path, want: &Want<'_>) -> bool {
     let Ok(meta) = fs::metadata(dest) else {
         return false;
     };
+    let named_by_digest = dest
+        .file_name()
+        .is_some_and(|name| name == want.sha1.as_str());
     match want.size {
-        Some(size) => meta.is_file() && meta.len() == size,
-        None => meta.is_file() && Sha1Hex::of_file(dest).is_ok_and(|have| &have == want.sha1),
+        Some(size) if named_by_digest => meta.is_file() && meta.len() == size,
+        _ => meta.is_file() && Sha1Hex::of_file(dest).is_ok_and(|have| &have == want.sha1),
     }
 }
 
