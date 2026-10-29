@@ -35,6 +35,8 @@ macro_rules! versions {
 }
 
 versions! {
+    /// Java Edition 26.1, protocol 775.
+    V26_1 = ("26.1", 775);
     /// Java Edition 26.2, protocol 776.
     V26_2 = ("26.2", 776);
 }
@@ -135,7 +137,8 @@ mod tests {
         for version in Version::ALL.iter().copied() {
             assert_eq!(Version::from_protocol(version.protocol()), Some(version));
         }
-        assert_eq!(Version::from_protocol(775), None);
+        assert_eq!(Version::from_protocol(775), Some(Version::V26_1));
+        assert_eq!(Version::from_protocol(774), None);
     }
 
     #[test]
