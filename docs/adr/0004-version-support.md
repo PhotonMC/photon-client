@@ -8,7 +8,7 @@ Players want to join servers of other Minecraft versions without "Unsupported pr
 
 - `PROTOCOL_VERSION = 776` is hard-coded.
 - Packet ids are hand-written (`photon-net/src/connection/protocol/ids.rs`).
-- Registry tables in `photon-data/src/generated/` exist for one version.
+- Registry tables in `photon-data/src/tables/` exist for one version.
 - Some code compares raw registry numbers.
 
 ## Decision
