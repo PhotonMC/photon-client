@@ -5,80 +5,14 @@ impl ClientEntity {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:shulker")
     }
 
-    /// `Shulker.getAttachFace`'s data value (down 0, up 1, north 2, south 3, west 4, east 5).
-    pub fn shulker_attach_face(&self) -> i32 {
-        self.living.shulker_face
-    }
-
-    /// `Shulker.getColor`'s dye id, none for the default.
-    pub fn shulker_color(&self) -> Option<u8> {
-        self.living.shulker_color
-    }
-
-    /// A shulker's lid between two ticks.
-    pub fn shulker(&self) -> &crate::mobs::shulker::ShulkerState {
-        &self.living.shulker
-    }
-
-    /// `Shulker.tick`'s lid.
-    pub(crate) fn tick_shulker(&mut self) {
-        if self.is_shulker() {
-            let raw = self.living.shulker_raw_peek;
-            self.living.shulker.tick(raw);
-            self.living.shulker.tick_teleport();
-        }
-    }
-
     /// `Shulker.sanitizeScale` of `getScale`.
     pub(in super::super) fn shulker_scale(&self) -> f32 {
         self.scale().min(3.0)
     }
 
-    /// `Shulker.startRiding` (client side): it stops sliding and clings to
-    /// the floor of its vehicle.
-    pub(crate) fn shulker_starts_riding(&mut self) {
-        self.living.shulker.cancel_teleport();
-        self.living.shulker_face = 0;
-    }
-
     /// Whether this is a slime or a magma cube (`AbstractCubeMob`).
     pub fn is_cube_mob(&self) -> bool {
         crate::metadata::is_cube_mob_type(self.type_id)
-    }
-
-    /// `SulfurCube.getFuse`.
-    pub fn sulfur_fuse(&self) -> i32 {
-        self.living.cube.fuse()
-    }
-
-    /// `AbstractCubeMob.getSize`.
-    pub fn cube_size(&self) -> i32 {
-        self.living.cube_size.unwrap_or(1)
-    }
-
-    /// A slime's or a magma cube's squish and what it eases to.
-    pub fn cube_mob(&self) -> &crate::mobs::cube_mob::CubeMobState {
-        &self.living.cube
-    }
-
-    /// `AbstractCubeMob.tick`'s squish (`decreaseSquish`: a magma cube's target
-    /// fades slower).
-    pub(crate) fn tick_cube_mob(&mut self) {
-        if !self.is_cube_mob() {
-            return;
-        }
-        let magma = photon_data::entity_type::name(self.type_id) == Some("minecraft:magma_cube");
-        let on_ground = self.on_ground;
-        // `SulfurCube.tick` runs its fuse before `AbstractCubeMob.tick`.
-        self.living.cube.tick_fuse();
-        self.living
-            .cube
-            .tick(on_ground, if magma { 0.9 } else { 0.6 });
-    }
-
-    /// `GlowSquid.getDarkTicksRemaining`.
-    pub fn glow_dark_ticks(&self) -> i32 {
-        self.living.glow_dark_ticks
     }
 }
 
@@ -158,5 +92,75 @@ impl EntityViewMut<'_> {
                 self.pos.old_position.z = JavaF64::new(z);
             }
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// `Shulker.getAttachFace`'s data value (down 0, up 1, north 2, south 3, west 4, east 5).
+    pub fn shulker_attach_face(&self) -> i32 {
+        self.living.shulker_face
+    }
+
+    /// `Shulker.getColor`'s dye id, none for the default.
+    pub fn shulker_color(&self) -> Option<u8> {
+        self.living.shulker_color
+    }
+
+    /// A shulker's lid between two ticks.
+    pub fn shulker(&self) -> &crate::mobs::shulker::ShulkerState {
+        &self.living.shulker
+    }
+
+    /// `SulfurCube.getFuse`.
+    pub fn sulfur_fuse(&self) -> i32 {
+        self.living.cube.fuse()
+    }
+
+    /// `AbstractCubeMob.getSize`.
+    pub fn cube_size(&self) -> i32 {
+        self.living.cube_size.unwrap_or(1)
+    }
+
+    /// A slime's or a magma cube's squish and what it eases to.
+    pub fn cube_mob(&self) -> &crate::mobs::cube_mob::CubeMobState {
+        &self.living.cube
+    }
+
+    /// `GlowSquid.getDarkTicksRemaining`.
+    pub fn glow_dark_ticks(&self) -> i32 {
+        self.living.glow_dark_ticks
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `Shulker.tick`'s lid.
+    pub(crate) fn tick_shulker(&mut self) {
+        if self.is_shulker() {
+            let raw = self.living.shulker_raw_peek;
+            self.living.shulker.tick(raw);
+            self.living.shulker.tick_teleport();
+        }
+    }
+
+    /// `Shulker.startRiding` (client side): it stops sliding and clings to
+    /// the floor of its vehicle.
+    pub(crate) fn shulker_starts_riding(&mut self) {
+        self.living.shulker.cancel_teleport();
+        self.living.shulker_face = 0;
+    }
+
+    /// `AbstractCubeMob.tick`'s squish (`decreaseSquish`: a magma cube's target
+    /// fades slower).
+    pub(crate) fn tick_cube_mob(&mut self) {
+        if !self.is_cube_mob() {
+            return;
+        }
+        let magma = photon_data::entity_type::name(self.type_id) == Some("minecraft:magma_cube");
+        let on_ground = self.on_ground;
+        // `SulfurCube.tick` runs its fuse before `AbstractCubeMob.tick`.
+        self.living.cube.tick_fuse();
+        self.living
+            .cube
+            .tick(on_ground, if magma { 0.9 } else { 0.6 });
     }
 }

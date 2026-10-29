@@ -1,27 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// `LivingEntity.getTicksUsingItem(partialTick)`: how long the item in use has been used.
-    pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
-        if self.is_using_item() {
-            self.living.using_item_ticks as f32 + partial_tick
-        } else {
-            0.0
-        }
-    }
-
-    /// `LivingEntity.onKineticHit` (entity event 2): the kick of a spear's hit starts, unless one
-    /// began in the last ten ticks.
-    pub(crate) fn on_kinetic_hit(&mut self, game_time: u64) {
-        if self
-            .living
-            .kinetic_hit_time
-            .is_none_or(|last| game_time.saturating_sub(last) > 10)
-        {
-            self.living.kinetic_hit_time = Some(game_time);
-        }
-    }
-
     /// The limbs' walk animation.
     pub fn walk_animation(&self) -> &crate::living::WalkAnimation {
         &self.walk
@@ -57,26 +36,9 @@ impl ClientEntity {
         shared_flag_is_set(self.living_flags, LIVING_FLAG_USING_ITEM)
     }
 
-    /// `LivingEntity.getFallFlyingTicks`.
-    pub fn fall_flying_ticks(&self) -> i32 {
-        self.living.fall_fly_ticks
-    }
-
-    /// `Entity.isInWater` for a mob that tracks it.
-    pub fn is_in_water(&self) -> bool {
-        self.living.in_water
-    }
-
     /// `Entity.isCrouching`: the crouching pose.
     pub fn is_crouching(&self) -> bool {
         self.pose == ClientEntityPose::Crouching
-    }
-
-    /// `LivingEntity.getTicksSinceLastKineticHitFeedback`.
-    pub fn ticks_since_kinetic_hit(&self, game_time: u64, partial: f32) -> f32 {
-        self.living
-            .kinetic_hit_time
-            .map_or(0.0, |last| game_time.saturating_sub(last) as f32 + partial)
     }
 
     pub fn used_item_is_off_hand(&self) -> bool {
@@ -94,20 +56,6 @@ impl ClientEntity {
     /// `LivingEntity.isDeadOrDying`: its health, as the server told, is spent.
     pub fn is_dead_or_dying(&self) -> bool {
         self.health().is_some_and(|health| health <= 0.0)
-    }
-
-    pub fn hurt_time(&self) -> i32 {
-        self.living.hurt_time
-    }
-
-    pub fn death_time(&self) -> i32 {
-        self.living.death_time
-    }
-
-    /// `getHurtDir`: a player keeps the yaw its last hurt animation came with; any other living
-    /// entity has none.
-    pub fn hurt_dir(&self) -> f32 {
-        f32::from_bits(self.living.hurt_dir)
     }
 
     pub fn health(&self) -> Option<f32> {
@@ -243,15 +191,6 @@ impl ClientEntity {
         shared_flag_is_set(self.shared_flags, SHARED_FLAG_SWIMMING)
     }
 
-    /// `getMainArm`: a mob's left-handed flag, an avatar's data.
-    pub fn main_arm_is_left(&self) -> bool {
-        if self.is_avatar() {
-            self.living.main_arm_left
-        } else {
-            self.is_left_handed()
-        }
-    }
-
     /// Whether the entity's water state is tracked (`Entity.isInWater`): the
     /// mobs that draw differently in water.
     pub(crate) fn tracks_water(&self) -> bool {
@@ -301,7 +240,7 @@ pub(crate) fn shared_flag_is_set(flags: u8, flag: u8) -> bool {
 /// `LivingEntity.hurtTime` and `deathTime`, the registry id of the variant a
 /// pig or a cow wears, and the value of an experience orb, once the server
 /// has told them.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, bevy_ecs::component::Component)]
 pub(crate) struct EntityState {
     pub(crate) hurt_time: i32,
     /// `Player.hurtDir`, as bits so the state stays `Eq`.
@@ -543,5 +482,70 @@ impl EntityView<'_> {
     /// `Entity.displayFireAnimation`: the flames a burning entity wears, except for a spectator.
     pub fn displays_fire(&self) -> bool {
         self.is_burning() && !self.is_spectator()
+    }
+}
+
+impl EntityView<'_> {
+    /// `LivingEntity.getTicksUsingItem(partialTick)`: how long the item in use has been used.
+    pub fn ticks_using_item(&self, partial_tick: f32) -> f32 {
+        if self.is_using_item() {
+            self.living.using_item_ticks as f32 + partial_tick
+        } else {
+            0.0
+        }
+    }
+
+    /// `LivingEntity.getFallFlyingTicks`.
+    pub fn fall_flying_ticks(&self) -> i32 {
+        self.living.fall_fly_ticks
+    }
+
+    /// `Entity.isInWater` for a mob that tracks it.
+    pub fn is_in_water(&self) -> bool {
+        self.living.in_water
+    }
+
+    /// `LivingEntity.getTicksSinceLastKineticHitFeedback`.
+    pub fn ticks_since_kinetic_hit(&self, game_time: u64, partial: f32) -> f32 {
+        self.living
+            .kinetic_hit_time
+            .map_or(0.0, |last| game_time.saturating_sub(last) as f32 + partial)
+    }
+
+    pub fn hurt_time(&self) -> i32 {
+        self.living.hurt_time
+    }
+
+    pub fn death_time(&self) -> i32 {
+        self.living.death_time
+    }
+
+    /// `getHurtDir`: a player keeps the yaw its last hurt animation came with; any other living
+    /// entity has none.
+    pub fn hurt_dir(&self) -> f32 {
+        f32::from_bits(self.living.hurt_dir)
+    }
+
+    /// `getMainArm`: a mob's left-handed flag, an avatar's data.
+    pub fn main_arm_is_left(&self) -> bool {
+        if self.is_avatar() {
+            self.living.main_arm_left
+        } else {
+            self.is_left_handed()
+        }
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// `LivingEntity.onKineticHit` (entity event 2): the kick of a spear's hit starts, unless one
+    /// began in the last ten ticks.
+    pub(crate) fn on_kinetic_hit(&mut self, game_time: u64) {
+        if self
+            .living
+            .kinetic_hit_time
+            .is_none_or(|last| game_time.saturating_sub(last) > 10)
+        {
+            self.living.kinetic_hit_time = Some(game_time);
+        }
     }
 }

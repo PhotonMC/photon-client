@@ -10,7 +10,6 @@ use photon_core::java_float::{JavaF32, JavaF64};
 use photon_core::math::{Vec3, mth_atan2, mth_lerp_f32};
 
 use crate::constants::PROJECTILE_DEGREES_PER_RADIAN;
-use crate::entity::ClientEntity;
 use crate::fluid::{self, LAVA_FLOW_SCALE, Pushed, WATER_FLOW_SCALE};
 use crate::local_player::Level;
 use crate::{ClientWorld, EntityViewMut};
@@ -40,7 +39,7 @@ pub(crate) enum Flight {
 }
 
 /// The flight of an entity, if it is one of these.
-pub(crate) fn flight_of(entity: &ClientEntity) -> Option<Flight> {
+pub(crate) fn flight_of(entity: crate::entity::EntityView<'_>) -> Option<Flight> {
     let hurting = |acceleration, inertia, liquid_inertia| Flight::Hurting {
         acceleration,
         inertia,
@@ -346,7 +345,7 @@ impl ClientWorld {
         if found.lava.height > 0.0 {
             movement = fluid::apply_current(found.lava, movement, LAVA_FLOW_SCALE, Pushed::Other);
         }
-        let mut entity = self
+        let entity = self
             .entities
             .at_mut(entity_id)
             .expect("the projectile was read above");

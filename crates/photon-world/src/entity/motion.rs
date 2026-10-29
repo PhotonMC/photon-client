@@ -14,12 +14,6 @@ impl ClientEntity {
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
-
-    /// `ClientAvatarState.deltaMovementOnPreviousTick`.
-    pub fn previous_motion(&self) -> (f64, f64, f64) {
-        let [x, y, z] = self.living.previous_motion.map(f64::from_bits);
-        (x, y, z)
-    }
 }
 
 pub(crate) fn decode_entity_delta(base: f64, delta: i16) -> u64 {
@@ -214,5 +208,13 @@ impl EntityView<'_> {
     pub fn is_moving_horizontally(&self) -> bool {
         let (x, _, z) = self.motion();
         x * x + z * z > 1.0E-7
+    }
+}
+
+impl EntityView<'_> {
+    /// `ClientAvatarState.deltaMovementOnPreviousTick`.
+    pub fn previous_motion(&self) -> (f64, f64, f64) {
+        let [x, y, z] = self.living.previous_motion.map(f64::from_bits);
+        (x, y, z)
     }
 }

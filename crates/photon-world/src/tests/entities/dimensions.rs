@@ -426,12 +426,12 @@ fn camera_bob_belongs_to_players() {
             rotation: (0.0, 0.0, 0.0),
             data: 0,
         }));
-        let mut entity = world
+        let entity = world
             .entities_mut()
             .at_mut(EntityId(5))
             .expect("the entity");
         entity.living.cloak.update_bob(0.1);
-        entity.camera_bob(1.0)
+        entity.as_view().camera_bob(1.0)
     };
     assert_eq!(
         bob("minecraft:player").to_bits(),

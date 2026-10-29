@@ -1,20 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// What `getDefaultDimensions` scales a fish's box by, from the size the
-    /// type's table holds (that of a new one: a medium salmon, an unpuffed
-    /// pufferfish, whose half is undone by doubling): a salmon by its size, a
-    /// pufferfish by how puffed it is.
-    pub(crate) fn fish_dimension_scale(&self) -> f32 {
-        match photon_data::entity_type::name(self.type_id) {
-            Some("minecraft:salmon") => self.salmon_size().bounding_box_scale(),
-            Some("minecraft:pufferfish") => {
-                crate::mobs::fish::pufferfish_bounding_box_scale(self.puff_state()) * 2.0
-            }
-            _ => 1.0,
-        }
-    }
-
     pub fn pose(&self) -> ClientEntityPose {
         self.pose
     }
@@ -305,6 +291,22 @@ impl EntityViewMut<'_> {
         if self.is_warden() {
             let tick_count = self.tick_count;
             self.kind.warden_state().set_pose(pose, tick_count);
+        }
+    }
+}
+
+impl EntityView<'_> {
+    /// What `getDefaultDimensions` scales a fish's box by, from the size the
+    /// type's table holds (that of a new one: a medium salmon, an unpuffed
+    /// pufferfish, whose half is undone by doubling): a salmon by its size, a
+    /// pufferfish by how puffed it is.
+    pub(crate) fn fish_dimension_scale(&self) -> f32 {
+        match photon_data::entity_type::name(self.type_id) {
+            Some("minecraft:salmon") => self.salmon_size().bounding_box_scale(),
+            Some("minecraft:pufferfish") => {
+                crate::mobs::fish::pufferfish_bounding_box_scale(self.puff_state()) * 2.0
+            }
+            _ => 1.0,
         }
     }
 }

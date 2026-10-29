@@ -26,25 +26,6 @@ impl ClientEntity {
         photon_data::entity_type::pick(self.type_id).is_some_and(|pick| pick.pickable)
     }
 
-    /// The sizes that are not the type's: a marker or small armor stand
-    /// (`ArmorStand.getDefaultDimensions`: no size, or half with the eye at its top) and a
-    /// sleeping mob (`LivingEntity.SLEEPING_DIMENSIONS`, 0.2 whatever it is and not scaled).
-    fn special_dimensions(&self) -> Option<ClientEntityDimensions> {
-        if self.type_id == crate::entity::equipment::armor_stand_type_id() {
-            let stand = self.armor_stand();
-            if stand.is_marker() {
-                return Some(ClientEntityDimensions::from_values(0.0, 0.0, 0.0, false));
-            }
-            if stand.is_small() {
-                return Some(ClientEntityDimensions::from_values(
-                    0.25, 0.9875, 0.9875, false,
-                ));
-            }
-        }
-        (!self.is_player() && self.has_sleeping_size())
-            .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
-    }
-
     /// The renderers that light their entity at full block light whatever is around it
     /// (`getBlockLightLevel` returns 15): allay, blaze, magma cube, vex, wither, and the
     /// dragon fireball, shulker bullet and wither skull.
@@ -74,73 +55,6 @@ impl ClientEntity {
     /// `LivingEntity.getDimensions`: a sleeping one has the fixed sleeping size.
     fn has_sleeping_size(&self) -> bool {
         self.is_living_entity() && self.pose() == crate::ClientEntityPose::Sleeping
-    }
-
-    /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
-    /// painting's box, centred `0.46875` off the wall it is attached to (`ClientboundAddEntityPacket.
-    /// getData()`'s 3D direction value, `this.data`) and sized by that direction's axis; a framed
-    /// map widens an item frame to 1x1, a painting's registry variant gives its own width/height
-    /// (shifted along the wall and up for an even size, so it still centres on the block grid).
-    /// Nothing for another type.
-    fn hanging_bounding_box(&self) -> Option<Aabb> {
-        let is_item_frame = self.is_item_frame();
-        let is_painting =
-            photon_data::entity_type::name(self.type_id) == Some("minecraft:painting");
-        if !is_item_frame && !is_painting {
-            return None;
-        }
-        let direction = Direction::from_3d_data_value(self.data);
-        // The block the packet named (`BlockAttachedEntity.setPos`, `BlockPos.containing`).
-        let block = self.start_block;
-        // `Vec3.atCenterOf(block).relative(direction, -0.46875)`.
-        const WALL_SHIFT: f64 = 0.46875;
-        let (step_x, step_y, step_z) = direction.step();
-        let wall_center = (
-            f64::from(block.0) + 0.5 + f64::from(step_x) * -WALL_SHIFT,
-            f64::from(block.1) + 0.5 + f64::from(step_y) * -WALL_SHIFT,
-            f64::from(block.2) + 0.5 + f64::from(step_z) * -WALL_SHIFT,
-        );
-        let (center, width, height) = if is_item_frame {
-            let has_framed_map = self.item_stack().is_some_and(|stack| {
-                let mut bytes = stack.patch_bytes();
-                crate::item_components::read_patch(&mut bytes).is_ok_and(|patch| {
-                    patch
-                        .added
-                        .iter()
-                        .any(|(id, _)| *id == photon_data::item::component_types::MAP_ID)
-                })
-            });
-            let size = if has_framed_map { 1.0 } else { 0.75 };
-            (wall_center, size, size)
-        } else {
-            // `Painting.DATA_PAINTING_VARIANT_ID`'s default is the registry's first entry
-            // (`VariantUtils.getAny`); the server leaves a default out of the packet.
-            let variant = photon_data::entity_type::painting_variants()
-                .nth(self.living.variant.unwrap_or(0) as usize)?;
-            let offset_for = |size: i32| if size % 2 == 0 { 0.5 } else { 0.0 };
-            let left = direction.counter_clockwise_y().unwrap_or(direction);
-            let (left_x, _, left_z) = left.step();
-            let horizontal = offset_for(variant.width);
-            let vertical = offset_for(variant.height);
-            let center = (
-                wall_center.0 + f64::from(left_x) * horizontal,
-                wall_center.1 + vertical,
-                wall_center.2 + f64::from(left_z) * horizontal,
-            );
-            (center, f64::from(variant.width), f64::from(variant.height))
-        };
-        let axis = direction.axis();
-        let x_size = if axis == Axis::X { 0.0625 } else { width };
-        let y_size = if axis == Axis::Y { 0.0625 } else { height };
-        let z_size = if axis == Axis::Z { 0.0625 } else { width };
-        Some(Aabb::new(
-            center.0 - x_size / 2.0,
-            center.1 - y_size / 2.0,
-            center.2 - z_size / 2.0,
-            center.0 + x_size / 2.0,
-            center.1 + y_size / 2.0,
-            center.2 + z_size / 2.0,
-        ))
     }
 
     /// `Entity.getPickRadius`: what the aim inflates the box by.
@@ -302,7 +216,11 @@ impl EntityViewMut<'_> {
     /// centre of its box (`setPosRaw`), so the box is built from the block kept apart. A painting
     /// whose variant has not come yet keeps the packet's position.
     pub(crate) fn recentre_hanging(&mut self) {
-        if let Some(centre) = self.hanging_bounding_box().map(|aabb| aabb.center()) {
+        if let Some(centre) = self
+            .as_view()
+            .hanging_bounding_box()
+            .map(|aabb| aabb.center())
+        {
             self.pos.position = photon_core::java_float::DVec3::new(centre.x, centre.y, centre.z);
             self.pos.old_position = self.pos.position;
         }
@@ -472,6 +390,96 @@ impl EntityView<'_> {
             height: dimensions.height(),
             eye_height: dimensions.eye_height(),
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// `ItemFrame.createBoundingBox`/`Painting.calculateBoundingBox`: an item frame's or a
+    /// painting's box, centred `0.46875` off the wall it is attached to (`ClientboundAddEntityPacket.
+    /// getData()`'s 3D direction value, `this.data`) and sized by that direction's axis; a framed
+    /// map widens an item frame to 1x1, a painting's registry variant gives its own width/height
+    /// (shifted along the wall and up for an even size, so it still centres on the block grid).
+    /// Nothing for another type.
+    fn hanging_bounding_box(&self) -> Option<Aabb> {
+        let is_item_frame = self.is_item_frame();
+        let is_painting =
+            photon_data::entity_type::name(self.type_id) == Some("minecraft:painting");
+        if !is_item_frame && !is_painting {
+            return None;
+        }
+        let direction = Direction::from_3d_data_value(self.data);
+        // The block the packet named (`BlockAttachedEntity.setPos`, `BlockPos.containing`).
+        let block = self.start_block;
+        // `Vec3.atCenterOf(block).relative(direction, -0.46875)`.
+        const WALL_SHIFT: f64 = 0.46875;
+        let (step_x, step_y, step_z) = direction.step();
+        let wall_center = (
+            f64::from(block.0) + 0.5 + f64::from(step_x) * -WALL_SHIFT,
+            f64::from(block.1) + 0.5 + f64::from(step_y) * -WALL_SHIFT,
+            f64::from(block.2) + 0.5 + f64::from(step_z) * -WALL_SHIFT,
+        );
+        let (center, width, height) = if is_item_frame {
+            let has_framed_map = self.item_stack().is_some_and(|stack| {
+                let mut bytes = stack.patch_bytes();
+                crate::item_components::read_patch(&mut bytes).is_ok_and(|patch| {
+                    patch
+                        .added
+                        .iter()
+                        .any(|(id, _)| *id == photon_data::item::component_types::MAP_ID)
+                })
+            });
+            let size = if has_framed_map { 1.0 } else { 0.75 };
+            (wall_center, size, size)
+        } else {
+            // `Painting.DATA_PAINTING_VARIANT_ID`'s default is the registry's first entry
+            // (`VariantUtils.getAny`); the server leaves a default out of the packet.
+            let variant = photon_data::entity_type::painting_variants()
+                .nth(self.living.variant.unwrap_or(0) as usize)?;
+            let offset_for = |size: i32| if size % 2 == 0 { 0.5 } else { 0.0 };
+            let left = direction.counter_clockwise_y().unwrap_or(direction);
+            let (left_x, _, left_z) = left.step();
+            let horizontal = offset_for(variant.width);
+            let vertical = offset_for(variant.height);
+            let center = (
+                wall_center.0 + f64::from(left_x) * horizontal,
+                wall_center.1 + vertical,
+                wall_center.2 + f64::from(left_z) * horizontal,
+            );
+            (center, f64::from(variant.width), f64::from(variant.height))
+        };
+        let axis = direction.axis();
+        let x_size = if axis == Axis::X { 0.0625 } else { width };
+        let y_size = if axis == Axis::Y { 0.0625 } else { height };
+        let z_size = if axis == Axis::Z { 0.0625 } else { width };
+        Some(Aabb::new(
+            center.0 - x_size / 2.0,
+            center.1 - y_size / 2.0,
+            center.2 - z_size / 2.0,
+            center.0 + x_size / 2.0,
+            center.1 + y_size / 2.0,
+            center.2 + z_size / 2.0,
+        ))
+    }
+}
+
+impl EntityView<'_> {
+    /// The sizes that are not the type's: a marker or small armor stand
+    /// (`ArmorStand.getDefaultDimensions`: no size, or half with the eye at its top) and a
+    /// sleeping mob (`LivingEntity.SLEEPING_DIMENSIONS`, 0.2 whatever it is and not scaled).
+    fn special_dimensions(&self) -> Option<ClientEntityDimensions> {
+        if self.type_id == crate::entity::equipment::armor_stand_type_id() {
+            let stand = self.armor_stand();
+            if stand.is_marker() {
+                return Some(ClientEntityDimensions::from_values(0.0, 0.0, 0.0, false));
+            }
+            if stand.is_small() {
+                return Some(ClientEntityDimensions::from_values(
+                    0.25, 0.9875, 0.9875, false,
+                ));
+            }
+        }
+        (!self.is_player() && self.has_sleeping_size())
+            .then(|| ClientEntityDimensions::from_values(0.2, 0.2, 0.2, false))
     }
 }
 

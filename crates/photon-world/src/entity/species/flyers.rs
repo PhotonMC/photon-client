@@ -1,54 +1,9 @@
 use super::super::*;
 
 impl ClientEntity {
-    /// `Bee.getRollAmount`: how far the bee has rolled over, between two ticks.
-    pub fn bee_roll_amount(&self, partial: f32) -> f32 {
-        self.living.animal.bee_roll_at(partial)
-    }
-
-    /// `Bee.hasStung`.
-    pub fn bee_has_stung(&self) -> bool {
-        self.living.bee_flags & 4 != 0
-    }
-
-    /// `Bee.hasNectar`.
-    pub fn bee_has_nectar(&self) -> bool {
-        self.living.bee_flags & 8 != 0
-    }
-
-    /// `Parrot.getVariant`'s id.
-    pub fn parrot_variant(&self) -> i32 {
-        self.living.parrot_variant
-    }
-
     /// Whether this is a parrot.
     pub(crate) fn is_parrot(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:parrot")
-    }
-
-    /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
-    pub fn is_ghast_charging(&self) -> bool {
-        self.living.ghast_charging
-    }
-
-    /// `Phantom.getPhantomSize`.
-    pub fn phantom_size(&self) -> i32 {
-        self.living.phantom_size
-    }
-
-    /// `Bat.isResting`.
-    pub fn is_bat_resting(&self) -> bool {
-        self.living.bat_resting
-    }
-
-    /// `Vex.isCharging`.
-    pub fn is_vex_charging(&self) -> bool {
-        self.living.vex_charging
-    }
-
-    /// `Allay.isDancing`.
-    pub fn is_allay_dancing(&self) -> bool {
-        self.living.allay_dancing
     }
 }
 
@@ -124,5 +79,52 @@ impl EntityViewMut<'_> {
         let holds = self.equipment(EquipmentSlot::MainHand).is_some();
         let dancing = self.living.allay_dancing;
         self.kind.allay_state().tick(holds, dancing);
+    }
+}
+
+impl EntityView<'_> {
+    /// `Bee.getRollAmount`: how far the bee has rolled over, between two ticks.
+    pub fn bee_roll_amount(&self, partial: f32) -> f32 {
+        self.living.animal.bee_roll_at(partial)
+    }
+
+    /// `Bee.hasStung`.
+    pub fn bee_has_stung(&self) -> bool {
+        self.living.bee_flags & 4 != 0
+    }
+
+    /// `Bee.hasNectar`.
+    pub fn bee_has_nectar(&self) -> bool {
+        self.living.bee_flags & 8 != 0
+    }
+
+    /// `Parrot.getVariant`'s id.
+    pub fn parrot_variant(&self) -> i32 {
+        self.living.parrot_variant
+    }
+
+    /// `Ghast.isCharging`: the ghast has its mouth open for a fireball.
+    pub fn is_ghast_charging(&self) -> bool {
+        self.living.ghast_charging
+    }
+
+    /// `Phantom.getPhantomSize`.
+    pub fn phantom_size(&self) -> i32 {
+        self.living.phantom_size
+    }
+
+    /// `Bat.isResting`.
+    pub fn is_bat_resting(&self) -> bool {
+        self.living.bat_resting
+    }
+
+    /// `Vex.isCharging`.
+    pub fn is_vex_charging(&self) -> bool {
+        self.living.vex_charging
+    }
+
+    /// `Allay.isDancing`.
+    pub fn is_allay_dancing(&self) -> bool {
+        self.living.allay_dancing
     }
 }

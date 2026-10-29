@@ -24,7 +24,7 @@ pub(crate) fn goat_screaming_from_metadata(type_id: EntityTypeId, metadata: &[u8
 }
 
 /// A goat's horns and screaming flag in its data, applied to the entity.
-pub(crate) fn apply_goat_data(entity: &mut crate::entity::ClientEntity, metadata: &[u8]) {
+pub(crate) fn apply_goat_data(entity: &mut crate::entity::EntityViewMut<'_>, metadata: &[u8]) {
     let (left, right) = goat_horns_from_metadata(entity.type_id, metadata);
     if let Some(left) = left {
         entity.living.lost_left_horn = !left;

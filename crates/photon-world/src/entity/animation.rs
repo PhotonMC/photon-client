@@ -1,17 +1,6 @@
 use super::*;
 
-impl ClientEntity {
-    /// A chicken's `flap` and `flapSpeed` between two ticks.
-    pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
-        let animal = &self.living.animal;
-        (animal.flap_at(partial), animal.flap_speed_at(partial))
-    }
-
-    /// The swing of an arm (`LivingEntity.swing`).
-    pub fn swing_state(&self) -> &crate::living::SwingState {
-        &self.living.swing
-    }
-}
+impl ClientEntity {}
 
 impl EntityViewMut<'_> {
     /// `ItemStack.getSwingAnimation().duration()` of what each hand holds, the main hand's first.
@@ -213,12 +202,8 @@ impl EntityViewMut<'_> {
     pub(crate) fn tick_animal(&mut self, game_time: u64) {
         match photon_data::entity_type::name(self.type_id) {
             Some("minecraft:sheep") => self.living.animal.tick_sheep(),
-            Some("minecraft:chicken") => self
-                .entity
-                .living
-                .animal
-                .tick_chicken(self.entity.on_ground),
-            Some("minecraft:creeper") => self.entity.living.animal.tick_creeper(self.entity.alive),
+            Some("minecraft:chicken") => self.living.animal.tick_chicken(self.entity.on_ground),
+            Some("minecraft:creeper") => self.living.animal.tick_creeper(self.entity.alive),
             Some("minecraft:iron_golem") => self.living.animal.tick_iron_golem(),
             Some("minecraft:goat") => self.living.animal.tick_goat(),
             Some("minecraft:hoglin" | "minecraft:zoglin") => self.living.animal.tick_hoglin(),
@@ -287,5 +272,18 @@ impl EntityViewMut<'_> {
                 (on_ground, in_liquid, passenger),
             );
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// A chicken's `flap` and `flapSpeed` between two ticks.
+    pub fn chicken_flap(&self, partial: f32) -> (f32, f32) {
+        let animal = &self.living.animal;
+        (animal.flap_at(partial), animal.flap_speed_at(partial))
+    }
+
+    /// The swing of an arm (`LivingEntity.swing`).
+    pub fn swing_state(&self) -> &crate::living::SwingState {
+        &self.living.swing
     }
 }

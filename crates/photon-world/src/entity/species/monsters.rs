@@ -15,7 +15,16 @@ impl ClientEntity {
             )
         })
     }
+}
 
+impl EntityView<'_> {
+    /// A copper golem's animation states.
+    pub fn copper_golem(&self) -> Option<&crate::mobs::copper_golem::CopperGolemAnimations> {
+        self.kind.copper_golem()
+    }
+}
+
+impl EntityView<'_> {
     /// `CopperGolem.getState`.
     pub fn copper_golem_action(&self) -> crate::mobs::copper_golem::GolemAction {
         self.living.copper_golem_action
@@ -83,12 +92,5 @@ impl ClientEntity {
     /// `Creeper.getSwelling`: how far the fuse has burned, between two ticks.
     pub fn creeper_swelling(&self, partial: f32) -> f32 {
         self.living.animal.creeper_swelling(partial)
-    }
-}
-
-impl EntityView<'_> {
-    /// A copper golem's animation states.
-    pub fn copper_golem(&self) -> Option<&crate::mobs::copper_golem::CopperGolemAnimations> {
-        self.kind.copper_golem()
     }
 }

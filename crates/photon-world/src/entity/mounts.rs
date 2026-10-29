@@ -1,32 +1,6 @@
 use super::*;
 
 impl ClientEntity {
-    /// `Strider.isSuffocating`.
-    pub fn is_suffocating(&self) -> bool {
-        self.living.strider_suffocating
-    }
-
-    /// `Horse.getVariant` and `getMarkings`: ids, each wrapped into its enum
-    /// (seven variants, five markings).
-    pub fn horse_look(&self) -> (i32, i32) {
-        let data = self.living.horse_variant;
-        (
-            (data & 0xFF).rem_euclid(7),
-            ((data & 0xFF00) >> 8).rem_euclid(5),
-        )
-    }
-
-    /// `Llama.getVariant`'s id, kept within the four variants (an id past the
-    /// last takes the last).
-    pub fn llama_variant(&self) -> i32 {
-        self.living.horse_variant.clamp(0, 3)
-    }
-
-    /// `AbstractChestedHorse.hasChest`.
-    pub fn horse_has_chest(&self) -> bool {
-        self.living.horse_chest
-    }
-
     /// Whether this is a camel or a camel husk.
     pub fn is_camel(&self) -> bool {
         matches!(
@@ -63,7 +37,47 @@ impl ClientEntity {
     pub fn is_pig(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:pig")
     }
+}
 
+impl EntityView<'_> {}
+
+impl EntityViewMut<'_> {
+    /// Fixes the source a horse's tail chance is drawn from (see
+    /// [`crate::mobs::horse::HorseState::fix_seed`]).
+    pub fn fix_horse_seed(&mut self, seed: i64) {
+        self.kind.horse_state().fix_seed(seed);
+    }
+}
+
+impl EntityView<'_> {
+    /// `Strider.isSuffocating`.
+    pub fn is_suffocating(&self) -> bool {
+        self.living.strider_suffocating
+    }
+
+    /// `Horse.getVariant` and `getMarkings`: ids, each wrapped into its enum
+    /// (seven variants, five markings).
+    pub fn horse_look(&self) -> (i32, i32) {
+        let data = self.living.horse_variant;
+        (
+            (data & 0xFF).rem_euclid(7),
+            ((data & 0xFF00) >> 8).rem_euclid(5),
+        )
+    }
+
+    /// `Llama.getVariant`'s id, kept within the four variants (an id past the
+    /// last takes the last).
+    pub fn llama_variant(&self) -> i32 {
+        self.living.horse_variant.clamp(0, 3)
+    }
+
+    /// `AbstractChestedHorse.hasChest`.
+    pub fn horse_has_chest(&self) -> bool {
+        self.living.horse_chest
+    }
+}
+
+impl EntityViewMut<'_> {
     /// `Strider.setSuffocating`: the flag, and the cold's modifier on the movement speed (a third
     /// less of the base).
     pub(crate) fn set_strider_suffocating(&mut self, suffocating: bool) {
@@ -106,15 +120,5 @@ impl ClientEntity {
                 .modifiers
                 .retain(|existing| existing.id != modifier_id);
         }
-    }
-}
-
-impl EntityView<'_> {}
-
-impl EntityViewMut<'_> {
-    /// Fixes the source a horse's tail chance is drawn from (see
-    /// [`crate::mobs::horse::HorseState::fix_seed`]).
-    pub fn fix_horse_seed(&mut self, seed: i64) {
-        self.kind.horse_state().fix_seed(seed);
     }
 }

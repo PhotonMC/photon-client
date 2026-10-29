@@ -3,17 +3,6 @@ use photon_core::ids::BlockStateId;
 use photon_core::ids::EntityTypeId;
 
 impl ClientEntity {
-    /// `Piglin.isChargingCrossbow`.
-    pub fn is_charging_crossbow(&self) -> bool {
-        self.living.charging_crossbow
-    }
-
-    /// The stack a dropped item holds.
-    /// `WitherSkull.isDangerous`: the blue skull the wither shoots now and then.
-    pub fn wither_skull_dangerous(&self) -> bool {
-        self.living.wither_skull_dangerous
-    }
-
     pub fn item_stack(&self) -> Option<&ClientItemStackState> {
         self.item_stack.as_ref()
     }
@@ -35,18 +24,6 @@ impl ClientEntity {
                 crate::item_components::fireworks(value)
             })
             .unwrap_or_default()
-    }
-
-    /// The block state an enderman carries (`getCarriedBlock`), by its id.
-    pub fn carried_block_state(&self) -> Option<BlockStateId> {
-        Some(self.living.carried_state)
-            .filter(|state| *state > 0)
-            .map(BlockStateId)
-    }
-
-    /// An armor stand's flags and poses.
-    pub fn armor_stand(&self) -> &crate::objects::armor_stand::ArmorStandState {
-        &self.living.armor_stand
     }
 }
 
@@ -72,15 +49,6 @@ macro_rules! equipment_reads {
             /// What the entity holds or wears in a slot (`getItemBySlot`); none for an empty one.
             pub fn equipment(&self, slot: EquipmentSlot) -> Option<&ClientItemStackState> {
                 self.worn.get(slot)
-            }
-
-            /// `getItemHeldByArm`.
-            pub fn item_held_by_arm(&self, left: bool) -> Option<&ClientItemStackState> {
-                self.equipment(if left == self.main_arm_is_left() {
-                    EquipmentSlot::MainHand
-                } else {
-                    EquipmentSlot::OffHand
-                })
             }
 
         /// Whether this is a strider in a saddle (which a warped fungus on a stick steers).
@@ -142,6 +110,42 @@ impl EquipmentSlot {
             6 => Self::Body,
             7 => Self::Saddle,
             _ => return None,
+        })
+    }
+}
+
+impl EntityView<'_> {
+    /// `Piglin.isChargingCrossbow`.
+    pub fn is_charging_crossbow(&self) -> bool {
+        self.living.charging_crossbow
+    }
+
+    /// The stack a dropped item holds.
+    /// `WitherSkull.isDangerous`: the blue skull the wither shoots now and then.
+    pub fn wither_skull_dangerous(&self) -> bool {
+        self.living.wither_skull_dangerous
+    }
+
+    /// The block state an enderman carries (`getCarriedBlock`), by its id.
+    pub fn carried_block_state(&self) -> Option<BlockStateId> {
+        Some(self.living.carried_state)
+            .filter(|state| *state > 0)
+            .map(BlockStateId)
+    }
+
+    /// An armor stand's flags and poses.
+    pub fn armor_stand(&self) -> &crate::objects::armor_stand::ArmorStandState {
+        &self.living.armor_stand
+    }
+}
+
+impl EntityView<'_> {
+    /// `getItemHeldByArm`.
+    pub fn item_held_by_arm(&self, left: bool) -> Option<&ClientItemStackState> {
+        self.equipment(if left == self.main_arm_is_left() {
+            EquipmentSlot::MainHand
+        } else {
+            EquipmentSlot::OffHand
         })
     }
 }

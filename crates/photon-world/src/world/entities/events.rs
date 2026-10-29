@@ -115,7 +115,7 @@ impl Entities {
     /// `handleHurtAnimation` (`LivingEntity.animateHurt`; `Player.animateHurt` also keeps the
     /// yaw).
     pub fn apply_hurt_animation(&mut self, entity_id: EntityId, yaw: f32) -> bool {
-        let Some(mut entity) = self.at_mut(entity_id) else {
+        let Some(entity) = self.at_mut(entity_id) else {
             return false;
         };
         entity.living.hurt_time = 10;
@@ -171,7 +171,7 @@ impl Entities {
 
     /// `AgeableMob.setAgeLockedData` as the client runs it: the lock flips and the wait starts.
     pub fn toggle_age_lock(&mut self, entity_id: EntityId) {
-        if let Some(mut entity) = self.at_mut(entity_id) {
+        if let Some(entity) = self.at_mut(entity_id) {
             entity.living.age_locked = !entity.living.age_locked;
             entity.living.age_lock_timer = 40;
         }
@@ -179,21 +179,21 @@ impl Entities {
 
     /// `Villager.setUnhappyCounter` as the client runs it for a shaken-off baby.
     pub fn set_unhappy_counter(&mut self, entity_id: EntityId, ticks: i32) {
-        if let Some(mut entity) = self.at_mut(entity_id) {
+        if let Some(entity) = self.at_mut(entity_id) {
             entity.living.unhappy_counter = ticks;
         }
     }
 
     /// `AbstractChestedHorse.setChest`.
     pub fn set_horse_chest(&mut self, entity_id: EntityId, chest: bool) {
-        if let Some(mut entity) = self.at_mut(entity_id) {
+        if let Some(entity) = self.at_mut(entity_id) {
             entity.living.horse_chest = chest;
         }
     }
 
     /// Sets or clears the stew effects a mooshroom holds (`MushroomCow.stewEffects`).
     pub fn set_mooshroom_stew(&mut self, entity_id: EntityId, held: bool) {
-        if let Some(mut entity) = self.at_mut(entity_id) {
+        if let Some(entity) = self.at_mut(entity_id) {
             entity.living.mooshroom_stew = held;
         }
     }

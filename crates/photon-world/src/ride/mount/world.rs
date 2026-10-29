@@ -96,7 +96,7 @@ impl ClientWorld {
         let Some(entity) = self.entities.at(entity_id) else {
             return;
         };
-        let attributes = mount_attributes(entity.entity, kind);
+        let attributes = mount_attributes(entity, kind);
         let (x, y, z) = entity.position();
         let (ox, oy, oz) = entity.previous_position();
         let mut body = MountBody::new(

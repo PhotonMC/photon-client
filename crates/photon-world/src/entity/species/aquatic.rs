@@ -1,24 +1,6 @@
 use super::super::*;
 
 impl ClientEntity {
-    /// `Axolotl.getVariant`: the index of the variant (an id no variant has is the first).
-    pub fn axolotl_variant(&self) -> usize {
-        usize::try_from(self.living.axolotl_variant)
-            .ok()
-            .filter(|id| *id < 5)
-            .unwrap_or(0)
-    }
-
-    /// `Turtle.hasEgg`.
-    pub fn turtle_has_egg(&self) -> bool {
-        self.living.turtle_has_egg
-    }
-
-    /// `Turtle.isLayingEgg`.
-    pub fn turtle_laying_egg(&self) -> bool {
-        self.living.turtle_laying_egg
-    }
-
     /// Whether this is one of the fish `AbstractFish` makes.
     pub fn is_fish(&self) -> bool {
         matches!(
@@ -32,36 +14,11 @@ impl ClientEntity {
         )
     }
 
-    /// `Salmon.getVariant`: medium until the data says.
-    pub fn salmon_size(&self) -> crate::mobs::fish::SalmonSize {
-        crate::mobs::fish::SalmonSize::from_id(self.living.fish_variant.unwrap_or(1))
-    }
-
-    /// `TropicalFish.getPackedVariant`: a white kob until the data says.
-    pub fn tropical_fish_variant(&self) -> i32 {
-        self.living.fish_variant.unwrap_or(0)
-    }
-
-    /// `Pufferfish.getPuffState`.
-    pub fn puff_state(&self) -> i32 {
-        self.living.fish_variant.unwrap_or(0)
-    }
-
     pub(crate) fn is_guardian(&self) -> bool {
         matches!(
             photon_data::entity_type::name(self.type_id),
             Some("minecraft:guardian" | "minecraft:elder_guardian")
         )
-    }
-
-    /// `Guardian.getActiveAttackTarget`'s id: what the beam aims at, if anything.
-    pub fn guardian_attack_target(&self) -> Option<i32> {
-        (self.living.guardian_target != 0).then_some(self.living.guardian_target)
-    }
-
-    /// `Guardian.isMoving`.
-    pub fn is_guardian_moving(&self) -> bool {
-        self.living.guardian_moving
     }
 
     /// `Guardian.getAttackDuration`, shorter for the elder.
@@ -208,5 +165,50 @@ impl EntityViewMut<'_> {
             self.living.guardian_target = target;
             self.kind.guardian_state().restart_attack();
         }
+    }
+}
+
+impl EntityView<'_> {
+    /// `Axolotl.getVariant`: the index of the variant (an id no variant has is the first).
+    pub fn axolotl_variant(&self) -> usize {
+        usize::try_from(self.living.axolotl_variant)
+            .ok()
+            .filter(|id| *id < 5)
+            .unwrap_or(0)
+    }
+
+    /// `Turtle.hasEgg`.
+    pub fn turtle_has_egg(&self) -> bool {
+        self.living.turtle_has_egg
+    }
+
+    /// `Turtle.isLayingEgg`.
+    pub fn turtle_laying_egg(&self) -> bool {
+        self.living.turtle_laying_egg
+    }
+
+    /// `Salmon.getVariant`: medium until the data says.
+    pub fn salmon_size(&self) -> crate::mobs::fish::SalmonSize {
+        crate::mobs::fish::SalmonSize::from_id(self.living.fish_variant.unwrap_or(1))
+    }
+
+    /// `TropicalFish.getPackedVariant`: a white kob until the data says.
+    pub fn tropical_fish_variant(&self) -> i32 {
+        self.living.fish_variant.unwrap_or(0)
+    }
+
+    /// `Pufferfish.getPuffState`.
+    pub fn puff_state(&self) -> i32 {
+        self.living.fish_variant.unwrap_or(0)
+    }
+
+    /// `Guardian.getActiveAttackTarget`'s id: what the beam aims at, if anything.
+    pub fn guardian_attack_target(&self) -> Option<i32> {
+        (self.living.guardian_target != 0).then_some(self.living.guardian_target)
+    }
+
+    /// `Guardian.isMoving`.
+    pub fn is_guardian_moving(&self) -> bool {
+        self.living.guardian_moving
     }
 }

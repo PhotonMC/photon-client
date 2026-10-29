@@ -54,11 +54,6 @@ impl ClientEntity {
     pub fn is_evoker_fangs(&self) -> bool {
         photon_data::entity_type::name(self.type_id) == Some("minecraft:evoker_fangs")
     }
-
-    /// An experience orb's value (`ExperienceOrb.getValue`), once told.
-    pub fn orb_value(&self) -> Option<i32> {
-        self.living.orb_value
-    }
 }
 
 /// Shared `position + motion - gravity` step; the operand order matches the
@@ -406,5 +401,12 @@ impl EntityViewMut<'_> {
 
     pub(crate) fn arrow_mut(&mut self) -> &mut crate::objects::arrow::ArrowState {
         self.kind.arrow_state()
+    }
+}
+
+impl EntityView<'_> {
+    /// An experience orb's value (`ExperienceOrb.getValue`), once told.
+    pub fn orb_value(&self) -> Option<i32> {
+        self.living.orb_value
     }
 }

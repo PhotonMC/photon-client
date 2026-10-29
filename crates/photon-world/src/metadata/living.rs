@@ -77,7 +77,7 @@ pub(crate) fn age_locked_from_metadata(metadata: &[u8]) -> Option<bool> {
 
 /// An ageable mob's (or a tadpole's, which keeps the same flag at the same id) age lock in its
 /// data, applied to the entity.
-pub(crate) fn apply_age_lock_data(entity: &mut crate::entity::ClientEntity, metadata: &[u8]) {
+pub(crate) fn apply_age_lock_data(entity: &mut crate::entity::EntityViewMut<'_>, metadata: &[u8]) {
     let tadpole = photon_data::entity_type::name(entity.type_id) == Some("minecraft:tadpole");
     if (entity.is_ageable_mob() || tadpole)
         && let Some(locked) = age_locked_from_metadata(metadata)
@@ -88,7 +88,7 @@ pub(crate) fn apply_age_lock_data(entity: &mut crate::entity::ClientEntity, meta
 
 /// The ageable-mob lock and the goat's own data, applied together.
 pub(crate) fn apply_age_lock_and_goat_data(
-    entity: &mut crate::entity::ClientEntity,
+    entity: &mut crate::entity::EntityViewMut<'_>,
     metadata: &[u8],
 ) {
     apply_age_lock_data(entity, metadata);

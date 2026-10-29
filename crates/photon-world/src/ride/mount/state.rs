@@ -106,7 +106,7 @@ pub(crate) fn is_horse_type(type_id: EntityTypeId) -> bool {
 
 /// The attributes a ridden mount moves by, read from what the server sent.
 pub(super) fn mount_attributes(
-    entity: &crate::entity::ClientEntity,
+    entity: crate::entity::EntityView<'_>,
     kind: MountKind,
 ) -> Attributes {
     let attribute = |name: &str, default: f64| entity.attribute_value(name).unwrap_or(default);

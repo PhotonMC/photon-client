@@ -19,21 +19,6 @@ impl ClientEntity {
         self.living_kind().is_some()
     }
 
-    /// `Entity.blocksBuilding`: living entities (an armor stand unless it is a marker), falling
-    /// blocks, end crystals, primed tnt, boats and minecarts keep a block from being placed
-    /// into them.
-    pub fn blocks_building(&self) -> bool {
-        if self.type_id == armor_stand_type_id() {
-            return !self.armor_stand().is_marker();
-        }
-        self.is_living_entity()
-            || self.type_id == crate::constants::VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID
-            || self.is_end_crystal()
-            || self.is_primed_tnt()
-            || self.is_boat()
-            || self.is_minecart()
-    }
-
     /// Whether the type is a `Mob`: a living entity that is not a player, an armor stand or a
     /// mannequin.
     pub fn is_mob(&self) -> bool {
@@ -180,5 +165,22 @@ impl EntityView<'_> {
             is_pushable,
             same_vehicle,
         })
+    }
+}
+
+impl EntityView<'_> {
+    /// `Entity.blocksBuilding`: living entities (an armor stand unless it is a marker), falling
+    /// blocks, end crystals, primed tnt, boats and minecarts keep a block from being placed
+    /// into them.
+    pub fn blocks_building(&self) -> bool {
+        if self.type_id == armor_stand_type_id() {
+            return !self.armor_stand().is_marker();
+        }
+        self.is_living_entity()
+            || self.type_id == crate::constants::VANILLA_FALLING_BLOCK_ENTITY_TYPE_ID
+            || self.is_end_crystal()
+            || self.is_primed_tnt()
+            || self.is_boat()
+            || self.is_minecart()
     }
 }

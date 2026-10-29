@@ -1,6 +1,42 @@
 use super::super::*;
 
 impl ClientEntity {
+    /// Whether the type is an `AgeableMob`: an animal, a villager or trader, a squid or dolphin
+    /// (`AgeableWaterCreature`), or a cube mob. They share the baby flag and the age lock.
+    pub fn is_ageable_mob(&self) -> bool {
+        crate::entity::boat::vanilla_passenger_is_animal(self.type_id)
+            || matches!(
+                photon_data::entity_type::name(self.type_id),
+                Some(
+                    "minecraft:villager"
+                        | "minecraft:wandering_trader"
+                        | "minecraft:dolphin"
+                        | "minecraft:squid"
+                        | "minecraft:glow_squid"
+                        | "minecraft:slime"
+                        | "minecraft:magma_cube"
+                        | "minecraft:sulfur_cube"
+                )
+            )
+    }
+}
+
+impl EntityView<'_> {
+    /// A rabbit's hop and animation states.
+    pub fn rabbit(&self) -> Option<&crate::mobs::rabbit::RabbitState> {
+        self.kind.rabbit()
+    }
+}
+
+impl EntityViewMut<'_> {
+    /// Fixes the idle head tilt's wait and random source of a rabbit (see
+    /// [`crate::mobs::rabbit::RabbitState::fix_idle`]).
+    pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {
+        self.kind.rabbit_state().fix_idle(timeout, seed);
+    }
+}
+
+impl EntityView<'_> {
     /// `Rabbit.getVariant`'s id: zero is brown (an id the variants lack is brown).
     pub fn rabbit_variant(&self) -> i32 {
         self.living.rabbit_type
@@ -28,25 +64,6 @@ impl ClientEntity {
         self.living.age_lock_timer
     }
 
-    /// Whether the type is an `AgeableMob`: an animal, a villager or trader, a squid or dolphin
-    /// (`AgeableWaterCreature`), or a cube mob. They share the baby flag and the age lock.
-    pub fn is_ageable_mob(&self) -> bool {
-        crate::entity::boat::vanilla_passenger_is_animal(self.type_id)
-            || matches!(
-                photon_data::entity_type::name(self.type_id),
-                Some(
-                    "minecraft:villager"
-                        | "minecraft:wandering_trader"
-                        | "minecraft:dolphin"
-                        | "minecraft:squid"
-                        | "minecraft:glow_squid"
-                        | "minecraft:slime"
-                        | "minecraft:magma_cube"
-                        | "minecraft:sulfur_cube"
-                )
-            )
-    }
-
     /// `Sheep.getColor`: the dye's id (`DyeColor.getId`).
     pub fn sheep_dye_id(&self) -> u8 {
         self.living.animal.wool & 15
@@ -55,11 +72,6 @@ impl ClientEntity {
     /// `Sheep.isSheared`.
     pub fn is_sheared(&self) -> bool {
         self.living.animal.wool & 16 != 0
-    }
-
-    /// `Bogged.isSheared`: the shorn bit of the same byte a sheep keeps its wool in.
-    pub fn is_bogged_sheared(&self) -> bool {
-        self.is_sheared()
     }
 
     /// `Sheep.getHeadEatPositionScale` and `getHeadEatAngleScale` at a point
@@ -103,16 +115,8 @@ impl ClientEntity {
 }
 
 impl EntityView<'_> {
-    /// A rabbit's hop and animation states.
-    pub fn rabbit(&self) -> Option<&crate::mobs::rabbit::RabbitState> {
-        self.kind.rabbit()
-    }
-}
-
-impl EntityViewMut<'_> {
-    /// Fixes the idle head tilt's wait and random source of a rabbit (see
-    /// [`crate::mobs::rabbit::RabbitState::fix_idle`]).
-    pub fn fix_rabbit_idle(&mut self, timeout: i32, seed: i64) {
-        self.kind.rabbit_state().fix_idle(timeout, seed);
+    /// `Bogged.isSheared`: the shorn bit of the same byte a sheep keeps its wool in.
+    pub fn is_bogged_sheared(&self) -> bool {
+        self.is_sheared()
     }
 }

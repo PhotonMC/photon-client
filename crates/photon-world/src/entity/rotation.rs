@@ -53,11 +53,6 @@ impl EntityViewMut<'_> {
 }
 
 impl ClientEntity {
-    /// `ElytraAnimationState.getRotX/Y/Z`: how far the wings are spread.
-    pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
-        self.living.elytra.rotations(partial_tick)
-    }
-
     pub fn boat_delta_rotation(&self) -> f32 {
         self.delta_rotation.get()
     }
@@ -180,5 +175,12 @@ impl EntityView<'_> {
 
     pub fn head_rotation_lerp_steps(&self) -> u8 {
         self.lerp.head_lerp_steps
+    }
+}
+
+impl EntityView<'_> {
+    /// `ElytraAnimationState.getRotX/Y/Z`: how far the wings are spread.
+    pub fn elytra_rotations(&self, partial_tick: f32) -> [f32; 3] {
+        self.living.elytra.rotations(partial_tick)
     }
 }

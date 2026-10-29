@@ -82,7 +82,7 @@ impl ClientWorld {
                 kind,
                 path_open,
                 (authoritative, mount),
-                objects::flight::flight_of(entity.entity),
+                objects::flight::flight_of(entity),
             )
         })
     }
@@ -390,7 +390,7 @@ impl ClientWorld {
         let (in_water, in_lava) = (found.water.height > 0.0, found.lava.height > 0.0);
         let splashes = in_water && !entity.living.touching_water && entity.tick_count > 0;
         let (width, (m_x, m_y, m_z)) = (dimensions.width(), entity.motion());
-        if let Some(mut entity) = self.entities.at_mut(entity_id) {
+        if let Some(entity) = self.entities.at_mut(entity_id) {
             entity.living.touching_water = in_water;
             entity.living.touching_lava = in_lava;
         }

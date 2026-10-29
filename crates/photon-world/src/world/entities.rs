@@ -210,6 +210,7 @@ impl ClientWorld {
                 lerp: Interpolation::spawned(entity.rotation.2),
                 kind: initial_kind,
                 worn: Equipment::default(),
+                living: EntityState::default(),
                 pos: Position::spawned(entity.x, entity.y, entity.z),
                 vel: Motion::spawned(entity.movement.0, entity.movement.1, entity.movement.2),
                 entity: ClientEntity {
@@ -251,7 +252,6 @@ impl ClientWorld {
                     mob_flags: 0,
                     air_supply: DEFAULT_AIR_SUPPLY,
                     health: None,
-                    living: EntityState::default(),
                     arrow_count: 0,
                     stinger_count: 0,
                     effect_ambience: false,

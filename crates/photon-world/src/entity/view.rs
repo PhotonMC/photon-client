@@ -14,6 +14,7 @@ pub struct EntityView<'a> {
     pub(crate) lerp: &'a Interpolation,
     pub(crate) kind: &'a crate::entity_kind::EntityKind,
     pub(crate) worn: &'a Equipment,
+    pub(crate) living: &'a EntityState,
 }
 
 /// One entity, to change.
@@ -25,6 +26,7 @@ pub struct EntityViewMut<'a> {
     pub(crate) lerp: &'a mut Interpolation,
     pub(crate) kind: &'a mut crate::entity_kind::EntityKind,
     pub(crate) worn: &'a mut Equipment,
+    pub(crate) living: &'a mut EntityState,
 }
 
 impl<'a> EntityView<'a> {
@@ -77,6 +79,7 @@ impl<'a> EntityViewMut<'a> {
             lerp: self.lerp,
             kind: self.kind,
             worn: self.worn,
+            living: self.living,
         }
     }
 }
@@ -92,6 +95,7 @@ pub struct EntityParts {
     pub(crate) lerp: Interpolation,
     pub(crate) kind: crate::entity_kind::EntityKind,
     pub(crate) worn: Equipment,
+    pub(crate) living: EntityState,
 }
 
 impl EntityParts {
@@ -104,6 +108,7 @@ impl EntityParts {
             lerp: &self.lerp,
             kind: &self.kind,
             worn: &self.worn,
+            living: &self.living,
         }
     }
 
@@ -116,6 +121,7 @@ impl EntityParts {
             lerp: &mut self.lerp,
             kind: &mut self.kind,
             worn: &mut self.worn,
+            living: &mut self.living,
         }
     }
 }
