@@ -15,6 +15,7 @@ mod package;
 mod parity;
 mod process;
 mod progress;
+mod release;
 mod workspace;
 
 use std::process::ExitCode;
@@ -51,6 +52,11 @@ usage: cargo xtask <command>
                             --save keeps it as the route's baseline, --compare fails on a p99 rise;
                             --cpu: no server or window, chunk apply and light only
   package [--no-build]      release archive of this platform; fails on any file outside the release set
+  release-key <file>        make a release signing key: the private key goes to <file> (never shown),
+                            the public key is printed
+  release-sign --archives <dir> --tag <vX.Y.Z> [--notes <line>]
+                            write and sign the manifest of each archive in <dir>; the key is read
+                            from the RELEASE_SIGNING_KEY environment variable
   progress [--check]        rewrite (or verify) the README's computed progress block
   entities                  the reference's renderer types and what the client sources name
   shot <name> <script> [--user <name>] [--address <a>] [--rcon <cmd>]... [--wait <s>]
@@ -77,6 +83,8 @@ const COMMANDS: &[(&str, Command)] = &[
     ("entities", entities::run),
     ("progress", progress::run),
     ("package", package::run),
+    ("release-key", release::key),
+    ("release-sign", release::sign),
 ];
 
 fn main() -> ExitCode {

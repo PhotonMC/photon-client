@@ -8,6 +8,7 @@
 | [Parity](parity/README.md) | How behaviour is proven against the Java client |
 | [GUI oracle](parity/gui-oracle.md) | Screen parity through recorded draw calls |
 | [Development setup](development/setup.md) | Requirements, reference setup, running, checks |
+| [Releasing](development/releasing.md) | Release key, signing and the release workflow |
 | [Coding standards](development/coding-standards.md) | Enforced limits and conventions |
 | [History](history.md) | What has been built so far |
 
@@ -25,5 +26,6 @@ Decisions:
 - [0010 One product](adr/0010-one-product.md)
 - [0013 Multi-version content model](adr/0013-multi-version-content-model.md)
 - [0014 Multiplayer-only first release](adr/0014-multiplayer-only-first-release.md)
+- [0015 Signed updates](adr/0015-signed-updates.md)
 
 `records/` holds legacy per-slice parity records that are being converted into case metadata ([ADR 0005](adr/0005-parity-v2.md)).
