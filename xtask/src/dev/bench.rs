@@ -299,9 +299,12 @@ fn run_once(options: &Options, number: u32) -> Result<Value, String> {
     let path = directory.join(format!("{}-{number}.json", options.name));
     let _ = fs::remove_file(&path);
     let named = perf::is_named(&options.route);
-    if named {
-        perf::prepare(&options.route)?;
-    }
+    // Held to the end of the run: it keeps the scene as the route names it.
+    let _scene = if named {
+        Some(perf::start(&options.route)?)
+    } else {
+        None
+    };
     let (user, script) = route_user_and_script(&options.route);
     // A spectator flies through trees and water, so the run measures the engine, not the terrain.
     if !named {
@@ -358,13 +361,14 @@ fn measures(report: &Value) -> [(&'static str, Option<f64>); 4] {
 }
 
 /// Whether consecutive runs agree within the limit; prints each comparison.
-fn runs_agree(reports: &[Value]) -> bool {
+fn runs_agree(reports: &[Value], limit: f64) -> bool {
     let mut agree = true;
     for pair in reports.windows(2) {
         let mut changes = Vec::new();
         for ((name, old), (_, new)) in measures(&pair[0]).into_iter().zip(measures(&pair[1])) {
+            // A span under a tenth of a millisecond is noise, not a change.
             if let (Some(old), Some(new)) = (old, new)
-                && old != 0.0
+                && old >= 0.1
             {
                 changes.push((name, (new - old).abs() / old * 100.0));
             }
@@ -374,10 +378,7 @@ fn runs_agree(reports: &[Value]) -> bool {
             .map(|(name, change)| format!("{name} {change:.1}%"))
             .collect();
         println!("p50 change between consecutive runs: {}", listed.join(", "));
-        agree = agree
-            && changes
-                .iter()
-                .all(|(_, change)| *change < SPREAD_LIMIT_PERCENT);
+        agree = agree && changes.iter().all(|(_, change)| *change < limit);
     }
     agree
 }
@@ -514,7 +515,10 @@ pub fn bench(args: &[String]) -> Result<(), String> {
         first["loaded_chunks"],
         first["entities"]
     );
-    if runs_agree(&reports) {
+    if runs_agree(
+        &reports,
+        perf::spread_limit(&options.route, SPREAD_LIMIT_PERCENT),
+    ) {
         keep_or_check(&options, &reports)
     } else {
         Err(
@@ -560,12 +564,21 @@ mod tests {
 
     #[test]
     fn runs_within_five_percent_agree() {
-        assert!(runs_agree(&[report(8.0, true), report(8.3, true)]));
-        assert!(!runs_agree(&[report(8.0, true), report(8.5, true)]));
+        assert!(runs_agree(
+            &[report(8.0, true), report(8.3, true)],
+            SPREAD_LIMIT_PERCENT
+        ));
+        assert!(!runs_agree(
+            &[report(8.0, true), report(8.5, true)],
+            SPREAD_LIMIT_PERCENT
+        ));
     }
 
     #[test]
     fn a_missing_gpu_section_is_left_out_of_the_comparison() {
-        assert!(runs_agree(&[report(8.0, false), report(8.0, true)]));
+        assert!(runs_agree(
+            &[report(8.0, false), report(8.0, true)],
+            SPREAD_LIMIT_PERCENT
+        ));
     }
 }

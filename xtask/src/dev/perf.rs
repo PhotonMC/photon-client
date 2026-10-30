@@ -1,7 +1,9 @@
 //! The named performance routes of `cargo xtask bench`: the settings the frame-time targets are
 //! measured at, a world pinned to the same weather and time for every run, and the pig scene.
 
-use std::time::Duration;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
@@ -30,8 +32,10 @@ pub fn lead_in() -> String {
 
 /// The spectator's run: out and around in four legs, without `jump`, which climbs in spectator
 /// and would take the route off the terrain.
-pub const RUN_SCRIPT: &str = "none=200;forward,sprint=300;turn:90;forward,sprint=100;turn:90;\
-                              forward,sprint=300;turn:90;forward,sprint=100;none=100";
+pub const RUN_SCRIPT: &str = "forward,sprint=100;turn:90;forward,sprint=100;turn:90;\
+                              forward,sprint=100;turn:90;forward,sprint=100;turn:90;\
+                              forward,sprint=100;turn:90;forward,sprint=100;turn:90;\
+                              forward,sprint=100;turn:90;forward,sprint=100;turn:90";
 
 /// The pigs: a square grid of this many on a side, this far apart, around the world's origin.
 const PIGS_PER_SIDE: i32 = 40;
@@ -99,6 +103,16 @@ pub fn finish(route: &str, reports: &[Value]) -> Result<(), String> {
         .try_for_each(|report| check_report(route, report))
 }
 
+/// The p50 change between runs that still counts as quiet: the run route meets the chunks the
+/// server sends at slightly different moments, so its GPU and meshing spans move more.
+pub fn spread_limit(route: &str, usual: f64) -> f64 {
+    if route == "perf-run" {
+        usual * 2.0
+    } else {
+        usual
+    }
+}
+
 pub fn is_named(route: &str) -> bool {
     ROUTES.contains(&route)
 }
@@ -116,6 +130,7 @@ fn pin_world() -> Result<(), String> {
         "gamerule advance_time false",
         "gamerule advance_weather false",
         "gamerule mob_drops false",
+        "gamerule spawn_mobs false",
         "defaultgamemode spectator",
         "weather clear 1000000",
         "time set noon",
@@ -128,6 +143,7 @@ pub fn restore_world() -> Result<(), String> {
         "gamerule advance_time true",
         "gamerule advance_weather true",
         "gamerule mob_drops true",
+        "gamerule spawn_mobs true",
         "defaultgamemode survival",
     ])
 }
@@ -140,7 +156,7 @@ fn send(commands: &[&str]) -> Result<(), String> {
 /// The chunks around the origin the server generates once, so a run at this render distance
 /// finds them on disk and measures the client, not the server's world generation: a square of
 /// this many chunks on a side, taken in tiles the server loads one command at a time.
-const GENERATED_SIDE: i32 = 72;
+const GENERATED_SIDE: i32 = 88;
 const TILE: i32 = 8;
 
 /// Generates the chunks a render distance 32 view stands in. A marker keeps it to once per world.
@@ -148,33 +164,82 @@ fn generate_world() -> Result<(), String> {
     let marker = super::layout::data()
         .join("runs")
         .join("bench")
-        .join("generated-rd32");
+        .join(format!("generated-{GENERATED_SIDE}"));
     if marker.exists() {
         return Ok(());
     }
     println!("generating the chunks around the origin once ({GENERATED_SIDE}x{GENERATED_SIDE})");
     let start = -(GENERATED_SIDE / 2);
     for tile_z in (start..start + GENERATED_SIDE).step_by(TILE as usize) {
-        let mut commands = Vec::new();
         for tile_x in (start..start + GENERATED_SIDE).step_by(TILE as usize) {
             let (x0, z0) = (tile_x * 16, tile_z * 16);
             let (x1, z1) = (x0 + TILE * 16 - 1, z0 + TILE * 16 - 1);
-            commands.push(format!("forceload add {x0} {z0} {x1} {z1}"));
-            commands.push(format!("forceload remove {x0} {z0} {x1} {z1}"));
+            send(&[&format!("forceload add {x0} {z0} {x1} {z1}")])?;
+            // World generation places the animals of a biome, which would stand in every
+            // scene; the server finds an entity once its chunk's entities have loaded.
+            std::thread::sleep(Duration::from_millis(800));
+            send(&[
+                "kill @e[type=!minecraft:player]",
+                &format!("forceload remove {x0} {z0} {x1} {z1}"),
+            ])?;
         }
-        rcon::send(&commands)?;
     }
     std::fs::write(&marker, "").map_err(|error| format!("{}: {error}", marker.display()))
 }
 
-/// The scene a route is measured in, made before each run.
-pub fn prepare(route: &str) -> Result<(), String> {
+/// The scene of a run while it lasts: a thread keeps every entity near the player but the
+/// player (and, in the pig scene, the pigs) killed, because the generated world is full of
+/// animals the server loads as the player comes near; and in the pig scene it summons the pigs
+/// shortly before the measured part starts. Dropping the scene stops the thread.
+pub struct Scene {
+    stop: Arc<AtomicBool>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for Scene {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+/// The world pinned and emptied, and the thread that keeps the scene as the route names it.
+pub fn start(route: &str) -> Result<Scene, String> {
     generate_world()?;
     pin_world()?;
     clear_pigs()?;
-    if route != "perf-pigs" {
-        return Ok(());
-    }
+    let pigs = route == "perf-pigs";
+    let stop = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&stop);
+    let thread = std::thread::spawn(move || {
+        let begun = Instant::now();
+        let mut summoned = false;
+        while !flag.load(Ordering::Relaxed) {
+            if pigs && !summoned && begun.elapsed() > SUMMON_AT {
+                summoned = summon_pigs().is_ok();
+            }
+            let kill = if pigs {
+                "kill @e[type=!minecraft:player,type=!minecraft:pig]"
+            } else {
+                "kill @e[type=!minecraft:player]"
+            };
+            let _ = send(&[kill]);
+            std::thread::sleep(Duration::from_secs(2));
+        }
+    });
+    Ok(Scene {
+        stop,
+        thread: Some(thread),
+    })
+}
+
+/// When, after the run starts, the pigs are summoned: before the measured part, after the
+/// client has joined and its chunks have arrived.
+const SUMMON_AT: Duration = Duration::from_secs(LEAD_IN_SECONDS as u64 - 15);
+
+fn summon_pigs() -> Result<(), String> {
     let half = f64::from(PIGS_PER_SIDE - 1) * PIG_SPACING / 2.0;
     let mut commands = vec![FORCELOAD.to_owned()];
     for row in 0..PIGS_PER_SIDE {
@@ -187,28 +252,30 @@ pub fn prepare(route: &str) -> Result<(), String> {
             ));
         }
     }
-    rcon::send(&commands)?;
-    // The summons are done when the server answers; the chunks they stand in follow.
-    std::thread::sleep(Duration::from_secs(2));
-    Ok(())
+    rcon::send(&commands).map(|_| ())
 }
 
 /// Takes the pigs and any item entity away, and checks that nothing of them is left: a later run
-/// would otherwise draw a different scene.
+/// would otherwise draw a different scene. The chunks they stand in are loaded first, because
+/// the server only finds the entities of loaded chunks.
 pub fn clear_pigs() -> Result<(), String> {
-    send(&[
-        "kill @e[type=minecraft:pig]",
-        "kill @e[type=minecraft:item]",
-        "forceload remove all",
-    ])?;
-    let left = rcon::send(&[
-        "execute if entity @e[type=minecraft:pig]".to_owned(),
-        "execute if entity @e[type=minecraft:item]".to_owned(),
-    ])?;
-    if left.iter().any(|reply| !reply.contains("failed")) {
-        return Err(format!("pigs or items are left in the world: {left:?}"));
+    send(&[FORCELOAD])?;
+    std::thread::sleep(Duration::from_secs(2));
+    let mut left = Vec::new();
+    for _ in 0..5 {
+        send(&[
+            "kill @e[type=minecraft:pig]",
+            "kill @e[type=minecraft:item]",
+        ])?;
+        left = rcon::send(&[
+            "execute if entity @e[type=minecraft:pig]".to_owned(),
+            "execute if entity @e[type=minecraft:item]".to_owned(),
+        ])?;
+        if left.iter().all(|reply| reply.contains("failed")) {
+            return send(&["forceload remove all"]);
+        }
     }
-    Ok(())
+    Err(format!("pigs or items are left in the world: {left:?}"))
 }
 
 /// The checks that say a report is of the scene the route names: the render distance filled
@@ -225,7 +292,8 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
         ));
     }
     let entities = report["entities"].as_u64().unwrap_or(0);
-    let pigs = u64::try_from(PIGS_PER_SIDE * PIGS_PER_SIDE).unwrap_or(0);
+    // A few pigs are lost to the summon (a spot over water, a collision): most must be there.
+    let pigs = u64::try_from(PIGS_PER_SIDE * PIGS_PER_SIDE).unwrap_or(0) * 9 / 10;
     if (route == "perf-pigs") != (entities >= pigs) {
         return Err(format!(
             "{route}: {entities} entities, but the scene should {} the {pigs} pigs",
