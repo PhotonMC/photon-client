@@ -428,6 +428,10 @@ pub(super) struct StagingChunk {
     pub(super) used: u64,
 }
 
+// SAFETY: as for `HostBuffer`: the mapping belongs to this chunk alone and is reached only through
+// it, so the chunk can move to another thread.
+unsafe impl Send for StagingChunk {}
+
 impl Drop for StagingChunk {
     fn drop(&mut self) {
         // SAFETY: the memory is mapped once, for good, when the chunk is made, and this runs once,
@@ -501,6 +505,11 @@ pub(super) struct HostBuffer {
     pub(super) mapped: *mut u8,
     pub(super) capacity: usize,
 }
+
+// SAFETY: `mapped` points into device memory that this buffer owns and maps once, for good. The
+// pointer is dereferenced only through `&self`/`&mut self` of the buffer, so moving the buffer to
+// another thread moves the only way to reach the mapping with it.
+unsafe impl Send for HostBuffer {}
 
 impl Drop for HostBuffer {
     fn drop(&mut self) {
