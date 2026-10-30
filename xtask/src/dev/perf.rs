@@ -304,8 +304,18 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
             }
         ));
     }
+    // Animals left on disk by an earlier run load as the player arrives and cost the GPU about
+    // twice what the empty scene does, so a world that still holds them is not a baseline.
+    if route != "perf-pigs" && entities > STRAY_ENTITIES {
+        return Err(format!(
+            "{route}: {entities} entities are left in the world, more than {STRAY_ENTITIES}"
+        ));
+    }
     Ok(())
 }
+
+/// Entities a route without pigs may still see: a few players' worth of strays at most.
+const STRAY_ENTITIES: u64 = 50;
 
 #[cfg(test)]
 mod tests {
@@ -327,5 +337,12 @@ mod tests {
         assert!(check_report("perf-still", &pigs).is_err());
         let none = json!({"loaded_chunks": 4225, "entities": 10});
         assert!(check_report("perf-pigs", &none).is_err());
+    }
+
+    #[test]
+    fn strays_left_in_the_world_fail_a_route_without_pigs() {
+        let strays = json!({"loaded_chunks": 4225, "entities": 778});
+        assert!(check_report("perf-still", &strays).is_err());
+        assert!(check_report("perf-run", &strays).is_err());
     }
 }
