@@ -33,6 +33,15 @@ The signing step (`cargo xtask release-sign`) refuses, with a message, to sign w
 
 Nothing is published when the step fails.
 
+## What the client does
+
+The client has no update screen. While `photon menu` or `photon play` runs, one background service asks `https://github.com/PhotonMC/photon-client/releases/latest/download/` for `photon-<triple>.manifest` and its `.sig` at start and every 6 hours, over https only, with a size limit on every body. A newer verified release is downloaded and stored; the next start applies it (see [ADR 0015](../adr/0015-signed-updates.md)). A build whose `RELEASE_KEYS` is empty never contacts the host.
+
+- `<user data>/photon/update/settings.txt` holds `auto_check=true|false`, `auto_download=true|false` and `channel=stable` (the only channel), one per line, `#` for comments. A missing file means the defaults (check and download); a wrong file is logged and ignored.
+- `photon update` checks once, downloads what it finds and prints each state.
+- The service reports `UpdateState` (Idle, Checking, Available, Downloading, Ready, Failed) and `UpdateChanged` events through `photon-api`; `server_needs_newer_version` fires when a server list ping shows a protocol above every supported one, naming a stored or available release that supports it.
+- `restart_into_update` ends the game as a window close does and starts the program again with the same arguments, which applies the stored release first. The dev script step `update_restart` calls it.
+
 ## Rotating the key
 
 Follow the four steps of [ADR 0015](../adr/0015-signed-updates.md). In the overlap of step 3 the `release` environment holds the new key as `RELEASE_SIGNING_KEY` and the old one as `RELEASE_SIGNING_KEY_PREVIOUS`: every manifest then gets two signature lines. Remove the second secret when the old key leaves the list.
