@@ -33,6 +33,8 @@ struct Sample {
     parts: [f64; profile::SPANS.len()],
     backend: BackendTimings,
     gpu: Option<GpuTimings>,
+    /// From sampling the window's input to the present call returning, in milliseconds.
+    latency: f64,
     /// When the frame ended, in seconds since the first frame.
     at: f64,
     /// Sections that came back within a second after leaving the drawn set.
@@ -85,6 +87,7 @@ impl Bench {
     pub fn record(
         &mut self,
         [start, ticked, meshed, built, drawn]: [Instant; 5],
+        input_sampled: Instant,
         parts: [f64; profile::SPANS.len()],
         backend: &VulkanBackend,
     ) {
@@ -102,6 +105,7 @@ impl Bench {
                 ms(built, drawn),
                 ms(start, drawn),
             ],
+            latency: ms(input_sampled.min(drawn), drawn),
             parts,
             backend: backend.timings(),
             gpu: backend.gpu_timings(),
@@ -117,6 +121,17 @@ impl Bench {
         }
         std::fs::write(&self.path, self.report(info))
             .map_err(|error| format!("{}: {error}", self.path))
+    }
+
+    /// The whole frame, and the time from the frame's input sample to its present call returning
+    /// (scan-out is not counted).
+    fn frame_json(&self, total: &Stats) -> String {
+        let latency = Stats::of(self.samples.iter().map(|sample| sample.latency).collect());
+        format!(
+            "  \"frame_ms\": {},\n  \"input_to_present_ms\": {},\n",
+            total.json(),
+            latency.json()
+        )
     }
 
     fn report(&self, info: &RunInfo) -> String {
@@ -164,7 +179,7 @@ impl Bench {
         let _ = writeln!(out, "  \"work_fps\": {:.1},", 1000.0 / work.mean);
         out.push_str(&self.pacing_json());
         let _ = writeln!(out, "  \"work_ms\": {},", work.json());
-        let _ = writeln!(out, "  \"frame_ms\": {},", total.json());
+        out.push_str(&self.frame_json(&total));
         out.push_str("  \"cpu_ms\": {\n");
         let cpu = ["tick", "mesh", "extract", "backend"];
         for (index, name) in cpu.iter().enumerate() {

@@ -201,6 +201,7 @@ impl Play {
 
     /// The window's events, as `Controls` takes them.
     pub(super) fn poll_events(&mut self, frame_start: Instant) -> Result<()> {
+        self.limiter.input_sampled(Instant::now());
         for event in self.surface.poll() {
             if is_input(&event) {
                 self.limiter.input_received(frame_start);

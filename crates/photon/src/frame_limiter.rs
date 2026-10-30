@@ -34,6 +34,8 @@ pub struct FrameLimiter {
     average_overshoot_ns: i64,
     last_limit: i32,
     latest_input: Instant,
+    /// When the window was last asked for its events: a frame's input-to-present latency starts here.
+    input_sampled: Instant,
     fps: FpsCounter,
 }
 
@@ -44,6 +46,7 @@ impl FrameLimiter {
             average_overshoot_ns: 0,
             last_limit: 0,
             latest_input: now,
+            input_sampled: now,
             fps: FpsCounter::new(now),
         }
     }
@@ -56,6 +59,16 @@ impl FrameLimiter {
     /// The end of a frame, counted for the frame rate.
     pub fn count_frame(&mut self, now: Instant) {
         self.fps.frame(now);
+    }
+
+    /// The window's events were just polled.
+    pub fn input_sampled(&mut self, now: Instant) {
+        self.input_sampled = now;
+    }
+
+    /// When the window's events were last polled.
+    pub fn sampled_at(&self) -> Instant {
+        self.input_sampled
     }
 
     /// `onInputReceived`: a key or the mouse was used.

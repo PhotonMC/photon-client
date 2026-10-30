@@ -433,7 +433,7 @@ impl Play {
                 profile.record(spans, parts, &mut self.sections);
             }
             if let Some(bench) = self.bench.as_mut() {
-                bench.record(spans, parts, &self.backend);
+                bench.record(spans, self.limiter.sampled_at(), parts, &self.backend);
             }
         }
         Ok(Flow::Next)
