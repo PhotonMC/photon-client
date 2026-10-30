@@ -1,0 +1,13 @@
+[package]
+name = "photon-api"
+description = "What a feature or mod can see and change: owners, events, and the named parts of the schedules."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+
+[lints]
+workspace = true

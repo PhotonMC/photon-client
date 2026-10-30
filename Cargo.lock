@@ -1615,6 +1615,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "photon-api"
+version = "0.1.0"
+
+[[package]]
 name = "photon-assets"
 version = "0.1.0"
 dependencies = [

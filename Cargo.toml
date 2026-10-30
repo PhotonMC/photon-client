@@ -16,6 +16,7 @@ photon-game = { path = "crates/photon-game" }
 photon-protocol = { path = "crates/photon-protocol" }
 photon-net = { path = "crates/photon-net" }
 photon-content = { path = "crates/photon-content" }
+photon-api = { path = "crates/photon-api" }
 photon-dev = { path = "crates/photon-dev" }
 photon-render = { path = "crates/photon-render" }
 photon-gui = { path = "crates/photon-gui" }
