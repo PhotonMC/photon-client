@@ -35,6 +35,10 @@ pub fn out_of_view(
 ) -> BTreeSet<EntityId> {
     let scale = view_scale(view.render_distance);
     let bounds = world.dimension();
+    let spawners = world
+        .spawner_display_places()
+        .filter(|&(_, place)| !spawner_extracted(sections, view.camera, place))
+        .map(|(id, _)| id);
     world
         .entities()
         .all()
@@ -51,7 +55,25 @@ pub fn out_of_view(
             !outside && !sections.compiled_and_visible((section[0], section[1], section[2]))
         })
         .map(|entity| entity.id())
+        .chain(spawners)
         .collect()
+}
+
+/// `LevelExtractor.extractVisibleBlockEntities` for the mob a spawner shows: its section has
+/// shown, and the middle of its block is closer to the camera than 64 blocks
+/// (`BlockEntityRenderer.shouldRender`).
+fn spawner_extracted(
+    sections: &SectionMeshes,
+    camera: (f64, f64, f64),
+    (x, y, z): (i32, i32, i32),
+) -> bool {
+    let (dx, dy, dz) = (
+        f64::from(x) + 0.5 - camera.0,
+        f64::from(y) + 0.5 - camera.1,
+        f64::from(z) + 0.5 - camera.2,
+    );
+    dx * dx + dy * dy + dz * dz < 64.0 * 64.0
+        && sections.compiled_and_visible((x >> 4, y >> 4, z >> 4))
 }
 
 /// `EntityRenderer.shouldRender` with the overrides that widen it: a guardian's beam, an end

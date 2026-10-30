@@ -258,6 +258,11 @@ impl Entities {
         self.friendly_ghosts.contains(&entity_id)
     }
 
+    /// Whether the frame leaves the entity out.
+    pub fn is_out_of_view(&self, entity_id: EntityId) -> bool {
+        self.out_of_view.contains(&entity_id)
+    }
+
     /// Set which entities the next frames leave out as out of view.
     pub fn set_out_of_view(&mut self, ids: BTreeSet<EntityId>) {
         self.visible = self

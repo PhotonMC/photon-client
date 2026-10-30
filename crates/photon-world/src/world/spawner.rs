@@ -139,14 +139,25 @@ impl ClientWorld {
         Some(entity)
     }
 
-    /// The mobs to draw: the entities the server sent and the ones spawners show.
+    /// The mobs to draw: the entities the server sent and the ones spawners show. A spawner's
+    /// mob the frame leaves out (`BlockEntityRenderer.shouldRender`, and the section not shown)
+    /// is not drawn.
     pub fn drawn_mobs(&self) -> impl Iterator<Item = EntityView<'_>> {
         self.entities.drawn_with_invisible().chain(
             self.spawner_displays
                 .iter()
+                .filter(|shown| !self.entities.is_out_of_view(shown.entity.net.id))
                 .filter(|shown| self.spawner_display_shows(shown))
                 .map(|shown| shown.entity.view()),
         )
+    }
+
+    /// The ids and blocks of the mobs spawners show, for the frame to leave out the ones whose
+    /// block entity is not extracted.
+    pub fn spawner_display_places(&self) -> impl Iterator<Item = (EntityId, Pos)> + '_ {
+        self.spawner_displays
+            .iter()
+            .map(|shown| (shown.entity.net.id, shown.pos))
     }
 
     /// Whether a spawner's block entity is still there and, for a trial spawner, in a state that
