@@ -54,6 +54,7 @@ usage: cargo xtask <command>
   package [--no-build]      release archive of this platform; fails on any file outside the release set
   release-key <file>        make a release signing key: the private key goes to <file> (never shown),
                             the public key is printed
+  release-check <vX.Y.Z>    fail unless a release of this tag can be signed (tag, public keys)
   release-sign --archives <dir> --tag <vX.Y.Z> [--notes <line>]
                             write and sign the manifest of each archive in <dir>; the key is read
                             from the RELEASE_SIGNING_KEY environment variable
@@ -84,6 +85,7 @@ const COMMANDS: &[(&str, Command)] = &[
     ("progress", progress::run),
     ("package", package::run),
     ("release-key", release::key),
+    ("release-check", release::check),
     ("release-sign", release::sign),
 ];
 

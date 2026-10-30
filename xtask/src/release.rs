@@ -88,15 +88,8 @@ fn sign_in(
     secrets: &[&str],
     (dir, tag, notes): (&Path, &str, &str),
 ) -> Result<(), String> {
+    preflight(keys, tag)?;
     let version = env!("CARGO_PKG_VERSION");
-    if tag != format!("v{version}") {
-        return Err(format!(
-            "the tag {tag} is not v{version}, the version of this source"
-        ));
-    }
-    if keys.is_empty() {
-        return Err("RELEASE_KEYS in crates/photon-update/src/lib.rs is empty: no client would trust a release".to_owned());
-    }
     let pairs = if secrets.is_empty() {
         vec![signing_pair(keys, "")?]
     } else {
@@ -127,6 +120,28 @@ fn sign_in(
         )
         .map_err(|error| error.to_string())?;
         println!("signed photon-{triple}.manifest ({} bytes)", bytes.len());
+    }
+    Ok(())
+}
+
+/// `cargo xtask release-check <vX.Y.Z>`: what can be known without the secret, so a release that
+/// cannot be signed fails before anyone is asked to approve it.
+pub fn check(args: &[String]) -> Result<(), String> {
+    let [tag] = args else {
+        return Err("usage: cargo xtask release-check <vX.Y.Z>".to_owned());
+    };
+    preflight(photon_update::RELEASE_KEYS, tag)
+}
+
+fn preflight(keys: &[[u8; 32]], tag: &str) -> Result<(), String> {
+    let version = env!("CARGO_PKG_VERSION");
+    if tag != format!("v{version}") {
+        return Err(format!(
+            "the tag {tag} is not v{version}, the version of this source"
+        ));
+    }
+    if keys.is_empty() {
+        return Err("RELEASE_KEYS in crates/photon-update/src/lib.rs is empty: no client would trust a release".to_owned());
     }
     Ok(())
 }

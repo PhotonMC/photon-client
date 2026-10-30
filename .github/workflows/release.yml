@@ -1,16 +1,41 @@
-name: Release archives
+name: Release
 
-# Draft: builds the archive of each platform from our own code and keeps it as a workflow
-# artifact. It publishes nothing and creates no tag or release; signing and publishing wait for
-# the owner's decisions (issue #57). Started by hand only.
+# A tag `v<version>` (the workspace version) builds the archive of each platform, then waits in
+# the protected `release` environment (tags v* only, the owner approves), signs a manifest per
+# platform with the environment's secret and publishes a GitHub Release (ADR 0015, docs/development/
+# releasing.md). Started by hand it builds and keeps the archives for a week and publishes nothing.
+#
+# It stays inert until the owner has put the public key into RELEASE_KEYS and the private key into
+# the environment's RELEASE_SIGNING_KEY secret: the check job fails when the keys or the tag are
+# wrong, and the signing step fails (it never skips) when the secret is missing.
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  check:
+    # What can be known without the secret, before the long builds and before anyone approves.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: xtask
+      - run: cargo xtask release-check "$GITHUB_REF_NAME"
+
   package:
+    needs: check
+    if: ${{ !cancelled() && (needs.check.result == 'success' || needs.check.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -48,4 +73,40 @@ jobs:
             target/package/*.tar.gz
             target/package/*.tar.gz.sha256
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 1 || 7 }}
+
+  publish:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # The environment holds the signing secret and the approval of the owner.
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: xtask
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Manifests and signatures
+        # The secrets are read from the environment by the command alone: nothing echoes them
+        # and nothing writes them to disk. The command fails when the secret is missing or its
+        # public key is not in RELEASE_KEYS.
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          RELEASE_SIGNING_KEY_PREVIOUS: ${{ secrets.RELEASE_SIGNING_KEY_PREVIOUS }}
+        run: cargo xtask release-sign --archives dist --tag "$GITHUB_REF_NAME" --notes "Photon ${GITHUB_REF_NAME#v}"
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Photon ${GITHUB_REF_NAME#v}" \
+            --notes "Photon ${GITHUB_REF_NAME#v}. The client updates itself from the signed manifests attached here."
