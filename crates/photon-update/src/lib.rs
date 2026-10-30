@@ -36,7 +36,9 @@ pub enum Error {
     NotNewer,
     /// The archive name is not a plain file name.
     BadName,
-    /// The pending folder could not be written.
+    /// The host has no such file (no release yet, or a newer one replaced the archive).
+    NotFound,
+    /// The pending folder could not be written or the host could not be reached.
     Io(String),
 }
 
@@ -160,52 +162,6 @@ pub fn staged(pending: &Path, keys: &[[u8; 32]]) -> Result<Staged, Error> {
     Ok(Staged { release, archive })
 }
 
-/// What a release host may send, as upper bounds.
-const MANIFEST_LIMIT: u64 = 4096;
-const SIGNATURE_LIMIT: u64 = 256;
-const ARCHIVE_LIMIT: u64 = 512 * 1024 * 1024;
-
-/// Asks `base` (a folder URL holding `manifest`, `manifest.sig` and the archive it names) for a
-/// release newer than `current`, and stages it in `pending`. `None` is "up to date". Only
-/// `https://` is used, except a loopback host (for tests); a failed check changes nothing.
-pub fn check(
-    base: &str,
-    keys: &[[u8; 32]],
-    current: &str,
-    pending: &Path,
-) -> Result<Option<Staged>, Error> {
-    let base = base.trim_end_matches('/');
-    let secure = base.starts_with("https://");
-    if !secure && !base.starts_with("http://127.0.0.1:") {
-        return Err(Error::Io("the release host must be https".to_owned()));
-    }
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .https_only(secure)
-        .timeout_connect(Some(std::time::Duration::from_secs(30)))
-        .timeout_recv_body(Some(std::time::Duration::from_secs(900)))
-        .build()
-        .into();
-    let get = |name: &str, limit: u64| -> Result<Vec<u8>, Error> {
-        agent
-            .get(&format!("{base}/{name}"))
-            .call()
-            .map_err(|error| Error::Io(error.to_string()))?
-            .body_mut()
-            .with_config()
-            .limit(limit)
-            .read_to_vec()
-            .map_err(|error| Error::Io(error.to_string()))
-    };
-    let manifest = get("manifest", MANIFEST_LIMIT)?;
-    let signature = String::from_utf8_lossy(&get("manifest.sig", SIGNATURE_LIMIT)?).into_owned();
-    let release = verify_manifest(keys, &manifest, &signature)?;
-    if !is_newer(current, &release.version) {
-        return Ok(None);
-    }
-    let archive = get(&release.archive, ARCHIVE_LIMIT)?;
-    stage(pending, keys, current, (&manifest, &signature), &archive).map(Some)
-}
-
 fn numbers(version: &str) -> Option<Vec<u64>> {
     version.split('.').map(|part| part.parse().ok()).collect()
 }
@@ -285,8 +241,12 @@ fn hex(text: &str) -> Option<Vec<u8>> {
         .collect()
 }
 
+mod host;
 mod swap;
+pub use host::{Offer, PLATFORM, RELEASE_HOST, check, download, offer};
 pub use swap::{Applied, apply};
 
 #[cfg(test)]
-mod tests;
+mod host_tests;
+#[cfg(test)]
+pub(crate) mod tests;
