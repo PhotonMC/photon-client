@@ -48,6 +48,7 @@ pub(super) fn world(play: Play) -> World {
     world.insert_non_send(play);
     world.insert_non_send(Failure(None));
     world.insert_non_send(ClientEvents::default());
+    world.insert_non_send(crate::api::registries());
     let now = Instant::now();
     world.insert_resource(Clock {
         start: now,
