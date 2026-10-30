@@ -112,6 +112,17 @@ jobs:
       - name: Fetch the pinned game from Mojang
         run: cargo xtask setup --named --decompile
       - run: cargo xtask parity
+      # Each supported release's own server writes its registry reports; the jars come from
+      # Mojang's manifest and are hash-checked like the pinned one, kept on the runner, and
+      # only the verdict reaches the log.
+      - name: Fetch the supported releases' registry reports
+        run: |
+          cargo xtask server --accept-eula --reports
+          cargo xtask server --accept-eula --reports --version 26.1
+          test -f .data/minecraft/reports/26.1/reports/registries.json
+          test -f .data/minecraft/reports/26.2/reports/registries.json
+      - name: Every version numbers its registries like its own server
+        run: cargo test -p photon-oracle every_version_numbers_its_registries_like_its_own_server
       - name: README progress block is current
         run: cargo xtask progress --check
 
