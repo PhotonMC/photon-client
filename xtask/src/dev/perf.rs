@@ -17,6 +17,8 @@ pub const ROUTES: [&str; 3] = ["perf-still", "perf-run", "perf-pigs"];
 /// What every named route is measured at.
 pub const SIZE: [&str; 2] = ["1280", "720"];
 pub const RENDER_DISTANCE: u32 = 32;
+/// Where the still and pig routes hold the camera: in the open, over the middle of the pig grid.
+pub const STILL_SPOT: [i32; 3] = [0, 100, 0];
 
 /// Seconds the client stands before the measured part starts: at render distance 32 the server
 /// is still sending chunks for tens of seconds after the join, and the measured frames are of
