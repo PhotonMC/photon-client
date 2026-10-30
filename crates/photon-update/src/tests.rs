@@ -20,7 +20,10 @@ fn to_hex(bytes: &[u8]) -> String {
 
 fn manifest(archive: &[u8]) -> String {
     let sum = to_hex(Sha256::digest(archive).as_slice());
-    format!("version=1.4.0\narchive=photon-1.4.0.tar.gz\nsha256={sum}\n")
+    format!(
+        "version=1.4.0\narchive=photon-1.4.0.tar.gz\nsha256={sum}\nsize={}\n",
+        archive.len()
+    )
 }
 
 #[test]
@@ -28,7 +31,7 @@ fn a_manifest_signed_with_the_key_is_accepted() {
     let pair = test_key();
     let text = manifest(b"archive");
     let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
-    let release = verify_manifest(Some(&public(&pair)), text.as_bytes(), &signature).unwrap();
+    let release = verify_manifest(&[public(&pair)], text.as_bytes(), &signature).unwrap();
     assert_eq!(release.version, "1.4.0");
     assert_eq!(release.archive, "photon-1.4.0.tar.gz");
     assert_eq!(check_archive(&release, b"archive"), Ok(()));
@@ -41,12 +44,12 @@ fn another_key_or_a_changed_manifest_is_refused() {
     let text = manifest(b"archive");
     let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
     assert_eq!(
-        verify_manifest(Some(&public(&other)), text.as_bytes(), &signature),
+        verify_manifest(&[public(&other)], text.as_bytes(), &signature),
         Err(Error::Untrusted)
     );
     let changed = text.replace("1.4.0", "9.9.9");
     assert_eq!(
-        verify_manifest(Some(&public(&pair)), changed.as_bytes(), &signature),
+        verify_manifest(&[public(&pair)], changed.as_bytes(), &signature),
         Err(Error::Untrusted)
     );
 }
@@ -55,15 +58,15 @@ fn another_key_or_a_changed_manifest_is_refused() {
 fn an_unset_key_and_a_malformed_signature_refuse() {
     let text = manifest(b"archive");
     assert_eq!(
-        verify_manifest(None, text.as_bytes(), "00"),
+        verify_manifest(&[], text.as_bytes(), "00"),
         Err(Error::NoKey)
     );
     let pair = test_key();
     assert_eq!(
-        verify_manifest(Some(&public(&pair)), text.as_bytes(), "zz"),
+        verify_manifest(&[public(&pair)], text.as_bytes(), "zz"),
         Err(Error::BadSignature)
     );
-    assert_eq!(RELEASE_KEY, None);
+    assert_eq!(RELEASE_KEYS.len(), 0);
 }
 
 #[test]
@@ -71,26 +74,81 @@ fn a_signed_but_malformed_manifest_is_refused() {
     let pair = test_key();
     for (text, why) in [
         (
-            "version=1\nversion=2\narchive=a\nsha256=00\n",
+            "version=1\nversion=2\narchive=a\nsha256=00\nsize=1\n",
             "repeated field",
         ),
-        ("version=1\narchive=a\n", "no sha256"),
+        ("version=1\narchive=a\nsize=1\n", "no sha256"),
         (
-            "version=1\narchive=a\nsha256=12\n",
+            "version=1\narchive=a\nsha256=12\nsize=1\n",
             "sha256 is not 32 bytes of hex",
         ),
         (
-            "version=1\narchive=a\nsha256=00\nextra=1\n",
-            "unknown field",
+            "version=1\narchive=a\nsha256=00\nsize=1\nBad Name=1\n",
+            "a malformed field name",
+        ),
+        (
+            "version=1\narchive=a\nsha256=00\nsize=x\n",
+            "size is not a number",
+        ),
+        ("version=1\narchive=a\nsha256=00\n", "no size"),
+        (
+            "version=1\narchive=a\nsha256=00\nsize=1\nprotocols=1,x\n",
+            "protocols are not numbers",
         ),
     ] {
         let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
+        // The sha256 of the first rows is not valid hex of 32 bytes, which is checked first.
+        let sum = to_hex(Sha256::digest(b"x").as_slice());
+        let text = text.replace("sha256=00", &format!("sha256={sum}"));
+        let signature = if text.contains(&sum) {
+            to_hex(pair.sign(text.as_bytes()).as_ref())
+        } else {
+            signature
+        };
         assert_eq!(
-            verify_manifest(Some(&public(&pair)), text.as_bytes(), &signature),
+            verify_manifest(&[public(&pair)], text.as_bytes(), &signature),
             Err(Error::BadManifest(why)),
             "{text}"
         );
     }
+}
+
+#[test]
+fn fields_a_later_release_adds_are_ignored_and_the_known_optional_ones_are_read() {
+    let pair = test_key();
+    let sum = to_hex(Sha256::digest(b"x").as_slice());
+    let text = format!(
+        "version=2.0.0\narchive=a.tar.gz\nsha256={sum}\nsize=1\nnotes=Faster chunks\nprotocols=775, 776\nchannel_hint=beta\n"
+    );
+    let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
+    let release = verify_manifest(&[public(&pair)], text.as_bytes(), &signature).unwrap();
+    assert_eq!(release.notes, "Faster chunks");
+    assert_eq!(release.protocols, [775, 776]);
+    assert_eq!(release.size, 1);
+}
+
+#[test]
+fn any_signature_line_under_any_listed_key_is_enough() {
+    let (old, new, stranger) = (test_key(), test_key(), test_key());
+    let text = manifest(b"archive");
+    let by = |pair: &Ed25519KeyPair| to_hex(pair.sign(text.as_bytes()).as_ref());
+    let keys = [public(&old), public(&new)];
+    // Signed with the new key only, the old key only, and both (the overlap of a rotation).
+    for signatures in [
+        by(&new),
+        by(&old),
+        format!("{}\n{}\n", by(&stranger), by(&new)),
+    ] {
+        assert!(verify_manifest(&keys, text.as_bytes(), &signatures).is_ok());
+    }
+    assert_eq!(
+        verify_manifest(&keys, text.as_bytes(), &by(&stranger)),
+        Err(Error::Untrusted)
+    );
+    assert_eq!(
+        verify_manifest(&keys, text.as_bytes(), "not hex\n"),
+        Err(Error::BadSignature)
+    );
 }
 
 #[test]
@@ -117,17 +175,17 @@ fn a_staged_release_is_checked_again_when_it_is_read() {
     let pending = folder("stage").join("pending");
     let staged = stage(
         &pending,
-        Some(&key),
+        &[key],
         "1.3.0",
         (text.as_bytes(), &signature),
         b"archive",
     )
     .unwrap();
     assert_eq!(staged.release.version, "1.4.0");
-    assert_eq!(self::staged(&pending, Some(&key)).unwrap(), staged);
+    assert_eq!(self::staged(&pending, &[key]).unwrap(), staged);
     // Someone replaces the stored archive: it is refused.
     std::fs::write(&staged.archive, b"tampered").unwrap();
-    assert_eq!(self::staged(&pending, Some(&key)), Err(Error::WrongArchive));
+    assert_eq!(self::staged(&pending, &[key]), Err(Error::WrongArchive));
 }
 
 #[test]
@@ -141,7 +199,7 @@ fn nothing_is_stored_for_an_old_release_or_a_wrong_archive() {
     assert_eq!(
         stage(
             &pending,
-            Some(&key),
+            &[key],
             "1.4.0",
             manifest_and_signature,
             b"archive"
@@ -149,13 +207,7 @@ fn nothing_is_stored_for_an_old_release_or_a_wrong_archive() {
         Err(Error::NotNewer)
     );
     assert_eq!(
-        stage(
-            &pending,
-            Some(&key),
-            "1.3.0",
-            manifest_and_signature,
-            b"other"
-        ),
+        stage(&pending, &[key], "1.3.0", manifest_and_signature, b"other"),
         Err(Error::WrongArchive)
     );
     assert!(!pending.exists());
@@ -166,13 +218,13 @@ fn an_archive_name_with_a_path_is_refused() {
     let pair = test_key();
     let key = public(&pair);
     let sum = to_hex(Sha256::digest(b"a").as_slice());
-    let text = format!("version=2.0.0\narchive=../escape.tar.gz\nsha256={sum}\n");
+    let text = format!("version=2.0.0\narchive=../escape.tar.gz\nsha256={sum}\nsize=1\n");
     let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
     let pending = folder("name").join("pending");
     assert_eq!(
         stage(
             &pending,
-            Some(&key),
+            &[key],
             "1.0.0",
             (text.as_bytes(), &signature),
             b"a"
@@ -235,16 +287,14 @@ fn a_newer_release_on_the_host_is_staged_and_a_current_one_is_not() {
     ];
     let pending = folder("host").join("pending");
     let (base, thread) = host(files.clone(), 3);
-    let staged = check(&base, Some(&key), "1.3.0", &pending)
-        .unwrap()
-        .unwrap();
+    let staged = check(&base, &[key], "1.3.0", &pending).unwrap().unwrap();
     thread.join().unwrap();
     assert_eq!(staged.release.version, "1.4.0");
-    assert_eq!(self::staged(&pending, Some(&key)).unwrap(), staged);
+    assert_eq!(self::staged(&pending, &[key]).unwrap(), staged);
     // Up to date: only the manifest and its signature are asked for.
     let (base, thread) = host(files, 2);
     assert_eq!(
-        check(&base, Some(&key), "1.4.0", &folder("host2").join("p")),
+        check(&base, &[key], "1.4.0", &folder("host2").join("p")),
         Ok(None)
     );
     thread.join().unwrap();
@@ -265,12 +315,12 @@ fn a_host_with_the_wrong_signature_or_plain_http_is_refused() {
         2,
     );
     assert_eq!(
-        check(&base, Some(&key), "1.3.0", &pending),
+        check(&base, &[key], "1.3.0", &pending),
         Err(Error::Untrusted)
     );
     thread.join().unwrap();
     assert!(!pending.exists());
-    assert!(check("http://example.com/releases", Some(&key), "1.3.0", &pending).is_err());
+    assert!(check("http://example.com/releases", &[key], "1.3.0", &pending).is_err());
 }
 
 /// A gzip'd ustar archive of (path, bytes, mode) entries, made without a tar program.
@@ -300,12 +350,15 @@ fn staged_install(name: &str, archive: &[u8], key_pair: &Ed25519KeyPair) -> (Pat
     std::fs::create_dir_all(&install).unwrap();
     std::fs::write(install.join("photon"), b"old").unwrap();
     let sum = to_hex(Sha256::digest(archive).as_slice());
-    let text = format!("version=1.4.0\narchive=p.tar.gz\nsha256={sum}\n");
+    let text = format!(
+        "version=1.4.0\narchive=p.tar.gz\nsha256={sum}\nsize={}\n",
+        archive.len()
+    );
     let signature = to_hex(key_pair.sign(text.as_bytes()).as_ref());
     let pending = root.join("pending");
     stage(
         &pending,
-        Some(&public(key_pair)),
+        &[public(key_pair)],
         "1.3.0",
         (text.as_bytes(), &signature),
         archive,
@@ -325,14 +378,9 @@ fn a_staged_release_replaces_the_install_and_keeps_the_old_one() {
         ("photon-1.4.0/README.md", b"read", 0o644),
     ]);
     let (install, pending) = staged_install("swap", &archive, &pair);
-    let applied = apply(
-        &install,
-        &pending,
-        Some(&public(&pair)),
-        ("1.3.0", "photon"),
-    )
-    .unwrap()
-    .unwrap();
+    let applied = apply(&install, &pending, &[public(&pair)], ("1.3.0", "photon"))
+        .unwrap()
+        .unwrap();
     assert_eq!(applied.version, "1.4.0");
     assert_eq!(applied.binary, install.join("photon"));
     assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"new");
@@ -342,12 +390,7 @@ fn a_staged_release_replaces_the_install_and_keeps_the_old_one() {
     assert!(!pending.exists());
     // Nothing pending any more: the next start does nothing.
     assert_eq!(
-        apply(
-            &install,
-            &pending,
-            Some(&public(&pair)),
-            ("1.4.0", "photon")
-        ),
+        apply(&install, &pending, &[public(&pair)], ("1.4.0", "photon")),
         Ok(None)
     );
 }
@@ -360,15 +403,7 @@ fn an_archive_that_escapes_or_lacks_the_binary_leaves_the_install_alone() {
         vec![("photon-1.4.0/README.md", &b"x"[..], 0o644)],
     ] {
         let (install, pending) = staged_install("bad", &archive_of(&entries), &pair);
-        assert!(
-            apply(
-                &install,
-                &pending,
-                Some(&public(&pair)),
-                ("1.3.0", "photon")
-            )
-            .is_err()
-        );
+        assert!(apply(&install, &pending, &[public(&pair)], ("1.3.0", "photon")).is_err());
         assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"old");
         assert!(pending.exists());
         assert!(!install.with_file_name("app.new").exists());
@@ -381,12 +416,7 @@ fn a_release_that_is_not_newer_any_more_is_dropped() {
     let archive = archive_of(&[("photon-1.4.0/photon", b"new", 0o755)]);
     let (install, pending) = staged_install("stale", &archive, &pair);
     assert_eq!(
-        apply(
-            &install,
-            &pending,
-            Some(&public(&pair)),
-            ("1.4.0", "photon")
-        ),
+        apply(&install, &pending, &[public(&pair)], ("1.4.0", "photon")),
         Ok(None)
     );
     assert!(!pending.exists());
@@ -414,14 +444,9 @@ fn a_shared_folder_is_swapped_file_by_file_and_its_other_files_stay() {
     let archive = archive_of(&[("photon-1.4.0/photon", b"new", 0o755)]);
     let (install, pending) = staged_install("shared", &archive, &pair);
     std::fs::write(install.join("holiday.jpg"), b"mine").unwrap();
-    apply(
-        &install,
-        &pending,
-        Some(&public(&pair)),
-        ("1.3.0", "photon"),
-    )
-    .unwrap()
-    .unwrap();
+    apply(&install, &pending, &[public(&pair)], ("1.3.0", "photon"))
+        .unwrap()
+        .unwrap();
     assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"new");
     assert_eq!(std::fs::read(install.join("holiday.jpg")).unwrap(), b"mine");
     assert_eq!(std::fs::read(install.join("photon.old")).unwrap(), b"old");
@@ -436,15 +461,7 @@ fn a_folder_the_updater_did_not_make_is_never_deleted() {
     let theirs = install.with_file_name("app.old");
     std::fs::create_dir_all(&theirs).unwrap();
     std::fs::write(theirs.join("keep"), b"1").unwrap();
-    assert!(
-        apply(
-            &install,
-            &pending,
-            Some(&public(&pair)),
-            ("1.3.0", "photon")
-        )
-        .is_err()
-    );
+    assert!(apply(&install, &pending, &[public(&pair)], ("1.3.0", "photon")).is_err());
     assert_eq!(std::fs::read(theirs.join("keep")).unwrap(), b"1");
     assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"old");
 }

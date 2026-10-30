@@ -32,13 +32,13 @@ fn io(error: std::io::Error) -> Error {
 pub fn apply(
     install: &Path,
     pending: &Path,
-    key: Option<&[u8; 32]>,
+    keys: &[[u8; 32]],
     (current, binary): (&str, &str),
 ) -> Result<Option<Applied>, Error> {
     if !pending.exists() {
         return Ok(None);
     }
-    let release = staged(pending, key)?;
+    let release = staged(pending, keys)?;
     if !is_newer(current, &release.release.version) {
         let _ = fs::remove_dir_all(pending);
         return Ok(None);

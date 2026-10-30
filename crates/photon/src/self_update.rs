@@ -7,9 +7,9 @@ use std::path::PathBuf;
 /// does not return on Unix (the new binary replaces this process); elsewhere it exits with the new
 /// process's status. Any problem is logged and the current install keeps running.
 pub fn apply_pending() {
-    let Some(key) = photon_update::RELEASE_KEY else {
+    if photon_update::RELEASE_KEYS.is_empty() {
         return;
-    };
+    }
     let Some(pending) = pending_folder() else {
         return;
     };
@@ -21,7 +21,12 @@ pub fn apply_pending() {
         return;
     };
     let current = env!("CARGO_PKG_VERSION");
-    match photon_update::apply(install, &pending, Some(&key), (current, binary)) {
+    match photon_update::apply(
+        install,
+        &pending,
+        photon_update::RELEASE_KEYS,
+        (current, binary),
+    ) {
         Ok(None) => {}
         Ok(Some(applied)) => {
             log::info!("updated to {}", applied.version);
