@@ -5,28 +5,74 @@
 
 mod shaping;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use unicode_bidi::{BidiClass, BidiInfo, Level, bidi_class};
 use unicode_bidi_mirroring::get_mirrored;
+
+static DEFAULT_RIGHT_TO_LEFT: AtomicBool = AtomicBool::new(false);
+
+/// Whether the language the client shows reads right to left (`Language.isDefaultRightToLeft`):
+/// the direction of a line without a strong character.
+pub fn default_right_to_left() -> bool {
+    DEFAULT_RIGHT_TO_LEFT.load(Ordering::Relaxed)
+}
+
+/// The language changed (`LanguageInfo.bidirectional` of the one chosen).
+pub fn set_default_right_to_left(right_to_left: bool) {
+    DEFAULT_RIGHT_TO_LEFT.store(right_to_left, Ordering::Relaxed);
+}
+
+/// Whether drawing `text` can differ from reading it: a language that reads right to left reorders
+/// even a line of neutrals, and every right-to-left script, Arabic letter and formatting mark is
+/// above U+058F.
+pub fn needs_reorder(text: &str, default_rtl: bool) -> bool {
+    default_rtl || text.chars().any(|c| c >= '\u{590}')
+}
 
 /// The text as it is drawn: shaped, then in visual order. `default_rtl` is the level a paragraph
 /// without a strong character gets (the language's direction); a paragraph with one takes that
 /// character's direction.
 pub fn reorder(text: &str, default_rtl: bool) -> String {
+    let units: Vec<()> = vec![(); text.encode_utf16().count()];
+    reorder_tagged(text, &units, default_rtl)
+        .into_iter()
+        .map(|(c, ())| c)
+        .collect()
+}
+
+/// [`reorder`] for text whose UTF-16 units each carry a tag (the style of a character). The
+/// shaped text is shorter when letters ligate, and the reference gives each character of it the
+/// tag at its own position, not at the position of the character it came from; so do we.
+pub fn reorder_tagged<T: Copy>(text: &str, tags: &[T], default_rtl: bool) -> Vec<(char, T)> {
     let shaped = shaping::shape(text);
-    let mut drawn = String::with_capacity(shaped.len());
+    let mut drawn = Vec::with_capacity(shaped.len());
     let info = BidiInfo::new(&shaped, paragraph_level(&shaped, default_rtl));
+    let mut unit = 0;
     for paragraph in &info.paragraphs {
         let line = paragraph.range.clone();
         let mut levels = info.reordered_levels_per_char(paragraph, line.clone());
         let chars: Vec<char> = shaped[line].chars().collect();
         explicit_controls_follow_next(&chars, &mut levels, paragraph.level);
+        let starts: Vec<usize> = chars
+            .iter()
+            .scan(unit, |at, c| {
+                let start = *at;
+                *at += c.len_utf16();
+                Some(start)
+            })
+            .collect();
+        unit += chars.iter().map(|c| c.len_utf16()).sum::<usize>();
         for index in BidiInfo::reorder_visual(&levels) {
             let c = chars[index];
-            drawn.push(if levels[index].is_rtl() {
+            let c = if levels[index].is_rtl() {
                 get_mirrored(c).unwrap_or(c)
             } else {
                 c
-            });
+            };
+            if let Some(&tag) = tags.get(starts[index]).or(tags.last()) {
+                drawn.push((c, tag));
+            }
         }
     }
     drawn

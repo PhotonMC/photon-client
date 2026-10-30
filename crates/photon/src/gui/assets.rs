@@ -223,6 +223,12 @@ impl Gui {
     pub fn set_language(&mut self, code: &str) {
         if let Some(source) = &self.languages {
             self.lang = Arc::new(source.lang_from(code, &*self.resources));
+            photon_core::bidi::set_default_right_to_left(
+                source
+                    .languages()
+                    .get(code)
+                    .is_some_and(|language| language.bidirectional),
+            );
         }
     }
 }

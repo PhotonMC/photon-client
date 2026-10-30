@@ -7,10 +7,40 @@ use photon_render::gui::TextRun;
 /// A component's runs as the draw layer takes them. A literal's `\u{a7}` codes style it and take
 /// no room, as `Font` draws and measures every string (`StringDecomposer.iterateFormatted`).
 pub fn draw_runs(runs: &[photon_game::text::Run]) -> Vec<TextRun<'_>> {
+    let right_to_left = photon_core::bidi::default_right_to_left();
+    if runs
+        .iter()
+        .any(|run| photon_core::bidi::needs_reorder(&run.text, right_to_left))
+    {
+        return reordered_runs(runs, right_to_left);
+    }
     if runs.iter().any(|run| run.text.contains('\u{a7}')) {
         return coded_runs(runs);
     }
     literal_runs(runs)
+}
+
+/// The runs in the order they are drawn (`Component.getVisualOrderText`): the codes become
+/// styles, then the whole text is shaped and reordered with every character keeping its style.
+fn reordered_runs(runs: &[photon_game::text::Run], right_to_left: bool) -> Vec<TextRun<'_>> {
+    let styled = legacy_styled_runs(runs);
+    let text: String = styled.iter().map(|run| run.text.as_str()).collect();
+    let tags: Vec<usize> = styled
+        .iter()
+        .enumerate()
+        .flat_map(|(index, run)| run.text.encode_utf16().map(move |_| index))
+        .collect();
+    let mut parts: Vec<(String, usize)> = Vec::new();
+    for (c, tag) in photon_core::bidi::reorder_tagged(&text, &tags, right_to_left) {
+        match parts.last_mut() {
+            Some((part, last)) if styled[*last].style == styled[tag].style => part.push(c),
+            _ => parts.push((c.to_string(), tag)),
+        }
+    }
+    parts
+        .into_iter()
+        .map(|(part, tag)| text_run(&styled[tag], part.into(), true, false))
+        .collect()
 }
 
 /// The runs as they read, a `\u{a7}` drawn as the glyph it is: the text of an edit box, which the
@@ -353,6 +383,25 @@ mod tests {
             text: text.to_owned(),
             style: Style::default(),
         }
+    }
+
+    #[test]
+    fn right_to_left_text_is_drawn_reordered_and_keeps_its_styles() {
+        let red = Style {
+            colour: Some(0xFF0000),
+            ..Style::default()
+        };
+        let runs = [
+            run("ab \u{5D0}"),
+            Run {
+                text: "\u{5D1}".to_owned(),
+                style: red,
+            },
+        ];
+        let drawn = draw_runs(&runs);
+        let texts: Vec<_> = drawn.iter().map(|run| run.text.as_ref()).collect();
+        assert_eq!(texts, ["ab ", "\u{5D1}", "\u{5D0}"]);
+        assert_eq!(drawn[1].colour, Some(0xFF0000));
     }
 
     #[test]
