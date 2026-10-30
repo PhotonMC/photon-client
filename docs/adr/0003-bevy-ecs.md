@@ -33,3 +33,14 @@ A custom ECS was rejected: the scheduler, change detection and query machinery a
 - System access declarations become the unit of parallelism for both engine and mod code.
 - The order of systems that model one Java method must be explicit (`chain`/ordering constraints), since Java runs them sequentially.
 - Parity tests drive systems the same way they drive today's functions; observable output stays the contract.
+
+## Addendum: entity views and their cost (2026-10-30)
+
+Step 2 moved the entity state into components, and reading it through `EntityView` cost more than the plain struct had: a view fetched each component with its own table lookup, and a renderer built one view per entity for every pass over `entities().drawn()` (about forty per entity per frame). With 1591 `NoAI` pigs in view the mean work per frame went from 3.5-4.6 ms before the migration to 14-17 ms.
+
+Two rules follow from the fix, and apply to any later entity code:
+
+- **Views come from stored queries.** `Entities` holds one `QueryState` for reading and one for writing, built once and refreshed when an entity is inserted or removed, so a view is one archetype-table fetch and not a series of `World::get` calls. Code that needs a view must not create its own query state per call.
+- **Filter before you fetch.** A set that leaves entities out (out of view, invisible) is applied to the ids first; a view is built only for an entity that is kept.
+
+Measured on the same world (1591 pigs, still route, render distance 20): 14.4-16.8 ms with the per-call lookups, 5.7 ms with the stored queries, 3.1 ms with the ids filtered first. Passes that every entity needs and that do not depend on each other's order (the `Query` systems, `par_iter`, change detection) remain open work in #173; each of them must be measured against this table before it is kept.
