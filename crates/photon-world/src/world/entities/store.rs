@@ -191,9 +191,13 @@ impl Entities {
     pub fn drawn_with_invisible(&self) -> impl Iterator<Item = EntityView<'_>> {
         // Both are in id order, so one pass over each finds the ids left out.
         let mut left_out = self.out_of_view.iter().copied().peekable();
-        self.iter().filter_map(move |(&id, entity)| {
+        self.ids.iter().filter_map(move |(&id, &entity)| {
             while left_out.next_if(|&out| out < id).is_some() {}
-            left_out.next_if_eq(&id).is_none().then_some(entity)
+            // A left-out entity is skipped before its view is built.
+            if left_out.next_if_eq(&id).is_some() {
+                return None;
+            }
+            self.view(entity)
         })
     }
 

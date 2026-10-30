@@ -75,7 +75,7 @@ fn should_render(world: &ClientWorld, entity: EntityView<'_>, view: &CullView, s
     // `Leashable`: the lead to its holder may cross the view.
     if let Some(holder) = entity
         .leash_holder_id()
-        .and_then(|id| world.entities().all().find(|holder| holder.id() == id))
+        .and_then(|id| world.entities().get(&id))
     {
         let held = holder
             .culling_box()
