@@ -5,9 +5,11 @@
 //! against them.
 
 mod event;
+mod events;
 mod owner;
 mod sets;
 
 pub use event::Event;
+pub use events::{ClientEvents, TickEnd, TickStart};
 pub use owner::Owner;
 pub use sets::{FrameSet, TickSet};

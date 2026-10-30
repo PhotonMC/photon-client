@@ -8,7 +8,7 @@ use bevy_ecs::prelude::{In, IntoScheduleConfigs, NonSend, NonSendMut, Res, ResMu
 use bevy_ecs::schedule::{Schedule, ScheduleLabel, SingleThreadedExecutor};
 use bevy_ecs::system::IntoSystem;
 use bevy_ecs::world::World;
-use photon_api::{FrameSet, TickSet};
+use photon_api::{ClientEvents, FrameSet, TickEnd, TickSet, TickStart};
 
 use super::*;
 
@@ -47,6 +47,7 @@ pub(super) fn world(play: Play) -> World {
     let mut world = World::new();
     world.insert_non_send(play);
     world.insert_non_send(Failure(None));
+    world.insert_non_send(ClientEvents::default());
     let now = Instant::now();
     world.insert_resource(Clock {
         start: now,
@@ -87,6 +88,8 @@ fn tick_schedule() -> Schedule {
     schedule.set_executor(SingleThreadedExecutor::new());
     configure_tick_sets(&mut schedule);
     schedule.add_systems((
+        fire_tick_start.before(TickSet::Interface).run_if(unbroken),
+        fire_tick_end.after(TickSet::View).run_if(unbroken),
         tick_interface.pipe(record).in_set(TickSet::Interface),
         tick_input.pipe(record).in_set(TickSet::Input),
         tick_local_player.pipe(record).in_set(TickSet::LocalPlayer),
@@ -265,6 +268,14 @@ fn run_ticks(world: &mut World) {
     clock.ticked = Instant::now();
 }
 
+fn fire_tick_start(mut events: NonSendMut<ClientEvents>) {
+    events.tick_start.fire(&TickStart);
+}
+
+fn fire_tick_end(mut events: NonSendMut<ClientEvents>) {
+    events.tick_end.fire(&TickEnd);
+}
+
 fn tick_interface(mut play: NonSendMut<Play>) -> Result<()> {
     play.tick_interface()
 }
@@ -383,6 +394,38 @@ mod tests {
             order,
             ["Interface", "Input", "LocalPlayer", "Effects", "View"]
         );
+    }
+
+    #[test]
+    fn the_tick_events_fire_around_the_tick() {
+        let mut world = World::new();
+        world.insert_non_send(Failure(None));
+        world.insert_resource(Stop(false));
+        world.init_resource::<Log>();
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mut events = ClientEvents::default();
+        let owner = photon_api::Owner::new("test");
+        let start = std::sync::Arc::clone(&log);
+        events
+            .tick_start
+            .register(owner, move |_| start.lock().unwrap().push("start"));
+        let end = std::sync::Arc::clone(&log);
+        events
+            .tick_end
+            .register(owner, move |_| end.lock().unwrap().push("end"));
+        world.insert_non_send(events);
+        let mut schedule = Schedule::new(Tick);
+        schedule.set_executor(SingleThreadedExecutor::new());
+        configure_tick_sets(&mut schedule);
+        let (first, last) = (std::sync::Arc::clone(&log), std::sync::Arc::clone(&log));
+        schedule.add_systems((
+            fire_tick_start.before(TickSet::Interface).run_if(unbroken),
+            fire_tick_end.after(TickSet::View).run_if(unbroken),
+            (move || first.lock().unwrap().push("interface")).in_set(TickSet::Interface),
+            (move || last.lock().unwrap().push("view")).in_set(TickSet::View),
+        ));
+        schedule.run(&mut world);
+        assert_eq!(*log.lock().unwrap(), ["start", "interface", "view", "end"]);
     }
 
     #[test]
