@@ -1768,6 +1768,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "photon-update"
+version = "0.1.0"
+dependencies = [
+ "ring",
+ "sha2",
+]
+
+[[package]]
 name = "photon-world"
 version = "0.1.0"
 dependencies = [

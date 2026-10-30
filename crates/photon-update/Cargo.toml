@@ -1,0 +1,15 @@
+[package]
+name = "photon-update"
+description = "Photon's own updates: a signed release manifest is checked against one public key before anything is downloaded."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+include = ["/Cargo.toml", "/src/**"]
+
+[dependencies]
+ring = { version = "0.17", default-features = false }
+sha2.workspace = true
+
+[lints]
+workspace = true
