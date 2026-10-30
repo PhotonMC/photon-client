@@ -341,7 +341,7 @@ impl Play {
             self.limiter.input_received(Instant::now());
         }
         if let Some(counts) = held.look {
-            self.controls.turning.moved(counts);
+            self.controls.turning.scripted_move(counts);
         }
         if (turn != 0.0 || pitch != 0.0)
             && let Some(player) = self.session.player_mut()

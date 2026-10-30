@@ -6,6 +6,9 @@ use photon_core::smooth::SmoothDouble;
 #[derive(Default)]
 pub struct Turning {
     pending: (f64, f64),
+    /// The movement came from a script's `look` step: a scripted run has no captured cursor, and
+    /// that movement turns the player anyway.
+    scripted: bool,
     smooth_x: SmoothDouble,
     smooth_y: SmoothDouble,
     last: Option<Instant>,
@@ -22,6 +25,12 @@ impl Turning {
     pub fn moved(&mut self, (dx, dy): (f64, f64)) {
         self.pending.0 += dx;
         self.pending.1 += dy;
+    }
+
+    /// A script's `look` step: the same movement as the cursor's, for a run with no cursor.
+    pub fn scripted_move(&mut self, counts: (f64, f64)) {
+        self.moved(counts);
+        self.scripted = true;
     }
 
     /// A frame that does not turn the player (a screen is open): the time is stamped and the
@@ -74,7 +83,8 @@ impl Turning {
 impl Controls {
     /// The frame's share of the mouse's movement turns the player.
     pub fn turn_frame(&mut self, session: &mut PlaySession, now: Instant) {
-        let Some(player) = session.player().filter(|_| self.captured) else {
+        let scripted = std::mem::take(&mut self.turning.scripted);
+        let Some(player) = session.player().filter(|_| self.captured || scripted) else {
             self.turning.skip(now);
             return;
         };
