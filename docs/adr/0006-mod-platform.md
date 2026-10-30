@@ -37,3 +37,16 @@ How it works:
 
 - The ECS migration and the event bus come before the mod host.
 - The prototype must measure the empty-tick cost per mod (target under 1 us) and show that a call without its capability is refused.
+
+## Addendum: first deliverable is a native `photon-api` crate (2026-10-30)
+
+The roadmap review of 2026-10-28 (decision recorded in #26) changed the order of work: before any WebAssembly or Luau host exists, an in-process crate `photon-api` defines what a mod can see and change, and Photon's own opt-in features use it first. The WIT world is generated from that crate afterwards, so the two cannot drift. Luau is deferred until one runtime works.
+
+What the crate holds:
+
+- **Events.** Typed events a feature subscribes to, named after Fabric API where that helps porting (for example a client tick start and end, join and disconnect, a screen opening, a chat message received). An event has a registration order and an owner.
+- **Ordering.** The named system sets of the frame and tick schedules (`FrameSet`, `TickSet` in `photon::play::schedule`, today private to that module) become public through the crate, so a feature can place a system before or after a part, or replace one. A test fixes the set order, as it does today.
+- **Registries.** Lookups of the game's registries (items, blocks, entity types, sounds) by name, over the wire-id boundary of [ADR 0013](0013-multi-version-content-model.md), so a feature never sees a numeric id of one version.
+- **Ownership.** Everything a feature registers (event handlers, systems, registry additions) is tagged with the feature that made it, so turning the feature off removes all of it. This is the unload rule above, applied to native features first.
+
+Not decided here, and to be settled in the first code slice with a measurement or a test: the event list beyond the examples, whether handlers run inside the schedule as systems or from a dispatcher, and the capability names a native feature declares. The empty-tick cost target (under 1 microsecond per feature) applies to native features too and is checked the same way.
