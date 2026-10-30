@@ -70,31 +70,14 @@ impl Cursor<'_> {
                 self.float()?;
                 self.optional(Cursor::identifier)
             }
-            27 | 33 | 65 => self.holder_set(),
-            28 => {
-                self.list(|cursor| {
-                    cursor.holder_set()?;
-                    cursor.optional(Cursor::float)?;
-                    cursor.optional(|cursor| cursor.boolean().map(|_| ()))
-                })?;
-                self.float()?;
-                self.varint()?;
-                self.boolean().map(|_| ())
-            }
+            27 | 33 | 65 => self.component_set(id),
+            28 => self.tool(),
             29 => {
                 self.varint()?;
                 self.float()
             }
             30 => self.skip(24),
-            32 => {
-                self.varint()?;
-                self.sound()?;
-                self.optional(Cursor::identifier)?;
-                self.optional(Cursor::identifier)?;
-                self.optional(Cursor::holder_set)?;
-                self.skip(5)?;
-                self.sound()
-            }
+            32 => self.equippable(),
             36 => self.list(Cursor::consume_effect),
             37 => {
                 self.float()?;
@@ -171,10 +154,7 @@ impl Cursor<'_> {
                 })
             }
             // Entity and block entity data: a type and a compound.
-            58 | 60 => {
-                self.varint()?;
-                self.compound_tag()
-            }
+            58 | 60 => self.typed_data(id),
             59 => self.compound_tag(),
             61 => self.holder(|cursor| {
                 cursor.sound()?;
@@ -254,6 +234,50 @@ impl Cursor<'_> {
             }),
             _ => Err(Malformed),
         }
+    }
+
+    /// A holder set a component holds: items for `repairable`, a dynamic registry's otherwise.
+    fn component_set(&mut self, id: i32) -> R {
+        if id == ids::REPAIRABLE {
+            self.skip_item_set()
+        } else {
+            self.holder_set()
+        }
+    }
+
+    /// `tool`: the rules (blocks, speed, drops), the default speed, the damage and whether it
+    /// can destroy blocks in creative.
+    fn tool(&mut self) -> R {
+        self.list(|cursor| {
+            cursor.skip_block_set()?;
+            cursor.optional(Cursor::float)?;
+            cursor.optional(|cursor| cursor.boolean().map(|_| ()))
+        })?;
+        self.float()?;
+        self.varint()?;
+        self.boolean().map(|_| ())
+    }
+
+    /// `equippable`: the slot, sounds, models, the entities it may be put on, and flags.
+    fn equippable(&mut self) -> R {
+        self.varint()?;
+        self.sound()?;
+        self.optional(Cursor::identifier)?;
+        self.optional(Cursor::identifier)?;
+        self.optional(Cursor::skip_entity_type_set)?;
+        self.skip(5)?;
+        self.sound()
+    }
+
+    /// `entity_data` and `block_entity_data`: a type and a compound.
+    fn typed_data(&mut self, id: i32) -> R {
+        let site = if id == ids::ENTITY_DATA {
+            Site::EntityType
+        } else {
+            Site::BlockEntityType
+        };
+        self.id(site, 0)?;
+        self.compound_tag()
     }
 
     pub fn firework_explosion(&mut self) -> R {
@@ -337,7 +361,7 @@ impl Cursor<'_> {
 
     /// `BlockPredicate.STREAM_CODEC` of the advancement predicates.
     pub fn block_predicate(&mut self) -> R {
-        self.optional(Cursor::holder_set)?;
+        self.optional(Cursor::skip_block_set)?;
         self.optional(|cursor| {
             cursor.list(|cursor| {
                 cursor.string()?;
@@ -536,7 +560,7 @@ impl Patch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version_registries::VersionRegistries;
+    use crate::version_registries::{IdMap, VersionRegistries};
 
     #[test]
     fn a_rockets_explosions_read_in_order() {
@@ -687,5 +711,41 @@ mod tests {
             .delimited_for(&Numbering::outgoing(&older))
             .expect("writes");
         assert_eq!(back[4..], value[..]);
+    }
+
+    #[test]
+    fn item_and_block_ids_inside_values_follow_the_version() {
+        use photon_core::version::Version;
+        let older = VersionRegistries::of(Version::V26_1);
+        let moved = |map: &IdMap| {
+            (0..map.canonical_len() as u32)
+                .find(|id| map.to_wire(*id).is_some_and(|wire| wire != *id))
+                .expect("an id that moved")
+        };
+        let item = moved(&older.items);
+        let wire_item = older.items.to_wire(item).unwrap();
+        // repairable: a holder set of one item.
+        let mut wire = vec![1, 0, ids::REPAIRABLE as u8];
+        photon_core::wire::write_varint(2, &mut wire);
+        photon_core::wire::write_varint(wire_item as i32, &mut wire);
+        let patch = read_wire_patch(&mut &wire[..], &older).expect("a patch");
+        let mut expected = Vec::new();
+        photon_core::wire::write_varint(2, &mut expected);
+        photon_core::wire::write_varint(item as i32, &mut expected);
+        assert_eq!(patch.added[0].1, expected);
+        let back = patch
+            .delimited_for(&Numbering::outgoing(&older))
+            .expect("writes");
+        assert_eq!(back[4..], wire[3..]);
+        // entity_data: the entity type, then an empty compound.
+        let kind = moved(&older.entity_types);
+        let mut wire = vec![1, 0, ids::ENTITY_DATA as u8];
+        photon_core::wire::write_varint(
+            older.entity_types.to_wire(kind).unwrap() as i32,
+            &mut wire,
+        );
+        wire.push(0);
+        let patch = read_wire_patch(&mut &wire[..], &older).expect("a patch");
+        assert_eq!(patch.added[0].1[0], kind as u8);
     }
 }

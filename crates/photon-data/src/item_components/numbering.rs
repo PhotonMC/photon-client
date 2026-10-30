@@ -33,6 +33,10 @@ impl<'a> Numbering<'a> {
             Site::ComponentType => &self.registries.component_types,
             Site::Attribute => &self.registries.attributes,
             Site::SoundEvent => &self.registries.sound_events,
+            Site::Item => &self.registries.items,
+            Site::Block => &self.registries.blocks,
+            Site::EntityType => &self.registries.entity_types,
+            Site::BlockEntityType => &self.registries.block_entity_types,
         }
     }
 
@@ -47,9 +51,17 @@ impl<'a> Numbering<'a> {
 
     /// Whether no id this reads changes, so the bytes can stay as they are.
     pub fn is_identity(&self) -> bool {
-        [Site::ComponentType, Site::Attribute, Site::SoundEvent]
-            .iter()
-            .all(|site| self.map_of(*site).is_identity())
+        [
+            Site::ComponentType,
+            Site::Attribute,
+            Site::SoundEvent,
+            Site::Item,
+            Site::Block,
+            Site::EntityType,
+            Site::BlockEntityType,
+        ]
+        .iter()
+        .all(|site| self.map_of(*site).is_identity())
     }
 }
 

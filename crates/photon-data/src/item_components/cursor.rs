@@ -166,6 +166,32 @@ impl Cursor<'_> {
         }
     }
 
+    /// A holder set of `site`'s registry: its ids, or a tag's name.
+    pub fn registry_set(&mut self, site: Site) -> R {
+        match self.varint()? {
+            0 => self.identifier(),
+            count if count > 0 => {
+                for _ in 0..count - 1 {
+                    self.id(site, 0)?;
+                }
+                Ok(())
+            }
+            _ => Err(Malformed),
+        }
+    }
+
+    pub fn skip_item_set(&mut self) -> R {
+        self.registry_set(Site::Item)
+    }
+
+    pub fn skip_block_set(&mut self) -> R {
+        self.registry_set(Site::Block)
+    }
+
+    pub fn skip_entity_type_set(&mut self) -> R {
+        self.registry_set(Site::EntityType)
+    }
+
     /// `SoundEvent.STREAM_CODEC`.
     pub fn sound(&mut self) -> R {
         if self.id(Site::SoundEvent, 1)? == 0 {
@@ -177,7 +203,7 @@ impl Cursor<'_> {
 
     /// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a patch.
     pub fn template(&mut self) -> R {
-        self.varint()?;
+        self.id(Site::Item, 0)?;
         self.varint()?;
         self.skip_patch()
     }
@@ -214,6 +240,10 @@ pub enum Site {
     ComponentType,
     Attribute,
     SoundEvent,
+    Item,
+    Block,
+    EntityType,
+    BlockEntityType,
 }
 
 /// The ids of a version translated as a cursor reads: what it has passed, with each id site

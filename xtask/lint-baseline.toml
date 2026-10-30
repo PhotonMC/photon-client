@@ -527,7 +527,7 @@
 "crates/photon-core/src/text.rs::flat_strings" = 83
 "crates/photon-core/src/text/lang_texts.rs::Lang::push_template" = 71
 "crates/photon-core/src/utf8.rs::decode_java_utf8" = 101
-"crates/photon-data/src/item_components/components.rs::Cursor::component" = 237
+"crates/photon-data/src/item_components/components.rs::Cursor::component" = 217
 "crates/photon-dev/examples/connection_probe.rs::main" = 120
 "crates/photon-dev/examples/survival_honey_bottle_poison_cleanup_probe.rs::main" = 173
 "crates/photon-dev/examples/survival_water_bucket_use_on_probe.rs::main" = 74
