@@ -52,8 +52,40 @@ pub struct RunInfo {
     pub validation: (u32, u32),
     /// How the swapchain presents, and the frame rate limit the run held to.
     pub present_mode: String,
+    /// `photon.toml`'s render mode, by name.
+    pub render_mode: &'static str,
     pub memory: photon_render::SectionMemory,
     pub framerate_limit: i32,
+}
+
+impl RunInfo {
+    /// The opening of the report: the facts of the run, up to the warm-up.
+    fn json_head(&self) -> String {
+        let mut out = String::from("{\n  \"schema\": 1,\n");
+        let _ = writeln!(out, "  \"device\": {:?},", self.device);
+        let _ = writeln!(out, "  \"extent\": [{}, {}],", self.extent.0, self.extent.1);
+        let _ = writeln!(out, "  \"render_distance\": {},", self.render_distance);
+        let memory = &self.memory;
+        let _ = writeln!(
+            out,
+            "  \"section_memory\": {{\"sections\": {}, \"vertex_bytes\": {}, \"index_bytes\": {}, \"arena_bytes\": {}}},",
+            memory.sections, memory.vertex_bytes, memory.index_bytes, memory.arena_bytes
+        );
+        let _ = writeln!(out, "  \"present_mode\": {:?},", self.present_mode);
+        let _ = writeln!(
+            out,
+            "  \"render_mode\": {:?}, \"framerate_limit\": {},",
+            self.render_mode, self.framerate_limit
+        );
+        let _ = writeln!(out, "  \"loaded_chunks\": {},", self.loaded_chunks);
+        let _ = writeln!(out, "  \"entities\": {},", self.entities);
+        let _ = writeln!(
+            out,
+            "  \"validation\": {{\"errors\": {}, \"warnings\": {}}},",
+            self.validation.0, self.validation.1
+        );
+        out
+    }
 }
 
 pub struct Bench {
@@ -142,25 +174,7 @@ impl Bench {
         // The frame without the wait for a swapchain image, which a vsynced
         // swapchain ends on the display's schedule: what the work cost.
         let work = column(&|sample| sample.cpu[4] - sample.backend.acquire.as_secs_f64() * 1000.0);
-        let mut out = String::from("{\n  \"schema\": 1,\n");
-        let _ = writeln!(out, "  \"device\": {:?},", info.device);
-        let _ = writeln!(out, "  \"extent\": [{}, {}],", info.extent.0, info.extent.1);
-        let _ = writeln!(out, "  \"render_distance\": {},", info.render_distance);
-        let memory = &info.memory;
-        let _ = writeln!(
-            out,
-            "  \"section_memory\": {{\"sections\": {}, \"vertex_bytes\": {}, \"index_bytes\": {}, \"arena_bytes\": {}}},",
-            memory.sections, memory.vertex_bytes, memory.index_bytes, memory.arena_bytes
-        );
-        let _ = writeln!(out, "  \"present_mode\": {:?},", info.present_mode);
-        let _ = writeln!(out, "  \"framerate_limit\": {},", info.framerate_limit);
-        let _ = writeln!(out, "  \"loaded_chunks\": {},", info.loaded_chunks);
-        let _ = writeln!(out, "  \"entities\": {},", info.entities);
-        let _ = writeln!(
-            out,
-            "  \"validation\": {{\"errors\": {}, \"warnings\": {}}},",
-            info.validation.0, info.validation.1
-        );
+        let mut out = info.json_head();
         let _ = writeln!(out, "  \"warmup_s\": {},", self.warmup.as_secs_f64());
         let _ = writeln!(out, "  \"frames\": {frames},");
         // Frames per second of the wall clock, which a vsynced swapchain or a limit holds to the

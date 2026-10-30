@@ -44,3 +44,14 @@ Two rules follow from the fix, and apply to any later entity code:
 - **Filter before you fetch.** A set that leaves entities out (out of view, invisible) is applied to the ids first; a view is built only for an entity that is kept.
 
 Measured on the same world (1591 pigs, still route, render distance 20): 14.4-16.8 ms with the per-call lookups, 5.7 ms with the stored queries, 3.1 ms with the ids filtered first. Passes that every entity needs and that do not depend on each other's order (the `Query` systems, `par_iter`, change detection) remain open work in #173; each of them must be measured against this table before it is kept.
+
+## Addendum: rendering one frame behind (2026-10-30)
+
+Step 5 of the decision is taken as follows (the performance program of [#98](https://github.com/PhotonMC/photon-client/issues/98), slices in #22):
+
+- **Pipelined by default.** Vertex building and command recording run on a render thread one frame behind the simulation. The setting is `render.pipelined` in `photon.toml` of the game directory (on unless the file says `false`); there is no settings screen. The serial path stays in the tree as the reference, and as the setting for anyone who prefers the lower latency of a single thread.
+- **What moves and what does not.** Only pure vertex building, uploads and recording move. Everything that changes game state keeps the current state on the simulation thread: packet handling, the sound listener, the out-of-view set, forgotten chunks, skins, and the GUI's use of the session. Packets are never deferred or reordered; meshing and GPU uploads may be spread by a budget. `PlaySession` is not `Sync`, so the render thread receives plain data (the extract), never a reference to the session.
+- **Latency.** The extra frame of latency is the accepted cost. The camera for recording is the newest mouse look, applied just before recording (the late camera), so turning the view does not wait for the frame behind. The draw output for a given simulated state is unchanged; a test compares the serial draw list of frame N with the pipelined one of frame N+1.
+- **Measuring.** With two threads the main thread's work time falls whether or not frames get faster, so the pipelined result is the present-to-present frame interval, with the busy time of each thread beside it. In serial mode the interval equals the work time. Input-to-present latency keeps its definition (input poll to present return).
+- **Captures.** A screenshot, a finished script and `cargo xtask shot` flush the pipeline first, so a capture shows the frame that was asked for.
+- **Settings file.** `photon.toml` is read with a small subset of TOML (`key = value`, `[section]`, comments) written for the purpose; no TOML crate is added.

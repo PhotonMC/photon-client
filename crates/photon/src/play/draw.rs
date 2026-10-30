@@ -502,6 +502,7 @@ impl Play {
                 validation: photon_render::validation_findings(),
                 memory: self.backend.section_memory(),
                 present_mode: format!("{:?}", self.backend.description().present_mode),
+                render_mode: crate::settings::Settings::get().render.name(),
                 framerate_limit: self.controls.options.framerate_limit,
             })?;
         }

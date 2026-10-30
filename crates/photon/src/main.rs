@@ -28,6 +28,7 @@ mod screens;
 mod screenshot;
 mod script;
 mod self_update;
+mod settings;
 mod sign_in;
 mod skins;
 mod sound;
