@@ -23,6 +23,7 @@ pub fn play(args: &[String]) -> Result<(), String> {
         .envs(client_environment()?);
     if let Some(user) = parsed.value("--user") {
         command.env("PHOTON_USER", user);
+        command.env("PHOTON_OFFLINE", "1");
     }
     if parsed.flag("--fullscreen") {
         command.env("PHOTON_FULLSCREEN", "1");

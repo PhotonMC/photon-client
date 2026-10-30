@@ -63,7 +63,7 @@ The hooks run the same commands. The rules themselves are in the [coding standar
 
 `cargo xtask server` runs an offline server, which skips encryption. To exercise the encrypted login, run a vanilla server with `online-mode=true` and `enforce-secure-profile=false`, keep its standard input open (it stops on end of input), and point its session lookups at a stub host with `-Dminecraft.api.session.host=URL -Dminecraft.api.services.host=URL -Dminecraft.api.profiles.host=URL` (all three are needed). The stub answers `POST /session/minecraft/join` by remembering the server hash, `GET /session/minecraft/hasJoined` by returning the profile for a remembered hash (204 otherwise), and the server's `GET /publickeys` at startup with a 204.
 
-The client takes its account from `PHOTON_UUID`, `PHOTON_ACCESS_TOKEN` and, for a host other than Mojang's, `PHOTON_SESSION_HOST` (plain `http://` is only accepted for this machine). The ignored test `cargo test -p photon-net --test online_join -- --ignored` joins with them as well as `PHOTON_LIVE_ADDRESS` and `PHOTON_LIVE_NAME`.
+The client takes its account from `PHOTON_UUID`, `PHOTON_ACCESS_TOKEN` and, for a host other than Mojang's, `PHOTON_SESSION_HOST` (plain `http://` is only accepted for this machine). `PHOTON_OFFLINE=1` keeps the stored sign-in out of a join; the `cargo xtask` commands that start a client set it, so a test client plays as the name it is given and not as whoever is signed in on the machine. The ignored test `cargo test -p photon-net --test online_join -- --ignored` joins with them as well as `PHOTON_LIVE_ADDRESS` and `PHOTON_LIVE_NAME`.
 
 ## Platform notes
 

@@ -283,6 +283,7 @@ fn client_command(
         .current_dir(process::root())
         .envs(client_environment()?)
         .env("PHOTON_USER", user)
+        .env("PHOTON_OFFLINE", "1")
         .env("PHOTON_SCRIPT", script)
         .env("PHOTON_BENCH", path)
         .env("PHOTON_BENCH_WARMUP", options.warmup.to_string())

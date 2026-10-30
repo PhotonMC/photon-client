@@ -41,7 +41,17 @@ pub(crate) fn identity() -> Result<(String, Option<Account>), String> {
 }
 
 fn current(name: &str) -> Result<Option<Account>, String> {
-    choose(from_environment(name)?, stored)
+    let from_environment = from_environment(name)?;
+    if from_environment.is_none() && is_offline(env::var("PHOTON_OFFLINE").ok().as_deref()) {
+        return Ok(None);
+    }
+    choose(from_environment, stored)
+}
+
+/// `PHOTON_OFFLINE` (anything but `0`) keeps the stored sign-in out of a join: the test tools set
+/// it so a client plays as the name they give it, not as whoever is signed in on this machine.
+fn is_offline(value: Option<&str>) -> bool {
+    value.is_some_and(|value| value != "0")
 }
 
 fn choose(
@@ -92,6 +102,13 @@ mod tests {
     fn the_development_variables_win_and_the_store_is_not_asked() {
         let chosen = choose(Some(account("Env")), || panic!("the store was asked"));
         assert_eq!(chosen.unwrap().unwrap().name, "Env");
+    }
+
+    #[test]
+    fn the_offline_variable_is_on_unless_it_is_zero() {
+        assert!(is_offline(Some("1")));
+        assert!(!is_offline(Some("0")));
+        assert!(!is_offline(None));
     }
 
     #[test]

@@ -82,6 +82,7 @@ pub fn shot(args: &[String]) -> Result<(), String> {
         .current_dir(process::root())
         .envs(client_environment()?)
         .env("PHOTON_USER", parsed.value("--user").unwrap_or("Miner"))
+        .env("PHOTON_OFFLINE", "1")
         .env("PHOTON_SCRIPT", script)
         .env("PHOTON_CAPTURE_PPM", &prefix)
         .env("PHOTON_CAPTURE_FRAMES", frames.to_string())
