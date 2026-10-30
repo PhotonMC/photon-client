@@ -133,6 +133,16 @@ pub(crate) fn poll() -> Vec<UpdateState> {
     changes
 }
 
+/// The state the updater is in now, fired to the handlers of a game that has just begun: what
+/// happened in the menu (a check that found a release) reaches them too.
+pub(crate) fn announce_state(events: &mut ClientEvents) {
+    if let Some(service) = service() {
+        // Changes not yet read are older than the state itself.
+        service.poll();
+        events.update_changed.fire(&UpdateChanged(service.state()));
+    }
+}
+
 /// [`poll`], with each change fired to the handlers of `events`.
 pub(crate) fn fire(events: &mut ClientEvents) {
     for state in poll() {
@@ -153,19 +163,10 @@ pub(crate) fn restart_requested() -> bool {
     RESTART.load(Ordering::Relaxed)
 }
 
-/// The highest protocol number of the versions the client speaks.
-fn newest_protocol() -> i32 {
-    Version::ALL
-        .iter()
-        .map(|version| version.protocol())
-        .max()
-        .unwrap_or(0)
-}
-
 /// A server's status named `protocol`: remembered when it is newer than the newest the client
 /// speaks (an older or unknown one is the server's to refuse, and no update would change that).
 pub(crate) fn note_server_protocol(protocol: i32) {
-    if protocol <= newest_protocol() {
+    if protocol <= Version::NEWEST.protocol() {
         return;
     }
     let mut seen = NEWER_SERVERS
@@ -241,7 +242,7 @@ mod tests {
 
     #[test]
     fn a_newer_server_is_announced_once_and_an_older_one_never() {
-        let newest = newest_protocol();
+        let newest = Version::NEWEST.protocol();
         note_server_protocol(newest);
         note_server_protocol(newest - 1);
         note_server_protocol(newest + 5);

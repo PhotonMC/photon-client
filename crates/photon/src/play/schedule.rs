@@ -4,7 +4,9 @@
 //! and when is observable behaviour). The game's state is still one `Play`, held as a non-send
 //! resource until it is split into resources and components of its own.
 
-use bevy_ecs::prelude::{In, IntoScheduleConfigs, NonSend, NonSendMut, Res, ResMut, Resource};
+use bevy_ecs::prelude::{
+    In, IntoScheduleConfigs, Local, NonSend, NonSendMut, Res, ResMut, Resource,
+};
 use bevy_ecs::schedule::{Schedule, ScheduleLabel, SingleThreadedExecutor};
 use bevy_ecs::system::IntoSystem;
 use bevy_ecs::world::World;
@@ -272,7 +274,10 @@ fn run_ticks(world: &mut World) {
 }
 
 /// The updater's changes reach the handlers on the game's own thread.
-fn fire_update_events(mut events: NonSendMut<ClientEvents>) {
+fn fire_update_events(mut events: NonSendMut<ClientEvents>, mut announced: Local<bool>) {
+    if !std::mem::replace(&mut *announced, true) {
+        crate::updates::announce_state(&mut events);
+    }
     crate::updates::fire(&mut events);
 }
 

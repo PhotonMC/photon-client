@@ -24,6 +24,7 @@ newest_allowed = [
     "crates/photon-net/src/connection/play/version_tests.rs",
     "crates/photon-dev/src/",
     "crates/photon/src/menu.rs",
+    "crates/photon/src/updates.rs",
     "crates/photon-world/src/world/dimension.rs",
     "crates/photon-world/src/tests.rs",
     "crates/photon-game/src/menus/creative.rs",
