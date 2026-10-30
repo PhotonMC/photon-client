@@ -87,6 +87,17 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
         .unwrap_or(720);
     let mut client = Client::open((width, height))?;
     let mut scripted_join = env::var_os("PHOTON_SCRIPT").is_some();
+    // Dev only: the addresses a scripted run joins after each `leave`, in turn.
+    let mut hops: std::collections::VecDeque<SocketAddr> = env::var("PHOTON_HOPS")
+        .ok()
+        .into_iter()
+        .flat_map(|list| {
+            list.split(',')
+                .filter_map(|part| part.parse().ok())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let mut server = server;
     // `Minecraft.disconnectFromWorld`: a remote server's player comes back to the server list.
     let mut left_server = false;
     loop {
@@ -109,6 +120,10 @@ pub fn run_menu(mut args: impl Iterator<Item = String>) -> Result<()> {
                     return Ok(());
                 }
                 left_server = env::var_os("PHOTON_SCRIPT").is_none();
+                if let Some(next) = hops.pop_front() {
+                    server = next;
+                    scripted_join = true;
+                }
             }
         }
     }

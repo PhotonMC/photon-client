@@ -34,6 +34,8 @@ pub struct HeldKeys {
     pub enter: bool,
     /// Escape pressed with no screen open: the pause menu opens or closes.
     pub escape: bool,
+    /// The pause menu's Disconnect: back to the title (the next `PHOTON_HOPS` address joins).
+    pub leave: bool,
     /// Tab pressed in the chat box.
     pub complete: bool,
     /// F1 and F2 pressed on this tick.
@@ -86,6 +88,7 @@ const FLAGS: &[Flag] = &[
     ("chat", |keys| keys.chat = true),
     ("enter", |keys| keys.enter = true),
     ("escape", |keys| keys.escape = true),
+    ("leave", |keys| keys.leave = true),
     ("complete", |keys| keys.complete = true),
     ("toggle_gui", |keys| keys.toggle_gui = true),
     ("screenshot", |keys| keys.screenshot = true),
