@@ -99,3 +99,84 @@ fn versions_compare_as_numbers() {
     assert!(!is_newer("1.3", "1.2.9"));
     assert!(!is_newer("1.0.0", "next"));
 }
+
+fn folder(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("photon-update-{}-{name}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+#[test]
+fn a_staged_release_is_checked_again_when_it_is_read() {
+    let pair = test_key();
+    let key = public(&pair);
+    let text = manifest(b"archive");
+    let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
+    let pending = folder("stage").join("pending");
+    let staged = stage(
+        &pending,
+        Some(&key),
+        "1.3.0",
+        (text.as_bytes(), &signature),
+        b"archive",
+    )
+    .unwrap();
+    assert_eq!(staged.release.version, "1.4.0");
+    assert_eq!(self::staged(&pending, Some(&key)).unwrap(), staged);
+    // Someone replaces the stored archive: it is refused.
+    std::fs::write(&staged.archive, b"tampered").unwrap();
+    assert_eq!(self::staged(&pending, Some(&key)), Err(Error::WrongArchive));
+}
+
+#[test]
+fn nothing_is_stored_for_an_old_release_or_a_wrong_archive() {
+    let pair = test_key();
+    let key = public(&pair);
+    let text = manifest(b"archive");
+    let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
+    let pending = folder("refuse").join("pending");
+    let manifest_and_signature = (text.as_bytes(), signature.as_str());
+    assert_eq!(
+        stage(
+            &pending,
+            Some(&key),
+            "1.4.0",
+            manifest_and_signature,
+            b"archive"
+        ),
+        Err(Error::NotNewer)
+    );
+    assert_eq!(
+        stage(
+            &pending,
+            Some(&key),
+            "1.3.0",
+            manifest_and_signature,
+            b"other"
+        ),
+        Err(Error::WrongArchive)
+    );
+    assert!(!pending.exists());
+}
+
+#[test]
+fn an_archive_name_with_a_path_is_refused() {
+    let pair = test_key();
+    let key = public(&pair);
+    let sum = to_hex(Sha256::digest(b"a").as_slice());
+    let text = format!("version=2.0.0\narchive=../escape.tar.gz\nsha256={sum}\n");
+    let signature = to_hex(pair.sign(text.as_bytes()).as_ref());
+    let pending = folder("name").join("pending");
+    assert_eq!(
+        stage(
+            &pending,
+            Some(&key),
+            "1.0.0",
+            (text.as_bytes(), &signature),
+            b"a"
+        ),
+        Err(Error::BadName)
+    );
+    assert!(!pending.exists());
+}

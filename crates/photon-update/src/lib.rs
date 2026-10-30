@@ -6,6 +6,9 @@
 //! whose signature does not verify, and an archive is applied only if its SHA-256 matches the
 //! signed manifest. No private key is ever part of the repository.
 
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use ring::signature::{ED25519, UnparsedPublicKey};
 use sha2::{Digest, Sha256};
 
@@ -26,6 +29,12 @@ pub enum Error {
     BadManifest(&'static str),
     /// The archive's SHA-256 differs from the signed one.
     WrongArchive,
+    /// The release is not newer than the running version.
+    NotNewer,
+    /// The archive name is not a plain file name.
+    BadName,
+    /// The pending folder could not be written.
+    Io(String),
 }
 
 /// What a verified manifest says.
@@ -67,6 +76,63 @@ pub fn is_newer(current: &str, offered: &str) -> bool {
         (Some(current), Some(offered)) => offered > current,
         _ => false,
     }
+}
+
+/// A release that was checked and stored, to be applied at the next start.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Staged {
+    pub release: Release,
+    pub archive: PathBuf,
+}
+
+/// Checks the signed manifest and the archive against it, then stores the archive in `pending`
+/// (replacing any earlier one). Nothing is written unless every check passed, the release is newer
+/// than `current`, and the archive name is a plain file name.
+pub fn stage(
+    pending: &Path,
+    key: Option<&[u8; 32]>,
+    current: &str,
+    (manifest, signature_hex): (&[u8], &str),
+    archive: &[u8],
+) -> Result<Staged, Error> {
+    let release = verify_manifest(key, manifest, signature_hex)?;
+    if !is_newer(current, &release.version) {
+        return Err(Error::NotNewer);
+    }
+    check_archive(&release, archive)?;
+    let name = Path::new(&release.archive);
+    if name.file_name() != Some(name.as_os_str()) || release.archive.starts_with('.') {
+        return Err(Error::BadName);
+    }
+    let io = |error: std::io::Error| Error::Io(error.to_string());
+    let staging = pending.with_extension("tmp");
+    let _ = fs::remove_dir_all(&staging);
+    fs::create_dir_all(&staging).map_err(io)?;
+    fs::write(staging.join(&release.archive), archive).map_err(io)?;
+    fs::write(staging.join("manifest"), manifest).map_err(io)?;
+    fs::write(staging.join("manifest.sig"), signature_hex).map_err(io)?;
+    let _ = fs::remove_dir_all(pending);
+    fs::rename(&staging, pending).map_err(io)?;
+    Ok(Staged {
+        archive: pending.join(&release.archive),
+        release,
+    })
+}
+
+/// The release stored in `pending`, checked again against the key and its archive's hash (the
+/// folder is user-writable, so nothing in it is trusted because it is there).
+pub fn staged(pending: &Path, key: Option<&[u8; 32]>) -> Result<Staged, Error> {
+    let io = |error: std::io::Error| Error::Io(error.to_string());
+    let manifest = fs::read(pending.join("manifest")).map_err(io)?;
+    let signature = fs::read_to_string(pending.join("manifest.sig")).map_err(io)?;
+    let release = verify_manifest(key, &manifest, &signature)?;
+    let name = Path::new(&release.archive);
+    if name.file_name() != Some(name.as_os_str()) {
+        return Err(Error::BadName);
+    }
+    let archive = pending.join(&release.archive);
+    check_archive(&release, &fs::read(&archive).map_err(io)?)?;
+    Ok(Staged { release, archive })
 }
 
 fn numbers(version: &str) -> Option<Vec<u64>> {
