@@ -304,9 +304,11 @@ impl Bench {
         let intervals: Vec<f64> = times.windows(2).map(|pair| pair[1] - pair[0]).collect();
         let over = |limit_fps: f64| intervals.iter().filter(|&&dt| dt > 1.0 / limit_fps).count();
         let (worst, longest) = worst_second(&times);
+        let interval_ms = Stats::of(intervals.iter().map(|dt| dt * 1000.0).collect());
         let pacing = format!(
-            "  \"pacing\": {{\"worst_second_fps\": {worst:.1}, \"longest_interval_ms\": {:.2}, \
+            "  \"interval_ms\": {},\n  \"pacing\": {{\"worst_second_fps\": {worst:.1}, \"longest_interval_ms\": {:.2}, \
              \"intervals_over_240\": {}, \"intervals_over_230\": {}, \"intervals\": {}}},\n  \"blinks\": {},\n",
+            interval_ms.json(),
             longest * 1000.0,
             over(240.0),
             over(230.0),

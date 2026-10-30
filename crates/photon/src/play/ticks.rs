@@ -337,8 +337,11 @@ impl Play {
     /// A scripted turn of the view; a turn or `keep_awake` is input, so a long run is not an idle
     /// client.
     fn apply_script_turn(&mut self, held: HeldKeys, turn: f64, pitch: f64) {
-        if turn != 0.0 || pitch != 0.0 || held.keep_awake {
+        if turn != 0.0 || pitch != 0.0 || held.keep_awake || held.look.is_some() {
             self.limiter.input_received(Instant::now());
+        }
+        if let Some(counts) = held.look {
+            self.controls.turning.moved(counts);
         }
         if (turn != 0.0 || pitch != 0.0)
             && let Some(player) = self.session.player_mut()

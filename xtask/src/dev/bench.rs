@@ -186,9 +186,10 @@ fn parts_text(report: &Value) -> String {
 /// One line: the frame's work and the GPU's scene time, as p50/p95/p99 milliseconds.
 fn summary(report: &Value) -> String {
     format!(
-        "frames={} work_ms={} latency_ms={} max={:.2} work_fps={:.0} wall_fps={:.1}{}{}",
+        "frames={} work_ms={} interval_ms={} latency_ms={} max={:.2} work_fps={:.0} wall_fps={:.1}{}{}",
         report["frames"],
         triple(report, "work_ms"),
+        triple(report, "interval_ms"),
         triple(report, "input_to_present_ms"),
         stat(report, "work_ms", "max"),
         number(report, "/work_fps").unwrap_or(f64::NAN),
@@ -544,6 +545,7 @@ mod tests {
             "frames": 1200,
             "work_ms": {"p50": work_p50, "p95": 9.5, "p99": 12.0, "max": 20.25},
             "input_to_present_ms": {"p50": 8.5, "p95": 10.0, "p99": 13.0},
+            "interval_ms": {"p50": 8.1, "p95": 9.0, "p99": 12.5},
             "work_fps": 123.4,
             "wall_fps": 59.96,
             "gpu_ms": gpu_ms,
@@ -556,7 +558,7 @@ mod tests {
     fn the_summary_names_the_work_gpu_and_heaviest_parts() {
         assert_eq!(
             summary(&report(8.0, true)),
-            "frames=1200 work_ms=8.00/9.50/12.00 latency_ms=8.50/10.00/13.00 max=20.25 work_fps=123 wall_fps=60.0 \
+            "frames=1200 work_ms=8.00/9.50/12.00 interval_ms=8.10/9.00/12.50 latency_ms=8.50/10.00/13.00 max=20.25 work_fps=123 wall_fps=60.0 \
              gpu_scene=3.00/4.00/5.00 (no per-pass breakdown on this driver) max_parts=mesh:7.2,fog:3.0,light:1.5"
         );
         assert!(summary(&report(8.0, false)).contains(" gpu=unavailable"));

@@ -58,6 +58,9 @@ pub struct HeldKeys {
     pub wheel: Option<i32>,
     /// The mouse moved to a place, in GUI units.
     pub mouse: Option<(f64, f64)>,
+    /// The mouse moved by this many counts while looking around, as the window would report it:
+    /// the view turns through the mouse-look path, by the sensitivity, at the next frame.
+    pub look: Option<(f64, f64)>,
     /// A mouse press and release at the mouse: button and whether shift is held.
     pub press: Option<(i32, bool)>,
     /// The files named in `PHOTON_DROP` (separated by `:`) dropped on the window.
@@ -262,7 +265,7 @@ fn click_type(id: i32) -> ClickType {
 }
 
 impl HeldKeys {
-    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `press/B`, `scroll/H`, `wheel/N` (notches over the open screen), `filedrop` (the files of `PHOTON_DROP`), `packreload` and
+    /// The steps of the mouse and the keyboard shortcuts: `mouse/X/Y`, `look/DX/DY` (mouse counts through the mouse-look path), `press/B`, `scroll/H`, `wheel/N` (notches over the open screen), `filedrop` (the files of `PHOTON_DROP`), `packreload` and
     /// `debug/K`. Whether `parts` was one of them.
     fn parse_pointer_step(&mut self, parts: &[&str], other: &str) -> Result<bool, String> {
         let keys = self;
@@ -276,6 +279,13 @@ impl HeldKeys {
                         .map_err(|_| format!("bad mouse {other} in PHOTON_SCRIPT"))
                 };
                 keys.mouse = Some((number(x)?, number(y)?));
+            }
+            ["look", x, y] => {
+                let number = |text: &str| {
+                    text.parse::<f64>()
+                        .map_err(|_| format!("bad look {other} in PHOTON_SCRIPT"))
+                };
+                keys.look = Some((number(x)?, number(y)?));
             }
             ["press", button] | ["press", button, _] => {
                 keys.press = Some((
@@ -304,5 +314,18 @@ impl HeldKeys {
             _ => return Ok(false),
         }
         Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_look_step_carries_mouse_counts() {
+        let keys = HeldKeys::parse("forward,look/12.5/-3").unwrap();
+        assert!(keys.forward);
+        assert_eq!(keys.look, Some((12.5, -3.0)));
+        assert!(HeldKeys::parse("look/x/1").is_err());
     }
 }
