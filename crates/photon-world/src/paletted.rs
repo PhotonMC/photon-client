@@ -23,16 +23,24 @@ impl PalettedStates {
     /// Every state of a section, palettised.
     pub(crate) fn from_values(values: &[i32]) -> Self {
         let mut palette: Vec<i32> = Vec::new();
-        let mut indices: Vec<usize> = Vec::with_capacity(values.len());
+        let mut indices: Vec<u16> = Vec::with_capacity(values.len());
+        // The palette index of the states seen last, by the low bits of the state: a section
+        // repeats a few states, and the search of the whole palette is left to the first
+        // sight of each and to states that share a slot.
+        let mut recent = [(i32::MIN, 0u16); 256];
         for value in values {
-            let index = palette
-                .iter()
-                .position(|known| known == value)
-                .unwrap_or_else(|| {
-                    palette.push(*value);
-                    palette.len() - 1
-                });
-            indices.push(index);
+            let slot = &mut recent[(*value & 0xFF) as usize];
+            if slot.0 != *value {
+                let index = palette
+                    .iter()
+                    .position(|known| known == value)
+                    .unwrap_or_else(|| {
+                        palette.push(*value);
+                        palette.len() - 1
+                    });
+                *slot = (*value, index as u16);
+            }
+            indices.push(slot.1);
         }
         if palette.is_empty() {
             palette.push(0);
@@ -44,7 +52,7 @@ impl PalettedStates {
         };
         states.words = vec![0; states.word_count()];
         for (position, index) in indices.into_iter().enumerate() {
-            states.store(position, index);
+            states.store(position, usize::from(index));
         }
         states
     }
@@ -176,6 +184,17 @@ mod tests {
         let states = PalettedStates::from_values(&values);
         assert_eq!(states.to_vec(), values);
         assert!(states.bytes() < SECTION_VOLUME * 4 / 4, "five bits beat 32");
+    }
+
+    #[test]
+    fn states_that_share_a_slot_keep_the_order_they_were_first_seen_in() {
+        // 1, 257 and 513 share a slot of the recent states; -255 does as well.
+        let values: Vec<i32> = (0..SECTION_VOLUME)
+            .map(|i| [513, 1, 257, 1, -255, 257][i % 6])
+            .collect();
+        let states = PalettedStates::from_values(&values);
+        assert_eq!(states.palette, vec![513, 1, 257, -255]);
+        assert_eq!(states.to_vec(), values);
     }
 
     #[test]
