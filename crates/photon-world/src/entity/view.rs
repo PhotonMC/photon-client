@@ -42,13 +42,13 @@ macro_rules! entity_components {
         }
 
         impl<'a> EntityView<'a> {
-            pub(crate) fn from_query(item: ReadViewItem<'a, 'static>) -> Self {
+            pub(crate) fn from_query(item: ReadViewItem<'a, '_>) -> Self {
                 Self { $($field: item.$field,)* }
             }
         }
 
         impl<'a> EntityViewMut<'a> {
-            pub(crate) fn from_query(item: WriteViewItem<'a, 'static>) -> Self {
+            pub(crate) fn from_query(item: WriteViewItem<'a, '_>) -> Self {
                 Self { $($field: item.$field.into_inner(),)* }
             }
 

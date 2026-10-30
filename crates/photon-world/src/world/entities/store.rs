@@ -1,4 +1,5 @@
 use bevy_ecs::entity::Entity;
+use bevy_ecs::query::QueryState;
 use bevy_ecs::world::World;
 
 use crate::*;
@@ -7,9 +8,15 @@ use crate::*;
 /// (`ClientLevel.entityStorage`). Each entity is an entity of an ECS world, with its state as
 /// components; `ids` is the index by network id, in id order, which is the order everything that
 /// is observable (ticks, removals, sections, drawing) walks them in.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Entities {
     ecs: World,
+    /// The queries that read and change an entity's components, made once: asking the world
+    /// for the components of one entity builds the query again every time, which is
+    /// the cost of a view for each entity of a frame. Every entity has the same components, so
+    /// they are in one archetype; the states are brought up to date wherever one is added.
+    read: QueryState<ReadView>,
+    write: QueryState<WriteView>,
     ids: BTreeMap<EntityId, Entity>,
     /// The ids of the entities in each section, as `EntitySectionStorage` indexes them.
     pub(crate) sections: BTreeMap<(i32, i32, i32), BTreeSet<EntityId>>,
@@ -19,6 +26,23 @@ pub struct Entities {
     /// The invisible entities the local player is allowed to see as ghosts (same team, which
     /// sees its friendly invisibles). Set by the session; the world does not read it.
     pub(crate) friendly_ghosts: BTreeSet<EntityId>,
+}
+
+impl Default for Entities {
+    fn default() -> Self {
+        let mut ecs = World::new();
+        let read = QueryState::new(&mut ecs);
+        let write = QueryState::new(&mut ecs);
+        Self {
+            ecs,
+            read,
+            write,
+            ids: BTreeMap::new(),
+            sections: BTreeMap::new(),
+            out_of_view: BTreeSet::new(),
+            friendly_ghosts: BTreeSet::new(),
+        }
+    }
 }
 
 impl Entities {
@@ -65,12 +89,7 @@ impl Entities {
     }
 
     fn view(&self, entity: Entity) -> Option<EntityView<'_>> {
-        let item = self
-            .ecs
-            .get_entity(entity)
-            .ok()?
-            .get_components::<ReadView>()
-            .ok()?;
+        let item = self.read.get_manual(&self.ecs, entity).ok()?;
         Some(EntityView::from_query(item))
     }
 
@@ -92,22 +111,28 @@ impl Entities {
     /// The entity of an id, to change.
     pub fn at_mut(&mut self, entity_id: EntityId) -> Option<EntityViewMut<'_>> {
         let entity = *self.ids.get(&entity_id)?;
-        Self::view_mut(&mut self.ecs, entity)
+        Self::view_mut(&mut self.ecs, &mut self.write, entity)
     }
 
-    fn view_mut(ecs: &mut World, entity: Entity) -> Option<EntityViewMut<'_>> {
-        let item = ecs
-            .get_entity_mut(entity)
-            .ok()?
-            .into_components_mut::<WriteView>()
-            .ok()?;
+    fn view_mut<'w>(
+        ecs: &'w mut World,
+        state: &'w mut QueryState<WriteView>,
+        entity: Entity,
+    ) -> Option<EntityViewMut<'w>> {
+        let item = state.get_mut(ecs, entity).ok()?;
         Some(EntityViewMut::from_query(item))
+    }
+
+    /// Bring the cached queries up to date with the archetypes the world has now.
+    fn refresh_queries(&mut self) {
+        self.read.update_archetypes(&self.ecs);
+        self.write.update_archetypes(&self.ecs);
     }
 
     /// Change every entity, in id order.
     pub(crate) fn for_each_mut(&mut self, mut change: impl FnMut(EntityViewMut<'_>)) {
         for &entity in self.ids.values() {
-            if let Some(view) = Self::view_mut(&mut self.ecs, entity) {
+            if let Some(view) = Self::view_mut(&mut self.ecs, &mut self.write, entity) {
                 change(view);
             }
         }
@@ -120,11 +145,12 @@ impl Entities {
         parts: EntityParts,
     ) -> Option<EntityParts> {
         if let Some(&existing) = self.ids.get(&entity_id) {
-            let view = Self::view_mut(&mut self.ecs, existing)?;
+            let view = Self::view_mut(&mut self.ecs, &mut self.write, existing)?;
             return Some(view.replace_parts(parts));
         }
         let spawned = self.ecs.spawn(parts).id();
         self.ids.insert(entity_id, spawned);
+        self.refresh_queries();
         None
     }
 
@@ -134,6 +160,7 @@ impl Entities {
         let mut taken = self.ecs.entity_mut(entity);
         let parts = taken.take::<EntityParts>();
         self.ecs.despawn(entity);
+        self.refresh_queries();
         parts
     }
 
