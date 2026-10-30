@@ -157,8 +157,8 @@ struct Menu {
 impl Menu {
     /// The title screen, with the language and the GUI scale of the options.
     fn open(client: &mut Client) -> Result<Self> {
-        let root =
-            env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+        let root = photon_core::content_root::assets()
+            .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         let root = Path::new(&root);
         let data_root = env::var("PHOTON_DATA")
             .map(PathBuf::from)

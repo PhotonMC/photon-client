@@ -18,7 +18,7 @@ pub use cache::{Cache, Id};
 pub use endpoints::Endpoints;
 pub use error::ContentError;
 pub use hash::Sha1Hex;
-pub use install::{Installed, Progress, Stage, install};
+pub use install::{Installed, Progress, Stage, asset_index_id, install, installed};
 pub use pin::{PINNED, Pin};
 
 #[cfg(test)]

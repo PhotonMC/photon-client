@@ -11,7 +11,7 @@ use crate::cache::Cache;
 use crate::endpoints::Endpoints;
 use crate::error::ContentError;
 use crate::hash::Sha1Hex;
-use crate::install::{Installed, Progress, install_with};
+use crate::install::{Installed, Progress, install_with, installed_for};
 use crate::pin::Pin;
 use server::Stand;
 
@@ -354,6 +354,10 @@ fn the_real_jar_extracts_to_the_development_tree() {
     let extracted = files_under(done.jar_assets.parent().unwrap());
     assert!(extracted.len() > 1000, "{} files", extracted.len());
     assert_eq!(extracted, files_under(&dev_tree));
+    // The jar is the pinned one, so the start-up lookup takes this cache as the installed game.
+    let found = crate::installed(&cache).expect("the pinned game is installed");
+    assert_eq!(found.jar_assets, done.jar_assets);
+    assert_eq!(crate::asset_index_id(cache.root()).unwrap().as_str(), "32");
 }
 
 #[test]
@@ -373,5 +377,38 @@ fn a_republished_index_of_the_same_size_replaces_the_cached_one() {
         done.downloaded,
         1 + 1 + 1 + 2,
         "the index is fetched again with the rest"
+    );
+}
+
+#[test]
+fn an_installed_cache_is_found_again_and_a_half_made_one_is_not() {
+    let (stand, fixture) = (Stand::start(), Fixture::new());
+    fixture.serve(&stand, None);
+    let cache = Cache::at(scratch("found"));
+    assert!(
+        installed_for(fixture.pin(), &cache).is_none(),
+        "nothing yet"
+    );
+    let done = run(&stand, &fixture, &cache).unwrap();
+    assert_eq!(
+        installed_for(fixture.pin(), &cache),
+        Some(Installed {
+            downloaded: 0,
+            ..done
+        })
+    );
+    let other = Pin {
+        id: "26.2",
+        client_sha1: "0000000000000000000000000000000000000000",
+    };
+    assert!(
+        installed_for(other, &cache).is_none(),
+        "a cache of another jar"
+    );
+    let tree = cache.jar_tree(&Sha1Hex::of_bytes(&fixture.jar));
+    std::fs::remove_dir_all(&tree).unwrap();
+    assert!(
+        installed_for(fixture.pin(), &cache).is_none(),
+        "the extraction is what completes it"
     );
 }

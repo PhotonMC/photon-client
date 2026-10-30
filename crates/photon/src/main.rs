@@ -1,6 +1,7 @@
 mod ambient;
 mod assets;
 mod bench;
+mod content;
 mod controls;
 mod equipment;
 mod frame_limiter;
@@ -37,6 +38,7 @@ use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     logger::init();
+    content::use_installed();
     if env::args().nth(1).as_deref() == Some("window") {
         return window_probe::run_window(env::args().skip(2));
     }
@@ -48,6 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("menu") => return menu::run_menu(env::args().skip(2)),
         Some("sign-in") => return sign_in::run_sign_in(),
         Some("sign-out") => return sign_in::run_sign_out(),
+        Some("install") => return content::run_install(),
         Some("--version") => {
             println!("photon {}", env!("CARGO_PKG_VERSION"));
             return Ok(());
@@ -55,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => {}
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `window` or `--version`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `install`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())

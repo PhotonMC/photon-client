@@ -150,7 +150,7 @@ mod tests {
     use super::*;
 
     fn source() -> Option<LanguageSource> {
-        LanguageSource::open(Path::new(&std::env::var("PHOTON_ASSETS").ok()?))
+        LanguageSource::open(Path::new(&photon_core::content_root::assets().ok()?))
     }
 
     #[test]

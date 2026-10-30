@@ -283,7 +283,8 @@ mod tests {
     }
 
     fn index() -> Option<SearchIndex> {
-        let assets = std::path::PathBuf::from(std::env::var("PHOTON_ASSETS").unwrap_or_default());
+        let assets =
+            std::path::PathBuf::from(photon_core::content_root::assets().unwrap_or_default());
         let lang = crate::text::Lang::load(&assets);
         let registries = crate::registries::for_tests();
         lang.get("item.minecraft.stone")

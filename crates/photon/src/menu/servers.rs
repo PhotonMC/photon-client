@@ -354,7 +354,7 @@ impl Menu {
         client: &mut Client,
         packs: &crate::packs::LoadedPacks,
     ) -> bool {
-        let Ok(root) = env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return false;
         };
         let root = Path::new(&root);

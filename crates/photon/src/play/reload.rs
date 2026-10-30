@@ -314,7 +314,7 @@ impl Play {
     /// thread, behind a loading overlay. A failure to start is the reload's failure.
     fn start_reload(&mut self, packs: &crate::packs::LoadedPacks, stage: Stage) {
         let started = std::time::Instant::now();
-        let prepared = env::var("PHOTON_ASSETS")
+        let prepared = photon_core::content_root::assets()
             .map_err(|_| "PHOTON_ASSETS must name the asset folder".to_owned())
             .and_then(|root| {
                 let stack = crate::resources::with_packs(std::path::Path::new(&root), packs)?;
@@ -354,7 +354,7 @@ impl Play {
             return;
         };
         let started = std::time::Instant::now();
-        let previous = env::var("PHOTON_ASSETS")
+        let previous = photon_core::content_root::assets()
             .ok()
             .map(|root| crate::resources::shared(std::path::Path::new(&root)));
         let outcome = match handle.join() {
@@ -373,7 +373,7 @@ impl Play {
     /// Put `previous`, the stack that was in use, through the renderers again after an apply that
     /// failed midway.
     fn restore_resources(&mut self, previous: Arc<ResourceStack>) -> bool {
-        let Ok(root) = env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return false;
         };
         let inputs = self.prepare_inputs(&root);

@@ -516,7 +516,7 @@ mod tests {
     use photon_assets::{PackSource, Position, Repository, SelectionConfig, vanilla_entry};
 
     fn assets() -> Option<(Font, Lang)> {
-        let root = PathBuf::from(std::env::var("PHOTON_ASSETS").ok()?);
+        let root = PathBuf::from(photon_core::content_root::assets().ok()?);
         Some((Font::load(&root)?, Lang::load(&root)))
     }
 

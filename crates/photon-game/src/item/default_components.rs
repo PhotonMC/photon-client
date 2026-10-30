@@ -333,7 +333,8 @@ mod tests {
     }
 
     fn registries() -> Registries {
-        let assets = std::path::PathBuf::from(std::env::var("PHOTON_ASSETS").unwrap_or_default());
+        let assets =
+            std::path::PathBuf::from(photon_core::content_root::assets().unwrap_or_default());
         Registries::vanilla(&assets.with_file_name("data"))
     }
 

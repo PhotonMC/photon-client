@@ -15,7 +15,7 @@ impl Clipboard for Held {
 
 fn font() -> Option<Arc<Font>> {
     Font::load(std::path::Path::new(
-        &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+        &photon_core::content_root::assets().unwrap_or_default(),
     ))
     .map(Arc::new)
 }

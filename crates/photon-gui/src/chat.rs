@@ -474,7 +474,7 @@ mod tests {
     #[test]
     fn the_list_stays_up_between_keys_until_the_answer_replaces_it() {
         let Some(font) = Font::load(std::path::Path::new(
-            &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+            &photon_core::content_root::assets().unwrap_or_default(),
         )) else {
             return;
         };
@@ -499,7 +499,7 @@ mod tests {
     #[test]
     fn a_character_after_a_used_match_asks_for_suggestions_at_once() {
         let Some(font) = Font::load(std::path::Path::new(
-            &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+            &photon_core::content_root::assets().unwrap_or_default(),
         )) else {
             return;
         };
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn a_line_from_the_history_shows_no_list_until_the_next_edit() {
         let Some(font) = Font::load(std::path::Path::new(
-            &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+            &photon_core::content_root::assets().unwrap_or_default(),
         )) else {
             return;
         };

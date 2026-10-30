@@ -581,7 +581,7 @@ mod tests {
 
     fn font() -> Option<Font> {
         Font::load(std::path::Path::new(
-            &std::env::var("PHOTON_ASSETS").unwrap_or_default(),
+            &photon_core::content_root::assets().unwrap_or_default(),
         ))
     }
 

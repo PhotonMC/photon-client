@@ -8,7 +8,7 @@ const ACCESSIBILITY_HELP: &str = "https://aka.ms/MinecraftJavaAccessibility";
 /// Whether the pack the High Contrast option switches is there
 /// (`getAvailableIds().contains("high_contrast")`).
 fn high_contrast_available() -> bool {
-    std::env::var("PHOTON_ASSETS").is_ok_and(|root| {
+    photon_core::content_root::assets().is_ok_and(|root| {
         crate::resources::built_in_zips(std::path::Path::new(&root))
             .iter()
             .any(|(id, _)| id == "high_contrast")

@@ -22,8 +22,8 @@ impl Play {
             audio,
             gui: _,
         } = client;
-        let root =
-            env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+        let root = photon_core::content_root::assets()
+            .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         let script = script_from_env()?;
 
         let mut particles = crate::particles::Particles::load(&root);

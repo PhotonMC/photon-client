@@ -69,7 +69,8 @@ pub fn run_play(mut args: impl Iterator<Item = String>) -> Result<()> {
         .map(|value| value.parse())
         .transpose()?
         .unwrap_or(720);
-    let root = env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+    let root = photon_core::content_root::assets()
+        .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
     let mut session = join_with_packs(server, &packs::unattended(), std::path::Path::new(&root))?;
     session.use_renderer_sections();
     let client = Client::open((width, height))?;
@@ -130,8 +131,8 @@ pub(crate) struct Client {
 impl Client {
     /// Open the window and bake the blocks from `PHOTON_ASSETS`.
     pub(crate) fn open((width, height): (i32, i32)) -> Result<Self> {
-        let root =
-            env::var("PHOTON_ASSETS").map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
+        let root = photon_core::content_root::assets()
+            .map_err(|_| "PHOTON_ASSETS must name the asset folder")?;
         let (surface, mut backend, size) = open_window(width, height)?;
         let (block_renderer, animated_atlas) = bake_blocks(&root, &mut backend)?;
         Ok(Self {

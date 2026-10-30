@@ -149,7 +149,7 @@ impl Play {
 
     /// The panorama's faces, into the renderer.
     fn load_panorama(&mut self) {
-        let Ok(root) = env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return;
         };
         match crate::menu::panorama::faces(&root) {

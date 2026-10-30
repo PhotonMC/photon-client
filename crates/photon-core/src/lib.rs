@@ -8,6 +8,7 @@ pub mod border_init;
 pub mod calendar;
 pub mod chat;
 pub mod commands;
+pub mod content_root;
 pub mod dialog;
 pub mod dimension_values;
 pub mod direction;

@@ -109,6 +109,39 @@ pub(crate) fn install_with(
     })
 }
 
+/// The pinned game as an earlier [`install`] left it in `cache`, if it is all there: the version
+/// metadata names the jar and the index, and the jar's resources are extracted (which happens
+/// last, after every asset object was stored). Nothing is fetched or hashed.
+pub fn installed(cache: &Cache) -> Option<Installed> {
+    installed_for(PINNED, cache)
+}
+
+pub(crate) fn installed_for(pin: Pin, cache: &Cache) -> Option<Installed> {
+    let (id, jar) = (
+        Id::parse(pin.id).ok()?,
+        Sha1Hex::parse(pin.client_sha1).ok()?,
+    );
+    let info = version_info(&read(&cache.version(&id)).ok()?, &id).ok()?;
+    let tree = cache.jar_tree(&jar);
+    let complete = info.client.sha1 == jar
+        && cache.index(&info.asset_index_id).is_file()
+        && tree.join("assets").is_dir();
+    complete.then(|| Installed {
+        root: cache.root().to_path_buf(),
+        jar_assets: tree.join("assets"),
+        data: tree.join("data"),
+        asset_index: info.asset_index_id,
+        downloaded: 0,
+    })
+}
+
+/// The id of the asset index the installed game's version metadata names, in the cache `root`.
+pub fn asset_index_id(root: &Path) -> Option<Id> {
+    let id = Id::parse(PINNED.id).ok()?;
+    let text = read(&Cache::at(root).version(&id)).ok()?;
+    Some(version_info(&text, &id).ok()?.asset_index_id)
+}
+
 /// One download in progress: where it goes and how much it has fetched so far.
 struct Run<'a> {
     endpoints: &'a Endpoints,

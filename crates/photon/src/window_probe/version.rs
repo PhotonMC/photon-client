@@ -155,17 +155,26 @@ pub(super) fn show(
 /// block name the probe draws that model; with neither it falls back to its
 /// own cube and checkerboard, and says which it used.
 pub(super) fn scene() -> Result<(photon_render::Mesh, Vec<photon_render::DecodedImage>)> {
-    let from_server = match (env::var("PHOTON_SERVER"), env::var("PHOTON_ASSETS")) {
+    let from_server = match (
+        env::var("PHOTON_SERVER"),
+        photon_core::content_root::assets(),
+    ) {
         (Ok(server), Ok(root)) => Some(load_world(&server, &root)?),
         _ => None,
     };
-    let chosen = match (env::var("PHOTON_BLOCK"), env::var("PHOTON_ASSETS")) {
+    let chosen = match (
+        env::var("PHOTON_BLOCK"),
+        photon_core::content_root::assets(),
+    ) {
         (Ok(block), Ok(root)) => Some(choose_block(&block, root)?),
         _ => None,
     };
     let (assets, model_name) = match &chosen {
         Some(chosen) => (Ok(chosen.root.clone()), Ok(chosen.model.clone())),
-        None => (env::var("PHOTON_ASSETS"), env::var("PHOTON_MODEL")),
+        None => (
+            photon_core::content_root::assets(),
+            env::var("PHOTON_MODEL"),
+        ),
     };
     if let Some(loaded) = from_server {
         return Ok(loaded);

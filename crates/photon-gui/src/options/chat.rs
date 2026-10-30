@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn the_chat_colours_button_shows_and_hands_back_the_option() {
-        let Ok(root) = std::env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return;
         };
         let root = std::path::PathBuf::from(root);

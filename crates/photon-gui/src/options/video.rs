@@ -555,7 +555,7 @@ mod tests {
     use super::*;
 
     fn assets() -> Option<(Font, Lang)> {
-        let root = std::path::PathBuf::from(std::env::var("PHOTON_ASSETS").ok()?);
+        let root = std::path::PathBuf::from(photon_core::content_root::assets().ok()?);
         Some((Font::load(&root)?, Lang::load(&root)))
     }
 

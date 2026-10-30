@@ -54,14 +54,14 @@ fn pack_folder() -> std::path::PathBuf {
 
 /// The icon of the game's own pack, if the assets are there.
 fn vanilla_icon() -> Option<Vec<u8>> {
-    let root = std::env::var("PHOTON_ASSETS").ok()?;
+    let root = photon_core::content_root::assets().ok()?;
     crate::assets::vanilla_pack(std::path::Path::new(&root)).icon()
 }
 
 /// Every pack that can be chosen: the game's own, the built-in ones and the folder's.
 fn all_entries(folder: &std::path::Path) -> Vec<PackEntry> {
     let mut entries = vec![vanilla_entry(vanilla_icon())];
-    if let Ok(root) = std::env::var("PHOTON_ASSETS") {
+    if let Ok(root) = photon_core::content_root::assets() {
         let zips = crate::resources::built_in_zips(std::path::Path::new(&root));
         entries.extend(discover_built_in(&zips, crate::resources::PACK_FORMAT));
     }

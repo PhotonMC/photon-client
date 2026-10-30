@@ -623,7 +623,7 @@ mod tests {
 
     #[test]
     fn the_vanilla_stack_defines_the_game_sounds() {
-        let Ok(root) = std::env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return;
         };
         let stack = crate::assets::vanilla_stack(std::path::Path::new(&root));

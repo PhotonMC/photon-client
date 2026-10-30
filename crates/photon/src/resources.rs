@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn the_vanilla_stack_reads_the_languages_the_old_way() {
-        let Ok(root) = std::env::var("PHOTON_ASSETS") else {
+        let Ok(root) = photon_core::content_root::assets() else {
             return;
         };
         let root = std::path::Path::new(&root);

@@ -70,6 +70,7 @@ photon = [
     "photon-game",
     "photon-protocol",
     "photon-net",
+    "photon-content",
     "photon-render",
     "photon-gui",
     "photon-audio",

@@ -307,6 +307,6 @@ impl Registries {
 /// the data pack next to the assets `PHOTON_ASSETS` names, or empty ones.
 #[cfg(test)]
 pub(crate) fn for_tests() -> Registries {
-    let assets = PathBuf::from(std::env::var("PHOTON_ASSETS").unwrap_or_default());
+    let assets = PathBuf::from(photon_core::content_root::assets().unwrap_or_default());
     Registries::vanilla(&assets.with_file_name("data"))
 }
