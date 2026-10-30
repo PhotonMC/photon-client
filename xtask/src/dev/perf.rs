@@ -17,8 +17,10 @@ pub const ROUTES: [&str; 3] = ["perf-still", "perf-run", "perf-pigs"];
 /// What every named route is measured at.
 pub const SIZE: [&str; 2] = ["1280", "720"];
 pub const RENDER_DISTANCE: u32 = 32;
-/// Where the still and pig routes hold the camera: in the open, over the middle of the pig grid.
-pub const STILL_SPOT: [i32; 3] = [0, 100, 0];
+/// Where the still and pig routes hold the camera, as the position and rotation of a `tp`: on
+/// the summit the world spawns at, over the middle of the pig grid, looking east. The grid is
+/// built on the surface there (about y 198), so a camera lower down would never see a pig.
+pub const STILL_SPOT: &str = "0.5 198.5 0.5 -90 0";
 
 /// Seconds the client stands before the measured part starts: at render distance 32 the server
 /// is still sending chunks for tens of seconds after the join, and the measured frames are of
@@ -306,6 +308,15 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
             }
         ));
     }
+    // The pigs only count when the camera sees a good part of them: a run that stands below or
+    // beside the grid draws almost none and measures an empty scene.
+    let drawn = report["drawn_entities"].as_f64().unwrap_or(0.0);
+    if route == "perf-pigs" && drawn < MIN_DRAWN_PIGS {
+        return Err(format!(
+            "{route}: the frames draw {drawn:.0} entities on average, fewer than \
+             {MIN_DRAWN_PIGS}: the pigs are not in view"
+        ));
+    }
     // Animals left on disk by an earlier run load as the player arrives and cost the GPU about
     // twice what the empty scene does, so a world that still holds them is not a baseline.
     if route != "perf-pigs" && entities > STRAY_ENTITIES {
@@ -315,6 +326,9 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// The pigs the camera must see on average for a run to be the pig scene.
+const MIN_DRAWN_PIGS: f64 = 300.0;
 
 /// Entities a route without pigs may still see: a few players' worth of strays at most.
 const STRAY_ENTITIES: u64 = 50;
@@ -334,11 +348,17 @@ mod tests {
 
     #[test]
     fn the_pigs_are_in_the_pig_scene_only() {
-        let pigs = json!({"loaded_chunks": 4225, "entities": 1700});
+        let pigs = json!({"loaded_chunks": 4225, "entities": 1700, "drawn_entities": 600.0});
         assert!(check_report("perf-pigs", &pigs).is_ok());
         assert!(check_report("perf-still", &pigs).is_err());
         let none = json!({"loaded_chunks": 4225, "entities": 10});
         assert!(check_report("perf-pigs", &none).is_err());
+    }
+
+    #[test]
+    fn pigs_the_view_leaves_out_are_no_pig_scene() {
+        let unseen = json!({"loaded_chunks": 4225, "entities": 1700, "drawn_entities": 0.0});
+        assert!(check_report("perf-pigs", &unseen).is_err());
     }
 
     #[test]

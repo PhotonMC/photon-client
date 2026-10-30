@@ -170,5 +170,14 @@ impl super::Play {
             out_of_view.insert(camera);
         }
         self.session.set_entities_out_of_view(out_of_view);
+        if self.bench.is_some() {
+            crate::profile::note_drawn(
+                self.session
+                    .world()
+                    .entities()
+                    .drawn_with_invisible()
+                    .count(),
+            );
+        }
     }
 }

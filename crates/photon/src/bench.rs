@@ -40,6 +40,8 @@ struct Sample {
     at: f64,
     /// Sections that came back within a second after leaving the drawn set.
     blinks: u32,
+    /// Entities the frame drew, after the view left the rest out.
+    drawn_entities: u32,
 }
 
 /// The facts of a run the report names beside the numbers.
@@ -250,6 +252,7 @@ impl Bench {
             gpu: backend.gpu_timings(),
             at: (drawn - first).as_secs_f64(),
             blinks: profile::take_blinks(),
+            drawn_entities: profile::take_drawn(),
         });
     }
 
@@ -415,13 +418,18 @@ impl Bench {
         let interval_ms = Stats::of(intervals.iter().map(|dt| dt * 1000.0).collect());
         let pacing = format!(
             "  \"interval_ms\": {},\n  \"pacing\": {{\"worst_second_fps\": {worst:.1}, \"longest_interval_ms\": {:.2}, \
-             \"intervals_over_240\": {}, \"intervals_over_230\": {}, \"intervals\": {}}},\n  \"blinks\": {},\n",
+             \"intervals_over_240\": {}, \"intervals_over_230\": {}, \"intervals\": {}}},\n  \"blinks\": {},\n  \"drawn_entities\": {:.1},\n",
             interval_ms.json(),
             longest * 1000.0,
             over(240.0),
             over(230.0),
             intervals.len(),
-            self.samples.iter().map(|sample| sample.blinks).sum::<u32>()
+            self.samples.iter().map(|sample| sample.blinks).sum::<u32>(),
+            self.samples
+                .iter()
+                .map(|sample| f64::from(sample.drawn_entities))
+                .sum::<f64>()
+                / self.samples.len() as f64
         );
         pacing + &self.worst_frames_json()
     }

@@ -256,10 +256,10 @@ fn fresh_user() -> String {
 
 /// Puts the bench's player in spectator mode once it has joined: the command is repeated for
 /// the seconds the join may take, and an unknown player is no error for the server.
-fn spectate(user: &str, spot: Option<[i32; 3]>) {
+fn spectate(user: &str, spot: Option<&str>) {
     let mut commands = vec![format!("gamemode spectator {user}")];
-    if let Some([x, y, z]) = spot {
-        commands.push(format!("tp {user} {x} {y} {z}"));
+    if let Some(spot) = spot {
+        commands.push(format!("tp {user} {spot}"));
     }
     std::thread::spawn(move || {
         for _ in 0..40 {
@@ -332,13 +332,11 @@ fn run_once(options: &Options, number: u32) -> Result<Value, String> {
     let (user, script) = route_user_and_script(&options.route);
     // A spectator flies through trees and water, so the run measures the engine, not the terrain.
     if !named {
-        spectate(
-            &user,
-            (options.route == "void").then_some([17, VOID_HEIGHT, -35]),
-        );
+        let high = format!("17 {VOID_HEIGHT} -35");
+        spectate(&user, (options.route == "void").then_some(high.as_str()));
     } else if options.route != "perf-run" {
-        // A fresh player starts at the world's spawn, which is inside rock: the camera would
-        // sit in a solid block, where culling is off, and the scene would not be the same view.
+        // A fresh player starts at a random spot of the spawn radius; the view is the same one
+        // every run.
         spectate(&user, Some(perf::STILL_SPOT));
     }
     let command = client_command(options, &path, user, &script)?;

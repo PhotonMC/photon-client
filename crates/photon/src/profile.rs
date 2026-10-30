@@ -85,6 +85,20 @@ pub fn take_blinks() -> u32 {
     BLINKS.with(|blinks| blinks.replace(0))
 }
 
+thread_local! {
+    static DRAWN: Cell<u32> = const { Cell::new(0) };
+}
+
+/// Notes how many entities this frame draws (those the view leaves in), for the bench report.
+pub fn note_drawn(count: usize) {
+    DRAWN.with(|drawn| drawn.set(u32::try_from(count).unwrap_or(u32::MAX)));
+}
+
+/// The entities the last frame drew.
+pub fn take_drawn() -> u32 {
+    DRAWN.with(|drawn| drawn.replace(0))
+}
+
 /// Watches the occlusion flood's results for sections that blink, when a
 /// bench run asks (`PHOTON_BENCH`): a section in view that one result
 /// drops and a later one brings back.
