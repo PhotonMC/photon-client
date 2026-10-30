@@ -50,7 +50,15 @@ fn casters(
     partial: f32,
 ) -> Vec<Caster> {
     let mut casters: Vec<Caster> = Vec::new();
-    for entity in world.entities().all() {
+    // Only a display casts a shadow farther than 16 blocks from the camera (`shadow_of`), so the
+    // rest are the entities of the sections around it.
+    let entities = world.entities();
+    let at = camera.position;
+    let mut ids = entities.ids_near((at.x, at.y, at.z), 16.0);
+    ids.extend(entities.display_ids());
+    ids.sort_unstable();
+    ids.dedup();
+    for entity in ids.into_iter().filter_map(|id| entities.at(id)) {
         let Some((radius, strength)) = shadow_of(world, camera, entity, partial) else {
             continue;
         };

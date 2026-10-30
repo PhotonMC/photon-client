@@ -69,6 +69,45 @@ pub(crate) struct PickableBox {
     pub(crate) can_be_hit: bool,
 }
 
+/// The boxes of an ender dragon's parts, each with the id after the dragon's.
+fn dragon_part_boxes(dragon: EntityView<'_>) -> Vec<PickableBox> {
+    let id = dragon.net.id;
+    dragon
+        .kind
+        .ender_dragon()
+        .into_iter()
+        .flat_map(|state| state.parts().iter().enumerate())
+        .map(|(index, part)| {
+            let size = ClientEntityDimensions::from_values(
+                part.width,
+                part.height,
+                part.height * 0.85,
+                false,
+            );
+            let (x, y, z) = part.position;
+            PickableBox {
+                id: EntityId(id.0 + 1 + index as i32),
+                position: part.position,
+                bounds: size.make_bounding_box(Vec3::new(x, y, z)),
+                pick_radius: 0.0,
+                from_inside: true,
+                can_be_hit: true,
+            }
+        })
+        .collect()
+}
+
+fn pickable_box(entity: EntityView<'_>) -> PickableBox {
+    PickableBox {
+        id: entity.net.id,
+        position: entity.position(),
+        bounds: entity.bounding_box(),
+        pick_radius: entity.pick_radius(),
+        from_inside: entity.can_be_picked_from_inside(),
+        can_be_hit: !entity.is_dead_or_dying(),
+    }
+}
+
 impl ClientWorld {
     /// The pickable entities but `except`, then the dragons' parts (`Level.getEntities` lists
     /// those last).
@@ -80,42 +119,36 @@ impl ClientWorld {
             .entities
             .values()
             .filter(move |entity| entity.is_ender_dragon() && entity.net.id != except)
-            .flat_map(|dragon| {
-                dragon
-                    .kind
-                    .ender_dragon()
-                    .into_iter()
-                    .flat_map(|state| state.parts().iter().enumerate())
-                    .map(move |(index, part)| {
-                        let size = ClientEntityDimensions::from_values(
-                            part.width,
-                            part.height,
-                            part.height * 0.85,
-                            false,
-                        );
-                        let (x, y, z) = part.position;
-                        PickableBox {
-                            id: EntityId(dragon.net.id.0 + 1 + index as i32),
-                            position: part.position,
-                            bounds: size.make_bounding_box(Vec3::new(x, y, z)),
-                            pick_radius: 0.0,
-                            from_inside: true,
-                            can_be_hit: true,
-                        }
-                    })
-            });
+            .flat_map(dragon_part_boxes);
         let others = self
             .entities
             .values()
             .filter(move |entity| entity.net.id != except && entity.is_pickable())
-            .map(|entity| PickableBox {
-                id: entity.net.id,
-                position: entity.position(),
-                bounds: entity.bounding_box(),
-                pick_radius: entity.pick_radius(),
-                from_inside: entity.can_be_picked_from_inside(),
-                can_be_hit: !entity.is_dead_or_dying(),
-            });
+            .map(pickable_box);
+        others.chain(parts)
+    }
+
+    /// [`Self::pickable_boxes`] for the entities in the sections `search` reaches, in the order
+    /// `Level.getEntities` visits them. The result is the same entities as the whole set gives
+    /// once the box test has been made, in the reference's order.
+    pub(crate) fn pickable_boxes_near(
+        &self,
+        except: EntityId,
+        search: Aabb,
+    ) -> impl Iterator<Item = PickableBox> + '_ {
+        let others = self
+            .entities
+            .ids_in_search_box(search)
+            .into_iter()
+            .filter(move |&id| id != except)
+            .filter_map(|id| self.entities.at(id))
+            .filter(|entity| entity.is_pickable())
+            .map(pickable_box);
+        let parts = self
+            .entities
+            .dragons()
+            .filter(move |dragon| dragon.net.id != except)
+            .flat_map(dragon_part_boxes);
         others.chain(parts)
     }
 
@@ -140,7 +173,7 @@ impl ClientWorld {
             pick_radius,
             from_inside,
             ..
-        } in self.pickable_boxes(except)
+        } in self.pickable_boxes_near(except, search)
         {
             if !bounds.intersects(search) {
                 continue;
@@ -513,6 +546,40 @@ mod tests {
             .ticking = true;
         world.tick_entities();
         world
+    }
+
+    fn spawn_at(world: &mut ClientWorld, id: i32, z: f64) {
+        let pig = photon_data::entity_type::id("minecraft:pig").expect("a pig");
+        assert!(world.apply_entity(EntityInput {
+            entity_id: EntityId(id),
+            uuid: Uuid::new(0, id as u64),
+            type_id: pig,
+            x: 0.0,
+            y: 64.0,
+            z,
+            movement: (0.0, 0.0, 0.0),
+            rotation: (0.0, 0.0, 0.0),
+            data: 0,
+        }));
+    }
+
+    /// `EntitySectionStorage.forEachAccessibleNonEmptySection`: within a column of x, the packed
+    /// key puts z before y as an unsigned bit field, so a section at negative z comes after one
+    /// at positive z, and the entities of a section come in the order they joined it, not by id.
+    #[test]
+    fn the_sections_of_a_box_are_visited_in_the_references_order() {
+        let mut world = ClientWorld::new(DimensionBounds::default());
+        spawn_at(&mut world, 9, 20.0);
+        spawn_at(&mut world, 3, 20.0);
+        spawn_at(&mut world, 7, -20.0);
+        let search = Aabb::new(-1.0, 60.0, -30.0, 1.0, 70.0, 30.0);
+        let order: Vec<_> = world
+            .entities()
+            .ids_in_search_box(search)
+            .into_iter()
+            .map(|id| id.0)
+            .collect();
+        assert_eq!(order, [9, 3, 7]);
     }
 
     /// The dragon itself is not pickable, its parts are: an aim at its head lands on the

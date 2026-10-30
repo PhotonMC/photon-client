@@ -278,11 +278,7 @@ impl ClientWorld {
         if previous_key != key {
             self.entities_mut()
                 .remove_from_section(entity_id, previous_position);
-            self.entities
-                .sections
-                .entry(key)
-                .or_default()
-                .insert(entity_id);
+            self.entities.add_id_to_section(key, entity_id);
         }
     }
 
@@ -363,10 +359,66 @@ impl Entities {
     }
 
     pub(crate) fn add_to_section(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
-        self.sections
-            .entry(entity_section_key(position))
-            .or_default()
-            .insert(entity_id);
+        self.add_id_to_section(entity_section_key(position), entity_id);
+    }
+
+    /// `EntitySection.add`: the entity goes last in the section's list.
+    fn add_id_to_section(&mut self, key: (i32, i32, i32), entity_id: EntityId) {
+        let ids = self.sections.entry(key).or_default();
+        if !ids.contains(&entity_id) {
+            ids.push(entity_id);
+        }
+    }
+
+    /// The ids, in id order, of the entities whose position can lie within `radius` of `centre`
+    /// along every axis: those of the sections the cube reaches.
+    pub fn ids_near(&self, centre: (f64, f64, f64), radius: f64) -> Vec<EntityId> {
+        let range = |at: f64| entity_section_coord(at - radius)..=entity_section_coord(at + radius);
+        let mut ids = Vec::new();
+        for x in range(centre.0) {
+            for y in range(centre.1) {
+                for z in range(centre.2) {
+                    ids.extend(self.sections.get(&(x, y, z)).into_iter().flatten().copied());
+                }
+            }
+        }
+        ids.sort_unstable();
+        ids
+    }
+
+    /// The ids of the entities in the sections a box reaches, in the order the reference visits
+    /// them (`EntitySectionStorage.forEachAccessibleNonEmptySection`: by section x, then by the
+    /// packed section key, which orders z before y with both taken as unsigned bit fields), and in
+    /// each section by the time the entity joined it (`ClassInstanceMultiMap` keeps a list).
+    pub fn ids_in_search_box(&self, search: Aabb) -> Vec<EntityId> {
+        let (x_min, x_max) = (
+            entity_section_coord(search.min_x - 2.0),
+            entity_section_coord(search.max_x + 2.0),
+        );
+        let (y_min, y_max) = (
+            entity_section_coord(search.min_y - 4.0),
+            entity_section_coord(search.max_y),
+        );
+        let (z_min, z_max) = (
+            entity_section_coord(search.min_z - 2.0),
+            entity_section_coord(search.max_z + 2.0),
+        );
+        let mut reached = Vec::new();
+        for x in x_min..=x_max {
+            for y in y_min..=y_max {
+                for z in z_min..=z_max {
+                    if let Some(ids) = self.sections.get(&(x, y, z)) {
+                        // `SectionPos.asLong`: z takes 22 bits above y's 20.
+                        reached.push(((x, z & 0x3F_FFFF, y & 0xF_FFFF), ids));
+                    }
+                }
+            }
+        }
+        reached.sort_unstable_by_key(|&(order, _)| order);
+        reached
+            .into_iter()
+            .flat_map(|(_, ids)| ids.iter().copied())
+            .collect()
     }
 
     pub(crate) fn remove_from_section(&mut self, entity_id: EntityId, position: (f64, f64, f64)) {
@@ -374,7 +426,7 @@ impl Entities {
         let Some(entity_ids) = self.sections.get_mut(&key) else {
             return;
         };
-        entity_ids.remove(&entity_id);
+        entity_ids.retain(|id| *id != entity_id);
         if entity_ids.is_empty() {
             self.sections.remove(&key);
         }

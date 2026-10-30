@@ -327,6 +327,12 @@ fn tag_rules(session: &PlaySession, entity: EntityView<'_>) -> Option<NameRules>
         .filter(|rules| *rules != NameRules::Mob || session.camera_entity() != Some(entity.id()))
 }
 
+/// Whether an entity can have a tag: `inputs_of` wants a name of its own or a visible one (a frame
+/// wants its item's), so the rest need not look up their rules.
+fn can_have_tag(entity: EntityView<'_>) -> bool {
+    entity.has_custom_name() || entity.is_custom_name_visible() || entity.is_item_frame()
+}
+
 /// `EntityRenderer.extractNameTags` for the entities that are not players: the ones a name shows
 /// over (a custom name that is visible, or under the crosshair).
 fn entity_tags(
@@ -337,7 +343,11 @@ fn entity_tags(
 ) {
     let world = session.world();
     let picked = crate::view::crosshair_entity(session);
-    for entity in world.entities().drawn_with_invisible() {
+    for entity in world
+        .entities()
+        .drawn_with_invisible()
+        .filter(|e| can_have_tag(*e))
+    {
         let Some(rules) = tag_rules(session, entity) else {
             continue;
         };
