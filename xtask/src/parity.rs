@@ -27,6 +27,7 @@ use cases::Case;
 /// Every parity family.
 pub const FAMILIES: &[&str] = &[
     "atlas",
+    "bidi",
     "binary",
     "block",
     "entity",

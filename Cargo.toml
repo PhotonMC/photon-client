@@ -43,6 +43,8 @@ glfw = { version = "0.62.0", default-features = false, features = ["raw-window-h
 raw-window-handle = "0.6.2"
 rayon = "1.12.0"
 shaderc = "0.10.1"
+unicode-bidi = { version = "0.3.18", default-features = false, features = ["std", "hardcoded-data"] }
+unicode-bidi-mirroring = "0.4.0"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"

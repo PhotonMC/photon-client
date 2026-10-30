@@ -3,6 +3,7 @@
 pub mod aabb;
 pub mod axis_cycle;
 pub mod base64;
+pub mod bidi;
 pub mod binary;
 pub mod border_init;
 pub mod calendar;

@@ -460,6 +460,26 @@
         "it.unimi.dsi:fastutil"
       ]
     },
+    "bidi": {
+      "source": "BidiOracle.java",
+      "libraries": [
+        "com.google.code.gson:gson",
+        "com.ibm.icu:icu4j",
+        "com.mojang:datafixerupper",
+        "com.google.guava:guava",
+        "com.google.guava:failureaccess",
+        "it.unimi.dsi:fastutil",
+        "com.mojang:logging",
+        "com.mojang:brigadier",
+        "org.slf4j:slf4j-api",
+        "org.joml:joml",
+        "org.apache.commons:commons-lang3",
+        "org.jspecify:jspecify",
+        "io.netty:netty-buffer",
+        "io.netty:netty-common",
+        "io.netty:netty-codec-base"
+      ]
+    },
     "utf8": {
       "source": "Utf8Oracle.java",
       "libraries": [

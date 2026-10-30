@@ -8,6 +8,7 @@
 #![allow(clippy::approx_constant)]
 
 mod atlas;
+mod bidi;
 mod binary;
 mod bits;
 mod block;
@@ -39,6 +40,7 @@ type Generator = fn() -> Vec<Value>;
 /// Each ported family and its generator.
 const GENERATORS: &[(&str, Generator)] = &[
     ("atlas", atlas::cases),
+    ("bidi", bidi::cases),
     ("binary", binary::cases),
     ("block", block::cases),
     ("entity", entity::cases),

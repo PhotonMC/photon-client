@@ -137,6 +137,8 @@ mod chunk;
 use chunk::*;
 mod math_cases;
 use math_cases::*;
+mod bidi;
+use bidi::*;
 mod timer;
 use timer::*;
 mod nbt_cases;

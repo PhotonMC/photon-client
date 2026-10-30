@@ -191,6 +191,7 @@ fn content_family(family: &str, request: &Value) -> Option<Result<Value, String>
         "movement" => movement_result(request),
         "entity" => entity_family_result(request),
         "gui" => gui::gui_result(request),
+        "bidi" => bidi_result(request),
         _ => return None,
     })
 }

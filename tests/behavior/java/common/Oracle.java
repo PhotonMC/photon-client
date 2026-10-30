@@ -30,6 +30,7 @@ public final class Oracle {
                 String handler = switch (request.get("family").getAsString()) {
                     case "wire" -> "WireOracle";
                     case "utf8" -> "Utf8Oracle";
+                    case "bidi" -> "BidiOracle";
                     case "math" -> "MathOracle";
                     case "timer" -> "TimerOracle";
                     case "binary" -> "BinaryOracle";
