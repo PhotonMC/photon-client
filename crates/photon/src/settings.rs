@@ -25,6 +25,13 @@ pub(crate) struct Settings {
 }
 
 impl RenderMode {
+    /// The mode that runs: the pipelined setting runs the serial path until the render thread
+    /// exists (#22), and the bench report names this one, so a number is never labelled with a
+    /// path it did not take.
+    pub(crate) fn running(self) -> Self {
+        Self::Serial
+    }
+
     /// The name the bench report gives the mode.
     pub(crate) fn name(self) -> &'static str {
         match self {
@@ -43,8 +50,7 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// The settings of `photon.toml` in the game directory, read once. Both render modes run the
-    /// serial path until the render thread exists (#22).
+    /// The settings of `photon.toml` in the game directory, read once.
     pub(crate) fn get() -> Self {
         static SETTINGS: std::sync::OnceLock<Settings> = std::sync::OnceLock::new();
         *SETTINGS.get_or_init(|| Self::read(&crate::controls::game_directory().join("photon.toml")))
