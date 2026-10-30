@@ -4,12 +4,14 @@ use crate::gui::TextRun;
 use crate::gui::font::Font;
 
 /// One rectangle a text draws besides its glyphs: where, in what colour, and in which shadow
-/// colour (zero for none, otherwise drawn a unit right and down first).
+/// colour (zero for none, otherwise drawn `shadow_offset` right and down first).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TextEffect {
     pub rect: (f32, f32, f32, f32),
     pub colour: u32,
     pub shadow_colour: u32,
+    /// The glyph's own shadow offset (`GlyphInfo.getShadowOffset`).
+    pub shadow_offset: f32,
 }
 
 /// A run's colour, and its shadow's (zero when the text has none): the style's colour over the
@@ -64,6 +66,7 @@ pub fn effects(
                     rect: (left, y + bottom - 1.0, pen + advance, y + bottom),
                     colour,
                     shadow_colour,
+                    shadow_offset: glyph.shadow_offset(),
                 });
             }
             pen += advance;

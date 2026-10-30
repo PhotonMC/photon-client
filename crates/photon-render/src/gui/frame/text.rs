@@ -437,14 +437,17 @@ impl GuiFrame {
 }
 
 /// The quads of text effects (`BakedSheetGlyph.renderEffect`): each rectangle samples the middle
-/// of the white sprite, its shadow's copy first, a unit right and down.
+/// of the white sprite, its shadow's copy first, a shadow offset right and down.
 pub(crate) fn effect_quads(atlas: &GuiAtlas, effects: Vec<TextEffect>) -> Vec<[GuiVertex; 4]> {
     let [u0, v0, u1, v1] = atlas.sprite("white");
     let uv = [(u0 + u1) / 2.0, (v0 + v1) / 2.0];
     let mut quads = Vec::new();
     for effect in effects {
         let (x0, y0, x1, y1) = effect.rect;
-        let copies = [(effect.shadow_colour, 1.0), (effect.colour, 0.0)];
+        let copies = [
+            (effect.shadow_colour, effect.shadow_offset),
+            (effect.colour, 0.0),
+        ];
         for (colour, offset) in copies.into_iter().filter(|(colour, _)| *colour != 0) {
             let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
             let corner = |px: f32, py: f32| GuiVertex {

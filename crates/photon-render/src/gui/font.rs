@@ -324,6 +324,33 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_underline_shadow_lies_as_far_behind_as_its_glyphs() {
+        let mut font = Font::default();
+        let hex = unihex::UnihexGlyph {
+            left: 0,
+            right: 15,
+            source: 0,
+        };
+        font.glyphs.insert(0x4E00, Glyph::Unihex(hex));
+        let run = crate::gui::TextRun {
+            text: "\u{4e00}".into(),
+            colour: None,
+            bold: false,
+            italic: false,
+            underlined: true,
+            strikethrough: false,
+            obfuscated: false,
+            piece_start: true,
+            shadow: None,
+            joins_previous: false,
+        };
+        let found =
+            crate::gui::text_effect::effects(&font, &[run], (0.0, 0.0), (0xFFFF_FFFF, true));
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].shadow_offset, 0.5);
+    }
+
+    #[test]
     fn a_surrogate_pair_is_one_codepoint() {
         assert_eq!(codepoints(&[0xD83D, 0xDE00, 0x41]), vec![0x1F600, 0x41]);
         assert_eq!(codepoints(&[0xD800]), vec![0xD800]);

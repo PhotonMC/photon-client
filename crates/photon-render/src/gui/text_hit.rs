@@ -89,7 +89,11 @@ pub fn bounds(
     // `PreparedTextBuilder.addEffect`: an underline or strikethrough counts, with its shadow.
     for effect in crate::gui::text_effect::effects(font, runs, (x as f32, y), (u32::MAX, shadow)) {
         let (left, top, right, bottom) = effect.rect;
-        let offset = if effect.shadow_colour != 0 { 1.0 } else { 0.0 };
+        let offset = if effect.shadow_colour != 0 {
+            effect.shadow_offset
+        } else {
+            0.0
+        };
         let rect = (left, top, right + offset, bottom + offset);
         found = Some(union(found, rect));
     }
