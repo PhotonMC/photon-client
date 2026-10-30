@@ -222,8 +222,8 @@ impl ClientWorld {
             .into_iter()
             .chain(
                 self.entities()
-                    .all()
-                    .filter(|entity| entity.is_player() && Some(entity.id()) != local_id)
+                    .players()
+                    .filter(|entity| Some(entity.id()) != local_id)
                     .filter(|entity| !entity.is_spectator())
                     .map(|entity| (entity.position(), entity.motion().1)),
             );

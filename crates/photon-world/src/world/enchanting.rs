@@ -69,11 +69,7 @@ impl ClientWorld {
             .local
             .filter(|(_, spectator)| !spectator)
             .map(|(place, _)| place);
-        let remote = self
-            .entities()
-            .values()
-            .filter(|entity| entity.is_player())
-            .map(|entity| entity.position());
+        let remote = self.entities().players().map(|entity| entity.position());
         let mut best: Option<f64> = None;
         let mut nearest = None;
         for place in local.into_iter().chain(remote) {

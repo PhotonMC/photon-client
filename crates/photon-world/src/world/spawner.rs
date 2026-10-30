@@ -58,9 +58,10 @@ impl ClientWorld {
             !player.game_mode.is_spectator() && player.health() > 0.0 && near(player.position())
         });
         local
-            || self.entities.iter().any(|(_, entity)| {
-                entity.is_player() && !entity.is_dead_or_dying() && near(entity.position())
-            })
+            || self
+                .entities
+                .players()
+                .any(|entity| !entity.is_dead_or_dying() && near(entity.position()))
     }
 
     /// `BaseSpawner.getOrCreateDisplayEntity`: the mob of the type the spawner names is made when it

@@ -347,9 +347,10 @@ impl ClientWorld {
                     .intersects(area)
         });
         local
-            || self.entities.values().any(|other| {
-                other.is_player() && other.is_sleeping() && other.bounding_box().intersects(area)
-            })
+            || self
+                .entities
+                .players()
+                .any(|other| other.is_sleeping() && other.bounding_box().intersects(area))
     }
 
     /// The local player's own head and body turn, set to what an entity

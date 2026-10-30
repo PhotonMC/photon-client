@@ -25,6 +25,8 @@ pub struct Entities {
     pub(crate) sections: BTreeMap<(i32, i32, i32), Vec<EntityId>>,
     /// The ender dragons, which `Level.getEntities` lists the parts of after the entities.
     dragons: BTreeSet<EntityId>,
+    /// The players, which `Level.players()` lists on its own.
+    players: BTreeSet<EntityId>,
     /// The display entities, whose shadows are their own data and not bound by distance.
     displays: BTreeSet<EntityId>,
     /// The entities the frame being drawn leaves out because they are wholly outside the view.
@@ -48,6 +50,7 @@ impl Default for Entities {
             visible: Vec::new(),
             sections: BTreeMap::new(),
             dragons: BTreeSet::new(),
+            players: BTreeSet::new(),
             displays: BTreeSet::new(),
             out_of_view: BTreeSet::new(),
             friendly_ghosts: BTreeSet::new(),
@@ -150,9 +153,18 @@ impl Entities {
 
     /// Keep `dragons` as the entity's type says.
     fn note_dragon(&mut self, entity_id: EntityId, entity: Entity) {
-        let (dragon, display) = self.view(entity).map_or((false, false), |view| {
-            (view.is_ender_dragon(), view.display().is_some())
+        let (dragon, display, player) = self.view(entity).map_or((false, false, false), |view| {
+            (
+                view.is_ender_dragon(),
+                view.display().is_some(),
+                view.is_player(),
+            )
         });
+        if player {
+            self.players.insert(entity_id);
+        } else {
+            self.players.remove(&entity_id);
+        }
         if dragon {
             self.dragons.insert(entity_id);
         } else {
@@ -168,6 +180,13 @@ impl Entities {
     /// The ids of the display entities.
     pub fn display_ids(&self) -> impl Iterator<Item = EntityId> + '_ {
         self.displays.iter().copied()
+    }
+
+    /// The players, in id order.
+    pub fn players(&self) -> impl Iterator<Item = EntityView<'_>> {
+        self.players
+            .iter()
+            .filter_map(|id| self.view(*self.ids.get(id)?))
     }
 
     /// The ender dragons, in id order.
@@ -205,6 +224,7 @@ impl Entities {
     pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
         self.dragons.remove(&entity_id);
+        self.players.remove(&entity_id);
         if let Ok(at) = self.visible.binary_search_by_key(&entity_id, |&(id, _)| id) {
             self.visible.remove(at);
         }
@@ -219,6 +239,7 @@ impl Entities {
         // The world's resources are entities too: only the client's entities go.
         self.visible.clear();
         self.dragons.clear();
+        self.players.clear();
         self.displays.clear();
         for (_, entity) in std::mem::take(&mut self.ids) {
             self.ecs.despawn(entity);
