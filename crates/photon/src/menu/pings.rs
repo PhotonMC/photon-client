@@ -31,6 +31,9 @@ fn ping(ip: &str) -> Pinged {
         .ok()
         .and_then(|trace| {
             let status = ServerStatus::parse(&trace.status_response)?;
+            if let Some((_, protocol)) = &status.version {
+                crate::updates::note_server_protocol(*protocol);
+            }
             Some(Pinged::answered(&status, trace.round_trip_ms))
         })
         .unwrap_or_else(|| Pinged::unreachable(false))

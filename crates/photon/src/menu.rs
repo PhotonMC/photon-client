@@ -326,6 +326,7 @@ impl Menu {
         while !client.surface.should_close() && !crate::updates::restart_requested() {
             let frame_start = Instant::now();
             crate::updates::poll();
+            crate::updates::log_newer_servers();
             for event in client.surface.poll() {
                 if let Some(choice) = self.handle(event, client)? {
                     return Ok(choice);

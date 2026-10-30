@@ -6,12 +6,16 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use photon_api::{ClientEvents, UpdateChanged, UpdateState};
+use photon_api::{ClientEvents, ServerNeedsNewerVersion, UpdateChanged, UpdateState};
+use photon_core::version::Version;
 use photon_update::{
     CHECK_INTERVAL, Config, PLATFORM, RELEASE_HOST, RELEASE_KEYS, Service, Settings,
 };
 
 static SERVICE: OnceLock<Mutex<Service>> = OnceLock::new();
+/// Servers seen speaking a newer protocol than the client supports: protocol, and whether it
+/// has been logged yet.
+static NEWER_SERVERS: Mutex<Vec<(i32, bool)>> = Mutex::new(Vec::new());
 static RESTART: AtomicBool = AtomicBool::new(false);
 
 /// The folder the updater keeps its files in, beside the content cache.
@@ -134,6 +138,7 @@ pub(crate) fn fire(events: &mut ClientEvents) {
     for state in poll() {
         events.update_changed.fire(&UpdateChanged(state));
     }
+    fire_newer_servers(events);
 }
 
 /// Ends the game cleanly (the window closes, the connection with it) and starts this program again
@@ -146,4 +151,118 @@ pub(crate) fn restart_into_update() {
 /// Whether [`restart_into_update`] was called: the loops stop and `main` starts again.
 pub(crate) fn restart_requested() -> bool {
     RESTART.load(Ordering::Relaxed)
+}
+
+/// The highest protocol number of the versions the client speaks.
+fn newest_protocol() -> i32 {
+    Version::ALL
+        .iter()
+        .map(|version| version.protocol())
+        .max()
+        .unwrap_or(0)
+}
+
+/// A server's status named `protocol`: remembered when it is newer than the newest the client
+/// speaks (an older or unknown one is the server's to refuse, and no update would change that).
+pub(crate) fn note_server_protocol(protocol: i32) {
+    if protocol <= newest_protocol() {
+        return;
+    }
+    let mut seen = NEWER_SERVERS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if !seen.iter().any(|(known, _)| *known == protocol) {
+        seen.push((protocol, false));
+    }
+}
+
+fn answer_for(protocol: i32) -> ServerNeedsNewerVersion {
+    let update = service().map_or(photon_api::UpdateForServer::None, |service| {
+        service.update_for_protocol(u32::try_from(protocol).unwrap_or(0))
+    });
+    ServerNeedsNewerVersion {
+        server_protocol: u32::try_from(protocol).unwrap_or(0),
+        update,
+    }
+}
+
+/// Logs each newly seen newer server once, with what the updater knows about it.
+pub(crate) fn log_newer_servers() {
+    let fresh: Vec<i32> = {
+        let mut seen = NEWER_SERVERS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        seen.iter_mut()
+            .filter_map(|(protocol, logged)| {
+                (!std::mem::replace(logged, true)).then_some(*protocol)
+            })
+            .collect()
+    };
+    for protocol in fresh {
+        let answer = answer_for(protocol);
+        match &answer.update {
+            photon_api::UpdateForServer::Staged { version } => log::info!(
+                "a server speaks protocol {protocol}, newer than this client; {version} supports it and applies at the next start"
+            ),
+            photon_api::UpdateForServer::Available { version } => log::info!(
+                "a server speaks protocol {protocol}, newer than this client; {version} supports it and can be downloaded"
+            ),
+            photon_api::UpdateForServer::None => log::info!(
+                "a server speaks protocol {protocol}, newer than this client; no known release supports it"
+            ),
+        }
+    }
+}
+
+/// The newer servers the menu saw, as events for the handlers of a game, once each.
+fn fire_newer_servers(events: &mut ClientEvents) {
+    let protocols: Vec<i32> = std::mem::take(
+        &mut *NEWER_SERVERS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+    )
+    .into_iter()
+    .map(|(protocol, _)| protocol)
+    .collect();
+    for protocol in protocols {
+        events
+            .server_needs_newer_version
+            .fire(&answer_for(protocol));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use photon_api::{Owner, UpdateForServer};
+
+    use super::*;
+
+    #[test]
+    fn a_newer_server_is_announced_once_and_an_older_one_never() {
+        let newest = newest_protocol();
+        note_server_protocol(newest);
+        note_server_protocol(newest - 1);
+        note_server_protocol(newest + 5);
+        note_server_protocol(newest + 5);
+        let heard = Arc::new(Mutex::new(Vec::new()));
+        let mut events = ClientEvents::default();
+        let sink = Arc::clone(&heard);
+        events
+            .server_needs_newer_version
+            .register(Owner::new("test"), move |event| {
+                sink.lock().unwrap().push(event.clone());
+            });
+        fire(&mut events);
+        fire(&mut events);
+        let wanted = u32::try_from(newest + 5).unwrap();
+        assert_eq!(
+            *heard.lock().unwrap(),
+            [ServerNeedsNewerVersion {
+                server_protocol: wanted,
+                update: UpdateForServer::None
+            }]
+        );
+    }
 }
