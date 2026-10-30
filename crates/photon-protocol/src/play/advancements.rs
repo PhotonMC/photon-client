@@ -27,7 +27,7 @@ fn read_display(
     // `ItemStackTemplate.STREAM_CODEC`: the item, its count and its components.
     let item = WireItemId::read(input, "advancement icon")?.canonical(registries);
     let count = read_varint(input, "advancement icon count")?;
-    let patch = photon_data::item_components::read_patch(input)
+    let patch = photon_data::item_components::read_wire_patch(input, registries)
         .map_err(|_| ConnectionError::Codec("advancement icon components"))?;
     let frame = AdvancementType::from_ordinal(read_varint(input, "advancement frame")?)
         .ok_or(ConnectionError::Codec("advancement frame"))?;

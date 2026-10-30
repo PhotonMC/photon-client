@@ -66,7 +66,7 @@ fn read_display_stack(
 ) -> Result<photon_core::recipes::SlotDisplay, ConnectionError> {
     let item = WireItemId::read(input, "display stack item")?.canonical(registries);
     let count = read_varint(input, "display stack count")?;
-    photon_data::item_components::read_patch(input)
+    photon_data::item_components::read_wire_patch(input, registries)
         .map_err(|_| ConnectionError::Codec("display stack components"))?;
     Ok(photon_core::recipes::SlotDisplay::ItemStack(item, count))
 }

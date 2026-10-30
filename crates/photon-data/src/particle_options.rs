@@ -133,6 +133,7 @@ fn read_item(
 ) -> Result<ParticleData, &'static str> {
     let item = ItemId(registries.items.canonical_or_unknown(varint(input)?));
     varint(input)?;
-    crate::item_components::read_patch(input).map_err(|_| "particle item components")?;
+    crate::item_components::read_wire_patch(input, registries)
+        .map_err(|_| "particle item components")?;
     Ok(ParticleData::Item(item))
 }
