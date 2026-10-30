@@ -1600,6 +1600,7 @@ dependencies = [
  "glfw",
  "keyring-core",
  "log",
+ "photon-api",
  "photon-assets",
  "photon-audio",
  "photon-content",
@@ -1617,6 +1618,9 @@ dependencies = [
 [[package]]
 name = "photon-api"
 version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+]
 
 [[package]]
 name = "photon-assets"

@@ -72,6 +72,7 @@ photon = [
     "photon-protocol",
     "photon-net",
     "photon-content",
+    "photon-api",
     "photon-render",
     "photon-gui",
     "photon-audio",
