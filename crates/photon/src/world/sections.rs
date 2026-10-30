@@ -294,8 +294,9 @@ impl SectionMeshes {
         loop {
             profile::timed(Span::ShowBuilt, || self.show_built(backend, camera_block))?;
             self.show_empty(session, backend, camera_block)?;
-            let visible = self.visible(session, view);
-            let ordered = self.ready(session, &visible, camera_block);
+            let visible = profile::timed(Span::Visible, || self.visible(session, view));
+            let ordered =
+                profile::timed(Span::Ready, || self.ready(session, &visible, camera_block));
             backend.set_visible_sections(self.culling.then_some(visible));
             let nothing_to_hand_out = ordered.is_empty();
             profile::timed(Span::HandOut, || {
@@ -425,14 +426,20 @@ impl SectionMeshes {
         let lit = |x: i32, z: i32| {
             world.contains_chunk(x, z) && world.light_engine().light_on_in_column(x, z)
         };
+        // A column has up to a few dozen sections in view, and all of them ask about the same
+        // eight neighbours, so each column is asked once.
+        let mut surrounded: HashMap<(i32, i32), bool> = HashMap::new();
         let mut ordered: Vec<SectionKey> = visible
             .iter()
             .copied()
             .filter(|key| self.pending.contains(key))
             .filter(|&(x, y, z)| {
                 self.compiled.contains_key(&(x, y, z))
-                    || (-1..=1)
-                        .all(|dx| (-1..=1).all(|dz| (dx == 0 && dz == 0) || lit(x + dx, z + dz)))
+                    || *surrounded.entry((x, z)).or_insert_with(|| {
+                        (-1..=1).all(|dx| {
+                            (-1..=1).all(|dz| (dx == 0 && dz == 0) || lit(x + dx, z + dz))
+                        })
+                    })
             })
             .collect();
         let distance = |&(x, y, z): &SectionKey| {

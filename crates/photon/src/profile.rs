@@ -24,16 +24,22 @@ pub enum Span {
     ShowBuilt,
     /// Entities, particles and the other overlays.
     Overlays,
+    /// The sections in view, from the occlusion graph.
+    Visible,
+    /// The dirty sections that may be built now, nearest first.
+    Ready,
 }
 
 /// The names of [`Span`]'s parts, in its order.
-pub const SPANS: [&str; 6] = [
+pub const SPANS: [&str; 8] = [
     "drain",
     "light",
     "graph",
     "hand_out",
     "show_built",
     "overlays",
+    "visible",
+    "ready",
 ];
 
 thread_local! {
@@ -141,6 +147,8 @@ const COLUMNS: [&str; 5 + SPANS.len()] = [
     "hand_out",
     "show_built",
     "overlays",
+    "visible",
+    "ready",
 ];
 
 /// The frames since the last print, one row of [`COLUMNS`] each, in
