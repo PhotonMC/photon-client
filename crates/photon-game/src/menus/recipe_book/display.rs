@@ -228,7 +228,10 @@ pub fn display_stacks(display: &SlotDisplay, tags: &ItemTags) -> Vec<(ItemId, i3
     match display {
         SlotDisplay::Item(item) => vec![(*item, 1)],
         SlotDisplay::ItemStack(item, count) => vec![(*item, *count)],
-        SlotDisplay::Tag(tag) => tags.members(tag).map(|item| (ItemId(item), 1)).collect(),
+        SlotDisplay::Tag(tag) => tags
+            .members_listed(tag)
+            .map(|item| (ItemId(item), 1))
+            .collect(),
         SlotDisplay::Composite(all) => all
             .iter()
             .flat_map(|one| display_stacks(one, tags))

@@ -64,6 +64,9 @@ impl BlockTags {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ItemTags {
     tags: BTreeMap<String, BTreeSet<i32>>,
+    /// Each tag's members in the order the server listed them (`HolderSet.Named` keeps that order;
+    /// a recipe's tag display cycles through it).
+    listed: BTreeMap<String, Vec<i32>>,
     /// The connected version's item numbering; `None` serves every item (a test's tags).
     numbering: Option<IdMap>,
 }
@@ -86,7 +89,7 @@ impl ItemTags {
         let items = registries
             .iter()
             .find(|registry| registry.registry.as_string() == name)?;
-        let tags = items
+        let listed: BTreeMap<String, Vec<i32>> = items
             .tags
             .iter()
             .map(|tag| {
@@ -98,10 +101,20 @@ impl ItemTags {
                 (tag.id.as_string(), members)
             })
             .collect();
+        let tags = listed
+            .iter()
+            .map(|(tag, members)| (tag.clone(), members.iter().copied().collect()))
+            .collect();
         Some(Self {
             tags,
+            listed,
             numbering: numbering.cloned(),
         })
+    }
+
+    /// The items of a tag in the order the server listed them.
+    pub fn members_listed(&self, tag: &str) -> impl Iterator<Item = i32> + '_ {
+        self.listed.get(tag).into_iter().flatten().copied()
     }
 
     /// Whether the connected version has the item (every item when no numbering is known).
@@ -168,5 +181,33 @@ mod ordered_tests {
     fn a_tag_keeps_the_order_the_server_listed() {
         let tags = OrderedTags::new([("minecraft:t".to_owned(), vec![5, 1, 3])]);
         assert_eq!(tags.members("minecraft:t").collect::<Vec<_>>(), [5, 1, 3]);
+    }
+}
+
+#[cfg(test)]
+mod listed_tests {
+    use photon_core::identifier::Identifier;
+    use photon_core::tags::{RegistryTags, TagEntry};
+
+    use super::*;
+
+    #[test]
+    fn an_item_tag_lists_its_members_in_the_servers_order_and_is_a_set_by_id() {
+        let registry = RegistryTags::new(
+            Identifier::parse("minecraft:item").unwrap(),
+            vec![TagEntry::new(
+                Identifier::parse("minecraft:logs").unwrap(),
+                vec![5, 1, 3],
+            )],
+        );
+        let tags = ItemTags::of_registry(&[registry], "minecraft:item", None).unwrap();
+        assert_eq!(
+            tags.members_listed("minecraft:logs").collect::<Vec<_>>(),
+            [5, 1, 3]
+        );
+        assert_eq!(
+            tags.members("minecraft:logs").collect::<Vec<_>>(),
+            [1, 3, 5]
+        );
     }
 }
