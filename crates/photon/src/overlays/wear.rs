@@ -3,7 +3,6 @@ use super::remote_placement::{flipped, remote_placement};
 use super::*;
 use crate::equipment::arm_poses;
 use crate::equipment::held_items::HandActions;
-use crate::objects::displays;
 use photon_render::entity::tag_rules::{NameRules, entity_name_tag, rules_of};
 use photon_world::EntityView;
 
@@ -438,105 +437,6 @@ pub fn experience_orbs(
             let at = pickup.position_at(partial);
             vertices.extend(orb(at, (value, age_in_ticks), pickup.from));
         }
-    }
-}
-
-/// Whether an entity casts no shadow: an invisible one, or a spectator.
-fn casts_no_shadow(entity: EntityView<'_>) -> bool {
-    entity.is_invisible() || entity.is_player() && entity.is_spectator()
-}
-
-/// `EntityRenderer.extractShadow` and `ShadowFeatureRenderer` for the
-/// entities the frame draws: the shadow each casts on the blocks below it.
-/// `shadowRadius` and `shadowStrength` are the renderers' (`shadow_radius`). `local` is the player's own place, when
-/// the camera shows them.
-pub fn entity_shadows(
-    session: &PlaySession,
-    textures: &photon_render::entity::textures::EntityTextures,
-    camera: &TagCamera,
-    local: Option<Vec3>,
-    view: FrameView,
-    vertices: &mut Vec<Vertex>,
-) {
-    use photon_world::ShadowInput;
-    let Some(rect) = textures.rect(SHADOW_TEXTURE) else {
-        return;
-    };
-    let world = session.world();
-    let partial = view.partial as f32;
-    let mut casters: Vec<Caster> = Vec::new();
-    for entity in world.entities().all() {
-        // `EntityRenderer.extractShadow`: an invisible entity casts none, nor does a spectator.
-        if casts_no_shadow(entity) {
-            continue;
-        }
-        let (radius, strength) = if entity.display().is_some() {
-            let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
-                continue;
-            };
-            let Some(shadow) = displays::display_shadow(
-                entity,
-                snapshot.position,
-                (camera.position.x, camera.position.y, camera.position.z),
-                partial,
-            ) else {
-                continue;
-            };
-            shadow
-        } else if let Some(shadow) = super::shadow_radius::of(entity) {
-            shadow
-        } else {
-            continue;
-        };
-        let Some(snapshot) = world.entity_snapshot(entity.id(), partial) else {
-            continue;
-        };
-        casters.push(Caster {
-            drawn: snapshot.position,
-            ticked: entity.position(),
-            radius,
-            strength,
-        });
-    }
-    if let Some(at) = local {
-        casters.push(Caster {
-            drawn: (at.x, at.y, at.z),
-            ticked: (at.x, at.y, at.z),
-            radius: 0.5,
-            strength: 1.0,
-        });
-    }
-    for Caster {
-        drawn,
-        ticked,
-        radius,
-        strength,
-    } in casters
-    {
-        let dx = camera.position.x - ticked.0;
-        let dy = camera.position.y - ticked.1;
-        let dz = camera.position.z - ticked.2;
-        let radius = radius.min(32.0);
-        let pieces = world.entity_shadow_pieces(ShadowInput {
-            position: drawn,
-            radius,
-            strength,
-            distance_sq: dx * dx + dy * dy + dz * dz,
-            // The sky's dimming (`gameplay/sky_light_level`) is not carried.
-            sky_darken: 0,
-        });
-        let translation = [
-            (drawn.0 - camera.position.x) as f32,
-            (drawn.1 - camera.position.y) as f32,
-            (drawn.2 - camera.position.z) as f32,
-        ];
-        vertices.extend(photon_render::entity::shadow::vertices(
-            &pieces,
-            radius,
-            translation,
-            rect,
-            camera.relative,
-        ));
     }
 }
 
