@@ -293,7 +293,9 @@ impl SectionMeshes {
         let camera_block = view.camera.map(|value| value.floor() as i64);
         loop {
             profile::timed(Span::ShowBuilt, || self.show_built(backend, camera_block))?;
-            self.show_empty(session, backend, camera_block)?;
+            profile::timed(Span::ShowEmpty, || {
+                self.show_empty(session, backend, camera_block)
+            })?;
             let visible = profile::timed(Span::Visible, || self.visible(session, view));
             let ordered =
                 profile::timed(Span::Ready, || self.ready(session, &visible, camera_block));

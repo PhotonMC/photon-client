@@ -28,10 +28,14 @@ pub enum Span {
     Visible,
     /// The dirty sections that may be built now, nearest first.
     Ready,
+    /// Dropping the sections whose chunk went away.
+    Forget,
+    /// Sections that turned out to have nothing to draw.
+    ShowEmpty,
 }
 
 /// The names of [`Span`]'s parts, in its order.
-pub const SPANS: [&str; 8] = [
+pub const SPANS: [&str; 10] = [
     "drain",
     "light",
     "graph",
@@ -40,6 +44,8 @@ pub const SPANS: [&str; 8] = [
     "overlays",
     "visible",
     "ready",
+    "forget",
+    "show_empty",
 ];
 
 thread_local! {
@@ -149,6 +155,8 @@ const COLUMNS: [&str; 5 + SPANS.len()] = [
     "overlays",
     "visible",
     "ready",
+    "forget",
+    "show_empty",
 ];
 
 /// The frames since the last print, one row of [`COLUMNS`] each, in

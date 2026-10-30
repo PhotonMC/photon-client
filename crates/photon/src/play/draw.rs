@@ -359,6 +359,15 @@ impl Play {
         }
     }
 
+    /// Drops the sections whose chunk went away.
+    fn forget_chunks(&mut self) -> Result<()> {
+        let forgotten = self.session.take_forgotten_chunks();
+        profile::timed(Span::Forget, || {
+            self.sections.forget_chunks(forgotten, &mut self.backend)
+        })?;
+        Ok(())
+    }
+
     /// One frame: the overlays, the sections, the atlas, the sky, then the
     /// GUI and the scene. A finished script captures its frames and stops.
     pub(super) fn draw(
@@ -377,8 +386,7 @@ impl Play {
         self.leave_out_of_view(&frame);
         profile::timed(Span::Overlays, || self.draw_overlays(&frame))?;
         // Drop the sections whose chunk went away, then mesh the dirty ones.
-        self.sections
-            .forget_chunks(self.session.take_forgotten_chunks(), &mut self.backend)?;
+        self.forget_chunks()?;
         self.sections.update(
             &mut self.session,
             &mut self.backend,

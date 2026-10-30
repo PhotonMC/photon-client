@@ -905,7 +905,7 @@
 "crates/photon/src/overlays/light.rs::player_model" = 68
 "crates/photon/src/overlays/wear.rs::remote_players" = 71
 "crates/photon/src/particles.rs::Particles::vertices" = 78
-"crates/photon/src/play/draw.rs::Play::draw" = 75
+"crates/photon/src/play/draw.rs::Play::draw" = 74
 "crates/photon/src/play/ticks.rs::Play::start" = 144
 "crates/photon/src/screens.rs::ScreenAssets::container_screen" = 63
 "crates/photon/src/window_probe/version.rs::model_scene" = 72
