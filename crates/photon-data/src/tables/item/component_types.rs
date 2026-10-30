@@ -3,6 +3,8 @@
 //!
 //! This table is maintained by hand; the parity families compare it with the reference.
 
+use photon_core::version::Version;
+
 pub const CUSTOM_DATA: i32 = 0;
 pub const MAX_STACK_SIZE: i32 = 1;
 pub const MAX_DAMAGE: i32 = 2;
@@ -237,4 +239,10 @@ pub fn id(name: &str) -> Option<i32> {
         .iter()
         .position(|known| *known == name)
         .map(|id| id as i32)
+}
+
+/// Whether `version` registers the component type of canonical id `id`. 26.1 lacks the one
+/// 26.2 added, so its numbering after that point is one lower.
+pub fn exists_in(id: i32, version: Version) -> bool {
+    id != SULFUR_CUBE_CONTENT || version >= Version::V26_2
 }

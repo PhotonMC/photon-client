@@ -52,7 +52,10 @@ pub fn encode_creative_slot(
             );
             // The server reads a client's components behind their lengths. A
             // patch this cannot read is left off rather than sent wrong.
-            match photon_data::item_components::delimit(stack.patch_bytes()) {
+            match photon_data::item_components::delimit(
+                stack.patch_bytes(),
+                &registries.component_types,
+            ) {
                 Some(patch) if !stack.patch_bytes().is_empty() => output.extend_from_slice(&patch),
                 _ => {
                     wire::write_varint(0, output);

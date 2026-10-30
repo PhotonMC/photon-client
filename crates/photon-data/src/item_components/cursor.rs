@@ -197,10 +197,10 @@ pub fn varint_value(value: &[u8]) -> Option<i32> {
 
 /// A patch as the trusted codec wrote it, sent back as the delimited codec
 /// writes it. `None` when the patch is not one this reads.
-pub fn delimit(trusted: &[u8]) -> Option<Vec<u8>> {
+pub fn delimit(trusted: &[u8], types: &crate::version_registries::IdMap) -> Option<Vec<u8>> {
     let mut input = trusted;
     let patch = read_patch(&mut input).ok()?;
-    input.is_empty().then(|| patch.delimited())
+    input.is_empty().then(|| patch.delimited_for(types))
 }
 
 pub struct Cursor<'a> {

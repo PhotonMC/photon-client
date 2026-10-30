@@ -15,6 +15,7 @@ use crate::named::presence;
 use crate::particle_type::PARTICLE_TYPES;
 use crate::tables::entity_types::ENTITY_TYPES;
 use crate::tables::item::attributes::ATTRIBUTES;
+use crate::tables::item::component_types;
 use crate::tables::registry_names::{BLOCK_ENTITY_TYPES, MENU_TYPES};
 use crate::tables::sound_events::SOUND_EVENTS;
 use crate::versions;
@@ -184,6 +185,8 @@ pub struct VersionRegistries {
     pub menu_types: IdMap,
     pub block_entity_types: IdMap,
     pub attributes: IdMap,
+    /// The data component types, which an item's component patch names its entries by.
+    pub component_types: IdMap,
 }
 
 impl VersionRegistries {
@@ -221,6 +224,10 @@ impl VersionRegistries {
                     .iter()
                     .map(|attribute| attribute.exists_in(version)),
             ),
+            component_types: IdMap::from_presence(
+                (0..component_types::NAMES.len() as i32)
+                    .map(|id| component_types::exists_in(id, version)),
+            ),
         }
     }
 
@@ -242,6 +249,7 @@ impl VersionRegistries {
             menu_types: dense(&real.menu_types),
             block_entity_types: dense(&real.block_entity_types),
             attributes: dense(&real.attributes),
+            component_types: dense(&real.component_types),
         }
     }
 
@@ -267,7 +275,7 @@ impl VersionRegistries {
     }
 
     /// Every registry's name and map, for checks that cover them all.
-    pub fn all(&self) -> [(&'static str, &IdMap); 9] {
+    pub fn all(&self) -> [(&'static str, &IdMap); 10] {
         [
             ("items", &self.items),
             ("blocks", &self.blocks),
@@ -278,6 +286,7 @@ impl VersionRegistries {
             ("menu_types", &self.menu_types),
             ("block_entity_types", &self.block_entity_types),
             ("attributes", &self.attributes),
+            ("component_types", &self.component_types),
         ]
     }
 }

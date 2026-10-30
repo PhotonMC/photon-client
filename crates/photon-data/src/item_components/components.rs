@@ -264,6 +264,12 @@ impl Cursor<'_> {
     }
 
     pub fn patch(&mut self) -> R<Patch> {
+        self.patch_by(&|id| id)
+    }
+
+    /// A patch whose component type ids are numbered by `canonical`, which maps each id the
+    /// patch carries to the canonical one; the parts it returns are canonical.
+    pub fn patch_by(&mut self, canonical: &dyn Fn(i32) -> i32) -> R<Patch> {
         let added_count = self.count()?;
         let removed_count = self.count()?;
         let mut patch = Patch {
@@ -271,14 +277,14 @@ impl Cursor<'_> {
             removed: Vec::new(),
         };
         for _ in 0..added_count {
-            let id = self.varint()?;
+            let id = canonical(self.varint()?);
             let start = self.data;
             self.component(id)?;
             let length = start.len() - self.data.len();
             patch.added.push((id, start[..length].to_vec()));
         }
         for _ in 0..removed_count {
-            patch.removed.push(self.varint()?);
+            patch.removed.push(canonical(self.varint()?));
         }
         Ok(patch)
     }
@@ -365,6 +371,14 @@ pub struct Patch {
 pub fn read_patch(input: &mut &[u8]) -> R<Patch> {
     let mut cursor = Cursor { data: input };
     let patch = cursor.patch()?;
+    *input = cursor.data;
+    Ok(patch)
+}
+
+/// A patch as a server numbers its component types, read into canonical ids and values.
+pub fn read_wire_patch(input: &mut &[u8], types: &crate::version_registries::IdMap) -> R<Patch> {
+    let mut cursor = Cursor { data: input };
+    let patch = cursor.patch_by(&|wire| types.canonical_or_unknown(wire))?;
     *input = cursor.data;
     Ok(patch)
 }
@@ -503,6 +517,19 @@ impl Patch {
         self.write(true)
     }
 
+    /// [`Self::delimited`] with the component types numbered the way `types` numbers them on
+    /// the wire.
+    pub fn delimited_for(&self, types: &crate::version_registries::IdMap) -> Vec<u8> {
+        let mut wire = self.clone();
+        for (id, _) in &mut wire.added {
+            *id = types.wire_or_unknown(*id);
+        }
+        for id in &mut wire.removed {
+            *id = types.wire_or_unknown(*id);
+        }
+        wire.write(true)
+    }
+
     pub(super) fn write(&self, delimited: bool) -> Vec<u8> {
         let mut out = Vec::new();
         photon_core::wire::write_varint(self.added.len() as i32, &mut out);
@@ -589,6 +616,38 @@ mod tests {
         let mut input = &[0_u8, 0][..];
         let patch = read_patch(&mut input).expect("a patch");
         assert!(patch.added.is_empty() && patch.removed.is_empty());
-        assert_eq!(delimit(&[0, 0]), Some(vec![0, 0]));
+        let types = crate::version_registries::IdMap::from_presence([true]);
+        assert_eq!(delimit(&[0, 0], &types), Some(vec![0, 0]));
+    }
+
+    #[test]
+    fn a_patch_of_a_version_with_a_gap_reads_in_canonical_ids_and_writes_back() {
+        use crate::version_registries::VersionRegistries;
+        use photon_core::version::Version;
+        let older = VersionRegistries::of(Version::V26_1)
+            .component_types
+            .clone();
+        let newest = VersionRegistries::of(Version::V26_2)
+            .component_types
+            .clone();
+        // max_stack_size 16, then removed: the id before the gap and the one after it.
+        let sulfur = ids::SULFUR_CUBE_CONTENT as u8;
+        let wire = [1, 2, 1, 16, sulfur - 1, sulfur];
+        let patch = read_wire_patch(&mut &wire[..], &older).expect("a patch");
+        assert_eq!(patch.added, vec![(1, vec![16])]);
+        assert_eq!(
+            patch.removed,
+            vec![i32::from(sulfur) - 1, i32::from(sulfur) + 1]
+        );
+        assert_eq!(patch.trusted(), [1, 2, 1, 16, sulfur - 1, sulfur + 1]);
+        assert_eq!(
+            patch.delimited_for(&older),
+            [1, 2, 1, 1, 16, sulfur - 1, sulfur]
+        );
+        assert!(newest.is_identity());
+        assert_eq!(
+            patch.delimited_for(&newest),
+            [1, 2, 1, 1, 16, sulfur - 1, sulfur + 1]
+        );
     }
 }
