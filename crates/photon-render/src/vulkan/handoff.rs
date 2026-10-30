@@ -24,6 +24,19 @@ struct State {
     busy: bool,
     panicked: bool,
     error: Option<Box<dyn std::any::Any + Send>>,
+    stats: HandoffStats,
+}
+
+/// What the hand-off cost, since it was made.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HandoffStats {
+    /// Jobs the render thread (or the inline run) finished.
+    pub jobs: u64,
+    /// The time those jobs took.
+    pub job_time: std::time::Duration,
+    /// The time the owner was blocked, waiting for a job it had touched the value too soon after.
+    /// It is the most that moving the first touch later could win back.
+    pub waited: std::time::Duration,
 }
 
 struct Shared {
@@ -81,9 +94,12 @@ impl<T: Send + 'static> Handoff<T> {
                         // SAFETY: `Address`: the owner waits for `busy` to clear before it
                         // touches the value, so this is the only access.
                         let value = unsafe { &mut *address.0.as_ptr() };
+                        let began = std::time::Instant::now();
                         let outcome =
                             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(value)));
                         let mut state = shared.state.lock().unwrap_or_else(|e| e.into_inner());
+                        state.stats.jobs += 1;
+                        state.stats.job_time += began.elapsed();
                         state.busy = false;
                         state.panicked |= outcome.is_err();
                         shared.done.notify_all();
@@ -125,7 +141,11 @@ impl<T: Send + 'static> Handoff<T> {
     pub fn submit(&mut self, job: impl FnOnce(&mut T) + Send + 'static) {
         self.wait();
         let Some(worker) = &self.worker else {
+            let began = std::time::Instant::now();
             job(self);
+            let mut state = self.shared.state.lock().unwrap_or_else(|e| e.into_inner());
+            state.stats.jobs += 1;
+            state.stats.job_time += began.elapsed();
             return;
         };
         self.shared
@@ -180,14 +200,27 @@ impl<T: Send + 'static> Handoff<T> {
         self.wait();
     }
 
+    /// What the hand-off has cost so far. Does not wait.
+    pub fn stats(&self) -> HandoffStats {
+        self.shared
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .stats
+    }
+
     fn wait(&self) {
         let mut state = self.shared.state.lock().unwrap_or_else(|e| e.into_inner());
-        while state.busy {
-            state = self
-                .shared
-                .done
-                .wait(state)
-                .unwrap_or_else(|e| e.into_inner());
+        if state.busy {
+            let began = std::time::Instant::now();
+            while state.busy {
+                state = self
+                    .shared
+                    .done
+                    .wait(state)
+                    .unwrap_or_else(|e| e.into_inner());
+            }
+            state.stats.waited += began.elapsed();
         }
         assert!(!state.panicked, "a job on the render thread panicked");
     }
@@ -259,6 +292,20 @@ mod tests {
         // Reading waits for it.
         assert_eq!(*value, 7);
         assert!(began.elapsed() >= Duration::from_millis(150));
+    }
+
+    #[test]
+    fn the_stats_count_jobs_and_the_time_the_owner_waited() {
+        let mut value = Handoff::threaded(0);
+        value.submit(|_| std::thread::sleep(Duration::from_millis(60)));
+        let _ = *value;
+        let stats = value.stats();
+        assert_eq!(stats.jobs, 1);
+        assert!(stats.job_time >= Duration::from_millis(60));
+        assert!(stats.waited >= Duration::from_millis(30));
+        // Touching it again with nothing in flight costs nothing.
+        let _ = *value;
+        assert_eq!(value.stats().waited, stats.waited);
     }
 
     #[test]

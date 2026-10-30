@@ -504,6 +504,7 @@ impl Play {
                 memory: self.backend.section_memory(),
                 present_mode: format!("{:?}", self.backend.description().present_mode),
                 render_mode: crate::settings::Settings::get().render.name(),
+                render_thread: self.backend.stats(),
                 framerate_limit: self.controls.options.framerate_limit,
             })?;
         }

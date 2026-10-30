@@ -55,6 +55,8 @@ pub struct RunInfo {
     pub present_mode: String,
     /// `photon.toml`'s render mode, by name.
     pub render_mode: &'static str,
+    /// What the hand-off to the render thread cost.
+    pub render_thread: photon_render::HandoffStats,
     pub memory: photon_render::SectionMemory,
     pub framerate_limit: i32,
 }
@@ -100,6 +102,8 @@ pub struct Bench {
     pending: Option<Pending>,
     /// Stamped by the render thread when it returns from presenting a frame.
     presented: Arc<Mutex<Option<Instant>>>,
+    /// The lowest and highest GPU shader clock seen in the run, in MHz.
+    clock: Option<(u32, u32)>,
 }
 
 /// What a frame knew when the main thread was done with it.
@@ -109,7 +113,51 @@ struct Pending {
     parts: [f64; profile::SPANS.len()],
 }
 
+/// Frames between two readings of the GPU clock.
+const CLOCK_EVERY: usize = 120;
+
+/// The shader clock the GPU runs at now, in MHz: the starred line of the driver's list of levels.
+/// A GPU at a low level makes a frame's GPU time several times longer, so a run's report keeps it.
+fn gpu_clock_mhz() -> Option<u32> {
+    let entries = std::fs::read_dir("/sys/class/drm").ok()?;
+    entries.flatten().find_map(|entry| {
+        let levels = std::fs::read_to_string(entry.path().join("device/pp_dpm_sclk")).ok()?;
+        let line = levels.lines().find(|line| line.trim_end().ends_with('*'))?;
+        let digits: String = line
+            .split(':')
+            .nth(1)?
+            .trim()
+            .chars()
+            .take_while(char::is_ascii_digit)
+            .collect();
+        digits.parse().ok()
+    })
+}
+
 impl Bench {
+    /// Notes the GPU's clock level, when the system tells it.
+    fn sample_clock(&mut self) {
+        if let Some(now) = gpu_clock_mhz() {
+            let (low, high) = self.clock.unwrap_or((now, now));
+            self.clock = Some((low.min(now), high.max(now)));
+        }
+    }
+
+    /// What the machine and the hand-off did during the run, as report lines.
+    fn machine_json(&self, info: &RunInfo) -> String {
+        let stats = info.render_thread;
+        let per_job = |time: Duration| time.as_secs_f64() * 1000.0 / stats.jobs.max(1) as f64;
+        let clock = self
+            .clock
+            .map_or("null".to_owned(), |(low, high)| format!("[{low}, {high}]"));
+        format!(
+            "  \"gpu_clock_mhz\": {clock},\n  \"render_thread\": {{\"jobs\": {}, \"job_ms_mean\": {:.3}, \"main_wait_ms_mean\": {:.3}}},\n",
+            stats.jobs,
+            per_job(stats.job_time),
+            per_job(stats.waited)
+        )
+    }
+
     /// A recorder if `PHOTON_BENCH` names a report file; `PHOTON_BENCH_WARMUP` is
     /// the seconds to leave out at the start.
     pub fn from_env() -> Option<Self> {
@@ -126,6 +174,7 @@ impl Bench {
             samples: Vec::new(),
             pending: None,
             presented: Arc::default(),
+            clock: None,
         })
     }
 
@@ -183,6 +232,9 @@ impl Bench {
             return;
         }
         let ms = |from: Instant, to: Instant| (to - from).as_secs_f64() * 1000.0;
+        if self.samples.len().is_multiple_of(CLOCK_EVERY) {
+            self.sample_clock();
+        }
         self.last_frame = Some(drawn);
         self.samples.push(Sample {
             cpu: [
@@ -230,6 +282,7 @@ impl Bench {
         // swapchain ends on the display's schedule: what the work cost.
         let work = column(&|sample| sample.cpu[4] - sample.backend.acquire.as_secs_f64() * 1000.0);
         let mut out = info.json_head();
+        out.push_str(&self.machine_json(info));
         let _ = writeln!(out, "  \"warmup_s\": {},", self.warmup.as_secs_f64());
         let _ = writeln!(out, "  \"frames\": {frames},");
         // Frames per second of the wall clock, which a vsynced swapchain or a limit holds to the

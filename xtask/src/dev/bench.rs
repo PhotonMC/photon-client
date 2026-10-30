@@ -145,6 +145,27 @@ fn triple(report: &Value, section: &str) -> String {
     )
 }
 
+/// The GPU clock range of the run and what the hand-off to the render thread cost per frame, when
+/// the report has them: a run at a low clock, or a main thread blocked on the render thread, is
+/// what to look at before trusting a number.
+fn machine_text(report: &Value) -> String {
+    let clock = match (
+        number(report, "/gpu_clock_mhz/0"),
+        number(report, "/gpu_clock_mhz/1"),
+    ) {
+        (Some(low), Some(high)) => format!(" gpu_clock={low:.0}-{high:.0}MHz"),
+        _ => String::new(),
+    };
+    let thread = match (
+        number(report, "/render_thread/job_ms_mean"),
+        number(report, "/render_thread/main_wait_ms_mean"),
+    ) {
+        (Some(job), Some(wait)) => format!(" render_thread_ms={job:.2} main_wait_ms={wait:.2}"),
+        _ => String::new(),
+    };
+    clock + &thread
+}
+
 fn gpu_text(report: &Value) -> String {
     let present = report["gpu_ms"]
         .as_object()
@@ -196,7 +217,8 @@ fn summary(report: &Value) -> String {
         number(report, "/wall_fps").unwrap_or(f64::NAN),
         gpu_text(report),
         parts_text(report)
-    ) + &pacing_text(report)
+    ) + &machine_text(report)
+        + &pacing_text(report)
 }
 
 /// The worst one-second window, the intervals past 1/240 s and 1/230 s, and the blinks.

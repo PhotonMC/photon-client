@@ -65,5 +65,6 @@ pub use texture::mipmap::{
 pub use texture::png::{DecodedImage, PngError, decode_rgba};
 pub use texture::sprite_alpha::{Layer, SpriteAlpha};
 pub use vulkan::{
-    CapturedFrame, Handoff, SectionMemory, VulkanBackend, VulkanError, validation_findings,
+    CapturedFrame, Handoff, HandoffStats, SectionMemory, VulkanBackend, VulkanError,
+    validation_findings,
 };

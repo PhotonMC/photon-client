@@ -73,7 +73,7 @@ mod vertex_attributes;
 use bytes::as_bytes;
 pub use draws::DrawKind;
 use frame::transition;
-pub use handoff::Handoff;
+pub use handoff::{Handoff, HandoffStats};
 use owned::{BoundBuffer, Descriptors, Image, Pipeline, Sampler, Texture};
 use swapchain::{choose_present_mode, clamp_extent};
 pub use validation::validation_findings;
