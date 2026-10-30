@@ -18,6 +18,9 @@ pub struct Entities {
     read: QueryState<ReadView>,
     write: QueryState<WriteView>,
     ids: BTreeMap<EntityId, Entity>,
+    /// The entities of `ids` that are not in `out_of_view`, in id order: what every renderer of
+    /// a frame walks, kept beside the map so each of them does not walk all the entities again.
+    visible: Vec<(EntityId, Entity)>,
     /// The ids of the entities in each section, as `EntitySectionStorage` indexes them.
     pub(crate) sections: BTreeMap<(i32, i32, i32), BTreeSet<EntityId>>,
     /// The entities the frame being drawn leaves out because they are wholly outside the view.
@@ -38,6 +41,7 @@ impl Default for Entities {
             read,
             write,
             ids: BTreeMap::new(),
+            visible: Vec::new(),
             sections: BTreeMap::new(),
             out_of_view: BTreeSet::new(),
             friendly_ghosts: BTreeSet::new(),
@@ -150,6 +154,10 @@ impl Entities {
         }
         let spawned = self.ecs.spawn(parts).id();
         self.ids.insert(entity_id, spawned);
+        if !self.out_of_view.contains(&entity_id) {
+            let at = self.visible.partition_point(|&(id, _)| id < entity_id);
+            self.visible.insert(at, (entity_id, spawned));
+        }
         self.refresh_queries();
         None
     }
@@ -157,6 +165,9 @@ impl Entities {
     /// Take an entity away, with its state.
     pub(crate) fn remove(&mut self, entity_id: EntityId) -> Option<EntityParts> {
         let entity = self.ids.remove(&entity_id)?;
+        if let Ok(at) = self.visible.binary_search_by_key(&entity_id, |&(id, _)| id) {
+            self.visible.remove(at);
+        }
         let mut taken = self.ecs.entity_mut(entity);
         let parts = taken.take::<EntityParts>();
         self.ecs.despawn(entity);
@@ -166,6 +177,7 @@ impl Entities {
 
     pub(crate) fn clear(&mut self) {
         // The world's resources are entities too: only the client's entities go.
+        self.visible.clear();
         for (_, entity) in std::mem::take(&mut self.ids) {
             self.ecs.despawn(entity);
         }
@@ -189,16 +201,9 @@ impl Entities {
     /// [`Self::drawn`] with the invisible mobs, for the renderers that keep what such a mob wears
     /// and holds and leave only its body out.
     pub fn drawn_with_invisible(&self) -> impl Iterator<Item = EntityView<'_>> {
-        // Both are in id order, so one pass over each finds the ids left out.
-        let mut left_out = self.out_of_view.iter().copied().peekable();
-        self.ids.iter().filter_map(move |(&id, &entity)| {
-            while left_out.next_if(|&out| out < id).is_some() {}
-            // A left-out entity is skipped before its view is built.
-            if left_out.next_if_eq(&id).is_some() {
-                return None;
-            }
-            self.view(entity)
-        })
+        self.visible
+            .iter()
+            .filter_map(|&(_, entity)| self.view(entity))
     }
 
     /// Set which invisible entities the local player sees as ghosts (`Entity.isInvisibleTo`).
@@ -213,6 +218,12 @@ impl Entities {
 
     /// Set which entities the next frames leave out as out of view.
     pub fn set_out_of_view(&mut self, ids: BTreeSet<EntityId>) {
+        self.visible = self
+            .ids
+            .iter()
+            .filter(|(id, _)| !ids.contains(id))
+            .map(|(&id, &entity)| (id, entity))
+            .collect();
         self.out_of_view = ids;
     }
 }

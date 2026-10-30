@@ -4,6 +4,7 @@ mod boats;
 mod clouds;
 mod dimension_change;
 mod dimensions;
+mod drawn;
 mod eating;
 mod entity_collision;
 mod fireworks;
