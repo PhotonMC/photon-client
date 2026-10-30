@@ -114,7 +114,7 @@ impl Play {
             reload: Default::default(),
             session,
             surface,
-            backend,
+            backend: super::render_link::handoff(backend),
             script,
             block_renderer,
             biome_tints,
@@ -272,7 +272,7 @@ impl Play {
         };
         let Self {
             surface,
-            mut backend,
+            backend,
             sized_for,
             block_renderer,
             animated_atlas,
@@ -282,6 +282,7 @@ impl Play {
             gui,
             ..
         } = self;
+        let mut backend = backend.into_inner();
         backend.clear_sections()?;
         Ok((
             Client {

@@ -25,13 +25,6 @@ pub(crate) struct Settings {
 }
 
 impl RenderMode {
-    /// The mode that runs: the pipelined setting runs the serial path until the render thread
-    /// exists (#22), and the bench report names this one, so a number is never labelled with a
-    /// path it did not take.
-    pub(crate) fn running(self) -> Self {
-        Self::Serial
-    }
-
     /// The name the bench report gives the mode.
     pub(crate) fn name(self) -> &'static str {
         match self {

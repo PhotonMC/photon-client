@@ -272,7 +272,7 @@ struct Play {
     loading: Option<loading::LoadingView>,
     // Fields drop in order: the swapchain goes before the window it presents
     // to, or the driver reaches into a destroyed Wayland surface.
-    backend: VulkanBackend,
+    backend: photon_render::Handoff<VulkanBackend>,
     surface: WindowSurface,
     script: Option<Script>,
     block_renderer: Arc<BlockRenderer>,
@@ -620,6 +620,7 @@ mod loading;
 mod own_model;
 mod pacing;
 mod reload;
+mod render_link;
 mod schedule;
 mod social_toast;
 mod switch;

@@ -17,11 +17,13 @@ use std::thread::JoinHandle;
 
 type Job<T> = Box<dyn FnOnce(&mut T) + Send>;
 
-/// Whether a job is running, and whether the last one panicked.
+/// Whether a job is running, whether the last one panicked, and the first error a fallible job
+/// returned that nobody has taken yet.
 #[derive(Default)]
 struct State {
     busy: bool,
     panicked: bool,
+    error: Option<Box<dyn std::any::Any + Send>>,
 }
 
 struct Shared {
@@ -97,6 +99,22 @@ impl<T: Send + 'static> Handoff<T> {
         }
     }
 
+    /// The value back, once the job in flight is done; the render thread ends.
+    pub fn into_inner(self) -> T {
+        self.wait();
+        let mut this = std::mem::ManuallyDrop::new(self);
+        if let Some(Worker { jobs, thread }) = this.worker.take() {
+            drop(jobs);
+            let _ = thread.join();
+        }
+        // SAFETY: `this` is never dropped, so the pointer made by `Box::leak` in `make` is read
+        // back once, no job runs, and the one other owning field is dropped here.
+        unsafe {
+            std::ptr::drop_in_place(&raw mut this.shared);
+            *Box::from_raw(this.value.as_ptr())
+        }
+    }
+
     /// Whether jobs run on a render thread.
     pub fn is_threaded(&self) -> bool {
         self.worker.is_some()
@@ -121,6 +139,35 @@ impl<T: Send + 'static> Handoff<T> {
             .is_err()
         {
             panic!("the render thread has stopped");
+        }
+    }
+
+    /// [`submit`](Self::submit) for a job that can fail. The error does not wait for the owner:
+    /// the first one is kept for [`take_error`](Self::take_error), which the owner calls once a
+    /// frame.
+    pub fn submit_result<E: Send + 'static>(
+        &mut self,
+        job: impl FnOnce(&mut T) -> Result<(), E> + Send + 'static,
+    ) {
+        let shared = Arc::clone(&self.shared);
+        self.submit(move |value| {
+            if let Err(error) = job(value) {
+                let mut state = shared.state.lock().unwrap_or_else(|e| e.into_inner());
+                state.error.get_or_insert(Box::new(error));
+            }
+        });
+    }
+
+    /// The error a job returned, if one did and it is an `E`. Does not wait.
+    pub fn take_error<E: 'static>(&self) -> Option<E> {
+        let mut state = self.shared.state.lock().unwrap_or_else(|e| e.into_inner());
+        let error = state.error.take()?;
+        match error.downcast::<E>() {
+            Ok(error) => Some(*error),
+            Err(other) => {
+                state.error = Some(other);
+                None
+            }
         }
     }
 
@@ -212,6 +259,26 @@ mod tests {
         // Reading waits for it.
         assert_eq!(*value, 7);
         assert!(began.elapsed() >= Duration::from_millis(150));
+    }
+
+    #[test]
+    fn the_value_comes_back_after_its_job() {
+        let mut value = Handoff::threaded(String::from("a"));
+        value.submit(|text| {
+            std::thread::sleep(Duration::from_millis(30));
+            text.push('b');
+        });
+        assert_eq!(value.into_inner(), "ab");
+    }
+
+    #[test]
+    fn a_failed_job_leaves_its_first_error_for_the_owner() {
+        let mut value = Handoff::threaded(0);
+        value.submit_result(|_| Err::<(), _>("first"));
+        value.submit_result(|_| Err::<(), _>("second"));
+        value.finish();
+        assert_eq!(value.take_error::<&str>(), Some("first"));
+        assert_eq!(value.take_error::<&str>(), None);
     }
 
     #[test]

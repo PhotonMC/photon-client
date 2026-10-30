@@ -422,7 +422,7 @@ impl Play {
             let captured = self.backend.capture_scene(colour, frame.view_projection)?;
             self.save_screenshot(&captured);
         } else {
-            self.backend.draw_scene(colour, frame.view_projection)?;
+            self.submit_scene(colour, frame.view_projection)?;
         }
         self.frames += 1;
         let parts = profile::take_parts();
@@ -433,7 +433,7 @@ impl Play {
                 profile.record(spans, parts, &mut self.sections);
             }
             if let Some(bench) = self.bench.as_mut() {
-                bench.record(spans, self.limiter.sampled_at(), parts, &self.backend);
+                bench.defer(spans, self.limiter.sampled_at(), parts);
             }
         }
         Ok(Flow::Next)
@@ -490,6 +490,7 @@ impl Play {
             self.captured_frames += 1;
             return Ok(Flow::Next);
         }
+        self.flush_bench();
         report_end(&self.session, self.ticks, frame.rotation)?;
         if let Some(bench) = &self.bench {
             let extent = self.backend.extent();
@@ -502,7 +503,7 @@ impl Play {
                 validation: photon_render::validation_findings(),
                 memory: self.backend.section_memory(),
                 present_mode: format!("{:?}", self.backend.description().present_mode),
-                render_mode: crate::settings::Settings::get().render.running().name(),
+                render_mode: crate::settings::Settings::get().render.name(),
                 framerate_limit: self.controls.options.framerate_limit,
             })?;
         }

@@ -3,6 +3,7 @@
 //! percentiles instead of by eye. `python3 tools/photon.py bench` drives it.
 
 use std::fmt::Write as _;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use photon_render::{BackendTimings, GPU_PASSES, GpuTimings, VulkanBackend};
@@ -95,6 +96,17 @@ pub struct Bench {
     /// When the last measured frame ended, for the frames per second of the wall clock.
     last_frame: Option<Instant>,
     samples: Vec<Sample>,
+    /// The frame submitted last, recorded once its backend timings are final.
+    pending: Option<Pending>,
+    /// Stamped by the render thread when it returns from presenting a frame.
+    presented: Arc<Mutex<Option<Instant>>>,
+}
+
+/// What a frame knew when the main thread was done with it.
+struct Pending {
+    spans: [Instant; 5],
+    input_sampled: Instant,
+    parts: [f64; profile::SPANS.len()],
 }
 
 impl Bench {
@@ -112,7 +124,50 @@ impl Bench {
             first_frame: None,
             last_frame: None,
             samples: Vec::new(),
+            pending: None,
+            presented: Arc::default(),
         })
+    }
+
+    /// The slot the render thread stamps with the time a frame was presented.
+    pub fn presented(&self) -> Arc<Mutex<Option<Instant>>> {
+        Arc::clone(&self.presented)
+    }
+
+    /// The frame just submitted: it is recorded by [`flush`](Self::flush), when the render thread
+    /// is done with it. `spans` ends with the time the main thread finished it, which the
+    /// presentation time replaces.
+    pub fn defer(
+        &mut self,
+        spans: [Instant; 5],
+        input_sampled: Instant,
+        parts: [f64; profile::SPANS.len()],
+    ) {
+        self.pending = Some(Pending {
+            spans,
+            input_sampled,
+            parts,
+        });
+    }
+
+    /// Records the deferred frame with the backend's timings of it, and the time it was presented.
+    /// The caller has the backend, so the render thread is done with the frame.
+    pub fn flush(&mut self, backend: &VulkanBackend) {
+        let Some(Pending {
+            mut spans,
+            input_sampled,
+            parts,
+        }) = self.pending.take()
+        else {
+            return;
+        };
+        let stamp = self
+            .presented
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        spans[4] = stamp.unwrap_or(spans[4]);
+        self.record(spans, input_sampled, parts, backend);
     }
 
     /// One drawn frame, by when it started, ticked, meshed, built and drew.
