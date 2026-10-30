@@ -16,6 +16,8 @@ impl Storage {
             affected_sections: HashSet::new(),
             queued_sections: LayerMap::default(),
             columns_to_retain: HashSet::new(),
+            touched_layers: HashSet::new(),
+            touched_tops: HashSet::new(),
             to_remove: Vec::new(),
             has_inconsistencies: false,
         }
@@ -35,7 +37,7 @@ impl Storage {
         let id = self.updating.get(key)?;
         if self.changed_sections.insert(key) {
             let copy = self.arena.alloc(self.arena.get(id).clone());
-            self.updating.set(&mut self.arena, key, copy);
+            self.set_updating(key, copy);
             return Some(copy);
         }
         Some(id)
@@ -56,7 +58,7 @@ impl Storage {
             // `copyDataLayer`.
             let old = self.updating.get(key).expect("stored section");
             let copy = self.arena.alloc(self.arena.get(old).clone());
-            self.updating.set(&mut self.arena, key, copy);
+            self.set_updating(key, copy);
             copy
         } else {
             self.updating.get(key).expect("stored section")
@@ -121,6 +123,7 @@ impl Storage {
         let to_remove = std::mem::take(&mut self.to_remove);
         for &node in &to_remove {
             let queued = self.queued_sections.remove(&mut self.arena, node);
+            self.touched_layers.insert(node);
             let stored = self.updating.remove(&mut self.arena, node);
             if self.columns_to_retain.contains(&column(node)) {
                 if let Some(queued) = queued {
@@ -146,7 +149,7 @@ impl Storage {
         for (key, id) in queued {
             if self.storing_light_for_section(key) {
                 if self.updating.get(key) != Some(id) {
-                    self.updating.set(&mut self.arena, key, id);
+                    self.set_updating(key, id);
                     self.changed_sections.insert(key);
                 }
                 if let Some(id) = self.queued_sections.remove(&mut self.arena, key) {
@@ -166,6 +169,7 @@ impl Storage {
         }
         let old_top = self.updating_sky.top(column(key));
         if old_top < y + 1 {
+            self.touched_tops.insert(column(key));
             self.updating_sky.top_sections.insert(column(key), y + 1);
         }
     }
@@ -176,6 +180,7 @@ impl Storage {
         }
         let col = column(key);
         let mut y = key.1;
+        self.touched_tops.insert(col);
         if self.updating_sky.top(col) == y + 1 {
             let mut top = key;
             while !self.storing_light_for_section(top) && self.has_light_data_at_or_below(y) {
@@ -276,26 +281,51 @@ impl Storage {
             return;
         }
         let id = self.create_data_layer(key);
-        self.updating.set(&mut self.arena, key, id);
+        self.set_updating(key, id);
         self.changed_sections.insert(key);
         self.on_node_added(key);
         self.mark_section_and_neighbors_as_affected(key);
         self.has_inconsistencies = true;
     }
 
+    /// Store a layer in the updating map and remember the section for the next swap.
+    fn set_updating(&mut self, key: SectionKey, id: LayerId) {
+        self.touched_layers.insert(key);
+        self.updating.set(&mut self.arena, key, id);
+    }
+
     /// `swapSectionMap`: publish the updating layers; the sections whose
-    /// light changed come back to be redrawn.
+    /// light changed come back to be redrawn. Only the entries touched since
+    /// the last swap are brought across, which leaves the same published map
+    /// as copying all of it.
     pub(super) fn swap_section_map(&mut self) -> Vec<SectionKey> {
         if !self.changed_sections.is_empty() {
-            let old: Vec<LayerId> = self.visible.map.values().copied().collect();
-            self.visible.map = self.updating.map.clone();
-            for id in self.visible.map.values() {
-                self.arena.retain(*id);
+            for key in std::mem::take(&mut self.touched_layers) {
+                let new = self.updating.get(key);
+                let old = self.visible.get(key);
+                if new == old {
+                    continue;
+                }
+                match new {
+                    Some(id) => {
+                        self.arena.retain(id);
+                        self.visible.map.insert(key, id);
+                    }
+                    None => {
+                        self.visible.map.remove(&key);
+                    }
+                }
+                if let Some(old) = old {
+                    self.arena.release(old);
+                }
             }
-            for id in old {
-                self.arena.release(id);
+            for col in std::mem::take(&mut self.touched_tops) {
+                match self.updating_sky.top_sections.get(&col) {
+                    Some(top) => self.visible_sky.top_sections.insert(col, *top),
+                    None => self.visible_sky.top_sections.remove(&col),
+                };
             }
-            self.visible_sky = self.updating_sky.clone();
+            self.visible_sky.current_lowest_y = self.updating_sky.current_lowest_y;
             self.changed_sections.clear();
         }
         self.affected_sections.drain().collect()
@@ -380,6 +410,10 @@ pub(super) struct Storage {
     pub(super) affected_sections: HashSet<SectionKey>,
     pub(super) queued_sections: LayerMap,
     pub(super) columns_to_retain: HashSet<ColumnKey>,
+    /// Sections whose updating layer changed since the last swap.
+    pub(super) touched_layers: HashSet<SectionKey>,
+    /// Columns whose sky top changed since the last swap.
+    pub(super) touched_tops: HashSet<ColumnKey>,
     pub(super) to_remove: Vec<SectionKey>,
     pub(super) has_inconsistencies: bool,
 }
