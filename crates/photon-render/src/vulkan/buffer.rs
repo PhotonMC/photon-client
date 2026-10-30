@@ -333,6 +333,8 @@ pub(super) struct SectionBuffers {
     pub(super) indices: ArenaSlice,
     pub(super) index_count: u32,
     pub(super) translucent_index_count: u32,
+    /// Which part of the opaque indices faces which way.
+    pub(super) groups: super::face_groups::FaceGroups,
     /// Where the mesh sits, for ordering its translucent faces.
     pub(super) centre: [f32; 3],
     /// When the section first showed and how long it takes to fade in.

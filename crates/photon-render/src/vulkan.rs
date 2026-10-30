@@ -50,6 +50,7 @@ mod bytes;
 mod device;
 mod draws;
 mod entity_outline;
+mod face_groups;
 mod frame;
 mod gui_blur;
 mod handoff;

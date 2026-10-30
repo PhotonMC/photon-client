@@ -1,5 +1,6 @@
 //! Section meshes handed to the backend, and the retiring of the ones it replaces.
 
+use super::face_groups::FaceGroups;
 use super::*;
 use crate::translucent::point_of_view;
 
@@ -56,7 +57,7 @@ impl VulkanBackend {
                 self.retired
                     .push((self.frames_submitted, Retired::Section(old)));
             }
-            if let Some(section) = self.upload_section(mesh, centre, fade)? {
+            if let Some(section) = self.upload_section(mesh, centre, (fade, true))? {
                 self.sections.insert(key, section);
             }
             Ok(())
@@ -72,7 +73,7 @@ impl VulkanBackend {
         &mut self,
         mesh: &Mesh,
         centre: [f32; 3],
-        fade: SectionFade,
+        (fade, grouped): (SectionFade, bool),
     ) -> Result<Option<SectionBuffers>, VulkanError> {
         // SAFETY: live handles; the bytes come from `as_bytes` over plain vertex and index data.
         unsafe {
@@ -81,8 +82,15 @@ impl VulkanBackend {
             }
             let vertex_bytes = as_bytes(&mesh.vertices);
             let vertices = self.arena_upload(vertex_bytes)?;
-            let mut all_indices: Vec<u32> = mesh
-                .indices
+            let (opaque, groups) = if grouped {
+                FaceGroups::group(&mesh.vertices, &mesh.indices)
+            } else {
+                (
+                    mesh.indices.clone(),
+                    FaceGroups::ungrouped(mesh.indices.len() as u32),
+                )
+            };
+            let mut all_indices: Vec<u32> = opaque
                 .iter()
                 .chain(&mesh.translucent_indices)
                 .copied()
@@ -101,6 +109,7 @@ impl VulkanBackend {
                 indices,
                 index_count: mesh.indices.len() as u32,
                 translucent_index_count: mesh.translucent_indices.len() as u32,
+                groups,
                 centre,
                 fade,
             }))
@@ -121,7 +130,9 @@ impl VulkanBackend {
                     .map(|section| (submitted, Retired::Section(section))),
             );
             for (mesh, centre) in blocks {
-                if let Some(section) = self.upload_section(mesh, *centre, SectionFade::none())? {
+                if let Some(section) =
+                    self.upload_section(mesh, *centre, (SectionFade::none(), false))?
+                {
                     self.moving_sections.push(section);
                 }
             }

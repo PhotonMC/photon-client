@@ -1,3 +1,4 @@
+use super::face_groups::Runs;
 use super::*;
 
 const BOTH_STAGES: vk::ShaderStageFlags = vk::ShaderStageFlags::from_raw(
@@ -260,11 +261,13 @@ impl VulkanBackend {
         terrain_push: &[f32; 46],
         now: std::time::Instant,
     ) {
-        let sections: Vec<(&SectionBuffers, u32, u32)> = self
+        // Faces that look away from the camera are not drawn.
+        let camera = self.sort_origin;
+        let sections: Vec<(&SectionBuffers, Runs)> = self
             .drawn_sections()
             .into_iter()
             .filter(|section| section.index_count > 0)
-            .map(|section| (section, 0, section.index_count))
+            .map(|section| (section, section.groups.visible(camera)))
             .collect();
         // SAFETY: recording (see `# Safety`).
         unsafe { self.draw_sections(&scene.pipeline, scene, terrain_push, &sections, now) };
@@ -286,15 +289,14 @@ impl VulkanBackend {
                 .map(|axis| (section.centre[axis] - self.sort_origin[axis]).powi(2))
                 .sum::<f32>()
         };
-        let mut sections: Vec<(&SectionBuffers, u32, u32)> = self
+        let mut sections: Vec<(&SectionBuffers, Runs)> = self
             .drawn_sections()
             .into_iter()
             .filter(|section| section.translucent_index_count > 0)
             .map(|section| {
                 (
                     section,
-                    section.index_count,
-                    section.translucent_index_count,
+                    Runs::single(section.index_count, section.translucent_index_count),
                 )
             })
             .collect();
@@ -323,7 +325,7 @@ impl VulkanBackend {
         pipeline: &Pipeline,
         scene: &SceneResources,
         terrain_push: &[f32; 46],
-        sections: &[(&SectionBuffers, u32, u32)],
+        sections: &[(&SectionBuffers, Runs)],
         now: std::time::Instant,
     ) {
         if sections.is_empty() {
@@ -336,10 +338,15 @@ impl VulkanBackend {
                 Some(scene.terrain.set),
                 &[(BOTH_STAGES, 0, &as_bytes(terrain_push)[..184])],
             );
-            for &(section, first, count) in sections {
+            for (section, runs) in sections {
+                if runs.iter().next().is_none() {
+                    continue;
+                }
                 self.bind_section(section, pipeline.layout, now);
-                self.device
-                    .cmd_draw_indexed(self.command_buffer, count, 1, first, 0, 0);
+                for (first, count) in runs.iter() {
+                    self.device
+                        .cmd_draw_indexed(self.command_buffer, count, 1, first, 0, 0);
+                }
             }
         }
     }
