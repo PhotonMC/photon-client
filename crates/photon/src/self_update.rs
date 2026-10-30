@@ -38,8 +38,22 @@ pub fn apply_pending() {
 
 /// `<user data>/photon/update/pending`, beside the content cache.
 fn pending_folder() -> Option<PathBuf> {
-    let cache = photon_content::Cache::user_level().ok()?;
-    Some(cache.root().parent()?.join("update").join("pending"))
+    Some(crate::updates::update_folder()?.join("pending"))
+}
+
+/// After the game ended: starts this program again when an update asked for it
+/// ([`crate::updates::restart_into_update`]); the new process applies the stored release first.
+pub fn restart_if_requested<T>(
+    result: Result<T, Box<dyn std::error::Error>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    result?;
+    if crate::updates::restart_requested() {
+        match std::env::current_exe() {
+            Ok(exe) => restart(&exe),
+            Err(error) => log::warn!("the program could not find itself to restart: {error}"),
+        }
+    }
+    Ok(())
 }
 
 fn restart(binary: &std::path::Path) {

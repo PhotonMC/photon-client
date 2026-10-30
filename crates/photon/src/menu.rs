@@ -323,8 +323,9 @@ impl Menu {
             .and_then(|value| value.parse().ok())
             .unwrap_or(10);
         let mut frames = 0;
-        while !client.surface.should_close() {
+        while !client.surface.should_close() && !crate::updates::restart_requested() {
             let frame_start = Instant::now();
+            crate::updates::poll();
             for event in client.surface.poll() {
                 if let Some(choice) = self.handle(event, client)? {
                     return Ok(choice);

@@ -354,6 +354,9 @@ impl Controls {
         self.scripted_file_drop(held.file_drop, surface, assets);
         self.pack_reload |= held.pack_reload;
         self.leave |= held.leave;
+        if held.update_restart {
+            crate::updates::restart_into_update();
+        }
         if held.inventory {
             if self.screen.is_some() {
                 close_inventory(session, surface, &mut self.screen, &mut self.creative_tab)?;

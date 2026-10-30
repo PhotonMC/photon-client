@@ -32,6 +32,7 @@ mod sign_in;
 mod skins;
 mod sound;
 mod system_info;
+mod updates;
 mod view;
 mod window_probe;
 mod world;
@@ -46,11 +47,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return window_probe::run_window(env::args().skip(2));
     }
     if env::args().nth(1).as_deref() == Some("play") {
-        return play::run_play(env::args().skip(2));
+        updates::start();
+        let result = play::run_play(env::args().skip(2));
+        return self_update::restart_if_requested(result);
     }
     match env::args().nth(1).as_deref() {
-        None => return menu::run_menu(std::iter::empty()),
-        Some("menu") => return menu::run_menu(env::args().skip(2)),
+        None => {
+            updates::start();
+            return self_update::restart_if_requested(menu::run_menu(std::iter::empty()));
+        }
+        Some("menu") => {
+            updates::start();
+            return self_update::restart_if_requested(menu::run_menu(env::args().skip(2)));
+        }
+        Some("update") => return updates::run_update(),
         Some("sign-in") => return sign_in::run_sign_in(),
         Some("sign-out") => return sign_in::run_sign_out(),
         Some("install") => return content::run_install(),
@@ -61,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => {}
     }
     Err(format!(
-        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `install`, `window` or `--version`",
+        "unknown command {:?}; use `menu`, `play`, `sign-in`, `sign-out`, `install`, `update`, `window` or `--version`",
         env::args().nth(1)
     )
     .into())

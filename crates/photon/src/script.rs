@@ -61,6 +61,8 @@ pub struct HeldKeys {
     pub file_drop: bool,
     /// The packs in use loaded again, as the Resource Packs screen's Done does.
     pub pack_reload: bool,
+    /// The updater's restart, as `restart_into_update` asks for it.
+    pub update_restart: bool,
     /// Text typed into the open screen.
     pub typed: Option<&'static str>,
 }
@@ -89,6 +91,7 @@ const FLAGS: &[Flag] = &[
     ("enter", |keys| keys.enter = true),
     ("escape", |keys| keys.escape = true),
     ("leave", |keys| keys.leave = true),
+    ("update_restart", |keys| keys.update_restart = true),
     ("complete", |keys| keys.complete = true),
     ("toggle_gui", |keys| keys.toggle_gui = true),
     ("screenshot", |keys| keys.screenshot = true),

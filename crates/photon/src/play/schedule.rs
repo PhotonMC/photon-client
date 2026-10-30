@@ -69,6 +69,7 @@ pub(super) fn continues(world: &World) -> bool {
     !world.resource::<Stop>().0
         && world.non_send::<Failure>().0.is_none()
         && !play.surface.should_close()
+        && !crate::updates::restart_requested()
         && !play.controls.leave
 }
 
@@ -143,6 +144,7 @@ fn frame_schedule() -> Schedule {
     configure_frame_sets(&mut schedule);
     schedule.add_systems((
         begin_frame.in_set(FrameSet::Begin),
+        fire_update_events.in_set(FrameSet::Begin),
         (
             poll_events.pipe(record),
             send_client_information.pipe(record),
@@ -267,6 +269,11 @@ fn run_ticks(world: &mut World) {
     let mut clock = world.resource_mut::<Clock>();
     clock.script_done = script_done;
     clock.ticked = Instant::now();
+}
+
+/// The updater's changes reach the handlers on the game's own thread.
+fn fire_update_events(mut events: NonSendMut<ClientEvents>) {
+    crate::updates::fire(&mut events);
 }
 
 fn fire_tick_start(mut events: NonSendMut<ClientEvents>) {
