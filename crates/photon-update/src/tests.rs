@@ -407,3 +407,44 @@ fn files_are_swapped_one_by_one_when_the_folder_cannot_be_renamed() {
     assert_eq!(std::fs::read(install.join("photon.old")).unwrap(), b"old");
     assert_eq!(std::fs::read(install.join("LICENSE")).unwrap(), b"l");
 }
+
+#[test]
+fn a_shared_folder_is_swapped_file_by_file_and_its_other_files_stay() {
+    let pair = test_key();
+    let archive = archive_of(&[("photon-1.4.0/photon", b"new", 0o755)]);
+    let (install, pending) = staged_install("shared", &archive, &pair);
+    std::fs::write(install.join("holiday.jpg"), b"mine").unwrap();
+    apply(
+        &install,
+        &pending,
+        Some(&public(&pair)),
+        ("1.3.0", "photon"),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"new");
+    assert_eq!(std::fs::read(install.join("holiday.jpg")).unwrap(), b"mine");
+    assert_eq!(std::fs::read(install.join("photon.old")).unwrap(), b"old");
+    assert!(!install.with_file_name("app.old").exists());
+}
+
+#[test]
+fn a_folder_the_updater_did_not_make_is_never_deleted() {
+    let pair = test_key();
+    let archive = archive_of(&[("photon-1.4.0/photon", b"new", 0o755)]);
+    let (install, pending) = staged_install("foreign", &archive, &pair);
+    let theirs = install.with_file_name("app.old");
+    std::fs::create_dir_all(&theirs).unwrap();
+    std::fs::write(theirs.join("keep"), b"1").unwrap();
+    assert!(
+        apply(
+            &install,
+            &pending,
+            Some(&public(&pair)),
+            ("1.3.0", "photon")
+        )
+        .is_err()
+    );
+    assert_eq!(std::fs::read(theirs.join("keep")).unwrap(), b"1");
+    assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"old");
+}

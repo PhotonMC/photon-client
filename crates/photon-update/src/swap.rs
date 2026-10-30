@@ -9,6 +9,9 @@ use flate2::read::GzDecoder;
 
 use crate::{Error, is_newer, staged};
 
+/// Present in the folders this module makes; it deletes no folder without it.
+const MARKER: &str = ".photon-update";
+
 /// A swap that happened.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Applied {
@@ -46,14 +49,27 @@ pub fn apply(
         install.with_file_name(name)
     };
     let (new, old) = (sibling(".new"), sibling(".old"));
-    let _ = fs::remove_dir_all(&new);
+    // Only folders this module made are ever deleted: a user's own `app.old` is left alone.
+    for leftover in [&new, &old] {
+        if leftover.exists() {
+            if !leftover.join(MARKER).exists() {
+                return Err(Error::BadName);
+            }
+            fs::remove_dir_all(leftover).map_err(io)?;
+        }
+    }
     let archive = fs::read(&release.archive).map_err(io)?;
     if let Err(error) = extract(&archive, &new, binary) {
         let _ = fs::remove_dir_all(&new);
         return Err(error);
     }
-    let _ = fs::remove_dir_all(&old);
-    if fs::rename(install, &old).is_ok() {
+    // The folder is renamed as a whole only if it holds nothing but the release's own files; a
+    // program started from a shared folder (Downloads, a bin folder) is swapped file by file.
+    let whole = fs::read_dir(install)
+        .map_err(io)?
+        .all(|entry| entry.is_ok_and(|entry| new.join(entry.file_name()).exists()));
+    if whole && fs::rename(install, &old).is_ok() {
+        let _ = fs::write(old.join(MARKER), b"");
         if let Err(error) = fs::rename(&new, install) {
             let _ = fs::rename(&old, install);
             let _ = fs::remove_dir_all(&new);
@@ -104,6 +120,7 @@ fn extract(archive: &[u8], dest: &Path, binary: &str) -> Result<(), Error> {
         .read_to_end(&mut tar)
         .map_err(io)?;
     fs::create_dir_all(dest).map_err(io)?;
+    fs::write(dest.join(MARKER), b"").map_err(io)?;
     let mut at = 0;
     while at + 512 <= tar.len() && tar[at..at + 512].iter().any(|byte| *byte != 0) {
         let header = &tar[at..at + 512];
