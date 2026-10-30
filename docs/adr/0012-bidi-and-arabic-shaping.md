@@ -1,6 +1,6 @@
 # ADR 0012: Bidirectional text and Arabic shaping
 
-- Status: proposed (2026-10-28)
+- Status: accepted (2026-10-30)
 
 ## Context
 
