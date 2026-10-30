@@ -104,7 +104,7 @@ impl Cursor<'_> {
 
 /// The predicates of a `can_break` or `can_place_on` value; none when it cannot be read.
 pub fn adventure_predicate(value: &[u8]) -> Option<Vec<BlockPredicate>> {
-    let mut cursor = Cursor { data: value };
+    let mut cursor = Cursor::new(value);
     let count = cursor.count().ok()?;
     (0..count)
         .map(|_| cursor.adventure_block_predicate())

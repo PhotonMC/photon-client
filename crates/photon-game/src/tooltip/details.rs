@@ -152,9 +152,7 @@ pub(super) fn container_lines(values: &Values, registries: &Registries, out: &mu
 
 /// A written book's raw title, author and generation (`WrittenBookContent`).
 fn book_header(values: &Values) -> Option<(String, String, i32)> {
-    let mut cursor = Cursor {
-        data: values.raw(ids::WRITTEN_BOOK_CONTENT)?,
-    };
+    let mut cursor = Cursor::new(values.raw(ids::WRITTEN_BOOK_CONTENT)?);
     let string = |cursor: &mut Cursor| -> Option<String> {
         let length = cursor.count().ok()?;
         let text = String::from_utf8_lossy(cursor.data.get(..length)?).into_owned();

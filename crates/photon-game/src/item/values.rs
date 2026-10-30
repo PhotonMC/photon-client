@@ -75,7 +75,7 @@ impl Values {
     /// `tooltip_display`: whether the tooltip is hidden, and which
     /// components it leaves out.
     pub fn tooltip_display(&self) -> (bool, Vec<i32>) {
-        let Some(mut cursor) = self.raw(ids::TOOLTIP_DISPLAY).map(|data| Cursor { data }) else {
+        let Some(mut cursor) = self.raw(ids::TOOLTIP_DISPLAY).map(Cursor::new) else {
             return (false, Vec::new());
         };
         let hide = cursor.boolean().unwrap_or(false);
@@ -130,7 +130,7 @@ impl Values {
             Some(text)
         };
         if let Some(data) = self.raw(WRITTEN_BOOK_CONTENT) {
-            let mut cursor = Cursor { data };
+            let mut cursor = Cursor::new(data);
             // The title (raw, then the filtered one if there is one), the author and the
             // generation.
             cursor.string().ok()?;
@@ -147,7 +147,7 @@ impl Values {
             return Some(pages);
         }
         let data = self.raw(WRITABLE_BOOK_CONTENT)?;
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let count = cursor.count().ok()?;
         let mut pages = Vec::new();
         for _ in 0..count {
@@ -163,9 +163,9 @@ impl Values {
             return Vec::new();
         };
         let mut lines = Vec::new();
-        let count = Cursor { data }.count().unwrap_or(0);
+        let count = Cursor::new(data).count().unwrap_or(0);
         // Skip the count, then read each tag.
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let _ = cursor.count();
         data = cursor.data;
         for _ in 0..count {
@@ -190,7 +190,7 @@ impl Values {
         let Some(data) = self.raw(component) else {
             return Vec::new();
         };
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let mut entries = Vec::new();
         for _ in 0..cursor.count().unwrap_or(0) {
             let (Ok(id), Ok(level)) = (cursor.varint(), cursor.varint()) else {
@@ -211,9 +211,7 @@ impl Values {
     /// The `equippable` component a stack's patch adds, as far as the layers read it: the slot's
     /// name and the equipment asset (`Equippable.STREAM_CODEC`, whose sound holders come first).
     fn patched_equippable(&self) -> Option<Equippable> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::EQUIPPABLE)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::EQUIPPABLE)?);
         let slot = match cursor.varint().ok()? {
             1 => "feet",
             2 => "legs",
@@ -279,7 +277,7 @@ impl Values {
         let Some(data) = self.raw(ids::ATTRIBUTE_MODIFIERS) else {
             return Vec::new();
         };
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let mut entries = Vec::new();
         for _ in 0..cursor.count().unwrap_or(0) {
             let read = |cursor: &mut Cursor| -> Option<AttributeEntry> {
@@ -319,9 +317,7 @@ impl Values {
 
     /// `fireworks`: the flight duration and the explosions.
     pub fn fireworks(&self) -> Option<(i32, Vec<Explosion>)> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::FIREWORKS)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::FIREWORKS)?);
         let flight = cursor.varint().ok()?;
         let mut explosions = Vec::new();
         for _ in 0..cursor.count().ok()? {
@@ -332,16 +328,12 @@ impl Values {
 
     /// `firework_explosion`.
     pub fn firework_explosion(&self) -> Option<Explosion> {
-        read_explosion(&mut Cursor {
-            data: self.raw(ids::FIREWORK_EXPLOSION)?,
-        })
+        read_explosion(&mut Cursor::new(self.raw(ids::FIREWORK_EXPLOSION)?))
     }
 
     /// `painting/variant`.
     pub fn painting_variant(&self) -> Option<PaintingVariant> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::PAINTING_VARIANT)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::PAINTING_VARIANT)?);
         let id = cursor.varint().ok()?;
         if id > 0 {
             return Some(PaintingVariant::Registry(id - 1));
@@ -369,11 +361,7 @@ impl Values {
     /// A component that is a holder of a registry entry by its id: the
     /// registry id, when it is not written out.
     pub fn holder_id(&self, component: i32) -> Option<i32> {
-        let id = Cursor {
-            data: self.raw(component)?,
-        }
-        .varint()
-        .ok()?;
+        let id = Cursor::new(self.raw(component)?).varint().ok()?;
         (id > 0).then_some(id - 1)
     }
 
@@ -382,7 +370,7 @@ impl Values {
         let Some(data) = self.raw(ids::BANNER_PATTERNS) else {
             return Vec::new();
         };
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let mut layers = Vec::new();
         for _ in 0..cursor.count().unwrap_or(0) {
             let (Ok(pattern), true) = (cursor.varint(), true) else {
@@ -399,9 +387,7 @@ impl Values {
 
     /// `trim`: the material's and the pattern's registry ids.
     pub fn trim(&self) -> Option<(i32, i32)> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::TRIM)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::TRIM)?);
         let material = cursor.varint().ok()?;
         let pattern = cursor.varint().ok()?;
         (material > 0 && pattern > 0).then_some((material - 1, pattern - 1))
@@ -410,18 +396,14 @@ impl Values {
     /// `trim`'s material alone, as its registry id: the pattern may be an inline one, and a
     /// material that is inline has no key (`0`).
     pub fn trim_material(&self) -> Option<i32> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::TRIM)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::TRIM)?);
         let material = cursor.varint().ok()?;
         (material > 0).then_some(material - 1)
     }
 
     /// `lodestone_tracker`'s target: the dimension and block it points at, if it has one.
     pub fn lodestone_target(&self) -> Option<(String, [i32; 3])> {
-        let mut cursor = Cursor {
-            data: self.raw(ids::LODESTONE_TRACKER)?,
-        };
+        let mut cursor = Cursor::new(self.raw(ids::LODESTONE_TRACKER)?);
         if !cursor.boolean().ok()? {
             return None;
         }
@@ -438,7 +420,7 @@ impl Values {
         let Some(data) = self.raw(ids::SUSPICIOUS_STEW_EFFECTS) else {
             return Vec::new();
         };
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let mut effects = Vec::new();
         for _ in 0..cursor.count().unwrap_or(0) {
             let (Ok(effect), Ok(duration)) = (cursor.varint(), cursor.varint()) else {
@@ -461,7 +443,7 @@ impl Values {
         let Some(data) = self.raw(ids::BLOCK_STATE) else {
             return Vec::new();
         };
-        let mut cursor = Cursor { data };
+        let mut cursor = Cursor::new(data);
         let mut properties = Vec::new();
         let string = |cursor: &mut Cursor| -> Option<String> {
             let length = cursor.count().ok()?;

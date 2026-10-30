@@ -9,7 +9,7 @@ pub(super) fn parse_item_cost(
     const NAME: &str = "merchant item cost";
     let item = WireItemId::read(input, NAME)?.canonical(registries);
     let count = read_varint(input, NAME)?;
-    let mut cursor = photon_data::item_components::Cursor { data: input };
+    let mut cursor = photon_data::item_components::Cursor::new(input);
     let components = cursor.count().map_err(|_| ConnectionError::Codec(NAME))?;
     let mut expected = Vec::new();
     for _ in 0..components {

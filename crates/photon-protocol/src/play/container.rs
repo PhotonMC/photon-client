@@ -170,11 +170,12 @@ pub(super) fn parse_optional_item_stack(
     }
     let item_registry_id = WireItemId::read(input, name)?.canonical(registries);
     let patch_start = *input;
-    let patch = photon_data::item_components::read_wire_patch(input, &registries.component_types)
+    let patch = photon_data::item_components::read_wire_patch(input, registries)
         .map_err(|_| ConnectionError::Codec(name))?;
     // The stack keeps its patch in canonical ids; the server's own numbering is the same bytes
     // when the version has no gaps, which is the usual case.
-    let patch_bytes = if registries.component_types.is_identity() {
+    let patch_bytes = if photon_data::item_components::Numbering::incoming(registries).is_identity()
+    {
         patch_start[..patch_start.len() - input.len()].to_vec()
     } else {
         patch.trusted()

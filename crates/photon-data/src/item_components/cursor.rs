@@ -168,17 +168,18 @@ impl Cursor<'_> {
 
     /// `SoundEvent.STREAM_CODEC`.
     pub fn sound(&mut self) -> R {
-        self.holder(|cursor| {
-            cursor.identifier()?;
-            cursor.optional(Cursor::float)
-        })
+        if self.id(Site::SoundEvent, 1)? == 0 {
+            self.identifier()?;
+            self.optional(Cursor::float)?;
+        }
+        Ok(())
     }
 
     /// `ItemStackTemplate.STREAM_CODEC`: an item, a count and a patch.
     pub fn template(&mut self) -> R {
         self.varint()?;
         self.varint()?;
-        self.patch().map(|_| ())
+        self.skip_patch()
     }
 }
 
@@ -191,18 +192,110 @@ pub fn int_value(value: &[u8]) -> Option<i32> {
 
 /// A component value that is one `VarInt`: a rarity.
 pub fn varint_value(value: &[u8]) -> Option<i32> {
-    let mut cursor = Cursor { data: value };
+    let mut cursor = Cursor::new(value);
     cursor.varint().ok()
 }
 
 /// A patch as the trusted codec wrote it, sent back as the delimited codec
 /// writes it. `None` when the patch is not one this reads.
-pub fn delimit(trusted: &[u8], types: &crate::version_registries::IdMap) -> Option<Vec<u8>> {
+pub fn delimit(trusted: &[u8], numbering: &Numbering<'_>) -> Option<Vec<u8>> {
     let mut input = trusted;
     let patch = read_patch(&mut input).ok()?;
-    input.is_empty().then(|| patch.delimited_for(types))
+    input
+        .is_empty()
+        .then(|| patch.delimited_for(numbering))
+        .flatten()
+}
+
+/// The registries whose ids a component value carries as numbers, which a server numbers by its
+/// version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Site {
+    ComponentType,
+    Attribute,
+    SoundEvent,
+}
+
+/// The ids of a version translated as a cursor reads: what it has passed, with each id site
+/// changed, is gathered in `out`, which is complete up to `mark`.
+struct Rewrite<'a> {
+    map: &'a dyn Fn(Site, i32) -> i32,
+    out: Vec<u8>,
+    mark: &'a [u8],
 }
 
 pub struct Cursor<'a> {
     pub data: &'a [u8],
+    rewrite: Option<Rewrite<'a>>,
+}
+
+impl<'a> Cursor<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self {
+            data,
+            rewrite: None,
+        }
+    }
+
+    /// A cursor that renumbers the ids it reads with `map`; [`Self::finish`] gives the bytes.
+    pub fn rewriting(data: &'a [u8], map: &'a dyn Fn(Site, i32) -> i32) -> Self {
+        Self {
+            data,
+            rewrite: Some(Rewrite {
+                map,
+                out: Vec::new(),
+                mark: data,
+            }),
+        }
+    }
+
+    /// The bytes read so far, renumbered.
+    pub fn finish(self) -> Vec<u8> {
+        self.rewrite.map_or_else(Vec::new, |mut rewrite| {
+            let kept = rewrite.mark.len() - self.data.len();
+            rewrite.out.extend_from_slice(&rewrite.mark[..kept]);
+            rewrite.out
+        })
+    }
+
+    /// A registry id of `site`, read as a varint; with a rewrite, the renumbered one is the
+    /// value and is what is written. `bias` is what the codec adds to an id (a holder's id is
+    /// one more, zero meaning a direct value); a value below it is not an id.
+    pub fn id(&mut self, site: Site, bias: i32) -> R<i32> {
+        let before = self.data;
+        let value = self.varint()?;
+        let Some(rewrite) = &mut self.rewrite else {
+            return Ok(value);
+        };
+        let mapped = if value >= bias {
+            (rewrite.map)(site, value - bias).saturating_add(bias)
+        } else {
+            value
+        };
+        rewrite
+            .out
+            .extend_from_slice(&rewrite.mark[..rewrite.mark.len() - before.len()]);
+        photon_core::wire::write_varint(mapped, &mut rewrite.out);
+        rewrite.mark = self.data;
+        Ok(mapped)
+    }
+
+    /// What `read` passes over, as the bytes it was (renumbered, with a rewrite).
+    pub fn captured(&mut self, read: impl FnOnce(&mut Self) -> R) -> R<Vec<u8>> {
+        let start = self.data;
+        if let Some(rewrite) = &mut self.rewrite {
+            rewrite.out = Vec::new();
+            rewrite.mark = start;
+        }
+        read(self)?;
+        match &mut self.rewrite {
+            None => Ok(start[..start.len() - self.data.len()].to_vec()),
+            Some(rewrite) => {
+                let kept = rewrite.mark.len() - self.data.len();
+                rewrite.out.extend_from_slice(&rewrite.mark[..kept]);
+                rewrite.mark = self.data;
+                Ok(std::mem::take(&mut rewrite.out))
+            }
+        }
+    }
 }

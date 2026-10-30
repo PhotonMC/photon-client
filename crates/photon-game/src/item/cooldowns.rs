@@ -64,7 +64,7 @@ pub fn group(stack: &Stack) -> String {
     let values = crate::item::values::Values::new(stack.item_registry_id(), stack.patch_bytes());
     let named = values.raw(ids::USE_COOLDOWN).and_then(|value| {
         // `UseCooldown.STREAM_CODEC`: the seconds, then an optional group.
-        let mut cursor = Cursor { data: value };
+        let mut cursor = Cursor::new(value);
         cursor.float().ok()?;
         if !cursor.boolean().ok()? {
             return None;

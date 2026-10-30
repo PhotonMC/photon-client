@@ -157,7 +157,7 @@ const RARITIES: [&str; 4] = ["common", "uncommon", "rare", "epic"];
 /// the enchantment registry's entries by network id. `None` for a component
 /// not ported here, or a value that does not read.
 pub fn component_hash(type_id: i32, value: &[u8], enchantments: &[String]) -> Option<i32> {
-    let mut cursor = Cursor { data: value };
+    let mut cursor = Cursor::new(value);
     let text = |cursor: &mut Cursor| -> Option<u32> {
         let tag_value = read_any_nbt(&mut cursor.data).ok()??;
         Some(tag(&tag_value, true))

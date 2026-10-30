@@ -23,5 +23,7 @@ mod components;
 pub use components::*;
 mod cursor;
 pub use cursor::*;
+mod numbering;
+pub use numbering::*;
 pub mod hash;
 pub mod tag;

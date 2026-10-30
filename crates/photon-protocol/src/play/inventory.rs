@@ -54,7 +54,7 @@ pub fn encode_creative_slot(
             // patch this cannot read is left off rather than sent wrong.
             match photon_data::item_components::delimit(
                 stack.patch_bytes(),
-                &registries.component_types,
+                &photon_data::item_components::Numbering::outgoing(registries),
             ) {
                 Some(patch) if !stack.patch_bytes().is_empty() => output.extend_from_slice(&patch),
                 _ => {
