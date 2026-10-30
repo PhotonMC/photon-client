@@ -98,7 +98,8 @@ fn login_and_respawn_parsers_match_java_common_spawn_info_order() {
     );
     let older_login = parse_login_packet_for(&older_payload, &older).expect("26.1 login packet");
     assert!(older_login.enforces_secure_chat);
-    assert!(!older_login.online_mode);
+    // No flag in 26.1: read as on, so an account still gets its chat session.
+    assert!(older_login.online_mode);
     assert_eq!(older_login.spawn_info, login.spawn_info);
     assert!(parse_login_packet(&older_payload).is_err());
 

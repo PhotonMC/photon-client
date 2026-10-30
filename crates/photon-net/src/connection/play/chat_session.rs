@@ -79,7 +79,13 @@ impl ChatSession {
         };
         self.pending = None;
         // A failed fetch leaves the player sending unsigned chat (`Optional.empty`).
-        let keys = arrived.ok()?;
+        let keys = match arrived {
+            Ok(keys) => keys,
+            Err(error) => {
+                log::warn!("secure chat: the profile keys were not fetched: {error:?}");
+                return None;
+            }
+        };
         if self.current.as_ref().is_some_and(|(held, _)| *held == keys) {
             return None;
         }
