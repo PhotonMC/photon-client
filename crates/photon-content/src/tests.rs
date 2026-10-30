@@ -152,7 +152,7 @@ fn files_under(root: &Path) -> Vec<(String, u64)> {
                     .strip_prefix(root)
                     .unwrap()
                     .to_string_lossy()
-                    .into_owned();
+                    .replace('\\', "/");
                 out.push((name, entry.metadata().unwrap().len()));
             }
         }
