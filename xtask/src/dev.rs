@@ -6,6 +6,7 @@
 mod args;
 mod baseline;
 mod bench;
+mod busy;
 mod decompile;
 mod download;
 mod java;

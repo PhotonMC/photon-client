@@ -45,7 +45,7 @@ usage: cargo xtask <command>
                             build and start the client
   rcon <command>...         send commands to the test server
   bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
-        [--route still|run|dive|void|perf-still|perf-run|perf-pigs|perf] [--vsync on|off] [--fps-limit <n>]
+        [--route still|run|dive|void|perf-still|perf-run|perf-pigs|perf-busy|perf] [--vsync on|off] [--fps-limit <n>]
         [--render-distance <n>] [--validation] [--no-build]
         [--cpu] [--save | --compare [--threshold <percent>]]
                             fixed scripted run, frame timing report in .data/runs/bench;

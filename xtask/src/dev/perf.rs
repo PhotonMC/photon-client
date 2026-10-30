@@ -9,10 +9,11 @@ use serde_json::Value;
 
 use super::args::Parsed;
 use super::bench::STILL_SCRIPT;
+use super::busy;
 use super::rcon;
 
 /// The routes, in the order `--route perf` runs them.
-pub const ROUTES: [&str; 3] = ["perf-still", "perf-run", "perf-pigs"];
+pub const ROUTES: [&str; 4] = ["perf-still", "perf-run", "perf-pigs", "perf-busy"];
 
 /// What every named route is measured at.
 pub const SIZE: [&str; 2] = ["1280", "720"];
@@ -214,29 +215,49 @@ pub fn start(route: &str) -> Result<Scene, String> {
     generate_world()?;
     pin_world()?;
     clear_pigs()?;
-    let pigs = route == "perf-pigs";
+    let route = route.to_owned();
     let stop = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&stop);
     let thread = std::thread::spawn(move || {
         let begun = Instant::now();
         let mut summoned = false;
         while !flag.load(Ordering::Relaxed) {
-            if pigs && !summoned && begun.elapsed() > SUMMON_AT {
-                summoned = summon_pigs().is_ok();
+            if !summoned && begun.elapsed() > SUMMON_AT {
+                summoned = summon_scene(&route);
             }
-            let kill = if pigs {
-                "kill @e[type=!minecraft:player,type=!minecraft:pig]"
+            let _ = send(&[&kill_command(&route)]);
+            if route == "perf-busy" && summoned {
+                let _ = send(&busy::PARTICLES);
+            }
+            std::thread::sleep(Duration::from_secs(if route == "perf-busy" {
+                1
             } else {
-                "kill @e[type=!minecraft:player]"
-            };
-            let _ = send(&[kill]);
-            std::thread::sleep(Duration::from_secs(2));
+                2
+            }));
         }
     });
     Ok(Scene {
         stop,
         thread: Some(thread),
     })
+}
+
+/// Whether the summoning of the route's own scene went through; a route without one is done.
+fn summon_scene(route: &str) -> bool {
+    match route {
+        "perf-pigs" => summon_pigs().is_ok(),
+        "perf-busy" => rcon::send(&busy::summon()).is_ok(),
+        _ => true,
+    }
+}
+
+/// What the scene thread kills every round: everything near the player but the route's own scene.
+fn kill_command(route: &str) -> String {
+    match route {
+        "perf-pigs" => "kill @e[type=!minecraft:player,type=!minecraft:pig]".to_owned(),
+        "perf-busy" => format!("kill @e[type=!minecraft:player,tag=!{}]", busy::TAG),
+        _ => "kill @e[type=!minecraft:player]".to_owned(),
+    }
 }
 
 /// When, after the run starts, the pigs are summoned: before the measured part, after the
@@ -263,8 +284,12 @@ fn summon_pigs() -> Result<(), String> {
 /// would otherwise draw a different scene. The chunks they stand in are loaded first, because
 /// the server only finds the entities of loaded chunks.
 pub fn clear_pigs() -> Result<(), String> {
-    send(&[FORCELOAD])?;
+    send(&[FORCELOAD, busy::FORCELOAD])?;
     std::thread::sleep(Duration::from_secs(2));
+    let cleared = rcon::send(&busy::clear())?;
+    if let Some(refused) = cleared.iter().find(|reply| reply.contains("Too many")) {
+        return Err(format!("the busy scene could not be cleared: {refused}"));
+    }
     let mut left = Vec::new();
     for _ in 0..5 {
         send(&[
@@ -296,6 +321,9 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
         ));
     }
     let entities = report["entities"].as_u64().unwrap_or(0);
+    if route == "perf-busy" {
+        return check_busy(report, entities);
+    }
     // A few pigs are lost to the summon (a spot over water, a collision): most must be there.
     let pigs = u64::try_from(PIGS_PER_SIDE * PIGS_PER_SIDE).unwrap_or(0) * 9 / 10;
     if (route == "perf-pigs") != (entities >= pigs) {
@@ -326,6 +354,22 @@ pub fn check_report(route: &str, report: &Value) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// The busy scene: most of its entities are there and the camera sees a good part of them.
+fn check_busy(report: &Value, entities: u64) -> Result<(), String> {
+    let wanted = u64::try_from(busy::expected_entities()).unwrap_or(0) * 9 / 10;
+    let drawn = report["drawn_entities"].as_f64().unwrap_or(0.0);
+    if entities < wanted || drawn < MIN_DRAWN_BUSY {
+        return Err(format!(
+            "perf-busy: {entities} entities (at least {wanted} wanted), {drawn:.0} drawn per \
+             frame (at least {MIN_DRAWN_BUSY} wanted)"
+        ));
+    }
+    Ok(())
+}
+
+/// The entities of the busy scene the camera must see on average.
+const MIN_DRAWN_BUSY: f64 = 100.0;
 
 /// The pigs the camera must see on average for a run to be the pig scene.
 const MIN_DRAWN_PIGS: f64 = 300.0;

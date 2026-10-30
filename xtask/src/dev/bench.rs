@@ -84,7 +84,8 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
     if !["cpu", "still", "run", "dive", "void"].contains(&route.as_str()) && !perf::is_perf(&route)
     {
         return Err(
-            "--route is still, run, dive, void, perf-still, perf-run, perf-pigs or perf".to_owned(),
+            "--route is still, run, dive, void, perf-still, perf-run, perf-pigs, perf-busy or perf"
+                .to_owned(),
         );
     }
     let named = perf::is_named(&route);
