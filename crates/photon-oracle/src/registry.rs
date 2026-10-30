@@ -67,6 +67,13 @@ fn entries(
                 .map(|particle| format!("minecraft:{}", particle.name)),
             &registries.particle_types,
         ),
+        other => return extra_entries(other, registries),
+    })
+}
+
+/// The registries `entries` leaves to here, which are named by their own tables.
+fn extra_entries(label: &str, registries: &VersionRegistries) -> Result<Vec<Value>, String> {
+    Ok(match label {
         "menu" => listed(
             photon_data::menu_type::names().map(str::to_owned),
             &registries.menu_types,
@@ -80,6 +87,12 @@ fn entries(
                 .iter()
                 .map(|attribute| attribute.name.to_owned()),
             &registries.attributes,
+        ),
+        "component_type" => listed(
+            photon_data::item::component_types::NAMES
+                .iter()
+                .map(|name| (*name).to_owned()),
+            &registries.component_types,
         ),
         _ => return Err("unknown registry".into()),
     })
