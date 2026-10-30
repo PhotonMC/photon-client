@@ -1611,6 +1611,7 @@ dependencies = [
  "photon-net",
  "photon-protocol",
  "photon-render",
+ "photon-update",
  "photon-world",
  "windows-native-keyring-store",
 ]
@@ -1771,6 +1772,7 @@ dependencies = [
 name = "photon-update"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "ring",
  "sha2",
  "ureq",

@@ -27,6 +27,7 @@ mod resources;
 mod screens;
 mod screenshot;
 mod script;
+mod self_update;
 mod sign_in;
 mod skins;
 mod sound;
@@ -39,6 +40,7 @@ use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     logger::init();
+    self_update::apply_pending();
     content::use_installed();
     if env::args().nth(1).as_deref() == Some("window") {
         return window_probe::run_window(env::args().skip(2));

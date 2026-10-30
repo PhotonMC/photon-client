@@ -222,5 +222,8 @@ fn hex(text: &str) -> Option<Vec<u8>> {
         .collect()
 }
 
+mod swap;
+pub use swap::{Applied, apply};
+
 #[cfg(test)]
 mod tests;

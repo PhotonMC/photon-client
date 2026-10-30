@@ -2,6 +2,7 @@ use ring::rand::SystemRandom;
 use ring::signature::{Ed25519KeyPair, KeyPair};
 
 use super::*;
+use crate::swap;
 
 /// A key made for the test; the real key never exists in the repository.
 fn test_key() -> Ed25519KeyPair {
@@ -270,4 +271,139 @@ fn a_host_with_the_wrong_signature_or_plain_http_is_refused() {
     thread.join().unwrap();
     assert!(!pending.exists());
     assert!(check("http://example.com/releases", Some(&key), "1.3.0", &pending).is_err());
+}
+
+/// A gzip'd ustar archive of (path, bytes, mode) entries, made without a tar program.
+fn archive_of(entries: &[(&str, &[u8], u32)]) -> Vec<u8> {
+    use std::io::Write;
+    let mut tar = Vec::new();
+    for (name, body, mode) in entries {
+        let mut header = [0u8; 512];
+        header[..name.len()].copy_from_slice(name.as_bytes());
+        header[100..108].copy_from_slice(format!("{mode:07o}\0").as_bytes());
+        header[124..136].copy_from_slice(format!("{:011o}\0", body.len()).as_bytes());
+        header[156] = b'0';
+        tar.extend_from_slice(&header);
+        tar.extend_from_slice(body);
+        tar.resize(tar.len().div_ceil(512) * 512, 0);
+    }
+    tar.extend_from_slice(&[0u8; 1024]);
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    encoder.write_all(&tar).unwrap();
+    encoder.finish().unwrap()
+}
+
+/// Stages `archive` as 1.4.0 under a fresh folder with an install holding `old`.
+fn staged_install(name: &str, archive: &[u8], key_pair: &Ed25519KeyPair) -> (PathBuf, PathBuf) {
+    let root = folder(name);
+    let install = root.join("app");
+    std::fs::create_dir_all(&install).unwrap();
+    std::fs::write(install.join("photon"), b"old").unwrap();
+    let sum = to_hex(Sha256::digest(archive).as_slice());
+    let text = format!("version=1.4.0\narchive=p.tar.gz\nsha256={sum}\n");
+    let signature = to_hex(key_pair.sign(text.as_bytes()).as_ref());
+    let pending = root.join("pending");
+    stage(
+        &pending,
+        Some(&public(key_pair)),
+        "1.3.0",
+        (text.as_bytes(), &signature),
+        archive,
+    )
+    .unwrap();
+    (install, pending)
+}
+
+use std::path::PathBuf;
+
+#[test]
+fn a_staged_release_replaces_the_install_and_keeps_the_old_one() {
+    let pair = test_key();
+    let archive = archive_of(&[
+        ("photon-1.4.0/", b"", 0o755),
+        ("photon-1.4.0/photon", b"new", 0o755),
+        ("photon-1.4.0/README.md", b"read", 0o644),
+    ]);
+    let (install, pending) = staged_install("swap", &archive, &pair);
+    let applied = apply(
+        &install,
+        &pending,
+        Some(&public(&pair)),
+        ("1.3.0", "photon"),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(applied.version, "1.4.0");
+    assert_eq!(applied.binary, install.join("photon"));
+    assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"new");
+    assert_eq!(std::fs::read(install.join("README.md")).unwrap(), b"read");
+    let old = install.with_file_name("app.old");
+    assert_eq!(std::fs::read(old.join("photon")).unwrap(), b"old");
+    assert!(!pending.exists());
+    // Nothing pending any more: the next start does nothing.
+    assert_eq!(
+        apply(
+            &install,
+            &pending,
+            Some(&public(&pair)),
+            ("1.4.0", "photon")
+        ),
+        Ok(None)
+    );
+}
+
+#[test]
+fn an_archive_that_escapes_or_lacks_the_binary_leaves_the_install_alone() {
+    let pair = test_key();
+    for entries in [
+        vec![("photon-1.4.0/../../evil", &b"x"[..], 0o644)],
+        vec![("photon-1.4.0/README.md", &b"x"[..], 0o644)],
+    ] {
+        let (install, pending) = staged_install("bad", &archive_of(&entries), &pair);
+        assert!(
+            apply(
+                &install,
+                &pending,
+                Some(&public(&pair)),
+                ("1.3.0", "photon")
+            )
+            .is_err()
+        );
+        assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"old");
+        assert!(pending.exists());
+        assert!(!install.with_file_name("app.new").exists());
+    }
+}
+
+#[test]
+fn a_release_that_is_not_newer_any_more_is_dropped() {
+    let pair = test_key();
+    let archive = archive_of(&[("photon-1.4.0/photon", b"new", 0o755)]);
+    let (install, pending) = staged_install("stale", &archive, &pair);
+    assert_eq!(
+        apply(
+            &install,
+            &pending,
+            Some(&public(&pair)),
+            ("1.4.0", "photon")
+        ),
+        Ok(None)
+    );
+    assert!(!pending.exists());
+    assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"old");
+}
+
+#[test]
+fn files_are_swapped_one_by_one_when_the_folder_cannot_be_renamed() {
+    let root = folder("files");
+    let (install, new) = (root.join("app"), root.join("app.new"));
+    std::fs::create_dir_all(&install).unwrap();
+    std::fs::create_dir_all(&new).unwrap();
+    std::fs::write(install.join("photon"), b"old").unwrap();
+    std::fs::write(new.join("photon"), b"new").unwrap();
+    std::fs::write(new.join("LICENSE"), b"l").unwrap();
+    swap::swap_files(&new, &install).unwrap();
+    assert_eq!(std::fs::read(install.join("photon")).unwrap(), b"new");
+    assert_eq!(std::fs::read(install.join("photon.old")).unwrap(), b"old");
+    assert_eq!(std::fs::read(install.join("LICENSE")).unwrap(), b"l");
 }

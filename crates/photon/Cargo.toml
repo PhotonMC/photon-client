@@ -17,6 +17,7 @@ photon-audio = { workspace = true, features = ["device"] }
 photon-game.workspace = true
 photon-net.workspace = true
 photon-content.workspace = true
+photon-update.workspace = true
 photon-render.workspace = true
 photon-gui.workspace = true
 bevy_ecs.workspace = true
