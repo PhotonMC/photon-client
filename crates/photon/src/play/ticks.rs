@@ -333,6 +333,20 @@ impl Play {
         Ok(())
     }
 
+    /// A scripted turn of the view; a turn or `keep_awake` is input, so a long run is not an idle
+    /// client.
+    fn apply_script_turn(&mut self, held: HeldKeys, turn: f64, pitch: f64) {
+        if turn != 0.0 || pitch != 0.0 || held.keep_awake {
+            self.limiter.input_received(Instant::now());
+        }
+        if (turn != 0.0 || pitch != 0.0)
+            && let Some(player) = self.session.player_mut()
+        {
+            let (y_rot, x_rot) = player.rotation();
+            player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
+        }
+    }
+
     /// The next tick the time since the last frame owes, with the keys a person or the script
     /// holds; none once the time is spent. `script_done` is set once the script has ended.
     pub(super) fn begin_tick(&mut self, script_done: &mut bool) -> Result<Option<HeldKeys>> {
@@ -347,12 +361,7 @@ impl Play {
         let held = match self.script.as_mut() {
             Some(script) => {
                 if let Some((held, turn, pitch)) = script.next() {
-                    if (turn != 0.0 || pitch != 0.0)
-                        && let Some(player) = self.session.player_mut()
-                    {
-                        let (y_rot, x_rot) = player.rotation();
-                        player.set_rotation(y_rot + turn as f32, x_rot + pitch as f32);
-                    }
+                    self.apply_script_turn(held, turn, pitch);
                     held
                 } else {
                     *script_done = true;

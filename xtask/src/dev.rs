@@ -10,6 +10,7 @@ mod decompile;
 mod download;
 mod java;
 mod layout;
+mod perf;
 mod play;
 mod png;
 mod rcon;

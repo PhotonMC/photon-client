@@ -13,12 +13,13 @@ use super::baseline;
 use super::layout::{
     build_client, client_binary, client_environment, data, default_address, jar_assets, run_merged,
 };
+use super::perf;
 use crate::process;
 
 /// Standing still and turning through the four directions, so every run draws
 /// the same world from the same place. 40 seconds of ticks; the first seconds
 /// (`PHOTON_BENCH_WARMUP`) are left out while the sections mesh.
-const STILL_SCRIPT: &str =
+pub(super) const STILL_SCRIPT: &str =
     "none=200;turn:90;none=100;turn:90;none=100;turn:90;none=100;turn:90;none=300";
 /// Sprinting out and turning, so chunks arrive, sections mesh and the
 /// occlusion flood reruns while frames are measured: where frame spikes show.
@@ -80,22 +81,29 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
     } else {
         parsed.value("--route").unwrap_or("still").to_owned()
     };
-    if !["cpu", "still", "run", "dive", "void"].contains(&route.as_str()) {
-        return Err("--route is still, run, dive or void".to_owned());
+    if !["cpu", "still", "run", "dive", "void"].contains(&route.as_str()) && !perf::is_perf(&route)
+    {
+        return Err(
+            "--route is still, run, dive, void, perf-still, perf-run, perf-pigs or perf".to_owned(),
+        );
     }
-    let vsync = parsed.value("--vsync").unwrap_or("on");
+    let named = perf::is_named(&route);
+    let vsync = parsed
+        .value("--vsync")
+        .unwrap_or(if named { "off" } else { "on" });
     if !["on", "off"].contains(&vsync) {
         return Err("--vsync is on or off".to_owned());
     }
-    let size = parsed.group("--size").map_or_else(
-        || vec!["1280".to_owned(), "720".to_owned()],
-        <[String]>::to_vec,
+    let size = perf::forced(
+        named,
+        parsed.group("--size"),
+        &perf::SIZE.map(str::to_owned),
     );
     Ok(Options {
         address: parsed.address(&default_address()),
         name: parsed.value("--name").unwrap_or("bench").to_owned(),
         repeat: parsed.number("--repeat", 1)?,
-        warmup: parsed.number("--warmup", 10.0)?,
+        warmup: perf::warmup(named, parsed)?,
         size,
         route,
         vsync_off: vsync == "off",
@@ -103,10 +111,7 @@ fn options(parsed: &Parsed) -> Result<Options, String> {
             .value("--fps-limit")
             .map(|_| parsed.number("--fps-limit", 0))
             .transpose()?,
-        render_distance: parsed
-            .value("--render-distance")
-            .map(|_| parsed.number("--render-distance", 0))
-            .transpose()?,
+        render_distance: perf::render_distance(named, parsed)?,
         validation: parsed.flag("--validation"),
         save: parsed.flag("--save"),
         compare: parsed.flag("--compare"),
@@ -274,23 +279,34 @@ fn client_command(
     Ok(command)
 }
 
+/// Who joins for a route and the script it runs.
+fn route_user_and_script(route: &str) -> (String, String) {
+    if perf::is_named(route) {
+        return (fresh_user(), perf::script(route));
+    }
+    match route {
+        "run" => (fresh_user(), RUN_SCRIPT.to_owned()),
+        "dive" => (fresh_user(), DIVE_SCRIPT.to_owned()),
+        "void" => (fresh_user(), STILL_SCRIPT.to_owned()),
+        _ => (STILL_USER.to_owned(), STILL_SCRIPT.to_owned()),
+    }
+}
+
 fn run_once(options: &Options, number: u32) -> Result<Value, String> {
     let directory = data().join("runs").join("bench");
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     let path = directory.join(format!("{}-{number}.json", options.name));
     let _ = fs::remove_file(&path);
-    let (user, script) = if options.route == "run" {
-        (fresh_user(), RUN_SCRIPT)
-    } else if options.route == "dive" {
-        (fresh_user(), DIVE_SCRIPT)
-    } else if options.route == "void" {
-        (fresh_user(), STILL_SCRIPT)
-    } else {
-        (STILL_USER.to_owned(), STILL_SCRIPT)
-    };
+    let named = perf::is_named(&options.route);
+    if named {
+        perf::prepare(&options.route)?;
+    }
+    let (user, script) = route_user_and_script(&options.route);
     // A spectator flies through trees and water, so the run measures the engine, not the terrain.
-    spectate(&user, options.route == "void");
-    let command = client_command(options, &path, user, script)?;
+    if !named {
+        spectate(&user, options.route == "void");
+    }
+    let command = client_command(options, &path, user, &script)?;
     let (status, output) = run_merged(command)?;
     if !status.success() || !path.exists() {
         let lines: Vec<&str> = output.lines().collect();
@@ -429,9 +445,39 @@ fn cpu_bench(options: &Options) -> Result<(), String> {
     keep_or_check(options, &reports)
 }
 
+/// `--route perf`: the three named routes, one after the other, each as if asked for alone.
+fn bench_all_named(args: &[String]) -> Result<(), String> {
+    let mut failed = Vec::new();
+    for route in perf::ROUTES {
+        println!("== {route}");
+        let mut own: Vec<String> = Vec::new();
+        let mut skip = false;
+        for arg in args {
+            match (skip, arg.as_str()) {
+                (true, _) => skip = false,
+                (false, "--route") => skip = true,
+                (false, _) => own.push(arg.clone()),
+            }
+        }
+        own.extend(["--route".to_owned(), route.to_owned()]);
+        if let Err(error) = bench(&own) {
+            println!("{route}: {error}");
+            failed.push(route);
+        }
+    }
+    if failed.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("failed: {}", failed.join(", ")))
+    }
+}
+
 pub fn bench(args: &[String]) -> Result<(), String> {
     let parsed = parse(args, &SPEC)?;
     let options = options(&parsed)?;
+    if options.route == "perf" {
+        return bench_all_named(args);
+    }
     if options.cpu {
         return cpu_bench(&options);
     }
@@ -450,8 +496,12 @@ pub fn bench(args: &[String]) -> Result<(), String> {
     }
     let mut reports = Vec::new();
     for number in 1..=options.repeat {
-        reports.push(run_once(&options, number)?);
+        reports.push(perf::cleanup_on_error(
+            &options.route,
+            run_once(&options, number),
+        )?);
     }
+    perf::finish(&options.route, &reports)?;
     let first = &reports[0];
     println!(
         "{} {}x{} present={} render_distance={} chunks={} entities={}",

@@ -45,10 +45,12 @@ usage: cargo xtask <command>
                             build and start the client
   rcon <command>...         send commands to the test server
   bench [address] [--name <n>] [--repeat <n>] [--warmup <s>] [--size <w> <h>]
-        [--route still|run|dive|void] [--vsync on|off] [--fps-limit <n>]
+        [--route still|run|dive|void|perf-still|perf-run|perf-pigs|perf] [--vsync on|off] [--fps-limit <n>]
         [--render-distance <n>] [--validation] [--no-build]
         [--cpu] [--save | --compare [--threshold <percent>]]
                             fixed scripted run, frame timing report in .data/runs/bench;
+                            the perf routes force 1280x720, render distance 32, vsync off, clear
+                            noon weather and a spectator player; `perf` runs all three;
                             --save keeps it as the route's baseline, --compare fails on a p99 rise;
                             --cpu: no server or window, chunk apply and light only
   package [--no-build]      release archive of this platform; fails on any file outside the release set

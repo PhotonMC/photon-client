@@ -13,6 +13,9 @@ pub struct HeldKeys {
     pub jump: bool,
     pub sneak: bool,
     pub sprint: bool,
+    /// Input that changes nothing: it only tells the frame limiter the client is in use, so a
+    /// long scripted run is not an idle one.
+    pub keep_awake: bool,
     /// A scripted attack click on this tick.
     pub attack: bool,
     /// The attack key held down on this tick.
@@ -96,6 +99,7 @@ const FLAGS: &[Flag] = &[
     ("toggle_gui", |keys| keys.toggle_gui = true),
     ("screenshot", |keys| keys.screenshot = true),
     ("debug_overlay", |keys| keys.debug_overlay = true),
+    ("keep_awake", |keys| keys.keep_awake = true),
 ];
 
 impl HeldKeys {
