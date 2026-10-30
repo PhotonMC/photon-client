@@ -1,0 +1,51 @@
+name: Release archives
+
+# Draft: builds the archive of each platform from our own code and keeps it as a workflow
+# artifact. It publishes nothing and creates no tag or release; signing and publishing wait for
+# the owner's decisions (issue #57). Started by hand only.
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-latest
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build libasound2-dev libwayland-dev \
+            libxkbcommon-dev xorg-dev libdbus-1-dev pkg-config
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - uses: Swatinem/rust-cache@v2
+      - name: Archive of this platform
+        # Builds the release binary and fails if the archive holds anything outside the release set.
+        shell: bash
+        run: cargo xtask package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photon-${{ matrix.os }}
+          path: |
+            target/package/*.tar.gz
+            target/package/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
