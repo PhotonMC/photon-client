@@ -229,7 +229,7 @@ impl PlaySession {
             self.effects.unsecure_warning = true;
             self.effects.seen_unsecure_warning = true;
         }
-        self.reset_chat_session(login.online_mode);
+        self.reset_chat_session(login.online_mode || self.state.authenticated.get());
         self.social.senders.enforces_secure_chat = login.enforces_secure_chat;
         self.local.hardcore = login.hardcore;
         (self.local.difficulty, self.local.difficulty_locked) = (2, false);

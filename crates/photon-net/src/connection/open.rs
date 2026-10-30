@@ -540,6 +540,7 @@ fn answer_server_hello(
         (state.account.as_ref(), timeout),
         compression_threshold,
     )?;
+    state.authenticated.set(hello.should_authenticate);
     state.reach(super::state::stage::ENCRYPTING);
     Ok(())
 }

@@ -18,6 +18,9 @@ pub struct ConnectionState {
     pub protocol_hint: Option<i32>,
     /// The account the connection logs in with, where the server checks accounts.
     pub account: Option<crate::account::Account>,
+    /// Whether this login went through the session server (the server checked the account). A
+    /// version whose login packet has no online-mode flag (26.1) is online exactly then.
+    pub authenticated: std::cell::Cell<bool>,
     /// The profile id the server logged the player in with.
     pub profile_id: Option<Uuid>,
     /// The name of that profile, which can differ in case from the one the client asked for.

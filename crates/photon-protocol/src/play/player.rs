@@ -79,8 +79,7 @@ pub fn parse_login_packet_for(
 }
 
 /// The login packet's fields; `has_online_mode` is whether the version sends the online-mode flag
-/// (absent, it reads as on: the client then asks for a key pair whenever it has an account, which
-/// an offline server ignores).
+/// (absent, it reads as off).
 pub(crate) fn parse_login_fields(
     input: &[u8],
     has_online_mode: bool,
@@ -103,7 +102,7 @@ pub(crate) fn parse_login_fields(
         show_death_screen: read_bool(&mut input, "login show death screen")?,
         do_limited_crafting: read_bool(&mut input, "login limited crafting")?,
         spawn_info: parse_spawn_info(&mut input)?,
-        online_mode: !has_online_mode || read_bool(&mut input, "login online mode")?,
+        online_mode: has_online_mode && read_bool(&mut input, "login online mode")?,
         enforces_secure_chat: read_bool(&mut input, "login secure chat")?,
     };
     if !input.is_empty() {
