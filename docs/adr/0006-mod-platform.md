@@ -50,3 +50,16 @@ What the crate holds:
 - **Ownership.** Everything a feature registers (event handlers, systems, registry additions) is tagged with the feature that made it, so turning the feature off removes all of it. This is the unload rule above, applied to native features first.
 
 Not decided here, and to be settled in the first code slice with a measurement or a test: the event list beyond the examples, whether handlers run inside the schedule as systems or from a dispatcher, and the capability names a native feature declares. The empty-tick cost target (under 1 microsecond per feature) applies to native features too and is checked the same way.
+
+## Addendum: capabilities, manifest, data, delivery (2026-10-30)
+
+Settled after the first code slices of `photon-api`. The mod host itself ([#27]) is not started.
+
+- **Capabilities.** Named `area.verb`, mirroring what `photon-api` offers. A mod gets only what its manifest asks for and the user grants. The first set is `events.tick` and `events.frame` (observe only) and `registry.read`. Later, each added together with the API it guards and never ahead of it: `render.hud`, `input.keys`, `chat.read`, `chat.send`, and `net.packets` (the last two only after the packet types of [ADR 0013](0013-multi-version-content-model.md) and secure chat settle). The first version has no file, network or process capability.
+- **Manifest.** One `mod.toml` per mod: its id (the owner name used for unloading), its version, the `photon-api` version it was built for, the capabilities it asks for and a hash of its payload. The API version follows the crate's semver; a major difference refuses the mod instead of loading it wrongly.
+- **Data.** A mod carries a vanilla-format data pack and resource pack beside its code. The client already reads both formats, so nothing new is specified.
+- **WIT world.** Generated from `photon-api` when the first runtime prototype needs it, and not before. Until then there is no WIT file.
+- **Signing.** Open. Mods a user installs by hand are not signed in the first version; the key policy for anything delivered depends on the release and self-update keys and waits for the owner.
+- **Server delivery.** Accepted in this shape, to be built after 1.0: a server can only suggest a mod by id and hash on a custom payload channel; the client shows the capabilities and asks, loads nothing without a click, and loads nothing in singleplayer or offline play. It follows the multiplayer-only decision of [ADR 0014](0014-multiplayer-only-first-release.md) and the trust model above.
+
+[#27]: https://github.com/PhotonMC/photon-client/issues/27
