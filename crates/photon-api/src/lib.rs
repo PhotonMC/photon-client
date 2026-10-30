@@ -9,9 +9,11 @@ mod events;
 mod owner;
 mod registry;
 mod sets;
+mod update;
 
 pub use event::Event;
 pub use events::{ClientEvents, TickEnd, TickStart};
 pub use owner::Owner;
 pub use registry::{Registries, Registry};
 pub use sets::{FrameSet, TickSet};
+pub use update::{ServerNeedsNewerVersion, UpdateChanged, UpdateForServer, UpdateState};

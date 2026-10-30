@@ -8,6 +8,7 @@ publish = false
 include = ["/Cargo.toml", "/src/**"]
 
 [dependencies]
+photon-api.workspace = true
 flate2.workspace = true
 ring = { version = "0.17", default-features = false }
 sha2.workspace = true

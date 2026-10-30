@@ -1777,6 +1777,7 @@ name = "photon-update"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "photon-api",
  "ring",
  "sha2",
  "ureq",

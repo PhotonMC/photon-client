@@ -242,11 +242,15 @@ fn hex(text: &str) -> Option<Vec<u8>> {
 }
 
 mod host;
+mod service;
 mod swap;
 pub use host::{Offer, PLATFORM, RELEASE_HOST, check, download, offer};
+pub use service::{CHECK_INTERVAL, Config, Service, Settings};
 pub use swap::{Applied, apply};
 
 #[cfg(test)]
-mod host_tests;
+pub(crate) mod host_tests;
+#[cfg(test)]
+mod service_tests;
 #[cfg(test)]
 pub(crate) mod tests;

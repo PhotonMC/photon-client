@@ -71,6 +71,10 @@ pub fn offer(
     platform: &str,
     current: &str,
 ) -> Result<Option<Offer>, Error> {
+    // Without a key nothing could be verified, so nothing is asked.
+    if keys.is_empty() {
+        return Err(Error::NoKey);
+    }
     let host = host.trim_end_matches('/');
     let agent = agent(host)?;
     let manifest = get(

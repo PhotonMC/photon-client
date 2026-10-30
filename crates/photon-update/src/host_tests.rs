@@ -4,7 +4,7 @@ use super::tests::{folder, manifest, public, test_key, to_hex};
 use super::*;
 
 /// A host on this machine that serves `files` (path, body) until it has answered `count` requests.
-fn host(
+pub(crate) fn host(
     files: Vec<(&'static str, Vec<u8>)>,
     count: usize,
 ) -> (String, std::thread::JoinHandle<()>) {

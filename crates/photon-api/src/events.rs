@@ -1,4 +1,4 @@
-use crate::Event;
+use crate::{Event, ServerNeedsNewerVersion, UpdateChanged};
 
 /// A client tick is about to run (Fabric's `ClientTickEvents.START_CLIENT_TICK`).
 #[derive(Debug, Clone, Copy)]
@@ -13,4 +13,8 @@ pub struct TickEnd;
 pub struct ClientEvents {
     pub tick_start: Event<TickStart>,
     pub tick_end: Event<TickEnd>,
+    /// The updater's state changed (only fired while a game is being played).
+    pub update_changed: Event<UpdateChanged>,
+    /// The server speaks a newer protocol than this client.
+    pub server_needs_newer_version: Event<ServerNeedsNewerVersion>,
 }
