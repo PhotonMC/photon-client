@@ -79,19 +79,23 @@ pub struct WindowSurface {
     mode_dirty: bool,
 }
 
-/// `GLX._initGlfw`: where both X11 and Wayland are there, GLFW is asked for X11, whose monitors
-/// list their modes and switch to them (a Wayland compositor offers one mode and no switching).
-fn prefer_x11() {
-    if glfw::Platform::Wayland.is_supported() && glfw::Platform::X11.is_supported() {
-        glfw::init_hint(glfw::InitHint::Platform(glfw::Platform::X11));
-    }
-}
+/// The sizes a monitor that lists a single mode is offered, largest first.
+const COMMON_SIZES: [(i32, i32); 9] = [
+    (3840, 2160),
+    (2560, 1440),
+    (1920, 1080),
+    (1680, 1050),
+    (1600, 900),
+    (1366, 768),
+    (1280, 720),
+    (1024, 576),
+    (854, 480),
+];
 
 impl WindowSurface {
     /// Create the window in the reference's order: hidden, clamped size,
     /// centred on the primary monitor, then framebuffer read back.
     pub fn create(display: DisplayData, title: &str) -> Result<Self, WindowSurfaceError> {
-        prefer_x11();
         let mut glfw = glfw::init_no_callbacks().map_err(WindowSurfaceError::Init)?;
 
         // The Vulkan backend asks GLFW for no client API; the reference also
@@ -271,15 +275,32 @@ impl WindowSurface {
         monitor.get_video_mode().map(VideoMode::from)
     }
 
-    /// `Monitor.tryCreate`'s list: the modes with eight bits or more per channel, last first.
+    /// `Monitor.tryCreate`'s list: the modes with eight bits or more per channel, last first. A
+    /// monitor that lists one mode only (a Wayland compositor does not offer mode changes) gets
+    /// the usual sizes up to that mode's own as well, which fullscreen then asks for as a window
+    /// size: the game renders at it and the compositor scales it.
     fn listed_modes(monitor: &glfw::Monitor) -> Vec<VideoMode> {
-        monitor
+        let mut modes: Vec<VideoMode> = monitor
             .get_video_modes()
             .into_iter()
             .rev()
             .map(VideoMode::from)
             .filter(|mode| mode.red_bits >= 8 && mode.green_bits >= 8 && mode.blue_bits >= 8)
-            .collect()
+            .collect();
+        if let [only] = modes[..] {
+            modes.extend(
+                COMMON_SIZES
+                    .iter()
+                    .filter(|(width, height)| *width <= only.width && *height <= only.height)
+                    .filter(|(width, height)| (*width, *height) != (only.width, only.height))
+                    .map(|&(width, height)| VideoMode {
+                        width,
+                        height,
+                        ..only
+                    }),
+            );
+        }
+        modes
     }
 
     /// The video modes the primary monitor offers, or none when there is no monitor
