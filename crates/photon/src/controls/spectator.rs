@@ -12,6 +12,15 @@ pub(crate) fn now_ms() -> i64 {
 }
 
 impl Controls {
+    /// `SpectatorGui.extractHotbar` ends a menu that has faded out, and only a spectator's drawn
+    /// hotbar runs it: not under F1, and not once the player left spectator mode.
+    pub(crate) fn close_faded_spectator_menu(&mut self, session: &PlaySession) {
+        let spectating = session.player().is_some_and(|player| player.spectating());
+        if spectating && !self.hud_hidden {
+            self.spectator.close_faded(now_ms());
+        }
+    }
+
     /// A number key of a spectator picks a slot of the spectator menu (`onHotbarSelected`).
     pub(super) fn spectator_hotbar(&mut self, name: &str, session: &mut PlaySession) {
         let Some(slot) = name["key.hotbar.".len()..]

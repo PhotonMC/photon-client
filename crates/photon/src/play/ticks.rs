@@ -326,9 +326,7 @@ impl Play {
             .open_book_editor(&mut self.session, &mut self.surface, &self.screen_assets);
         self.controls
             .open_held_book(&mut self.session, &mut self.surface, &self.screen_assets);
-        self.controls
-            .spectator
-            .close_faded(crate::controls::spectator::now_ms());
+        self.controls.close_faded_spectator_menu(&self.session);
         let hud = self.session.drain_hud();
         if !hud.is_empty() {
             self.gui.receive_hud(hud);

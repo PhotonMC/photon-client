@@ -58,7 +58,7 @@ pub struct HeldKeys {
     pub scroll: Option<i32>,
     /// A scripted mouse wheel turn over the open screen, in notches (negative is down).
     pub wheel: Option<i32>,
-    /// A scripted number key of the hotbar (`hotbar1` to `hotbar9`), which a spectator's menu takes.
+    /// A scripted number key of the hotbar (`spectator1` to `spectator9`), which a spectator's menu takes.
     pub hotbar: Option<u8>,
     /// The mouse moved to a place, in GUI units.
     pub mouse: Option<(f64, f64)>,
@@ -108,15 +108,15 @@ const FLAGS: &[Flag] = &[
     ("screenshot", |keys| keys.screenshot = true),
     ("debug_overlay", |keys| keys.debug_overlay = true),
     ("keep_awake", |keys| keys.keep_awake = true),
-    ("hotbar1", |keys| keys.hotbar = Some(1)),
-    ("hotbar2", |keys| keys.hotbar = Some(2)),
-    ("hotbar3", |keys| keys.hotbar = Some(3)),
-    ("hotbar4", |keys| keys.hotbar = Some(4)),
-    ("hotbar5", |keys| keys.hotbar = Some(5)),
-    ("hotbar6", |keys| keys.hotbar = Some(6)),
-    ("hotbar7", |keys| keys.hotbar = Some(7)),
-    ("hotbar8", |keys| keys.hotbar = Some(8)),
-    ("hotbar9", |keys| keys.hotbar = Some(9)),
+    ("spectator1", |keys| keys.hotbar = Some(1)),
+    ("spectator2", |keys| keys.hotbar = Some(2)),
+    ("spectator3", |keys| keys.hotbar = Some(3)),
+    ("spectator4", |keys| keys.hotbar = Some(4)),
+    ("spectator5", |keys| keys.hotbar = Some(5)),
+    ("spectator6", |keys| keys.hotbar = Some(6)),
+    ("spectator7", |keys| keys.hotbar = Some(7)),
+    ("spectator8", |keys| keys.hotbar = Some(8)),
+    ("spectator9", |keys| keys.hotbar = Some(9)),
 ];
 
 impl HeldKeys {
