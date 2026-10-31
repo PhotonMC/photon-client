@@ -1,6 +1,11 @@
 use super::*;
 
 impl Gui {
+    /// The toasts of a menu move on.
+    pub fn update_menu_toasts(&mut self, options: &photon_game::options::Options) {
+        self.layers.update_menu(options, (&self.font, &self.lang));
+    }
+
     /// A frame of a menu, with nothing behind it but the clear colour.
     pub fn draw_menu_screen(
         &self,
@@ -14,6 +19,10 @@ impl Gui {
         };
         draw(&mut frame, &self.atlas, &self.font);
         let size = surface.scale();
+        self.layers.draw_menu(
+            (&mut frame, size.gui_scaled_width()),
+            (&self.atlas, &self.font, &self.lang),
+        );
         let scale = size.gui_scale() as f32;
         backend.set_gui(
             &frame,

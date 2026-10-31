@@ -16,6 +16,8 @@ pub(crate) struct Layers {
     /// The song the music manager has playing, as its language key.
     current_song: Option<String>,
     started_at: std::time::Instant,
+    /// `notificationDisplayTime` as the menu last saw it, for the toasts drawn there.
+    menu_display_time: f64,
 }
 
 /// Where in the frame the subtitles are drawn.
@@ -80,7 +82,43 @@ impl Layers {
             music_toast: None,
             current_song: None,
             started_at,
+            menu_display_time: 1.0,
         }
+    }
+
+    /// `Gui.update` of a menu: the toasts move on (their sounds are not played there).
+    pub(super) fn update_menu(
+        &mut self,
+        options: &photon_game::options::Options,
+        (font, lang): (&Font, &Lang),
+    ) {
+        self.menu_display_time = options.notification_display_time;
+        self.update_toasts(None, options, ((font, lang), None));
+    }
+
+    /// The toasts over a menu, which has no interface to hide and no pause screen.
+    pub(super) fn draw_menu(
+        &self,
+        (frame, width): (&mut photon_render::gui::GuiFrame, i32),
+        (atlas, font, lang): (&GuiAtlas, &Font, &Lang),
+    ) {
+        let env = ToastEnv {
+            font,
+            lang,
+            display_time: self.menu_display_time,
+            current_song: None,
+            note_colour: self.toasts.notes.colour,
+        };
+        // Nothing in a menu holds an item.
+        let mut no_item = |_: &_, _, _, _: &mut Vec<_>| (0, false);
+        let music = self.music_toast.unwrap_or(MusicToast::Never);
+        self.toasts.draw(
+            (frame, &mut no_item),
+            atlas,
+            width,
+            (false, music, false),
+            &env,
+        );
     }
 
     fn now_ms(&self) -> u64 {

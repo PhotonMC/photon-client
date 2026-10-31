@@ -51,8 +51,15 @@ impl Menu {
 
     /// One frame of the friends: the answers of the service, and the key's request to open.
     pub(super) fn friends_ticked(&mut self, client: &mut Client) {
-        // The toasts have no layer on the title screen.
-        drop(self.host.friends_tick(self.gui.lang()));
+        for title in self.host.friends_tick(self.gui.lang()) {
+            self.gui.add_friend_toast(&title);
+        }
+        let options = if self.host.host_open() {
+            &self.host.options
+        } else {
+            &self.options
+        };
+        self.gui.update_menu_toasts(options);
         if self.host.take_friends_wanted() {
             self.open_friends(client);
         }
