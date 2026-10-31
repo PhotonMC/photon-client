@@ -108,7 +108,12 @@ impl Controls {
             social.want_presence();
         }
         self.friends_from_pause = false;
-        self.friends = Some(FriendsOverlay::new(&assets.lang, size, view));
+        self.friends = Some(FriendsOverlay::new(
+            &assets.lang,
+            &assets.creative.font,
+            size,
+            view,
+        ));
         self.captured = false;
         self.last_cursor = None;
         surface.set_cursor_captured(false);

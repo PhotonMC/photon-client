@@ -12,11 +12,10 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 /// Left, top, width and height.
 pub(super) type Rect = (i32, i32, i32, i32);
 
-const ENTRY_WIDTH: i32 = OVERLAY_WIDTH - 16;
 const FACE_SIZE: i32 = 24;
-const ENTRY_GAP: i32 = 4;
-const HEADER_HEIGHT: i32 = 9;
-const SECTION_GAP: i32 = 8;
+/// `FocusableTextWidget.DEFAULT_PADDING`; a header is one line and the padding twice.
+const TEXT_PADDING: i32 = 4;
+const HEADER_HEIGHT: i32 = 9 + 2 * TEXT_PADDING;
 const SCROLL_STEP: i32 = 9;
 const ICON_BUTTON: i32 = 20;
 const SCROLLBAR_WIDTH: i32 = 6;
@@ -34,27 +33,68 @@ pub(super) enum Button {
 enum Row {
     Header(bool, i32),
     Entry(usize, i32),
+    /// The text under the friends: how to manage the account.
+    Footer(i32),
 }
 
 impl FriendsOverlay {
-    /// The rows of the shown list from its top, and how tall they are together.
+    /// The rows of the shown list from its top, and how tall they are together. The entries stand
+    /// one on the other (the layouts have no spacing), a header is its text with a padding of 4
+    /// around, and the friends list ends with the footer.
     fn rows(&self, entries: &[Entry]) -> (Vec<Row>, i32) {
         let mut rows = Vec::new();
         let mut y = 0;
         let mut last = None;
         for (index, entry) in entries.iter().enumerate() {
             if self.tab == Tab::Pending && last != Some(entry.kind) {
-                if last.is_some() {
-                    y += SECTION_GAP - ENTRY_GAP;
-                }
                 rows.push(Row::Header(entry.kind == Tab::received_kind(), y));
-                y += HEADER_HEIGHT + ENTRY_GAP;
+                y += HEADER_HEIGHT;
             }
             last = Some(entry.kind);
             rows.push(Row::Entry(index, y));
-            y += ENTRY_HEIGHT + ENTRY_GAP;
+            y += ENTRY_HEIGHT;
         }
-        (rows, (y - ENTRY_GAP).max(0))
+        if self.tab == Tab::Friends && !entries.is_empty() {
+            rows.push(Row::Footer(y));
+            y += self.footer_lines.len() as i32 * 9 + 2 * TEXT_PADDING;
+        }
+        (rows, y)
+    }
+
+    /// The footer's lines, centred in the entries' width, with where each starts.
+    fn footer_at(&self, font: &Font, top: i32, left: i32) -> Vec<((i32, i32), &[Run])> {
+        self.footer_lines
+            .iter()
+            .enumerate()
+            .map(|(index, line)| {
+                let x = left + (ENTRY_WIDTH - font.width_of_runs(line)) / 2;
+                ((x, top + TEXT_PADDING + index as i32 * 9), line.as_slice())
+            })
+            .collect()
+    }
+
+    /// Whether `at` is on the link of the footer under the friends.
+    pub(super) fn footer_link_at(&self, at: (i32, i32), font: &Font) -> bool {
+        let area = self.list_area();
+        if self.tab != Tab::Friends || !inside(at, area) {
+            return false;
+        }
+        let (rows, _) = self.rows(self.shown());
+        let Some(Row::Footer(y)) = rows.iter().find(|row| matches!(row, Row::Footer(_))) else {
+            return false;
+        };
+        let top = area.1 + y - self.scroll;
+        self.footer_at(font, top, area.0 + BORDER)
+            .into_iter()
+            .any(|((x, y), line)| {
+                let mut left = x;
+                line.iter().any(|run| {
+                    let width = font.width_of_runs(std::slice::from_ref(run));
+                    let hit = run.style.underlined == Some(true) && inside(at, (left, y, width, 9));
+                    left += width;
+                    hit
+                })
+            })
     }
 
     fn shown(&self) -> &[Entry] {
@@ -201,8 +241,15 @@ impl FriendsOverlay {
                     } else {
                         &self.texts.sent
                     };
-                    let at = (left, area.1 + y - self.scroll);
+                    // Centred in the entries' width, over a padding of the widget.
+                    let x = left + (ENTRY_WIDTH - font.width_of_runs(text)) / 2;
+                    let at = (x, area.1 + y - self.scroll + TEXT_PADDING);
                     frame.styled_text(atlas, font, text, at, WHITE, true);
+                }
+                Row::Footer(y) => {
+                    for (at, line) in self.footer_at(font, area.1 + y - self.scroll, left) {
+                        frame.styled_text(atlas, font, line, at, WHITE, true);
+                    }
                 }
                 Row::Entry(index, y) => {
                     let at = (left, area.1 + y - self.scroll);

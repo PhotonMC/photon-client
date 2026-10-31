@@ -24,6 +24,8 @@ use photon_render::gui::font::Font;
 
 /// `OVERLAY_WIDTH`, the tab buttons' and the panel's border.
 const OVERLAY_WIDTH: i32 = 220;
+/// What the entries and the texts between them are as wide as: the overlay less its scroll room.
+const ENTRY_WIDTH: i32 = OVERLAY_WIDTH - 16;
 const TAB_WIDTH: i32 = 110;
 const TAB_HEIGHT: i32 = 20;
 const BORDER: i32 = 8;
@@ -130,6 +132,8 @@ pub struct FriendsOverlay {
     /// The button whose action is on its way, which shows the loading state.
     pressed: Option<Pressed>,
     pending_label: Vec<Run>,
+    /// The footer of the friends list, wrapped to the entries' width.
+    footer_lines: Vec<Vec<Run>>,
 }
 
 /// A button that was pressed and has not been answered.
@@ -146,6 +150,7 @@ struct Texts {
     loading: [Vec<Run>; 2],
     profile_label: Vec<Run>,
     empty: Vec<Run>,
+    footer: Vec<Run>,
     pending_empty: Vec<Run>,
     received: Vec<Run>,
     sent: Vec<Run>,
@@ -153,7 +158,7 @@ struct Texts {
 }
 
 impl FriendsOverlay {
-    pub fn new(lang: &Lang, size: (i32, i32), view: FriendsView) -> Self {
+    pub fn new(lang: &Lang, font: &Font, size: (i32, i32), view: FriendsView) -> Self {
         let runs = |component: &Component| lang.runs(component, &Style::default());
         let key = |name: &str| runs(&Component::translatable(name));
         let grey = |name: &str| runs(&Component::translatable(name).with_colour("gray"));
@@ -181,7 +186,11 @@ impl FriendsOverlay {
                 }),
             ),
             empty: runs(
-                &Component::translatable_with("gui.friends.empty_state", vec![link])
+                &Component::translatable_with("gui.friends.empty_state", vec![link.clone()])
+                    .with_colour("gray"),
+            ),
+            footer: runs(
+                &Component::translatable_with("gui.friends.manage_account_footer", vec![link])
                     .with_colour("gray"),
             ),
             pending_empty: grey("gui.friends.pending.empty"),
@@ -192,6 +201,7 @@ impl FriendsOverlay {
             tooltips: tooltip::TooltipTexts::new(lang),
         };
         Self {
+            footer_lines: crate::chat::split(&texts.footer, ENTRY_WIDTH - 8, font),
             pending_label: pending_label(lang, view.requests),
             focused_at: Instant::now(),
             scroll: 0,

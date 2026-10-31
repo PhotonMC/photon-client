@@ -12,7 +12,7 @@ fn view(ready: bool) -> FriendsView {
 }
 
 fn overlay(ready: bool) -> FriendsOverlay {
-    FriendsOverlay::new(&Lang::new([]), (320, 240), view(ready))
+    FriendsOverlay::new(&Lang::new([]), &Font::default(), (320, 240), view(ready))
 }
 
 fn centre((x, y, width, height): (i32, i32, i32, i32)) -> (f64, f64) {

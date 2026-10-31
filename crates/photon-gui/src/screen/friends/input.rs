@@ -89,7 +89,7 @@ impl FriendsOverlay {
             }
             return None;
         }
-        if self.empty_link_at(at, font) {
+        if self.empty_link_at(at, font) || self.footer_link_at(at, font) {
             crate::ui_sound::play_down_sound();
             return Some(FriendsEvent::OpenLink);
         }
