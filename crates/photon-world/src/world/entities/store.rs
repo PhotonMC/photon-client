@@ -300,6 +300,28 @@ impl Entities {
             .filter_map(|&(_, entity, _)| self.view(entity))
     }
 
+    /// [`Self::drawn`] of the entities whose type `test` takes, in the same order. `test` is asked
+    /// once per type, with the first entity of that type, so it must depend on the type alone;
+    /// the entities of the other types are skipped without a view being built for each.
+    pub fn drawn_of_kind(
+        &self,
+        mut test: impl FnMut(EntityView<'_>) -> bool,
+    ) -> impl Iterator<Item = EntityView<'_>> {
+        let mut known: Vec<(EntityTypeId, bool)> = Vec::new();
+        self.visible
+            .iter()
+            .filter(move |&&(_, entity, type_id)| {
+                if let Some(&(_, taken)) = known.iter().find(|(seen, _)| *seen == type_id) {
+                    return taken;
+                }
+                let taken = self.view(entity).is_some_and(&mut test);
+                known.push((type_id, taken));
+                taken
+            })
+            .filter_map(|&(_, entity, _)| self.view(entity))
+            .filter(|entity| !entity.is_invisible_mob())
+    }
+
     /// Set which invisible entities the local player sees as ghosts (`Entity.isInvisibleTo`).
     pub fn set_friendly_ghosts(&mut self, ids: BTreeSet<EntityId>) {
         self.friendly_ghosts = ids;

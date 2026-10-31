@@ -73,7 +73,7 @@ pub fn remote_boats(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn().filter(|entity| entity.is_boat()) {
+    for entity in world.entities().drawn_of_kind(|entity| entity.is_boat()) {
         let Some((layer, texture)) =
             photon_data::entity_type::name(entity.type_id).and_then(model_of)
         else {

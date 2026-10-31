@@ -22,7 +22,7 @@ pub fn remote_players(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_of_kind(is_avatar) {
         // A player who only watches is not drawn; a mannequin is drawn as a player.
         if !is_avatar(entity) || entity.is_spectator() {
             continue;

@@ -510,7 +510,6 @@
 "crates/photon/src/mobs/monsters/ender_dragons.rs::remote_ender_dragons" = 11
 "crates/photon/src/mobs/monsters/remote.rs::pose_monster" = 17
 "crates/photon/src/mobs/pose.rs::piglin_arm_pose" = 11
-"crates/photon/src/objects/arrows.rs::remote_arrows" = 11
 "crates/photon/src/objects/leashes.rs::leashes" = 11
 "crates/photon/src/particles.rs::Particles::vertices" = 12
 "crates/photon/src/play/cull.rs::should_render" = 12
@@ -899,9 +898,9 @@
 "crates/photon/src/mobs/pose.rs::remote_humanoids" = 92
 "crates/photon/src/mobs/wild.rs::remote_mobs" = 69
 "crates/photon/src/objects/displays.rs::display_texts" = 75
-"crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 70
+"crates/photon/src/objects/fishing_hooks.rs::fishing_hooks" = 69
 "crates/photon/src/objects/leashes.rs::leashes" = 86
-"crates/photon/src/objects/minecarts.rs::remote_minecarts" = 84
+"crates/photon/src/objects/minecarts.rs::remote_minecarts" = 83
 "crates/photon/src/overlays/light.rs::player_model" = 68
 "crates/photon/src/overlays/wear.rs::remote_players" = 71
 "crates/photon/src/particles.rs::Particles::vertices" = 78

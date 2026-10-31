@@ -57,8 +57,7 @@ pub fn remote_minecarts(
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
-        .filter(|entity| entity.is_minecart())
+        .drawn_of_kind(|entity| entity.is_minecart())
     {
         let Some(name) = photon_data::entity_type::name(entity.type_id) else {
             continue;
@@ -144,8 +143,7 @@ pub fn remote_primed_tnt(session: &PlaySession, (view, held): (FrameView, &mut V
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
-        .filter(|entity| entity.is_primed_tnt())
+        .drawn_of_kind(|entity| entity.is_primed_tnt())
     {
         let (Some(snapshot), Some(own)) = (
             world.entity_snapshot_of(entity, partial),

@@ -38,8 +38,7 @@ pub fn remote_end_crystals(
     };
     for entity in world
         .entities()
-        .drawn()
-        .filter(|entity| entity.type_id == crystal)
+        .drawn_of_kind(|entity| entity.type_id == crystal)
     {
         let (Some(snapshot), Some(rect), Some(beam_rect), Some(model)) = (
             world.entity_snapshot_of(entity, partial),

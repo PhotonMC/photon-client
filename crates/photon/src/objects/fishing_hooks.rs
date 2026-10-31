@@ -105,10 +105,9 @@ pub fn fishing_hooks(
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     let (mut sprites, mut lines) = (Vec::new(), Vec::new());
-    for entity in world.entities().drawn() {
-        if photon_data::entity_type::name(entity.type_id) != Some("minecraft:fishing_bobber") {
-            continue;
-        }
+    for entity in world.entities().drawn_of_kind(|entity| {
+        photon_data::entity_type::name(entity.type_id) == Some("minecraft:fishing_bobber")
+    }) {
         let (Some(snapshot), Some(rect)) = (
             world.entity_snapshot_of(entity, partial),
             textures.rect(HOOK),

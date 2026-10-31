@@ -24,6 +24,15 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     [WIND_CHARGE, DRAGON_FIREBALL].into_iter()
 }
 
+/// Whether the entity is a dragon fireball (`true`) or a wind charge (`false`), or neither.
+fn is_fireball_or_charge(entity: photon_world::EntityView<'_>) -> Option<bool> {
+    match photon_data::entity_type::name(entity.type_id) {
+        Some("minecraft:dragon_fireball") => Some(true),
+        Some("minecraft:wind_charge" | "minecraft:breeze_wind_charge") => Some(false),
+        _ => None,
+    }
+}
+
 /// The wind charges and dragon fireballs the server added.
 pub fn remote_charges(
     session: &PlaySession,
@@ -35,17 +44,13 @@ pub fn remote_charges(
     let world = session.world();
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
-    for entity in world.entities().drawn() {
-        let name = photon_data::entity_type::name(entity.type_id);
-        let is_fireball = name == Some("minecraft:dragon_fireball");
-        if !is_fireball
-            && !matches!(
-                name,
-                Some("minecraft:wind_charge" | "minecraft:breeze_wind_charge")
-            )
-        {
+    for entity in world
+        .entities()
+        .drawn_of_kind(|entity| is_fireball_or_charge(entity).is_some())
+    {
+        let Some(is_fireball) = is_fireball_or_charge(entity) else {
             continue;
-        }
+        };
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
             continue;
         };

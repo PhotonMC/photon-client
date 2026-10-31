@@ -62,10 +62,9 @@ pub fn falling_blocks(
     let world = session.world();
     let partial = view.partial as f32;
     let mut blocks = Vec::new();
-    for entity in world.entities().drawn() {
-        if photon_data::entity_type::name(entity.type_id) != Some("minecraft:falling_block") {
-            continue;
-        }
+    for entity in world.entities().drawn_of_kind(|entity| {
+        photon_data::entity_type::name(entity.type_id) == Some("minecraft:falling_block")
+    }) {
         // `ClientboundAddEntityPacket.getData`: the block state's number.
         let Some(state) = BlockStateId::non_negative(entity.data) else {
             continue;

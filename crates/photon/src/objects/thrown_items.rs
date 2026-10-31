@@ -30,7 +30,9 @@ pub fn thrown_items(
     let partial = view.partial as f32;
     let orientation = camera_orientation(view.rotation.0, view.rotation.1);
     let rocket = photon_data::entity_type::id("minecraft:firework_rocket");
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_of_kind(|entity| {
+        entity.thrown_item_look().is_some() || Some(entity.type_id) == rocket
+    }) {
         let look = entity.thrown_item_look();
         if look.is_none() && Some(entity.type_id) != rocket {
             continue;

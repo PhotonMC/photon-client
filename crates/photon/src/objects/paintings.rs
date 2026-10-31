@@ -84,10 +84,9 @@ pub fn remote_paintings(
         return;
     };
     let first = vertices.len();
-    for entity in world.entities().drawn() {
-        if photon_data::entity_type::name(entity.type_id) != Some("minecraft:painting") {
-            continue;
-        }
+    for entity in world.entities().drawn_of_kind(|entity| {
+        photon_data::entity_type::name(entity.type_id) == Some("minecraft:painting")
+    }) {
         // `ClientboundAddEntityPacket.getData`: the way it faces; the block is its position.
         let direction = Direction::from_3d_data_value(entity.data);
         let Some(variant) = usize::try_from(entity.variant().unwrap_or(0))

@@ -27,6 +27,22 @@ pub fn textures() -> impl Iterator<Item = &'static str> {
     [ARROW, TIPPED, SPECTRAL, TRIDENT].into_iter()
 }
 
+/// The texture of an arrow or a trident, or none for another entity.
+fn texture_of(entity: photon_world::EntityView<'_>) -> Option<&'static str> {
+    Some(match photon_data::entity_type::name(entity.type_id)? {
+        "minecraft:arrow" => {
+            if entity.arrow().is_some_and(|own| own.is_tipped()) {
+                TIPPED
+            } else {
+                ARROW
+            }
+        }
+        "minecraft:spectral_arrow" => SPECTRAL,
+        "minecraft:trident" => TRIDENT,
+        _ => return None,
+    })
+}
+
 /// `ArrowRenderer` for the arrows and spectral arrows the server added.
 pub fn remote_arrows(
     session: &PlaySession,
@@ -37,18 +53,12 @@ pub fn remote_arrows(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
-        let texture = match photon_data::entity_type::name(entity.type_id) {
-            Some("minecraft:arrow") => {
-                if entity.arrow().is_some_and(|own| own.is_tipped()) {
-                    TIPPED
-                } else {
-                    ARROW
-                }
-            }
-            Some("minecraft:spectral_arrow") => SPECTRAL,
-            Some("minecraft:trident") => TRIDENT,
-            _ => continue,
+    for entity in world
+        .entities()
+        .drawn_of_kind(|entity| texture_of(entity).is_some())
+    {
+        let Some(texture) = texture_of(entity) else {
+            continue;
         };
         let trident = texture == TRIDENT;
         let (Some(snapshot), Some(rect), Some(model)) = (

@@ -91,7 +91,7 @@ fn shown(session: &PlaySession, view: FrameView) -> Vec<Shown<'_>> {
     let world = session.world();
     let partial = view.partial as f32;
     let mut out = Vec::new();
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_of_kind(|e| e.display().is_some()) {
         let Some(display) = entity.display() else {
             continue;
         };
@@ -267,7 +267,7 @@ pub fn display_texts(
     let world = session.world();
     let partial = view.partial as f32;
     let (mut see_through, mut normal) = (Vec::new(), Vec::new());
-    for entity in world.entities().drawn() {
+    for entity in world.entities().drawn_of_kind(|e| e.display().is_some()) {
         let Some(display) = entity.display() else {
             continue;
         };

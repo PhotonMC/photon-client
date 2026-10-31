@@ -63,7 +63,10 @@ pub fn remote_bullets(
 ) {
     let world = session.world();
     let partial = view.partial as f32;
-    for entity in world.entities().drawn() {
+    for entity in world
+        .entities()
+        .drawn_of_kind(|entity| look_of(entity).is_some())
+    {
         let Some((layer, texture)) = look_of(entity) else {
             continue;
         };

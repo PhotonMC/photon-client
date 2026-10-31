@@ -15,8 +15,7 @@ pub fn remote_lightning(session: &PlaySession, models: &mut MobModels, view: Fra
     let partial = view.partial as f32;
     for entity in world
         .entities()
-        .drawn()
-        .filter(|entity| entity.is_lightning_bolt())
+        .drawn_of_kind(|entity| entity.is_lightning_bolt())
     {
         let (Some(state), Some(snapshot)) = (
             entity.lightning(),

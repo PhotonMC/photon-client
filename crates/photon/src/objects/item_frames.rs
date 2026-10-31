@@ -206,8 +206,7 @@ pub fn item_frames(
     let world = session.world();
     for entity in world
         .entities()
-        .drawn()
-        .filter(|entity| entity.is_item_frame())
+        .drawn_of_kind(|entity| entity.is_item_frame())
     {
         let glowing =
             photon_data::entity_type::name(entity.type_id) == Some("minecraft:glow_item_frame");
