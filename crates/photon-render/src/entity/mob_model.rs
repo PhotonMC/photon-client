@@ -162,6 +162,11 @@ impl MobModel {
         out
     }
 
+    /// The faces of `render`, handed one by one to `emit`, in the order of `quads`.
+    pub fn each_quad(&self, pose: &Pose, emit: &mut impl FnMut([ModelVertex; 4])) {
+        self.root.each_quad(pose, emit);
+    }
+
     /// The faces of `render`, without the paths of their parts.
     pub fn quads(&self, pose: &Pose) -> Vec<[ModelVertex; 4]> {
         let mut out = Vec::new();
@@ -174,6 +179,46 @@ impl MobModel {
 mod tests {
     use super::*;
     use photon_data::entity_model::layer;
+
+    #[test]
+    fn vertices_built_face_by_face_are_those_of_the_collected_quads() {
+        for name in [
+            "minecraft:pig#main",
+            "minecraft:creeper#main",
+            "minecraft:villager#main",
+        ] {
+            let model = MobModel::bake(layer(name).expect("a layer"));
+            let placement = MobPlacement {
+                body_rot: 37.0,
+                light: 0x00F0_00F0,
+                red_overlay: true,
+                ..MobPlacement::default()
+            };
+            let rect = [0.25, 0.5, 0.75, 1.0];
+            let built = mob_vertices_coloured(&model, &placement, rect, Some(0x80_40_20));
+            let colour = crate::scene::entity_colour(0x80_40_20);
+            let light = crate::block::light::light_uv(placement.light);
+            let shade = overlay_code(placement.red_overlay, placement.white_overlay);
+            let mut expected = Vec::new();
+            for corners in model.quads(&placement_pose(&placement)) {
+                for index in [0, 1, 2, 0, 2, 3] {
+                    let corner = corners[index];
+                    expected.push(Vertex {
+                        position: corner.position,
+                        uv: uv(rect, corner.uv),
+                        shade,
+                        tint: [corner.normal[0], corner.normal[1], corner.normal[2], colour],
+                        light,
+                    });
+                }
+            }
+            assert!(!built.is_empty(), "{name}");
+            assert_eq!(built.len(), expected.len(), "{name}");
+            for (got, want) in built.iter().zip(&expected) {
+                assert_eq!(format!("{got:?}"), format!("{want:?}"), "{name}");
+            }
+        }
+    }
 
     #[test]
     fn a_quad_the_scroll_carries_over_the_edge_is_cut_there_and_keeps_its_area() {

@@ -130,21 +130,25 @@ pub fn mob_vertices_coloured(
     let colour = colour.map_or(0.0, crate::scene::entity_colour);
     let pose = placement_pose(placement);
     let light = crate::block::light::light_uv(placement.light);
-    let mut vertices = Vec::new();
-    for corners in model.quads(&pose) {
+    let shade = overlay_code(placement.red_overlay, placement.white_overlay);
+    let mut vertices = Vec::with_capacity(QUADS_TO_EXPECT * 6);
+    model.each_quad(&pose, &mut |corners| {
         for index in [0, 1, 2, 0, 2, 3] {
             let corner = corners[index];
             vertices.push(Vertex {
                 position: corner.position,
                 uv: uv(texture, corner.uv),
-                shade: overlay_code(placement.red_overlay, placement.white_overlay),
+                shade,
                 tint: [corner.normal[0], corner.normal[1], corner.normal[2], colour],
                 light,
             });
         }
-    }
+    });
     vertices
 }
+
+/// How many faces most mobs have, so a model's vertices rarely grow their vector.
+const QUADS_TO_EXPECT: usize = 48;
 
 /// The posed model's triangles, placed, each vertex carrying its normal in
 /// its tint for the entity shader, with texture coordinates in the packed

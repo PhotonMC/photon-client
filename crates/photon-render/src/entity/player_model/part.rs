@@ -163,11 +163,16 @@ impl Part {
 
     /// The same faces as `render`, in the same order, without the paths of their parts.
     pub fn render_quads(&self, pose: &Pose, out: &mut Vec<[ModelVertex; 4]>) {
-        let Some(pose) = self.own_quads(pose, |quad| out.push(quad)) else {
+        self.each_quad(pose, &mut |quad| out.push(quad));
+    }
+
+    /// The faces of `render_quads`, handed one by one to `emit` in the same order.
+    pub fn each_quad(&self, pose: &Pose, emit: &mut impl FnMut([ModelVertex; 4])) {
+        let Some(pose) = self.own_quads(pose, &mut *emit) else {
             return;
         };
         for child in &self.children {
-            child.render_quads(&pose, out);
+            child.each_quad(&pose, emit);
         }
     }
 
