@@ -1,6 +1,8 @@
+use super::shadow_radius::{self, TypeShadow};
 use super::*;
 use crate::objects::displays;
 use photon_world::{ClientWorld, EntityView, ShadowInput};
+use std::collections::HashMap;
 
 /// Whether an entity casts no shadow: an invisible one, or a spectator.
 fn casts_no_shadow(entity: EntityView<'_>) -> bool {
@@ -26,6 +28,7 @@ fn shadow_of(
     world: &ClientWorld,
     camera: &TagCamera,
     entity: EntityView<'_>,
+    facts: TypeShadow,
     partial: f32,
 ) -> Option<(f32, f32)> {
     // `EntityRenderer.extractShadow`: an invisible entity casts none, nor does a spectator.
@@ -37,7 +40,7 @@ fn shadow_of(
         let at = (camera.position.x, camera.position.y, camera.position.z);
         return displays::display_shadow(entity, snapshot.position, at, partial);
     }
-    let (radius, strength) = super::shadow_radius::of(entity)?;
+    let (radius, strength) = shadow_radius::of(entity, facts)?;
     let too_far = strength > 0.0 && camera_distance_sq(camera, entity.position()) >= 256.0;
     (radius > 0.0 && !too_far).then_some((radius, strength))
 }
@@ -58,8 +61,13 @@ fn casters(
     ids.extend(entities.display_ids());
     ids.sort_unstable();
     ids.dedup();
+    // What a type's shadow depends on is looked up once per type, not once per entity.
+    let mut types: HashMap<_, TypeShadow> = HashMap::new();
     for entity in ids.into_iter().filter_map(|id| entities.at(id)) {
-        let Some((radius, strength)) = shadow_of(world, camera, entity, partial) else {
+        let facts = *types
+            .entry(entity.type_id)
+            .or_insert_with(|| TypeShadow::of_type(entity));
+        let Some((radius, strength)) = shadow_of(world, camera, entity, facts, partial) else {
             continue;
         };
         let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
