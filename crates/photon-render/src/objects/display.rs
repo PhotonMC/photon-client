@@ -215,25 +215,26 @@ pub fn text_vertices(
     for (runs, (x, y)) in lines.iter().zip(&submit.lines) {
         let at = (*x, *y);
         let colours = (submit.color as u32, submit.shadow);
-        let mut quads = crate::gui::frame::glyph_quads(atlas, font, runs, at, colours.0, colours.1);
+        let mut quads =
+            crate::gui::frame::glyph_quads_deep(atlas, font, runs, at, colours.0, colours.1);
         let bars = crate::gui::text_effect::effects(font, runs, at, colours);
-        quads.extend(crate::gui::frame::effect_quads(atlas, bars));
+        quads.extend(crate::gui::frame::effect_quads_deep(atlas, bars));
         world_glyphs(&submit.pose, quads, light, &mut glyphs);
     }
     (background, glyphs)
 }
 
-/// Glyph quads laid out in a pose's plane (`z` 0) as world triangles, lit by `light` (the
+/// Glyph quads laid out in a pose's plane, each at its own depth in front of it, as world triangles, lit by `light` (the
 /// lightmap's coordinates).
 pub(crate) fn world_glyphs(
     pose: &Matrix4,
-    quads: Vec<[crate::gui::frame::GuiVertex; 4]>,
+    quads: Vec<([crate::gui::frame::GuiVertex; 4], f32)>,
     light: [f32; 2],
     vertices: &mut Vec<crate::scene::Vertex>,
 ) {
-    for corners in quads {
+    for (corners, depth) in quads {
         let corners = corners.map(|corner| crate::scene::Vertex {
-            position: pose.transform_position(corner.position[0], corner.position[1], 0.0),
+            position: pose.transform_position(corner.position[0], corner.position[1], depth),
             uv: corner.uv,
             shade: 1.0,
             tint: corner.colour,

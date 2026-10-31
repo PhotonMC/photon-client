@@ -363,7 +363,6 @@
 "crates/photon-render/src/entity/player_model.rs::ArmPose::named" = 12
 "crates/photon-render/src/entity/player_model/lerp.rs::swim" = 11
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 19
-"crates/photon-render/src/gui/frame.rs::glyph_quads" = 11
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 11
 "crates/photon-render/src/gui/frame/texture.rs::GuiFrame::clip_from" = 14
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 12
@@ -795,7 +794,6 @@
 "crates/photon-render/src/entity/player_model/pose.rs::humanoid_anim" = 65
 "crates/photon-render/src/entity/player_model/pose.rs::pose_arm" = 92
 "crates/photon-render/src/entity/special_models.rs::head" = 90
-"crates/photon-render/src/gui/frame.rs::glyph_quads" = 74
 "crates/photon-render/src/gui/frame/text.rs::GuiFrame::nine_slice_edges" = 76
 "crates/photon-render/src/gui/items.rs::item_vertices" = 72
 "crates/photon-render/src/item_model/generated.rs::generated_elements" = 119
@@ -947,7 +945,6 @@
 "crates/photon-render/src/block/world_mesh/mesh.rs::BlockRenderer::mesh_blocks" = 6
 "crates/photon-render/src/block_entity/sign.rs::sign_text_vertices" = 5
 "crates/photon-render/src/entity/mob_model/bosses.rs::MobModel::pose_ender_dragon_body" = 6
-"crates/photon-render/src/gui/frame.rs::glyph_quads" = 5
 "crates/photon-render/src/item_model/generated.rs::tint_colour" = 5
 "crates/photon-render/src/objects/painting.rs::painting_vertices" = 5
 "crates/photon-render/src/sky/environment.rs::Environment::evaluate" = 5

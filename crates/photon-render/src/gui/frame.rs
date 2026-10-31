@@ -323,77 +323,114 @@ pub(crate) fn glyph_quads(
     atlas: &GuiAtlas,
     font: &crate::gui::font::Font,
     runs: &[TextRun],
-    (x, y): (f32, f32),
+    at: (f32, f32),
     default_colour: u32,
     shadow: bool,
 ) -> Vec<[GuiVertex; 4]> {
-    let unpack =
-        |colour: u32| [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
+    glyph_quads_deep(atlas, font, runs, at, default_colour, shadow)
+        .into_iter()
+        .map(|(quad, _)| quad)
+        .collect()
+}
+
+/// [`glyph_quads`] with each quad's depth in the text's own space, as world text sets them
+/// (`BakedSheetGlyph.render` with `flat` false): a shadow's glyph sits `Font.SHADOW_DEPTH` in front
+/// of the shadow, and a bold glyph's second copy a thousandth in front of its first.
+pub(crate) fn glyph_quads_deep(
+    atlas: &GuiAtlas,
+    font: &crate::gui::font::Font,
+    runs: &[TextRun],
+    (x, y): (f32, f32),
+    default_colour: u32,
+    shadow: bool,
+) -> Vec<([GuiVertex; 4], f32)> {
     let mut quads = Vec::new();
     let mut pen = x;
     for run in runs {
         let (colour, shadow_colour) = crate::gui::text_effect::paint(run, default_colour, shadow);
-        let shadow_drawn = shadow_colour != 0;
-        let (shadow_colour, colour) = (unpack(shadow_colour), unpack(colour));
-        let bold = run.bold;
-        let italic = run.italic;
+        let colours = (unpack_colour(colour), unpack_colour(shadow_colour));
         for codepoint in run.text.chars() {
             let Some(glyph) = font.glyph(codepoint) else {
                 continue;
             };
             let drawn = text_effect::obfuscated(font, run, codepoint, glyph);
             if let Some(placed) = placement(atlas, font, codepoint, &drawn) {
-                let (shear_top, shear_bottom) = if italic {
-                    (1.0 - 0.25 * placed.up, 1.0 - 0.25 * placed.down)
-                } else {
-                    (0.0, 0.0)
-                };
-                let thickness = if bold { 0.1 } else { 0.0 };
-                // `(offset, bold shift, colour)` for each pass: the shadow's,
-                // then the glyph's; a bold glyph twice.
-                let (shadow_offset, bold_offset) = (drawn.shadow_offset(), drawn.bold_offset());
-                let mut passes: Vec<(f32, f32, [f32; 4])> = Vec::new();
-                if shadow_drawn {
-                    passes.push((shadow_offset, 0.0, shadow_colour));
-                    if bold {
-                        passes.push((shadow_offset, bold_offset, shadow_colour));
-                    }
-                }
-                passes.push((0.0, 0.0, colour));
-                if bold {
-                    passes.push((0.0, bold_offset, colour));
-                }
-                let [u0, v0, u1, v1] = placed.uv;
-                for (offset, shift, colour) in passes {
-                    let left = pen + offset + shift;
-                    let right = left + placed.width;
-                    let top = y + placed.up + offset;
-                    let bottom = y + placed.down + offset;
-                    let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
-                        position: [px, py],
-                        uv,
-                        colour,
-                    };
-                    quads.push([
-                        corner(left + shear_top - thickness, top - thickness, [u0, v0]),
-                        corner(
-                            left + shear_bottom - thickness,
-                            bottom + thickness,
-                            [u0, v1],
-                        ),
-                        corner(
-                            right + shear_bottom + thickness,
-                            bottom + thickness,
-                            [u1, v1],
-                        ),
-                        corner(right + shear_top + thickness, top - thickness, [u1, v0]),
-                    ]);
+                let passes = glyph_passes(&drawn, run.bold, colours, shadow_colour != 0);
+                for pass in passes {
+                    quads.push((glyph_corners(&placed, run, (pen, y), pass), pass.3));
                 }
             }
-            pen += glyph.advance(bold);
+            pen += glyph.advance(run.bold);
         }
     }
     quads
+}
+
+fn unpack_colour(colour: u32) -> [f32; 4] {
+    [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0)
+}
+
+/// `(offset, bold shift, colour, depth)` for each pass of a glyph: the shadow's, then the glyph's;
+/// a bold glyph twice.
+fn glyph_passes(
+    drawn: &crate::gui::font::Glyph,
+    bold: bool,
+    (colour, shadow_colour): ([f32; 4], [f32; 4]),
+    shadow_drawn: bool,
+) -> Vec<(f32, f32, [f32; 4], f32)> {
+    let (shadow_offset, bold_offset) = (drawn.shadow_offset(), drawn.bold_offset());
+    let mut passes = Vec::new();
+    if shadow_drawn {
+        passes.push((shadow_offset, 0.0, shadow_colour, 0.0));
+        if bold {
+            passes.push((shadow_offset, bold_offset, shadow_colour, 0.001));
+        }
+    }
+    let depth = if shadow_drawn { 0.03 } else { 0.0 };
+    passes.push((0.0, 0.0, colour, depth));
+    if bold {
+        passes.push((0.0, bold_offset, colour, depth + 0.001));
+    }
+    passes
+}
+
+/// The four corners of one pass of a placed glyph, slanted when italic and grown when bold.
+fn glyph_corners(
+    placed: &Placement,
+    run: &TextRun,
+    (pen, y): (f32, f32),
+    (offset, shift, colour, _): (f32, f32, [f32; 4], f32),
+) -> [GuiVertex; 4] {
+    let (shear_top, shear_bottom) = if run.italic {
+        (1.0 - 0.25 * placed.up, 1.0 - 0.25 * placed.down)
+    } else {
+        (0.0, 0.0)
+    };
+    let thickness = if run.bold { 0.1 } else { 0.0 };
+    let [u0, v0, u1, v1] = placed.uv;
+    let left = pen + offset + shift;
+    let right = left + placed.width;
+    let top = y + placed.up + offset;
+    let bottom = y + placed.down + offset;
+    let corner = |px: f32, py: f32, uv: [f32; 2]| GuiVertex {
+        position: [px, py],
+        uv,
+        colour,
+    };
+    [
+        corner(left + shear_top - thickness, top - thickness, [u0, v0]),
+        corner(
+            left + shear_bottom - thickness,
+            bottom + thickness,
+            [u0, v1],
+        ),
+        corner(
+            right + shear_bottom + thickness,
+            bottom + thickness,
+            [u1, v1],
+        ),
+        corner(right + shear_top + thickness, top - thickness, [u1, v0]),
+    ]
 }
 
 mod blur;
@@ -402,7 +439,7 @@ mod overlay;
 mod text;
 mod texture;
 
-pub(crate) use text::effect_quads;
+pub(crate) use text::effect_quads_deep;
 
 #[cfg(test)]
 mod tests {

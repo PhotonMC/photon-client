@@ -258,7 +258,7 @@ impl GuiFrame {
         ) {
             self.push_text_quad(corners);
         }
-        for corners in effect_quads(atlas, effects) {
+        for (corners, _) in effect_quads_deep(atlas, effects) {
             self.push_text_quad(corners);
         }
     }
@@ -437,8 +437,13 @@ impl GuiFrame {
 }
 
 /// The quads of text effects (`BakedSheetGlyph.renderEffect`): each rectangle samples the middle
-/// of the white sprite, its shadow's copy first, a shadow offset right and down.
-pub(crate) fn effect_quads(atlas: &GuiAtlas, effects: Vec<TextEffect>) -> Vec<[GuiVertex; 4]> {
+/// of the white sprite, its shadow's copy first, a shadow offset right and down, each with its
+/// depth as world text sets it: the effect's own is a
+/// hundredth, and its colour's copy lies `Font.SHADOW_DEPTH` in front of the shadow's.
+pub(crate) fn effect_quads_deep(
+    atlas: &GuiAtlas,
+    effects: Vec<TextEffect>,
+) -> Vec<([GuiVertex; 4], f32)> {
     let [u0, v0, u1, v1] = atlas.sprite("white");
     let uv = [(u0 + u1) / 2.0, (v0 + v1) / 2.0];
     let mut quads = Vec::new();
@@ -448,19 +453,28 @@ pub(crate) fn effect_quads(atlas: &GuiAtlas, effects: Vec<TextEffect>) -> Vec<[G
             (effect.shadow_colour, effect.shadow_offset),
             (effect.colour, 0.0),
         ];
+        let front = if effect.shadow_colour != 0 {
+            0.04
+        } else {
+            0.01
+        };
         for (colour, offset) in copies.into_iter().filter(|(colour, _)| *colour != 0) {
+            let depth = if offset == 0.0 { front } else { 0.01 };
             let colour = [16, 8, 0, 24].map(|shift| ((colour >> shift) & 0xFF) as f32 / 255.0);
             let corner = |px: f32, py: f32| GuiVertex {
                 position: [px + offset, py + offset],
                 uv,
                 colour,
             };
-            quads.push([
-                corner(x0, y0),
-                corner(x0, y1),
-                corner(x1, y1),
-                corner(x1, y0),
-            ]);
+            quads.push((
+                [
+                    corner(x0, y0),
+                    corner(x0, y1),
+                    corner(x1, y1),
+                    corner(x1, y0),
+                ],
+                depth,
+            ));
         }
     }
     quads
