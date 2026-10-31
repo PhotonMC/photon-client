@@ -68,7 +68,34 @@ pub struct KeyBindsScreen {
     in_world: bool,
 }
 
+/// The mappings this client has no effect for yet.
+const IDLE: [&str; 5] = [
+    "key.friends",
+    "key.toggleSpectatorShaderEffects",
+    "key.spectatorHotbar",
+    "key.saveToolbarActivator",
+    "key.loadToolbarActivator",
+];
+
 impl KeyBindsScreen {
+    /// The screen with a note on the keys that do nothing here yet. The reference has them
+    /// active, so the parity cases build the screen without this.
+    #[must_use]
+    pub fn without_missing_effects(mut self, lang: &Lang) -> Self {
+        let words = Component::translatable_or(
+            "photon.keybinds.no_effect",
+            "This key does nothing on this client yet; it can still be rebound.",
+        );
+        let runs = lang.runs(&words, &Style::default());
+        self.list.idle = photon_data::keys::mappings()
+            .enumerate()
+            .filter(|(_, mapping)| IDLE.contains(&mapping.name))
+            .map(|(index, _)| (index, runs.clone()))
+            .collect();
+        self.refresh(lang);
+        self
+    }
+
     /// `init` of a screen `size` big over the keys each mapping is bound to, naming keys by
     /// `names`.
     pub fn new(

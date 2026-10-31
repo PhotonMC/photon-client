@@ -108,13 +108,16 @@ impl Controls {
 
     /// `KeyBindsScreen`, over the controls screen.
     pub(super) fn open_key_binds(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.key_binds_screen = Some(KeyBindsScreen::new(
-            (&assets.creative.font, &assets.lang),
-            Self::gui_size(surface),
-            !self.title_host,
-            self.options.key_bindings(),
-            system_key_name,
-        ));
+        self.key_binds_screen = Some(
+            KeyBindsScreen::new(
+                (&assets.creative.font, &assets.lang),
+                Self::gui_size(surface),
+                !self.title_host,
+                self.options.key_bindings(),
+                system_key_name,
+            )
+            .without_missing_effects(&assets.lang),
+        );
     }
 
     /// Done or Escape: back to the controls screen, and the options are saved.

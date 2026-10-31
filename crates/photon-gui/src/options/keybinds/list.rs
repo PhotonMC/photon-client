@@ -63,6 +63,8 @@ pub(super) struct KeyBindsList {
     /// Whether the screen's focus is on the list.
     pub(super) screen_focused: bool,
     pub(super) input: InputType,
+    /// Mappings with no effect on this client, by their place, and the words that say so.
+    pub(super) idle: Vec<(usize, Vec<Run>)>,
 }
 
 /// `Arrays.sort` of the mappings (`KeyMapping.compareTo`): by category, then by `order`, then
@@ -83,6 +85,13 @@ fn sorted(lang: &Lang) -> Vec<usize> {
             })
     });
     order
+}
+
+/// The words that say a mapping does nothing here yet, if it is one of those.
+fn idle_note(idle: &[(usize, Vec<Run>)], mapping: usize) -> Option<Vec<Run>> {
+    idle.iter()
+        .find(|(index, _)| *index == mapping)
+        .map(|(_, words)| words.clone())
 }
 
 impl KeyBindsList {
@@ -142,6 +151,7 @@ impl KeyBindsList {
             focus: None,
             screen_focused: false,
             input: InputType::Mouse,
+            idle: Vec::new(),
         };
         list.refresh(lang, binds);
         list.reposition();
@@ -195,7 +205,7 @@ impl KeyBindsList {
                 );
                 tip.set(Some(lang.runs(&words, &Style::default())));
             } else {
-                tip.set(None);
+                tip.set(idle_note(&self.idle, *mapping));
             }
             if binds.selected == Some(*mapping) {
                 let marked = Style {
