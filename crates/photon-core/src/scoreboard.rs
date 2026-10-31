@@ -146,6 +146,12 @@ pub struct Team {
 }
 
 impl Team {
+    /// `PlayerTeam.getColor` as `0xRRGGBB`, for a team with a colour that has one.
+    pub fn rgb(&self) -> Option<u32> {
+        let colour = self.colour?;
+        crate::text::named_colour(TEAM_COLOURS[usize::from(colour)])
+    }
+
     /// `PlayerTeam.getFormattedName`: the prefix, the name and the suffix, in
     /// the team's colour.
     pub fn formatted_name(&self, name: &Component) -> Component {
@@ -379,6 +385,24 @@ impl Scoreboard {
         self.teams.keys().cloned().collect()
     }
 
+    /// `getPlayerTeams` with each team's players (`PlayerTeam.getPlayers`), by team name and then
+    /// by player name (the reference iterates hash sets).
+    pub fn teams_with_players(&self) -> Vec<(&Team, Vec<&str>)> {
+        self.teams
+            .iter()
+            .map(|(name, team)| {
+                let mut players: Vec<&str> = self
+                    .team_of
+                    .iter()
+                    .filter(|(_, owner)| *owner == name)
+                    .map(|(player, _)| player.as_str())
+                    .collect();
+                players.sort_unstable();
+                (team, players)
+            })
+            .collect()
+    }
+
     /// `getPlayersTeam`.
     pub fn team_of(&self, player: &str) -> Option<(&str, &Team)> {
         let name = self.team_of.get(player)?;
@@ -580,5 +604,28 @@ mod tests {
             players: Vec::new(),
         });
         assert!(board.team_of("al").is_none());
+    }
+
+    #[test]
+    fn a_team_lists_its_players_by_name_and_has_its_colour() {
+        let mut board = Scoreboard::default();
+        let parameters = TeamParameters {
+            display_name: Component::literal("Reds"),
+            prefix: Component::empty(),
+            suffix: Component::empty(),
+            colour: Some(12),
+            name_tag_visibility: NameTagVisibility::Always,
+            sees_friendly_invisibles: true,
+        };
+        board.apply(ScoreboardEvent::Team {
+            name: "reds".to_owned(),
+            method: 0,
+            parameters: Some(parameters),
+            players: vec!["zed".to_owned(), "amy".to_owned()],
+        });
+        let teams = board.teams_with_players();
+        assert_eq!(teams.len(), 1);
+        assert_eq!(teams[0].1, ["amy", "zed"]);
+        assert_eq!(teams[0].0.rgb(), Some(0xFF_5555));
     }
 }

@@ -26,6 +26,16 @@ impl ScrollWheel {
         Some((speed + wheel_y as f32 * 0.005_f32).clamp(0.0, 0.2_f32))
     }
 
+    /// `MouseHandler.onScroll`'s `wheel`: the whole steps the wheel moved to, once it moved one
+    /// (a vertical one, else a horizontal one, reversed).
+    pub fn wheel(&mut self, x: f64, y: f64) -> Option<i32> {
+        let (wheel_x, wheel_y) = self.0.on_mouse_scroll(x, y);
+        if wheel_x == 0 && wheel_y == 0 {
+            return None;
+        }
+        Some(if wheel_y == 0 { -wheel_x } else { wheel_y })
+    }
+
     pub fn select(&mut self, x: f64, y: f64, selected: i32) -> Option<i32> {
         let (wheel_x, wheel_y) = self.0.on_mouse_scroll(x, y);
         if wheel_x == 0 && wheel_y == 0 {

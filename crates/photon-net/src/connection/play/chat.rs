@@ -120,6 +120,47 @@ impl PlaySession {
     }
 
     /// What the server's scoreboard packets built.
+    /// What the spectator menu lists (`getListedOnlinePlayers` and the scoreboard's teams).
+    pub fn spectator_sources(&self) -> photon_game::spectator::Sources {
+        let candidate =
+            |(most, least): &(u64, u64), info: &PlayerInfo| photon_game::spectator::Candidate {
+                id: (u128::from(*most) << 64) | u128::from(*least),
+                name: info.name.clone(),
+                game_mode: info.game_mode,
+            };
+        let infos = &self.social.player_infos;
+        let players = infos
+            .iter()
+            .filter(|(_, info)| info.listed)
+            .map(|(key, info)| candidate(key, info))
+            .collect();
+        let teams = self
+            .social
+            .scoreboard
+            .teams_with_players()
+            .into_iter()
+            .map(|(team, names)| photon_game::spectator::TeamEntry {
+                name: team.display_name.clone(),
+                colour: team.rgb(),
+                players: names
+                    .iter()
+                    .filter_map(|name| infos.iter().find(|(_, info)| info.name == *name))
+                    .map(|(key, info)| candidate(key, info))
+                    .collect(),
+                icon: 0,
+            })
+            .collect();
+        photon_game::spectator::Sources { players, teams }
+    }
+
+    /// `ServerboundTeleportToEntityPacket`: a spectator goes to a player.
+    pub fn teleport_to_entity(&mut self, id: u128) -> Result<(), ConnectionError> {
+        self.send(PLAY_SERVERBOUND_TELEPORT_TO_ENTITY_PACKET_ID, |output| {
+            output.extend_from_slice(&id.to_be_bytes());
+            Ok(())
+        })
+    }
+
     pub fn scoreboard(&self) -> &photon_game::scoreboard::Scoreboard {
         &self.social.scoreboard
     }

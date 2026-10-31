@@ -33,6 +33,29 @@ impl Controls {
         )
     }
 
+    /// The keys whose being held is all that counts while the mouse is captured: the tab list and
+    /// the spectator outlines, and the spectator menu's action key. Whether the mapping is one of them.
+    pub(super) fn held_key(
+        &mut self,
+        name: &str,
+        (press, down): (bool, bool),
+        session: &mut PlaySession,
+        spectating: bool,
+    ) -> bool {
+        let held = down && self.captured;
+        match name {
+            "key.playerlist" => self.tab_held = held,
+            "key.spectatorOutlines" => self.spectator_outlines_held = held,
+            "key.spectatorHotbar" => {
+                if press && held && spectating {
+                    self.spectator_action_key(session);
+                }
+            }
+            _ => return self.toolbar_activator_key(name, down),
+        }
+        true
+    }
+
     /// The activator keys held for the toolbar, as `held_key` sees them.
     pub(super) fn toolbar_activator_key(&mut self, name: &str, down: bool) -> bool {
         let held = down && self.captured;
@@ -53,6 +76,10 @@ impl Controls {
         spectating: bool,
         lang: &Lang,
     ) {
+        if spectating {
+            self.spectator_hotbar(name, session);
+            return;
+        }
         let (load, save) = (self.load_hotbar_held, self.save_hotbar_held);
         if spectating || !session.has_infinite_materials() || !(load || save) {
             select_hotbar(session, name, spectating);

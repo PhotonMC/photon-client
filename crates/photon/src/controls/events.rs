@@ -52,7 +52,9 @@ impl Controls {
     /// spectator menu is not drawn), anyone else's picks the hotbar slot.
     fn scrolled(&mut self, (x, y): (f64, f64), session: &mut PlaySession, spectating: bool) {
         let sensitivity = self.options.mouse_wheel_sensitivity;
-        if spectating {
+        if spectating && self.spectator.is_menu_active() {
+            self.spectator_scrolled((x * sensitivity, y * sensitivity));
+        } else if spectating {
             let speed = session
                 .player()
                 .map(|player| player.abilities().flying_speed());
@@ -153,7 +155,7 @@ impl Controls {
                 "key.fullscreen" if press => surface.toggle_fullscreen(),
                 "key.screenshot" if press => self.screenshot_pending = true,
                 "key.toggleGui" if press && self.captured => self.hud_hidden = !self.hud_hidden,
-                held if self.held_key(held, down) => {}
+                held if self.held_key(held, (press, down), session, spectating) => {}
                 hotbar if press && self.captured && hotbar.starts_with("key.hotbar.") => {
                     self.hotbar_key(hotbar, session, spectating, &assets.lang);
                 }
@@ -161,18 +163,6 @@ impl Controls {
                 _ => {}
             }
         }
-    }
-
-    /// The keys whose being held is all that counts while the mouse is captured: the tab list and
-    /// the spectator outlines. Whether the mapping is one of them.
-    fn held_key(&mut self, name: &str, down: bool) -> bool {
-        let held = down && self.captured;
-        match name {
-            "key.playerlist" => self.tab_held = held,
-            "key.spectatorOutlines" => self.spectator_outlines_held = held,
-            _ => return self.toolbar_activator_key(name, down),
-        }
-        true
     }
 
     /// `Minecraft.handleKeybinds` for the quick actions key: the dialog of the `quick_actions`
