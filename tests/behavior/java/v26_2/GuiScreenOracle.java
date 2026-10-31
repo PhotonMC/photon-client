@@ -357,22 +357,47 @@ class GuiScreenOracle extends GuiOverlayOracle {
                     ? net.minecraft.network.chat.CommonComponents.GUI_BACK
                     : net.minecraft.network.chat.CommonComponents.GUI_CANCEL;
             }
-            net.minecraft.client.gui.screens.ConfirmScreen confirm =
-                row.has("link")
-                    ? new net.minecraft.client.gui.screens.ConfirmLinkScreen(callback,
-                        row.getAsJsonObject("link").get("url").getAsString(),
-                        row.getAsJsonObject("link").get("trusted").getAsBoolean())
-                : row.get("death").getAsBoolean()
-                    ? new net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen(
-                        callback, title, message, yes, no)
-                    : new net.minecraft.client.gui.screens.ConfirmScreen(callback, title, message, yes, no);
+            net.minecraft.client.gui.screens.Screen confirm;
+            if (row.has("popup")) {
+                // `PopupScreen` over a screen that draws nothing, as the friends overlay's remove question.
+                var popup = row.getAsJsonObject("popup");
+                var parent = new net.minecraft.client.gui.screens.Screen(Component.empty()) {
+                    @Override
+                    public void extractBackground(GuiGraphicsExtractor graphics, int x, int y, float a) {}
+
+                    @Override
+                    public void extractRenderState(GuiGraphicsExtractor graphics, int x, int y, float a) {}
+                };
+                set(parent, "minecraft", minecraft);
+                set(minecraft, "lastInputType", net.minecraft.client.InputType.NONE);
+                confirm = new net.minecraft.client.gui.components.PopupScreen.Builder(parent,
+                    Component.literal(popup.get("title").getAsString()))
+                    .addMessage(Component.literal(popup.get("message").getAsString()))
+                    .addButton(Component.literal(popup.get("yes").getAsString()), screen2 -> callback.accept(true))
+                    .addButton(Component.literal(popup.get("no").getAsString()), screen2 -> callback.accept(false))
+                    .build();
+            } else if (row.has("privacy_link")) {
+                confirm = new net.minecraft.client.gui.screens.PrivacyConfirmLinkScreen(callback,
+                    row.getAsJsonObject("privacy_link").get("url").getAsString());
+            } else if (row.has("link")) {
+                confirm = new net.minecraft.client.gui.screens.ConfirmLinkScreen(callback,
+                    row.getAsJsonObject("link").get("url").getAsString(),
+                    row.getAsJsonObject("link").get("trusted").getAsBoolean());
+            } else if (row.get("death").getAsBoolean()) {
+                confirm = new net.minecraft.client.gui.screens.DeathScreen.TitleConfirmScreen(
+                    callback, title, message, yes, no);
+            } else {
+                confirm = new net.minecraft.client.gui.screens.ConfirmScreen(callback, title, message, yes, no);
+            }
             set(confirm, "width", width);
             set(confirm, "height", height);
-            var init = Reflect.method(net.minecraft.client.gui.screens.ConfirmScreen.class, "init");
+            var init = Reflect.method(confirm instanceof net.minecraft.client.gui.components.PopupScreen
+                ? net.minecraft.client.gui.components.PopupScreen.class
+                : net.minecraft.client.gui.screens.ConfirmScreen.class, "init");
             init.invoke(confirm);
             int delay = row.get("delay").getAsInt();
             if (delay > 0) {
-                confirm.setDelay(delay);
+                ((net.minecraft.client.gui.screens.ConfirmScreen) confirm).setDelay(delay);
             }
             for (int tick = 0; tick < row.get("ticks").getAsInt(); tick++) {
                 confirm.tick();
@@ -393,7 +418,7 @@ class GuiScreenOracle extends GuiOverlayOracle {
                 confirm.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY,
                     new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
             }
-            if (row.get("death").getAsBoolean()) {
+            if (row.get("death").getAsBoolean() || row.has("popup")) {
                 confirm.extractBackground(screen.graphics(), mouseX, mouseY, 0.0F);
             } else if (row.get("in_world").getAsBoolean()) {
                 // With a level there is no panorama: the background is the blur and the tiles.

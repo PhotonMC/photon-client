@@ -179,6 +179,31 @@ fn link_rows() -> Vec<Value> {
 
 /// The server resource pack question: wording of an optional and a
 /// required pack, with and without the server's own prompt.
+/// The questions of the friends overlay: the Xbox settings link and the popup over the overlay.
+fn friends_rows() -> Vec<Value> {
+    let with = |label: &str, key: &str, value: Value, base: Confirm| {
+        let mut row = base.row(label);
+        row[key] = value;
+        row
+    };
+    let privacy = json!({"url": "https://aka.ms/javafriends"});
+    let popup = json!({
+        "title": "Confirm",
+        "message": "Are you sure you want to remove this friend?",
+        "yes": "Remove",
+        "no": "Cancel",
+    });
+    vec![
+        with("privacy-link", "privacy_link", privacy.clone(), confirm()),
+        with("privacy-link-in-world", "privacy_link", privacy.clone(), Confirm { in_world: true, ..confirm() }),
+        with("privacy-link-narrow", "privacy_link", privacy.clone(), Confirm { size: (320, 240), ..confirm() }),
+        with("privacy-link-hover", "privacy_link", privacy, Confirm { mouse: (213, 145), ..confirm() }),
+        with("popup", "popup", popup.clone(), Confirm { in_world: true, ..confirm() }),
+        with("popup-small", "popup", popup.clone(), Confirm { size: (320, 240), in_world: true, ..confirm() }),
+        with("popup-hover-yes", "popup", popup, Confirm { mouse: (150, 130), in_world: true, ..confirm() }),
+    ]
+}
+
 fn pack_rows() -> Vec<Value> {
     let prompt = "Get the server textures to see custom items.";
     let pack = |required: bool, prompted: bool| {
@@ -241,6 +266,6 @@ pub fn confirm_screen() -> Value {
     gui(
         "confirm-screen",
         "confirm_screen",
-        [message_rows(), input_rows(), link_rows(), pack_rows(), command_rows(), blur_rows()].concat(),
+        [message_rows(), input_rows(), link_rows(), friends_rows(), pack_rows(), command_rows(), blur_rows()].concat(),
     )
 }

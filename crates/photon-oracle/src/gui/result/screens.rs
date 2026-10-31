@@ -63,6 +63,31 @@ pub(super) fn pause_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Val
     }))
 }
 
+/// The questions of the friends overlay: the popup and the link to the Xbox settings.
+fn friends_screen(
+    font: &photon_render::gui::font::Font,
+    lang: &photon_game::text::Lang,
+    size: (i32, i32),
+    row: &Value,
+) -> Option<photon_gui::screen::confirm::ConfirmScreen> {
+    use photon_gui::screen::confirm::ConfirmScreen;
+    if let Some(popup) = row["popup"].as_object() {
+        let field = |key: &str| {
+            photon_game::text::Component::literal(popup[key].as_str().unwrap_or_default())
+        };
+        return Some(ConfirmScreen::popup(
+            font,
+            lang,
+            size,
+            (&field("title"), &field("message")),
+            (&field("yes"), &field("no")),
+        ));
+    }
+    let link = row["privacy_link"].as_object()?;
+    let url = link["url"].as_str().unwrap_or_default();
+    Some(ConfirmScreen::privacy_link(font, lang, size, url))
+}
+
 /// The screen a row describes: a link, a server pack or a plain message.
 fn confirm_screen(
     font: &photon_render::gui::font::Font,
@@ -84,6 +109,9 @@ fn confirm_screen(
             command["back"].as_bool().unwrap_or(false),
         )
         .with_background(background);
+    }
+    if let Some(screen) = friends_screen(font, lang, size, row) {
+        return screen.with_background(background);
     }
     match (row["link"].as_object(), row["pack"].as_object()) {
         (Some(link), _) => ConfirmScreen::link(
@@ -117,6 +145,20 @@ fn confirm_screen(
     .with_background(background)
 }
 
+/// What the screen draws behind itself, by the row.
+fn background_of(row: &Value) -> photon_gui::screen::confirm::ConfirmBackground {
+    use photon_gui::screen::confirm::ConfirmBackground;
+    if row["popup"].is_object() {
+        ConfirmBackground::Popup
+    } else if row["death"].as_bool().unwrap_or(false) {
+        ConfirmBackground::Death
+    } else {
+        ConfirmBackground::Menu {
+            in_world: row["in_world"].as_bool().unwrap_or(false),
+        }
+    }
+}
+
 pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<Value, String> {
     let root = &ctx.root;
     let font = &ctx.font;
@@ -126,16 +168,9 @@ pub(super) fn confirm_screen_case(ctx: &mut GuiContext, row: &Value) -> Result<V
         log: Some(Vec::new()),
         ..GuiFrame::default()
     };
-    use photon_gui::screen::confirm::ConfirmBackground;
     let lang = photon_game::text::Lang::load(root);
     let size = (int("width"), int("height"));
-    let background = if row["death"].as_bool().unwrap_or(false) {
-        ConfirmBackground::Death
-    } else {
-        ConfirmBackground::Menu {
-            in_world: row["in_world"].as_bool().unwrap_or(false),
-        }
-    };
+    let background = background_of(row);
     let mut screen = confirm_screen(font, &lang, size, row, background);
     if int("delay") > 0 {
         screen.set_delay(int("delay"));
