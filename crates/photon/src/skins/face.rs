@@ -16,5 +16,6 @@ pub(crate) fn skin_of(id: Uuid) -> Option<Arc<Vec<u8>>> {
         .find(|property| property.name == "textures")?;
     let cache = crate::controls::game_directory().join("assets/skins");
     let loaded = super::worker::load(property, &super::shared_keys(), &cache)?;
-    Some(loaded.rgba)
+    // Another player's skin needs a property the services signed, as in the world.
+    loaded.secure.then_some(loaded.rgba)
 }

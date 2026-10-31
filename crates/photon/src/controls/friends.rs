@@ -6,6 +6,7 @@
 
 use super::*;
 use crate::social::{Action, Social};
+use photon_game::options::PresenceSharing;
 use photon_game::text::{Component, Lang, Run, Style};
 use photon_gui::options::online::FriendFacts;
 use photon_gui::screen::friends::{
@@ -37,12 +38,17 @@ impl Controls {
     /// One game tick of the friends: the answers of the service, the update of the lists, and the
     /// overlay following them. The toasts the changes call for are returned.
     pub(crate) fn friends_tick(&mut self, lang: &Lang) -> Vec<Component> {
+        let status = self.presence_status();
         let Some(social) = self.friends_list.as_mut() else {
             return Vec::new();
         };
         let open = self.friends.is_some();
         let notify = self.options.online.in_game_notification;
-        social.tick(std::time::Instant::now(), (open, notify), presence_status());
+        if open {
+            // `FriendsOverlayScreen.tick`: every tick of the open overlay asks again.
+            social.want_presence();
+        }
+        social.tick(std::time::Instant::now(), (open, notify), Some(status));
         if let Some(screen) = self.online_screen.as_mut() {
             let facts = FriendFacts {
                 enabled: social.list_enabled(),
@@ -64,6 +70,17 @@ impl Controls {
             }
         }
         toasts
+    }
+
+    /// `PresenceHandler.getPublicPresenceStatus`: what the player's setting lets the friends see.
+    /// Photon only plays on servers, never a world of its own or a realm.
+    fn presence_status(&self) -> PresenceStatus {
+        match self.options.online.share_presence {
+            PresenceSharing::None => PresenceStatus::Offline,
+            PresenceSharing::Limited => PresenceStatus::Online,
+            PresenceSharing::All if self.title_host => PresenceStatus::Online,
+            PresenceSharing::All => PresenceStatus::PlayingServer,
+        }
     }
 
     /// What the overlay shows of the lists now.
@@ -373,11 +390,6 @@ impl Controls {
     }
 }
 
-/// `PresenceHandler` shares that the player is online while the overlay is open.
-fn presence_status() -> Option<PresenceStatus> {
-    Some(PresenceStatus::Online)
-}
-
 /// The toasts the answers of the service call for, and whether the list was turned on
 /// (`PlayerSocialManager.showFailureToast`).
 fn collect_toasts(social: &mut Social) -> (Vec<Component>, bool) {
@@ -579,6 +591,34 @@ mod tests {
             ResultCode::ServiceNotAvailable,
         ] {
             assert!(failure_title(code).is_some());
+        }
+    }
+
+    #[test]
+    fn the_sharing_setting_picks_the_posted_presence() {
+        let mut controls = Controls::default();
+        for (setting, title, game) in [
+            (
+                PresenceSharing::None,
+                PresenceStatus::Offline,
+                PresenceStatus::Offline,
+            ),
+            (
+                PresenceSharing::Limited,
+                PresenceStatus::Online,
+                PresenceStatus::Online,
+            ),
+            (
+                PresenceSharing::All,
+                PresenceStatus::Online,
+                PresenceStatus::PlayingServer,
+            ),
+        ] {
+            controls.options.online.share_presence = setting;
+            controls.title_host = true;
+            assert_eq!(controls.presence_status(), title);
+            controls.title_host = false;
+            assert_eq!(controls.presence_status(), game);
         }
     }
 }

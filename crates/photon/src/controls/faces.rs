@@ -1,7 +1,7 @@
 //! The skins of the faces of the friends overlay: looked up on a thread of their own and put
 //! into the GUI atlas, where the overlay draws them from.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
@@ -16,7 +16,11 @@ pub(crate) struct Faces {
     asks: Option<Sender<Uuid>>,
     answers: Receiver<(Uuid, Arc<Vec<u8>>)>,
     sender: Sender<(Uuid, Arc<Vec<u8>>)>,
-    /// The atlas texture of each skin that has a place.
+    /// The players asked for once, so that a reopened overlay or a failure asks nothing again.
+    requested: HashSet<Uuid>,
+    /// The skins that came, kept while the atlas does not hold them.
+    ready: HashMap<Uuid, Arc<Vec<u8>>>,
+    /// The atlas texture of each skin that has a place there, while the overlay is open.
     placed: HashMap<Uuid, String>,
 }
 
@@ -27,14 +31,19 @@ impl Default for Faces {
             asks: None,
             answers,
             sender,
+            requested: HashSet::new(),
+            ready: HashMap::new(),
             placed: HashMap::new(),
         }
     }
 }
 
 impl Faces {
-    /// One lookup asked for; the thread starts with the first.
+    /// One lookup asked for, once; the thread starts with the first.
     fn ask(&mut self, id: Uuid) {
+        if !self.requested.insert(id) {
+            return;
+        }
         if self.asks.is_none() {
             let (asks, wanted) = channel::<Uuid>();
             let answers = self.sender.clone();
@@ -57,10 +66,16 @@ impl Faces {
         }
     }
 
-    /// What came back is put into the atlas: its texture, and whether the atlas changed.
+    /// The skins that came are put into the atlas: whether it changed.
     fn place(&mut self, (atlas, image): (&mut GuiAtlas, &mut DecodedImage)) -> bool {
-        let mut changed = false;
         while let Ok((id, rgba)) = self.answers.try_recv() {
+            self.ready.insert(id, rgba);
+        }
+        let mut changed = false;
+        for (id, rgba) in &self.ready {
+            if self.placed.contains_key(id) {
+                continue;
+            }
             let skin = DecodedImage {
                 width: 64,
                 height: 64,
@@ -68,11 +83,18 @@ impl Faces {
             };
             let name = format!("friend_face/{:016x}{:016x}", id.most, id.least);
             if atlas.set_favicon(image, &name, Some(&skin)) {
-                self.placed.insert(id, name);
+                self.placed.insert(*id, name);
                 changed = true;
             }
         }
         changed
+    }
+
+    /// The overlay is closed: the places the skins took in the atlas go back to the other icons.
+    fn free(&mut self, (atlas, image): (&mut GuiAtlas, &mut DecodedImage)) {
+        for (_, name) in self.placed.drain() {
+            atlas.set_favicon(image, &name, None);
+        }
     }
 }
 
@@ -81,13 +103,11 @@ impl Controls {
     /// into the atlas and handed to it. Whether the atlas is to be sent to the GPU again.
     pub(crate) fn sync_faces(&mut self, atlas: (&mut GuiAtlas, &mut DecodedImage)) -> bool {
         let Some(overlay) = self.friends.as_mut() else {
+            self.faces.free(atlas);
             return false;
         };
         for id in overlay.faces_wanted() {
-            match self.faces.placed.get(&id) {
-                Some(name) => overlay.set_face(id, name.clone()),
-                None => self.faces.ask(id),
-            }
+            self.faces.ask(id);
         }
         let changed = self.faces.place(atlas);
         for (id, name) in &self.faces.placed {
