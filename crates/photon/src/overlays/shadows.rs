@@ -70,11 +70,10 @@ fn casters(
         let Some((radius, strength)) = shadow_of(world, camera, entity, facts, partial) else {
             continue;
         };
-        let Some(snapshot) = world.entity_snapshot_of(entity, partial) else {
-            continue;
-        };
+        // The snapshot's position is this one; the rest of the snapshot (the light probe above
+        // all) is not read here.
         casters.push(Caster {
-            drawn: snapshot.position,
+            drawn: entity.interpolated_position(partial),
             ticked: entity.position(),
             radius,
             strength,
