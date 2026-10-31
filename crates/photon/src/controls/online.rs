@@ -1,6 +1,9 @@
 use super::*;
 use photon_gui::options::online::{FriendFacts, OnlineOptionsScreen};
 
+/// `CommonLinks.PRIVACY_AND_ONLINE_SETTINGS`.
+const PRIVACY_AND_ONLINE_SETTINGS: &str = "https://aka.ms/MinecraftJavaXboxPrivacyAndSafety";
+
 impl Controls {
     /// `OnlineOptionsScreen`, over the options screen. There is no account yet, so the friends
     /// list is off.
@@ -48,8 +51,25 @@ impl Controls {
         let Some(screen) = self.online_screen.as_mut() else {
             return;
         };
-        let done = screen_input(screen, &event, (lang, self.gui_mouse, wheel));
+        let (done, xbox) = screen_input(screen, &event, (lang, self.gui_mouse, wheel));
         self.take_online_choices();
+        if xbox {
+            // `PrivacyConfirmLinkScreen.confirmLinkNow`: the page is asked about, over the screen.
+            let screen = ConfirmScreen::link(
+                &assets.creative.font,
+                &assets.lang,
+                Self::gui_size(surface),
+                PRIVACY_AND_ONLINE_SETTINGS,
+                true,
+            )
+            .with_background(ConfirmBackground::Menu {
+                in_world: !self.title_host,
+            });
+            self.link_confirm = Some((
+                screen,
+                ConfirmTarget::Link(PRIVACY_AND_ONLINE_SETTINGS.to_owned()),
+            ));
+        }
         if done {
             self.close_online();
         }
@@ -61,15 +81,18 @@ fn screen_input(
     screen: &mut OnlineOptionsScreen,
     event: &glfw::WindowEvent,
     (lang, mouse, wheel): (&photon_game::text::Lang, (f64, f64), f64),
-) -> bool {
+) -> (bool, bool) {
     use glfw::{Action, Key, MouseButton, WindowEvent};
+    let result = |input: photon_gui::options::list::SubScreenInput| {
+        (input.done, OnlineOptionsScreen::xbox_pressed(&input))
+    };
     match (menu_key(event), event) {
         (Some(MenuKey::Tab(forward)), _) => screen.tab(forward),
-        (Some(MenuKey::Key(key, shift)), _) => return screen.key_pressed(lang, key, shift).done,
-        (None, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => return true,
+        (Some(MenuKey::Key(key, shift)), _) => return result(screen.key_pressed(lang, key, shift)),
+        (None, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => return (true, false),
         (None, WindowEvent::MouseButton(MouseButton::Button1, Action::Press, modifiers)) => {
             let shift = modifiers.contains(glfw::Modifiers::Shift);
-            return screen.clicked(lang, mouse, shift).done;
+            return result(screen.clicked(lang, mouse, shift));
         }
         (None, WindowEvent::MouseButton(MouseButton::Button1, Action::Release, _)) => {
             screen.released(lang);
@@ -77,5 +100,5 @@ fn screen_input(
         (None, WindowEvent::Scroll(_, y)) => screen.scrolled(mouse, y * wheel),
         _ => {}
     }
-    false
+    (false, false)
 }

@@ -83,6 +83,11 @@ fn friend_rows(online: OnlineOptions, friends: FriendFacts) -> Vec<(u8, Build)> 
 }
 
 impl OnlineOptionsScreen {
+    /// Whether `input` is a press of the Xbox settings button, which asks about a link.
+    pub fn xbox_pressed(input: &SubScreenInput) -> bool {
+        input.changed == Some(XBOX)
+    }
+
     /// `init`, with the options as they are.
     pub fn new(
         (font, lang): (&Font, &Lang),

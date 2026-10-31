@@ -4,13 +4,16 @@ use photon_gui::options::world::{WorldFacts, WorldOptionsScreen, WorldPress};
 impl Controls {
     /// `WorldOptionsScreen`, over the options screen.
     pub(super) fn open_world(&mut self, surface: &WindowSurface, assets: &ScreenAssets) {
-        self.world_screen = Some(WorldOptionsScreen::new(
-            &assets.creative.font,
-            &assets.lang,
-            Self::gui_size(surface),
-            !self.title_host,
-            self.world_facts,
-        ));
+        self.world_screen = Some(
+            WorldOptionsScreen::new(
+                &assets.creative.font,
+                &assets.lang,
+                Self::gui_size(surface),
+                !self.title_host,
+                self.world_facts,
+            )
+            .without_game_rules(&assets.lang),
+        );
     }
 
     /// What the server last said about the world: the difficulty and its lock, a hardcore level,
