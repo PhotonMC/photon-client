@@ -1,6 +1,7 @@
 use super::*;
 use photon_core::ids::EntityId;
 use photon_gui::FrameRuns;
+use photon_gui::hud::spectator;
 use photon_gui::screen::restrictions::RestrictionsScreen;
 
 /// What the figures of the screens are drawn with: the mob models, the armor and the layers of
@@ -91,13 +92,13 @@ impl Gui {
     /// overlay message, the titles and the chat come over.
     fn finish_hud_frame(
         frame: &mut photon_render::gui::GuiFrame,
-        (atlas, font, boss_bars): (&GuiAtlas, &Font, &mut BossBars),
+        (atlas, font, lang, boss_bars): (&GuiAtlas, &Font, &Lang, &mut BossBars),
         (started_at, hidden, hud): (std::time::Instant, bool, &Hud),
-        (session, size, input, options): (
+        (session, size, input, controls): (
             &PlaySession,
             &photon_render::window::scale::WindowScale,
             &photon_gui::HudInput,
-            &photon_game::options::Options,
+            &Controls,
         ),
     ) {
         let gui_size = (size.gui_scaled_width(), size.gui_scaled_height());
@@ -105,12 +106,17 @@ impl Gui {
         if !hidden {
             boss_bars.draw(frame, atlas, font, gui_size, frame.millis);
             // The held item's name comes before the veil, with the contextual bar's decorations.
+            let options = &controls.options;
             let backdrop = if options.background_for_chat_only {
                 0.0
             } else {
                 options.text_background_opacity as f32
             };
             hud.draw_selected_name(frame, (atlas, font), gui_size, (input, backdrop));
+            if let Some(menu) = Self::spectator_hud(lang, controls).filter(|_| input.spectator) {
+                spectator::draw_hotbar(frame, (atlas, font), gui_size, &menu);
+                spectator::draw_action(frame, (atlas, font), gui_size, (&menu, backdrop));
+            }
         }
         let timer = session
             .world()
@@ -213,9 +219,9 @@ impl Gui {
         };
         Self::finish_hud_frame(
             &mut frame,
-            (&self.atlas, &self.font, &mut self.boss_bars),
+            (&self.atlas, &self.font, &self.lang, &mut self.boss_bars),
             (self.started_at, hidden, &self.hud),
-            (session, &size, &hud_input, &controls.options),
+            (session, &size, &hud_input, controls),
         );
         if let Some((title, lines)) = sidebar.as_ref().filter(|_| !hidden) {
             sidebar::draw(

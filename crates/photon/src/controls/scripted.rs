@@ -132,6 +132,9 @@ impl Controls {
 
     /// The scripted creative tab and scroll, and the wheel turned over the open screen.
     fn scripted_scroll(&mut self, held: HeldKeys, session: &mut PlaySession) {
+        if let Some(number) = held.hotbar {
+            self.spectator_hotbar(&format!("key.hotbar.{number}"), session);
+        }
         let Some(screen) = self.screen.as_mut() else {
             return;
         };

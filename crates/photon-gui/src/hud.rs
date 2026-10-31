@@ -8,6 +8,7 @@ mod hotbar;
 pub mod locator;
 mod overlays;
 pub mod selected_name;
+pub mod spectator;
 pub mod subtitles;
 mod vitals;
 pub use overlays::{CameraOverlays, debug, sleep, vignette_colour};

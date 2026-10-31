@@ -26,7 +26,7 @@ impl Controls {
     }
 
     /// `KeyMapping.getTranslatedKeyMessage` of a mapping.
-    fn key_message(&self, mapping: &str, lang: &Lang) -> Component {
+    pub(crate) fn key_message(&self, mapping: &str, lang: &Lang) -> Component {
         self.options.key_binding(mapping).map_or_else(
             || Component::literal(""),
             |key| photon_game::options::key_display_name(key, keybinds::system_key_name(key), lang),

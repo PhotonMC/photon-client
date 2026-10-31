@@ -110,6 +110,7 @@ mod light_screens;
 mod loading;
 mod menu_screens;
 mod preview;
+mod spectator;
 mod title;
 
 #[cfg(test)]
