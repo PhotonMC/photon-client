@@ -144,12 +144,12 @@ pub fn camera_overlays(
         .particle_sprite(state)
         .and_then(|name| renderer.sprite_rect(name));
     photon_gui::hud::CameraOverlays {
-        vignette: Some(
+        vignette: options.play.vignette.then(|| {
             session
                 .world()
                 .world_border()
-                .warning_strength(feet.x, feet.z),
-        ),
+                .warning_strength(feet.x, feet.z)
+        }),
         worn: worn_overlays(session),
         scoping: player.is_scoping(),
         powder_snow: session

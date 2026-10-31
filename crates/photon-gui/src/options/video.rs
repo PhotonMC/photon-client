@@ -20,7 +20,6 @@ use photon_render::gui::{GuiAtlas, GuiFrame};
 /// What the screen finds its widgets by; an option with `CUSTOMISING` in its
 /// tag turns the graphics preset to Custom when it changes
 /// (`setGraphicsPresetToCustom`).
-const PLAIN: u8 = 0;
 const GUI_SCALE: u8 = 1;
 const GRAPHICS_PRESET: u8 = 2;
 const CUSTOMISING: u8 = 0x80;
@@ -49,6 +48,10 @@ const CUTOUT_LEAVES: u8 = CUSTOMISING | 15;
 const IMPROVED_TRANSPARENCY: u8 = CUSTOMISING | 16;
 const WEATHER_RADIUS: u8 = CUSTOMISING | 17;
 const FULLSCREEN_RESOLUTION: u8 = 10;
+const AUTOSAVE: u8 = 11;
+const VIGNETTE: u8 = 12;
+const FULLSCREEN: u8 = 13;
+const CHUNK_FADE: u8 = 14;
 /// `RESTART_REQUIRED`'s colour, `withColor(-2142128)`.
 const RESTART_COLOUR: u32 = 0xDF_5050;
 
@@ -146,6 +149,8 @@ pub struct VideoValues {
     pub particles: photon_game::options::ParticleStatus,
     /// The other options a graphics preset controls, and the preset.
     pub quality: photon_game::options::QualityOptions,
+    /// `showAutosaveIndicator` and `vignette`.
+    pub play: photon_game::options::PlayOptions,
 }
 
 impl Default for VideoValues {
@@ -161,6 +166,7 @@ impl Default for VideoValues {
             gamma: 0.5,
             particles: photon_game::options::ParticleStatus::All,
             quality: photon_game::options::QualityOptions::default(),
+            play: photon_game::options::PlayOptions::default(),
         }
     }
 }
@@ -243,7 +249,7 @@ fn display_options(gui_scale: i32, max_gui_scale: i32, display: &VideoValues) ->
                 gui_scale,
             ),
         ),
-        (PLAIN, boolean("options.fullscreen", false)),
+        (FULLSCREEN, boolean("options.fullscreen", false)),
         (
             EXCLUSIVE_FULLSCREEN,
             cycle_tip(
@@ -497,12 +503,20 @@ fn quality_options(display: &VideoValues) -> Vec<(u8, Build)> {
 }
 
 /// `preferenceOptions`.
-fn preference_options(attack_indicator: AttackIndicator) -> Vec<(u8, Build)> {
+fn preference_options(values: &VideoValues) -> Vec<(u8, Build)> {
+    let attack_indicator = values.attack_indicator;
     vec![
-        (PLAIN, boolean("options.autosaveIndicator", true)),
         (
-            PLAIN,
-            boolean_tip("options.vignette", true, "options.vignette.tooltip"),
+            AUTOSAVE,
+            boolean("options.autosaveIndicator", values.play.autosave_indicator),
+        ),
+        (
+            VIGNETTE,
+            boolean_tip(
+                "options.vignette",
+                values.play.vignette,
+                "options.vignette.tooltip",
+            ),
         ),
         (
             ATTACK_INDICATOR,
@@ -517,7 +531,7 @@ fn preference_options(attack_indicator: AttackIndicator) -> Vec<(u8, Build)> {
             ),
         ),
         (
-            PLAIN,
+            CHUNK_FADE,
             slider_tip(
                 "options.chunkFade",
                 IntRange::new(0, 40).xmap(

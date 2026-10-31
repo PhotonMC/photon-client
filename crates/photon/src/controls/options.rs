@@ -248,6 +248,8 @@ impl Controls {
         self.options.gamma = shown.gamma;
         self.options.particles = shown.particles;
         self.options.quality = shown.quality;
+        self.options.play.autosave_indicator = shown.play.autosave_indicator;
+        self.options.play.vignette = shown.play.vignette;
     }
 
     /// The options the video screen shows, as the options hold them.
@@ -263,6 +265,7 @@ impl Controls {
             gamma: options.gamma,
             particles: options.particles,
             quality: options.quality,
+            play: options.play,
         }
     }
 

@@ -2,7 +2,7 @@ use super::*;
 use crate::FontRuns;
 
 /// The options this client has no effect for yet, and what their widgets say.
-const STILL: [(u8, &str, &str); 3] = [
+const STILL: [(u8, &str, &str); 6] = [
     (
         CUTOUT_LEAVES,
         "photon.video.no_cutout_leaves",
@@ -17,6 +17,21 @@ const STILL: [(u8, &str, &str); 3] = [
         PRIORITIZE_CHUNK_UPDATES,
         "photon.video.no_prioritize_chunk_updates",
         "Chunk updates are always built nearest first; this choice has no effect yet.",
+    ),
+    (
+        AUTOSAVE,
+        "photon.video.no_autosave",
+        "There is no world saving on this client: the server saves the world.",
+    ),
+    (
+        FULLSCREEN,
+        "photon.video.fullscreen_key",
+        "Use the fullscreen key (F11) to change this.",
+    ),
+    (
+        CHUNK_FADE,
+        "photon.video.no_chunk_fade",
+        "Chunks appear at once; the fade-in is not available yet.",
     ),
 ];
 
@@ -74,7 +89,7 @@ impl VideoSettingsScreen {
             );
             list.add_small(lang, quality_options(&values));
             list.add_header(font, lang, "options.video.preferences.header");
-            list.add_small(lang, preference_options(values.attack_indicator));
+            list.add_small(lang, preference_options(&values));
         });
         let style = Style {
             colour: Some(RESTART_COLOUR),
@@ -198,6 +213,23 @@ impl VideoSettingsScreen {
                 })
                 .map_or(fallback.gamma, |slider| *slider.value()),
             quality: self.quality(fallback.quality),
+            play: self.play(fallback.play),
+        }
+    }
+
+    /// The two play flags on the screen, over `play`.
+    fn play(&self, play: photon_game::options::PlayOptions) -> photon_game::options::PlayOptions {
+        let flag = |tag: u8, own: bool| {
+            self.screen
+                .list
+                .find(tag)
+                .and_then(|control| control.as_any().downcast_ref::<CycleButton<bool>>())
+                .map_or(own, |button| *button.value())
+        };
+        photon_game::options::PlayOptions {
+            autosave_indicator: flag(AUTOSAVE, play.autosave_indicator),
+            vignette: flag(VIGNETTE, play.vignette),
+            ..play
         }
     }
 
